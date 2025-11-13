@@ -13,13 +13,16 @@ namespace Aura.Core.Services.Providers;
 
 /// <summary>
 /// Service for validating OpenAI API keys with live network verification
+/// Implements patience-centric validation with extended timeouts, proxy support, and comprehensive error categorization
 /// </summary>
 public class OpenAIKeyValidationService
 {
     private readonly ILogger<OpenAIKeyValidationService> _logger;
     private readonly HttpClient _httpClient;
     
-    private const int TotalTimeoutSeconds = 10;
+    private const int TotalTimeoutSeconds = 90;
+    private const int MaxRetryAttempts = 2;
+    private const int InitialRetryDelayMs = 1000;
     private const string DefaultBaseUrl = "https://api.openai.com";
 
     public OpenAIKeyValidationService(
@@ -60,6 +63,7 @@ public class OpenAIKeyValidationService
     /// <summary>
     /// Validate OpenAI API key with live network verification
     /// Uses GET /v1/models endpoint for low-cost validation without token usage
+    /// Implements retry logic for transient failures with extended timeout
     /// </summary>
     public async Task<OpenAIValidationResult> ValidateKeyAsync(
         string apiKey,
@@ -73,9 +77,10 @@ public class OpenAIKeyValidationService
         var maskedKey = MaskApiKey(apiKey);
         
         _logger.LogInformation(
-            "Validating OpenAI API key (masked: {MaskedKey}), CorrelationId: {CorrelationId}",
+            "Validating OpenAI API key (masked: {MaskedKey}), CorrelationId: {CorrelationId}, Timeout: {Timeout}s",
             maskedKey,
-            correlationId ?? "none");
+            correlationId ?? "none",
+            TotalTimeoutSeconds);
 
         // First check format
         var (formatValid, formatMessage) = ValidateKeyFormat(apiKey);
@@ -88,286 +93,500 @@ public class OpenAIKeyValidationService
                 Message = formatMessage,
                 FormatValid = false,
                 NetworkCheckPassed = false,
-                ResponseTimeMs = 0
+                ResponseTimeMs = 0,
+                DiagnosticInfo = "Format validation failed"
             };
         }
 
-        // Perform live validation
-        try
+        // Check for offline mode (basic connectivity check)
+        if (!await IsNetworkAvailableAsync(cancellationToken))
         {
-            var effectiveBaseUrl = string.IsNullOrWhiteSpace(baseUrl) ? DefaultBaseUrl : baseUrl;
-            var requestUri = $"{effectiveBaseUrl.TrimEnd('/')}/v1/models";
-
-            _logger.LogDebug(
-                "Sending OpenAI validation request to {RequestUri} with key {MaskedKey}",
-                requestUri,
-                maskedKey);
-
-            var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-
-            // Add optional headers for sk-proj keys
-            if (!string.IsNullOrWhiteSpace(organizationId))
+            _logger.LogWarning("Network appears to be offline, Key: {MaskedKey}", maskedKey);
+            return new OpenAIValidationResult
             {
-                request.Headers.Add("OpenAI-Organization", organizationId);
-                _logger.LogDebug("Added OpenAI-Organization header: {OrgId}", organizationId);
-            }
-            if (!string.IsNullOrWhiteSpace(projectId))
-            {
-                request.Headers.Add("OpenAI-Project", projectId);
-                _logger.LogDebug("Added OpenAI-Project header: {ProjectId}", projectId);
-            }
+                IsValid = false,
+                Status = "Offline",
+                Message = "No internet connection detected. You can continue and validation will be deferred until online.",
+                FormatValid = true,
+                NetworkCheckPassed = false,
+                ResponseTimeMs = (long)(DateTime.UtcNow - startTime).TotalMilliseconds,
+                ErrorType = "Offline",
+                DiagnosticInfo = "Network connectivity check failed"
+            };
+        }
 
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            cts.CancelAfter(TimeSpan.FromSeconds(TotalTimeoutSeconds));
+        // Perform live validation with retry logic
+        var effectiveBaseUrl = string.IsNullOrWhiteSpace(baseUrl) ? DefaultBaseUrl : baseUrl;
+        var requestUri = $"{effectiveBaseUrl.TrimEnd('/')}/v1/models";
 
-            HttpResponseMessage response;
+        for (int attempt = 0; attempt <= MaxRetryAttempts; attempt++)
+        {
             try
             {
-                response = await _httpClient.SendAsync(request, cts.Token);
-            }
-            catch (TaskCanceledException)
-            {
-                var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
-                
-                if (cancellationToken.IsCancellationRequested)
+                if (attempt > 0)
                 {
-                    _logger.LogWarning("OpenAI validation cancelled by user, Key: {MaskedKey}", maskedKey);
+                    var delay = InitialRetryDelayMs * (int)Math.Pow(2, attempt - 1);
+                    _logger.LogInformation(
+                        "Retry attempt {Attempt}/{MaxAttempts} after {Delay}ms, Key: {MaskedKey}",
+                        attempt,
+                        MaxRetryAttempts,
+                        delay,
+                        maskedKey);
+                    await Task.Delay(delay, cancellationToken);
+                }
+
+                _logger.LogDebug(
+                    "Sending OpenAI validation request (attempt {Attempt}/{Total}) to {RequestUri} with key {MaskedKey}",
+                    attempt + 1,
+                    MaxRetryAttempts + 1,
+                    requestUri,
+                    maskedKey);
+
+                var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+                // Add optional headers for sk-proj keys
+                if (!string.IsNullOrWhiteSpace(organizationId))
+                {
+                    request.Headers.Add("OpenAI-Organization", organizationId);
+                }
+                if (!string.IsNullOrWhiteSpace(projectId))
+                {
+                    request.Headers.Add("OpenAI-Project", projectId);
+                }
+
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                cts.CancelAfter(TimeSpan.FromSeconds(TotalTimeoutSeconds));
+
+                HttpResponseMessage response;
+                try
+                {
+                    response = await _httpClient.SendAsync(request, cts.Token);
+                }
+                catch (TaskCanceledException)
+                {
+                    var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
+                    
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        _logger.LogWarning("OpenAI validation cancelled by user, Key: {MaskedKey}", maskedKey);
+                        return new OpenAIValidationResult
+                        {
+                            IsValid = false,
+                            Status = "Cancelled",
+                            Message = "Validation cancelled by user",
+                            FormatValid = true,
+                            NetworkCheckPassed = false,
+                            ResponseTimeMs = (long)elapsed,
+                            ErrorType = "Cancelled",
+                            DiagnosticInfo = $"Cancelled after {elapsed:F0}ms"
+                        };
+                    }
+
+                    if (attempt < MaxRetryAttempts)
+                    {
+                        _logger.LogWarning(
+                            "OpenAI validation timeout on attempt {Attempt}, will retry, Key: {MaskedKey}",
+                            attempt + 1,
+                            maskedKey);
+                        continue;
+                    }
+
+                    _logger.LogWarning(
+                        "OpenAI validation timeout after {Timeout}s and {Attempts} attempts, Key: {MaskedKey}",
+                        TotalTimeoutSeconds,
+                        attempt + 1,
+                        maskedKey);
+                    
                     return new OpenAIValidationResult
                     {
                         IsValid = false,
-                        Status = "Cancelled",
-                        Message = "Validation cancelled",
+                        Status = "Timeout",
+                        Message = $"Request timed out after {TotalTimeoutSeconds} seconds. You can continue anyway, and the key will be validated on first use.",
                         FormatValid = true,
                         NetworkCheckPassed = false,
-                        ResponseTimeMs = (long)elapsed
+                        HttpStatusCode = null,
+                        ErrorType = "Timeout",
+                        ResponseTimeMs = (long)elapsed,
+                        DiagnosticInfo = $"Timeout after {attempt + 1} attempts, total {elapsed:F0}ms"
+                    };
+                }
+                catch (HttpRequestException ex)
+                {
+                    var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
+                    var diagnosticInfo = CategorizeNetworkError(ex);
+                    
+                    if (attempt < MaxRetryAttempts && IsRetriableNetworkError(ex))
+                    {
+                        _logger.LogWarning(
+                            ex,
+                            "Retriable network error on attempt {Attempt}, will retry, Key: {MaskedKey}",
+                            attempt + 1,
+                            maskedKey);
+                        continue;
+                    }
+
+                    _logger.LogWarning(
+                        ex,
+                        "Network error during OpenAI validation after {Attempts} attempts, Key: {MaskedKey}",
+                        attempt + 1,
+                        maskedKey);
+                    
+                    var (errorType, userMessage) = GetNetworkErrorDetails(ex);
+                    
+                    return new OpenAIValidationResult
+                    {
+                        IsValid = false,
+                        Status = "NetworkError",
+                        Message = userMessage,
+                        FormatValid = true,
+                        NetworkCheckPassed = false,
+                        HttpStatusCode = null,
+                        ErrorType = errorType,
+                        ResponseTimeMs = (long)elapsed,
+                        DiagnosticInfo = diagnosticInfo
                     };
                 }
 
-                _logger.LogWarning(
-                    "OpenAI validation timeout after {Timeout}s, Key: {MaskedKey}",
-                    TotalTimeoutSeconds,
-                    maskedKey);
+                var elapsed2 = (DateTime.UtcNow - startTime).TotalMilliseconds;
+                var statusCode = (int)response.StatusCode;
+
+                // Success case
+                if (response.IsSuccessStatusCode)
+                {
+                    _logger.LogInformation(
+                        "OpenAI API key validated successfully in {ElapsedMs}ms after {Attempts} attempts, Key: {MaskedKey}",
+                        elapsed2,
+                        attempt + 1,
+                        maskedKey);
+                    
+                    return new OpenAIValidationResult
+                    {
+                        IsValid = true,
+                        Status = "Valid",
+                        Message = "API key is valid and verified with OpenAI.",
+                        FormatValid = true,
+                        NetworkCheckPassed = true,
+                        HttpStatusCode = statusCode,
+                        ResponseTimeMs = (long)elapsed2,
+                        DiagnosticInfo = $"Validated successfully after {attempt + 1} attempts"
+                    };
+                }
+
+                // Read error response for detailed messages
+                string errorBody = string.Empty;
+                string errorMessage = string.Empty;
                 
+                try
+                {
+                    errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+                    
+                    _logger.LogDebug(
+                        "OpenAI API response body: {ResponseBody}, Status: {StatusCode}, Key: {MaskedKey}",
+                        errorBody,
+                        response.StatusCode,
+                        maskedKey);
+                    
+                    using var jsonDoc = JsonDocument.Parse(errorBody);
+                    if (jsonDoc.RootElement.TryGetProperty("error", out var errorObj))
+                    {
+                        if (errorObj.TryGetProperty("message", out var msgProp))
+                        {
+                            errorMessage = msgProp.GetString() ?? string.Empty;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse error response from OpenAI, Raw body: {ErrorBody}", errorBody);
+                }
+
+                // Handle specific error codes
+                if (response.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    var message = !string.IsNullOrEmpty(errorMessage)
+                        ? errorMessage
+                        : "Invalid API key. Please check the value and try again.";
+
+                    _logger.LogWarning(
+                        "OpenAI API key validation failed: Unauthorized, Key: {MaskedKey}, Error: {ErrorMessage}",
+                        maskedKey,
+                        errorMessage);
+
+                    return new OpenAIValidationResult
+                    {
+                        IsValid = false,
+                        Status = "Invalid",
+                        Message = message,
+                        FormatValid = true,
+                        NetworkCheckPassed = true,
+                        HttpStatusCode = statusCode,
+                        ErrorType = "Unauthorized",
+                        ResponseTimeMs = (long)elapsed2,
+                        DiagnosticInfo = $"HTTP 401 after {attempt + 1} attempts"
+                    };
+                }
+
+                if (response.StatusCode == HttpStatusCode.Forbidden)
+                {
+                    var message = !string.IsNullOrEmpty(errorMessage)
+                        ? errorMessage
+                        : "Access denied. Check organization/project permissions or billing.";
+
+                    _logger.LogWarning(
+                        "OpenAI API key validation failed: Forbidden, Key: {MaskedKey}, Error: {ErrorMessage}",
+                        maskedKey,
+                        errorMessage);
+
+                    return new OpenAIValidationResult
+                    {
+                        IsValid = false,
+                        Status = "PermissionDenied",
+                        Message = message,
+                        FormatValid = true,
+                        NetworkCheckPassed = true,
+                        HttpStatusCode = statusCode,
+                        ErrorType = "Forbidden",
+                        ResponseTimeMs = (long)elapsed2,
+                        DiagnosticInfo = $"HTTP 403 after {attempt + 1} attempts"
+                    };
+                }
+
+                if (response.StatusCode == HttpStatusCode.TooManyRequests)
+                {
+                    var message = !string.IsNullOrEmpty(errorMessage)
+                        ? errorMessage
+                        : "Rate limited. Your key is valid, but you've hit a limit. You can continue and try again later.";
+
+                    _logger.LogInformation(
+                        "OpenAI API key validation rate limited (key valid): Key: {MaskedKey}",
+                        maskedKey);
+
+                    return new OpenAIValidationResult
+                    {
+                        IsValid = true,
+                        Status = "RateLimited",
+                        Message = message,
+                        FormatValid = true,
+                        NetworkCheckPassed = true,
+                        HttpStatusCode = statusCode,
+                        ErrorType = "RateLimited",
+                        ResponseTimeMs = (long)elapsed2,
+                        DiagnosticInfo = $"HTTP 429 rate limit after {attempt + 1} attempts"
+                    };
+                }
+
+                if ((int)response.StatusCode >= 500)
+                {
+                    if (attempt < MaxRetryAttempts)
+                    {
+                        _logger.LogWarning(
+                            "OpenAI service error on attempt {Attempt}, will retry, Status: {StatusCode}, Key: {MaskedKey}",
+                            attempt + 1,
+                            response.StatusCode,
+                            maskedKey);
+                        continue;
+                    }
+
+                    var message = !string.IsNullOrEmpty(errorMessage)
+                        ? $"OpenAI service issue: {errorMessage}. You can continue and try again later."
+                        : "OpenAI service issue. Your key may be valid; you can continue anyway.";
+
+                    _logger.LogWarning(
+                        "OpenAI service error after {Attempts} attempts: {StatusCode}, Key: {MaskedKey}",
+                        attempt + 1,
+                        response.StatusCode,
+                        maskedKey);
+
+                    return new OpenAIValidationResult
+                    {
+                        IsValid = false,
+                        Status = "ServiceIssue",
+                        Message = message,
+                        FormatValid = true,
+                        NetworkCheckPassed = true,
+                        HttpStatusCode = statusCode,
+                        ErrorType = "ServiceError",
+                        ResponseTimeMs = (long)elapsed2,
+                        DiagnosticInfo = $"HTTP {statusCode} after {attempt + 1} attempts"
+                    };
+                }
+
+                // Other HTTP errors - no retry for client errors
+                _logger.LogWarning(
+                    "OpenAI API returned unexpected status: {StatusCode}, Key: {MaskedKey}",
+                    response.StatusCode,
+                    maskedKey);
+
                 return new OpenAIValidationResult
                 {
                     IsValid = false,
-                    Status = "Timeout",
-                    Message = $"Request timed out after {TotalTimeoutSeconds} seconds. Please check your internet connection.",
-                    FormatValid = true,
-                    NetworkCheckPassed = false,
-                    HttpStatusCode = null,
-                    ErrorType = "Timeout",
-                    ResponseTimeMs = (long)elapsed
-                };
-            }
-            catch (HttpRequestException ex)
-            {
-                var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
-                
-                _logger.LogWarning(
-                    ex,
-                    "Network error during OpenAI validation, Key: {MaskedKey}",
-                    maskedKey);
-                
-                return new OpenAIValidationResult
-                {
-                    IsValid = false,
-                    Status = "NetworkError",
-                    Message = "Network error while contacting OpenAI. Please check your internet connection and try again.",
-                    FormatValid = true,
-                    NetworkCheckPassed = false,
-                    HttpStatusCode = null,
-                    ErrorType = "NetworkError",
-                    ResponseTimeMs = (long)elapsed
-                };
-            }
-
-            var elapsed2 = (DateTime.UtcNow - startTime).TotalMilliseconds;
-            var statusCode = (int)response.StatusCode;
-
-            // Success case
-            if (response.IsSuccessStatusCode)
-            {
-                _logger.LogInformation(
-                    "OpenAI API key validated successfully in {ElapsedMs}ms, Key: {MaskedKey}",
-                    elapsed2,
-                    maskedKey);
-                
-                return new OpenAIValidationResult
-                {
-                    IsValid = true,
-                    Status = "Valid",
-                    Message = "API key is valid and verified with OpenAI.",
+                    Status = "Error",
+                    Message = $"OpenAI API returned error: {response.StatusCode}. {errorMessage}",
                     FormatValid = true,
                     NetworkCheckPassed = true,
                     HttpStatusCode = statusCode,
-                    ResponseTimeMs = (long)elapsed2
+                    ErrorType = response.StatusCode.ToString(),
+                    ResponseTimeMs = (long)elapsed2,
+                    DiagnosticInfo = $"HTTP {statusCode} after {attempt + 1} attempts"
                 };
-            }
-
-            // Read error response for detailed messages
-            string errorBody = string.Empty;
-            string errorMessage = string.Empty;
-            
-            try
-            {
-                errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
-                
-                _logger.LogDebug(
-                    "OpenAI API response body: {ResponseBody}, Status: {StatusCode}, Key: {MaskedKey}",
-                    errorBody,
-                    response.StatusCode,
-                    maskedKey);
-                
-                using var jsonDoc = JsonDocument.Parse(errorBody);
-                if (jsonDoc.RootElement.TryGetProperty("error", out var errorObj))
-                {
-                    if (errorObj.TryGetProperty("message", out var msgProp))
-                    {
-                        errorMessage = msgProp.GetString() ?? string.Empty;
-                    }
-                }
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to parse error response from OpenAI, Raw body: {ErrorBody}", errorBody);
-            }
-
-            // Handle specific error codes
-            if (response.StatusCode == HttpStatusCode.Unauthorized)
-            {
-                var message = !string.IsNullOrEmpty(errorMessage)
-                    ? errorMessage
-                    : "Invalid API key. Please check the value and try again.";
-
-                _logger.LogWarning(
-                    "OpenAI API key validation failed: Unauthorized, Key: {MaskedKey}, Error: {ErrorMessage}",
-                    maskedKey,
-                    errorMessage);
-
-                return new OpenAIValidationResult
-                {
-                    IsValid = false,
-                    Status = "Invalid",
-                    Message = message,
-                    FormatValid = true,
-                    NetworkCheckPassed = true,
-                    HttpStatusCode = statusCode,
-                    ErrorType = "Unauthorized",
-                    ResponseTimeMs = (long)elapsed2
-                };
-            }
-
-            if (response.StatusCode == HttpStatusCode.Forbidden)
-            {
-                var message = !string.IsNullOrEmpty(errorMessage)
-                    ? errorMessage
-                    : "Access denied. Check organization/project permissions or billing.";
-
-                _logger.LogWarning(
-                    "OpenAI API key validation failed: Forbidden, Key: {MaskedKey}, Error: {ErrorMessage}",
-                    maskedKey,
-                    errorMessage);
-
-                return new OpenAIValidationResult
-                {
-                    IsValid = false,
-                    Status = "PermissionDenied",
-                    Message = message,
-                    FormatValid = true,
-                    NetworkCheckPassed = true,
-                    HttpStatusCode = statusCode,
-                    ErrorType = "Forbidden",
-                    ResponseTimeMs = (long)elapsed2
-                };
-            }
-
-            if (response.StatusCode == HttpStatusCode.TooManyRequests)
-            {
-                var message = !string.IsNullOrEmpty(errorMessage)
-                    ? errorMessage
-                    : "Rate limited. Your key is valid, but you've hit a limit. Try again later.";
-
-                _logger.LogInformation(
-                    "OpenAI API key validation rate limited (key valid): Key: {MaskedKey}",
-                    maskedKey);
-
-                return new OpenAIValidationResult
-                {
-                    IsValid = true,
-                    Status = "RateLimited",
-                    Message = message,
-                    FormatValid = true,
-                    NetworkCheckPassed = true,
-                    HttpStatusCode = statusCode,
-                    ErrorType = "RateLimited",
-                    ResponseTimeMs = (long)elapsed2
-                };
-            }
-
-            if ((int)response.StatusCode >= 500)
-            {
-                var message = !string.IsNullOrEmpty(errorMessage)
-                    ? $"OpenAI service issue: {errorMessage}"
-                    : "OpenAI service issue. Your key may be valid; please retry shortly.";
-
-                _logger.LogWarning(
-                    "OpenAI service error during validation: {StatusCode}, Key: {MaskedKey}",
-                    response.StatusCode,
+                var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
+                
+                _logger.LogError(
+                    ex,
+                    "Unexpected error during OpenAI key validation, Key: {MaskedKey}",
                     maskedKey);
 
                 return new OpenAIValidationResult
                 {
                     IsValid = false,
-                    Status = "ServiceIssue",
-                    Message = message,
+                    Status = "Error",
+                    Message = "An unexpected error occurred while validating the API key. You can continue anyway.",
                     FormatValid = true,
-                    NetworkCheckPassed = true,
-                    HttpStatusCode = statusCode,
-                    ErrorType = "ServiceError",
-                    ResponseTimeMs = (long)elapsed2
+                    NetworkCheckPassed = false,
+                    ErrorType = "UnexpectedError",
+                    ResponseTimeMs = (long)elapsed,
+                    DiagnosticInfo = $"Exception: {ex.GetType().Name} - {ex.Message}"
                 };
             }
-
-            // Other HTTP errors
-            _logger.LogWarning(
-                "OpenAI API returned unexpected status: {StatusCode}, Key: {MaskedKey}",
-                response.StatusCode,
-                maskedKey);
-
-            return new OpenAIValidationResult
-            {
-                IsValid = false,
-                Status = "Error",
-                Message = $"OpenAI API returned error: {response.StatusCode}. {errorMessage}",
-                FormatValid = true,
-                NetworkCheckPassed = true,
-                HttpStatusCode = statusCode,
-                ErrorType = response.StatusCode.ToString(),
-                ResponseTimeMs = (long)elapsed2
-            };
         }
-        catch (Exception ex)
+
+        // Should never reach here due to continue/return in loop, but add fallback
+        var totalElapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
+        return new OpenAIValidationResult
         {
-            var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
-            
-            _logger.LogError(
-                ex,
-                "Unexpected error during OpenAI key validation, Key: {MaskedKey}",
-                maskedKey);
+            IsValid = false,
+            Status = "Error",
+            Message = "Validation failed after all retry attempts",
+            FormatValid = true,
+            NetworkCheckPassed = false,
+            ErrorType = "MaxRetriesExceeded",
+            ResponseTimeMs = (long)totalElapsed,
+            DiagnosticInfo = $"All {MaxRetryAttempts + 1} attempts failed"
+        };
+    }
 
-            return new OpenAIValidationResult
-            {
-                IsValid = false,
-                Status = "Error",
-                Message = "An unexpected error occurred while validating the API key.",
-                FormatValid = true,
-                NetworkCheckPassed = false,
-                ErrorType = "UnexpectedError",
-                ResponseTimeMs = (long)elapsed
-            };
+    /// <summary>
+    /// Check if network is available with a basic connectivity test
+    /// </summary>
+    private async Task<bool> IsNetworkAvailableAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            cts.CancelAfter(TimeSpan.FromSeconds(5));
+            
+            var request = new HttpRequestMessage(HttpMethod.Head, "https://www.google.com");
+            var response = await _httpClient.SendAsync(request, cts.Token);
+            return response.IsSuccessStatusCode;
         }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Categorize network error for diagnostic purposes
+    /// </summary>
+    private string CategorizeNetworkError(HttpRequestException ex)
+    {
+        var message = ex.Message.ToLowerInvariant();
+        var innerMessage = ex.InnerException?.Message?.ToLowerInvariant() ?? string.Empty;
+        
+        if (message.Contains("ssl") || message.Contains("tls") || innerMessage.Contains("ssl") || innerMessage.Contains("tls"))
+        {
+            return "TLS/SSL error - certificate validation failed or TLS handshake issue";
+        }
+        if (message.Contains("dns") || message.Contains("nodename") || innerMessage.Contains("dns"))
+        {
+            return "DNS resolution error - unable to resolve hostname";
+        }
+        if (message.Contains("proxy") || innerMessage.Contains("proxy"))
+        {
+            return "Proxy error - check proxy configuration";
+        }
+        if (message.Contains("timeout") || innerMessage.Contains("timeout"))
+        {
+            return "Connection timeout - network may be slow or unreachable";
+        }
+        if (message.Contains("refused") || innerMessage.Contains("refused"))
+        {
+            return "Connection refused - target server rejected connection";
+        }
+        if (message.Contains("unreachable") || innerMessage.Contains("unreachable"))
+        {
+            return "Network unreachable - check internet connection";
+        }
+        
+        return $"Network error: {ex.Message}";
+    }
+
+    /// <summary>
+    /// Determine if a network error is retriable
+    /// </summary>
+    private bool IsRetriableNetworkError(HttpRequestException ex)
+    {
+        var message = ex.Message.ToLowerInvariant();
+        var innerMessage = ex.InnerException?.Message?.ToLowerInvariant() ?? string.Empty;
+        
+        // Retriable: timeouts, temporary connection issues
+        if (message.Contains("timeout") || innerMessage.Contains("timeout"))
+        {
+            return true;
+        }
+        if (message.Contains("temporarily") || innerMessage.Contains("temporarily"))
+        {
+            return true;
+        }
+        
+        // Not retriable: DNS, TLS, authentication issues
+        if (message.Contains("dns") || message.Contains("ssl") || message.Contains("tls"))
+        {
+            return false;
+        }
+        
+        // Default to retriable for unknown network errors
+        return true;
+    }
+
+    /// <summary>
+    /// Get user-friendly error message and error type from HttpRequestException
+    /// </summary>
+    private (string ErrorType, string UserMessage) GetNetworkErrorDetails(HttpRequestException ex)
+    {
+        var message = ex.Message.ToLowerInvariant();
+        var innerMessage = ex.InnerException?.Message?.ToLowerInvariant() ?? string.Empty;
+        
+        if (message.Contains("ssl") || message.Contains("tls") || innerMessage.Contains("ssl") || innerMessage.Contains("tls"))
+        {
+            return ("TLS_Error", "TLS/SSL connection error. This may be caused by proxy settings or certificate issues. You can continue anyway.");
+        }
+        if (message.Contains("dns") || message.Contains("nodename") || innerMessage.Contains("dns"))
+        {
+            return ("DNS_Error", "Unable to resolve api.openai.com. Check your internet connection or DNS settings. You can continue anyway.");
+        }
+        if (message.Contains("proxy") || innerMessage.Contains("proxy"))
+        {
+            return ("Proxy_Error", "Proxy connection error. Check your proxy settings (HTTP_PROXY environment variable or Windows proxy settings). You can continue anyway.");
+        }
+        if (message.Contains("timeout") || innerMessage.Contains("timeout"))
+        {
+            return ("Connection_Timeout", "Connection timed out. Your network may be slow. You can continue anyway, and the key will be validated on first use.");
+        }
+        if (message.Contains("refused") || innerMessage.Contains("refused"))
+        {
+            return ("Connection_Refused", "Connection refused. Check your firewall or network settings. You can continue anyway.");
+        }
+        if (message.Contains("unreachable") || innerMessage.Contains("unreachable"))
+        {
+            return ("Network_Unreachable", "Network unreachable. Check your internet connection. You can continue in offline mode.");
+        }
+        
+        return ("Network_Error", "Network error while contacting OpenAI. Please check your internet connection. You can continue anyway.");
     }
 
     /// <summary>
@@ -630,6 +849,7 @@ public class OpenAIValidationResult
     public int? HttpStatusCode { get; set; }
     public string? ErrorType { get; set; }
     public long ResponseTimeMs { get; set; }
+    public string? DiagnosticInfo { get; set; }
 }
 
 /// <summary>

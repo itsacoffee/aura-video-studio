@@ -409,7 +409,8 @@ public class ProvidersController : ControllerBase
                     NetworkCheckPassed: result.NetworkCheckPassed,
                     HttpStatusCode: result.HttpStatusCode,
                     ErrorType: result.ErrorType,
-                    ResponseTimeMs: result.ResponseTimeMs));
+                    ResponseTimeMs: result.ResponseTimeMs,
+                    DiagnosticInfo: result.DiagnosticInfo));
 
             return Ok(response);
         }

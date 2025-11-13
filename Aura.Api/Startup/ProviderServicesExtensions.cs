@@ -24,13 +24,15 @@ public static class ProviderServicesExtensions
         // HTTP client for provider communication
         services.AddHttpClient();
 
-        // OpenAI key validation service
+        // OpenAI key validation service with extended timeout and proxy support
         services.AddSingleton<OpenAIKeyValidationService>(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<OpenAIKeyValidationService>>();
             var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+            
             var httpClient = httpClientFactory.CreateClient();
-            httpClient.Timeout = TimeSpan.FromSeconds(10);
+            httpClient.Timeout = TimeSpan.FromSeconds(120);
+            
             return new OpenAIKeyValidationService(logger, httpClient);
         });
 
