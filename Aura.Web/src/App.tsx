@@ -2,7 +2,7 @@ import { FluentProvider, webLightTheme, webDarkTheme, Spinner } from '@fluentui/
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { useState, useEffect, createContext, useContext, lazy } from 'react';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { MemoryRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { queryClient } from './api/queryClient';
 import { KeyboardShortcutsCheatSheet } from './components/Accessibility/KeyboardShortcutsCheatSheet';
 import { CommandPalette } from './components/CommandPalette';
@@ -33,6 +33,22 @@ import { DashboardPage } from './pages/DashboardPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { FirstRunWizard } from './pages/Onboarding/FirstRunWizard';
 import { WelcomePage } from './pages/WelcomePage';
+import { setupApi } from './services/api/setupApi';
+import { crashRecoveryService } from './services/crashRecoveryService';
+import { registerCustomEventHandlers } from './services/customEventHandlers';
+import { errorReportingService } from './services/errorReportingService';
+import {
+  hasCompletedFirstRun,
+  migrateLegacyFirstRunStatus,
+  markFirstRunCompleted,
+} from './services/firstRunService';
+import { healthMonitorService } from './services/healthMonitorService';
+import { keyboardShortcutManager } from './services/keyboardShortcutManager';
+import { loggingService } from './services/loggingService';
+import { initializeRouteRegistry } from './services/routeRegistry';
+import { migrateSettingsIfNeeded } from './services/settingsValidationService';
+import { ActivityProvider } from './state/activityContext';
+import { useJobState } from './state/jobState';
 import { getAuraTheme } from './themes/auraTheme';
 
 // Lazy load non-critical pages to reduce initial bundle size
@@ -130,22 +146,6 @@ const VoiceEnhancementPage = lazy(() => import('./pages/VoiceEnhancement/VoiceEn
 const CreateWizard = lazy(() =>
   import('./pages/Wizard/CreateWizard').then((m) => ({ default: m.CreateWizard }))
 );
-import { setupApi } from './services/api/setupApi';
-import { crashRecoveryService } from './services/crashRecoveryService';
-import { registerCustomEventHandlers } from './services/customEventHandlers';
-import { errorReportingService } from './services/errorReportingService';
-import {
-  hasCompletedFirstRun,
-  migrateLegacyFirstRunStatus,
-  markFirstRunCompleted,
-} from './services/firstRunService';
-import { healthMonitorService } from './services/healthMonitorService';
-import { keyboardShortcutManager } from './services/keyboardShortcutManager';
-import { loggingService } from './services/loggingService';
-import { initializeRouteRegistry } from './services/routeRegistry';
-import { migrateSettingsIfNeeded } from './services/settingsValidationService';
-import { ActivityProvider } from './state/activityContext';
-import { useJobState } from './state/jobState';
 
 // Lazy load development-only features to reduce production bundle size
 const LogViewerPage = lazy(() =>
@@ -649,14 +649,14 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
           <FluentProvider theme={currentTheme}>
-            <HashRouter>
+            <MemoryRouter initialEntries={['/']}>
               <FirstRunWizard
                 onComplete={async () => {
                   setShouldShowOnboarding(false);
                   await markFirstRunCompleted();
                 }}
               />
-            </HashRouter>
+            </MemoryRouter>
           </FluentProvider>
         </ThemeContext.Provider>
       </QueryClientProvider>
@@ -702,7 +702,7 @@ function App() {
           <AccessibilityProvider>
             <ActivityProvider>
               <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
-                <HashRouter>
+                <MemoryRouter initialEntries={['/']}>
                   <SafeModeBanner onOpenDiagnostics={() => _setShowDiagnostics(true)} />
                   {/* Status bar for job progress */}
                   <JobStatusBar
@@ -711,20 +711,20 @@ function App() {
                     message={message}
                     onViewDetails={() => setShowDrawer(true)}
                   />
-                  <Layout>
-                    <ErrorBoundary>
-                      <ConfigurationGate>
-                        <Routes>
-                          {/* Setup wizard - unified entry point for first-run and reconfiguration */}
-                          <Route path="/setup" element={<FirstRunWizard />} />
-                          {/* Legacy route redirect for backward compatibility */}
-                          <Route path="/onboarding" element={<Navigate to="/setup" replace />} />
+                  <ErrorBoundary>
+                    <ConfigurationGate>
+                      <Routes>
+                        {/* Setup wizard - unified entry point for first-run and reconfiguration */}
+                        <Route path="/setup" element={<FirstRunWizard />} />
+                        {/* Legacy route redirect for backward compatibility */}
+                        <Route path="/onboarding" element={<Navigate to="/setup" replace />} />
 
-                          {/* Main routes */}
-                          <Route path="/" element={<WelcomePage />} />
-                          <Route path="/dashboard" element={<DashboardPage />} />
+                        {/* Main routes with Layout wrapper */}
+                        <Route path="/" element={<Layout />}>
+                          <Route index element={<WelcomePage />} />
+                          <Route path="dashboard" element={<DashboardPage />} />
                           <Route
-                            path="/ideation"
+                            path="ideation"
                             element={
                               <LazyRoute routePath="/ideation">
                                 <IdeationDashboard />
@@ -732,17 +732,18 @@ function App() {
                             }
                           />
                           <Route
-                            path="/trending"
+                            path="trending"
                             element={
                               <LazyRoute routePath="/trending">
                                 <TrendingTopicsExplorer />
                               </LazyRoute>
                             }
                           />
-                          <Route path="/content-planning" element={<ContentPlanningDashboard />} />
-                          <Route path="/create" element={<VideoCreationWizard />} />
+                          <Route path="content-planning" element={<ContentPlanningDashboard />} />
+                          <Route path="create" element={<VideoCreationWizard />} />
+                          <Route path="generate" element={<VideoCreationWizard />} />
                           <Route
-                            path="/create/advanced"
+                            path="create/advanced"
                             element={
                               <LazyRoute routePath="/create/advanced">
                                 <CreateWizard />
@@ -750,7 +751,7 @@ function App() {
                             }
                           />
                           <Route
-                            path="/create/legacy"
+                            path="create/legacy"
                             element={
                               <LazyRoute routePath="/create/legacy">
                                 <CreatePage />
@@ -758,7 +759,7 @@ function App() {
                             }
                           />
                           <Route
-                            path="/templates"
+                            path="templates"
                             element={
                               <LazyRoute routePath="/templates">
                                 <TemplatesLibrary />
@@ -766,7 +767,7 @@ function App() {
                             }
                           />
                           <Route
-                            path="/templates/custom"
+                            path="templates/custom"
                             element={
                               <LazyRoute routePath="/templates/custom">
                                 <CustomTemplatesPage />
@@ -774,7 +775,7 @@ function App() {
                             }
                           />
                           <Route
-                            path="/editor/:jobId"
+                            path="editor/:jobId"
                             element={
                               <LazyRoute routePath="/editor/:jobId">
                                 <TimelineEditor />
@@ -782,7 +783,7 @@ function App() {
                             }
                           />
                           <Route
-                            path="/editor"
+                            path="editor"
                             element={
                               <LazyRoute routePath="/editor">
                                 <VideoEditorPage />
@@ -790,7 +791,7 @@ function App() {
                             }
                           />
                           <Route
-                            path="/pacing"
+                            path="pacing"
                             element={
                               <LazyRoute routePath="/pacing">
                                 <PacingAnalyzerPage />
@@ -798,18 +799,18 @@ function App() {
                             }
                           />
                           <Route
-                            path="/render"
+                            path="render"
                             element={
                               <LazyRoute routePath="/render">
                                 <RenderPage />
                               </LazyRoute>
                             }
                           />
-                          <Route path="/platform" element={<PlatformDashboard />} />
-                          <Route path="/quality" element={<QualityDashboard />} />
+                          <Route path="platform" element={<PlatformDashboard />} />
+                          <Route path="quality" element={<QualityDashboard />} />
 
                           <Route
-                            path="/projects"
+                            path="projects"
                             element={
                               <LazyRoute routePath="/projects">
                                 <ProjectsPage />
@@ -817,7 +818,7 @@ function App() {
                             }
                           />
                           <Route
-                            path="/export-history"
+                            path="export-history"
                             element={
                               <LazyRoute routePath="/export-history">
                                 <ExportHistoryPage />
@@ -825,7 +826,7 @@ function App() {
                             }
                           />
                           <Route
-                            path="/assets"
+                            path="assets"
                             element={
                               <LazyRoute routePath="/assets">
                                 <AssetLibrary />
@@ -833,7 +834,7 @@ function App() {
                             }
                           />
                           <Route
-                            path="/jobs"
+                            path="jobs"
                             element={
                               <LazyRoute routePath="/jobs">
                                 <RecentJobsPage />
@@ -841,7 +842,7 @@ function App() {
                             }
                           />
                           <Route
-                            path="/jobs/:jobId/telemetry"
+                            path="jobs/:jobId/telemetry"
                             element={
                               <LazyRoute routePath="/jobs/:jobId/telemetry">
                                 <RunDetailsPage />
@@ -849,7 +850,7 @@ function App() {
                             }
                           />
                           <Route
-                            path="/downloads"
+                            path="downloads"
                             element={
                               <LazyRoute routePath="/downloads">
                                 <DownloadsPage />
@@ -857,7 +858,7 @@ function App() {
                             }
                           />
                           <Route
-                            path="/health"
+                            path="health"
                             element={
                               <LazyRoute routePath="/health">
                                 <SystemHealthDashboard />
@@ -865,7 +866,7 @@ function App() {
                             }
                           />
                           <Route
-                            path="/health/providers"
+                            path="health/providers"
                             element={
                               <LazyRoute routePath="/health/providers">
                                 <ProviderHealthDashboard />
@@ -873,7 +874,7 @@ function App() {
                             }
                           />
                           <Route
-                            path="/ai-editing"
+                            path="ai-editing"
                             element={
                               <LazyRoute routePath="/ai-editing">
                                 <AIEditingPage />
@@ -881,7 +882,7 @@ function App() {
                             }
                           />
                           <Route
-                            path="/aesthetics"
+                            path="aesthetics"
                             element={
                               <LazyRoute routePath="/aesthetics">
                                 <AestheticsPage />
@@ -889,7 +890,7 @@ function App() {
                             }
                           />
                           <Route
-                            path="/localization"
+                            path="localization"
                             element={
                               <LazyRoute routePath="/localization">
                                 <TranslationPage />
@@ -897,7 +898,7 @@ function App() {
                             }
                           />
                           <Route
-                            path="/prompt-management"
+                            path="prompt-management"
                             element={
                               <LazyRoute routePath="/prompt-management">
                                 <PromptManagementPage />
@@ -905,7 +906,7 @@ function App() {
                             }
                           />
                           <Route
-                            path="/rag"
+                            path="rag"
                             element={
                               <LazyRoute routePath="/rag">
                                 <RagDocumentManager />
@@ -913,7 +914,7 @@ function App() {
                             }
                           />
                           <Route
-                            path="/voice-enhancement"
+                            path="voice-enhancement"
                             element={
                               <LazyRoute routePath="/voice-enhancement">
                                 <VoiceEnhancementPage />
@@ -921,7 +922,7 @@ function App() {
                             }
                           />
                           <Route
-                            path="/performance-analytics"
+                            path="performance-analytics"
                             element={
                               <LazyRoute routePath="/performance-analytics">
                                 <PerformanceAnalyticsPage />
@@ -929,7 +930,7 @@ function App() {
                             }
                           />
                           <Route
-                            path="/usage-analytics"
+                            path="usage-analytics"
                             element={
                               <LazyRoute routePath="/usage-analytics">
                                 <UsageAnalyticsPage />
@@ -937,7 +938,7 @@ function App() {
                             }
                           />
                           <Route
-                            path="/ml-lab"
+                            path="ml-lab"
                             element={
                               <LazyRoute routePath="/ml-lab">
                                 <MLLabPage />
@@ -945,7 +946,7 @@ function App() {
                             }
                           />
                           <Route
-                            path="/ab-tests"
+                            path="ab-tests"
                             element={
                               <LazyRoute routePath="/ab-tests">
                                 <ABTestManagementPage />
@@ -953,7 +954,7 @@ function App() {
                             }
                           />
                           <Route
-                            path="/audience"
+                            path="audience"
                             element={
                               <LazyRoute routePath="/audience">
                                 <AudienceManagementPage />
@@ -961,7 +962,7 @@ function App() {
                             }
                           />
                           <Route
-                            path="/learning"
+                            path="learning"
                             element={
                               <LazyRoute routePath="/learning">
                                 <LearningPage />
@@ -969,7 +970,7 @@ function App() {
                             }
                           />
                           <Route
-                            path="/quality-validation"
+                            path="quality-validation"
                             element={
                               <LazyRoute routePath="/quality-validation">
                                 <QualityValidationPage />
@@ -977,7 +978,7 @@ function App() {
                             }
                           />
                           <Route
-                            path="/validation"
+                            path="validation"
                             element={
                               <LazyRoute routePath="/validation">
                                 <ValidationPage />
@@ -985,7 +986,7 @@ function App() {
                             }
                           />
                           <Route
-                            path="/verification"
+                            path="verification"
                             element={
                               <LazyRoute routePath="/verification">
                                 <VerificationPage />
@@ -994,7 +995,7 @@ function App() {
                           />
                           {/* Diagnostics and system information */}
                           <Route
-                            path="/diagnostics"
+                            path="diagnostics"
                             element={
                               <LazyRoute routePath="/diagnostics">
                                 <DiagnosticDashboardPage />
@@ -1003,7 +1004,7 @@ function App() {
                           />
                           {/* Logs page - always available for diagnostics */}
                           <Route
-                            path="/logs"
+                            path="logs"
                             element={
                               <LazyRoute routePath="/logs">
                                 <LogViewerPage />
@@ -1014,7 +1015,7 @@ function App() {
                           {env.enableDevTools && (
                             <>
                               <Route
-                                path="/error-handling-demo"
+                                path="error-handling-demo"
                                 element={
                                   <LazyRoute routePath="/error-handling-demo">
                                     <ErrorHandlingDemoPage />
@@ -1022,7 +1023,7 @@ function App() {
                                 }
                               />
                               <Route
-                                path="/activity-demo"
+                                path="activity-demo"
                                 element={
                                   <LazyRoute routePath="/activity-demo">
                                     <ActivityDemoPage />
@@ -1030,7 +1031,7 @@ function App() {
                                 }
                               />
                               <Route
-                                path="/layout-demo"
+                                path="layout-demo"
                                 element={
                                   <LazyRoute routePath="/layout-demo">
                                     <LayoutDemoPage />
@@ -1038,7 +1039,7 @@ function App() {
                                 }
                               />
                               <Route
-                                path="/windows11-demo"
+                                path="windows11-demo"
                                 element={
                                   <LazyRoute routePath="/windows11-demo">
                                     <Windows11DemoPage />
@@ -1048,7 +1049,7 @@ function App() {
                             </>
                           )}
                           <Route
-                            path="/admin"
+                            path="admin"
                             element={
                               <LazyRoute routePath="/admin">
                                 <AdminDashboardPage />
@@ -1056,7 +1057,7 @@ function App() {
                             }
                           />
                           <Route
-                            path="/settings"
+                            path="settings"
                             element={
                               <LazyRoute routePath="/settings">
                                 <SettingsPage />
@@ -1064,19 +1065,19 @@ function App() {
                             }
                           />
                           <Route
-                            path="/settings/accessibility"
+                            path="settings/accessibility"
                             element={
                               <LazyRoute routePath="/settings/accessibility">
                                 <AccessibilitySettingsPage />
                               </LazyRoute>
                             }
                           />
-                          <Route path="/models" element={<Navigate to="/settings" replace />} />
+                          <Route path="models" element={<Navigate to="/settings" replace />} />
                           <Route path="*" element={<NotFoundPage />} />
-                        </Routes>
-                      </ConfigurationGate>
-                    </ErrorBoundary>
-                  </Layout>
+                        </Route>
+                      </Routes>
+                    </ConfigurationGate>
+                  </ErrorBoundary>
 
                   {/* These components need to be inside BrowserRouter for navigation hooks */}
                   <KeyboardShortcutsModal
@@ -1111,7 +1112,7 @@ function App() {
                   <footer id="global-footer">
                     <GlobalStatusFooter />
                   </footer>
-                </HashRouter>
+                </MemoryRouter>
               </div>
             </ActivityProvider>
           </AccessibilityProvider>
