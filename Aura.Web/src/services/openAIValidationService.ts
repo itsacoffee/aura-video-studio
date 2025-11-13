@@ -16,9 +16,14 @@ export interface OpenAIValidationResult {
     | 'PermissionDenied'
     | 'ServiceIssue'
     | 'NetworkError'
-    | 'Timeout';
+    | 'Timeout'
+    | 'Offline'
+    | 'Pending';
   message: string;
   canSave: boolean;
+  canContinue?: boolean;
+  diagnosticInfo?: string;
+  elapsedTimeMs?: number;
 }
 
 /**
@@ -63,6 +68,8 @@ export async function validateOpenAIKey(
  */
 function mapValidationResponse(response: ProviderValidationResponse): OpenAIValidationResult {
   const status = response.status;
+  const diagnosticInfo = response.details?.diagnosticInfo;
+  const elapsedTimeMs = response.details?.responseTimeMs ?? undefined;
 
   switch (status) {
     case 'Valid':
@@ -71,6 +78,9 @@ function mapValidationResponse(response: ProviderValidationResponse): OpenAIVali
         status: 'Valid',
         message: response.message || 'API key is valid and verified with OpenAI.',
         canSave: true,
+        canContinue: true,
+        diagnosticInfo,
+        elapsedTimeMs,
       };
 
     case 'Invalid':
@@ -79,6 +89,9 @@ function mapValidationResponse(response: ProviderValidationResponse): OpenAIVali
         status: 'Invalid',
         message: response.message || 'Invalid API key. Please check the value and try again.',
         canSave: false,
+        canContinue: false,
+        diagnosticInfo,
+        elapsedTimeMs,
       };
 
     case 'PermissionDenied':
@@ -88,6 +101,9 @@ function mapValidationResponse(response: ProviderValidationResponse): OpenAIVali
         message:
           response.message || 'Access denied. Check organization/project permissions or billing.',
         canSave: false,
+        canContinue: false,
+        diagnosticInfo,
+        elapsedTimeMs,
       };
 
     case 'RateLimited':
@@ -96,8 +112,11 @@ function mapValidationResponse(response: ProviderValidationResponse): OpenAIVali
         status: 'RateLimited',
         message:
           response.message ||
-          "Rate limited. Your key is valid, but you've hit a limit. Try again later.",
+          "Rate limited. Your key is valid, but you've hit a limit. You can continue and try again later.",
         canSave: true,
+        canContinue: true,
+        diagnosticInfo,
+        elapsedTimeMs,
       };
 
     case 'ServiceIssue':
@@ -105,8 +124,11 @@ function mapValidationResponse(response: ProviderValidationResponse): OpenAIVali
         isValid: false,
         status: 'ServiceIssue',
         message:
-          response.message || 'OpenAI service issue. Your key may be valid; please retry shortly.',
+          response.message || 'OpenAI service issue. Your key may be valid; you can continue anyway.',
         canSave: true,
+        canContinue: true,
+        diagnosticInfo,
+        elapsedTimeMs,
       };
 
     case 'NetworkError':
@@ -115,16 +137,33 @@ function mapValidationResponse(response: ProviderValidationResponse): OpenAIVali
         status: 'NetworkError',
         message:
           response.message ||
-          'Network error while contacting OpenAI. Please check your internet connection.',
+          'Network error while contacting OpenAI. Please check your internet connection. You can continue anyway.',
         canSave: false,
+        canContinue: true,
+        diagnosticInfo,
+        elapsedTimeMs,
       };
 
     case 'Timeout':
       return {
         isValid: false,
         status: 'Timeout',
-        message: response.message || 'Request timed out. Please check your internet connection.',
+        message: response.message || 'Request timed out. You can continue anyway, and the key will be validated on first use.',
         canSave: false,
+        canContinue: true,
+        diagnosticInfo,
+        elapsedTimeMs,
+      };
+
+    case 'Offline':
+      return {
+        isValid: false,
+        status: 'Offline',
+        message: response.message || 'No internet connection detected. You can continue in offline mode.',
+        canSave: true,
+        canContinue: true,
+        diagnosticInfo,
+        elapsedTimeMs,
       };
 
     case 'Cancelled':
@@ -133,14 +172,20 @@ function mapValidationResponse(response: ProviderValidationResponse): OpenAIVali
         status: 'NetworkError',
         message: response.message || 'Validation was cancelled.',
         canSave: false,
+        canContinue: true,
+        diagnosticInfo,
+        elapsedTimeMs,
       };
 
     case 'Error':
       return {
         isValid: false,
         status: 'NetworkError',
-        message: response.message || 'An error occurred during validation. Please try again.',
+        message: response.message || 'An error occurred during validation. You can continue anyway.',
         canSave: false,
+        canContinue: true,
+        diagnosticInfo,
+        elapsedTimeMs,
       };
 
     default:
@@ -149,8 +194,11 @@ function mapValidationResponse(response: ProviderValidationResponse): OpenAIVali
         status: 'NetworkError',
         message:
           response.message ||
-          'Unexpected response from validation service. Please try again or check server logs.',
+          'Unexpected response from validation service. You can continue anyway.',
         canSave: false,
+        canContinue: true,
+        diagnosticInfo,
+        elapsedTimeMs,
       };
   }
 }
@@ -165,15 +213,19 @@ export function getStatusDisplayText(status: OpenAIValidationResult['status']): 
     case 'Invalid':
       return 'Invalid ✕';
     case 'RateLimited':
-      return 'Rate Limited (valid key, retry later)';
+      return 'Rate Limited (can continue)';
     case 'PermissionDenied':
       return 'Permission Denied';
     case 'ServiceIssue':
-      return 'Service Issue (retry later)';
+      return 'Service Issue (can continue)';
     case 'NetworkError':
-      return 'Network Error';
+      return 'Network Error (can continue)';
     case 'Timeout':
-      return 'Timeout';
+      return 'Timeout (can continue)';
+    case 'Offline':
+      return 'Offline Mode (can continue)';
+    case 'Pending':
+      return 'Validating...';
     default:
       return 'Unknown Status';
   }
@@ -193,11 +245,22 @@ export function getStatusAppearance(
       return 'danger';
     case 'RateLimited':
     case 'ServiceIssue':
+    case 'Offline':
       return 'warning';
     case 'NetworkError':
     case 'Timeout':
+    case 'Pending':
       return 'subtle';
     default:
       return 'subtle';
   }
+}
+
+/**
+ * Format elapsed time in seconds
+ */
+export function formatElapsedTime(ms?: number): string {
+  if (!ms) return '';
+  const seconds = (ms / 1000).toFixed(1);
+  return `(${seconds}s)`;
 }
