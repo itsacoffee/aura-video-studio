@@ -1,0 +1,160 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Provider Timeout Profiles Configuration",
+  "description": "Defines patience windows and heartbeat intervals for different provider types",
+  "profiles": {
+    "local_llm": {
+      "normalThresholdMs": 30000,
+      "extendedThresholdMs": 180000,
+      "deepWaitThresholdMs": 300000,
+      "heartbeatIntervalMs": 15000,
+      "stallSuspicionMultiplier": 3,
+      "description": "Local LLM models (Ollama) - expect multi-minute processing for complex prompts"
+    },
+    "cloud_llm": {
+      "normalThresholdMs": 15000,
+      "extendedThresholdMs": 60000,
+      "deepWaitThresholdMs": 120000,
+      "heartbeatIntervalMs": 5000,
+      "stallSuspicionMultiplier": 4,
+      "description": "Cloud LLM APIs (OpenAI, Anthropic, Gemini) - generally faster with better infrastructure"
+    },
+    "tts": {
+      "normalThresholdMs": 45000,
+      "extendedThresholdMs": 180000,
+      "deepWaitThresholdMs": 360000,
+      "heartbeatIntervalMs": 10000,
+      "stallSuspicionMultiplier": 3,
+      "description": "TTS synthesis - scales linearly with text length, expect extended waits for long scripts"
+    },
+    "image_gen": {
+      "normalThresholdMs": 60000,
+      "extendedThresholdMs": 240000,
+      "deepWaitThresholdMs": 480000,
+      "heartbeatIntervalMs": 20000,
+      "stallSuspicionMultiplier": 2,
+      "description": "Image generation - inherently slow especially for high-quality/high-resolution outputs"
+    },
+    "video_render": {
+      "normalThresholdMs": 120000,
+      "extendedThresholdMs": 600000,
+      "deepWaitThresholdMs": 1800000,
+      "heartbeatIntervalMs": 30000,
+      "stallSuspicionMultiplier": 2,
+      "description": "Video rendering - can take many minutes depending on length, resolution, and hardware"
+    },
+    "fallback_provider": {
+      "normalThresholdMs": 5000,
+      "extendedThresholdMs": 15000,
+      "deepWaitThresholdMs": 30000,
+      "heartbeatIntervalMs": 2000,
+      "stallSuspicionMultiplier": 5,
+      "description": "Fallback providers (RuleBased, local utilities) - should be very fast, minimal latency"
+    }
+  },
+  "patienceProfiles": {
+    "conservative": {
+      "label": "Conservative (Quick Results)",
+      "timeoutMultiplier": 0.7,
+      "stallMultiplier": 0.8,
+      "description": "Prefer faster responses with earlier stall detection. Best for users with fast providers.",
+      "recommendedFor": ["cloud_llm", "fallback_provider"]
+    },
+    "balanced": {
+      "label": "Balanced (Default)",
+      "timeoutMultiplier": 1.0,
+      "stallMultiplier": 1.0,
+      "description": "Standard patience windows suitable for most use cases",
+      "recommendedFor": ["cloud_llm", "tts", "image_gen"]
+    },
+    "longForm": {
+      "label": "Long-Form (Maximum Patience)",
+      "timeoutMultiplier": 2.0,
+      "stallMultiplier": 1.5,
+      "description": "Extended patience for complex content generation and local models. Recommended for Ollama users.",
+      "recommendedFor": ["local_llm", "video_render"]
+    }
+  },
+  "stallBehavior": {
+    "checkIntervalMs": 5000,
+    "userDialogOptions": [
+      {
+        "id": "continue_30s",
+        "label": "Continue Waiting (30s)",
+        "action": "extend",
+        "extensionMs": 30000
+      },
+      {
+        "id": "continue_5m",
+        "label": "Continue Waiting (5 min)",
+        "action": "extend",
+        "extensionMs": 300000
+      },
+      {
+        "id": "try_alternative",
+        "label": "Try Alternative Provider",
+        "action": "fallback",
+        "requiresConfirmation": true
+      },
+      {
+        "id": "cancel_job",
+        "label": "Cancel Job",
+        "action": "cancel",
+        "requiresConfirmation": true,
+        "offerPartialArtifacts": true
+      }
+    ]
+  },
+  "providerMapping": {
+    "Ollama": "local_llm",
+    "RuleBased": "fallback_provider",
+    "OpenAI": "cloud_llm",
+    "Anthropic": "cloud_llm",
+    "Gemini": "cloud_llm",
+    "Azure": "cloud_llm",
+    "ElevenLabs": "tts",
+    "PlayHT": "tts",
+    "Piper": "tts",
+    "WindowsSAPI": "tts",
+    "Mimic3": "tts",
+    "StableDiffusion": "image_gen",
+    "Replicate": "image_gen",
+    "FFmpeg": "video_render"
+  },
+  "uiMessaging": {
+    "normal": {
+      "statusLabel": "Active • Generating",
+      "iconColor": "#0078d4",
+      "progressStyle": "indeterminate",
+      "contextHint": null
+    },
+    "extended": {
+      "statusLabel": "Extended Wait • Still Working",
+      "iconColor": "#ffa500",
+      "progressStyle": "indeterminate-slow",
+      "contextHint": "This operation is taking longer than usual. This is normal for {providerType}."
+    },
+    "deepWait": {
+      "statusLabel": "Deep Wait • Long-Form Processing",
+      "iconColor": "#ff6b6b",
+      "progressStyle": "indeterminate-slow",
+      "contextHint": "Long-running operations like this can take several minutes. Your {providerName} is still working.",
+      "helpLink": "#why-is-this-taking-long"
+    },
+    "stallSuspected": {
+      "statusLabel": "Stall Suspected • Awaiting Response",
+      "iconColor": "#cc0000",
+      "progressStyle": "paused",
+      "contextHint": "No progress detected recently. The provider may be stalled or very slow.",
+      "showFallbackButton": true
+    },
+    "error": {
+      "statusLabel": "Error • Provider Failed",
+      "iconColor": "#cc0000",
+      "progressStyle": "error",
+      "contextHint": "A hard error occurred. Select an alternative provider to continue.",
+      "showFallbackButton": true,
+      "autoShowFallbackPanel": true
+    }
+  }
+}
