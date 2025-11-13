@@ -2,8 +2,61 @@ import ReactDOM from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 import './styles/windows11.css';
+import { errorReportingService } from './services/errorReportingService';
+import { loggingService } from './services/loggingService';
 import { validateEnvironment } from './utils/validateEnv';
 import { logWindowsEnvironment } from './utils/windowsUtils';
+
+// ===== GLOBAL ERROR HANDLERS (START) =====
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('[Main] Unhandled promise rejection:', event.reason);
+
+  const error = event.reason instanceof Error ? event.reason : new Error(String(event.reason));
+
+  loggingService.error('Unhandled promise rejection', error, 'main', 'unhandledRejection', {
+    promise: event.promise,
+    reason: event.reason,
+  });
+
+  errorReportingService.error(
+    'Unexpected Error',
+    'An unexpected error occurred. The application will continue running.',
+    error,
+    {
+      userAction: 'Unhandled promise rejection',
+      actions: [
+        {
+          label: 'Reload Page',
+          handler: () => window.location.reload(),
+        },
+      ],
+    }
+  );
+
+  event.preventDefault();
+});
+
+window.addEventListener('error', (event) => {
+  console.error('[Main] Uncaught error:', event.error || event.message);
+
+  const error = event.error instanceof Error ? event.error : new Error(event.message);
+
+  loggingService.error('Uncaught error', error, 'main', 'windowError', {
+    filename: event.filename,
+    lineno: event.lineno,
+    colno: event.colno,
+  });
+
+  errorReportingService.error(
+    'Application Error',
+    'An error occurred that was not caught by the application.',
+    error,
+    {
+      userAction: 'Uncaught error',
+    }
+  );
+});
+// ===== GLOBAL ERROR HANDLERS (END) =====
 
 // ===== INITIALIZATION LOGGING (START) =====
 console.log('[Main] ===== Aura Video Studio - React Initialization =====');
