@@ -155,6 +155,13 @@ public class FFmpegController : ControllerBase
                     title = "Installation Failed",
                     status = 500,
                     detail = installResult.ErrorMessage ?? "Failed to install FFmpeg",
+                    howToFix = new[]
+                    {
+                        "Check your internet connection",
+                        "Verify firewall is not blocking the download",
+                        "Try using a VPN if downloads are restricted in your region",
+                        "Download FFmpeg manually and use the 'Use Existing FFmpeg' option"
+                    },
                     correlationId
                 });
             }
@@ -187,6 +194,144 @@ public class FFmpegController : ControllerBase
                 title = "Installation Error",
                 status = 500,
                 detail = $"Unexpected error during FFmpeg installation: {ex.Message}",
+                howToFix = new[]
+                {
+                    "Check the error message for specific details",
+                    "Ensure you have sufficient disk space",
+                    "Try restarting the application",
+                    "Check antivirus software is not blocking the installer"
+                },
+                correlationId
+            });
+        }
+    }
+
+    /// <summary>
+    /// Rescan system for FFmpeg installations (PATH, common directories, managed install)
+    /// </summary>
+    [HttpPost("rescan")]
+    public async Task<IActionResult> Rescan(CancellationToken ct)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+
+        try
+        {
+            _logger.LogInformation("[{CorrelationId}] POST /api/ffmpeg/rescan", correlationId);
+
+            // Invalidate cache to force fresh scan
+            _resolver.InvalidateCache();
+
+            // Perform resolution
+            var result = await _resolver.ResolveAsync(null, forceRefresh: true, ct);
+
+            return Ok(new
+            {
+                success = result.Found && result.IsValid,
+                installed = result.Found && result.IsValid,
+                version = result.Version,
+                path = result.Path,
+                source = result.Source,
+                valid = result.IsValid,
+                error = result.Error,
+                message = result.Found && result.IsValid 
+                    ? $"FFmpeg found at {result.Path}" 
+                    : "FFmpeg not found or invalid",
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Error rescanning for FFmpeg", correlationId);
+
+            return StatusCode(500, new
+            {
+                success = false,
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E314",
+                title = "Rescan Error",
+                status = 500,
+                detail = $"Failed to rescan for FFmpeg: {ex.Message}",
+                correlationId
+            });
+        }
+    }
+
+    /// <summary>
+    /// Validate and use an existing FFmpeg installation at the specified path
+    /// </summary>
+    [HttpPost("use-existing")]
+    public async Task<IActionResult> UseExisting(
+        [FromBody] UseExistingFFmpegRequest request,
+        CancellationToken ct)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+
+        try
+        {
+            _logger.LogInformation("[{CorrelationId}] POST /api/ffmpeg/use-existing - Path: {Path}",
+                correlationId, request.Path);
+
+            if (string.IsNullOrWhiteSpace(request.Path))
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E315",
+                    title = "Invalid Path",
+                    status = 400,
+                    detail = "FFmpeg path is required",
+                    correlationId
+                });
+            }
+
+            // Resolve the path (handles directory vs file, bin subdirectory, etc.)
+            var result = await _resolver.ResolveAsync(request.Path, forceRefresh: true, ct);
+
+            if (!result.Found || !result.IsValid)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E316",
+                    title = "Invalid FFmpeg",
+                    status = 400,
+                    detail = result.Error ?? "The specified path does not contain a valid FFmpeg executable",
+                    howToFix = new[]
+                    {
+                        "Ensure the path points to ffmpeg.exe (or ffmpeg on Unix)",
+                        "Verify FFmpeg is properly installed and not corrupted",
+                        "Try running 'ffmpeg -version' manually to test",
+                        "Download a fresh copy of FFmpeg if needed"
+                    },
+                    correlationId
+                });
+            }
+
+            _logger.LogInformation("[{CorrelationId}] FFmpeg validated at: {Path}",
+                correlationId, result.Path);
+
+            return Ok(new
+            {
+                success = true,
+                message = $"FFmpeg validated successfully at {result.Path}",
+                installed = true,
+                valid = true,
+                path = result.Path,
+                version = result.Version,
+                source = "Configured",
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Error validating existing FFmpeg", correlationId);
+
+            return StatusCode(500, new
+            {
+                success = false,
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E317",
+                title = "Validation Error",
+                status = 500,
+                detail = $"Unexpected error validating FFmpeg: {ex.Message}",
                 correlationId
             });
         }
@@ -197,3 +342,11 @@ public class FFmpegController : ControllerBase
 /// Request model for FFmpeg installation
 /// </summary>
 public record FFmpegInstallRequest(string? Version);
+
+/// <summary>
+/// Request model for using existing FFmpeg installation
+/// </summary>
+public record UseExistingFFmpegRequest
+{
+    public string Path { get; init; } = "";
+}
