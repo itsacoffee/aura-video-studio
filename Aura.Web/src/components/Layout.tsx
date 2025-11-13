@@ -1,10 +1,12 @@
 import { makeStyles, tokens } from '@fluentui/react-components';
-import { ReactNode, useState } from 'react';
+import React, { ReactNode, useState } from 'react';
+import { Outlet } from 'react-router-dom';
 import { useTheme } from '../App';
 import { useSwipeGesture } from '../hooks/useSwipeGesture';
 import { SkipLinks } from './Accessibility/SkipLinks';
 import { Breadcrumbs } from './Breadcrumbs';
 import { NotificationCenter } from './dashboard/NotificationCenter';
+import { ErrorBoundary } from './ErrorBoundary';
 import { MobileBottomNav } from './MobileBottomNav';
 import { MobileFAB } from './MobileFAB';
 import { ResultsTray } from './ResultsTray';
@@ -81,7 +83,7 @@ const useStyles = makeStyles({
 });
 
 interface LayoutProps {
-  children: ReactNode;
+  children?: ReactNode;
   showBreadcrumbs?: boolean;
   statusBadge?: {
     text: string;
@@ -139,7 +141,11 @@ export function Layout({ children, showBreadcrumbs = true, statusBadge }: Layout
       )}
 
       {/* Sidebar navigation */}
-      <nav id="main-navigation" aria-label="Main navigation" className={isMobileSidebarOpen ? styles.sidebarMobileOpen : undefined}>
+      <nav
+        id="main-navigation"
+        aria-label="Main navigation"
+        className={isMobileSidebarOpen ? styles.sidebarMobileOpen : undefined}
+      >
         <Sidebar
           isDarkMode={isDarkMode}
           onToggleTheme={toggleTheme}
@@ -159,7 +165,7 @@ export function Layout({ children, showBreadcrumbs = true, statusBadge }: Layout
           </div>
         </div>
         <main id="main-content" className={styles.content} tabIndex={-1} aria-label="Main content">
-          {children}
+          <ErrorBoundary>{children || <Outlet />}</ErrorBoundary>
         </main>
       </div>
 
