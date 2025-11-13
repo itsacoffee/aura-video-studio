@@ -477,4 +477,194 @@ public class KeyVaultController : ControllerBase
             });
         }
     }
+
+    /// <summary>
+    /// Get validation status for all configured API keys
+    /// </summary>
+    [HttpGet("status")]
+    public async Task<IActionResult> GetAllKeysStatus(CancellationToken ct)
+    {
+        try
+        {
+            _logger.LogInformation("Getting validation status for all keys, CorrelationId: {CorrelationId}",
+                HttpContext.TraceIdentifier);
+
+            var providers = await _secureStorage.GetConfiguredProvidersAsync();
+            var statuses = new Dictionary<string, KeyStatusResponse>();
+            var validCount = 0;
+            var invalidCount = 0;
+            var pendingCount = 0;
+
+            foreach (var provider in providers)
+            {
+                var hasKey = await _secureStorage.HasApiKeyAsync(provider);
+                if (!hasKey)
+                {
+                    continue;
+                }
+
+                var statusResponse = new KeyStatusResponse
+                {
+                    Success = true,
+                    Provider = provider,
+                    Status = "NotValidated",
+                    Message = "API key configured but not yet validated",
+                    CanManuallyRevalidate = true
+                };
+
+                statuses[provider] = statusResponse;
+            }
+
+            var response = new AllKeysStatusResponse
+            {
+                Success = true,
+                Statuses = statuses,
+                TotalKeys = providers.Count,
+                ValidKeys = validCount,
+                InvalidKeys = invalidCount,
+                PendingValidation = pendingCount
+            };
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting keys status, CorrelationId: {CorrelationId}",
+                HttpContext.TraceIdentifier);
+            return StatusCode(500, new
+            {
+                success = false,
+                message = "Failed to get keys status",
+                correlationId = HttpContext.TraceIdentifier
+            });
+        }
+    }
+
+    /// <summary>
+    /// Get validation status for a specific provider's API key
+    /// </summary>
+    [HttpGet("status/{provider}")]
+    public async Task<IActionResult> GetKeyStatus(string provider, CancellationToken ct)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(provider))
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Provider name is required"
+                });
+            }
+
+            var hasKey = await _secureStorage.HasApiKeyAsync(provider);
+            if (!hasKey)
+            {
+                return NotFound(new
+                {
+                    success = false,
+                    message = $"No API key configured for {provider}"
+                });
+            }
+
+            var statusResponse = new KeyStatusResponse
+            {
+                Success = true,
+                Provider = provider,
+                Status = "NotValidated",
+                Message = "API key configured but not yet validated",
+                CanManuallyRevalidate = true
+            };
+
+            return Ok(statusResponse);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting key status for {Provider}, CorrelationId: {CorrelationId}",
+                provider, HttpContext.TraceIdentifier);
+            return StatusCode(500, new
+            {
+                success = false,
+                message = "Failed to get key status",
+                correlationId = HttpContext.TraceIdentifier
+            });
+        }
+    }
+
+    /// <summary>
+    /// Manually revalidate an API key (user-initiated)
+    /// </summary>
+    [HttpPost("revalidate")]
+    public async Task<IActionResult> RevalidateKey(
+        [FromBody] RevalidateKeyRequest request,
+        CancellationToken ct)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.Provider))
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Provider name is required"
+                });
+            }
+
+            string? apiKey;
+            if (!string.IsNullOrWhiteSpace(request.ApiKey))
+            {
+                apiKey = request.ApiKey;
+            }
+            else
+            {
+                apiKey = await _secureStorage.GetApiKeyAsync(request.Provider);
+                if (string.IsNullOrWhiteSpace(apiKey))
+                {
+                    return NotFound(new
+                    {
+                        success = false,
+                        message = $"No API key configured for {request.Provider}"
+                    });
+                }
+            }
+
+            var sanitizedProvider = SecretMaskingService.SanitizeForLogging(request.Provider);
+            _logger.LogInformation(
+                "AUDIT: Manual revalidation initiated for provider: {Provider}, User: {User}, CorrelationId: {CorrelationId}",
+                sanitizedProvider,
+                "system",
+                HttpContext.TraceIdentifier);
+
+            var result = await _keyValidator.TestApiKeyAsync(request.Provider, apiKey, ct);
+
+            var statusResponse = new KeyStatusResponse
+            {
+                Success = result.IsValid,
+                Provider = request.Provider,
+                Status = result.IsValid ? "Valid" : "Invalid",
+                Message = result.Message,
+                LastValidated = result.IsValid ? DateTime.UtcNow : null,
+                Details = result.Details,
+                CanManuallyRevalidate = true
+            };
+
+            _logger.LogInformation(
+                "AUDIT: Manual revalidation completed for {Provider}. Result: {Result}",
+                sanitizedProvider,
+                result.IsValid ? "Valid" : "Invalid");
+
+            return Ok(statusResponse);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error revalidating key, CorrelationId: {CorrelationId}",
+                HttpContext.TraceIdentifier);
+            return StatusCode(500, new
+            {
+                success = false,
+                message = "Failed to revalidate key",
+                correlationId = HttpContext.TraceIdentifier
+            });
+        }
+    }
 }
