@@ -4,10 +4,12 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Configuration;
+using Aura.Core.Data;
 using Aura.Core.Hardware;
 using Aura.Core.Models;
 using Aura.Core.Services;
 using Aura.Core.Services.Settings;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -22,6 +24,7 @@ public class SettingsServiceTests : IDisposable
     private readonly Mock<ISecureStorageService> _mockSecureStorage;
     private readonly Mock<IHardwareDetector> _mockHardwareDetector;
     private readonly string _tempDirectory;
+    private readonly AuraDbContext _dbContext;
     private readonly SettingsService _settingsService;
 
     public SettingsServiceTests()
@@ -42,17 +45,27 @@ public class SettingsServiceTests : IDisposable
         _mockSecureStorage = new Mock<ISecureStorageService>();
         _mockHardwareDetector = new Mock<IHardwareDetector>();
 
+        // Create in-memory database for testing
+        var options = new DbContextOptionsBuilder<AuraDbContext>()
+            .UseInMemoryDatabase(databaseName: "SettingsTestDb_" + Guid.NewGuid())
+            .Options;
+        _dbContext = new AuraDbContext(options);
+
         _settingsService = new SettingsService(
             _mockLogger.Object,
             _mockProviderSettings.Object,
             _mockKeyStore.Object,
             _mockSecureStorage.Object,
-            _mockHardwareDetector.Object
+            _mockHardwareDetector.Object,
+            _dbContext
         );
     }
 
     public void Dispose()
     {
+        // Clean up database
+        _dbContext.Dispose();
+        
         // Clean up temp directory
         if (Directory.Exists(_tempDirectory))
         {
@@ -367,5 +380,114 @@ public class SettingsServiceTests : IDisposable
         var loadedSettings = await _settingsService.GetSettingsAsync();
         Assert.Equal(ThemeMode.Light, loadedSettings.General.Theme);
         Assert.Equal(900, loadedSettings.General.AutosaveIntervalSeconds);
+    }
+
+    [Fact]
+    public async Task GetSettings_LoadsFromDatabase_WhenExists()
+    {
+        // Arrange - Save settings to database first
+        var settings = await _settingsService.GetSettingsAsync();
+        settings.General.Theme = ThemeMode.Dark;
+        await _settingsService.UpdateSettingsAsync(settings);
+
+        // Act - Get settings again (should load from DB)
+        var loadedSettings = await _settingsService.GetSettingsAsync();
+
+        // Assert
+        Assert.NotNull(loadedSettings);
+        Assert.Equal(ThemeMode.Dark, loadedSettings.General.Theme);
+        
+        // Verify database contains the settings
+        var dbEntity = await _dbContext.Settings.FirstOrDefaultAsync();
+        Assert.NotNull(dbEntity);
+        Assert.Equal("user-settings", dbEntity.Id);
+        Assert.False(dbEntity.IsEncrypted);
+    }
+
+    [Fact]
+    public async Task UpdateSettings_SavesToDatabase_CreatesNewEntity()
+    {
+        // Act
+        var settings = await _settingsService.GetSettingsAsync();
+        settings.General.Language = "fr-FR";
+        var result = await _settingsService.UpdateSettingsAsync(settings);
+
+        // Assert
+        Assert.True(result.Success);
+
+        var dbEntity = await _dbContext.Settings.FirstOrDefaultAsync(s => s.Id == "user-settings");
+        Assert.NotNull(dbEntity);
+        Assert.Contains("fr-FR", dbEntity.SettingsJson);
+        Assert.Equal("1.0.0", dbEntity.Version);
+    }
+
+    [Fact]
+    public async Task UpdateSettings_SavesToDatabase_UpdatesExistingEntity()
+    {
+        // Arrange - Create initial settings
+        var settings = await _settingsService.GetSettingsAsync();
+        settings.General.Theme = ThemeMode.Dark;
+        await _settingsService.UpdateSettingsAsync(settings);
+
+        var originalEntity = await _dbContext.Settings.FirstOrDefaultAsync();
+        var originalUpdatedAt = originalEntity!.UpdatedAt;
+
+        // Wait a bit to ensure timestamp changes
+        await Task.Delay(100);
+
+        // Act - Update settings again
+        settings.General.Theme = ThemeMode.Light;
+        var result = await _settingsService.UpdateSettingsAsync(settings);
+
+        // Assert
+        Assert.True(result.Success);
+
+        var updatedEntity = await _dbContext.Settings.FirstOrDefaultAsync(s => s.Id == "user-settings");
+        Assert.NotNull(updatedEntity);
+        Assert.Contains("Light", updatedEntity.SettingsJson);
+        Assert.True(updatedEntity.UpdatedAt > originalUpdatedAt);
+    }
+
+    [Fact]
+    public async Task MigrateFromJson_SavesSettingsToDatabase()
+    {
+        // Arrange - Create a JSON settings file
+        var jsonPath = Path.Combine(_tempDirectory, "user-settings.json");
+        var testSettings = new UserSettings
+        {
+            Version = "1.0.0",
+            General = new GeneralSettings { Theme = ThemeMode.Dark }
+        };
+        var json = System.Text.Json.JsonSerializer.Serialize(testSettings);
+        await File.WriteAllTextAsync(jsonPath, json);
+
+        // Act - Getting settings should trigger migration
+        var settings = await _settingsService.GetSettingsAsync();
+
+        // Assert
+        Assert.Equal(ThemeMode.Dark, settings.General.Theme);
+
+        // Verify migrated to database
+        var dbEntity = await _dbContext.Settings.FirstOrDefaultAsync();
+        Assert.NotNull(dbEntity);
+        
+        // Verify JSON file was backed up
+        var backupPath = jsonPath + ".backup";
+        Assert.True(File.Exists(backupPath));
+    }
+
+    [Fact]
+    public async Task SettingsEntity_TracksAuditFields()
+    {
+        // Act
+        var settings = await _settingsService.GetSettingsAsync();
+        await _settingsService.UpdateSettingsAsync(settings);
+
+        // Assert
+        var entity = await _dbContext.Settings.FirstOrDefaultAsync();
+        Assert.NotNull(entity);
+        Assert.True(entity.CreatedAt <= DateTime.UtcNow);
+        Assert.True(entity.UpdatedAt <= DateTime.UtcNow);
+        Assert.True(entity.CreatedAt <= entity.UpdatedAt);
     }
 }
