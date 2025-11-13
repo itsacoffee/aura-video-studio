@@ -1,11 +1,11 @@
 const { app, BrowserWindow, ipcMain, Tray, Menu, dialog, shell } = require('electron');
-const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
-const net = require('net');
 const { autoUpdater } = require('electron-updater');
 const Store = require('electron-store');
-const axios = require('axios');
+
+// Import modular services
+const BackendService = require('./electron/backend-service');
 
 // Configure electron-store
 const store = new Store({
@@ -26,267 +26,21 @@ const store = new Store({
 let mainWindow = null;
 let splashWindow = null;
 let tray = null;
-let backendProcess = null;
-let backendPort = null;
+let backendService = null;
 let isQuitting = false;
 
 // Constants
 const IS_DEV = process.argv.includes('--dev') || !app.isPackaged;
-const BACKEND_STARTUP_TIMEOUT = 60000; // 60 seconds
-const HEALTH_CHECK_INTERVAL = 1000; // 1 second
 
 /**
- * Find an available port for the backend server
- */
-async function findAvailablePort() {
-  return new Promise((resolve, reject) => {
-    const server = net.createServer();
-    server.unref();
-    server.on('error', reject);
-    server.listen(0, () => {
-      const { port } = server.address();
-      server.close(() => resolve(port));
-    });
-  });
-}
-
-/**
- * Wait for the backend to become healthy
- */
-async function waitForBackend(port, maxAttempts = 60) {
-  for (let i = 0; i < maxAttempts; i++) {
-    try {
-      const response = await axios.get(`http://localhost:${port}/health`, {
-        timeout: 2000,
-        validateStatus: () => true
-      });
-      
-      if (response.status === 200) {
-        console.log(`Backend is healthy at http://localhost:${port}`);
-        return true;
-      }
-    } catch (error) {
-      // Backend not ready yet, continue waiting
-    }
-    
-    // Wait before next attempt
-    await new Promise(resolve => setTimeout(resolve, HEALTH_CHECK_INTERVAL));
-    
-    if (i % 10 === 0 && i > 0) {
-      console.log(`Still waiting for backend... (attempt ${i}/${maxAttempts})`);
-    }
-  }
-  
-  throw new Error(`Backend failed to start within ${BACKEND_STARTUP_TIMEOUT}ms`);
-}
-
-/**
- * Get the path to bundled FFmpeg binaries
- */
-function getFFmpegPath() {
-  let ffmpegBinPath;
-  
-  if (IS_DEV) {
-    // In development, look for FFmpeg in resources directory
-    const platform = process.platform;
-    if (platform === 'win32') {
-      ffmpegBinPath = path.join(__dirname, 'resources', 'ffmpeg', 'win-x64', 'bin');
-    } else if (platform === 'darwin') {
-      ffmpegBinPath = path.join(__dirname, 'resources', 'ffmpeg', 'osx-x64', 'bin');
-    } else {
-      ffmpegBinPath = path.join(__dirname, 'resources', 'ffmpeg', 'linux-x64', 'bin');
-    }
-  } else {
-    // In production, use the bundled FFmpeg from resources
-    const platform = process.platform;
-    if (platform === 'win32') {
-      ffmpegBinPath = path.join(process.resourcesPath, 'ffmpeg', 'win-x64', 'bin');
-    } else if (platform === 'darwin') {
-      ffmpegBinPath = path.join(process.resourcesPath, 'ffmpeg', 'osx-x64', 'bin');
-    } else {
-      ffmpegBinPath = path.join(process.resourcesPath, 'ffmpeg', 'linux-x64', 'bin');
-    }
-  }
-  
-  return ffmpegBinPath;
-}
-
-/**
- * Verify FFmpeg installation
- */
-function verifyFFmpeg(ffmpegPath) {
-  const ffmpegExe = process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg';
-  const ffmpegFullPath = path.join(ffmpegPath, ffmpegExe);
-  
-  if (!fs.existsSync(ffmpegFullPath)) {
-    console.warn(`FFmpeg not found at: ${ffmpegFullPath}`);
-    return false;
-  }
-  
-  console.log('FFmpeg found at:', ffmpegFullPath);
-  return true;
-}
-
-/**
- * Start the bundled ASP.NET Core backend
+ * Start the backend service using BackendService module
  */
 async function startBackend() {
   try {
-    // Find available port
-    backendPort = await findAvailablePort();
-    console.log(`Starting backend on port ${backendPort}...`);
+    backendService = new BackendService(app, IS_DEV);
+    const backendPort = await backendService.start();
     
-    // Determine backend executable path
-    let backendPath;
-    if (IS_DEV) {
-      // In development, use the compiled backend from Aura.Api/bin
-      const platform = process.platform;
-      if (platform === 'win32') {
-        backendPath = path.join(__dirname, '../Aura.Api/bin/Debug/net8.0/Aura.Api.exe');
-      } else {
-        backendPath = path.join(__dirname, '../Aura.Api/bin/Debug/net8.0/Aura.Api');
-      }
-    } else {
-      // In production, use the bundled backend from resources
-      if (process.platform === 'win32') {
-        backendPath = path.join(process.resourcesPath, 'backend', 'win-x64', 'Aura.Api.exe');
-      } else if (process.platform === 'darwin') {
-        backendPath = path.join(process.resourcesPath, 'backend', 'osx-x64', 'Aura.Api');
-      } else {
-        backendPath = path.join(process.resourcesPath, 'backend', 'linux-x64', 'Aura.Api');
-      }
-    }
-    
-    // Check if backend executable exists
-    if (!fs.existsSync(backendPath)) {
-      throw new Error(`Backend executable not found at: ${backendPath}`);
-    }
-    
-    // Make executable on Unix-like systems
-    if (process.platform !== 'win32') {
-      try {
-        fs.chmodSync(backendPath, 0o755);
-      } catch (error) {
-        console.warn('Failed to make backend executable:', error.message);
-      }
-    }
-    
-    // Get FFmpeg path
-    const ffmpegPath = getFFmpegPath();
-    const ffmpegExists = verifyFFmpeg(ffmpegPath);
-    
-    if (!ffmpegExists) {
-      console.warn('FFmpeg not found - video rendering may not work');
-    }
-    
-    // Prepare environment variables
-    const env = {
-      ...process.env,
-      ASPNETCORE_URLS: `http://localhost:${backendPort}`,
-      DOTNET_ENVIRONMENT: IS_DEV ? 'Development' : 'Production',
-      ASPNETCORE_DETAILEDERRORS: IS_DEV ? 'true' : 'false',
-      LOGGING__LOGLEVEL__DEFAULT: IS_DEV ? 'Debug' : 'Information',
-      // Set paths for user data
-      AURA_DATA_PATH: app.getPath('userData'),
-      AURA_LOGS_PATH: path.join(app.getPath('userData'), 'logs'),
-      AURA_TEMP_PATH: path.join(app.getPath('temp'), 'aura-video-studio'),
-      // Set FFmpeg path for backend
-      FFMPEG_PATH: ffmpegPath,
-      FFMPEG_BINARIES_PATH: ffmpegPath
-    };
-    
-    // Create necessary directories
-    const directories = [env.AURA_DATA_PATH, env.AURA_LOGS_PATH, env.AURA_TEMP_PATH];
-    directories.forEach(dir => {
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-      }
-    });
-    
-    console.log('Backend executable:', backendPath);
-    console.log('Backend port:', backendPort);
-    console.log('Environment:', env.DOTNET_ENVIRONMENT);
-    console.log('FFmpeg path:', ffmpegPath);
-    
-    // Spawn backend process
-    backendProcess = spawn(backendPath, [], { 
-      env,
-      stdio: ['ignore', 'pipe', 'pipe']
-    });
-    
-    // Collect startup logs for diagnostics
-    const startupLogs = [];
-    const maxStartupLogs = 100;
-    
-    // Handle backend output
-    backendProcess.stdout.on('data', (data) => {
-      const message = data.toString().trim();
-      if (message) {
-        console.log(`[Backend] ${message}`);
-        
-        // Collect startup logs for error diagnostics
-        if (startupLogs.length < maxStartupLogs) {
-          startupLogs.push(`[INFO] ${message}`);
-        }
-      }
-    });
-    
-    backendProcess.stderr.on('data', (data) => {
-      const message = data.toString().trim();
-      if (message) {
-        console.error(`[Backend Error] ${message}`);
-        
-        // Collect error logs for diagnostics
-        if (startupLogs.length < maxStartupLogs) {
-          startupLogs.push(`[ERROR] ${message}`);
-        }
-      }
-    });
-    
-    // Handle backend exit
-    backendProcess.on('exit', (code, signal) => {
-      console.log(`Backend exited with code ${code} and signal ${signal}`);
-      
-      if (!isQuitting && code !== 0) {
-        // Backend crashed unexpectedly
-        let errorMessage = `The Aura backend server has stopped unexpectedly.\n\n`;
-        
-        // Provide helpful error messages based on exit code
-        if (code === 1) {
-          errorMessage += `Exit Code: ${code}\nLikely cause: Configuration validation failed or critical service initialization error.\n\n`;
-          errorMessage += `Please check:\n`;
-          errorMessage += `- Database file permissions\n`;
-          errorMessage += `- Port availability (default: 5005)\n`;
-          errorMessage += `- Disk space\n\n`;
-        } else if (code === 3762504530 || code === -532459699) {
-          // 0xE0434352 (.NET CLR exception) - can appear as signed or unsigned
-          errorMessage += `Exit Code: ${code} (0xE0434352 - .NET CLR Exception)\n`;
-          errorMessage += `Likely cause: Unhandled exception during startup.\n\n`;
-          errorMessage += `Please check:\n`;
-          errorMessage += `- Application logs in: ${path.join(app.getPath('userData'), 'logs')}\n`;
-          errorMessage += `- Ensure all dependencies are installed\n`;
-          errorMessage += `- Try restarting the application\n\n`;
-        } else {
-          errorMessage += `Exit Code: ${code}\n\n`;
-        }
-        
-        errorMessage += `Logs location: ${path.join(app.getPath('userData'), 'logs')}\n`;
-        errorMessage += `\nThe application will now close.`;
-        
-        dialog.showErrorBox('Backend Error', errorMessage);
-        app.quit();
-      }
-    });
-    
-    backendProcess.on('error', (error) => {
-      console.error('Failed to start backend:', error);
-      throw error;
-    });
-    
-    // Wait for backend to be ready
-    await waitForBackend(backendPort);
-    
-    console.log('Backend started successfully');
+    console.log('Backend started successfully on port:', backendPort);
     return backendPort;
     
   } catch (error) {
@@ -297,17 +51,16 @@ async function startBackend() {
     errorDetails += `Error: ${error.message}\n\n`;
     
     if (error.message.includes('not found')) {
-      errorDetails += `The backend executable was not found. Please ensure the application is properly installed.\n`;
-      errorDetails += `Expected location: ${backendPath}\n\n`;
+      errorDetails += `The backend executable was not found. Please ensure the application is properly installed.\n\n`;
     } else if (error.message.includes('Backend failed to start within')) {
       errorDetails += `The backend server did not respond to health checks within the timeout period.\n`;
       errorDetails += `This may indicate:\n`;
-      errorDetails += `- Port ${backendPort} is already in use\n`;
+      errorDetails += `- Port is already in use\n`;
       errorDetails += `- Firewall is blocking the application\n`;
       errorDetails += `- Missing dependencies\n\n`;
     }
     
-    errorDetails += `Logs location: ${env.AURA_LOGS_PATH}\n`;
+    errorDetails += `Logs location: ${path.join(app.getPath('userData'), 'logs')}\n`;
     
     dialog.showErrorBox('Startup Error', errorDetails);
     throw error;
@@ -381,6 +134,7 @@ function createMainWindow() {
   
   mainWindow.loadFile(frontendPath).then(() => {
     // Inject backend URL and environment info
+    const backendPort = backendService.getPort();
     mainWindow.webContents.executeJavaScript(`
       window.AURA_BACKEND_URL = 'http://localhost:${backendPort}';
       window.AURA_IS_ELECTRON = true;
@@ -504,6 +258,8 @@ function createSystemTray() {
  */
 function updateTrayMenu() {
   if (!tray) return;
+  
+  const backendPort = backendService ? backendService.getPort() : 'not running';
   
   const contextMenu = Menu.buildFromTemplate([
     {
@@ -724,7 +480,52 @@ function setupIpcHandlers() {
   });
   
   ipcMain.handle('app:getBackendUrl', () => {
-    return `http://localhost:${backendPort}`;
+    return backendService ? backendService.getUrl() : null;
+  });
+  
+  // Backend management
+  ipcMain.handle('backend:getUrl', () => {
+    return backendService ? backendService.getUrl() : null;
+  });
+  
+  ipcMain.handle('backend:status', () => {
+    if (!backendService) {
+      return { running: false, port: null };
+    }
+    return {
+      running: backendService.isRunning(),
+      port: backendService.getPort(),
+      url: backendService.getUrl()
+    };
+  });
+  
+  ipcMain.handle('backend:restart', async () => {
+    if (!backendService) {
+      throw new Error('Backend service not initialized');
+    }
+    await backendService.restart();
+    return { success: true, url: backendService.getUrl() };
+  });
+  
+  ipcMain.handle('backend:checkFirewall', async () => {
+    if (!backendService) {
+      throw new Error('Backend service not initialized');
+    }
+    return await backendService.checkFirewallCompatibility();
+  });
+  
+  ipcMain.handle('backend:getFirewallRule', async () => {
+    if (!backendService) {
+      throw new Error('Backend service not initialized');
+    }
+    return await backendService.getFirewallRuleStatus();
+  });
+  
+  ipcMain.handle('backend:getFirewallCommand', () => {
+    if (!backendService) {
+      throw new Error('Backend service not initialized');
+    }
+    return backendService.getFirewallRuleCommand();
   });
   
   // Update checking
@@ -747,14 +548,18 @@ function setupIpcHandlers() {
 /**
  * Cleanup before quit
  */
-function cleanup() {
+async function cleanup() {
   console.log('Cleaning up...');
   
-  // Kill backend process
-  if (backendProcess && !backendProcess.killed) {
-    console.log('Stopping backend...');
-    backendProcess.kill();
-    backendProcess = null;
+  // Stop backend service
+  if (backendService) {
+    console.log('Stopping backend service...');
+    try {
+      await backendService.stop();
+    } catch (error) {
+      console.error('Error stopping backend service:', error);
+    }
+    backendService = null;
   }
   
   // Cleanup temp files
@@ -841,12 +646,28 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', (event) => {
-  isQuitting = true;
-  cleanup();
+  if (!isQuitting) {
+    event.preventDefault();
+    isQuitting = true;
+    
+    // Perform async cleanup
+    cleanup().then(() => {
+      app.quit();
+    }).catch((error) => {
+      console.error('Cleanup failed:', error);
+      app.quit();
+    });
+  }
 });
 
-app.on('will-quit', () => {
-  cleanup();
+app.on('will-quit', (event) => {
+  // Final cleanup if needed
+  if (backendService && backendService.isRunning()) {
+    event.preventDefault();
+    cleanup().finally(() => {
+      process.exit(0);
+    });
+  }
 });
 
 // Handle crashes
