@@ -106,11 +106,11 @@ export function FFmpegDependencyCard({
       const ffmpegStatus = await ffmpegClient.getStatus();
       setStatus(ffmpegStatus);
 
-        if (ffmpegStatus.installed && ffmpegStatus.valid) {
-          onInstallComplete?.(ffmpegStatus);
-        }
+      if (ffmpegStatus.installed && ffmpegStatus.valid) {
+        onInstallComplete?.(ffmpegStatus);
+      }
 
-        onStatusChange?.(ffmpegStatus);
+      onStatusChange?.(ffmpegStatus);
     } catch (err: unknown) {
       let errorMessage = 'Failed to check FFmpeg status';
 
@@ -141,12 +141,92 @@ export function FFmpegDependencyCard({
         errorMessage = err.message;
       }
 
-        setError(errorMessage);
-        onStatusChange?.(null);
+      setError(errorMessage);
+      onStatusChange?.(null);
     } finally {
       setIsLoading(false);
     }
   }, [onInstallComplete, onStatusChange]);
+
+  const handleRescan = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const rescanResult = await ffmpegClient.rescan();
+
+      if (rescanResult.success) {
+        showSuccessToast({
+          title: 'Rescan Complete',
+          message: rescanResult.message,
+        });
+
+        // Update status from rescan result
+        const updatedStatus: FFmpegStatus = {
+          installed: rescanResult.installed,
+          valid: rescanResult.valid,
+          version: rescanResult.version,
+          path: rescanResult.path,
+          source: rescanResult.source,
+          error: rescanResult.error,
+          versionMeetsRequirement: rescanResult.installed && rescanResult.valid,
+          minimumVersion: '4.0',
+          hardwareAcceleration: {
+            nvencSupported: false,
+            amfSupported: false,
+            quickSyncSupported: false,
+            videoToolboxSupported: false,
+            availableEncoders: [],
+          },
+          correlationId: rescanResult.correlationId,
+        };
+
+        setStatus(updatedStatus);
+
+        if (updatedStatus.installed && updatedStatus.valid) {
+          onInstallComplete?.(updatedStatus);
+        }
+
+        onStatusChange?.(updatedStatus);
+
+        // Get full status with hardware acceleration
+        await checkStatus();
+      } else {
+        throw new Error(rescanResult.message || 'Rescan failed');
+      }
+    } catch (err: unknown) {
+      let errorMessage = 'Failed to rescan for FFmpeg';
+
+      if (err && typeof err === 'object') {
+        const axiosError = err as {
+          response?: {
+            data?: {
+              message?: string;
+              detail?: string;
+              error?: string;
+            };
+          };
+          message?: string;
+        };
+
+        if (axiosError.response?.data) {
+          const data = axiosError.response.data;
+          errorMessage = data.message || data.detail || data.error || errorMessage;
+        } else if (axiosError.message) {
+          errorMessage = axiosError.message;
+        }
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+
+      setError(errorMessage);
+      showFailureToast({
+        title: 'Rescan Failed',
+        message: errorMessage,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [checkStatus, onInstallComplete, onStatusChange, showSuccessToast, showFailureToast]);
 
   useEffect(() => {
     if (autoCheck) {
@@ -199,9 +279,9 @@ export function FFmpegDependencyCard({
           title: 'FFmpeg Installed Successfully',
           message: result.message || 'FFmpeg has been installed and is ready to use.',
         });
-        
+
         // Wait a moment for the backend to finalize, then check status
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
         await checkStatus();
       } else {
         throw new Error(result.message || 'Installation failed');
@@ -316,39 +396,39 @@ export function FFmpegDependencyCard({
             </Text>
           </div>
         </div>
-          <div className={styles.actionsContainer}>
-            {getStatusBadge()}
-            {!isReady && (
-              <>
-                <Button
-                  appearance="primary"
-                  icon={<ArrowDownload24Regular />}
-                  onClick={handleInstall}
-                  disabled={isInstalling || isLoading}
-                >
-                  Install Managed FFmpeg
-                </Button>
-                <Button
-                  appearance="secondary"
-                  icon={<ArrowClockwise24Regular />}
-                  onClick={checkStatus}
-                  disabled={isInstalling || isLoading}
-                >
-                  {isLoading ? 'Scanning...' : 'Re-scan'}
-                </Button>
-              </>
-            )}
-            {isReady && (
+        <div className={styles.actionsContainer}>
+          {getStatusBadge()}
+          {!isReady && (
+            <>
+              <Button
+                appearance="primary"
+                icon={<ArrowDownload24Regular />}
+                onClick={handleInstall}
+                disabled={isInstalling || isLoading}
+              >
+                Install Managed FFmpeg
+              </Button>
               <Button
                 appearance="secondary"
                 icon={<ArrowClockwise24Regular />}
-                onClick={checkStatus}
-                disabled={isLoading}
+                onClick={handleRescan}
+                disabled={isInstalling || isLoading}
               >
                 {isLoading ? 'Scanning...' : 'Re-scan'}
               </Button>
-            )}
-          </div>
+            </>
+          )}
+          {isReady && (
+            <Button
+              appearance="secondary"
+              icon={<ArrowClockwise24Regular />}
+              onClick={handleRescan}
+              disabled={isLoading}
+            >
+              {isLoading ? 'Scanning...' : 'Re-scan'}
+            </Button>
+          )}
+        </div>
       </div>
 
       {isInstalling && installProgress !== undefined && (

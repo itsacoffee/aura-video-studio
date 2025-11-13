@@ -28,8 +28,8 @@ import { WorkspaceSetup } from '../../components/Onboarding/WorkspaceSetup';
 import { WizardProgress } from '../../components/WizardProgress';
 import { wizardAnalytics } from '../../services/analytics';
 import type { FFmpegStatus } from '../../services/api/ffmpegClient';
+import { ffmpegClient } from '../../services/api/ffmpegClient';
 import { setupApi } from '../../services/api/setupApi';
-import { dependencyChecker } from '../../services/dependencyChecker';
 import { markFirstRunCompleted } from '../../services/firstRunService';
 import {
   onboardingReducer,
@@ -563,8 +563,10 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
     setIsValidatingFfmpegPath(true);
     try {
-      const result = await dependencyChecker.validatePath('ffmpeg', trimmedPath);
-      if (result.valid) {
+      // Use the new backend use-existing endpoint
+      const result = await ffmpegClient.useExisting({ path: trimmedPath });
+
+      if (result.success && result.installed && result.valid) {
         const resolvedPath = result.path ?? trimmedPath;
         setFfmpegReady(true);
         setFfmpegPath(resolvedPath);
@@ -585,7 +587,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
         );
         showSuccessToast({
           title: 'FFmpeg Attached',
-          message: `Aura will use FFmpeg at ${resolvedPath}.`,
+          message: result.message || `Aura will use FFmpeg at ${resolvedPath}.`,
         });
         setFfmpegRefreshSignal((prev) => prev + 1);
       } else {
@@ -593,16 +595,47 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
         showFailureToast({
           title: 'Invalid FFmpeg Path',
           message:
-            result.error ||
+            result.message ||
             'The selected location does not contain a valid FFmpeg executable. Select the binary and try again.',
         });
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to validate FFmpeg path:', error);
+
+      let errorMessage = 'Unexpected error validating FFmpeg path.';
+      if (error && typeof error === 'object') {
+        const axiosError = error as {
+          response?: {
+            data?: {
+              message?: string;
+              detail?: string;
+              error?: string;
+              howToFix?: string[];
+            };
+          };
+          message?: string;
+        };
+
+        if (axiosError.response?.data) {
+          const data = axiosError.response.data;
+          errorMessage = data.message || data.detail || data.error || errorMessage;
+
+          // Show how-to-fix tips if available
+          if (data.howToFix && data.howToFix.length > 0) {
+            errorMessage +=
+              '\n\nSuggestions:\n' + data.howToFix.map((tip) => `• ${tip}`).join('\n');
+          }
+        } else if (axiosError.message) {
+          errorMessage = axiosError.message;
+        }
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+
+      setFfmpegReady(false);
       showFailureToast({
         title: 'Validation Error',
-        message:
-          error instanceof Error ? error.message : 'Unexpected error validating FFmpeg path.',
+        message: errorMessage,
       });
     } finally {
       setIsValidatingFfmpegPath(false);
