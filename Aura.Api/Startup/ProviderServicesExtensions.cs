@@ -61,6 +61,11 @@ public static class ProviderServicesExtensions
         services.AddSingleton<Aura.Core.Services.Providers.ProviderCostTrackingService>();
         services.AddSingleton<Aura.Core.Services.CostTracking.EnhancedCostTrackingService>();
         
+        // Provider stickiness and profile lock services
+        services.AddSingleton<Aura.Core.Services.Providers.Stickiness.StallDetector>();
+        services.AddSingleton<Aura.Core.Services.Providers.Stickiness.ProviderGateway>();
+        services.AddSingleton<Aura.Core.Services.Providers.Stickiness.ProviderProfileLockService>();
+        
         // Ollama detection service
         services.AddSingleton<Aura.Core.Services.Providers.OllamaDetectionService>(sp =>
         {
