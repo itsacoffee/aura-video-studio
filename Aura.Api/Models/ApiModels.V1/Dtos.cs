@@ -2550,3 +2550,37 @@ public record ClearGeneratedContentRequest(
     bool KeepImages,
     bool KeepVideo);
 
+/// <summary>
+/// Unified progress event for SSE streaming with detailed progress information
+/// Supports multi-source aggregation from FFmpeg, TTS, LLM, and other providers
+/// </summary>
+public record ProgressEventDto(
+    string JobId,
+    string Stage,
+    int Percent,
+    int? EtaSeconds,
+    string Message,
+    List<string> Warnings,
+    string? CorrelationId = null,
+    string? SubstageDetail = null,
+    int? CurrentItem = null,
+    int? TotalItems = null,
+    DateTime? Timestamp = null);
+
+/// <summary>
+/// Heartbeat event to keep SSE connection alive
+/// </summary>
+public record HeartbeatEventDto(
+    DateTime Timestamp,
+    string Status = "alive");
+
+/// <summary>
+/// Provider cancellation status for reporting non-cancellable providers
+/// </summary>
+public record ProviderCancellationStatusDto(
+    string ProviderName,
+    string ProviderType,
+    bool SupportsCancellation,
+    string Status,
+    string? Warning = null);
+

@@ -34,6 +34,8 @@ public class JobRunner
     private readonly Dictionary<string, Job> _activeJobs = new();
     private readonly Dictionary<string, CancellationTokenSource> _jobCancellationTokens = new();
     private readonly Dictionary<string, Guid> _jobProjectIds = new();
+    private readonly Services.ProgressAggregatorService? _progressAggregator;
+    private readonly Services.CancellationOrchestrator? _cancellationOrchestrator;
 
     public event EventHandler<JobProgressEventArgs>? JobProgress;
 
@@ -47,7 +49,9 @@ public class JobRunner
         Services.CleanupService? cleanupService = null,
         Services.JobQueueService? jobQueueService = null,
         Services.ProgressEstimator? progressEstimator = null,
-        IMemoryPressureMonitor? memoryMonitor = null)
+        IMemoryPressureMonitor? memoryMonitor = null,
+        Services.ProgressAggregatorService? progressAggregator = null,
+        Services.CancellationOrchestrator? cancellationOrchestrator = null)
     {
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(artifactManager);
@@ -65,6 +69,8 @@ public class JobRunner
         _jobQueueService = jobQueueService;
         _progressEstimator = progressEstimator ?? new Services.ProgressEstimator();
         _memoryMonitor = memoryMonitor;
+        _progressAggregator = progressAggregator;
+        _cancellationOrchestrator = cancellationOrchestrator;
     }
 
     /// <summary>

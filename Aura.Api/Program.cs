@@ -1641,6 +1641,8 @@ builder.Services.AddSingleton<Aura.Core.Services.Media.WaveformGenerator>(sp =>
 // Register Job Runner, Artifact Manager, and Cleanup Service
 builder.Services.AddSingleton<Aura.Core.Artifacts.ArtifactManager>();
 builder.Services.AddSingleton<Aura.Core.Services.CleanupService>();
+builder.Services.AddSingleton<Aura.Core.Services.ProgressAggregatorService>();
+builder.Services.AddSingleton<Aura.Core.Services.CancellationOrchestrator>();
 builder.Services.AddSingleton<Aura.Core.Orchestrator.JobRunner>();
 builder.Services.AddSingleton<Aura.Core.Orchestrator.QuickService>();
 builder.Services.AddHostedService<Aura.Api.HostedServices.CleanupHostedService>();

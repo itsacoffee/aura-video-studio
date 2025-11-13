@@ -84,7 +84,7 @@ export function useSSEConnection(options: UseSSEConnectionOptions = {}): UseSSEC
           }
         };
 
-        // Handle all event types
+        // Handle all event types including new heartbeat event
         const eventTypes = [
           'job-status',
           'step-progress',
@@ -94,6 +94,7 @@ export function useSSEConnection(options: UseSSEConnectionOptions = {}): UseSSEC
           'job-cancelled',
           'warning',
           'error',
+          'heartbeat', // New: 5-second heartbeat event
         ];
 
         eventTypes.forEach((eventType) => {
