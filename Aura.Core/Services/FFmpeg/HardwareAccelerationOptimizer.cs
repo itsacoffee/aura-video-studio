@@ -17,7 +17,7 @@ public class HardwareAccelerationOptimizer
 {
     private readonly ILogger<HardwareAccelerationOptimizer> _logger;
     private readonly string _ffmpegPath;
-    private HardwareAccelerationCapabilities? _capabilities;
+    private OptimizerHardwareCapabilities? _capabilities;
 
     public HardwareAccelerationOptimizer(
         ILogger<HardwareAccelerationOptimizer> logger,
@@ -30,7 +30,7 @@ public class HardwareAccelerationOptimizer
     /// <summary>
     /// Detect available hardware acceleration capabilities
     /// </summary>
-    public async Task<HardwareAccelerationCapabilities> DetectCapabilitiesAsync(
+    public async Task<OptimizerHardwareCapabilities> DetectCapabilitiesAsync(
         CancellationToken cancellationToken = default)
     {
         if (_capabilities != null)
@@ -40,7 +40,7 @@ public class HardwareAccelerationOptimizer
 
         _logger.LogInformation("Detecting hardware acceleration capabilities");
 
-        var capabilities = new HardwareAccelerationCapabilities
+        var capabilities = new OptimizerHardwareCapabilities
         {
             Platform = GetCurrentPlatform()
         };
@@ -130,7 +130,7 @@ public class HardwareAccelerationOptimizer
     /// <summary>
     /// Get optimal encoding preset based on system capabilities
     /// </summary>
-    public string GetOptimalPreset(HardwareAccelerationCapabilities? capabilities = null)
+    public string GetOptimalPreset(OptimizerHardwareCapabilities? capabilities = null)
     {
         capabilities ??= _capabilities;
 
@@ -152,7 +152,7 @@ public class HardwareAccelerationOptimizer
 
     private FFmpegCommandBuilder OptimizeH264(
         FFmpegCommandBuilder builder,
-        HardwareAccelerationCapabilities capabilities)
+        OptimizerHardwareCapabilities capabilities)
     {
         if (capabilities.SupportsNvenc)
         {
@@ -207,7 +207,7 @@ public class HardwareAccelerationOptimizer
 
     private FFmpegCommandBuilder OptimizeH265(
         FFmpegCommandBuilder builder,
-        HardwareAccelerationCapabilities capabilities)
+        OptimizerHardwareCapabilities capabilities)
     {
         if (capabilities.SupportsNvenc)
         {
@@ -253,7 +253,7 @@ public class HardwareAccelerationOptimizer
 
     private FFmpegCommandBuilder OptimizeVp9(
         FFmpegCommandBuilder builder,
-        HardwareAccelerationCapabilities capabilities)
+        OptimizerHardwareCapabilities capabilities)
     {
         if (capabilities.SupportsVaapi)
         {
@@ -421,9 +421,9 @@ public class HardwareAccelerationOptimizer
 }
 
 /// <summary>
-/// Hardware acceleration capabilities detected on the system
+/// Hardware acceleration capabilities detected on the system (for optimizer)
 /// </summary>
-public class HardwareAccelerationCapabilities
+public class OptimizerHardwareCapabilities
 {
     public string Platform { get; set; } = string.Empty;
     public bool SupportsNvenc { get; set; }

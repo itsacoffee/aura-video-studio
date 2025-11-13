@@ -9,7 +9,7 @@ namespace Aura.Core.Services.Performance;
 /// </summary>
 public class StringBuilderPool
 {
-    private static readonly ObjectPool<StringBuilder> _pool = 
+    private static readonly Microsoft.Extensions.ObjectPool.ObjectPool<StringBuilder> _pool = 
         new DefaultObjectPoolProvider().CreateStringBuilderPool(
             initialCapacity: 256,
             maximumRetainedCapacity: 4096);
