@@ -30,7 +30,6 @@ import { wizardAnalytics } from '../../services/analytics';
 import type { FFmpegStatus } from '../../services/api/ffmpegClient';
 import { ffmpegClient } from '../../services/api/ffmpegClient';
 import { setupApi } from '../../services/api/setupApi';
-import { dependencyChecker } from '../../services/dependencyChecker';
 import { markFirstRunCompleted } from '../../services/firstRunService';
 import {
   onboardingReducer,
