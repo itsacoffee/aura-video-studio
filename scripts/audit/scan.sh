@@ -99,7 +99,7 @@ add_report "### Duplicate XAML Resource Keys"
 declare -A xkeys
 while IFS= read -r -d '' f; do
   while IFS= read -r k; do
-    key="${k#*x:Key="}"; key="${key%%"*}"
+    key="${k#*x:Key=\"}"; key="${key%%\"*}"
     xkeys[$key]="${xkeys[$key]}|$f"
   done < <(grep -Eo 'x:Key\s*=\s*"[^"]+"' "$f" || true)
 done < <(find "$REPO_ROOT" -type f -name '*.xaml' -print0)

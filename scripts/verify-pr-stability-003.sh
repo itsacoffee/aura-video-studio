@@ -115,7 +115,7 @@ echo ""
 echo "=== Documentation Check ==="
 check "Configuration guide has frontend section" "grep -q 'Frontend Resilience' NETWORK_RESILIENCE_GUIDE.md"
 check "Configuration guide has backend section" "grep -q 'Backend Resilience' NETWORK_RESILIENCE_GUIDE.md"
-check "Configuration guide has examples" "grep -q '```typescript' NETWORK_RESILIENCE_GUIDE.md"
+check "Configuration guide has examples" "grep -q '\`\`\`typescript' NETWORK_RESILIENCE_GUIDE.md"
 check "Summary has test coverage" "grep -q '107' PR_STABILITY_003_SUMMARY.md"
 echo ""
 

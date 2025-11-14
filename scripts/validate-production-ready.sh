@@ -188,9 +188,10 @@ if npm run build 2>&1 | tee /tmp/build.log; then
         
         # Check if main bundle is gzipped under 2MB
         MAIN_BUNDLE_FILES=$(ls dist/assets/index*.js 2>/dev/null || echo "")
+        if [ -n "$MAIN_BUNDLE_FILES" ]; then
             MAIN_BUNDLE_SIZE=$(gzip -c dist/assets/index*.js | wc -c)
             MAIN_BUNDLE_SIZE_MB=$((MAIN_BUNDLE_SIZE / 1024 / 1024))
-            if [ ${MAIN_BUNDLE_SIZE_MB} -lt 2 ]; then
+            if [ "${MAIN_BUNDLE_SIZE_MB}" -lt 2 ]; then
                 print_success "Main bundle size OK: ${MAIN_BUNDLE_SIZE_MB}MB (< 2MB target)"
             else
                 print_warning "Main bundle size: ${MAIN_BUNDLE_SIZE_MB}MB (exceeds 2MB target)"
