@@ -53,10 +53,28 @@ export type MenuEventHandlerWithData<T = unknown> = (data: T) => void;
 export type MenuEventUnsubscribe = () => void;
 
 /**
+ * Enhanced menu event payload with validation and tracking metadata
+ */
+export interface EnhancedMenuPayload {
+  _correlationId?: string;
+  _timestamp?: string;
+  _command?: {
+    label: string;
+    category: string;
+    description: string;
+  };
+  _validationError?: string;
+  _validationIssues?: Array<{ path: string[]; message: string }>;
+  _error?: string;
+  [key: string]: unknown;
+}
+
+/**
  * Data payload for openRecentProject event
  */
-export interface OpenRecentProjectData {
+export interface OpenRecentProjectData extends EnhancedMenuPayload {
   path: string;
+  name?: string;
 }
 
 /**

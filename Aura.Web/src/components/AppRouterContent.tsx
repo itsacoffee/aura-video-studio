@@ -8,7 +8,7 @@ import { lazy, useState, type FC } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { env } from '../config/env';
 import { NavigationProvider } from '../contexts/NavigationContext';
-import { useElectronMenuEvents } from '../hooks/useElectronMenuEvents';
+import { useMenuCommandSystem } from '../hooks/useMenuCommandSystem';
 import { DashboardPage } from '../pages/DashboardPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { FirstRunWizard } from '../pages/Onboarding/FirstRunWizard';
@@ -238,9 +238,10 @@ const AppRouterContentInner: FC<
   showDrawer,
   setShowDrawer,
 }) => {
-  // Register Electron menu event handlers (wires File, Edit, View, Tools, Help menus)
+  // Register enhanced menu command system (wires File, Edit, View, Tools, Help menus)
   // This MUST be inside Router context because it uses useNavigate()
-  useElectronMenuEvents();
+  // New system includes validation, correlation IDs, context awareness, and user feedback
+  useMenuCommandSystem();
 
   return (
     <>
