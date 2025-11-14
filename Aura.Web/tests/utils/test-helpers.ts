@@ -18,7 +18,7 @@ export async function waitFor(
   const {
     timeout = 5000,
     interval = 50,
-    timeoutMessage = 'Timeout waiting for condition'
+    timeoutMessage = 'Timeout waiting for condition',
   } = options;
 
   const startTime = Date.now();
@@ -38,7 +38,7 @@ export async function waitFor(
  * Sleep for specified milliseconds
  */
 export function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
@@ -99,7 +99,7 @@ export function createMockStorage(): Storage {
     key: (index: number) => Object.keys(store)[index] || null,
     get length() {
       return Object.keys(store).length;
-    }
+    },
   };
 }
 
@@ -109,7 +109,7 @@ export function createMockStorage(): Storage {
 export function mockMatchMedia() {
   Object.defineProperty(window, 'matchMedia', {
     writable: true,
-    value: vi.fn().mockImplementation(query => ({
+    value: vi.fn().mockImplementation((query) => ({
       matches: false,
       media: query,
       onchange: null,
@@ -228,7 +228,9 @@ export function click(element: HTMLElement): void {
  */
 export const generateTestData = {
   string: (length: number = 10): string => {
-    return Math.random().toString(36).substring(2, 2 + length);
+    return Math.random()
+      .toString(36)
+      .substring(2, 2 + length);
   },
 
   number: (min: number = 0, max: number = 100): number => {
@@ -315,7 +317,7 @@ export class PerformanceMonitor {
     }
 
     const duration = (end || performance.now()) - start;
-    console.log(`${name}: ${duration.toFixed(2)}ms`);
+    console.info(`${name}: ${duration.toFixed(2)}ms`);
     return duration;
   }
 

@@ -200,8 +200,7 @@ export class PlaybackEngine {
 
     // Intentional logging for hardware capability diagnostics
     if (hasMediaSource && hasWebGL) {
-      // eslint-disable-next-line no-console
-      console.log('✓ Hardware acceleration available');
+      console.info('✓ Hardware acceleration available');
     } else {
       console.warn('⚠ Limited hardware acceleration support');
       this.enableHardwareAccel = false;

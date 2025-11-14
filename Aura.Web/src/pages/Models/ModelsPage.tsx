@@ -241,7 +241,7 @@ export const ModelsPage: FC = () => {
   };
 
   const handleTestModel = async (provider: string, modelId: string) => {
-    console.log('Testing model:', provider, modelId);
+    console.info('Testing model:', provider, modelId);
   };
 
   const getSelectionForStage = (stage: string) => {

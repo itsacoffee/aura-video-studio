@@ -13,14 +13,15 @@ import { useEffect, useRef } from 'react';
  * ```
  */
 export function useWhyDidYouUpdate(componentName: string, props: Record<string, unknown>): void {
-  // Only run in development
-  if (process.env.NODE_ENV === 'production') {
-    return;
-  }
-
   const previousProps = useRef<Record<string, unknown>>();
+  const isProduction = process.env.NODE_ENV === 'production';
 
   useEffect(() => {
+    // Skip in production
+    if (isProduction) {
+      return;
+    }
+
     if (previousProps.current) {
       const allKeys = Object.keys({ ...previousProps.current, ...props });
       const changedProps: Record<string, { from: unknown; to: unknown }> = {};
@@ -35,7 +36,7 @@ export function useWhyDidYouUpdate(componentName: string, props: Record<string, 
       });
 
       if (Object.keys(changedProps).length > 0) {
-        console.log(`[WhyDidYouUpdate] ${componentName} re-rendered due to:`, changedProps);
+        console.info(`[WhyDidYouUpdate] ${componentName} re-rendered due to:`, changedProps);
       }
     }
 
@@ -56,18 +57,19 @@ export function useWhyDidYouUpdate(componentName: string, props: Record<string, 
  * ```
  */
 export function useRenderTime(componentName: string, threshold = 16): void {
-  // Only run in development
-  if (process.env.NODE_ENV === 'production') {
-    return;
-  }
-
   const renderStartTime = useRef<number>();
+  const isProduction = process.env.NODE_ENV === 'production';
 
   if (!renderStartTime.current) {
     renderStartTime.current = performance.now();
   }
 
   useEffect(() => {
+    // Skip in production
+    if (isProduction) {
+      return;
+    }
+
     if (renderStartTime.current) {
       const renderTime = performance.now() - renderStartTime.current;
 
@@ -94,14 +96,15 @@ export function useRenderTime(componentName: string, threshold = 16): void {
  * ```
  */
 export function useMountEffect(componentName: string): void {
-  // Only run in development
-  if (process.env.NODE_ENV === 'production') {
-    return;
-  }
-
   const mountCount = useRef(0);
+  const isProduction = process.env.NODE_ENV === 'production';
 
   useEffect(() => {
+    // Skip in production
+    if (isProduction) {
+      return;
+    }
+
     mountCount.current += 1;
 
     if (mountCount.current > 1) {
@@ -111,9 +114,9 @@ export function useMountEffect(componentName: string): void {
     }
 
     return () => {
-      console.log(`[MountEffect] ${componentName} unmounted (mount count: ${mountCount.current})`);
+      console.info(`[MountEffect] ${componentName} unmounted (mount count: ${mountCount.current})`);
     };
-  }, [componentName]);
+  }, [componentName, isProduction]);
 }
 
 /**

@@ -106,7 +106,7 @@ export function FFmpegDependencyCard({
     try {
       // Reset circuit breaker before checking status
       resetCircuitBreaker();
-      console.log('[FFmpegDependencyCard] Circuit breaker reset, checking FFmpeg status');
+      console.info('[FFmpegDependencyCard] Circuit breaker reset, checking FFmpeg status');
 
       const ffmpegStatus = await ffmpegClient.getStatus();
       setStatus(ffmpegStatus);
@@ -159,7 +159,7 @@ export function FFmpegDependencyCard({
     try {
       // Reset circuit breaker before rescanning
       resetCircuitBreaker();
-      console.log('[FFmpegDependencyCard] Circuit breaker reset, rescanning for FFmpeg');
+      console.info('[FFmpegDependencyCard] Circuit breaker reset, rescanning for FFmpeg');
 
       const rescanResult = await ffmpegClient.rescan();
 
@@ -271,7 +271,7 @@ export function FFmpegDependencyCard({
     try {
       // Reset circuit breaker before installation
       resetCircuitBreaker();
-      console.log('[FFmpegDependencyCard] Circuit breaker reset, starting FFmpeg installation');
+      console.info('[FFmpegDependencyCard] Circuit breaker reset, starting FFmpeg installation');
 
       const progressInterval = setInterval(() => {
         setInstallProgress((prev) => {

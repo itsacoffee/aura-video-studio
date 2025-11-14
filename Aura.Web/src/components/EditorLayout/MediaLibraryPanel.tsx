@@ -1,5 +1,5 @@
 import { makeStyles, tokens, Text, Spinner, Tab, TabList } from '@fluentui/react-components';
-import { useState, useRef, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useRef, forwardRef, useImperativeHandle } from 'react';
 import {
   generateVideoThumbnails,
   generateWaveform,

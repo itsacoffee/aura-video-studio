@@ -4,7 +4,7 @@
  */
 
 import { Card, makeStyles, tokens, Title3, Caption1, Body1 } from '@fluentui/react-components';
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { durationToSeconds, formatDuration } from '../../services/pacingService';
 import { AttentionCurveData } from '../../types/pacing';
 

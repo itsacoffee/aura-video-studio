@@ -14,7 +14,7 @@ import {
   MusicNote224Regular,
   Image24Regular,
 } from '@fluentui/react-icons';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const useStyles = makeStyles({
   container: {

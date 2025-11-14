@@ -1,5 +1,5 @@
 import { makeStyles, tokens, Text, Slider, Card, Badge } from '@fluentui/react-components';
-import { useState } from 'react';
+import React, { useState } from 'react';
 
 const useStyles = makeStyles({
   container: {

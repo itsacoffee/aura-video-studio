@@ -70,8 +70,7 @@ class PerformanceMonitor {
   logMetrics(label: string) {
     const metrics = this.getMetrics();
     // Performance logging is intentional
-    // eslint-disable-next-line no-console
-    console.log(`[Performance] ${label}:`, {
+    console.info(`[Performance] ${label}:`, {
       renderCount: metrics.renderCount,
       lastRenderTime: `${metrics.lastRenderTime.toFixed(2)}ms`,
       memoryUsage: metrics.memoryUsage
@@ -110,8 +109,7 @@ export function useRenderCount(componentName: string) {
   if (import.meta.env.DEV) {
     performanceMonitor.trackRender();
     // Development render tracking is intentional
-    // eslint-disable-next-line no-console
-    console.log(
+    console.info(
       `[Render] ${componentName} rendered ${performanceMonitor.getMetrics().renderCount} times`
     );
   }

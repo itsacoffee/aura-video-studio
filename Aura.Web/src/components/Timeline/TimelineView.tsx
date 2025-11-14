@@ -8,7 +8,7 @@ import {
   Card,
 } from '@fluentui/react-components';
 import { Play24Regular, Pause24Regular, Cut24Regular } from '@fluentui/react-icons';
-import { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { useTimelineStore } from '../../state/timeline';
 
 const useStyles = makeStyles({

@@ -4,7 +4,7 @@ import {
   Info20Regular as Info,
   ErrorCircle20Regular as AlertCircle,
 } from '@fluentui/react-icons';
-import { useState } from 'react';
+import React, { useState } from 'react';
 
 interface Warning {
   id: string;

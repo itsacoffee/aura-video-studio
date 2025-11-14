@@ -1,12 +1,12 @@
 /**
  * Skip Links Component
- * 
+ *
  * Provides keyboard-accessible skip navigation links for screen reader users
  * and keyboard navigation users to quickly jump to main content areas.
  */
 
 import { makeStyles, tokens } from '@fluentui/react-components';
-import { useCallback } from 'react';
+import React, { useCallback } from 'react';
 
 const useStyles = makeStyles({
   skipLinks: {
@@ -66,31 +66,34 @@ export interface SkipLinksProps {
 export function SkipLinks({ links = defaultSkipLinks }: SkipLinksProps) {
   const styles = useStyles();
 
-  const handleSkipLinkClick = useCallback((e: React.MouseEvent<HTMLAnchorElement>, target: string) => {
-    e.preventDefault();
-    
-    const targetElement = document.querySelector(target);
-    if (targetElement) {
-      // Ensure the element is focusable
-      const originalTabIndex = targetElement.getAttribute('tabindex');
-      if (!originalTabIndex) {
-        targetElement.setAttribute('tabindex', '-1');
+  const handleSkipLinkClick = useCallback(
+    (e: React.MouseEvent<HTMLAnchorElement>, target: string) => {
+      e.preventDefault();
+
+      const targetElement = document.querySelector(target);
+      if (targetElement) {
+        // Ensure the element is focusable
+        const originalTabIndex = targetElement.getAttribute('tabindex');
+        if (!originalTabIndex) {
+          targetElement.setAttribute('tabindex', '-1');
+        }
+
+        // Focus the element
+        (targetElement as HTMLElement).focus();
+
+        // Scroll into view
+        targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        // Remove temporary tabindex after a short delay
+        if (!originalTabIndex) {
+          setTimeout(() => {
+            targetElement.removeAttribute('tabindex');
+          }, 1000);
+        }
       }
-      
-      // Focus the element
-      (targetElement as HTMLElement).focus();
-      
-      // Scroll into view
-      targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      
-      // Remove temporary tabindex after a short delay
-      if (!originalTabIndex) {
-        setTimeout(() => {
-          targetElement.removeAttribute('tabindex');
-        }, 1000);
-      }
-    }
-  }, []);
+    },
+    []
+  );
 
   return (
     <div className={styles.skipLinks} role="navigation" aria-label="Skip links">

@@ -5,7 +5,7 @@
 
 import { makeStyles, tokens, Button, Tooltip } from '@fluentui/react-components';
 import { Dismiss20Regular } from '@fluentui/react-icons';
-import { useState, ReactNode } from 'react';
+import React, { useState, ReactNode } from 'react';
 
 const useStyles = makeStyles({
   container: {

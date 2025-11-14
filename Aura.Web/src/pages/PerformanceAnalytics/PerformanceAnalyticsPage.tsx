@@ -21,7 +21,7 @@ import {
   Flash24Regular,
   DocumentBulletList24Regular,
 } from '@fluentui/react-icons';
-import { useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { ErrorState } from '../../components/Loading';
 
 const useStyles = makeStyles({

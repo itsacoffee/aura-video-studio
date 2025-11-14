@@ -25,7 +25,7 @@ import {
   SpeakerOff24Regular,
   TopSpeed24Regular,
 } from '@fluentui/react-icons';
-import { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 
 const useStyles = makeStyles({
   menu: {

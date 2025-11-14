@@ -28,6 +28,7 @@ export function validateVideoTitle(title: string): ValidationResult {
   }
 
   // Check for invalid filename characters (for output file)
+  // eslint-disable-next-line no-control-regex
   const invalidChars = /[<>:"/\\|?*\x00-\x1F]/;
   if (invalidChars.test(title)) {
     return {
@@ -187,10 +188,7 @@ export function validateFileSize(sizeBytes: number, maxSizeMB = 100): Validation
 /**
  * Validates image resolution
  */
-export function validateImageResolution(
-  width: number,
-  height: number
-): ValidationResult {
+export function validateImageResolution(width: number, height: number): ValidationResult {
   if (width <= 0 || height <= 0) {
     return {
       isValid: false,
@@ -343,9 +341,7 @@ export function validateArrayLength<T>(
  */
 export function combineValidations(...results: ValidationResult[]): ValidationResult {
   const errors = results.filter((r) => !r.isValid).map((r) => r.error!);
-  const warnings = results
-    .filter((r) => r.isValid && r.warning)
-    .map((r) => r.warning!);
+  const warnings = results.filter((r) => r.isValid && r.warning).map((r) => r.warning!);
 
   if (errors.length > 0) {
     return {

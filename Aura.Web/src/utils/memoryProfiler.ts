@@ -89,38 +89,29 @@ class MemoryProfiler {
    */
   public printReport(): void {
     if (!this.enabled) {
-      // eslint-disable-next-line no-console
-      console.log('Memory profiling only available in development mode');
+      console.info('Memory profiling only available in development mode');
       return;
     }
 
     const report = this.getReport();
 
-    // eslint-disable-next-line no-console
     console.group('🧠 Aura Memory Report');
-    // eslint-disable-next-line no-console
-    console.log('Timestamp:', report.timestamp.toISOString());
-    // eslint-disable-next-line no-console
-    console.log('Active Blob URLs:', report.blobUrlCount);
-    // eslint-disable-next-line no-console
-    console.log('Active Component Instances:', report.activeComponentInstances);
-    // eslint-disable-next-line no-console
-    console.log('Total Mounts:', report.totalMountCount);
-    // eslint-disable-next-line no-console
-    console.log('Total Unmounts:', report.totalUnmountCount);
+    console.info('Timestamp:', report.timestamp.toISOString());
+    console.info('Active Blob URLs:', report.blobUrlCount);
+    console.info('Active Component Instances:', report.activeComponentInstances);
+    console.info('Total Mounts:', report.totalMountCount);
+    console.info('Total Unmounts:', report.totalUnmountCount);
 
-    // eslint-disable-next-line no-console
     console.group('Components');
     const sortedComponents = Array.from(report.components.entries()).sort(
       (a, b) => b[1].activeInstances - a[1].activeInstances
     );
 
     sortedComponents.forEach(([name, stats]) => {
-      console.log(
+      console.info(
         `${name}: ${stats.activeInstances} active (${stats.mountCount} mounts, ${stats.unmountCount} unmounts, ${stats.cleanupCallbackCount} cleanups)`
       );
     });
-    // eslint-disable-next-line no-console
     console.groupEnd();
 
     // Warnings
@@ -147,12 +138,9 @@ class MemoryProfiler {
     });
 
     if (warnings.length > 0) {
-      console.group('⚠️ Warnings'); // eslint-disable-line no-console
       warnings.forEach((warning) => console.warn(warning));
-      console.groupEnd(); // eslint-disable-line no-console
     }
 
-    // eslint-disable-next-line no-console
     console.groupEnd();
   }
 
@@ -188,8 +176,7 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
     memoryProfiler.printReport();
   (window as typeof window & { __AURA_BLOB_COUNT__?: number }).__AURA_BLOB_COUNT__ = 0;
 
-  // eslint-disable-next-line no-console
-  console.log('💡 Memory profiling enabled. Run window.__AURA_MEMORY_REPORT__() to view report.');
+  console.info('💡 Memory profiling enabled. Run window.__AURA_MEMORY_REPORT__() to view report.');
 }
 
 /**

@@ -124,7 +124,7 @@ export const useUndoManager = create<UndoManagerState>((set, get) => {
           const response = await recordAction(request);
           command.serverActionId = response.actionId;
 
-          console.log(
+          console.info(
             `Action ${command.getDescription()} recorded to server with ID ${response.actionId}`
           );
         } catch (error: unknown) {
@@ -151,7 +151,7 @@ export const useUndoManager = create<UndoManagerState>((set, get) => {
         try {
           const response = await undoAction(lastCommand.serverActionId);
           if (response.success) {
-            console.log(`Server action ${lastCommand.serverActionId} undone successfully`);
+            console.info(`Server action ${lastCommand.serverActionId} undone successfully`);
           } else {
             console.error(`Failed to undo server action: ${response.errorMessage}`);
           }
@@ -206,7 +206,7 @@ export const useUndoManager = create<UndoManagerState>((set, get) => {
 
     setServerPersistenceEnabled: (enabled: boolean) => {
       set({ serverPersistenceEnabled: enabled });
-      console.log(`Server persistence ${enabled ? 'enabled' : 'disabled'}`);
+      console.info(`Server persistence ${enabled ? 'enabled' : 'disabled'}`);
     },
   };
 });

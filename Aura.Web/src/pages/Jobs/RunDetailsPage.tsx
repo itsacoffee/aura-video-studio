@@ -25,7 +25,7 @@ import {
   Warning24Filled,
   ErrorCircle24Filled,
 } from '@fluentui/react-icons';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getJobTelemetry } from '@/api/telemetryClient';
 import { ModelSelectionAudit } from '@/components/Jobs';

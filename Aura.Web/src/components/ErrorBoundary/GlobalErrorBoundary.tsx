@@ -3,7 +3,7 @@
  * Catches unhandled errors in the entire application
  */
 
-import { Component, ReactNode } from 'react';
+import React, { Component, ReactNode } from 'react';
 import { loggingService } from '../../services/loggingService';
 import { EnhancedErrorFallback } from './EnhancedErrorFallback';
 

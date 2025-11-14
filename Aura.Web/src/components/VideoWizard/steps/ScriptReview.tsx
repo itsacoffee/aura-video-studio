@@ -40,7 +40,7 @@ import {
   Merge24Regular,
   SplitVertical24Regular,
 } from '@fluentui/react-icons';
-import { useState, useEffect, useCallback, useRef, memo } from 'react';
+import React, { useState, useEffect, useCallback, useRef, memo } from 'react';
 import type { FC } from 'react';
 import {
   generateScript,

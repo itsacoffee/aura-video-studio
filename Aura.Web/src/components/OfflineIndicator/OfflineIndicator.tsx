@@ -5,6 +5,7 @@
 
 import { MessageBar, MessageBarBody, MessageBarTitle } from '@fluentui/react-components';
 import { WifiWarning24Regular } from '@fluentui/react-icons';
+import React from 'react';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 
 /**

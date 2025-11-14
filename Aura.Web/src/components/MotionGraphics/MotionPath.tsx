@@ -13,7 +13,7 @@ import {
   Divider,
 } from '@fluentui/react-components';
 import { Delete24Regular, Checkmark24Regular, Dismiss24Regular } from '@fluentui/react-icons';
-import { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { MotionPath, MotionPathPoint } from '../../services/animationEngine';
 
 const useStyles = makeStyles({

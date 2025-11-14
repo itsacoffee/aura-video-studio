@@ -5,7 +5,7 @@ import {
   Copy20Regular as Copy,
   Checkmark20Regular as Check,
 } from '@fluentui/react-icons';
-import { useState } from 'react';
+import React, { useState } from 'react';
 
 interface Source {
   sourceId: string;

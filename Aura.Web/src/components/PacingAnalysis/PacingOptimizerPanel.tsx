@@ -35,7 +35,7 @@ import {
   Settings24Regular,
   Dismiss24Regular,
 } from '@fluentui/react-icons';
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { usePacingAnalysis } from '../../hooks/usePacingAnalysis';
 import { pacingAnalytics } from '../../services/analytics';
 import { getPlatformPresets } from '../../services/pacingService';

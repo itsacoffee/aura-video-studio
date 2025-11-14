@@ -19,7 +19,7 @@ import {
   CheckmarkCircle24Regular,
   Eye24Regular,
 } from '@fluentui/react-icons';
-import { useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import CompositionAnalysis from '../../components/aesthetics/CompositionAnalysis';
 import QualityAssessment from '../../components/aesthetics/QualityAssessment';
 import VisualCoherence from '../../components/aesthetics/VisualCoherence';

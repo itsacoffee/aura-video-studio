@@ -23,7 +23,7 @@ import {
   CheckmarkCircle24Regular,
   ErrorCircle24Regular,
 } from '@fluentui/react-icons';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import type { LanguageInfoDto, TranslationResultDto } from '../../../types/api-v1';
 import { TranslationResult } from './TranslationResult';
 

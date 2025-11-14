@@ -256,8 +256,7 @@ class LoggingService {
         break;
       case 'debug':
       default:
-        // eslint-disable-next-line no-console
-        console.log(prefix, entry.message, entry.context || {});
+        console.info(prefix, entry.message, entry.context || {});
         break;
     }
   }

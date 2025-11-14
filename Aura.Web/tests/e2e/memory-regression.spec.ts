@@ -67,9 +67,13 @@ test.describe('Memory and Performance Regression', () => {
         const memoryGrowth = finalMetrics.usedJSHeapSize - initialMetrics.usedJSHeapSize;
         const growthPercentage = (memoryGrowth / initialMetrics.usedJSHeapSize) * 100;
 
-        console.log(`Initial heap: ${(initialMetrics.usedJSHeapSize / 1024 / 1024).toFixed(2)} MB`);
-        console.log(`Final heap: ${(finalMetrics.usedJSHeapSize / 1024 / 1024).toFixed(2)} MB`);
-        console.log(`Growth: ${(memoryGrowth / 1024 / 1024).toFixed(2)} MB (${growthPercentage.toFixed(1)}%)`);
+        console.info(
+          `Initial heap: ${(initialMetrics.usedJSHeapSize / 1024 / 1024).toFixed(2)} MB`
+        );
+        console.info(`Final heap: ${(finalMetrics.usedJSHeapSize / 1024 / 1024).toFixed(2)} MB`);
+        console.info(
+          `Growth: ${(memoryGrowth / 1024 / 1024).toFixed(2)} MB (${growthPercentage.toFixed(1)}%)`
+        );
 
         // Memory should not grow by more than 50% during scrolling
         expect(growthPercentage).toBeLessThan(50);
@@ -106,7 +110,7 @@ test.describe('Memory and Performance Regression', () => {
     });
 
     await page.goto('/templates');
-    
+
     // Measure time to first render
     const startTime = Date.now();
     await page.waitForSelector('[data-testid="template-list"], .template-grid', {
@@ -114,14 +118,16 @@ test.describe('Memory and Performance Regression', () => {
     });
     const renderTime = Date.now() - startTime;
 
-    console.log(`Templates rendered in ${renderTime}ms`);
+    console.info(`Templates rendered in ${renderTime}ms`);
 
     // Should render within 5 seconds even with 1000 items
     expect(renderTime).toBeLessThan(5000);
 
     // Verify virtualization is working (not all items rendered)
-    const renderedItems = await page.locator('[data-testid="template-item"], .template-card').count();
-    
+    const renderedItems = await page
+      .locator('[data-testid="template-item"], .template-card')
+      .count();
+
     // With virtualization, should render far fewer than 1000 items
     expect(renderedItems).toBeLessThan(100);
     expect(renderedItems).toBeGreaterThan(0);
@@ -132,8 +138,9 @@ test.describe('Memory and Performance Regression', () => {
 
     // Get initial listener count
     const initialListeners = await page.evaluate(() => {
-      return (window as any).getEventListeners ? 
-        Object.keys((window as any).getEventListeners(document)).length : 0;
+      return (window as any).getEventListeners
+        ? Object.keys((window as any).getEventListeners(document)).length
+        : 0;
     });
 
     // Navigate through multiple pages
@@ -145,15 +152,18 @@ test.describe('Memory and Performance Regression', () => {
 
     // Get final listener count
     const finalListeners = await page.evaluate(() => {
-      return (window as any).getEventListeners ? 
-        Object.keys((window as any).getEventListeners(document)).length : 0;
+      return (window as any).getEventListeners
+        ? Object.keys((window as any).getEventListeners(document)).length
+        : 0;
     });
 
     // Listener count should not grow significantly
     if (initialListeners > 0 && finalListeners > 0) {
       const growth = finalListeners - initialListeners;
-      console.log(`Event listeners - Initial: ${initialListeners}, Final: ${finalListeners}, Growth: ${growth}`);
-      
+      console.info(
+        `Event listeners - Initial: ${initialListeners}, Final: ${finalListeners}, Growth: ${growth}`
+      );
+
       // Allow some growth but not exponential
       expect(growth).toBeLessThan(initialListeners * 0.5);
     }
@@ -162,7 +172,7 @@ test.describe('Memory and Performance Regression', () => {
   test('should clean up resources after job completion', async ({ page }) => {
     // Mock job lifecycle
     let jobStatus = 'Running';
-    
+
     await page.route('**/api/jobs/test-job-001/status', (route) => {
       route.fulfill({
         status: 200,
@@ -213,8 +223,8 @@ test.describe('Memory and Performance Regression', () => {
       connections: (performance as any).getEntriesByType?.('resource').length || 0,
     }));
 
-    console.log('Before:', beforeMetrics);
-    console.log('After:', afterMetrics);
+    console.info('Before:', beforeMetrics);
+    console.info('After:', afterMetrics);
 
     // Resources should be cleaned up (allowing for some variance)
     if (beforeMetrics.heap > 0 && afterMetrics.heap > 0) {
@@ -239,11 +249,11 @@ test.describe('Memory and Performance Regression', () => {
     const endTime = Date.now();
     const duration = endTime - startTime;
 
-    console.log(`${updates} updates processed in ${duration}ms`);
+    console.info(`${updates} updates processed in ${duration}ms`);
 
     // Should handle updates without significant lag
     expect(duration).toBeLessThan(1000);
-    
+
     // UI should remain responsive
     const button = await page.locator('button').first();
     if (await button.isVisible({ timeout: 1000 }).catch(() => false)) {

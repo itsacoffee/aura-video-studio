@@ -4,7 +4,7 @@
  */
 
 import { makeStyles, tokens, Label, Card, Select } from '@fluentui/react-components';
-import { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { getEasingFunction } from '../../services/animationEngine';
 import { Keyframe } from '../../types/effects';
 

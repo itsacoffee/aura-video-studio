@@ -1,5 +1,5 @@
 import { makeStyles, tokens, Tooltip } from '@fluentui/react-components';
-import { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { snapToFrame } from '../../services/timelineEngine';
 import { AppliedEffect } from '../../types/effects';
 

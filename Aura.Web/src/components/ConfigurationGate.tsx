@@ -7,7 +7,7 @@
 
 import { Spinner, MessageBar, MessageBarBody, Button } from '@fluentui/react-components';
 import { Warning24Regular } from '@fluentui/react-icons';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { setupApi } from '../services/api/setupApi';
 import { hasCompletedFirstRun } from '../services/firstRunService';

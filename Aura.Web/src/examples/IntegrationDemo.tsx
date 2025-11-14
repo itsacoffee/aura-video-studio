@@ -60,7 +60,7 @@ const useStyles = makeStyles({
 
 export function IntegrationDemo() {
   const styles = useStyles();
-  
+
   // Hooks for API operations
   const videoGeneration = useVideoGeneration({
     onComplete: (status) => {
@@ -80,7 +80,7 @@ export function IntegrationDemo() {
       });
     },
     onProgress: (progress, message) => {
-      console.log(`Progress: ${progress}% - ${message}`);
+      console.info(`Progress: ${progress}% - ${message}`);
     },
   });
 
@@ -187,10 +187,7 @@ export function IntegrationDemo() {
           <Text>Generate a video using the full backend pipeline</Text>
 
           <div className={styles.status}>
-            <Badge
-              appearance="filled"
-              color={videoGeneration.isGenerating ? 'warning' : 'success'}
-            >
+            <Badge appearance="filled" color={videoGeneration.isGenerating ? 'warning' : 'success'}>
               {videoGeneration.isGenerating ? 'Generating' : 'Ready'}
             </Badge>
             {videoGeneration.isGenerating && (
@@ -210,7 +207,12 @@ export function IntegrationDemo() {
           )}
 
           {videoGeneration.error && (
-            <Text style={{ color: tokens.colorPaletteRedForeground1, marginTop: tokens.spacingVerticalM }}>
+            <Text
+              style={{
+                color: tokens.colorPaletteRedForeground1,
+                marginTop: tokens.spacingVerticalM,
+              }}
+            >
               Error: {videoGeneration.error.message}
             </Text>
           )}
@@ -242,18 +244,11 @@ export function IntegrationDemo() {
               Generate Video
             </Button>
             {videoGeneration.isGenerating && (
-              <Button
-                onClick={videoGeneration.cancel}
-                disabled={!videoGeneration.isGenerating}
-              >
+              <Button onClick={videoGeneration.cancel} disabled={!videoGeneration.isGenerating}>
                 Cancel
               </Button>
             )}
-            {videoGeneration.error && (
-              <Button onClick={videoGeneration.retry}>
-                Retry
-              </Button>
-            )}
+            {videoGeneration.error && <Button onClick={videoGeneration.retry}>Retry</Button>}
           </div>
         </Card>
       </div>
@@ -270,7 +265,12 @@ export function IntegrationDemo() {
           </div>
 
           {projects.error && (
-            <Text style={{ color: tokens.colorPaletteRedForeground1, marginTop: tokens.spacingVerticalM }}>
+            <Text
+              style={{
+                color: tokens.colorPaletteRedForeground1,
+                marginTop: tokens.spacingVerticalM,
+              }}
+            >
               Error: {projects.error.message}
             </Text>
           )}
@@ -350,9 +350,13 @@ export function IntegrationDemo() {
                 <Badge
                   appearance="filled"
                   color={
-                    notification.type === 'success' ? 'success' :
-                    notification.type === 'error' ? 'danger' :
-                    notification.type === 'warning' ? 'warning' : 'informative'
+                    notification.type === 'success'
+                      ? 'success'
+                      : notification.type === 'error'
+                        ? 'danger'
+                        : notification.type === 'warning'
+                          ? 'warning'
+                          : 'informative'
                   }
                 >
                   {notification.type}

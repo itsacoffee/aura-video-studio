@@ -15,7 +15,7 @@ import {
   Divider,
 } from '@fluentui/react-components';
 import { Play24Regular, Stop24Regular, Checkmark24Regular } from '@fluentui/react-icons';
-import { useState } from 'react';
+import React, { useState } from 'react';
 
 const useStyles = makeStyles({
   container: {

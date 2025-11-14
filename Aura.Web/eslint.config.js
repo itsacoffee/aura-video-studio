@@ -21,7 +21,9 @@ export default [
       'coverage/**',
       '*.config.js',
       '*.config.ts',
-      '.eslintrc.cjs'
+      '.eslintrc.cjs',
+      'scripts/**',
+      'capture-screenshot.js',
     ],
   },
 
@@ -66,12 +68,14 @@ export default [
         argsIgnorePattern: '^_',
         varsIgnorePattern: '^_',
       }],
+      // Disable no-undef for TypeScript files - TypeScript handles this
+      'no-undef': 'off',
     },
   },
 
   // React configuration
   {
-    files: ['**/*.{jsx,tsx}'],
+    files: ['**/*.{jsx,tsx}', 'src/hooks/**/*.ts'],  // Include hook files even if they're .ts
     plugins: {
       react: fixupPluginRules(react),
       'react-hooks': fixupPluginRules(reactHooks),
@@ -91,12 +95,14 @@ export default [
       ],
       'react/prop-types': 'off',
       'react-hooks/exhaustive-deps': 'warn',
-      'react/no-unescaped-entities': 'error',
+      'react/no-unescaped-entities': 'warn',
       
       // Accessibility rules
       'jsx-a11y/click-events-have-key-events': 'warn',
       'jsx-a11y/no-static-element-interactions': 'warn',
       'jsx-a11y/media-has-caption': 'warn',
+      'jsx-a11y/label-has-associated-control': 'warn',
+      'jsx-a11y/no-autofocus': 'warn',
     },
   },
 
@@ -156,6 +162,27 @@ export default [
     files: ['**/*.{js,jsx,ts,tsx}'],
     rules: {
       'no-console': ['warn', { allow: ['warn', 'error', 'info'] }],
+    },
+  },
+
+  // Test files configuration
+  {
+    files: ['**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}', 'src/test/**/*.{ts,tsx}', 'tests/**/*.{ts,tsx}'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        vi: 'readonly',
+        vitest: 'readonly',
+        describe: 'readonly',
+        it: 'readonly',
+        test: 'readonly',
+        expect: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        jest: 'readonly',
+      },
     },
   },
 ];

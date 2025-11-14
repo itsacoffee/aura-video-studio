@@ -263,7 +263,7 @@ export const FinalExport: FC<FinalExportProps> = ({
   }, []);
 
   const downloadFile = useCallback((filePath: string) => {
-    console.log('Downloading file:', filePath);
+    console.info('Downloading file:', filePath);
     window.open(filePath, '_blank');
   }, []);
 

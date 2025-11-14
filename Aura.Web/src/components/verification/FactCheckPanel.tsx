@@ -4,7 +4,7 @@ import {
   Warning20Regular as AlertTriangle,
   Info20Regular as Info,
 } from '@fluentui/react-icons';
-import { useState } from 'react';
+import React, { useState } from 'react';
 
 interface Claim {
   claimId: string;

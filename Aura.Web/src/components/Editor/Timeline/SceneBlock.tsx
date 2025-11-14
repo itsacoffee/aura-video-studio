@@ -3,7 +3,7 @@
  */
 
 import { makeStyles, tokens } from '@fluentui/react-components';
-import { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { VideoThumbnail } from './VideoThumbnail';
 
 const useStyles = makeStyles({

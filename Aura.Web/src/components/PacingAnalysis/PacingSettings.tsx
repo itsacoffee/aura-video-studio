@@ -18,7 +18,7 @@ import {
   Field,
 } from '@fluentui/react-components';
 import { Settings24Regular, Save24Regular, ArrowReset24Regular } from '@fluentui/react-icons';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PacingSettings as PacingSettingsType, PlatformPreset } from '../../types/pacing';
 
 const useStyles = makeStyles({

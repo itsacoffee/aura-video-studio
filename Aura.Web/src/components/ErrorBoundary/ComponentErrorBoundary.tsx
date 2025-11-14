@@ -5,7 +5,7 @@
 
 import { Button, Text } from '@fluentui/react-components';
 import { ErrorCircle24Regular, ArrowClockwise24Regular } from '@fluentui/react-icons';
-import { Component, ReactNode } from 'react';
+import React, { Component, ReactNode } from 'react';
 import { loggingService } from '../../services/loggingService';
 
 interface Props {

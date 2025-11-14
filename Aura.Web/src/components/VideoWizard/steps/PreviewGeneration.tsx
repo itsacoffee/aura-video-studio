@@ -40,7 +40,7 @@ import {
   ImageEdit24Regular,
   Search24Regular,
 } from '@fluentui/react-icons';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import type { FC } from 'react';
 import type {
   PreviewData,
@@ -516,11 +516,11 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
   );
 
   const handleSearchFallback = useCallback(async (sceneId: string) => {
-    console.log('Search fallback for scene:', sceneId);
+    console.info('Search fallback for scene:', sceneId);
   }, []);
 
   const playScenePreview = useCallback((sceneId: string) => {
-    console.log('Playing preview for scene:', sceneId);
+    console.info('Playing preview for scene:', sceneId);
   }, []);
 
   const renderProviderSettings = () => (

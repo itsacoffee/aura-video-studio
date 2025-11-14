@@ -1,5 +1,5 @@
 import { makeStyles, tokens } from '@fluentui/react-components';
-import { useRef, useCallback } from 'react';
+import React, { useRef, useCallback } from 'react';
 import { snapToFrame } from '../../services/timelineEngine';
 
 const useStyles = makeStyles({

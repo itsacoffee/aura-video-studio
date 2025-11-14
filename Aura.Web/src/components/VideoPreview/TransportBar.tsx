@@ -10,7 +10,7 @@
 
 import { makeStyles, tokens, Text, Button, Tooltip } from '@fluentui/react-components';
 import { Flag24Regular, FlagOff24Regular } from '@fluentui/react-icons';
-import { useState, useRef, useCallback, memo, useEffect } from 'react';
+import React, { useState, useRef, useCallback, memo, useEffect } from 'react';
 
 const useStyles = makeStyles({
   container: {

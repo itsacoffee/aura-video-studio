@@ -15,7 +15,7 @@ import {
   DocumentCopy24Regular,
   ArrowUpload24Regular,
 } from '@fluentui/react-icons';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDashboardStore } from '../../state/dashboard';
 import type { ProjectSummary } from '../../state/dashboard';

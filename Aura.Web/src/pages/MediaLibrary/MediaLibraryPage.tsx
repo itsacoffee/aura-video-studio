@@ -118,7 +118,11 @@ export const MediaLibraryPage: React.FC = () => {
   });
 
   // Fetch media items
-  const { data: mediaData, isLoading, error } = useQuery({
+  const {
+    data: mediaData,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['media', filters, searchTerm],
     queryFn: () => mediaLibraryApi.searchMedia({ ...filters, searchTerm }),
   });
@@ -175,19 +179,25 @@ export const MediaLibraryPage: React.FC = () => {
     });
   }, []);
 
-  const handleSelectAll = useCallback((selected: boolean) => {
-    if (selected && mediaData?.items) {
-      setSelectedItems(new Set(mediaData.items.map((item) => item.id)));
-    } else {
-      setSelectedItems(new Set());
-    }
-  }, [mediaData]);
+  const handleSelectAll = useCallback(
+    (selected: boolean) => {
+      if (selected && mediaData?.items) {
+        setSelectedItems(new Set(mediaData.items.map((item) => item.id)));
+      } else {
+        setSelectedItems(new Set());
+      }
+    },
+    [mediaData]
+  );
 
-  const handleDelete = useCallback(async (id: string) => {
-    if (confirm('Are you sure you want to delete this media item?')) {
-      await deleteMutation.mutateAsync(id);
-    }
-  }, [deleteMutation]);
+  const handleDelete = useCallback(
+    async (id: string) => {
+      if (confirm('Are you sure you want to delete this media item?')) {
+        await deleteMutation.mutateAsync(id);
+      }
+    },
+    [deleteMutation]
+  );
 
   const handleBulkAction = useCallback(() => {
     setSelectedItems(new Set());
@@ -200,7 +210,7 @@ export const MediaLibraryPage: React.FC = () => {
 
   const handleEdit = useCallback((media: MediaItemResponse) => {
     // TODO: Implement edit functionality
-    console.log('Edit media:', media);
+    console.info('Edit media:', media);
   }, []);
 
   const renderContent = () => {
@@ -307,10 +317,7 @@ export const MediaLibraryPage: React.FC = () => {
           onChange={(_, data) => handleSearch(data.value)}
         />
 
-        <Button
-          icon={<Filter24Regular />}
-          onClick={() => setShowFilters(!showFilters)}
-        >
+        <Button icon={<Filter24Regular />} onClick={() => setShowFilters(!showFilters)}>
           Filters
         </Button>
 
@@ -324,9 +331,7 @@ export const MediaLibraryPage: React.FC = () => {
         <Dropdown
           placeholder="Sort by"
           value={filters.sortBy}
-          onOptionSelect={(_, data) =>
-            handleFilterChange({ sortBy: data.optionValue as string })
-          }
+          onOptionSelect={(_, data) => handleFilterChange({ sortBy: data.optionValue as string })}
         >
           <Option value="CreatedAt">Date Created</Option>
           <Option value="FileName">Name</Option>
@@ -334,11 +339,7 @@ export const MediaLibraryPage: React.FC = () => {
           <Option value="Type">Type</Option>
         </Dropdown>
 
-        <Button
-          onClick={() =>
-            handleFilterChange({ sortDescending: !filters.sortDescending })
-          }
-        >
+        <Button onClick={() => handleFilterChange({ sortDescending: !filters.sortDescending })}>
           {filters.sortDescending ? 'Newest' : 'Oldest'}
         </Button>
       </div>

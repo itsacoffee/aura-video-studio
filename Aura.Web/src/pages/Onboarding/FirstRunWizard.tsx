@@ -205,7 +205,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
     // This prevents false "service unavailable" errors from persisted circuit breaker state
     PersistentCircuitBreaker.clearState();
     resetCircuitBreaker();
-    console.log('[FirstRunWizard] Circuit breaker state cleared on mount');
+    console.info('[FirstRunWizard] Circuit breaker state cleared on mount');
 
     // Check for saved progress
     const savedState = loadWizardStateFromStorage();
@@ -506,7 +506,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
     }
     // Reset circuit breaker before rescanning
     resetCircuitBreaker();
-    console.log('[Rescan FFmpeg] Circuit breaker reset, initiating rescan');
+    console.info('[Rescan FFmpeg] Circuit breaker reset, initiating rescan');
     pendingRescanRef.current = true;
     setIsRescanningFfmpeg(true);
     setFfmpegRefreshSignal((prev) => prev + 1);
@@ -577,7 +577,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
     try {
       // Reset circuit breaker before attempting validation
       resetCircuitBreaker();
-      console.log('[Validate FFmpeg] Circuit breaker reset, attempting validation');
+      console.info('[Validate FFmpeg] Circuit breaker reset, attempting validation');
 
       // Use the new backend use-existing endpoint
       const result = await ffmpegClient.useExisting({ path: trimmedPath });

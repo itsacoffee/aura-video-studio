@@ -109,7 +109,7 @@ describe('Route Registry Service', () => {
 
       // If there are errors, log them for debugging
       if (result.errors.length > 0) {
-        console.log('Validation errors:', result.errors);
+        console.info('Validation errors:', result.errors);
       }
     });
 

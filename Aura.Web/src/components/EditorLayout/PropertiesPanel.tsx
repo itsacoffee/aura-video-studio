@@ -25,7 +25,7 @@ import {
   AddRegular,
   Info24Regular,
 } from '@fluentui/react-icons';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { AppliedEffect, EFFECT_DEFINITIONS } from '../../types/effects';
 import { TooltipContent, TooltipWithLink } from '../Tooltips';
 import { TextOverlaysPanel } from './TextOverlaysPanel';

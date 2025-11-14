@@ -1,6 +1,6 @@
 import { makeStyles, tokens, Text, Slider, Button, Card } from '@fluentui/react-components';
 import { ArrowResetRegular } from '@fluentui/react-icons';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const useStyles = makeStyles({
   container: {

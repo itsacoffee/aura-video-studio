@@ -26,7 +26,7 @@ import {
   DocumentMultiple24Regular,
   Database24Regular,
 } from '@fluentui/react-icons';
-import { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { ErrorState } from '../../components/Loading';
 import {
   translateScript,

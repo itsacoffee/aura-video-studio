@@ -1,11 +1,11 @@
 /**
  * Custom hook for managing focus traps in modals and dialogs
- * 
+ *
  * Ensures keyboard focus stays within a container (e.g., modal)
  * and returns to the previously focused element when deactivated.
  */
 
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { FocusTrap, createFocusTrap } from '../utils/focusManagement';
 
 interface UseFocusTrapOptions {
@@ -27,15 +27,15 @@ interface UseFocusTrapOptions {
 
 /**
  * Hook to create a focus trap for a container element
- * 
+ *
  * @param options - Configuration options
  * @returns Ref to attach to the container element
- * 
+ *
  * @example
  * ```tsx
  * function Modal({ isOpen, onClose }) {
  *   const focusTrapRef = useFocusTrap({ isActive: isOpen });
- *   
+ *
  *   return (
  *     <div ref={focusTrapRef} role="dialog">
  *       <h2>Modal Title</h2>

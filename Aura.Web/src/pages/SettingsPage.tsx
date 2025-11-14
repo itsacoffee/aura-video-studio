@@ -41,7 +41,7 @@ import {
   LockClosed24Regular,
   Star24Regular,
 } from '@fluentui/react-icons';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AdvancedModeBanner } from '../components/Settings/AdvancedModeBanner';
 import { AIModelsSettingsTab } from '../components/Settings/AIModelsSettingsTab';
 import { AIOptimizationPanel } from '../components/Settings/AIOptimizationPanel';

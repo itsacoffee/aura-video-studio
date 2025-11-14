@@ -22,7 +22,7 @@ import {
   Share24Regular,
   Delete24Regular,
 } from '@fluentui/react-icons';
-import { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import type { ProjectSummary } from '../../state/dashboard';
 
 const useStyles = makeStyles({

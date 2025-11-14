@@ -19,7 +19,7 @@ import {
   Briefcase24Regular,
   BeakerSettingsRegular,
 } from '@fluentui/react-icons';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { FC } from 'react';
 import { apiUrl } from '../../config/api';
 

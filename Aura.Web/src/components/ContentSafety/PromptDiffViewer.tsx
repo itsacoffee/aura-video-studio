@@ -1,15 +1,6 @@
-import {
-  makeStyles,
-  tokens,
-  Text,
-  Card,
-  Badge,
-  Button,
-} from '@fluentui/react-components';
-import {
-  ArrowSyncCheckmark24Regular,
-  Lightbulb24Regular,
-} from '@fluentui/react-icons';
+import { makeStyles, tokens, Text, Card, Badge, Button } from '@fluentui/react-components';
+import { ArrowSyncCheckmark24Regular, Lightbulb24Regular } from '@fluentui/react-icons';
+import React from 'react';
 import type { FC } from 'react';
 
 const useStyles = makeStyles({
@@ -113,11 +104,11 @@ export const PromptDiffViewer: FC<PromptDiffViewerProps> = ({
   const generateInlineDiff = (original: string, modified: string): JSX.Element[] => {
     const originalWords = original.split(/(\s+)/);
     const modifiedWords = modified.split(/(\s+)/);
-    
+
     const diff: JSX.Element[] = [];
     let origIdx = 0;
     let modIdx = 0;
-    
+
     while (origIdx < originalWords.length || modIdx < modifiedWords.length) {
       if (origIdx < originalWords.length && modIdx < modifiedWords.length) {
         if (originalWords[origIdx] === modifiedWords[modIdx]) {
@@ -125,12 +116,15 @@ export const PromptDiffViewer: FC<PromptDiffViewerProps> = ({
           origIdx++;
           modIdx++;
         } else {
-          const origChunk = originalWords.slice(origIdx, Math.min(origIdx + 3, originalWords.length));
+          const origChunk = originalWords.slice(
+            origIdx,
+            Math.min(origIdx + 3, originalWords.length)
+          );
           const modChunk = modifiedWords.slice(modIdx, Math.min(modIdx + 3, modifiedWords.length));
-          
+
           const origText = origChunk.join('');
           const modText = modChunk.join('');
-          
+
           diff.push(
             <span key={`removed-${origIdx}`} className={styles.highlightRemoved}>
               {origText}
@@ -141,7 +135,7 @@ export const PromptDiffViewer: FC<PromptDiffViewerProps> = ({
               {modText}
             </span>
           );
-          
+
           origIdx += origChunk.length;
           modIdx += modChunk.length;
         }
@@ -161,7 +155,7 @@ export const PromptDiffViewer: FC<PromptDiffViewerProps> = ({
         modIdx++;
       }
     }
-    
+
     return diff;
   };
 
@@ -187,7 +181,14 @@ export const PromptDiffViewer: FC<PromptDiffViewerProps> = ({
 
       {explanation && (
         <div className={styles.explanation}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS, marginBottom: tokens.spacingVerticalXS }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: tokens.spacingHorizontalS,
+              marginBottom: tokens.spacingVerticalXS,
+            }}
+          >
             <Lightbulb24Regular style={{ color: tokens.colorBrandForeground1 }} />
             <Text weight="semibold">Why this change?</Text>
           </div>
@@ -219,9 +220,7 @@ export const PromptDiffViewer: FC<PromptDiffViewerProps> = ({
                 (flagged by safety check)
               </Text>
             </div>
-            <div className={`${styles.textBox} ${styles.originalText}`}>
-              {originalPrompt}
-            </div>
+            <div className={`${styles.textBox} ${styles.originalText}`}>{originalPrompt}</div>
           </div>
 
           <div>
@@ -233,9 +232,7 @@ export const PromptDiffViewer: FC<PromptDiffViewerProps> = ({
                 (safe alternative)
               </Text>
             </div>
-            <div className={`${styles.textBox} ${styles.modifiedText}`}>
-              {modifiedPrompt}
-            </div>
+            <div className={`${styles.textBox} ${styles.modifiedText}`}>{modifiedPrompt}</div>
           </div>
         </div>
       )}
