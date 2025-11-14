@@ -90,4 +90,4 @@ foreach ($f in $csFiles) { $text = Get-Content -LiteralPath $f.FullName -Raw -En
 foreach ($k in $implMap.Keys) { Add-Report ("- {0} implementations:" -f $k); if ($implMap[$k].Count -eq 0) { Add-Report "  (none found)" } else { $implMap[$k] | ForEach-Object { Add-Report ("  - {0}" -f $_) } } }
 Add-Report ""
 
-if ($hardFail) { Add-Report "**RESULT: FAIL**"; Write-Output "Merge audit found problems. See $reportPath" -ForegroundColor Red; exit 1 } else { Add-Report "**RESULT: PASS**"; Write-Output "Merge audit passed. See $reportPath" -ForegroundColor Green; exit 0 }
+if ($hardFail) { Add-Report "**RESULT: FAIL**"; Write-Host "Merge audit found problems. See $reportPath" -ForegroundColor Red; exit 1 } else { Add-Report "**RESULT: PASS**"; Write-Host "Merge audit passed. See $reportPath" -ForegroundColor Green; exit 0 }

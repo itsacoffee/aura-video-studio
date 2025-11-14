@@ -43,15 +43,15 @@ param(
 
 # Banner
 Write-Output ""
-Write-Output "=============================================" -ForegroundColor Cyan
-Write-Output "  TTS Provider Validation Test Suite" -ForegroundColor Cyan
-Write-Output "  PR-CORE-002: TTS Integration Validation" -ForegroundColor Cyan
-Write-Output "=============================================" -ForegroundColor Cyan
+Write-Host "=============================================" -ForegroundColor Cyan
+Write-Host "  TTS Provider Validation Test Suite" -ForegroundColor Cyan
+Write-Host "  PR-CORE-002: TTS Integration Validation" -ForegroundColor Cyan
+Write-Host "=============================================" -ForegroundColor Cyan
 Write-Output ""
 
 # Check Windows version
 $osVersion = [System.Environment]::OSVersion.Version
-Write-Output "OS Version: Windows $($osVersion.Major).$($osVersion.Minor) (Build $($osVersion.Build))" -ForegroundColor Gray
+Write-Host "OS Version: Windows $($osVersion.Major).$($osVersion.Minor) (Build $($osVersion.Build))" -ForegroundColor Gray
 
 if ($osVersion.Build -lt 19041) {
     Write-Warning "Windows SAPI TTS requires Windows 10 build 19041 or later"
@@ -60,22 +60,22 @@ if ($osVersion.Build -lt 19041) {
 }
 
 # Check .NET SDK
-Write-Output "Checking .NET SDK..." -ForegroundColor Yellow
+Write-Host "Checking .NET SDK..." -ForegroundColor Yellow
 $dotnetVersion = dotnet --version 2>$null
 if ($LASTEXITCODE -eq 0) {
-    Write-Output "✓ .NET SDK found: $dotnetVersion" -ForegroundColor Green
+    Write-Host "✓ .NET SDK found: $dotnetVersion" -ForegroundColor Green
 } else {
-    Write-Output "✗ .NET SDK not found" -ForegroundColor Red
+    Write-Host "✗ .NET SDK not found" -ForegroundColor Red
     Write-Output "Please install .NET 8.0 SDK from: https://dotnet.microsoft.com/download"
     exit 1
 }
 
 # Check FFmpeg
-Write-Output "Checking FFmpeg..." -ForegroundColor Yellow
+Write-Host "Checking FFmpeg..." -ForegroundColor Yellow
 $ffmpegPath = Get-Command ffmpeg -ErrorAction SilentlyContinue
 if ($ffmpegPath) {
     $ffmpegVersion = ffmpeg -version 2>$null | Select-Object -First 1
-    Write-Output "✓ FFmpeg found: $ffmpegVersion" -ForegroundColor Green
+    Write-Host "✓ FFmpeg found: $ffmpegVersion" -ForegroundColor Green
 } else {
     Write-Warning "FFmpeg not found in PATH"
     Write-Warning "Audio format conversion tests will be skipped"
@@ -88,19 +88,19 @@ Write-Output ""
 $envVars = @()
 
 if ($IncludeCloudProviders) {
-    Write-Output "Cloud Provider Configuration:" -ForegroundColor Yellow
+    Write-Host "Cloud Provider Configuration:" -ForegroundColor Yellow
 
     # ElevenLabs
     $elevenLabsKey = $env:ELEVENLABS_API_KEY
     if (-not $elevenLabsKey) {
-        Write-Output "⚠ ELEVENLABS_API_KEY not set" -ForegroundColor Yellow
+        Write-Host "⚠ ELEVENLABS_API_KEY not set" -ForegroundColor Yellow
         $elevenLabsKey = Read-Host "Enter ElevenLabs API Key (or press Enter to skip)"
         if ($elevenLabsKey) {
             $env:ELEVENLABS_API_KEY = $elevenLabsKey
             $envVars += "ELEVENLABS_API_KEY"
         }
     } else {
-        Write-Output "✓ ElevenLabs API key configured" -ForegroundColor Green
+        Write-Host "✓ ElevenLabs API key configured" -ForegroundColor Green
     }
 
     # PlayHT
@@ -108,7 +108,7 @@ if ($IncludeCloudProviders) {
     $playHTUser = $env:PLAYHT_USER_ID
 
     if (-not $playHTKey) {
-        Write-Output "⚠ PLAYHT_API_KEY not set" -ForegroundColor Yellow
+        Write-Host "⚠ PLAYHT_API_KEY not set" -ForegroundColor Yellow
         $playHTKey = Read-Host "Enter PlayHT API Key (or press Enter to skip)"
         if ($playHTKey) {
             $env:PLAYHT_API_KEY = $playHTKey
@@ -117,7 +117,7 @@ if ($IncludeCloudProviders) {
     }
 
     if (-not $playHTUser) {
-        Write-Output "⚠ PLAYHT_USER_ID not set" -ForegroundColor Yellow
+        Write-Host "⚠ PLAYHT_USER_ID not set" -ForegroundColor Yellow
         $playHTUser = Read-Host "Enter PlayHT User ID (or press Enter to skip)"
         if ($playHTUser) {
             $env:PLAYHT_USER_ID = $playHTUser
@@ -126,20 +126,20 @@ if ($IncludeCloudProviders) {
     }
 
     if ($playHTKey -and $playHTUser) {
-        Write-Output "✓ PlayHT credentials configured" -ForegroundColor Green
+        Write-Host "✓ PlayHT credentials configured" -ForegroundColor Green
     }
 
     Write-Output ""
 }
 
 if ($IncludePiper) {
-    Write-Output "Piper TTS Configuration:" -ForegroundColor Yellow
+    Write-Host "Piper TTS Configuration:" -ForegroundColor Yellow
 
     $piperPath = $env:PIPER_EXECUTABLE_PATH
     $piperModel = $env:PIPER_MODEL_PATH
 
     if (-not $piperPath) {
-        Write-Output "⚠ PIPER_EXECUTABLE_PATH not set" -ForegroundColor Yellow
+        Write-Host "⚠ PIPER_EXECUTABLE_PATH not set" -ForegroundColor Yellow
         $piperPath = Read-Host "Enter Piper executable path (or press Enter to skip)"
         if ($piperPath) {
             $env:PIPER_EXECUTABLE_PATH = $piperPath
@@ -148,7 +148,7 @@ if ($IncludePiper) {
     }
 
     if (-not $piperModel) {
-        Write-Output "⚠ PIPER_MODEL_PATH not set" -ForegroundColor Yellow
+        Write-Host "⚠ PIPER_MODEL_PATH not set" -ForegroundColor Yellow
         $piperModel = Read-Host "Enter Piper model path (or press Enter to skip)"
         if ($piperModel) {
             $env:PIPER_MODEL_PATH = $piperModel
@@ -158,13 +158,13 @@ if ($IncludePiper) {
 
     if ($piperPath -and $piperModel) {
         if (Test-Path $piperPath) {
-            Write-Output "✓ Piper executable found: $piperPath" -ForegroundColor Green
+            Write-Host "✓ Piper executable found: $piperPath" -ForegroundColor Green
         } else {
             Write-Warning "Piper executable not found at: $piperPath"
         }
 
         if (Test-Path $piperModel) {
-            Write-Output "✓ Piper model found: $piperModel" -ForegroundColor Green
+            Write-Host "✓ Piper model found: $piperModel" -ForegroundColor Green
         } else {
             Write-Warning "Piper model not found at: $piperModel"
         }
@@ -178,35 +178,35 @@ $testFilters = @()
 $testFilters += "FullyQualifiedName~TtsProviderIntegrationValidationTests"
 
 # Always run local tests
-Write-Output "Test Configuration:" -ForegroundColor Yellow
-Write-Output "✓ Windows SAPI tests: ENABLED" -ForegroundColor Green
-Write-Output "✓ Audio storage tests: ENABLED" -ForegroundColor Green
-Write-Output "✓ Format conversion tests: ENABLED" -ForegroundColor Green
+Write-Host "Test Configuration:" -ForegroundColor Yellow
+Write-Host "✓ Windows SAPI tests: ENABLED" -ForegroundColor Green
+Write-Host "✓ Audio storage tests: ENABLED" -ForegroundColor Green
+Write-Host "✓ Format conversion tests: ENABLED" -ForegroundColor Green
 
 if ($IncludeCloudProviders) {
     if ($env:ELEVENLABS_API_KEY) {
-        Write-Output "✓ ElevenLabs tests: ENABLED" -ForegroundColor Green
+        Write-Host "✓ ElevenLabs tests: ENABLED" -ForegroundColor Green
     } else {
-        Write-Output "⊘ ElevenLabs tests: SKIPPED (no API key)" -ForegroundColor Yellow
+        Write-Host "⊘ ElevenLabs tests: SKIPPED (no API key)" -ForegroundColor Yellow
     }
 
     if ($env:PLAYHT_API_KEY -and $env:PLAYHT_USER_ID) {
-        Write-Output "✓ PlayHT tests: ENABLED" -ForegroundColor Green
+        Write-Host "✓ PlayHT tests: ENABLED" -ForegroundColor Green
     } else {
-        Write-Output "⊘ PlayHT tests: SKIPPED (no credentials)" -ForegroundColor Yellow
+        Write-Host "⊘ PlayHT tests: SKIPPED (no credentials)" -ForegroundColor Yellow
     }
 } else {
-    Write-Output "⊘ Cloud provider tests: SKIPPED" -ForegroundColor Yellow
+    Write-Host "⊘ Cloud provider tests: SKIPPED" -ForegroundColor Yellow
 }
 
 if ($IncludePiper) {
     if ($env:PIPER_EXECUTABLE_PATH -and $env:PIPER_MODEL_PATH) {
-        Write-Output "✓ Piper tests: ENABLED" -ForegroundColor Green
+        Write-Host "✓ Piper tests: ENABLED" -ForegroundColor Green
     } else {
-        Write-Output "⊘ Piper tests: SKIPPED (not configured)" -ForegroundColor Yellow
+        Write-Host "⊘ Piper tests: SKIPPED (not configured)" -ForegroundColor Yellow
     }
 } else {
-    Write-Output "⊘ Piper tests: SKIPPED" -ForegroundColor Yellow
+    Write-Host "⊘ Piper tests: SKIPPED" -ForegroundColor Yellow
 }
 
 Write-Output ""
@@ -216,9 +216,9 @@ Write-Output "Press Enter to start tests, or Ctrl+C to cancel..."
 $null = Read-Host
 
 Write-Output ""
-Write-Output "=============================================" -ForegroundColor Cyan
-Write-Output "  Running Tests..." -ForegroundColor Cyan
-Write-Output "=============================================" -ForegroundColor Cyan
+Write-Host "=============================================" -ForegroundColor Cyan
+Write-Host "  Running Tests..." -ForegroundColor Cyan
+Write-Host "=============================================" -ForegroundColor Cyan
 Write-Output ""
 
 # Build dotnet test command
@@ -237,7 +237,7 @@ $resultsFile = "TestResults_TTS_$timestamp.trx"
 $testCommand += " --logger `"trx;LogFileName=$resultsFile`""
 
 # Execute tests
-Write-Output "Executing: $testCommand" -ForegroundColor Gray
+Write-Host "Executing: $testCommand" -ForegroundColor Gray
 Write-Output ""
 
 $startTime = Get-Date
@@ -247,60 +247,60 @@ $endTime = Get-Date
 $duration = $endTime - $startTime
 
 Write-Output ""
-Write-Output "=============================================" -ForegroundColor Cyan
-Write-Output "  Test Results" -ForegroundColor Cyan
-Write-Output "=============================================" -ForegroundColor Cyan
+Write-Host "=============================================" -ForegroundColor Cyan
+Write-Host "  Test Results" -ForegroundColor Cyan
+Write-Host "=============================================" -ForegroundColor Cyan
 Write-Output ""
 
-Write-Output "Duration: $($duration.TotalSeconds) seconds" -ForegroundColor Gray
-Write-Output "Results file: $resultsFile" -ForegroundColor Gray
+Write-Host "Duration: $($duration.TotalSeconds) seconds" -ForegroundColor Gray
+Write-Host "Results file: $resultsFile" -ForegroundColor Gray
 Write-Output ""
 
 if ($exitCode -eq 0) {
-    Write-Output "✓ All tests PASSED!" -ForegroundColor Green
+    Write-Host "✓ All tests PASSED!" -ForegroundColor Green
 } else {
-    Write-Output "✗ Some tests FAILED" -ForegroundColor Red
-    Write-Output "Exit code: $exitCode" -ForegroundColor Red
+    Write-Host "✗ Some tests FAILED" -ForegroundColor Red
+    Write-Host "Exit code: $exitCode" -ForegroundColor Red
 }
 
 Write-Output ""
 
 # Cleanup environment variables
 if ($envVars.Count -gt 0) {
-    Write-Output "Cleaning up environment variables..." -ForegroundColor Gray
+    Write-Host "Cleaning up environment variables..." -ForegroundColor Gray
     foreach ($var in $envVars) {
         Remove-Item "Env:$var" -ErrorAction SilentlyContinue
     }
 }
 
 # Summary report
-Write-Output "=============================================" -ForegroundColor Cyan
-Write-Output "  Validation Summary" -ForegroundColor Cyan
-Write-Output "=============================================" -ForegroundColor Cyan
+Write-Host "=============================================" -ForegroundColor Cyan
+Write-Host "  Validation Summary" -ForegroundColor Cyan
+Write-Host "=============================================" -ForegroundColor Cyan
 Write-Output ""
 
-Write-Output "Provider Status:" -ForegroundColor Yellow
-Write-Output "  Windows SAPI:  Tested" -ForegroundColor Green
-Write-Output "  Audio Storage: Tested" -ForegroundColor Green
-Write-Output "  Format Convert:Tested" -ForegroundColor Green
+Write-Host "Provider Status:" -ForegroundColor Yellow
+Write-Host "  Windows SAPI:  Tested" -ForegroundColor Green
+Write-Host "  Audio Storage: Tested" -ForegroundColor Green
+Write-Host "  Format Convert:Tested" -ForegroundColor Green
 
 if ($IncludeCloudProviders) {
     if ($env:ELEVENLABS_API_KEY) {
-        Write-Output "  ElevenLabs:    Tested" -ForegroundColor Green
+        Write-Host "  ElevenLabs:    Tested" -ForegroundColor Green
     }
     if ($env:PLAYHT_API_KEY) {
-        Write-Output "  PlayHT:        Tested" -ForegroundColor Green
+        Write-Host "  PlayHT:        Tested" -ForegroundColor Green
     }
 }
 
 if ($IncludePiper -and $env:PIPER_EXECUTABLE_PATH) {
-    Write-Output "  Piper:         Tested" -ForegroundColor Green
+    Write-Host "  Piper:         Tested" -ForegroundColor Green
 }
 
 Write-Output ""
-Write-Output "For detailed report, see:" -ForegroundColor Yellow
-Write-Output "  - TTS_PROVIDER_VALIDATION_REPORT.md" -ForegroundColor Cyan
-Write-Output "  - $resultsFile" -ForegroundColor Cyan
+Write-Host "For detailed report, see:" -ForegroundColor Yellow
+Write-Host "  - TTS_PROVIDER_VALIDATION_REPORT.md" -ForegroundColor Cyan
+Write-Host "  - $resultsFile" -ForegroundColor Cyan
 Write-Output ""
 
 exit $exitCode

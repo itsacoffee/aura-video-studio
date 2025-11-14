@@ -18,30 +18,30 @@ $InfoColor = "Cyan"
 
 function Write-Info {
     param([string]$Message)
-    Write-Output "[INFO] $Message" -ForegroundColor $InfoColor
+    Write-Host "[INFO] $Message" -ForegroundColor $InfoColor
 }
 
 function Write-Success {
     param([string]$Message)
-    Write-Output "[SUCCESS] $Message" -ForegroundColor $SuccessColor
+    Write-Host "[SUCCESS] $Message" -ForegroundColor $SuccessColor
 }
 
 function Show-Warning {
     param([string]$Message)
-    Write-Output "[WARNING] $Message" -ForegroundColor $WarningColor
+    Write-Host "[WARNING] $Message" -ForegroundColor $WarningColor
 }
 
 function Show-ErrorMessageMessage {
     param([string]$Message)
-    Write-Output "[ERROR] $Message" -ForegroundColor $ErrorColor
+    Write-Host "[ERROR] $Message" -ForegroundColor $ErrorColor
 }
 
 function Write-Step {
     param([string]$Message)
     Write-Output ""
-    Write-Output "========================================" -ForegroundColor $InfoColor
-    Write-Output $Message -ForegroundColor $InfoColor
-    Write-Output "========================================" -ForegroundColor $InfoColor
+    Write-Host "========================================" -ForegroundColor $InfoColor
+    Write-Host $Message -ForegroundColor $InfoColor
+    Write-Host "========================================" -ForegroundColor $InfoColor
     Write-Output ""
 }
 
@@ -69,10 +69,10 @@ if ($Help) {
 $buildStartTime = Get-Date
 
 Write-Output ""
-Write-Output "========================================" -ForegroundColor $SuccessColor
-Write-Output "Aura Video Studio" -ForegroundColor $SuccessColor
-Write-Output "Windows Production Build" -ForegroundColor $SuccessColor
-Write-Output "========================================" -ForegroundColor $SuccessColor
+Write-Host "========================================" -ForegroundColor $SuccessColor
+Write-Host "Aura Video Studio" -ForegroundColor $SuccessColor
+Write-Host "Windows Production Build" -ForegroundColor $SuccessColor
+Write-Host "========================================" -ForegroundColor $SuccessColor
 Write-Output ""
 Write-Info "Build started: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
 Write-Output ""
@@ -385,9 +385,9 @@ Write-Output ""
 # ========================================
 # Success!
 # ========================================
-Write-Output "========================================" -ForegroundColor $SuccessColor
-Write-Output "Build Complete! 🎉" -ForegroundColor $SuccessColor
-Write-Output "========================================" -ForegroundColor $SuccessColor
+Write-Host "========================================" -ForegroundColor $SuccessColor
+Write-Host "Build Complete! 🎉" -ForegroundColor $SuccessColor
+Write-Host "========================================" -ForegroundColor $SuccessColor
 Write-Output ""
 
 exit 0

@@ -14,22 +14,22 @@ $InfoColor = "Cyan"
 
 function Write-Info {
     param([string]$Message)
-    Write-Output "[INFO] $Message" -ForegroundColor $InfoColor
+    Write-Host "[INFO] $Message" -ForegroundColor $InfoColor
 }
 
 function Write-Success {
     param([string]$Message)
-    Write-Output "[SUCCESS] $Message" -ForegroundColor $SuccessColor
+    Write-Host "[SUCCESS] $Message" -ForegroundColor $SuccessColor
 }
 
 function Show-Warning {
     param([string]$Message)
-    Write-Output "[WARNING] $Message" -ForegroundColor $WarningColor
+    Write-Host "[WARNING] $Message" -ForegroundColor $WarningColor
 }
 
 function Show-ErrorMessageMessage {
     param([string]$Message)
-    Write-Output "[ERROR] $Message" -ForegroundColor $ErrorColor
+    Write-Host "[ERROR] $Message" -ForegroundColor $ErrorColor
 }
 
 if ($Help) {
@@ -43,9 +43,9 @@ if ($Help) {
     exit 0
 }
 
-Write-Output "========================================" -ForegroundColor $InfoColor
-Write-Output "FFmpeg Download and Setup" -ForegroundColor $InfoColor
-Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Host "========================================" -ForegroundColor $InfoColor
+Write-Host "FFmpeg Download and Setup" -ForegroundColor $InfoColor
+Write-Host "========================================" -ForegroundColor $InfoColor
 Write-Output ""
 
 $ScriptDir = $PSScriptRoot
@@ -273,9 +273,9 @@ Write-Output ""
 # ========================================
 # Summary
 # ========================================
-Write-Output "========================================" -ForegroundColor $SuccessColor
-Write-Output "FFmpeg Setup Complete!" -ForegroundColor $SuccessColor
-Write-Output "========================================" -ForegroundColor $SuccessColor
+Write-Host "========================================" -ForegroundColor $SuccessColor
+Write-Host "FFmpeg Setup Complete!" -ForegroundColor $SuccessColor
+Write-Host "========================================" -ForegroundColor $SuccessColor
 Write-Output ""
 Write-Info "FFmpeg location:"
 Write-Output "  $FFmpegBinDir"

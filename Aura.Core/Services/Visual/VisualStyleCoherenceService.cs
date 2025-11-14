@@ -70,8 +70,12 @@ public class VisualStyleCoherenceService
         await Task.Delay(1, ct).ConfigureAwait(false);
 
         var colorGuidance = BuildColorConsistencyGuidance(referenceStyle.ColorPalette);
-        var lightingGuidance = BuildLightingMatchGuidance(referenceStyle.LightingCharacteristics);
-        var perspectiveGuidance = BuildPerspectiveGuidance(referenceStyle.CompositionStyle);
+        var lightingGuidance = referenceStyle.LightingCharacteristics != null 
+            ? BuildLightingMatchGuidance(referenceStyle.LightingCharacteristics)
+            : Array.Empty<string>();
+        var perspectiveGuidance = referenceStyle.CompositionStyle != null
+            ? BuildPerspectiveGuidance(referenceStyle.CompositionStyle)
+            : Array.Empty<string>();
 
         var transitionHints = BuildTransitionHints(referenceStyle, targetPrompt);
 

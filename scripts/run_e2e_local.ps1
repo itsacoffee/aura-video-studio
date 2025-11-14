@@ -43,10 +43,10 @@ $TestTopic = "Local Engine Test Video"
 $MaxWaitSeconds = 300
 
 # Colors for output
-function Write-Success { param($Message) Write-Output "✓ $Message" -ForegroundColor Green }
-function Write-Info { param($Message) Write-Output "→ $Message" -ForegroundColor Cyan }
-function Show-Warning { param($Message) Write-Output "⚠ $Message" -ForegroundColor Yellow }
-function Show-ErrorMessage { param($Message) Write-Output "✗ $Message" -ForegroundColor Red }
+function Write-Success { param($Message) Write-Host "✓ $Message" -ForegroundColor Green }
+function Write-Info { param($Message) Write-Host "→ $Message" -ForegroundColor Cyan }
+function Show-Warning { param($Message) Write-Host "⚠ $Message" -ForegroundColor Yellow }
+function Show-ErrorMessage { param($Message) Write-Host "✗ $Message" -ForegroundColor Red }
 
 # Create output directory
 if (-not (Test-Path $OutputDir)) {

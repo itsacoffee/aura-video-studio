@@ -22,7 +22,7 @@ public class VisualTextAlignmentService
 {
     private readonly ILogger<VisualTextAlignmentService> _logger;
     private readonly TimeSpan _llmTimeout = TimeSpan.FromSeconds(30);
-    private readonly int _maxRetries = 2;
+    // private readonly int _maxRetries = 2; // Currently unused - reserved for future retry logic
     private readonly double _targetComplexityCorrelation = -0.7;
 
     public VisualTextAlignmentService(ILogger<VisualTextAlignmentService> logger)

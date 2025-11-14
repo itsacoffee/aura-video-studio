@@ -15,22 +15,22 @@ $InfoColor = "Cyan"
 
 function Write-Info {
     param([string]$Message)
-    Write-Output "[INFO] $Message" -ForegroundColor $InfoColor
+    Write-Host "[INFO] $Message" -ForegroundColor $InfoColor
 }
 
 function Write-Success {
     param([string]$Message)
-    Write-Output "[SUCCESS] $Message" -ForegroundColor $SuccessColor
+    Write-Host "[SUCCESS] $Message" -ForegroundColor $SuccessColor
 }
 
 function Show-Warning {
     param([string]$Message)
-    Write-Output "[WARNING] $Message" -ForegroundColor $WarningColor
+    Write-Host "[WARNING] $Message" -ForegroundColor $WarningColor
 }
 
 function Show-ErrorMessage {
     param([string]$Message)
-    Write-Output "[ERROR] $Message" -ForegroundColor $ErrorColor
+    Write-Host "[ERROR] $Message" -ForegroundColor $ErrorColor
 }
 
 if ($Help) {
@@ -47,13 +47,13 @@ if ($Help) {
     exit 0
 }
 
-Write-Output "========================================" -ForegroundColor $InfoColor
-Write-Output "Aura Video Studio - Desktop Build" -ForegroundColor $InfoColor
-Write-Output "========================================" -ForegroundColor $InfoColor
-Write-Output ""
+Write-Host "========================================" -ForegroundColor $InfoColor
+Write-Host "Aura Video Studio - Desktop Build" -ForegroundColor $InfoColor
+Write-Host "========================================" -ForegroundColor $InfoColor
+Write-Host ""
 
 Write-Info "Build target: $Target"
-Write-Output ""
+Write-Host ""
 
 # Check if Node.js is installed
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
@@ -97,10 +97,10 @@ if (-not $SkipFrontend) {
     }
 
     Write-Success "Frontend build complete"
-    Write-Output ""
+    Write-Host ""
 } else {
     Show-Warning "Skipping frontend build"
-    Write-Output ""
+    Write-Host ""
 }
 
 # ========================================
@@ -136,10 +136,10 @@ if (-not $SkipBackend) {
     }
 
     Write-Success "Backend builds complete"
-    Write-Output ""
+    Write-Host ""
 } else {
     Show-Warning "Skipping backend build"
-    Write-Output ""
+    Write-Host ""
 }
 
 # ========================================
@@ -159,7 +159,7 @@ if (-not (Test-Path "node_modules")) {
 }
 
 Write-Success "Electron dependencies ready"
-Write-Output ""
+Write-Host ""
 
 # ========================================
 # Step 4: Validate Resources
@@ -188,7 +188,7 @@ if ($ValidationFailed) {
 }
 
 Write-Success "All required resources validated"
-Write-Output ""
+Write-Host ""
 
 # ========================================
 # Step 5: Build Electron Installers
@@ -214,27 +214,27 @@ if (-not $SkipInstaller) {
     npm run build:dir
 }
 
-Write-Output ""
+Write-Host ""
 Write-Success "========================================"
 Write-Success "Build Complete!"
 Write-Success "========================================"
-Write-Output ""
+Write-Host ""
 Write-Info "Output directory: $ScriptDir\dist"
-Write-Output ""
+Write-Host ""
 
 # List generated files
 if (Test-Path "$ScriptDir\dist") {
     Write-Info "Generated files:"
     Get-ChildItem "$ScriptDir\dist" | ForEach-Object {
         $size = if ($_.PSIsContainer) { "DIR" } else { "{0:N2} MB" -f ($_.Length / 1MB) }
-        Write-Output "  $($_.Name) ($size)"
+        Write-Host "  $($_.Name) ($size)"
     }
-    Write-Output ""
+    Write-Host ""
 }
 
 Write-Info "To run the app in development mode:"
-Write-Output "  cd Aura.Desktop"
-Write-Output "  npm start"
-Write-Output ""
+Write-Host "  cd Aura.Desktop"
+Write-Host "  npm start"
+Write-Host ""
 
 Write-Success "All done! 🎉"

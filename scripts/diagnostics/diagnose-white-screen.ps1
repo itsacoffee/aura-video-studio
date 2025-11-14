@@ -30,36 +30,36 @@ $Script:FixesApplied = @()
 function Write-DiagHeader {
     param([string]$Message)
     Write-Output ""
-    Write-Output "=" * 80 -ForegroundColor Cyan
-    Write-Output $Message -ForegroundColor Cyan
-    Write-Output "=" * 80 -ForegroundColor Cyan
+    Write-Host "=" * 80 -ForegroundColor Cyan
+    Write-Host $Message -ForegroundColor Cyan
+    Write-Host "=" * 80 -ForegroundColor Cyan
 }
 
 function Write-DiagInfo {
     param([string]$Message)
-    Write-Output "ℹ $Message" -ForegroundColor Blue
+    Write-Host "ℹ $Message" -ForegroundColor Blue
 }
 
 function Write-DiagSuccess {
     param([string]$Message)
-    Write-Output "✓ $Message" -ForegroundColor Green
+    Write-Host "✓ $Message" -ForegroundColor Green
 }
 
 function Write-DiagWarning {
     param([string]$Message)
-    Write-Output "⚠ $Message" -ForegroundColor Yellow
+    Write-Host "⚠ $Message" -ForegroundColor Yellow
     $Script:IssuesFound += $Message
 }
 
 function Write-DiagError {
     param([string]$Message)
-    Write-Output "✗ $Message" -ForegroundColor Red
+    Write-Host "✗ $Message" -ForegroundColor Red
     $Script:IssuesFound += $Message
 }
 
 function Write-DiagFix {
     param([string]$Message)
-    Write-Output "🔧 $Message" -ForegroundColor Magenta
+    Write-Host "🔧 $Message" -ForegroundColor Magenta
     $Script:FixesApplied += $Message
 }
 
@@ -69,8 +69,8 @@ $originalLocation = Get-Location
 Set-Location $rootDir
 
 Write-DiagHeader "AURA VIDEO STUDIO - WHITE SCREEN DIAGNOSTIC"
-Write-Output "Timestamp: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -ForegroundColor Gray
-Write-Output "Root Directory: $rootDir" -ForegroundColor Gray
+Write-Host "Timestamp: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -ForegroundColor Gray
+Write-Host "Root Directory: $rootDir" -ForegroundColor Gray
 Write-Output ""
 
 # ============================================================================
@@ -327,16 +327,16 @@ Write-DiagHeader "SECTION 5: BROWSER/SERVER ISSUES TO CHECK MANUALLY"
 
 Write-DiagInfo "After starting the API, check these in the browser:"
 Write-Output ""
-Write-Output "  1. Open http://127.0.0.1:5005 in your browser" -ForegroundColor White
-Write-Output "  2. Press F12 to open DevTools" -ForegroundColor White
-Write-Output "  3. Check Console tab for JavaScript errors (red text)" -ForegroundColor White
-Write-Output "  4. Check Network tab:" -ForegroundColor White
-Write-Output "     - Refresh page (F5)" -ForegroundColor White
-Write-Output "     - Look for .js files with status other than 200" -ForegroundColor White
-Write-Output "     - Click on a .js file and check if Response shows JavaScript or HTML" -ForegroundColor White
-Write-Output "  5. Check Elements tab:" -ForegroundColor White
-Write-Output "     - Find <div id=""root""></div>" -ForegroundColor White
-Write-Output "     - Is it empty or does it have content?" -ForegroundColor White
+Write-Host "  1. Open http://127.0.0.1:5005 in your browser" -ForegroundColor White
+Write-Host "  2. Press F12 to open DevTools" -ForegroundColor White
+Write-Host "  3. Check Console tab for JavaScript errors (red text)" -ForegroundColor White
+Write-Host "  4. Check Network tab:" -ForegroundColor White
+Write-Host "     - Refresh page (F5)" -ForegroundColor White
+Write-Host "     - Look for .js files with status other than 200" -ForegroundColor White
+Write-Host "     - Click on a .js file and check if Response shows JavaScript or HTML" -ForegroundColor White
+Write-Host "  5. Check Elements tab:" -ForegroundColor White
+Write-Host "     - Find <div id=""root""></div>" -ForegroundColor White
+Write-Host "     - Is it empty or does it have content?" -ForegroundColor White
 Write-Output ""
 
 # ============================================================================
@@ -441,10 +441,10 @@ if ($Fix) {
         Write-Output ""
         Write-DiagSuccess "Nuclear fix complete!"
         Write-Output ""
-        Write-Output "Next steps:" -ForegroundColor Cyan
-        Write-Output "  1. Navigate to: artifacts\portable\build" -ForegroundColor White
-        Write-Output "  2. Run: .\Api\Aura.Api.exe" -ForegroundColor White
-        Write-Output "  3. Open browser: http://127.0.0.1:5005" -ForegroundColor White
+        Write-Host "Next steps:" -ForegroundColor Cyan
+        Write-Host "  1. Navigate to: artifacts\portable\build" -ForegroundColor White
+        Write-Host "  2. Run: .\Api\Aura.Api.exe" -ForegroundColor White
+        Write-Host "  3. Open browser: http://127.0.0.1:5005" -ForegroundColor White
         Write-Output ""
 
     } else {
@@ -453,8 +453,8 @@ if ($Fix) {
 } else {
     Write-DiagHeader "SECTION 6: FIX OPTIONS"
     Write-Output ""
-    Write-Output "To apply automatic fixes, run:" -ForegroundColor Cyan
-    Write-Output "  .\scripts\diagnostics\diagnose-white-screen.ps1 -Fix" -ForegroundColor White
+    Write-Host "To apply automatic fixes, run:" -ForegroundColor Cyan
+    Write-Host "  .\scripts\diagnostics\diagnose-white-screen.ps1 -Fix" -ForegroundColor White
     Write-Output ""
 }
 
@@ -466,31 +466,31 @@ Write-DiagHeader "DIAGNOSTIC SUMMARY"
 if ($Script:IssuesFound.Count -eq 0) {
     Write-DiagSuccess "No issues detected!"
     Write-Output ""
-    Write-Output "If you're still seeing a white screen:" -ForegroundColor Yellow
-    Write-Output "  1. Clear browser cache (Ctrl+Shift+Delete)" -ForegroundColor White
-    Write-Output "  2. Try incognito mode" -ForegroundColor White
-    Write-Output "  3. Check browser DevTools console for errors" -ForegroundColor White
-    Write-Output "  4. Verify API is running and accessible" -ForegroundColor White
+    Write-Host "If you're still seeing a white screen:" -ForegroundColor Yellow
+    Write-Host "  1. Clear browser cache (Ctrl+Shift+Delete)" -ForegroundColor White
+    Write-Host "  2. Try incognito mode" -ForegroundColor White
+    Write-Host "  3. Check browser DevTools console for errors" -ForegroundColor White
+    Write-Host "  4. Verify API is running and accessible" -ForegroundColor White
 } else {
     Write-Output ""
-    Write-Output "Issues Found: $($Script:IssuesFound.Count)" -ForegroundColor Yellow
+    Write-Host "Issues Found: $($Script:IssuesFound.Count)" -ForegroundColor Yellow
     foreach ($issue in $Script:IssuesFound) {
-        Write-Output "  - $issue" -ForegroundColor Yellow
+        Write-Host "  - $issue" -ForegroundColor Yellow
     }
 }
 
 if ($Script:FixesApplied.Count -gt 0) {
     Write-Output ""
-    Write-Output "Fixes Applied: $($Script:FixesApplied.Count)" -ForegroundColor Green
+    Write-Host "Fixes Applied: $($Script:FixesApplied.Count)" -ForegroundColor Green
     foreach ($fix in $Script:FixesApplied) {
-        Write-Output "  - $fix" -ForegroundColor Green
+        Write-Host "  - $fix" -ForegroundColor Green
     }
 }
 
 Write-Output ""
-Write-Output "For more help, see:" -ForegroundColor Cyan
-Write-Output "  - PORTABLE.md (troubleshooting section)" -ForegroundColor White
-Write-Output "  - /diag endpoint (http://127.0.0.1:5005/diag)" -ForegroundColor White
+Write-Host "For more help, see:" -ForegroundColor Cyan
+Write-Host "  - PORTABLE.md (troubleshooting section)" -ForegroundColor White
+Write-Host "  - /diag endpoint (http://127.0.0.1:5005/diag)" -ForegroundColor White
 Write-Output ""
 Write-DiagHeader "DIAGNOSTIC COMPLETE"
 

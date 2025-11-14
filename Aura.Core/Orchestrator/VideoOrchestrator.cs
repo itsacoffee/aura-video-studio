@@ -943,7 +943,7 @@ public class VideoOrchestrator
             {
                 case GenerationTaskType.ScriptGeneration:
                     // Generate script using LLM with retry logic and fallback for Quick Demo
-                    bool usedFallback = false;
+                    // bool usedFallback = false; // Currently unused - reserved for fallback tracking
                     
                     try
                     {

@@ -14,22 +14,22 @@ $InfoColor = "Cyan"
 
 function Write-Info {
     param([string]$Message)
-    Write-Output "[INFO] $Message" -ForegroundColor $InfoColor
+    Write-Host "[INFO] $Message" -ForegroundColor $InfoColor
 }
 
 function Write-Success {
     param([string]$Message)
-    Write-Output "[✓] $Message" -ForegroundColor $SuccessColor
+    Write-Host "[✓] $Message" -ForegroundColor $SuccessColor
 }
 
 function Write-Warning {
     param([string]$Message)
-    Write-Output "[⚠] $Message" -ForegroundColor $WarningColor
+    Write-Host "[⚠] $Message" -ForegroundColor $WarningColor
 }
 
 function Write-Failure {
     param([string]$Message)
-    Write-Output "[✗] $Message" -ForegroundColor $ErrorColor
+    Write-Host "[✗] $Message" -ForegroundColor $ErrorColor
 }
 
 if ($Help) {
@@ -42,9 +42,9 @@ if ($Help) {
     exit 0
 }
 
-Write-Output "========================================" -ForegroundColor $InfoColor
-Write-Output "Aura Video Studio - Uninstallation Validation" -ForegroundColor $InfoColor
-Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Host "========================================" -ForegroundColor $InfoColor
+Write-Host "Aura Video Studio - Uninstallation Validation" -ForegroundColor $InfoColor
+Write-Host "========================================" -ForegroundColor $InfoColor
 Write-Output ""
 
 $cleanupResults = @{
@@ -227,12 +227,12 @@ if (Test-Path $documentsPath) {
 # Summary
 # ========================================
 Write-Output ""
-Write-Output "========================================" -ForegroundColor $InfoColor
-Write-Output "Uninstallation Validation Summary" -ForegroundColor $InfoColor
-Write-Output "========================================" -ForegroundColor $InfoColor
-Write-Output "Cleaned:   $($cleanupResults.Cleaned)" -ForegroundColor $SuccessColor
-Write-Output "Remaining: $($cleanupResults.Remaining)" -ForegroundColor $ErrorColor
-Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Host "========================================" -ForegroundColor $InfoColor
+Write-Host "Uninstallation Validation Summary" -ForegroundColor $InfoColor
+Write-Host "========================================" -ForegroundColor $InfoColor
+Write-Host "Cleaned:   $($cleanupResults.Cleaned)" -ForegroundColor $SuccessColor
+Write-Host "Remaining: $($cleanupResults.Remaining)" -ForegroundColor $ErrorColor
+Write-Host "========================================" -ForegroundColor $InfoColor
 Write-Output ""
 
 if ($cleanupResults.Remaining -eq 0) {

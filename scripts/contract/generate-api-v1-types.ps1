@@ -21,20 +21,20 @@ $OUTPUT_FILE = Join-Path $REPO_ROOT "Aura.Web\src\types\api-v1.ts"
 $SWAGGER_URL = "http://localhost:5000/swagger/v1/swagger.json"
 $API_PORT = 5000
 
-Write-Output "🚀 Generating API V1 TypeScript types from OpenAPI spec...`n" -ForegroundColor Cyan
+Write-Host "🚀 Generating API V1 TypeScript types from OpenAPI spec...`n" -ForegroundColor Cyan
 
 # Check if openapi-typescript is available
 try {
     npx openapi-typescript --version | Out-Null
-    Write-Output "✅ openapi-typescript found`n" -ForegroundColor Green
+    Write-Host "✅ openapi-typescript found`n" -ForegroundColor Green
 } catch {
-    Write-Output "❌ openapi-typescript not found. Installing..." -ForegroundColor Yellow
+    Write-Host "❌ openapi-typescript not found. Installing..." -ForegroundColor Yellow
     npm install -g openapi-typescript
-    Write-Output "✅ openapi-typescript installed`n" -ForegroundColor Green
+    Write-Host "✅ openapi-typescript installed`n" -ForegroundColor Green
 }
 
 # Start API server
-Write-Output "1️⃣  Starting API server on port $API_PORT..." -ForegroundColor Cyan
+Write-Host "1️⃣  Starting API server on port $API_PORT..." -ForegroundColor Cyan
 $env:ASPNETCORE_ENVIRONMENT = "Development"
 $apiProcess = Start-Process -FilePath "dotnet" `
     -ArgumentList "run", "--no-build", "--urls", "http://localhost:$API_PORT" `
@@ -43,7 +43,7 @@ $apiProcess = Start-Process -FilePath "dotnet" `
     -WindowStyle Hidden
 
 # Wait for server to start
-Write-Output "⏳ Waiting for server to be ready..." -ForegroundColor Yellow
+Write-Host "⏳ Waiting for server to be ready..." -ForegroundColor Yellow
 $maxAttempts = 30
 $attempt = 0
 $serverReady = $false
@@ -56,7 +56,7 @@ while ($attempt -lt $maxAttempts -and -not $serverReady) {
         $response = Invoke-WebRequest -Uri $SWAGGER_URL -Method GET -TimeoutSec 2 -ErrorAction SilentlyContinue
         if ($response.StatusCode -eq 200) {
             $serverReady = $true
-            Write-Output "✅ API server is running`n" -ForegroundColor Green
+            Write-Host "✅ API server is running`n" -ForegroundColor Green
         }
     } catch {
         # Server not ready yet, continue waiting
@@ -65,32 +65,32 @@ while ($attempt -lt $maxAttempts -and -not $serverReady) {
 }
 
 if (-not $serverReady) {
-    Write-Output "❌ API server failed to start within 30 seconds" -ForegroundColor Red
+    Write-Host "❌ API server failed to start within 30 seconds" -ForegroundColor Red
     Stop-Process -Id $apiProcess.Id -Force
     exit 1
 }
 
 try {
     # Fetch OpenAPI spec
-    Write-Output "2️⃣  Fetching OpenAPI spec from $SWAGGER_URL" -ForegroundColor Cyan
+    Write-Host "2️⃣  Fetching OpenAPI spec from $SWAGGER_URL" -ForegroundColor Cyan
     $openApiJson = Invoke-RestMethod -Uri $SWAGGER_URL -Method GET
 
     $tempFile = Join-Path $PSScriptRoot "openapi.json"
     $openApiJson | ConvertTo-Json -Depth 100 | Out-File -FilePath $tempFile -Encoding UTF8
 
-    Write-Output "✅ OpenAPI spec fetched`n" -ForegroundColor Green
+    Write-Host "✅ OpenAPI spec fetched`n" -ForegroundColor Green
 
     # Generate TypeScript types
-    Write-Output "3️⃣  Generating TypeScript types with openapi-typescript..." -ForegroundColor Cyan
+    Write-Host "3️⃣  Generating TypeScript types with openapi-typescript..." -ForegroundColor Cyan
     npx openapi-typescript "$tempFile" --output "$OUTPUT_FILE"
 
     # Clean up temp file
     Remove-Item $tempFile -Force
 
-    Write-Output "✅ TypeScript types generated`n" -ForegroundColor Green
+    Write-Host "✅ TypeScript types generated`n" -ForegroundColor Green
 
     # Add header comment
-    Write-Output "4️⃣  Adding header comment..." -ForegroundColor Cyan
+    Write-Host "4️⃣  Adding header comment..." -ForegroundColor Cyan
 
     $header = @"
 /**
@@ -111,11 +111,11 @@ try {
     $content = Get-Content $OUTPUT_FILE -Raw
     $header + $content | Out-File -FilePath $OUTPUT_FILE -Encoding UTF8 -NoNewline
 
-    Write-Output "✅ Header added`n" -ForegroundColor Green
-    Write-Output "🎉 Done! TypeScript types saved to $OUTPUT_FILE" -ForegroundColor Green
+    Write-Host "✅ Header added`n" -ForegroundColor Green
+    Write-Host "🎉 Done! TypeScript types saved to $OUTPUT_FILE" -ForegroundColor Green
 
 } finally {
     # Stop API server
     Stop-Process -Id $apiProcess.Id -Force -ErrorAction SilentlyContinue
-    Write-Output "`n🛑 API server stopped" -ForegroundColor Yellow
+    Write-Host "`n🛑 API server stopped" -ForegroundColor Yellow
 }

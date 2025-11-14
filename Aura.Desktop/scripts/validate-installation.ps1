@@ -17,22 +17,22 @@ $InfoColor = "Cyan"
 
 function Write-Info {
     param([string]$Message)
-    Write-Output "[INFO] $Message" -ForegroundColor $InfoColor
+    Write-Host "[INFO] $Message" -ForegroundColor $InfoColor
 }
 
 function Write-Success {
     param([string]$Message)
-    Write-Output "[✓] $Message" -ForegroundColor $SuccessColor
+    Write-Host "[✓] $Message" -ForegroundColor $SuccessColor
 }
 
 function Show-Warning {
     param([string]$Message)
-    Write-Output "[⚠] $Message" -ForegroundColor $WarningColor
+    Write-Host "[⚠] $Message" -ForegroundColor $WarningColor
 }
 
 function Write-Failure {
     param([string]$Message)
-    Write-Output "[✗] $Message" -ForegroundColor $ErrorColor
+    Write-Host "[✗] $Message" -ForegroundColor $ErrorColor
 }
 
 if ($Help) {
@@ -46,9 +46,9 @@ if ($Help) {
     exit 0
 }
 
-Write-Output "========================================" -ForegroundColor $InfoColor
-Write-Output "Aura Video Studio - Installation Validation" -ForegroundColor $InfoColor
-Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Host "========================================" -ForegroundColor $InfoColor
+Write-Host "Aura Video Studio - Installation Validation" -ForegroundColor $InfoColor
+Write-Host "========================================" -ForegroundColor $InfoColor
 Write-Output ""
 
 $validationResults = @{
@@ -309,13 +309,13 @@ if (Test-Path $dllPath) {
 # Summary
 # ========================================
 Write-Output ""
-Write-Output "========================================" -ForegroundColor $InfoColor
-Write-Output "Validation Summary" -ForegroundColor $InfoColor
-Write-Output "========================================" -ForegroundColor $InfoColor
-Write-Output "Passed:   $($validationResults.Passed)" -ForegroundColor $SuccessColor
-Write-Output "Failed:   $($validationResults.Failed)" -ForegroundColor $ErrorColor
-Write-Output "Warnings: $($validationResults.Warnings)" -ForegroundColor $WarningColor
-Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Host "========================================" -ForegroundColor $InfoColor
+Write-Host "Validation Summary" -ForegroundColor $InfoColor
+Write-Host "========================================" -ForegroundColor $InfoColor
+Write-Host "Passed:   $($validationResults.Passed)" -ForegroundColor $SuccessColor
+Write-Host "Failed:   $($validationResults.Failed)" -ForegroundColor $ErrorColor
+Write-Host "Warnings: $($validationResults.Warnings)" -ForegroundColor $WarningColor
+Write-Host "========================================" -ForegroundColor $InfoColor
 Write-Output ""
 
 if ($validationResults.Failed -eq 0) {

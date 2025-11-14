@@ -17,27 +17,27 @@ $Cyan = "Cyan"
 
 function Write-Success {
     param([string]$Message)
-    Write-Output "✓ $Message" -ForegroundColor $Green
+    Write-Host "✓ $Message" -ForegroundColor $Green
 }
 
 function Write-Failure {
     param([string]$Message)
-    Write-Output "✗ $Message" -ForegroundColor $Red
+    Write-Host "✗ $Message" -ForegroundColor $Red
 }
 
 function Write-Info {
     param([string]$Message)
-    Write-Output "ℹ $Message" -ForegroundColor $Cyan
+    Write-Host "ℹ $Message" -ForegroundColor $Cyan
 }
 
 function Show-Warning {
     param([string]$Message)
-    Write-Output "⚠ $Message" -ForegroundColor $Yellow
+    Write-Host "⚠ $Message" -ForegroundColor $Yellow
 }
 
-Write-Output "========================================" -ForegroundColor $Cyan
-Write-Output "Windows FFmpeg Integration Validation" -ForegroundColor $Cyan
-Write-Output "========================================" -ForegroundColor $Cyan
+Write-Host "========================================" -ForegroundColor $Cyan
+Write-Host "Windows FFmpeg Integration Validation" -ForegroundColor $Cyan
+Write-Host "========================================" -ForegroundColor $Cyan
 Write-Output ""
 
 $testResults = @()
@@ -275,9 +275,9 @@ try {
 
 # Summary
 Write-Output ""
-Write-Output "========================================" -ForegroundColor $Cyan
-Write-Output "Test Summary" -ForegroundColor $Cyan
-Write-Output "========================================" -ForegroundColor $Cyan
+Write-Host "========================================" -ForegroundColor $Cyan
+Write-Host "Test Summary" -ForegroundColor $Cyan
+Write-Host "========================================" -ForegroundColor $Cyan
 
 $passCount = ($testResults | Where-Object { $_.Status -eq "Pass" }).Count
 $failCount = ($testResults | Where-Object { $_.Status -eq "Fail" }).Count
@@ -285,10 +285,10 @@ $skipCount = ($testResults | Where-Object { $_.Status -eq "Skip" }).Count
 $totalCount = $testResults.Count
 
 Write-Output ""
-Write-Output "Total Tests: $totalCount" -ForegroundColor $Cyan
-Write-Output "Passed: $passCount" -ForegroundColor $Green
-Write-Output "Failed: $failCount" -ForegroundColor $Red
-Write-Output "Skipped: $skipCount" -ForegroundColor $Yellow
+Write-Host "Total Tests: $totalCount" -ForegroundColor $Cyan
+Write-Host "Passed: $passCount" -ForegroundColor $Green
+Write-Host "Failed: $failCount" -ForegroundColor $Red
+Write-Host "Skipped: $skipCount" -ForegroundColor $Yellow
 Write-Output ""
 
 if ($failCount -eq 0) {
