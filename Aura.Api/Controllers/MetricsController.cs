@@ -26,6 +26,7 @@ public class MetricsController : ControllerBase
         _metrics = metrics;
         _logger = logger;
         _resourceMonitor = resourceMonitor;
+        _resourceThrottler = resourceThrottler;
     }
 
     /// <summary>

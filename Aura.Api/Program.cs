@@ -4405,8 +4405,8 @@ apiGroup.MapPost("/assets/generate", async ([FromBody] AssetGenerateRequest requ
         { 
             success = true, 
             gated = false,
-            model = profile.Gpu.VramGB >= 12 ? "SDXL" : "SD 1.5",
-            vramGB = profile.Gpu.VramGB,
+            model = vramGB >= 12 ? "SDXL" : "SD 1.5",
+            vramGB = vramGB,
             assets = assets.Select(a => new { a.Kind, a.PathOrUrl, a.License, a.Attribution })
         });
     }
@@ -4603,7 +4603,6 @@ var healthMonitor = app.Services.GetRequiredService<Aura.Core.Services.Health.Pr
 var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
 
 // Track initialization state
-var initializationComplete = false;
 var engineManagerStarted = false;
 var healthMonitorStarted = false;
 
@@ -4658,7 +4657,6 @@ lifetime.ApplicationStarted.Register(() =>
         }
     });
     
-    initializationComplete = true;
     Log.Information("Initialization Phase 5: Background services initialization started");
 });
 
@@ -4788,7 +4786,7 @@ static Aura.Core.Models.Voice.EmphasisLevel ParseEmphasis(string? emphasis)
 
 // Run dependency scan on startup
 // This scans for dependencies on first launch and every program startup
-Task.Run(async () =>
+_ = Task.Run(async () =>
 {
     try
     {

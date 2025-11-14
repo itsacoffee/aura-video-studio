@@ -47,7 +47,7 @@ public class DownloadService
     public async Task InstallComponentAsync(string componentName, IProgress<DownloadProgress>? progress = null, CancellationToken ct = default)
     {
         _logger.LogInformation("Installing component: {Component}", componentName);
-        await _dependencyManager.DownloadComponentAsync(componentName, progress, ct).ConfigureAwait(false);
+        await _dependencyManager.DownloadComponentAsync(componentName, progress ?? new Progress<DownloadProgress>(), ct).ConfigureAwait(false);
         _logger.LogInformation("Component {Component} installed successfully", componentName);
     }
 
@@ -66,7 +66,7 @@ public class DownloadService
     public async Task RepairComponentAsync(string componentName, IProgress<DownloadProgress>? progress = null, CancellationToken ct = default)
     {
         _logger.LogInformation("Repairing component: {Component}", componentName);
-        await _dependencyManager.RepairComponentAsync(componentName, progress, ct).ConfigureAwait(false);
+        await _dependencyManager.RepairComponentAsync(componentName, progress ?? new Progress<DownloadProgress>(), ct).ConfigureAwait(false);
         _logger.LogInformation("Component {Component} repaired successfully", componentName);
     }
 
