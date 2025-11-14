@@ -205,8 +205,8 @@ try {
         if ($validationErrors.Count -gt 0) {
             Write-Output ""
             Write-Output "      ✗ Build validation failed:" -ForegroundColor Red
-            foreach ($error in $validationErrors) {
-                Write-Output "        - $error" -ForegroundColor Red
+            foreach ($validationError in $validationErrors) {
+                Write-Output "        - $validationError" -ForegroundColor Red
             }
             throw "Frontend build validation failed. Please check the errors above."
         } else {

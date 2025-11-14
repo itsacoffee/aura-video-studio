@@ -21,34 +21,34 @@ if (-not (Test-Path $InstallPath)) {
 }
 
 # Build arguments
-$args = @("--api", "--port", $Port)
+$launchArgs = @("--api", "--port", $Port)
 
 if ($NoWebUI) {
-    $args += "--nowebui"
+    $launchArgs += "--nowebui"
     Write-Output "Starting in API-only mode (no web interface)" -ForegroundColor Yellow
 } else {
     Write-Output "Web UI will be available at: http://127.0.0.1:$Port" -ForegroundColor Green
 }
 
 if ($MedVRAM) {
-    $args += "--medvram"
+    $launchArgs += "--medvram"
     Write-Output "Using --medvram for medium VRAM optimization" -ForegroundColor Yellow
 }
 
 if ($LowVRAM) {
-    $args += "--lowvram"
+    $launchArgs += "--lowvram"
     Write-Output "Using --lowvram for low VRAM systems" -ForegroundColor Yellow
 }
 
 if ($XFormers) {
-    $args += "--xformers"
+    $launchArgs += "--xformers"
     Write-Output "Using xformers for faster generation" -ForegroundColor Green
 }
 
 Write-Output ""
 Write-Output "Port: $Port" -ForegroundColor Cyan
 Write-Output "Path: $InstallPath" -ForegroundColor Cyan
-Write-Output "Arguments: $($args -join ' ')" -ForegroundColor Cyan
+Write-Output "Arguments: $($launchArgs -join ' ')" -ForegroundColor Cyan
 Write-Output ""
 
 # Check for webui.bat or run.bat
@@ -68,7 +68,7 @@ Write-Output "Press Ctrl+C to stop" -ForegroundColor Yellow
 Write-Output ""
 
 # Set environment variables
-$env:COMMANDLINE_ARGS = $args -join ' '
+$env:COMMANDLINE_ARGS = $launchArgs -join ' '
 $env:PYTHONUNBUFFERED = "1"
 
 # Launch

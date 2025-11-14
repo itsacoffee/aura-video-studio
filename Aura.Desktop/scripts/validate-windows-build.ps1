@@ -399,8 +399,8 @@ if ($ValidationErrors.Count -gt 0) {
     Write-Output "Errors: $($ValidationErrors.Count)" -ForegroundColor $ErrorColor
     Write-Output ""
     Write-Output "Errors found:" -ForegroundColor $ErrorColor
-    foreach ($error in $ValidationErrors) {
-        Write-Output "  - $error" -ForegroundColor $ErrorColor
+    foreach ($validationError in $ValidationErrors) {
+        Write-Output "  - $validationError" -ForegroundColor $ErrorColor
     }
     Write-Output ""
     Write-Output "Please fix the errors above before building." -ForegroundColor $ErrorColor
