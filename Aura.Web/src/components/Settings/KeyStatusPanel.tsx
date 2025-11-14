@@ -18,7 +18,7 @@ import {
   ArrowSync24Regular,
 } from '@fluentui/react-icons';
 import { useState, useEffect, useCallback } from 'react';
-import { apiClient } from '@/services/api/apiClient';
+import apiClient from '@/services/api/apiClient';
 
 const useStyles = makeStyles({
   container: {
@@ -115,26 +115,58 @@ const getStatusIcon = (status: string) => {
 const getStatusBadge = (status: string) => {
   switch (status) {
     case 'Valid':
-      return <Badge appearance="filled" color="success">Valid</Badge>;
+      return (
+        <Badge appearance="filled" color="success">
+          Valid
+        </Badge>
+      );
     case 'Invalid':
-      return <Badge appearance="filled" color="danger">Invalid</Badge>;
+      return (
+        <Badge appearance="filled" color="danger">
+          Invalid
+        </Badge>
+      );
     case 'TimedOut':
-      return <Badge appearance="filled" color="danger">Timed Out</Badge>;
+      return (
+        <Badge appearance="filled" color="danger">
+          Timed Out
+        </Badge>
+      );
     case 'Validating':
-      return <Badge appearance="outline" color="informative">Validating</Badge>;
+      return (
+        <Badge appearance="outline" color="informative">
+          Validating
+        </Badge>
+      );
     case 'ValidatingExtended':
-      return <Badge appearance="outline" color="warning">Extended Wait</Badge>;
+      return (
+        <Badge appearance="outline" color="warning">
+          Extended Wait
+        </Badge>
+      );
     case 'ValidatingMaxWait':
-      return <Badge appearance="outline" color="severe">Max Wait</Badge>;
+      return (
+        <Badge appearance="outline" color="severe">
+          Max Wait
+        </Badge>
+      );
     case 'SlowButWorking':
-      return <Badge appearance="filled" color="warning">Slow</Badge>;
+      return (
+        <Badge appearance="filled" color="warning">
+          Slow
+        </Badge>
+      );
     case 'NotValidated':
     default:
       return <Badge appearance="ghost">Not Validated</Badge>;
   }
 };
 
-const getStatusTooltip = (status: string, elapsedMs: number, remainingTimeoutMs: number): string => {
+const getStatusTooltip = (
+  status: string,
+  elapsedMs: number,
+  remainingTimeoutMs: number
+): string => {
   switch (status) {
     case 'Valid':
       return 'API key is valid and working correctly.';
@@ -176,12 +208,15 @@ export const KeyStatusPanel = () => {
 
   useEffect(() => {
     fetchKeyStatuses();
-    
+
     // Poll for status updates every 5 seconds when there are active validations
     const interval = setInterval(() => {
-      if (allStatuses && Object.values(allStatuses.statuses).some(s => 
-        ['Validating', 'ValidatingExtended', 'ValidatingMaxWait'].includes(s.status)
-      )) {
+      if (
+        allStatuses &&
+        Object.values(allStatuses.statuses).some((s) =>
+          ['Validating', 'ValidatingExtended', 'ValidatingMaxWait'].includes(s.status)
+        )
+      ) {
         fetchKeyStatuses();
       }
     }, 5000);
@@ -191,8 +226,8 @@ export const KeyStatusPanel = () => {
 
   const handleRevalidate = async (provider: string) => {
     try {
-      setRevalidating(prev => new Set(prev).add(provider));
-      
+      setRevalidating((prev) => new Set(prev).add(provider));
+
       await apiClient.post('/api/keys/revalidate', {
         provider,
       });
@@ -200,7 +235,7 @@ export const KeyStatusPanel = () => {
       // Refresh statuses after a short delay to get updated status
       setTimeout(() => {
         fetchKeyStatuses();
-        setRevalidating(prev => {
+        setRevalidating((prev) => {
           const next = new Set(prev);
           next.delete(provider);
           return next;
@@ -208,7 +243,7 @@ export const KeyStatusPanel = () => {
       }, 2000);
     } catch (error) {
       console.error(`Failed to revalidate key for ${provider}:`, error);
-      setRevalidating(prev => {
+      setRevalidating((prev) => {
         const next = new Set(prev);
         next.delete(provider);
         return next;
@@ -239,11 +274,7 @@ export const KeyStatusPanel = () => {
     <div className={styles.container}>
       <div className={styles.header}>
         <Title3>API Key Status</Title3>
-        <Button
-          appearance="subtle"
-          icon={<ArrowSync24Regular />}
-          onClick={fetchKeyStatuses}
-        >
+        <Button appearance="subtle" icon={<ArrowSync24Regular />} onClick={fetchKeyStatuses}>
           Refresh All
         </Button>
       </div>
@@ -282,7 +313,7 @@ export const KeyStatusPanel = () => {
               {status.elapsedMs > 0 && (
                 <Caption1>
                   Elapsed: {Math.round(status.elapsedMs / 1000)}s
-                  {status.remainingTimeoutMs > 0 && 
+                  {status.remainingTimeoutMs > 0 &&
                     ` | Remaining: ${Math.round(status.remainingTimeoutMs / 1000)}s`}
                 </Caption1>
               )}

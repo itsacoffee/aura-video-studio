@@ -1,11 +1,10 @@
 /**
  * Provider Status Drawer
- * 
+ *
  * Displays real-time status of the active provider during video generation.
  * Shows elapsed time, heartbeat count, progress indicators, and manual fallback option.
  */
 
-import React, { useEffect, useState } from 'react';
 import {
   Drawer,
   DrawerHeader,
@@ -16,36 +15,37 @@ import {
   Badge,
   Text,
   makeStyles,
-  tokens
+  tokens,
 } from '@fluentui/react-components';
 import {
   Dismiss24Regular,
   Warning24Regular,
   Checkmark24Regular,
   ErrorCircle24Regular,
-  Clock24Regular
+  Clock24Regular,
 } from '@fluentui/react-icons';
-import type { ProviderStatusInfo, ProviderStatusState } from '../../types/profileLock';
+import React, { useEffect, useState } from 'react';
 import { useProfileLockStore } from '../../state/profileLock';
+import type { ProviderStatusInfo, ProviderStatusState } from '../../types/profileLock';
 
 const useStyles = makeStyles({
   drawer: {
-    width: '400px'
+    width: '400px',
   },
   statusSection: {
     display: 'flex',
     flexDirection: 'column',
     gap: tokens.spacingVerticalM,
-    padding: tokens.spacingVerticalL
+    padding: tokens.spacingVerticalL,
   },
   statusHeader: {
     display: 'flex',
     alignItems: 'center',
     gap: tokens.spacingHorizontalS,
-    marginBottom: tokens.spacingVerticalM
+    marginBottom: tokens.spacingVerticalM,
   },
   statusBadge: {
-    marginLeft: 'auto'
+    marginLeft: 'auto',
   },
   timeDisplay: {
     display: 'flex',
@@ -54,33 +54,33 @@ const useStyles = makeStyles({
     padding: tokens.spacingVerticalM,
     backgroundColor: tokens.colorNeutralBackground1,
     borderRadius: tokens.borderRadiusMedium,
-    border: `1px solid ${tokens.colorNeutralStroke1}`
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
   },
   progressInfo: {
     display: 'flex',
     flexDirection: 'column',
     gap: tokens.spacingVerticalXS,
-    marginTop: tokens.spacingVerticalM
+    marginTop: tokens.spacingVerticalM,
   },
   actionButtons: {
     display: 'flex',
     gap: tokens.spacingHorizontalS,
-    marginTop: tokens.spacingVerticalL
+    marginTop: tokens.spacingVerticalL,
   },
   warningMessage: {
     padding: tokens.spacingVerticalM,
     backgroundColor: tokens.colorPaletteYellowBackground2,
     borderRadius: tokens.borderRadiusMedium,
     border: `1px solid ${tokens.colorPaletteYellowBorder2}`,
-    marginTop: tokens.spacingVerticalM
+    marginTop: tokens.spacingVerticalM,
   },
   errorMessage: {
     padding: tokens.spacingVerticalM,
     backgroundColor: tokens.colorPaletteRedBackground2,
     borderRadius: tokens.borderRadiusMedium,
     border: `1px solid ${tokens.colorPaletteRedBorder2}`,
-    marginTop: tokens.spacingVerticalM
-  }
+    marginTop: tokens.spacingVerticalM,
+  },
 });
 
 interface ProviderStatusDrawerProps {
@@ -104,7 +104,7 @@ const getStatusColor = (state: ProviderStatusState): string => {
     case 'waiting':
       return tokens.colorPaletteYellowForeground2;
     case 'extended-wait':
-      return tokens.colorPaletteOrangeForeground2;
+      return tokens.colorPaletteDarkOrangeForeground2;
     case 'stall-suspected':
       return tokens.colorPaletteRedForeground2;
     case 'error':
@@ -123,7 +123,7 @@ const getStatusIcon = (state: ProviderStatusState) => {
     case 'waiting':
       return <Clock24Regular />;
     case 'extended-wait':
-      return <Warning24Regular color={tokens.colorPaletteOrangeForeground2} />;
+      return <Warning24Regular color={tokens.colorPaletteDarkOrangeForeground2} />;
     case 'stall-suspected':
       return <Warning24Regular color={tokens.colorPaletteRedForeground2} />;
     case 'error':
@@ -178,7 +178,7 @@ export const ProviderStatusDrawer: React.FC<ProviderStatusDrawerProps> = ({
   onClose,
   status,
   onManualFallback,
-  onCancel
+  onCancel,
 }) => {
   const styles = useStyles();
   const [localElapsed, setLocalElapsed] = useState(status?.elapsedTimeSeconds ?? 0);
@@ -204,8 +204,10 @@ export const ProviderStatusDrawer: React.FC<ProviderStatusDrawerProps> = ({
     return null;
   }
 
-  const showFallbackButton = 
-    (status.state === 'extended-wait' || status.state === 'stall-suspected' || status.state === 'error') &&
+  const showFallbackButton =
+    (status.state === 'extended-wait' ||
+      status.state === 'stall-suspected' ||
+      status.state === 'error') &&
     status.canManuallyFallback &&
     onManualFallback;
 
@@ -257,14 +259,14 @@ export const ProviderStatusDrawer: React.FC<ProviderStatusDrawerProps> = ({
               <Text weight="semibold">Elapsed Time:</Text>
               <Text>{formatElapsedTime(localElapsed)}</Text>
             </div>
-            
+
             {status.timeSinceLastHeartbeatSeconds !== undefined && (
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <Text weight="semibold">Since Last Heartbeat:</Text>
                 <Text>{formatElapsedTime(status.timeSinceLastHeartbeatSeconds)}</Text>
               </div>
             )}
-            
+
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <Text weight="semibold">Heartbeat Count:</Text>
               <Text>{status.heartbeatCount}</Text>
@@ -282,19 +284,19 @@ export const ProviderStatusDrawer: React.FC<ProviderStatusDrawerProps> = ({
           {status.progress && (
             <div className={styles.progressInfo}>
               <Text weight="semibold">Progress:</Text>
-              
+
               {status.progress.tokensGenerated !== undefined && (
                 <Text>Tokens Generated: {status.progress.tokensGenerated}</Text>
               )}
-              
+
               {status.progress.chunksProcessed !== undefined && (
                 <Text>Chunks Processed: {status.progress.chunksProcessed}</Text>
               )}
-              
+
               {status.progress.percentComplete !== undefined && (
                 <Text>Completion: {status.progress.percentComplete.toFixed(1)}%</Text>
               )}
-              
+
               {status.progress.message && (
                 <Text style={{ fontStyle: 'italic' }}>{status.progress.message}</Text>
               )}
@@ -319,8 +321,9 @@ export const ProviderStatusDrawer: React.FC<ProviderStatusDrawerProps> = ({
                 ⚠️ Provider May Be Stalled
               </Text>
               <Text size={300}>
-                No heartbeat signal detected for {formatElapsedTime(status.timeSinceLastHeartbeatSeconds ?? 0)}.
-                The provider may have encountered an issue or be processing a very large request.
+                No heartbeat signal detected for{' '}
+                {formatElapsedTime(status.timeSinceLastHeartbeatSeconds ?? 0)}. The provider may
+                have encountered an issue or be processing a very large request.
               </Text>
             </div>
           )}
@@ -331,8 +334,8 @@ export const ProviderStatusDrawer: React.FC<ProviderStatusDrawerProps> = ({
                 ❌ Provider Error
               </Text>
               <Text size={300}>
-                The provider encountered a fatal error and cannot continue.
-                Please try a different provider or cancel and retry.
+                The provider encountered a fatal error and cannot continue. Please try a different
+                provider or cancel and retry.
               </Text>
             </div>
           )}
@@ -340,19 +343,13 @@ export const ProviderStatusDrawer: React.FC<ProviderStatusDrawerProps> = ({
           {/* Action Buttons */}
           <div className={styles.actionButtons}>
             {showFallbackButton && (
-              <Button
-                appearance="primary"
-                onClick={onManualFallback}
-              >
+              <Button appearance="primary" onClick={onManualFallback}>
                 Switch Provider
               </Button>
             )}
-            
+
             {onCancel && (
-              <Button
-                appearance="secondary"
-                onClick={onCancel}
-              >
+              <Button appearance="secondary" onClick={onCancel}>
                 Cancel Job
               </Button>
             )}

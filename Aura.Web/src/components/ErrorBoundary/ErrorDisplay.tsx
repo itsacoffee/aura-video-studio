@@ -51,7 +51,7 @@ const useStyles = makeStyles({
     color: tokens.colorPaletteYellowForeground1,
   },
   infoIcon: {
-    color: tokens.colorPaletteBlueForeground1,
+    color: tokens.colorPaletteBlueForeground2,
   },
   suggestionsList: {
     marginTop: tokens.spacingVerticalS,

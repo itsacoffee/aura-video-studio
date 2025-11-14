@@ -39,8 +39,8 @@ export async function getHealthReady(): Promise<HealthCheckResponse> {
 /**
  * Get detailed health information for all checks
  */
-export async function getHealthDetails(): Promise<HealthCheckResponse> {
-  return get<HealthCheckResponse>(`${apiUrl}/health`);
+export async function getHealthDetails(): Promise<HealthDetailsResponse> {
+  return get<HealthDetailsResponse>(`${apiUrl}/health`);
 }
 
 /**

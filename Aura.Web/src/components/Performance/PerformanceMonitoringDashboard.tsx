@@ -8,7 +8,7 @@ import {
   tokens,
   Badge,
 } from '@fluentui/react-components';
-import { Activity24Regular, Warning24Regular } from '@fluentui/react-icons';
+import { ChartMultiple24Regular, Warning24Regular } from '@fluentui/react-icons';
 import React, { useState, useEffect, useCallback } from 'react';
 import { performanceMonitor } from '@/utils/performanceMonitor';
 
@@ -145,7 +145,7 @@ export const PerformanceMonitoringDashboard: React.FC = React.memo(() => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Title3>Performance Monitoring</Title3>
         <Badge appearance="filled" color={getMemoryBadgeColor()}>
-          <Activity24Regular />
+          <ChartMultiple24Regular />
           {memoryUsagePercent > 0 ? `${memoryUsagePercent.toFixed(1)}%` : 'N/A'}
         </Badge>
       </div>

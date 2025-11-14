@@ -93,46 +93,82 @@ class LoggingService {
   /**
    * Log an info message
    */
+  public info(message: string, context?: Record<string, unknown>): void;
   public info(
     message: string,
     component?: string,
     action?: string,
     context?: Record<string, unknown>
+  ): void;
+  public info(
+    message: string,
+    componentOrContext?: string | Record<string, unknown>,
+    action?: string,
+    context?: Record<string, unknown>
   ): void {
-    this.log('info', message, component, action, context);
+    if (typeof componentOrContext === 'object') {
+      this.log('info', message, undefined, undefined, componentOrContext);
+    } else {
+      this.log('info', message, componentOrContext, action, context);
+    }
   }
 
   /**
    * Log a warning message
    */
+  public warn(message: string, context?: Record<string, unknown>): void;
   public warn(
     message: string,
     component?: string,
     action?: string,
     context?: Record<string, unknown>
+  ): void;
+  public warn(
+    message: string,
+    componentOrContext?: string | Record<string, unknown>,
+    action?: string,
+    context?: Record<string, unknown>
   ): void {
-    this.log('warn', message, component, action, context);
+    if (typeof componentOrContext === 'object') {
+      this.log('warn', message, undefined, undefined, componentOrContext);
+    } else {
+      this.log('warn', message, componentOrContext, action, context);
+    }
   }
 
   /**
    * Log an error message
    */
+  public error(message: string, context?: Record<string, unknown>): void;
   public error(
     message: string,
     error?: Error,
     component?: string,
     action?: string,
     context?: Record<string, unknown>
+  ): void;
+  public error(
+    message: string,
+    errorOrContext?: Error | Record<string, unknown>,
+    component?: string,
+    action?: string,
+    context?: Record<string, unknown>
   ): void {
-    const errorInfo = error
-      ? {
-          message: error.message,
-          stack: error.stack,
-          name: error.name,
-        }
-      : undefined;
+    let errorInfo: { message: string; stack?: string; name?: string } | undefined;
+    let actualContext: Record<string, unknown> | undefined;
 
-    this.log('error', message, component, action, context, errorInfo);
+    if (errorOrContext instanceof Error) {
+      errorInfo = {
+        message: errorOrContext.message,
+        stack: errorOrContext.stack,
+        name: errorOrContext.name,
+      };
+      actualContext = context;
+    } else if (errorOrContext && typeof errorOrContext === 'object') {
+      actualContext = errorOrContext;
+    }
+
+    this.log('error', message, component, action, actualContext, errorInfo);
   }
 
   /**
