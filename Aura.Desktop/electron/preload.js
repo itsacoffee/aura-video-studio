@@ -8,6 +8,7 @@
 
 const { contextBridge, ipcRenderer } = require('electron');
 const { MENU_EVENT_CHANNELS, isValidMenuEventChannel } = require('./menu-event-types');
+const { createValidatedMenuAPI } = require('./menu-command-handler');
 
 // Event listener timeout in milliseconds (5 seconds)
 const EVENT_LISTENER_TIMEOUT = 5000;
@@ -284,30 +285,8 @@ contextBridge.exposeInMainWorld('electron', {
     onNavigate: (callback) => safeOn('protocol:navigate', callback)
   },
   
-  // Menu actions
-  menu: {
-    onNewProject: (callback) => safeOn('menu:newProject', callback),
-    onOpenProject: (callback) => safeOn('menu:openProject', callback),
-    onOpenRecentProject: (callback) => safeOn('menu:openRecentProject', callback),
-    onSaveProject: (callback) => safeOn('menu:saveProject', callback),
-    onSaveProjectAs: (callback) => safeOn('menu:saveProjectAs', callback),
-    onImportVideo: (callback) => safeOn('menu:importVideo', callback),
-    onImportAudio: (callback) => safeOn('menu:importAudio', callback),
-    onImportImages: (callback) => safeOn('menu:importImages', callback),
-    onImportDocument: (callback) => safeOn('menu:importDocument', callback),
-    onExportVideo: (callback) => safeOn('menu:exportVideo', callback),
-    onExportTimeline: (callback) => safeOn('menu:exportTimeline', callback),
-    onFind: (callback) => safeOn('menu:find', callback),
-    onOpenPreferences: (callback) => safeOn('menu:openPreferences', callback),
-    onOpenProviderSettings: (callback) => safeOn('menu:openProviderSettings', callback),
-    onOpenFFmpegConfig: (callback) => safeOn('menu:openFFmpegConfig', callback),
-    onClearCache: (callback) => safeOn('menu:clearCache', callback),
-    onViewLogs: (callback) => safeOn('menu:viewLogs', callback),
-    onRunDiagnostics: (callback) => safeOn('menu:runDiagnostics', callback),
-    onOpenGettingStarted: (callback) => safeOn('menu:openGettingStarted', callback),
-    onShowKeyboardShortcuts: (callback) => safeOn('menu:showKeyboardShortcuts', callback),
-    onCheckForUpdates: (callback) => safeOn('menu:checkForUpdates', callback)
-  },
+  // Menu actions - now with validated command handling
+  menu: createValidatedMenuAPI(ipcRenderer),
   
   // Platform detection
   platform: {

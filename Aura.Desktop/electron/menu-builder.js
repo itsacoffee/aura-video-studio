@@ -5,6 +5,7 @@
 
 const { Menu, shell, dialog } = require('electron');
 const path = require('path');
+const { validateCommandPayload, getCommandMetadata } = require('./menu-command-map');
 
 class MenuBuilder {
   constructor(app, windowManager, appConfig, isDev) {
@@ -560,13 +561,54 @@ class MenuBuilder {
   }
 
   /**
-   * Send menu action to renderer process
+   * Send menu action to renderer process with validation and logging
    */
   _sendToRenderer(channel, data = {}) {
     const window = this.windowManager.getMainWindow();
-    if (window && !window.isDestroyed()) {
-      window.webContents.send(channel, data);
+    if (!window || window.isDestroyed()) {
+      console.warn('[MenuBuilder] Cannot send command: window not available', { channel });
+      return;
     }
+    
+    // Generate correlation ID for tracking
+    const correlationId = `cmd_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    
+    // Validate command payload
+    const validation = validateCommandPayload(channel, data);
+    
+    if (!validation.success) {
+      console.error('[MenuBuilder] Invalid command payload', {
+        correlationId,
+        channel,
+        error: validation.error,
+        issues: validation.issues,
+        payload: data
+      });
+      // Send anyway but include validation error context
+      window.webContents.send(channel, {
+        ...data,
+        _validationError: validation.error,
+        _correlationId: correlationId
+      });
+      return;
+    }
+    
+    const commandMetadata = getCommandMetadata(channel);
+    
+    console.log('[MenuBuilder] Sending command to renderer', {
+      correlationId,
+      channel,
+      command: commandMetadata ? commandMetadata.label : 'Unknown',
+      category: commandMetadata ? commandMetadata.category : 'Unknown',
+      hasPayload: Object.keys(data).length > 0
+    });
+    
+    // Send validated command with correlation ID
+    window.webContents.send(channel, {
+      ...validation.data,
+      _correlationId: correlationId,
+      _timestamp: new Date().toISOString()
+    });
   }
 }
 
