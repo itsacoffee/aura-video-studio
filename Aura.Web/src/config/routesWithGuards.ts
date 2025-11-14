@@ -25,7 +25,7 @@ export async function firstRunGuard(): Promise<boolean> {
 export async function ffmpegGuard(): Promise<boolean> {
   try {
     const status = await dependencyChecker.checkFFmpeg();
-    return status.isInstalled;
+    return status.installed;
   } catch (error) {
     console.error('FFmpeg guard check failed:', error);
     return false;

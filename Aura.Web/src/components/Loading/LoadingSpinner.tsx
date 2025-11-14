@@ -106,14 +106,18 @@ export function LoadingDots({
       transition: {
         duration: 0.6,
         repeat: Infinity,
-        ease: 'easeInOut',
+        ease: 'easeInOut' as const,
       },
     },
   };
 
   if (prefersReducedMotion) {
     return (
-      <div className={`inline-flex items-center space-x-1 ${className}`} role="status" aria-label={label}>
+      <div
+        className={`inline-flex items-center space-x-1 ${className}`}
+        role="status"
+        aria-label={label}
+      >
         {[0, 1, 2].map((i) => (
           <div
             key={i}
@@ -131,7 +135,11 @@ export function LoadingDots({
   }
 
   return (
-    <div className={`inline-flex items-center space-x-1 ${className}`} role="status" aria-label={label}>
+    <div
+      className={`inline-flex items-center space-x-1 ${className}`}
+      role="status"
+      aria-label={label}
+    >
       {[0, 1, 2].map((i) => (
         <motion.div
           key={i}
@@ -184,14 +192,14 @@ export function LoadingBar({
       transition: {
         duration: 1.5,
         repeat: Infinity,
-        ease: 'easeInOut',
+        ease: 'easeInOut' as const,
       },
     },
     determinate: {
       width: `${progress}%`,
       transition: {
         duration: 0.3,
-        ease: 'easeOut',
+        ease: 'easeOut' as const,
       },
     },
   };

@@ -132,8 +132,8 @@ interface StyleSelectionProps {
 
 interface StylePreset {
   name: string;
-  visualStyle: string;
-  musicGenre: string;
+  visualStyle: 'modern' | 'minimal' | 'cinematic' | 'playful' | 'professional';
+  musicGenre: 'ambient' | 'upbeat' | 'dramatic' | 'none';
   description: string;
   icon: string;
 }
@@ -188,11 +188,6 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
   const [availableStyles, setAvailableStyles] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadProviders();
-    loadStyles();
-  }, []);
-
   const loadProviders = useCallback(async () => {
     try {
       const response = await visualsClient.getProviders();
@@ -232,6 +227,11 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
   }, [visualsClient, data, onChange]);
 
   useEffect(() => {
+    loadProviders();
+    loadStyles();
+  }, [loadProviders, loadStyles]);
+
+  useEffect(() => {
     const isValid = !!data.voiceProvider && !!data.visualStyle && !!data.imageProvider;
 
     onValidationChange({
@@ -260,17 +260,6 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
     [data, onChange]
   );
 
-  if (loading) {
-    return (
-      <div className={styles.container}>
-        <Title2>Style Selection</Title2>
-        <div className={styles.loadingContainer}>
-          <Spinner size="large" label="Loading providers..." />
-        </div>
-      </div>
-    );
-  }
-
   const handlePresetSelect = useCallback(
     (preset: StylePreset) => {
       onChange({
@@ -283,6 +272,17 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
     [data, onChange]
   );
 
+  if (loading) {
+    return (
+      <div className={styles.container}>
+        <Title2>Style Selection</Title2>
+        <div className={styles.loadingContainer}>
+          <Spinner size="large" label="Loading providers..." />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.container}>
       <div className={styles.section}>
@@ -292,8 +292,11 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
 
       <div className={styles.section}>
         <Title3>Quick Style Presets</Title3>
-        <Text size={300} style={{ marginBottom: tokens.spacingVerticalM, color: tokens.colorNeutralForeground3 }}>
-          Choose a preset style to quickly configure your video's look and feel
+        <Text
+          size={300}
+          style={{ marginBottom: tokens.spacingVerticalM, color: tokens.colorNeutralForeground3 }}
+        >
+          Choose a preset style to quickly configure your video&apos;s look and feel
         </Text>
         <div className={styles.stylePresetGrid}>
           {STYLE_PRESETS.map((preset) => (
