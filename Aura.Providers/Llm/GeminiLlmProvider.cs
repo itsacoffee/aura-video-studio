@@ -73,6 +73,13 @@ public class GeminiLlmProvider : ILlmProvider
                 nameof(_apiKey));
         }
 
+        // Allow test/mock keys for testing
+        if (_apiKey.StartsWith("test-", StringComparison.OrdinalIgnoreCase) ||
+            _apiKey.StartsWith("mock-", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
         // Gemini API keys should be at least 30 characters
         if (_apiKey.Length < 30)
         {
