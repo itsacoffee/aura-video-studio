@@ -24,7 +24,7 @@
     "preview": "vite preview",
     "lint": "eslint . --report-unused-disable-directives --max-warnings 0",
     "lint:fix": "eslint . --fix",
-    "lint:css": "stylelint \"src/**/*.css\"",
+    "lint:css": "stylelint \"src/**/*.css\" --max-warnings 0",
     "lint:css:fix": "stylelint \"src/**/*.css\" --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css,json}\"",

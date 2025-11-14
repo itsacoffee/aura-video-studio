@@ -45,16 +45,43 @@ jobs:
       run: dotnet build --configuration Release --no-restore
       
     - name: Build documentation
-      run: docfx docfx.json
       continue-on-error: true
+      id: docfx_build
+      run: docfx docfx.json --warningsAsErrors
       
     - name: Check for broken links
+      continue-on-error: true
+      id: link_check
       run: |
         echo "Checking for broken links in documentation..."
         # Install markdown-link-check
         npm install -g markdown-link-check
-        # Check all markdown files
-        find docs -name "*.md" -exec markdown-link-check {} \; || true
+        # Check all markdown files - fail on any broken links
+        find docs -name "*.md" -exec markdown-link-check --config .markdown-link-check.json {} \;
+    
+    - name: Documentation Quality Summary
+      shell: bash
+      run: |
+        echo ""
+        echo "=== Documentation Quality Gate Summary ==="
+        echo ""
+        
+        if [ "${{ steps.docfx_build.outcome }}" = "success" ]; then
+          echo "✓ DocFX Build: PASSED (no warnings)"
+        else
+          echo "⚠ DocFX Build: WARNINGS FOUND"
+          echo "  Run 'docfx build docfx.json --warningsAsErrors' to see issues"
+        fi
+        
+        if [ "${{ steps.link_check.outcome }}" = "success" ]; then
+          echo "✓ Link Check: PASSED (no broken links)"
+        else
+          echo "⚠ Link Check: BROKEN LINKS FOUND"
+          echo "  Run markdown-link-check on docs/*.md files"
+        fi
+        
+        echo ""
+        echo "Note: Gates configured but not enforced until documentation is cleaned up"
       
     - name: Spell check
       uses: rojopolis/spellcheck-github-actions@0.35.0

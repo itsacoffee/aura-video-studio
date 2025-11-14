@@ -38,24 +38,51 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-# Step 3: Run quick type check (TypeScript only, fast)
-# Temporarily disabled due to pre-existing type errors in codebase
-# echo ""
-# echo "🔧 Running TypeScript type check..."
-# cd Aura.Web || exit 1
-# npm run type-check
+# Step 3: Run TypeScript type check (enforced when ENFORCE_TYPE_CHECK=1)
+# Set ENFORCE_TYPE_CHECK=1 once all type errors are resolved
+if [ "$ENFORCE_TYPE_CHECK" = "1" ]; then
+  echo ""
+  echo "🔧 Running TypeScript type check..."
+  cd Aura.Web || exit 1
+  npm run typecheck
 
-# if [ $? -ne 0 ]; then
-#   echo ""
-#   echo "❌ Commit rejected: TypeScript type errors found"
-#   echo ""
-#   echo "Please fix the type errors above before committing."
-#   echo "To bypass this check, use: git commit --no-verify"
-#   echo ""
-#   exit 1
-# fi
+  if [ $? -ne 0 ]; then
+    echo ""
+    echo "❌ Commit rejected: TypeScript type errors found"
+    echo ""
+    echo "Please fix the type errors above before committing."
+    echo "To bypass this check, use: git commit --no-verify"
+    echo ""
+    exit 1
+  fi
+fi
+
+# Step 4: Run lint check to ensure zero warnings (enforced when ENFORCE_ZERO_WARNINGS=1)
+# Set ENFORCE_ZERO_WARNINGS=1 once all warnings are resolved
+if [ "$ENFORCE_ZERO_WARNINGS" = "1" ]; then
+  echo ""
+  echo "🔍 Running lint check for warnings..."
+  cd Aura.Web || exit 1
+  npm run lint
+
+  if [ $? -ne 0 ]; then
+    echo ""
+    echo "❌ Commit rejected: ESLint warnings or errors found"
+    echo ""
+    echo "Please fix all warnings and errors before committing."
+    echo "Run 'npm run lint:fix' to auto-fix some issues."
+    echo "To bypass this check, use: git commit --no-verify"
+    echo ""
+    exit 1
+  fi
+fi
 
 echo ""
-echo "✅ All pre-commit checks passed (type check skipped)"
+if [ "$ENFORCE_TYPE_CHECK" = "1" ] || [ "$ENFORCE_ZERO_WARNINGS" = "1" ]; then
+  echo "✅ All pre-commit checks passed"
+else
+  echo "✅ Pre-commit checks passed (type check and zero-warnings enforcement disabled)"
+  echo "   To enable: export ENFORCE_TYPE_CHECK=1 ENFORCE_ZERO_WARNINGS=1"
+fi
 echo ""
 exit 0
