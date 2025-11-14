@@ -9,6 +9,7 @@ using Aura.Core.Services.Jobs;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
+using JobStatus = Aura.Core.Models.Jobs.JobStatus;
 
 namespace Aura.Tests.Services.Jobs;
 
@@ -39,16 +40,34 @@ public class VideoGenerationJobServiceTests
     public void CreateJob_ShouldGenerateJobWithCorrectProperties()
     {
         // Arrange
-        var brief = new Brief { Topic = "Test Video", Audience = "General", Goal = "Test" };
-        var planSpec = new PlanSpec { TargetDuration = TimeSpan.FromMinutes(1) };
-        var voiceSpec = new VoiceSpec { VoiceName = "default" };
-        var renderSpec = new RenderSpec 
-        { 
-            Res = new Resolution(1920, 1080), 
-            Fps = 30, 
-            Codec = "libx264", 
-            Container = "mp4" 
-        };
+        var brief = new Brief(
+            Topic: "Test Video",
+            Audience: "General",
+            Goal: "Test",
+            Tone: "Professional",
+            Language: "English",
+            Aspect: Aspect.Widescreen16x9
+        );
+        var planSpec = new PlanSpec(
+            TargetDuration: TimeSpan.FromMinutes(1),
+            Pacing: Pacing.Conversational,
+            Density: Density.Balanced,
+            Style: "Documentary"
+        );
+        var voiceSpec = new VoiceSpec(
+            VoiceName: "default",
+            Rate: 1.0,
+            Pitch: 1.0,
+            Pause: PauseStyle.Natural
+        );
+        var renderSpec = new RenderSpec(
+            Res: new Resolution(1920, 1080),
+            Container: "mp4",
+            VideoBitrateK: 2500,
+            AudioBitrateK: 128,
+            Fps: 30,
+            Codec: "libx264"
+        );
         var systemProfile = new SystemProfile { Tier = HardwareTier.B };
 
         // Act
@@ -68,16 +87,34 @@ public class VideoGenerationJobServiceTests
     public async Task ExecuteJobAsync_Success_ShouldUpdateStatusToCompleted()
     {
         // Arrange
-        var brief = new Brief { Topic = "Test Video", Audience = "General", Goal = "Test" };
-        var planSpec = new PlanSpec { TargetDuration = TimeSpan.FromMinutes(1) };
-        var voiceSpec = new VoiceSpec { VoiceName = "default" };
-        var renderSpec = new RenderSpec 
-        { 
-            Res = new Resolution(1920, 1080), 
-            Fps = 30, 
-            Codec = "libx264", 
-            Container = "mp4" 
-        };
+        var brief = new Brief(
+            Topic: "Test Video",
+            Audience: "General",
+            Goal: "Test",
+            Tone: "Professional",
+            Language: "English",
+            Aspect: Aspect.Widescreen16x9
+        );
+        var planSpec = new PlanSpec(
+            TargetDuration: TimeSpan.FromMinutes(1),
+            Pacing: Pacing.Conversational,
+            Density: Density.Balanced,
+            Style: "Documentary"
+        );
+        var voiceSpec = new VoiceSpec(
+            VoiceName: "default",
+            Rate: 1.0,
+            Pitch: 1.0,
+            Pause: PauseStyle.Natural
+        );
+        var renderSpec = new RenderSpec(
+            Res: new Resolution(1920, 1080),
+            Container: "mp4",
+            VideoBitrateK: 2500,
+            AudioBitrateK: 128,
+            Fps: 30,
+            Codec: "libx264"
+        );
         var systemProfile = new SystemProfile { Tier = HardwareTier.B };
 
         var jobId = _jobService.CreateJob(brief, planSpec, voiceSpec, renderSpec, systemProfile);
@@ -114,16 +151,34 @@ public class VideoGenerationJobServiceTests
     public async Task ExecuteJobAsync_Cancelled_ShouldUpdateStatusToCancelled()
     {
         // Arrange
-        var brief = new Brief { Topic = "Test Video", Audience = "General", Goal = "Test" };
-        var planSpec = new PlanSpec { TargetDuration = TimeSpan.FromMinutes(1) };
-        var voiceSpec = new VoiceSpec { VoiceName = "default" };
-        var renderSpec = new RenderSpec 
-        { 
-            Res = new Resolution(1920, 1080), 
-            Fps = 30, 
-            Codec = "libx264", 
-            Container = "mp4" 
-        };
+        var brief = new Brief(
+            Topic: "Test Video",
+            Audience: "General",
+            Goal: "Test",
+            Tone: "Professional",
+            Language: "English",
+            Aspect: Aspect.Widescreen16x9
+        );
+        var planSpec = new PlanSpec(
+            TargetDuration: TimeSpan.FromMinutes(1),
+            Pacing: Pacing.Conversational,
+            Density: Density.Balanced,
+            Style: "Documentary"
+        );
+        var voiceSpec = new VoiceSpec(
+            VoiceName: "default",
+            Rate: 1.0,
+            Pitch: 1.0,
+            Pause: PauseStyle.Natural
+        );
+        var renderSpec = new RenderSpec(
+            Res: new Resolution(1920, 1080),
+            Container: "mp4",
+            VideoBitrateK: 2500,
+            AudioBitrateK: 128,
+            Fps: 30,
+            Codec: "libx264"
+        );
         var systemProfile = new SystemProfile { Tier = HardwareTier.B };
 
         var jobId = _jobService.CreateJob(brief, planSpec, voiceSpec, renderSpec, systemProfile);
@@ -159,16 +214,34 @@ public class VideoGenerationJobServiceTests
     public void GetJobs_WithStatusFilter_ShouldReturnFilteredJobs()
     {
         // Arrange
-        var brief = new Brief { Topic = "Test", Audience = "General", Goal = "Test" };
-        var planSpec = new PlanSpec { TargetDuration = TimeSpan.FromMinutes(1) };
-        var voiceSpec = new VoiceSpec { VoiceName = "default" };
-        var renderSpec = new RenderSpec 
-        { 
-            Res = new Resolution(1920, 1080), 
-            Fps = 30, 
-            Codec = "libx264", 
-            Container = "mp4" 
-        };
+        var brief = new Brief(
+            Topic: "Test",
+            Audience: "General",
+            Goal: "Test",
+            Tone: "Professional",
+            Language: "English",
+            Aspect: Aspect.Widescreen16x9
+        );
+        var planSpec = new PlanSpec(
+            TargetDuration: TimeSpan.FromMinutes(1),
+            Pacing: Pacing.Conversational,
+            Density: Density.Balanced,
+            Style: "Documentary"
+        );
+        var voiceSpec = new VoiceSpec(
+            VoiceName: "default",
+            Rate: 1.0,
+            Pitch: 1.0,
+            Pause: PauseStyle.Natural
+        );
+        var renderSpec = new RenderSpec(
+            Res: new Resolution(1920, 1080),
+            Container: "mp4",
+            VideoBitrateK: 2500,
+            AudioBitrateK: 128,
+            Fps: 30,
+            Codec: "libx264"
+        );
         var systemProfile = new SystemProfile { Tier = HardwareTier.B };
 
         var jobId1 = _jobService.CreateJob(brief, planSpec, voiceSpec, renderSpec, systemProfile);
@@ -188,16 +261,34 @@ public class VideoGenerationJobServiceTests
     public void CancelJob_RunningJob_ShouldCancelSuccessfully()
     {
         // Arrange
-        var brief = new Brief { Topic = "Test", Audience = "General", Goal = "Test" };
-        var planSpec = new PlanSpec { TargetDuration = TimeSpan.FromMinutes(1) };
-        var voiceSpec = new VoiceSpec { VoiceName = "default" };
-        var renderSpec = new RenderSpec 
-        { 
-            Res = new Resolution(1920, 1080), 
-            Fps = 30, 
-            Codec = "libx264", 
-            Container = "mp4" 
-        };
+        var brief = new Brief(
+            Topic: "Test",
+            Audience: "General",
+            Goal: "Test",
+            Tone: "Professional",
+            Language: "English",
+            Aspect: Aspect.Widescreen16x9
+        );
+        var planSpec = new PlanSpec(
+            TargetDuration: TimeSpan.FromMinutes(1),
+            Pacing: Pacing.Conversational,
+            Density: Density.Balanced,
+            Style: "Documentary"
+        );
+        var voiceSpec = new VoiceSpec(
+            VoiceName: "default",
+            Rate: 1.0,
+            Pitch: 1.0,
+            Pause: PauseStyle.Natural
+        );
+        var renderSpec = new RenderSpec(
+            Res: new Resolution(1920, 1080),
+            Container: "mp4",
+            VideoBitrateK: 2500,
+            AudioBitrateK: 128,
+            Fps: 30,
+            Codec: "libx264"
+        );
         var systemProfile = new SystemProfile { Tier = HardwareTier.B };
 
         var jobId = _jobService.CreateJob(brief, planSpec, voiceSpec, renderSpec, systemProfile);
@@ -218,16 +309,34 @@ public class VideoGenerationJobServiceTests
     public void CleanupOldJobs_ShouldRemoveExpiredJobs()
     {
         // Arrange
-        var brief = new Brief { Topic = "Test", Audience = "General", Goal = "Test" };
-        var planSpec = new PlanSpec { TargetDuration = TimeSpan.FromMinutes(1) };
-        var voiceSpec = new VoiceSpec { VoiceName = "default" };
-        var renderSpec = new RenderSpec 
-        { 
-            Res = new Resolution(1920, 1080), 
-            Fps = 30, 
-            Codec = "libx264", 
-            Container = "mp4" 
-        };
+        var brief = new Brief(
+            Topic: "Test",
+            Audience: "General",
+            Goal: "Test",
+            Tone: "Professional",
+            Language: "English",
+            Aspect: Aspect.Widescreen16x9
+        );
+        var planSpec = new PlanSpec(
+            TargetDuration: TimeSpan.FromMinutes(1),
+            Pacing: Pacing.Conversational,
+            Density: Density.Balanced,
+            Style: "Documentary"
+        );
+        var voiceSpec = new VoiceSpec(
+            VoiceName: "default",
+            Rate: 1.0,
+            Pitch: 1.0,
+            Pause: PauseStyle.Natural
+        );
+        var renderSpec = new RenderSpec(
+            Res: new Resolution(1920, 1080),
+            Container: "mp4",
+            VideoBitrateK: 2500,
+            AudioBitrateK: 128,
+            Fps: 30,
+            Codec: "libx264"
+        );
         var systemProfile = new SystemProfile { Tier = HardwareTier.B };
 
         var jobId = _jobService.CreateJob(brief, planSpec, voiceSpec, renderSpec, systemProfile);

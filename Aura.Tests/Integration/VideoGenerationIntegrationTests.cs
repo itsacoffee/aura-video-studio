@@ -265,7 +265,7 @@ public class TestFixture : IAsyncDisposable
         await Task.CompletedTask;
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         // Cleanup
         await Task.CompletedTask;
