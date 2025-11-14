@@ -1,4 +1,4 @@
-# Master Build Script for Aura Video Studio Windows Installer
+﻿# Master Build Script for Aura Video Studio Windows Installer
 # This script orchestrates the complete build process for production Windows installers
 
 param(
@@ -18,64 +18,64 @@ $InfoColor = "Cyan"
 
 function Write-Info {
     param([string]$Message)
-    Write-Host "[INFO] $Message" -ForegroundColor $InfoColor
+    Write-Output "[INFO] $Message" -ForegroundColor $InfoColor
 }
 
 function Write-Success {
     param([string]$Message)
-    Write-Host "[SUCCESS] $Message" -ForegroundColor $SuccessColor
+    Write-Output "[SUCCESS] $Message" -ForegroundColor $SuccessColor
 }
 
 function Write-Warning {
     param([string]$Message)
-    Write-Host "[WARNING] $Message" -ForegroundColor $WarningColor
+    Write-Output "[WARNING] $Message" -ForegroundColor $WarningColor
 }
 
 function Write-ErrorMessage {
     param([string]$Message)
-    Write-Host "[ERROR] $Message" -ForegroundColor $ErrorColor
+    Write-Output "[ERROR] $Message" -ForegroundColor $ErrorColor
 }
 
 function Write-Step {
     param([string]$Message)
-    Write-Host ""
-    Write-Host "========================================" -ForegroundColor $InfoColor
-    Write-Host $Message -ForegroundColor $InfoColor
-    Write-Host "========================================" -ForegroundColor $InfoColor
-    Write-Host ""
+    Write-Output ""
+    Write-Output "========================================" -ForegroundColor $InfoColor
+    Write-Output $Message -ForegroundColor $InfoColor
+    Write-Output "========================================" -ForegroundColor $InfoColor
+    Write-Output ""
 }
 
 if ($Help) {
-    Write-Host "Aura Video Studio - Master Windows Build Script"
-    Write-Host ""
-    Write-Host "Usage: .\build-windows.ps1 [OPTIONS]"
-    Write-Host ""
-    Write-Host "Options:"
-    Write-Host "  -SkipFrontend    Skip React frontend build"
-    Write-Host "  -SkipBackend     Skip .NET backend build"
-    Write-Host "  -SkipFFmpeg      Skip FFmpeg download (use existing)"
-    Write-Host "  -SkipInstaller   Build app but skip installer creation"
-    Write-Host "  -Clean           Clean all previous build artifacts"
-    Write-Host "  -Help            Show this help message"
-    Write-Host ""
-    Write-Host "Example:"
-    Write-Host "  .\build-windows.ps1              # Full build"
-    Write-Host "  .\build-windows.ps1 -Clean       # Clean build from scratch"
-    Write-Host "  .\build-windows.ps1 -SkipFFmpeg  # Quick rebuild (skip FFmpeg download)"
+    Write-Output "Aura Video Studio - Master Windows Build Script"
+    Write-Output ""
+    Write-Output "Usage: .\build-windows.ps1 [OPTIONS]"
+    Write-Output ""
+    Write-Output "Options:"
+    Write-Output "  -SkipFrontend    Skip React frontend build"
+    Write-Output "  -SkipBackend     Skip .NET backend build"
+    Write-Output "  -SkipFFmpeg      Skip FFmpeg download (use existing)"
+    Write-Output "  -SkipInstaller   Build app but skip installer creation"
+    Write-Output "  -Clean           Clean all previous build artifacts"
+    Write-Output "  -Help            Show this help message"
+    Write-Output ""
+    Write-Output "Example:"
+    Write-Output "  .\build-windows.ps1              # Full build"
+    Write-Output "  .\build-windows.ps1 -Clean       # Clean build from scratch"
+    Write-Output "  .\build-windows.ps1 -SkipFFmpeg  # Quick rebuild (skip FFmpeg download)"
     exit 0
 }
 
 # Start timer
 $buildStartTime = Get-Date
 
-Write-Host ""
-Write-Host "========================================" -ForegroundColor $SuccessColor
-Write-Host "Aura Video Studio" -ForegroundColor $SuccessColor
-Write-Host "Windows Production Build" -ForegroundColor $SuccessColor
-Write-Host "========================================" -ForegroundColor $SuccessColor
-Write-Host ""
+Write-Output ""
+Write-Output "========================================" -ForegroundColor $SuccessColor
+Write-Output "Aura Video Studio" -ForegroundColor $SuccessColor
+Write-Output "Windows Production Build" -ForegroundColor $SuccessColor
+Write-Output "========================================" -ForegroundColor $SuccessColor
+Write-Output ""
 Write-Info "Build started: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
-Write-Host ""
+Write-Output ""
 
 $ScriptDir = $PSScriptRoot
 $DesktopDir = Split-Path $ScriptDir -Parent
@@ -105,10 +105,10 @@ foreach ($prereq in $prerequisites.GetEnumerator()) {
 }
 
 if (-not $allPrereqsMet) {
-    Write-Host ""
+    Write-Output ""
     Write-ErrorMessage "Missing required prerequisites. Please install:"
-    Write-Host "  - Node.js 18+ from https://nodejs.org/"
-    Write-Host "  - .NET 8.0 SDK from https://dotnet.microsoft.com/download/dotnet/8.0"
+    Write-Output "  - Node.js 18+ from https://nodejs.org/"
+    Write-Output "  - .NET 8.0 SDK from https://dotnet.microsoft.com/download/dotnet/8.0"
     exit 1
 }
 
@@ -130,7 +130,7 @@ Write-Success "All prerequisites met"
 # ========================================
 if ($Clean) {
     Write-Step "STEP 2: Cleaning Previous Builds"
-    
+
     $cleanPaths = @(
         @{ Path = "$DesktopDir\dist"; Description = "Electron installers" },
         @{ Path = "$DesktopDir\resources\backend"; Description = "Backend builds" },
@@ -138,14 +138,14 @@ if ($Clean) {
         @{ Path = "$ProjectRoot\Aura.Web\dist"; Description = "Frontend build" },
         @{ Path = "$DesktopDir\temp"; Description = "Temporary files" }
     )
-    
+
     foreach ($item in $cleanPaths) {
         if (Test-Path $item.Path) {
             Remove-Item -Path $item.Path -Recurse -Force
             Write-Info "  Cleaned: $($item.Description)"
         }
     }
-    
+
     Write-Success "Clean complete"
 } else {
     Write-Info "STEP 2: Clean (skipped - use -Clean to enable)"
@@ -156,12 +156,12 @@ if ($Clean) {
 # ========================================
 if (-not $SkipFFmpeg) {
     Write-Step "STEP 3: Downloading FFmpeg"
-    
+
     $ffmpegScript = Join-Path $ScriptDir "download-ffmpeg-windows.ps1"
-    
+
     if (Test-Path $ffmpegScript) {
         & $ffmpegScript
-        
+
         if ($LASTEXITCODE -ne 0) {
             Write-ErrorMessage "FFmpeg download failed"
             exit 1
@@ -170,11 +170,11 @@ if (-not $SkipFFmpeg) {
         Write-ErrorMessage "FFmpeg download script not found: $ffmpegScript"
         exit 1
     }
-    
+
     Write-Success "FFmpeg ready"
 } else {
     Write-Info "STEP 3: FFmpeg (skipped - using existing)"
-    
+
     # Verify FFmpeg exists
     $ffmpegExe = "$DesktopDir\resources\ffmpeg\win-x64\bin\ffmpeg.exe"
     if (-not (Test-Path $ffmpegExe)) {
@@ -189,41 +189,41 @@ if (-not $SkipFFmpeg) {
 # ========================================
 if (-not $SkipFrontend) {
     Write-Step "STEP 4: Building React Frontend"
-    
+
     $webDir = Join-Path $ProjectRoot "Aura.Web"
     Set-Location $webDir
-    
+
     # Install dependencies
     if (-not (Test-Path "node_modules") -or $Clean) {
         Write-Info "Installing frontend dependencies..."
         npm ci
-        
+
         if ($LASTEXITCODE -ne 0) {
             Write-ErrorMessage "Frontend dependency installation failed"
             exit 1
         }
     }
-    
+
     # Build frontend
     Write-Info "Building production frontend..."
     npm run build
-    
+
     if ($LASTEXITCODE -ne 0) {
         Write-ErrorMessage "Frontend build failed"
         exit 1
     }
-    
+
     # Verify output
     $indexHtml = Join-Path $webDir "dist\index.html"
     if (-not (Test-Path $indexHtml)) {
         Write-ErrorMessage "Frontend build failed - index.html not found"
         exit 1
     }
-    
+
     Write-Success "Frontend build complete"
 } else {
     Write-Info "STEP 4: Frontend (skipped)"
-    
+
     # Verify frontend exists
     $indexHtml = "$ProjectRoot\Aura.Web\dist\index.html"
     if (-not (Test-Path $indexHtml)) {
@@ -238,16 +238,16 @@ if (-not $SkipFrontend) {
 # ========================================
 if (-not $SkipBackend) {
     Write-Step "STEP 5: Building .NET Backend"
-    
+
     $backendScript = Join-Path $ScriptDir "build-backend-windows.ps1"
-    
+
     if (Test-Path $backendScript) {
         if ($Clean) {
             & $backendScript -Clean
         } else {
             & $backendScript
         }
-        
+
         if ($LASTEXITCODE -ne 0) {
             Write-ErrorMessage "Backend build failed"
             exit 1
@@ -256,11 +256,11 @@ if (-not $SkipBackend) {
         Write-ErrorMessage "Backend build script not found: $backendScript"
         exit 1
     }
-    
+
     Write-Success "Backend build complete"
 } else {
     Write-Info "STEP 5: Backend (skipped)"
-    
+
     # Verify backend exists
     $backendExe = "$DesktopDir\resources\backend\win-x64\Aura.Api.exe"
     if (-not (Test-Path $backendExe)) {
@@ -290,25 +290,25 @@ if ($LASTEXITCODE -ne 0) {
 if (-not $SkipInstaller) {
     Write-Info "Building Windows installer..."
     Write-Warning "This may take 10-15 minutes..."
-    Write-Host ""
-    
+    Write-Output ""
+
     npm run build:win
-    
+
     if ($LASTEXITCODE -ne 0) {
         Write-ErrorMessage "Electron build failed"
         exit 1
     }
-    
+
     Write-Success "Installer build complete"
 } else {
     Write-Info "Building unpacked app (no installer)..."
     npm run build:dir
-    
+
     if ($LASTEXITCODE -ne 0) {
         Write-ErrorMessage "Electron build failed"
         exit 1
     }
-    
+
     Write-Success "App build complete"
 }
 
@@ -321,24 +321,24 @@ $distDir = Join-Path $DesktopDir "dist"
 
 if (Test-Path $distDir) {
     $installers = Get-ChildItem -Path $distDir -Filter "*.exe" -File
-    
+
     if ($installers.Count -gt 0) {
         $checksumFile = Join-Path $distDir "checksums.txt"
         $checksumContent = @()
-        
+
         foreach ($installer in $installers) {
             Write-Info "  Computing SHA256 for: $($installer.Name)"
             $hash = Get-FileHash -Path $installer.FullName -Algorithm SHA256
             $checksumContent += "$($hash.Hash)  $($installer.Name)"
         }
-        
+
         $checksumContent -join "`n" | Set-Content -Path $checksumFile -Encoding UTF8
         Write-Success "  Checksums saved to: checksums.txt"
-        
-        Write-Host ""
+
+        Write-Output ""
         Write-Info "SHA256 Checksums:"
         foreach ($line in $checksumContent) {
-            Write-Host "  $line"
+            Write-Output "  $line"
         }
     } else {
         Write-Warning "No installer files found in dist directory"
@@ -358,36 +358,36 @@ $durationFormatted = "{0:D2}:{1:D2}:{2:D2}" -f $buildDuration.Hours, $buildDurat
 
 Write-Info "Build completed: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
 Write-Info "Total duration: $durationFormatted"
-Write-Host ""
+Write-Output ""
 
 if (Test-Path $distDir) {
     Write-Info "Output location:"
-    Write-Host "  $distDir"
-    Write-Host ""
-    
+    Write-Output "  $distDir"
+    Write-Output ""
+
     Write-Info "Generated files:"
     $allFiles = Get-ChildItem -Path $distDir -File
     foreach ($file in $allFiles) {
         $sizeMB = [math]::Round($file.Length / 1MB, 2)
-        Write-Host "  $($file.Name) ($sizeMB MB)"
+        Write-Output "  $($file.Name) ($sizeMB MB)"
     }
-    Write-Host ""
+    Write-Output ""
 }
 
 # Next steps
 Write-Info "Next steps:"
-Write-Host "  1. Test the installer on a clean Windows VM"
-Write-Host "  2. Verify all features work after installation"
-Write-Host "  3. Sign the installer (if you have a code signing certificate)"
-Write-Host "  4. Upload to GitHub releases"
-Write-Host ""
+Write-Output "  1. Test the installer on a clean Windows VM"
+Write-Output "  2. Verify all features work after installation"
+Write-Output "  3. Sign the installer (if you have a code signing certificate)"
+Write-Output "  4. Upload to GitHub releases"
+Write-Output ""
 
 # ========================================
 # Success!
 # ========================================
-Write-Host "========================================" -ForegroundColor $SuccessColor
-Write-Host "Build Complete! 🎉" -ForegroundColor $SuccessColor
-Write-Host "========================================" -ForegroundColor $SuccessColor
-Write-Host ""
+Write-Output "========================================" -ForegroundColor $SuccessColor
+Write-Output "Build Complete! 🎉" -ForegroundColor $SuccessColor
+Write-Output "========================================" -ForegroundColor $SuccessColor
+Write-Output ""
 
 exit 0

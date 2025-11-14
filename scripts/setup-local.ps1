@@ -1,4 +1,4 @@
-# Aura Video Studio - Local Development Setup Script (Windows)
+﻿# Aura Video Studio - Local Development Setup Script (Windows)
 # This script bootstraps the complete local development environment
 
 param(
@@ -18,15 +18,15 @@ function Write-ColorOutput {
         [string]$Message,
         [string]$Color = "White"
     )
-    
+
     if (-not $Quiet) {
-        Write-Host $Message -ForegroundColor $Color
+        Write-Output $Message -ForegroundColor $Color
     }
 }
 
 function Test-CommandExists {
     param([string]$Command)
-    
+
     $null = Get-Command $Command -ErrorAction SilentlyContinue
     return $?
 }
@@ -36,7 +36,7 @@ function Compare-Versions {
         [version]$Version1,
         [version]$Version2
     )
-    
+
     return $Version1 -ge $Version2
 }
 
@@ -178,7 +178,7 @@ $portsInUse = @()
 foreach ($portInfo in $portsToCheck) {
     $port = $portInfo.Port
     $service = $portInfo.Service
-    
+
     $connection = Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue
     if ($connection) {
         $portsInUse += "$port ($service)"
@@ -234,7 +234,7 @@ $CONFLICT = $false
 for ($i = 0; $i -lt $PORTS.Length; $i++) {
     $connection = Get-NetTCPConnection -LocalPort $PORTS[$i] -ErrorAction SilentlyContinue
     if ($connection) {
-        Write-Host "⚠ Port $($PORTS[$i]) ($($SERVICES[$i])) is in use"
+        Write-Output "⚠ Port $($PORTS[$i]) ($($SERVICES[$i])) is in use"
         $CONFLICT = $true
     }
 }
@@ -245,12 +245,12 @@ Set-Content -Path "scripts\setup\check-ports.ps1" -Value $portCheckScript
 
 # Validation script
 $validationScript = @'
-Write-Host "Validating configuration files..."
+Write-Output "Validating configuration files..."
 
 $FILES = @("docker-compose.yml", "Makefile", ".env")
 foreach ($file in $FILES) {
     if (-not (Test-Path $file)) {
-        Write-Host "✗ Missing required file: $file" -ForegroundColor Red
+        Write-Output "✗ Missing required file: $file" -ForegroundColor Red
         exit 1
     }
 }
@@ -259,11 +259,11 @@ $REQUIRED_VARS = @("ASPNETCORE_ENVIRONMENT", "AURA_DATABASE_PATH")
 $envContent = Get-Content ".env" -ErrorAction SilentlyContinue
 foreach ($var in $REQUIRED_VARS) {
     if ($envContent -notmatch "^$var=" -and $envContent -notmatch "^# *$var=") {
-        Write-Host "⚠ Missing variable in .env: $var" -ForegroundColor Yellow
+        Write-Output "⚠ Missing variable in .env: $var" -ForegroundColor Yellow
     }
 }
 
-Write-Host "✓ Configuration valid" -ForegroundColor Green
+Write-Output "✓ Configuration valid" -ForegroundColor Green
 '@
 Set-Content -Path "scripts\setup\validate-config.ps1" -Value $validationScript
 

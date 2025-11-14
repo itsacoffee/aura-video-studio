@@ -1,4 +1,4 @@
-# Make Portable ZIP Distribution for Aura Video Studio
+﻿# Make Portable ZIP Distribution for Aura Video Studio
 # This script creates a complete portable ZIP with everything needed to run
 
 param(
@@ -8,16 +8,16 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-Write-Host ""
-Write-Host "========================================" -ForegroundColor Cyan
-Write-Host " Aura Video Studio - Portable ZIP Builder" -ForegroundColor Cyan
-Write-Host "========================================" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "Configuration: $Configuration" -ForegroundColor White
-Write-Host "Platform:      $Platform" -ForegroundColor White
-Write-Host ""
-Write-Host "NOTE: WPF shell not yet implemented. Using API-only approach." -ForegroundColor Gray
-Write-Host ""
+Write-Output ""
+Write-Output "========================================" -ForegroundColor Cyan
+Write-Output " Aura Video Studio - Portable ZIP Builder" -ForegroundColor Cyan
+Write-Output "========================================" -ForegroundColor Cyan
+Write-Output ""
+Write-Output "Configuration: $Configuration" -ForegroundColor White
+Write-Output "Platform:      $Platform" -ForegroundColor White
+Write-Output ""
+Write-Output "NOTE: WPF shell not yet implemented. Using API-only approach." -ForegroundColor Gray
+Write-Output ""
 
 # Set paths
 $scriptDir = $PSScriptRoot
@@ -27,12 +27,12 @@ $windowsDir = Join-Path $artifactsDir "windows"
 $portableDir = Join-Path $windowsDir "portable"
 $buildDir = Join-Path $portableDir "build"
 
-Write-Host "Root Directory:     $rootDir" -ForegroundColor Gray
-Write-Host "Artifacts Directory: $portableDir" -ForegroundColor Gray
-Write-Host ""
+Write-Output "Root Directory:     $rootDir" -ForegroundColor Gray
+Write-Output "Artifacts Directory: $portableDir" -ForegroundColor Gray
+Write-Output ""
 
 # Create directories
-Write-Host "[1/8] Creating build directories..." -ForegroundColor Yellow
+Write-Output "[1/8] Creating build directories..." -ForegroundColor Yellow
 New-Item -ItemType Directory -Force -Path $buildDir | Out-Null
 New-Item -ItemType Directory -Force -Path "$buildDir\api" | Out-Null
 New-Item -ItemType Directory -Force -Path "$buildDir\web" | Out-Null
@@ -46,46 +46,46 @@ New-Item -ItemType Directory -Force -Path "$buildDir\Logs" | Out-Null
 New-Item -ItemType Directory -Force -Path "$buildDir\Projects" | Out-Null
 New-Item -ItemType Directory -Force -Path "$buildDir\Downloads" | Out-Null
 
-Write-Host "      ✓ Directories created (including portable structure)" -ForegroundColor Green
+Write-Output "      ✓ Directories created (including portable structure)" -ForegroundColor Green
 
 # Build core projects
-Write-Host "[2/8] Building .NET projects..." -ForegroundColor Yellow
+Write-Output "[2/8] Building .NET projects..." -ForegroundColor Yellow
 dotnet build "$rootDir\Aura.Core\Aura.Core.csproj" -c $Configuration --nologo -v minimal
 if ($LASTEXITCODE -ne 0) { throw "Failed to build Aura.Core" }
 dotnet build "$rootDir\Aura.Providers\Aura.Providers.csproj" -c $Configuration --nologo -v minimal
 if ($LASTEXITCODE -ne 0) { throw "Failed to build Aura.Providers" }
 dotnet build "$rootDir\Aura.Api\Aura.Api.csproj" -c $Configuration --nologo -v minimal
 if ($LASTEXITCODE -ne 0) { throw "Failed to build Aura.Api" }
-Write-Host "      ✓ .NET projects built" -ForegroundColor Green
+Write-Output "      ✓ .NET projects built" -ForegroundColor Green
 
 # Build Web UI
-Write-Host "[3/8] Building web UI..." -ForegroundColor Yellow
+Write-Output "[3/8] Building web UI..." -ForegroundColor Yellow
 Push-Location "$rootDir\Aura.Web"
 if (-not (Test-Path "node_modules")) {
-    Write-Host "      Installing npm dependencies..." -ForegroundColor Gray
+    Write-Output "      Installing npm dependencies..." -ForegroundColor Gray
     $npmInstallOutput = npm install 2>&1
     if ($LASTEXITCODE -ne 0) {
-        Write-Host ""
-        Write-Host "npm install output:" -ForegroundColor Red
-        Write-Host ($npmInstallOutput | Out-String) -ForegroundColor Red
-        Write-Host ""
+        Write-Output ""
+        Write-Output "npm install output:" -ForegroundColor Red
+        Write-Output ($npmInstallOutput | Out-String) -ForegroundColor Red
+        Write-Output ""
         throw "npm install failed. Please check your internet connection and npm configuration."
     }
 }
-Write-Host "      Building frontend..." -ForegroundColor Gray
+Write-Output "      Building frontend..." -ForegroundColor Gray
 $buildOutput = npm run build 2>&1
 if ($LASTEXITCODE -ne 0) {
-    Write-Host ""
-    Write-Host "Build output:" -ForegroundColor Red
-    Write-Host ($buildOutput | Out-String) -ForegroundColor Red
-    Write-Host ""
+    Write-Output ""
+    Write-Output "Build output:" -ForegroundColor Red
+    Write-Output ($buildOutput | Out-String) -ForegroundColor Red
+    Write-Output ""
     throw "Failed to build Web UI. Please check for TypeScript errors or build configuration issues."
 }
 Pop-Location
-Write-Host "      ✓ Web UI built" -ForegroundColor Green
+Write-Output "      ✓ Web UI built" -ForegroundColor Green
 
 # Publish API as self-contained
-Write-Host "[4/8] Publishing API (self-contained)..." -ForegroundColor Yellow
+Write-Output "[4/8] Publishing API (self-contained)..." -ForegroundColor Yellow
 dotnet publish "$rootDir\Aura.Api\Aura.Api.csproj" `
     -c $Configuration `
     -r win-$($Platform.ToLower()) `
@@ -93,34 +93,34 @@ dotnet publish "$rootDir\Aura.Api\Aura.Api.csproj" `
     -o "$buildDir\api" `
     --nologo -v minimal
 if ($LASTEXITCODE -ne 0) { throw "Failed to publish API" }
-Write-Host "      ✓ API published" -ForegroundColor Green
+Write-Output "      ✓ API published" -ForegroundColor Green
 
 # Copy Web UI to wwwroot folder inside the published API
-Write-Host "[5/8] Copying web UI to wwwroot..." -ForegroundColor Yellow
+Write-Output "[5/8] Copying web UI to wwwroot..." -ForegroundColor Yellow
 $wwwrootDir = Join-Path "$buildDir\api" "wwwroot"
 New-Item -ItemType Directory -Force -Path $wwwrootDir | Out-Null
 Copy-Item "$rootDir\Aura.Web\dist\*" -Destination $wwwrootDir -Recurse -Force
 # Also copy to web folder for reference
 Copy-Item "$rootDir\Aura.Web\dist\*" -Destination "$buildDir\web" -Recurse -Force
-Write-Host "      ✓ Web UI copied to wwwroot" -ForegroundColor Green
+Write-Output "      ✓ Web UI copied to wwwroot" -ForegroundColor Green
 
 # Copy FFmpeg binaries
-Write-Host "[6/8] Copying FFmpeg binaries..." -ForegroundColor Yellow
+Write-Output "[6/8] Copying FFmpeg binaries..." -ForegroundColor Yellow
 if (Test-Path "$rootDir\scripts\ffmpeg\ffmpeg.exe") {
     Copy-Item "$rootDir\scripts\ffmpeg\ffmpeg.exe" -Destination "$buildDir\ffmpeg" -Force
-    Write-Host "      ✓ ffmpeg.exe copied" -ForegroundColor Green
+    Write-Output "      ✓ ffmpeg.exe copied" -ForegroundColor Green
 } else {
-    Write-Host "      ⚠ ffmpeg.exe not found (users will need to install separately)" -ForegroundColor Yellow
+    Write-Output "      ⚠ ffmpeg.exe not found (users will need to install separately)" -ForegroundColor Yellow
 }
 if (Test-Path "$rootDir\scripts\ffmpeg\ffprobe.exe") {
     Copy-Item "$rootDir\scripts\ffmpeg\ffprobe.exe" -Destination "$buildDir\ffmpeg" -Force
-    Write-Host "      ✓ ffprobe.exe copied" -ForegroundColor Green
+    Write-Output "      ✓ ffprobe.exe copied" -ForegroundColor Green
 } else {
-    Write-Host "      ⚠ ffprobe.exe not found (users will need to install separately)" -ForegroundColor Yellow
+    Write-Output "      ⚠ ffprobe.exe not found (users will need to install separately)" -ForegroundColor Yellow
 }
 
 # Copy config files
-Write-Host "[7/8] Copying configuration and documentation..." -ForegroundColor Yellow
+Write-Output "[7/8] Copying configuration and documentation..." -ForegroundColor Yellow
 Copy-Item "$rootDir\appsettings.json" -Destination "$buildDir\config" -Force
 Copy-Item "$rootDir\PORTABLE.md" -Destination "$buildDir\README.md" -Force
 if (Test-Path "$rootDir\LICENSE") {
@@ -151,15 +151,15 @@ if (Test-Path $assetsSourceDir) {
     $assetsDestDir = Join-Path $buildDir "assets"
     New-Item -ItemType Directory -Force -Path $assetsDestDir | Out-Null
     Copy-Item "$assetsSourceDir\*" -Destination $assetsDestDir -Recurse -Force
-    Write-Host "      ✓ Assets copied" -ForegroundColor Green
+    Write-Output "      ✓ Assets copied" -ForegroundColor Green
 } else {
-    Write-Host "      ℹ No assets directory found (skipping)" -ForegroundColor Gray
+    Write-Output "      ℹ No assets directory found (skipping)" -ForegroundColor Gray
 }
 
-Write-Host "      ✓ Config and docs copied" -ForegroundColor Green
+Write-Output "      ✓ Config and docs copied" -ForegroundColor Green
 
 # Create start_portable.cmd launcher script
-Write-Host "[8/8] Creating launcher script..." -ForegroundColor Yellow
+Write-Output "[8/8] Creating launcher script..." -ForegroundColor Yellow
 $launcherScript = @'
 @echo off
 setlocal enabledelayedexpansion
@@ -218,11 +218,11 @@ echo Press any key to exit this launcher...
 pause >nul
 '@
 Set-Content -Path "$buildDir\start_portable.cmd" -Value $launcherScript -Encoding ASCII
-Write-Host "      ✓ Launcher script created (start_portable.cmd)" -ForegroundColor Green
+Write-Output "      ✓ Launcher script created (start_portable.cmd)" -ForegroundColor Green
 
 # Generate checksums.txt
-Write-Host ""
-Write-Host "Generating checksums..." -ForegroundColor Yellow
+Write-Output ""
+Write-Output "Generating checksums..." -ForegroundColor Yellow
 $checksumContent = ""
 Get-ChildItem -Path $buildDir -Recurse -File | ForEach-Object {
     $hash = Get-FileHash -Path $_.FullName -Algorithm SHA256
@@ -230,10 +230,10 @@ Get-ChildItem -Path $buildDir -Recurse -File | ForEach-Object {
     $checksumContent += "$($hash.Hash)  $relativePath`n"
 }
 Set-Content -Path "$buildDir\checksums.txt" -Value $checksumContent -Encoding UTF8
-Write-Host "✓ checksums.txt generated" -ForegroundColor Green
+Write-Output "✓ checksums.txt generated" -ForegroundColor Green
 
 # Generate SBOM (sbom.json)
-Write-Host "Generating SBOM..." -ForegroundColor Yellow
+Write-Output "Generating SBOM..." -ForegroundColor Yellow
 $sbom = @{
     bomFormat = "CycloneDX"
     specVersion = "1.4"
@@ -299,10 +299,10 @@ $sbom = @{
     )
 }
 $sbom | ConvertTo-Json -Depth 10 | Out-File "$buildDir\sbom.json" -Encoding utf8
-Write-Host "✓ sbom.json generated" -ForegroundColor Green
+Write-Output "✓ sbom.json generated" -ForegroundColor Green
 
 # Generate attributions.txt
-Write-Host "Generating attributions..." -ForegroundColor Yellow
+Write-Output "Generating attributions..." -ForegroundColor Yellow
 $attributions = @"
 AURA VIDEO STUDIO - Third-Party Software Attributions
 ======================================================
@@ -320,7 +320,7 @@ This software includes or depends on the following third-party components:
    License: LGPL 2.1 or later (depending on build configuration)
    Copyright (c) FFmpeg team
    https://ffmpeg.org/
-   
+
    Note: This software uses code of FFmpeg licensed under the LGPLv2.1
    and its source can be downloaded from the FFmpeg website.
 
@@ -369,50 +369,50 @@ Additional licenses for bundled assets:
 Contact: https://github.com/Coffee285/aura-video-studio/issues
 "@
 Set-Content -Path "$buildDir\attributions.txt" -Value $attributions -Encoding utf8
-Write-Host "✓ attributions.txt generated" -ForegroundColor Green
+Write-Output "✓ attributions.txt generated" -ForegroundColor Green
 
 # Create ZIP
-Write-Host ""
-Write-Host "Creating ZIP archive..." -ForegroundColor Yellow
+Write-Output ""
+Write-Output "Creating ZIP archive..." -ForegroundColor Yellow
 $zipPath = Join-Path $portableDir "AuraVideoStudio_Portable_x64.zip"
 if (Test-Path $zipPath) {
     Remove-Item $zipPath -Force
 }
 Compress-Archive -Path "$buildDir\*" -DestinationPath $zipPath -Force
-Write-Host "✓ ZIP archive created" -ForegroundColor Green
+Write-Output "✓ ZIP archive created" -ForegroundColor Green
 
 # Generate final checksum for the ZIP
 $zipHash = Get-FileHash -Path $zipPath -Algorithm SHA256
 $zipChecksumFile = Join-Path $portableDir "AuraVideoStudio_Portable_x64.zip.sha256"
 "$($zipHash.Hash)  AuraVideoStudio_Portable_x64.zip" | Out-File $zipChecksumFile -Encoding utf8
 
-Write-Host ""
-Write-Host "========================================" -ForegroundColor Green
-Write-Host " Build Complete!" -ForegroundColor Green
-Write-Host "========================================" -ForegroundColor Green
-Write-Host ""
-Write-Host "Portable ZIP:  $zipPath" -ForegroundColor White
-Write-Host "Size:          $([math]::Round((Get-Item $zipPath).Length / 1MB, 2)) MB" -ForegroundColor White
-Write-Host "SHA-256:       $($zipHash.Hash)" -ForegroundColor White
-Write-Host ""
-Write-Host "Contents:" -ForegroundColor Cyan
-Write-Host "  /api/*                - Aura.Api binaries with Web UI in wwwroot" -ForegroundColor White
-Write-Host "  /web/*                - Aura.Web static build (reference copy)" -ForegroundColor White
-Write-Host "  /ffmpeg/*             - FFmpeg binaries" -ForegroundColor White
-Write-Host "  /config/*             - Configuration files" -ForegroundColor White
-Write-Host "  /Tools/               - Downloaded dependencies (empty by default)" -ForegroundColor White
-Write-Host "  /AuraData/            - Settings, manifests, and metadata" -ForegroundColor White
-Write-Host "  /Logs/                - Application logs (created on first run)" -ForegroundColor White
-Write-Host "  /Projects/            - Generated videos and project files" -ForegroundColor White
-Write-Host "  /Downloads/           - Temporary download storage" -ForegroundColor White
-Write-Host "  /start_portable.cmd   - Launcher with /healthz check" -ForegroundColor White
-Write-Host "  /checksums.txt        - File checksums" -ForegroundColor White
-Write-Host "  /sbom.json            - Software Bill of Materials" -ForegroundColor White
-Write-Host "  /attributions.txt     - Third-party licenses" -ForegroundColor White
-Write-Host "  /README.md            - User documentation" -ForegroundColor White
-Write-Host ""
-Write-Host "To test locally:" -ForegroundColor Cyan
-Write-Host "  1. Extract the ZIP to a test folder" -ForegroundColor White
-Write-Host "  2. Run start_portable.cmd" -ForegroundColor White
-Write-Host "  3. Wait for browser to open at http://127.0.0.1:5005" -ForegroundColor White
-Write-Host ""
+Write-Output ""
+Write-Output "========================================" -ForegroundColor Green
+Write-Output " Build Complete!" -ForegroundColor Green
+Write-Output "========================================" -ForegroundColor Green
+Write-Output ""
+Write-Output "Portable ZIP:  $zipPath" -ForegroundColor White
+Write-Output "Size:          $([math]::Round((Get-Item $zipPath).Length / 1MB, 2)) MB" -ForegroundColor White
+Write-Output "SHA-256:       $($zipHash.Hash)" -ForegroundColor White
+Write-Output ""
+Write-Output "Contents:" -ForegroundColor Cyan
+Write-Output "  /api/*                - Aura.Api binaries with Web UI in wwwroot" -ForegroundColor White
+Write-Output "  /web/*                - Aura.Web static build (reference copy)" -ForegroundColor White
+Write-Output "  /ffmpeg/*             - FFmpeg binaries" -ForegroundColor White
+Write-Output "  /config/*             - Configuration files" -ForegroundColor White
+Write-Output "  /Tools/               - Downloaded dependencies (empty by default)" -ForegroundColor White
+Write-Output "  /AuraData/            - Settings, manifests, and metadata" -ForegroundColor White
+Write-Output "  /Logs/                - Application logs (created on first run)" -ForegroundColor White
+Write-Output "  /Projects/            - Generated videos and project files" -ForegroundColor White
+Write-Output "  /Downloads/           - Temporary download storage" -ForegroundColor White
+Write-Output "  /start_portable.cmd   - Launcher with /healthz check" -ForegroundColor White
+Write-Output "  /checksums.txt        - File checksums" -ForegroundColor White
+Write-Output "  /sbom.json            - Software Bill of Materials" -ForegroundColor White
+Write-Output "  /attributions.txt     - Third-party licenses" -ForegroundColor White
+Write-Output "  /README.md            - User documentation" -ForegroundColor White
+Write-Output ""
+Write-Output "To test locally:" -ForegroundColor Cyan
+Write-Output "  1. Extract the ZIP to a test folder" -ForegroundColor White
+Write-Output "  2. Run start_portable.cmd" -ForegroundColor White
+Write-Output "  3. Wait for browser to open at http://127.0.0.1:5005" -ForegroundColor White
+Write-Output ""

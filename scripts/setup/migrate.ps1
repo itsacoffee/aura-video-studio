@@ -1,4 +1,4 @@
-# Database Migration Runner for Aura Video Studio (Windows)
+﻿# Database Migration Runner for Aura Video Studio (Windows)
 # This script runs database migrations using Entity Framework Core
 
 param(
@@ -7,8 +7,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "Running database migrations..." -ForegroundColor Yellow
-Write-Host ""
+Write-Output "Running database migrations..." -ForegroundColor Yellow
+Write-Output ""
 
 # Get the root directory (2 levels up from scripts/setup)
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -19,41 +19,41 @@ Set-Location $rootPath
 
 # Check if running in Docker or local
 if (Test-Path "/.dockerenv") {
-    Write-Host "Running in Docker container"
+    Write-Output "Running in Docker container"
     Set-Location /app
 } else {
-    Write-Host "Running locally"
+    Write-Output "Running locally"
 }
 
 # Check if dotnet is available
 if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
-    Write-Host "Error: .NET SDK not found" -ForegroundColor Red
-    Write-Host "Install .NET SDK or run migrations via Docker:"
-    Write-Host "  docker-compose exec api dotnet ef database update"
+    Write-Output "Error: .NET SDK not found" -ForegroundColor Red
+    Write-Output "Install .NET SDK or run migrations via Docker:"
+    Write-Output "  docker-compose exec api dotnet ef database update"
     exit 1
 }
 
 # Run EF Core migrations
-Write-Host "Applying Entity Framework migrations..." -ForegroundColor Yellow
+Write-Output "Applying Entity Framework migrations..." -ForegroundColor Yellow
 Set-Location Aura.Api
 
 try {
     dotnet ef database update --verbose
-    
-    Write-Host ""
-    Write-Host "✓ Migrations applied successfully" -ForegroundColor Green
-    Write-Host ""
-    
+
+    Write-Output ""
+    Write-Output "✓ Migrations applied successfully" -ForegroundColor Green
+    Write-Output ""
+
     # Optionally run seed scripts
     if ($Seed) {
-        Write-Host "Running seed scripts..." -ForegroundColor Yellow
+        Write-Output "Running seed scripts..." -ForegroundColor Yellow
         & "$rootPath\scripts\setup\seed-database.ps1"
     }
 }
 catch {
-    Write-Host "✗ Migration failed" -ForegroundColor Red
-    Write-Host $_.Exception.Message -ForegroundColor Red
+    Write-Output "✗ Migration failed" -ForegroundColor Red
+    Write-Output $_.Exception.Message -ForegroundColor Red
     exit 1
 }
 
-Write-Host "Database migration complete!" -ForegroundColor Green
+Write-Output "Database migration complete!" -ForegroundColor Green

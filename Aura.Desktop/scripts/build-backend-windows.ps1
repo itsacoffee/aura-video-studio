@@ -1,4 +1,4 @@
-# PowerShell Script to Build Self-Contained .NET Backend for Windows
+﻿# PowerShell Script to Build Self-Contained .NET Backend for Windows
 # This script builds the ASP.NET Core backend as a self-contained deployment
 
 param(
@@ -14,44 +14,44 @@ $InfoColor = "Cyan"
 
 function Write-Info {
     param([string]$Message)
-    Write-Host "[INFO] $Message" -ForegroundColor $InfoColor
+    Write-Output "[INFO] $Message" -ForegroundColor $InfoColor
 }
 
 function Write-Success {
     param([string]$Message)
-    Write-Host "[SUCCESS] $Message" -ForegroundColor $SuccessColor
+    Write-Output "[SUCCESS] $Message" -ForegroundColor $SuccessColor
 }
 
 function Write-Warning {
     param([string]$Message)
-    Write-Host "[WARNING] $Message" -ForegroundColor $WarningColor
+    Write-Output "[WARNING] $Message" -ForegroundColor $WarningColor
 }
 
 function Write-ErrorMessage {
     param([string]$Message)
-    Write-Host "[ERROR] $Message" -ForegroundColor $ErrorColor
+    Write-Output "[ERROR] $Message" -ForegroundColor $ErrorColor
 }
 
 if ($Help) {
-    Write-Host "Backend Build Script for Aura Video Studio"
-    Write-Host ""
-    Write-Host "Usage: .\build-backend-windows.ps1 [OPTIONS]"
-    Write-Host ""
-    Write-Host "Options:"
-    Write-Host "  -Clean    Clean build (remove existing build artifacts first)"
-    Write-Host "  -Help     Show this help message"
+    Write-Output "Backend Build Script for Aura Video Studio"
+    Write-Output ""
+    Write-Output "Usage: .\build-backend-windows.ps1 [OPTIONS]"
+    Write-Output ""
+    Write-Output "Options:"
+    Write-Output "  -Clean    Clean build (remove existing build artifacts first)"
+    Write-Output "  -Help     Show this help message"
     exit 0
 }
 
-Write-Host "========================================" -ForegroundColor $InfoColor
-Write-Host ".NET Backend Build (Self-Contained)" -ForegroundColor $InfoColor
-Write-Host "========================================" -ForegroundColor $InfoColor
-Write-Host ""
+Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Output ".NET Backend Build (Self-Contained)" -ForegroundColor $InfoColor
+Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Output ""
 
 # Check if dotnet is installed
 if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
     Write-ErrorMessage ".NET 8.0 SDK is not installed"
-    Write-Host ""
+    Write-Output ""
     Write-Info "Please install .NET 8.0 SDK from:"
     Write-Info "  https://dotnet.microsoft.com/download/dotnet/8.0"
     exit 1
@@ -60,7 +60,7 @@ if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
 # Display .NET version
 $dotnetVersion = dotnet --version
 Write-Info ".NET SDK version: $dotnetVersion"
-Write-Host ""
+Write-Output ""
 
 $ScriptDir = $PSScriptRoot
 $DesktopDir = Split-Path $ScriptDir -Parent
@@ -78,25 +78,25 @@ if (-not (Test-Path $BackendCsproj)) {
 
 Write-Info "Backend project: $BackendProject"
 Write-Info "Output directory: $BackendOutputDir"
-Write-Host ""
+Write-Output ""
 
 # ========================================
 # Step 1: Clean (if requested)
 # ========================================
 if ($Clean) {
     Write-Info "Cleaning previous build artifacts..."
-    
+
     if (Test-Path $BackendOutputDir) {
         Remove-Item -Path $BackendOutputDir -Recurse -Force
         Write-Info "  Removed: $BackendOutputDir"
     }
-    
+
     # Clean project
     Set-Location $BackendProject
     dotnet clean -c Release | Out-Null
-    
+
     Write-Success "Clean complete"
-    Write-Host ""
+    Write-Output ""
 }
 
 # ========================================
@@ -113,7 +113,7 @@ foreach ($dir in $directories) {
 }
 
 Write-Success "Output directory ready"
-Write-Host ""
+Write-Output ""
 
 # ========================================
 # Step 3: Restore Dependencies
@@ -127,7 +127,7 @@ try {
         throw "Restore failed with exit code $LASTEXITCODE"
     }
     Write-Success "Restore complete"
-    Write-Host ""
+    Write-Output ""
 } catch {
     Write-ErrorMessage "Failed to restore packages: $($_.Exception.Message)"
     exit 1
@@ -141,9 +141,9 @@ Write-Info "Configuration: Release"
 Write-Info "Runtime: win-x64"
 Write-Info "Self-contained: Yes"
 Write-Info "Single file: Yes"
-Write-Host ""
+Write-Output ""
 Write-Warning "This may take several minutes on first build..."
-Write-Host ""
+Write-Output ""
 
 $publishArgs = @(
     "publish",
@@ -165,13 +165,13 @@ $publishArgs = @(
 
 try {
     $process = Start-Process -FilePath "dotnet" -ArgumentList $publishArgs -NoNewWindow -Wait -PassThru
-    
+
     if ($process.ExitCode -ne 0) {
         throw "Build failed with exit code $($process.ExitCode)"
     }
-    
+
     Write-Success "Build complete"
-    Write-Host ""
+    Write-Output ""
 } catch {
     Write-ErrorMessage "Failed to build backend: $($_.Exception.Message)"
     exit 1
@@ -193,7 +193,7 @@ foreach ($file in $requiredFiles) {
     if (Test-Path $file.Path) {
         $fileInfo = Get-Item $file.Path
         $sizeMB = [math]::Round($fileInfo.Length / 1MB, 2)
-        
+
         if ($fileInfo.Length -lt $file.MinSize) {
             Write-ErrorMessage "  ❌ $($file.Name) is too small ($sizeMB MB) - build may have failed"
             $allValid = $false
@@ -211,7 +211,7 @@ if (-not $allValid) {
     exit 1
 }
 
-Write-Host ""
+Write-Output ""
 
 # ========================================
 # Step 6: Copy Configuration Files
@@ -256,7 +256,7 @@ if (Test-Path $mainSettings) {
 }
 
 Write-Success "Configuration files ready"
-Write-Host ""
+Write-Output ""
 
 # ========================================
 # Step 7: Test Execution (Quick Check)
@@ -267,10 +267,10 @@ try {
     # Set environment variables for test
     $env:ASPNETCORE_URLS = "http://localhost:5555"
     $env:DOTNET_ENVIRONMENT = "Production"
-    
+
     # Start backend process
     $testProcess = Start-Process -FilePath $backendExe -ArgumentList "--help" -NoNewWindow -Wait -PassThru -ErrorAction Stop
-    
+
     if ($testProcess.ExitCode -eq 0) {
         Write-Success "  Backend executable runs successfully"
     } else {
@@ -281,7 +281,7 @@ try {
     Write-Warning "  Could not test execution (this may be normal): $($_.Exception.Message)"
 }
 
-Write-Host ""
+Write-Output ""
 
 # ========================================
 # Step 8: List Output Files
@@ -294,28 +294,28 @@ $totalSize = 0
 foreach ($file in $outputFiles) {
     $sizeMB = [math]::Round($file.Length / 1MB, 2)
     $totalSize += $file.Length
-    Write-Host "  $($file.Name) ($sizeMB MB)"
+    Write-Output "  $($file.Name) ($sizeMB MB)"
 }
 
 $totalSizeMB = [math]::Round($totalSize / 1MB, 2)
-Write-Host ""
+Write-Output ""
 Write-Info "Total size: $totalSizeMB MB"
-Write-Host ""
+Write-Output ""
 
 # ========================================
 # Summary
 # ========================================
-Write-Host "========================================" -ForegroundColor $SuccessColor
-Write-Host "Backend Build Complete!" -ForegroundColor $SuccessColor
-Write-Host "========================================" -ForegroundColor $SuccessColor
-Write-Host ""
+Write-Output "========================================" -ForegroundColor $SuccessColor
+Write-Output "Backend Build Complete!" -ForegroundColor $SuccessColor
+Write-Output "========================================" -ForegroundColor $SuccessColor
+Write-Output ""
 Write-Info "Backend location:"
-Write-Host "  $BackendOutputDir"
-Write-Host ""
+Write-Output "  $BackendOutputDir"
+Write-Output ""
 Write-Info "Main executable:"
-Write-Host "  Aura.Api.exe"
-Write-Host ""
+Write-Output "  Aura.Api.exe"
+Write-Output ""
 Write-Success "Backend is ready to be bundled with Electron installer! 🎉"
-Write-Host ""
+Write-Output ""
 
 exit 0

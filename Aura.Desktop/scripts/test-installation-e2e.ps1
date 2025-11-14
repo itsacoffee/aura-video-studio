@@ -1,4 +1,4 @@
-# End-to-End Installation Test Script
+﻿# End-to-End Installation Test Script
 # This script performs automated installation testing for PR-E2E-002
 # Run this in a Windows 11 VM or clean test environment
 
@@ -16,44 +16,44 @@ $InfoColor = "Cyan"
 
 function Write-Info {
     param([string]$Message)
-    Write-Host "[INFO] $Message" -ForegroundColor $InfoColor
+    Write-Output "[INFO] $Message" -ForegroundColor $InfoColor
 }
 
 function Write-Success {
     param([string]$Message)
-    Write-Host "[✓] $Message" -ForegroundColor $SuccessColor
+    Write-Output "[✓] $Message" -ForegroundColor $SuccessColor
 }
 
 function Write-Warning {
     param([string]$Message)
-    Write-Host "[⚠] $Message" -ForegroundColor $WarningColor
+    Write-Output "[⚠] $Message" -ForegroundColor $WarningColor
 }
 
 function Write-Failure {
     param([string]$Message)
-    Write-Host "[✗] $Message" -ForegroundColor $ErrorColor
+    Write-Output "[✗] $Message" -ForegroundColor $ErrorColor
 }
 
 if ($Help) {
-    Write-Host "Aura Video Studio - End-to-End Installation Test"
-    Write-Host ""
-    Write-Host "Usage: .\test-installation-e2e.ps1 -InstallerPath <path> [-Silent]"
-    Write-Host ""
-    Write-Host "Options:"
-    Write-Host "  -InstallerPath <path>  Path to the installer executable"
-    Write-Host "  -Silent                Run installer in silent mode (automated testing)"
-    Write-Host "  -Help                  Show this help message"
-    Write-Host ""
-    Write-Host "Example:"
-    Write-Host "  .\test-installation-e2e.ps1 -InstallerPath C:\Temp\Aura-Video-Studio-Setup-1.0.0.exe -Silent"
+    Write-Output "Aura Video Studio - End-to-End Installation Test"
+    Write-Output ""
+    Write-Output "Usage: .\test-installation-e2e.ps1 -InstallerPath <path> [-Silent]"
+    Write-Output ""
+    Write-Output "Options:"
+    Write-Output "  -InstallerPath <path>  Path to the installer executable"
+    Write-Output "  -Silent                Run installer in silent mode (automated testing)"
+    Write-Output "  -Help                  Show this help message"
+    Write-Output ""
+    Write-Output "Example:"
+    Write-Output "  .\test-installation-e2e.ps1 -InstallerPath C:\Temp\Aura-Video-Studio-Setup-1.0.0.exe -Silent"
     exit 0
 }
 
 if (-not $InstallerPath) {
     Write-Failure "Installer path is required"
-    Write-Host ""
-    Write-Host "Usage: .\test-installation-e2e.ps1 -InstallerPath <path>"
-    Write-Host "Run with -Help for more information"
+    Write-Output ""
+    Write-Output "Usage: .\test-installation-e2e.ps1 -InstallerPath <path>"
+    Write-Output "Run with -Help for more information"
     exit 1
 }
 
@@ -62,10 +62,10 @@ if (-not (Test-Path $InstallerPath)) {
     exit 1
 }
 
-Write-Host "========================================" -ForegroundColor $InfoColor
-Write-Host "Aura Video Studio - E2E Installation Test" -ForegroundColor $InfoColor
-Write-Host "========================================" -ForegroundColor $InfoColor
-Write-Host ""
+Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Output "Aura Video Studio - E2E Installation Test" -ForegroundColor $InfoColor
+Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Output ""
 
 $testResults = @{
     Phase = ""
@@ -78,10 +78,10 @@ $testResults = @{
 # Phase 1: Pre-Installation Checks
 # ========================================
 $testResults.Phase = "Pre-Installation"
-Write-Host "========================================" -ForegroundColor $InfoColor
-Write-Host "Phase 1: Pre-Installation Checks" -ForegroundColor $InfoColor
-Write-Host "========================================" -ForegroundColor $InfoColor
-Write-Host ""
+Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Output "Phase 1: Pre-Installation Checks" -ForegroundColor $InfoColor
+Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Output ""
 
 Write-Info "Checking installer file..."
 $installerFile = Get-Item $InstallerPath
@@ -147,20 +147,20 @@ if ($osBuild -ge 22000) {
 # Phase 2: Installation
 # ========================================
 $testResults.Phase = "Installation"
-Write-Host ""
-Write-Host "========================================" -ForegroundColor $InfoColor
-Write-Host "Phase 2: Installation" -ForegroundColor $InfoColor
-Write-Host "========================================" -ForegroundColor $InfoColor
-Write-Host ""
+Write-Output ""
+Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Output "Phase 2: Installation" -ForegroundColor $InfoColor
+Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Output ""
 
 Write-Info "Starting installer..."
 if ($Silent) {
     Write-Info "  Mode: Silent (automated)"
     Write-Info "  Running installer with /S flag..."
-    
+
     try {
         $installProcess = Start-Process -FilePath $InstallerPath -ArgumentList "/S" -Wait -PassThru
-        
+
         if ($installProcess.ExitCode -eq 0) {
             Write-Success "Installer completed successfully"
             $testResults.Passed++
@@ -174,22 +174,22 @@ if ($Silent) {
         $testResults.Failed++
         exit 1
     }
-    
+
     Write-Info "Waiting for installation to settle..."
     Start-Sleep -Seconds 10
-    
+
 } else {
     Write-Info "  Mode: Interactive"
     Write-Info "  Please complete the installation manually..."
-    Write-Host ""
-    Write-Host "  Installation Checklist:"
-    Write-Host "    1. Accept license agreement"
-    Write-Host "    2. Choose installation directory (default recommended)"
-    Write-Host "    3. If prompted, install .NET 8 Runtime"
-    Write-Host "    4. Complete installation"
-    Write-Host "    5. Choose whether to launch application"
-    Write-Host ""
-    Write-Host "  Press Enter when installation is complete..."
+    Write-Output ""
+    Write-Output "  Installation Checklist:"
+    Write-Output "    1. Accept license agreement"
+    Write-Output "    2. Choose installation directory (default recommended)"
+    Write-Output "    3. If prompted, install .NET 8 Runtime"
+    Write-Output "    4. Complete installation"
+    Write-Output "    5. Choose whether to launch application"
+    Write-Output ""
+    Write-Output "  Press Enter when installation is complete..."
     Read-Host
 }
 
@@ -197,18 +197,18 @@ if ($Silent) {
 # Phase 3: Post-Installation Validation
 # ========================================
 $testResults.Phase = "Post-Installation"
-Write-Host ""
-Write-Host "========================================" -ForegroundColor $InfoColor
-Write-Host "Phase 3: Post-Installation Validation" -ForegroundColor $InfoColor
-Write-Host "========================================" -ForegroundColor $InfoColor
-Write-Host ""
+Write-Output ""
+Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Output "Phase 3: Post-Installation Validation" -ForegroundColor $InfoColor
+Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Output ""
 
 Write-Info "Running comprehensive installation validation..."
 $validationScript = Join-Path $PSScriptRoot "validate-installation.ps1"
 
 if (Test-Path $validationScript) {
     & $validationScript
-    
+
     if ($LASTEXITCODE -eq 0) {
         Write-Success "Installation validation passed"
         $testResults.Passed++
@@ -218,7 +218,7 @@ if (Test-Path $validationScript) {
     }
 } else {
     Write-Warning "Validation script not found, performing basic checks..."
-    
+
     # Basic validation
     if (Test-Path $installPath) {
         Write-Success "Installation directory exists"
@@ -233,18 +233,18 @@ if (Test-Path $validationScript) {
 # Phase 4: Application Launch Test (Optional)
 # ========================================
 if (-not $Silent) {
-    Write-Host ""
-    Write-Host "========================================" -ForegroundColor $InfoColor
-    Write-Host "Phase 4: Application Launch Test" -ForegroundColor $InfoColor
-    Write-Host "========================================" -ForegroundColor $InfoColor
-    Write-Host ""
-    
+    Write-Output ""
+    Write-Output "========================================" -ForegroundColor $InfoColor
+    Write-Output "Phase 4: Application Launch Test" -ForegroundColor $InfoColor
+    Write-Output "========================================" -ForegroundColor $InfoColor
+    Write-Output ""
+
     Write-Info "Would you like to test launching the application? (Y/N)"
     $launchTest = Read-Host
-    
+
     if ($launchTest -eq "Y" -or $launchTest -eq "y") {
         Write-Info "Launching application..."
-        
+
         $exePath = Join-Path $installPath "Aura Video Studio.exe"
         if (Test-Path $exePath) {
             try {
@@ -268,33 +268,33 @@ if (-not $Silent) {
 # ========================================
 # Summary
 # ========================================
-Write-Host ""
-Write-Host "========================================" -ForegroundColor $InfoColor
-Write-Host "E2E Installation Test Summary" -ForegroundColor $InfoColor
-Write-Host "========================================" -ForegroundColor $InfoColor
-Write-Host "Installer: $($installerFile.Name)"
-Write-Host "Checksum:  $($installerHash.Hash)"
-Write-Host ""
-Write-Host "Test Results:" -ForegroundColor $InfoColor
-Write-Host "  Passed:   $($testResults.Passed)" -ForegroundColor $SuccessColor
-Write-Host "  Failed:   $($testResults.Failed)" -ForegroundColor $ErrorColor
-Write-Host "  Warnings: $($testResults.Warnings)" -ForegroundColor $WarningColor
-Write-Host "========================================" -ForegroundColor $InfoColor
-Write-Host ""
+Write-Output ""
+Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Output "E2E Installation Test Summary" -ForegroundColor $InfoColor
+Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Output "Installer: $($installerFile.Name)"
+Write-Output "Checksum:  $($installerHash.Hash)"
+Write-Output ""
+Write-Output "Test Results:" -ForegroundColor $InfoColor
+Write-Output "  Passed:   $($testResults.Passed)" -ForegroundColor $SuccessColor
+Write-Output "  Failed:   $($testResults.Failed)" -ForegroundColor $ErrorColor
+Write-Output "  Warnings: $($testResults.Warnings)" -ForegroundColor $WarningColor
+Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Output ""
 
 if ($testResults.Failed -eq 0) {
     Write-Success "E2E Installation Test PASSED ✓"
-    Write-Host ""
+    Write-Output ""
     Write-Info "Next steps:"
-    Write-Host "  1. Test application features"
-    Write-Host "  2. Test uninstallation (run validate-uninstallation.ps1)"
-    Write-Host "  3. Verify clean uninstall"
-    Write-Host ""
+    Write-Output "  1. Test application features"
+    Write-Output "  2. Test uninstallation (run validate-uninstallation.ps1)"
+    Write-Output "  3. Verify clean uninstall"
+    Write-Output ""
     exit 0
 } else {
     Write-Failure "E2E Installation Test FAILED ✗"
-    Write-Host ""
+    Write-Output ""
     Write-Info "Please review the failed checks and retry installation."
-    Write-Host ""
+    Write-Output ""
     exit 1
 }

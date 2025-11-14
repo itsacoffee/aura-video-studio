@@ -1,4 +1,4 @@
-# Windows FFmpeg Integration Validation Script
+﻿# Windows FFmpeg Integration Validation Script
 # This script validates the Windows-specific FFmpeg integration
 # Run this on a Windows machine to verify all functionality
 
@@ -17,28 +17,28 @@ $Cyan = "Cyan"
 
 function Write-Success {
     param([string]$Message)
-    Write-Host "✓ $Message" -ForegroundColor $Green
+    Write-Output "✓ $Message" -ForegroundColor $Green
 }
 
 function Write-Failure {
     param([string]$Message)
-    Write-Host "✗ $Message" -ForegroundColor $Red
+    Write-Output "✗ $Message" -ForegroundColor $Red
 }
 
 function Write-Info {
     param([string]$Message)
-    Write-Host "ℹ $Message" -ForegroundColor $Cyan
+    Write-Output "ℹ $Message" -ForegroundColor $Cyan
 }
 
 function Write-Warning {
     param([string]$Message)
-    Write-Host "⚠ $Message" -ForegroundColor $Yellow
+    Write-Output "⚠ $Message" -ForegroundColor $Yellow
 }
 
-Write-Host "========================================" -ForegroundColor $Cyan
-Write-Host "Windows FFmpeg Integration Validation" -ForegroundColor $Cyan
-Write-Host "========================================" -ForegroundColor $Cyan
-Write-Host ""
+Write-Output "========================================" -ForegroundColor $Cyan
+Write-Output "Windows FFmpeg Integration Validation" -ForegroundColor $Cyan
+Write-Output "========================================" -ForegroundColor $Cyan
+Write-Output ""
 
 $testResults = @()
 
@@ -125,7 +125,8 @@ foreach ($regPath in $registryPaths) {
             }
         }
     } catch {
-        # Ignore registry access errors
+        # Ignore registry access errors - this is expected when registry key doesn't exist
+        Write-Verbose "Registry key not accessible: $_"
     }
 }
 
@@ -159,11 +160,11 @@ $testOutput = Join-Path $tempDir "test output.txt"
 try {
     New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
     "test content" | Out-File -FilePath $testInput -Encoding UTF8
-    
+
     # Simulate FFmpeg path escaping
-    $escapedInput = $testInput.Replace('\', '/') 
+    $escapedInput = $testInput.Replace('\', '/')
     $escapedOutput = $testOutput.Replace('\', '/')
-    
+
     if ($escapedInput.Contains('/') -and $escapedOutput.Contains('/')) {
         Write-Success "Path escaping works correctly"
         $testResults += @{ Test = "Path Escaping"; Status = "Pass" }
@@ -183,7 +184,7 @@ try {
 # Test 7: Check hardware acceleration (if not skipped)
 if (-not $SkipHardware) {
     Write-Info "Test 7: Check hardware acceleration support..."
-    
+
     try {
         # Check for NVIDIA
         $nvidiaResult = & ffmpeg -hide_banner -encoders 2>&1 | Select-String "nvenc"
@@ -194,7 +195,7 @@ if (-not $SkipHardware) {
             Write-Info "NVIDIA NVENC not detected (GPU may not be present)"
             $testResults += @{ Test = "NVENC Detection"; Status = "Skip" }
         }
-        
+
         # Check for AMD
         $amdResult = & ffmpeg -hide_banner -encoders 2>&1 | Select-String "amf"
         if ($amdResult) {
@@ -204,7 +205,7 @@ if (-not $SkipHardware) {
             Write-Info "AMD AMF not detected (GPU may not be present)"
             $testResults += @{ Test = "AMF Detection"; Status = "Skip" }
         }
-        
+
         # Check for Intel QuickSync
         $qsvResult = & ffmpeg -hide_banner -encoders 2>&1 | Select-String "qsv"
         if ($qsvResult) {
@@ -245,16 +246,16 @@ $testVideoDir = Join-Path $env:TEMP "ffmpeg_test_$(Get-Random)"
 try {
     New-Item -ItemType Directory -Path $testVideoDir -Force | Out-Null
     $testVideo = Join-Path $testVideoDir "test_output.mp4"
-    
+
     # Generate 1 second of black video
     $ffmpegArgs = "-f lavfi -i color=c=black:s=1280x720:d=1 -c:v libx264 -pix_fmt yuv420p -y `"$testVideo`""
-    
+
     if ($Verbose) {
-        Write-Host "Running: ffmpeg $ffmpegArgs"
+        Write-Output "Running: ffmpeg $ffmpegArgs"
     }
-    
+
     $encoding = Start-Process -FilePath "ffmpeg" -ArgumentList $ffmpegArgs -NoNewWindow -Wait -PassThru
-    
+
     if ($encoding.ExitCode -eq 0 -and (Test-Path $testVideo)) {
         $fileSize = (Get-Item $testVideo).Length
         Write-Success "Video encoding successful ($fileSize bytes)"
@@ -273,22 +274,22 @@ try {
 }
 
 # Summary
-Write-Host ""
-Write-Host "========================================" -ForegroundColor $Cyan
-Write-Host "Test Summary" -ForegroundColor $Cyan
-Write-Host "========================================" -ForegroundColor $Cyan
+Write-Output ""
+Write-Output "========================================" -ForegroundColor $Cyan
+Write-Output "Test Summary" -ForegroundColor $Cyan
+Write-Output "========================================" -ForegroundColor $Cyan
 
 $passCount = ($testResults | Where-Object { $_.Status -eq "Pass" }).Count
 $failCount = ($testResults | Where-Object { $_.Status -eq "Fail" }).Count
 $skipCount = ($testResults | Where-Object { $_.Status -eq "Skip" }).Count
 $totalCount = $testResults.Count
 
-Write-Host ""
-Write-Host "Total Tests: $totalCount" -ForegroundColor $Cyan
-Write-Host "Passed: $passCount" -ForegroundColor $Green
-Write-Host "Failed: $failCount" -ForegroundColor $Red
-Write-Host "Skipped: $skipCount" -ForegroundColor $Yellow
-Write-Host ""
+Write-Output ""
+Write-Output "Total Tests: $totalCount" -ForegroundColor $Cyan
+Write-Output "Passed: $passCount" -ForegroundColor $Green
+Write-Output "Failed: $failCount" -ForegroundColor $Red
+Write-Output "Skipped: $skipCount" -ForegroundColor $Yellow
+Write-Output ""
 
 if ($failCount -eq 0) {
     Write-Success "All tests passed!"

@@ -1,4 +1,4 @@
-#!/usr/bin/env pwsh
+﻿#!/usr/bin/env pwsh
 <#
 .SYNOPSIS
     Smoke test script for Aura Video Studio startup sanity checks.
@@ -49,10 +49,10 @@ $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 
 # Colors for output
-function Write-Success { param($Message) Write-Host "✓ $Message" -ForegroundColor Green }
-function Write-Info { param($Message) Write-Host "→ $Message" -ForegroundColor Cyan }
-function Write-Warning { param($Message) Write-Host "⚠ $Message" -ForegroundColor Yellow }
-function Write-Error { param($Message) Write-Host "✗ $Message" -ForegroundColor Red }
+function Write-Success { param($Message) Write-Output "✓ $Message" -ForegroundColor Green }
+function Write-Info { param($Message) Write-Output "→ $Message" -ForegroundColor Cyan }
+function Write-Warning { param($Message) Write-Output "⚠ $Message" -ForegroundColor Yellow }
+function Write-Error { param($Message) Write-Output "✗ $Message" -ForegroundColor Red }
 
 # Configuration
 $ApiBase = "http://127.0.0.1:5005"
@@ -78,12 +78,12 @@ try {
             "Aura.Api/Aura.Api.csproj",
             "Aura.Tests/Aura.Tests.csproj"
         )
-        
+
         foreach ($project in $buildProjects) {
             $buildOutput = dotnet build $project --nologo 2>&1
             if ($LASTEXITCODE -ne 0) {
                 Write-Error "Build failed for $project!"
-                Write-Host $buildOutput
+                Write-Output $buildOutput
                 exit 1
             }
         }
@@ -98,7 +98,7 @@ try {
         $testOutput = dotnet test Aura.Tests/Aura.Tests.csproj --no-build --nologo --verbosity quiet 2>&1
         if ($LASTEXITCODE -ne 0) {
             Write-Error "Tests failed!"
-            Write-Host $testOutput
+            Write-Output $testOutput
             exit 1
         }
         # Parse test results
@@ -114,7 +114,7 @@ try {
 
     # Step 3: Start Aura.Api in background
     Write-Info "[3/5] Starting Aura.Api in background..."
-    
+
     # Check if port is already in use
     $portInUse = Get-NetTCPConnection -LocalPort $ApiPort -ErrorAction SilentlyContinue
     if ($portInUse) {
@@ -130,7 +130,7 @@ try {
         -RedirectStandardError "logs/smoke-stderr.log"
 
     Write-Success "Aura.Api started (PID: $($apiProcess.Id))"
-    
+
     # Wait for API to be ready (max 15 seconds)
     Write-Info "Waiting for API to become ready..."
     $maxWait = 15
@@ -140,7 +140,7 @@ try {
     while ($waited -lt $maxWait) {
         Start-Sleep -Seconds 1
         $waited++
-        
+
         try {
             $response = Invoke-RestMethod -Uri "$ApiBase/api/healthz" -Method Get -TimeoutSec 2 -ErrorAction SilentlyContinue
             if ($response.status -eq "healthy") {
@@ -149,6 +149,7 @@ try {
             }
         } catch {
             # API not ready yet, continue waiting
+            Write-Verbose "API not ready: $_"
         }
     }
 
@@ -162,7 +163,7 @@ try {
 
     # Step 4: Probe critical endpoints
     Write-Info "[4/5] Probing critical endpoints..."
-    
+
     # Probe 1: Health check
     try {
         $healthResponse = Invoke-RestMethod -Uri "$ApiBase/api/healthz" -Method Get
@@ -216,7 +217,7 @@ try {
     # Step 5: Monitor logs for exceptions
     Write-Info "[5/5] Monitoring logs for $ProbeTimeout seconds..."
     $logFile = Get-ChildItem -Path "logs" -Filter "aura-api-*.log" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-    
+
     if (-not $logFile) {
         # Fallback to smoke-stdout.log if no dated log file exists
         if (Test-Path "logs/smoke-stdout.log") {
@@ -247,11 +248,11 @@ try {
 
     while (((Get-Date) - $monitorStart).TotalSeconds -lt $ProbeTimeout) {
         Start-Sleep -Seconds 2
-        
+
         if ($logFile) {
             $currentLines = Get-Content $logFile.FullName
             $newLines = $currentLines | Select-Object -Skip $initialLineCount
-            
+
             foreach ($line in $newLines) {
                 # Check for exceptions or errors
                 if ($line -match "\[ERR\]|\[FTL\]|Exception|Error:") {
@@ -262,7 +263,7 @@ try {
                         $errorCount++
                     }
                 }
-                
+
                 # Extract correlation IDs
                 if ($line -match "\[([a-f0-9]{32})\]") {
                     $correlationId = $Matches[1]
@@ -271,7 +272,7 @@ try {
                     }
                 }
             }
-            
+
             $initialLineCount = $currentLines.Count
         }
     }
@@ -280,7 +281,7 @@ try {
     Write-Info "  Duration: $ProbeTimeout seconds"
     Write-Info "  Exceptions found: $exceptionCount"
     Write-Info "  Errors found: $errorCount"
-    
+
     if ($correlationIds.Count -gt 0) {
         Write-Info "  Correlation IDs seen: $($correlationIds.Count)"
         $correlationIds | Select-Object -First 3 | ForEach-Object {
@@ -303,7 +304,7 @@ try {
     Write-Info "Stopping Aura.Api (PID: $($apiProcess.Id))..."
     Stop-Process -Id $apiProcess.Id -Force -ErrorAction SilentlyContinue
     Start-Sleep -Seconds 2
-    
+
     if (Get-Process -Id $apiProcess.Id -ErrorAction SilentlyContinue) {
         Write-Warning "API process still running, forcing termination..."
         Stop-Process -Id $apiProcess.Id -Force
@@ -323,12 +324,12 @@ try {
 } catch {
     Write-Error "Smoke test encountered an error: $($_.Exception.Message)"
     Write-Error $_.ScriptStackTrace
-    
+
     # Try to stop API if it's running
     if ($apiProcess) {
         Stop-Process -Id $apiProcess.Id -Force -ErrorAction SilentlyContinue
     }
-    
+
     exit 1
 } finally {
     Pop-Location

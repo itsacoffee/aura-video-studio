@@ -1,4 +1,4 @@
-<# 
+﻿<#
 scripts/audit/scan.ps1
 Comprehensive repo audit for merge integrity and basic quality gates.
 #>
@@ -48,7 +48,7 @@ Add-Report ""
 Add-Report "### Duplicate C# Type Names"
 $csFiles = Get-ChildItem -Recurse -Include *.cs -File -ErrorAction SilentlyContinue
 $typeNames = @{}; $csRegex = '^\s*(public|internal|protected|private)?\s*(sealed\s+|abstract\s+)?(class|interface|record|enum)\s+([A-Za-z_][A-Za-z0-9_]*)'
-foreach ($f in $csFiles) { try { $i=0; Get-Content -LiteralPath $f.FullName -Encoding UTF8 | ForEach-Object { $i++; if ($_ -match $csRegex) { $name = $Matches[4]; if (-not $typeNames.ContainsKey($name)) { $typeNames[$name] = @() }; $typeNames[$name] += ("{0}:{1}" -f $f.FullName,$i) } } } catch {} }
+foreach ($f in $csFiles) { try { $i=0; Get-Content -LiteralPath $f.FullName -Encoding UTF8 | ForEach-Object { $i++; if ($_ -match $csRegex) { $name = $Matches[4]; if (-not $typeNames.ContainsKey($name)) { $typeNames[$name] = @() }; $typeNames[$name] += ("{0}:{1}" -f $f.FullName,$i) } } } catch { Write-Verbose "Error reading $($f.FullName): $_" } }
 $dupTypes = $typeNames.GetEnumerator() | Where-Object { $_.Value.Count -gt 1 }
 if ($dupTypes) { $hardFail = $true; Add-Report "**FOUND duplicate C# types:**"; foreach ($d in $dupTypes) { Add-Report ("- {0}" -f $d.Key); $d.Value | ForEach-Object { Add-Report ("  - {0}" -f $_) } } } else { Add-Report "No duplicate C# type names detected." }
 Add-Report ""
@@ -56,7 +56,7 @@ Add-Report ""
 Add-Report "### Duplicate TS/TSX Default Export Names"
 $tsFiles = Get-ChildItem -Recurse -Include *.ts,*.tsx -File -ErrorAction SilentlyContinue
 $tsNames = @{}; $tsRegex1 = 'export\s+default\s+function\s+([A-Za-z_][A-Za-z0-9_]*)'; $tsRegex2 = 'export\s+default\s+class\s+([A-Za-z_][A-Za-z0-9_]*)'
-foreach ($f in $tsFiles) { try { $name = $null; $text = Get-Content -LiteralPath $f.FullName -Raw -Encoding UTF8; if ($text -match $tsRegex1) { $name = $Matches[1] } elseif ($text -match $tsRegex2) { $name = $Matches[1] }; if ($name) { if (-not $tsNames.ContainsKey($name)) { $tsNames[$name] = @() }; $tsNames[$name] += $f.FullName } } catch {} }
+foreach ($f in $tsFiles) { try { $name = $null; $text = Get-Content -LiteralPath $f.FullName -Raw -Encoding UTF8; if ($text -match $tsRegex1) { $name = $Matches[1] } elseif ($text -match $tsRegex2) { $name = $Matches[1] }; if ($name) { if (-not $tsNames.ContainsKey($name)) { $tsNames[$name] = @() }; $tsNames[$name] += $f.FullName } } catch { Write-Verbose "Error reading $($f.FullName): $_" } }
 $dupTs = $tsNames.GetEnumerator() | Where-Object { $_.Value.Count -gt 1 }
 if ($dupTs) { $hardFail = $true; Add-Report "**FOUND duplicate TS default export names:**"; foreach ($d in $dupTs) { Add-Report ("- {0}" -f $d.Key); $d.Value | ForEach-Object { Add-Report ("  - {0}" -f $_) } } } else { Add-Report "No duplicate TS default export names detected." }
 Add-Report ""
@@ -64,7 +64,7 @@ Add-Report ""
 Add-Report "### Duplicate XAML Resource Keys"
 $xamlFiles = Get-ChildItem -Recurse -Include *.xaml -File -ErrorAction SilentlyContinue
 $xamlKeys = @{}; $xamlRegex = 'x:Key\s*=\s*"([^"]+)"'
-foreach ($f in $xamlFiles) { try { $text = Get-Content -LiteralPath $f.FullName -Raw -Encoding UTF8; $matches = [System.Text.RegularExpressions.Regex]::Matches($text, $xamlRegex); foreach ($m in $matches) { $k = $m.Groups[1].Value; if (-not $xamlKeys.ContainsKey($k)) { $xamlKeys[$k] = @() }; $xamlKeys[$k] += $f.FullName } } catch {} }
+foreach ($f in $xamlFiles) { try { $text = Get-Content -LiteralPath $f.FullName -Raw -Encoding UTF8; $matches = [System.Text.RegularExpressions.Regex]::Matches($text, $xamlRegex); foreach ($m in $matches) { $k = $m.Groups[1].Value; if (-not $xamlKeys.ContainsKey($k)) { $xamlKeys[$k] = @() }; $xamlKeys[$k] += $f.FullName } } catch { Write-Verbose "Error reading $($f.FullName): $_" } }
 $dupKeys = $xamlKeys.GetEnumerator() | Where-Object { $_.Value.Count -gt 1 }
 if ($dupKeys) { $hardFail = $true; Add-Report "**FOUND duplicate XAML resource keys:**"; foreach ($d in $dupKeys) { Add-Report ("- {0}" -f $d.Key); $d.Value | ForEach-Object { Add-Report ("  - {0}" -f $_) } } } else { Add-Report "No duplicate XAML resource keys detected." }
 Add-Report ""
@@ -90,4 +90,4 @@ foreach ($f in $csFiles) { $text = Get-Content -LiteralPath $f.FullName -Raw -En
 foreach ($k in $implMap.Keys) { Add-Report ("- {0} implementations:" -f $k); if ($implMap[$k].Count -eq 0) { Add-Report "  (none found)" } else { $implMap[$k] | ForEach-Object { Add-Report ("  - {0}" -f $_) } } }
 Add-Report ""
 
-if ($hardFail) { Add-Report "**RESULT: FAIL**"; Write-Host "Merge audit found problems. See $reportPath" -ForegroundColor Red; exit 1 } else { Add-Report "**RESULT: PASS**"; Write-Host "Merge audit passed. See $reportPath" -ForegroundColor Green; exit 0 }
+if ($hardFail) { Add-Report "**RESULT: FAIL**"; Write-Output "Merge audit found problems. See $reportPath" -ForegroundColor Red; exit 1 } else { Add-Report "**RESULT: PASS**"; Write-Output "Merge audit passed. See $reportPath" -ForegroundColor Green; exit 0 }

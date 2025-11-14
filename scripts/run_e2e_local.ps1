@@ -1,4 +1,4 @@
-#!/usr/bin/env pwsh
+﻿#!/usr/bin/env pwsh
 <#
 .SYNOPSIS
     End-to-end test for local video generation using local engines.
@@ -43,10 +43,10 @@ $TestTopic = "Local Engine Test Video"
 $MaxWaitSeconds = 300
 
 # Colors for output
-function Write-Success { param($Message) Write-Host "✓ $Message" -ForegroundColor Green }
-function Write-Info { param($Message) Write-Host "→ $Message" -ForegroundColor Cyan }
-function Write-Warning { param($Message) Write-Host "⚠ $Message" -ForegroundColor Yellow }
-function Write-Error { param($Message) Write-Host "✗ $Message" -ForegroundColor Red }
+function Write-Success { param($Message) Write-Output "✓ $Message" -ForegroundColor Green }
+function Write-Info { param($Message) Write-Output "→ $Message" -ForegroundColor Cyan }
+function Write-Warning { param($Message) Write-Output "⚠ $Message" -ForegroundColor Yellow }
+function Write-Error { param($Message) Write-Output "✗ $Message" -ForegroundColor Red }
 
 # Create output directory
 if (-not (Test-Path $OutputDir)) {
@@ -141,7 +141,7 @@ Write-Info "Listing available profiles..."
 try {
     $profiles = Invoke-RestMethod -Uri "$ApiBase/api/profiles/list" -Method Get
     $localProfile = $profiles | Where-Object { $_.name -match "Local|Offline|Free" } | Select-Object -First 1
-    
+
     if ($localProfile) {
         Write-Success "Using profile: $($localProfile.name)"
     } else {
@@ -231,7 +231,7 @@ while ($true) {
 
     try {
         $jobStatus = Invoke-RestMethod -Uri "$ApiBase/api/jobs/$jobId" -Method Get
-        
+
         if ($jobStatus.status -ne $lastStatus) {
             Write-Info "Status: $($jobStatus.status)"
             if ($jobStatus.progress) {
@@ -242,11 +242,11 @@ while ($true) {
 
         if ($jobStatus.status -eq "Completed") {
             Write-Success "Job completed successfully!"
-            
+
             # Get output paths
             if ($jobStatus.outputPath) {
                 Write-Success "Video: $($jobStatus.outputPath)"
-                
+
                 # Copy to test output directory
                 if (Test-Path $jobStatus.outputPath) {
                     $testVideoPath = Join-Path $OutputDir "test-local-$(Get-Date -Format 'yyyyMMdd-HHmmss').mp4"
@@ -254,14 +254,14 @@ while ($true) {
                     Write-Success "Copied to: $testVideoPath"
                 }
             }
-            
+
             if ($jobStatus.captionsPath) {
                 Write-Success "Captions: $($jobStatus.captionsPath)"
             }
-            
+
             break
         }
-        
+
         if ($jobStatus.status -eq "Failed") {
             Write-Error "Job failed: $($jobStatus.error)"
             exit 1
@@ -285,11 +285,11 @@ if ($jobStatus.outputPath -and (Test-Path $jobStatus.outputPath)) {
     $videoFile = Get-Item $jobStatus.outputPath
     $sizeMB = [math]::Round($videoFile.Length / 1MB, 2)
     Write-Success "Video file size: $sizeMB MB"
-    
+
     if ($sizeMB -lt 0.1) {
         Write-Warning "Video file is very small - may be invalid"
     }
-    
+
     # Check duration with ffprobe if available
     $ffprobe = Get-Command ffprobe -ErrorAction SilentlyContinue
     if ($ffprobe) {
@@ -297,7 +297,7 @@ if ($jobStatus.outputPath -and (Test-Path $jobStatus.outputPath)) {
             $duration = & ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 $jobStatus.outputPath 2>$null
             $durationSecs = [math]::Round([double]$duration, 1)
             Write-Success "Video duration: $durationSecs seconds"
-            
+
             if ($durationSecs -lt 10) {
                 Write-Warning "Video is shorter than expected (target was 15s)"
             }

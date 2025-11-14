@@ -1,11 +1,11 @@
-#!/usr/bin/env pwsh
+﻿#!/usr/bin/env pwsh
 <#
 .SYNOPSIS
     Audits repository for placeholder text that should not exist.
 
 .DESCRIPTION
-    Scans all source files for "Future Enhancements", "Planned Features", 
-    "Nice-to-Have", "TODO", "FIXME", "FUTURE IMPLEMENTATION", "Next steps" 
+    Scans all source files for "Future Enhancements", "Planned Features",
+    "Nice-to-Have", "TODO", "FIXME", "FUTURE IMPLEMENTATION", "Next steps"
     and similar placeholder text. Fails if any are found.
 
 .PARAMETER Path
@@ -16,7 +16,7 @@
 
 .EXAMPLE
     .\no_future_text.ps1
-    
+
 .EXAMPLE
     .\no_future_text.ps1 -Verbose
 #>
@@ -32,7 +32,7 @@ $ErrorActionPreference = "Stop"
 # These are placeholder markers that should not appear in production code
 $ForbiddenPatterns = @(
     "Future Enhancements",
-    "Planned Features", 
+    "Planned Features",
     "Nice-to-Have",
     "Future implementation",
     "Future Implementation",
@@ -75,16 +75,16 @@ $AllowedFiles = @(
     "*.md"  # Allow all markdown files - they are documentation only
 )
 
-Write-Host "🔍 Scanning for forbidden placeholder text..." -ForegroundColor Cyan
-Write-Host "Path: $Path" -ForegroundColor Gray
-Write-Host ""
+Write-Output "🔍 Scanning for forbidden placeholder text..." -ForegroundColor Cyan
+Write-Output "Path: $Path" -ForegroundColor Gray
+Write-Output ""
 
 $foundIssues = @()
 $scannedFiles = 0
 
 foreach ($pattern in $FilePatterns) {
-    $files = Get-ChildItem -Path $Path -Filter $pattern -Recurse -File -ErrorAction SilentlyContinue | 
-        Where-Object { 
+    $files = Get-ChildItem -Path $Path -Filter $pattern -Recurse -File -ErrorAction SilentlyContinue |
+        Where-Object {
             $excluded = $false
             foreach ($excludeDir in $ExcludeDirectories) {
                 if ($_.FullName -like "*$excludeDir*") {
@@ -94,10 +94,10 @@ foreach ($pattern in $FilePatterns) {
             }
             -not $excluded
         }
-    
+
     foreach ($file in $files) {
         $scannedFiles++
-        
+
         # Check if file is in allowed list
         $relativePath = $file.FullName.Replace($Path, "").TrimStart('\', '/')
         $isAllowed = $false
@@ -107,43 +107,43 @@ foreach ($pattern in $FilePatterns) {
                 break
             }
         }
-        
+
         if ($isAllowed) {
             continue
         }
-        
+
         $content = Get-Content $file.FullName -Raw -ErrorAction SilentlyContinue
-        
+
         if ($null -eq $content) {
             continue
         }
-        
+
         foreach ($forbiddenPattern in $ForbiddenPatterns) {
             if ($content -match [regex]::Escape($forbiddenPattern)) {
                 $lines = $content -split "`n"
                 $lineNumber = 0
-                
+
                 for ($i = 0; $i -lt $lines.Count; $i++) {
                     if ($lines[$i] -match [regex]::Escape($forbiddenPattern)) {
                         $lineNumber = $i + 1
                         $relativePath = $file.FullName.Replace($Path, "").TrimStart('\', '/')
-                        
+
                         $issue = [PSCustomObject]@{
                             File = $relativePath
                             Line = $lineNumber
                             Pattern = $forbiddenPattern
                             Context = $lines[$i].Trim()
                         }
-                        
+
                         $foundIssues += $issue
-                        
+
                         if ($Verbose) {
-                            Write-Host "❌ ${relativePath}:${lineNumber}" -ForegroundColor Red
-                            Write-Host "   Pattern: '$forbiddenPattern'" -ForegroundColor Yellow
-                            Write-Host "   Context: $($lines[$i].Trim())" -ForegroundColor Gray
-                            Write-Host ""
+                            Write-Output "❌ ${relativePath}:${lineNumber}" -ForegroundColor Red
+                            Write-Output "   Pattern: '$forbiddenPattern'" -ForegroundColor Yellow
+                            Write-Output "   Context: $($lines[$i].Trim())" -ForegroundColor Gray
+                            Write-Output ""
                         }
-                        
+
                         # Only report first occurrence per file/pattern combo
                         break
                     }
@@ -153,29 +153,29 @@ foreach ($pattern in $FilePatterns) {
     }
 }
 
-Write-Host "Scanned $scannedFiles files" -ForegroundColor Gray
-Write-Host ""
+Write-Output "Scanned $scannedFiles files" -ForegroundColor Gray
+Write-Output ""
 
 if ($foundIssues.Count -eq 0) {
-    Write-Host "✅ No placeholder text found!" -ForegroundColor Green
-    Write-Host "   Repository is clean." -ForegroundColor Gray
+    Write-Output "✅ No placeholder text found!" -ForegroundColor Green
+    Write-Output "   Repository is clean." -ForegroundColor Gray
     exit 0
 } else {
-    Write-Host "❌ Found $($foundIssues.Count) instances of placeholder text:" -ForegroundColor Red
-    Write-Host ""
-    
+    Write-Output "❌ Found $($foundIssues.Count) instances of placeholder text:" -ForegroundColor Red
+    Write-Output ""
+
     if (-not $Verbose) {
         $groupedByFile = $foundIssues | Group-Object -Property File
         foreach ($group in $groupedByFile) {
-            Write-Host "  $($group.Name)" -ForegroundColor Yellow
+            Write-Output "  $($group.Name)" -ForegroundColor Yellow
             foreach ($issue in $group.Group) {
-                Write-Host "    Line $($issue.Line): $($issue.Pattern)" -ForegroundColor Red
+                Write-Output "    Line $($issue.Line): $($issue.Pattern)" -ForegroundColor Red
             }
         }
     }
-    
-    Write-Host ""
-    Write-Host "Please remove all placeholder text before committing." -ForegroundColor Yellow
-    Write-Host "Rerun with -Verbose for more details." -ForegroundColor Gray
+
+    Write-Output ""
+    Write-Output "Please remove all placeholder text before committing." -ForegroundColor Yellow
+    Write-Output "Rerun with -Verbose for more details." -ForegroundColor Gray
     exit 1
 }

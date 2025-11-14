@@ -1,4 +1,4 @@
-# PowerShell Script to Download and Bundle FFmpeg for Windows
+﻿# PowerShell Script to Download and Bundle FFmpeg for Windows
 # This script downloads the full GPL FFmpeg build with all codecs
 
 param(
@@ -14,39 +14,39 @@ $InfoColor = "Cyan"
 
 function Write-Info {
     param([string]$Message)
-    Write-Host "[INFO] $Message" -ForegroundColor $InfoColor
+    Write-Output "[INFO] $Message" -ForegroundColor $InfoColor
 }
 
 function Write-Success {
     param([string]$Message)
-    Write-Host "[SUCCESS] $Message" -ForegroundColor $SuccessColor
+    Write-Output "[SUCCESS] $Message" -ForegroundColor $SuccessColor
 }
 
 function Write-Warning {
     param([string]$Message)
-    Write-Host "[WARNING] $Message" -ForegroundColor $WarningColor
+    Write-Output "[WARNING] $Message" -ForegroundColor $WarningColor
 }
 
 function Write-ErrorMessage {
     param([string]$Message)
-    Write-Host "[ERROR] $Message" -ForegroundColor $ErrorColor
+    Write-Output "[ERROR] $Message" -ForegroundColor $ErrorColor
 }
 
 if ($Help) {
-    Write-Host "FFmpeg Download Script for Aura Video Studio"
-    Write-Host ""
-    Write-Host "Usage: .\download-ffmpeg-windows.ps1 [OPTIONS]"
-    Write-Host ""
-    Write-Host "Options:"
-    Write-Host "  -Force    Force download even if FFmpeg already exists"
-    Write-Host "  -Help     Show this help message"
+    Write-Output "FFmpeg Download Script for Aura Video Studio"
+    Write-Output ""
+    Write-Output "Usage: .\download-ffmpeg-windows.ps1 [OPTIONS]"
+    Write-Output ""
+    Write-Output "Options:"
+    Write-Output "  -Force    Force download even if FFmpeg already exists"
+    Write-Output "  -Help     Show this help message"
     exit 0
 }
 
-Write-Host "========================================" -ForegroundColor $InfoColor
-Write-Host "FFmpeg Download and Setup" -ForegroundColor $InfoColor
-Write-Host "========================================" -ForegroundColor $InfoColor
-Write-Host ""
+Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Output "FFmpeg Download and Setup" -ForegroundColor $InfoColor
+Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Output ""
 
 $ScriptDir = $PSScriptRoot
 $DesktopDir = Split-Path $ScriptDir -Parent
@@ -71,7 +71,7 @@ $FFprobeExe = Join-Path $FFmpegBinDir "ffprobe.exe"
 if ((Test-Path $FFmpegExe) -and (Test-Path $FFprobeExe) -and -not $Force) {
     Write-Success "FFmpeg already exists at: $FFmpegBinDir"
     Write-Info "FFmpeg version: $(& $FFmpegExe -version | Select-Object -First 1)"
-    Write-Host ""
+    Write-Output ""
     Write-Info "Use -Force to re-download"
     exit 0
 }
@@ -97,7 +97,7 @@ foreach ($dir in $directories) {
 }
 
 Write-Success "Directories ready"
-Write-Host ""
+Write-Output ""
 
 # ========================================
 # Step 2: Download FFmpeg
@@ -106,31 +106,31 @@ Write-Info "Downloading FFmpeg..."
 Write-Info "  URL: $FFmpegUrl"
 Write-Info "  File: $FFmpegFileName"
 Write-Info "  Size: ~140MB (this may take a few minutes)"
-Write-Host ""
+Write-Output ""
 
 try {
     # Use WebClient for progress reporting
     $webClient = New-Object System.Net.WebClient
-    
+
     # Register progress event
     Register-ObjectEvent -InputObject $webClient -EventName DownloadProgressChanged -Action {
         $percent = $EventArgs.ProgressPercentage
         Write-Progress -Activity "Downloading FFmpeg" -Status "$percent% Complete" -PercentComplete $percent
     } | Out-Null
-    
+
     # Start download
     $webClient.DownloadFile($FFmpegUrl, $FFmpegZipPath)
-    
+
     # Unregister event
     Unregister-Event -SourceIdentifier "System.Net.WebClient.DownloadProgressChanged" -ErrorAction SilentlyContinue
-    
+
     Write-Progress -Activity "Downloading FFmpeg" -Completed
     Write-Success "Download complete"
-    Write-Host ""
-    
+    Write-Output ""
+
 } catch {
     Write-ErrorMessage "Failed to download FFmpeg: $($_.Exception.Message)"
-    Write-Host ""
+    Write-Output ""
     Write-Info "You can manually download FFmpeg from:"
     Write-Info "  $FFmpegUrl"
     Write-Info "And extract it to:"
@@ -146,19 +146,19 @@ Write-Info "Extracting FFmpeg..."
 try {
     # Expand archive
     Expand-Archive -Path $FFmpegZipPath -DestinationPath $TempDir -Force
-    
+
     # Find extracted directory (it will have a version-specific name)
     $extractedDirs = Get-ChildItem -Path $TempDir -Directory -Filter "ffmpeg-*" | Sort-Object LastWriteTime -Descending
-    
+
     if ($extractedDirs.Count -eq 0) {
         throw "Could not find extracted FFmpeg directory"
     }
-    
+
     $extractedDir = $extractedDirs[0].FullName
     $extractedBinDir = Join-Path $extractedDir "bin"
-    
+
     Write-Info "  Extracted to: $extractedDir"
-    
+
     # Copy binaries to resources directory
     if (Test-Path $extractedBinDir) {
         Write-Info "  Copying binaries..."
@@ -168,22 +168,22 @@ try {
     } else {
         throw "Could not find bin directory in extracted FFmpeg"
     }
-    
+
     # Copy license and documentation
     $licenseSrc = Join-Path $extractedDir "LICENSE.txt"
     $readmeSrc = Join-Path $extractedDir "README.txt"
-    
+
     if (Test-Path $licenseSrc) {
         Copy-Item -Path $licenseSrc -Destination $FFmpegWin64Dir -Force
     }
-    
+
     if (Test-Path $readmeSrc) {
         Copy-Item -Path $readmeSrc -Destination $FFmpegWin64Dir -Force
     }
-    
+
     Write-Success "Extraction complete"
-    Write-Host ""
-    
+    Write-Output ""
+
 } catch {
     Write-ErrorMessage "Failed to extract FFmpeg: $($_.Exception.Message)"
     exit 1
@@ -205,7 +205,7 @@ foreach ($binary in $binaries) {
     if (Test-Path $binary.Path) {
         $fileInfo = Get-Item $binary.Path
         $sizeMB = [math]::Round($fileInfo.Length / 1MB, 2)
-        
+
         if ($fileInfo.Length -lt $binary.MinSize) {
             Write-ErrorMessage "  ❌ $($binary.Name) is too small ($sizeMB MB) - may be corrupted"
             $allValid = $false
@@ -223,7 +223,7 @@ if (-not $allValid) {
     exit 1
 }
 
-Write-Host ""
+Write-Output ""
 
 # Test FFmpeg execution
 Write-Info "Testing FFmpeg execution..."
@@ -235,7 +235,7 @@ try {
     $allValid = $false
 }
 
-Write-Host ""
+Write-Output ""
 
 # ========================================
 # Step 5: Cleanup
@@ -248,43 +248,43 @@ try {
         Remove-Item -Path $FFmpegZipPath -Force
         Write-Info "  Removed: $FFmpegFileName"
     }
-    
+
     # Remove extracted directory
     if (Test-Path $extractedDir) {
         Remove-Item -Path $extractedDir -Recurse -Force
         Write-Info "  Removed: extracted files"
     }
-    
+
     # Remove temp directory if empty
     $tempContents = Get-ChildItem -Path $TempDir -ErrorAction SilentlyContinue
     if ($tempContents.Count -eq 0) {
         Remove-Item -Path $TempDir -Force
         Write-Info "  Removed: temp directory"
     }
-    
+
     Write-Success "Cleanup complete"
-    
+
 } catch {
     Write-Warning "Some temporary files could not be cleaned up: $($_.Exception.Message)"
 }
 
-Write-Host ""
+Write-Output ""
 
 # ========================================
 # Summary
 # ========================================
-Write-Host "========================================" -ForegroundColor $SuccessColor
-Write-Host "FFmpeg Setup Complete!" -ForegroundColor $SuccessColor
-Write-Host "========================================" -ForegroundColor $SuccessColor
-Write-Host ""
+Write-Output "========================================" -ForegroundColor $SuccessColor
+Write-Output "FFmpeg Setup Complete!" -ForegroundColor $SuccessColor
+Write-Output "========================================" -ForegroundColor $SuccessColor
+Write-Output ""
 Write-Info "FFmpeg location:"
-Write-Host "  $FFmpegBinDir"
-Write-Host ""
+Write-Output "  $FFmpegBinDir"
+Write-Output ""
 Write-Info "Binaries:"
-Write-Host "  - ffmpeg.exe"
-Write-Host "  - ffprobe.exe"
-Write-Host ""
+Write-Output "  - ffmpeg.exe"
+Write-Output "  - ffprobe.exe"
+Write-Output ""
 Write-Success "FFmpeg is ready to be bundled with Electron installer! 🎉"
-Write-Host ""
+Write-Output ""
 
 exit 0

@@ -1,4 +1,4 @@
-# PowerShell Build Script for Aura Video Studio Desktop
+﻿# PowerShell Build Script for Aura Video Studio Desktop
 param(
     [string]$Target = "win",
     [switch]$SkipFrontend,
@@ -15,45 +15,45 @@ $InfoColor = "Cyan"
 
 function Write-Info {
     param([string]$Message)
-    Write-Host "[INFO] $Message" -ForegroundColor $InfoColor
+    Write-Output "[INFO] $Message" -ForegroundColor $InfoColor
 }
 
 function Write-Success {
     param([string]$Message)
-    Write-Host "[SUCCESS] $Message" -ForegroundColor $SuccessColor
+    Write-Output "[SUCCESS] $Message" -ForegroundColor $SuccessColor
 }
 
 function Write-Warning {
     param([string]$Message)
-    Write-Host "[WARNING] $Message" -ForegroundColor $WarningColor
+    Write-Output "[WARNING] $Message" -ForegroundColor $WarningColor
 }
 
 function Write-Error {
     param([string]$Message)
-    Write-Host "[ERROR] $Message" -ForegroundColor $ErrorColor
+    Write-Output "[ERROR] $Message" -ForegroundColor $ErrorColor
 }
 
 if ($Help) {
-    Write-Host "Aura Video Studio - Desktop Build Script"
-    Write-Host ""
-    Write-Host "Usage: .\build-desktop.ps1 [OPTIONS]"
-    Write-Host ""
-    Write-Host "Options:"
-    Write-Host "  -Target <platform>    Build for specific platform (win only, default: win)"
-    Write-Host "  -SkipFrontend         Skip frontend build"
-    Write-Host "  -SkipBackend          Skip backend build"
-    Write-Host "  -SkipInstaller        Skip installer creation"
-    Write-Host "  -Help                 Show this help message"
+    Write-Output "Aura Video Studio - Desktop Build Script"
+    Write-Output ""
+    Write-Output "Usage: .\build-desktop.ps1 [OPTIONS]"
+    Write-Output ""
+    Write-Output "Options:"
+    Write-Output "  -Target <platform>    Build for specific platform (win only, default: win)"
+    Write-Output "  -SkipFrontend         Skip frontend build"
+    Write-Output "  -SkipBackend          Skip backend build"
+    Write-Output "  -SkipInstaller        Skip installer creation"
+    Write-Output "  -Help                 Show this help message"
     exit 0
 }
 
-Write-Host "========================================" -ForegroundColor $InfoColor
-Write-Host "Aura Video Studio - Desktop Build" -ForegroundColor $InfoColor
-Write-Host "========================================" -ForegroundColor $InfoColor
-Write-Host ""
+Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Output "Aura Video Studio - Desktop Build" -ForegroundColor $InfoColor
+Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Output ""
 
 Write-Info "Build target: $Target"
-Write-Host ""
+Write-Output ""
 
 # Check if Node.js is installed
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
@@ -78,29 +78,29 @@ Set-Location $ScriptDir
 if (-not $SkipFrontend) {
     Write-Info "Building React frontend..."
     Set-Location "$ProjectRoot\Aura.Web"
-    
+
     if (-not (Test-Path "node_modules")) {
         Write-Info "Installing frontend dependencies..."
         npm install
     }
-    
+
     Write-Info "Running frontend build..."
     npm run build
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Frontend build failed with exit code $LASTEXITCODE"
         exit 1
     }
-    
+
     if (-not (Test-Path "dist\index.html")) {
         Write-Error "Frontend build failed - dist\index.html not found"
         exit 1
     }
-    
+
     Write-Success "Frontend build complete"
-    Write-Host ""
+    Write-Output ""
 } else {
     Write-Warning "Skipping frontend build"
-    Write-Host ""
+    Write-Output ""
 }
 
 # ========================================
@@ -109,14 +109,14 @@ if (-not $SkipFrontend) {
 if (-not $SkipBackend) {
     Write-Info "Building .NET backend..."
     Set-Location "$ProjectRoot\Aura.Api"
-    
+
     # Create backend output directory (must match package.json extraResources path)
     $ResourcesDir = "$ScriptDir\resources"
     $BackendDir = "$ResourcesDir\backend"
     if (-not (Test-Path $BackendDir)) {
         New-Item -ItemType Directory -Path $BackendDir -Force | Out-Null
     }
-    
+
     if ($Target -eq "win") {
         Write-Info "Building backend for Windows (x64)..."
         dotnet publish -c Release -r win-x64 --self-contained true `
@@ -134,12 +134,12 @@ if (-not $SkipBackend) {
         Write-Error "Only Windows builds are supported. Target: $Target"
         exit 1
     }
-    
+
     Write-Success "Backend builds complete"
-    Write-Host ""
+    Write-Output ""
 } else {
     Write-Warning "Skipping backend build"
-    Write-Host ""
+    Write-Output ""
 }
 
 # ========================================
@@ -159,7 +159,7 @@ if (-not (Test-Path "node_modules")) {
 }
 
 Write-Success "Electron dependencies ready"
-Write-Host ""
+Write-Output ""
 
 # ========================================
 # Step 4: Validate Resources
@@ -188,14 +188,14 @@ if ($ValidationFailed) {
 }
 
 Write-Success "All required resources validated"
-Write-Host ""
+Write-Output ""
 
 # ========================================
 # Step 5: Build Electron Installers
 # ========================================
 if (-not $SkipInstaller) {
     Write-Info "Building Electron installers..."
-    
+
     if ($Target -eq "win") {
         Write-Info "Building Windows installer..."
         npm run build:win
@@ -207,34 +207,34 @@ if (-not $SkipInstaller) {
         Write-Error "Only Windows builds are supported. Target: $Target"
         exit 1
     }
-    
+
     Write-Success "Installer build complete"
 } else {
     Write-Warning "Skipping installer creation (building directory only)"
     npm run build:dir
 }
 
-Write-Host ""
+Write-Output ""
 Write-Success "========================================"
 Write-Success "Build Complete!"
 Write-Success "========================================"
-Write-Host ""
+Write-Output ""
 Write-Info "Output directory: $ScriptDir\dist"
-Write-Host ""
+Write-Output ""
 
 # List generated files
 if (Test-Path "$ScriptDir\dist") {
     Write-Info "Generated files:"
     Get-ChildItem "$ScriptDir\dist" | ForEach-Object {
         $size = if ($_.PSIsContainer) { "DIR" } else { "{0:N2} MB" -f ($_.Length / 1MB) }
-        Write-Host "  $($_.Name) ($size)"
+        Write-Output "  $($_.Name) ($size)"
     }
-    Write-Host ""
+    Write-Output ""
 }
 
 Write-Info "To run the app in development mode:"
-Write-Host "  cd Aura.Desktop"
-Write-Host "  npm start"
-Write-Host ""
+Write-Output "  cd Aura.Desktop"
+Write-Output "  npm start"
+Write-Output ""
 
 Write-Success "All done! 🎉"
