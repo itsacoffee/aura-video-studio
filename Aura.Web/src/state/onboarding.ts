@@ -1,6 +1,7 @@
 // Onboarding state management with state machine for First-Run Wizard
 
 import { apiUrl } from '../config/api';
+import { resetCircuitBreaker } from '../services/api/apiClient';
 import { getDefaultSaveLocation, getDefaultCacheLocation } from '../utils/pathUtils';
 import type { PreflightReport, StageCheck } from './providers';
 
@@ -715,6 +716,11 @@ export async function validateApiKeyThunk(
   dispatch: React.Dispatch<OnboardingAction>
 ): Promise<void> {
   dispatch({ type: 'START_API_KEY_VALIDATION', payload: provider });
+
+  // CRITICAL FIX: Reset circuit breaker before API key validation
+  // This prevents false "service unavailable" errors from persisted circuit breaker state
+  resetCircuitBreaker();
+  console.log(`[API Key Validation] Circuit breaker reset for ${provider} validation`);
 
   try {
     // Client-side format validation

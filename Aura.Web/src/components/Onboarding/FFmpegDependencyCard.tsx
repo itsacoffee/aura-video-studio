@@ -16,6 +16,7 @@ import {
   ArrowClockwise24Regular,
 } from '@fluentui/react-icons';
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { resetCircuitBreaker } from '../../services/api/apiClient';
 import { ffmpegClient, type FFmpegStatus } from '../../services/api/ffmpegClient';
 import { useNotifications } from '../Notifications/Toasts';
 
@@ -103,6 +104,10 @@ export function FFmpegDependencyCard({
     setIsLoading(true);
     setError(null);
     try {
+      // Reset circuit breaker before checking status
+      resetCircuitBreaker();
+      console.log('[FFmpegDependencyCard] Circuit breaker reset, checking FFmpeg status');
+
       const ffmpegStatus = await ffmpegClient.getStatus();
       setStatus(ffmpegStatus);
 
@@ -152,6 +157,10 @@ export function FFmpegDependencyCard({
     setIsLoading(true);
     setError(null);
     try {
+      // Reset circuit breaker before rescanning
+      resetCircuitBreaker();
+      console.log('[FFmpegDependencyCard] Circuit breaker reset, rescanning for FFmpeg');
+
       const rescanResult = await ffmpegClient.rescan();
 
       if (rescanResult.success) {
@@ -260,6 +269,10 @@ export function FFmpegDependencyCard({
     setError(null);
 
     try {
+      // Reset circuit breaker before installation
+      resetCircuitBreaker();
+      console.log('[FFmpegDependencyCard] Circuit breaker reset, starting FFmpeg installation');
+
       const progressInterval = setInterval(() => {
         setInstallProgress((prev) => {
           if (prev >= 90) {
