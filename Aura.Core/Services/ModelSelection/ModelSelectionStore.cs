@@ -69,6 +69,7 @@ public class ModelSelectionStore
         ModelSelectionScope scope,
         CancellationToken ct = default)
     {
+        await Task.CompletedTask;
         lock (_lock)
         {
             var key = GetSelectionKey(provider, stage, scope);

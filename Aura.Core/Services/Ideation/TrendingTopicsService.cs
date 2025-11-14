@@ -99,6 +99,7 @@ public class TrendingTopicsService
         int maxResults,
         CancellationToken ct)
     {
+        await Task.CompletedTask;
         var topics = new List<TrendingTopic>();
 
         // For this implementation, we'll use a combination of approaches:

@@ -259,6 +259,7 @@ public class LocalStorageService : IStorageService
         string destinationFileName,
         CancellationToken ct = default)
     {
+        await Task.CompletedTask;
         try
         {
             var sourcePath = ConvertBlobUrlToPath(sourceBlobUrl);

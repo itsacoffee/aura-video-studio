@@ -34,6 +34,7 @@ public class PostTrainingAnalysisService
         int annotationCount,
         CancellationToken cancellationToken = default)
     {
+        await Task.CompletedTask;
         _logger.LogInformation("Analyzing training results: Loss={Loss}, Duration={Duration}s, Samples={Samples}",
             metrics.Loss, metrics.Duration.TotalSeconds, metrics.Samples);
 

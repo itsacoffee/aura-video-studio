@@ -190,6 +190,7 @@ public class AestheticScoringService
         double minimumThreshold = 60.0,
         CancellationToken ct = default)
     {
+        await Task.CompletedTask;
         var scoredCandidates = new List<ImageCandidate>();
 
         foreach (var candidate in candidates)

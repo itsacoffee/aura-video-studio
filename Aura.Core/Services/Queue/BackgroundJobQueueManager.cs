@@ -571,6 +571,7 @@ public class BackgroundJobQueueManager
         QueueConfigurationEntity? config,
         CancellationToken ct)
     {
+        await Task.CompletedTask;
         // Check concurrent job limit
         if (_activeJobs.Count >= (config?.MaxConcurrentJobs ?? 2))
         {

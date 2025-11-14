@@ -85,6 +85,7 @@ public class JobRunner
         bool isQuickDemo = false,
         CancellationToken ct = default)
     {
+        await Task.CompletedTask;
         ArgumentNullException.ThrowIfNull(brief);
         ArgumentNullException.ThrowIfNull(planSpec);
         ArgumentNullException.ThrowIfNull(voiceSpec);

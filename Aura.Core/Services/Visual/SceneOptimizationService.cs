@@ -80,6 +80,7 @@ public class SceneOptimizationService
         SceneOptimizationConfig config,
         CancellationToken ct)
     {
+        await Task.CompletedTask;
         var aspectRatioData = GetAspectRatioOptimization(config.AspectRatio);
         
         var enhancedNegativePrompts = BuildEnhancedNegativePrompts(

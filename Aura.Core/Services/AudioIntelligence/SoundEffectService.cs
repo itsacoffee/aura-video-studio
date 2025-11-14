@@ -35,6 +35,7 @@ public class SoundEffectService
         string? contentType = null,
         CancellationToken ct = default)
     {
+        await Task.CompletedTask;
         _logger.LogInformation("Suggesting sound effects for script (length: {Length})", script.Length);
 
         try

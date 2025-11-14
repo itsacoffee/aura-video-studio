@@ -288,6 +288,7 @@ public class AdvancedScriptEnhancer
         bool includeSources,
         CancellationToken ct)
     {
+        await Task.CompletedTask;
         _logger.LogInformation("Fact-checking script");
 
         try
@@ -551,6 +552,7 @@ public class AdvancedScriptEnhancer
         StoryFrameworkType? targetFramework,
         CancellationToken ct)
     {
+        await Task.CompletedTask;
         var suggestions = new List<EnhancementSuggestion>();
         var lines = script.Split('\n').Where(l => !string.IsNullOrWhiteSpace(l)).ToList();
 
@@ -718,6 +720,7 @@ Return only the optimized hook (2-3 sentences max).";
         string? desiredJourney,
         CancellationToken ct)
     {
+        await Task.CompletedTask;
         var suggestions = new List<EnhancementSuggestion>
         {
             new EnhancementSuggestion(
@@ -743,6 +746,7 @@ Return only the optimized hook (2-3 sentences max).";
         string? contentType,
         CancellationToken ct)
     {
+        await Task.CompletedTask;
         var suggestions = new List<EnhancementSuggestion>
         {
             new EnhancementSuggestion(

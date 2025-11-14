@@ -68,6 +68,7 @@ public class PacingOptimizer
         int totalScenes,
         CancellationToken ct)
     {
+        await Task.CompletedTask;
         // Calculate words in scene
         var words = Regex.Split(scene.Script, @"\s+")
             .Where(w => !string.IsNullOrWhiteSpace(w))

@@ -171,6 +171,7 @@ public class SmartProviderSelector
         string providerType,
         CancellationToken ct)
     {
+        await Task.CompletedTask;
         if (candidateProviders.Count == 0)
         {
             _logger.LogWarning("No {ProviderType} providers available", providerType);

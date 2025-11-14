@@ -234,6 +234,7 @@ public class ProviderProfileService
     /// </summary>
     public async Task<ProviderProfile> GetRecommendedProfileAsync(CancellationToken ct = default)
     {
+        await Task.CompletedTask;
         var allKeys = _keyStore.GetAllKeys();
         var hasOpenAI = allKeys.ContainsKey("openai") && !string.IsNullOrWhiteSpace(allKeys["openai"]);
         var hasElevenLabs = allKeys.ContainsKey("elevenlabs") && !string.IsNullOrWhiteSpace(allKeys["elevenlabs"]);

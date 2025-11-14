@@ -120,6 +120,7 @@ public class MusicRecommendationService
         string? context,
         CancellationToken ct)
     {
+        await Task.CompletedTask;
         if (tracks.Count == 0)
         {
             return new List<MusicRecommendation>();

@@ -767,6 +767,7 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        await Task.CompletedTask;
         if (_disposed) return;
 
         try

@@ -68,6 +68,7 @@ public class AnalyticsTracker : IAnalyticsTracker
         string? featureUsed = null,
         CancellationToken cancellationToken = default)
     {
+        await Task.CompletedTask;
         return new GenerationTracker(
             _analyticsService,
             _logger,
@@ -85,6 +86,7 @@ public class AnalyticsTracker : IAnalyticsTracker
         string? jobId = null,
         CancellationToken cancellationToken = default)
     {
+        await Task.CompletedTask;
         return new GenerationTracker(
             _analyticsService,
             _logger,

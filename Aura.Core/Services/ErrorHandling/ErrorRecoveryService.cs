@@ -85,15 +85,15 @@ public class ErrorRecoveryService
             {
                 // File access errors - retry with delay
                 ResourceException { ResourceType: ResourceType.FileLocked } => 
-                    await RetryWithDelay(async () => true, 3, TimeSpan.FromSeconds(2)).ConfigureAwait(false),
+                    await RetryWithDelay(() => Task.FromResult(true), 3, TimeSpan.FromSeconds(2)).ConfigureAwait(false),
 
                 // Network errors - retry with exponential backoff
                 ProviderException { SpecificErrorCode: ProviderErrorCode.NetworkError } =>
-                    await RetryWithExponentialBackoff(async () => true, 3).ConfigureAwait(false),
+                    await RetryWithExponentialBackoff(() => Task.FromResult(true), 3).ConfigureAwait(false),
 
                 // Transient provider errors
                 ProviderException { IsTransient: true } =>
-                    await RetryWithExponentialBackoff(async () => true, 3).ConfigureAwait(false),
+                    await RetryWithExponentialBackoff(() => Task.FromResult(true), 3).ConfigureAwait(false),
 
                 // Rate limiting - wait and retry
                 ProviderException { SpecificErrorCode: ProviderErrorCode.RateLimit } provEx =>
