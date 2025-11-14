@@ -16,17 +16,7 @@ interface AnimatedInputProps extends Omit<HTMLMotionProps<'input'>, 'type'> {
  */
 export const AnimatedInput = forwardRef<HTMLInputElement, AnimatedInputProps>(
   (
-    {
-      label,
-      error,
-      hint,
-      leftIcon,
-      rightIcon,
-      className = '',
-      type = 'text',
-      disabled,
-      ...props
-    },
+    { label, error, hint, leftIcon, rightIcon, className = '', type = 'text', disabled, ...props },
     ref
   ) => {
     const prefersReducedMotion = useReducedMotion();
@@ -44,7 +34,7 @@ export const AnimatedInput = forwardRef<HTMLInputElement, AnimatedInputProps>(
           : '0 0 0 3px rgba(14, 165, 233, 0.2)',
         transition: {
           duration: 0.2,
-          ease: 'easeOut',
+          ease: 'easeOut' as const,
         },
       },
       error: {
@@ -95,14 +85,12 @@ export const AnimatedInput = forwardRef<HTMLInputElement, AnimatedInputProps>(
             {label}
           </motion.label>
         )}
-        
+
         <div className="relative">
           {leftIcon && (
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-              {leftIcon}
-            </div>
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">{leftIcon}</div>
           )}
-          
+
           <motion.input
             ref={ref}
             type={type}
@@ -122,14 +110,14 @@ export const AnimatedInput = forwardRef<HTMLInputElement, AnimatedInputProps>(
             aria-describedby={error ? 'input-error' : hint ? 'input-hint' : undefined}
             {...props}
           />
-          
+
           {rightIcon && (
             <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
               {rightIcon}
             </div>
           )}
         </div>
-        
+
         {error && (
           <motion.p
             id="input-error"
@@ -141,7 +129,7 @@ export const AnimatedInput = forwardRef<HTMLInputElement, AnimatedInputProps>(
             {error}
           </motion.p>
         )}
-        
+
         {hint && !error && (
           <p id="input-hint" className="mt-1.5 text-sm text-gray-500 dark:text-gray-400">
             {hint}

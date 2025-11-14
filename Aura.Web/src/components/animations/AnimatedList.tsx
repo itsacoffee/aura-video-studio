@@ -27,10 +27,10 @@ export function AnimatedList({
     : {
         ...staggerContainer,
         visible: {
-          ...staggerContainer.visible,
+          opacity: 1,
           transition: {
-            ...staggerContainer.visible.transition,
             staggerChildren: staggerDelay,
+            delayChildren: 0.1,
           },
         },
       };

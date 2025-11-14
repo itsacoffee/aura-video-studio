@@ -49,34 +49,34 @@ export type ConfirmationSeverity = 'warning' | 'danger' | 'info';
 export interface ConfirmationDialogProps {
   /** The trigger element (e.g., a button) */
   trigger: ReactNode;
-  
+
   /** Dialog title */
   title: string;
-  
+
   /** Main message */
   message: string;
-  
+
   /** List of consequences of the action */
   consequences?: string[];
-  
+
   /** Severity level */
   severity?: ConfirmationSeverity;
-  
+
   /** Confirm button text */
   confirmText?: string;
-  
+
   /** Cancel button text */
   cancelText?: string;
-  
+
   /** Callback when confirmed */
   onConfirm: () => void | Promise<void>;
-  
+
   /** Callback when cancelled */
   onCancel?: () => void;
-  
+
   /** Whether the dialog is open (controlled) */
   open?: boolean;
-  
+
   /** Callback when open state changes */
   onOpenChange?: (open: boolean) => void;
 }
@@ -109,7 +109,12 @@ export function ConfirmationDialog({
     onOpenChange?.(false);
   };
 
-  const getConfirmAppearance = () => {
+  const getConfirmAppearance = ():
+    | 'primary'
+    | 'secondary'
+    | 'outline'
+    | 'subtle'
+    | 'transparent' => {
     switch (severity) {
       case 'danger':
         return 'primary'; // Red background for danger
@@ -163,20 +168,4 @@ export function ConfirmationDialog({
       </DialogSurface>
     </Dialog>
   );
-}
-
-/**
- * Hook to use confirmation dialog programmatically
- */
-export function useConfirmation() {
-  const confirm = (options: Omit<ConfirmationDialogProps, 'trigger' | 'open' | 'onOpenChange'>) => {
-    return new Promise<boolean>((resolve) => {
-      // This is a simplified version - in production, you'd want to use a
-      // dialog context provider for truly imperative dialogs
-      const result = window.confirm(`${options.title}\n\n${options.message}`);
-      resolve(result);
-    });
-  };
-
-  return { confirm };
 }

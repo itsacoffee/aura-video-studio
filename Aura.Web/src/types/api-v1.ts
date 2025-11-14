@@ -1830,3 +1830,42 @@ export enum BitratePreset {
   VeryHigh = 'VeryHigh',
   Custom = 'Custom',
 }
+
+// ============================================================================
+// SERVER-SENT EVENT DTOS
+// ============================================================================
+
+/**
+ * Progress event from job execution (SSE)
+ */
+export interface ProgressEventDto {
+  jobId: string;
+  stage: string;
+  percent: number;
+  etaSeconds?: number | null;
+  message: string;
+  warnings: string[];
+  correlationId?: string | null;
+  substageDetail?: string | null;
+  currentItem?: number | null;
+  totalItems?: number | null;
+}
+
+/**
+ * Heartbeat event to keep SSE connection alive
+ */
+export interface HeartbeatEventDto {
+  timestamp: string;
+  status?: string;
+}
+
+/**
+ * Provider cancellation status for reporting non-cancellable providers
+ */
+export interface ProviderCancellationStatusDto {
+  providerName: string;
+  providerType: string;
+  supportsCancellation: boolean;
+  status: string;
+  warning?: string | null;
+}
