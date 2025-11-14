@@ -37,6 +37,11 @@ dotnet_enable_roslyn_analyzers = true
 
 # Analyzer severity overrides per build-sweep requirements
 dotnet_analyzer_diagnostic.severity = warning
+
+# IDE style warnings - set to silent to focus on real compiler and code analysis warnings
+dotnet_analyzer_diagnostic.category-Style.severity = silent
+
+# Important code analysis warnings
 dotnet_diagnostic.CA1848.severity = suggestion
 dotnet_diagnostic.CA1305.severity = warning
 dotnet_diagnostic.CA2007.severity = warning
