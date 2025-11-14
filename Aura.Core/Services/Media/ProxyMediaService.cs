@@ -130,10 +130,10 @@ public class ProxyMediaService : IProxyMediaService
         var sourceInfo = new FileInfo(sourcePath);
         var proxyKey = GetProxyKey(sourcePath, options.Quality);
         
-        await _generateLock.WaitAsync(cancellationToken);
+        await _generateLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            var existing = await GetProxyMetadataAsync(sourcePath, options.Quality);
+            var existing = await GetProxyMetadataAsync(sourcePath, options.Quality).ConfigureAwait(false);
             if (existing != null && existing.Status == ProxyStatus.Completed && !options.Overwrite)
             {
                 _logger.LogInformation("Proxy already exists for {SourcePath} at quality {Quality}", 
@@ -154,14 +154,14 @@ public class ProxyMediaService : IProxyMediaService
             };
 
             _proxyCache[proxyKey] = metadata;
-            await SaveMetadataAsync(metadata);
+            await SaveMetadataAsync(metadata).ConfigureAwait(false);
 
             _logger.LogInformation("Starting proxy generation for {SourcePath} at quality {Quality}", 
                 sourcePath, options.Quality);
 
             try
             {
-                var videoInfo = await _ffmpegService.GetVideoInfoAsync(sourcePath, cancellationToken);
+                var videoInfo = await _ffmpegService.GetVideoInfoAsync(sourcePath, cancellationToken).ConfigureAwait(false);
                 
                 var (width, height, bitrate) = GetProxySettings(options.Quality, videoInfo);
                 
@@ -178,7 +178,7 @@ public class ProxyMediaService : IProxyMediaService
                         metadata.ProgressPercent = ffmpegProgress.PercentComplete;
                         progress?.Report(ffmpegProgress.PercentComplete);
                     },
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
 
                 if (!result.Success)
                 {
@@ -205,7 +205,7 @@ public class ProxyMediaService : IProxyMediaService
                 _logger.LogError(ex, "Error generating proxy for {SourcePath}", sourcePath);
             }
 
-            await SaveMetadataAsync(metadata);
+            await SaveMetadataAsync(metadata).ConfigureAwait(false);
             return metadata;
         }
         finally
@@ -220,7 +220,7 @@ public class ProxyMediaService : IProxyMediaService
         if (_proxyCache.TryGetValue(key, out var metadata))
         {
             metadata.LastAccessedAt = DateTime.UtcNow;
-            await SaveMetadataAsync(metadata);
+            await SaveMetadataAsync(metadata).ConfigureAwait(false);
             return metadata;
         }
         return null;
@@ -228,7 +228,7 @@ public class ProxyMediaService : IProxyMediaService
 
     public async Task<bool> ProxyExistsAsync(string sourcePath, ProxyQuality quality)
     {
-        var metadata = await GetProxyMetadataAsync(sourcePath, quality);
+        var metadata = await GetProxyMetadataAsync(sourcePath, quality).ConfigureAwait(false);
         return metadata?.Status == ProxyStatus.Completed && File.Exists(metadata.ProxyPath);
     }
 
@@ -263,7 +263,7 @@ public class ProxyMediaService : IProxyMediaService
             }
         }
         
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
     }
 
     public async Task ClearAllProxiesAsync()
@@ -302,12 +302,12 @@ public class ProxyMediaService : IProxyMediaService
             _logger.LogError(ex, "Error clearing metadata directory");
         }
         
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
     }
 
     public async Task<CacheStatistics> GetCacheStatisticsAsync()
     {
-        var proxies = await GetAllProxiesAsync();
+        var proxies = await GetAllProxiesAsync().ConfigureAwait(false);
         var completed = proxies.Where(p => p.Status == ProxyStatus.Completed).ToList();
         
         var totalCacheSize = completed.Sum(p => p.FileSizeBytes);
@@ -347,7 +347,7 @@ public class ProxyMediaService : IProxyMediaService
 
     public async Task EvictLeastRecentlyUsedAsync(CancellationToken cancellationToken = default)
     {
-        var stats = await GetCacheStatisticsAsync();
+        var stats = await GetCacheStatisticsAsync().ConfigureAwait(false);
         
         if (!stats.IsOverLimit)
         {
@@ -359,7 +359,7 @@ public class ProxyMediaService : IProxyMediaService
         _logger.LogInformation("Cache size {Size:N0} bytes exceeds limit {Limit:N0} bytes. Starting LRU eviction.",
             stats.TotalCacheSizeBytes, _maxCacheSizeBytes);
         
-        var proxies = await GetAllProxiesAsync();
+        var proxies = await GetAllProxiesAsync().ConfigureAwait(false);
         var completed = proxies
             .Where(p => p.Status == ProxyStatus.Completed)
             .OrderBy(p => p.LastAccessedAt)
@@ -383,7 +383,7 @@ public class ProxyMediaService : IProxyMediaService
             
             try
             {
-                await DeleteProxyAsync(proxy.SourcePath, proxy.Quality);
+                await DeleteProxyAsync(proxy.SourcePath, proxy.Quality).ConfigureAwait(false);
                 currentSize -= proxy.FileSizeBytes;
                 evictedCount++;
                 
@@ -415,7 +415,7 @@ public class ProxyMediaService : IProxyMediaService
             {
                 try
                 {
-                    var json = await File.ReadAllTextAsync(file);
+                    var json = await File.ReadAllTextAsync(file).ConfigureAwait(false);
                     var metadata = JsonSerializer.Deserialize<ProxyMediaMetadata>(json);
                     if (metadata != null)
                     {
@@ -446,7 +446,7 @@ public class ProxyMediaService : IProxyMediaService
             { 
                 WriteIndented = true 
             });
-            await File.WriteAllTextAsync(path, json);
+            await File.WriteAllTextAsync(path, json).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

@@ -36,7 +36,7 @@ public class ResilienceHealthMonitor
 
         // Check circuit breaker states
         var degradedServices = _circuitBreakerManager.GetDegradedServices().ToList();
-        if (degradedServices.Any())
+        if (degradedServices.Count != 0)
         {
             report.OverallStatus = HealthStatus.Degraded;
             report.Issues.Add($"{degradedServices.Count} service(s) have open or half-open circuits");

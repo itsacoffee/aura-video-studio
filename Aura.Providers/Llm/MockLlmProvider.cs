@@ -49,7 +49,7 @@ public class MockLlmProvider : ILlmProvider
 
         if (SimulatedLatency > TimeSpan.Zero)
         {
-            await Task.Delay(SimulatedLatency, ct);
+            await Task.Delay(SimulatedLatency, ct).ConfigureAwait(false);
         }
 
         return _behavior switch
@@ -68,7 +68,7 @@ public class MockLlmProvider : ILlmProvider
 
         if (SimulatedLatency > TimeSpan.Zero)
         {
-            await Task.Delay(SimulatedLatency, ct);
+            await Task.Delay(SimulatedLatency, ct).ConfigureAwait(false);
         }
 
         return _behavior switch
@@ -91,7 +91,7 @@ public class MockLlmProvider : ILlmProvider
 
         if (SimulatedLatency > TimeSpan.Zero)
         {
-            await Task.Delay(SimulatedLatency, ct);
+            await Task.Delay(SimulatedLatency, ct).ConfigureAwait(false);
         }
 
         if (_behavior == MockBehavior.Failure)
@@ -132,7 +132,7 @@ public class MockLlmProvider : ILlmProvider
 
         if (SimulatedLatency > TimeSpan.Zero)
         {
-            await Task.Delay(SimulatedLatency, ct);
+            await Task.Delay(SimulatedLatency, ct).ConfigureAwait(false);
         }
 
         if (_behavior == MockBehavior.Failure)
@@ -179,7 +179,7 @@ public class MockLlmProvider : ILlmProvider
 
         if (SimulatedLatency > TimeSpan.Zero)
         {
-            await Task.Delay(SimulatedLatency, ct);
+            await Task.Delay(SimulatedLatency, ct).ConfigureAwait(false);
         }
 
         if (_behavior == MockBehavior.Failure)
@@ -221,7 +221,7 @@ public class MockLlmProvider : ILlmProvider
 
         if (SimulatedLatency > TimeSpan.Zero)
         {
-            await Task.Delay(SimulatedLatency, ct);
+            await Task.Delay(SimulatedLatency, ct).ConfigureAwait(false);
         }
 
         if (_behavior == MockBehavior.Failure)
@@ -258,7 +258,7 @@ public class MockLlmProvider : ILlmProvider
 
         if (SimulatedLatency > TimeSpan.Zero)
         {
-            await Task.Delay(SimulatedLatency, ct);
+            await Task.Delay(SimulatedLatency, ct).ConfigureAwait(false);
         }
 
         if (_behavior == MockBehavior.Failure)
@@ -297,7 +297,7 @@ public class MockLlmProvider : ILlmProvider
 
         if (SimulatedLatency > TimeSpan.Zero)
         {
-            await Task.Delay(SimulatedLatency, ct);
+            await Task.Delay(SimulatedLatency, ct).ConfigureAwait(false);
         }
 
         if (_behavior == MockBehavior.Failure)
@@ -362,11 +362,12 @@ That's everything you need to know about this topic. Thank you for watching!";
     {
         _callHistory.Add($"{methodName} at {DateTime.UtcNow:O}");
         
-        if (!CallCounts.ContainsKey(methodName))
+        if (!CallCounts.TryGetValue(methodName, out var value))
         {
-            CallCounts[methodName] = 0;
+            value = 0;
+            CallCounts[methodName] = value;
         }
-        CallCounts[methodName]++;
+        CallCounts[methodName] = ++value;
     }
 
     /// <summary>

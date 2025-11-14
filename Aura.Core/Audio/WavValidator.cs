@@ -51,7 +51,7 @@ public class WavValidator
 
             await using var stream = File.OpenRead(wavPath);
             var header = new byte[12];
-            await stream.ReadAsync(header, 0, 12, ct);
+            await stream.ReadAsync(header, 0, 12, ct).ConfigureAwait(false);
 
             // Check RIFF header
             if (header[0] != 'R' || header[1] != 'I' || header[2] != 'F' || header[3] != 'F')
@@ -99,7 +99,7 @@ public class WavValidator
         {
             await using var stream = File.OpenRead(wavPath);
             var header = new byte[44];
-            await stream.ReadAsync(header, 0, 44, ct);
+            await stream.ReadAsync(header, 0, 44, ct).ConfigureAwait(false);
 
             // Validate RIFF header
             if (!ValidateRiffHeader(header, out var riffError))

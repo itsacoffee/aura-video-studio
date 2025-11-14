@@ -49,7 +49,7 @@ public class RenderingProviderSelector
         {
             try
             {
-                var isAvailable = await provider.IsAvailableAsync(cancellationToken);
+                var isAvailable = await provider.IsAvailableAsync(cancellationToken).ConfigureAwait(false);
                 
                 if (!isAvailable)
                 {
@@ -57,7 +57,7 @@ public class RenderingProviderSelector
                     continue;
                 }
 
-                var capabilities = await provider.GetHardwareCapabilitiesAsync(cancellationToken);
+                var capabilities = await provider.GetHardwareCapabilitiesAsync(cancellationToken).ConfigureAwait(false);
                 
                 if (!useHardware && capabilities.IsHardwareAccelerated)
                 {
@@ -102,10 +102,10 @@ public class RenderingProviderSelector
         {
             try
             {
-                var isAvailable = await provider.IsAvailableAsync(cancellationToken);
+                var isAvailable = await provider.IsAvailableAsync(cancellationToken).ConfigureAwait(false);
                 if (isAvailable)
                 {
-                    var capabilities = await provider.GetHardwareCapabilitiesAsync(cancellationToken);
+                    var capabilities = await provider.GetHardwareCapabilitiesAsync(cancellationToken).ConfigureAwait(false);
                     result.Add((provider, capabilities));
                 }
             }
@@ -128,7 +128,7 @@ public class RenderingProviderSelector
         bool isPremium = false,
         CancellationToken cancellationToken = default)
     {
-        var providers = await GetAvailableProvidersAsync(cancellationToken);
+        var providers = await GetAvailableProvidersAsync(cancellationToken).ConfigureAwait(false);
         
         if (providers.Count == 0)
         {
@@ -151,7 +151,7 @@ public class RenderingProviderSelector
                     "Attempting render with provider {Provider} (Hardware={IsHardware})",
                     provider.Name, capabilities.IsHardwareAccelerated);
 
-                var result = await provider.RenderVideoAsync(timeline, spec, progress, cancellationToken);
+                var result = await provider.RenderVideoAsync(timeline, spec, progress, cancellationToken).ConfigureAwait(false);
                 
                 _logger.LogInformation(
                     "Render successful with provider {Provider}: {OutputPath}",

@@ -43,7 +43,7 @@ public class LocalStockMusicProvider : IMusicProvider
         MusicSearchCriteria criteria,
         CancellationToken ct = default)
     {
-        await EnsureLibraryLoadedAsync(ct);
+        await EnsureLibraryLoadedAsync(ct).ConfigureAwait(false);
 
         var query = _cachedLibrary ?? new List<MusicAsset>();
 
@@ -110,7 +110,7 @@ public class LocalStockMusicProvider : IMusicProvider
 
     public async Task<MusicAsset?> GetByIdAsync(string assetId, CancellationToken ct = default)
     {
-        await EnsureLibraryLoadedAsync(ct);
+        await EnsureLibraryLoadedAsync(ct).ConfigureAwait(false);
         return _cachedLibrary?.FirstOrDefault(m => m.AssetId == assetId);
     }
 
@@ -131,7 +131,7 @@ public class LocalStockMusicProvider : IMusicProvider
 
     public async Task<string?> GetPreviewUrlAsync(string assetId, CancellationToken ct = default)
     {
-        var asset = await GetByIdAsync(assetId, ct);
+        var asset = await GetByIdAsync(assetId, ct).ConfigureAwait(false);
         return asset?.PreviewUrl ?? asset?.FilePath;
     }
 
@@ -140,7 +140,7 @@ public class LocalStockMusicProvider : IMusicProvider
         if (_cachedLibrary != null)
             return;
 
-        await Task.Run(() => LoadLibrary(), ct);
+        await Task.Run(() => LoadLibrary(), ct).ConfigureAwait(false);
     }
 
     private void LoadLibrary()

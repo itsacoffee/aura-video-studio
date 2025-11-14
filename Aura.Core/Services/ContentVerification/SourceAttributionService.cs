@@ -31,7 +31,7 @@ public class SourceAttributionService
         _logger.LogInformation("Generating {Count} citations in {Format} format", 
             sources.Count, format);
 
-        await Task.Delay(10, ct); // Simulate processing
+        await Task.Delay(10, ct).ConfigureAwait(false); // Simulate processing
 
         var citations = sources.Select(source => GenerateCitation(source, format)).ToList();
         return citations;
@@ -61,7 +61,7 @@ public class SourceAttributionService
     {
         _logger.LogDebug("Validating source: {Name}", source.Name);
 
-        await Task.Delay(50, ct); // Simulate validation
+        await Task.Delay(50, ct).ConfigureAwait(false); // Simulate validation
 
         var isValid = !string.IsNullOrWhiteSpace(source.Url) && 
                      source.CredibilityScore >= 0.5;

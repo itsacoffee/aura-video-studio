@@ -101,7 +101,7 @@ public class ElevenLabsSSMLMapper : ISSMLMapper
         VoiceSpec voiceSpec,
         CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         
         var text = Regex.Replace(ssml, @"\.\.\.", "");
         text = Regex.Replace(text, @"\s+", " ");

@@ -271,7 +271,7 @@ public class IntelligentPacingOptimizerTests
     }
 
     // Mock LLM Providers for testing
-    private class MockSuccessfulLlmProvider : ILlmProvider
+    private sealed class MockSuccessfulLlmProvider : ILlmProvider
     {
         public Task<string> DraftScriptAsync(Brief brief, PlanSpec spec, CancellationToken ct)
         {
@@ -335,7 +335,7 @@ public class IntelligentPacingOptimizerTests
         }
     }
 
-    private class MockFailingLlmProvider : ILlmProvider
+    private sealed class MockFailingLlmProvider : ILlmProvider
     {
         public Task<string> DraftScriptAsync(Brief brief, PlanSpec spec, CancellationToken ct)
         {

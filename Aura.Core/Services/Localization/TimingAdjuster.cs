@@ -34,7 +34,7 @@ public class TimingAdjuster
             ExpansionFactor = expansionFactor
         };
 
-        if (!translatedLines.Any())
+        if (translatedLines.Count == 0)
         {
             return adjustment;
         }
@@ -157,6 +157,6 @@ public class TimingAdjuster
             return text;
         }
 
-        return text.Substring(0, maxLength - 3) + "...";
+        return string.Concat(text.AsSpan(0, maxLength - 3), "...");
     }
 }

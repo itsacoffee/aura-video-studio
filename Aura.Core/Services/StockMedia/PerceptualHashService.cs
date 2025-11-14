@@ -63,7 +63,7 @@ public class PerceptualHashService
         url = url.Trim().ToLowerInvariant();
         
         if (url.StartsWith("http://"))
-            url = "https://" + url.Substring(7);
+            url = string.Concat("https://", url.AsSpan(7));
         
         var queryIndex = url.IndexOf('?');
         if (queryIndex > 0)

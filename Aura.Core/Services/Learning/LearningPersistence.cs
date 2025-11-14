@@ -54,14 +54,14 @@ public class LearningPersistence
         List<DecisionPattern> patterns,
         CancellationToken ct = default)
     {
-        await _fileLock.WaitAsync(ct);
+        await _fileLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             var filePath = GetPatternsFilePath(profileId);
             var json = JsonSerializer.Serialize(patterns, _jsonOptions);
             
             var tempPath = filePath + ".tmp";
-            await File.WriteAllTextAsync(tempPath, json, ct);
+            await File.WriteAllTextAsync(tempPath, json, ct).ConfigureAwait(false);
             File.Move(tempPath, filePath, overwrite: true);
             
             _logger.LogDebug("Saved {Count} patterns for profile {ProfileId}",
@@ -89,7 +89,7 @@ public class LearningPersistence
 
         try
         {
-            var json = await File.ReadAllTextAsync(filePath, ct);
+            var json = await File.ReadAllTextAsync(filePath, ct).ConfigureAwait(false);
             var patterns = JsonSerializer.Deserialize<List<DecisionPattern>>(json, _jsonOptions);
             return patterns ?? new List<DecisionPattern>();
         }
@@ -112,14 +112,14 @@ public class LearningPersistence
         List<LearningInsight> insights,
         CancellationToken ct = default)
     {
-        await _fileLock.WaitAsync(ct);
+        await _fileLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             var filePath = GetInsightsFilePath(profileId);
             var json = JsonSerializer.Serialize(insights, _jsonOptions);
             
             var tempPath = filePath + ".tmp";
-            await File.WriteAllTextAsync(tempPath, json, ct);
+            await File.WriteAllTextAsync(tempPath, json, ct).ConfigureAwait(false);
             File.Move(tempPath, filePath, overwrite: true);
             
             _logger.LogDebug("Saved {Count} insights for profile {ProfileId}",
@@ -147,7 +147,7 @@ public class LearningPersistence
 
         try
         {
-            var json = await File.ReadAllTextAsync(filePath, ct);
+            var json = await File.ReadAllTextAsync(filePath, ct).ConfigureAwait(false);
             var insights = JsonSerializer.Deserialize<List<LearningInsight>>(json, _jsonOptions);
             return insights ?? new List<LearningInsight>();
         }
@@ -170,14 +170,14 @@ public class LearningPersistence
         List<InferredPreference> preferences,
         CancellationToken ct = default)
     {
-        await _fileLock.WaitAsync(ct);
+        await _fileLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             var filePath = GetInferredPreferencesFilePath(profileId);
             var json = JsonSerializer.Serialize(preferences, _jsonOptions);
             
             var tempPath = filePath + ".tmp";
-            await File.WriteAllTextAsync(tempPath, json, ct);
+            await File.WriteAllTextAsync(tempPath, json, ct).ConfigureAwait(false);
             File.Move(tempPath, filePath, overwrite: true);
             
             _logger.LogDebug("Saved {Count} inferred preferences for profile {ProfileId}",
@@ -205,7 +205,7 @@ public class LearningPersistence
 
         try
         {
-            var json = await File.ReadAllTextAsync(filePath, ct);
+            var json = await File.ReadAllTextAsync(filePath, ct).ConfigureAwait(false);
             var preferences = JsonSerializer.Deserialize<List<InferredPreference>>(json, _jsonOptions);
             return preferences ?? new List<InferredPreference>();
         }
@@ -224,10 +224,10 @@ public class LearningPersistence
         InferredPreference updatedPreference,
         CancellationToken ct = default)
     {
-        await _fileLock.WaitAsync(ct);
+        await _fileLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            var preferences = await LoadInferredPreferencesAsync(profileId, ct);
+            var preferences = await LoadInferredPreferencesAsync(profileId, ct).ConfigureAwait(false);
             
             // Find and update the preference
             var index = preferences.FindIndex(p => p.PreferenceId == updatedPreference.PreferenceId);
@@ -240,7 +240,7 @@ public class LearningPersistence
                 preferences.Add(updatedPreference);
             }
             
-            await SaveInferredPreferencesAsync(profileId, preferences, ct);
+            await SaveInferredPreferencesAsync(profileId, preferences, ct).ConfigureAwait(false);
         }
         finally
         {
@@ -257,7 +257,7 @@ public class LearningPersistence
     /// </summary>
     public async Task ResetLearningAsync(string profileId, CancellationToken ct = default)
     {
-        await _fileLock.WaitAsync(ct);
+        await _fileLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             var patternsPath = GetPatternsFilePath(profileId);

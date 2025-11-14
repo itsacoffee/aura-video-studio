@@ -36,7 +36,7 @@ public class ExportSettings
     /// <summary>
     /// Automatically start upload after export completion
     /// </summary>
-    public bool AutoUploadOnComplete { get; set; } = false;
+    public bool AutoUploadOnComplete { get; set; }
 
     /// <summary>
     /// Generate thumbnail image alongside video
@@ -46,12 +46,12 @@ public class ExportSettings
     /// <summary>
     /// Generate SRT subtitle file if available
     /// </summary>
-    public bool GenerateSubtitles { get; set; } = false;
+    public bool GenerateSubtitles { get; set; }
 
     /// <summary>
     /// Keep intermediate files after export
     /// </summary>
-    public bool KeepIntermediateFiles { get; set; } = false;
+    public bool KeepIntermediateFiles { get; set; }
 }
 
 /// <summary>
@@ -62,7 +62,7 @@ public class WatermarkSettings
     /// <summary>
     /// Enable watermark overlay on exported videos
     /// </summary>
-    public bool Enabled { get; set; } = false;
+    public bool Enabled { get; set; }
 
     /// <summary>
     /// Watermark type (image or text)
@@ -224,7 +224,7 @@ public class NamingPatternSettings
     /// <summary>
     /// Convert to lowercase
     /// </summary>
-    public bool ForceLowercase { get; set; } = false;
+    public bool ForceLowercase { get; set; }
 }
 
 /// <summary>
@@ -325,7 +325,7 @@ public class UploadDestination
     /// <summary>
     /// Whether to delete local file after successful upload
     /// </summary>
-    public bool DeleteAfterUpload { get; set; } = false;
+    public bool DeleteAfterUpload { get; set; }
 
     /// <summary>
     /// Maximum retries on upload failure

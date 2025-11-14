@@ -73,7 +73,7 @@ public class MonitoringOptions
     /// <summary>
     /// Enable anomaly detection
     /// </summary>
-    public bool EnableAnomalyDetection { get; set; } = false;
+    public bool EnableAnomalyDetection { get; set; }
 
     /// <summary>
     /// Anomaly detection sensitivity (0.0 to 1.0)

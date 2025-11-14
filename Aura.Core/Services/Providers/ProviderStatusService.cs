@@ -44,7 +44,7 @@ public class ProviderStatusService
             return BuildSystemStatus();
         }
 
-        await RefreshStatusAsync(ct);
+        await RefreshStatusAsync(ct).ConfigureAwait(false);
         return BuildSystemStatus();
     }
 
@@ -57,7 +57,7 @@ public class ProviderStatusService
 
         try
         {
-            var offlineStatus = await _offlineAvailability.CheckAllProvidersAsync(ct);
+            var offlineStatus = await _offlineAvailability.CheckAllProvidersAsync(ct).ConfigureAwait(false);
             var healthMetrics = _healthMonitoring.GetAllProviderHealth();
 
             _statusCache.Clear();
@@ -82,7 +82,7 @@ public class ProviderStatusService
     /// </summary>
     public async Task<bool> IsOfflineModeAsync(CancellationToken ct = default)
     {
-        var status = await GetAllProviderStatusAsync(ct);
+        var status = await GetAllProviderStatusAsync(ct).ConfigureAwait(false);
         return status.IsOfflineMode;
     }
 
@@ -91,7 +91,7 @@ public class ProviderStatusService
     /// </summary>
     public async Task<List<string>> GetAvailableFeaturesAsync(CancellationToken ct = default)
     {
-        var status = await GetAllProviderStatusAsync(ct);
+        var status = await GetAllProviderStatusAsync(ct).ConfigureAwait(false);
         return status.AvailableFeatures;
     }
 
@@ -100,7 +100,7 @@ public class ProviderStatusService
     /// </summary>
     public async Task<List<string>> GetDegradedFeaturesAsync(CancellationToken ct = default)
     {
-        var status = await GetAllProviderStatusAsync(ct);
+        var status = await GetAllProviderStatusAsync(ct).ConfigureAwait(false);
         return status.DegradedFeatures;
     }
 
@@ -286,7 +286,7 @@ public class ProviderStatusService
         var onlineProviders = providers.Where(p => p.IsOnline && p.IsAvailable).ToList();
         var offlineProviders = providers.Where(p => !p.IsOnline && p.IsAvailable).ToList();
 
-        var isOfflineMode = !onlineProviders.Any();
+        var isOfflineMode = onlineProviders.Count == 0;
 
         var availableFeatures = new List<string>();
         var degradedFeatures = new List<string>();

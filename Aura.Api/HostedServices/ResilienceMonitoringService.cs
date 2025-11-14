@@ -62,7 +62,7 @@ public class ResilienceMonitoringService : BackgroundService
                     lastCleanup = DateTime.UtcNow;
                 }
 
-                await Task.Delay(_checkInterval, stoppingToken);
+                await Task.Delay(_checkInterval, stoppingToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -72,7 +72,7 @@ public class ResilienceMonitoringService : BackgroundService
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in resilience monitoring service");
-                await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+                await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken).ConfigureAwait(false);
             }
         }
 

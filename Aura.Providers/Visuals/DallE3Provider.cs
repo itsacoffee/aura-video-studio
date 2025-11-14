@@ -156,7 +156,7 @@ public class DallE3Provider : BaseVisualProvider
 
         if (adapted.Length > MaxPromptLength)
         {
-            adapted = adapted.Substring(0, PromptTruncateLength) + "...";
+            adapted = string.Concat(adapted.AsSpan(0, PromptTruncateLength), "...");
         }
 
         if (options.Style == "vivid" && !adapted.Contains("vivid"))
@@ -194,13 +194,13 @@ public class DallE3Provider : BaseVisualProvider
         }
     }
 
-    private class DallEResponse
+    private sealed class DallEResponse
     {
         public long Created { get; set; }
         public System.Collections.Generic.List<ImageData>? Data { get; set; }
     }
 
-    private class ImageData
+    private sealed class ImageData
     {
         public string? Url { get; set; }
         public string? RevisedPrompt { get; set; }

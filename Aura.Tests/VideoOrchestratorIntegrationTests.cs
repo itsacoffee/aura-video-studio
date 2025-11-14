@@ -230,7 +230,7 @@ public class VideoOrchestratorIntegrationTests
     }
 
     // Mock implementations
-    private class MockLlmProvider : ILlmProvider
+    private sealed class MockLlmProvider : ILlmProvider
     {
         public bool DraftScriptCalled { get; private set; }
 
@@ -297,7 +297,7 @@ Today AI is used in healthcare finance education and entertainment. Machine lear
         }
     }
 
-    private class TestMockTtsProvider : ITtsProvider
+    private sealed class TestMockTtsProvider : ITtsProvider
     {
         public bool SynthesizeCalled { get; private set; }
 
@@ -355,7 +355,7 @@ Today AI is used in healthcare finance education and entertainment. Machine lear
         }
     }
 
-    private class MockVideoComposer : IVideoComposer
+    private sealed class MockVideoComposer : IVideoComposer
     {
         public bool RenderCalled { get; private set; }
 
@@ -367,7 +367,7 @@ Today AI is used in healthcare finance education and entertainment. Machine lear
         }
     }
 
-    private class MockImageProvider : IImageProvider
+    private sealed class MockImageProvider : IImageProvider
     {
         public async Task<IReadOnlyList<Asset>> FetchOrGenerateAsync(Scene scene, VisualSpec spec, CancellationToken ct)
         {
@@ -400,7 +400,7 @@ Today AI is used in healthcare finance education and entertainment. Machine lear
         }
     }
 
-    private class MockFfmpegLocator : Aura.Core.Dependencies.IFfmpegLocator
+    private sealed class MockFfmpegLocator : Aura.Core.Dependencies.IFfmpegLocator
     {
         private readonly string _mockPath;
 
@@ -444,7 +444,7 @@ Today AI is used in healthcare finance education and entertainment. Machine lear
         }
     }
 
-    private class MockHardwareDetector : Aura.Core.Hardware.IHardwareDetector
+    private sealed class MockHardwareDetector : Aura.Core.Hardware.IHardwareDetector
     {
         public Task<SystemProfile> DetectSystemAsync()
         {

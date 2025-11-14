@@ -102,7 +102,7 @@ public class RenderPreflightService
 
         // Run base export validation
         var exportValidation = await _exportValidator.ValidateAsync(
-            preset, videoDuration, outputDirectory, sourceResolution, sourceAspectRatio, cancellationToken);
+            preset, videoDuration, outputDirectory, sourceResolution, sourceAspectRatio, cancellationToken).ConfigureAwait(false);
 
         errors.AddRange(exportValidation.Errors);
         warnings.AddRange(exportValidation.Warnings);
@@ -119,7 +119,7 @@ public class RenderPreflightService
         warnings.AddRange(permissionValidation.Warnings);
 
         // Select encoder
-        var encoderSelection = await SelectEncoderAsync(preset, encoderOverride, preferHardware, cancellationToken);
+        var encoderSelection = await SelectEncoderAsync(preset, encoderOverride, preferHardware, cancellationToken).ConfigureAwait(false);
 
         // Calculate estimates
         var estimatedFileSizeMB = ExportPresets.EstimateFileSizeMB(preset, videoDuration);
@@ -138,7 +138,7 @@ public class RenderPreflightService
         }
 
         // Estimate rendering duration
-        var systemProfile = await _hardwareDetector.DetectSystemAsync();
+        var systemProfile = await _hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
         var estimatedDuration = EstimateRenderingDuration(
             preset, videoDuration, systemProfile.Tier, encoderSelection.IsHardwareAccelerated);
 
@@ -249,7 +249,7 @@ public class RenderPreflightService
         {
             _logger.LogInformation("Using encoder override: {Encoder}", encoderOverride);
             
-            var capabilities = await _hardwareEncoder.DetectHardwareCapabilitiesAsync();
+            var capabilities = await _hardwareEncoder.DetectHardwareCapabilitiesAsync().ConfigureAwait(false);
             var isHardware = capabilities.AvailableEncoders.Any(e => 
                 e.Contains("nvenc") || e.Contains("amf") || e.Contains("qsv") || e.Contains("videotoolbox"));
 
@@ -269,7 +269,7 @@ public class RenderPreflightService
         }
         else
         {
-            selectedEncoder = await _hardwareEncoder.SelectBestEncoderAsync(preset, preferHardware);
+            selectedEncoder = await _hardwareEncoder.SelectBestEncoderAsync(preset, preferHardware).ConfigureAwait(false);
         }
 
         var fallbackEncoder = selectedEncoder.IsHardwareAccelerated ? "libx264" : null;

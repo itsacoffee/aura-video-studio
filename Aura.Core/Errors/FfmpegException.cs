@@ -109,7 +109,7 @@ public class FfmpegException : Exception
         // Truncate stderr for storage (keep last 64KB)
         const int MaxStderrLength = 64 * 1024;
         var truncatedStderr = stderr != null && stderr.Length > MaxStderrLength
-            ? "... (truncated)\n" + stderr.Substring(stderr.Length - MaxStderrLength)
+            ? string.Concat("... (truncated)\n", stderr.AsSpan(stderr.Length - MaxStderrLength))
             : stderr;
 
         return new FfmpegException(

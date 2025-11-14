@@ -34,7 +34,7 @@ public class HttpsEnforcementMiddleware
         var path = context.Request.Path.Value?.ToLowerInvariant() ?? "";
         if (path.StartsWith("/health") || path.StartsWith("/healthz"))
         {
-            await _next(context);
+            await _next(context).ConfigureAwait(false);
             return;
         }
 
@@ -72,12 +72,12 @@ public class HttpsEnforcementMiddleware
                     status = 301,
                     detail = "This service requires HTTPS. Please use HTTPS to access this endpoint.",
                     httpsUrl
-                });
+                }).ConfigureAwait(false);
                 return;
             }
         }
 
-        await _next(context);
+        await _next(context).ConfigureAwait(false);
     }
 }
 

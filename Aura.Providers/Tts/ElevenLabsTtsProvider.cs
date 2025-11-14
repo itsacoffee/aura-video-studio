@@ -83,10 +83,10 @@ public class ElevenLabsTtsProvider : ITtsProvider
 
         try
         {
-            var response = await _httpClient.GetAsync($"{BaseUrl}/voices");
+            var response = await _httpClient.GetAsync($"{BaseUrl}/voices").ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
             
-            var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+            var json = await response.Content.ReadFromJsonAsync<JsonElement>().ConfigureAwait(false);
             var voices = json.GetProperty("voices");
             
             var voiceNames = new List<string>();
@@ -123,7 +123,7 @@ public class ElevenLabsTtsProvider : ITtsProvider
         _logger.LogInformation("Synthesizing speech with ElevenLabs using voice {Voice}", spec.VoiceName);
 
         // Get the voice ID with validation
-        string voiceId = await GetVoiceIdAsync(spec.VoiceName, ct);
+        string voiceId = await GetVoiceIdAsync(spec.VoiceName, ct).ConfigureAwait(false);
         
         // Process each line (with caching support)
         var lineOutputs = new List<string>();
@@ -134,7 +134,7 @@ public class ElevenLabsTtsProvider : ITtsProvider
             ct.ThrowIfCancellationRequested();
             
             _logger.LogDebug("Synthesizing line {Index}: {Text}", line.SceneIndex, 
-                line.Text.Length > 30 ? line.Text.Substring(0, 30) + "..." : line.Text);
+                line.Text.Length > 30 ? string.Concat(line.Text.AsSpan(0, 30), "...") : line.Text);
             
             // Check cache first
             string? cachedAudio = null;
@@ -179,12 +179,12 @@ public class ElevenLabsTtsProvider : ITtsProvider
                 var response = await _httpClient.PostAsync(
                     $"{BaseUrl}/text-to-speech/{voiceId}",
                     content,
-                    ct);
+                    ct).ConfigureAwait(false);
 
                 // Handle specific error cases
                 if (!response.IsSuccessStatusCode)
                 {
-                    var errorContent = await response.Content.ReadAsStringAsync(ct);
+                    var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                     
                     if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
                     {
@@ -212,7 +212,7 @@ public class ElevenLabsTtsProvider : ITtsProvider
 
                 using (var fileStream = new FileStream(tempFile, FileMode.Create))
                 {
-                    await response.Content.CopyToAsync(fileStream, ct);
+                    await response.Content.CopyToAsync(fileStream, ct).ConfigureAwait(false);
                 }
 
                 // Store in cache
@@ -227,7 +227,7 @@ public class ElevenLabsTtsProvider : ITtsProvider
                             tempFile,
                             spec.Rate,
                             spec.Pitch,
-                            ct);
+                            ct).ConfigureAwait(false);
                     }
                     catch (Exception ex)
                     {
@@ -258,7 +258,7 @@ public class ElevenLabsTtsProvider : ITtsProvider
         else
         {
             // Multiple files, concatenate with FFmpeg
-            await ConcatenateAudioFilesAsync(lineOutputs, outputFilePath, ct);
+            await ConcatenateAudioFilesAsync(lineOutputs, outputFilePath, ct).ConfigureAwait(false);
         }
 
         // Clean up temp files (only non-cached ones)
@@ -305,7 +305,7 @@ public class ElevenLabsTtsProvider : ITtsProvider
             _logger.LogInformation("Validating ElevenLabs API key with smoke test");
             
             // Try to fetch voices as a quick validation
-            var voices = await GetAvailableVoicesAsync();
+            var voices = await GetAvailableVoicesAsync().ConfigureAwait(false);
             
             if (voices.Count > 0)
             {
@@ -324,7 +324,7 @@ public class ElevenLabsTtsProvider : ITtsProvider
                     Pause: PauseStyle.Natural
                 );
 
-                var result = await SynthesizeAsync(new[] { testLine }, voiceSpec, ct);
+                var result = await SynthesizeAsync(new[] { testLine }, voiceSpec, ct).ConfigureAwait(false);
                 
                 // Clean up test file
                 if (File.Exists(result))
@@ -354,7 +354,7 @@ public class ElevenLabsTtsProvider : ITtsProvider
 
         try
         {
-            var response = await _httpClient.GetAsync($"{BaseUrl}/voices", ct);
+            var response = await _httpClient.GetAsync($"{BaseUrl}/voices", ct).ConfigureAwait(false);
             
             if (!response.IsSuccessStatusCode)
             {
@@ -364,7 +364,7 @@ public class ElevenLabsTtsProvider : ITtsProvider
             
             response.EnsureSuccessStatusCode();
             
-            var json = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
+            var json = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct).ConfigureAwait(false);
             var voices = json.GetProperty("voices");
             
             // First try exact match
@@ -457,14 +457,14 @@ public class ElevenLabsTtsProvider : ITtsProvider
             Content = content
         };
 
-        using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+        using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
-        using var stream = await response.Content.ReadAsStreamAsync(ct);
+        using var stream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
         var buffer = new byte[8192];
         int bytesRead;
 
-        while ((bytesRead = await stream.ReadAsync(buffer, ct)) > 0)
+        while ((bytesRead = await stream.ReadAsync(buffer, ct).ConfigureAwait(false)) > 0)
         {
             var chunk = new byte[bytesRead];
             Array.Copy(buffer, chunk, bytesRead);
@@ -482,7 +482,7 @@ public class ElevenLabsTtsProvider : ITtsProvider
         string outputPath,
         CancellationToken ct)
     {
-        var ffmpegPath = await GetFfmpegPathAsync();
+        var ffmpegPath = await GetFfmpegPathAsync().ConfigureAwait(false);
 
         // Create concat file list
         var concatListPath = Path.Combine(_outputDirectory, $"concat_{Guid.NewGuid():N}.txt");
@@ -491,7 +491,7 @@ public class ElevenLabsTtsProvider : ITtsProvider
         {
             // Write file list for ffmpeg concat demuxer
             var fileList = inputFiles.Select(f => $"file '{f.Replace("'", "'\\''")}'");
-            await File.WriteAllLinesAsync(concatListPath, fileList, ct);
+            await File.WriteAllLinesAsync(concatListPath, fileList, ct).ConfigureAwait(false);
 
             // Concatenate using ffmpeg
             var args = $"-f concat -safe 0 -i \"{concatListPath}\" -c copy -y \"{outputPath}\"";
@@ -512,11 +512,11 @@ public class ElevenLabsTtsProvider : ITtsProvider
                 throw new InvalidOperationException("Failed to start FFmpeg process");
             }
 
-            await process.WaitForExitAsync(ct);
+            await process.WaitForExitAsync(ct).ConfigureAwait(false);
 
             if (process.ExitCode != 0)
             {
-                var error = await process.StandardError.ReadToEndAsync(ct);
+                var error = await process.StandardError.ReadToEndAsync(ct).ConfigureAwait(false);
                 _logger.LogError("FFmpeg concatenation failed: {Error}", error);
                 throw new InvalidOperationException($"Failed to concatenate audio files: {error}");
             }

@@ -65,12 +65,12 @@ public class CancellableGenerationService
         _logger.LogInformation("Cancelling generation: {JobId}", jobId);
         control.Cancel();
 
-        await _stateManager.MarkCancelledAsync(jobId);
+        await _stateManager.MarkCancelledAsync(jobId).ConfigureAwait(false);
 
         // Remove from active after a delay to allow cleanup
         _ = Task.Run(async () =>
         {
-            await Task.Delay(TimeSpan.FromSeconds(5));
+            await Task.Delay(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
             _activeGenerations.TryRemove(jobId, out _);
         });
 
@@ -253,7 +253,7 @@ public class GenerationControl : IDisposable
         if (_isPaused)
         {
             _logger.LogDebug("Generation {JobId} waiting for resume (async)...", JobId);
-            await Task.Run(() => _pauseEvent.Wait(_cancellationTokenSource.Token), _cancellationTokenSource.Token);
+            await Task.Run(() => _pauseEvent.Wait(_cancellationTokenSource.Token), _cancellationTokenSource.Token).ConfigureAwait(false);
         }
     }
 
@@ -278,7 +278,7 @@ public class GenerationControl : IDisposable
     public async Task CheckpointAsync(string checkpointName)
     {
         _cancellationTokenSource.Token.ThrowIfCancellationRequested();
-        await WaitIfPausedAsync();
+        await WaitIfPausedAsync().ConfigureAwait(false);
         _logger.LogTrace("Generation {JobId} passed checkpoint: {Checkpoint}", JobId, checkpointName);
     }
 

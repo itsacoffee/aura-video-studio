@@ -60,7 +60,7 @@ public class LicensingService : ILicensingService
         _logger.LogInformation("Generated licensing manifest for project {ProjectId} with {AssetCount} assets",
             projectId, assets.Count);
 
-        return await Task.FromResult(manifest);
+        return await Task.FromResult(manifest).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -173,10 +173,10 @@ public class LicensingService : ILicensingService
 
         return format switch
         {
-            LicensingModels.LicensingExportFormat.Json => await ExportAsJsonAsync(manifest, cancellationToken),
-            LicensingModels.LicensingExportFormat.Csv => await ExportAsCsvAsync(manifest, cancellationToken),
-            LicensingModels.LicensingExportFormat.Html => await ExportAsHtmlAsync(manifest, cancellationToken),
-            LicensingModels.LicensingExportFormat.Text => await ExportAsTextAsync(manifest, cancellationToken),
+            LicensingModels.LicensingExportFormat.Json => await ExportAsJsonAsync(manifest, cancellationToken).ConfigureAwait(false),
+            LicensingModels.LicensingExportFormat.Csv => await ExportAsCsvAsync(manifest, cancellationToken).ConfigureAwait(false),
+            LicensingModels.LicensingExportFormat.Html => await ExportAsHtmlAsync(manifest, cancellationToken).ConfigureAwait(false),
+            LicensingModels.LicensingExportFormat.Text => await ExportAsTextAsync(manifest, cancellationToken).ConfigureAwait(false),
             _ => throw new ArgumentException($"Unsupported export format: {format}", nameof(format))
         };
     }
@@ -229,7 +229,7 @@ public class LicensingService : ILicensingService
         _logger.LogInformation("Sign-off recorded for project {ProjectId} at {Timestamp}",
             signOff.ProjectId, signOff.SignedOffAt);
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
     }
 
     private LicensingModels.LicensingSummary CalculateSummary(List<LicensingModels.AssetLicensingInfo> assets)
@@ -275,7 +275,7 @@ public class LicensingService : ILicensingService
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         };
 
-        return await Task.FromResult(JsonSerializer.Serialize(manifest, options));
+        return await Task.FromResult(JsonSerializer.Serialize(manifest, options)).ConfigureAwait(false);
     }
 
     private async Task<string> ExportAsCsvAsync(LicensingModels.ProjectLicensingManifest manifest, CancellationToken cancellationToken)
@@ -288,7 +288,7 @@ public class LicensingService : ILicensingService
             sb.AppendLine($"\"{asset.AssetId}\",\"{asset.AssetType}\",{asset.SceneIndex},\"{asset.Name}\",\"{asset.Source}\",\"{asset.LicenseType}\",\"{asset.LicenseUrl ?? ""}\",{asset.CommercialUseAllowed},{asset.AttributionRequired},\"{asset.AttributionText ?? ""}\",\"{asset.Creator ?? ""}\",\"{asset.CreatorUrl ?? ""}\",\"{asset.SourceUrl ?? ""}\",\"{asset.FilePath ?? ""}\"");
         }
 
-        return await Task.FromResult(sb.ToString());
+        return await Task.FromResult(sb.ToString()).ConfigureAwait(false);
     }
 
     private async Task<string> ExportAsHtmlAsync(LicensingModels.ProjectLicensingManifest manifest, CancellationToken cancellationToken)
@@ -356,7 +356,7 @@ public class LicensingService : ILicensingService
         sb.AppendLine("</body>");
         sb.AppendLine("</html>");
 
-        return await Task.FromResult(sb.ToString());
+        return await Task.FromResult(sb.ToString()).ConfigureAwait(false);
     }
 
     private async Task<string> ExportAsTextAsync(LicensingModels.ProjectLicensingManifest manifest, CancellationToken cancellationToken)
@@ -415,6 +415,6 @@ public class LicensingService : ILicensingService
         sb.AppendLine();
         sb.AppendLine("==============================================");
 
-        return await Task.FromResult(sb.ToString());
+        return await Task.FromResult(sb.ToString()).ConfigureAwait(false);
     }
 }

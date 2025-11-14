@@ -143,7 +143,7 @@ public static class PerformanceTimerExtensions
         
         try
         {
-            var result = await operation();
+            var result = await operation().ConfigureAwait(false);
             timer.Stop(success: true);
             return result;
         }
@@ -167,7 +167,7 @@ public static class PerformanceTimerExtensions
         
         try
         {
-            await operation();
+            await operation().ConfigureAwait(false);
             timer.Stop(success: true);
         }
         catch (Exception ex)

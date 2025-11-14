@@ -57,7 +57,7 @@ public class ModelSelectionStore
             PersistData();
         }
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
     }
 
     /// <summary>
@@ -119,7 +119,7 @@ public class ModelSelectionStore
             PersistData();
         }
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
     }
 
     /// <summary>
@@ -155,7 +155,7 @@ public class ModelSelectionStore
             PersistData();
         }
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
     }
 
     /// <summary>
@@ -222,7 +222,7 @@ public class ModelSelectionStore
             PersistData();
         }
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
     }
 
     private string GetSelectionKey(string provider, string stage, ModelSelectionScope scope)
@@ -284,7 +284,7 @@ internal class ModelSelectionData
 {
     public List<ModelSelection> Selections { get; set; } = new();
     public List<ModelSelectionAudit> AuditLog { get; set; } = new();
-    public bool AllowAutomaticFallback { get; set; } = false;
+    public bool AllowAutomaticFallback { get; set; }
 }
 
 /// <summary>

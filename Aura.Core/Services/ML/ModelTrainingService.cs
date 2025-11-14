@@ -79,7 +79,7 @@ public class ModelTrainingService
             var tempDataPath = Path.Combine(Path.GetTempPath(), $"frame-training-{Guid.NewGuid()}.csv");
             _logger.LogInformation("Exporting training data to {Path}", tempDataPath);
 
-            await ExportTrainingDataToCsvAsync(annotationList, tempDataPath, cancellationToken);
+            await ExportTrainingDataToCsvAsync(annotationList, tempDataPath, cancellationToken).ConfigureAwait(false);
 
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -87,7 +87,7 @@ public class ModelTrainingService
             // In a real implementation, this would use ML.NET to train a regression model
             // For now, we'll simulate the training process
             _logger.LogInformation("Training model with ML.NET pipeline");
-            await Task.Delay(1000, cancellationToken); // Simulate training time
+            await Task.Delay(1000, cancellationToken).ConfigureAwait(false); // Simulate training time
 
             // Generate new model path
             var modelFileName = "frame-importance-model.zip";
@@ -110,7 +110,7 @@ public class ModelTrainingService
             
             // Create a placeholder model file
             var modelContent = string.Format(PlaceholderModelFormat, $"{DateTime.UtcNow:O}", annotationList.Count);
-            await File.WriteAllTextAsync(newModelPath, modelContent, cancellationToken);
+            await File.WriteAllTextAsync(newModelPath, modelContent, cancellationToken).ConfigureAwait(false);
 
             // Clean up temporary data file
             if (File.Exists(tempDataPath))
@@ -175,7 +175,7 @@ public class ModelTrainingService
             csv.AppendLine($"{escapedPath},{annotation.Rating:F4}");
         }
 
-        await File.WriteAllTextAsync(outputPath, csv.ToString(), cancellationToken);
+        await File.WriteAllTextAsync(outputPath, csv.ToString(), cancellationToken).ConfigureAwait(false);
         _logger.LogInformation("Exported {Count} training samples to CSV", annotations.Count);
     }
 }

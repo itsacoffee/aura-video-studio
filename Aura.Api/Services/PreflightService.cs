@@ -62,15 +62,15 @@ public class PreflightService
         var stageChecks = new List<StageCheck>();
 
         // Check Script (LLM) stage
-        var scriptCheck = await CheckScriptStageAsync(profile, ct);
+        var scriptCheck = await CheckScriptStageAsync(profile, ct).ConfigureAwait(false);
         stageChecks.Add(scriptCheck);
 
         // Check TTS stage
-        var ttsCheck = await CheckTtsStageAsync(profile, ct);
+        var ttsCheck = await CheckTtsStageAsync(profile, ct).ConfigureAwait(false);
         stageChecks.Add(ttsCheck);
 
         // Check Visuals stage
-        var visualsCheck = await CheckVisualsStageAsync(profile, ct);
+        var visualsCheck = await CheckVisualsStageAsync(profile, ct).ConfigureAwait(false);
         stageChecks.Add(visualsCheck);
 
         // Overall status: fail if any critical checks fail
@@ -98,21 +98,21 @@ public class PreflightService
         // Check all LLM providers
         foreach (var providerName in new[] { "OpenAI", "Ollama", "RuleBased" })
         {
-            var health = await GetProviderHealthAsync(providerName, "Script", ct);
+            var health = await GetProviderHealthAsync(providerName, "Script", ct).ConfigureAwait(false);
             llmProviders.Add(health);
         }
 
         // Check all TTS providers
         foreach (var providerName in new[] { "ElevenLabs", "PlayHT", "Mimic3", "Piper", "Windows" })
         {
-            var health = await GetProviderHealthAsync(providerName, "TTS", ct);
+            var health = await GetProviderHealthAsync(providerName, "TTS", ct).ConfigureAwait(false);
             ttsProviders.Add(health);
         }
 
         // Check all Visual providers
         foreach (var providerName in new[] { "Stability", "Runway", "StableDiffusion", "Stock" })
         {
-            var health = await GetProviderHealthAsync(providerName, "Visuals", ct);
+            var health = await GetProviderHealthAsync(providerName, "Visuals", ct).ConfigureAwait(false);
             visualProviders.Add(health);
         }
 
@@ -170,7 +170,7 @@ public class PreflightService
         // For other providers, validate using the validation service
         try
         {
-            var result = await _validationService.ValidateProvidersAsync(new[] { providerName }, ct);
+            var result = await _validationService.ValidateProvidersAsync(new[] { providerName }, ct).ConfigureAwait(false);
             var providerResult = result.Results.FirstOrDefault();
 
             if (providerResult == null || !providerResult.Ok)
@@ -228,18 +228,18 @@ public class PreflightService
         {
             case "Pro":
                 // Require OpenAI to be configured and reachable
-                return await ValidateProviderAsync("Script", "OpenAI", CheckStatus.Fail, ct);
+                return await ValidateProviderAsync("Script", "OpenAI", CheckStatus.Fail, ct).ConfigureAwait(false);
 
             case "ProIfAvailable":
                 // Try OpenAI first, fallback to Ollama
-                var openAiCheck = await ValidateProviderAsync("Script", "OpenAI", CheckStatus.Warn, ct);
+                var openAiCheck = await ValidateProviderAsync("Script", "OpenAI", CheckStatus.Warn, ct).ConfigureAwait(false);
                 if (openAiCheck.Status == CheckStatus.Pass)
                 {
                     return openAiCheck;
                 }
 
                 // OpenAI not available, check Ollama as fallback
-                var ollamaCheck = await ValidateProviderAsync("Script", "Ollama", CheckStatus.Warn, ct);
+                var ollamaCheck = await ValidateProviderAsync("Script", "Ollama", CheckStatus.Warn, ct).ConfigureAwait(false);
                 if (ollamaCheck.Status == CheckStatus.Pass)
                 {
                     return new StageCheck
@@ -264,7 +264,7 @@ public class PreflightService
             case "Free":
             default:
                 // Use Ollama (local/free)
-                return await ValidateProviderAsync("Script", "Ollama", CheckStatus.Warn, ct);
+                return await ValidateProviderAsync("Script", "Ollama", CheckStatus.Warn, ct).ConfigureAwait(false);
         }
     }
 
@@ -276,18 +276,18 @@ public class PreflightService
         {
             case "Pro":
                 // Require ElevenLabs to be configured and reachable
-                return await ValidateProviderAsync("TTS", "ElevenLabs", CheckStatus.Fail, ct);
+                return await ValidateProviderAsync("TTS", "ElevenLabs", CheckStatus.Fail, ct).ConfigureAwait(false);
 
             case "ProIfAvailable":
                 // Try ElevenLabs first
-                var elevenLabsCheck = await ValidateProviderAsync("TTS", "ElevenLabs", CheckStatus.Warn, ct);
+                var elevenLabsCheck = await ValidateProviderAsync("TTS", "ElevenLabs", CheckStatus.Warn, ct).ConfigureAwait(false);
                 if (elevenLabsCheck.Status == CheckStatus.Pass)
                 {
                     return elevenLabsCheck;
                 }
 
                 // Fall back to PlayHT
-                var playHtCheck = await ValidateProviderAsync("TTS", "PlayHT", CheckStatus.Warn, ct);
+                var playHtCheck = await ValidateProviderAsync("TTS", "PlayHT", CheckStatus.Warn, ct).ConfigureAwait(false);
                 if (playHtCheck.Status == CheckStatus.Pass)
                 {
                     return new StageCheck
@@ -301,7 +301,7 @@ public class PreflightService
                 }
 
                 // Fall back to Mimic3 (local)
-                var mimic3Check = await ValidateProviderAsync("TTS", "Mimic3", CheckStatus.Warn, ct);
+                var mimic3Check = await ValidateProviderAsync("TTS", "Mimic3", CheckStatus.Warn, ct).ConfigureAwait(false);
                 if (mimic3Check.Status == CheckStatus.Pass)
                 {
                     return new StageCheck
@@ -315,7 +315,7 @@ public class PreflightService
                 }
 
                 // Fall back to Piper (local)
-                var piperCheck = await ValidateProviderAsync("TTS", "Piper", CheckStatus.Warn, ct);
+                var piperCheck = await ValidateProviderAsync("TTS", "Piper", CheckStatus.Warn, ct).ConfigureAwait(false);
                 if (piperCheck.Status == CheckStatus.Pass)
                 {
                     return new StageCheck
@@ -340,11 +340,11 @@ public class PreflightService
 
             case "Mimic3":
                 // Use Mimic3 (local)
-                return await ValidateProviderAsync("TTS", "Mimic3", CheckStatus.Warn, ct);
+                return await ValidateProviderAsync("TTS", "Mimic3", CheckStatus.Warn, ct).ConfigureAwait(false);
 
             case "Piper":
                 // Use Piper (local)
-                return await ValidateProviderAsync("TTS", "Piper", CheckStatus.Warn, ct);
+                return await ValidateProviderAsync("TTS", "Piper", CheckStatus.Warn, ct).ConfigureAwait(false);
 
             case "Windows":
             default:
@@ -369,20 +369,20 @@ public class PreflightService
             case "Pro":
             case "CloudPro":
                 // Check for cloud providers (Stability or Runway)
-                var stabilityCheck = await ValidateProviderAsync("Visuals", "Stability", CheckStatus.Warn, ct);
+                var stabilityCheck = await ValidateProviderAsync("Visuals", "Stability", CheckStatus.Warn, ct).ConfigureAwait(false);
                 if (stabilityCheck.Status == CheckStatus.Pass)
                 {
                     return stabilityCheck;
                 }
 
-                var runwayCheck = await ValidateProviderAsync("Visuals", "Runway", CheckStatus.Warn, ct);
+                var runwayCheck = await ValidateProviderAsync("Visuals", "Runway", CheckStatus.Warn, ct).ConfigureAwait(false);
                 if (runwayCheck.Status == CheckStatus.Pass)
                 {
                     return runwayCheck;
                 }
 
                 // Cloud providers not available, try local SD as fallback
-                var sdCheck = await ValidateProviderAsync("Visuals", "StableDiffusion", CheckStatus.Warn, ct);
+                var sdCheck = await ValidateProviderAsync("Visuals", "StableDiffusion", CheckStatus.Warn, ct).ConfigureAwait(false);
                 if (sdCheck.Status == CheckStatus.Pass)
                 {
                     return new StageCheck
@@ -407,7 +407,7 @@ public class PreflightService
 
             case "StockOrLocal":
                 // Try Stable Diffusion, fallback to stock
-                var localSdCheck = await ValidateProviderAsync("Visuals", "StableDiffusion", CheckStatus.Warn, ct);
+                var localSdCheck = await ValidateProviderAsync("Visuals", "StableDiffusion", CheckStatus.Warn, ct).ConfigureAwait(false);
                 if (localSdCheck.Status == CheckStatus.Pass)
                 {
                     return localSdCheck;
@@ -444,7 +444,7 @@ public class PreflightService
     {
         try
         {
-            var result = await _validationService.ValidateProvidersAsync(new[] { providerName }, ct);
+            var result = await _validationService.ValidateProvidersAsync(new[] { providerName }, ct).ConfigureAwait(false);
             var providerResult = result.Results.FirstOrDefault();
 
             if (providerResult == null)

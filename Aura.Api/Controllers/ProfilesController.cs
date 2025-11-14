@@ -43,7 +43,7 @@ public class ProfilesController : ControllerBase
                 return BadRequest(new { error = "UserId is required" });
             }
 
-            var profiles = await _profileService.GetUserProfilesAsync(userId, ct);
+            var profiles = await _profileService.GetUserProfilesAsync(userId, ct).ConfigureAwait(false);
             
             var summaries = profiles.Select(p => new ProfileSummaryResponse(
                 ProfileId: p.ProfileId,
@@ -89,7 +89,7 @@ public class ProfilesController : ControllerBase
                 return BadRequest(new { error = "ProfileName is required" });
             }
 
-            var profile = await _profileService.CreateProfileAsync(request, ct);
+            var profile = await _profileService.CreateProfileAsync(request, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -128,13 +128,13 @@ public class ProfilesController : ControllerBase
                 return BadRequest(new { error = "ProfileId is required" });
             }
 
-            var profile = await _profileService.GetProfileAsync(profileId, ct);
+            var profile = await _profileService.GetProfileAsync(profileId, ct).ConfigureAwait(false);
             if (profile == null)
             {
                 return NotFound(new { error = $"Profile {profileId} not found" });
             }
 
-            var preferences = await _profileService.GetPreferencesAsync(profileId, ct);
+            var preferences = await _profileService.GetPreferencesAsync(profileId, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -185,7 +185,7 @@ public class ProfilesController : ControllerBase
                 return BadRequest(new { error = "ProfileId is required" });
             }
 
-            var updated = await _profileService.UpdateProfileAsync(profileId, request, ct);
+            var updated = await _profileService.UpdateProfileAsync(profileId, request, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -226,7 +226,7 @@ public class ProfilesController : ControllerBase
                 return BadRequest(new { error = "ProfileId is required" });
             }
 
-            await _profileService.DeleteProfileAsync(profileId, ct);
+            await _profileService.DeleteProfileAsync(profileId, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -261,7 +261,7 @@ public class ProfilesController : ControllerBase
                 return BadRequest(new { error = "ProfileId is required" });
             }
 
-            var activated = await _profileService.ActivateProfileAsync(profileId, ct);
+            var activated = await _profileService.ActivateProfileAsync(profileId, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -311,7 +311,7 @@ public class ProfilesController : ControllerBase
             var duplicated = await _profileService.DuplicateProfileAsync(
                 profileId,
                 request.NewProfileName,
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -398,7 +398,7 @@ public class ProfilesController : ControllerBase
                 return NotFound(new { error = $"Template {request.FromTemplateId} not found" });
             }
 
-            var profile = await _profileService.CreateProfileAsync(request, ct);
+            var profile = await _profileService.CreateProfileAsync(request, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -438,7 +438,7 @@ public class ProfilesController : ControllerBase
                 return BadRequest(new { error = "ProfileId is required" });
             }
 
-            var updated = await _profileService.UpdatePreferencesAsync(profileId, request, ct);
+            var updated = await _profileService.UpdatePreferencesAsync(profileId, request, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -501,7 +501,7 @@ public class ProfilesController : ControllerBase
                 Decision: request.Decision,
                 Context: request.Context
             );
-            await _profileService.RecordDecisionAsync(actualRequest, ct);
+            await _profileService.RecordDecisionAsync(actualRequest, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -531,8 +531,8 @@ public class ProfilesController : ControllerBase
                 return BadRequest(new { error = "ProfileId is required" });
             }
 
-            var preferences = await _profileService.GetPreferencesAsync(profileId, ct);
-            var decisions = await _profileService.GetDecisionHistoryAsync(profileId, ct);
+            var preferences = await _profileService.GetPreferencesAsync(profileId, ct).ConfigureAwait(false);
+            var decisions = await _profileService.GetDecisionHistoryAsync(profileId, ct).ConfigureAwait(false);
 
             // Calculate decision statistics
             var decisionStats = decisions

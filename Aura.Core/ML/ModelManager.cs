@@ -34,7 +34,7 @@ public class ModelManager
 
         if (File.Exists(activeModelPath))
         {
-            if (await ValidateModelAsync(activeModelPath, cancellationToken))
+            if (await ValidateModelAsync(activeModelPath, cancellationToken).ConfigureAwait(false))
             {
                 _logger.LogInformation("Using active model at {Path}", activeModelPath);
                 return activeModelPath;
@@ -74,7 +74,7 @@ public class ModelManager
         {
             _logger.LogInformation("Deploying model from {Source} to {Target}", sourceModelPath, targetModelPath);
 
-            if (!await ValidateModelAsync(sourceModelPath, cancellationToken))
+            if (!await ValidateModelAsync(sourceModelPath, cancellationToken).ConfigureAwait(false))
             {
                 _logger.LogError("Source model at {Path} failed validation", sourceModelPath);
                 return false;
@@ -188,7 +188,7 @@ public class ModelManager
                 return false;
             }
 
-            await Task.Delay(1, cancellationToken);
+            await Task.Delay(1, cancellationToken).ConfigureAwait(false);
             
             _logger.LogDebug("Model at {Path} passed basic validation", modelPath);
             return true;

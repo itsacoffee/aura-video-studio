@@ -37,7 +37,7 @@ public class SystemHealthService
         {
             try
             {
-                var result = await healthCheck.CheckHealthAsync(ct);
+                var result = await healthCheck.CheckHealthAsync(ct).ConfigureAwait(false);
                 checkResults.Add(result);
                 
                 _logger.LogInformation(

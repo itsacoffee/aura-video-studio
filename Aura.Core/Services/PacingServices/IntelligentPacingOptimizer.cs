@@ -85,7 +85,7 @@ public class IntelligentPacingOptimizer
                         llmProviderUsed, useAdaptivePacing, pacingProfile);
                     
                     sceneAnalyses = await _sceneAnalyzer.AnalyzeScenesAsync(
-                        llmProvider, scenes, brief.Goal ?? "general video", ct);
+                        llmProvider, scenes, brief.Goal ?? "general video", ct).ConfigureAwait(false);
                     
                     llmAnalysisSucceeded = sceneAnalyses.Any(a => a.AnalyzedWithLlm);
                     _logger.LogInformation("LLM analysis: {SuccessCount}/{Total} scenes analyzed",
@@ -96,7 +96,7 @@ public class IntelligentPacingOptimizer
                     {
                         _logger.LogInformation("Performing deep content complexity analysis");
                         complexityResults = await _complexityAnalyzer.AnalyzeComplexityBatchAsync(
-                            llmProvider, scenes, brief.Goal ?? "general video", ct);
+                            llmProvider, scenes, brief.Goal ?? "general video", ct).ConfigureAwait(false);
                         
                         var avgComplexity = complexityResults.Average(r => r.OverallComplexityScore);
                         _logger.LogInformation("Complexity analysis complete. Average complexity: {AvgComplexity:F1}, " +
@@ -125,22 +125,22 @@ public class IntelligentPacingOptimizer
 
             // Step 2: Calculate optimal timings using ML, LLM data, and complexity analysis
             var timingSuggestions = await CalculateOptimalTimingsAsync(
-                scenes, sceneAnalyses, complexityResults, brief, useAdaptivePacing, pacingProfile, ct);
+                scenes, sceneAnalyses, complexityResults, brief, useAdaptivePacing, pacingProfile, ct).ConfigureAwait(false);
 
             // Step 3: Generate attention curve predictions
             var attentionCurve = await _attentionPredictor.GenerateAttentionCurveAsync(
-                scenes, timingSuggestions, ct);
+                scenes, timingSuggestions, ct).ConfigureAwait(false);
 
             // Step 4: Analyze transitions between scenes
             var transitionRecommendations = await _transitionRecommender.RecommendTransitionsAsync(
-                scenes, sceneAnalyses, brief, ct);
+                scenes, sceneAnalyses, brief, ct).ConfigureAwait(false);
 
             // Step 5: Analyze emotional beats
             var emotionalBeats = await _emotionalBeatAnalyzer.AnalyzeEmotionalBeatsAsync(
-                scenes, llmProvider, ct);
+                scenes, llmProvider, ct).ConfigureAwait(false);
 
             // Step 6: Map scene relationships
-            var sceneRelationships = await _relationshipMapper.MapRelationshipsAsync(scenes, ct);
+            var sceneRelationships = await _relationshipMapper.MapRelationshipsAsync(scenes, ct).ConfigureAwait(false);
 
             // Step 7: Calculate confidence and metrics
             var confidenceScore = CalculateConfidenceScore(sceneAnalyses, llmAnalysisSucceeded);
@@ -217,7 +217,7 @@ public class IntelligentPacingOptimizer
             
             // Calculate base optimal duration
             var optimal = await CalculateSceneOptimalDurationAsync(
-                scene, analysis, platformMultiplier, audienceMultiplier, ct);
+                scene, analysis, platformMultiplier, audienceMultiplier, ct).ConfigureAwait(false);
 
             // Apply adaptive duration adjustment based on complexity
             double durationMultiplier = 1.0;
@@ -287,7 +287,7 @@ public class IntelligentPacingOptimizer
         double audienceMultiplier,
         CancellationToken ct)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         ct.ThrowIfCancellationRequested();
 
         // Calculate word count

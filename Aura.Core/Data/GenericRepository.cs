@@ -29,71 +29,71 @@ public class GenericRepository<TEntity, TKey> : IRepository<TEntity, TKey> where
 
     public virtual async Task<TEntity?> GetByIdAsync(TKey id, CancellationToken ct = default)
     {
-        return await _dbSet.FindAsync(new object[] { id! }, ct);
+        return await _dbSet.FindAsync(new object[] { id! }, ct).ConfigureAwait(false);
     }
 
     public virtual async Task<List<TEntity>> GetAllAsync(CancellationToken ct = default)
     {
-        return await _dbSet.ToListAsync(ct);
+        return await _dbSet.ToListAsync(ct).ConfigureAwait(false);
     }
 
     public virtual async Task<List<TEntity>> FindAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken ct = default)
     {
-        return await _dbSet.Where(predicate).ToListAsync(ct);
+        return await _dbSet.Where(predicate).ToListAsync(ct).ConfigureAwait(false);
     }
 
     public virtual async Task<TEntity?> FirstOrDefaultAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken ct = default)
     {
-        return await _dbSet.FirstOrDefaultAsync(predicate, ct);
+        return await _dbSet.FirstOrDefaultAsync(predicate, ct).ConfigureAwait(false);
     }
 
     public virtual async Task<TEntity> AddAsync(TEntity entity, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(entity);
-        await _dbSet.AddAsync(entity, ct);
-        await _context.SaveChangesAsync(ct);
+        await _dbSet.AddAsync(entity, ct).ConfigureAwait(false);
+        await _context.SaveChangesAsync(ct).ConfigureAwait(false);
         return entity;
     }
 
     public virtual async Task AddRangeAsync(IEnumerable<TEntity> entities, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(entities);
-        await _dbSet.AddRangeAsync(entities, ct);
-        await _context.SaveChangesAsync(ct);
+        await _dbSet.AddRangeAsync(entities, ct).ConfigureAwait(false);
+        await _context.SaveChangesAsync(ct).ConfigureAwait(false);
     }
 
     public virtual async Task UpdateAsync(TEntity entity, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(entity);
         _dbSet.Update(entity);
-        await _context.SaveChangesAsync(ct);
+        await _context.SaveChangesAsync(ct).ConfigureAwait(false);
     }
 
     public virtual async Task DeleteAsync(TEntity entity, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(entity);
         _dbSet.Remove(entity);
-        await _context.SaveChangesAsync(ct);
+        await _context.SaveChangesAsync(ct).ConfigureAwait(false);
     }
 
     public virtual async Task DeleteRangeAsync(IEnumerable<TEntity> entities, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(entities);
         _dbSet.RemoveRange(entities);
-        await _context.SaveChangesAsync(ct);
+        await _context.SaveChangesAsync(ct).ConfigureAwait(false);
     }
 
     public virtual async Task<int> CountAsync(Expression<Func<TEntity, bool>>? predicate = null, CancellationToken ct = default)
     {
         if (predicate == null)
         {
-            return await _dbSet.CountAsync(ct);
+            return await _dbSet.CountAsync(ct).ConfigureAwait(false);
         }
-        return await _dbSet.CountAsync(predicate, ct);
+        return await _dbSet.CountAsync(predicate, ct).ConfigureAwait(false);
     }
 
     public virtual async Task<bool> AnyAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken ct = default)
     {
-        return await _dbSet.AnyAsync(predicate, ct);
+        return await _dbSet.AnyAsync(predicate, ct).ConfigureAwait(false);
     }
 }

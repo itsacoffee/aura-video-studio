@@ -152,7 +152,7 @@ public class PostTrainingAnalysisService
     private void ApplyRuleBasedRecommendation(PostTrainingAnalysis analysis)
     {
         // Rule-based recommendation based on quality score and concerns
-        if (analysis.Concerns.Any() || analysis.QualityScore < -20)
+        if (analysis.Concerns.Count != 0 || analysis.QualityScore < -20)
         {
             analysis.Recommendation = TrainingRecommendation.Revert;
             analysis.Summary = "Training results are below acceptable quality standards. The model may not improve frame selection and could potentially degrade performance.";
@@ -160,7 +160,7 @@ public class PostTrainingAnalysisService
             analysis.NextSteps.Add("Ensure annotations have diverse ratings and represent different frame types");
             analysis.NextSteps.Add("Consider adding more training samples before trying again");
         }
-        else if (analysis.Warnings.Any() || analysis.QualityScore < 20)
+        else if (analysis.Warnings.Count != 0 || analysis.QualityScore < 20)
         {
             analysis.Recommendation = TrainingRecommendation.AcceptWithCaution;
             analysis.Summary = "Training completed with acceptable results, but there are areas for improvement. Test the model carefully before full deployment.";
@@ -191,8 +191,8 @@ public class PostTrainingAnalysis
     public bool HadGpu { get; set; }
     public int ActualTimeMinutes { get; set; }
     public int EstimatedTimeMinutes { get; set; }
-    
-    public int QualityScore { get; set; } = 0;
+
+    public int QualityScore { get; set; }
     public List<string> Observations { get; set; } = new();
     public List<string> Warnings { get; set; } = new();
     public List<string> Concerns { get; set; } = new();

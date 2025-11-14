@@ -29,7 +29,7 @@ public class ETagMiddleware
         // Only process GET and HEAD requests
         if (context.Request.Method != HttpMethods.Get && context.Request.Method != HttpMethods.Head)
         {
-            await _next(context);
+            await _next(context).ConfigureAwait(false);
             return;
         }
 
@@ -37,7 +37,7 @@ public class ETagMiddleware
         if (context.Request.Path.StartsWithSegments("/api/jobs/stream") ||
             context.Request.Path.StartsWithSegments("/api/queue/stream"))
         {
-            await _next(context);
+            await _next(context).ConfigureAwait(false);
             return;
         }
 
@@ -46,7 +46,7 @@ public class ETagMiddleware
         using var responseBodyStream = new MemoryStream();
         context.Response.Body = responseBodyStream;
 
-        await _next(context);
+        await _next(context).ConfigureAwait(false);
 
         // Only add ETag for successful responses
         if (context.Response.StatusCode == 200 && responseBodyStream.Length > 0)
@@ -77,7 +77,7 @@ public class ETagMiddleware
 
         // Copy the response body back to the original stream
         responseBodyStream.Seek(0, SeekOrigin.Begin);
-        await responseBodyStream.CopyToAsync(originalBodyStream);
+        await responseBodyStream.CopyToAsync(originalBodyStream).ConfigureAwait(false);
         context.Response.Body = originalBodyStream;
     }
 

@@ -49,7 +49,7 @@ public class AIEditingController : ControllerBase
 
             var result = await _sceneDetectionService.DetectScenesAsync(
                 request.VideoPath, 
-                request.Threshold ?? 0.3);
+                request.Threshold ?? 0.3).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -79,8 +79,8 @@ public class AIEditingController : ControllerBase
         {
             _logger.LogInformation("Generating chapter markers for video: {VideoPath}", request.VideoPath);
 
-            var sceneResult = await _sceneDetectionService.DetectScenesAsync(request.VideoPath);
-            var chapters = await _sceneDetectionService.GenerateChapterMarkersAsync(sceneResult);
+            var sceneResult = await _sceneDetectionService.DetectScenesAsync(request.VideoPath).ConfigureAwait(false);
+            var chapters = await _sceneDetectionService.GenerateChapterMarkersAsync(sceneResult).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -112,7 +112,7 @@ public class AIEditingController : ControllerBase
 
             var result = await _highlightDetectionService.DetectHighlightsAsync(
                 request.VideoPath,
-                request.MaxHighlights ?? 10);
+                request.MaxHighlights ?? 10).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -142,7 +142,7 @@ public class AIEditingController : ControllerBase
         {
             _logger.LogInformation("Detecting beats in file: {FilePath}", request.FilePath);
 
-            var result = await _beatDetectionService.DetectBeatsAsync(request.FilePath);
+            var result = await _beatDetectionService.DetectBeatsAsync(request.FilePath).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -172,10 +172,10 @@ public class AIEditingController : ControllerBase
         {
             _logger.LogInformation("Generating beat-aligned cuts for: {FilePath}", request.FilePath);
 
-            var beatResult = await _beatDetectionService.DetectBeatsAsync(request.FilePath);
+            var beatResult = await _beatDetectionService.DetectBeatsAsync(request.FilePath).ConfigureAwait(false);
             var cuts = await _beatDetectionService.GenerateBeatAlignedCutsAsync(
                 beatResult, 
-                request.CutEveryNBeats ?? 4);
+                request.CutEveryNBeats ?? 4).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -209,7 +209,7 @@ public class AIEditingController : ControllerBase
             var result = await _autoFramingService.AnalyzeFramingAsync(
                 request.VideoPath,
                 request.TargetWidth,
-                request.TargetHeight);
+                request.TargetHeight).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -239,7 +239,7 @@ public class AIEditingController : ControllerBase
         {
             _logger.LogInformation("Converting to vertical format: {VideoPath}", request.VideoPath);
 
-            var result = await _autoFramingService.ConvertToVerticalAsync(request.VideoPath);
+            var result = await _autoFramingService.ConvertToVerticalAsync(request.VideoPath).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -269,7 +269,7 @@ public class AIEditingController : ControllerBase
         {
             _logger.LogInformation("Converting to square format: {VideoPath}", request.VideoPath);
 
-            var result = await _autoFramingService.ConvertToSquareAsync(request.VideoPath);
+            var result = await _autoFramingService.ConvertToSquareAsync(request.VideoPath).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -301,7 +301,7 @@ public class AIEditingController : ControllerBase
 
             var result = await _speechRecognitionService.GenerateCaptionsAsync(
                 request.FilePath,
-                request.Language ?? "en");
+                request.Language ?? "en").ConfigureAwait(false);
 
             return Ok(new
             {
@@ -331,8 +331,8 @@ public class AIEditingController : ControllerBase
         {
             _logger.LogInformation("Exporting captions to SRT: {OutputPath}", request.OutputPath);
 
-            var captionResult = await _speechRecognitionService.GenerateCaptionsAsync(request.FilePath);
-            var outputPath = await _speechRecognitionService.ExportToSrtAsync(captionResult, request.OutputPath);
+            var captionResult = await _speechRecognitionService.GenerateCaptionsAsync(request.FilePath).ConfigureAwait(false);
+            var outputPath = await _speechRecognitionService.ExportToSrtAsync(captionResult, request.OutputPath).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -363,8 +363,8 @@ public class AIEditingController : ControllerBase
         {
             _logger.LogInformation("Exporting captions to VTT: {OutputPath}", request.OutputPath);
 
-            var captionResult = await _speechRecognitionService.GenerateCaptionsAsync(request.FilePath);
-            var outputPath = await _speechRecognitionService.ExportToVttAsync(captionResult, request.OutputPath);
+            var captionResult = await _speechRecognitionService.GenerateCaptionsAsync(request.FilePath).ConfigureAwait(false);
+            var outputPath = await _speechRecognitionService.ExportToVttAsync(captionResult, request.OutputPath).ConfigureAwait(false);
 
             return Ok(new
             {

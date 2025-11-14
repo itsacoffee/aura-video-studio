@@ -19,21 +19,22 @@ public class ProgressEstimator
     /// </summary>
     public void RecordProgress(string jobId, double percent, DateTime timestamp)
     {
-        if (!_progressHistory.ContainsKey(jobId))
+        if (!_progressHistory.TryGetValue(jobId, out var value))
         {
-            _progressHistory[jobId] = new List<ProgressSample>();
+            value = new List<ProgressSample>();
+            _progressHistory[jobId] = value;
         }
 
-        _progressHistory[jobId].Add(new ProgressSample
+        value.Add(new ProgressSample
         {
             Percent = percent,
             Timestamp = timestamp
         });
 
         // Keep only last 20 samples to avoid memory growth
-        if (_progressHistory[jobId].Count > 20)
+        if (value.Count > 20)
         {
-            _progressHistory[jobId].RemoveAt(0);
+            value.RemoveAt(0);
         }
     }
 

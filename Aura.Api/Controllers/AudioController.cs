@@ -141,7 +141,7 @@ public class AudioController : ControllerBase
                         "[{CorrelationId}] Generating audio for scene {SceneIndex}: {Text}",
                         correlationId, scene.SceneIndex, scene.Text.Substring(0, Math.Min(50, scene.Text.Length)));
 
-                    var audioPath = await ttsProvider.SynthesizeAsync(new[] { line }, voiceSpec, ct);
+                    var audioPath = await ttsProvider.SynthesizeAsync(new[] { line }, voiceSpec, ct).ConfigureAwait(false);
                     
                     results.Add(new
                     {
@@ -280,7 +280,7 @@ public class AudioController : ControllerBase
                     : PauseStyle.Natural
             );
 
-            var audioPath = await ttsProvider.SynthesizeAsync(new[] { scriptLine }, voiceSpec, ct);
+            var audioPath = await ttsProvider.SynthesizeAsync(new[] { scriptLine }, voiceSpec, ct).ConfigureAwait(false);
 
             _logger.LogInformation(
                 "[{CorrelationId}] Audio regeneration complete for scene {SceneIndex}",
@@ -369,7 +369,7 @@ public class AudioController : ControllerBase
                 request.Duration,
                 request.Context,
                 request.MaxResults ?? 10,
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(new { success = true, recommendations });
         }
@@ -401,7 +401,7 @@ public class AudioController : ControllerBase
                 request.FilePath,
                 request.MinBPM ?? 60,
                 request.MaxBPM ?? 200,
-                ct);
+                ct).ConfigureAwait(false);
 
             var bpm = _beatService.CalculateBPM(beats);
             var phrases = _beatService.IdentifyMusicalPhrases(beats);
@@ -445,7 +445,7 @@ public class AudioController : ControllerBase
                 request.ContentType,
                 request.TargetAudience,
                 request.KeyMessages,
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(new { success = true, directions });
         }
@@ -477,7 +477,7 @@ public class AudioController : ControllerBase
                 request.Script,
                 request.SceneDurations,
                 request.ContentType,
-                ct);
+                ct).ConfigureAwait(false);
 
             var optimizedEffects = _soundEffectService.OptimizeTiming(effects);
 
@@ -514,14 +514,14 @@ public class AudioController : ControllerBase
                 request.HasMusic,
                 request.HasSoundEffects,
                 request.TargetLUFS ?? -14.0,
-                ct);
+                ct).ConfigureAwait(false);
 
             var (isValid, issues) = _mixingService.ValidateMixing(mixing);
             var conflicts = await _mixingService.DetectFrequencyConflictsAsync(
                 request.HasNarration,
                 request.HasMusic,
                 request.HasSoundEffects,
-                ct);
+                ct).ConfigureAwait(false);
             var stereoPlacement = _mixingService.SuggestStereoPlacement(
                 request.HasNarration,
                 request.HasMusic,
@@ -608,7 +608,7 @@ public class AudioController : ControllerBase
                 request.AudioBeatTimestamps,
                 request.VisualTransitionTimestamps,
                 request.VideoDuration,
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(new { success = true, analysis });
         }
@@ -640,7 +640,7 @@ public class AudioController : ControllerBase
             var continuity = await _continuityService.CheckContinuityAsync(
                 request.AudioSegmentPaths,
                 request.TargetStyle,
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(new { success = true, continuity });
         }
@@ -856,7 +856,7 @@ public class AudioController : ControllerBase
                 null,
                 config,
                 ct
-            );
+            ).ConfigureAwait(false);
 
             _logger.LogInformation(
                 "[{CorrelationId}] Optimization complete. Score: {Score:F1}, Optimizations: {Count}",

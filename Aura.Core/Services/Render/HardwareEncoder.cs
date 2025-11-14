@@ -95,8 +95,8 @@ public class HardwareEncoder
                 return CreateFallbackCapabilities();
             }
 
-            var output = await process.StandardOutput.ReadToEndAsync();
-            await process.WaitForExitAsync();
+            var output = await process.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
+            await process.WaitForExitAsync().ConfigureAwait(false);
 
             var availableEncoders = ParseEncoders(output);
 
@@ -108,7 +108,7 @@ public class HardwareEncoder
             GpuMemoryInfo? gpuMemory = null;
             if (hasNVENC)
             {
-                gpuMemory = await GetGpuMemoryInfoAsync();
+                gpuMemory = await GetGpuMemoryInfoAsync().ConfigureAwait(false);
             }
 
             _cachedCapabilities = new HardwareCapabilities(
@@ -142,7 +142,7 @@ public class HardwareEncoder
         ExportPreset preset,
         bool preferHardware = true)
     {
-        var capabilities = await DetectHardwareCapabilitiesAsync();
+        var capabilities = await DetectHardwareCapabilitiesAsync().ConfigureAwait(false);
 
         if (!preferHardware)
         {
@@ -467,8 +467,8 @@ public class HardwareEncoder
                 return null;
             }
 
-            var output = await process.StandardOutput.ReadToEndAsync();
-            await process.WaitForExitAsync();
+            var output = await process.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
+            await process.WaitForExitAsync().ConfigureAwait(false);
 
             if (process.ExitCode != 0 || string.IsNullOrWhiteSpace(output))
             {
@@ -529,8 +529,8 @@ public class HardwareEncoder
                 return null;
             }
 
-            var output = await process.StandardOutput.ReadToEndAsync();
-            await process.WaitForExitAsync();
+            var output = await process.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
+            await process.WaitForExitAsync().ConfigureAwait(false);
 
             if (process.ExitCode != 0 || string.IsNullOrWhiteSpace(output))
             {
@@ -570,7 +570,7 @@ public class HardwareEncoder
     /// <param name="requiredMemoryBytes">Required memory in bytes</param>
     public async Task<bool> HasSufficientGpuMemoryAsync(long requiredMemoryBytes)
     {
-        var memInfo = await GetGpuMemoryInfoAsync();
+        var memInfo = await GetGpuMemoryInfoAsync().ConfigureAwait(false);
         if (memInfo == null)
         {
             return true;

@@ -49,7 +49,7 @@ public class ErrorReportController : ControllerBase
             }
 
             // Save using crash report service
-            var reportId = await _crashReportService.SaveClientErrorReportAsync(report, HttpContext.RequestAborted);
+            var reportId = await _crashReportService.SaveClientErrorReportAsync(report, HttpContext.RequestAborted).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -108,7 +108,7 @@ public class ErrorReportController : ControllerBase
                 WriteIndented = true
             });
 
-            await System.IO.File.WriteAllTextAsync(filePath, json);
+            await System.IO.File.WriteAllTextAsync(filePath, json).ConfigureAwait(false);
 
             _logger.LogInformation(
                 "Error report saved to {FilePath} with ID {ReportId}",
@@ -185,7 +185,7 @@ public class ErrorReportController : ControllerBase
                 return NotFound(new { error = "Error report not found" });
             }
 
-            var json = await System.IO.File.ReadAllTextAsync(files[0]);
+            var json = await System.IO.File.ReadAllTextAsync(files[0]).ConfigureAwait(false);
             var report = JsonSerializer.Deserialize<object>(json);
 
             return Ok(report);

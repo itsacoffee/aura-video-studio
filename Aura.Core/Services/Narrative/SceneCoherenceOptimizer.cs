@@ -33,7 +33,7 @@ public class SceneCoherenceOptimizer
         TimeSpan targetDuration,
         CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         ct.ThrowIfCancellationRequested();
 
         _logger.LogInformation("Analyzing scene order optimization for {SceneCount} scenes", scenes.Count);

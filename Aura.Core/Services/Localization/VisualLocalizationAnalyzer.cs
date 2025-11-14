@@ -59,7 +59,7 @@ public class VisualLocalizationAnalyzer
             translatedLines,
             targetLanguage,
             culturalContext,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
         recommendations.AddRange(llmRecommendations);
 
         _logger.LogInformation("Found {Count} visual localization recommendations", recommendations.Count);
@@ -163,7 +163,7 @@ public class VisualLocalizationAnalyzer
 
         try
         {
-            var response = await _llmProvider.DraftScriptAsync(brief, spec, cancellationToken);
+            var response = await _llmProvider.DraftScriptAsync(brief, spec, cancellationToken).ConfigureAwait(false);
             var parsedRecommendations = ParseVisualRecommendations(response);
             recommendations.AddRange(parsedRecommendations);
         }
@@ -190,7 +190,7 @@ public class VisualLocalizationAnalyzer
         sb.AppendLine("4. Brand logos or products that need localization");
         sb.AppendLine();
 
-        if (culturalContext != null && culturalContext.Sensitivities.Any())
+        if (culturalContext != null && culturalContext.Sensitivities.Count != 0)
         {
             sb.AppendLine("Cultural sensitivities to consider:");
             foreach (var sensitivity in culturalContext.Sensitivities)
@@ -285,7 +285,7 @@ public class VisualLocalizationAnalyzer
         string symbol,
         LanguageInfo targetLanguage)
     {
-        if (category == "religious" && targetLanguage.CulturalSensitivities.Any())
+        if (category == "religious" && targetLanguage.CulturalSensitivities.Count != 0)
         {
             return LocalizationPriority.Critical;
         }

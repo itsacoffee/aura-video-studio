@@ -31,7 +31,7 @@ public class PatternRecognitionSystem
         string profileId,
         CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         
         var patterns = new List<DecisionPattern>();
         
@@ -112,9 +112,9 @@ public class PatternRecognitionSystem
         foreach (var pattern in patterns)
         {
             var category = pattern.SuggestionType.ToLowerInvariant();
-            if (categorized.ContainsKey(category))
+            if (categorized.TryGetValue(category, out var value))
             {
-                categorized[category].Add(pattern);
+                value.Add(pattern);
             }
             else
             {
@@ -134,7 +134,7 @@ public class PatternRecognitionSystem
         string profileId,
         CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         
         return DetectTemporalPatterns(decisions, profileId);
     }

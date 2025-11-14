@@ -66,7 +66,7 @@ public class SettingsService : ISettingsService
         {
             // Try loading from database first
             var settingsEntity = await _dbContext.Settings
-                .FirstOrDefaultAsync(s => s.Id == "user-settings", ct);
+                .FirstOrDefaultAsync(s => s.Id == "user-settings", ct).ConfigureAwait(false);
 
             if (settingsEntity != null)
             {
@@ -86,11 +86,11 @@ public class SettingsService : ISettingsService
             // Fallback to JSON file (for migration from old versions)
             if (File.Exists(_settingsFilePath))
             {
-                var json = await File.ReadAllTextAsync(_settingsFilePath, ct);
+                var json = await File.ReadAllTextAsync(_settingsFilePath, ct).ConfigureAwait(false);
                 var settings = JsonSerializer.Deserialize<UserSettings>(json) ?? CreateDefaultSettings();
 
                 // Migrate to database
-                await MigrateJsonToDatabase(settings, ct);
+                await MigrateJsonToDatabase(settings, ct).ConfigureAwait(false);
 
                 lock (_lock)
                 {
@@ -103,7 +103,7 @@ public class SettingsService : ISettingsService
 
             // No settings found, create defaults
             var defaultSettings = CreateDefaultSettings();
-            await SaveSettingsToDatabaseAsync(defaultSettings, ct);
+            await SaveSettingsToDatabaseAsync(defaultSettings, ct).ConfigureAwait(false);
             return CloneSettings(defaultSettings);
         }
         catch (Exception ex)
@@ -118,7 +118,7 @@ public class SettingsService : ISettingsService
         try
         {
             // Validate settings
-            var validation = await ValidateSettingsAsync(settings, ct);
+            var validation = await ValidateSettingsAsync(settings, ct).ConfigureAwait(false);
             if (!validation.IsValid)
             {
                 return new SettingsUpdateResult
@@ -137,7 +137,7 @@ public class SettingsService : ISettingsService
             }
 
             settings.LastUpdated = DateTime.UtcNow;
-            await SaveSettingsToDatabaseAsync(settings, ct);
+            await SaveSettingsToDatabaseAsync(settings, ct).ConfigureAwait(false);
 
             lock (_lock)
             {
@@ -172,7 +172,7 @@ public class SettingsService : ISettingsService
         try
         {
             var settings = CreateDefaultSettings();
-            await SaveSettingsToDatabaseAsync(settings, ct);
+            await SaveSettingsToDatabaseAsync(settings, ct).ConfigureAwait(false);
 
             lock (_lock)
             {
@@ -200,7 +200,7 @@ public class SettingsService : ISettingsService
 
     public async Task<T> GetSettingsSectionAsync<T>(CancellationToken ct = default) where T : class, new()
     {
-        var settings = await GetSettingsAsync(ct);
+        var settings = await GetSettingsAsync(ct).ConfigureAwait(false);
         
         // Use reflection to get the appropriate section
         var property = typeof(UserSettings).GetProperty(typeof(T).Name.Replace("Settings", ""));
@@ -214,14 +214,14 @@ public class SettingsService : ISettingsService
 
     public async Task<SettingsUpdateResult> UpdateSettingsSectionAsync<T>(T section, CancellationToken ct = default) where T : class
     {
-        var settings = await GetSettingsAsync(ct);
+        var settings = await GetSettingsAsync(ct).ConfigureAwait(false);
         
         // Use reflection to update the appropriate section
         var property = typeof(UserSettings).GetProperty(typeof(T).Name.Replace("Settings", ""));
         if (property != null && property.PropertyType == typeof(T))
         {
             property.SetValue(settings, section);
-            return await UpdateSettingsAsync(settings, ct);
+            return await UpdateSettingsAsync(settings, ct).ConfigureAwait(false);
         }
 
         return new SettingsUpdateResult
@@ -304,7 +304,7 @@ public class SettingsService : ISettingsService
 
     public async Task<string> ExportSettingsAsync(bool includeSecrets = false, CancellationToken ct = default)
     {
-        var settings = await GetSettingsAsync(ct);
+        var settings = await GetSettingsAsync(ct).ConfigureAwait(false);
         
         var exportData = new
         {
@@ -345,14 +345,14 @@ public class SettingsService : ISettingsService
 
             if (overwriteExisting)
             {
-                return await UpdateSettingsAsync(importedSettings, ct);
+                return await UpdateSettingsAsync(importedSettings, ct).ConfigureAwait(false);
             }
             else
             {
                 // Merge with existing settings
-                var currentSettings = await GetSettingsAsync(ct);
+                var currentSettings = await GetSettingsAsync(ct).ConfigureAwait(false);
                 MergeSettings(currentSettings, importedSettings);
-                return await UpdateSettingsAsync(currentSettings, ct);
+                return await UpdateSettingsAsync(currentSettings, ct).ConfigureAwait(false);
             }
         }
         catch (Exception ex)
@@ -376,7 +376,7 @@ public class SettingsService : ISettingsService
         {
             if (File.Exists(hwSettingsPath))
             {
-                var json = await File.ReadAllTextAsync(hwSettingsPath, ct);
+                var json = await File.ReadAllTextAsync(hwSettingsPath, ct).ConfigureAwait(false);
                 return JsonSerializer.Deserialize<HardwarePerformanceSettings>(json) ?? new HardwarePerformanceSettings();
             }
         }
@@ -394,7 +394,7 @@ public class SettingsService : ISettingsService
         {
             var hwSettingsPath = Path.Combine(Path.GetDirectoryName(_settingsFilePath)!, "hardware-settings.json");
             var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
-            await File.WriteAllTextAsync(hwSettingsPath, json, ct);
+            await File.WriteAllTextAsync(hwSettingsPath, json, ct).ConfigureAwait(false);
 
             _logger.LogInformation("Updated hardware performance settings");
             return new SettingsUpdateResult
@@ -476,27 +476,27 @@ public class SettingsService : ISettingsService
             // Store API keys securely
             if (!string.IsNullOrEmpty(config.OpenAI.ApiKey))
             {
-                await _keyStore.SetKeyAsync("OpenAI", config.OpenAI.ApiKey, ct);
+                await _keyStore.SetKeyAsync("OpenAI", config.OpenAI.ApiKey, ct).ConfigureAwait(false);
             }
 
             if (!string.IsNullOrEmpty(config.Anthropic.ApiKey))
             {
-                await _keyStore.SetKeyAsync("Anthropic", config.Anthropic.ApiKey, ct);
+                await _keyStore.SetKeyAsync("Anthropic", config.Anthropic.ApiKey, ct).ConfigureAwait(false);
             }
 
             if (!string.IsNullOrEmpty(config.AzureOpenAI.ApiKey))
             {
-                await _keyStore.SetKeyAsync("AzureOpenAI", config.AzureOpenAI.ApiKey, ct);
+                await _keyStore.SetKeyAsync("AzureOpenAI", config.AzureOpenAI.ApiKey, ct).ConfigureAwait(false);
             }
 
             if (!string.IsNullOrEmpty(config.Gemini.ApiKey))
             {
-                await _keyStore.SetKeyAsync("Gemini", config.Gemini.ApiKey, ct);
+                await _keyStore.SetKeyAsync("Gemini", config.Gemini.ApiKey, ct).ConfigureAwait(false);
             }
 
             if (!string.IsNullOrEmpty(config.ElevenLabs.ApiKey))
             {
-                await _keyStore.SetKeyAsync("ElevenLabs", config.ElevenLabs.ApiKey, ct);
+                await _keyStore.SetKeyAsync("ElevenLabs", config.ElevenLabs.ApiKey, ct).ConfigureAwait(false);
             }
 
             _logger.LogInformation("Updated provider configuration");
@@ -527,13 +527,13 @@ public class SettingsService : ISettingsService
             switch (providerName.ToLowerInvariant())
             {
                 case "openai":
-                    return await TestOpenAIConnectionAsync(ct);
+                    return await TestOpenAIConnectionAsync(ct).ConfigureAwait(false);
                     
                 case "ollama":
-                    return await TestOllamaConnectionAsync(ct);
+                    return await TestOllamaConnectionAsync(ct).ConfigureAwait(false);
                     
                 case "stablediffusion":
-                    return await TestStableDiffusionConnectionAsync(ct);
+                    return await TestStableDiffusionConnectionAsync(ct).ConfigureAwait(false);
                     
                 default:
                     return new ProviderTestResult
@@ -564,7 +564,7 @@ public class SettingsService : ISettingsService
 
         try
         {
-            var systemProfile = await _hardwareDetector.DetectSystemAsync();
+            var systemProfile = await _hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
             if (systemProfile.Gpu != null)
             {
                 devices.Add(new GpuDevice
@@ -628,7 +628,7 @@ public class SettingsService : ISettingsService
         // Check for hardware encoders
         try
         {
-            var systemProfile = await _hardwareDetector.DetectSystemAsync();
+            var systemProfile = await _hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
             
             if (systemProfile.EnableNVENC)
             {
@@ -671,7 +671,7 @@ public class SettingsService : ISettingsService
         });
 
         var settingsEntity = await _dbContext.Settings
-            .FirstOrDefaultAsync(s => s.Id == "user-settings", ct);
+            .FirstOrDefaultAsync(s => s.Id == "user-settings", ct).ConfigureAwait(false);
 
         if (settingsEntity == null)
         {
@@ -693,7 +693,7 @@ public class SettingsService : ISettingsService
             settingsEntity.UpdatedAt = DateTime.UtcNow;
         }
 
-        await _dbContext.SaveChangesAsync(ct);
+        await _dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
         _logger.LogInformation("Saved settings to database");
     }
 
@@ -701,7 +701,7 @@ public class SettingsService : ISettingsService
     {
         try
         {
-            await SaveSettingsToDatabaseAsync(settings, ct);
+            await SaveSettingsToDatabaseAsync(settings, ct).ConfigureAwait(false);
             _logger.LogInformation("Successfully migrated settings from JSON to database");
 
             // Optionally rename the old JSON file instead of deleting it
@@ -722,7 +722,7 @@ public class SettingsService : ISettingsService
     private async Task SaveSettingsAsync(UserSettings settings, CancellationToken ct)
     {
         // Legacy method - now just calls the database method
-        await SaveSettingsToDatabaseAsync(settings, ct);
+        await SaveSettingsToDatabaseAsync(settings, ct).ConfigureAwait(false);
     }
 
     private UserSettings CreateDefaultSettings()
@@ -863,7 +863,7 @@ public class SettingsService : ISettingsService
             client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
             client.Timeout = TimeSpan.FromSeconds(10);
 
-            var response = await client.GetAsync("https://api.openai.com/v1/models", ct);
+            var response = await client.GetAsync("https://api.openai.com/v1/models", ct).ConfigureAwait(false);
             stopwatch.Stop();
 
             if (response.IsSuccessStatusCode)
@@ -909,7 +909,7 @@ public class SettingsService : ISettingsService
             using var client = new HttpClient();
             client.Timeout = TimeSpan.FromSeconds(10);
 
-            var response = await client.GetAsync($"{baseUrl}/api/tags", ct);
+            var response = await client.GetAsync($"{baseUrl}/api/tags", ct).ConfigureAwait(false);
             stopwatch.Stop();
 
             if (response.IsSuccessStatusCode)
@@ -955,7 +955,7 @@ public class SettingsService : ISettingsService
             using var client = new HttpClient();
             client.Timeout = TimeSpan.FromSeconds(10);
 
-            var response = await client.GetAsync($"{baseUrl}/sdapi/v1/options", ct);
+            var response = await client.GetAsync($"{baseUrl}/sdapi/v1/options", ct).ConfigureAwait(false);
             stopwatch.Stop();
 
             if (response.IsSuccessStatusCode)

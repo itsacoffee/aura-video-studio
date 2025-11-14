@@ -123,7 +123,7 @@ public record RagConfig
     public float MinimumScore { get; init; } = 0.5f;
     public int MaxContextTokens { get; init; } = 2000;
     public bool IncludeCitations { get; init; } = true;
-    public bool RerankerEnabled { get; init; } = false;
+    public bool RerankerEnabled { get; init; }
 }
 
 /// <summary>

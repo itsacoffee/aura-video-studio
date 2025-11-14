@@ -43,7 +43,7 @@ public class OllamaController : ControllerBase
         try
         {
             var baseUrl = _settings.GetOllamaUrl();
-            var status = await _ollamaService.GetStatusAsync(baseUrl, ct);
+            var status = await _ollamaService.GetStatusAsync(baseUrl, ct).ConfigureAwait(false);
 
             // Check if Ollama is installed
             var executablePath = _settings.GetOllamaExecutablePath();
@@ -127,7 +127,7 @@ public class OllamaController : ControllerBase
             Log.Information("Starting Ollama from {Path}, CorrelationId={CorrelationId}", 
                 executablePath, HttpContext.TraceIdentifier);
 
-            var result = await _ollamaService.StartAsync(executablePath, baseUrl, ct);
+            var result = await _ollamaService.StartAsync(executablePath, baseUrl, ct).ConfigureAwait(false);
 
             var response = new OllamaStartResponse(
                 Success: result.Success,
@@ -212,7 +212,7 @@ public class OllamaController : ControllerBase
     {
         try
         {
-            var logs = await _ollamaService.GetLogsAsync(maxLines);
+            var logs = await _ollamaService.GetLogsAsync(maxLines).ConfigureAwait(false);
 
             var response = new OllamaLogsResponse(
                 Logs: logs,
@@ -251,7 +251,7 @@ public class OllamaController : ControllerBase
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(10));
 
-            var response = await _httpClient.GetAsync($"{baseUrl}/api/tags", cts.Token);
+            var response = await _httpClient.GetAsync($"{baseUrl}/api/tags", cts.Token).ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -266,7 +266,7 @@ public class OllamaController : ControllerBase
                 );
             }
 
-            var json = await response.Content.ReadAsStringAsync(ct);
+            var json = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var doc = JsonDocument.Parse(json);
 
             var models = new List<OllamaModelDto>();
@@ -338,7 +338,7 @@ public class OllamaController : ControllerBase
 
         try
         {
-            var info = await _detectionService.GetModelInfoAsync(modelName, ct);
+            var info = await _detectionService.GetModelInfoAsync(modelName, ct).ConfigureAwait(false);
             
             if (info == null)
             {
@@ -374,7 +374,7 @@ public class OllamaController : ControllerBase
 
         try
         {
-            var isAvailable = await _detectionService.IsModelAvailableAsync(modelName, ct);
+            var isAvailable = await _detectionService.IsModelAvailableAsync(modelName, ct).ConfigureAwait(false);
             
             return Ok(new { modelName, isAvailable });
         }
@@ -408,7 +408,7 @@ public class OllamaController : ControllerBase
                     modelName, p.Status, p.PercentComplete);
             });
 
-            var success = await _detectionService.PullModelAsync(modelName, pullProgress, ct);
+            var success = await _detectionService.PullModelAsync(modelName, pullProgress, ct).ConfigureAwait(false);
 
             if (success)
             {

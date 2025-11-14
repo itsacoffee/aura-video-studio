@@ -43,7 +43,7 @@ public class DistributedCacheService : IDistributedCacheService
                 return cachedValue;
             }
 
-            var bytes = await _distributedCache.GetAsync(key, cancellationToken);
+            var bytes = await _distributedCache.GetAsync(key, cancellationToken).ConfigureAwait(false);
             if (bytes != null)
             {
                 var value = JsonSerializer.Deserialize<T>(bytes);
@@ -80,7 +80,7 @@ public class DistributedCacheService : IDistributedCacheService
                 AbsoluteExpirationRelativeToNow = expiration
             };
 
-            await _distributedCache.SetAsync(key, bytes, options, cancellationToken);
+            await _distributedCache.SetAsync(key, bytes, options, cancellationToken).ConfigureAwait(false);
             _logger.LogDebug("Cache set for key: {Key} with expiration: {Expiration}", key, expiration);
         }
         catch (Exception ex)
@@ -95,7 +95,7 @@ public class DistributedCacheService : IDistributedCacheService
         try
         {
             _memoryCache.Remove(key);
-            await _distributedCache.RemoveAsync(key, cancellationToken);
+            await _distributedCache.RemoveAsync(key, cancellationToken).ConfigureAwait(false);
             _logger.LogDebug("Cache entry removed for key: {Key}", key);
         }
         catch (Exception ex)
@@ -110,24 +110,24 @@ public class DistributedCacheService : IDistributedCacheService
         TimeSpan expiration,
         CancellationToken cancellationToken = default) where T : class
     {
-        var cached = await GetAsync<T>(key, cancellationToken);
+        var cached = await GetAsync<T>(key, cancellationToken).ConfigureAwait(false);
         if (cached != null)
         {
             return cached;
         }
 
-        await _stampedeProtection.WaitAsync(cancellationToken);
+        await _stampedeProtection.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            cached = await GetAsync<T>(key, cancellationToken);
+            cached = await GetAsync<T>(key, cancellationToken).ConfigureAwait(false);
             if (cached != null)
             {
                 return cached;
             }
 
             _logger.LogDebug("Creating cache entry for key: {Key}", key);
-            var value = await factory(cancellationToken);
-            await SetAsync(key, value, expiration, cancellationToken);
+            var value = await factory(cancellationToken).ConfigureAwait(false);
+            await SetAsync(key, value, expiration, cancellationToken).ConfigureAwait(false);
             return value;
         }
         finally
@@ -145,7 +145,7 @@ public class DistributedCacheService : IDistributedCacheService
                 return true;
             }
 
-            var bytes = await _distributedCache.GetAsync(key, cancellationToken);
+            var bytes = await _distributedCache.GetAsync(key, cancellationToken).ConfigureAwait(false);
             return bytes != null;
         }
         catch (Exception ex)
@@ -175,6 +175,6 @@ public class DistributedCacheService : IDistributedCacheService
             memCache.Compact(1.0);
         }
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
     }
 }

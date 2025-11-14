@@ -41,7 +41,7 @@ public class CacheWarmingService : BackgroundService
         }
 
         // Wait a bit for the application to fully start
-        await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
+        await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken).ConfigureAwait(false);
 
         try
         {
@@ -66,7 +66,7 @@ public class CacheWarmingService : BackgroundService
                 WarmUserPreferencesCache(cacheService, dbContext, stoppingToken)
             };
 
-            await Task.WhenAll(tasks);
+            await Task.WhenAll(tasks).ConfigureAwait(false);
 
             var duration = DateTime.UtcNow - startTime;
             _logger.LogInformation("Cache warming completed in {DurationMs}ms", duration.TotalMilliseconds);
@@ -88,7 +88,7 @@ public class CacheWarmingService : BackgroundService
                 .AsNoTracking()
                 .Where(t => t.IsSystemTemplate || t.IsCommunityTemplate)
                 .Take(50)
-                .ToListAsync(cancellationToken);
+                .ToListAsync(cancellationToken).ConfigureAwait(false);
 
             if (templates.Any())
             {
@@ -96,7 +96,7 @@ public class CacheWarmingService : BackgroundService
                     "templates:popular",
                     templates,
                     TimeSpan.FromHours(1),
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
 
                 _logger.LogInformation("Warmed template cache with {Count} entries", templates.Count);
             }
@@ -116,7 +116,7 @@ public class CacheWarmingService : BackgroundService
         {
             var systemConfig = await dbContext.SystemConfigurations
                 .AsNoTracking()
-                .FirstOrDefaultAsync(cancellationToken);
+                .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
 
             if (systemConfig != null)
             {
@@ -124,7 +124,7 @@ public class CacheWarmingService : BackgroundService
                     "system:config",
                     systemConfig,
                     TimeSpan.FromMinutes(30),
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
 
                 _logger.LogInformation("Warmed system configuration cache");
             }
@@ -146,7 +146,7 @@ public class CacheWarmingService : BackgroundService
                 .AsNoTracking()
                 .Where(c => c.IsActive && !c.IsSensitive)
                 .Take(100)
-                .ToListAsync(cancellationToken);
+                .ToListAsync(cancellationToken).ConfigureAwait(false);
 
             if (configurations.Any())
             {
@@ -156,7 +156,7 @@ public class CacheWarmingService : BackgroundService
                         $"config:{config.Key}",
                         config,
                         TimeSpan.FromMinutes(15),
-                        cancellationToken);
+                        cancellationToken).ConfigureAwait(false);
                 }
 
                 _logger.LogInformation("Warmed configuration cache with {Count} entries", 

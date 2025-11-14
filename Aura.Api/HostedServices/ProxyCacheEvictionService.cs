@@ -33,14 +33,14 @@ public class ProxyCacheEvictionService : BackgroundService
         {
             try
             {
-                await Task.Delay(_evictionInterval, stoppingToken);
+                await Task.Delay(_evictionInterval, stoppingToken).ConfigureAwait(false);
 
                 if (stoppingToken.IsCancellationRequested)
                 {
                     break;
                 }
 
-                await PerformEvictionCheckAsync(stoppingToken);
+                await PerformEvictionCheckAsync(stoppingToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -69,7 +69,7 @@ public class ProxyCacheEvictionService : BackgroundService
 
         try
         {
-            var stats = await proxyMediaService.GetCacheStatisticsAsync();
+            var stats = await proxyMediaService.GetCacheStatisticsAsync().ConfigureAwait(false);
 
             _logger.LogDebug("Cache stats: {Proxies} proxies, {Size:N0} bytes ({Usage:F1}% of limit)",
                 stats.TotalProxies, stats.TotalCacheSizeBytes, stats.CacheUsagePercent);
@@ -77,7 +77,7 @@ public class ProxyCacheEvictionService : BackgroundService
             if (stats.IsOverLimit)
             {
                 _logger.LogInformation("Cache exceeds limit. Triggering LRU eviction.");
-                await proxyMediaService.EvictLeastRecentlyUsedAsync(cancellationToken);
+                await proxyMediaService.EvictLeastRecentlyUsedAsync(cancellationToken).ConfigureAwait(false);
             }
         }
         catch (Exception ex)

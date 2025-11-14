@@ -57,7 +57,7 @@ public class ConversationController : ControllerBase
                 projectId,
                 request.Message,
                 _llmProvider,
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -87,7 +87,7 @@ public class ConversationController : ControllerBase
             var history = await _conversationManager.GetHistoryAsync(
                 projectId,
                 maxMessages,
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -113,7 +113,7 @@ public class ConversationController : ControllerBase
     {
         try
         {
-            await _conversationManager.ClearHistoryAsync(projectId, ct);
+            await _conversationManager.ClearHistoryAsync(projectId, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -138,8 +138,8 @@ public class ConversationController : ControllerBase
     {
         try
         {
-            var projectContext = await _projectManager.GetContextAsync(projectId, ct);
-            var conversationContext = await _conversationManager.GetContextAsync(projectId, ct);
+            var projectContext = await _projectManager.GetContextAsync(projectId, ct).ConfigureAwait(false);
+            var conversationContext = await _conversationManager.GetContextAsync(projectId, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -175,7 +175,7 @@ public class ConversationController : ControllerBase
                 Keywords: request.Keywords
             );
 
-            await _projectManager.UpdateVideoMetadataAsync(projectId, metadata, ct);
+            await _projectManager.UpdateVideoMetadataAsync(projectId, metadata, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -216,7 +216,7 @@ public class ConversationController : ControllerBase
                 request.Suggestion,
                 request.UserAction,
                 request.UserModification,
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(new
             {

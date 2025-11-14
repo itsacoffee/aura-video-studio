@@ -11,7 +11,7 @@ public record AIOptimizationSettings
     /// <summary>
     /// Master toggle for AI content optimization
     /// </summary>
-    public bool Enabled { get; init; } = false;
+    public bool Enabled { get; init; }
 
     /// <summary>
     /// Optimization aggressiveness level
@@ -21,7 +21,7 @@ public record AIOptimizationSettings
     /// <summary>
     /// Automatically regenerate content below quality threshold
     /// </summary>
-    public bool AutoRegenerateIfLowQuality { get; init; } = false;
+    public bool AutoRegenerateIfLowQuality { get; init; }
 
     /// <summary>
     /// Minimum quality score (0-100) for auto-regeneration
@@ -36,7 +36,7 @@ public record AIOptimizationSettings
     /// <summary>
     /// Share anonymous analytics for improvement
     /// </summary>
-    public bool ShareAnonymousAnalytics { get; init; } = false;
+    public bool ShareAnonymousAnalytics { get; init; }
 
     /// <summary>
     /// Metrics to optimize for

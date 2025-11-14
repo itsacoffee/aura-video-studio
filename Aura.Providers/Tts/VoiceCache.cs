@@ -128,7 +128,7 @@ public class VoiceCache : IDisposable
         var cachedFilePath = Path.Combine(_cacheDirectory, $"{cacheKey}{extension}");
 
         // Copy to cache directory
-        await Task.Run(() => File.Copy(audioPath, cachedFilePath, overwrite: true), ct);
+        await Task.Run(() => File.Copy(audioPath, cachedFilePath, overwrite: true), ct).ConfigureAwait(false);
 
         var entry = new CacheEntry
         {
@@ -162,7 +162,7 @@ public class VoiceCache : IDisposable
     /// </summary>
     public async Task ClearAsync()
     {
-        await _cleanupLock.WaitAsync();
+        await _cleanupLock.WaitAsync().ConfigureAwait(false);
         try
         {
             _logger.LogInformation("Clearing voice cache directory: {Directory}", _cacheDirectory);
@@ -237,7 +237,7 @@ public class VoiceCache : IDisposable
             return;
         }
 
-        if (!await _cleanupLock.WaitAsync(0, ct))
+        if (!await _cleanupLock.WaitAsync(0, ct).ConfigureAwait(false))
         {
             // Another cleanup is already running
             return;
@@ -415,7 +415,7 @@ public class VoiceCache : IDisposable
 /// <summary>
 /// Cache entry metadata
 /// </summary>
-internal class CacheEntry
+internal sealed class CacheEntry
 {
     public required string CacheKey { get; init; }
     public required string FilePath { get; init; }

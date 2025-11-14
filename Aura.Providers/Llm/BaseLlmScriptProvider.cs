@@ -43,7 +43,7 @@ public abstract class BaseLlmScriptProvider : IScriptLlmProvider
                     "Attempting script generation with {Provider} (attempt {Attempt}/{MaxRetries}), CorrelationId: {CorrelationId}",
                     GetProviderMetadata().Name, attempt, _maxRetries, request.CorrelationId);
 
-                var script = await GenerateScriptCoreAsync(request, cancellationToken);
+                var script = await GenerateScriptCoreAsync(request, cancellationToken).ConfigureAwait(false);
 
                 var generationTime = DateTime.UtcNow - startTime;
                 _logger.LogInformation(
@@ -73,7 +73,7 @@ public abstract class BaseLlmScriptProvider : IScriptLlmProvider
                 {
                     var delay = CalculateExponentialBackoff(attempt);
                     _logger.LogDebug("Retrying after {Delay}ms", delay.TotalMilliseconds);
-                    await Task.Delay(delay, cancellationToken);
+                    await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
                 }
             }
         }

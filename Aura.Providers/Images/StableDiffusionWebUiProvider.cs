@@ -101,7 +101,7 @@ public class StableDiffusionWebUiProvider : IImageProvider
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(30));
-            var response = await _httpClient.PostAsync($"{_baseUrl}/sdapi/v1/txt2img", content, cts.Token);
+            var response = await _httpClient.PostAsync($"{_baseUrl}/sdapi/v1/txt2img", content, cts.Token).ConfigureAwait(false);
             
             if (response.IsSuccessStatusCode)
             {
@@ -121,7 +121,7 @@ public class StableDiffusionWebUiProvider : IImageProvider
 
     public async Task<IReadOnlyList<Asset>> FetchOrGenerateAsync(Scene scene, VisualSpec spec, CancellationToken ct)
     {
-        return await FetchOrGenerateAsync(scene, spec, null, ct);
+        return await FetchOrGenerateAsync(scene, spec, null, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -191,10 +191,10 @@ public class StableDiffusionWebUiProvider : IImageProvider
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromMinutes(5)); // SD generation can take time
 
-            var response = await _httpClient.PostAsync($"{_baseUrl}/sdapi/v1/txt2img", content, cts.Token);
+            var response = await _httpClient.PostAsync($"{_baseUrl}/sdapi/v1/txt2img", content, cts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             var assets = new List<Asset>();

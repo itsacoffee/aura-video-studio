@@ -30,7 +30,7 @@ public class ProjectStateRepository
         ArgumentNullException.ThrowIfNull(project);
 
         _context.ProjectStates.Add(project);
-        await _context.SaveChangesAsync(ct);
+        await _context.SaveChangesAsync(ct).ConfigureAwait(false);
 
         _logger.LogInformation("Created project state {ProjectId} with title: {Title}", project.Id, project.Title);
         return project;
@@ -45,7 +45,7 @@ public class ProjectStateRepository
             .Include(p => p.Scenes)
             .Include(p => p.Assets)
             .Include(p => p.Checkpoints.OrderByDescending(c => c.CheckpointTime))
-            .FirstOrDefaultAsync(p => p.Id == projectId, ct);
+            .FirstOrDefaultAsync(p => p.Id == projectId, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -59,7 +59,7 @@ public class ProjectStateRepository
             .Include(p => p.Scenes)
             .Include(p => p.Assets)
             .Include(p => p.Checkpoints.OrderByDescending(c => c.CheckpointTime))
-            .FirstOrDefaultAsync(p => p.JobId == jobId, ct);
+            .FirstOrDefaultAsync(p => p.JobId == jobId, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -70,7 +70,7 @@ public class ProjectStateRepository
         return await _context.ProjectStates
             .Where(p => p.Status == "InProgress")
             .OrderByDescending(p => p.UpdatedAt)
-            .ToListAsync(ct);
+            .ToListAsync(ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -82,7 +82,7 @@ public class ProjectStateRepository
 
         project.UpdatedAt = DateTime.UtcNow;
         _context.ProjectStates.Update(project);
-        await _context.SaveChangesAsync(ct);
+        await _context.SaveChangesAsync(ct).ConfigureAwait(false);
 
         _logger.LogDebug("Updated project state {ProjectId}", project.Id);
         return project;
@@ -93,7 +93,7 @@ public class ProjectStateRepository
     /// </summary>
     public async Task UpdateStatusAsync(Guid projectId, string status, string? errorMessage = null, CancellationToken ct = default)
     {
-        var project = await _context.ProjectStates.FindAsync(new object[] { projectId }, ct);
+        var project = await _context.ProjectStates.FindAsync(new object[] { projectId }, ct).ConfigureAwait(false);
         if (project == null)
         {
             _logger.LogWarning("Cannot update status for non-existent project {ProjectId}", projectId);
@@ -109,7 +109,7 @@ public class ProjectStateRepository
             project.CompletedAt = DateTime.UtcNow;
         }
 
-        await _context.SaveChangesAsync(ct);
+        await _context.SaveChangesAsync(ct).ConfigureAwait(false);
         _logger.LogInformation("Updated project {ProjectId} status to {Status}", projectId, status);
     }
 
@@ -140,7 +140,7 @@ public class ProjectStateRepository
         };
 
         _context.RenderCheckpoints.Add(checkpoint);
-        await _context.SaveChangesAsync(ct);
+        await _context.SaveChangesAsync(ct).ConfigureAwait(false);
 
         _logger.LogInformation("Saved checkpoint for project {ProjectId} at stage {StageName} ({Completed}/{Total} scenes)",
             projectId, stageName, completedScenes, totalScenes);
@@ -156,7 +156,7 @@ public class ProjectStateRepository
         return await _context.RenderCheckpoints
             .Where(c => c.ProjectId == projectId && c.IsValid)
             .OrderByDescending(c => c.CheckpointTime)
-            .FirstOrDefaultAsync(ct);
+            .FirstOrDefaultAsync(ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -167,7 +167,7 @@ public class ProjectStateRepository
         ArgumentNullException.ThrowIfNull(scene);
 
         _context.SceneStates.Add(scene);
-        await _context.SaveChangesAsync(ct);
+        await _context.SaveChangesAsync(ct).ConfigureAwait(false);
 
         _logger.LogDebug("Added scene {SceneIndex} to project {ProjectId}", scene.SceneIndex, scene.ProjectId);
         return scene;
@@ -181,7 +181,7 @@ public class ProjectStateRepository
         ArgumentNullException.ThrowIfNull(asset);
 
         _context.AssetStates.Add(asset);
-        await _context.SaveChangesAsync(ct);
+        await _context.SaveChangesAsync(ct).ConfigureAwait(false);
 
         _logger.LogDebug("Added asset {AssetType} to project {ProjectId}: {FilePath}",
             asset.AssetType, asset.ProjectId, asset.FilePath);
@@ -193,7 +193,7 @@ public class ProjectStateRepository
     /// </summary>
     public async Task DeleteAsync(Guid projectId, CancellationToken ct = default)
     {
-        var project = await GetByIdAsync(projectId, ct);
+        var project = await GetByIdAsync(projectId, ct).ConfigureAwait(false);
         if (project == null)
         {
             _logger.LogWarning("Cannot delete non-existent project {ProjectId}", projectId);
@@ -201,7 +201,7 @@ public class ProjectStateRepository
         }
 
         _context.ProjectStates.Remove(project);
-        await _context.SaveChangesAsync(ct);
+        await _context.SaveChangesAsync(ct).ConfigureAwait(false);
 
         _logger.LogInformation("Deleted project {ProjectId} and all related entities", projectId);
     }
@@ -219,7 +219,7 @@ public class ProjectStateRepository
         return await _context.ProjectStates
             .Where(p => p.Status == status && p.UpdatedAt < cutoffDate)
             .Include(p => p.Assets)
-            .ToListAsync(ct);
+            .ToListAsync(ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -232,6 +232,6 @@ public class ProjectStateRepository
         return await _context.AssetStates
             .Where(a => a.IsTemporary && a.CreatedAt < cutoffDate)
             .Where(a => a.Project == null || a.Project.Status == "Failed" || a.Project.Status == "Cancelled")
-            .ToListAsync(ct);
+            .ToListAsync(ct).ConfigureAwait(false);
     }
 }

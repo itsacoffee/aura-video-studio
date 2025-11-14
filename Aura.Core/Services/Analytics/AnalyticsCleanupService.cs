@@ -54,7 +54,7 @@ public class AnalyticsCleanupService : IAnalyticsCleanupService
     {
         try
         {
-            var settings = await _context.AnalyticsRetentionSettings.FirstOrDefaultAsync(cancellationToken);
+            var settings = await _context.AnalyticsRetentionSettings.FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
             if (settings?.AutoCleanupEnabled != true)
             {
                 _logger.LogDebug("Auto cleanup disabled");
@@ -72,7 +72,7 @@ public class AnalyticsCleanupService : IAnalyticsCleanupService
                 var cutoffDate = now.AddDays(-settings.UsageStatisticsRetentionDays);
                 var toDelete = await _context.UsageStatistics
                     .Where(u => u.Timestamp < cutoffDate)
-                    .ToListAsync(cancellationToken);
+                    .ToListAsync(cancellationToken).ConfigureAwait(false);
                 
                 _context.UsageStatistics.RemoveRange(toDelete);
                 cleaned += toDelete.Count;
@@ -85,7 +85,7 @@ public class AnalyticsCleanupService : IAnalyticsCleanupService
                 var cutoffDate = now.AddDays(-settings.CostTrackingRetentionDays);
                 var toDelete = await _context.CostTracking
                     .Where(c => c.Timestamp < cutoffDate)
-                    .ToListAsync(cancellationToken);
+                    .ToListAsync(cancellationToken).ConfigureAwait(false);
                 
                 _context.CostTracking.RemoveRange(toDelete);
                 cleaned += toDelete.Count;
@@ -98,7 +98,7 @@ public class AnalyticsCleanupService : IAnalyticsCleanupService
                 var cutoffDate = now.AddDays(-settings.PerformanceMetricsRetentionDays);
                 var toDelete = await _context.PerformanceMetrics
                     .Where(p => p.Timestamp < cutoffDate)
-                    .ToListAsync(cancellationToken);
+                    .ToListAsync(cancellationToken).ConfigureAwait(false);
                 
                 _context.PerformanceMetrics.RemoveRange(toDelete);
                 cleaned += toDelete.Count;
@@ -108,7 +108,7 @@ public class AnalyticsCleanupService : IAnalyticsCleanupService
             // Check database size limit
             if (settings.MaxDatabaseSizeMB > 0)
             {
-                var currentSize = await GetDatabaseSizeBytesAsync(cancellationToken);
+                var currentSize = await GetDatabaseSizeBytesAsync(cancellationToken).ConfigureAwait(false);
                 var currentSizeMB = currentSize / (1024.0 * 1024.0);
                 
                 if (currentSizeMB > settings.MaxDatabaseSizeMB)
@@ -117,11 +117,11 @@ public class AnalyticsCleanupService : IAnalyticsCleanupService
                         "Analytics database size ({CurrentMB:F2} MB) exceeds limit ({LimitMB} MB), performing aggressive cleanup",
                         currentSizeMB, settings.MaxDatabaseSizeMB);
                     
-                    await AggressiveCleanupAsync(settings.MaxDatabaseSizeMB, cancellationToken);
+                    await AggressiveCleanupAsync(settings.MaxDatabaseSizeMB, cancellationToken).ConfigureAwait(false);
                 }
             }
 
-            await _context.SaveChangesAsync(cancellationToken);
+            await _context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             _logger.LogInformation("Analytics cleanup completed, removed {Count} records", cleaned);
         }
         catch (Exception ex)
@@ -134,7 +134,7 @@ public class AnalyticsCleanupService : IAnalyticsCleanupService
     {
         try
         {
-            var settings = await _context.AnalyticsRetentionSettings.FirstOrDefaultAsync(cancellationToken);
+            var settings = await _context.AnalyticsRetentionSettings.FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
             if (settings?.AggregateOldData != true)
             {
                 return;
@@ -145,13 +145,13 @@ public class AnalyticsCleanupService : IAnalyticsCleanupService
             var cutoffDate = DateTime.UtcNow.AddDays(-settings.AggregationThresholdDays);
 
             // Aggregate by day
-            await AggregateDailyDataAsync(cutoffDate, cancellationToken);
+            await AggregateDailyDataAsync(cutoffDate, cancellationToken).ConfigureAwait(false);
             
             // Aggregate by month (for data older than 3 months)
             var monthCutoff = DateTime.UtcNow.AddDays(-90);
-            await AggregateMonthlyDataAsync(monthCutoff, cancellationToken);
+            await AggregateMonthlyDataAsync(monthCutoff, cancellationToken).ConfigureAwait(false);
 
-            await _context.SaveChangesAsync(cancellationToken);
+            await _context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             _logger.LogInformation("Data aggregation completed");
         }
         catch (Exception ex)
@@ -165,10 +165,10 @@ public class AnalyticsCleanupService : IAnalyticsCleanupService
         try
         {
             // Approximate size calculation based on record counts
-            var usageCount = await _context.UsageStatistics.CountAsync(cancellationToken);
-            var costCount = await _context.CostTracking.CountAsync(cancellationToken);
-            var perfCount = await _context.PerformanceMetrics.CountAsync(cancellationToken);
-            var summaryCount = await _context.AnalyticsSummaries.CountAsync(cancellationToken);
+            var usageCount = await _context.UsageStatistics.CountAsync(cancellationToken).ConfigureAwait(false);
+            var costCount = await _context.CostTracking.CountAsync(cancellationToken).ConfigureAwait(false);
+            var perfCount = await _context.PerformanceMetrics.CountAsync(cancellationToken).ConfigureAwait(false);
+            var summaryCount = await _context.AnalyticsSummaries.CountAsync(cancellationToken).ConfigureAwait(false);
 
             // Rough estimates: usage ~500 bytes, cost ~300 bytes, perf ~800 bytes, summary ~1KB
             var estimatedSize = (usageCount * 500L) + 
@@ -192,13 +192,13 @@ public class AnalyticsCleanupService : IAnalyticsCleanupService
             _logger.LogWarning("Clearing all analytics data");
 
             await _context.Database.ExecuteSqlRawAsync(
-                "DELETE FROM UsageStatistics", cancellationToken);
+                "DELETE FROM UsageStatistics", cancellationToken).ConfigureAwait(false);
             await _context.Database.ExecuteSqlRawAsync(
-                "DELETE FROM CostTracking", cancellationToken);
+                "DELETE FROM CostTracking", cancellationToken).ConfigureAwait(false);
             await _context.Database.ExecuteSqlRawAsync(
-                "DELETE FROM PerformanceMetrics", cancellationToken);
+                "DELETE FROM PerformanceMetrics", cancellationToken).ConfigureAwait(false);
             await _context.Database.ExecuteSqlRawAsync(
-                "DELETE FROM AnalyticsSummaries", cancellationToken);
+                "DELETE FROM AnalyticsSummaries", cancellationToken).ConfigureAwait(false);
 
             _logger.LogInformation("All analytics data cleared");
         }
@@ -216,7 +216,7 @@ public class AnalyticsCleanupService : IAnalyticsCleanupService
             .Where(u => u.Timestamp < cutoffDate)
             .Select(u => u.Timestamp.Date)
             .Distinct()
-            .ToListAsync(cancellationToken);
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
 
         foreach (var date in dates)
         {
@@ -224,7 +224,7 @@ public class AnalyticsCleanupService : IAnalyticsCleanupService
             
             // Check if summary already exists
             var existing = await _context.AnalyticsSummaries
-                .FirstOrDefaultAsync(s => s.PeriodType == "daily" && s.PeriodId == periodId, cancellationToken);
+                .FirstOrDefaultAsync(s => s.PeriodType == "daily" && s.PeriodId == periodId, cancellationToken).ConfigureAwait(false);
 
             if (existing != null)
             {
@@ -235,15 +235,15 @@ public class AnalyticsCleanupService : IAnalyticsCleanupService
             
             var usageData = await _context.UsageStatistics
                 .Where(u => u.Timestamp >= date && u.Timestamp < endDate)
-                .ToListAsync(cancellationToken);
+                .ToListAsync(cancellationToken).ConfigureAwait(false);
 
             var costData = await _context.CostTracking
                 .Where(c => c.Timestamp >= date && c.Timestamp < endDate)
-                .ToListAsync(cancellationToken);
+                .ToListAsync(cancellationToken).ConfigureAwait(false);
 
             var perfData = await _context.PerformanceMetrics
                 .Where(p => p.Timestamp >= date && p.Timestamp < endDate)
-                .ToListAsync(cancellationToken);
+                .ToListAsync(cancellationToken).ConfigureAwait(false);
 
             // Create summary
             var summary = new AnalyticsSummaryEntity
@@ -259,7 +259,7 @@ public class AnalyticsCleanupService : IAnalyticsCleanupService
                 TotalInputTokens = usageData.Sum(u => u.InputTokens),
                 TotalOutputTokens = usageData.Sum(u => u.OutputTokens),
                 TotalCostUSD = costData.Sum(c => c.TotalCost),
-                AverageDurationMs = usageData.Any() ? (long)usageData.Average(u => u.DurationMs) : 0,
+                AverageDurationMs = usageData.Count != 0 ? (long)usageData.Average(u => u.DurationMs) : 0,
                 TotalRenderingTimeMs = perfData.Sum(p => p.DurationMs),
                 MostUsedProvider = usageData.GroupBy(u => u.Provider)
                     .OrderByDescending(g => g.Count())
@@ -307,14 +307,14 @@ public class AnalyticsCleanupService : IAnalyticsCleanupService
             .Where(u => u.Timestamp < cutoffDate)
             .Select(u => new { u.Timestamp.Year, u.Timestamp.Month })
             .Distinct()
-            .ToListAsync(cancellationToken);
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
 
         foreach (var month in months)
         {
             var periodId = $"{month.Year:D4}-{month.Month:D2}";
             
             var existing = await _context.AnalyticsSummaries
-                .FirstOrDefaultAsync(s => s.PeriodType == "monthly" && s.PeriodId == periodId, cancellationToken);
+                .FirstOrDefaultAsync(s => s.PeriodType == "monthly" && s.PeriodId == periodId, cancellationToken).ConfigureAwait(false);
 
             if (existing != null)
             {
@@ -326,15 +326,15 @@ public class AnalyticsCleanupService : IAnalyticsCleanupService
 
             var usageData = await _context.UsageStatistics
                 .Where(u => u.Timestamp >= startDate && u.Timestamp < endDate)
-                .ToListAsync(cancellationToken);
+                .ToListAsync(cancellationToken).ConfigureAwait(false);
 
             var costData = await _context.CostTracking
                 .Where(c => c.Timestamp >= startDate && c.Timestamp < endDate)
-                .ToListAsync(cancellationToken);
+                .ToListAsync(cancellationToken).ConfigureAwait(false);
 
             var perfData = await _context.PerformanceMetrics
                 .Where(p => p.Timestamp >= startDate && p.Timestamp < endDate)
-                .ToListAsync(cancellationToken);
+                .ToListAsync(cancellationToken).ConfigureAwait(false);
 
             var summary = new AnalyticsSummaryEntity
             {
@@ -349,7 +349,7 @@ public class AnalyticsCleanupService : IAnalyticsCleanupService
                 TotalInputTokens = usageData.Sum(u => u.InputTokens),
                 TotalOutputTokens = usageData.Sum(u => u.OutputTokens),
                 TotalCostUSD = costData.Sum(c => c.TotalCost),
-                AverageDurationMs = usageData.Any() ? (long)usageData.Average(u => u.DurationMs) : 0,
+                AverageDurationMs = usageData.Count != 0 ? (long)usageData.Average(u => u.DurationMs) : 0,
                 TotalRenderingTimeMs = perfData.Sum(p => p.DurationMs),
                 MostUsedProvider = usageData.GroupBy(u => u.Provider)
                     .OrderByDescending(g => g.Count())
@@ -382,7 +382,7 @@ public class AnalyticsCleanupService : IAnalyticsCleanupService
             .Where(u => u.Timestamp < quarterDate)
             .OrderBy(u => u.Timestamp)
             .Take(1000)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
 
         _context.UsageStatistics.RemoveRange(oldUsage);
 
@@ -390,11 +390,11 @@ public class AnalyticsCleanupService : IAnalyticsCleanupService
             .Where(p => p.Timestamp < quarterDate)
             .OrderBy(p => p.Timestamp)
             .Take(1000)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
 
         _context.PerformanceMetrics.RemoveRange(oldPerf);
 
-        await _context.SaveChangesAsync(cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         
         _logger.LogWarning("Performed aggressive cleanup, removed {UsageCount} usage and {PerfCount} performance records",
             oldUsage.Count, oldPerf.Count);

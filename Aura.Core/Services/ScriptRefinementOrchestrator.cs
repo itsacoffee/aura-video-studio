@@ -59,7 +59,7 @@ public class ScriptRefinementOrchestrator
 
             // Stage 1: Generate initial draft
             _logger.LogInformation("Stage 1: Generating initial draft (Pass 0)");
-            var currentScript = await GenerateInitialDraftAsync(brief, spec, ct);
+            var currentScript = await GenerateInitialDraftAsync(brief, spec, ct).ConfigureAwait(false);
 
             if (string.IsNullOrWhiteSpace(currentScript))
             {
@@ -70,7 +70,7 @@ public class ScriptRefinementOrchestrator
             // Stage 2: Assess initial quality
             _logger.LogInformation("Stage 2: Assessing initial draft quality");
             var initialMetrics = await AssessScriptQualityAsync(
-                currentScript, brief, spec, 0, ct);
+                currentScript, brief, spec, 0, ct).ConfigureAwait(false);
             result.IterationMetrics.Add(initialMetrics);
             result.TotalPasses = 1;
 
@@ -105,7 +105,7 @@ public class ScriptRefinementOrchestrator
                 // Stage 3a: Generate critique
                 _logger.LogInformation("Pass {Pass} - Stage 3a: Generating critique", pass);
                 var critique = await GenerateCritiqueAsync(
-                    currentScript, brief, spec, previousMetrics, ct);
+                    currentScript, brief, spec, previousMetrics, ct).ConfigureAwait(false);
 
                 if (string.IsNullOrWhiteSpace(critique))
                 {
@@ -117,7 +117,7 @@ public class ScriptRefinementOrchestrator
                 // Stage 3b: Generate revised script
                 _logger.LogInformation("Pass {Pass} - Stage 3b: Generating revised script", pass);
                 var revisedScript = await GenerateRevisedScriptAsync(
-                    currentScript, critique, brief, spec, ct);
+                    currentScript, critique, brief, spec, ct).ConfigureAwait(false);
 
                 if (string.IsNullOrWhiteSpace(revisedScript))
                 {
@@ -129,7 +129,7 @@ public class ScriptRefinementOrchestrator
                 // Stage 3c: Assess revised quality
                 _logger.LogInformation("Pass {Pass} - Stage 3c: Assessing revised quality", pass);
                 var revisedMetrics = await AssessScriptQualityAsync(
-                    revisedScript, brief, spec, pass, ct);
+                    revisedScript, brief, spec, pass, ct).ConfigureAwait(false);
                 result.IterationMetrics.Add(revisedMetrics);
                 result.TotalPasses = pass + 1;
 
@@ -183,7 +183,7 @@ public class ScriptRefinementOrchestrator
                 try
                 {
                     var advisorAnalysis = await _contentAdvisor.AnalyzeContentQualityAsync(
-                        currentScript, brief, spec, ct);
+                        currentScript, brief, spec, ct).ConfigureAwait(false);
                     _logger.LogInformation(
                         "Advisor validation complete: OverallScore={Score:F1}, PassesThreshold={Passes}",
                         advisorAnalysis.OverallScore, advisorAnalysis.PassesQualityThreshold);
@@ -237,7 +237,7 @@ public class ScriptRefinementOrchestrator
     {
         try
         {
-            var script = await _llmProvider.DraftScriptAsync(brief, spec, ct);
+            var script = await _llmProvider.DraftScriptAsync(brief, spec, ct).ConfigureAwait(false);
             return script ?? string.Empty;
         }
         catch (Exception ex)
@@ -277,7 +277,7 @@ public class ScriptRefinementOrchestrator
                 Style: critiquePrompt
             );
 
-            var critique = await _llmProvider.DraftScriptAsync(critiqueBrief, critiquePlanSpec, ct);
+            var critique = await _llmProvider.DraftScriptAsync(critiqueBrief, critiquePlanSpec, ct).ConfigureAwait(false);
             return critique ?? string.Empty;
         }
         catch (Exception ex)
@@ -317,7 +317,7 @@ public class ScriptRefinementOrchestrator
                 Style: revisionPrompt
             );
 
-            var revisedScript = await _llmProvider.DraftScriptAsync(revisionBrief, revisionPlanSpec, ct);
+            var revisedScript = await _llmProvider.DraftScriptAsync(revisionBrief, revisionPlanSpec, ct).ConfigureAwait(false);
             return revisedScript ?? string.Empty;
         }
         catch (Exception ex)
@@ -357,7 +357,7 @@ public class ScriptRefinementOrchestrator
                 Style: assessmentPrompt
             );
 
-            var assessment = await _llmProvider.DraftScriptAsync(assessmentBrief, assessmentPlanSpec, ct);
+            var assessment = await _llmProvider.DraftScriptAsync(assessmentBrief, assessmentPlanSpec, ct).ConfigureAwait(false);
             var metrics = ParseQualityAssessment(assessment, iteration);
 
             return metrics;

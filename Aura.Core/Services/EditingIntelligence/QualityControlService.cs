@@ -30,10 +30,10 @@ public class QualityControlService
         var issues = new List<QualityIssue>();
 
         // Check for missing assets
-        issues.AddRange(await CheckMissingAssetsAsync(timeline));
+        issues.AddRange(await CheckMissingAssetsAsync(timeline).ConfigureAwait(false));
 
         // Check for technical quality issues
-        issues.AddRange(await CheckTechnicalQualityAsync(timeline));
+        issues.AddRange(await CheckTechnicalQualityAsync(timeline).ConfigureAwait(false));
 
         // Check for continuity errors
         issues.AddRange(CheckContinuityErrors(timeline));
@@ -94,7 +94,7 @@ public class QualityControlService
             ));
         }
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return issues;
     }
 
@@ -161,7 +161,7 @@ public class QualityControlService
             }
         }
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return issues;
     }
 
@@ -291,7 +291,7 @@ public class QualityControlService
             }
         }
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return issues;
     }
 }

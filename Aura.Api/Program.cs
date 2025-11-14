@@ -1727,7 +1727,7 @@ Log.Information("Initializing database system...");
 try
 {
     var dbInitService = app.Services.GetRequiredService<Aura.Core.Services.DatabaseInitializationService>();
-    var initResult = await dbInitService.InitializeAsync();
+    var initResult = await dbInitService.InitializeAsync().ConfigureAwait(false);
 
     if (initResult.Success)
     {
@@ -1742,7 +1742,7 @@ try
 
         // Initialize configuration system with defaults
         var configManager = app.Services.GetRequiredService<Aura.Core.Services.ConfigurationManager>();
-        await configManager.InitializeAsync();
+        await configManager.InitializeAsync().ConfigureAwait(false);
         Log.Information("Configuration system initialized successfully");
     }
     else
@@ -1788,7 +1788,7 @@ try
         
         // Exit gracefully with proper cleanup
         Log.Information("Shutting down application due to configuration errors");
-        await app.StopAsync();
+        await app.StopAsync().ConfigureAwait(false);
         return;
     }
 }
@@ -1846,7 +1846,7 @@ try
             ["Ollama"] = "llama3.1"
         };
         
-        var results = await modelCatalog.PreflightCheckAsync(providersToCheck, apiKeys, ollamaUrl);
+        var results = await modelCatalog.PreflightCheckAsync(providersToCheck, apiKeys, ollamaUrl).ConfigureAwait(false);
         
         var availableCount = results.Count(r => r.Value);
         Log.Information("Model catalog preflight completed: {Available}/{Total} providers available",
@@ -1881,11 +1881,11 @@ try
     Log.Information("  Minimum Version Required: {Version}", string.IsNullOrEmpty(ffmpegOptions.Value.RequireMinimumVersion) ? "(none)" : ffmpegOptions.Value.RequireMinimumVersion);
     
     // Attempt to detect FFmpeg
-    var systemProfile = await hardwareDetector.DetectSystemAsync();
+    var systemProfile = await hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
     
     // Try to get FFmpeg path from locator
     var ffmpegLocator = scope.ServiceProvider.GetRequiredService<Aura.Core.Dependencies.IFfmpegLocator>();
-    var ffmpegPath = await ffmpegLocator.GetEffectiveFfmpegPathAsync();
+    var ffmpegPath = await ffmpegLocator.GetEffectiveFfmpegPathAsync().ConfigureAwait(false);
     
     if (!string.IsNullOrEmpty(ffmpegPath) && File.Exists(ffmpegPath))
     {
@@ -1908,8 +1908,8 @@ try
             using var process = System.Diagnostics.Process.Start(processInfo);
             if (process != null)
             {
-                var output = await process.StandardOutput.ReadToEndAsync();
-                await process.WaitForExitAsync();
+                var output = await process.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
+                await process.WaitForExitAsync().ConfigureAwait(false);
                 
                 var versionLine = output.Split('\n').FirstOrDefault(l => l.Contains("ffmpeg version"));
                 if (!string.IsNullOrEmpty(versionLine))
@@ -2043,7 +2043,7 @@ app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthC
             status = "healthy",
             timestamp = DateTime.UtcNow
         };
-        await context.Response.WriteAsJsonAsync(result);
+        await context.Response.WriteAsJsonAsync(result).ConfigureAwait(false);
     }
 });
 
@@ -2071,7 +2071,7 @@ app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.Health
             }).OrderBy(c => c.name).ToArray()
         };
         
-        await context.Response.WriteAsJsonAsync(result);
+        await context.Response.WriteAsJsonAsync(result).ConfigureAwait(false);
     }
 });
 
@@ -2103,7 +2103,7 @@ app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks
             }).OrderBy(c => c.name).ToArray()
         };
         
-        await context.Response.WriteAsJsonAsync(result);
+        await context.Response.WriteAsJsonAsync(result).ConfigureAwait(false);
     }
 });
 
@@ -2122,7 +2122,7 @@ app.MapHealthChecks("/health/{tag}", new Microsoft.AspNetCore.Diagnostics.Health
         if (!filteredEntries.Any())
         {
             context.Response.StatusCode = 404;
-            await context.Response.WriteAsJsonAsync(new { error = $"No health checks with tag '{tag}' found" });
+            await context.Response.WriteAsJsonAsync(new { error = $"No health checks with tag '{tag}' found" }).ConfigureAwait(false);
             return;
         }
         
@@ -2140,7 +2140,7 @@ app.MapHealthChecks("/health/{tag}", new Microsoft.AspNetCore.Diagnostics.Health
             }).ToArray()
         };
         
-        await context.Response.WriteAsJsonAsync(result);
+        await context.Response.WriteAsJsonAsync(result).ConfigureAwait(false);
     }
 });
 
@@ -2266,7 +2266,7 @@ apiGroup.MapGet("/health/live", (Aura.Api.Services.HealthCheckService healthServ
 
 apiGroup.MapGet("/health/ready", async (Aura.Api.Services.HealthCheckService healthService, CancellationToken ct) =>
 {
-    var result = await healthService.CheckReadinessAsync(ct);
+    var result = await healthService.CheckReadinessAsync(ct).ConfigureAwait(false);
     
     // Return 503 Service Unavailable if unhealthy, 200 OK if healthy or degraded
     var statusCode = result.Status == Aura.Api.Models.HealthStatus.Unhealthy ? 503 : 200;
@@ -2283,7 +2283,7 @@ apiGroup.MapGet("/health/summary", async (Aura.Api.Services.HealthDiagnosticsSer
         var correlationId = Guid.NewGuid().ToString();
         Log.Information("Health summary requested, CorrelationId: {CorrelationId}", correlationId);
         
-        var result = await healthDiagnostics.GetHealthSummaryAsync(ct);
+        var result = await healthDiagnostics.GetHealthSummaryAsync(ct).ConfigureAwait(false);
         return Results.Ok(result);
     }
     catch (Exception ex)
@@ -2303,7 +2303,7 @@ apiGroup.MapGet("/health/details", async (Aura.Api.Services.HealthDiagnosticsSer
         var correlationId = Guid.NewGuid().ToString();
         Log.Information("Health details requested, CorrelationId: {CorrelationId}", correlationId);
         
-        var result = await healthDiagnostics.GetHealthDetailsAsync(ct);
+        var result = await healthDiagnostics.GetHealthDetailsAsync(ct).ConfigureAwait(false);
         
         // Return 503 if system is not ready (has failed required checks)
         var statusCode = result.IsReady ? 200 : 503;
@@ -2323,7 +2323,7 @@ apiGroup.MapGet("/health/first-run", async (Aura.Api.Services.FirstRunDiagnostic
 {
     try
     {
-        var result = await diagnostics.RunDiagnosticsAsync(ct);
+        var result = await diagnostics.RunDiagnosticsAsync(ct).ConfigureAwait(false);
         return Results.Ok(result);
     }
     catch (Exception ex)
@@ -2388,7 +2388,7 @@ apiGroup.MapPost("/health/auto-fix", async (
                 "latest",
                 null,
                 progress,
-                ct);
+                ct).ConfigureAwait(false);
 
             if (result.Success)
             {
@@ -2830,7 +2830,7 @@ apiGroup.MapGet("/capabilities", async (HardwareDetector detector) =>
 {
     try
     {
-        var profile = await detector.DetectSystemAsync();
+        var profile = await detector.DetectSystemAsync().ConfigureAwait(false);
         return Results.Ok(new
         {
             tier = profile.Tier.ToString(),
@@ -2944,7 +2944,7 @@ apiGroup.MapPost("/planner/recommendations", async (
         Log.Information("Generating recommendations for topic: {Topic}, duration: {Duration} min", 
             request.Topic, request.TargetDurationMinutes);
         
-        var recommendations = await recommendationService.GenerateRecommendationsAsync(recommendationRequest, ct);
+        var recommendations = await recommendationService.GenerateRecommendationsAsync(recommendationRequest, ct).ConfigureAwait(false);
         
         Log.Information("Recommendations generated successfully");
         return Results.Ok(new { success = true, recommendations });
@@ -3019,13 +3019,13 @@ apiGroup.MapPost("/script", async (
         }
         
         // Get system offline status
-        var profile = await hardwareDetector.DetectSystemAsync();
+        var profile = await hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
         bool offlineOnly = profile.OfflineOnly;
         
         Log.Information("Generating script for topic: {Topic}, duration: {Duration} min, tier: {Tier}, offline: {Offline}", 
             request.Topic, request.TargetDurationMinutes, preferredTier, offlineOnly);
         
-        var result = await orchestrator.GenerateScriptAsync(brief, planSpec, preferredTier, offlineOnly, ct);
+        var result = await orchestrator.GenerateScriptAsync(brief, planSpec, preferredTier, offlineOnly, ct).ConfigureAwait(false);
         
         if (!result.Success)
         {
@@ -3093,7 +3093,7 @@ apiGroup.MapPost("/tts", async ([FromBody] TtsRequest request, ITtsProvider ttsP
             Pause: ApiV1.EnumMappings.ToCore(request.PauseStyle)
         );
         
-        var result = await ttsProvider.SynthesizeAsync(lines, voiceSpec, ct);
+        var result = await ttsProvider.SynthesizeAsync(lines, voiceSpec, ct).ConfigureAwait(false);
         
         return Results.Ok(new { success = true, audioPath = result });
     }
@@ -3128,7 +3128,7 @@ apiGroup.MapPost("/captions/generate", async ([FromBody] CaptionsRequest request
         if (!string.IsNullOrEmpty(request.OutputPath))
         {
             filePath = request.OutputPath;
-            await System.IO.File.WriteAllTextAsync(filePath, captions);
+            await File.WriteAllTextAsync(filePath, captions).ConfigureAwait(false);
             Log.Information("Captions saved to {Path}", filePath);
         }
         
@@ -3169,7 +3169,7 @@ apiGroup.MapGet("/tts/azure/voices", async (
             _ => null
         };
 
-        var voices = await voiceDiscovery.GetVoicesAsync(locale, genderFilter, typeFilter, ct);
+        var voices = await voiceDiscovery.GetVoicesAsync(locale, genderFilter, typeFilter, ct).ConfigureAwait(false);
 
         // Convert to DTOs
         var voiceDtos = voices.Select(v => new Aura.Api.Models.ApiModels.V1.AzureVoiceDto(
@@ -3203,7 +3203,7 @@ apiGroup.MapGet("/tts/azure/voice/{voiceId}/capabilities", async (
 {
     try
     {
-        var voice = await voiceDiscovery.GetVoiceCapabilitiesAsync(voiceId, ct);
+        var voice = await voiceDiscovery.GetVoiceCapabilitiesAsync(voiceId, ct).ConfigureAwait(false);
         
         if (voice == null)
         {
@@ -3270,7 +3270,7 @@ apiGroup.MapPost("/tts/azure/preview", async (
             previewText, 
             request.VoiceId, 
             options, 
-            ct);
+            ct).ConfigureAwait(false);
 
         return Results.Ok(new { success = true, audioPath });
     }
@@ -3311,7 +3311,7 @@ apiGroup.MapPost("/tts/azure/synthesize", async (
             request.Text, 
             request.VoiceId, 
             options, 
-            ct);
+            ct).ConfigureAwait(false);
 
         return Results.Ok(new { success = true, audioPath });
     }
@@ -3355,7 +3355,7 @@ apiGroup.MapPost("/ml/train/frame-importance", async (
             ));
 
         // Train the model
-        var result = await trainingService.TrainFrameImportanceModelAsync(annotations, ct);
+        var result = await trainingService.TrainFrameImportanceModelAsync(annotations, ct).ConfigureAwait(false);
 
         // Convert result to DTO
         var response = new ApiV1.TrainFrameImportanceResponse(
@@ -3395,7 +3395,7 @@ apiGroup.MapGet("/downloads/manifest", async (Aura.Core.Dependencies.DependencyM
 {
     try
     {
-        var manifest = await depManager.LoadManifestAsync();
+        var manifest = await depManager.LoadManifestAsync().ConfigureAwait(false);
         return Results.Ok(manifest);
     }
     catch (Exception ex)
@@ -3412,7 +3412,7 @@ apiGroup.MapGet("/downloads/{component}/status", async (string component, Aura.C
 {
     try
     {
-        var isInstalled = await depManager.IsComponentInstalledAsync(component);
+        var isInstalled = await depManager.IsComponentInstalledAsync(component).ConfigureAwait(false);
         return Results.Ok(new { component, isInstalled });
     }
     catch (Exception ex)
@@ -3435,7 +3435,7 @@ apiGroup.MapPost("/downloads/{component}/install", async (string component, Aura
             Log.Information("Download progress: {Component} - {Percent}%", component, p.PercentComplete);
         });
 
-        await depManager.DownloadComponentAsync(component, progress, ct);
+        await depManager.DownloadComponentAsync(component, progress, ct).ConfigureAwait(false);
         
         return Results.Ok(new { success = true, message = $"{component} installed successfully" });
     }
@@ -3453,7 +3453,7 @@ apiGroup.MapGet("/downloads/{component}/verify", async (string component, Aura.C
 {
     try
     {
-        var result = await depManager.VerifyComponentAsync(component);
+        var result = await depManager.VerifyComponentAsync(component).ConfigureAwait(false);
         return Results.Ok(result);
     }
     catch (Exception ex)
@@ -3475,7 +3475,7 @@ apiGroup.MapPost("/downloads/{component}/repair", async (string component, Aura.
             Log.Information("Repair progress: {Component} - {Percent}%", component, p.PercentComplete);
         });
 
-        await depManager.RepairComponentAsync(component, progress, ct);
+        await depManager.RepairComponentAsync(component, progress, ct).ConfigureAwait(false);
         
         return Results.Ok(new { success = true, message = $"{component} repaired successfully" });
     }
@@ -3493,7 +3493,7 @@ apiGroup.MapDelete("/downloads/{component}", async (string component, Aura.Core.
 {
     try
     {
-        await depManager.RemoveComponentAsync(component);
+        await depManager.RemoveComponentAsync(component).ConfigureAwait(false);
         return Results.Ok(new { success = true, message = $"{component} removed successfully" });
     }
     catch (Exception ex)
@@ -3547,7 +3547,7 @@ apiGroup.MapPost("/dependencies/rescan", async (
     try
     {
         Log.Information("Starting dependency rescan");
-        var report = await rescanService.RescanAllAsync(ct);
+        var report = await rescanService.RescanAllAsync(ct).ConfigureAwait(false);
         
         return Results.Ok(new 
         { 
@@ -3635,11 +3635,11 @@ apiGroup.MapGet("/logs/stream", async (HttpContext context) =>
     {
         // Simple log streaming - send a test message
         var message = $"data: {{\"timestamp\":\"{DateTime.UtcNow:O}\",\"level\":\"INFO\",\"message\":\"Log stream connected\"}}\n\n";
-        await context.Response.WriteAsync(message);
-        await context.Response.Body.FlushAsync();
+        await context.Response.WriteAsync(message).ConfigureAwait(false);
+        await context.Response.Body.FlushAsync().ConfigureAwait(false);
         
         // Keep connection alive
-        await Task.Delay(Timeout.Infinite, context.RequestAborted);
+        await Task.Delay(Timeout.Infinite, context.RequestAborted).ConfigureAwait(false);
     }
     catch (OperationCanceledException)
     {
@@ -3666,8 +3666,8 @@ apiGroup.MapGet("/jobs/{jobId}/stream", async (
         
         // Send initial connection message
         var connectMsg = $"event: connected\ndata: {{\"jobId\":\"{jobId}\",\"timestamp\":\"{DateTime.UtcNow:O}\"}}\n\n";
-        await context.Response.WriteAsync(connectMsg, ct);
-        await context.Response.Body.FlushAsync(ct);
+        await context.Response.WriteAsync(connectMsg, ct).ConfigureAwait(false);
+        await context.Response.Body.FlushAsync(ct).ConfigureAwait(false);
         
         // Poll job status and send updates
         var lastStatus = "";
@@ -3680,8 +3680,8 @@ apiGroup.MapGet("/jobs/{jobId}/stream", async (
             if (job == null)
             {
                 var errorMsg = $"event: error\ndata: {{\"error\":\"Job not found\"}}\n\n";
-                await context.Response.WriteAsync(errorMsg, ct);
-                await context.Response.Body.FlushAsync(ct);
+                await context.Response.WriteAsync(errorMsg, ct).ConfigureAwait(false);
+                await context.Response.Body.FlushAsync(ct).ConfigureAwait(false);
                 break;
             }
             
@@ -3703,8 +3703,8 @@ apiGroup.MapGet("/jobs/{jobId}/stream", async (
                 });
                 
                 var updateMsg = $"event: progress\ndata: {statusData}\n\n";
-                await context.Response.WriteAsync(updateMsg, ct);
-                await context.Response.Body.FlushAsync(ct);
+                await context.Response.WriteAsync(updateMsg, ct).ConfigureAwait(false);
+                await context.Response.Body.FlushAsync(ct).ConfigureAwait(false);
                 
                 Log.Information("SSE update sent for job {JobId}: {Status} {Percent}% {Stage}", 
                     jobId, job.Status, job.Percent, job.Stage);
@@ -3724,19 +3724,19 @@ apiGroup.MapGet("/jobs/{jobId}/stream", async (
                 });
                 
                 var completeMsg = $"event: complete\ndata: {completeData}\n\n";
-                await context.Response.WriteAsync(completeMsg, ct);
-                await context.Response.Body.FlushAsync(ct);
+                await context.Response.WriteAsync(completeMsg, ct).ConfigureAwait(false);
+                await context.Response.Body.FlushAsync(ct).ConfigureAwait(false);
                 
                 Log.Information("SSE stream completed for job {JobId}: {Status}", jobId, job.Status);
                 break;
             }
             
             // Send keepalive every 2 seconds
-            await Task.Delay(2000, ct);
+            await Task.Delay(2000, ct).ConfigureAwait(false);
             
             var keepaliveMsg = $": keepalive\n\n";
-            await context.Response.WriteAsync(keepaliveMsg, ct);
-            await context.Response.Body.FlushAsync(ct);
+            await context.Response.WriteAsync(keepaliveMsg, ct).ConfigureAwait(false);
+            await context.Response.Body.FlushAsync(ct).ConfigureAwait(false);
         }
     }
     catch (OperationCanceledException)
@@ -3749,8 +3749,8 @@ apiGroup.MapGet("/jobs/{jobId}/stream", async (
         try
         {
             var errorMsg = $"event: error\ndata: {{\"error\":\"{ex.Message.Replace("\"", "\\\"")}\"}}\n\n";
-            await context.Response.WriteAsync(errorMsg, ct);
-            await context.Response.Body.FlushAsync(ct);
+            await context.Response.WriteAsync(errorMsg, ct).ConfigureAwait(false);
+            await context.Response.Body.FlushAsync(ct).ConfigureAwait(false);
         }
         catch
         {
@@ -3766,8 +3766,8 @@ apiGroup.MapPost("/probes/run", async (HardwareDetector detector) =>
 {
     try
     {
-        await detector.RunHardwareProbeAsync();
-        var profile = await detector.DetectSystemAsync();
+        await detector.RunHardwareProbeAsync().ConfigureAwait(false);
+        var profile = await detector.DetectSystemAsync().ConfigureAwait(false);
         
         // Format response to match frontend expectations
         // Flat properties for easy frontend consumption + full profile for advanced use
@@ -3823,7 +3823,7 @@ apiGroup.MapGet("/diagnostics", async (Aura.Core.Hardware.DiagnosticsHelper diag
 {
     try
     {
-        var report = await diagnosticsHelper.GenerateDiagnosticsReportAsync();
+        var report = await diagnosticsHelper.GenerateDiagnosticsReportAsync().ConfigureAwait(false);
         return Results.Ok(new { success = true, report });
     }
     catch (Exception ex)
@@ -3839,7 +3839,7 @@ apiGroup.MapGet("/diagnostics/json", async (Aura.Core.Hardware.DiagnosticsHelper
 {
     try
     {
-        var diagnostics = await diagnosticsHelper.GenerateDiagnosticsJsonAsync();
+        var diagnostics = await diagnosticsHelper.GenerateDiagnosticsJsonAsync().ConfigureAwait(false);
         return Results.Ok(diagnostics);
     }
     catch (Exception ex)
@@ -4039,7 +4039,7 @@ apiGroup.MapPost("/assets/search", async ([FromBody] AssetSearchRequest request,
 {
     try
     {
-        var profile = await detector.DetectSystemAsync();
+        var profile = await detector.DetectSystemAsync().ConfigureAwait(false);
         
         // Check if offline only mode
         if (profile.OfflineOnly && request.Provider != "local")
@@ -4073,7 +4073,7 @@ apiGroup.MapPost("/assets/search", async ([FromBody] AssetSearchRequest request,
                     LoggerFactory.Create(b => b.AddConsole()).CreateLogger<Aura.Providers.Images.PexelsStockProvider>(),
                     httpClient,
                     request.ApiKey);
-                var pexelsAssets = await pexelsProvider.SearchAsync(request.Query, request.Count, ct);
+                var pexelsAssets = await pexelsProvider.SearchAsync(request.Query, request.Count, ct).ConfigureAwait(false);
                 assets.AddRange(pexelsAssets.Select(a => new { a.Kind, a.PathOrUrl, a.License, a.Attribution }));
                 break;
 
@@ -4092,7 +4092,7 @@ apiGroup.MapPost("/assets/search", async ([FromBody] AssetSearchRequest request,
                     LoggerFactory.Create(b => b.AddConsole()).CreateLogger<Aura.Providers.Images.PixabayStockProvider>(),
                     httpClient,
                     request.ApiKey);
-                var pixabayAssets = await pixabayProvider.SearchAsync(request.Query, request.Count, ct);
+                var pixabayAssets = await pixabayProvider.SearchAsync(request.Query, request.Count, ct).ConfigureAwait(false);
                 assets.AddRange(pixabayAssets.Select(a => new { a.Kind, a.PathOrUrl, a.License, a.Attribution }));
                 break;
 
@@ -4111,7 +4111,7 @@ apiGroup.MapPost("/assets/search", async ([FromBody] AssetSearchRequest request,
                     LoggerFactory.Create(b => b.AddConsole()).CreateLogger<Aura.Providers.Images.UnsplashStockProvider>(),
                     httpClient,
                     request.ApiKey);
-                var unsplashAssets = await unsplashProvider.SearchAsync(request.Query, request.Count, ct);
+                var unsplashAssets = await unsplashProvider.SearchAsync(request.Query, request.Count, ct).ConfigureAwait(false);
                 assets.AddRange(unsplashAssets.Select(a => new { a.Kind, a.PathOrUrl, a.License, a.Attribution }));
                 break;
 
@@ -4120,7 +4120,7 @@ apiGroup.MapPost("/assets/search", async ([FromBody] AssetSearchRequest request,
                 var localProvider = new Aura.Providers.Images.LocalStockProvider(
                     LoggerFactory.Create(b => b.AddConsole()).CreateLogger<Aura.Providers.Images.LocalStockProvider>(),
                     localDirectory);
-                var localAssets = await localProvider.SearchAsync(request.Query, request.Count, ct);
+                var localAssets = await localProvider.SearchAsync(request.Query, request.Count, ct).ConfigureAwait(false);
                 assets.AddRange(localAssets.Select(a => new { a.Kind, a.PathOrUrl, a.License, a.Attribution }));
                 break;
 
@@ -4317,7 +4317,7 @@ apiGroup.MapPost("/assets/generate", async ([FromBody] AssetGenerateRequest requ
 {
     try
     {
-        var profile = await detector.DetectSystemAsync();
+        var profile = await detector.DetectSystemAsync().ConfigureAwait(false);
         
         // NVIDIA GPU gate - can be bypassed
         if (!request.BypassHardwareChecks && (profile.Gpu == null || profile.Gpu.Vendor.ToLowerInvariant() != "nvidia"))
@@ -4396,7 +4396,7 @@ apiGroup.MapPost("/assets/generate", async ([FromBody] AssetGenerateRequest requ
             Aspect: request.Aspect != null ? ApiV1.EnumMappings.ToCore(request.Aspect.Value) : Aspect.Widescreen16x9,
             Keywords: request.Keywords ?? Array.Empty<string>());
 
-        var assets = await sdProvider.FetchOrGenerateAsync(scene, spec, sdParams, ct);
+        var assets = await sdProvider.FetchOrGenerateAsync(scene, spec, sdParams, ct).ConfigureAwait(false);
 
         return Results.Ok(new 
         { 
@@ -4442,7 +4442,7 @@ apiGroup.MapPost("/providers/test/{provider}", async (string provider, [FromBody
                 try
                 {
                     var sdUrl = request.Url ?? "http://127.0.0.1:7860";
-                    var response = await httpClient.GetAsync($"{sdUrl}/sdapi/v1/sd-models", cts.Token);
+                    var response = await httpClient.GetAsync($"{sdUrl}/sdapi/v1/sd-models", cts.Token).ConfigureAwait(false);
                     if (response.IsSuccessStatusCode)
                     {
                         return Results.Ok(new { success = true, message = "Successfully connected to Stable Diffusion WebUI" });
@@ -4458,7 +4458,7 @@ apiGroup.MapPost("/providers/test/{provider}", async (string provider, [FromBody
                 try
                 {
                     var ollamaUrl = request.Url ?? "http://127.0.0.1:11434";
-                    var response = await httpClient.GetAsync($"{ollamaUrl}/api/tags", cts.Token);
+                    var response = await httpClient.GetAsync($"{ollamaUrl}/api/tags", cts.Token).ConfigureAwait(false);
                     if (response.IsSuccessStatusCode)
                     {
                         return Results.Ok(new { success = true, message = "Successfully connected to Ollama" });
@@ -4487,10 +4487,10 @@ apiGroup.MapPost("/providers/test/{provider}", async (string provider, [FromBody
                     using var process = System.Diagnostics.Process.Start(processInfo);
                     if (process != null)
                     {
-                        await process.WaitForExitAsync();
+                        await process.WaitForExitAsync().ConfigureAwait(false);
                         if (process.ExitCode == 0)
                         {
-                            var output = await process.StandardOutput.ReadToEndAsync();
+                            var output = await process.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
                             var versionLine = output.Split('\n').FirstOrDefault(l => l.Contains("ffmpeg version"));
                             return Results.Ok(new { success = true, message = versionLine ?? "FFmpeg found and working" });
                         }
@@ -4528,7 +4528,7 @@ apiGroup.MapPost("/providers/validate", async (
         Log.Information("Validating providers: {Providers}", 
             providers != null ? string.Join(", ", providers) : "all");
 
-        var result = await validationService.ValidateProvidersAsync(providers, ct);
+        var result = await validationService.ValidateProvidersAsync(providers, ct).ConfigureAwait(false);
 
         return Results.Ok(new
         {
@@ -4614,7 +4614,7 @@ lifetime.ApplicationStarted.Register(() =>
         try
         {
             Log.Information("Starting Engine Lifecycle Manager...");
-            await lifecycleManager.StartAsync();
+            await lifecycleManager.StartAsync().ConfigureAwait(false);
             engineManagerStarted = true;
             Log.Information("Engine Lifecycle Manager started successfully");
         }
@@ -4631,10 +4631,10 @@ lifetime.ApplicationStarted.Register(() =>
         try
         {
             // Wait briefly for engine manager to start
-            await Task.Delay(TimeSpan.FromSeconds(2));
+            await Task.Delay(TimeSpan.FromSeconds(2)).ConfigureAwait(false);
             
             Log.Information("Starting provider health monitoring...");
-            await healthMonitor.RunPeriodicHealthChecksAsync(lifetime.ApplicationStopping);
+            await healthMonitor.RunPeriodicHealthChecksAsync(lifetime.ApplicationStopping).ConfigureAwait(false);
             healthMonitorStarted = true;
             Log.Information("Provider health monitoring stopped");
         }
@@ -4645,11 +4645,11 @@ lifetime.ApplicationStarted.Register(() =>
             if (!lifetime.ApplicationStopping.IsCancellationRequested)
             {
                 Log.Information("Attempting to restart provider health monitoring after error...");
-                await Task.Delay(TimeSpan.FromMinutes(1));
+                await Task.Delay(TimeSpan.FromMinutes(1)).ConfigureAwait(false);
                 if (!lifetime.ApplicationStopping.IsCancellationRequested)
                 {
                     Log.Information("Restarting provider health monitoring...");
-                    await healthMonitor.RunPeriodicHealthChecksAsync(lifetime.ApplicationStopping);
+                    await healthMonitor.RunPeriodicHealthChecksAsync(lifetime.ApplicationStopping).ConfigureAwait(false);
                 }
             }
         }
@@ -4794,7 +4794,7 @@ Task.Run(async () =>
         using var scope = app.Services.CreateScope();
         var rescanService = scope.ServiceProvider.GetRequiredService<Aura.Core.Dependencies.DependencyRescanService>();
         
-        var report = await rescanService.RescanAllAsync();
+        var report = await rescanService.RescanAllAsync().ConfigureAwait(false);
         
         var installedCount = report.Dependencies.Count(d => d.Status == Aura.Core.Dependencies.DependencyStatus.Installed);
         var missingCount = report.Dependencies.Count(d => d.Status == Aura.Core.Dependencies.DependencyStatus.Missing);
@@ -4838,7 +4838,7 @@ catch (Exception ex)
     }
     
     // Give time for logs to flush
-    await Task.Delay(1000);
+    await Task.Delay(1000).ConfigureAwait(false);
     throw;
 }
 finally

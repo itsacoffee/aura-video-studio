@@ -22,7 +22,7 @@ public class SettingsEntity : IAuditableEntity
     /// <summary>
     /// Whether the settings JSON is encrypted
     /// </summary>
-    public bool IsEncrypted { get; set; } = false;
+    public bool IsEncrypted { get; set; }
 
     /// <summary>
     /// Version of the settings schema

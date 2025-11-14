@@ -62,7 +62,7 @@ public class VisualPromptGenerationService
                     brief,
                     llmProvider,
                     pacingData,
-                    ct);
+                    ct).ConfigureAwait(false);
                 
                 _logger.LogInformation(
                     "Synchronization analysis complete. Cognitive Load: {Load:F1}, Correlation: {Corr:F2}, Alignment: {Align:F1}%",
@@ -104,7 +104,7 @@ public class VisualPromptGenerationService
                 previousPrompt,
                 llmProvider,
                 sceneSegments,
-                ct);
+                ct).ConfigureAwait(false);
 
             prompts.Add(prompt);
             previousPrompt = prompt;
@@ -141,7 +141,7 @@ public class VisualPromptGenerationService
                 tone,
                 visualStyle,
                 llmProvider,
-                ct);
+                ct).ConfigureAwait(false);
         }
 
         var shotType = llmResult != null
@@ -257,7 +257,7 @@ public class VisualPromptGenerationService
                 if (attempt > 0)
                 {
                     _logger.LogDebug("Retry attempt {Attempt} for scene {SceneIndex}", attempt, scene.Index);
-                    await Task.Delay(TimeSpan.FromSeconds(1 * attempt), ct);
+                    await Task.Delay(TimeSpan.FromSeconds(1 * attempt), ct).ConfigureAwait(false);
                 }
 
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -268,7 +268,7 @@ public class VisualPromptGenerationService
                     previousScene?.Script,
                     tone,
                     visualStyle,
-                    cts.Token);
+                    cts.Token).ConfigureAwait(false);
 
                 if (result != null)
                 {

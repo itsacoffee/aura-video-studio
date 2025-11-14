@@ -28,13 +28,13 @@ public class SystemDiagnosticsService
         var diagnostics = new SystemDiagnostics
         {
             Timestamp = DateTime.UtcNow,
-            OperatingSystem = await CollectOperatingSystemInfoAsync(cancellationToken),
-            Hardware = await CollectHardwareInfoAsync(cancellationToken),
+            OperatingSystem = await CollectOperatingSystemInfoAsync(cancellationToken).ConfigureAwait(false),
+            Hardware = await CollectHardwareInfoAsync(cancellationToken).ConfigureAwait(false),
             Runtime = CollectRuntimeInfo(),
-            Process = await CollectProcessInfoAsync(cancellationToken),
+            Process = await CollectProcessInfoAsync(cancellationToken).ConfigureAwait(false),
             Environment = CollectEnvironmentInfo(),
-            Network = await CollectNetworkInfoAsync(cancellationToken),
-            Disk = await CollectDiskInfoAsync(cancellationToken)
+            Network = await CollectNetworkInfoAsync(cancellationToken).ConfigureAwait(false),
+            Disk = await CollectDiskInfoAsync(cancellationToken).ConfigureAwait(false)
         };
 
         _logger.LogInformation("System diagnostics collected successfully");
@@ -62,7 +62,7 @@ public class SystemDiagnosticsService
         {
             try
             {
-                os.WindowsVersion = await GetWindowsVersionAsync(cancellationToken);
+                os.WindowsVersion = await GetWindowsVersionAsync(cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -92,8 +92,8 @@ public class SystemDiagnosticsService
             using var process = Process.Start(psi);
             if (process == null) return "Unknown";
 
-            var output = await process.StandardOutput.ReadToEndAsync(cancellationToken);
-            await process.WaitForExitAsync(cancellationToken);
+            var output = await process.StandardOutput.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+            await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
 
             return output.Trim();
         }
@@ -117,11 +117,11 @@ public class SystemDiagnosticsService
         // Get CPU information
         if (OperatingSystem.IsWindows())
         {
-            hardware.ProcessorName = await GetWindowsProcessorNameAsync(cancellationToken);
+            hardware.ProcessorName = await GetWindowsProcessorNameAsync(cancellationToken).ConfigureAwait(false);
         }
         else if (OperatingSystem.IsLinux())
         {
-            hardware.ProcessorName = await GetLinuxProcessorNameAsync(cancellationToken);
+            hardware.ProcessorName = await GetLinuxProcessorNameAsync(cancellationToken).ConfigureAwait(false);
         }
 
         return hardware;
@@ -164,8 +164,8 @@ public class SystemDiagnosticsService
             using var process = Process.Start(psi);
             if (process == null) return "Unknown";
 
-            var output = await process.StandardOutput.ReadToEndAsync(cancellationToken);
-            await process.WaitForExitAsync(cancellationToken);
+            var output = await process.StandardOutput.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+            await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
 
             var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
             return lines.Length > 1 ? lines[1].Trim() : "Unknown";
@@ -183,7 +183,7 @@ public class SystemDiagnosticsService
     {
         try
         {
-            var content = await File.ReadAllTextAsync("/proc/cpuinfo", cancellationToken);
+            var content = await File.ReadAllTextAsync("/proc/cpuinfo", cancellationToken).ConfigureAwait(false);
             var lines = content.Split('\n');
             var modelLine = lines.FirstOrDefault(l => l.StartsWith("model name"));
             if (modelLine != null)
@@ -241,7 +241,7 @@ public class SystemDiagnosticsService
             var startCpuUsage = process.TotalProcessorTime;
             var startTime = DateTime.UtcNow;
 
-            await Task.Delay(500, cancellationToken);
+            await Task.Delay(500, cancellationToken).ConfigureAwait(false);
 
             var endCpuUsage = process.TotalProcessorTime;
             var endTime = DateTime.UtcNow;
@@ -311,7 +311,7 @@ public class SystemDiagnosticsService
             var hostName = System.Net.Dns.GetHostName();
             info.HostName = hostName;
 
-            var hostEntry = await System.Net.Dns.GetHostEntryAsync(hostName, cancellationToken);
+            var hostEntry = await System.Net.Dns.GetHostEntryAsync(hostName, cancellationToken).ConfigureAwait(false);
             info.IPAddresses = hostEntry.AddressList
                 .Select(ip => ip.ToString())
                 .ToList();
@@ -352,7 +352,7 @@ public class SystemDiagnosticsService
             _logger.LogWarning(ex, "Failed to collect disk information");
         }
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return info;
     }
 

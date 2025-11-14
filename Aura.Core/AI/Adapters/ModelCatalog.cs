@@ -61,7 +61,7 @@ public class ModelCatalog
             // Discover OpenAI models if API key available
             if (apiKeys.TryGetValue("openai", out var openAiKey) && !string.IsNullOrWhiteSpace(openAiKey))
             {
-                var openAiModels = await DiscoverOpenAiModelsAsync(openAiKey, ct);
+                var openAiModels = await DiscoverOpenAiModelsAsync(openAiKey, ct).ConfigureAwait(false);
                 lock (_lock)
                 {
                     _dynamicModels.AddRange(openAiModels);
@@ -72,7 +72,7 @@ public class ModelCatalog
             // Discover Anthropic models if API key available
             if (apiKeys.TryGetValue("anthropic", out var anthropicKey) && !string.IsNullOrWhiteSpace(anthropicKey))
             {
-                var anthropicModels = await DiscoverAnthropicModelsAsync(anthropicKey, ct);
+                var anthropicModels = await DiscoverAnthropicModelsAsync(anthropicKey, ct).ConfigureAwait(false);
                 lock (_lock)
                 {
                     _dynamicModels.AddRange(anthropicModels);
@@ -83,7 +83,7 @@ public class ModelCatalog
             // Discover Gemini models if API key available
             if (apiKeys.TryGetValue("gemini", out var geminiKey) && !string.IsNullOrWhiteSpace(geminiKey))
             {
-                var geminiModels = await DiscoverGeminiModelsAsync(geminiKey, ct);
+                var geminiModels = await DiscoverGeminiModelsAsync(geminiKey, ct).ConfigureAwait(false);
                 lock (_lock)
                 {
                     _dynamicModels.AddRange(geminiModels);
@@ -94,7 +94,7 @@ public class ModelCatalog
             // Discover Ollama models if base URL provided
             if (!string.IsNullOrWhiteSpace(ollamaBaseUrl))
             {
-                var ollamaModels = await DiscoverOllamaModelsAsync(ollamaBaseUrl, ct);
+                var ollamaModels = await DiscoverOllamaModelsAsync(ollamaBaseUrl, ct).ConfigureAwait(false);
                 lock (_lock)
                 {
                     _dynamicModels.AddRange(ollamaModels);
@@ -312,7 +312,7 @@ public class ModelCatalog
             httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
             httpClient.Timeout = TimeSpan.FromSeconds(10);
 
-            var response = await httpClient.GetAsync("https://api.openai.com/v1/models", ct);
+            var response = await httpClient.GetAsync("https://api.openai.com/v1/models", ct).ConfigureAwait(false);
             
             if (!response.IsSuccessStatusCode)
             {
@@ -320,7 +320,7 @@ public class ModelCatalog
                 return models;
             }
 
-            var json = await response.Content.ReadAsStringAsync(ct);
+            var json = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             using var doc = JsonDocument.Parse(json);
             
             if (doc.RootElement.TryGetProperty("data", out var dataArray))
@@ -417,7 +417,7 @@ public class ModelCatalog
             using var httpClient = _httpClientFactory.CreateClient();
             httpClient.Timeout = TimeSpan.FromSeconds(5);
 
-            var response = await httpClient.GetAsync($"{baseUrl}/api/tags", ct);
+            var response = await httpClient.GetAsync($"{baseUrl}/api/tags", ct).ConfigureAwait(false);
             
             if (!response.IsSuccessStatusCode)
             {
@@ -426,7 +426,7 @@ public class ModelCatalog
                 return models;
             }
 
-            var json = await response.Content.ReadAsStringAsync(ct);
+            var json = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             using var doc = JsonDocument.Parse(json);
             
             if (doc.RootElement.TryGetProperty("models", out var modelsArray))
@@ -550,16 +550,16 @@ public class ModelCatalog
             switch (provider.ToLowerInvariant())
             {
                 case "openai":
-                    testSuccess = await TestOpenAiModelAsync(modelId, apiKey, testPrompt, ct);
+                    testSuccess = await TestOpenAiModelAsync(modelId, apiKey, testPrompt, ct).ConfigureAwait(false);
                     break;
                 case "anthropic":
-                    testSuccess = await TestAnthropicModelAsync(modelId, apiKey, testPrompt, ct);
+                    testSuccess = await TestAnthropicModelAsync(modelId, apiKey, testPrompt, ct).ConfigureAwait(false);
                     break;
                 case "gemini":
-                    testSuccess = await TestGeminiModelAsync(modelId, apiKey, testPrompt, ct);
+                    testSuccess = await TestGeminiModelAsync(modelId, apiKey, testPrompt, ct).ConfigureAwait(false);
                     break;
                 case "ollama":
-                    testSuccess = await TestOllamaModelAsync(modelId, apiKey, testPrompt, ct);
+                    testSuccess = await TestOllamaModelAsync(modelId, apiKey, testPrompt, ct).ConfigureAwait(false);
                     break;
                 default:
                     result.IsAvailable = false;
@@ -604,7 +604,7 @@ public class ModelCatalog
             var json = JsonSerializer.Serialize(requestBody);
             var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
             
-            var response = await httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content, ct);
+            var response = await httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content, ct).ConfigureAwait(false);
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)
@@ -636,7 +636,7 @@ public class ModelCatalog
             var json = JsonSerializer.Serialize(requestBody);
             var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
             
-            var response = await httpClient.PostAsync("https://api.anthropic.com/v1/messages", content, ct);
+            var response = await httpClient.PostAsync("https://api.anthropic.com/v1/messages", content, ct).ConfigureAwait(false);
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)
@@ -671,7 +671,7 @@ public class ModelCatalog
             var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
             
             var url = $"https://generativelanguage.googleapis.com/v1beta/models/{modelId}:generateContent?key={apiKey}";
-            var response = await httpClient.PostAsync(url, content, ct);
+            var response = await httpClient.PostAsync(url, content, ct).ConfigureAwait(false);
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)
@@ -699,7 +699,7 @@ public class ModelCatalog
             var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
             
             var url = $"{baseUrl}/api/generate";
-            var response = await httpClient.PostAsync(url, content, ct);
+            var response = await httpClient.PostAsync(url, content, ct).ConfigureAwait(false);
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)

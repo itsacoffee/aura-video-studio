@@ -42,14 +42,14 @@ public class KeyValidationService : IKeyValidationService
 
             return providerLower switch
             {
-                "openai" => await TestOpenAIKeyAsync(apiKey, ct),
-                "anthropic" => await TestAnthropicKeyAsync(apiKey, ct),
-                "gemini" or "google" => await TestGeminiKeyAsync(apiKey, ct),
-                "elevenlabs" => await TestElevenLabsKeyAsync(apiKey, ct),
-                "stabilityai" or "stability" => await TestStabilityAIKeyAsync(apiKey, ct),
-                "playht" => await TestPlayHTKeyAsync(apiKey, ct),
-                "pexels" => await TestPexelsKeyAsync(apiKey, ct),
-                "azure" => await TestAzureKeyAsync(apiKey, ct),
+                "openai" => await TestOpenAIKeyAsync(apiKey, ct).ConfigureAwait(false),
+                "anthropic" => await TestAnthropicKeyAsync(apiKey, ct).ConfigureAwait(false),
+                "gemini" or "google" => await TestGeminiKeyAsync(apiKey, ct).ConfigureAwait(false),
+                "elevenlabs" => await TestElevenLabsKeyAsync(apiKey, ct).ConfigureAwait(false),
+                "stabilityai" or "stability" => await TestStabilityAIKeyAsync(apiKey, ct).ConfigureAwait(false),
+                "playht" => await TestPlayHTKeyAsync(apiKey, ct).ConfigureAwait(false),
+                "pexels" => await TestPexelsKeyAsync(apiKey, ct).ConfigureAwait(false),
+                "azure" => await TestAzureKeyAsync(apiKey, ct).ConfigureAwait(false),
                 _ => new KeyValidationResult
                 {
                     IsValid = false,
@@ -86,7 +86,7 @@ public class KeyValidationService : IKeyValidationService
             client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
             client.Timeout = TimeSpan.FromSeconds(15);
 
-            var response = await client.GetAsync("https://api.openai.com/v1/models", ct);
+            var response = await client.GetAsync("https://api.openai.com/v1/models", ct).ConfigureAwait(false);
 
             if (response.IsSuccessStatusCode)
             {
@@ -102,7 +102,7 @@ public class KeyValidationService : IKeyValidationService
                 };
             }
 
-            var errorContent = await response.Content.ReadAsStringAsync(ct);
+            var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             return new KeyValidationResult
             {
                 IsValid = false,
@@ -171,7 +171,7 @@ public class KeyValidationService : IKeyValidationService
             var response = await client.PostAsync(
                 "https://api.anthropic.com/v1/messages", 
                 content, 
-                ct);
+                ct).ConfigureAwait(false);
 
             if (response.IsSuccessStatusCode)
             {
@@ -237,7 +237,7 @@ public class KeyValidationService : IKeyValidationService
             // Test with models list endpoint
             var response = await client.GetAsync(
                 $"https://generativelanguage.googleapis.com/v1beta/models?key={apiKey}",
-                ct);
+                ct).ConfigureAwait(false);
 
             if (response.IsSuccessStatusCode)
             {
@@ -288,7 +288,7 @@ public class KeyValidationService : IKeyValidationService
             client.DefaultRequestHeaders.Add("xi-api-key", apiKey);
             client.Timeout = TimeSpan.FromSeconds(15);
 
-            var response = await client.GetAsync("https://api.elevenlabs.io/v1/voices", ct);
+            var response = await client.GetAsync("https://api.elevenlabs.io/v1/voices", ct).ConfigureAwait(false);
 
             if (response.IsSuccessStatusCode)
             {
@@ -341,7 +341,7 @@ public class KeyValidationService : IKeyValidationService
 
             var response = await client.GetAsync(
                 "https://api.stability.ai/v1/user/account",
-                ct);
+                ct).ConfigureAwait(false);
 
             if (response.IsSuccessStatusCode)
             {
@@ -392,7 +392,7 @@ public class KeyValidationService : IKeyValidationService
             client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
             client.Timeout = TimeSpan.FromSeconds(15);
 
-            var response = await client.GetAsync("https://api.play.ht/api/v2/voices", ct);
+            var response = await client.GetAsync("https://api.play.ht/api/v2/voices", ct).ConfigureAwait(false);
 
             if (response.IsSuccessStatusCode)
             {
@@ -446,7 +446,7 @@ public class KeyValidationService : IKeyValidationService
             // Test with a simple search query (1 result, minimal data transfer)
             var response = await client.GetAsync(
                 "https://api.pexels.com/v1/search?query=nature&per_page=1",
-                ct);
+                ct).ConfigureAwait(false);
 
             if (response.IsSuccessStatusCode)
             {

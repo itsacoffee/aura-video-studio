@@ -73,7 +73,7 @@ public class EnhancedUnsplashProvider : IEnhancedStockProvider
                 var httpRequest = new HttpRequestMessage(HttpMethod.Get, url);
                 httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Client-ID", _apiKey);
 
-                var response = await _httpClient.SendAsync(httpRequest, ct);
+                var response = await _httpClient.SendAsync(httpRequest, ct).ConfigureAwait(false);
                 UpdateRateLimitInfo(response.Headers);
 
                 if (response.StatusCode == HttpStatusCode.TooManyRequests)
@@ -82,7 +82,7 @@ public class EnhancedUnsplashProvider : IEnhancedStockProvider
                     
                     if (attempt < maxRetries)
                     {
-                        await Task.Delay(retryDelay * attempt, ct);
+                        await Task.Delay(retryDelay * attempt, ct).ConfigureAwait(false);
                         continue;
                     }
                     throw new InvalidOperationException("Unsplash rate limit exceeded");
@@ -95,7 +95,7 @@ public class EnhancedUnsplashProvider : IEnhancedStockProvider
 
                 response.EnsureSuccessStatusCode();
 
-                var json = await response.Content.ReadAsStringAsync(ct);
+                var json = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 var doc = JsonDocument.Parse(json);
 
                 var results = new List<StockMediaResult>();
@@ -124,7 +124,7 @@ public class EnhancedUnsplashProvider : IEnhancedStockProvider
             catch (HttpRequestException ex) when (attempt < maxRetries)
             {
                 _logger.LogWarning(ex, "HTTP error searching Unsplash (attempt {Attempt}/{MaxRetries})", attempt, maxRetries);
-                await Task.Delay(retryDelay * attempt, ct);
+                await Task.Delay(retryDelay * attempt, ct).ConfigureAwait(false);
             }
             catch (TaskCanceledException) when (!ct.IsCancellationRequested)
             {
@@ -255,7 +255,7 @@ public class EnhancedUnsplashProvider : IEnhancedStockProvider
             var request = new HttpRequestMessage(HttpMethod.Get, "https://api.unsplash.com/photos?per_page=1");
             request.Headers.Authorization = new AuthenticationHeaderValue("Client-ID", _apiKey);
 
-            var response = await _httpClient.SendAsync(request, ct);
+            var response = await _httpClient.SendAsync(request, ct).ConfigureAwait(false);
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)
@@ -274,14 +274,14 @@ public class EnhancedUnsplashProvider : IEnhancedStockProvider
         {
             try
             {
-                var response = await _httpClient.GetAsync(url, ct);
+                var response = await _httpClient.GetAsync(url, ct).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
-                return await response.Content.ReadAsByteArrayAsync(ct);
+                return await response.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
             }
             catch (HttpRequestException ex) when (attempt < maxRetries)
             {
                 _logger.LogWarning(ex, "Failed to download media (attempt {Attempt}/{MaxRetries})", attempt, maxRetries);
-                await Task.Delay(retryDelay * attempt, ct);
+                await Task.Delay(retryDelay * attempt, ct).ConfigureAwait(false);
             }
         }
 
@@ -298,7 +298,7 @@ public class EnhancedUnsplashProvider : IEnhancedStockProvider
             var request = new HttpRequestMessage(HttpMethod.Get, mediaId);
             request.Headers.Authorization = new AuthenticationHeaderValue("Client-ID", _apiKey);
 
-            var response = await _httpClient.SendAsync(request, ct);
+            var response = await _httpClient.SendAsync(request, ct).ConfigureAwait(false);
             
             if (response.IsSuccessStatusCode)
             {

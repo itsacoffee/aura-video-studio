@@ -144,7 +144,7 @@ public enum StorageType
 /// <summary>
 /// In-memory database container for fast testing
 /// </summary>
-internal class InMemoryDatabaseContainer : ITestContainer
+internal sealed class InMemoryDatabaseContainer : ITestContainer
 {
     public string ConnectionString => "DataSource=:memory:";
 
@@ -156,7 +156,7 @@ internal class InMemoryDatabaseContainer : ITestContainer
 /// <summary>
 /// SQLite test container
 /// </summary>
-internal class SqliteTestContainer : ITestContainer
+internal sealed class SqliteTestContainer : ITestContainer
 {
     private readonly string _databaseFile;
 
@@ -198,7 +198,7 @@ internal class SqliteTestContainer : ITestContainer
 /// <summary>
 /// In-memory queue container
 /// </summary>
-internal class InMemoryQueueContainer : ITestContainer
+internal sealed class InMemoryQueueContainer : ITestContainer
 {
     public string ConnectionString => "memory://localhost";
 
@@ -210,7 +210,7 @@ internal class InMemoryQueueContainer : ITestContainer
 /// <summary>
 /// In-memory storage container
 /// </summary>
-internal class InMemoryStorageContainer : ITestContainer
+internal sealed class InMemoryStorageContainer : ITestContainer
 {
     public string ConnectionString => "memory://localhost/storage";
 

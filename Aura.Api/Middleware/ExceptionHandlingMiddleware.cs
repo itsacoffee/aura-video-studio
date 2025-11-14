@@ -31,11 +31,11 @@ public class ExceptionHandlingMiddleware
     {
         try
         {
-            await _next(context);
+            await _next(context).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            await HandleExceptionAsync(context, ex);
+            await HandleExceptionAsync(context, ex).ConfigureAwait(false);
         }
     }
 
@@ -64,7 +64,7 @@ public class ExceptionHandlingMiddleware
             WriteIndented = true
         };
 
-        await context.Response.WriteAsync(JsonSerializer.Serialize(errorResponse, options));
+        await context.Response.WriteAsync(JsonSerializer.Serialize(errorResponse, options)).ConfigureAwait(false);
     }
 
     private (HttpStatusCode, object) MapExceptionToResponse(Exception exception, string correlationId)

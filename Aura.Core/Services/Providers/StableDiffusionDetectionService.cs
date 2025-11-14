@@ -40,7 +40,7 @@ public class StableDiffusionDetectionService
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(5));
 
-            var response = await _httpClient.GetAsync($"{_baseUrl}/sdapi/v1/cmd-flags", cts.Token);
+            var response = await _httpClient.GetAsync($"{_baseUrl}/sdapi/v1/cmd-flags", cts.Token).ConfigureAwait(false);
             
             if (response.IsSuccessStatusCode)
             {
@@ -101,10 +101,10 @@ public class StableDiffusionDetectionService
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(10));
 
-            var response = await _httpClient.GetAsync($"{_baseUrl}/sdapi/v1/sd-models", cts.Token);
+            var response = await _httpClient.GetAsync($"{_baseUrl}/sdapi/v1/sd-models", cts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var content = await response.Content.ReadAsStringAsync(ct);
+            var content = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var modelsArray = JsonDocument.Parse(content).RootElement;
 
             var models = new List<SDModel>();
@@ -168,10 +168,10 @@ public class StableDiffusionDetectionService
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(10));
 
-            var response = await _httpClient.GetAsync($"{_baseUrl}/sdapi/v1/options", cts.Token);
+            var response = await _httpClient.GetAsync($"{_baseUrl}/sdapi/v1/options", cts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var content = await response.Content.ReadAsStringAsync(ct);
+            var content = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var options = JsonDocument.Parse(content).RootElement;
 
             if (options.TryGetProperty("sd_model_checkpoint", out var modelProp))
@@ -206,7 +206,7 @@ public class StableDiffusionDetectionService
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(30));
 
-            var response = await _httpClient.PostAsync($"{_baseUrl}/sdapi/v1/options", content, cts.Token);
+            var response = await _httpClient.PostAsync($"{_baseUrl}/sdapi/v1/options", content, cts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
             _logger.LogInformation("Successfully set Stable Diffusion model to: {ModelName}", modelName);
@@ -231,10 +231,10 @@ public class StableDiffusionDetectionService
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(10));
 
-            var response = await _httpClient.GetAsync($"{_baseUrl}/sdapi/v1/memory", cts.Token);
+            var response = await _httpClient.GetAsync($"{_baseUrl}/sdapi/v1/memory", cts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var content = await response.Content.ReadAsStringAsync(ct);
+            var content = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var memory = JsonDocument.Parse(content).RootElement;
 
             var ramTotal = memory.TryGetProperty("ram", out var ramProp) &&

@@ -292,6 +292,6 @@ public class MemoryLlmCache : ILlmCache
     
     private static string GetKeyHash(string key)
     {
-        return key.Length > 16 ? key.Substring(0, 16) + "..." : key;
+        return key.Length > 16 ? string.Concat(key.AsSpan(0, 16), "...") : key;
     }
 }

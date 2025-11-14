@@ -74,15 +74,15 @@ public class AudioNormalizer
             correlationId, Path.GetFileName(inputPath), Path.GetFileName(outputPath), targetLufs);
 
         // Get FFmpeg path
-        var ffmpegExecutable = await GetFfmpegPathAsync(ct);
+        var ffmpegExecutable = await GetFfmpegPathAsync(ct).ConfigureAwait(false);
 
         // Two-pass normalization for optimal results
-        var analysisResult = await AnalyzeAudioAsync(inputPath, ffmpegExecutable, correlationId, ct);
+        var analysisResult = await AnalyzeAudioAsync(inputPath, ffmpegExecutable, correlationId, ct).ConfigureAwait(false);
 
         if (analysisResult == null)
         {
             _logger.LogWarning("[{CorrelationId}] Analysis failed, using single-pass normalization", correlationId);
-            await NormalizeSinglePassAsync(inputPath, outputPath, ffmpegExecutable, targetLufs, truePeak, loudnessRange, ct);
+            await NormalizeSinglePassAsync(inputPath, outputPath, ffmpegExecutable, targetLufs, truePeak, loudnessRange, ct).ConfigureAwait(false);
         }
         else
         {
@@ -98,7 +98,7 @@ public class AudioNormalizer
                 targetLufs,
                 truePeak,
                 loudnessRange,
-                ct);
+                ct).ConfigureAwait(false);
         }
 
         // Validate output
@@ -142,7 +142,7 @@ public class AudioNormalizer
             tasks[i] = NormalizeAsync(inputPaths[index], null, targetLufs, ct: ct);
         }
 
-        var results = await Task.WhenAll(tasks);
+        var results = await Task.WhenAll(tasks).ConfigureAwait(false);
         
         _logger.LogInformation(
             "[{CorrelationId}] Batch normalization completed: {Count} files",
@@ -180,8 +180,8 @@ public class AudioNormalizer
                 return null;
             }
 
-            var stderr = await process.StandardError.ReadToEndAsync(ct);
-            await process.WaitForExitAsync(ct);
+            var stderr = await process.StandardError.ReadToEndAsync(ct).ConfigureAwait(false);
+            await process.WaitForExitAsync(ct).ConfigureAwait(false);
 
             // Parse loudnorm output from stderr
             return ParseLoudnormOutput(stderr);
@@ -209,7 +209,7 @@ public class AudioNormalizer
                    $"-af \"loudnorm=I={targetLufs}:TP={truePeak}:LRA={loudnessRange}\" " +
                    $"-ar 44100 -y \"{outputPath}\"";
 
-        await RunFfmpegAsync(ffmpegPath, args, ct);
+        await RunFfmpegAsync(ffmpegPath, args, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -235,7 +235,7 @@ public class AudioNormalizer
                    $"linear=true:print_format=summary\" " +
                    $"-ar 44100 -y \"{outputPath}\"";
 
-        await RunFfmpegAsync(ffmpegPath, args, ct);
+        await RunFfmpegAsync(ffmpegPath, args, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -259,11 +259,11 @@ public class AudioNormalizer
             throw new InvalidOperationException("Failed to start FFmpeg process");
         }
 
-        await process.WaitForExitAsync(ct);
+        await process.WaitForExitAsync(ct).ConfigureAwait(false);
 
         if (process.ExitCode != 0)
         {
-            var error = await process.StandardError.ReadToEndAsync(ct);
+            var error = await process.StandardError.ReadToEndAsync(ct).ConfigureAwait(false);
             throw new InvalidOperationException($"FFmpeg normalization failed with exit code {process.ExitCode}: {error}");
         }
     }
@@ -403,7 +403,7 @@ public class AudioNormalizer
 /// <summary>
 /// Audio analysis result from first pass
 /// </summary>
-internal class AudioAnalysisResult
+internal sealed class AudioAnalysisResult
 {
     public double IntegratedLoudness { get; set; }
     public double TruePeak { get; set; }

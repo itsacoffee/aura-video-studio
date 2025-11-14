@@ -53,7 +53,7 @@ public class HealthDiagnosticsService
     /// </summary>
     public async Task<HealthSummaryResponse> GetHealthSummaryAsync(CancellationToken ct = default)
     {
-        var details = await GetHealthDetailsAsync(ct);
+        var details = await GetHealthDetailsAsync(ct).ConfigureAwait(false);
         
         var passed = details.Checks.Count(c => c.Status == HealthCheckStatus.Pass);
         var warnings = details.Checks.Count(c => c.Status == HealthCheckStatus.Warning);
@@ -77,21 +77,21 @@ public class HealthDiagnosticsService
         var checks = new List<HealthCheckDetail>();
 
         // System checks
-        checks.Add(await CheckConfigurationAsync(ct));
-        checks.Add(await CheckDiskSpaceAsync(ct));
+        checks.Add(await CheckConfigurationAsync(ct).ConfigureAwait(false));
+        checks.Add(await CheckDiskSpaceAsync(ct).ConfigureAwait(false));
 
         // Video pipeline checks
-        checks.Add(await CheckFfmpegAsync(ct));
-        checks.Add(await CheckGpuEncodersAsync(ct));
+        checks.Add(await CheckFfmpegAsync(ct).ConfigureAwait(false));
+        checks.Add(await CheckGpuEncodersAsync(ct).ConfigureAwait(false));
 
         // LLM provider checks
-        checks.AddRange(await CheckLlmProvidersAsync(ct));
+        checks.AddRange(await CheckLlmProvidersAsync(ct).ConfigureAwait(false));
 
         // TTS provider checks
-        checks.AddRange(await CheckTtsProvidersAsync(ct));
+        checks.AddRange(await CheckTtsProvidersAsync(ct).ConfigureAwait(false));
 
         // Image provider checks
-        checks.AddRange(await CheckImageProvidersAsync(ct));
+        checks.AddRange(await CheckImageProvidersAsync(ct).ConfigureAwait(false));
 
         // Determine overall status
         var hasFailedRequired = checks.Any(c => c.IsRequired && c.Status == HealthCheckStatus.Fail);
@@ -250,7 +250,7 @@ public class HealthDiagnosticsService
     {
         try
         {
-            var result = await _ffmpegLocator.CheckAllCandidatesAsync(null, ct);
+            var result = await _ffmpegLocator.CheckAllCandidatesAsync(null, ct).ConfigureAwait(false);
             
             if (!result.Found || string.IsNullOrEmpty(result.FfmpegPath))
             {
@@ -311,7 +311,7 @@ public class HealthDiagnosticsService
     {
         try
         {
-            var systemProfile = await _hardwareDetector.DetectSystemAsync();
+            var systemProfile = await _hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
             
             var hasGpu = systemProfile.Gpu != null;
             var hasNvenc = systemProfile.EnableNVENC;
@@ -385,16 +385,16 @@ public class HealthDiagnosticsService
             RemediationActions: null));
 
         // OpenAI
-        checks.Add(await CheckOpenAIAsync(ct));
+        checks.Add(await CheckOpenAIAsync(ct).ConfigureAwait(false));
 
         // Anthropic/Claude
-        checks.Add(await CheckAnthropicAsync(ct));
+        checks.Add(await CheckAnthropicAsync(ct).ConfigureAwait(false));
 
         // Google Gemini
-        checks.Add(await CheckGeminiAsync(ct));
+        checks.Add(await CheckGeminiAsync(ct).ConfigureAwait(false));
 
         // Ollama
-        checks.Add(await CheckOllamaAsync(ct));
+        checks.Add(await CheckOllamaAsync(ct).ConfigureAwait(false));
 
         return checks;
     }
@@ -442,7 +442,7 @@ public class HealthDiagnosticsService
             {
                 var client = _httpClientFactory.CreateClient();
                 client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
-                var response = await client.GetAsync("https://api.openai.com/v1/models", timeoutCts.Token);
+                var response = await client.GetAsync("https://api.openai.com/v1/models", timeoutCts.Token).ConfigureAwait(false);
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -603,7 +603,7 @@ public class HealthDiagnosticsService
             try
             {
                 var client = _httpClientFactory.CreateClient();
-                var response = await client.GetAsync($"{ollamaUrl}/api/tags", timeoutCts.Token);
+                var response = await client.GetAsync($"{ollamaUrl}/api/tags", timeoutCts.Token).ConfigureAwait(false);
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -682,16 +682,16 @@ public class HealthDiagnosticsService
         checks.Add(CheckWindowsSAPI());
 
         // ElevenLabs
-        checks.Add(await CheckElevenLabsAsync(ct));
+        checks.Add(await CheckElevenLabsAsync(ct).ConfigureAwait(false));
 
         // PlayHT
-        checks.Add(await CheckPlayHTAsync(ct));
+        checks.Add(await CheckPlayHTAsync(ct).ConfigureAwait(false));
 
         // Piper
         checks.Add(CheckPiper());
 
         // Mimic3
-        checks.Add(await CheckMimic3Async(ct));
+        checks.Add(await CheckMimic3Async(ct).ConfigureAwait(false));
 
         return checks;
     }
@@ -776,7 +776,7 @@ public class HealthDiagnosticsService
             {
                 var client = _httpClientFactory.CreateClient();
                 client.DefaultRequestHeaders.Add("xi-api-key", apiKey);
-                var response = await client.GetAsync("https://api.elevenlabs.io/v1/voices", timeoutCts.Token);
+                var response = await client.GetAsync("https://api.elevenlabs.io/v1/voices", timeoutCts.Token).ConfigureAwait(false);
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -938,7 +938,7 @@ public class HealthDiagnosticsService
             try
             {
                 var client = _httpClientFactory.CreateClient();
-                var response = await client.GetAsync($"{mimic3Url}/api/voices", timeoutCts.Token);
+                var response = await client.GetAsync($"{mimic3Url}/api/voices", timeoutCts.Token).ConfigureAwait(false);
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -1013,10 +1013,10 @@ public class HealthDiagnosticsService
             RemediationActions: null));
 
         // Stable Diffusion WebUI
-        checks.Add(await CheckStableDiffusionAsync(ct));
+        checks.Add(await CheckStableDiffusionAsync(ct).ConfigureAwait(false));
 
         // Replicate
-        checks.Add(await CheckReplicateAsync(ct));
+        checks.Add(await CheckReplicateAsync(ct).ConfigureAwait(false));
 
         return checks;
     }
@@ -1033,7 +1033,7 @@ public class HealthDiagnosticsService
             try
             {
                 var client = _httpClientFactory.CreateClient();
-                var response = await client.GetAsync($"{sdUrl}/sdapi/v1/sd-models", timeoutCts.Token);
+                var response = await client.GetAsync($"{sdUrl}/sdapi/v1/sd-models", timeoutCts.Token).ConfigureAwait(false);
                 
                 if (response.IsSuccessStatusCode)
                 {

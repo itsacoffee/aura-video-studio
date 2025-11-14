@@ -63,7 +63,7 @@ public class PiperTtsProvider : ITtsProvider
 
     public async Task<IReadOnlyList<string>> GetAvailableVoicesAsync()
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         
         // In a full implementation, this would scan the voice models directory
         // For now, return the configured voice
@@ -101,12 +101,12 @@ public class PiperTtsProvider : ITtsProvider
                 _logger.LogDebug("Synthesizing line {Index}: {Text}", i, line.Text);
 
                 // Run Piper CLI: echo "text" | piper --model voice.onnx --output_file output.wav
-                var success = await RunPiperAsync(line.Text, outputPath, ct);
+                var success = await RunPiperAsync(line.Text, outputPath, ct).ConfigureAwait(false);
 
                 if (!success)
                 {
                     _logger.LogWarning("Failed to synthesize line {Index}, creating silence", i);
-                    await _silentWavGenerator.GenerateAsync(outputPath, line.Duration, sampleRate: 22050, ct: ct);
+                    await _silentWavGenerator.GenerateAsync(outputPath, line.Duration, sampleRate: 22050, ct: ct).ConfigureAwait(false);
                 }
 
                 segmentPaths.Add(outputPath);
@@ -119,7 +119,7 @@ public class PiperTtsProvider : ITtsProvider
             MergeWavFiles(segmentPaths, finalPath);
 
             // Validate the merged file
-            var validationResult = await _wavValidator.ValidateAsync(finalPath, ct);
+            var validationResult = await _wavValidator.ValidateAsync(finalPath, ct).ConfigureAwait(false);
             if (!validationResult.IsValid)
             {
                 _logger.LogError("Merged narration file failed validation: {Error}", validationResult.ErrorMessage);
@@ -190,18 +190,18 @@ public class PiperTtsProvider : ITtsProvider
             process.Start();
 
             // Write text to stdin
-            await process.StandardInput.WriteLineAsync(text);
+            await process.StandardInput.WriteLineAsync(text).ConfigureAwait(false);
             process.StandardInput.Close();
 
             // Wait for completion with cancellation support
-            await process.WaitForExitAsync(ct);
+            await process.WaitForExitAsync(ct).ConfigureAwait(false);
 
             if (process.ExitCode == 0 && File.Exists(outputPath))
             {
                 return true;
             }
 
-            var error = await process.StandardError.ReadToEndAsync(ct);
+            var error = await process.StandardError.ReadToEndAsync(ct).ConfigureAwait(false);
             _logger.LogWarning("Piper process failed with exit code {ExitCode}: {Error}", process.ExitCode, error);
             return false;
         }

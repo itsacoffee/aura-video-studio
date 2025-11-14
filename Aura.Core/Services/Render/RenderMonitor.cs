@@ -105,7 +105,7 @@ public class RenderMonitor
         {
             try
             {
-                await _monitoringTask;
+                await _monitoringTask.ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -207,7 +207,7 @@ public class RenderMonitor
             {
                 var error = new RenderError(
                     Timestamp: DateTime.UtcNow,
-                    Message: line.Length > 200 ? line.Substring(0, 200) + "..." : line,
+                    Message: line.Length > 200 ? string.Concat(line.AsSpan(0, 200), "...") : line,
                     Details: line,
                     IsRecoverable: isRecoverable
                 );
@@ -228,11 +228,11 @@ public class RenderMonitor
         {
             try
             {
-                await Task.Delay(1000, cancellationToken);
+                await Task.Delay(1000, cancellationToken).ConfigureAwait(false);
 
-                var cpuUsage = await GetProcessCpuUsageAsync();
-                var memoryUsage = await GetProcessMemoryUsageAsync();
-                var gpuStats = await _hardwareEncoder.GetGpuUtilizationAsync();
+                var cpuUsage = await GetProcessCpuUsageAsync().ConfigureAwait(false);
+                var memoryUsage = await GetProcessMemoryUsageAsync().ConfigureAwait(false);
+                var gpuStats = await _hardwareEncoder.GetGpuUtilizationAsync().ConfigureAwait(false);
 
                 if (_currentStats != null)
                 {
@@ -262,7 +262,7 @@ public class RenderMonitor
             var startTime = DateTime.UtcNow;
             var startCpuTime = process.TotalProcessorTime;
 
-            await Task.Delay(500);
+            await Task.Delay(500).ConfigureAwait(false);
 
             var endTime = DateTime.UtcNow;
             var endCpuTime = process.TotalProcessorTime;
@@ -287,7 +287,7 @@ public class RenderMonitor
         try
         {
             var process = Process.GetProcessById(_processId);
-            await Task.CompletedTask;
+            await Task.CompletedTask.ConfigureAwait(false);
             return process.WorkingSet64 / 1024.0 / 1024.0;
         }
         catch
@@ -327,7 +327,7 @@ public class RenderMonitor
                 return null;
             }
 
-            await process.WaitForExitAsync(cancellationToken);
+            await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
 
             if (process.ExitCode == 0 && System.IO.File.Exists(outputPath))
             {

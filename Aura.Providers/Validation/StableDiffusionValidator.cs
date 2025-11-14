@@ -39,7 +39,7 @@ public class StableDiffusionValidator : IProviderValidator
             cts1.CancelAfter(TimeSpan.FromSeconds(5));
 
             // Try the root endpoint first to see if SD WebUI is running at all
-            var rootResponse = await _httpClient.GetAsync(baseUrl, cts1.Token);
+            var rootResponse = await _httpClient.GetAsync(baseUrl, cts1.Token).ConfigureAwait(false);
             
             if (!rootResponse.IsSuccessStatusCode)
             {
@@ -58,7 +58,7 @@ public class StableDiffusionValidator : IProviderValidator
             using var cts2 = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts2.CancelAfter(TimeSpan.FromSeconds(5));
             
-            var listResponse = await _httpClient.GetAsync($"{baseUrl}/sdapi/v1/sd-models", cts2.Token);
+            var listResponse = await _httpClient.GetAsync($"{baseUrl}/sdapi/v1/sd-models", cts2.Token).ConfigureAwait(false);
 
             if (!listResponse.IsSuccessStatusCode)
             {
@@ -73,7 +73,7 @@ public class StableDiffusionValidator : IProviderValidator
                 };
             }
 
-            var listJson = await listResponse.Content.ReadAsStringAsync(ct);
+            var listJson = await listResponse.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var models = JsonDocument.Parse(listJson).RootElement;
 
             if (models.GetArrayLength() == 0)
@@ -108,7 +108,7 @@ public class StableDiffusionValidator : IProviderValidator
             using var cts3 = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts3.CancelAfter(TimeSpan.FromSeconds(30)); // SD generation can take time even for small images
 
-            var generateResponse = await _httpClient.PostAsync($"{baseUrl}/sdapi/v1/txt2img", content, cts3.Token);
+            var generateResponse = await _httpClient.PostAsync($"{baseUrl}/sdapi/v1/txt2img", content, cts3.Token).ConfigureAwait(false);
 
             sw.Stop();
 
@@ -125,7 +125,7 @@ public class StableDiffusionValidator : IProviderValidator
             }
             else
             {
-                var errorContent = await generateResponse.Content.ReadAsStringAsync(ct);
+                var errorContent = await generateResponse.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 _logger.LogWarning("SD WebUI validation failed: Generate returned {StatusCode}", generateResponse.StatusCode);
                 return new ProviderValidationResult
                 {

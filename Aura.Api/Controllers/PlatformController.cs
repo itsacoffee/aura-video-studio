@@ -95,7 +95,7 @@ public class PlatformController : ControllerBase
                 return BadRequest(new { error = "Target platform is required" });
             }
 
-            var result = await _platformOptimization.OptimizeForPlatform(request);
+            var result = await _platformOptimization.OptimizeForPlatform(request).ConfigureAwait(false);
             return Ok(result);
         }
         catch (ArgumentException ex)
@@ -122,7 +122,7 @@ public class PlatformController : ControllerBase
                 return BadRequest(new { error = "Platform is required" });
             }
 
-            var result = await _metadataOptimization.GenerateMetadata(request);
+            var result = await _metadataOptimization.GenerateMetadata(request).ConfigureAwait(false);
             return Ok(result);
         }
         catch (ArgumentException ex)
@@ -149,7 +149,7 @@ public class PlatformController : ControllerBase
                 return BadRequest(new { error = "Platform is required" });
             }
 
-            var result = await _thumbnailIntelligence.SuggestThumbnailConcepts(request);
+            var result = await _thumbnailIntelligence.SuggestThumbnailConcepts(request).ConfigureAwait(false);
             return Ok(result);
         }
         catch (ArgumentException ex)
@@ -200,7 +200,7 @@ public class PlatformController : ControllerBase
                 return BadRequest(new { error = "Topic is required" });
             }
 
-            var result = await _keywordResearch.ResearchKeywords(request);
+            var result = await _keywordResearch.ResearchKeywords(request).ConfigureAwait(false);
             return Ok(result);
         }
         catch (Exception ex)
@@ -223,7 +223,7 @@ public class PlatformController : ControllerBase
                 return BadRequest(new { error = "Platform is required" });
             }
 
-            var result = await _schedulingOptimization.GetOptimalPostingTimes(request);
+            var result = await _schedulingOptimization.GetOptimalPostingTimes(request).ConfigureAwait(false);
             return Ok(result);
         }
         catch (ArgumentException ex)
@@ -250,7 +250,7 @@ public class PlatformController : ControllerBase
                 return BadRequest(new { error = "Target platform is required" });
             }
 
-            var result = await _platformOptimization.AdaptContent(request);
+            var result = await _platformOptimization.AdaptContent(request).ConfigureAwait(false);
             return Ok(result);
         }
         catch (ArgumentException ex)
@@ -327,7 +327,7 @@ public class PlatformController : ControllerBase
                 return BadRequest(new { error = "At least one target platform is required" });
             }
 
-            var result = await _platformOptimization.ExportForMultiplePlatforms(request);
+            var result = await _platformOptimization.ExportForMultiplePlatforms(request).ConfigureAwait(false);
             return Ok(result);
         }
         catch (Exception ex)

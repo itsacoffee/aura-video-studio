@@ -34,8 +34,8 @@ public static class SafeFileWriter
             // Write to temporary file
             await using (var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 4096, FileOptions.Asynchronous))
             {
-                await writeAction(fileStream);
-                await fileStream.FlushAsync(ct);
+                await writeAction(fileStream).ConfigureAwait(false);
+                await fileStream.FlushAsync(ct).ConfigureAwait(false);
                 
                 // Sync to disk if supported
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -91,8 +91,8 @@ public static class SafeFileWriter
     {
         await WriteFileAsync(finalPath, async stream =>
         {
-            await stream.WriteAsync(data, ct);
-        }, ct);
+            await stream.WriteAsync(data, ct).ConfigureAwait(false);
+        }, ct).ConfigureAwait(false);
     }
     
     /// <summary>
@@ -103,9 +103,9 @@ public static class SafeFileWriter
         await WriteFileAsync(finalPath, async stream =>
         {
             using var writer = new StreamWriter(stream, leaveOpen: true);
-            await writer.WriteAsync(text);
-            await writer.FlushAsync();
-        }, ct);
+            await writer.WriteAsync(text).ConfigureAwait(false);
+            await writer.FlushAsync().ConfigureAwait(false);
+        }, ct).ConfigureAwait(false);
     }
     
     /// <summary>
@@ -116,8 +116,8 @@ public static class SafeFileWriter
         await WriteFileAsync(finalPath, async stream =>
         {
             using var sourceStream = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.Asynchronous);
-            await sourceStream.CopyToAsync(stream, ct);
-        }, ct);
+            await sourceStream.CopyToAsync(stream, ct).ConfigureAwait(false);
+        }, ct).ConfigureAwait(false);
     }
     
     [DllImport("libc", SetLastError = true, EntryPoint = "fsync")]

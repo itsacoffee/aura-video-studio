@@ -118,7 +118,7 @@ public class ProviderValidationService
                 var apiKey = _keyStore.GetKey(providerName.ToLower());
                 var configUrl = GetConfigUrl(providerName);
 
-                var result = await validator.ValidateAsync(apiKey, configUrl, ct);
+                var result = await validator.ValidateAsync(apiKey, configUrl, ct).ConfigureAwait(false);
                 results.Add(result);
 
                 _logger.LogInformation("Provider {Provider} validation completed: {Ok}",

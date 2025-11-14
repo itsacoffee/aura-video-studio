@@ -321,5 +321,5 @@ public class VariableResolverOptions
     public bool ThrowOnInvalidType { get; set; } = true;
     public bool SanitizeValues { get; set; } = true;
     public int MaxStringLength { get; set; } = 10000;
-    public bool AllowHtml { get; set; } = false;
+    public bool AllowHtml { get; set; }
 }

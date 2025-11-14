@@ -209,7 +209,7 @@ public class TtsFallbackServiceTests
     }
 
     // Mock providers for testing
-    private class MockSuccessfulTtsProvider : ITtsProvider
+    private sealed class MockSuccessfulTtsProvider : ITtsProvider
     {
         private readonly WavFileWriter _writer;
 
@@ -233,7 +233,7 @@ public class TtsFallbackServiceTests
         }
     }
 
-    private class MockPartiallyFailingTtsProvider : ITtsProvider
+    private sealed class MockPartiallyFailingTtsProvider : ITtsProvider
     {
         private readonly WavFileWriter _writer;
 
@@ -263,7 +263,7 @@ public class TtsFallbackServiceTests
         }
     }
 
-    private class MockCompletelyFailingTtsProvider : ITtsProvider
+    private sealed class MockCompletelyFailingTtsProvider : ITtsProvider
     {
         public Task<IReadOnlyList<string>> GetAvailableVoicesAsync()
         {
@@ -277,7 +277,7 @@ public class TtsFallbackServiceTests
         }
     }
 
-    private class MockZeroByteProvider : ITtsProvider
+    private sealed class MockZeroByteProvider : ITtsProvider
     {
         public Task<IReadOnlyList<string>> GetAvailableVoicesAsync()
         {

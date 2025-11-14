@@ -47,11 +47,11 @@ public class CachedLlmProviderService
     {
         if (!_options.Enabled)
         {
-            var result = await operation(ct);
+            var result = await operation(ct).ConfigureAwait(false);
             return new CachedResult<T> { Result = result, FromCache = false };
         }
         
-        var cached = await _cache.GetAsync(cacheKey, ct);
+        var cached = await _cache.GetAsync(cacheKey, ct).ConfigureAwait(false);
         
         if (cached != null)
         {
@@ -74,10 +74,10 @@ public class CachedLlmProviderService
             }
         }
         
-        var freshResult = await operation(ct);
+        var freshResult = await operation(ct).ConfigureAwait(false);
         var serialized = serializer(freshResult);
         
-        await _cache.SetAsync(cacheKey, serialized, metadata, ct);
+        await _cache.SetAsync(cacheKey, serialized, metadata, ct).ConfigureAwait(false);
         
         return new CachedResult<T>
         {
@@ -163,7 +163,7 @@ public class CachedLlmProviderService
     
     private static string GetKeyHash(string key)
     {
-        return key.Length > 16 ? key.Substring(0, 16) + "..." : key;
+        return key.Length > 16 ? string.Concat(key.AsSpan(0, 16), "...") : key;
     }
 }
 

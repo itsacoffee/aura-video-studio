@@ -48,7 +48,7 @@ public class PerformanceAnalyticsService
         CancellationToken ct = default)
     {
         _logger.LogInformation("Importing CSV analytics for profile {ProfileId}", profileId);
-        return await _importer.ImportFromCsvAsync(profileId, platform, filePath, ct);
+        return await _importer.ImportFromCsvAsync(profileId, platform, filePath, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -61,7 +61,7 @@ public class PerformanceAnalyticsService
         CancellationToken ct = default)
     {
         _logger.LogInformation("Importing JSON analytics for profile {ProfileId}", profileId);
-        return await _importer.ImportFromJsonAsync(profileId, platform, filePath, ct);
+        return await _importer.ImportFromJsonAsync(profileId, platform, filePath, ct).ConfigureAwait(false);
     }
 
     #endregion
@@ -75,7 +75,7 @@ public class PerformanceAnalyticsService
         string profileId,
         CancellationToken ct = default)
     {
-        return await _persistence.LoadAllVideosAsync(profileId, ct);
+        return await _persistence.LoadAllVideosAsync(profileId, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -86,7 +86,7 @@ public class PerformanceAnalyticsService
         string videoId,
         CancellationToken ct = default)
     {
-        return await _persistence.LoadVideoPerformanceAsync(profileId, videoId, ct);
+        return await _persistence.LoadVideoPerformanceAsync(profileId, videoId, ct).ConfigureAwait(false);
     }
 
     #endregion
@@ -103,7 +103,7 @@ public class PerformanceAnalyticsService
         string linkedBy,
         CancellationToken ct = default)
     {
-        return await _linker.CreateManualLinkAsync(videoId, projectId, profileId, linkedBy, ct);
+        return await _linker.CreateManualLinkAsync(videoId, projectId, profileId, linkedBy, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -113,7 +113,7 @@ public class PerformanceAnalyticsService
         string profileId,
         CancellationToken ct = default)
     {
-        return await _linker.GetUnlinkedVideosAsync(profileId, ct);
+        return await _linker.GetUnlinkedVideosAsync(profileId, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -123,7 +123,7 @@ public class PerformanceAnalyticsService
         string profileId,
         CancellationToken ct = default)
     {
-        return await _linker.GetLinkedVideosAsync(profileId, ct);
+        return await _linker.GetLinkedVideosAsync(profileId, ct).ConfigureAwait(false);
     }
 
     #endregion
@@ -140,19 +140,19 @@ public class PerformanceAnalyticsService
         _logger.LogInformation("Analyzing performance for profile {ProfileId}", profileId);
 
         // Get all linked videos
-        var linkedVideos = await _linker.GetLinkedVideosAsync(profileId, ct);
+        var linkedVideos = await _linker.GetLinkedVideosAsync(profileId, ct).ConfigureAwait(false);
 
         // Analyze correlations for each linked project
         var allCorrelations = new List<DecisionPerformanceCorrelation>();
         foreach (var (video, link) in linkedVideos.Where(lv => lv.Link.IsConfirmed))
         {
             var correlations = await _correlationAnalyzer.AnalyzeProjectCorrelationsAsync(
-                link.ProjectId, profileId, ct);
+                link.ProjectId, profileId, ct).ConfigureAwait(false);
             allCorrelations.AddRange(correlations);
         }
 
         // Detect patterns
-        var (successPatterns, failurePatterns) = await _patternDetector.DetectPatternsAsync(profileId, ct);
+        var (successPatterns, failurePatterns) = await _patternDetector.DetectPatternsAsync(profileId, ct).ConfigureAwait(false);
 
         return new PerformanceAnalysisResult(
             ProfileId: profileId,
@@ -172,7 +172,7 @@ public class PerformanceAnalyticsService
         string projectId,
         CancellationToken ct = default)
     {
-        return await _persistence.LoadCorrelationsAsync(projectId, ct);
+        return await _persistence.LoadCorrelationsAsync(projectId, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -182,7 +182,7 @@ public class PerformanceAnalyticsService
         string profileId,
         CancellationToken ct = default)
     {
-        return await _persistence.LoadSuccessPatternsAsync(profileId, ct);
+        return await _persistence.LoadSuccessPatternsAsync(profileId, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -192,7 +192,7 @@ public class PerformanceAnalyticsService
         string profileId,
         CancellationToken ct = default)
     {
-        return await _persistence.LoadFailurePatternsAsync(profileId, ct);
+        return await _persistence.LoadFailurePatternsAsync(profileId, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -202,9 +202,9 @@ public class PerformanceAnalyticsService
         string profileId,
         CancellationToken ct = default)
     {
-        var successPatterns = await _persistence.LoadSuccessPatternsAsync(profileId, ct);
-        var failurePatterns = await _persistence.LoadFailurePatternsAsync(profileId, ct);
-        var videos = await _persistence.LoadAllVideosAsync(profileId, ct);
+        var successPatterns = await _persistence.LoadSuccessPatternsAsync(profileId, ct).ConfigureAwait(false);
+        var failurePatterns = await _persistence.LoadFailurePatternsAsync(profileId, ct).ConfigureAwait(false);
+        var videos = await _persistence.LoadAllVideosAsync(profileId, ct).ConfigureAwait(false);
 
         var insights = new List<string>();
 
@@ -221,8 +221,8 @@ public class PerformanceAnalyticsService
         }
 
         // Calculate overall performance
-        var avgViews = videos.Any() ? videos.Average(v => v.Metrics.Views) : 0;
-        var avgEngagement = videos.Any() ? videos.Average(v => v.Metrics.Engagement.EngagementRate) : 0;
+        var avgViews = videos.Count != 0 ? videos.Average(v => v.Metrics.Views) : 0;
+        var avgEngagement = videos.Count != 0 ? videos.Average(v => v.Metrics.Engagement.EngagementRate) : 0;
 
         return new PerformanceInsights(
             ProfileId: profileId,
@@ -266,7 +266,7 @@ public class PerformanceAnalyticsService
             Results: null
         );
 
-        await _persistence.SaveABTestAsync(test, ct);
+        await _persistence.SaveABTestAsync(test, ct).ConfigureAwait(false);
         return test;
     }
 
@@ -278,7 +278,7 @@ public class PerformanceAnalyticsService
         string testId,
         CancellationToken ct = default)
     {
-        return await _persistence.LoadABTestAsync(profileId, testId, ct);
+        return await _persistence.LoadABTestAsync(profileId, testId, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -288,7 +288,7 @@ public class PerformanceAnalyticsService
         string profileId,
         CancellationToken ct = default)
     {
-        return await _persistence.LoadAllABTestsAsync(profileId, ct);
+        return await _persistence.LoadAllABTestsAsync(profileId, ct).ConfigureAwait(false);
     }
 
     #endregion
@@ -313,7 +313,7 @@ public class PerformanceAnalyticsService
             .Take(Math.Min(5, videos.Count))
             .ToList();
 
-        if (!olderVideos.Any())
+        if (olderVideos.Count == 0)
         {
             return "new_profile";
         }

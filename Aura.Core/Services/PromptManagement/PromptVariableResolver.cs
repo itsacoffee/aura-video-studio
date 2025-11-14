@@ -34,7 +34,7 @@ public class PromptVariableResolver
         VariableResolverOptions options,
         CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         _logger.LogDebug("Resolving variables in template with {Count} variables", values.Count);
 
@@ -107,7 +107,7 @@ public class PromptVariableResolver
             .Select(v => v.Name)
             .ToList();
 
-        if (missingRequired.Any())
+        if (missingRequired.Count != 0)
         {
             var message = $"Missing required variables: {string.Join(", ", missingRequired)}";
             _logger.LogError(message);
@@ -237,7 +237,7 @@ public class PromptVariableResolver
                 "lowercase" => value.ToLowerInvariant(),
                 "capitalize" => CapitalizeWords(value),
                 "truncate" when int.TryParse(parameter, out var maxLen) =>
-                    value.Length <= maxLen ? value : value.Substring(0, maxLen) + "...",
+                    value.Length <= maxLen ? value : string.Concat(value.AsSpan(0, maxLen), "..."),
                 "join" when value.Contains(',') =>
                     string.Join(parameter ?? ", ", value.Split(',').Select(s => s.Trim())),
                 "format" when !string.IsNullOrEmpty(parameter) =>

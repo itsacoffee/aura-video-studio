@@ -74,7 +74,7 @@ public class ContentOptimizationEngine
         try
         {
             // Step 1: Predict content success
-            var prediction = await PredictContentSuccessAsync(brief, spec, profileId, ct);
+            var prediction = await PredictContentSuccessAsync(brief, spec, profileId, ct).ConfigureAwait(false);
             result.Prediction = prediction;
 
             _logger.LogInformation(
@@ -104,7 +104,7 @@ public class ContentOptimizationEngine
             // Step 4: Track decision if learning is enabled
             if (settings.TrackPerformanceData && _learningService != null && !string.IsNullOrEmpty(profileId))
             {
-                await TrackOptimizationDecisionAsync(profileId, result, ct);
+                await TrackOptimizationDecisionAsync(profileId, result, ct).ConfigureAwait(false);
             }
 
             return result;
@@ -137,7 +137,7 @@ public class ContentOptimizationEngine
             Tone = brief.Tone,
             Audience = brief.Audience,
             Goal = brief.Goal,
-            HistoricalAverageScore = await GetHistoricalAverageScoreAsync(brief.Tone, profileId, ct)
+            HistoricalAverageScore = await GetHistoricalAverageScoreAsync(brief.Tone, profileId, ct).ConfigureAwait(false)
         };
 
         return _predictionModel.PredictSuccess(features);
@@ -160,7 +160,7 @@ public class ContentOptimizationEngine
         {
             // Placeholder for fetching historical data
             // In full implementation, query analytics service for similar content
-            await Task.CompletedTask;
+            await Task.CompletedTask.ConfigureAwait(false);
             return 0;
         }
         catch (Exception ex)
@@ -226,7 +226,7 @@ public class ContentOptimizationEngine
             // Record decision in learning service
             // This allows the system to learn from user's response to optimizations
             _logger.LogDebug("Tracking optimization decision for profile {ProfileId}", profileId);
-            await Task.CompletedTask; // Placeholder
+            await Task.CompletedTask.ConfigureAwait(false); // Placeholder
         }
         catch (Exception ex)
         {
@@ -256,7 +256,7 @@ public class ContentOptimizationEngine
             return null;
         }
 
-        return await _providerTracker.GetBestProviderAsync(contentType, availableProviders, ct);
+        return await _providerTracker.GetBestProviderAsync(contentType, availableProviders, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -282,7 +282,7 @@ public class ContentOptimizationEngine
             qualityScore,
             duration,
             success,
-            ct);
+            ct).ConfigureAwait(false);
 
         _logger.LogInformation(
             "Recorded generation outcome: {Provider}, Quality={Quality:F1}, Success={Success}",

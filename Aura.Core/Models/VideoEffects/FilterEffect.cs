@@ -12,22 +12,22 @@ public class ColorCorrectionEffect : VideoEffect
     /// <summary>
     /// Brightness adjustment (-1.0 to 1.0)
     /// </summary>
-    public double Brightness { get; set; } = 0.0;
+    public double Brightness { get; set; }
 
     /// <summary>
     /// Contrast adjustment (-1.0 to 1.0)
     /// </summary>
-    public double Contrast { get; set; } = 0.0;
+    public double Contrast { get; set; }
 
     /// <summary>
     /// Saturation adjustment (-1.0 to 1.0)
     /// </summary>
-    public double Saturation { get; set; } = 0.0;
+    public double Saturation { get; set; }
 
     /// <summary>
     /// Hue shift in degrees (0 to 360)
     /// </summary>
-    public double Hue { get; set; } = 0.0;
+    public double Hue { get; set; }
 
     /// <summary>
     /// Gamma correction (0.1 to 10.0)
@@ -37,12 +37,12 @@ public class ColorCorrectionEffect : VideoEffect
     /// <summary>
     /// Temperature adjustment (-100 to 100)
     /// </summary>
-    public double Temperature { get; set; } = 0.0;
+    public double Temperature { get; set; }
 
     /// <summary>
     /// Tint adjustment (-100 to 100)
     /// </summary>
-    public double Tint { get; set; } = 0.0;
+    public double Tint { get; set; }
 
     public ColorCorrectionEffect()
     {
@@ -92,7 +92,7 @@ public class ColorCorrectionEffect : VideoEffect
             filters.Add($"colorchannelmixer=rr={tempFactor.ToString(CultureInfo.InvariantCulture)}");
         }
 
-        return filters.Any() ? string.Join(",", filters) : "copy";
+        return filters.Count != 0 ? string.Join(",", filters) : "copy";
     }
 }
 
@@ -126,7 +126,7 @@ public class BlurEffect : VideoEffect
     /// <summary>
     /// Motion blur angle (for motion blur)
     /// </summary>
-    public double Angle { get; set; } = 0.0;
+    public double Angle { get; set; }
 
     /// <summary>
     /// Center X for radial/zoom blur (0.0 to 1.0)
@@ -199,7 +199,7 @@ public class VintageEffect : VideoEffect
     /// <summary>
     /// Dust and scratches effect (0 to 1)
     /// </summary>
-    public double Scratches { get; set; } = 0.0;
+    public double Scratches { get; set; }
 
     public VintageEffect()
     {
@@ -282,7 +282,7 @@ public class ChromaticAberrationEffect : VideoEffect
     /// <summary>
     /// Aberration angle in degrees
     /// </summary>
-    public double Angle { get; set; } = 0.0;
+    public double Angle { get; set; }
 
     public ChromaticAberrationEffect()
     {

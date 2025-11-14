@@ -47,7 +47,7 @@ public class FFmpegNvidiaProvider : BaseRenderingProvider
         
         try
         {
-            var result = await _videoComposer.RenderAsync(timeline, spec, progress, cancellationToken);
+            var result = await _videoComposer.RenderAsync(timeline, spec, progress, cancellationToken).ConfigureAwait(false);
             Logger.LogInformation("FFmpeg NVENC render completed successfully: {OutputPath}", result);
             return result;
         }
@@ -66,7 +66,7 @@ public class FFmpegNvidiaProvider : BaseRenderingProvider
         
         try
         {
-            var ffmpegPath = await ResolveFfmpegPathAsync(cancellationToken);
+            var ffmpegPath = await ResolveFfmpegPathAsync(cancellationToken).ConfigureAwait(false);
             
             if (!string.IsNullOrEmpty(ffmpegPath))
             {
@@ -74,7 +74,7 @@ public class FFmpegNvidiaProvider : BaseRenderingProvider
                     Microsoft.Extensions.Logging.Abstractions.NullLogger<HardwareEncoder>.Instance,
                     ffmpegPath);
                 
-                var capabilities = await hwEncoder.DetectHardwareCapabilitiesAsync();
+                var capabilities = await hwEncoder.DetectHardwareCapabilitiesAsync().ConfigureAwait(false);
                 hasNVENC = capabilities.HasNVENC;
                 isAvailable = hasNVENC;
             }

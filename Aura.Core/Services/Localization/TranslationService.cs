@@ -69,7 +69,7 @@ public class TranslationService
             var translatedLines = await TranslateScriptLinesAsync(
                 request, 
                 targetLanguage, 
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
             result.TranslatedLines = translatedLines;
             result.TranslatedText = string.Join("\n", translatedLines.Select(l => l.TranslatedText));
             result.SourceText = string.Join("\n", translatedLines.Select(l => l.SourceText));
@@ -81,11 +81,11 @@ public class TranslationService
                 result.CulturalAdaptations = await _culturalEngine.ApplyCulturalAdaptationsAsync(
                     result.TranslatedLines,
                     request.CulturalContext ?? BuildDefaultCulturalContext(targetLanguage),
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
             }
 
             // Phase 3: Timing adjustments
-            if (request.Options.AdjustTimings && request.ScriptLines.Any())
+            if (request.Options.AdjustTimings && request.ScriptLines.Count != 0)
             {
                 _logger.LogInformation("Phase 3: Timing adjustment");
                 result.TimingAdjustment = _timingAdjuster.AdjustTimings(
@@ -105,7 +105,7 @@ public class TranslationService
                     request.TargetLanguage,
                     request.Options,
                     request.Glossary,
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
             }
 
             // Phase 5: Visual localization recommendations
@@ -114,7 +114,7 @@ public class TranslationService
                 result.TranslatedLines,
                 targetLanguage,
                 request.CulturalContext,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             stopwatch.Stop();
             result.TranslationTimeSeconds = stopwatch.Elapsed.TotalSeconds;
@@ -164,7 +164,7 @@ public class TranslationService
                     Glossary = request.Glossary
                 };
 
-                var translation = await TranslateAsync(translationRequest, cancellationToken);
+                var translation = await TranslateAsync(translationRequest, cancellationToken).ConfigureAwait(false);
                 result.Translations[targetLanguage] = translation;
                 result.SuccessfulLanguages.Add(targetLanguage);
                 
@@ -209,7 +209,7 @@ public class TranslationService
             request.Content,
             targetLanguage,
             request.TargetRegion,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<List<TranslatedScriptLine>> TranslateScriptLinesAsync(
@@ -219,7 +219,7 @@ public class TranslationService
     {
         var translatedLines = new List<TranslatedScriptLine>();
 
-        if (request.ScriptLines.Any())
+        if (request.ScriptLines.Count != 0)
         {
             // Translate script lines with context
             for (int i = 0; i < request.ScriptLines.Count; i++)
@@ -234,7 +234,7 @@ public class TranslationService
                     context,
                     request.Options,
                     request.Glossary,
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
 
                 translatedLines.Add(new TranslatedScriptLine
                 {
@@ -259,7 +259,7 @@ public class TranslationService
                 context,
                 request.Options,
                 request.Glossary,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             translatedLines.Add(new TranslatedScriptLine
             {
@@ -299,7 +299,7 @@ public class TranslationService
 
         try
         {
-            var response = await _llmProvider.DraftScriptAsync(brief, spec, cancellationToken);
+            var response = await _llmProvider.DraftScriptAsync(brief, spec, cancellationToken).ConfigureAwait(false);
             return ExtractTranslation(response);
         }
         catch (Exception ex)
@@ -337,7 +337,7 @@ public class TranslationService
             sb.AppendLine("- Maintain brand voice and tone");
         }
 
-        if (glossary.Any())
+        if (glossary.Count != 0)
         {
             sb.AppendLine();
             sb.AppendLine("Use these specific translations for key terms:");
@@ -384,7 +384,7 @@ public class TranslationService
             context.Append($"Style: {request.CulturalContext.PreferredStyle}. ");
         }
 
-        if (request.ScriptLines.Any() && lineIndex > 0)
+        if (request.ScriptLines.Count != 0 && lineIndex > 0)
         {
             context.Append($"Previous line: {request.ScriptLines[lineIndex - 1].Text}. ");
         }

@@ -98,8 +98,8 @@ public class WaveformGenerator
         };
 
         process.Start();
-        var errorOutput = await process.StandardError.ReadToEndAsync(cancellationToken);
-        await process.WaitForExitAsync(cancellationToken);
+        var errorOutput = await process.StandardError.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+        await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
 
         if (process.ExitCode != 0)
         {
@@ -141,7 +141,7 @@ public class WaveformGenerator
         {
             try
             {
-                var json = await File.ReadAllTextAsync(persistentPath, cancellationToken);
+                var json = await File.ReadAllTextAsync(persistentPath, cancellationToken).ConfigureAwait(false);
                 var data = JsonSerializer.Deserialize<float[]>(json);
                 if (data != null)
                 {
@@ -182,7 +182,7 @@ public class WaveformGenerator
             };
 
             process.Start();
-            await process.WaitForExitAsync(cancellationToken);
+            await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
 
             if (process.ExitCode != 0)
             {
@@ -204,7 +204,7 @@ public class WaveformGenerator
 
             _dataCache[cacheKey] = downsampled;
 
-            await SaveToPersistentCacheAsync(fileHash, targetSamples, downsampled);
+            await SaveToPersistentCacheAsync(fileHash, targetSamples, downsampled).ConfigureAwait(false);
 
             return downsampled;
         }
@@ -260,10 +260,10 @@ public class WaveformGenerator
         double endTime,
         CancellationToken cancellationToken = default)
     {
-        await _generateLock.WaitAsync(cancellationToken);
+        await _generateLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            return await GenerateWaveformDataAsync(audioFilePath, targetSamples, cancellationToken);
+            return await GenerateWaveformDataAsync(audioFilePath, targetSamples, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -300,7 +300,7 @@ public class WaveformGenerator
             _logger.LogError(ex, "Error clearing persistent cache");
         }
         
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
     }
 
     private string ComputeFileHash(string filePath)
@@ -323,7 +323,7 @@ public class WaveformGenerator
         {
             var path = GetPersistentCachePath(fileHash, targetSamples);
             var json = JsonSerializer.Serialize(data);
-            await File.WriteAllTextAsync(path, json);
+            await File.WriteAllTextAsync(path, json).ConfigureAwait(false);
             _logger.LogDebug("Saved waveform data to persistent cache: {Path}", path);
         }
         catch (Exception ex)
@@ -344,7 +344,7 @@ public class WaveformGenerator
             var cacheFiles = Directory.GetFiles(_cacheDirectory, "*.json");
             _logger.LogInformation("Found {Count} waveform cache files", cacheFiles.Length);
             
-            await Task.CompletedTask;
+            await Task.CompletedTask.ConfigureAwait(false);
         }
         catch (Exception ex)
         {

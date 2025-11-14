@@ -49,7 +49,7 @@ public class ModelsController : ControllerBase
                 return BadRequest(new { error = "engineId is required" });
             }
 
-            var models = await _modelInstaller.ListModelsAsync(engineId, ct);
+            var models = await _modelInstaller.ListModelsAsync(engineId, ct).ConfigureAwait(false);
             
             return Ok(new
             {
@@ -90,7 +90,7 @@ public class ModelsController : ControllerBase
                 request.Model, 
                 request.Destination, 
                 progress, 
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -129,7 +129,7 @@ public class ModelsController : ControllerBase
                 request.Kind, 
                 request.FolderPath, 
                 request.IsReadOnly, 
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -160,7 +160,7 @@ public class ModelsController : ControllerBase
                 return BadRequest(new { error = "ModelId and FilePath are required" });
             }
 
-            await _modelInstaller.RemoveModelAsync(request.ModelId, request.FilePath, ct);
+            await _modelInstaller.RemoveModelAsync(request.ModelId, request.FilePath, ct).ConfigureAwait(false);
 
             return Ok(new { success = true });
         }
@@ -197,7 +197,7 @@ public class ModelsController : ControllerBase
             var (isValid, status) = await _modelInstaller.VerifyModelAsync(
                 request.FilePath, 
                 request.ExpectedSha256, 
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -428,7 +428,7 @@ public class ModelsController : ControllerBase
 
             var ollamaUrl = _providerSettings.GetOllamaUrl();
 
-            var success = await _modelCatalog.RefreshCatalogAsync(apiKeys, ollamaUrl, ct);
+            var success = await _modelCatalog.RefreshCatalogAsync(apiKeys, ollamaUrl, ct).ConfigureAwait(false);
 
             if (success)
             {

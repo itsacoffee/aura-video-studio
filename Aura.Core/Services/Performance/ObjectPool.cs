@@ -137,7 +137,7 @@ public class AsyncObjectPool<T> where T : class
     /// </summary>
     public async Task<T> GetAsync(CancellationToken cancellationToken = default)
     {
-        await _semaphore.WaitAsync(cancellationToken);
+        await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         if (_objects.TryTake(out var item))
         {
@@ -147,7 +147,7 @@ public class AsyncObjectPool<T> where T : class
 
         try
         {
-            return await _objectFactory();
+            return await _objectFactory().ConfigureAwait(false);
         }
         catch
         {
@@ -171,7 +171,7 @@ public class AsyncObjectPool<T> where T : class
         {
             if (item is IAsyncDisposable asyncDisposable)
             {
-                await asyncDisposable.DisposeAsync();
+                await asyncDisposable.DisposeAsync().ConfigureAwait(false);
             }
             else if (item is IDisposable disposable)
             {
@@ -186,7 +186,7 @@ public class AsyncObjectPool<T> where T : class
         {
             if (_resetAction != null)
             {
-                await _resetAction(item);
+                await _resetAction(item).ConfigureAwait(false);
             }
 
             _objects.Add(item);
@@ -198,7 +198,7 @@ public class AsyncObjectPool<T> where T : class
             
             if (item is IAsyncDisposable asyncDisposable)
             {
-                await asyncDisposable.DisposeAsync();
+                await asyncDisposable.DisposeAsync().ConfigureAwait(false);
             }
             else if (item is IDisposable disposable)
             {
@@ -225,7 +225,7 @@ public class AsyncObjectPool<T> where T : class
         {
             if (item is IAsyncDisposable asyncDisposable)
             {
-                await asyncDisposable.DisposeAsync();
+                await asyncDisposable.DisposeAsync().ConfigureAwait(false);
             }
             else if (item is IDisposable disposable)
             {

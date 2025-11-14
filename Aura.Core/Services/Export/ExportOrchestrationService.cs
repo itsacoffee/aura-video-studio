@@ -198,7 +198,7 @@ public class ExportOrchestrationService : IExportOrchestrationService
             }
 
             // Get video info
-            var videoInfo = await _ffmpegService.GetVideoInfoAsync(request.InputFile, cancellationToken);
+            var videoInfo = await _ffmpegService.GetVideoInfoAsync(request.InputFile, cancellationToken).ConfigureAwait(false);
             
             // Build FFmpeg command
             var commandBuilder = FFmpegCommandBuilder.FromPreset(
@@ -255,7 +255,7 @@ public class ExportOrchestrationService : IExportOrchestrationService
                         progressCallback?.Invoke(Math.Min(100, percentComplete));
                     }
                 },
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             if (!result.Success)
             {
@@ -299,7 +299,7 @@ public class ExportOrchestrationService : IExportOrchestrationService
 
     public async Task<string> QueueExportAsync(ExportRequest request)
     {
-        await _jobLock.WaitAsync();
+        await _jobLock.WaitAsync().ConfigureAwait(false);
         try
         {
             var job = new ExportJob
@@ -329,7 +329,7 @@ public class ExportOrchestrationService : IExportOrchestrationService
             };
             
             _dbContext.ExportHistory.Add(historyEntity);
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync().ConfigureAwait(false);
             
             _logger.LogInformation("Queued export job {JobId}", job.Id);
 
@@ -346,7 +346,7 @@ public class ExportOrchestrationService : IExportOrchestrationService
 
     public async Task<ExportJob?> GetJobStatusAsync(string jobId)
     {
-        await _jobLock.WaitAsync();
+        await _jobLock.WaitAsync().ConfigureAwait(false);
         try
         {
             return _jobs.TryGetValue(jobId, out var job) ? job : null;
@@ -359,7 +359,7 @@ public class ExportOrchestrationService : IExportOrchestrationService
 
     public async Task<bool> CancelJobAsync(string jobId)
     {
-        await _jobLock.WaitAsync();
+        await _jobLock.WaitAsync().ConfigureAwait(false);
         try
         {
             if (_jobs.TryGetValue(jobId, out var job) && job.Status == ExportJobStatus.Queued)
@@ -377,7 +377,7 @@ public class ExportOrchestrationService : IExportOrchestrationService
 
     public async Task<IReadOnlyList<ExportJob>> GetActiveJobsAsync()
     {
-        await _jobLock.WaitAsync();
+        await _jobLock.WaitAsync().ConfigureAwait(false);
         try
         {
             return _jobs.Values
@@ -393,7 +393,7 @@ public class ExportOrchestrationService : IExportOrchestrationService
 
     private async Task ProcessJobAsync(string jobId)
     {
-        await _jobLock.WaitAsync();
+        await _jobLock.WaitAsync().ConfigureAwait(false);
         ExportJob? job;
         try
         {
@@ -410,12 +410,12 @@ public class ExportOrchestrationService : IExportOrchestrationService
             job = _jobs[jobId];
             
             // Update database
-            var entity = await _dbContext.ExportHistory.FindAsync(jobId);
+            var entity = await _dbContext.ExportHistory.FindAsync(jobId).ConfigureAwait(false);
             if (entity != null)
             {
                 entity.Status = ExportJobStatus.Processing.ToString();
                 entity.StartedAt = job.StartedAt;
-                await _dbContext.SaveChangesAsync();
+                await _dbContext.SaveChangesAsync().ConfigureAwait(false);
             }
         }
         finally
@@ -449,9 +449,9 @@ public class ExportOrchestrationService : IExportOrchestrationService
                     {
                         _jobLock.Release();
                     }
-                });
+                }).ConfigureAwait(false);
 
-            await _jobLock.WaitAsync();
+            await _jobLock.WaitAsync().ConfigureAwait(false);
             try
             {
                 if (_jobs.TryGetValue(jobId, out var currentJob))
@@ -465,7 +465,7 @@ public class ExportOrchestrationService : IExportOrchestrationService
                     };
                     
                     // Update database
-                    var entity = await _dbContext.ExportHistory.FindAsync(jobId);
+                    var entity = await _dbContext.ExportHistory.FindAsync(jobId).ConfigureAwait(false);
                     if (entity != null)
                     {
                         entity.Status = (result.Success ? ExportJobStatus.Completed : ExportJobStatus.Failed).ToString();
@@ -477,7 +477,7 @@ public class ExportOrchestrationService : IExportOrchestrationService
                             entity.FileSize = result.FileSize;
                             entity.DurationSeconds = result.Duration.TotalSeconds;
                         }
-                        await _dbContext.SaveChangesAsync();
+                        await _dbContext.SaveChangesAsync().ConfigureAwait(false);
                     }
                 }
             }
@@ -490,7 +490,7 @@ public class ExportOrchestrationService : IExportOrchestrationService
         {
             _logger.LogError(ex, "Error processing export job {JobId}", jobId);
             
-            await _jobLock.WaitAsync();
+            await _jobLock.WaitAsync().ConfigureAwait(false);
             try
             {
                 if (_jobs.TryGetValue(jobId, out var currentJob))
@@ -503,13 +503,13 @@ public class ExportOrchestrationService : IExportOrchestrationService
                     };
                     
                     // Update database
-                    var entity = await _dbContext.ExportHistory.FindAsync(jobId);
+                    var entity = await _dbContext.ExportHistory.FindAsync(jobId).ConfigureAwait(false);
                     if (entity != null)
                     {
                         entity.Status = ExportJobStatus.Failed.ToString();
                         entity.CompletedAt = DateTime.UtcNow;
                         entity.ErrorMessage = ex.Message;
-                        await _dbContext.SaveChangesAsync();
+                        await _dbContext.SaveChangesAsync().ConfigureAwait(false);
                     }
                 }
             }
@@ -534,7 +534,7 @@ public class ExportOrchestrationService : IExportOrchestrationService
         var entities = await query
             .OrderByDescending(e => e.CreatedAt)
             .Take(limit)
-            .ToListAsync();
+            .ToListAsync().ConfigureAwait(false);
         
         // Map to DTOs
         return entities.Select(e => new ExportHistoryDto

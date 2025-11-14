@@ -46,9 +46,9 @@ public class AutoFramingService
         // - Face detection (OpenCV, dlib)
         // - Pose estimation
         // - Tracking algorithms to follow subjects
-        var (sourceWidth, sourceHeight) = await GetVideoResolutionAsync(videoPath, cancellationToken);
+        var (sourceWidth, sourceHeight) = await GetVideoResolutionAsync(videoPath, cancellationToken).ConfigureAwait(false);
         var suggestions = await GenerateFramingSuggestionsAsync(
-            videoPath, sourceWidth, sourceHeight, targetWidth, targetHeight, cancellationToken);
+            videoPath, sourceWidth, sourceHeight, targetWidth, targetHeight, cancellationToken).ConfigureAwait(false);
 
         var summary = $"Generated {suggestions.Count} framing suggestions for {targetWidth}x{targetHeight} format";
         _logger.LogInformation(summary);
@@ -64,7 +64,7 @@ public class AutoFramingService
         string videoPath,
         CancellationToken cancellationToken)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         
         // Placeholder: In production, use FFmpeg to get actual resolution
         return (1920, 1080);
@@ -78,7 +78,7 @@ public class AutoFramingService
         int targetHeight,
         CancellationToken cancellationToken)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         var suggestions = new List<FramingSuggestion>();
 
@@ -155,7 +155,7 @@ public class AutoFramingService
     {
         _logger.LogInformation("Applying auto-framing to create {OutputPath}", outputPath);
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
 
         // Placeholder: In production, use FFmpeg with crop filter and keyframe tracking
@@ -175,7 +175,7 @@ public class AutoFramingService
         _logger.LogInformation("Converting to vertical format: {VideoPath}", videoPath);
 
         // Standard vertical video resolution (1080x1920)
-        return await AnalyzeFramingAsync(videoPath, 1080, 1920, cancellationToken);
+        return await AnalyzeFramingAsync(videoPath, 1080, 1920, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -188,6 +188,6 @@ public class AutoFramingService
         _logger.LogInformation("Converting to square format: {VideoPath}", videoPath);
 
         // Standard square video resolution (1080x1080)
-        return await AnalyzeFramingAsync(videoPath, 1080, 1080, cancellationToken);
+        return await AnalyzeFramingAsync(videoPath, 1080, 1080, cancellationToken).ConfigureAwait(false);
     }
 }

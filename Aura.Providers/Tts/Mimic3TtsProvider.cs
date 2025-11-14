@@ -65,7 +65,7 @@ public class Mimic3TtsProvider : ITtsProvider
         {
             _logger.LogInformation("Fetching available voices from Mimic3 at {Url}", _baseUrl);
 
-            var response = await _httpClient.GetAsync($"{_baseUrl}/api/voices");
+            var response = await _httpClient.GetAsync($"{_baseUrl}/api/voices").ConfigureAwait(false);
             
             if (!response.IsSuccessStatusCode)
             {
@@ -73,7 +73,7 @@ public class Mimic3TtsProvider : ITtsProvider
                 return new List<string> { "en_US/vctk_low" }; // Default voice
             }
 
-            var json = await response.Content.ReadAsStringAsync();
+            var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
             var voices = JsonSerializer.Deserialize<Dictionary<string, object>>(json);
 
             if (voices != null && voices.Count > 0)
@@ -95,7 +95,7 @@ public class Mimic3TtsProvider : ITtsProvider
         _logger.LogInformation("Synthesizing speech with Mimic3 TTS using voice {Voice}", spec.VoiceName);
 
         // Check if server is reachable
-        if (!await IsServerHealthyAsync(ct))
+        if (!await IsServerHealthyAsync(ct).ConfigureAwait(false))
         {
             throw new InvalidOperationException($"Mimic3 server is not reachable at {_baseUrl}. Please ensure the Mimic3 server is running. You can start it with: docker run -it -p 59125:59125 mycroftai/mimic3");
         }
@@ -115,12 +115,12 @@ public class Mimic3TtsProvider : ITtsProvider
 
                 _logger.LogDebug("Synthesizing line {Index}: {Text}", i, line.Text);
 
-                var success = await SynthesizeLineAsync(line.Text, spec.VoiceName, outputPath, ct);
+                var success = await SynthesizeLineAsync(line.Text, spec.VoiceName, outputPath, ct).ConfigureAwait(false);
 
                 if (!success)
                 {
                     _logger.LogWarning("Failed to synthesize line {Index}, creating silence as fallback", i);
-                    await _silentWavGenerator.GenerateAsync(outputPath, line.Duration, ct: ct);
+                    await _silentWavGenerator.GenerateAsync(outputPath, line.Duration, ct: ct).ConfigureAwait(false);
                 }
 
                 segmentPaths.Add(outputPath);
@@ -133,7 +133,7 @@ public class Mimic3TtsProvider : ITtsProvider
             MergeWavFiles(segmentPaths, finalPath);
 
             // Validate the merged file
-            var validationResult = await _wavValidator.ValidateAsync(finalPath, ct);
+            var validationResult = await _wavValidator.ValidateAsync(finalPath, ct).ConfigureAwait(false);
             if (!validationResult.IsValid)
             {
                 _logger.LogError("Merged narration file failed validation: {Error}", validationResult.ErrorMessage);
@@ -191,7 +191,7 @@ public class Mimic3TtsProvider : ITtsProvider
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(5)); // Configurable timeout
 
-            var response = await _httpClient.GetAsync($"{_baseUrl}/api/voices", cts.Token);
+            var response = await _httpClient.GetAsync($"{_baseUrl}/api/voices", cts.Token).ConfigureAwait(false);
             var isHealthy = response.IsSuccessStatusCode;
             
             if (!isHealthy)
@@ -230,11 +230,11 @@ public class Mimic3TtsProvider : ITtsProvider
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(30));
 
-            var response = await _httpClient.PostAsync(url, content, cts.Token);
+            var response = await _httpClient.PostAsync(url, content, cts.Token).ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
             {
-                var error = await response.Content.ReadAsStringAsync(ct);
+                var error = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 _logger.LogWarning("Mimic3 synthesis failed: {StatusCode} - {Error}", response.StatusCode, error);
                 return false;
             }
@@ -243,8 +243,8 @@ public class Mimic3TtsProvider : ITtsProvider
             var helper = new TtsFileHelper(_wavValidator, _logger);
             await helper.WriteWavAtomicallyAsync(outputPath, async stream =>
             {
-                await response.Content.CopyToAsync(stream, ct);
-            }, ct);
+                await response.Content.CopyToAsync(stream, ct).ConfigureAwait(false);
+            }, ct).ConfigureAwait(false);
 
             return File.Exists(outputPath) && new FileInfo(outputPath).Length > 0;
         }

@@ -56,7 +56,7 @@ public class ModelSelectionService
         // Priority 1: Run override with pin flag
         if (!string.IsNullOrWhiteSpace(runOverride) && runOverridePinned)
         {
-            var model = await ValidateAndGetModelAsync(provider, runOverride, ct);
+            var model = await ValidateAndGetModelAsync(provider, runOverride, ct).ConfigureAwait(false);
             if (model != null)
             {
                 resolution.SelectedModelId = model.ModelId;
@@ -65,14 +65,14 @@ public class ModelSelectionService
                 resolution.IsPinned = true;
                 
                 _logger.LogInformation("Model resolved via run-override (pinned): {ModelId}", model.ModelId);
-                await _selectionStore.RecordSelectionAsync(resolution, ct);
+                await _selectionStore.RecordSelectionAsync(resolution, ct).ConfigureAwait(false);
                 return resolution;
             }
 
             // Pinned model unavailable - block and require user action
             resolution.IsBlocked = true;
             resolution.BlockReason = $"Pinned model '{runOverride}' is unavailable";
-            resolution.RecommendedAlternatives = await GetAlternativesAsync(provider, runOverride, ct);
+            resolution.RecommendedAlternatives = await GetAlternativesAsync(provider, runOverride, ct).ConfigureAwait(false);
             
             _logger.LogWarning("Pinned model {ModelId} unavailable, blocking for user decision", runOverride);
             return resolution;
@@ -81,7 +81,7 @@ public class ModelSelectionService
         // Priority 2: Run override (not pinned)
         if (!string.IsNullOrWhiteSpace(runOverride))
         {
-            var model = await ValidateAndGetModelAsync(provider, runOverride, ct);
+            var model = await ValidateAndGetModelAsync(provider, runOverride, ct).ConfigureAwait(false);
             if (model != null)
             {
                 resolution.SelectedModelId = model.ModelId;
@@ -89,7 +89,7 @@ public class ModelSelectionService
                 resolution.Reasoning = $"Using run-override model: {runOverride}";
                 
                 _logger.LogInformation("Model resolved via run-override: {ModelId}", model.ModelId);
-                await _selectionStore.RecordSelectionAsync(resolution, ct);
+                await _selectionStore.RecordSelectionAsync(resolution, ct).ConfigureAwait(false);
                 return resolution;
             }
 
@@ -98,10 +98,10 @@ public class ModelSelectionService
         }
 
         // Priority 3: Stage pinned model
-        var stageSelection = await _selectionStore.GetSelectionAsync(provider, stage, ModelSelectionScope.Stage, ct);
+        var stageSelection = await _selectionStore.GetSelectionAsync(provider, stage, ModelSelectionScope.Stage, ct).ConfigureAwait(false);
         if (stageSelection?.IsPinned == true)
         {
-            var model = await ValidateAndGetModelAsync(provider, stageSelection.ModelId, ct);
+            var model = await ValidateAndGetModelAsync(provider, stageSelection.ModelId, ct).ConfigureAwait(false);
             if (model != null)
             {
                 resolution.SelectedModelId = model.ModelId;
@@ -110,24 +110,24 @@ public class ModelSelectionService
                 resolution.IsPinned = true;
                 
                 _logger.LogInformation("Model resolved via stage-pinned: {ModelId}", model.ModelId);
-                await _selectionStore.RecordSelectionAsync(resolution, ct);
+                await _selectionStore.RecordSelectionAsync(resolution, ct).ConfigureAwait(false);
                 return resolution;
             }
 
             // Pinned model unavailable - block and require user action
             resolution.IsBlocked = true;
             resolution.BlockReason = $"Stage-pinned model '{stageSelection.ModelId}' is unavailable";
-            resolution.RecommendedAlternatives = await GetAlternativesAsync(provider, stageSelection.ModelId, ct);
+            resolution.RecommendedAlternatives = await GetAlternativesAsync(provider, stageSelection.ModelId, ct).ConfigureAwait(false);
             
             _logger.LogWarning("Stage-pinned model {ModelId} unavailable, blocking for user decision", stageSelection.ModelId);
             return resolution;
         }
 
         // Priority 4: Project override
-        var projectSelection = await _selectionStore.GetSelectionAsync(provider, stage, ModelSelectionScope.Project, ct);
+        var projectSelection = await _selectionStore.GetSelectionAsync(provider, stage, ModelSelectionScope.Project, ct).ConfigureAwait(false);
         if (projectSelection != null)
         {
-            var model = await ValidateAndGetModelAsync(provider, projectSelection.ModelId, ct);
+            var model = await ValidateAndGetModelAsync(provider, projectSelection.ModelId, ct).ConfigureAwait(false);
             if (model != null)
             {
                 resolution.SelectedModelId = model.ModelId;
@@ -135,7 +135,7 @@ public class ModelSelectionService
                 resolution.Reasoning = $"Using project-override model: {projectSelection.ModelId}";
                 
                 _logger.LogInformation("Model resolved via project-override: {ModelId}", model.ModelId);
-                await _selectionStore.RecordSelectionAsync(resolution, ct);
+                await _selectionStore.RecordSelectionAsync(resolution, ct).ConfigureAwait(false);
                 return resolution;
             }
 
@@ -144,10 +144,10 @@ public class ModelSelectionService
         }
 
         // Priority 5: Global default
-        var globalSelection = await _selectionStore.GetSelectionAsync(provider, stage, ModelSelectionScope.Global, ct);
+        var globalSelection = await _selectionStore.GetSelectionAsync(provider, stage, ModelSelectionScope.Global, ct).ConfigureAwait(false);
         if (globalSelection != null)
         {
-            var model = await ValidateAndGetModelAsync(provider, globalSelection.ModelId, ct);
+            var model = await ValidateAndGetModelAsync(provider, globalSelection.ModelId, ct).ConfigureAwait(false);
             if (model != null)
             {
                 resolution.SelectedModelId = model.ModelId;
@@ -155,7 +155,7 @@ public class ModelSelectionService
                 resolution.Reasoning = $"Using global default model: {globalSelection.ModelId}";
                 
                 _logger.LogInformation("Model resolved via global default: {ModelId}", model.ModelId);
-                await _selectionStore.RecordSelectionAsync(resolution, ct);
+                await _selectionStore.RecordSelectionAsync(resolution, ct).ConfigureAwait(false);
                 return resolution;
             }
 
@@ -164,7 +164,7 @@ public class ModelSelectionService
         }
 
         // Priority 6: Catalog safe fallback (only if automatic fallback allowed)
-        var allowAutoFallback = await _selectionStore.GetAutoFallbackSettingAsync(ct);
+        var allowAutoFallback = await _selectionStore.GetAutoFallbackSettingAsync(ct).ConfigureAwait(false);
         if (allowAutoFallback)
         {
             var (fallbackModel, reasoning) = _modelCatalog.FindOrDefault(provider);
@@ -179,7 +179,7 @@ public class ModelSelectionService
                 resolution.RequiresUserNotification = true;
                 
                 _logger.LogInformation("Model resolved via automatic fallback: {ModelId}", fallbackModel.ModelId);
-                await _selectionStore.RecordSelectionAsync(resolution, ct);
+                await _selectionStore.RecordSelectionAsync(resolution, ct).ConfigureAwait(false);
                 return resolution;
             }
         }
@@ -187,7 +187,7 @@ public class ModelSelectionService
         // No model available and auto-fallback disabled - block
         resolution.IsBlocked = true;
         resolution.BlockReason = "No model selection configured and automatic fallback is disabled";
-        resolution.RecommendedAlternatives = await GetAlternativesAsync(provider, null, ct);
+        resolution.RecommendedAlternatives = await GetAlternativesAsync(provider, null, ct).ConfigureAwait(false);
         
         _logger.LogError("Unable to resolve model for provider {Provider}, stage {Stage}", provider, stage);
         return resolution;
@@ -211,14 +211,14 @@ public class ModelSelectionService
             provider, stage, modelId, scope, pin);
 
         // Validate model exists
-        var model = await ValidateAndGetModelAsync(provider, modelId, ct);
+        var model = await ValidateAndGetModelAsync(provider, modelId, ct).ConfigureAwait(false);
         if (model == null)
         {
             return new ModelSelectionResult
             {
                 Applied = false,
                 Reason = $"Model '{modelId}' not found for provider '{provider}'",
-                Recommended = await GetAlternativesAsync(provider, modelId, ct)
+                Recommended = await GetAlternativesAsync(provider, modelId, ct).ConfigureAwait(false)
             };
         }
 
@@ -242,7 +242,7 @@ public class ModelSelectionService
             Reason = reason ?? "User selection"
         };
 
-        await _selectionStore.SaveSelectionAsync(selection, ct);
+        await _selectionStore.SaveSelectionAsync(selection, ct).ConfigureAwait(false);
 
         return new ModelSelectionResult
         {
@@ -267,7 +267,7 @@ public class ModelSelectionService
             "Clearing model selections: provider={Provider}, stage={Stage}, scope={Scope}",
             provider, stage, scope);
 
-        await _selectionStore.ClearSelectionsAsync(provider, stage, scope, ct);
+        await _selectionStore.ClearSelectionsAsync(provider, stage, scope, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -275,10 +275,10 @@ public class ModelSelectionService
     /// </summary>
     public async Task<ModelSelectionState> GetAllSelectionsAsync(CancellationToken ct = default)
     {
-        var globalSelections = await _selectionStore.GetAllSelectionsAsync(ModelSelectionScope.Global, ct);
-        var projectSelections = await _selectionStore.GetAllSelectionsAsync(ModelSelectionScope.Project, ct);
-        var stageSelections = await _selectionStore.GetAllSelectionsAsync(ModelSelectionScope.Stage, ct);
-        var allowAutoFallback = await _selectionStore.GetAutoFallbackSettingAsync(ct);
+        var globalSelections = await _selectionStore.GetAllSelectionsAsync(ModelSelectionScope.Global, ct).ConfigureAwait(false);
+        var projectSelections = await _selectionStore.GetAllSelectionsAsync(ModelSelectionScope.Project, ct).ConfigureAwait(false);
+        var stageSelections = await _selectionStore.GetAllSelectionsAsync(ModelSelectionScope.Stage, ct).ConfigureAwait(false);
+        var allowAutoFallback = await _selectionStore.GetAutoFallbackSettingAsync(ct).ConfigureAwait(false);
 
         return new ModelSelectionState
         {
@@ -296,7 +296,7 @@ public class ModelSelectionService
         int? limit = null,
         CancellationToken ct = default)
     {
-        return await _selectionStore.GetAuditLogAsync(limit, ct);
+        return await _selectionStore.GetAuditLogAsync(limit, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -306,7 +306,7 @@ public class ModelSelectionService
         string jobId,
         CancellationToken ct = default)
     {
-        return await _selectionStore.GetAuditLogByJobIdAsync(jobId, ct);
+        return await _selectionStore.GetAuditLogByJobIdAsync(jobId, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -322,7 +322,7 @@ public class ModelSelectionService
             "Explaining model choice: provider={Provider}, stage={Stage}, selected={ModelId}",
             provider, stage, selectedModelId);
 
-        var selectedModel = await ValidateAndGetModelAsync(provider, selectedModelId, ct);
+        var selectedModel = await ValidateAndGetModelAsync(provider, selectedModelId, ct).ConfigureAwait(false);
         if (selectedModel == null)
         {
             throw new ArgumentException($"Model '{selectedModelId}' not found for provider '{provider}'");
@@ -443,7 +443,7 @@ public class ModelSelectionService
             .Take(2)
             .ToList();
 
-        if (largerModels.Any())
+        if (largerModels.Count != 0)
         {
             foreach (var model in largerModels)
             {
@@ -479,7 +479,7 @@ public class ModelSelectionService
         CancellationToken ct)
     {
         var (model, _) = _modelCatalog.FindOrDefault(provider, modelId);
-        return await Task.FromResult(model);
+        return await Task.FromResult(model).ConfigureAwait(false);
     }
 
     private async Task<List<string>> GetAlternativesAsync(
@@ -495,7 +495,7 @@ public class ModelSelectionService
             .Select(m => m.ModelId)
             .ToList();
 
-        return await Task.FromResult(alternatives);
+        return await Task.FromResult(alternatives).ConfigureAwait(false);
     }
 }
 

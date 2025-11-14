@@ -213,7 +213,7 @@ public class PlatformRequirementsService
         return score;
     }
 
-    private record PlatformSpec
+    private sealed record PlatformSpec
     {
         public string Name { get; init; } = string.Empty;
         public int MinWidth { get; init; }

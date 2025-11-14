@@ -57,7 +57,7 @@ public class GenerationStateManager
 
         _activeStates[jobId] = state;
 
-        await using var context = await _contextFactory.CreateDbContextAsync(ct);
+        await using var context = await _contextFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
         
         var entity = new ProjectStateEntity
         {
@@ -70,7 +70,7 @@ public class GenerationStateManager
         };
 
         context.ProjectStates.Add(entity);
-        await context.SaveChangesAsync(ct);
+        await context.SaveChangesAsync(ct).ConfigureAwait(false);
 
         _logger.LogInformation("Initialized generation state for job {JobId}", jobId);
         return entity.Id.ToString();
@@ -132,7 +132,7 @@ public class GenerationStateManager
         state.CompletedStages.Add(checkpoint);
         state.LastUpdatedAt = DateTime.UtcNow;
 
-        await using var context = await _contextFactory.CreateDbContextAsync(ct);
+        await using var context = await _contextFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
         
         var checkpointEntity = new RenderCheckpointEntity
         {
@@ -144,7 +144,7 @@ public class GenerationStateManager
         };
 
         context.RenderCheckpoints.Add(checkpointEntity);
-        await context.SaveChangesAsync(ct);
+        await context.SaveChangesAsync(ct).ConfigureAwait(false);
 
         _logger.LogInformation("Recorded checkpoint for {JobId}: {Stage}", jobId, stageName);
     }
@@ -168,7 +168,7 @@ public class GenerationStateManager
         state.CompletedAt = DateTime.UtcNow;
         state.LastUpdatedAt = DateTime.UtcNow;
 
-        await PersistStateAsync(jobId, ct);
+        await PersistStateAsync(jobId, ct).ConfigureAwait(false);
         _activeStates.TryRemove(jobId, out _);
 
         _logger.LogInformation("Generation {JobId} completed successfully: {OutputPath}", jobId, outputPath);
@@ -203,7 +203,7 @@ public class GenerationStateManager
             };
         }
 
-        await PersistStateAsync(jobId, ct);
+        await PersistStateAsync(jobId, ct).ConfigureAwait(false);
         _activeStates.TryRemove(jobId, out _);
 
         _logger.LogError(exception, "Generation {JobId} failed: {Error}", jobId, errorMessage);
@@ -223,7 +223,7 @@ public class GenerationStateManager
         state.Status = GenerationStatus.Cancelled;
         state.LastUpdatedAt = DateTime.UtcNow;
 
-        await PersistStateAsync(jobId, ct);
+        await PersistStateAsync(jobId, ct).ConfigureAwait(false);
         _activeStates.TryRemove(jobId, out _);
 
         _logger.LogInformation("Generation {JobId} cancelled", jobId);
@@ -244,10 +244,10 @@ public class GenerationStateManager
         string jobId,
         CancellationToken ct = default)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync(ct);
+        await using var context = await _contextFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
         
         var entity = await context.ProjectStates
-            .FirstOrDefaultAsync(p => p.JobId == jobId, ct);
+            .FirstOrDefaultAsync(p => p.JobId == jobId, ct).ConfigureAwait(false);
 
         if (entity == null || string.IsNullOrEmpty(entity.BriefJson))
         {
@@ -283,10 +283,10 @@ public class GenerationStateManager
             return;
         }
 
-        await using var context = await _contextFactory.CreateDbContextAsync(ct);
+        await using var context = await _contextFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
         
         var entity = await context.ProjectStates
-            .FirstOrDefaultAsync(p => p.JobId == jobId, ct);
+            .FirstOrDefaultAsync(p => p.JobId == jobId, ct).ConfigureAwait(false);
 
         if (entity != null)
         {
@@ -294,7 +294,7 @@ public class GenerationStateManager
             entity.BriefJson = JsonSerializer.Serialize(state);
             entity.UpdatedAt = DateTime.UtcNow;
             
-            await context.SaveChangesAsync(ct);
+            await context.SaveChangesAsync(ct).ConfigureAwait(false);
         }
     }
 
@@ -307,7 +307,7 @@ public class GenerationStateManager
         {
             try
             {
-                await PersistStateAsync(jobId, CancellationToken.None);
+                await PersistStateAsync(jobId, CancellationToken.None).ConfigureAwait(false);
             }
             catch (Exception ex)
             {

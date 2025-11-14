@@ -125,7 +125,7 @@ public class MetricsController : ControllerBase
                 return StatusCode(503, new { error = "Resource monitoring is not available" });
             }
 
-            var metrics = await _resourceMonitor.CollectSystemMetricsAsync(cancellationToken);
+            var metrics = await _resourceMonitor.CollectSystemMetricsAsync(cancellationToken).ConfigureAwait(false);
             return Ok(metrics);
         }
         catch (Exception ex)
@@ -171,7 +171,7 @@ public class MetricsController : ControllerBase
 
             if (_resourceMonitor != null)
             {
-                var systemMetrics = await _resourceMonitor.CollectSystemMetricsAsync(cancellationToken);
+                var systemMetrics = await _resourceMonitor.CollectSystemMetricsAsync(cancellationToken).ConfigureAwait(false);
                 var processMetrics = _resourceMonitor.CollectProcessMetrics();
 
                 sb.AppendLine("# HELP aura_cpu_usage_percent CPU usage percentage");

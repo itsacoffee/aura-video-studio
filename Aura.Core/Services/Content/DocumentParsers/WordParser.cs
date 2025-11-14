@@ -179,7 +179,7 @@ public class WordParser : IDocumentParser
             var structure = new DocumentStructure
             {
                 Sections = sections,
-                HeadingLevels = sections.Any() ? sections.Max(s => s.Level) : 1,
+                HeadingLevels = sections.Count != 0 ? sections.Max(s => s.Level) : 1,
                 KeyConcepts = ExtractKeyPhrases(finalText),
                 Complexity = AnalyzeComplexity(finalText, wordCount),
                 Tone = AnalyzeTone(finalText)

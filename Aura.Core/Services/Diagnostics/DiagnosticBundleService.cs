@@ -65,7 +65,7 @@ public class DiagnosticBundleService
             Directory.CreateDirectory(bundleDir);
 
             // Build manifest
-            var manifest = await BuildManifestAsync(job, costReport, modelDecisions, ffmpegCommands, cancellationToken);
+            var manifest = await BuildManifestAsync(job, costReport, modelDecisions, ffmpegCommands, cancellationToken).ConfigureAwait(false);
 
             // Save manifest
             var manifestJson = JsonSerializer.Serialize(manifest, new JsonSerializerOptions 
@@ -73,40 +73,40 @@ public class DiagnosticBundleService
                 WriteIndented = true,
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase
             });
-            await File.WriteAllTextAsync(Path.Combine(bundleDir, "manifest.json"), manifestJson, cancellationToken);
+            await File.WriteAllTextAsync(Path.Combine(bundleDir, "manifest.json"), manifestJson, cancellationToken).ConfigureAwait(false);
 
             // Collect system info
-            await CollectSystemInfoAsync(bundleDir, cancellationToken);
+            await CollectSystemInfoAsync(bundleDir, cancellationToken).ConfigureAwait(false);
 
             // Collect job-specific logs
-            await CollectJobLogsAsync(bundleDir, job.Id, job.CorrelationId, cancellationToken);
+            await CollectJobLogsAsync(bundleDir, job.Id, job.CorrelationId, cancellationToken).ConfigureAwait(false);
 
             // Collect timeline
-            await SaveTimelineAsync(bundleDir, manifest.Timeline, cancellationToken);
+            await SaveTimelineAsync(bundleDir, manifest.Timeline, cancellationToken).ConfigureAwait(false);
 
             // Collect model decisions
             if (manifest.ModelDecisions.Count > 0)
             {
-                await SaveModelDecisionsAsync(bundleDir, manifest.ModelDecisions, cancellationToken);
+                await SaveModelDecisionsAsync(bundleDir, manifest.ModelDecisions, cancellationToken).ConfigureAwait(false);
             }
 
             // Collect FFmpeg commands
             if (manifest.FFmpegCommands.Count > 0)
             {
-                await SaveFFmpegCommandsAsync(bundleDir, manifest.FFmpegCommands, cancellationToken);
+                await SaveFFmpegCommandsAsync(bundleDir, manifest.FFmpegCommands, cancellationToken).ConfigureAwait(false);
             }
 
             // Collect cost report
             if (manifest.CostReport != null)
             {
-                await SaveCostReportAsync(bundleDir, manifest.CostReport, cancellationToken);
+                await SaveCostReportAsync(bundleDir, manifest.CostReport, cancellationToken).ConfigureAwait(false);
             }
 
             // Collect RunTelemetry
-            await CollectRunTelemetryAsync(bundleDir, job.Id, cancellationToken);
+            await CollectRunTelemetryAsync(bundleDir, job.Id, cancellationToken).ConfigureAwait(false);
 
             // Create README
-            await CreateReadmeAsync(bundleDir, job, manifest, cancellationToken);
+            await CreateReadmeAsync(bundleDir, job, manifest, cancellationToken).ConfigureAwait(false);
 
             // Create ZIP file
             if (File.Exists(zipPath))
@@ -213,7 +213,7 @@ public class DiagnosticBundleService
         {
             try
             {
-                var hw = await _hardwareDetector.DetectSystemAsync();
+                var hw = await _hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
                 systemProfile = new Models.Diagnostics.SystemProfile
                 {
                     MachineName = Environment.MachineName,
@@ -288,7 +288,7 @@ public class DiagnosticBundleService
         };
 
         var json = JsonSerializer.Serialize(systemInfo, new JsonSerializerOptions { WriteIndented = true });
-        await File.WriteAllTextAsync(Path.Combine(outputDir, "system-info.json"), json, cancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(outputDir, "system-info.json"), json, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -304,7 +304,7 @@ public class DiagnosticBundleService
                 await File.WriteAllTextAsync(
                     Path.Combine(outputDir, "logs-not-found.txt"),
                     "Logs directory not found",
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
                 return;
             }
 
@@ -319,7 +319,7 @@ public class DiagnosticBundleService
                 await File.WriteAllTextAsync(
                     Path.Combine(outputDir, "no-logs.txt"),
                     "No log files found",
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
                 return;
             }
 
@@ -338,7 +338,7 @@ public class DiagnosticBundleService
             var allRedactedLogs = new System.Text.StringBuilder();
             foreach (var logFile in logFiles)
             {
-                var content = await File.ReadAllTextAsync(logFile.FullName, cancellationToken);
+                var content = await File.ReadAllTextAsync(logFile.FullName, cancellationToken).ConfigureAwait(false);
                 
                 // Filter for job-specific logs if correlation ID available
                 var lines = content.Split('\n');
@@ -369,7 +369,7 @@ public class DiagnosticBundleService
             await File.WriteAllTextAsync(
                 Path.Combine(outputDir, "logs-redacted.txt"),
                 allRedactedLogs.ToString(),
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -377,7 +377,7 @@ public class DiagnosticBundleService
             await File.WriteAllTextAsync(
                 Path.Combine(outputDir, "log-collection-error.txt"),
                 $"Error: {ex.Message}",
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -391,7 +391,7 @@ public class DiagnosticBundleService
             WriteIndented = true,
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         });
-        await File.WriteAllTextAsync(Path.Combine(outputDir, "timeline.json"), json, cancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(outputDir, "timeline.json"), json, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -404,7 +404,7 @@ public class DiagnosticBundleService
             WriteIndented = true,
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         });
-        await File.WriteAllTextAsync(Path.Combine(outputDir, "model-decisions.json"), json, cancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(outputDir, "model-decisions.json"), json, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -417,7 +417,7 @@ public class DiagnosticBundleService
             WriteIndented = true,
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         });
-        await File.WriteAllTextAsync(Path.Combine(outputDir, "ffmpeg-commands.json"), json, cancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(outputDir, "ffmpeg-commands.json"), json, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -430,7 +430,7 @@ public class DiagnosticBundleService
             WriteIndented = true,
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         });
-        await File.WriteAllTextAsync(Path.Combine(outputDir, "cost-report.json"), json, cancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(outputDir, "cost-report.json"), json, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -445,7 +445,7 @@ public class DiagnosticBundleService
                 await File.WriteAllTextAsync(
                     Path.Combine(outputDir, "telemetry-not-available.txt"),
                     "Telemetry collector not configured",
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
                 return;
             }
 
@@ -455,7 +455,7 @@ public class DiagnosticBundleService
                 await File.WriteAllTextAsync(
                     Path.Combine(outputDir, "run_telemetry-not-found.txt"),
                     "No telemetry data available for this job",
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
                 return;
             }
 
@@ -472,7 +472,7 @@ public class DiagnosticBundleService
             await File.WriteAllTextAsync(
                 Path.Combine(outputDir, "run_telemetry.json"),
                 redactedJson,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             _logger.LogInformation("Collected RunTelemetry for job {JobId} with {RecordCount} records", 
                 jobId, telemetry.Records.Count);
@@ -483,7 +483,7 @@ public class DiagnosticBundleService
             await File.WriteAllTextAsync(
                 Path.Combine(outputDir, "telemetry-collection-error.txt"),
                 $"Error: {ex.Message}",
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -548,7 +548,7 @@ public class DiagnosticBundleService
         readme.AppendLine();
         readme.AppendLine("Safe to share for troubleshooting purposes.");
 
-        await File.WriteAllTextAsync(Path.Combine(outputDir, "README.txt"), readme.ToString(), cancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(outputDir, "README.txt"), readme.ToString(), cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>

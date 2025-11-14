@@ -49,7 +49,7 @@ public class ResponseCachingMiddleware
             return Task.CompletedTask;
         });
 
-        await _next(context);
+        await _next(context).ConfigureAwait(false);
     }
 
     private static string DetermineCacheControl(string path, string method)

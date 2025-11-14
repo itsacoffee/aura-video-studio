@@ -54,19 +54,19 @@ public class DiagnosticReportGenerator
             Directory.CreateDirectory(reportDir);
 
             // 1. Collect system information
-            await GenerateSystemInfoAsync(reportDir, cancellationToken);
+            await GenerateSystemInfoAsync(reportDir, cancellationToken).ConfigureAwait(false);
 
             // 2. Collect error summary
-            await GenerateErrorSummaryAsync(reportDir, cancellationToken);
+            await GenerateErrorSummaryAsync(reportDir, cancellationToken).ConfigureAwait(false);
 
             // 3. Collect performance metrics
-            await GeneratePerformanceReportAsync(reportDir, cancellationToken);
+            await GeneratePerformanceReportAsync(reportDir, cancellationToken).ConfigureAwait(false);
 
             // 4. Collect recent logs (last 1000 entries)
-            await CollectRecentLogsAsync(reportDir, cancellationToken);
+            await CollectRecentLogsAsync(reportDir, cancellationToken).ConfigureAwait(false);
 
             // 5. Collect FFmpeg version info
-            await GenerateFFmpegInfoAsync(reportDir, cancellationToken);
+            await GenerateFFmpegInfoAsync(reportDir, cancellationToken).ConfigureAwait(false);
 
             // 6. Create ZIP file
             if (File.Exists(zipPath))
@@ -140,7 +140,7 @@ public class DiagnosticReportGenerator
         {
             try
             {
-                var hardware = await _hardwareDetector.DetectSystemAsync();
+                var hardware = await _hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
                 systemInfo["hardware"] = new
                 {
                     logicalCores = hardware.LogicalCores,
@@ -160,7 +160,7 @@ public class DiagnosticReportGenerator
         }
 
         var json = JsonSerializer.Serialize(systemInfo, new JsonSerializerOptions { WriteIndented = true });
-        await File.WriteAllTextAsync(Path.Combine(outputDir, "system-info.json"), json, cancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(outputDir, "system-info.json"), json, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -187,7 +187,7 @@ public class DiagnosticReportGenerator
         };
 
         var json = JsonSerializer.Serialize(errorSummary, new JsonSerializerOptions { WriteIndented = true });
-        await File.WriteAllTextAsync(Path.Combine(outputDir, "error-summary.json"), json, cancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(outputDir, "error-summary.json"), json, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -223,7 +223,7 @@ public class DiagnosticReportGenerator
         };
 
         var json = JsonSerializer.Serialize(performanceReport, new JsonSerializerOptions { WriteIndented = true });
-        await File.WriteAllTextAsync(Path.Combine(outputDir, "performance-report.json"), json, cancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(outputDir, "performance-report.json"), json, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -239,7 +239,7 @@ public class DiagnosticReportGenerator
                 await File.WriteAllTextAsync(
                     Path.Combine(outputDir, "logs-not-found.txt"),
                     $"Logs directory not found: {_logsDirectory}",
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
                 return;
             }
 
@@ -254,18 +254,18 @@ public class DiagnosticReportGenerator
                 await File.WriteAllTextAsync(
                     Path.Combine(outputDir, "no-logs.txt"),
                     "No log files found",
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
                 return;
             }
 
             // Copy log files with redacted sensitive data
             foreach (var logFile in logFiles)
             {
-                var content = await File.ReadAllTextAsync(logFile.FullName, cancellationToken);
+                var content = await File.ReadAllTextAsync(logFile.FullName, cancellationToken).ConfigureAwait(false);
                 var redactedContent = RedactSensitiveData(content);
                 
                 var outputPath = Path.Combine(outputDir, $"log-{logFile.Name}");
-                await File.WriteAllTextAsync(outputPath, redactedContent, cancellationToken);
+                await File.WriteAllTextAsync(outputPath, redactedContent, cancellationToken).ConfigureAwait(false);
             }
         }
         catch (Exception ex)
@@ -274,7 +274,7 @@ public class DiagnosticReportGenerator
             await File.WriteAllTextAsync(
                 Path.Combine(outputDir, "log-collection-error.txt"),
                 $"Error: {ex.Message}",
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -310,8 +310,8 @@ public class DiagnosticReportGenerator
                     using var process = Process.Start(startInfo);
                     if (process != null)
                     {
-                        var output = await process.StandardOutput.ReadToEndAsync(cancellationToken);
-                        await process.WaitForExitAsync(cancellationToken);
+                        var output = await process.StandardOutput.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+                        await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
                         
                         if (process.ExitCode == 0)
                         {
@@ -319,7 +319,7 @@ public class DiagnosticReportGenerator
                             await File.WriteAllTextAsync(
                                 Path.Combine(outputDir, "ffmpeg-version.txt"),
                                 output,
-                                cancellationToken);
+                                cancellationToken).ConfigureAwait(false);
                             break;
                         }
                     }
@@ -336,7 +336,7 @@ public class DiagnosticReportGenerator
                 await File.WriteAllTextAsync(
                     Path.Combine(outputDir, "ffmpeg-not-found.txt"),
                     "FFmpeg not found in standard locations",
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
             }
         }
         catch (Exception ex)
@@ -345,7 +345,7 @@ public class DiagnosticReportGenerator
             await File.WriteAllTextAsync(
                 Path.Combine(outputDir, "ffmpeg-error.txt"),
                 $"Error: {ex.Message}",
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
         }
     }
 

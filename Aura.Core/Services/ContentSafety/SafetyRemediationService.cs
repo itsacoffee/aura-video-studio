@@ -44,9 +44,9 @@ public class SafetyRemediationService
                 ContentId = contentId,
                 AnalysisResult = analysisResult,
                 Summary = GenerateSummary(analysisResult, policy),
-                DetailedExplanation = await GenerateDetailedExplanationAsync(analysisResult, policy, ct),
+                DetailedExplanation = await GenerateDetailedExplanationAsync(analysisResult, policy, ct).ConfigureAwait(false),
                 RemediationStrategies = GenerateRemediationStrategies(content, analysisResult),
-                Alternatives = await GenerateAlternativesAsync(content, analysisResult, ct),
+                Alternatives = await GenerateAlternativesAsync(content, analysisResult, ct).ConfigureAwait(false),
                 UserOptions = GenerateUserOptions(analysisResult, policy),
                 RecommendedAction = DetermineRecommendedAction(analysisResult, policy)
             };
@@ -149,7 +149,7 @@ public class SafetyRemediationService
             modifications.Add(modification);
         }
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return modifications.Take(10).ToList();
     }
 
@@ -230,7 +230,7 @@ public class SafetyRemediationService
             }
         }
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return explanation;
     }
 
@@ -344,7 +344,7 @@ public class SafetyRemediationService
             alternatives.Add(GenerateSafeGenericAlternative(content));
         }
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return alternatives.Distinct().Take(5).ToList();
     }
 

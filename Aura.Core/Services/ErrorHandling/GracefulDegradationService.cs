@@ -33,7 +33,7 @@ public class GracefulDegradationService
             _logger.LogInformation("Executing primary operation: {Operation} [CorrelationId: {CorrelationId}]", 
                 operationName, correlationId);
             
-            var result = await primaryOperation();
+            var result = await primaryOperation().ConfigureAwait(false);
             
             attemptHistory.Add(new AttemptResult
             {
@@ -81,7 +81,7 @@ public class GracefulDegradationService
                     _logger.LogInformation("Attempting fallback strategy: {Strategy} [CorrelationId: {CorrelationId}]",
                         fallback.Name, correlationId);
 
-                    var fallbackResult = await fallback.Execute(primaryEx);
+                    var fallbackResult = await fallback.Execute(primaryEx).ConfigureAwait(false);
 
                     attemptHistory.Add(new AttemptResult
                     {

@@ -68,7 +68,7 @@ public class PacingAdapter
                     "analytical"
                 ),
                 cancellationToken
-            );
+            ).ConfigureAwait(false);
 
             result.AdaptedText = ParsePacingResponse(response, text);
             result.Changes = ExtractPacingChanges(text, result.AdaptedText);
@@ -251,11 +251,11 @@ public class PacingAdapter
     {
         if (_stageAdapter != null)
         {
-            var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct);
+            var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct).ConfigureAwait(false);
             if (result.IsSuccess && result.Data != null) return result.Data;
             _logger.LogWarning("Orchestrator generation failed, falling back to direct provider: {Error}", result.ErrorMessage);
         }
-        return await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
+        return await _llmProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
     }
 }
 

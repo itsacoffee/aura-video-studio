@@ -73,7 +73,7 @@ public class CorrelationIdMiddleware
                 traceContext.TraceId,
                 traceContext.SpanId);
             
-            await _next(context);
+            await _next(context).ConfigureAwait(false);
         }
     }
 

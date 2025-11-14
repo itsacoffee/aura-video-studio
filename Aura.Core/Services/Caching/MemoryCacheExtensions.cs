@@ -28,7 +28,7 @@ public static class MemoryCacheExtensions
         }
 
         logger?.LogDebug("Cache miss for key: {Key}, creating...", key);
-        var value = await factory();
+        var value = await factory().ConfigureAwait(false);
         
         var options = new MemoryCacheEntryOptions
         {
@@ -57,7 +57,7 @@ public static class MemoryCacheExtensions
         }
 
         logger?.LogDebug("Cache miss for key: {Key}, creating...", key);
-        var value = await factory();
+        var value = await factory().ConfigureAwait(false);
         
         var options = new MemoryCacheEntryOptions
         {

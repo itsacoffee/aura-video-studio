@@ -99,7 +99,7 @@ public class ThumbnailGenerationService : IThumbnailGenerationService
 
         var result = await _ffmpegService.ExecuteAsync(
             command.Build(),
-            cancellationToken: cancellationToken);
+            cancellationToken: cancellationToken).ConfigureAwait(false);
 
         if (!result.Success)
         {
@@ -147,7 +147,7 @@ public class ThumbnailGenerationService : IThumbnailGenerationService
                 positions[i],
                 outputPath,
                 resolution,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
         }
 
         return thumbnails;
@@ -166,11 +166,11 @@ public class ThumbnailGenerationService : IThumbnailGenerationService
         }
 
         // Get video duration
-        var videoInfo = await _ffmpegService.GetVideoInfoAsync(videoPath, cancellationToken);
+        var videoInfo = await _ffmpegService.GetVideoInfoAsync(videoPath, cancellationToken).ConfigureAwait(false);
         
         // Calculate position
         var position = TimeSpan.FromSeconds(videoInfo.Duration.TotalSeconds * (percent / 100.0));
 
-        return await GenerateThumbnailAsync(videoPath, position, outputPath, resolution, cancellationToken);
+        return await GenerateThumbnailAsync(videoPath, position, outputPath, resolution, cancellationToken).ConfigureAwait(false);
     }
 }

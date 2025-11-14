@@ -36,9 +36,9 @@ public class VoiceSelectionService
             "Selecting voice for content type: {ContentType}, locale: {Locale}",
             criteria.ContentType, criteria.PreferredLocale);
 
-        var availableVoices = await GetAvailableVoicesAsync(criteria, ct);
+        var availableVoices = await GetAvailableVoicesAsync(criteria, ct).ConfigureAwait(false);
 
-        if (!availableVoices.Any())
+        if (availableVoices.Count == 0)
         {
             _logger.LogWarning("No voices available matching criteria");
             return new VoiceSelectionResult
@@ -99,7 +99,7 @@ public class VoiceSelectionService
                 ExcludeVoiceIds = usedVoices.ToList()
             };
 
-            var result = await SelectVoiceAsync(criteria, ct);
+            var result = await SelectVoiceAsync(criteria, ct).ConfigureAwait(false);
 
             if (result.IsSuccess && result.SelectedVoice != null)
             {
@@ -134,12 +134,12 @@ public class VoiceSelectionService
         if (criteria.PreferredProvider.HasValue)
         {
             var providerVoices = await _providerRegistry.GetVoicesForProviderAsync(
-                criteria.PreferredProvider.Value, ct);
+                criteria.PreferredProvider.Value, ct).ConfigureAwait(false);
             voices.AddRange(providerVoices);
         }
         else
         {
-            voices.AddRange(await _providerRegistry.GetAllAvailableVoicesAsync(ct));
+            voices.AddRange(await _providerRegistry.GetAllAvailableVoicesAsync(ct).ConfigureAwait(false));
         }
 
         if (!string.IsNullOrEmpty(criteria.PreferredLocale))
@@ -157,7 +157,7 @@ public class VoiceSelectionService
             voices = voices.Where(v => (v.SupportedFeatures & criteria.RequiredFeatures) == criteria.RequiredFeatures).ToList();
         }
 
-        if (criteria.ExcludeVoiceIds != null && criteria.ExcludeVoiceIds.Any())
+        if (criteria.ExcludeVoiceIds != null && criteria.ExcludeVoiceIds.Count != 0)
         {
             voices = voices.Where(v => !criteria.ExcludeVoiceIds.Contains(v.Id)).ToList();
         }
@@ -264,7 +264,7 @@ public class VoiceSelectionService
             reasons.Add($"Offers {voice.AvailableStyles.Length} speaking styles");
         }
 
-        return reasons.Any() ? string.Join("; ", reasons) : "Standard voice selection";
+        return reasons.Count != 0 ? string.Join("; ", reasons) : "Standard voice selection";
     }
 }
 

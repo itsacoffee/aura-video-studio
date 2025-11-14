@@ -93,18 +93,18 @@ public class TelemetryCostAnalyzer
         
         // Track by stage
         var stageName = record.Stage.ToString();
-        if (!breakdown.ByStage.ContainsKey(stageName))
+        if (!breakdown.ByStage.TryGetValue(stageName, out var stageDetail))
         {
-            breakdown.ByStage[stageName] = new StageCostDetail
+            stageDetail = new StageCostDetail
             {
                 StageName = stageName,
                 Cost = 0m,
                 OperationCount = 0,
                 AverageLatencyMs = 0
             };
+            breakdown.ByStage[stageName] = stageDetail;
         }
-        
-        var stageDetail = breakdown.ByStage[stageName];
+
         stageDetail.Cost += estimate.Amount;
         stageDetail.OperationCount++;
         stageDetail.AverageLatencyMs = ((stageDetail.AverageLatencyMs * (stageDetail.OperationCount - 1)) + record.LatencyMs) / stageDetail.OperationCount;

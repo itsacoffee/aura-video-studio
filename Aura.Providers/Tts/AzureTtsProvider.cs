@@ -121,7 +121,7 @@ public class AzureTtsProvider : ITtsProvider, IDisposable
         try
         {
             using var synthesizer = new SpeechSynthesizer(_speechConfig);
-            using var result = await synthesizer.GetVoicesAsync();
+            using var result = await synthesizer.GetVoicesAsync().ConfigureAwait(false);
 
             if (result.Reason == ResultReason.VoicesListRetrieved)
             {
@@ -156,7 +156,7 @@ public class AzureTtsProvider : ITtsProvider, IDisposable
         }
 
         // Check if the voice is available before synthesis
-        var availableVoices = await GetAvailableVoicesAsync();
+        var availableVoices = await GetAvailableVoicesAsync().ConfigureAwait(false);
         if (availableVoices.Count == 0)
         {
             _logger.LogWarning("Unable to fetch available voices, proceeding with synthesis anyway");
@@ -186,7 +186,7 @@ public class AzureTtsProvider : ITtsProvider, IDisposable
             using var synthesizer = new SpeechSynthesizer(_speechConfig, audioConfig);
 
             // Synthesize
-            using var result = await synthesizer.SpeakSsmlAsync(ssml);
+            using var result = await synthesizer.SpeakSsmlAsync(ssml).ConfigureAwait(false);
 
             if (result.Reason == ResultReason.SynthesizingAudioCompleted)
             {
@@ -263,7 +263,7 @@ public class AzureTtsProvider : ITtsProvider, IDisposable
 
             using var audioConfig = AudioConfig.FromWavFileOutput(outputPath);
             using var synthesizer = new SpeechSynthesizer(_speechConfig!, audioConfig);
-            using var result = await synthesizer.SpeakSsmlAsync(ssml);
+            using var result = await synthesizer.SpeakSsmlAsync(ssml).ConfigureAwait(false);
 
             if (result.Reason == ResultReason.SynthesizingAudioCompleted)
             {

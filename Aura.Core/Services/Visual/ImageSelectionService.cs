@@ -45,13 +45,13 @@ public class ImageSelectionService
             "Starting image selection for scene {SceneIndex} with {CandidateCount} candidates",
             prompt.SceneIndex, config.CandidatesPerScene);
 
-        var candidates = await GenerateCandidatesAsync(prompt, config, ct);
+        var candidates = await GenerateCandidatesAsync(prompt, config, ct).ConfigureAwait(false);
 
         var scoredCandidates = await _scoringService.ScoreAndRankCandidatesAsync(
             candidates,
             prompt,
             config.MinimumAestheticThreshold,
-            ct);
+            ct).ConfigureAwait(false);
 
         var passingCandidates = scoredCandidates
             .Where(c => c.OverallScore >= config.MinimumAestheticThreshold)
@@ -111,7 +111,7 @@ public class ImageSelectionService
             var stockImages = await _stockImageService.SearchStockImagesAsync(
                 searchQuery,
                 config.CandidatesPerScene * 2,
-                ct);
+                ct).ConfigureAwait(false);
 
             foreach (var stock in stockImages.Take(config.CandidatesPerScene))
             {
@@ -274,7 +274,7 @@ public class ImageSelectionService
                 break;
             }
 
-            var result = await SelectImageForSceneAsync(prompt, config, ct);
+            var result = await SelectImageForSceneAsync(prompt, config, ct).ConfigureAwait(false);
             results.Add(result);
         }
 

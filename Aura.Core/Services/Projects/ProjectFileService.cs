@@ -78,7 +78,7 @@ public class ProjectFileService : IProjectFileService
                 Version = "1.0"
             };
 
-            await SaveProjectAsync(project, ct);
+            await SaveProjectAsync(project, ct).ConfigureAwait(false);
             
             _logger.LogInformation("Created new project: {ProjectId} - {ProjectName}", project.Id, project.Name);
             return project;
@@ -94,7 +94,7 @@ public class ProjectFileService : IProjectFileService
     {
         try
         {
-            var projectJson = await _storageService.LoadProjectFileAsync(projectId, ct);
+            var projectJson = await _storageService.LoadProjectFileAsync(projectId, ct).ConfigureAwait(false);
             if (projectJson == null)
             {
                 _logger.LogWarning("Project file not found: {ProjectId}", projectId);
@@ -109,7 +109,7 @@ public class ProjectFileService : IProjectFileService
             }
 
             // Update missing asset flags
-            await UpdateMissingAssetFlagsAsync(project, ct);
+            await UpdateMissingAssetFlagsAsync(project, ct).ConfigureAwait(false);
 
             _logger.LogInformation("Loaded project: {ProjectId} - {ProjectName}", project.Id, project.Name);
             return project;
@@ -130,10 +130,10 @@ public class ProjectFileService : IProjectFileService
             
             // Update metadata
             project.Metadata.TotalAssets = project.Assets.Count;
-            project.Metadata.ProjectSizeBytes = await CalculateProjectSizeAsync(project, ct);
+            project.Metadata.ProjectSizeBytes = await CalculateProjectSizeAsync(project, ct).ConfigureAwait(false);
 
             var projectJson = JsonSerializer.Serialize(project, _jsonOptions);
-            await _storageService.SaveProjectFileAsync(project.Id, projectJson, ct);
+            await _storageService.SaveProjectFileAsync(project.Id, projectJson, ct).ConfigureAwait(false);
 
             _logger.LogInformation("Saved project: {ProjectId} - {ProjectName}", project.Id, project.Name);
         }
@@ -149,9 +149,9 @@ public class ProjectFileService : IProjectFileService
         try
         {
             // Create backup before deleting
-            await _storageService.CreateBackupAsync(projectId, "pre_delete", ct);
+            await _storageService.CreateBackupAsync(projectId, "pre_delete", ct).ConfigureAwait(false);
             
-            var projectsPath = await _storageService.GetWorkspacePathAsync("Projects", ct);
+            var projectsPath = await _storageService.GetWorkspacePathAsync("Projects", ct).ConfigureAwait(false);
             var projectFile = Path.Combine(projectsPath, $"{projectId}.aura");
             
             if (File.Exists(projectFile))
@@ -174,7 +174,7 @@ public class ProjectFileService : IProjectFileService
     {
         try
         {
-            var projectsPath = await _storageService.GetWorkspacePathAsync("Projects", ct);
+            var projectsPath = await _storageService.GetWorkspacePathAsync("Projects", ct).ConfigureAwait(false);
             var projectFiles = Directory.GetFiles(projectsPath, "*.aura");
             
             var projects = new List<AuraProjectFile>();
@@ -183,7 +183,7 @@ public class ProjectFileService : IProjectFileService
             {
                 try
                 {
-                    var projectJson = await File.ReadAllTextAsync(file, ct);
+                    var projectJson = await File.ReadAllTextAsync(file, ct).ConfigureAwait(false);
                     var project = JsonSerializer.Deserialize<AuraProjectFile>(projectJson, _jsonOptions);
                     
                     if (project != null)
@@ -214,7 +214,7 @@ public class ProjectFileService : IProjectFileService
     {
         try
         {
-            var project = await LoadProjectAsync(projectId, ct);
+            var project = await LoadProjectAsync(projectId, ct).ConfigureAwait(false);
             if (project == null)
             {
                 throw new FileNotFoundException($"Project not found: {projectId}");
@@ -227,11 +227,11 @@ public class ProjectFileService : IProjectFileService
             }
 
             // Calculate relative path
-            var projectsPath = await _storageService.GetWorkspacePathAsync("Projects", ct);
+            var projectsPath = await _storageService.GetWorkspacePathAsync("Projects", ct).ConfigureAwait(false);
             var relativePath = GetRelativePath(projectsPath, assetPath);
 
             // Calculate content hash
-            var contentHash = await CalculateFileHashAsync(assetPath, ct);
+            var contentHash = await CalculateFileHashAsync(assetPath, ct).ConfigureAwait(false);
 
             var asset = new ProjectAsset
             {
@@ -247,7 +247,7 @@ public class ProjectFileService : IProjectFileService
             };
 
             project.Assets.Add(asset);
-            await SaveProjectAsync(project, ct);
+            await SaveProjectAsync(project, ct).ConfigureAwait(false);
 
             _logger.LogInformation("Added asset to project {ProjectId}: {AssetName}", projectId, asset.Name);
             return asset;
@@ -263,7 +263,7 @@ public class ProjectFileService : IProjectFileService
     {
         try
         {
-            var project = await LoadProjectAsync(projectId, ct);
+            var project = await LoadProjectAsync(projectId, ct).ConfigureAwait(false);
             if (project == null)
             {
                 return false;
@@ -276,7 +276,7 @@ public class ProjectFileService : IProjectFileService
             }
 
             project.Assets.Remove(asset);
-            await SaveProjectAsync(project, ct);
+            await SaveProjectAsync(project, ct).ConfigureAwait(false);
 
             _logger.LogInformation("Removed asset {AssetId} from project {ProjectId}", assetId, projectId);
             return true;
@@ -292,7 +292,7 @@ public class ProjectFileService : IProjectFileService
     {
         try
         {
-            var project = await LoadProjectAsync(projectId, ct);
+            var project = await LoadProjectAsync(projectId, ct).ConfigureAwait(false);
             if (project == null)
             {
                 throw new FileNotFoundException($"Project not found: {projectId}");
@@ -307,7 +307,7 @@ public class ProjectFileService : IProjectFileService
                     // Try relative path
                     if (!string.IsNullOrEmpty(asset.RelativePath))
                     {
-                        var projectsPath = await _storageService.GetWorkspacePathAsync("Projects", ct);
+                        var projectsPath = await _storageService.GetWorkspacePathAsync("Projects", ct).ConfigureAwait(false);
                         var resolvedPath = Path.Combine(projectsPath, asset.RelativePath);
                         
                         if (File.Exists(resolvedPath))
@@ -329,9 +329,9 @@ public class ProjectFileService : IProjectFileService
             }
 
             // Save updated project
-            if (missingAssets.Any())
+            if (missingAssets.Count != 0)
             {
-                await SaveProjectAsync(project, ct);
+                await SaveProjectAsync(project, ct).ConfigureAwait(false);
             }
 
             var report = new MissingAssetsReport
@@ -360,7 +360,7 @@ public class ProjectFileService : IProjectFileService
     {
         try
         {
-            var project = await LoadProjectAsync(request.ProjectId, ct);
+            var project = await LoadProjectAsync(request.ProjectId, ct).ConfigureAwait(false);
             if (project == null)
             {
                 return new AssetRelinkResult
@@ -394,10 +394,10 @@ public class ProjectFileService : IProjectFileService
             asset.IsMissing = false;
             
             // Update relative path
-            var projectsPath = await _storageService.GetWorkspacePathAsync("Projects", ct);
+            var projectsPath = await _storageService.GetWorkspacePathAsync("Projects", ct).ConfigureAwait(false);
             asset.RelativePath = GetRelativePath(projectsPath, request.NewPath);
 
-            await SaveProjectAsync(project, ct);
+            await SaveProjectAsync(project, ct).ConfigureAwait(false);
 
             _logger.LogInformation("Relinked asset {AssetId} in project {ProjectId}: {OldPath} -> {NewPath}",
                 request.AssetId, request.ProjectId, oldPath, request.NewPath);
@@ -433,7 +433,7 @@ public class ProjectFileService : IProjectFileService
 
         try
         {
-            var project = await LoadProjectAsync(request.ProjectId, ct);
+            var project = await LoadProjectAsync(request.ProjectId, ct).ConfigureAwait(false);
             if (project == null)
             {
                 result.Success = false;
@@ -444,11 +444,11 @@ public class ProjectFileService : IProjectFileService
             // Create backup if requested
             if (request.CreateBackup)
             {
-                await _storageService.CreateBackupAsync(request.ProjectId, "pre_consolidation", ct);
+                await _storageService.CreateBackupAsync(request.ProjectId, "pre_consolidation", ct).ConfigureAwait(false);
             }
 
             // Create project-specific assets folder
-            var projectsPath = await _storageService.GetWorkspacePathAsync("Projects", ct);
+            var projectsPath = await _storageService.GetWorkspacePathAsync("Projects", ct).ConfigureAwait(false);
             var projectAssetsPath = Path.Combine(projectsPath, $"{request.ProjectId}_assets");
             Directory.CreateDirectory(projectAssetsPath);
 
@@ -496,7 +496,7 @@ public class ProjectFileService : IProjectFileService
             }
 
             // Save updated project
-            await SaveProjectAsync(project, ct);
+            await SaveProjectAsync(project, ct).ConfigureAwait(false);
 
             result.Success = true;
             result.ConsolidatedPath = projectAssetsPath;
@@ -522,7 +522,7 @@ public class ProjectFileService : IProjectFileService
 
         try
         {
-            var project = await LoadProjectAsync(request.ProjectId, ct);
+            var project = await LoadProjectAsync(request.ProjectId, ct).ConfigureAwait(false);
             if (project == null)
             {
                 result.Success = false;
@@ -534,7 +534,7 @@ public class ProjectFileService : IProjectFileService
             var outputPath = request.OutputPath;
             if (string.IsNullOrEmpty(outputPath))
             {
-                var exportsPath = await _storageService.GetWorkspacePathAsync("Exports", ct);
+                var exportsPath = await _storageService.GetWorkspacePathAsync("Exports", ct).ConfigureAwait(false);
                 outputPath = Path.Combine(exportsPath, $"{project.Name}_{DateTime.UtcNow:yyyyMMdd_HHmmss}.aurapack");
             }
 
@@ -546,7 +546,7 @@ public class ProjectFileService : IProjectFileService
             {
                 // Copy project file
                 var projectJson = JsonSerializer.Serialize(project, _jsonOptions);
-                await File.WriteAllTextAsync(Path.Combine(tempPath, "project.json"), projectJson, ct);
+                await File.WriteAllTextAsync(Path.Combine(tempPath, "project.json"), projectJson, ct).ConfigureAwait(false);
 
                 // Copy assets if requested
                 if (request.IncludeAssets)
@@ -565,13 +565,13 @@ public class ProjectFileService : IProjectFileService
                 // Copy backups if requested
                 if (request.IncludeBackups)
                 {
-                    var backups = await _storageService.ListBackupsAsync(request.ProjectId, ct);
-                    if (backups.Any())
+                    var backups = await _storageService.ListBackupsAsync(request.ProjectId, ct).ConfigureAwait(false);
+                    if (backups.Count != 0)
                     {
                         var backupsPath = Path.Combine(tempPath, "backups");
                         Directory.CreateDirectory(backupsPath);
 
-                        var backupRoot = await _storageService.GetWorkspacePathAsync("Backups", ct);
+                        var backupRoot = await _storageService.GetWorkspacePathAsync("Backups", ct).ConfigureAwait(false);
                         var projectBackupPath = Path.Combine(backupRoot, request.ProjectId.ToString());
 
                         foreach (var backup in backups)
@@ -648,7 +648,7 @@ public class ProjectFileService : IProjectFileService
                     throw new InvalidOperationException("Invalid package: project.json not found");
                 }
 
-                var projectJson = await File.ReadAllTextAsync(projectJsonPath, ct);
+                var projectJson = await File.ReadAllTextAsync(projectJsonPath, ct).ConfigureAwait(false);
                 var project = JsonSerializer.Deserialize<AuraProjectFile>(projectJson, _jsonOptions);
                 
                 if (project == null)
@@ -664,7 +664,7 @@ public class ProjectFileService : IProjectFileService
                 var assetsPath = Path.Combine(tempPath, "assets");
                 if (Directory.Exists(assetsPath))
                 {
-                    var mediaPath = await _storageService.GetWorkspacePathAsync("Media", ct);
+                    var mediaPath = await _storageService.GetWorkspacePathAsync("Media", ct).ConfigureAwait(false);
                     var projectAssetsPath = Path.Combine(mediaPath, newProjectId.ToString());
                     Directory.CreateDirectory(projectAssetsPath);
 
@@ -684,7 +684,7 @@ public class ProjectFileService : IProjectFileService
                 }
 
                 // Save project
-                await SaveProjectAsync(project, ct);
+                await SaveProjectAsync(project, ct).ConfigureAwait(false);
 
                 _logger.LogInformation("Unpackaged project {ProjectId} from {Package}", newProjectId, packagePath);
                 return newProjectId;
@@ -717,7 +717,7 @@ public class ProjectFileService : IProjectFileService
             
             if (asset.IsMissing && !string.IsNullOrEmpty(asset.RelativePath))
             {
-                var projectsPath = await _storageService.GetWorkspacePathAsync("Projects", ct);
+                var projectsPath = await _storageService.GetWorkspacePathAsync("Projects", ct).ConfigureAwait(false);
                 var resolvedPath = Path.Combine(projectsPath, asset.RelativePath);
                 
                 if (File.Exists(resolvedPath))
@@ -746,7 +746,7 @@ public class ProjectFileService : IProjectFileService
             }
         }
         
-        return await Task.FromResult(totalSize);
+        return await Task.FromResult(totalSize).ConfigureAwait(false);
     }
 
     private static string GetRelativePath(string basePath, string fullPath)
@@ -771,7 +771,7 @@ public class ProjectFileService : IProjectFileService
     {
         using var sha256 = SHA256.Create();
         using var stream = File.OpenRead(filePath);
-        var hash = await sha256.ComputeHashAsync(stream, ct);
+        var hash = await sha256.ComputeHashAsync(stream, ct).ConfigureAwait(false);
         return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
     }
 

@@ -184,7 +184,7 @@ public class ResourceThrottler
                 }
             }
 
-            await Task.CompletedTask;
+            await Task.CompletedTask.ConfigureAwait(false);
         }
         catch (Exception ex)
         {

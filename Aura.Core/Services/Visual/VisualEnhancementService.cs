@@ -30,9 +30,9 @@ public class VisualEnhancementService
     {
         _logger.LogDebug("Calculating Ken Burns effect for image: {ImageUrl}", imageUrl);
 
-        await Task.Delay(1, ct);
+        await Task.Delay(1, ct).ConfigureAwait(false);
 
-        var focusPoint = await DetectFocusPointAsync(imageUrl, ct);
+        var focusPoint = await DetectFocusPointAsync(imageUrl, ct).ConfigureAwait(false);
         
         var startScale = config.StartScale;
         var endScale = config.EndScale;
@@ -80,10 +80,10 @@ public class VisualEnhancementService
     {
         _logger.LogDebug("Calculating optimal crop for image: {ImageUrl}", imageUrl);
 
-        await Task.Delay(1, ct);
+        await Task.Delay(1, ct).ConfigureAwait(false);
 
-        var focusPoint = await DetectFocusPointAsync(imageUrl, ct);
-        var contentRegions = await DetectContentRegionsAsync(imageUrl, ct);
+        var focusPoint = await DetectFocusPointAsync(imageUrl, ct).ConfigureAwait(false);
+        var contentRegions = await DetectContentRegionsAsync(imageUrl, ct).ConfigureAwait(false);
 
         var imageWidth = 1920;
         var imageHeight = 1080;
@@ -143,9 +143,9 @@ public class VisualEnhancementService
     {
         _logger.LogDebug("Calculating smart zoom for image: {ImageUrl}", imageUrl);
 
-        await Task.Delay(1, ct);
+        await Task.Delay(1, ct).ConfigureAwait(false);
 
-        var contentRegions = await DetectContentRegionsAsync(imageUrl, ct);
+        var contentRegions = await DetectContentRegionsAsync(imageUrl, ct).ConfigureAwait(false);
         var emptyAreas = DetectEmptyAreas(contentRegions);
 
         var contentDensity = CalculateContentDensity(contentRegions);
@@ -280,7 +280,7 @@ public class VisualEnhancementService
     /// </summary>
     private async Task<FocusPoint> DetectFocusPointAsync(string imageUrl, CancellationToken ct)
     {
-        await Task.Delay(1, ct);
+        await Task.Delay(1, ct).ConfigureAwait(false);
 
         var random = new Random(imageUrl.GetHashCode());
         
@@ -301,7 +301,7 @@ public class VisualEnhancementService
     /// </summary>
     private async Task<IReadOnlyList<ContentRegion>> DetectContentRegionsAsync(string imageUrl, CancellationToken ct)
     {
-        await Task.Delay(1, ct);
+        await Task.Delay(1, ct).ConfigureAwait(false);
 
         var random = new Random(imageUrl.GetHashCode());
         var regionCount = 2 + random.Next(4);
@@ -419,7 +419,7 @@ public record KenBurnsConfig
     public double StartScale { get; init; } = 1.0;
     public double EndScale { get; init; } = 1.2;
     public bool StartFromFocus { get; init; } = true;
-    public bool EndAtFocus { get; init; } = false;
+    public bool EndAtFocus { get; init; }
     public bool AutoScale { get; init; } = true;
     public string EasingFunction { get; init; } = "ease-in-out";
 }

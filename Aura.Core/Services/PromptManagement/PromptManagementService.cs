@@ -45,7 +45,7 @@ public class PromptManagementService
         _logger.LogInformation("Creating new prompt template: {Name} by {User}", 
             template.Name, createdBy);
 
-        var validationResult = await _validator.ValidateTemplateAsync(template, ct);
+        var validationResult = await _validator.ValidateTemplateAsync(template, ct).ConfigureAwait(false);
         if (!validationResult.IsValid)
         {
             throw new ArgumentException(
@@ -58,9 +58,9 @@ public class PromptManagementService
         template.Version = 1;
         template.Status = TemplateStatus.Active;
 
-        await _repository.CreateAsync(template, ct);
+        await _repository.CreateAsync(template, ct).ConfigureAwait(false);
 
-        await CreateVersionHistoryAsync(template, "Initial creation", createdBy, ct);
+        await CreateVersionHistoryAsync(template, "Initial creation", createdBy, ct).ConfigureAwait(false);
 
         _logger.LogInformation("Created prompt template {Id}: {Name}", template.Id, template.Name);
         return template;
@@ -71,7 +71,7 @@ public class PromptManagementService
     /// </summary>
     public async Task<PromptTemplate?> GetTemplateAsync(string templateId, CancellationToken ct = default)
     {
-        return await _repository.GetByIdAsync(templateId, ct);
+        return await _repository.GetByIdAsync(templateId, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -93,7 +93,7 @@ public class PromptManagementService
             category, stage, source);
 
         return await _repository.ListAsync(
-            category, stage, source, status, createdBy, searchTerm, skip, take, ct);
+            category, stage, source, status, createdBy, searchTerm, skip, take, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -108,7 +108,7 @@ public class PromptManagementService
     {
         _logger.LogInformation("Updating prompt template {Id} by {User}", templateId, modifiedBy);
 
-        var existing = await _repository.GetByIdAsync(templateId, ct);
+        var existing = await _repository.GetByIdAsync(templateId, ct).ConfigureAwait(false);
         if (existing == null)
         {
             throw new ArgumentException($"Template {templateId} not found");
@@ -120,7 +120,7 @@ public class PromptManagementService
                 "Cannot modify system templates. Clone the template first.");
         }
 
-        var validationResult = await _validator.ValidateTemplateAsync(updates, ct);
+        var validationResult = await _validator.ValidateTemplateAsync(updates, ct).ConfigureAwait(false);
         if (!validationResult.IsValid)
         {
             throw new ArgumentException(
@@ -137,9 +137,9 @@ public class PromptManagementService
         existing.ModifiedAt = DateTime.UtcNow;
         existing.Version++;
 
-        await _repository.UpdateAsync(existing, ct);
+        await _repository.UpdateAsync(existing, ct).ConfigureAwait(false);
 
-        await CreateVersionHistoryAsync(existing, changeNotes, modifiedBy, ct);
+        await CreateVersionHistoryAsync(existing, changeNotes, modifiedBy, ct).ConfigureAwait(false);
 
         _logger.LogInformation("Updated prompt template {Id} to version {Version}", 
             templateId, existing.Version);
@@ -154,7 +154,7 @@ public class PromptManagementService
     {
         _logger.LogInformation("Deleting prompt template {Id}", templateId);
 
-        var existing = await _repository.GetByIdAsync(templateId, ct);
+        var existing = await _repository.GetByIdAsync(templateId, ct).ConfigureAwait(false);
         if (existing == null)
         {
             throw new ArgumentException($"Template {templateId} not found");
@@ -165,7 +165,7 @@ public class PromptManagementService
             throw new InvalidOperationException("Cannot delete system templates");
         }
 
-        await _repository.DeleteAsync(templateId, ct);
+        await _repository.DeleteAsync(templateId, ct).ConfigureAwait(false);
 
         _logger.LogInformation("Deleted prompt template {Id}", templateId);
     }
@@ -182,7 +182,7 @@ public class PromptManagementService
         _logger.LogInformation("Cloning prompt template {SourceId} by {User}", 
             sourceTemplateId, clonedBy);
 
-        var source = await _repository.GetByIdAsync(sourceTemplateId, ct);
+        var source = await _repository.GetByIdAsync(sourceTemplateId, ct).ConfigureAwait(false);
         if (source == null)
         {
             throw new ArgumentException($"Source template {sourceTemplateId} not found");
@@ -209,9 +209,9 @@ public class PromptManagementService
             Metadata = new Dictionary<string, string>(source.Metadata)
         };
 
-        await _repository.CreateAsync(cloned, ct);
+        await _repository.CreateAsync(cloned, ct).ConfigureAwait(false);
 
-        await CreateVersionHistoryAsync(cloned, $"Cloned from {source.Name}", clonedBy, ct);
+        await CreateVersionHistoryAsync(cloned, $"Cloned from {source.Name}", clonedBy, ct).ConfigureAwait(false);
 
         _logger.LogInformation("Cloned template {SourceId} to {NewId}", sourceTemplateId, cloned.Id);
         return cloned;
@@ -224,7 +224,7 @@ public class PromptManagementService
         string templateId,
         CancellationToken ct = default)
     {
-        return await _repository.GetVersionHistoryAsync(templateId, ct);
+        return await _repository.GetVersionHistoryAsync(templateId, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -239,7 +239,7 @@ public class PromptManagementService
         _logger.LogInformation("Rolling back template {Id} to version {Version} by {User}",
             templateId, targetVersion, modifiedBy);
 
-        var template = await _repository.GetByIdAsync(templateId, ct);
+        var template = await _repository.GetByIdAsync(templateId, ct).ConfigureAwait(false);
         if (template == null)
         {
             throw new ArgumentException($"Template {templateId} not found");
@@ -250,7 +250,7 @@ public class PromptManagementService
             throw new InvalidOperationException("Cannot rollback system templates");
         }
 
-        var versions = await _repository.GetVersionHistoryAsync(templateId, ct);
+        var versions = await _repository.GetVersionHistoryAsync(templateId, ct).ConfigureAwait(false);
         var targetVersionData = versions.FirstOrDefault(v => v.VersionNumber == targetVersion);
         if (targetVersionData == null)
         {
@@ -263,13 +263,13 @@ public class PromptManagementService
         template.ModifiedAt = DateTime.UtcNow;
         template.Version++;
 
-        await _repository.UpdateAsync(template, ct);
+        await _repository.UpdateAsync(template, ct).ConfigureAwait(false);
 
         await CreateVersionHistoryAsync(
             template, 
             $"Rolled back to version {targetVersion}", 
             modifiedBy, 
-            ct);
+            ct).ConfigureAwait(false);
 
         _logger.LogInformation("Rolled back template {Id} to version {Version}", 
             templateId, targetVersion);
@@ -286,7 +286,7 @@ public class PromptManagementService
         VariableResolverOptions? options = null,
         CancellationToken ct = default)
     {
-        var template = await _repository.GetByIdAsync(templateId, ct);
+        var template = await _repository.GetByIdAsync(templateId, ct).ConfigureAwait(false);
         if (template == null)
         {
             throw new ArgumentException($"Template {templateId} not found");
@@ -297,7 +297,7 @@ public class PromptManagementService
             template.Variables,
             variables,
             options ?? new VariableResolverOptions(),
-            ct);
+            ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -320,7 +320,7 @@ public class PromptManagementService
                 source: TemplateSource.User,
                 status: TemplateStatus.Active,
                 createdBy: userId,
-                ct: ct);
+                ct: ct).ConfigureAwait(false);
 
             template = userTemplates
                 .Where(t => t.IsDefault)
@@ -333,7 +333,7 @@ public class PromptManagementService
                 stage: stage,
                 source: TemplateSource.System,
                 status: TemplateStatus.Active,
-                ct: ct);
+                ct: ct).ConfigureAwait(false);
 
             template = systemTemplates
                 .Where(t => preferredProvider == null || 
@@ -349,7 +349,7 @@ public class PromptManagementService
                 $"No template found for stage {stage}");
         }
 
-        await _analytics.TrackUsageAsync(template.Id, ct);
+        await _analytics.TrackUsageAsync(template.Id, ct).ConfigureAwait(false);
 
         return template;
     }
@@ -366,7 +366,7 @@ public class PromptManagementService
         CancellationToken ct = default)
     {
         await _analytics.RecordFeedbackAsync(
-            templateId, thumbsUp, qualityScore, generationTimeMs, tokenUsage, ct);
+            templateId, thumbsUp, qualityScore, generationTimeMs, tokenUsage, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -390,6 +390,6 @@ public class PromptManagementService
             Metadata = new Dictionary<string, string>(template.Metadata)
         };
 
-        await _repository.CreateVersionAsync(version, ct);
+        await _repository.CreateVersionAsync(version, ct).ConfigureAwait(false);
     }
 }

@@ -28,7 +28,7 @@ public class AestheticScoringService
         VisualPrompt prompt,
         CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         var aestheticScore = CalculateAestheticScore(candidate, prompt);
         var keywordScore = CalculateKeywordCoverageScore(candidate, prompt);

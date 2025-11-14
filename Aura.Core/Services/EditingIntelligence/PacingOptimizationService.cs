@@ -48,7 +48,7 @@ public class PacingOptimizationService
         var contentDensity = CalculateContentDensity(timeline);
         var summary = GenerateSummary(recommendations, overallEngagement, contentDensity);
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return new PacingAnalysis(
             SceneRecommendations: recommendations,
             OverallEngagementScore: overallEngagement,
@@ -200,7 +200,7 @@ public class PacingOptimizationService
             }
         }
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return slowSegments;
     }
 
@@ -246,7 +246,7 @@ public class PacingOptimizationService
             currentTime += newDuration;
         }
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return optimized;
     }
 }

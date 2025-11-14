@@ -47,11 +47,11 @@ public class CriticService : ICriticProvider
             _logger.LogInformation("Generating structured critique for script (length: {Length} chars)", script.Length);
 
             var critiquePrompt = BuildStructuredCritiquePrompt(script, brief, spec, rubrics, currentMetrics);
-            var rawCritique = await _llmProvider.CompleteAsync(critiquePrompt, ct);
+            var rawCritique = await _llmProvider.CompleteAsync(critiquePrompt, ct).ConfigureAwait(false);
 
             var result = ParseCritiqueResponse(rawCritique, rubrics);
             
-            var timingAnalysis = await AnalyzeTimingFitAsync(script, spec.TargetDuration, ct);
+            var timingAnalysis = await AnalyzeTimingFitAsync(script, spec.TargetDuration, ct).ConfigureAwait(false);
             
             return result with { TimingAnalysis = timingAnalysis, RawCritique = rawCritique };
         }
@@ -68,7 +68,7 @@ public class CriticService : ICriticProvider
         TimeSpan targetDuration,
         CancellationToken ct)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         var wordCount = CountWords(script);
         var targetMinutes = targetDuration.TotalMinutes;
@@ -201,7 +201,7 @@ public class CriticService : ICriticProvider
 
             var rubricWeightLookup = rubrics.ToDictionary(r => r.Name, r => r.Weight);
             var overallScore = rubrics.Any() 
-                ? rubricScores.Sum(kvp => kvp.Value * (rubricWeightLookup.ContainsKey(kvp.Key) ? rubricWeightLookup[kvp.Key] : 0)) / rubrics.Sum(r => r.Weight)
+                ? rubricScores.Sum(kvp => kvp.Value * (rubricWeightLookup.TryGetValue(kvp.Key, out var value) ? value : 0)) / rubrics.Sum(r => r.Weight)
                 : 75.0;
 
             issues = ExtractIssues(response);

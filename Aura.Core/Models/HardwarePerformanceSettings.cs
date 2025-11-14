@@ -25,12 +25,12 @@ public class HardwarePerformanceSettings
     /// <summary>
     /// RAM allocation for rendering in MB (0 = auto)
     /// </summary>
-    public int RamAllocationMB { get; set; } = 0;
+    public int RamAllocationMB { get; set; }
 
     /// <summary>
     /// Maximum number of concurrent rendering threads (0 = auto)
     /// </summary>
-    public int MaxRenderingThreads { get; set; } = 0;
+    public int MaxRenderingThreads { get; set; }
 
     /// <summary>
     /// Preview quality setting (low, medium, high, ultra)
@@ -40,7 +40,7 @@ public class HardwarePerformanceSettings
     /// <summary>
     /// Enable background rendering
     /// </summary>
-    public bool BackgroundRenderingEnabled { get; set; } = false;
+    public bool BackgroundRenderingEnabled { get; set; }
 
     /// <summary>
     /// Maximum cache size in MB (0 = unlimited)
@@ -109,7 +109,7 @@ public class ProviderConfiguration
 /// </summary>
 public class OpenAIProviderSettings
 {
-    public bool Enabled { get; set; } = false;
+    public bool Enabled { get; set; }
     public string ApiKey { get; set; } = string.Empty;
     public string BaseUrl { get; set; } = string.Empty;
     public string Model { get; set; } = "gpt-4o-mini";
@@ -124,12 +124,12 @@ public class OpenAIProviderSettings
 /// </summary>
 public class OllamaProviderSettings
 {
-    public bool Enabled { get; set; } = false;
+    public bool Enabled { get; set; }
     public string BaseUrl { get; set; } = "http://127.0.0.1:11434";
     public string Model { get; set; } = "llama3.1:8b-q4_k_m";
     public string ExecutablePath { get; set; } = string.Empty;
     public int TimeoutSeconds { get; set; } = 120;
-    public bool AutoStart { get; set; } = false;
+    public bool AutoStart { get; set; }
 }
 
 /// <summary>
@@ -137,7 +137,7 @@ public class OllamaProviderSettings
 /// </summary>
 public class AnthropicProviderSettings
 {
-    public bool Enabled { get; set; } = false;
+    public bool Enabled { get; set; }
     public string ApiKey { get; set; } = string.Empty;
     public string Model { get; set; } = "claude-3-5-sonnet-20241022";
     public int TimeoutSeconds { get; set; } = 60;
@@ -148,7 +148,7 @@ public class AnthropicProviderSettings
 /// </summary>
 public class AzureOpenAIProviderSettings
 {
-    public bool Enabled { get; set; } = false;
+    public bool Enabled { get; set; }
     public string ApiKey { get; set; } = string.Empty;
     public string Endpoint { get; set; } = string.Empty;
     public string DeploymentName { get; set; } = string.Empty;
@@ -161,7 +161,7 @@ public class AzureOpenAIProviderSettings
 /// </summary>
 public class GeminiProviderSettings
 {
-    public bool Enabled { get; set; } = false;
+    public bool Enabled { get; set; }
     public string ApiKey { get; set; } = string.Empty;
     public string Model { get; set; } = "gemini-1.5-pro";
     public int TimeoutSeconds { get; set; } = 60;
@@ -172,7 +172,7 @@ public class GeminiProviderSettings
 /// </summary>
 public class ElevenLabsProviderSettings
 {
-    public bool Enabled { get; set; } = false;
+    public bool Enabled { get; set; }
     public string ApiKey { get; set; } = string.Empty;
     public string DefaultVoiceId { get; set; } = string.Empty;
     public int TimeoutSeconds { get; set; } = 60;
@@ -183,8 +183,8 @@ public class ElevenLabsProviderSettings
 /// </summary>
 public class StableDiffusionProviderSettings
 {
-    public bool Enabled { get; set; } = false;
+    public bool Enabled { get; set; }
     public string BaseUrl { get; set; } = "http://127.0.0.1:7860";
     public int TimeoutSeconds { get; set; } = 120;
-    public bool AutoStart { get; set; } = false;
+    public bool AutoStart { get; set; }
 }

@@ -61,8 +61,8 @@ public class ColorGradingProfile
     public float Saturation { get; set; } = 1.0f;
     public float Contrast { get; set; } = 1.0f;
     public float Brightness { get; set; } = 1.0f;
-    public float Temperature { get; set; } = 0.0f;
-    public float Tint { get; set; } = 0.0f;
+    public float Temperature { get; set; }
+    public float Tint { get; set; }
 }
 
 public class CompositionAnalysisResult

@@ -70,7 +70,7 @@ public class IdeationService
             Style: "Creative"
         );
 
-        var response = await GenerateWithLlmAsync(brief, planSpec, ct);
+        var response = await GenerateWithLlmAsync(brief, planSpec, ct).ConfigureAwait(false);
         
         // Parse the response into structured concepts
         var concepts = ParseBrainstormResponse(response, request.Topic);
@@ -109,7 +109,7 @@ public class IdeationService
             Style: "Conversational"
         );
 
-        var response = await GenerateWithLlmAsync(brief, planSpec, ct);
+        var response = await GenerateWithLlmAsync(brief, planSpec, ct).ConfigureAwait(false);
 
         // Store in conversation history
         if (!string.IsNullOrEmpty(request.UserMessage))
@@ -118,14 +118,14 @@ public class IdeationService
                 request.ProjectId,
                 "user",
                 request.UserMessage,
-                ct: ct);
+                ct: ct).ConfigureAwait(false);
         }
 
         await _conversationManager.AddMessageAsync(
             request.ProjectId,
             "assistant",
             response,
-            ct: ct);
+            ct: ct).ConfigureAwait(false);
 
         // Parse response for questions or updated brief
         var (questions, aiResponse) = ParseExpandBriefResponse(response);
@@ -150,7 +150,7 @@ public class IdeationService
             request.Niche,
             request.MaxResults ?? 10,
             forceRefresh: false,
-            ct);
+            ct).ConfigureAwait(false);
 
         return new TrendingTopicsResponse(
             Topics: topics,
@@ -185,7 +185,7 @@ public class IdeationService
             Style: "Analytical"
         );
 
-        var response = await GenerateWithLlmAsync(brief, planSpec, ct);
+        var response = await GenerateWithLlmAsync(brief, planSpec, ct).ConfigureAwait(false);
 
         var (missingTopics, opportunities, oversaturated, uniqueAngles) = 
             ParseGapAnalysisResponse(response);
@@ -225,7 +225,7 @@ public class IdeationService
             Style: "Factual"
         );
 
-        var response = await GenerateWithLlmAsync(brief, planSpec, ct);
+        var response = await GenerateWithLlmAsync(brief, planSpec, ct).ConfigureAwait(false);
 
         var findings = ParseResearchResponse(response, request.Topic);
 
@@ -263,7 +263,7 @@ public class IdeationService
             Style: "Visual"
         );
 
-        var response = await GenerateWithLlmAsync(brief, planSpec, ct);
+        var response = await GenerateWithLlmAsync(brief, planSpec, ct).ConfigureAwait(false);
 
         var scenes = ParseStoryboardResponse(response, request.TargetDurationSeconds);
 
@@ -303,7 +303,7 @@ public class IdeationService
             Style: "Creative"
         );
 
-        var response = await GenerateWithLlmAsync(brief, planSpec, ct);
+        var response = await GenerateWithLlmAsync(brief, planSpec, ct).ConfigureAwait(false);
 
         var (refinedConcept, changesSummary) = ParseRefineConceptResponse(
             response, 
@@ -343,7 +343,7 @@ public class IdeationService
             Style: "Conversational"
         );
 
-        var response = await GenerateWithLlmAsync(brief, planSpec, ct);
+        var response = await GenerateWithLlmAsync(brief, planSpec, ct).ConfigureAwait(false);
 
         var questions = ParseQuestionsResponse(response);
 
@@ -898,17 +898,17 @@ public class IdeationService
     {
         if (_stageAdapter != null)
         {
-            var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct);
+            var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct).ConfigureAwait(false);
             if (!result.IsSuccess || result.Data == null)
             {
                 _logger.LogWarning("Orchestrator generation failed, falling back to direct provider: {Error}", result.ErrorMessage);
-                return await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
+                return await _llmProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
             }
             return result.Data;
         }
         else
         {
-            return await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
+            return await _llmProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
         }
     }
 }

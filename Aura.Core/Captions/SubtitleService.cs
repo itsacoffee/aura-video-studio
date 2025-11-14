@@ -60,7 +60,7 @@ public class SubtitleService
                 request.Format,
                 request.OutputDirectory,
                 request.BaseFileName ?? $"subtitles_{request.TargetLanguage}",
-                request.IsRightToLeft);
+                request.IsRightToLeft).ConfigureAwait(false);
         }
 
         return new SubtitleGenerationResult

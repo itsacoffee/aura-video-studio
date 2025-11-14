@@ -12,13 +12,13 @@ public class AzureTtsOptions
     /// Speaking rate: -1.0 (0%, very slow) to 2.0 (300%, very fast). Default: 0.0 (100%)
     /// Maps to SSML prosody rate attribute
     /// </summary>
-    public double Rate { get; set; } = 0.0;
+    public double Rate { get; set; }
 
     /// <summary>
     /// Voice pitch: -0.5 (-50%, very low) to 0.5 (+50%, very high). Default: 0.0 (100%)
     /// Maps to SSML prosody pitch attribute
     /// </summary>
-    public double Pitch { get; set; } = 0.0;
+    public double Pitch { get; set; }
 
     /// <summary>
     /// Volume level: 0.0 (0%, silent) to 2.0 (200%, very loud). Default: 1.0 (100%)

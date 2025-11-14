@@ -44,7 +44,7 @@ public class SetupController : ControllerBase
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                return await InstallFFmpegWindows(cancellationToken);
+                return await InstallFFmpegWindows(cancellationToken).ConfigureAwait(false);
             }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
@@ -100,22 +100,22 @@ public class SetupController : ControllerBase
             _logger.LogInformation("Downloading FFmpeg from {Url}", downloadUrl);
 
             // Download FFmpeg with progress reporting
-            using (var response = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken))
+            using (var response = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false))
             {
                 response.EnsureSuccessStatusCode();
 
                 var totalBytes = response.Content.Headers.ContentLength ?? 0;
                 var bytesDownloaded = 0L;
 
-                using (var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken))
+                using (var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false))
                 using (var fileStream = new FileStream(downloadPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
                 {
                     var buffer = new byte[8192];
                     int bytesRead;
 
-                    while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, cancellationToken)) > 0)
+                    while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false)) > 0)
                     {
-                        await fileStream.WriteAsync(buffer, 0, bytesRead, cancellationToken);
+                        await fileStream.WriteAsync(buffer, 0, bytesRead, cancellationToken).ConfigureAwait(false);
                         bytesDownloaded += bytesRead;
 
                         if (totalBytes > 0)
@@ -171,7 +171,7 @@ public class SetupController : ControllerBase
             }
 
             // Verify installation
-            var version = await GetFFmpegVersion(targetPath);
+            var version = await GetFFmpegVersion(targetPath).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -205,8 +205,8 @@ public class SetupController : ControllerBase
             };
 
             process.Start();
-            var output = await process.StandardOutput.ReadToEndAsync();
-            await process.WaitForExitAsync();
+            var output = await process.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
+            await process.WaitForExitAsync().ConfigureAwait(false);
 
             // Parse version from first line (e.g., "ffmpeg version 6.0 Copyright...")
             var firstLine = output.Split('\n').FirstOrDefault() ?? "";
@@ -228,11 +228,11 @@ public class SetupController : ControllerBase
         try
         {
             using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
-            var response = await client.GetAsync("http://localhost:11434/api/tags", cancellationToken);
+            var response = await client.GetAsync("http://localhost:11434/api/tags", cancellationToken).ConfigureAwait(false);
 
             if (response.IsSuccessStatusCode)
             {
-                var content = await response.Content.ReadAsStringAsync(cancellationToken);
+                var content = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
                 return Ok(new
                 {
                     available = true,
@@ -336,7 +336,7 @@ public class SetupController : ControllerBase
         {
             // Query the database for setup status (default user)
             var userSetup = await _dbContext.UserSetups
-                .FirstOrDefaultAsync(u => u.UserId == "default", cancellationToken);
+                .FirstOrDefaultAsync(u => u.UserId == "default", cancellationToken).ConfigureAwait(false);
 
             if (userSetup == null || !userSetup.Completed)
             {
@@ -414,7 +414,7 @@ public class SetupController : ControllerBase
                     {
                         // Test write permissions
                         var testFile = Path.Combine(request.OutputDirectory, $".aura-test-{Guid.NewGuid()}.tmp");
-                        await System.IO.File.WriteAllTextAsync(testFile, "test", cancellationToken);
+                        await System.IO.File.WriteAllTextAsync(testFile, "test", cancellationToken).ConfigureAwait(false);
                         System.IO.File.Delete(testFile);
                     }
                     catch (Exception ex)
@@ -449,7 +449,7 @@ public class SetupController : ControllerBase
                             }
                         };
                         process.Start();
-                        await process.WaitForExitAsync(cancellationToken);
+                        await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
                         
                         if (process.ExitCode != 0)
                         {
@@ -470,7 +470,7 @@ public class SetupController : ControllerBase
 
             // Find or create user setup record
             var userSetup = await _dbContext.UserSetups
-                .FirstOrDefaultAsync(u => u.UserId == "default", cancellationToken);
+                .FirstOrDefaultAsync(u => u.UserId == "default", cancellationToken).ConfigureAwait(false);
 
             if (userSetup == null)
             {
@@ -506,7 +506,7 @@ public class SetupController : ControllerBase
             }
             userSetup.WizardState = System.Text.Json.JsonSerializer.Serialize(wizardState);
 
-            await _dbContext.SaveChangesAsync(cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
             _logger.LogInformation("First-run setup completed for user 'default'");
 
@@ -543,7 +543,7 @@ public class SetupController : ControllerBase
             try
             {
                 var testFile = Path.Combine(request.Path, $".aura-test-{Guid.NewGuid()}.tmp");
-                await System.IO.File.WriteAllTextAsync(testFile, "test", cancellationToken);
+                await System.IO.File.WriteAllTextAsync(testFile, "test", cancellationToken).ConfigureAwait(false);
                 System.IO.File.Delete(testFile);
             }
             catch (Exception ex)

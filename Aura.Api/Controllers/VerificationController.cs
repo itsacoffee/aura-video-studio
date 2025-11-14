@@ -57,10 +57,10 @@ public class VerificationController : ControllerBase
                 Options: request.Options ?? new VerificationOptions()
             );
 
-            var result = await _orchestrator.VerifyContentAsync(verificationRequest, ct);
+            var result = await _orchestrator.VerifyContentAsync(verificationRequest, ct).ConfigureAwait(false);
 
             // Save result
-            await _persistence.SaveVerificationResultAsync(result, ct);
+            await _persistence.SaveVerificationResultAsync(result, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -102,7 +102,7 @@ public class VerificationController : ControllerBase
                 return BadRequest(new { error = "Content is required" });
             }
 
-            var result = await _orchestrator.QuickVerifyAsync(request.Content, ct);
+            var result = await _orchestrator.QuickVerifyAsync(request.Content, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -127,7 +127,7 @@ public class VerificationController : ControllerBase
     {
         try
         {
-            var result = await _persistence.LoadVerificationResultAsync(contentId, ct);
+            var result = await _persistence.LoadVerificationResultAsync(contentId, ct).ConfigureAwait(false);
 
             if (result == null)
             {
@@ -158,7 +158,7 @@ public class VerificationController : ControllerBase
     {
         try
         {
-            var history = await _persistence.LoadVerificationHistoryAsync(contentId, maxResults, ct);
+            var history = await _persistence.LoadVerificationHistoryAsync(contentId, maxResults, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -193,7 +193,7 @@ public class VerificationController : ControllerBase
             var citations = await _sourceService.GenerateCitationsAsync(
                 request.Sources,
                 request.Format ?? CitationFormat.APA,
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -217,7 +217,7 @@ public class VerificationController : ControllerBase
     {
         try
         {
-            var stats = await _persistence.GetStatisticsAsync(ct);
+            var stats = await _persistence.GetStatisticsAsync(ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -242,7 +242,7 @@ public class VerificationController : ControllerBase
     {
         try
         {
-            await _persistence.DeleteVerificationResultAsync(contentId, ct);
+            await _persistence.DeleteVerificationResultAsync(contentId, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -265,7 +265,7 @@ public class VerificationController : ControllerBase
     {
         try
         {
-            var contentIds = await _persistence.ListVerifiedContentAsync(ct);
+            var contentIds = await _persistence.ListVerifiedContentAsync(ct).ConfigureAwait(false);
 
             return Ok(new
             {

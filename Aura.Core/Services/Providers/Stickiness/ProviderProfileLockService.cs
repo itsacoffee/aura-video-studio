@@ -69,7 +69,7 @@ public sealed class ProviderProfileLockService
         if (isSessionLevel)
         {
             _sessionLocks[jobId] = lock_;
-            await SaveSessionLockAsync(ct);
+            await SaveSessionLockAsync(ct).ConfigureAwait(false);
             
             _logger.LogInformation(
                 "SESSION_PROFILE_LOCK_SET Job: {JobId}, Provider: {Provider} ({Type}), " +
@@ -282,7 +282,7 @@ public sealed class ProviderProfileLockService
                 WriteIndented = true
             });
 
-            await File.WriteAllTextAsync(_sessionLockPath, json, ct);
+            await File.WriteAllTextAsync(_sessionLockPath, json, ct).ConfigureAwait(false);
             _logger.LogDebug("Saved {Count} session profile locks to disk", locks.Count);
         }
         catch (Exception ex)
@@ -305,7 +305,7 @@ public sealed class ProviderProfileLockService
     public async Task ClearSessionLocksAsync(CancellationToken ct = default)
     {
         _sessionLocks.Clear();
-        await SaveSessionLockAsync(ct);
+        await SaveSessionLockAsync(ct).ConfigureAwait(false);
         _logger.LogInformation("Cleared all session profile locks");
     }
 

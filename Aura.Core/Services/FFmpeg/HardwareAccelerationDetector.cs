@@ -43,14 +43,14 @@ public class HardwareAccelerationDetector
         };
 
         // Detect available encoders
-        var encoders = await DetectAvailableEncodersAsync(ffmpegPath, ct);
+        var encoders = await DetectAvailableEncodersAsync(ffmpegPath, ct).ConfigureAwait(false);
         capabilities.AvailableEncoders = encoders;
 
         // Check for NVENC (NVIDIA)
         if (encoders.Contains("h264_nvenc") || encoders.Contains("hevc_nvenc"))
         {
             capabilities.NvencAvailable = true;
-            capabilities.NvencVersion = await DetectNvencVersionAsync(ffmpegPath, ct);
+            capabilities.NvencVersion = await DetectNvencVersionAsync(ffmpegPath, ct).ConfigureAwait(false);
             _logger.LogInformation("NVENC (NVIDIA) hardware acceleration detected");
         }
 
@@ -85,7 +85,7 @@ public class HardwareAccelerationDetector
         }
 
         // Detect hardware decoders
-        var decoders = await DetectAvailableDecodersAsync(ffmpegPath, ct);
+        var decoders = await DetectAvailableDecodersAsync(ffmpegPath, ct).ConfigureAwait(false);
         capabilities.HardwareDecodingAvailable = decoders.Count > 0;
 
         // Determine best encoder
@@ -127,8 +127,8 @@ public class HardwareAccelerationDetector
                 return encoders;
             }
 
-            var output = await process.StandardOutput.ReadToEndAsync(ct);
-            await process.WaitForExitAsync(ct);
+            var output = await process.StandardOutput.ReadToEndAsync(ct).ConfigureAwait(false);
+            await process.WaitForExitAsync(ct).ConfigureAwait(false);
 
             // Parse encoder list
             var lines = output.Split('\n');
@@ -181,8 +181,8 @@ public class HardwareAccelerationDetector
                 return decoders;
             }
 
-            var output = await process.StandardOutput.ReadToEndAsync(ct);
-            await process.WaitForExitAsync(ct);
+            var output = await process.StandardOutput.ReadToEndAsync(ct).ConfigureAwait(false);
+            await process.WaitForExitAsync(ct).ConfigureAwait(false);
 
             // Parse decoder list looking for hardware decoders
             var lines = output.Split('\n');
@@ -234,8 +234,8 @@ public class HardwareAccelerationDetector
                     using var process = Process.Start(psi);
                     if (process != null)
                     {
-                        var output = await process.StandardOutput.ReadToEndAsync(ct);
-                        await process.WaitForExitAsync(ct);
+                        var output = await process.StandardOutput.ReadToEndAsync(ct).ConfigureAwait(false);
+                        await process.WaitForExitAsync(ct).ConfigureAwait(false);
                         
                         if (process.ExitCode == 0 && !string.IsNullOrWhiteSpace(output))
                         {

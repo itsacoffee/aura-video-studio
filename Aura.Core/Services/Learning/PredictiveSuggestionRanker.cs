@@ -34,7 +34,7 @@ public class PredictiveSuggestionRanker
         List<DecisionPattern> patterns,
         CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         
         var rankedSuggestions = new List<RankedSuggestion>();
         
@@ -45,7 +45,7 @@ public class PredictiveSuggestionRanker
                 request.SuggestionType,
                 decisionHistory,
                 patterns,
-                ct);
+                ct).ConfigureAwait(false);
             
             rankedSuggestions.Add(new RankedSuggestion(
                 Rank: 0, // Will be set after sorting
@@ -81,7 +81,7 @@ public class PredictiveSuggestionRanker
             suggestionType,
             decisionHistory,
             patterns,
-            ct);
+            ct).ConfigureAwait(false);
         
         return prediction.Confidence;
     }
@@ -96,7 +96,7 @@ public class PredictiveSuggestionRanker
         List<DecisionPattern> patterns,
         CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         
         var relevantDecisions = decisionHistory
             .Where(d => d.SuggestionType.Equals(suggestionType, StringComparison.OrdinalIgnoreCase))
@@ -169,7 +169,7 @@ public class PredictiveSuggestionRanker
                 suggestionType,
                 decisionHistory,
                 patterns,
-                ct);
+                ct).ConfigureAwait(false);
             
             if (prediction.RejectionProbability < rejectionThreshold)
             {
@@ -197,7 +197,7 @@ public class PredictiveSuggestionRanker
         List<DecisionPattern> patterns,
         CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         
         var insights = new List<LearningInsight>();
         
@@ -237,7 +237,7 @@ public class PredictiveSuggestionRanker
         List<InferredPreference> preferences,
         CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         
         var suggestions = new List<LearningInsight>();
         

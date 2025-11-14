@@ -81,13 +81,13 @@ public class FirstRunDiagnostics
         
         var result = new FirstRunDiagnosticsResult
         {
-            SystemInfo = await CollectSystemInfoAsync(ct)
+            SystemInfo = await CollectSystemInfoAsync(ct).ConfigureAwait(false)
         };
 
         var issues = new List<DiagnosticIssue>();
 
         // Check FFmpeg
-        var ffmpegIssue = await CheckFfmpegAsync(ct);
+        var ffmpegIssue = await CheckFfmpegAsync(ct).ConfigureAwait(false);
         if (ffmpegIssue != null)
         {
             issues.Add(ffmpegIssue);
@@ -108,14 +108,14 @@ public class FirstRunDiagnostics
         }
 
         // Check internet connectivity
-        var internetIssue = await CheckInternetConnectivityAsync(ct);
+        var internetIssue = await CheckInternetConnectivityAsync(ct).ConfigureAwait(false);
         if (internetIssue != null)
         {
             issues.Add(internetIssue);
         }
 
         // Check hardware capabilities
-        var hardwareIssue = await CheckHardwareAsync(ct);
+        var hardwareIssue = await CheckHardwareAsync(ct).ConfigureAwait(false);
         if (hardwareIssue != null)
         {
             issues.Add(hardwareIssue);
@@ -175,7 +175,7 @@ public class FirstRunDiagnostics
 
         try
         {
-            var profile = await _hardwareDetector.DetectSystemAsync();
+            var profile = await _hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
             info["cpu"] = new { cores = profile.PhysicalCores, threads = profile.LogicalCores };
             info["ram"] = new { gb = profile.RamGB };
             if (profile.Gpu != null)
@@ -196,7 +196,7 @@ public class FirstRunDiagnostics
     {
         try
         {
-            var result = await _ffmpegLocator.CheckAllCandidatesAsync(null, ct);
+            var result = await _ffmpegLocator.CheckAllCandidatesAsync(null, ct).ConfigureAwait(false);
             
             if (!result.Found)
             {
@@ -436,7 +436,7 @@ public class FirstRunDiagnostics
             using var httpClient = new System.Net.Http.HttpClient();
             httpClient.Timeout = TimeSpan.FromSeconds(5);
             
-            var response = await httpClient.GetAsync("https://www.google.com", ct);
+            var response = await httpClient.GetAsync("https://www.google.com", ct).ConfigureAwait(false);
             
             if (!response.IsSuccessStatusCode)
             {
@@ -487,7 +487,7 @@ public class FirstRunDiagnostics
     {
         try
         {
-            var profile = await _hardwareDetector.DetectSystemAsync();
+            var profile = await _hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
             
             if (profile.RamGB < 4)
             {

@@ -8,7 +8,7 @@ public class KeyVaultOptions
     /// <summary>
     /// Enable Azure Key Vault integration
     /// </summary>
-    public bool Enabled { get; set; } = false;
+    public bool Enabled { get; set; }
 
     /// <summary>
     /// Azure Key Vault URI (e.g., https://your-vault.vault.azure.net/)

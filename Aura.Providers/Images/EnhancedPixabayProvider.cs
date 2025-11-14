@@ -63,15 +63,15 @@ public class EnhancedPixabayProvider : IEnhancedStockProvider
             try
             {
                 var results = mediaType == StockMediaType.Video
-                    ? await SearchVideosInternalAsync(request, ct)
-                    : await SearchImagesInternalAsync(request, ct);
+                    ? await SearchVideosInternalAsync(request, ct).ConfigureAwait(false)
+                    : await SearchImagesInternalAsync(request, ct).ConfigureAwait(false);
 
                 return results;
             }
             catch (HttpRequestException ex) when (attempt < maxRetries)
             {
                 _logger.LogWarning(ex, "HTTP error searching Pixabay (attempt {Attempt}/{MaxRetries})", attempt, maxRetries);
-                await Task.Delay(retryDelay * attempt, ct);
+                await Task.Delay(retryDelay * attempt, ct).ConfigureAwait(false);
             }
             catch (TaskCanceledException) when (!ct.IsCancellationRequested)
             {
@@ -89,7 +89,7 @@ public class EnhancedPixabayProvider : IEnhancedStockProvider
         CancellationToken ct)
     {
         var url = BuildImageSearchUrl(request);
-        var response = await _httpClient.GetAsync(url, ct);
+        var response = await _httpClient.GetAsync(url, ct).ConfigureAwait(false);
 
         if (response.StatusCode == HttpStatusCode.TooManyRequests)
         {
@@ -103,7 +103,7 @@ public class EnhancedPixabayProvider : IEnhancedStockProvider
 
         response.EnsureSuccessStatusCode();
 
-        var json = await response.Content.ReadAsStringAsync(ct);
+        var json = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
         var doc = JsonDocument.Parse(json);
 
         var results = new List<StockMediaResult>();
@@ -132,7 +132,7 @@ public class EnhancedPixabayProvider : IEnhancedStockProvider
         CancellationToken ct)
     {
         var url = BuildVideoSearchUrl(request);
-        var response = await _httpClient.GetAsync(url, ct);
+        var response = await _httpClient.GetAsync(url, ct).ConfigureAwait(false);
 
         if (response.StatusCode == HttpStatusCode.TooManyRequests)
         {
@@ -141,7 +141,7 @@ public class EnhancedPixabayProvider : IEnhancedStockProvider
 
         response.EnsureSuccessStatusCode();
 
-        var json = await response.Content.ReadAsStringAsync(ct);
+        var json = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
         var doc = JsonDocument.Parse(json);
 
         var results = new List<StockMediaResult>();
@@ -364,7 +364,7 @@ public class EnhancedPixabayProvider : IEnhancedStockProvider
         try
         {
             var url = $"https://pixabay.com/api/?key={_apiKey}&q=test&per_page=1";
-            var response = await _httpClient.GetAsync(url, ct);
+            var response = await _httpClient.GetAsync(url, ct).ConfigureAwait(false);
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)
@@ -383,14 +383,14 @@ public class EnhancedPixabayProvider : IEnhancedStockProvider
         {
             try
             {
-                var response = await _httpClient.GetAsync(url, ct);
+                var response = await _httpClient.GetAsync(url, ct).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
-                return await response.Content.ReadAsByteArrayAsync(ct);
+                return await response.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
             }
             catch (HttpRequestException ex) when (attempt < maxRetries)
             {
                 _logger.LogWarning(ex, "Failed to download media (attempt {Attempt}/{MaxRetries})", attempt, maxRetries);
-                await Task.Delay(retryDelay * attempt, ct);
+                await Task.Delay(retryDelay * attempt, ct).ConfigureAwait(false);
             }
         }
 

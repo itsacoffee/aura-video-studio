@@ -35,7 +35,7 @@ public class ConfigurationEntity : IAuditableEntity
     /// <summary>
     /// Whether this configuration is sensitive (API keys, etc.)
     /// </summary>
-    public bool IsSensitive { get; set; } = false;
+    public bool IsSensitive { get; set; }
 
     /// <summary>
     /// Version of the configuration schema

@@ -38,7 +38,7 @@ public class ErrorDiagnosticsController : ControllerBase
     {
         try
         {
-            var errors = await _errorLoggingService.GetRecentErrorsAsync(count, category);
+            var errors = await _errorLoggingService.GetRecentErrorsAsync(count, category).ConfigureAwait(false);
             return Ok(new
             {
                 count = errors.Count,
@@ -60,7 +60,7 @@ public class ErrorDiagnosticsController : ControllerBase
     {
         try
         {
-            var errors = await _errorLoggingService.SearchByCorrelationIdAsync(correlationId);
+            var errors = await _errorLoggingService.SearchByCorrelationIdAsync(correlationId).ConfigureAwait(false);
             return Ok(new
             {
                 correlationId,
@@ -130,9 +130,9 @@ public class ErrorDiagnosticsController : ControllerBase
         try
         {
             var timeWindow = hoursAgo.HasValue ? TimeSpan.FromHours(hoursAgo.Value) : (TimeSpan?)null;
-            var filePath = await _errorLoggingService.ExportDiagnosticsAsync(timeWindow);
+            var filePath = await _errorLoggingService.ExportDiagnosticsAsync(timeWindow).ConfigureAwait(false);
             
-            var fileBytes = await System.IO.File.ReadAllBytesAsync(filePath);
+            var fileBytes = await System.IO.File.ReadAllBytesAsync(filePath).ConfigureAwait(false);
             var fileName = Path.GetFileName(filePath);
             
             return File(fileBytes, "application/json", fileName);
@@ -184,7 +184,7 @@ public class ErrorDiagnosticsController : ControllerBase
             }
 
             var exception = CreateExceptionFromRequest(request);
-            var result = await _errorRecoveryService.AttemptAutomatedRecoveryAsync(exception, request.CorrelationId);
+            var result = await _errorRecoveryService.AttemptAutomatedRecoveryAsync(exception, request.CorrelationId).ConfigureAwait(false);
             
             return Ok(result);
         }
@@ -204,7 +204,7 @@ public class ErrorDiagnosticsController : ControllerBase
         try
         {
             var retentionPeriod = TimeSpan.FromDays(daysOld);
-            var deletedCount = await _errorLoggingService.CleanupOldLogsAsync(retentionPeriod);
+            var deletedCount = await _errorLoggingService.CleanupOldLogsAsync(retentionPeriod).ConfigureAwait(false);
             
             var aggregationDeleted = _errorAggregationService.ClearOldErrors(retentionPeriod);
             

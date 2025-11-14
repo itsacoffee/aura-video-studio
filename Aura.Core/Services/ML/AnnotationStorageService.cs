@@ -64,7 +64,7 @@ public class AnnotationStorageService
                 ValidateAnnotation(annotation);
                 
                 var json = JsonSerializer.Serialize(annotation, JsonOptions);
-                await writer.WriteLineAsync(json);
+                await writer.WriteLineAsync(json).ConfigureAwait(false);
             }
 
             _logger.LogInformation("Successfully stored {Count} annotations for user {UserId}", 
@@ -105,7 +105,7 @@ public class AnnotationStorageService
         {
             using var reader = new StreamReader(annotationsFile);
             string? line;
-            while ((line = await reader.ReadLineAsync(cancellationToken)) != null)
+            while ((line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false)) != null)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 
@@ -145,7 +145,7 @@ public class AnnotationStorageService
         string userId, 
         CancellationToken cancellationToken = default)
     {
-        var annotations = await GetAnnotationsAsync(userId, cancellationToken);
+        var annotations = await GetAnnotationsAsync(userId, cancellationToken).ConfigureAwait(false);
         
         if (annotations.Count == 0)
         {

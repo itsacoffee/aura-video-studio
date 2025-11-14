@@ -42,7 +42,7 @@ public class DatabaseInitializationService
 
         try
         {
-            result.PathWritable = await CheckPathWritableAsync();
+            result.PathWritable = await CheckPathWritableAsync().ConfigureAwait(false);
 
             if (!result.PathWritable)
             {
@@ -57,7 +57,7 @@ public class DatabaseInitializationService
             using var scope = _scopeFactory.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<AuraDbContext>();
 
-            result.MigrationsApplied = await ApplyMigrationsAsync(context, ct);
+            result.MigrationsApplied = await ApplyMigrationsAsync(context, ct).ConfigureAwait(false);
 
             if (!result.MigrationsApplied)
             {
@@ -66,15 +66,15 @@ public class DatabaseInitializationService
                 return result;
             }
 
-            result.WalModeEnabled = await ConfigureWalModeAsync(context, ct);
+            result.WalModeEnabled = await ConfigureWalModeAsync(context, ct).ConfigureAwait(false);
 
-            result.IntegrityCheck = await CheckIntegrityAsync(context, ct);
+            result.IntegrityCheck = await CheckIntegrityAsync(context, ct).ConfigureAwait(false);
 
             if (!result.IntegrityCheck)
             {
                 _logger.LogWarning("Database integrity check failed, attempting repair");
                 result.RepairAttempted = true;
-                result.RepairSuccessful = await AttemptRepairAsync(context, ct);
+                result.RepairSuccessful = await AttemptRepairAsync(context, ct).ConfigureAwait(false);
 
                 if (!result.RepairSuccessful)
                 {
@@ -125,7 +125,7 @@ public class DatabaseInitializationService
 
             var testFile = Path.Combine(directory, $".write-test-{Guid.NewGuid()}");
             
-            await File.WriteAllTextAsync(testFile, "test");
+            await File.WriteAllTextAsync(testFile, "test").ConfigureAwait(false);
             File.Delete(testFile);
 
             _logger.LogDebug("Database path is writable: {Path}", directory);
@@ -145,13 +145,13 @@ public class DatabaseInitializationService
     {
         try
         {
-            var pendingMigrations = await context.Database.GetPendingMigrationsAsync(ct);
+            var pendingMigrations = await context.Database.GetPendingMigrationsAsync(ct).ConfigureAwait(false);
             var pendingCount = pendingMigrations.Count();
 
             if (pendingCount > 0)
             {
                 _logger.LogInformation("Applying {Count} pending migrations", pendingCount);
-                await context.Database.MigrateAsync(ct);
+                await context.Database.MigrateAsync(ct).ConfigureAwait(false);
                 _logger.LogInformation("Migrations applied successfully");
             }
             else
@@ -175,8 +175,8 @@ public class DatabaseInitializationService
     {
         try
         {
-            await context.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;", ct);
-            await context.Database.ExecuteSqlRawAsync("PRAGMA synchronous=NORMAL;", ct);
+            await context.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;", ct).ConfigureAwait(false);
+            await context.Database.ExecuteSqlRawAsync("PRAGMA synchronous=NORMAL;", ct).ConfigureAwait(false);
 
             _logger.LogInformation("SQLite WAL mode configured successfully");
             return true;
@@ -196,12 +196,12 @@ public class DatabaseInitializationService
         try
         {
             var connection = context.Database.GetDbConnection();
-            await connection.OpenAsync(ct);
+            await connection.OpenAsync(ct).ConfigureAwait(false);
 
             using var command = connection.CreateCommand();
             command.CommandText = "PRAGMA integrity_check;";
             
-            var result = await command.ExecuteScalarAsync(ct);
+            var result = await command.ExecuteScalarAsync(ct).ConfigureAwait(false);
             var isOk = result?.ToString() == "ok";
 
             if (isOk)
@@ -232,12 +232,12 @@ public class DatabaseInitializationService
             _logger.LogInformation("Attempting database repair");
 
             var connection = context.Database.GetDbConnection();
-            await connection.OpenAsync(ct);
+            await connection.OpenAsync(ct).ConfigureAwait(false);
 
             using var command = connection.CreateCommand();
             command.CommandText = "PRAGMA integrity_check;";
             
-            var checkResult = await command.ExecuteScalarAsync(ct);
+            var checkResult = await command.ExecuteScalarAsync(ct).ConfigureAwait(false);
 
             if (checkResult?.ToString() == "ok")
             {

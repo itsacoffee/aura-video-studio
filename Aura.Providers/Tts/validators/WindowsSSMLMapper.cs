@@ -133,7 +133,7 @@ public class WindowsSSMLMapper : BaseSSMLMapper
 
         var constraints = GetConstraints();
         var unsupportedTags = FindUnsupportedTags(ssml, constraints.SupportedTags);
-        if (unsupportedTags.Any())
+        if (unsupportedTags.Count != 0)
         {
             warnings.Add($"Unsupported tags (will be ignored): {string.Join(", ", unsupportedTags)}");
         }

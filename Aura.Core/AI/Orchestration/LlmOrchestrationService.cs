@@ -122,7 +122,7 @@ public class LlmOrchestrationService
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                 cts.CancelAfter(config.Timeout);
 
-                var llmOutput = await llmInvoker(repairPrompt, cts.Token);
+                var llmOutput = await llmInvoker(repairPrompt, cts.Token).ConfigureAwait(false);
                 
                 if (string.IsNullOrWhiteSpace(llmOutput))
                 {
@@ -242,7 +242,7 @@ public class LlmOrchestrationService
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                 cts.CancelAfter(config.Timeout);
 
-                var output = await llmInvoker(null, cts.Token);
+                var output = await llmInvoker(null, cts.Token).ConfigureAwait(false);
                 
                 if (!string.IsNullOrWhiteSpace(output))
                 {

@@ -52,7 +52,7 @@ public class OfflineProviderAvailabilityService
             CheckWindowsTtsAsync(ct)
         };
 
-        var statuses = await Task.WhenAll(results);
+        var statuses = await Task.WhenAll(results).ConfigureAwait(false);
 
         var overallStatus = new OfflineProvidersStatus
         {
@@ -77,7 +77,7 @@ public class OfflineProviderAvailabilityService
     /// </summary>
     public async Task<OfflineProviderStatus> CheckPiperAsync(CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         var piperPath = _providerSettings.PiperExecutablePath;
         var voiceModelPath = _providerSettings.PiperVoiceModelPath;
@@ -138,7 +138,7 @@ public class OfflineProviderAvailabilityService
             Name = "Piper TTS",
             IsAvailable = true,
             Message = "Piper TTS is ready",
-            Version = await GetPiperVersionAsync(piperPath, ct),
+            Version = await GetPiperVersionAsync(piperPath, ct).ConfigureAwait(false),
             Details = new Dictionary<string, object>
             {
                 ["ExecutablePath"] = piperPath,
@@ -159,11 +159,11 @@ public class OfflineProviderAvailabilityService
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(5));
 
-            var response = await _httpClient.GetAsync($"{baseUrl}/api/voices", cts.Token);
+            var response = await _httpClient.GetAsync($"{baseUrl}/api/voices", cts.Token).ConfigureAwait(false);
 
             if (response.IsSuccessStatusCode)
             {
-                var content = await response.Content.ReadAsStringAsync(cts.Token);
+                var content = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
                 var voicesCount = 0;
                 
                 try
@@ -226,11 +226,11 @@ public class OfflineProviderAvailabilityService
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(5));
 
-            var response = await _httpClient.GetAsync($"{baseUrl}/api/tags", cts.Token);
+            var response = await _httpClient.GetAsync($"{baseUrl}/api/tags", cts.Token).ConfigureAwait(false);
 
             if (response.IsSuccessStatusCode)
             {
-                var content = await response.Content.ReadAsStringAsync(cts.Token);
+                var content = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
                 var models = new List<string>();
                 
                 try
@@ -307,11 +307,11 @@ public class OfflineProviderAvailabilityService
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(5));
 
-            var response = await _httpClient.GetAsync($"{baseUrl}/sdapi/v1/sd-models", cts.Token);
+            var response = await _httpClient.GetAsync($"{baseUrl}/sdapi/v1/sd-models", cts.Token).ConfigureAwait(false);
 
             if (response.IsSuccessStatusCode)
             {
-                var content = await response.Content.ReadAsStringAsync(cts.Token);
+                var content = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
                 var modelsCount = 0;
                 
                 try
@@ -328,7 +328,7 @@ public class OfflineProviderAvailabilityService
                 }
 
                 var systemProfile = _hardwareDetector != null 
-                    ? await _hardwareDetector.DetectSystemAsync() 
+                    ? await _hardwareDetector.DetectSystemAsync().ConfigureAwait(false)
                     : null;
 
                 var recommendations = GetStableDiffusionRecommendations(systemProfile);
@@ -377,7 +377,7 @@ public class OfflineProviderAvailabilityService
     /// </summary>
     public async Task<OfflineProviderStatus> CheckWindowsTtsAsync(CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         if (!OperatingSystem.IsWindows())
         {
@@ -427,8 +427,8 @@ public class OfflineProviderAvailabilityService
             using var process = Process.Start(startInfo);
             if (process != null)
             {
-                await process.WaitForExitAsync(ct);
-                var output = await process.StandardOutput.ReadToEndAsync(ct);
+                await process.WaitForExitAsync(ct).ConfigureAwait(false);
+                var output = await process.StandardOutput.ReadToEndAsync(ct).ConfigureAwait(false);
                 return output.Trim();
             }
         }
@@ -465,7 +465,7 @@ public class OfflineProviderAvailabilityService
         {
             try
             {
-                systemProfile = Task.Run(async () => await _hardwareDetector.DetectSystemAsync()).GetAwaiter().GetResult();
+                systemProfile = Task.Run(async () => await _hardwareDetector.DetectSystemAsync().ConfigureAwait(false)).GetAwaiter().GetResult();
             }
             catch (Exception ex)
             {
@@ -544,7 +544,7 @@ public class OfflineProviderAvailabilityService
         {
             try
             {
-                systemProfile = await _hardwareDetector.DetectSystemAsync();
+                systemProfile = await _hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
             }
             catch (Exception ex)
             {

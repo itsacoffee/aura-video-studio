@@ -41,7 +41,7 @@ public class EditorService : IEditorProvider
             _logger.LogInformation("Applying edits to script based on {SuggestionCount} suggestions", critique.Suggestions.Count);
 
             var editPrompt = BuildEditPrompt(script, critique, brief, spec);
-            var editedScript = await _llmProvider.CompleteAsync(editPrompt, ct);
+            var editedScript = await _llmProvider.CompleteAsync(editPrompt, ct).ConfigureAwait(false);
 
             if (string.IsNullOrWhiteSpace(editedScript))
             {
@@ -56,7 +56,7 @@ public class EditorService : IEditorProvider
 
             editedScript = CleanScriptOutput(editedScript);
 
-            var validationResult = await ValidateSchemaAsync(editedScript, spec, ct);
+            var validationResult = await ValidateSchemaAsync(editedScript, spec, ct).ConfigureAwait(false);
 
             if (!validationResult.MeetsDurationConstraints)
             {
@@ -65,8 +65,8 @@ public class EditorService : IEditorProvider
                     validationResult.EstimatedDuration,
                     validationResult.TargetDuration);
 
-                editedScript = await AdjustForDurationAsync(editedScript, spec, ct);
-                validationResult = await ValidateSchemaAsync(editedScript, spec, ct);
+                editedScript = await AdjustForDurationAsync(editedScript, spec, ct).ConfigureAwait(false);
+                validationResult = await ValidateSchemaAsync(editedScript, spec, ct).ConfigureAwait(false);
             }
 
             return new EditResult
@@ -95,7 +95,7 @@ public class EditorService : IEditorProvider
         IReadOnlyList<ScriptEdit> edits,
         CancellationToken ct)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         var result = script;
         
@@ -129,7 +129,7 @@ public class EditorService : IEditorProvider
         PlanSpec spec,
         CancellationToken ct)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         var errors = new List<string>();
         var warnings = new List<string>();
@@ -193,7 +193,7 @@ public class EditorService : IEditorProvider
         sb.AppendLine($"**Overall Score**: {critique.OverallScore:F1}/100");
         sb.AppendLine();
 
-        if (critique.Issues.Any())
+        if (critique.Issues.Count != 0)
         {
             sb.AppendLine("### Issues to Address");
             foreach (var issue in critique.Issues.OrderByDescending(i => i.Severity))
@@ -207,7 +207,7 @@ public class EditorService : IEditorProvider
             sb.AppendLine();
         }
 
-        if (critique.Strengths.Any())
+        if (critique.Strengths.Count != 0)
         {
             sb.AppendLine("### Strengths to Preserve");
             foreach (var strength in critique.Strengths)
@@ -217,7 +217,7 @@ public class EditorService : IEditorProvider
             sb.AppendLine();
         }
 
-        if (critique.Suggestions.Any())
+        if (critique.Suggestions.Count != 0)
         {
             sb.AppendLine("### Specific Suggestions");
             foreach (var suggestion in critique.Suggestions)
@@ -283,7 +283,7 @@ public class EditorService : IEditorProvider
 
 Provide only the condensed script, no explanations.";
 
-            var adjusted = await _llmProvider.CompleteAsync(adjustmentPrompt, ct);
+            var adjusted = await _llmProvider.CompleteAsync(adjustmentPrompt, ct).ConfigureAwait(false);
             return CleanScriptOutput(adjusted);
         }
 

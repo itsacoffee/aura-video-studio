@@ -92,12 +92,12 @@ public class AssetDependencyGraph
     /// </summary>
     public IReadOnlyList<string> GetDependentTasks(string taskId)
     {
-        if (!_dependents.ContainsKey(taskId))
+        if (!_dependents.TryGetValue(taskId, out var value))
         {
             return Array.Empty<string>();
         }
 
-        return _dependents[taskId].ToList();
+        return value.ToList();
     }
 
     /// <summary>
@@ -105,12 +105,12 @@ public class AssetDependencyGraph
     /// </summary>
     public IReadOnlyList<string> GetDependencies(string taskId)
     {
-        if (!_dependencies.ContainsKey(taskId))
+        if (!_dependencies.TryGetValue(taskId, out var value))
         {
             return Array.Empty<string>();
         }
 
-        return _dependencies[taskId].ToList();
+        return value.ToList();
     }
 
     /// <summary>

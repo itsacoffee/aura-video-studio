@@ -37,7 +37,7 @@ public class TransitionRecommendationService
             suggestions.Add(suggestion);
         }
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return suggestions;
     }
 
@@ -172,7 +172,7 @@ public class TransitionRecommendationService
             }
         }
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return jarringTransitions;
     }
 
@@ -244,7 +244,7 @@ public class TransitionRecommendationService
             }
         }
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return varied;
     }
 

@@ -141,7 +141,7 @@ public class KeyStore : IKeyStore
         // Only show last 30 characters
         if (path.Length > 30)
         {
-            return "..." + path.Substring(path.Length - 30);
+            return string.Concat("...", path.AsSpan(path.Length - 30));
         }
 
         return path;
@@ -170,7 +170,7 @@ public class KeyStore : IKeyStore
             {
                 if (!string.IsNullOrWhiteSpace(kvp.Key) && !string.IsNullOrWhiteSpace(kvp.Value))
                 {
-                    await _secureStorage.SaveApiKeyAsync(kvp.Key, kvp.Value);
+                    await _secureStorage.SaveApiKeyAsync(kvp.Key, kvp.Value).ConfigureAwait(false);
                     saveCount++;
                 }
             }
@@ -196,7 +196,7 @@ public class KeyStore : IKeyStore
     {
         var allKeys = GetAllKeys();
         allKeys[providerName] = apiKey;
-        await SaveKeysAsync(allKeys, ct);
+        await SaveKeysAsync(allKeys, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -207,7 +207,7 @@ public class KeyStore : IKeyStore
         var allKeys = GetAllKeys();
         if (allKeys.Remove(providerName))
         {
-            await SaveKeysAsync(allKeys, ct);
+            await SaveKeysAsync(allKeys, ct).ConfigureAwait(false);
             _logger.LogInformation("Deleted API key for provider {Provider}", providerName);
         }
     }

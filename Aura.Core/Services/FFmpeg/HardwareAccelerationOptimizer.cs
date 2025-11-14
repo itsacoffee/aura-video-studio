@@ -47,8 +47,8 @@ public class HardwareAccelerationOptimizer
 
         try
         {
-            var encoders = await GetAvailableEncodersAsync(cancellationToken);
-            var hwaccels = await GetAvailableHwAccelsAsync(cancellationToken);
+            var encoders = await GetAvailableEncodersAsync(cancellationToken).ConfigureAwait(false);
+            var hwaccels = await GetAvailableHwAccelsAsync(cancellationToken).ConfigureAwait(false);
 
             capabilities.SupportsNvenc = encoders.Contains("h264_nvenc") || encoders.Contains("hevc_nvenc");
             capabilities.SupportsAmf = encoders.Contains("h264_amf") || encoders.Contains("hevc_amf");
@@ -94,7 +94,7 @@ public class HardwareAccelerationOptimizer
         string codec = "h264",
         CancellationToken cancellationToken = default)
     {
-        var capabilities = await DetectCapabilitiesAsync(cancellationToken);
+        var capabilities = await DetectCapabilitiesAsync(cancellationToken).ConfigureAwait(false);
 
         if (!capabilities.HasAnyAcceleration)
         {
@@ -324,7 +324,7 @@ public class HardwareAccelerationOptimizer
                     break;
                 }
 
-                var line = await process.StandardOutput.ReadLineAsync();
+                var line = await process.StandardOutput.ReadLineAsync().ConfigureAwait(false);
                 if (line != null)
                 {
                     output.AppendLine(line);
@@ -343,7 +343,7 @@ public class HardwareAccelerationOptimizer
                 }
             }
 
-            await process.WaitForExitAsync(cancellationToken);
+            await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -384,7 +384,7 @@ public class HardwareAccelerationOptimizer
                     break;
                 }
 
-                var line = await process.StandardOutput.ReadLineAsync();
+                var line = await process.StandardOutput.ReadLineAsync().ConfigureAwait(false);
                 if (!string.IsNullOrWhiteSpace(line) && 
                     !line.Contains("Hardware acceleration methods:"))
                 {
@@ -392,7 +392,7 @@ public class HardwareAccelerationOptimizer
                 }
             }
 
-            await process.WaitForExitAsync(cancellationToken);
+            await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

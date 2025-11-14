@@ -27,7 +27,7 @@ public static class QueryableExtensions
         if (pagination.PageSize < 1)
             pagination.PageSize = 20;
 
-        var totalCount = await query.CountAsync(cancellationToken);
+        var totalCount = await query.CountAsync(cancellationToken).ConfigureAwait(false);
 
         if (totalCount == 0)
         {
@@ -37,7 +37,7 @@ public static class QueryableExtensions
         var items = await query
             .Skip(pagination.Skip)
             .Take(pagination.PageSize)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
 
         return PagedResult<T>.Create(items, pagination.PageNumber, pagination.PageSize, totalCount);
     }
@@ -97,7 +97,7 @@ public static class QueryableExtensions
         };
 
         query = query.ApplySort(sortBy, descending);
-        return await query.ToPagedResultAsync(pagination, cancellationToken);
+        return await query.ToPagedResultAsync(pagination, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -107,7 +107,7 @@ public static class QueryableExtensions
         this Task<T> task)
     {
         var startTime = DateTime.UtcNow;
-        var result = await task;
+        var result = await task.ConfigureAwait(false);
         var duration = DateTime.UtcNow - startTime;
         return (result, duration);
     }

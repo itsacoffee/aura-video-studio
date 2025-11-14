@@ -41,7 +41,7 @@ public class QueryCompositionService
 
         try
         {
-            var response = await _llmProvider.CompleteAsync(prompt, ct);
+            var response = await _llmProvider.CompleteAsync(prompt, ct).ConfigureAwait(false);
             var result = ParseQueryCompositionResponse(response);
 
             _logger.LogInformation(
@@ -72,7 +72,7 @@ public class QueryCompositionService
 
         try
         {
-            var response = await _llmProvider.CompleteAsync(prompt, ct);
+            var response = await _llmProvider.CompleteAsync(prompt, ct).ConfigureAwait(false);
             var result = ParseBlendSetResponse(response, request.SceneDescriptions.Count);
 
             _logger.LogInformation(

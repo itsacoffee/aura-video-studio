@@ -87,7 +87,7 @@ public abstract class BaseSagaStep<TResult> : BaseSagaStep, ISagaStep<TResult>
     /// <inheritdoc />
     async Task ISagaStep.ExecuteAsync(SagaContext context, CancellationToken cancellationToken)
     {
-        var result = await ExecuteAsync(context, cancellationToken);
+        var result = await ExecuteAsync(context, cancellationToken).ConfigureAwait(false);
         
         // Store the result in the context
         var resultKey = $"{StepId}_result";

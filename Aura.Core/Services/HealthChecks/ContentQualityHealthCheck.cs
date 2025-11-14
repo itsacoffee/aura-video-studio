@@ -76,7 +76,7 @@ public class ContentQualityHealthCheck : IHealthCheck
                 testScript,
                 testBrief,
                 testSpec,
-                cts.Token);
+                cts.Token).ConfigureAwait(false);
 
             // Verify the analysis detected issues
             var hasIssues = analysis.Issues.Count > 0;

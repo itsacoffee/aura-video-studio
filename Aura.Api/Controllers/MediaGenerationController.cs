@@ -39,7 +39,7 @@ public class MediaGenerationController : ControllerBase
     {
         try
         {
-            var media = await _integrationService.GetProjectMediaAsync(projectId, ct);
+            var media = await _integrationService.GetProjectMediaAsync(projectId, ct).ConfigureAwait(false);
             return Ok(media);
         }
         catch (Exception ex)
@@ -102,7 +102,7 @@ public class MediaGenerationController : ControllerBase
                 using (var stream = file.OpenReadStream())
                 using (var fileStream = System.IO.File.Create(tempPath))
                 {
-                    await stream.CopyToAsync(fileStream, ct);
+                    await stream.CopyToAsync(fileStream, ct).ConfigureAwait(false);
                 }
 
                 var tagList = string.IsNullOrWhiteSpace(tags)
@@ -115,7 +115,7 @@ public class MediaGenerationController : ControllerBase
                     projectId,
                     description,
                     tagList,
-                    ct);
+                    ct).ConfigureAwait(false);
 
                 return Ok(result);
             }
@@ -164,7 +164,7 @@ public class MediaGenerationController : ControllerBase
                 request.MediaId,
                 request.ProjectId,
                 request.ProjectName,
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(new { success = true });
         }
@@ -193,7 +193,7 @@ public class MediaGenerationController : ControllerBase
     {
         try
         {
-            var media = await _integrationService.GetMediaUsedInProjectAsync(projectId, ct);
+            var media = await _integrationService.GetMediaUsedInProjectAsync(projectId, ct).ConfigureAwait(false);
             return Ok(media);
         }
         catch (Exception ex)
@@ -225,7 +225,7 @@ public class MediaGenerationController : ControllerBase
             var collection = await _integrationService.CreateProjectCollectionAsync(
                 projectId,
                 request.ProjectName,
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(collection);
         }
@@ -254,7 +254,7 @@ public class MediaGenerationController : ControllerBase
     {
         try
         {
-            var urls = await _integrationService.GetDownloadUrlsAsync(request.MediaIds, ct);
+            var urls = await _integrationService.GetDownloadUrlsAsync(request.MediaIds, ct).ConfigureAwait(false);
             return Ok(urls);
         }
         catch (Exception ex)

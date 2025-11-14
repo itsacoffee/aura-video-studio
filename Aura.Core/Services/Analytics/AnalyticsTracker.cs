@@ -106,7 +106,7 @@ public class AnalyticsTracker : IAnalyticsTracker
         int? sceneCount = null,
         double? outputDurationSeconds = null)
     {
-        await tracker.CompleteAsync(success, inputTokens, outputTokens, errorMessage, sceneCount, outputDurationSeconds);
+        await tracker.CompleteAsync(success, inputTokens, outputTokens, errorMessage, sceneCount, outputDurationSeconds).ConfigureAwait(false);
     }
 }
 
@@ -198,7 +198,7 @@ public class GenerationTracker : IDisposable
                 Timestamp = _startTime
             };
 
-            await _analyticsService.RecordUsageAsync(usage);
+            await _analyticsService.RecordUsageAsync(usage).ConfigureAwait(false);
 
             // Record cost if tokens were used
             if (inputTokens > 0 || outputTokens > 0)
@@ -207,7 +207,7 @@ public class GenerationTracker : IDisposable
                     _provider,
                     _model ?? "unknown",
                     inputTokens,
-                    outputTokens);
+                    outputTokens).ConfigureAwait(false);
 
                 if (estimatedCost > 0)
                 {
@@ -224,7 +224,7 @@ public class GenerationTracker : IDisposable
                         Timestamp = _startTime
                     };
 
-                    await _analyticsService.RecordCostAsync(cost);
+                    await _analyticsService.RecordCostAsync(cost).ConfigureAwait(false);
                 }
             }
 
@@ -240,7 +240,7 @@ public class GenerationTracker : IDisposable
                 Timestamp = _startTime
             };
 
-            await _analyticsService.RecordPerformanceAsync(performance);
+            await _analyticsService.RecordPerformanceAsync(performance).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -287,11 +287,11 @@ public static class AnalyticsTrackerExtensions
         string? featureUsed = null)
     {
         using var tracking = await tracker.TrackGenerationAsync(
-            generationType, provider, model, projectId, jobId, featureUsed);
+            generationType, provider, model, projectId, jobId, featureUsed).ConfigureAwait(false);
 
         try
         {
-            var result = await operation();
+            var result = await operation().ConfigureAwait(false);
             
             var (inputTokens, outputTokens) = extractTokens != null 
                 ? extractTokens(result) 
@@ -300,7 +300,7 @@ public static class AnalyticsTrackerExtensions
             await ((GenerationTracker)tracking).CompleteAsync(
                 success: true,
                 inputTokens: inputTokens,
-                outputTokens: outputTokens);
+                outputTokens: outputTokens).ConfigureAwait(false);
 
             return result;
         }
@@ -308,7 +308,7 @@ public static class AnalyticsTrackerExtensions
         {
             await ((GenerationTracker)tracking).CompleteAsync(
                 success: false,
-                errorMessage: ex.Message);
+                errorMessage: ex.Message).ConfigureAwait(false);
             throw;
         }
     }

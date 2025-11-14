@@ -255,7 +255,7 @@ public class BulletproofVideoIntegrationTests
     private sealed class MultipleFailuresTtsProvider : ITtsProvider
     {
         private readonly WavFileWriter _writer;
-        private int _attempts = 0;
+        private int _attempts;
 
         public MultipleFailuresTtsProvider(WavFileWriter writer)
         {

@@ -149,7 +149,7 @@ public class CandidateCacheService
         {
             TotalEntries = entries.Count,
             ExpiredEntries = entries.Count(e => e.ExpiresAt <= now),
-            OldestEntryAge = entries.Any() ? now - entries.Min(e => e.CachedAt) : TimeSpan.Zero,
+            OldestEntryAge = entries.Count != 0 ? now - entries.Min(e => e.CachedAt) : TimeSpan.Zero,
             TotalCandidatesCached = entries.Sum(e => e.Result.Candidates.Count)
         };
     }

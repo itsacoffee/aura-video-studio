@@ -10,7 +10,7 @@ namespace Aura.E2E;
 /// <summary>
 /// Mock TTS provider for E2E testing
 /// </summary>
-internal class MockTtsProvider : ITtsProvider
+internal sealed class MockTtsProvider : ITtsProvider
 {
     private readonly string _name;
 
@@ -33,7 +33,7 @@ internal class MockTtsProvider : ITtsProvider
 /// <summary>
 /// Mock LLM provider that always fails (for testing fallback)
 /// </summary>
-internal class FailingLlmProvider : ILlmProvider
+internal sealed class FailingLlmProvider : ILlmProvider
 {
     private readonly string _name;
 

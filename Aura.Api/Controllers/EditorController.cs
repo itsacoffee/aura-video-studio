@@ -64,17 +64,17 @@ public class EditorController : ControllerBase
             if (System.IO.File.Exists(timelinePath))
             {
                 // Load existing timeline
-                var json = await System.IO.File.ReadAllTextAsync(timelinePath);
+                var json = await System.IO.File.ReadAllTextAsync(timelinePath).ConfigureAwait(false);
                 timeline = JsonSerializer.Deserialize<EditableTimeline>(json) ?? new EditableTimeline();
             }
             else
             {
                 // Create timeline from job artifacts
-                timeline = await CreateTimelineFromJobAsync(job);
+                timeline = await CreateTimelineFromJobAsync(job).ConfigureAwait(false);
                 
                 // Save the initial timeline
                 var json = JsonSerializer.Serialize(timeline, new JsonSerializerOptions { WriteIndented = true });
-                await System.IO.File.WriteAllTextAsync(timelinePath, json);
+                await System.IO.File.WriteAllTextAsync(timelinePath, json).ConfigureAwait(false);
             }
 
             return Ok(timeline);
@@ -105,7 +105,7 @@ public class EditorController : ControllerBase
             // Save timeline to job directory
             var timelinePath = Path.Combine(_artifactManager.GetJobDirectory(jobId), "timeline.json");
             var json = JsonSerializer.Serialize(timeline, new JsonSerializerOptions { WriteIndented = true });
-            await System.IO.File.WriteAllTextAsync(timelinePath, json);
+            await System.IO.File.WriteAllTextAsync(timelinePath, json).ConfigureAwait(false);
 
             _logger.LogInformation("Timeline saved successfully for job {JobId}", jobId);
             return Ok(new { success = true, message = "Timeline saved successfully" });
@@ -140,7 +140,7 @@ public class EditorController : ControllerBase
                 return BadRequest(new { error = "Timeline not found. Please save the timeline first." });
             }
 
-            var json = await System.IO.File.ReadAllTextAsync(timelinePath, cancellationToken);
+            var json = await System.IO.File.ReadAllTextAsync(timelinePath, cancellationToken).ConfigureAwait(false);
             var timeline = JsonSerializer.Deserialize<EditableTimeline>(json);
             
             if (timeline == null || timeline.Scenes.Count == 0)
@@ -169,7 +169,7 @@ public class EditorController : ControllerBase
                 renderSpec, 
                 previewPath, 
                 progress, 
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             _logger.LogInformation("Preview rendered successfully for job {JobId}", jobId);
             
@@ -210,7 +210,7 @@ public class EditorController : ControllerBase
                 return BadRequest(new { error = "Timeline not found. Please save the timeline first." });
             }
 
-            var json = await System.IO.File.ReadAllTextAsync(timelinePath, cancellationToken);
+            var json = await System.IO.File.ReadAllTextAsync(timelinePath, cancellationToken).ConfigureAwait(false);
             var timeline = JsonSerializer.Deserialize<EditableTimeline>(json);
             
             if (timeline == null || timeline.Scenes.Count == 0)
@@ -238,7 +238,7 @@ public class EditorController : ControllerBase
                 renderSpec, 
                 finalPath, 
                 progress, 
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             _logger.LogInformation("Final video rendered successfully for job {JobId}", jobId);
             
@@ -292,7 +292,7 @@ public class EditorController : ControllerBase
             // Save file
             using (var stream = new FileStream(filePath, FileMode.Create))
             {
-                await file.CopyToAsync(stream);
+                await file.CopyToAsync(stream).ConfigureAwait(false);
             }
 
             _logger.LogInformation("Asset uploaded successfully: {FilePath}", filePath);
@@ -390,7 +390,7 @@ public class EditorController : ControllerBase
 
         if (System.IO.File.Exists(scenesPath))
         {
-            var json = await System.IO.File.ReadAllTextAsync(scenesPath);
+            var json = await System.IO.File.ReadAllTextAsync(scenesPath).ConfigureAwait(false);
             var scenes = JsonSerializer.Deserialize<List<Scene>>(json);
 
             if (scenes != null)

@@ -33,9 +33,9 @@ public class AssetTagger
         {
             tags = asset.Type switch
             {
-                Models.Assets.AssetType.Image => await GenerateImageTagsAsync(asset),
-                Models.Assets.AssetType.Video => await GenerateVideoTagsAsync(asset),
-                Models.Assets.AssetType.Audio => await GenerateAudioTagsAsync(asset),
+                Models.Assets.AssetType.Image => await GenerateImageTagsAsync(asset).ConfigureAwait(false),
+                Models.Assets.AssetType.Video => await GenerateVideoTagsAsync(asset).ConfigureAwait(false),
+                Models.Assets.AssetType.Audio => await GenerateAudioTagsAsync(asset).ConfigureAwait(false),
                 _ => tags
             };
 
@@ -91,7 +91,7 @@ public class AssetTagger
                 tags.Add(new AssetTag("square", 90));
         }
 
-        return await Task.FromResult(tags);
+        return await Task.FromResult(tags).ConfigureAwait(false);
     }
 
     private async Task<List<AssetTag>> GenerateVideoTagsAsync(Asset asset)
@@ -135,7 +135,7 @@ public class AssetTagger
                 tags.Add(new AssetTag("hd", 100));
         }
 
-        return await Task.FromResult(tags);
+        return await Task.FromResult(tags).ConfigureAwait(false);
     }
 
     private async Task<List<AssetTag>> GenerateAudioTagsAsync(Asset asset)
@@ -186,6 +186,6 @@ public class AssetTagger
                 tags.Add(new AssetTag(tag, 85));
         }
 
-        return await Task.FromResult(tags);
+        return await Task.FromResult(tags).ConfigureAwait(false);
     }
 }

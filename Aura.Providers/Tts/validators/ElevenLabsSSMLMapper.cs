@@ -122,7 +122,7 @@ public class ElevenLabsSSMLMapper : BaseSSMLMapper
 
         var constraints = GetConstraints();
         var unsupportedTags = FindUnsupportedTags(ssml, constraints.SupportedTags);
-        if (unsupportedTags.Any())
+        if (unsupportedTags.Count != 0)
         {
             errors.Add($"Unsupported tags: {string.Join(", ", unsupportedTags)}");
             suggestions.Add(new SSMLRepairSuggestion(

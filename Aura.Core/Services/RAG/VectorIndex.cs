@@ -42,12 +42,13 @@ public class VectorIndex
         {
             var documentId = chunks.First().DocumentId;
 
-            if (!_index.ContainsKey(documentId))
+            if (!_index.TryGetValue(documentId, out var value))
             {
-                _index[documentId] = new List<DocumentChunk>();
+                value = new List<DocumentChunk>();
+                _index[documentId] = value;
             }
 
-            _index[documentId].AddRange(chunks);
+            value.AddRange(chunks);
 
             _logger.LogInformation("Added {Count} chunks for document {DocumentId}",
                 chunks.Count, documentId);
@@ -193,12 +194,13 @@ public class VectorIndex
                     var source = chunks.First().Metadata.Source;
                     var extension = Path.GetExtension(source).ToLowerInvariant();
 
-                    if (!documentsByFormat.ContainsKey(extension))
+                    if (!documentsByFormat.TryGetValue(extension, out var value))
                     {
-                        documentsByFormat[extension] = 0;
+                        value = 0;
+                        documentsByFormat[extension] = value;
                     }
 
-                    documentsByFormat[extension]++;
+                    documentsByFormat[extension] = ++value;
                 }
             }
 
@@ -278,7 +280,7 @@ public class VectorIndex
                 WriteIndented = true
             });
 
-            await File.WriteAllTextAsync(_indexPath, json, ct);
+            await File.WriteAllTextAsync(_indexPath, json, ct).ConfigureAwait(false);
 
             _logger.LogDebug("Saved index to {Path}", _indexPath);
         }

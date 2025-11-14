@@ -37,7 +37,7 @@ public class CacheController : ControllerBase
     {
         try
         {
-            var stats = await _cache.GetStatisticsAsync(ct);
+            var stats = await _cache.GetStatisticsAsync(ct).ConfigureAwait(false);
             
             var currentProcess = System.Diagnostics.Process.GetCurrentProcess();
             var workingSetMB = currentProcess.WorkingSet64 / (1024.0 * 1024.0);
@@ -82,9 +82,9 @@ public class CacheController : ControllerBase
     {
         try
         {
-            var statsBefore = await _cache.GetStatisticsAsync(ct);
+            var statsBefore = await _cache.GetStatisticsAsync(ct).ConfigureAwait(false);
             
-            await _cache.ClearAsync(ct);
+            await _cache.ClearAsync(ct).ConfigureAwait(false);
             
             _logger.LogInformation(
                 "Cache cleared: {Entries} entries removed (CorrelationId: {CorrelationId})",
@@ -124,12 +124,12 @@ public class CacheController : ControllerBase
     {
         try
         {
-            var statsBefore = await _cache.GetStatisticsAsync(ct);
+            var statsBefore = await _cache.GetStatisticsAsync(ct).ConfigureAwait(false);
             var entriesBefore = statsBefore.TotalEntries;
             
-            await _cache.EvictExpiredAsync(ct);
+            await _cache.EvictExpiredAsync(ct).ConfigureAwait(false);
             
-            var statsAfter = await _cache.GetStatisticsAsync(ct);
+            var statsAfter = await _cache.GetStatisticsAsync(ct).ConfigureAwait(false);
             var entriesRemoved = entriesBefore - statsAfter.TotalEntries;
             
             _logger.LogInformation(
@@ -184,7 +184,7 @@ public class CacheController : ControllerBase
                 });
             }
             
-            var removed = await _cache.RemoveAsync(key, ct);
+            var removed = await _cache.RemoveAsync(key, ct).ConfigureAwait(false);
             
             if (!removed)
             {
@@ -233,7 +233,7 @@ public class CacheController : ControllerBase
     [ProducesResponseType(typeof(CacheClearResponse), StatusCodes.Status200OK)]
     public async Task<ActionResult<CacheClearResponse>> ForceRefresh(CancellationToken ct)
     {
-        return await Clear(ct);
+        return await Clear(ct).ConfigureAwait(false);
     }
 }
 

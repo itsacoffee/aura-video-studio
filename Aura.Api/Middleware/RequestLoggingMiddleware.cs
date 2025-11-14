@@ -53,7 +53,7 @@ public class RequestLoggingMiddleware
             // Optionally log request body for debugging
             if (_logRequestBody && context.Request.ContentLength > 0)
             {
-                requestBody = await ReadRequestBodyAsync(context.Request);
+                requestBody = await ReadRequestBodyAsync(context.Request).ConfigureAwait(false);
             }
 
             // Log incoming request with structured data
@@ -80,16 +80,16 @@ public class RequestLoggingMiddleware
                 using var responseBodyStream = new MemoryStream();
                 context.Response.Body = responseBodyStream;
 
-                await _next(context);
+                await _next(context).ConfigureAwait(false);
 
                 responseBodyStream.Seek(0, SeekOrigin.Begin);
-                responseBody = await new StreamReader(responseBodyStream).ReadToEndAsync();
+                responseBody = await new StreamReader(responseBodyStream).ReadToEndAsync().ConfigureAwait(false);
                 responseBodyStream.Seek(0, SeekOrigin.Begin);
-                await responseBodyStream.CopyToAsync(originalBodyStream);
+                await responseBodyStream.CopyToAsync(originalBodyStream).ConfigureAwait(false);
             }
             else
             {
-                await _next(context);
+                await _next(context).ConfigureAwait(false);
             }
 
             stopwatch.Stop();
@@ -174,7 +174,7 @@ public class RequestLoggingMiddleware
             bufferSize: 4096,
             leaveOpen: true);
 
-        var body = await reader.ReadToEndAsync();
+        var body = await reader.ReadToEndAsync().ConfigureAwait(false);
         request.Body.Position = 0;
 
         return body.Length > _maxBodyLogSize 

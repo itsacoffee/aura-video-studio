@@ -36,10 +36,10 @@ public record Job
     
     /// <summary>Current status following state machine rules</summary>
     public JobStatus Status { get; init; } = JobStatus.Queued;
-    
+
     /// <summary>Progress percentage (0-100), monotonically increasing</summary>
-    public int Percent { get; init; } = 0;
-    
+    public int Percent { get; init; }
+
     /// <summary>Estimated time remaining for completion</summary>
     public TimeSpan? Eta { get; init; }
     
@@ -108,10 +108,10 @@ public record Job
     
     /// <summary>Last successfully completed step for resume support</summary>
     public string? LastCompletedStep { get; init; }
-    
+
     /// <summary>Whether this job can be resumed from LastCompletedStep</summary>
-    public bool CanResume { get; init; } = false;
-    
+    public bool CanResume { get; init; }
+
     /// <summary>Whether this job is a Quick Demo with resilient fallback behavior</summary>
     public bool IsQuickDemo { get; init; } = false;
     

@@ -39,9 +39,9 @@ public class SystemIntegrityValidator
         };
 
         // Check critical services
-        await ValidateServiceAsync<IntelligentContentAdvisor>(result, "IntelligentContentAdvisor", required: false);
-        await ValidateEnumerableServiceAsync<ILlmProvider>(result, "ILlmProvider", required: true);
-        await ValidateEnumerableServiceAsync<ITtsProvider>(result, "ITtsProvider", required: false);
+        await ValidateServiceAsync<IntelligentContentAdvisor>(result, "IntelligentContentAdvisor", required: false).ConfigureAwait(false);
+        await ValidateEnumerableServiceAsync<ILlmProvider>(result, "ILlmProvider", required: true).ConfigureAwait(false);
+        await ValidateEnumerableServiceAsync<ITtsProvider>(result, "ITtsProvider", required: false).ConfigureAwait(false);
 
         // Validate EnhancedPromptTemplates
         ValidateEnhancedPromptTemplates(result);
@@ -84,7 +84,7 @@ public class SystemIntegrityValidator
                 _logger.LogDebug("{Service} validation passed", serviceName);
             }
 
-            await Task.CompletedTask;
+            await Task.CompletedTask.ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -122,7 +122,7 @@ public class SystemIntegrityValidator
                 _logger.LogDebug("{Count} {Service} implementations found", count, serviceName);
             }
 
-            await Task.CompletedTask;
+            await Task.CompletedTask.ConfigureAwait(false);
         }
         catch (Exception ex)
         {

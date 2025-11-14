@@ -33,13 +33,13 @@ public class QueueMaintenanceService : BackgroundService
         _logger.LogInformation("QueueMaintenanceService starting");
 
         // Wait a bit for the application to fully start
-        await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
+        await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken).ConfigureAwait(false);
 
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
-                await PerformMaintenanceAsync(stoppingToken);
+                await PerformMaintenanceAsync(stoppingToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -52,7 +52,7 @@ public class QueueMaintenanceService : BackgroundService
             }
 
             // Wait before next maintenance cycle
-            await Task.Delay(_maintenanceInterval, stoppingToken);
+            await Task.Delay(_maintenanceInterval, stoppingToken).ConfigureAwait(false);
         }
 
         _logger.LogInformation("QueueMaintenanceService stopped");
@@ -68,14 +68,14 @@ public class QueueMaintenanceService : BackgroundService
         try
         {
             // Clean up old jobs
-            var deletedCount = await queueManager.CleanupOldJobsAsync(stoppingToken);
+            var deletedCount = await queueManager.CleanupOldJobsAsync(stoppingToken).ConfigureAwait(false);
             if (deletedCount > 0)
             {
                 _logger.LogInformation("Cleaned up {Count} old jobs", deletedCount);
             }
 
             // Get and log statistics
-            var stats = await queueManager.GetStatisticsAsync(stoppingToken);
+            var stats = await queueManager.GetStatisticsAsync(stoppingToken).ConfigureAwait(false);
             _logger.LogInformation(
                 "Queue statistics: Total={Total}, Pending={Pending}, Processing={Processing}, " +
                 "Completed={Completed}, Failed={Failed}, Cancelled={Cancelled}, Active Workers={Workers}",
@@ -93,6 +93,6 @@ public class QueueMaintenanceService : BackgroundService
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("QueueMaintenanceService stop requested");
-        await base.StopAsync(cancellationToken);
+        await base.StopAsync(cancellationToken).ConfigureAwait(false);
     }
 }

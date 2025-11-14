@@ -31,7 +31,7 @@ public class PreferenceInferenceEngine
         ProfilePreferences? explicitPreferences = null,
         CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         
         var preferences = new List<InferredPreference>();
         
@@ -75,7 +75,7 @@ public class PreferenceInferenceEngine
         List<DecisionRecord> newDecisions,
         CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         
         var validationScores = new Dictionary<string, double>();
         
@@ -106,7 +106,7 @@ public class PreferenceInferenceEngine
         List<InferredPreference> preferences,
         CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         
         var suggestions = new List<LearningInsight>();
         
@@ -143,7 +143,7 @@ public class PreferenceInferenceEngine
         ProfilePreferences explicitPreferences,
         CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         
         var conflicts = new List<InferredPreference>();
         
@@ -168,7 +168,7 @@ public class PreferenceInferenceEngine
         List<InferredPreference> historicalPreferences,
         CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         
         var evolutions = new List<LearningInsight>();
         

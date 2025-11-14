@@ -36,7 +36,7 @@ public static class HealthEndpoints
         // Readiness check - returns 200/503 based on dependency availability
         group.MapGet("/health/ready", async (HealthCheckService healthService, CancellationToken ct) =>
         {
-            var result = await healthService.CheckReadinessAsync(ct);
+            var result = await healthService.CheckReadinessAsync(ct).ConfigureAwait(false);
             var statusCode = result.Status == Models.HealthStatus.Unhealthy ? 503 : 200;
             return Results.Json(result, statusCode: statusCode);
         })
@@ -58,7 +58,7 @@ public static class HealthEndpoints
                 var correlationId = Guid.NewGuid().ToString();
                 Log.Information("Health summary requested, CorrelationId: {CorrelationId}", correlationId);
 
-                var result = await healthDiagnostics.GetHealthSummaryAsync(ct);
+                var result = await healthDiagnostics.GetHealthSummaryAsync(ct).ConfigureAwait(false);
                 return Results.Ok(result);
             }
             catch (Exception ex)
@@ -85,7 +85,7 @@ public static class HealthEndpoints
                 var correlationId = Guid.NewGuid().ToString();
                 Log.Information("Health details requested, CorrelationId: {CorrelationId}", correlationId);
 
-                var result = await healthDiagnostics.GetHealthDetailsAsync(ct);
+                var result = await healthDiagnostics.GetHealthDetailsAsync(ct).ConfigureAwait(false);
                 var statusCode = result.IsReady ? 200 : 503;
                 return Results.Json(result, statusCode: statusCode);
             }
@@ -111,7 +111,7 @@ public static class HealthEndpoints
         {
             try
             {
-                var result = await diagnostics.RunDiagnosticsAsync(ct);
+                var result = await diagnostics.RunDiagnosticsAsync(ct).ConfigureAwait(false);
                 return Results.Ok(result);
             }
             catch (Exception ex)
@@ -182,7 +182,7 @@ public static class HealthEndpoints
                         "latest",
                         null,
                         progress,
-                        ct);
+                        ct).ConfigureAwait(false);
 
                     if (result.Success)
                     {

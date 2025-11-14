@@ -68,7 +68,7 @@ public class KeyVaultController : ControllerBase
                 "Setting API key for provider: {Provider}, CorrelationId: {CorrelationId}",
                 sanitizedProvider, HttpContext.TraceIdentifier);
 
-            await _secureStorage.SaveApiKeyAsync(request.Provider, request.ApiKey);
+            await _secureStorage.SaveApiKeyAsync(request.Provider, request.ApiKey).ConfigureAwait(false);
             
             // Invalidate KeyStore cache so validation immediately sees the new key
             _keyStore.Reload();
@@ -103,13 +103,13 @@ public class KeyVaultController : ControllerBase
     {
         try
         {
-            var providers = await _secureStorage.GetConfiguredProvidersAsync();
+            var providers = await _secureStorage.GetConfiguredProvidersAsync().ConfigureAwait(false);
 
             var providersWithStatus = new List<object>();
             foreach (var provider in providers)
             {
-                var hasKey = await _secureStorage.HasApiKeyAsync(provider);
-                var key = await _secureStorage.GetApiKeyAsync(provider);
+                var hasKey = await _secureStorage.HasApiKeyAsync(provider).ConfigureAwait(false);
+                var key = await _secureStorage.GetApiKeyAsync(provider).ConfigureAwait(false);
                 
                 providersWithStatus.Add(new
                 {
@@ -167,7 +167,7 @@ public class KeyVaultController : ControllerBase
             else
             {
                 // Test stored key
-                apiKey = await _secureStorage.GetApiKeyAsync(request.Provider);
+                apiKey = await _secureStorage.GetApiKeyAsync(request.Provider).ConfigureAwait(false);
                 if (string.IsNullOrWhiteSpace(apiKey))
                 {
                     return Ok(new
@@ -183,7 +183,7 @@ public class KeyVaultController : ControllerBase
                 "Testing API key for provider: {Provider}, CorrelationId: {CorrelationId}",
                 sanitizedProvider, HttpContext.TraceIdentifier);
 
-            var result = await _keyValidator.TestApiKeyAsync(request.Provider, apiKey, ct);
+            var result = await _keyValidator.TestApiKeyAsync(request.Provider, apiKey, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -234,7 +234,7 @@ public class KeyVaultController : ControllerBase
                 });
             }
 
-            var hasExisting = await _secureStorage.HasApiKeyAsync(request.Provider);
+            var hasExisting = await _secureStorage.HasApiKeyAsync(request.Provider).ConfigureAwait(false);
             if (!hasExisting)
             {
                 return BadRequest(new
@@ -253,7 +253,7 @@ public class KeyVaultController : ControllerBase
             if (request.TestBeforeSaving)
             {
                 var testResult = await _keyValidator.TestApiKeyAsync(
-                    request.Provider, request.NewApiKey, ct);
+                    request.Provider, request.NewApiKey, ct).ConfigureAwait(false);
                 
                 if (!testResult.IsValid)
                 {
@@ -266,7 +266,7 @@ public class KeyVaultController : ControllerBase
                 }
             }
 
-            await _secureStorage.SaveApiKeyAsync(request.Provider, request.NewApiKey);
+            await _secureStorage.SaveApiKeyAsync(request.Provider, request.NewApiKey).ConfigureAwait(false);
             
             // Invalidate KeyStore cache so validation immediately sees the new key
             _keyStore.Reload();
@@ -309,7 +309,7 @@ public class KeyVaultController : ControllerBase
                 });
             }
 
-            var hasKey = await _secureStorage.HasApiKeyAsync(provider);
+            var hasKey = await _secureStorage.HasApiKeyAsync(provider).ConfigureAwait(false);
             if (!hasKey)
             {
                 return NotFound(new
@@ -324,7 +324,7 @@ public class KeyVaultController : ControllerBase
                 "Deleting API key for provider: {Provider}, CorrelationId: {CorrelationId}",
                 sanitizedProvider, HttpContext.TraceIdentifier);
 
-            await _secureStorage.DeleteApiKeyAsync(provider);
+            await _secureStorage.DeleteApiKeyAsync(provider).ConfigureAwait(false);
             
             // Invalidate KeyStore cache after deletion
             _keyStore.Reload();
@@ -363,7 +363,7 @@ public class KeyVaultController : ControllerBase
             var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             var storagePath = Path.Combine(localAppData, "Aura", "secure", "apikeys.dat");
 
-            var configuredKeys = await _secureStorage.GetConfiguredProvidersAsync();
+            var configuredKeys = await _secureStorage.GetConfiguredProvidersAsync().ConfigureAwait(false);
 
             DateTime? lastModified = null;
             var fileExists = System.IO.File.Exists(storagePath);
@@ -426,12 +426,12 @@ public class KeyVaultController : ControllerBase
             var checks = new List<string>();
             var allPassed = true;
 
-            var providers = await _secureStorage.GetConfiguredProvidersAsync();
+            var providers = await _secureStorage.GetConfiguredProvidersAsync().ConfigureAwait(false);
             checks.Add($"✓ Storage accessible - {providers.Count} provider(s) configured");
 
             foreach (var provider in providers)
             {
-                var key = await _secureStorage.GetApiKeyAsync(provider);
+                var key = await _secureStorage.GetApiKeyAsync(provider).ConfigureAwait(false);
                 if (!string.IsNullOrWhiteSpace(key))
                 {
                     var masked = SecretMaskingService.MaskApiKey(key);
@@ -489,7 +489,7 @@ public class KeyVaultController : ControllerBase
             _logger.LogInformation("Getting validation status for all keys, CorrelationId: {CorrelationId}",
                 HttpContext.TraceIdentifier);
 
-            var providers = await _secureStorage.GetConfiguredProvidersAsync();
+            var providers = await _secureStorage.GetConfiguredProvidersAsync().ConfigureAwait(false);
             var statuses = new Dictionary<string, KeyStatusResponse>();
             var validCount = 0;
             var invalidCount = 0;
@@ -497,7 +497,7 @@ public class KeyVaultController : ControllerBase
 
             foreach (var provider in providers)
             {
-                var hasKey = await _secureStorage.HasApiKeyAsync(provider);
+                var hasKey = await _secureStorage.HasApiKeyAsync(provider).ConfigureAwait(false);
                 if (!hasKey)
                 {
                     continue;
@@ -557,7 +557,7 @@ public class KeyVaultController : ControllerBase
                 });
             }
 
-            var hasKey = await _secureStorage.HasApiKeyAsync(provider);
+            var hasKey = await _secureStorage.HasApiKeyAsync(provider).ConfigureAwait(false);
             if (!hasKey)
             {
                 return NotFound(new
@@ -617,7 +617,7 @@ public class KeyVaultController : ControllerBase
             }
             else
             {
-                apiKey = await _secureStorage.GetApiKeyAsync(request.Provider);
+                apiKey = await _secureStorage.GetApiKeyAsync(request.Provider).ConfigureAwait(false);
                 if (string.IsNullOrWhiteSpace(apiKey))
                 {
                     return NotFound(new
@@ -635,7 +635,7 @@ public class KeyVaultController : ControllerBase
                 "system",
                 HttpContext.TraceIdentifier);
 
-            var result = await _keyValidator.TestApiKeyAsync(request.Provider, apiKey, ct);
+            var result = await _keyValidator.TestApiKeyAsync(request.Provider, apiKey, ct).ConfigureAwait(false);
 
             var statusResponse = new KeyStatusResponse
             {

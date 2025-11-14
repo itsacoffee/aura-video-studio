@@ -31,7 +31,7 @@ public class PerformanceMetrics
     /// <summary>
     /// Internal class to store raw request data for percentile calculations
     /// </summary>
-    private class EndpointData
+    private sealed class EndpointData
     {
         public long TotalRequests { get; set; }
         public long TotalDurationMs { get; set; }

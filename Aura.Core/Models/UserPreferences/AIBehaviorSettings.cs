@@ -31,9 +31,9 @@ public class AIBehaviorSettings
     
     // Global Settings
     public double CreativityVsAdherence { get; set; } = 0.5; // 0=strict adherence, 1=full creativity
-    public bool EnableChainOfThought { get; set; } = false;
-    public bool ShowPromptsBeforeSending { get; set; } = false; // Review mode
-    
+    public bool EnableChainOfThought { get; set; }
+    public bool ShowPromptsBeforeSending { get; set; }  // Review mode
+
     // Metadata
     public string? Description { get; set; }
     public bool IsDefault { get; set; }
@@ -51,8 +51,8 @@ public class LLMStageParameters
     // Standard LLM Parameters
     public double Temperature { get; set; } = 0.7;
     public double TopP { get; set; } = 0.9;
-    public double FrequencyPenalty { get; set; } = 0.0;
-    public double PresencePenalty { get; set; } = 0.0;
+    public double FrequencyPenalty { get; set; }
+    public double PresencePenalty { get; set; }
     public int MaxTokens { get; set; } = 2000;
     
     // Custom System Prompt

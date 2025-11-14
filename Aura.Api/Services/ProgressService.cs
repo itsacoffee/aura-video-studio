@@ -178,7 +178,7 @@ public class ProgressService
         );
     }
 
-    private class ProgressSubscription : IDisposable
+    private sealed class ProgressSubscription : IDisposable
     {
         private readonly Action _unsubscribe;
         private bool _disposed;

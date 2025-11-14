@@ -120,19 +120,19 @@ public class OpenAiTtsProvider : BaseTtsProvider
             Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json")
         };
 
-        var response = await _httpClient.SendAsync(request, ct);
+        var response = await _httpClient.SendAsync(request, ct).ConfigureAwait(false);
         
         if (!response.IsSuccessStatusCode)
         {
-            var errorContent = await response.Content.ReadAsStringAsync(ct);
+            var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             throw new HttpRequestException(
                 $"OpenAI TTS request failed with status {response.StatusCode}: {errorContent}");
         }
 
-        var audioData = await response.Content.ReadAsByteArrayAsync(ct);
+        var audioData = await response.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
         
         var mp3Path = Path.ChangeExtension(outputPath, ".mp3");
-        await File.WriteAllBytesAsync(mp3Path, audioData, ct);
+        await File.WriteAllBytesAsync(mp3Path, audioData, ct).ConfigureAwait(false);
         
         _logger.LogInformation("OpenAI TTS synthesis completed: {OutputPath} ({Size} bytes)", 
             mp3Path, audioData.Length);
@@ -200,10 +200,10 @@ public class OpenAiTtsProvider : BaseTtsProvider
                 Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json")
             };
 
-            var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+            var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var audioData = await response.Content.ReadAsByteArrayAsync(ct);
+            var audioData = await response.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
             
             yield return new AudioChunk
             {

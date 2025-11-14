@@ -31,15 +31,15 @@ public class LlmCacheMaintenanceService : BackgroundService
             "LLM Cache Maintenance Service started (interval: {Interval})",
             _maintenanceInterval);
         
-        await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+        await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken).ConfigureAwait(false);
         
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
-                await PerformMaintenanceAsync(stoppingToken);
+                await PerformMaintenanceAsync(stoppingToken).ConfigureAwait(false);
                 
-                await Task.Delay(_maintenanceInterval, stoppingToken);
+                await Task.Delay(_maintenanceInterval, stoppingToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -50,7 +50,7 @@ public class LlmCacheMaintenanceService : BackgroundService
             {
                 _logger.LogError(ex, "Error during cache maintenance");
                 
-                await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+                await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken).ConfigureAwait(false);
             }
         }
         
@@ -61,9 +61,9 @@ public class LlmCacheMaintenanceService : BackgroundService
     {
         try
         {
-            await _cache.EvictExpiredAsync(ct);
+            await _cache.EvictExpiredAsync(ct).ConfigureAwait(false);
             
-            var stats = await _cache.GetStatisticsAsync(ct);
+            var stats = await _cache.GetStatisticsAsync(ct).ConfigureAwait(false);
             
             _logger.LogDebug(
                 "Cache maintenance completed: {Entries} entries, {Hits} hits, {Misses} misses, {HitRate:P2} hit rate",

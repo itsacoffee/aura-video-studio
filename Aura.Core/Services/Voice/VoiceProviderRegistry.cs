@@ -60,7 +60,7 @@ public class VoiceProviderRegistry
     /// </summary>
     public async Task<List<VoiceDescriptor>> GetVoicesForProviderAsync(VoiceProvider provider, System.Threading.CancellationToken ct)
     {
-        await System.Threading.Tasks.Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return new List<VoiceDescriptor>();
     }
 
@@ -69,7 +69,7 @@ public class VoiceProviderRegistry
     /// </summary>
     public async Task<List<VoiceDescriptor>> GetAllAvailableVoicesAsync(System.Threading.CancellationToken ct)
     {
-        await System.Threading.Tasks.Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return new List<VoiceDescriptor>();
     }
 }

@@ -48,7 +48,7 @@ public class GlossaryManager
             Description = description
         };
 
-        await SaveGlossaryAsync(glossary, cancellationToken);
+        await SaveGlossaryAsync(glossary, cancellationToken).ConfigureAwait(false);
         _glossaryCache[glossary.Id] = glossary;
 
         return glossary;
@@ -72,7 +72,7 @@ public class GlossaryManager
             return null;
         }
 
-        var json = await File.ReadAllTextAsync(filePath, cancellationToken);
+        var json = await File.ReadAllTextAsync(filePath, cancellationToken).ConfigureAwait(false);
         var glossary = JsonSerializer.Deserialize<ProjectGlossary>(json);
         
         if (glossary != null)
@@ -96,7 +96,7 @@ public class GlossaryManager
         {
             try
             {
-                var json = await File.ReadAllTextAsync(file, cancellationToken);
+                var json = await File.ReadAllTextAsync(file, cancellationToken).ConfigureAwait(false);
                 var glossary = JsonSerializer.Deserialize<ProjectGlossary>(json);
                 
                 if (glossary != null)
@@ -125,7 +125,7 @@ public class GlossaryManager
         string? industry = null,
         CancellationToken cancellationToken = default)
     {
-        var glossary = await GetGlossaryAsync(glossaryId, cancellationToken);
+        var glossary = await GetGlossaryAsync(glossaryId, cancellationToken).ConfigureAwait(false);
         if (glossary == null)
         {
             throw new ArgumentException($"Glossary {glossaryId} not found");
@@ -142,7 +142,7 @@ public class GlossaryManager
         glossary.Entries.Add(entry);
         glossary.UpdatedAt = DateTime.UtcNow;
 
-        await SaveGlossaryAsync(glossary, cancellationToken);
+        await SaveGlossaryAsync(glossary, cancellationToken).ConfigureAwait(false);
 
         _logger.LogInformation("Added term '{Term}' to glossary {Name}", term, glossary.Name);
         return entry;
@@ -158,7 +158,7 @@ public class GlossaryManager
         string? context = null,
         CancellationToken cancellationToken = default)
     {
-        var glossary = await GetGlossaryAsync(glossaryId, cancellationToken);
+        var glossary = await GetGlossaryAsync(glossaryId, cancellationToken).ConfigureAwait(false);
         if (glossary == null)
         {
             throw new ArgumentException($"Glossary {glossaryId} not found");
@@ -177,7 +177,7 @@ public class GlossaryManager
         }
         
         glossary.UpdatedAt = DateTime.UtcNow;
-        await SaveGlossaryAsync(glossary, cancellationToken);
+        await SaveGlossaryAsync(glossary, cancellationToken).ConfigureAwait(false);
 
         _logger.LogInformation("Updated entry {EntryId} in glossary {Name}", entryId, glossary.Name);
     }
@@ -190,7 +190,7 @@ public class GlossaryManager
         string entryId,
         CancellationToken cancellationToken = default)
     {
-        var glossary = await GetGlossaryAsync(glossaryId, cancellationToken);
+        var glossary = await GetGlossaryAsync(glossaryId, cancellationToken).ConfigureAwait(false);
         if (glossary == null)
         {
             throw new ArgumentException($"Glossary {glossaryId} not found");
@@ -201,7 +201,7 @@ public class GlossaryManager
         {
             glossary.Entries.Remove(entry);
             glossary.UpdatedAt = DateTime.UtcNow;
-            await SaveGlossaryAsync(glossary, cancellationToken);
+            await SaveGlossaryAsync(glossary, cancellationToken).ConfigureAwait(false);
 
             _logger.LogInformation("Deleted entry {EntryId} from glossary {Name}", entryId, glossary.Name);
         }
@@ -223,7 +223,7 @@ public class GlossaryManager
             _logger.LogInformation("Deleted glossary {GlossaryId}", glossaryId);
         }
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
     }
 
     /// <summary>
@@ -234,7 +234,7 @@ public class GlossaryManager
         string targetLanguage,
         CancellationToken cancellationToken = default)
     {
-        var glossary = await GetGlossaryAsync(glossaryId, cancellationToken);
+        var glossary = await GetGlossaryAsync(glossaryId, cancellationToken).ConfigureAwait(false);
         if (glossary == null)
         {
             return new Dictionary<string, string>();
@@ -266,7 +266,7 @@ public class GlossaryManager
     {
         _logger.LogInformation("Importing glossary from CSV: {Name}", name);
 
-        var glossary = await CreateGlossaryAsync(name, "Imported from CSV", cancellationToken);
+        var glossary = await CreateGlossaryAsync(name, "Imported from CSV", cancellationToken).ConfigureAwait(false);
         var lines = csvContent.Split('\n', StringSplitOptions.RemoveEmptyEntries);
 
         if (lines.Length < 2)
@@ -302,9 +302,9 @@ public class GlossaryManager
                 }
             }
 
-            if (translations.Any())
+            if (translations.Count != 0)
             {
-                await AddEntryAsync(glossary.Id, term, translations, cancellationToken: cancellationToken);
+                await AddEntryAsync(glossary.Id, term, translations, cancellationToken: cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -319,7 +319,7 @@ public class GlossaryManager
         string glossaryId,
         CancellationToken cancellationToken = default)
     {
-        var glossary = await GetGlossaryAsync(glossaryId, cancellationToken);
+        var glossary = await GetGlossaryAsync(glossaryId, cancellationToken).ConfigureAwait(false);
         if (glossary == null)
         {
             throw new ArgumentException($"Glossary {glossaryId} not found");
@@ -363,7 +363,7 @@ public class GlossaryManager
             WriteIndented = true 
         });
         
-        await File.WriteAllTextAsync(filePath, json, cancellationToken);
+        await File.WriteAllTextAsync(filePath, json, cancellationToken).ConfigureAwait(false);
         _glossaryCache[glossary.Id] = glossary;
     }
 }

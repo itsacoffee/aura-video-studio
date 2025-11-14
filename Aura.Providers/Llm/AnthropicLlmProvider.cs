@@ -98,7 +98,7 @@ public class AnthropicLlmProvider : ILlmProvider
                     var backoffDelay = TimeSpan.FromSeconds(Math.Pow(2, attempt));
                     _logger.LogInformation("Retry attempt {Attempt}/{MaxRetries} after {Delay}s delay", 
                         attempt, _maxRetries, backoffDelay.TotalSeconds);
-                    await Task.Delay(backoffDelay, ct);
+                    await Task.Delay(backoffDelay, ct).ConfigureAwait(false);
                 }
 
                 // Build enhanced prompts for quality content with user customizations
@@ -130,12 +130,12 @@ public class AnthropicLlmProvider : ILlmProvider
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                 cts.CancelAfter(_timeout);
 
-                var response = await _httpClient.PostAsync("https://api.anthropic.com/v1/messages", content, cts.Token);
+                var response = await _httpClient.PostAsync("https://api.anthropic.com/v1/messages", content, cts.Token).ConfigureAwait(false);
                 
                 // Handle specific HTTP error codes
                 if (!response.IsSuccessStatusCode)
                 {
-                    var errorContent = await response.Content.ReadAsStringAsync(ct);
+                    var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                     if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized || 
                         response.StatusCode == System.Net.HttpStatusCode.Forbidden)
                     {
@@ -180,7 +180,7 @@ public class AnthropicLlmProvider : ILlmProvider
                     response.EnsureSuccessStatusCode();
                 }
 
-                var responseJson = await response.Content.ReadAsStringAsync(ct);
+                var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 var responseDoc = JsonDocument.Parse(responseJson);
 
                 if (responseDoc.RootElement.TryGetProperty("content", out var contentArray) &&
@@ -265,7 +265,7 @@ public class AnthropicLlmProvider : ILlmProvider
                     var backoffDelay = TimeSpan.FromSeconds(Math.Pow(2, attempt));
                     _logger.LogInformation("Retry attempt {Attempt}/{MaxRetries} after {Delay}s delay", 
                         attempt, _maxRetries, backoffDelay.TotalSeconds);
-                    await Task.Delay(backoffDelay, ct);
+                    await Task.Delay(backoffDelay, ct).ConfigureAwait(false);
                 }
 
                 var requestBody = new
@@ -289,11 +289,11 @@ public class AnthropicLlmProvider : ILlmProvider
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                 cts.CancelAfter(_timeout);
 
-                var response = await _httpClient.PostAsync("https://api.anthropic.com/v1/messages", content, cts.Token);
+                var response = await _httpClient.PostAsync("https://api.anthropic.com/v1/messages", content, cts.Token).ConfigureAwait(false);
                 
                 if (!response.IsSuccessStatusCode)
                 {
-                    var errorContent = await response.Content.ReadAsStringAsync(ct);
+                    var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                     if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
                     {
                         throw new InvalidOperationException(
@@ -321,7 +321,7 @@ public class AnthropicLlmProvider : ILlmProvider
                     response.EnsureSuccessStatusCode();
                 }
 
-                var responseJson = await response.Content.ReadAsStringAsync(ct);
+                var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 var responseDoc = JsonDocument.Parse(responseJson);
 
                 if (responseDoc.RootElement.TryGetProperty("content", out var content2) && content2.GetArrayLength() > 0)
@@ -430,10 +430,10 @@ Respond with ONLY the JSON object, no other text:";
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(30)); // Shorter timeout for analysis
 
-            var response = await _httpClient.PostAsync("https://api.anthropic.com/v1/messages", content, cts.Token);
+            var response = await _httpClient.PostAsync("https://api.anthropic.com/v1/messages", content, cts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("content", out var contentArray) &&
@@ -553,10 +553,10 @@ Respond with ONLY the JSON object, no other text:";
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(30));
 
-            var response = await _httpClient.PostAsync("https://api.anthropic.com/v1/messages", content, cts.Token);
+            var response = await _httpClient.PostAsync("https://api.anthropic.com/v1/messages", content, cts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("content", out var contentArray) &&
@@ -677,10 +677,10 @@ Respond with ONLY the JSON object, no other text:";
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(30));
 
-            var response = await _httpClient.PostAsync("https://api.anthropic.com/v1/messages", content, cts.Token);
+            var response = await _httpClient.PostAsync("https://api.anthropic.com/v1/messages", content, cts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("content", out var contentArray) &&
@@ -851,10 +851,10 @@ Respond with ONLY the JSON object, no other text:";
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(30));
 
-            var response = await _httpClient.PostAsync("https://api.anthropic.com/v1/messages", content, cts.Token);
+            var response = await _httpClient.PostAsync("https://api.anthropic.com/v1/messages", content, cts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("content", out var contentArray) &&
@@ -974,10 +974,10 @@ Respond with ONLY the JSON object, no other text:";
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(45));
 
-            var response = await _httpClient.PostAsync("https://api.anthropic.com/v1/messages", content, cts.Token);
+            var response = await _httpClient.PostAsync("https://api.anthropic.com/v1/messages", content, cts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("content", out var contentArray) &&
@@ -1092,10 +1092,10 @@ Return ONLY the transition text, no explanations or additional commentary:";
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(30));
 
-            var response = await _httpClient.PostAsync("https://api.anthropic.com/v1/messages", content, cts.Token);
+            var response = await _httpClient.PostAsync("https://api.anthropic.com/v1/messages", content, cts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("content", out var contentArray) &&

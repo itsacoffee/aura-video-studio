@@ -98,7 +98,7 @@ public class GeminiLlmProvider : ILlmProvider
                     var backoffDelay = TimeSpan.FromSeconds(Math.Pow(2, attempt));
                     _logger.LogInformation("Retry attempt {Attempt}/{MaxRetries} after {Delay}s delay",
                         attempt, _maxRetries, backoffDelay.TotalSeconds);
-                    await Task.Delay(backoffDelay, ct);
+                    await Task.Delay(backoffDelay, ct).ConfigureAwait(false);
                 }
 
                 // Build enhanced prompt for quality content with user customizations
@@ -134,12 +134,12 @@ public class GeminiLlmProvider : ILlmProvider
                 cts.CancelAfter(_timeout);
 
                 var url = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:generateContent?key={_apiKey}";
-                var response = await _httpClient.PostAsync(url, content, cts.Token);
+                var response = await _httpClient.PostAsync(url, content, cts.Token).ConfigureAwait(false);
                 
                 // Handle specific HTTP error codes
                 if (!response.IsSuccessStatusCode)
                 {
-                    var errorContent = await response.Content.ReadAsStringAsync(ct);
+                    var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                     if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized || 
                         response.StatusCode == System.Net.HttpStatusCode.Forbidden)
                     {
@@ -179,7 +179,7 @@ public class GeminiLlmProvider : ILlmProvider
                     response.EnsureSuccessStatusCode();
                 }
 
-                var responseJson = await response.Content.ReadAsStringAsync(ct);
+                var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 var responseDoc = JsonDocument.Parse(responseJson);
 
                 if (responseDoc.RootElement.TryGetProperty("candidates", out var candidates) &&
@@ -263,7 +263,7 @@ public class GeminiLlmProvider : ILlmProvider
             {
                 if (attempt > 0)
                 {
-                    await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt)), ct);
+                    await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt)), ct).ConfigureAwait(false);
                 }
 
                 var requestBody = new
@@ -289,10 +289,10 @@ public class GeminiLlmProvider : ILlmProvider
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
                 var url = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:generateContent?key={_apiKey}";
-                var response = await _httpClient.PostAsync(url, content, ct);
+                var response = await _httpClient.PostAsync(url, content, ct).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
 
-                var responseJson = await response.Content.ReadAsStringAsync(ct);
+                var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 var responseDoc = JsonDocument.Parse(responseJson);
 
                 if (responseDoc.RootElement.TryGetProperty("candidates", out var candidates) && candidates.GetArrayLength() > 0)
@@ -377,10 +377,10 @@ Respond with ONLY the JSON object, no other text:";
             cts.CancelAfter(TimeSpan.FromSeconds(30)); // Shorter timeout for analysis
 
             var url = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:generateContent?key={_apiKey}";
-            var response = await _httpClient.PostAsync(url, content, cts.Token);
+            var response = await _httpClient.PostAsync(url, content, cts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("candidates", out var candidates) &&
@@ -527,17 +527,17 @@ Respond with ONLY the JSON object, no other text:";
             cts.CancelAfter(TimeSpan.FromSeconds(30));
 
             var url = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:generateContent?key={_apiKey}";
-            var response = await _httpClient.PostAsync(url, content, cts.Token);
+            var response = await _httpClient.PostAsync(url, content, cts.Token).ConfigureAwait(false);
             
             if (!response.IsSuccessStatusCode)
             {
-                var errorContent = await response.Content.ReadAsStringAsync(ct);
+                var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 _logger.LogWarning("Gemini visual prompt generation failed: {StatusCode} - {Error}", 
                     response.StatusCode, errorContent);
                 return null;
             }
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("candidates", out var candidates) &&
@@ -690,17 +690,17 @@ Respond with ONLY the JSON object, no other text:";
             cts.CancelAfter(TimeSpan.FromSeconds(30));
 
             var url = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:generateContent?key={_apiKey}";
-            var response = await _httpClient.PostAsync(url, content, cts.Token);
+            var response = await _httpClient.PostAsync(url, content, cts.Token).ConfigureAwait(false);
             
             if (!response.IsSuccessStatusCode)
             {
-                var errorContent = await response.Content.ReadAsStringAsync(ct);
+                var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 _logger.LogWarning("Gemini complexity analysis failed: {StatusCode} - {Error}", 
                     response.StatusCode, errorContent);
                 return null;
             }
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("candidates", out var candidates) &&
@@ -856,17 +856,17 @@ Respond with ONLY the JSON object, no other text:";
             cts.CancelAfter(TimeSpan.FromSeconds(30));
 
             var url = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:generateContent?key={_apiKey}";
-            var response = await _httpClient.PostAsync(url, content, cts.Token);
+            var response = await _httpClient.PostAsync(url, content, cts.Token).ConfigureAwait(false);
             
             if (!response.IsSuccessStatusCode)
             {
-                var errorContent = await response.Content.ReadAsStringAsync(ct);
+                var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 _logger.LogWarning("Gemini coherence analysis failed: {StatusCode} - {Error}", 
                     response.StatusCode, errorContent);
                 return null;
             }
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("candidates", out var candidates) &&
@@ -1007,17 +1007,17 @@ Respond with ONLY the JSON object, no other text:";
             cts.CancelAfter(TimeSpan.FromSeconds(45));
 
             var url = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:generateContent?key={_apiKey}";
-            var response = await _httpClient.PostAsync(url, content, cts.Token);
+            var response = await _httpClient.PostAsync(url, content, cts.Token).ConfigureAwait(false);
             
             if (!response.IsSuccessStatusCode)
             {
-                var errorContent = await response.Content.ReadAsStringAsync(ct);
+                var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 _logger.LogWarning("Gemini narrative arc validation failed: {StatusCode} - {Error}", 
                     response.StatusCode, errorContent);
                 return null;
             }
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("candidates", out var candidates) &&
@@ -1153,17 +1153,17 @@ Return ONLY the transition text, no explanations or additional commentary:";
             cts.CancelAfter(TimeSpan.FromSeconds(30));
 
             var url = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:generateContent?key={_apiKey}";
-            var response = await _httpClient.PostAsync(url, content, cts.Token);
+            var response = await _httpClient.PostAsync(url, content, cts.Token).ConfigureAwait(false);
             
             if (!response.IsSuccessStatusCode)
             {
-                var errorContent = await response.Content.ReadAsStringAsync(ct);
+                var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 _logger.LogWarning("Gemini transition text generation failed: {StatusCode} - {Error}", 
                     response.StatusCode, errorContent);
                 return null;
             }
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("candidates", out var candidates) &&

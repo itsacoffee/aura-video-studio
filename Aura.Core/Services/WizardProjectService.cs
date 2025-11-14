@@ -45,7 +45,7 @@ public class WizardProjectService
 
         if (id.HasValue)
         {
-            project = await _repository.GetByIdAsync(id.Value, ct);
+            project = await _repository.GetByIdAsync(id.Value, ct).ConfigureAwait(false);
             if (project == null)
             {
                 throw new InvalidOperationException($"Project {id.Value} not found");
@@ -60,7 +60,7 @@ public class WizardProjectService
             project.RenderSpecJson = renderSpecJson;
             project.UpdatedAt = DateTime.UtcNow;
 
-            await _repository.UpdateAsync(project, ct);
+            await _repository.UpdateAsync(project, ct).ConfigureAwait(false);
             _logger.LogInformation("Updated wizard project {ProjectId}: {ProjectName}", project.Id, project.Title);
         }
         else
@@ -80,7 +80,7 @@ public class WizardProjectService
                 UpdatedAt = DateTime.UtcNow
             };
 
-            await _repository.CreateAsync(project, ct);
+            await _repository.CreateAsync(project, ct).ConfigureAwait(false);
             _logger.LogInformation("Created new wizard project {ProjectId}: {ProjectName}", project.Id, project.Title);
         }
 
@@ -92,7 +92,7 @@ public class WizardProjectService
     /// </summary>
     public async Task<ProjectStateEntity?> GetProjectAsync(Guid id, CancellationToken ct = default)
     {
-        return await _repository.GetByIdAsync(id, ct);
+        return await _repository.GetByIdAsync(id, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -100,7 +100,7 @@ public class WizardProjectService
     /// </summary>
     public async Task<List<ProjectStateEntity>> GetAllProjectsAsync(CancellationToken ct = default)
     {
-        var allProjects = await _repository.GetIncompleteProjectsAsync(ct);
+        var allProjects = await _repository.GetIncompleteProjectsAsync(ct).ConfigureAwait(false);
         
         return allProjects
             .Where(p => !p.IsDeleted)
@@ -113,7 +113,7 @@ public class WizardProjectService
     /// </summary>
     public async Task<List<ProjectStateEntity>> GetRecentProjectsAsync(int count = 10, CancellationToken ct = default)
     {
-        var allProjects = await _repository.GetIncompleteProjectsAsync(ct);
+        var allProjects = await _repository.GetIncompleteProjectsAsync(ct).ConfigureAwait(false);
         
         return allProjects
             .Where(p => !p.IsDeleted)
@@ -132,7 +132,7 @@ public class WizardProjectService
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(newName);
 
-        var source = await _repository.GetByIdAsync(sourceId, ct);
+        var source = await _repository.GetByIdAsync(sourceId, ct).ConfigureAwait(false);
         if (source == null)
         {
             throw new InvalidOperationException($"Source project {sourceId} not found");
@@ -153,7 +153,7 @@ public class WizardProjectService
             UpdatedAt = DateTime.UtcNow
         };
 
-        await _repository.CreateAsync(duplicate, ct);
+        await _repository.CreateAsync(duplicate, ct).ConfigureAwait(false);
         _logger.LogInformation("Duplicated project {SourceId} to {DuplicateId}: {NewName}",
             sourceId, duplicate.Id, newName);
 
@@ -165,7 +165,7 @@ public class WizardProjectService
     /// </summary>
     public async Task DeleteProjectAsync(Guid id, string? userId = null, CancellationToken ct = default)
     {
-        var project = await _repository.GetByIdAsync(id, ct);
+        var project = await _repository.GetByIdAsync(id, ct).ConfigureAwait(false);
         if (project == null)
         {
             throw new InvalidOperationException($"Project {id} not found");
@@ -176,7 +176,7 @@ public class WizardProjectService
         project.DeletedBy = userId;
         project.Status = "Deleted";
 
-        await _repository.UpdateAsync(project, ct);
+        await _repository.UpdateAsync(project, ct).ConfigureAwait(false);
         _logger.LogInformation("Soft deleted project {ProjectId}: {ProjectName}", id, project.Title);
     }
 
@@ -191,7 +191,7 @@ public class WizardProjectService
         bool keepVideo,
         CancellationToken ct = default)
     {
-        var project = await _repository.GetByIdAsync(id, ct);
+        var project = await _repository.GetByIdAsync(id, ct).ConfigureAwait(false);
         if (project == null)
         {
             throw new InvalidOperationException($"Project {id} not found");
@@ -221,7 +221,7 @@ public class WizardProjectService
         project.JobId = null;
         project.UpdatedAt = DateTime.UtcNow;
 
-        await _repository.UpdateAsync(project, ct);
+        await _repository.UpdateAsync(project, ct).ConfigureAwait(false);
         _logger.LogInformation("Cleared generated content for project {ProjectId}", id);
     }
 
@@ -230,7 +230,7 @@ public class WizardProjectService
     /// </summary>
     public async Task<string> ExportProjectAsync(Guid id, CancellationToken ct = default)
     {
-        var project = await _repository.GetByIdAsync(id, ct);
+        var project = await _repository.GetByIdAsync(id, ct).ConfigureAwait(false);
         if (project == null)
         {
             throw new InvalidOperationException($"Project {id} not found");
@@ -303,7 +303,7 @@ public class WizardProjectService
             UpdatedAt = DateTime.UtcNow
         };
 
-        await _repository.CreateAsync(project, ct);
+        await _repository.CreateAsync(project, ct).ConfigureAwait(false);
         _logger.LogInformation("Imported wizard project as {ProjectId}: {ProjectName}", project.Id, project.Title);
 
         return project;

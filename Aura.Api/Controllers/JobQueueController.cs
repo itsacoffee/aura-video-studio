@@ -51,7 +51,7 @@ public class JobQueueController : ControllerBase
                 request.Priority,
                 correlationId,
                 request.IsQuickDemo,
-                ct);
+                ct).ConfigureAwait(false);
 
             _logger.LogInformation(
                 "[{CorrelationId}] Job {JobId} enqueued successfully",
@@ -91,7 +91,7 @@ public class JobQueueController : ControllerBase
         try
         {
             var correlationId = HttpContext.TraceIdentifier;
-            var job = await _queueManager.GetJobAsync(jobId, ct);
+            var job = await _queueManager.GetJobAsync(jobId, ct).ConfigureAwait(false);
 
             if (job == null)
             {
@@ -153,7 +153,7 @@ public class JobQueueController : ControllerBase
         try
         {
             var correlationId = HttpContext.TraceIdentifier;
-            var jobs = await _queueManager.GetJobsAsync(status, limit, ct);
+            var jobs = await _queueManager.GetJobsAsync(status, limit, ct).ConfigureAwait(false);
 
             var jobList = jobs.Select(j => new
             {
@@ -207,7 +207,7 @@ public class JobQueueController : ControllerBase
             var correlationId = HttpContext.TraceIdentifier;
             _logger.LogInformation("[{CorrelationId}] Cancel request for job {JobId}", correlationId, jobId);
 
-            var cancelled = await _queueManager.CancelJobAsync(jobId, ct);
+            var cancelled = await _queueManager.CancelJobAsync(jobId, ct).ConfigureAwait(false);
 
             if (!cancelled)
             {
@@ -253,7 +253,7 @@ public class JobQueueController : ControllerBase
         try
         {
             var correlationId = HttpContext.TraceIdentifier;
-            var stats = await _queueManager.GetStatisticsAsync(ct);
+            var stats = await _queueManager.GetStatisticsAsync(ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -287,7 +287,7 @@ public class JobQueueController : ControllerBase
         try
         {
             var correlationId = HttpContext.TraceIdentifier;
-            var config = await _queueManager.GetConfigurationAsync(ct);
+            var config = await _queueManager.GetConfigurationAsync(ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -329,9 +329,9 @@ public class JobQueueController : ControllerBase
             await _queueManager.UpdateConfigurationAsync(
                 request.MaxConcurrentJobs,
                 request.IsEnabled,
-                ct);
+                ct).ConfigureAwait(false);
 
-            var config = await _queueManager.GetConfigurationAsync(ct);
+            var config = await _queueManager.GetConfigurationAsync(ct).ConfigureAwait(false);
 
             return Ok(new
             {

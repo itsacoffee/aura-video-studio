@@ -46,7 +46,7 @@ public class BasicFFmpegProvider : BaseRenderingProvider
         
         try
         {
-            var result = await _videoComposer.RenderAsync(timeline, spec, progress, cancellationToken);
+            var result = await _videoComposer.RenderAsync(timeline, spec, progress, cancellationToken).ConfigureAwait(false);
             Logger.LogInformation("Basic FFmpeg render completed successfully: {OutputPath}", result);
             return result;
         }
@@ -64,7 +64,7 @@ public class BasicFFmpegProvider : BaseRenderingProvider
         
         try
         {
-            var ffmpegPath = await ResolveFfmpegPathAsync(cancellationToken);
+            var ffmpegPath = await ResolveFfmpegPathAsync(cancellationToken).ConfigureAwait(false);
             isAvailable = !string.IsNullOrEmpty(ffmpegPath);
         }
         catch

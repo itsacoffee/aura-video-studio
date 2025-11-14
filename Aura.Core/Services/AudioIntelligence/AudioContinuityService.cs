@@ -30,7 +30,7 @@ public class AudioContinuityService
     {
         _logger.LogInformation("Checking audio continuity for {Count} segments", audioSegmentPaths.Count);
 
-        await Task.CompletedTask; // For async pattern
+        await Task.CompletedTask.ConfigureAwait(false); // For async pattern
 
         try
         {
@@ -160,7 +160,7 @@ public class AudioContinuityService
     {
         _logger.LogInformation("Analyzing audio-visual synchronization");
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         try
         {

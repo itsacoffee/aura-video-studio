@@ -44,7 +44,7 @@ public class CsrfProtectionMiddleware
         // Exempt safe methods and specific paths
         if (SafeMethods.Contains(method) || ExemptPaths.Any(p => path.StartsWith(p)))
         {
-            await _next(context);
+            await _next(context).ConfigureAwait(false);
             return;
         }
 
@@ -66,7 +66,7 @@ public class CsrfProtectionMiddleware
                 status = 403,
                 detail = "CSRF token is required for this request. Include the XSRF-TOKEN cookie value in the X-XSRF-TOKEN header.",
                 correlationId = context.TraceIdentifier
-            });
+            }).ConfigureAwait(false);
             return;
         }
 
@@ -85,14 +85,14 @@ public class CsrfProtectionMiddleware
                 status = 403,
                 detail = "CSRF token validation failed. Token may be expired or invalid.",
                 correlationId = context.TraceIdentifier
-            });
+            }).ConfigureAwait(false);
             return;
         }
 
         // Generate new token for next request (rotation)
         SetCsrfToken(context);
 
-        await _next(context);
+        await _next(context).ConfigureAwait(false);
     }
 
     private bool ValidateToken(string cookieToken, string headerToken)

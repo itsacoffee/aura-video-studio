@@ -46,8 +46,8 @@ public class HardwareConfigurationController : ControllerBase
     {
         try
         {
-            var config = await LoadHardwareConfigAsync(ct);
-            var systemProfile = await _hardwareDetector.DetectSystemAsync();
+            var config = await LoadHardwareConfigAsync(ct).ConfigureAwait(false);
+            var systemProfile = await _hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
 
             return Ok(new
             {
@@ -93,7 +93,7 @@ public class HardwareConfigurationController : ControllerBase
                 return BadRequest(new { error = "Configuration is required" });
             }
 
-            await SaveHardwareConfigAsync(config, ct);
+            await SaveHardwareConfigAsync(config, ct).ConfigureAwait(false);
 
             _logger.LogInformation("Hardware configuration saved successfully");
 
@@ -118,7 +118,7 @@ public class HardwareConfigurationController : ControllerBase
     {
         try
         {
-            var systemProfile = await _hardwareDetector.DetectSystemAsync();
+            var systemProfile = await _hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
             
             var gpus = new List<object>();
             
@@ -163,7 +163,7 @@ public class HardwareConfigurationController : ControllerBase
     {
         try
         {
-            var systemProfile = await _hardwareDetector.DetectSystemAsync();
+            var systemProfile = await _hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
             var encoders = new List<object>
             {
                 new
@@ -364,7 +364,7 @@ public class HardwareConfigurationController : ControllerBase
     {
         try
         {
-            var systemProfile = await _hardwareDetector.DetectSystemAsync();
+            var systemProfile = await _hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
             
             var results = new
             {
@@ -412,7 +412,7 @@ public class HardwareConfigurationController : ControllerBase
 
         try
         {
-            var json = await System.IO.File.ReadAllTextAsync(_hardwareConfigPath, ct);
+            var json = await System.IO.File.ReadAllTextAsync(_hardwareConfigPath, ct).ConfigureAwait(false);
             return JsonSerializer.Deserialize<HardwareConfigModel>(json) ?? new HardwareConfigModel();
         }
         catch (Exception ex)
@@ -437,7 +437,7 @@ public class HardwareConfigurationController : ControllerBase
         };
 
         var json = JsonSerializer.Serialize(config, options);
-        await System.IO.File.WriteAllTextAsync(_hardwareConfigPath, json, ct);
+        await System.IO.File.WriteAllTextAsync(_hardwareConfigPath, json, ct).ConfigureAwait(false);
     }
 }
 

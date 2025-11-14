@@ -41,7 +41,7 @@ public class ThumbnailGenerator
         
         try
         {
-            await CreatePlaceholderThumbnailAsync(thumbnailPath, type, size);
+            await CreatePlaceholderThumbnailAsync(thumbnailPath, type, size).ConfigureAwait(false);
             return thumbnailPath;
         }
         catch (Exception ex)
@@ -63,7 +63,7 @@ public class ThumbnailGenerator
         };
 
         var placeholder = $"Placeholder {type} thumbnail {dimensions.Item1}x{dimensions.Item2}";
-        await File.WriteAllTextAsync(thumbnailPath, placeholder);
+        await File.WriteAllTextAsync(thumbnailPath, placeholder).ConfigureAwait(false);
     }
 }
 

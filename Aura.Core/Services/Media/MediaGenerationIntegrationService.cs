@@ -99,7 +99,7 @@ public class MediaGenerationIntegrationService : IMediaGenerationIntegrationServ
             SortDescending = true
         };
 
-        var response = await _mediaService.SearchMediaAsync(searchRequest, ct);
+        var response = await _mediaService.SearchMediaAsync(searchRequest, ct).ConfigureAwait(false);
         return response.Items;
     }
 
@@ -124,7 +124,7 @@ public class MediaGenerationIntegrationService : IMediaGenerationIntegrationServ
         Guid? collectionId = null;
         if (!string.IsNullOrEmpty(projectId))
         {
-            var collections = await _mediaService.GetAllCollectionsAsync(ct);
+            var collections = await _mediaService.GetAllCollectionsAsync(ct).ConfigureAwait(false);
             var projectCollection = collections.FirstOrDefault(c =>
                 c.Name.Contains(projectId, StringComparison.OrdinalIgnoreCase));
 
@@ -150,7 +150,7 @@ public class MediaGenerationIntegrationService : IMediaGenerationIntegrationServ
 
         // Upload the file
         using var fileStream = File.OpenRead(filePath);
-        var result = await _mediaService.UploadMediaAsync(fileStream, uploadRequest, ct);
+        var result = await _mediaService.UploadMediaAsync(fileStream, uploadRequest, ct).ConfigureAwait(false);
 
         _logger.LogInformation(
             "Generated media saved to library: {MediaId}, File: {FileName}",
@@ -169,7 +169,7 @@ public class MediaGenerationIntegrationService : IMediaGenerationIntegrationServ
             "Linking media {MediaId} to project {ProjectId}",
             mediaId, projectId);
 
-        await _mediaService.TrackMediaUsageAsync(mediaId, projectId, projectName, ct);
+        await _mediaService.TrackMediaUsageAsync(mediaId, projectId, projectName, ct).ConfigureAwait(false);
     }
 
     public async Task<List<MediaItemResponse>> GetMediaUsedInProjectAsync(
@@ -184,13 +184,13 @@ public class MediaGenerationIntegrationService : IMediaGenerationIntegrationServ
             PageSize = 10000
         };
 
-        var allMedia = await _mediaService.SearchMediaAsync(searchRequest, ct);
+        var allMedia = await _mediaService.SearchMediaAsync(searchRequest, ct).ConfigureAwait(false);
 
         // Filter by usage in the project
         var usedMedia = new List<MediaItemResponse>();
         foreach (var media in allMedia.Items)
         {
-            var usage = await _mediaService.GetMediaUsageAsync(media.Id, ct);
+            var usage = await _mediaService.GetMediaUsageAsync(media.Id, ct).ConfigureAwait(false);
             if (usage.UsedInProjects.Contains(projectId))
             {
                 usedMedia.Add(media);
@@ -215,7 +215,7 @@ public class MediaGenerationIntegrationService : IMediaGenerationIntegrationServ
             Description = $"Media collection for project: {projectName}"
         };
 
-        return await _mediaService.CreateCollectionAsync(request, ct);
+        return await _mediaService.CreateCollectionAsync(request, ct).ConfigureAwait(false);
     }
 
     public async Task<Dictionary<Guid, string>> GetDownloadUrlsAsync(
@@ -228,7 +228,7 @@ public class MediaGenerationIntegrationService : IMediaGenerationIntegrationServ
 
         foreach (var mediaId in mediaIds)
         {
-            var media = await _mediaService.GetMediaByIdAsync(mediaId, ct);
+            var media = await _mediaService.GetMediaByIdAsync(mediaId, ct).ConfigureAwait(false);
             if (media != null)
             {
                 urls[mediaId] = media.Url;

@@ -32,13 +32,13 @@ public class BackgroundJobProcessorService : BackgroundService
         _logger.LogInformation("BackgroundJobProcessorService starting");
 
         // Wait a bit for the application to fully start
-        await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
+        await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken).ConfigureAwait(false);
 
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
-                await ProcessNextJobsAsync(stoppingToken);
+                await ProcessNextJobsAsync(stoppingToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -49,11 +49,11 @@ public class BackgroundJobProcessorService : BackgroundService
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in background job processor, will retry");
-                await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+                await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken).ConfigureAwait(false);
             }
 
             // Wait before next polling cycle
-            await Task.Delay(_pollingInterval, stoppingToken);
+            await Task.Delay(_pollingInterval, stoppingToken).ConfigureAwait(false);
         }
 
         _logger.LogInformation("BackgroundJobProcessorService stopped");
@@ -65,7 +65,7 @@ public class BackgroundJobProcessorService : BackgroundService
         var queueManager = scope.ServiceProvider.GetRequiredService<BackgroundJobQueueManager>();
 
         // Check configuration to see how many jobs we can process
-        var config = await queueManager.GetConfigurationAsync(stoppingToken);
+        var config = await queueManager.GetConfigurationAsync(stoppingToken).ConfigureAwait(false);
         if (!config.IsEnabled)
         {
             _logger.LogDebug("Queue processing is disabled");
@@ -73,7 +73,7 @@ public class BackgroundJobProcessorService : BackgroundService
         }
 
         // Get current statistics
-        var stats = await queueManager.GetStatisticsAsync(stoppingToken);
+        var stats = await queueManager.GetStatisticsAsync(stoppingToken).ConfigureAwait(false);
         
         // Calculate how many new jobs we can start
         var availableSlots = Math.Max(0, config.MaxConcurrentJobs - stats.ActiveWorkers);
@@ -95,7 +95,7 @@ public class BackgroundJobProcessorService : BackgroundService
         {
             if (stoppingToken.IsCancellationRequested) break;
 
-            var nextJob = await queueManager.DequeueNextJobAsync(stoppingToken);
+            var nextJob = await queueManager.DequeueNextJobAsync(stoppingToken).ConfigureAwait(false);
             if (nextJob == null)
             {
                 _logger.LogDebug("No more jobs available in queue");
@@ -115,7 +115,7 @@ public class BackgroundJobProcessorService : BackgroundService
                     using var jobScope = _serviceProvider.CreateScope();
                     var jobQueueManager = jobScope.ServiceProvider.GetRequiredService<BackgroundJobQueueManager>();
                     
-                    await jobQueueManager.ProcessJobAsync(nextJob, stoppingToken);
+                    await jobQueueManager.ProcessJobAsync(nextJob, stoppingToken).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -124,13 +124,13 @@ public class BackgroundJobProcessorService : BackgroundService
             }, stoppingToken);
 
             // Small delay between starting jobs
-            await Task.Delay(TimeSpan.FromMilliseconds(500), stoppingToken);
+            await Task.Delay(TimeSpan.FromMilliseconds(500), stoppingToken).ConfigureAwait(false);
         }
     }
 
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("BackgroundJobProcessorService stop requested");
-        await base.StopAsync(cancellationToken);
+        await base.StopAsync(cancellationToken).ConfigureAwait(false);
     }
 }

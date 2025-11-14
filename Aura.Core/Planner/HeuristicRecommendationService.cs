@@ -259,7 +259,7 @@ public class HeuristicRecommendationService : IRecommendationService, ILlmPlanne
         string topic = string.IsNullOrEmpty(brief.Topic) ? "" : brief.Topic;
         string title = topic.Length <= 60 
             ? topic 
-            : topic.Substring(0, 57) + "...";
+            : string.Concat(topic.AsSpan(0, 57), "...");
 
         // Generate description
         string description = $"Learn about {brief.Topic}. " +

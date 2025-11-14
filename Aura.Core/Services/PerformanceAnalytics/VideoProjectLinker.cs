@@ -53,7 +53,7 @@ public class VideoProjectLinker
             }
         );
 
-        await _persistence.SaveVideoLinkAsync(link, ct);
+        await _persistence.SaveVideoLinkAsync(link, ct).ConfigureAwait(false);
         return link;
     }
 
@@ -97,7 +97,7 @@ public class VideoProjectLinker
             }
         );
 
-        await _persistence.SaveVideoLinkAsync(link, ct);
+        await _persistence.SaveVideoLinkAsync(link, ct).ConfigureAwait(false);
         return link;
     }
 
@@ -110,7 +110,7 @@ public class VideoProjectLinker
         bool isCorrect,
         CancellationToken ct = default)
     {
-        var links = await _persistence.LoadLinksAsync(profileId, ct);
+        var links = await _persistence.LoadLinksAsync(profileId, ct).ConfigureAwait(false);
         var link = links.FirstOrDefault(l => l.LinkId == linkId);
 
         if (link == null)
@@ -127,7 +127,7 @@ public class VideoProjectLinker
 
         // Update link to confirmed
         var confirmedLink = link with { IsConfirmed = true };
-        await _persistence.SaveVideoLinkAsync(confirmedLink, ct);
+        await _persistence.SaveVideoLinkAsync(confirmedLink, ct).ConfigureAwait(false);
 
         return confirmedLink;
     }
@@ -214,8 +214,8 @@ public class VideoProjectLinker
         string profileId,
         CancellationToken ct = default)
     {
-        var allVideos = await _persistence.LoadAllVideosAsync(profileId, ct);
-        var links = await _persistence.LoadLinksAsync(profileId, ct);
+        var allVideos = await _persistence.LoadAllVideosAsync(profileId, ct).ConfigureAwait(false);
+        var links = await _persistence.LoadLinksAsync(profileId, ct).ConfigureAwait(false);
         var linkedVideoIds = links.Select(l => l.VideoId).ToHashSet();
 
         return allVideos.Where(v => !linkedVideoIds.Contains(v.VideoId)).ToList();
@@ -228,8 +228,8 @@ public class VideoProjectLinker
         string profileId,
         CancellationToken ct = default)
     {
-        var allVideos = await _persistence.LoadAllVideosAsync(profileId, ct);
-        var links = await _persistence.LoadLinksAsync(profileId, ct);
+        var allVideos = await _persistence.LoadAllVideosAsync(profileId, ct).ConfigureAwait(false);
+        var links = await _persistence.LoadLinksAsync(profileId, ct).ConfigureAwait(false);
 
         var result = new List<(VideoPerformanceData, VideoProjectLink)>();
 

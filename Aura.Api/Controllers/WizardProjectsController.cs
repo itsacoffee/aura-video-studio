@@ -50,7 +50,7 @@ public class WizardProjectsController : ControllerBase
                 request.PlanSpecJson,
                 request.VoiceSpecJson,
                 request.RenderSpecJson,
-                ct);
+                ct).ConfigureAwait(false);
 
             Log.Information("[{CorrelationId}] Saved wizard project {ProjectId}: {ProjectName}",
                 correlationId, project.Id, project.Title);
@@ -84,7 +84,7 @@ public class WizardProjectsController : ControllerBase
 
         try
         {
-            var project = await _projectService.GetProjectAsync(id, ct);
+            var project = await _projectService.GetProjectAsync(id, ct).ConfigureAwait(false);
             if (project == null || project.IsDeleted)
             {
                 return NotFound(new
@@ -145,7 +145,7 @@ public class WizardProjectsController : ControllerBase
 
         try
         {
-            var projects = await _projectService.GetAllProjectsAsync(ct);
+            var projects = await _projectService.GetAllProjectsAsync(ct).ConfigureAwait(false);
 
             var response = projects.Select(p => new WizardProjectListItemDto(
                 p.Id,
@@ -185,7 +185,7 @@ public class WizardProjectsController : ControllerBase
 
         try
         {
-            var projects = await _projectService.GetRecentProjectsAsync(count, ct);
+            var projects = await _projectService.GetRecentProjectsAsync(count, ct).ConfigureAwait(false);
 
             var response = projects.Select(p => new WizardProjectListItemDto(
                 p.Id,
@@ -237,7 +237,7 @@ public class WizardProjectsController : ControllerBase
                 });
             }
 
-            var duplicate = await _projectService.DuplicateProjectAsync(id, request.NewName, ct);
+            var duplicate = await _projectService.DuplicateProjectAsync(id, request.NewName, ct).ConfigureAwait(false);
 
             Log.Information("[{CorrelationId}] Duplicated project {SourceId} to {DuplicateId}",
                 correlationId, id, duplicate.Id);
@@ -282,7 +282,7 @@ public class WizardProjectsController : ControllerBase
 
         try
         {
-            await _projectService.DeleteProjectAsync(id, null, ct);
+            await _projectService.DeleteProjectAsync(id, null, ct).ConfigureAwait(false);
 
             Log.Information("[{CorrelationId}] Deleted wizard project {ProjectId}", correlationId, id);
 
@@ -323,7 +323,7 @@ public class WizardProjectsController : ControllerBase
 
         try
         {
-            var projectJson = await _projectService.ExportProjectAsync(id, ct);
+            var projectJson = await _projectService.ExportProjectAsync(id, ct).ConfigureAwait(false);
 
             Log.Information("[{CorrelationId}] Exported wizard project {ProjectId}", correlationId, id);
 
@@ -376,7 +376,7 @@ public class WizardProjectsController : ControllerBase
                 });
             }
 
-            var project = await _projectService.ImportProjectAsync(request.ProjectJson, request.NewName, ct);
+            var project = await _projectService.ImportProjectAsync(request.ProjectJson, request.NewName, ct).ConfigureAwait(false);
 
             Log.Information("[{CorrelationId}] Imported wizard project as {ProjectId}: {ProjectName}",
                 correlationId, project.Id, project.Title);
@@ -416,7 +416,7 @@ public class WizardProjectsController : ControllerBase
                 request.KeepAudio,
                 request.KeepImages,
                 request.KeepVideo,
-                ct);
+                ct).ConfigureAwait(false);
 
             Log.Information("[{CorrelationId}] Cleared generated content for wizard project {ProjectId}", correlationId, id);
 

@@ -78,11 +78,11 @@ public sealed class StallDetector
         {
             while (!providerState.IsComplete && !ct.IsCancellationRequested)
             {
-                await Task.Delay(_checkInterval, ct);
+                await Task.Delay(_checkInterval, ct).ConfigureAwait(false);
 
                 if (heartbeatStrategy.SupportsHeartbeat)
                 {
-                    var progress = await heartbeatStrategy.CheckHeartbeatAsync(ct);
+                    var progress = await heartbeatStrategy.CheckHeartbeatAsync(ct).ConfigureAwait(false);
                     
                     if (progress != null)
                     {

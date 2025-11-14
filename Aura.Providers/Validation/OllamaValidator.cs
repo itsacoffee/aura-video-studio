@@ -36,7 +36,7 @@ public class OllamaValidator : IProviderValidator
             using var cts1 = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts1.CancelAfter(TimeSpan.FromSeconds(5));
 
-            var listResponse = await _httpClient.GetAsync($"{baseUrl}/api/tags", cts1.Token);
+            var listResponse = await _httpClient.GetAsync($"{baseUrl}/api/tags", cts1.Token).ConfigureAwait(false);
 
             if (!listResponse.IsSuccessStatusCode)
             {
@@ -51,7 +51,7 @@ public class OllamaValidator : IProviderValidator
                 };
             }
 
-            var listJson = await listResponse.Content.ReadAsStringAsync(ct);
+            var listJson = await listResponse.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var listDoc = JsonDocument.Parse(listJson);
 
             if (!listDoc.RootElement.TryGetProperty("models", out var models) || models.GetArrayLength() == 0)
@@ -105,7 +105,7 @@ public class OllamaValidator : IProviderValidator
             using var cts2 = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts2.CancelAfter(TimeSpan.FromSeconds(15));
 
-            var generateResponse = await _httpClient.PostAsync($"{baseUrl}/api/generate", content, cts2.Token);
+            var generateResponse = await _httpClient.PostAsync($"{baseUrl}/api/generate", content, cts2.Token).ConfigureAwait(false);
 
             sw.Stop();
 

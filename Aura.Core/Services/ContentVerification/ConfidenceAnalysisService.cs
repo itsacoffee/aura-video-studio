@@ -32,7 +32,7 @@ public class ConfidenceAnalysisService
         _logger.LogInformation("Analyzing confidence for content {ContentId} with {Count} claims",
             contentId, claims.Count);
 
-        await Task.Delay(10, ct); // Simulate processing
+        await Task.Delay(10, ct).ConfigureAwait(false); // Simulate processing
 
         var claimConfidences = new Dictionary<string, double>();
         var highConfidence = new List<string>();
@@ -58,7 +58,7 @@ public class ConfidenceAnalysisService
             }
         }
 
-        var overallConfidence = claimConfidences.Any()
+        var overallConfidence = claimConfidences.Count != 0
             ? claimConfidences.Values.Average()
             : 0.0;
 
@@ -80,7 +80,7 @@ public class ConfidenceAnalysisService
         Claim claim,
         List<Evidence> evidence)
     {
-        if (!evidence.Any())
+        if (evidence.Count == 0)
         {
             return 0.0;
         }
@@ -124,7 +124,7 @@ public class ConfidenceAnalysisService
         _logger.LogDebug("Identifying claims needing review (threshold: {Threshold})",
             reviewThreshold);
 
-        await Task.Delay(10, ct);
+        await Task.Delay(10, ct).ConfigureAwait(false);
 
         var recommendations = new List<ReviewRecommendation>();
 

@@ -46,7 +46,7 @@ public class AestheticsController : ControllerBase
             request.Sentiment,
             request.TimeOfDay,
             cancellationToken
-        );
+        ).ConfigureAwait(false);
 
         return Ok(profile);
     }
@@ -59,7 +59,7 @@ public class AestheticsController : ControllerBase
         [FromBody] List<SceneVisualContext> scenes,
         CancellationToken cancellationToken)
     {
-        var profiles = await _colorGrader.EnforceColorConsistencyAsync(scenes, cancellationToken);
+        var profiles = await _colorGrader.EnforceColorConsistencyAsync(scenes, cancellationToken).ConfigureAwait(false);
         return Ok(profiles);
     }
 
@@ -71,7 +71,7 @@ public class AestheticsController : ControllerBase
         [FromBody] Dictionary<string, float> colorHistogram,
         CancellationToken cancellationToken)
     {
-        var timeOfDay = await _colorGrader.DetectTimeOfDayAsync(colorHistogram, cancellationToken);
+        var timeOfDay = await _colorGrader.DetectTimeOfDayAsync(colorHistogram, cancellationToken).ConfigureAwait(false);
         return Ok(timeOfDay);
     }
 
@@ -88,7 +88,7 @@ public class AestheticsController : ControllerBase
             request.ImageHeight,
             request.SubjectPosition,
             cancellationToken
-        );
+        ).ConfigureAwait(false);
 
         return Ok(result);
     }
@@ -105,7 +105,7 @@ public class AestheticsController : ControllerBase
             request.Width,
             request.Height,
             cancellationToken
-        );
+        ).ConfigureAwait(false);
 
         return Ok(focalPoint);
     }
@@ -124,7 +124,7 @@ public class AestheticsController : ControllerBase
             request.ImageHeight,
             request.Rule,
             cancellationToken
-        );
+        ).ConfigureAwait(false);
 
         return Ok(crop);
     }
@@ -137,7 +137,7 @@ public class AestheticsController : ControllerBase
         [FromBody] List<SceneVisualContext> scenes,
         CancellationToken cancellationToken)
     {
-        var report = await _coherenceAnalyzer.AnalyzeCoherenceAsync(scenes, cancellationToken);
+        var report = await _coherenceAnalyzer.AnalyzeCoherenceAsync(scenes, cancellationToken).ConfigureAwait(false);
         return Ok(report);
     }
 
@@ -149,7 +149,7 @@ public class AestheticsController : ControllerBase
         [FromBody] List<SceneVisualContext> scenes,
         CancellationToken cancellationToken)
     {
-        var score = await _coherenceAnalyzer.AnalyzeLightingConsistencyAsync(scenes, cancellationToken);
+        var score = await _coherenceAnalyzer.AnalyzeLightingConsistencyAsync(scenes, cancellationToken).ConfigureAwait(false);
         return Ok(score);
     }
 
@@ -161,7 +161,7 @@ public class AestheticsController : ControllerBase
         [FromBody] List<SceneVisualContext> scenes,
         CancellationToken cancellationToken)
     {
-        var theme = await _coherenceAnalyzer.DetectVisualThemeAsync(scenes, cancellationToken);
+        var theme = await _coherenceAnalyzer.DetectVisualThemeAsync(scenes, cancellationToken).ConfigureAwait(false);
         return Ok(theme);
     }
 
@@ -180,7 +180,7 @@ public class AestheticsController : ControllerBase
             request.NoiseLevel,
             request.CompressionQuality,
             cancellationToken
-        );
+        ).ConfigureAwait(false);
 
         return Ok(metrics);
     }
@@ -193,7 +193,7 @@ public class AestheticsController : ControllerBase
         [FromBody] QualityMetrics metrics,
         CancellationToken cancellationToken)
     {
-        var score = await _qualityEngine.CalculatePerceptualQualityAsync(metrics, cancellationToken);
+        var score = await _qualityEngine.CalculatePerceptualQualityAsync(metrics, cancellationToken).ConfigureAwait(false);
         return Ok(score);
     }
 
@@ -205,7 +205,7 @@ public class AestheticsController : ControllerBase
         [FromBody] QualityMetrics metrics,
         CancellationToken cancellationToken)
     {
-        var enhancements = await _qualityEngine.SuggestEnhancementsAsync(metrics, cancellationToken);
+        var enhancements = await _qualityEngine.SuggestEnhancementsAsync(metrics, cancellationToken).ConfigureAwait(false);
         return Ok(enhancements);
     }
 
@@ -221,7 +221,7 @@ public class AestheticsController : ControllerBase
             request.Before,
             request.After,
             cancellationToken
-        );
+        ).ConfigureAwait(false);
 
         return Ok(comparison);
     }
@@ -239,7 +239,7 @@ public class AestheticsController : ControllerBase
             request.FromScene,
             request.ToScene,
             cancellationToken
-        );
+        ).ConfigureAwait(false);
 
         return Ok(effect);
     }
@@ -257,7 +257,7 @@ public class AestheticsController : ControllerBase
             request.SubText,
             request.Style,
             cancellationToken
-        );
+        ).ConfigureAwait(false);
 
         return Ok(lowerThird);
     }
@@ -276,7 +276,7 @@ public class AestheticsController : ControllerBase
             request.Duration,
             request.FocusPoint,
             cancellationToken
-        );
+        ).ConfigureAwait(false);
 
         return Ok(effect);
     }
@@ -288,7 +288,7 @@ public class AestheticsController : ControllerBase
     public async Task<ActionResult<List<MotionDesignLibrary.MotionEffect>>> GetMotionPresets(
         CancellationToken cancellationToken)
     {
-        var presets = await _motionLibrary.GetMotionDesignPresetsAsync(cancellationToken);
+        var presets = await _motionLibrary.GetMotionDesignPresetsAsync(cancellationToken).ConfigureAwait(false);
         return Ok(presets);
     }
 }

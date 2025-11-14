@@ -461,7 +461,7 @@ public class ScriptOrchestrator
 
         var adapter = GetOrCreateStageAdapter();
 
-        var result = await adapter.GenerateScriptAsync(brief, spec, preferredTier, offlineOnly, ct);
+        var result = await adapter.GenerateScriptAsync(brief, spec, preferredTier, offlineOnly, ct).ConfigureAwait(false);
 
         if (!result.IsSuccess)
         {

@@ -42,7 +42,7 @@ public class ContextPersistence
     /// </summary>
     public async Task SaveConversationAsync(ConversationContext context, CancellationToken ct = default)
     {
-        await _fileLock.WaitAsync(ct);
+        await _fileLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             var filePath = GetConversationFilePath(context.ProjectId);
@@ -50,7 +50,7 @@ public class ContextPersistence
             
             // Write to temp file first, then rename for atomic operation
             var tempPath = filePath + ".tmp";
-            await File.WriteAllTextAsync(tempPath, json, ct);
+            await File.WriteAllTextAsync(tempPath, json, ct).ConfigureAwait(false);
             File.Move(tempPath, filePath, overwrite: true);
             
             _logger.LogDebug("Saved conversation context for project {ProjectId}", context.ProjectId);
@@ -76,7 +76,7 @@ public class ContextPersistence
 
         try
         {
-            var json = await File.ReadAllTextAsync(filePath, ct);
+            var json = await File.ReadAllTextAsync(filePath, ct).ConfigureAwait(false);
             var context = JsonSerializer.Deserialize<ConversationContext>(json, _jsonOptions);
             _logger.LogDebug("Loaded conversation context for project {ProjectId}", projectId);
             return context;
@@ -93,7 +93,7 @@ public class ContextPersistence
     /// </summary>
     public async Task DeleteConversationAsync(string projectId, CancellationToken ct = default)
     {
-        await _fileLock.WaitAsync(ct);
+        await _fileLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             var filePath = GetConversationFilePath(projectId);
@@ -115,7 +115,7 @@ public class ContextPersistence
     /// </summary>
     public async Task SaveProjectContextAsync(ProjectContext context, CancellationToken ct = default)
     {
-        await _fileLock.WaitAsync(ct);
+        await _fileLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             var filePath = GetProjectContextFilePath(context.ProjectId);
@@ -123,7 +123,7 @@ public class ContextPersistence
             
             // Write to temp file first, then rename for atomic operation
             var tempPath = filePath + ".tmp";
-            await File.WriteAllTextAsync(tempPath, json, ct);
+            await File.WriteAllTextAsync(tempPath, json, ct).ConfigureAwait(false);
             File.Move(tempPath, filePath, overwrite: true);
             
             _logger.LogDebug("Saved project context for project {ProjectId}", context.ProjectId);
@@ -149,7 +149,7 @@ public class ContextPersistence
 
         try
         {
-            var json = await File.ReadAllTextAsync(filePath, ct);
+            var json = await File.ReadAllTextAsync(filePath, ct).ConfigureAwait(false);
             var context = JsonSerializer.Deserialize<ProjectContext>(json, _jsonOptions);
             _logger.LogDebug("Loaded project context for project {ProjectId}", projectId);
             return context;
@@ -166,7 +166,7 @@ public class ContextPersistence
     /// </summary>
     public async Task DeleteProjectContextAsync(string projectId, CancellationToken ct = default)
     {
-        await _fileLock.WaitAsync(ct);
+        await _fileLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             var filePath = GetProjectContextFilePath(projectId);

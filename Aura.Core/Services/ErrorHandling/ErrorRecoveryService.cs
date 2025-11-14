@@ -85,19 +85,19 @@ public class ErrorRecoveryService
             {
                 // File access errors - retry with delay
                 ResourceException { ResourceType: ResourceType.FileLocked } => 
-                    await RetryWithDelay(async () => true, 3, TimeSpan.FromSeconds(2)),
+                    await RetryWithDelay(async () => true, 3, TimeSpan.FromSeconds(2)).ConfigureAwait(false),
 
                 // Network errors - retry with exponential backoff
                 ProviderException { SpecificErrorCode: ProviderErrorCode.NetworkError } =>
-                    await RetryWithExponentialBackoff(async () => true, 3),
+                    await RetryWithExponentialBackoff(async () => true, 3).ConfigureAwait(false),
 
                 // Transient provider errors
                 ProviderException { IsTransient: true } =>
-                    await RetryWithExponentialBackoff(async () => true, 3),
+                    await RetryWithExponentialBackoff(async () => true, 3).ConfigureAwait(false),
 
                 // Rate limiting - wait and retry
                 ProviderException { SpecificErrorCode: ProviderErrorCode.RateLimit } provEx =>
-                    await HandleRateLimiting(provEx),
+                    await HandleRateLimiting(provEx).ConfigureAwait(false),
 
                 _ => false
             };
@@ -132,12 +132,12 @@ public class ErrorRecoveryService
             if (i > 0)
             {
                 _logger.LogDebug("Retry attempt {Attempt} after {Delay}ms", i + 1, delay.TotalMilliseconds);
-                await Task.Delay(delay);
+                await Task.Delay(delay).ConfigureAwait(false);
             }
 
             try
             {
-                if (await operation())
+                if (await operation().ConfigureAwait(false))
                     return true;
             }
             catch (Exception ex)
@@ -160,12 +160,12 @@ public class ErrorRecoveryService
                 var delay = TimeSpan.FromSeconds(Math.Pow(2, i));
                 _logger.LogDebug("Retry attempt {Attempt} after {Delay}s exponential backoff", 
                     i + 1, delay.TotalSeconds);
-                await Task.Delay(delay);
+                await Task.Delay(delay).ConfigureAwait(false);
             }
 
             try
             {
-                if (await operation())
+                if (await operation().ConfigureAwait(false))
                     return true;
             }
             catch (Exception ex)
@@ -194,7 +194,7 @@ public class ErrorRecoveryService
             "Rate limited by provider. Waiting {Seconds} seconds before retry",
             retryAfterSeconds);
 
-        await Task.Delay(TimeSpan.FromSeconds(retryAfterSeconds));
+        await Task.Delay(TimeSpan.FromSeconds(retryAfterSeconds)).ConfigureAwait(false);
         return true;
     }
 

@@ -42,7 +42,7 @@ public class ScriptCommand : ICommand
                 return 1;
             }
 
-            var briefJson = await File.ReadAllTextAsync(briefFile);
+            var briefJson = await File.ReadAllTextAsync(briefFile).ConfigureAwait(false);
             var brief = JsonSerializer.Deserialize<Brief>(briefJson, new JsonSerializerOptions 
             { 
                 PropertyNameCaseInsensitive = true 
@@ -61,7 +61,7 @@ public class ScriptCommand : ICommand
                 return 1;
             }
 
-            var planJson = await File.ReadAllTextAsync(planFile);
+            var planJson = await File.ReadAllTextAsync(planFile).ConfigureAwait(false);
             var plan = JsonSerializer.Deserialize<PlanSpec>(planJson, new JsonSerializerOptions 
             { 
                 PropertyNameCaseInsensitive = true 
@@ -91,11 +91,11 @@ public class ScriptCommand : ICommand
 
             // Generate script
             Console.WriteLine("Generating script...");
-            var script = await _llmProvider.DraftScriptAsync(brief, plan, CancellationToken.None);
+            var script = await _llmProvider.DraftScriptAsync(brief, plan, CancellationToken.None).ConfigureAwait(false);
 
             // Save script
             var output = outputFile ?? "script.txt";
-            await File.WriteAllTextAsync(output, script);
+            await File.WriteAllTextAsync(output, script).ConfigureAwait(false);
 
             Console.WriteLine($"✓ Script generated: {output}");
             Console.WriteLine($"  Length: {script.Length} characters");

@@ -156,22 +156,22 @@ public record AudioProcessingOptions
     /// <summary>
     /// Whether to apply noise reduction
     /// </summary>
-    public bool ReduceNoise { get; init; } = false;
+    public bool ReduceNoise { get; init; }
 
     /// <summary>
     /// Whether to apply compression/limiting
     /// </summary>
-    public bool ApplyCompression { get; init; } = false;
+    public bool ApplyCompression { get; init; }
 
     /// <summary>
     /// Fade in duration in milliseconds
     /// </summary>
-    public int FadeInMs { get; init; } = 0;
+    public int FadeInMs { get; init; }
 
     /// <summary>
     /// Fade out duration in milliseconds
     /// </summary>
-    public int FadeOutMs { get; init; } = 0;
+    public int FadeOutMs { get; init; }
 
     /// <summary>
     /// Default processing options for TTS

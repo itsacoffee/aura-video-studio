@@ -99,7 +99,7 @@ public class OpenAIKeyValidationService
         }
 
         // Check for offline mode (basic connectivity check)
-        if (!await IsNetworkAvailableAsync(cancellationToken))
+        if (!await IsNetworkAvailableAsync(cancellationToken).ConfigureAwait(false))
         {
             _logger.LogWarning("Network appears to be offline, Key: {MaskedKey}", maskedKey);
             return new OpenAIValidationResult
@@ -132,7 +132,7 @@ public class OpenAIKeyValidationService
                         MaxRetryAttempts,
                         delay,
                         maskedKey);
-                    await Task.Delay(delay, cancellationToken);
+                    await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
                 }
 
                 _logger.LogDebug(
@@ -161,7 +161,7 @@ public class OpenAIKeyValidationService
                 HttpResponseMessage response;
                 try
                 {
-                    response = await _httpClient.SendAsync(request, cts.Token);
+                    response = await _httpClient.SendAsync(request, cts.Token).ConfigureAwait(false);
                 }
                 catch (TaskCanceledException)
                 {
@@ -279,7 +279,7 @@ public class OpenAIKeyValidationService
                 
                 try
                 {
-                    errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+                    errorBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
                     
                     _logger.LogDebug(
                         "OpenAI API response body: {ResponseBody}, Status: {StatusCode}, Key: {MaskedKey}",
@@ -480,7 +480,7 @@ public class OpenAIKeyValidationService
             cts.CancelAfter(TimeSpan.FromSeconds(5));
             
             var request = new HttpRequestMessage(HttpMethod.Head, "https://www.google.com");
-            var response = await _httpClient.SendAsync(request, cts.Token);
+            var response = await _httpClient.SendAsync(request, cts.Token).ConfigureAwait(false);
             return response.IsSuccessStatusCode;
         }
         catch
@@ -625,7 +625,7 @@ public class OpenAIKeyValidationService
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(TimeSpan.FromSeconds(TotalTimeoutSeconds));
 
-            var response = await _httpClient.SendAsync(request, cts.Token);
+            var response = await _httpClient.SendAsync(request, cts.Token).ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -641,7 +641,7 @@ public class OpenAIKeyValidationService
                 };
             }
 
-            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             
             using var jsonDoc = JsonDocument.Parse(responseBody);
             var models = new List<string>();
@@ -739,12 +739,12 @@ public class OpenAIKeyValidationService
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(TimeSpan.FromSeconds(TotalTimeoutSeconds));
 
-            var response = await _httpClient.SendAsync(request, cts.Token);
+            var response = await _httpClient.SendAsync(request, cts.Token).ConfigureAwait(false);
             var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
 
             if (!response.IsSuccessStatusCode)
             {
-                var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+                var errorBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
                 
                 _logger.LogWarning(
                     "Script generation test failed: HTTP {StatusCode}, Key: {MaskedKey}",
@@ -759,7 +759,7 @@ public class OpenAIKeyValidationService
                 };
             }
 
-            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             
             using var jsonDoc = JsonDocument.Parse(responseBody);
             string? generatedText = null;

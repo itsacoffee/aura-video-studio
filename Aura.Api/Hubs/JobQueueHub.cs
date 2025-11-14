@@ -24,7 +24,7 @@ public class JobQueueHub : Hub
     /// </summary>
     public async Task SubscribeToJob(string jobId)
     {
-        await Groups.AddToGroupAsync(Context.ConnectionId, $"job-{jobId}");
+        await Groups.AddToGroupAsync(Context.ConnectionId, $"job-{jobId}").ConfigureAwait(false);
         _logger.LogInformation(
             "Connection {ConnectionId} subscribed to job {JobId}",
             Context.ConnectionId, jobId);
@@ -35,7 +35,7 @@ public class JobQueueHub : Hub
     /// </summary>
     public async Task UnsubscribeFromJob(string jobId)
     {
-        await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"job-{jobId}");
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"job-{jobId}").ConfigureAwait(false);
         _logger.LogInformation(
             "Connection {ConnectionId} unsubscribed from job {JobId}",
             Context.ConnectionId, jobId);
@@ -46,7 +46,7 @@ public class JobQueueHub : Hub
     /// </summary>
     public async Task SubscribeToQueue()
     {
-        await Groups.AddToGroupAsync(Context.ConnectionId, "queue");
+        await Groups.AddToGroupAsync(Context.ConnectionId, "queue").ConfigureAwait(false);
         _logger.LogInformation(
             "Connection {ConnectionId} subscribed to queue updates",
             Context.ConnectionId);
@@ -57,7 +57,7 @@ public class JobQueueHub : Hub
     /// </summary>
     public async Task UnsubscribeFromQueue()
     {
-        await Groups.RemoveFromGroupAsync(Context.ConnectionId, "queue");
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, "queue").ConfigureAwait(false);
         _logger.LogInformation(
             "Connection {ConnectionId} unsubscribed from queue updates",
             Context.ConnectionId);
@@ -66,7 +66,7 @@ public class JobQueueHub : Hub
     public override async Task OnConnectedAsync()
     {
         _logger.LogInformation("Client connected: {ConnectionId}", Context.ConnectionId);
-        await base.OnConnectedAsync();
+        await base.OnConnectedAsync().ConfigureAwait(false);
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)
@@ -81,7 +81,7 @@ public class JobQueueHub : Hub
         {
             _logger.LogInformation("Client disconnected: {ConnectionId}", Context.ConnectionId);
         }
-        await base.OnDisconnectedAsync(exception);
+        await base.OnDisconnectedAsync(exception).ConfigureAwait(false);
     }
 }
 
@@ -126,12 +126,12 @@ public class JobQueueNotificationService
             // Send to job-specific group
             await _hubContext.Clients
                 .Group($"job-{jobId}")
-                .SendAsync("JobStatusChanged", notification);
+                .SendAsync("JobStatusChanged", notification).ConfigureAwait(false);
 
             // Send to queue group
             await _hubContext.Clients
                 .Group("queue")
-                .SendAsync("JobStatusChanged", notification);
+                .SendAsync("JobStatusChanged", notification).ConfigureAwait(false);
 
             _logger.LogDebug(
                 "Sent JobStatusChanged notification for job {JobId}: {Status}",
@@ -166,7 +166,7 @@ public class JobQueueNotificationService
             // Send to job-specific group
             await _hubContext.Clients
                 .Group($"job-{progressArgs.JobId}")
-                .SendAsync("JobProgress", notification);
+                .SendAsync("JobProgress", notification).ConfigureAwait(false);
 
             _logger.LogTrace(
                 "Sent JobProgress notification for job {JobId}: {Progress}%",
@@ -201,12 +201,12 @@ public class JobQueueNotificationService
             // Send to job-specific group
             await _hubContext.Clients
                 .Group($"job-{jobId}")
-                .SendAsync("JobCompleted", notification);
+                .SendAsync("JobCompleted", notification).ConfigureAwait(false);
 
             // Send to queue group
             await _hubContext.Clients
                 .Group("queue")
-                .SendAsync("JobCompleted", notification);
+                .SendAsync("JobCompleted", notification).ConfigureAwait(false);
 
             _logger.LogInformation(
                 "Sent JobCompleted notification for job {JobId}",
@@ -241,12 +241,12 @@ public class JobQueueNotificationService
             // Send to job-specific group
             await _hubContext.Clients
                 .Group($"job-{jobId}")
-                .SendAsync("JobFailed", notification);
+                .SendAsync("JobFailed", notification).ConfigureAwait(false);
 
             // Send to queue group
             await _hubContext.Clients
                 .Group("queue")
-                .SendAsync("JobFailed", notification);
+                .SendAsync("JobFailed", notification).ConfigureAwait(false);
 
             _logger.LogWarning(
                 "Sent JobFailed notification for job {JobId}: {Error}",
@@ -269,7 +269,7 @@ public class JobQueueNotificationService
         {
             await _hubContext.Clients
                 .Group("queue")
-                .SendAsync("QueueStatistics", statistics);
+                .SendAsync("QueueStatistics", statistics).ConfigureAwait(false);
 
             _logger.LogTrace("Sent QueueStatistics notification");
         }

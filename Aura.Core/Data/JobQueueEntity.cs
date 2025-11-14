@@ -36,12 +36,12 @@ public class JobQueueEntity : IAuditableEntity
     /// </summary>
     [MaxLength(100)]
     public string? CorrelationId { get; set; }
-    
+
     /// <summary>
     /// Number of retry attempts
     /// </summary>
-    public int RetryCount { get; set; } = 0;
-    
+    public int RetryCount { get; set; }
+
     /// <summary>
     /// Maximum allowed retries
     /// </summary>
@@ -72,12 +72,12 @@ public class JobQueueEntity : IAuditableEntity
     /// Next retry time (for exponential backoff)
     /// </summary>
     public DateTime? NextRetryAt { get; set; }
-    
+
     /// <summary>
     /// Current progress percentage (0-100)
     /// </summary>
-    public int ProgressPercent { get; set; } = 0;
-    
+    public int ProgressPercent { get; set; }
+
     /// <summary>
     /// Current processing stage
     /// </summary>
@@ -95,12 +95,12 @@ public class JobQueueEntity : IAuditableEntity
     /// </summary>
     [MaxLength(100)]
     public string? WorkerId { get; set; }
-    
+
     /// <summary>
     /// Whether this is a Quick Demo job
     /// </summary>
-    public bool IsQuickDemo { get; set; } = false;
-    
+    public bool IsQuickDemo { get; set; }
+
     // IAuditableEntity implementation
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

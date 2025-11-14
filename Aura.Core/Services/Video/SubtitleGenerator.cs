@@ -152,7 +152,7 @@ public class SubtitleGenerator : ISubtitleGenerator
             });
         }
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         _logger.LogInformation("Generated {Count} subtitle entries from script", entries.Count);
         return entries;
     }

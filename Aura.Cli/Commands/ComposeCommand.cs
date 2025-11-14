@@ -44,7 +44,7 @@ public class ComposeCommand : ICommand
             }
 
             Console.WriteLine($"[1/3] Reading input from: {inputPath}");
-            var inputJson = await File.ReadAllTextAsync(inputPath);
+            var inputJson = await File.ReadAllTextAsync(inputPath).ConfigureAwait(false);
             
             // Validate JSON structure
             try
@@ -93,7 +93,7 @@ public class ComposeCommand : ICommand
             Console.WriteLine("[3/3] Saving composition plan...");
             
             var output = outputPath ?? Path.Combine(Path.GetDirectoryName(inputPath) ?? ".", "compose-plan.json");
-            await File.WriteAllTextAsync(output, JsonSerializer.Serialize(plan, new JsonSerializerOptions { WriteIndented = true }));
+            await File.WriteAllTextAsync(output, JsonSerializer.Serialize(plan, new JsonSerializerOptions { WriteIndented = true })).ConfigureAwait(false);
             
             Console.WriteLine($"      ✓ Plan saved to: {output}");
             Console.WriteLine();

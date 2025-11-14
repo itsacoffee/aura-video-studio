@@ -30,7 +30,7 @@ public record VoiceEnhancementConfig
     /// <summary>
     /// Enable prosody adjustment
     /// </summary>
-    public bool EnableProsodyAdjustment { get; init; } = false;
+    public bool EnableProsodyAdjustment { get; init; }
 
     /// <summary>
     /// Prosody settings
@@ -40,7 +40,7 @@ public record VoiceEnhancementConfig
     /// <summary>
     /// Enable emotional tone enhancement
     /// </summary>
-    public bool EnableEmotionEnhancement { get; init; } = false;
+    public bool EnableEmotionEnhancement { get; init; }
 
     /// <summary>
     /// Target emotion
@@ -56,7 +56,7 @@ public record ProsodySettings
     /// <summary>
     /// Pitch adjustment in semitones (-12 to +12)
     /// </summary>
-    public double PitchShift { get; init; } = 0.0;
+    public double PitchShift { get; init; }
 
     /// <summary>
     /// Rate/speed multiplier (0.5 to 2.0)
@@ -71,7 +71,7 @@ public record ProsodySettings
     /// <summary>
     /// Volume adjustment in dB (-20 to +20)
     /// </summary>
-    public double VolumeAdjustment { get; init; } = 0.0;
+    public double VolumeAdjustment { get; init; }
 
     /// <summary>
     /// Pause duration multiplier (0.5 to 2.0)

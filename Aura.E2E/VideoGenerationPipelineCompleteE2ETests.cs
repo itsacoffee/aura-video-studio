@@ -100,7 +100,7 @@ public class VideoGenerationPipelineCompleteE2ETests : IDisposable
 
         // Act - Generate script
         _output.WriteLine("Calling LLM provider to generate script...");
-        var script = await llmProvider.DraftScriptAsync(brief, planSpec, CancellationToken.None);
+        var script = await llmProvider.DraftScriptAsync(brief, planSpec, CancellationToken.None).ConfigureAwait(false);
 
         var elapsed = DateTime.UtcNow - startTime;
         _output.WriteLine($"Script generation completed in {elapsed.TotalSeconds:F2}s");
@@ -162,7 +162,7 @@ public class VideoGenerationPipelineCompleteE2ETests : IDisposable
 
         // Act - Synthesize audio
         _output.WriteLine($"Synthesizing {scriptLines.Count} script lines to audio...");
-        var audioPath = await ttsProvider.SynthesizeAsync(scriptLines, voiceSpec, CancellationToken.None);
+        var audioPath = await ttsProvider.SynthesizeAsync(scriptLines, voiceSpec, CancellationToken.None).ConfigureAwait(false);
 
         var elapsed = DateTime.UtcNow - startTime;
         _output.WriteLine($"Audio synthesis completed in {elapsed.TotalSeconds:F2}s");
@@ -180,7 +180,7 @@ public class VideoGenerationPipelineCompleteE2ETests : IDisposable
         _output.WriteLine($"✓ Audio file size: {fileInfo.Length} bytes");
 
         // Assert - Audio format validation
-        var isValidWav = await ValidateWavFileAsync(audioPath);
+        var isValidWav = await ValidateWavFileAsync(audioPath).ConfigureAwait(false);
         Assert.True(isValidWav, "Audio should be valid WAV format");
         _output.WriteLine($"✓ Audio is valid WAV format");
 
@@ -227,7 +227,7 @@ public class VideoGenerationPipelineCompleteE2ETests : IDisposable
 
         // Act - Fetch or generate images
         _output.WriteLine("Requesting images for scene...");
-        var assets = await imageProvider.FetchOrGenerateAsync(scene, visualSpec, CancellationToken.None);
+        var assets = await imageProvider.FetchOrGenerateAsync(scene, visualSpec, CancellationToken.None).ConfigureAwait(false);
 
         var elapsed = DateTime.UtcNow - startTime;
         _output.WriteLine($"Image selection completed in {elapsed.TotalSeconds:F2}s");
@@ -246,7 +246,7 @@ public class VideoGenerationPipelineCompleteE2ETests : IDisposable
             _output.WriteLine($"✓ Asset: {asset.PathOrUrl} ({fileInfo.Length} bytes)");
 
             // Validate image format
-            var isValidImage = await ValidateImageFileAsync(asset.PathOrUrl);
+            var isValidImage = await ValidateImageFileAsync(asset.PathOrUrl).ConfigureAwait(false);
             Assert.True(isValidImage, $"Image should be valid format: {asset.PathOrUrl}");
             _output.WriteLine($"✓ Valid image format");
         }
@@ -311,7 +311,7 @@ public class VideoGenerationPipelineCompleteE2ETests : IDisposable
 
         // Act - Render video
         _output.WriteLine("Starting video rendering...");
-        var outputPath = await videoComposer.RenderAsync(timeline, renderSpec, progress, CancellationToken.None);
+        var outputPath = await videoComposer.RenderAsync(timeline, renderSpec, progress, CancellationToken.None).ConfigureAwait(false);
 
         var elapsed = DateTime.UtcNow - startTime;
         _output.WriteLine($"Video rendering completed in {elapsed.TotalSeconds:F2}s");
@@ -395,7 +395,7 @@ public class VideoGenerationPipelineCompleteE2ETests : IDisposable
             EnableSceneCut: true
         );
 
-        var systemProfile = await DetectOrCreateSystemProfile();
+        var systemProfile = await DetectOrCreateSystemProfile().ConfigureAwait(false);
 
         var stageTransitions = new List<string>();
         var progress = new Progress<string>(msg =>
@@ -419,7 +419,7 @@ public class VideoGenerationPipelineCompleteE2ETests : IDisposable
             CancellationToken.None,
             jobId,
             correlationId
-        );
+        ).ConfigureAwait(false);
 
         var elapsed = DateTime.UtcNow - startTime;
         _output.WriteLine($"\nComplete pipeline finished in {elapsed.TotalSeconds:F2}s ({elapsed.TotalMinutes:F2} minutes)");
@@ -489,7 +489,7 @@ public class VideoGenerationPipelineCompleteE2ETests : IDisposable
         for (int i = 0; i < 5; i++)
         {
             var filePath = Path.Combine(testTempDir, $"test-file-{i}.tmp");
-            await File.WriteAllTextAsync(filePath, "test content");
+            await File.WriteAllTextAsync(filePath, "test content").ConfigureAwait(false);
             testFiles.Add(filePath);
             _output.WriteLine($"Created test file: {filePath}");
         }
@@ -510,7 +510,7 @@ public class VideoGenerationPipelineCompleteE2ETests : IDisposable
         cleanupManager.Dispose();
 
         // Assert - Files deleted
-        await Task.Delay(100); // Brief delay to allow file system operations
+        await Task.Delay(100).ConfigureAwait(false); // Brief delay to allow file system operations
         var remainingFiles = testFiles.Where(File.Exists).ToList();
         
         if (remainingFiles.Any())
@@ -626,7 +626,7 @@ public class VideoGenerationPipelineCompleteE2ETests : IDisposable
         try
         {
             var detector = new HardwareDetector(_loggerFactory.CreateLogger<HardwareDetector>());
-            return await detector.DetectSystemAsync();
+            return await detector.DetectSystemAsync().ConfigureAwait(false);
         }
         catch
         {
@@ -645,7 +645,7 @@ public class VideoGenerationPipelineCompleteE2ETests : IDisposable
     {
         try
         {
-            var bytes = await File.ReadAllBytesAsync(filePath);
+            var bytes = await File.ReadAllBytesAsync(filePath).ConfigureAwait(false);
             if (bytes.Length < 44) return false;
 
             var riff = System.Text.Encoding.ASCII.GetString(bytes, 0, 4);
@@ -663,7 +663,7 @@ public class VideoGenerationPipelineCompleteE2ETests : IDisposable
     {
         try
         {
-            var bytes = await File.ReadAllBytesAsync(filePath);
+            var bytes = await File.ReadAllBytesAsync(filePath).ConfigureAwait(false);
             if (bytes.Length < 10) return false;
 
             var isJpeg = bytes[0] == 0xFF && bytes[1] == 0xD8;
@@ -713,7 +713,7 @@ public class VideoGenerationPipelineCompleteE2ETests : IDisposable
 
     #region Test Helper Providers
 
-    private class TestTtsProviderWithRealFiles : ITtsProvider
+    private sealed class TestTtsProviderWithRealFiles : ITtsProvider
     {
         private readonly ILogger<TestTtsProviderWithRealFiles> _logger;
         private readonly List<string> _tempFiles;
@@ -776,7 +776,7 @@ public class VideoGenerationPipelineCompleteE2ETests : IDisposable
         }
     }
 
-    private class TestVideoComposerWithRealFiles : IVideoComposer
+    private sealed class TestVideoComposerWithRealFiles : IVideoComposer
     {
         private readonly ILogger<TestVideoComposerWithRealFiles> _logger;
         private readonly List<string> _tempFiles;
@@ -796,21 +796,21 @@ public class VideoGenerationPipelineCompleteE2ETests : IDisposable
             CancellationToken ct)
         {
             progress?.Report(new RenderProgress(0, TimeSpan.Zero, TimeSpan.FromSeconds(5), "Initializing"));
-            await Task.Delay(200, ct);
+            await Task.Delay(200, ct).ConfigureAwait(false);
 
             progress?.Report(new RenderProgress(25, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(4), "Encoding video"));
-            await Task.Delay(300, ct);
+            await Task.Delay(300, ct).ConfigureAwait(false);
 
             progress?.Report(new RenderProgress(50, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(3), "Encoding audio"));
-            await Task.Delay(300, ct);
+            await Task.Delay(300, ct).ConfigureAwait(false);
 
             progress?.Report(new RenderProgress(75, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(2), "Muxing streams"));
-            await Task.Delay(300, ct);
+            await Task.Delay(300, ct).ConfigureAwait(false);
 
             progress?.Report(new RenderProgress(100, TimeSpan.FromSeconds(5), TimeSpan.Zero, "Complete"));
 
             var outputPath = Path.Combine(Path.GetTempPath(), $"e2e-video-{Guid.NewGuid():N}.{spec.Container}");
-            await File.WriteAllTextAsync(outputPath, "Mock video file for E2E testing", ct);
+            await File.WriteAllTextAsync(outputPath, "Mock video file for E2E testing", ct).ConfigureAwait(false);
 
             _tempFiles.Add(outputPath);
             _logger.LogInformation("Generated test video file: {Path}", outputPath);
@@ -818,7 +818,7 @@ public class VideoGenerationPipelineCompleteE2ETests : IDisposable
         }
     }
 
-    private class TestImageProviderWithRealFiles : IImageProvider
+    private sealed class TestImageProviderWithRealFiles : IImageProvider
     {
         private readonly ILogger<TestImageProviderWithRealFiles> _logger;
         private readonly List<string> _tempFiles;
@@ -853,7 +853,7 @@ public class VideoGenerationPipelineCompleteE2ETests : IDisposable
                 0xD9
             };
 
-            await File.WriteAllBytesAsync(imagePath, minimalJpeg, ct);
+            await File.WriteAllBytesAsync(imagePath, minimalJpeg, ct).ConfigureAwait(false);
 
             _tempFiles.Add(imagePath);
             _logger.LogInformation("Generated test image file: {Path}", imagePath);
@@ -865,7 +865,7 @@ public class VideoGenerationPipelineCompleteE2ETests : IDisposable
         }
     }
 
-    private class MockFfmpegLocator : IFfmpegLocator
+    private sealed class MockFfmpegLocator : IFfmpegLocator
     {
         private readonly string _mockPath;
 

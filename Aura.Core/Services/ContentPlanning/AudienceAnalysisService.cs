@@ -30,7 +30,7 @@ public class AudienceAnalysisService
         _logger.LogInformation("Analyzing audience for platform: {Platform}, category: {Category}",
             request.Platform, request.Category);
 
-        await Task.Delay(100, ct);
+        await Task.Delay(100, ct).ConfigureAwait(false);
 
         var insights = GenerateAudienceInsights(request);
         var recommendations = GenerateRecommendations(insights, request);
@@ -52,7 +52,7 @@ public class AudienceAnalysisService
     {
         _logger.LogInformation("Getting demographics for platform: {Platform}", platform);
 
-        await Task.Delay(50, ct);
+        await Task.Delay(50, ct).ConfigureAwait(false);
 
         return platform.ToLower() switch
         {
@@ -142,7 +142,7 @@ public class AudienceAnalysisService
     {
         _logger.LogInformation("Getting top interests for category: {Category}", category);
 
-        await Task.Delay(50, ct);
+        await Task.Delay(50, ct).ConfigureAwait(false);
 
         var interestsByCategory = new Dictionary<string, List<string>>
         {
@@ -239,7 +239,7 @@ public class AudienceAnalysisService
         var topTime = insights.BestPostingTimes.OrderByDescending(kv => kv.Value).First();
         recommendations.Add($"Schedule posts around {topTime.Key} for optimal reach");
 
-        if (insights.TopInterests.Any())
+        if (insights.TopInterests.Count != 0)
         {
             recommendations.Add($"Incorporate topics like {insights.TopInterests.First()} to align with audience interests");
         }

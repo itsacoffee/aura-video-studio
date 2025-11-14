@@ -44,7 +44,7 @@ public class EqualizeService
             var filterChain = BuildEqualizationFilter(preset);
 
             var ffmpegArgs = $"-i \"{inputPath}\" -af \"{filterChain}\" -ar 48000 -ac 2 \"{outputPath}\"";
-            var success = await RunFFmpegAsync(ffmpegArgs, ct);
+            var success = await RunFFmpegAsync(ffmpegArgs, ct).ConfigureAwait(false);
 
             if (!success || !File.Exists(outputPath))
             {
@@ -78,7 +78,7 @@ public class EqualizeService
             var filterChain = BuildCustomEqFilter(settings);
 
             var ffmpegArgs = $"-i \"{inputPath}\" -af \"{filterChain}\" -ar 48000 -ac 2 \"{outputPath}\"";
-            var success = await RunFFmpegAsync(ffmpegArgs, ct);
+            var success = await RunFFmpegAsync(ffmpegArgs, ct).ConfigureAwait(false);
 
             if (!success || !File.Exists(outputPath))
             {
@@ -181,7 +181,7 @@ public class EqualizeService
             var filterChain = $"equalizer=f={centerFreq}:t=q:w={width}:g={gain}";
             var ffmpegArgs = $"-i \"{inputPath}\" -af \"{filterChain}\" -ar 48000 -ac 2 \"{outputPath}\"";
 
-            var success = await RunFFmpegAsync(ffmpegArgs, ct);
+            var success = await RunFFmpegAsync(ffmpegArgs, ct).ConfigureAwait(false);
 
             if (!success || !File.Exists(outputPath))
             {
@@ -216,8 +216,8 @@ public class EqualizeService
             using var process = new Process { StartInfo = startInfo };
             process.Start();
 
-            var errorOutput = await process.StandardError.ReadToEndAsync();
-            await process.WaitForExitAsync(ct);
+            var errorOutput = await process.StandardError.ReadToEndAsync().ConfigureAwait(false);
+            await process.WaitForExitAsync(ct).ConfigureAwait(false);
 
             if (process.ExitCode != 0)
             {

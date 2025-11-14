@@ -32,7 +32,7 @@ public class VersionController : ControllerBase
     {
         try
         {
-            var versionInfo = await _versionInfoLazy.Value;
+            var versionInfo = await _versionInfoLazy.Value.ConfigureAwait(false);
             _logger.LogInformation("Version info requested: {Version}", versionInfo.SemanticVersion);
             return Ok(versionInfo);
         }
@@ -51,7 +51,7 @@ public class VersionController : ControllerBase
 
         if (System.IO.File.Exists(versionFilePath))
         {
-            var json = await System.IO.File.ReadAllTextAsync(versionFilePath);
+            var json = await System.IO.File.ReadAllTextAsync(versionFilePath).ConfigureAwait(false);
             var versionData = JsonSerializer.Deserialize<JsonElement>(json);
             
             versionInfo = new VersionInfo

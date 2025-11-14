@@ -45,7 +45,7 @@ public class VisualPromptRefinementService
         {
             var response = await _llmProvider.CompleteAsync(
                 systemPrompt + "\n\n" + userPrompt,
-                ct);
+                ct).ConfigureAwait(false);
 
             var result = ParseRefinementResponse(response, request.CurrentPrompt);
 

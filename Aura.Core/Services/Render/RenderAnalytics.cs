@@ -109,7 +109,7 @@ public class RenderAnalytics
             success ? "Success" : "Failed"
         );
 
-        await SaveMetricsAsync();
+        await SaveMetricsAsync().ConfigureAwait(false);
     }
 
     /// <summary>
@@ -255,7 +255,7 @@ public class RenderAnalytics
             lines.Add(line);
         }
 
-        await File.WriteAllLinesAsync(outputPath, lines);
+        await File.WriteAllLinesAsync(outputPath, lines).ConfigureAwait(false);
         
         _logger.LogInformation("Exported {Count} metrics to {Path}", _metrics.Count, outputPath);
         
@@ -343,7 +343,7 @@ public class RenderAnalytics
                 WriteIndented = true
             });
 
-            await File.WriteAllTextAsync(_metricsFile, json);
+            await File.WriteAllTextAsync(_metricsFile, json).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

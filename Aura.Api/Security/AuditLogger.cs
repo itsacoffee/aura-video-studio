@@ -269,7 +269,7 @@ public class AuditLoggingMiddleware
                 });
         }
 
-        await _next(context);
+        await _next(context).ConfigureAwait(false);
     }
 
     private static bool IsSensitiveEndpoint(string path)

@@ -119,7 +119,7 @@ public class PipelineExecutionTests
         var correlationId = $"e2e-test-{DateTime.UtcNow:yyyyMMddHHmmss}";
 
         _output.WriteLine($"Creating job with correlation ID: {correlationId}");
-        var job = await jobRunner.CreateAndStartJobAsync(brief, planSpec, voiceSpec, renderSpec, correlationId);
+        var job = await jobRunner.CreateAndStartJobAsync(brief, planSpec, voiceSpec, renderSpec, correlationId).ConfigureAwait(false);
         
         Assert.NotNull(job);
         Assert.NotNull(job.Id);
@@ -154,7 +154,7 @@ public class PipelineExecutionTests
                 Assert.Fail($"Job failed: {errorMessage}{failureDetails}");
             }
 
-            await Task.Delay(pollInterval);
+            await Task.Delay(pollInterval).ConfigureAwait(false);
         }
 
         // Assert: Job completed successfully

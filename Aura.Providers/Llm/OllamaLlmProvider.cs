@@ -87,7 +87,7 @@ public class OllamaLlmProvider : ILlmProvider
                 if (attempt > 0)
                 {
                     _logger.LogInformation("Retry attempt {Attempt}/{MaxRetries} for Ollama", attempt, _maxRetries);
-                    await Task.Delay(TimeSpan.FromSeconds(2 * attempt), ct); // Exponential backoff
+                    await Task.Delay(TimeSpan.FromSeconds(2 * attempt), ct).ConfigureAwait(false); // Exponential backoff
                 }
 
                 // Build enhanced prompt for quality content with user customizations
@@ -97,7 +97,7 @@ public class OllamaLlmProvider : ILlmProvider
                 // Apply enhancement callback if configured
                 if (PromptEnhancementCallback != null)
                 {
-                    userPrompt = await PromptEnhancementCallback(userPrompt, brief, spec);
+                    userPrompt = await PromptEnhancementCallback(userPrompt, brief, spec).ConfigureAwait(false);
                 }
                 
                 string prompt = $"{systemPrompt}\n\n{userPrompt}";
@@ -122,10 +122,10 @@ public class OllamaLlmProvider : ILlmProvider
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                 cts.CancelAfter(_timeout);
 
-                var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token);
+                var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
 
-                var responseJson = await response.Content.ReadAsStringAsync(ct);
+                var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 var responseDoc = JsonDocument.Parse(responseJson);
 
                 if (responseDoc.RootElement.TryGetProperty("response", out var responseText))
@@ -200,7 +200,7 @@ public class OllamaLlmProvider : ILlmProvider
             {
                 if (attempt > 0)
                 {
-                    await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt)), ct);
+                    await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt)), ct).ConfigureAwait(false);
                 }
 
                 var requestBody = new
@@ -218,10 +218,10 @@ public class OllamaLlmProvider : ILlmProvider
                 var json = JsonSerializer.Serialize(requestBody);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, ct);
+                var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, ct).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
 
-                var responseJson = await response.Content.ReadAsStringAsync(ct);
+                var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 var responseDoc = JsonDocument.Parse(responseJson);
 
                 if (responseDoc.RootElement.TryGetProperty("response", out var responseProp))
@@ -290,10 +290,10 @@ Respond with ONLY the JSON object, no other text:";
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(30)); // Shorter timeout for analysis
 
-            var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token);
+            var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("response", out var responseText))
@@ -407,10 +407,10 @@ Respond with ONLY the JSON object, no other text:";
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(30));
 
-            var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token);
+            var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("response", out var responseText))
@@ -524,10 +524,10 @@ Respond with ONLY the JSON object, no other text:";
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(30));
 
-            var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token);
+            var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("response", out var responseText))
@@ -691,10 +691,10 @@ Respond with ONLY the JSON object, no other text:";
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(30));
 
-            var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token);
+            var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("response", out var responseText))
@@ -807,10 +807,10 @@ Respond with ONLY the JSON object, no other text:";
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(45));
 
-            var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token);
+            var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("response", out var responseText))
@@ -918,10 +918,10 @@ Return ONLY the transition text, no explanations or additional commentary:";
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(30));
 
-            var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token);
+            var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("response", out var responseText))
@@ -959,7 +959,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(5));
 
-            var response = await _httpClient.GetAsync($"{_baseUrl}/api/version", cts.Token);
+            var response = await _httpClient.GetAsync($"{_baseUrl}/api/version", cts.Token).ConfigureAwait(false);
             
             if (response.IsSuccessStatusCode)
             {
@@ -999,10 +999,10 @@ Return ONLY the transition text, no explanations or additional commentary:";
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(10));
 
-            var response = await _httpClient.GetAsync($"{_baseUrl}/api/tags", cts.Token);
+            var response = await _httpClient.GetAsync($"{_baseUrl}/api/tags", cts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var content = await response.Content.ReadAsStringAsync(ct);
+            var content = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var tagsDoc = JsonDocument.Parse(content);
 
             var models = new List<OllamaModelInfo>();
@@ -1076,7 +1076,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
             // Apply enhancement callback if configured
             if (PromptEnhancementCallback != null)
             {
-                userPrompt = await PromptEnhancementCallback(userPrompt, brief, spec);
+                userPrompt = await PromptEnhancementCallback(userPrompt, brief, spec).ConfigureAwait(false);
             }
             
             string prompt = $"{systemPrompt}\n\n{userPrompt}";
@@ -1102,12 +1102,12 @@ Return ONLY the transition text, no explanations or additional commentary:";
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(120)); // 120-second timeout for local models
 
-            var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token);
+            var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token).ConfigureAwait(false);
             
             // Check for model not found error
             if (!response.IsSuccessStatusCode)
             {
-                var errorContent = await response.Content.ReadAsStringAsync(ct);
+                var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 if (errorContent.Contains("model") && errorContent.Contains("not found"))
                 {
                     throw new InvalidOperationException(
@@ -1116,7 +1116,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
                 response.EnsureSuccessStatusCode();
             }
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("response", out var responseText))

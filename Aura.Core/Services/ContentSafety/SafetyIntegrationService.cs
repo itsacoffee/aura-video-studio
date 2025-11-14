@@ -38,7 +38,7 @@ public class SafetyIntegrationService
                 Guid.NewGuid().ToString(),
                 script,
                 policy,
-                ct);
+                ct).ConfigureAwait(false);
 
             var checkResult = new SafetyCheckResult
             {
@@ -77,7 +77,7 @@ public class SafetyIntegrationService
             Guid.NewGuid().ToString(),
             prompt,
             policy,
-            ct);
+            ct).ConfigureAwait(false);
 
         return new SafetyCheckResult
         {

@@ -53,14 +53,14 @@ public class StructuredLlmProviderAdapter
                     finalPrompt = _adapter.OptimizeUserPrompt(finalPrompt, Adapters.LlmOperationType.Creative);
                 }
                 
-                var response = await _provider.CompleteAsync(finalPrompt, token);
+                var response = await _provider.CompleteAsync(finalPrompt, token).ConfigureAwait(false);
                 return ExtractJsonFromResponse(response);
             },
             config,
             GetProviderName(),
             GetModelName(),
             ct
-        );
+        ).ConfigureAwait(false);
 
         return result;
     }
@@ -89,14 +89,14 @@ public class StructuredLlmProviderAdapter
                     finalPrompt = _adapter.OptimizeUserPrompt(finalPrompt, Adapters.LlmOperationType.Creative);
                 }
                 
-                var response = await _provider.CompleteAsync(finalPrompt, token);
+                var response = await _provider.CompleteAsync(finalPrompt, token).ConfigureAwait(false);
                 return ExtractJsonFromResponse(response);
             },
             config,
             GetProviderName(),
             GetModelName(),
             ct
-        );
+        ).ConfigureAwait(false);
 
         return result;
     }

@@ -77,8 +77,8 @@ public class PiperValidator : IProviderValidator
                     };
                 }
 
-                await process.WaitForExitAsync(cts.Token);
-                var output = await process.StandardOutput.ReadToEndAsync(ct);
+                await process.WaitForExitAsync(cts.Token).ConfigureAwait(false);
+                var output = await process.StandardOutput.ReadToEndAsync(ct).ConfigureAwait(false);
                 sw.Stop();
 
                 if (process.ExitCode == 0 || !string.IsNullOrEmpty(output))
@@ -142,7 +142,7 @@ public class PiperValidator : IProviderValidator
             };
         }
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return new ProviderValidationResult
         {
             Name = ProviderName,

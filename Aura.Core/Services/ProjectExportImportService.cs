@@ -35,7 +35,7 @@ public class ProjectExportImportService
             .Include(p => p.Scenes)
             .Include(p => p.Assets)
             .Include(p => p.Checkpoints)
-            .FirstOrDefaultAsync(p => p.Id == projectId, ct);
+            .FirstOrDefaultAsync(p => p.Id == projectId, ct).ConfigureAwait(false);
 
         if (project == null)
         {
@@ -71,7 +71,7 @@ public class ProjectExportImportService
             WriteIndented = true
         });
 
-        await File.WriteAllTextAsync(outputPath, json, ct);
+        await File.WriteAllTextAsync(outputPath, json, ct).ConfigureAwait(false);
 
         _logger.LogInformation("Exported project {ProjectId} to {Path}", projectId, outputPath);
 
@@ -90,7 +90,7 @@ public class ProjectExportImportService
         var project = await _dbContext.ProjectStates
             .Include(p => p.Scenes)
             .Include(p => p.Assets)
-            .FirstOrDefaultAsync(p => p.Id == projectId, ct);
+            .FirstOrDefaultAsync(p => p.Id == projectId, ct).ConfigureAwait(false);
 
         if (project == null)
         {
@@ -104,7 +104,7 @@ public class ProjectExportImportService
         {
             // Export project metadata
             var metadataPath = Path.Combine(tempDir, "project.json");
-            await ExportProjectAsync(projectId, metadataPath, ct);
+            await ExportProjectAsync(projectId, metadataPath, ct).ConfigureAwait(false);
 
             // Copy assets if requested
             if (includeAssets)
@@ -163,7 +163,7 @@ public class ProjectExportImportService
             throw new FileNotFoundException($"Import file not found: {filePath}");
         }
 
-        var json = await File.ReadAllTextAsync(filePath, ct);
+        var json = await File.ReadAllTextAsync(filePath, ct).ConfigureAwait(false);
         var exportData = JsonSerializer.Deserialize<ProjectExportData>(json);
 
         if (exportData == null || exportData.Project == null)
@@ -206,7 +206,7 @@ public class ProjectExportImportService
             _dbContext.SceneStates.Add(scene);
         }
 
-        await _dbContext.SaveChangesAsync(ct);
+        await _dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
 
         _logger.LogInformation("Imported project from {Path}: {ProjectId} - {Title}",
             filePath, project.Id, project.Title);
@@ -237,7 +237,7 @@ public class ProjectExportImportService
 
             // Import project
             var metadataPath = Path.Combine(tempDir, "project.json");
-            var project = await ImportProjectAsync(metadataPath, newTitle, ct);
+            var project = await ImportProjectAsync(metadataPath, newTitle, ct).ConfigureAwait(false);
 
             // TODO: Copy assets to project directory if needed
 

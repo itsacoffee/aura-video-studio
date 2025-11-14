@@ -59,7 +59,7 @@ public class IterativeScriptRefinementService
 
         var startTime = DateTime.UtcNow;
         var currentScript = originalScript;
-        var previousMetrics = await _qualityAnalyzer.AnalyzeAsync(currentScript, brief, planSpec, cancellationToken);
+        var previousMetrics = await _qualityAnalyzer.AnalyzeAsync(currentScript, brief, planSpec, cancellationToken).ConfigureAwait(false);
         
         result.IterationMetrics.Add(previousMetrics);
         _logger.LogInformation("Initial quality score: {Score:F1}", previousMetrics.OverallScore);
@@ -91,9 +91,9 @@ public class IterativeScriptRefinementService
                     brief,
                     planSpec,
                     videoType, 
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
 
-                var newMetrics = await _qualityAnalyzer.AnalyzeAsync(refinedScript, brief, planSpec, cancellationToken);
+                var newMetrics = await _qualityAnalyzer.AnalyzeAsync(refinedScript, brief, planSpec, cancellationToken).ConfigureAwait(false);
                 newMetrics.Iteration = pass;
                 result.IterationMetrics.Add(newMetrics);
 
@@ -150,7 +150,7 @@ public class IterativeScriptRefinementService
         _logger.LogInformation("Manual improvement requested: {Goal}", improvementGoal);
 
         var weaknesses = new List<string> { improvementGoal };
-        return await RefineScriptAsync(script, weaknesses, brief, planSpec, videoType, cancellationToken);
+        return await RefineScriptAsync(script, weaknesses, brief, planSpec, videoType, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -189,7 +189,7 @@ public class IterativeScriptRefinementService
             CorrelationId = Guid.NewGuid().ToString()
         };
 
-        var regeneratedScript = await _llmProvider.GenerateScriptAsync(request, cancellationToken);
+        var regeneratedScript = await _llmProvider.GenerateScriptAsync(request, cancellationToken).ConfigureAwait(false);
 
         if (regeneratedScript.Scenes.Count > 0)
         {
@@ -248,8 +248,8 @@ public class IterativeScriptRefinementService
                     CorrelationId = Guid.NewGuid().ToString()
                 };
 
-                var variationScript = await _llmProvider.GenerateScriptAsync(request, cancellationToken);
-                var metrics = await _qualityAnalyzer.AnalyzeAsync(variationScript, brief, planSpec, cancellationToken);
+                var variationScript = await _llmProvider.GenerateScriptAsync(request, cancellationToken).ConfigureAwait(false);
+                var metrics = await _qualityAnalyzer.AnalyzeAsync(variationScript, brief, planSpec, cancellationToken).ConfigureAwait(false);
 
                 variations.Add(new ScriptVariation
                 {
@@ -301,7 +301,7 @@ public class IterativeScriptRefinementService
             CorrelationId = Guid.NewGuid().ToString()
         };
 
-        var hookScript = await _llmProvider.GenerateScriptAsync(hookRequest, cancellationToken);
+        var hookScript = await _llmProvider.GenerateScriptAsync(hookRequest, cancellationToken).ConfigureAwait(false);
 
         if (hookScript.Scenes.Count > 0)
         {
@@ -341,7 +341,7 @@ public class IterativeScriptRefinementService
             CorrelationId = Guid.NewGuid().ToString()
         };
 
-        var refinedScript = await _llmProvider.GenerateScriptAsync(request, cancellationToken);
+        var refinedScript = await _llmProvider.GenerateScriptAsync(request, cancellationToken).ConfigureAwait(false);
 
         return refinedScript with
         {

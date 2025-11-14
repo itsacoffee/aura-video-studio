@@ -29,7 +29,7 @@ public class SceneRelationshipMapper
         IReadOnlyList<Scene> scenes,
         CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         ct.ThrowIfCancellationRequested();
 
         _logger.LogInformation("Mapping scene relationships for {SceneCount} scenes", scenes.Count);

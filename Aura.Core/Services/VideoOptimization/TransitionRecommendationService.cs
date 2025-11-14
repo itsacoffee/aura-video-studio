@@ -53,14 +53,14 @@ public class TransitionRecommendationService
                 nextScene, 
                 i, 
                 options,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
             
             recommendations.Add(suggestion);
         }
 
         var overallSummary = GenerateOverallSummary(recommendations);
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return new TransitionRecommendations(
             Suggestions: recommendations,
             Summary: overallSummary,
@@ -75,7 +75,7 @@ public class TransitionRecommendationService
         TransitionAnalysisOptions options,
         CancellationToken cancellationToken)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
 
         // Analyze content similarity and mood

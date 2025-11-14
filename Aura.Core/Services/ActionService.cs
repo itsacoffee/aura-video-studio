@@ -69,7 +69,7 @@ public class ActionService : IActionService
         try
         {
             _dbContext.ActionLogs.Add(action);
-            await _dbContext.SaveChangesAsync(cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
             _logger.LogInformation("Action {ActionId} recorded successfully", action.Id);
             return action;
@@ -89,7 +89,7 @@ public class ActionService : IActionService
         try
         {
             var action = await _dbContext.ActionLogs
-                .FirstOrDefaultAsync(a => a.Id == actionId, cancellationToken);
+                .FirstOrDefaultAsync(a => a.Id == actionId, cancellationToken).ConfigureAwait(false);
 
             if (action == null)
             {
@@ -113,7 +113,7 @@ public class ActionService : IActionService
             action.UndoneAt = DateTime.UtcNow;
             action.UndoneByUserId = undoneByUserId;
 
-            await _dbContext.SaveChangesAsync(cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
             _logger.LogInformation("Action {ActionId} undone successfully", actionId);
             return true;
@@ -167,13 +167,13 @@ public class ActionService : IActionService
                 query = query.Where(a => a.Timestamp <= endDate.Value);
             }
 
-            var totalCount = await query.CountAsync(cancellationToken);
+            var totalCount = await query.CountAsync(cancellationToken).ConfigureAwait(false);
 
             var actions = await query
                 .OrderByDescending(a => a.Timestamp)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .ToListAsync(cancellationToken);
+                .ToListAsync(cancellationToken).ConfigureAwait(false);
 
             _logger.LogDebug("Retrieved {Count} actions out of {Total}", actions.Count, totalCount);
             return (actions, totalCount);
@@ -192,7 +192,7 @@ public class ActionService : IActionService
         try
         {
             return await _dbContext.ActionLogs
-                .FirstOrDefaultAsync(a => a.Id == actionId, cancellationToken);
+                .FirstOrDefaultAsync(a => a.Id == actionId, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -210,7 +210,7 @@ public class ActionService : IActionService
             var now = DateTime.UtcNow;
             var expiredActions = await _dbContext.ActionLogs
                 .Where(a => a.ExpiresAt.HasValue && a.ExpiresAt.Value < now)
-                .ToListAsync(cancellationToken);
+                .ToListAsync(cancellationToken).ConfigureAwait(false);
 
             if (expiredActions.Count == 0)
             {
@@ -223,7 +223,7 @@ public class ActionService : IActionService
                 action.Status = "Expired";
             }
 
-            await _dbContext.SaveChangesAsync(cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
             _logger.LogInformation("Marked {Count} actions as expired", expiredActions.Count);
             return expiredActions.Count;

@@ -53,10 +53,10 @@ public class MotionDesignLibrary
     {
         public float StartZoom { get; set; } = 1.0f;
         public float EndZoom { get; set; } = 1.2f;
-        public float StartX { get; set; } = 0.0f;
-        public float StartY { get; set; } = 0.0f;
-        public float EndX { get; set; } = 0.0f;
-        public float EndY { get; set; } = 0.0f;
+        public float StartX { get; set; }
+        public float StartY { get; set; }
+        public float EndX { get; set; }
+        public float EndY { get; set; }
         public float Duration { get; set; } = 5.0f; // seconds
         public AnimationStyle Style { get; set; } = AnimationStyle.Smooth;
     }

@@ -44,7 +44,7 @@ public class DiagnosticsHelper
         // System Profile
         try
         {
-            var profile = await _hardwareDetector.DetectSystemAsync();
+            var profile = await _hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
             sb.AppendLine("--- System Profile ---");
             sb.AppendLine($"Tier: {profile.Tier}");
             sb.AppendLine($"CPU Cores: {profile.PhysicalCores} physical, {profile.LogicalCores} logical");
@@ -94,7 +94,7 @@ public class DiagnosticsHelper
                     .OrderByDescending(f => File.GetLastWriteTime(f))
                     .ToList();
 
-                if (logFiles.Any())
+                if (logFiles.Count != 0)
                 {
                     var latestLog = logFiles[0];
                     var lines = File.ReadAllLines(latestLog);
@@ -137,7 +137,7 @@ public class DiagnosticsHelper
 
         try
         {
-            profile = await _hardwareDetector.DetectSystemAsync();
+            profile = await _hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -153,7 +153,7 @@ public class DiagnosticsHelper
             
             if (File.Exists(userSettingsPath))
             {
-                var json = await File.ReadAllTextAsync(userSettingsPath);
+                var json = await File.ReadAllTextAsync(userSettingsPath).ConfigureAwait(false);
                 var settings = JsonSerializer.Deserialize<UserSettings>(json, new JsonSerializerOptions
                 {
                     PropertyNameCaseInsensitive = true

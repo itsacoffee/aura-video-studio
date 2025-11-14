@@ -33,7 +33,7 @@ public class FeatureFlagService : IFeatureFlagService
     
     public async Task<bool> IsEnabledAsync(string featureName)
     {
-        var flag = await GetFeatureFlagAsync(featureName);
+        var flag = await GetFeatureFlagAsync(featureName).ConfigureAwait(false);
         
         if (flag == null)
         {
@@ -53,7 +53,7 @@ public class FeatureFlagService : IFeatureFlagService
     
     public async Task<bool> IsEnabledForUserAsync(string featureName, string userId)
     {
-        var flag = await GetFeatureFlagAsync(featureName);
+        var flag = await GetFeatureFlagAsync(featureName).ConfigureAwait(false);
         
         if (flag == null)
         {
@@ -84,7 +84,7 @@ public class FeatureFlagService : IFeatureFlagService
         // Check rollout percentage
         if (flag.RolloutPercentage < 100)
         {
-            return await IsEnabledWithRolloutAsync(featureName, userId);
+            return await IsEnabledWithRolloutAsync(featureName, userId).ConfigureAwait(false);
         }
         
         return true;
@@ -92,7 +92,7 @@ public class FeatureFlagService : IFeatureFlagService
     
     public async Task<bool> IsEnabledWithRolloutAsync(string featureName, string identifier)
     {
-        var flag = await GetFeatureFlagAsync(featureName);
+        var flag = await GetFeatureFlagAsync(featureName).ConfigureAwait(false);
         
         if (flag == null || !flag.IsEnabled)
         {
@@ -150,32 +150,32 @@ public class FeatureFlagService : IFeatureFlagService
             }
         };
         
-        return await Task.FromResult(flags);
+        return await Task.FromResult(flags).ConfigureAwait(false);
     }
     
     public async Task EnableFeatureAsync(string featureName)
     {
-        var flag = await GetFeatureFlagAsync(featureName) 
+        var flag = await GetFeatureFlagAsync(featureName).ConfigureAwait(false)
             ?? new FeatureFlag { Name = featureName, CreatedAt = DateTime.UtcNow };
         
         flag.IsEnabled = true;
         flag.LastModifiedAt = DateTime.UtcNow;
         
-        await SaveFeatureFlagAsync(flag);
+        await SaveFeatureFlagAsync(flag).ConfigureAwait(false);
         
         _logger.LogInformation("Feature {FeatureName} enabled", featureName);
     }
     
     public async Task DisableFeatureAsync(string featureName)
     {
-        var flag = await GetFeatureFlagAsync(featureName);
+        var flag = await GetFeatureFlagAsync(featureName).ConfigureAwait(false);
         
         if (flag != null)
         {
             flag.IsEnabled = false;
             flag.LastModifiedAt = DateTime.UtcNow;
             
-            await SaveFeatureFlagAsync(flag);
+            await SaveFeatureFlagAsync(flag).ConfigureAwait(false);
             
             _logger.LogInformation("Feature {FeatureName} disabled", featureName);
         }
@@ -188,13 +188,13 @@ public class FeatureFlagService : IFeatureFlagService
             throw new ArgumentException("Percentage must be between 0 and 100", nameof(percentage));
         }
         
-        var flag = await GetFeatureFlagAsync(featureName) 
+        var flag = await GetFeatureFlagAsync(featureName).ConfigureAwait(false)
             ?? new FeatureFlag { Name = featureName, CreatedAt = DateTime.UtcNow };
         
         flag.RolloutPercentage = percentage;
         flag.LastModifiedAt = DateTime.UtcNow;
         
-        await SaveFeatureFlagAsync(flag);
+        await SaveFeatureFlagAsync(flag).ConfigureAwait(false);
         
         _logger.LogInformation("Feature {FeatureName} rollout percentage set to {Percentage}%", 
             featureName, percentage);
@@ -202,7 +202,7 @@ public class FeatureFlagService : IFeatureFlagService
     
     public async Task AddUserToAllowlistAsync(string featureName, string userId)
     {
-        var flag = await GetFeatureFlagAsync(featureName) 
+        var flag = await GetFeatureFlagAsync(featureName).ConfigureAwait(false)
             ?? new FeatureFlag { Name = featureName, CreatedAt = DateTime.UtcNow };
         
         if (!flag.AllowedUsers.Contains(userId))
@@ -210,7 +210,7 @@ public class FeatureFlagService : IFeatureFlagService
             flag.AllowedUsers.Add(userId);
             flag.LastModifiedAt = DateTime.UtcNow;
             
-            await SaveFeatureFlagAsync(flag);
+            await SaveFeatureFlagAsync(flag).ConfigureAwait(false);
             
             _logger.LogInformation("User {UserId} added to feature {FeatureName} allowlist", 
                 userId, featureName);
@@ -219,14 +219,14 @@ public class FeatureFlagService : IFeatureFlagService
     
     public async Task RemoveUserFromAllowlistAsync(string featureName, string userId)
     {
-        var flag = await GetFeatureFlagAsync(featureName);
+        var flag = await GetFeatureFlagAsync(featureName).ConfigureAwait(false);
         
         if (flag != null && flag.AllowedUsers.Contains(userId))
         {
             flag.AllowedUsers.Remove(userId);
             flag.LastModifiedAt = DateTime.UtcNow;
             
-            await SaveFeatureFlagAsync(flag);
+            await SaveFeatureFlagAsync(flag).ConfigureAwait(false);
             
             _logger.LogInformation("User {UserId} removed from feature {FeatureName} allowlist", 
                 userId, featureName);
@@ -239,7 +239,7 @@ public class FeatureFlagService : IFeatureFlagService
         
         try
         {
-            var cachedValue = await _cache.GetStringAsync(cacheKey);
+            var cachedValue = await _cache.GetStringAsync(cacheKey).ConfigureAwait(false);
             
             if (!string.IsNullOrEmpty(cachedValue))
             {
@@ -252,7 +252,7 @@ public class FeatureFlagService : IFeatureFlagService
         }
         
         // Fallback to default flags
-        var allFlags = await GetAllFlagsAsync();
+        var allFlags = await GetAllFlagsAsync().ConfigureAwait(false);
         return allFlags.FirstOrDefault(f => f.Name == featureName);
     }
     
@@ -268,7 +268,7 @@ public class FeatureFlagService : IFeatureFlagService
                 AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(CacheExpirationMinutes)
             };
             
-            await _cache.SetStringAsync(cacheKey, serialized, options);
+            await _cache.SetStringAsync(cacheKey, serialized, options).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

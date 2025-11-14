@@ -49,7 +49,7 @@ public class ModelInstaller
     /// </summary>
     public async Task<List<InstalledModel>> ListModelsAsync(string engineId, CancellationToken ct = default)
     {
-        await Task.CompletedTask; // For async signature
+        await Task.CompletedTask.ConfigureAwait(false); // For async signature
         
         var kind = engineId.ToLowerInvariant() switch
         {
@@ -208,7 +208,7 @@ public class ModelInstaller
             model.Sha256,
             downloadProgress,
             ct
-        );
+        ).ConfigureAwait(false);
 
         if (!success)
         {
@@ -241,20 +241,21 @@ public class ModelInstaller
     /// </summary>
     public async Task<int> AddExternalFolderAsync(ModelKind kind, string folderPath, bool isReadOnly = true, CancellationToken ct = default)
     {
-        await Task.CompletedTask; // For async signature
+        await Task.CompletedTask.ConfigureAwait(false); // For async signature
         
         if (!Directory.Exists(folderPath))
         {
             throw new DirectoryNotFoundException($"Folder not found: {folderPath}");
         }
 
-        if (!_externalFolders.ContainsKey(kind))
+        if (!_externalFolders.TryGetValue(kind, out var value))
         {
-            _externalFolders[kind] = new List<ExternalModelFolder>();
+            value = new List<ExternalModelFolder>();
+            _externalFolders[kind] = value;
         }
 
         // Check if already added - return 0 if duplicate
-        if (_externalFolders[kind].Any(f => f.FolderPath.Equals(folderPath, StringComparison.OrdinalIgnoreCase)))
+        if (value.Any(f => f.FolderPath.Equals(folderPath, StringComparison.OrdinalIgnoreCase)))
         {
             _logger.LogWarning("Folder already added: {Path}", folderPath);
             return 0;
@@ -270,8 +271,7 @@ public class ModelInstaller
 
         // Index models in this folder
         IndexExternalFolder(folder);
-
-        _externalFolders[kind].Add(folder);
+        value.Add(folder);
         _logger.LogInformation("Added external folder: {Path} for {Kind}", folderPath, kind);
         
         return folder.ModelCount;
@@ -375,7 +375,7 @@ public class ModelInstaller
         using var sha256 = SHA256.Create();
         using var stream = File.OpenRead(filePath);
         
-        var hash = await sha256.ComputeHashAsync(stream, ct);
+        var hash = await sha256.ComputeHashAsync(stream, ct).ConfigureAwait(false);
         var hashString = BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
         
         var matches = hashString.Equals(expectedSha256, StringComparison.OrdinalIgnoreCase);
@@ -398,7 +398,7 @@ public class ModelInstaller
     /// </summary>
     public async Task RemoveModelAsync(string modelId, string? filePath = null, CancellationToken ct = default)
     {
-        await Task.CompletedTask; // For async signature
+        await Task.CompletedTask.ConfigureAwait(false); // For async signature
         
         // If filePath is provided but model is not in index, just delete the file
         if (filePath != null && !_installedModels.ContainsKey(modelId))

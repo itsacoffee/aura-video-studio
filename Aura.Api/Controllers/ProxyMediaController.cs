@@ -62,7 +62,7 @@ public class ProxyMediaController : ControllerBase
                 request.SourcePath,
                 options,
                 null,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             var response = MapToResponse(metadata);
             return Ok(response);
@@ -96,7 +96,7 @@ public class ProxyMediaController : ControllerBase
                 return BadRequest($"Invalid quality: {quality}");
             }
 
-            var metadata = await _proxyMediaService.GetProxyMetadataAsync(sourcePath, proxyQuality);
+            var metadata = await _proxyMediaService.GetProxyMetadataAsync(sourcePath, proxyQuality).ConfigureAwait(false);
             if (metadata == null)
             {
                 return NotFound(new { error = "Proxy not found" });
@@ -128,7 +128,7 @@ public class ProxyMediaController : ControllerBase
                 return BadRequest($"Invalid quality: {quality}");
             }
 
-            var exists = await _proxyMediaService.ProxyExistsAsync(sourcePath, proxyQuality);
+            var exists = await _proxyMediaService.ProxyExistsAsync(sourcePath, proxyQuality).ConfigureAwait(false);
             return Ok(new { exists });
         }
         catch (Exception ex)
@@ -147,7 +147,7 @@ public class ProxyMediaController : ControllerBase
     {
         try
         {
-            var proxies = await _proxyMediaService.GetAllProxiesAsync();
+            var proxies = await _proxyMediaService.GetAllProxiesAsync().ConfigureAwait(false);
             var responses = proxies.Select(MapToResponse).ToArray();
             return Ok(responses);
         }
@@ -174,7 +174,7 @@ public class ProxyMediaController : ControllerBase
                 return BadRequest($"Invalid quality: {quality}");
             }
 
-            await _proxyMediaService.DeleteProxyAsync(sourcePath, proxyQuality);
+            await _proxyMediaService.DeleteProxyAsync(sourcePath, proxyQuality).ConfigureAwait(false);
             return NoContent();
         }
         catch (Exception ex)
@@ -194,7 +194,7 @@ public class ProxyMediaController : ControllerBase
         try
         {
             _logger.LogInformation("Clearing all proxy cache");
-            await _proxyMediaService.ClearAllProxiesAsync();
+            await _proxyMediaService.ClearAllProxiesAsync().ConfigureAwait(false);
             return NoContent();
         }
         catch (Exception ex)
@@ -213,7 +213,7 @@ public class ProxyMediaController : ControllerBase
     {
         try
         {
-            var stats = await _proxyMediaService.GetCacheStatisticsAsync();
+            var stats = await _proxyMediaService.GetCacheStatisticsAsync().ConfigureAwait(false);
             var response = new ProxyCacheStatsResponse(
                 stats.TotalProxies,
                 stats.TotalCacheSizeBytes,
@@ -285,8 +285,8 @@ public class ProxyMediaController : ControllerBase
         try
         {
             _logger.LogInformation("Manual cache eviction triggered");
-            await _proxyMediaService.EvictLeastRecentlyUsedAsync(cancellationToken);
-            var stats = await _proxyMediaService.GetCacheStatisticsAsync();
+            await _proxyMediaService.EvictLeastRecentlyUsedAsync(cancellationToken).ConfigureAwait(false);
+            var stats = await _proxyMediaService.GetCacheStatisticsAsync().ConfigureAwait(false);
             return Ok(new { message = "Eviction completed", stats });
         }
         catch (Exception ex)

@@ -74,10 +74,10 @@ public class OllamaStreamingClient
 
         try
         {
-            response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+            response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            stream = await response.Content.ReadAsStreamAsync(ct);
+            stream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
             reader = new StreamReader(stream);
         }
         catch (HttpRequestException ex)
@@ -98,7 +98,7 @@ public class OllamaStreamingClient
         {
             while (!reader.EndOfStream && !ct.IsCancellationRequested)
             {
-                var line = await reader.ReadLineAsync();
+                var line = await reader.ReadLineAsync().ConfigureAwait(false);
                 
                 if (string.IsNullOrWhiteSpace(line))
                 {
@@ -198,10 +198,10 @@ public class OllamaStreamingClient
 
         try
         {
-            response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+            response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            stream = await response.Content.ReadAsStreamAsync(ct);
+            stream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
             reader = new StreamReader(stream);
         }
         catch (HttpRequestException ex)
@@ -222,7 +222,7 @@ public class OllamaStreamingClient
         {
             while (!reader.EndOfStream && !ct.IsCancellationRequested)
             {
-                var line = await reader.ReadLineAsync();
+                var line = await reader.ReadLineAsync().ConfigureAwait(false);
                 
                 if (string.IsNullOrWhiteSpace(line))
                 {

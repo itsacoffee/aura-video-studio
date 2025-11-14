@@ -33,7 +33,7 @@ public class AlertEvaluationService : BackgroundService
         var interval = TimeSpan.FromSeconds(_options.AlertEvaluationIntervalSeconds);
 
         // Wait a bit before starting evaluations to let metrics accumulate
-        await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+        await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken).ConfigureAwait(false);
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -41,10 +41,10 @@ public class AlertEvaluationService : BackgroundService
             {
                 if (_options.EnableAlerting)
                 {
-                    await EvaluateAlertsAsync(stoppingToken);
+                    await EvaluateAlertsAsync(stoppingToken).ConfigureAwait(false);
                 }
 
-                await Task.Delay(interval, stoppingToken);
+                await Task.Delay(interval, stoppingToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -64,7 +64,7 @@ public class AlertEvaluationService : BackgroundService
     {
         try
         {
-            var alerts = await _alerting.EvaluateAsync(ct);
+            var alerts = await _alerting.EvaluateAsync(ct).ConfigureAwait(false);
 
             if (alerts.Count > 0)
             {
@@ -72,7 +72,7 @@ public class AlertEvaluationService : BackgroundService
 
                 foreach (var alert in alerts)
                 {
-                    await SendAlertNotificationsAsync(alert, ct);
+                    await SendAlertNotificationsAsync(alert, ct).ConfigureAwait(false);
                 }
             }
         }
@@ -94,7 +94,7 @@ public class AlertEvaluationService : BackgroundService
             // Send notifications to configured channels
             foreach (var channel in alert.NotificationChannels)
             {
-                await SendToChannelAsync(channel, alert, ct);
+                await SendToChannelAsync(channel, alert, ct).ConfigureAwait(false);
             }
         }
         catch (Exception ex)
@@ -110,19 +110,19 @@ public class AlertEvaluationService : BackgroundService
             switch (channel.ToLower())
             {
                 case "slack":
-                    await SendSlackNotificationAsync(alert, ct);
+                    await SendSlackNotificationAsync(alert, ct).ConfigureAwait(false);
                     break;
 
                 case "pagerduty":
-                    await SendPagerDutyNotificationAsync(alert, ct);
+                    await SendPagerDutyNotificationAsync(alert, ct).ConfigureAwait(false);
                     break;
 
                 case "email":
-                    await SendEmailNotificationAsync(alert, ct);
+                    await SendEmailNotificationAsync(alert, ct).ConfigureAwait(false);
                     break;
 
                 case "webhook":
-                    await SendWebhookNotificationAsync(alert, ct);
+                    await SendWebhookNotificationAsync(alert, ct).ConfigureAwait(false);
                     break;
 
                 default:
@@ -177,7 +177,7 @@ public class AlertEvaluationService : BackgroundService
             };
 
             using var httpClient = new HttpClient();
-            var response = await httpClient.PostAsJsonAsync(slackConfig.WebhookUrl, payload, ct);
+            var response = await httpClient.PostAsJsonAsync(slackConfig.WebhookUrl, payload, ct).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
             _logger.LogInformation("Slack notification sent for alert: {AlertName}", alert.Name);
@@ -199,7 +199,7 @@ public class AlertEvaluationService : BackgroundService
 
         // PagerDuty integration would go here
         _logger.LogInformation("PagerDuty notification triggered for alert: {AlertName}", alert.Name);
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
     }
 
     private async Task SendEmailNotificationAsync(Alert alert, CancellationToken ct)
@@ -213,7 +213,7 @@ public class AlertEvaluationService : BackgroundService
 
         // Email sending would go here
         _logger.LogInformation("Email notification triggered for alert: {AlertName}", alert.Name);
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
     }
 
     private async Task SendWebhookNotificationAsync(Alert alert, CancellationToken ct)
@@ -246,7 +246,7 @@ public class AlertEvaluationService : BackgroundService
                 firedAt = alert.FiredAt
             };
 
-            var response = await httpClient.PostAsJsonAsync(webhookConfig.Url, payload, ct);
+            var response = await httpClient.PostAsJsonAsync(webhookConfig.Url, payload, ct).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
             _logger.LogInformation("Webhook notification sent for alert: {AlertName}", alert.Name);

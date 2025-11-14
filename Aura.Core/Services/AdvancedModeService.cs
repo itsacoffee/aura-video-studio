@@ -33,7 +33,7 @@ public class AdvancedModeService
     {
         try
         {
-            var settings = await LoadUserSettingsAsync(cancellationToken);
+            var settings = await LoadUserSettingsAsync(cancellationToken).ConfigureAwait(false);
             return settings.General.AdvancedModeEnabled;
         }
         catch (Exception ex)
@@ -56,7 +56,7 @@ public class AdvancedModeService
 
         try
         {
-            var json = await File.ReadAllTextAsync(_userSettingsFilePath, cancellationToken);
+            var json = await File.ReadAllTextAsync(_userSettingsFilePath, cancellationToken).ConfigureAwait(false);
             var settings = JsonSerializer.Deserialize<UserSettings>(json);
             return settings ?? new UserSettings();
         }

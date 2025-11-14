@@ -20,7 +20,7 @@ public class InMemoryPromptRepository : IPromptRepository
 
     public async Task<PromptTemplate> CreateAsync(PromptTemplate template, CancellationToken ct = default)
     {
-        await _lock.WaitAsync(ct);
+        await _lock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             _templates[template.Id] = template;
@@ -34,7 +34,7 @@ public class InMemoryPromptRepository : IPromptRepository
 
     public async Task<PromptTemplate?> GetByIdAsync(string id, CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return _templates.GetValueOrDefault(id);
     }
 
@@ -49,7 +49,7 @@ public class InMemoryPromptRepository : IPromptRepository
         int take = 50,
         CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         var query = _templates.Values.AsEnumerable();
 
@@ -86,7 +86,7 @@ public class InMemoryPromptRepository : IPromptRepository
 
     public async Task<PromptTemplate> UpdateAsync(PromptTemplate template, CancellationToken ct = default)
     {
-        await _lock.WaitAsync(ct);
+        await _lock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             if (!_templates.ContainsKey(template.Id))
@@ -103,7 +103,7 @@ public class InMemoryPromptRepository : IPromptRepository
 
     public async Task DeleteAsync(string id, CancellationToken ct = default)
     {
-        await _lock.WaitAsync(ct);
+        await _lock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             _templates.Remove(id);
@@ -119,7 +119,7 @@ public class InMemoryPromptRepository : IPromptRepository
         PromptTemplateVersion version, 
         CancellationToken ct = default)
     {
-        await _lock.WaitAsync(ct);
+        await _lock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             if (!_versions.ContainsKey(version.TemplateId))
@@ -138,13 +138,13 @@ public class InMemoryPromptRepository : IPromptRepository
         string templateId, 
         CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return _versions.GetValueOrDefault(templateId) ?? new List<PromptTemplateVersion>();
     }
 
     public async Task<PromptABTest> CreateABTestAsync(PromptABTest test, CancellationToken ct = default)
     {
-        await _lock.WaitAsync(ct);
+        await _lock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             _abTests[test.Id] = test;
@@ -158,13 +158,13 @@ public class InMemoryPromptRepository : IPromptRepository
 
     public async Task<PromptABTest?> GetABTestAsync(string testId, CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return _abTests.GetValueOrDefault(testId);
     }
 
     public async Task<PromptABTest> UpdateABTestAsync(PromptABTest test, CancellationToken ct = default)
     {
-        await _lock.WaitAsync(ct);
+        await _lock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             if (!_abTests.ContainsKey(test.Id))
@@ -183,7 +183,7 @@ public class InMemoryPromptRepository : IPromptRepository
         ABTestStatus? status = null, 
         CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         var query = _abTests.Values.AsEnumerable();
 

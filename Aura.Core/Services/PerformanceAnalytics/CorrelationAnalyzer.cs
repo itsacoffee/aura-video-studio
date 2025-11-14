@@ -40,7 +40,7 @@ public class CorrelationAnalyzer
         _logger.LogInformation("Analyzing correlations for project {ProjectId}", projectId);
 
         // Find the video linked to this project
-        var link = await _persistence.FindLinkByProjectAsync(profileId, projectId, ct);
+        var link = await _persistence.FindLinkByProjectAsync(profileId, projectId, ct).ConfigureAwait(false);
         if (link == null)
         {
             _logger.LogWarning("No video linked to project {ProjectId}", projectId);
@@ -48,7 +48,7 @@ public class CorrelationAnalyzer
         }
 
         // Load video performance data
-        var video = await _persistence.LoadVideoPerformanceAsync(profileId, link.VideoId, ct);
+        var video = await _persistence.LoadVideoPerformanceAsync(profileId, link.VideoId, ct).ConfigureAwait(false);
         if (video == null)
         {
             _logger.LogWarning("No performance data for video {VideoId}", link.VideoId);
@@ -56,7 +56,7 @@ public class CorrelationAnalyzer
         }
 
         // Load profile preferences to identify decisions made
-        var preferences = await _profileService.GetPreferencesAsync(profileId, ct);
+        var preferences = await _profileService.GetPreferencesAsync(profileId, ct).ConfigureAwait(false);
         if (preferences == null)
         {
             return new List<DecisionPerformanceCorrelation>();
@@ -99,7 +99,7 @@ public class CorrelationAnalyzer
         }
 
         // Save correlations
-        await _persistence.SaveCorrelationsAsync(projectId, correlations, ct);
+        await _persistence.SaveCorrelationsAsync(projectId, correlations, ct).ConfigureAwait(false);
 
         _logger.LogInformation("Analyzed {Count} correlations for project {ProjectId}", correlations.Count, projectId);
         return correlations;

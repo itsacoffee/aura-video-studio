@@ -117,7 +117,7 @@ public class HtmlParser : IDocumentParser
     private DocumentStructure AnalyzeStructure(string html, string plainText)
     {
         var sections = ParseSections(html);
-        var maxLevel = sections.Any() ? sections.Max(s => s.Level) : 0;
+        var maxLevel = sections.Count != 0 ? sections.Max(s => s.Level) : 0;
         
         var complexity = AnalyzeComplexity(plainText);
         var tone = AnalyzeTone(plainText);

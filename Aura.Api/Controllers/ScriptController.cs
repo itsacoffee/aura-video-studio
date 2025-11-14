@@ -57,7 +57,7 @@ public class ScriptController : ControllerBase
                 request.ContentType,
                 request.TargetAudience,
                 request.CurrentTone,
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(new ScriptAnalysisResponse(
                 Success: true,
@@ -109,7 +109,7 @@ public class ScriptController : ControllerBase
                 request.FocusAreas,
                 request.AutoApply,
                 request.TargetFramework,
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(result);
         }
@@ -158,7 +158,7 @@ public class ScriptController : ControllerBase
                 request.ContentType,
                 request.TargetAudience,
                 request.TargetSeconds,
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(result);
         }
@@ -205,7 +205,7 @@ public class ScriptController : ControllerBase
                 request.ContentType,
                 request.TargetAudience,
                 request.DesiredJourney,
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(result);
         }
@@ -250,7 +250,7 @@ public class ScriptController : ControllerBase
                 request.Script,
                 request.TargetAudience,
                 request.ContentType,
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(result);
         }
@@ -296,7 +296,7 @@ public class ScriptController : ControllerBase
             var result = await _enhancer.FactCheckScriptAsync(
                 request.Script,
                 request.IncludeSources,
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(result);
         }
@@ -343,7 +343,7 @@ public class ScriptController : ControllerBase
                 request.Script,
                 request.TargetTone,
                 request.ContentType,
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(result);
         }
@@ -389,7 +389,7 @@ public class ScriptController : ControllerBase
                 request.Framework,
                 request.ContentType,
                 request.TargetAudience,
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(result);
         }
@@ -434,7 +434,7 @@ public class ScriptController : ControllerBase
                 request.TargetAudience,
                 request.FilterTypes,
                 request.MaxSuggestions,
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(result);
         }
@@ -478,7 +478,7 @@ public class ScriptController : ControllerBase
                 request.VersionA,
                 request.VersionB,
                 request.IncludeAnalysis,
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(result);
         }

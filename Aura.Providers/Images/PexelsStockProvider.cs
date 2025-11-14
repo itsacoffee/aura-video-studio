@@ -47,10 +47,10 @@ public class PexelsStockProvider : IStockProvider
         try
         {
             var url = $"https://api.pexels.com/v1/search?query={Uri.EscapeDataString(query)}&per_page={Math.Min(count, 80)}";
-            var response = await _httpClient.GetAsync(url, ct);
+            var response = await _httpClient.GetAsync(url, ct).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var json = await response.Content.ReadAsStringAsync(ct);
+            var json = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var doc = JsonDocument.Parse(json);
 
             var assets = new List<Asset>();

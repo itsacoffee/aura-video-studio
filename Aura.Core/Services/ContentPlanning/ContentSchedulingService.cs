@@ -34,7 +34,7 @@ public class ContentSchedulingService
         _logger.LogInformation("Getting scheduling recommendations for {Platform}, category: {Category}",
             request.Platform, request.Category);
 
-        await Task.Delay(100, ct);
+        await Task.Delay(100, ct).ConfigureAwait(false);
 
         var recommendations = new List<SchedulingRecommendation>();
         var optimalTimes = GetOptimalPostingTimes(request.Platform);
@@ -86,7 +86,7 @@ public class ContentSchedulingService
         _logger.LogInformation("Scheduling content {Title} for {DateTime}",
             plan.Title, scheduledTime);
 
-        await Task.Delay(50, ct);
+        await Task.Delay(50, ct).ConfigureAwait(false);
 
         return new ScheduledContent
         {
@@ -113,7 +113,7 @@ public class ContentSchedulingService
         _logger.LogInformation("Getting scheduled content from {StartDate} to {EndDate}",
             startDate, endDate);
 
-        await Task.Delay(50, ct);
+        await Task.Delay(50, ct).ConfigureAwait(false);
 
         // In a real implementation, this would query a database
         // For now, return sample data

@@ -208,7 +208,7 @@ public static class WavMerger
         }
     }
 
-    private class WavHeader
+    private sealed class WavHeader
     {
         public int SampleRate { get; set; }
         public short NumChannels { get; set; }

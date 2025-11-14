@@ -73,7 +73,7 @@ public class ImageProviderFallbackService
             {
                 try
                 {
-                    var isAvailable = await entry.AvailabilityCheck();
+                    var isAvailable = await entry.AvailabilityCheck().ConfigureAwait(false);
                     if (!isAvailable)
                     {
                         _logger.LogInformation("Provider {Name} availability check failed, skipping", entry.Name);
@@ -92,7 +92,7 @@ public class ImageProviderFallbackService
                 _logger.LogInformation("Attempting image generation with provider {Name}", entry.Name);
                 
                 var startTime = DateTime.UtcNow;
-                var assets = await entry.Provider.FetchOrGenerateAsync(scene, spec, ct);
+                var assets = await entry.Provider.FetchOrGenerateAsync(scene, spec, ct).ConfigureAwait(false);
                 var duration = DateTime.UtcNow - startTime;
 
                 if (assets != null && assets.Count > 0)

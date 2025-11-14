@@ -36,7 +36,7 @@ public class PreflightController : ControllerBase
             var corrId = correlationId ?? Guid.NewGuid().ToString();
             Log.Information("Preflight check requested for profile: {Profile}, CorrelationId: {CorrelationId}", profile, corrId);
             
-            var report = await _preflightService.RunPreflightAsync(profile, ct);
+            var report = await _preflightService.RunPreflightAsync(profile, ct).ConfigureAwait(false);
             
             // Add correlation ID to response headers for tracing
             Response.Headers["X-Correlation-Id"] = corrId;

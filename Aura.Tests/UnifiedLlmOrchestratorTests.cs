@@ -172,7 +172,7 @@ public class UnifiedLlmOrchestratorTests
         Assert.Equal(0.05m, stats.TotalEstimatedCost);
     }
     
-    private class MockLlmProvider : ILlmProvider
+    private sealed class MockLlmProvider : ILlmProvider
     {
         private readonly string _response;
         

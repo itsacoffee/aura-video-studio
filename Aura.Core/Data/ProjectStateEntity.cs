@@ -23,7 +23,7 @@ public class ProjectStateEntity : IAuditableEntity, ISoftDeletable
     /// <summary>
     /// Current wizard step (0-based index, e.g., 0=Brief, 1=Plan, 2=Voice, 3=Generate)
     /// </summary>
-    public int CurrentWizardStep { get; set; } = 0;
+    public int CurrentWizardStep { get; set; }
 
     [Required]
     public string Status { get; set; } = "InProgress"; // InProgress, Completed, Failed, Cancelled
@@ -39,7 +39,7 @@ public class ProjectStateEntity : IAuditableEntity, ISoftDeletable
     /// <summary>
     /// Soft-delete support: indicates if this project has been deleted
     /// </summary>
-    public bool IsDeleted { get; set; } = false;
+    public bool IsDeleted { get; set; }
 
     /// <summary>
     /// Soft-delete support: when the project was deleted (null if not deleted)
@@ -73,7 +73,7 @@ public class ProjectStateEntity : IAuditableEntity, ISoftDeletable
     /// <summary>
     /// Overall progress percentage (0-100)
     /// </summary>
-    public int ProgressPercent { get; set; } = 0;
+    public int ProgressPercent { get; set; }
 
     /// <summary>
     /// Associated job ID if running
@@ -196,7 +196,7 @@ public class SceneStateEntity
 
     public double DurationSeconds { get; set; }
 
-    public bool IsCompleted { get; set; } = false;
+    public bool IsCompleted { get; set; }
 
     [Required]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -256,9 +256,9 @@ public class RenderCheckpointEntity
     [Required]
     public DateTime CheckpointTime { get; set; } = DateTime.UtcNow;
 
-    public int CompletedScenes { get; set; } = 0;
+    public int CompletedScenes { get; set; }
 
-    public int TotalScenes { get; set; } = 0;
+    public int TotalScenes { get; set; }
 
     /// <summary>
     /// JSON serialized checkpoint data (file paths, progress details, etc.)

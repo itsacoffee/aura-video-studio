@@ -57,8 +57,8 @@ public class AudienceController : ControllerBase
             page, pageSize, templatesOnly);
 
         var skip = (page - 1) * pageSize;
-        var profiles = await _store.GetAllAsync(templatesOnly, skip, pageSize, ct);
-        var totalCount = await _store.GetCountAsync(templatesOnly, ct);
+        var profiles = await _store.GetAllAsync(templatesOnly, skip, pageSize, ct).ConfigureAwait(false);
+        var totalCount = await _store.GetCountAsync(templatesOnly, ct).ConfigureAwait(false);
 
         var dtos = profiles.Select(MapToDto).ToList();
 
@@ -77,7 +77,7 @@ public class AudienceController : ControllerBase
     {
         _logger.LogInformation("Getting audience profile {ProfileId}", id);
 
-        var profile = await _store.GetByIdAsync(id, ct);
+        var profile = await _store.GetByIdAsync(id, ct).ConfigureAwait(false);
         
         if (profile == null)
         {
@@ -122,7 +122,7 @@ public class AudienceController : ControllerBase
             });
         }
 
-        var created = await _store.CreateAsync(profile, ct);
+        var created = await _store.CreateAsync(profile, ct).ConfigureAwait(false);
         var dto = MapToDto(created);
         var validationDto = MapValidationToDto(validation);
 
@@ -146,7 +146,7 @@ public class AudienceController : ControllerBase
     {
         _logger.LogInformation("Updating audience profile {ProfileId}", id);
 
-        var existing = await _store.GetByIdAsync(id, ct);
+        var existing = await _store.GetByIdAsync(id, ct).ConfigureAwait(false);
         if (existing == null)
         {
             return NotFound(new ProblemDetails
@@ -173,7 +173,7 @@ public class AudienceController : ControllerBase
             });
         }
 
-        var updated = await _store.UpdateAsync(profile, ct);
+        var updated = await _store.UpdateAsync(profile, ct).ConfigureAwait(false);
         var dto = MapToDto(updated);
         var validationDto = MapValidationToDto(validation);
 
@@ -190,7 +190,7 @@ public class AudienceController : ControllerBase
     {
         _logger.LogInformation("Deleting audience profile {ProfileId}", id);
 
-        var deleted = await _store.DeleteAsync(id, ct);
+        var deleted = await _store.DeleteAsync(id, ct).ConfigureAwait(false);
 
         if (!deleted)
         {
@@ -214,7 +214,7 @@ public class AudienceController : ControllerBase
     {
         _logger.LogInformation("Getting audience profile templates");
 
-        var templates = await _store.GetTemplatesAsync(ct);
+        var templates = await _store.GetTemplatesAsync(ct).ConfigureAwait(false);
         var dtos = templates.Select(MapToDto).ToList();
 
         return Ok(new AudienceProfileListResponse(dtos, dtos.Count, 1, dtos.Count));
@@ -256,7 +256,7 @@ public class AudienceController : ControllerBase
 
         try
         {
-            var profile = await _store.ToggleFavoriteAsync(id, ct);
+            var profile = await _store.ToggleFavoriteAsync(id, ct).ConfigureAwait(false);
             var dto = MapToDto(profile);
             var validation = _validator.Validate(profile);
             var validationDto = MapValidationToDto(validation);
@@ -283,7 +283,7 @@ public class AudienceController : ControllerBase
     {
         _logger.LogInformation("Getting favorite profiles");
 
-        var profiles = await _store.GetFavoritesAsync(ct);
+        var profiles = await _store.GetFavoritesAsync(ct).ConfigureAwait(false);
         var dtos = profiles.Select(MapToDto).ToList();
 
         return Ok(new AudienceProfileListResponse(dtos, dtos.Count, 1, dtos.Count));
@@ -304,7 +304,7 @@ public class AudienceController : ControllerBase
 
         try
         {
-            var profile = await _store.MoveToFolderAsync(id, request.FolderPath, ct);
+            var profile = await _store.MoveToFolderAsync(id, request.FolderPath, ct).ConfigureAwait(false);
             var dto = MapToDto(profile);
             var validation = _validator.Validate(profile);
             var validationDto = MapValidationToDto(validation);
@@ -333,7 +333,7 @@ public class AudienceController : ControllerBase
     {
         _logger.LogInformation("Getting profiles in folder: {FolderPath}", folderPath ?? "(root)");
 
-        var profiles = await _store.GetByFolderAsync(folderPath, ct);
+        var profiles = await _store.GetByFolderAsync(folderPath, ct).ConfigureAwait(false);
         var dtos = profiles.Select(MapToDto).ToList();
 
         return Ok(new AudienceProfileListResponse(dtos, dtos.Count, 1, dtos.Count));
@@ -348,7 +348,7 @@ public class AudienceController : ControllerBase
     {
         _logger.LogInformation("Getting all folder paths");
 
-        var folders = await _store.GetFoldersAsync(ct);
+        var folders = await _store.GetFoldersAsync(ct).ConfigureAwait(false);
         return Ok(new FolderListResponse(folders));
     }
 
@@ -363,7 +363,7 @@ public class AudienceController : ControllerBase
     {
         _logger.LogInformation("Searching profiles with query: {Query}", query);
 
-        var profiles = await _store.SearchAsync(query, ct);
+        var profiles = await _store.SearchAsync(query, ct).ConfigureAwait(false);
         var dtos = profiles.Select(MapToDto).ToList();
 
         return Ok(new AudienceProfileListResponse(dtos, dtos.Count, 1, dtos.Count));
@@ -379,7 +379,7 @@ public class AudienceController : ControllerBase
     {
         _logger.LogInformation("Recording usage for profile {ProfileId}", id);
 
-        await _store.RecordUsageAsync(id, ct);
+        await _store.RecordUsageAsync(id, ct).ConfigureAwait(false);
         return NoContent();
     }
 
@@ -397,7 +397,7 @@ public class AudienceController : ControllerBase
 
         try
         {
-            var json = await _store.ExportToJsonAsync(id, ct);
+            var json = await _store.ExportToJsonAsync(id, ct).ConfigureAwait(false);
             return Ok(new ExportProfileResponse(json));
         }
         catch (InvalidOperationException)
@@ -425,7 +425,7 @@ public class AudienceController : ControllerBase
 
         try
         {
-            var profile = await _store.ImportFromJsonAsync(request.Json, ct);
+            var profile = await _store.ImportFromJsonAsync(request.Json, ct).ConfigureAwait(false);
             var dto = MapToDto(profile);
             var validation = _validator.Validate(profile);
             var validationDto = MapValidationToDto(validation);
@@ -461,7 +461,7 @@ public class AudienceController : ControllerBase
             request.Topic,
             request.Goal,
             request.MaxResults ?? 5,
-            ct);
+            ct).ConfigureAwait(false);
 
         var dtos = profiles.Select(MapToDto).ToList();
 
@@ -721,7 +721,7 @@ public class AudienceController : ControllerBase
 
         _logger.LogInformation("Adapting content for audience profile {ProfileId}", request.AudienceProfileId);
 
-        var profile = await _store.GetByIdAsync(request.AudienceProfileId, ct);
+        var profile = await _store.GetByIdAsync(request.AudienceProfileId, ct).ConfigureAwait(false);
         if (profile == null)
         {
             return NotFound(new ProblemDetails
@@ -737,7 +737,7 @@ public class AudienceController : ControllerBase
             request.Content,
             profile,
             config,
-            ct);
+            ct).ConfigureAwait(false);
 
         var dto = MapToAdaptationResultDto(result);
         return Ok(dto);
@@ -766,7 +766,7 @@ public class AudienceController : ControllerBase
 
         _logger.LogInformation("Generating adaptation preview for audience profile {ProfileId}", request.AudienceProfileId);
 
-        var profile = await _store.GetByIdAsync(request.AudienceProfileId, ct);
+        var profile = await _store.GetByIdAsync(request.AudienceProfileId, ct).ConfigureAwait(false);
         if (profile == null)
         {
             return NotFound(new ProblemDetails
@@ -782,7 +782,7 @@ public class AudienceController : ControllerBase
             request.Content,
             profile,
             config,
-            ct);
+            ct).ConfigureAwait(false);
 
         var report = _previewService.GenerateComparisonReport(result);
         var dto = MapToComparisonReportDto(report);
@@ -811,7 +811,7 @@ public class AudienceController : ControllerBase
             });
         }
 
-        var profile = await _store.GetByIdAsync(id, ct);
+        var profile = await _store.GetByIdAsync(id, ct).ConfigureAwait(false);
         if (profile == null)
         {
             return NotFound(new ProblemDetails

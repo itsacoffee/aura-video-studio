@@ -87,7 +87,7 @@ public class CancellationOrchestrator
 
         foreach (var (providerName, providerInfo) in context.Providers)
         {
-            var status = await CancelProviderAsync(jobId, providerName, providerInfo, ct);
+            var status = await CancelProviderAsync(jobId, providerName, providerInfo, ct).ConfigureAwait(false);
             statuses.Add(status);
 
             if (!string.IsNullOrEmpty(status.Warning))

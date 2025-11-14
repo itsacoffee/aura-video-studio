@@ -72,7 +72,7 @@ public class VoiceEnhancementController : ControllerBase
             var result = await _voiceProcessing.EnhanceVoiceAsync(
                 request.InputPath,
                 config,
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -107,7 +107,7 @@ public class VoiceEnhancementController : ControllerBase
 
             _logger.LogInformation("Analyzing voice quality: {InputPath}", request.InputPath);
 
-            var metrics = await _voiceProcessing.AnalyzeQualityAsync(request.InputPath, ct);
+            var metrics = await _voiceProcessing.AnalyzeQualityAsync(request.InputPath, ct).ConfigureAwait(false);
 
             return Ok(new { success = true, metrics });
         }
@@ -135,7 +135,7 @@ public class VoiceEnhancementController : ControllerBase
 
             _logger.LogInformation("Detecting emotion: {AudioPath}", request.AudioPath);
 
-            var result = await _emotionDetection.DetectEmotionAsync(request.AudioPath, ct);
+            var result = await _emotionDetection.DetectEmotionAsync(request.AudioPath, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -190,7 +190,7 @@ public class VoiceEnhancementController : ControllerBase
                 request.InputPaths,
                 config,
                 progress,
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -230,7 +230,7 @@ public class VoiceEnhancementController : ControllerBase
             var outputPath = await _noiseReduction.ReduceNoiseAsync(
                 request.InputPath,
                 request.Strength,
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(new { success = true, outputPath });
         }
@@ -261,7 +261,7 @@ public class VoiceEnhancementController : ControllerBase
             var outputPath = await _equalizer.ApplyEqualizationAsync(
                 request.InputPath,
                 request.Preset,
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(new { success = true, outputPath });
         }
@@ -297,7 +297,7 @@ public class VoiceEnhancementController : ControllerBase
             var outputPath = await _prosody.AdjustProsodyAsync(
                 request.InputPath,
                 request.Settings,
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(new { success = true, outputPath });
         }
@@ -318,9 +318,9 @@ public record EnhanceVoiceRequest
     public double NoiseReductionStrength { get; init; } = 0.7;
     public bool EnableEqualization { get; init; } = true;
     public EqualizationPreset EqualizationPreset { get; init; } = EqualizationPreset.Balanced;
-    public bool EnableProsodyAdjustment { get; init; } = false;
+    public bool EnableProsodyAdjustment { get; init; }
     public ProsodySettings? Prosody { get; init; }
-    public bool EnableEmotionEnhancement { get; init; } = false;
+    public bool EnableEmotionEnhancement { get; init; }
     public EmotionTarget? TargetEmotion { get; init; }
 }
 
@@ -344,9 +344,9 @@ public record BatchEnhanceRequest
     public double NoiseReductionStrength { get; init; } = 0.7;
     public bool EnableEqualization { get; init; } = true;
     public EqualizationPreset EqualizationPreset { get; init; } = EqualizationPreset.Balanced;
-    public bool EnableProsodyAdjustment { get; init; } = false;
+    public bool EnableProsodyAdjustment { get; init; }
     public ProsodySettings? Prosody { get; init; }
-    public bool EnableEmotionEnhancement { get; init; } = false;
+    public bool EnableEmotionEnhancement { get; init; }
     public EmotionTarget? TargetEmotion { get; init; }
 }
 

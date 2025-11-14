@@ -53,9 +53,9 @@ public class EngagementOptimizationService
         // Generate booster suggestions
         boosterSuggestions = GenerateBoosterSuggestions(points, retentionRisks, hookStrength);
 
-        var avgEngagement = points.Any() ? points.Average(p => p.PredictedEngagement) : 0.5;
+        var avgEngagement = points.Count != 0 ? points.Average(p => p.PredictedEngagement) : 0.5;
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return new EngagementCurve(
             Points: points,
             AverageEngagement: avgEngagement,
@@ -165,7 +165,7 @@ public class EngagementOptimizationService
 
     private double AnalyzeHookStrength(EditableTimeline timeline)
     {
-        if (!timeline.Scenes.Any())
+        if (timeline.Scenes.Count == 0)
             return 0;
 
         var firstScene = timeline.Scenes[0];
@@ -195,7 +195,7 @@ public class EngagementOptimizationService
 
     private double AnalyzeEndingImpact(EditableTimeline timeline)
     {
-        if (!timeline.Scenes.Any())
+        if (timeline.Scenes.Count == 0)
             return 0;
 
         var lastScene = timeline.Scenes[^1];
@@ -234,7 +234,7 @@ public class EngagementOptimizationService
 
         // Engagement dips
         var lowPoints = points.Where(p => p.PredictedEngagement < 0.6).ToList();
-        if (lowPoints.Any())
+        if (lowPoints.Count != 0)
         {
             suggestions.Add($"Add visual variety or pacing change at {lowPoints.Count} low-engagement points");
         }
@@ -253,7 +253,7 @@ public class EngagementOptimizationService
             suggestions.Add("Increase content density to maintain viewer attention");
         }
 
-        if (!suggestions.Any())
+        if (suggestions.Count == 0)
         {
             suggestions.Add("Engagement looks strong! Consider minor pacing adjustments only.");
         }
@@ -294,7 +294,7 @@ public class EngagementOptimizationService
             }
         }
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return fatiguePoints;
     }
 }

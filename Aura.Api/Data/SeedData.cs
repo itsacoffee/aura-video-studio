@@ -29,10 +29,10 @@ public class SeedData
         try
         {
             // Run migrations if needed
-            await _context.Database.MigrateAsync();
+            await _context.Database.MigrateAsync().ConfigureAwait(false);
 
             // Check if we already have data
-            var hasData = await _context.ProjectStates.AnyAsync();
+            var hasData = await _context.ProjectStates.AnyAsync().ConfigureAwait(false);
             if (hasData)
             {
                 _logger.LogInformation("Database already contains data, skipping seed");
@@ -42,15 +42,15 @@ public class SeedData
             _logger.LogInformation("Seeding database with test data...");
 
             // Seed test data
-            await SeedUserSetup();
-            await SeedProjectStates();
-            await SeedTemplates();
-            await SeedCustomTemplates();
-            await SeedExportHistory();
-            await SeedConfiguration();
+            await SeedUserSetup().ConfigureAwait(false);
+            await SeedProjectStates().ConfigureAwait(false);
+            await SeedTemplates().ConfigureAwait(false);
+            await SeedCustomTemplates().ConfigureAwait(false);
+            await SeedExportHistory().ConfigureAwait(false);
+            await SeedConfiguration().ConfigureAwait(false);
 
             // Save changes
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync().ConfigureAwait(false);
 
             _logger.LogInformation("Database seeding completed successfully");
         }
@@ -63,7 +63,7 @@ public class SeedData
 
     private async Task SeedUserSetup()
     {
-        var existingSetup = await _context.UserSetups.AnyAsync();
+        var existingSetup = await _context.UserSetups.AnyAsync().ConfigureAwait(false);
         if (existingSetup)
         {
             return;
@@ -89,7 +89,7 @@ public class SeedData
 
     private async Task SeedProjectStates()
     {
-        var existingProjects = await _context.ProjectStates.AnyAsync();
+        var existingProjects = await _context.ProjectStates.AnyAsync().ConfigureAwait(false);
         if (existingProjects)
         {
             return;
@@ -152,7 +152,7 @@ public class SeedData
 
     private async Task SeedTemplates()
     {
-        var existingTemplates = await _context.Templates.AnyAsync();
+        var existingTemplates = await _context.Templates.AnyAsync().ConfigureAwait(false);
         if (existingTemplates)
         {
             return;
@@ -222,7 +222,7 @@ public class SeedData
 
     private async Task SeedExportHistory()
     {
-        var existingHistory = await _context.ExportHistory.AnyAsync();
+        var existingHistory = await _context.ExportHistory.AnyAsync().ConfigureAwait(false);
         if (existingHistory)
         {
             return;
@@ -272,7 +272,7 @@ public class SeedData
 
     private async Task SeedCustomTemplates()
     {
-        var existingCustomTemplates = await _context.CustomTemplates.AnyAsync();
+        var existingCustomTemplates = await _context.CustomTemplates.AnyAsync().ConfigureAwait(false);
         if (existingCustomTemplates)
         {
             return;
@@ -320,7 +320,7 @@ public class SeedData
 
     private async Task SeedConfiguration()
     {
-        var existingConfig = await _context.Configurations.AnyAsync();
+        var existingConfig = await _context.Configurations.AnyAsync().ConfigureAwait(false);
         if (existingConfig)
         {
             return;

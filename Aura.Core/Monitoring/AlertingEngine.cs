@@ -32,7 +32,7 @@ public class AlertingEngine
 
         foreach (var slo in _config.Objectives)
         {
-            var alert = await EvaluateSloAsync(slo, ct);
+            var alert = await EvaluateSloAsync(slo, ct).ConfigureAwait(false);
             if (alert != null)
             {
                 alerts.Add(alert);

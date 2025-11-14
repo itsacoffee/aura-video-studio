@@ -66,7 +66,7 @@ public class VisualContinuityEngine
     {
         var elements = new List<string>();
 
-        if (llmElements != null && llmElements.Any())
+        if (llmElements != null && llmElements.Count != 0)
         {
             elements.AddRange(llmElements.Where(e =>
                 e.ToLowerInvariant().Contains("character") ||
@@ -92,7 +92,7 @@ public class VisualContinuityEngine
     {
         var elements = new List<string>();
 
-        if (llmElements != null && llmElements.Any())
+        if (llmElements != null && llmElements.Count != 0)
         {
             elements.AddRange(llmElements.Where(e =>
                 e.ToLowerInvariant().Contains("location") ||
@@ -163,7 +163,7 @@ public class VisualContinuityEngine
         score += characterElements.Count * 10.0;
         score += locationElements.Count * 10.0;
 
-        if (llmElements != null && llmElements.Any())
+        if (llmElements != null && llmElements.Count != 0)
         {
             score += 20.0;
         }

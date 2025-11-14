@@ -143,49 +143,49 @@ public class TtsProviderFactory
                 correlationId, string.Join(", ", providers.Keys));
 
             // Try cloud providers first (in priority order)
-            if (providers.ContainsKey("ElevenLabs"))
+            if (providers.TryGetValue("ElevenLabs", out var elevenLabs))
             {
                 _logger.LogInformation("[{CorrelationId}] Selected ElevenLabs as default TTS provider", correlationId);
-                return providers["ElevenLabs"];
+                return elevenLabs;
             }
 
-            if (providers.ContainsKey("PlayHT"))
+            if (providers.TryGetValue("PlayHT", out var playHt))
             {
                 _logger.LogInformation("[{CorrelationId}] Selected PlayHT as default TTS provider", correlationId);
-                return providers["PlayHT"];
+                return playHt;
             }
 
-            if (providers.ContainsKey("Azure"))
+            if (providers.TryGetValue("Azure", out var azure))
             {
                 _logger.LogInformation("[{CorrelationId}] Selected Azure as default TTS provider", correlationId);
-                return providers["Azure"];
+                return azure;
             }
 
             // Try local/offline providers
-            if (providers.ContainsKey("Mimic3"))
+            if (providers.TryGetValue("Mimic3", out var mimic3))
             {
                 _logger.LogInformation("[{CorrelationId}] Selected Mimic3 as default TTS provider", correlationId);
-                return providers["Mimic3"];
+                return mimic3;
             }
 
-            if (providers.ContainsKey("Piper"))
+            if (providers.TryGetValue("Piper", out var piper))
             {
                 _logger.LogInformation("[{CorrelationId}] Selected Piper as default TTS provider", correlationId);
-                return providers["Piper"];
+                return piper;
             }
 
             // Fall back to Windows TTS (platform-specific)
-            if (providers.ContainsKey("Windows"))
+            if (providers.TryGetValue("Windows", out var windows))
             {
                 _logger.LogInformation("[{CorrelationId}] Selected Windows as default TTS provider", correlationId);
-                return providers["Windows"];
+                return windows;
             }
 
             // Last resort: Null provider (generates silence)
-            if (providers.ContainsKey("Null"))
+            if (providers.TryGetValue("Null", out var nullFromDict))
             {
                 _logger.LogWarning("[{CorrelationId}] No functional TTS providers available, using Null provider (generates silence)", correlationId);
-                return providers["Null"];
+                return nullFromDict;
             }
 
             // If even Null provider is not available in the dictionary, try to resolve it directly as absolute fallback

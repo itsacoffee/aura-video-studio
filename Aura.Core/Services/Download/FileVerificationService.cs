@@ -55,7 +55,7 @@ public class FileVerificationService
 
         try
         {
-            var actualSha256 = await ComputeSha256Async(filePath, ct);
+            var actualSha256 = await ComputeSha256Async(filePath, ct).ConfigureAwait(false);
 
             var isValid = string.Equals(
                 actualSha256,
@@ -115,7 +115,7 @@ public class FileVerificationService
 
         using var sha256 = SHA256.Create();
         await using var stream = File.OpenRead(filePath);
-        var hashBytes = await sha256.ComputeHashAsync(stream, ct);
+        var hashBytes = await sha256.ComputeHashAsync(stream, ct).ConfigureAwait(false);
         var hash = Convert.ToHexString(hashBytes).ToLowerInvariant();
 
         _logger.LogDebug("SHA-256 computed: {Hash}", hash);
@@ -141,7 +141,7 @@ public class FileVerificationService
 
         foreach (var (filePath, expectedSha256) in files)
         {
-            var result = await VerifyFileAsync(filePath, expectedSha256, ct);
+            var result = await VerifyFileAsync(filePath, expectedSha256, ct).ConfigureAwait(false);
             results[filePath] = result;
         }
 
@@ -173,7 +173,7 @@ public class FileVerificationService
         {
             _logger.LogDebug("Verification attempt {Attempt} of {MaxRetries}", attempt, maxRetries);
 
-            lastResult = await VerifyFileAsync(filePath, expectedSha256, ct);
+            lastResult = await VerifyFileAsync(filePath, expectedSha256, ct).ConfigureAwait(false);
 
             if (lastResult.IsValid)
             {
@@ -184,7 +184,7 @@ public class FileVerificationService
             {
                 var delayMs = (int)Math.Pow(2, attempt) * 100; // Exponential backoff
                 _logger.LogDebug("Verification failed, retrying in {Delay}ms", delayMs);
-                await Task.Delay(delayMs, ct);
+                await Task.Delay(delayMs, ct).ConfigureAwait(false);
             }
         }
 

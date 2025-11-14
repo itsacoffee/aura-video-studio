@@ -62,7 +62,7 @@ public class MusicRecommendationService
             }
 
             // Use AI to rank and explain recommendations
-            var recommendations = await RankTracksWithAIAsync(candidateTracks, mood, energy, context, ct);
+            var recommendations = await RankTracksWithAIAsync(candidateTracks, mood, energy, context, ct).ConfigureAwait(false);
 
             return recommendations.Take(maxResults).ToList();
         }
@@ -97,7 +97,7 @@ public class MusicRecommendationService
             var mood = MapEmotionalToneToMood(point.Tone);
             var energy = MapIntensityToEnergy(point.Intensity);
 
-            var musicRecs = await RecommendMusicAsync(mood, null, energy, duration, point.Context, 1, ct);
+            var musicRecs = await RecommendMusicAsync(mood, null, energy, duration, point.Context, 1, ct).ConfigureAwait(false);
             
             if (musicRecs.Count > 0)
             {

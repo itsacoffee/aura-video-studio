@@ -193,7 +193,7 @@ public class AzureSSMLMapper : ISSMLMapper
         VoiceSpec voiceSpec,
         CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         var text = System.Text.RegularExpressions.Regex.Replace(ssml, "<[^>]+>", "");
         text = System.Net.WebUtility.HtmlDecode(text);

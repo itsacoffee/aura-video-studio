@@ -112,7 +112,7 @@ public class ThumbnailIntelligenceService
         // Platform-specific adjustments
         AdjustConceptsForPlatform(concepts, profile);
 
-        await Task.Delay(50); // Simulate async processing
+        await Task.Delay(50).ConfigureAwait(false); // Simulate async processing
 
         _logger.LogInformation("Generated {Count} thumbnail concepts", concepts.Count);
         return concepts.OrderByDescending(c => c.PredictedCTR).ToList();
@@ -324,7 +324,7 @@ public class KeywordResearchService
         // Add trending terms (simulated)
         result.TrendingTerms = GenerateTrendingTerms(request.Topic);
 
-        await Task.Delay(100); // Simulate async processing
+        await Task.Delay(100).ConfigureAwait(false); // Simulate async processing
 
         _logger.LogInformation("Keyword research complete with {Count} keywords", result.Keywords.Count);
         return result;
@@ -526,7 +526,7 @@ public class SchedulingOptimizationService
         result.ActivityPatterns["peak_hours"] = profile.BestPractices.OptimalPostingTimes;
         result.ActivityPatterns["avoid_times"] = "Late night (12 AM - 6 AM), Early morning (6 AM - 8 AM)";
 
-        await Task.Delay(50); // Simulate async processing
+        await Task.Delay(50).ConfigureAwait(false); // Simulate async processing
 
         _logger.LogInformation("Generated {Count} optimal posting times", result.RecommendedTimes.Count);
         return result;

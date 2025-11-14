@@ -111,7 +111,7 @@ public class LlmProviderValidator
 
             // Use CompleteAsync with minimal prompt to test connectivity
             var testPrompt = "test";
-            var result = await provider.CompleteAsync(testPrompt, ct);
+            var result = await provider.CompleteAsync(testPrompt, ct).ConfigureAwait(false);
 
             var isAvailable = !string.IsNullOrWhiteSpace(result);
 

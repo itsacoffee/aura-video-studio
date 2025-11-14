@@ -57,10 +57,10 @@ public class EdgeTtsProvider : BaseTtsProvider
 
         try
         {
-            var response = await _httpClient.GetAsync(VoicesEndpoint);
+            var response = await _httpClient.GetAsync(VoicesEndpoint).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
             
-            var voices = await response.Content.ReadFromJsonAsync<List<EdgeVoiceInfo>>();
+            var voices = await response.Content.ReadFromJsonAsync<List<EdgeVoiceInfo>>().ConfigureAwait(false);
             
             if (voices == null || voices.Count == 0)
             {
@@ -99,7 +99,7 @@ public class EdgeTtsProvider : BaseTtsProvider
         
         var outputPath = GenerateOutputPath("EdgeTTS", spec.VoiceName);
 
-        var voiceName = await ResolveVoiceNameAsync(spec.VoiceName, ct);
+        var voiceName = await ResolveVoiceNameAsync(spec.VoiceName, ct).ConfigureAwait(false);
         
         var ssml = BuildSsml(combinedText, voiceName, spec);
         
@@ -107,12 +107,12 @@ public class EdgeTtsProvider : BaseTtsProvider
         request.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
         request.Content = new StringContent(ssml, Encoding.UTF8, "application/ssml+xml");
         
-        var response = await _httpClient.SendAsync(request, ct);
+        var response = await _httpClient.SendAsync(request, ct).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
         
-        var audioData = await response.Content.ReadAsByteArrayAsync(ct);
+        var audioData = await response.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
         
-        await File.WriteAllBytesAsync(outputPath, audioData, ct);
+        await File.WriteAllBytesAsync(outputPath, audioData, ct).ConfigureAwait(false);
         
         if (!ValidateAudioFile(outputPath, scriptLines.Sum(l => l.Duration.TotalSeconds)))
         {
@@ -129,7 +129,7 @@ public class EdgeTtsProvider : BaseTtsProvider
     {
         try
         {
-            var voices = await GetAvailableVoicesCoreAsync();
+            var voices = await GetAvailableVoicesCoreAsync().ConfigureAwait(false);
             
             var match = voices.FirstOrDefault(v => 
                 v.Contains(requestedVoice, StringComparison.OrdinalIgnoreCase));
@@ -189,7 +189,7 @@ public class EdgeTtsProvider : BaseTtsProvider
 /// <summary>
 /// Edge TTS voice information model
 /// </summary>
-internal record EdgeVoiceInfo
+internal sealed record EdgeVoiceInfo
 {
     public string Name { get; init; } = string.Empty;
     public string FriendlyName { get; init; } = string.Empty;

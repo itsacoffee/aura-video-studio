@@ -130,7 +130,7 @@ public class RenderQueue
                 id, priority, preset.Name
             );
 
-            await PersistQueueAsync();
+            await PersistQueueAsync().ConfigureAwait(false);
             return id;
         }
 
@@ -153,7 +153,7 @@ public class RenderQueue
             if (_queue.TryRemove(id, out _))
             {
                 _logger.LogInformation("Removed item {Id} from queue", id);
-                await PersistQueueAsync();
+                await PersistQueueAsync().ConfigureAwait(false);
                 return true;
             }
         }
@@ -172,7 +172,7 @@ public class RenderQueue
             updateAction(updatedItem);
             
             _queue[id] = updatedItem;
-            await PersistQueueAsync();
+            await PersistQueueAsync().ConfigureAwait(false);
         }
     }
 
@@ -238,7 +238,7 @@ public class RenderQueue
         }
 
         _logger.LogInformation("Cleared {Count} completed items from queue", completedIds.Count);
-        await PersistQueueAsync();
+        await PersistQueueAsync().ConfigureAwait(false);
     }
 
     /// <summary>
@@ -258,7 +258,7 @@ public class RenderQueue
 
             _queue[id] = retriedItem;
             _logger.LogInformation("Retrying item {Id} (Attempt {Retry})", id, retriedItem.RetryCount + 1);
-            await PersistQueueAsync();
+            await PersistQueueAsync().ConfigureAwait(false);
             return true;
         }
 
@@ -284,7 +284,7 @@ public class RenderQueue
         {
             try
             {
-                await _processingTask;
+                await _processingTask.ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -306,11 +306,11 @@ public class RenderQueue
             {
                 if (!_isPaused)
                 {
-                    await ProcessNextItemAsync(stoppingToken);
+                    await ProcessNextItemAsync(stoppingToken).ConfigureAwait(false);
                 }
 
                 // Wait before checking for next item
-                await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);
+                await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -319,7 +319,7 @@ public class RenderQueue
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in render queue processor");
-                await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
+                await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken).ConfigureAwait(false);
             }
         }
 
@@ -329,7 +329,7 @@ public class RenderQueue
     private async Task ProcessNextItemAsync(CancellationToken stoppingToken)
     {
         // Check if already processing
-        if (!await _processingLock.WaitAsync(0, stoppingToken))
+        if (!await _processingLock.WaitAsync(0, stoppingToken).ConfigureAwait(false))
         {
             return; // Already processing an item
         }
@@ -355,7 +355,7 @@ public class RenderQueue
                 StartedAt = DateTime.UtcNow
             };
             _queue[nextItem.Id] = renderingItem;
-            await PersistQueueAsync();
+            await PersistQueueAsync().ConfigureAwait(false);
 
             _logger.LogInformation(
                 "Starting render for item {Id} (Preset: {Preset})",
@@ -390,7 +390,7 @@ public class RenderQueue
                     renderSpec,
                     nextItem.OutputPath,
                     renderProgress,
-                    _currentRenderCancellation.Token);
+                    _currentRenderCancellation.Token).ConfigureAwait(false);
 
                 var renderTime = DateTime.UtcNow - startTime;
 
@@ -437,7 +437,7 @@ public class RenderQueue
                 {
                     // Retry with exponential backoff
                     var retryDelay = TimeSpan.FromSeconds(Math.Pow(2, renderingItem.RetryCount));
-                    await Task.Delay(retryDelay, stoppingToken);
+                    await Task.Delay(retryDelay, stoppingToken).ConfigureAwait(false);
 
                     var retryItem = renderingItem with
                     {
@@ -467,7 +467,7 @@ public class RenderQueue
             {
                 _currentRenderCancellation?.Dispose();
                 _currentRenderCancellation = null;
-                await PersistQueueAsync();
+                await PersistQueueAsync().ConfigureAwait(false);
             }
         }
         finally
@@ -509,7 +509,7 @@ public class RenderQueue
                 WriteIndented = true
             });
 
-            await File.WriteAllTextAsync(_queuePersistencePath, json);
+            await File.WriteAllTextAsync(_queuePersistencePath, json).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

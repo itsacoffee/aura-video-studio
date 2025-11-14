@@ -59,7 +59,7 @@ public class DownloadsController : ControllerBase
             // Create install log
             var logPath = Path.Combine(_logsDirectory, $"ffmpeg-install-{DateTime.UtcNow:yyyyMMddHHmmss}.log");
             await System.IO.File.WriteAllTextAsync(logPath, 
-                $"[{DateTime.UtcNow:O}] Starting FFmpeg installation - Mode: {request.Mode}, CorrelationId: {correlationId}\n", ct);
+                $"[{DateTime.UtcNow:O}] Starting FFmpeg installation - Mode: {request.Mode}, CorrelationId: {correlationId}\n", ct).ConfigureAwait(false);
             
             FfmpegInstallResult result;
             
@@ -72,9 +72,9 @@ public class DownloadsController : ControllerBase
                     }
                     
                     await System.IO.File.AppendAllTextAsync(logPath, 
-                        $"[{DateTime.UtcNow:O}] Attaching existing FFmpeg: {request.AttachPath}\n", ct);
+                        $"[{DateTime.UtcNow:O}] Attaching existing FFmpeg: {request.AttachPath}\n", ct).ConfigureAwait(false);
                     
-                    result = await _ffmpegInstaller.AttachExistingAsync(request.AttachPath, ct);
+                    result = await _ffmpegInstaller.AttachExistingAsync(request.AttachPath, ct).ConfigureAwait(false);
                     break;
                     
                 case "local":
@@ -84,20 +84,20 @@ public class DownloadsController : ControllerBase
                     }
                     
                     await System.IO.File.AppendAllTextAsync(logPath, 
-                        $"[{DateTime.UtcNow:O}] Installing from local archive: {request.LocalArchivePath}\n", ct);
+                        $"[{DateTime.UtcNow:O}] Installing from local archive: {request.LocalArchivePath}\n", ct).ConfigureAwait(false);
                     
                     result = await _ffmpegInstaller.InstallFromLocalArchiveAsync(
                         request.LocalArchivePath,
                         request.Version ?? "latest",
                         null,
                         null,
-                        ct);
+                        ct).ConfigureAwait(false);
                     break;
                     
                 case "managed":
                 default:
                     // Get mirrors from manifest
-                    var manifest = await _manifestLoader.LoadManifestAsync();
+                    var manifest = await _manifestLoader.LoadManifestAsync().ConfigureAwait(false);
                     var ffmpegEngine = manifest.Engines.FirstOrDefault(e => e.Id == "ffmpeg");
                     
                     if (ffmpegEngine == null)
@@ -112,7 +112,7 @@ public class DownloadsController : ControllerBase
                     {
                         staticMirrors.Add(request.CustomUrl);
                         await System.IO.File.AppendAllTextAsync(logPath, 
-                            $"[{DateTime.UtcNow:O}] Using custom URL: {request.CustomUrl}\n", ct);
+                            $"[{DateTime.UtcNow:O}] Using custom URL: {request.CustomUrl}\n", ct).ConfigureAwait(false);
                     }
                     
                     // Add primary URL
@@ -131,7 +131,7 @@ public class DownloadsController : ControllerBase
                     staticMirrors.Add("https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip");
                     
                     await System.IO.File.AppendAllTextAsync(logPath, 
-                        $"[{DateTime.UtcNow:O}] Resolving mirrors via GitHub API...\n", ct);
+                        $"[{DateTime.UtcNow:O}] Resolving mirrors via GitHub API...\n", ct).ConfigureAwait(false);
                     
                     // Resolve mirrors dynamically via GitHub API
                     string? githubRepo = null;
@@ -166,15 +166,15 @@ public class DownloadsController : ControllerBase
                         githubRepo,
                         assetPattern,
                         staticMirrors.ToArray(),
-                        ct);
+                        ct).ConfigureAwait(false);
                     
                     await System.IO.File.AppendAllTextAsync(logPath, 
-                        $"[{DateTime.UtcNow:O}] Resolved {mirrors.Count} total mirrors\n", ct);
+                        $"[{DateTime.UtcNow:O}] Resolved {mirrors.Count} total mirrors\n", ct).ConfigureAwait(false);
                     
                     foreach (var mirror in mirrors)
                     {
                         await System.IO.File.AppendAllTextAsync(logPath, 
-                            $"[{DateTime.UtcNow:O}] Mirror: {mirror}\n", ct);
+                            $"[{DateTime.UtcNow:O}] Mirror: {mirror}\n", ct).ConfigureAwait(false);
                     }
                     
                     result = await _ffmpegInstaller.InstallFromMirrorsAsync(
@@ -182,19 +182,19 @@ public class DownloadsController : ControllerBase
                         request.Version ?? ffmpegEngine.Version,
                         null, // sha256 - skip for dynamic "latest" builds
                         null, // progress - could be enhanced with SignalR
-                        ct);
+                        ct).ConfigureAwait(false);
                     break;
             }
             
             await System.IO.File.AppendAllTextAsync(logPath, 
-                $"[{DateTime.UtcNow:O}] Installation result: Success={result.Success}, Error={result.ErrorMessage}\n", ct);
+                $"[{DateTime.UtcNow:O}] Installation result: Success={result.Success}, Error={result.ErrorMessage}\n", ct).ConfigureAwait(false);
             
             if (result.Success)
             {
                 await System.IO.File.AppendAllTextAsync(logPath, 
-                    $"[{DateTime.UtcNow:O}] FFmpeg installed: {result.FfmpegPath}\n", ct);
+                    $"[{DateTime.UtcNow:O}] FFmpeg installed: {result.FfmpegPath}\n", ct).ConfigureAwait(false);
                 await System.IO.File.AppendAllTextAsync(logPath, 
-                    $"[{DateTime.UtcNow:O}] Validation output:\n{result.ValidationOutput}\n", ct);
+                    $"[{DateTime.UtcNow:O}] Validation output:\n{result.ValidationOutput}\n", ct).ConfigureAwait(false);
                 
                 return Ok(new
                 {
@@ -211,7 +211,7 @@ public class DownloadsController : ControllerBase
             else
             {
                 await System.IO.File.AppendAllTextAsync(logPath, 
-                    $"[{DateTime.UtcNow:O}] Installation failed: {result.ErrorMessage}\n", ct);
+                    $"[{DateTime.UtcNow:O}] Installation failed: {result.ErrorMessage}\n", ct).ConfigureAwait(false);
                 
                 return BadRequest(new
                 {
@@ -265,7 +265,7 @@ public class DownloadsController : ControllerBase
             var configuredPath = ffmpegConfig?.ExecutablePath;
             
             // Check if FFmpeg is available using locator
-            var result = await _ffmpegLocator.CheckAllCandidatesAsync(configuredPath, default);
+            var result = await _ffmpegLocator.CheckAllCandidatesAsync(configuredPath, default).ConfigureAwait(false);
             
             if (result.Found && !string.IsNullOrEmpty(result.FfmpegPath))
             {
@@ -275,7 +275,7 @@ public class DownloadsController : ControllerBase
                 
                 if (!string.IsNullOrEmpty(installDir))
                 {
-                    metadata = await _ffmpegInstaller.GetInstallMetadataAsync(installDir);
+                    metadata = await _ffmpegInstaller.GetInstallMetadataAsync(installDir).ConfigureAwait(false);
                 }
                 
                 var state = metadata?.SourceType == "AttachExisting" ? "ExternalAttached" : "Installed";
@@ -324,7 +324,7 @@ public class DownloadsController : ControllerBase
         try
         {
             // Get current installation
-            var statusResult = await GetFFmpegStatus();
+            var statusResult = await GetFFmpegStatus().ConfigureAwait(false);
             if (statusResult is not OkObjectResult okResult)
             {
                 return BadRequest(new { error = "Could not determine FFmpeg status" });
@@ -332,7 +332,7 @@ public class DownloadsController : ControllerBase
             
             // For now, repair means reinstall
             // In the future, could be smarter about just re-validating or fixing specific issues
-            var manifest = await _manifestLoader.LoadManifestAsync();
+            var manifest = await _manifestLoader.LoadManifestAsync().ConfigureAwait(false);
             var ffmpegEngine = manifest.Engines.FirstOrDefault(e => e.Id == "ffmpeg");
             
             if (ffmpegEngine == null)
@@ -356,7 +356,7 @@ public class DownloadsController : ControllerBase
                 ffmpegEngine.Version,
                 null,
                 null,
-                ct);
+                ct).ConfigureAwait(false);
             
             if (result.Success)
             {
@@ -400,7 +400,7 @@ public class DownloadsController : ControllerBase
             var configuredPath = ffmpegConfig?.ExecutablePath;
             
             // Check all candidates
-            var result = await _ffmpegLocator.CheckAllCandidatesAsync(configuredPath, ct);
+            var result = await _ffmpegLocator.CheckAllCandidatesAsync(configuredPath, ct).ConfigureAwait(false);
             
             if (result.Found && !string.IsNullOrEmpty(result.FfmpegPath))
             {
@@ -416,7 +416,7 @@ public class DownloadsController : ControllerBase
                     await _enginesRegistry.ReconfigureEngineAsync(
                         "ffmpeg",
                         installPath: installDir,
-                        executablePath: result.FfmpegPath);
+                        executablePath: result.FfmpegPath).ConfigureAwait(false);
                 }
                 else
                 {
@@ -429,7 +429,7 @@ public class DownloadsController : ControllerBase
                         result.FfmpegPath,
                         null,
                         null,
-                        $"Auto-detected via rescan at {DateTime.UtcNow}");
+                        $"Auto-detected via rescan at {DateTime.UtcNow}").ConfigureAwait(false);
                 }
                 
                 return Ok(new
@@ -499,7 +499,7 @@ public class DownloadsController : ControllerBase
             _logger.LogInformation("Attaching FFmpeg from: {Path}", request.Path);
             
             // Validate the path
-            var validation = await _ffmpegLocator.ValidatePathAsync(request.Path, ct);
+            var validation = await _ffmpegLocator.ValidatePathAsync(request.Path, ct).ConfigureAwait(false);
             
             if (!validation.Found || string.IsNullOrEmpty(validation.FfmpegPath))
             {
@@ -519,7 +519,7 @@ public class DownloadsController : ControllerBase
             }
             
             // Use FfmpegInstaller to create install.json metadata
-            var installResult = await _ffmpegInstaller.AttachExistingAsync(validation.FfmpegPath, ct);
+            var installResult = await _ffmpegInstaller.AttachExistingAsync(validation.FfmpegPath, ct).ConfigureAwait(false);
             
             if (!installResult.Success)
             {
@@ -541,7 +541,7 @@ public class DownloadsController : ControllerBase
                 validation.FfmpegPath,
                 null,
                 null,
-                $"User attached from {request.Path}");
+                $"User attached from {request.Path}").ConfigureAwait(false);
             
             _logger.LogInformation("Successfully attached FFmpeg from {Path}", validation.FfmpegPath);
             

@@ -35,11 +35,11 @@ public class DependencyHealthCheck : IHealthCheck
         try
         {
             // Check FFmpeg availability
-            var ffmpegResult = await _ffmpegLocator.CheckAllCandidatesAsync(null, cancellationToken);
+            var ffmpegResult = await _ffmpegLocator.CheckAllCandidatesAsync(null, cancellationToken).ConfigureAwait(false);
             var ffmpegAvailable = ffmpegResult.Found && !string.IsNullOrEmpty(ffmpegResult.FfmpegPath);
 
             // Detect system hardware and dependencies
-            var systemProfile = await _hardwareDetector.DetectSystemAsync();
+            var systemProfile = await _hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
 
             var data = new Dictionary<string, object>
             {

@@ -37,7 +37,7 @@ public class SettingsController : ControllerBase
     {
         try
         {
-            var settings = await _settingsService.GetSettingsAsync(ct);
+            var settings = await _settingsService.GetSettingsAsync(ct).ConfigureAwait(false);
             return Ok(settings);
         }
         catch (Exception ex)
@@ -57,7 +57,7 @@ public class SettingsController : ControllerBase
     {
         try
         {
-            var result = await _settingsService.UpdateSettingsAsync(settings, ct);
+            var result = await _settingsService.UpdateSettingsAsync(settings, ct).ConfigureAwait(false);
             
             if (result.Success)
             {
@@ -84,7 +84,7 @@ public class SettingsController : ControllerBase
     {
         try
         {
-            var result = await _settingsService.ResetToDefaultsAsync(ct);
+            var result = await _settingsService.ResetToDefaultsAsync(ct).ConfigureAwait(false);
             return Ok(result);
         }
         catch (Exception ex)
@@ -103,7 +103,7 @@ public class SettingsController : ControllerBase
     {
         try
         {
-            var settings = await _settingsService.GetSettingsSectionAsync<GeneralSettings>(ct);
+            var settings = await _settingsService.GetSettingsSectionAsync<GeneralSettings>(ct).ConfigureAwait(false);
             return Ok(settings);
         }
         catch (Exception ex)
@@ -122,7 +122,7 @@ public class SettingsController : ControllerBase
     {
         try
         {
-            var result = await _settingsService.UpdateSettingsSectionAsync(settings, ct);
+            var result = await _settingsService.UpdateSettingsSectionAsync(settings, ct).ConfigureAwait(false);
             return Ok(result);
         }
         catch (Exception ex)
@@ -141,7 +141,7 @@ public class SettingsController : ControllerBase
     {
         try
         {
-            var result = await _settingsService.ValidateSettingsAsync(settings, ct);
+            var result = await _settingsService.ValidateSettingsAsync(settings, ct).ConfigureAwait(false);
             return Ok(result);
         }
         catch (Exception ex)
@@ -160,7 +160,7 @@ public class SettingsController : ControllerBase
     {
         try
         {
-            var json = await _settingsService.ExportSettingsAsync(includeSecrets, ct);
+            var json = await _settingsService.ExportSettingsAsync(includeSecrets, ct).ConfigureAwait(false);
             return Content(json, "application/json");
         }
         catch (Exception ex)
@@ -182,7 +182,7 @@ public class SettingsController : ControllerBase
     {
         try
         {
-            var result = await _settingsService.ImportSettingsAsync(json, overwriteExisting, ct);
+            var result = await _settingsService.ImportSettingsAsync(json, overwriteExisting, ct).ConfigureAwait(false);
             return Ok(result);
         }
         catch (Exception ex)
@@ -201,7 +201,7 @@ public class SettingsController : ControllerBase
     {
         try
         {
-            var settings = await _settingsService.GetHardwareSettingsAsync(ct);
+            var settings = await _settingsService.GetHardwareSettingsAsync(ct).ConfigureAwait(false);
             return Ok(settings);
         }
         catch (Exception ex)
@@ -220,7 +220,7 @@ public class SettingsController : ControllerBase
     {
         try
         {
-            var result = await _settingsService.UpdateHardwareSettingsAsync(settings, ct);
+            var result = await _settingsService.UpdateHardwareSettingsAsync(settings, ct).ConfigureAwait(false);
             return Ok(result);
         }
         catch (Exception ex)
@@ -239,7 +239,7 @@ public class SettingsController : ControllerBase
     {
         try
         {
-            var config = await _settingsService.GetProviderConfigurationAsync(ct);
+            var config = await _settingsService.GetProviderConfigurationAsync(ct).ConfigureAwait(false);
             return Ok(config);
         }
         catch (Exception ex)
@@ -258,7 +258,7 @@ public class SettingsController : ControllerBase
     {
         try
         {
-            var result = await _settingsService.UpdateProviderConfigurationAsync(config, ct);
+            var result = await _settingsService.UpdateProviderConfigurationAsync(config, ct).ConfigureAwait(false);
             return Ok(result);
         }
         catch (Exception ex)
@@ -277,7 +277,7 @@ public class SettingsController : ControllerBase
     {
         try
         {
-            var result = await _settingsService.TestProviderConnectionAsync(providerName, ct);
+            var result = await _settingsService.TestProviderConnectionAsync(providerName, ct).ConfigureAwait(false);
             return Ok(result);
         }
         catch (Exception ex)
@@ -296,7 +296,7 @@ public class SettingsController : ControllerBase
     {
         try
         {
-            var devices = await _settingsService.GetAvailableGpuDevicesAsync(ct);
+            var devices = await _settingsService.GetAvailableGpuDevicesAsync(ct).ConfigureAwait(false);
             return Ok(devices);
         }
         catch (Exception ex)
@@ -315,7 +315,7 @@ public class SettingsController : ControllerBase
     {
         try
         {
-            var encoders = await _settingsService.GetAvailableEncodersAsync(ct);
+            var encoders = await _settingsService.GetAvailableEncodersAsync(ct).ConfigureAwait(false);
             return Ok(encoders);
         }
         catch (Exception ex)
@@ -334,7 +334,7 @@ public class SettingsController : ControllerBase
     {
         try
         {
-            var settings = await _settingsService.GetSettingsSectionAsync<Aura.Core.Models.Settings.ExportSettings>(ct);
+            var settings = await _settingsService.GetSettingsSectionAsync<Core.Models.Settings.ExportSettings>(ct).ConfigureAwait(false);
             return Ok(settings);
         }
         catch (Exception ex)
@@ -353,7 +353,7 @@ public class SettingsController : ControllerBase
     {
         try
         {
-            var result = await _settingsService.UpdateSettingsSectionAsync(settings, ct);
+            var result = await _settingsService.UpdateSettingsSectionAsync(settings, ct).ConfigureAwait(false);
             return Ok(result);
         }
         catch (Exception ex)
@@ -372,7 +372,7 @@ public class SettingsController : ControllerBase
     {
         try
         {
-            var settings = await _settingsService.GetSettingsSectionAsync<Aura.Core.Models.Settings.ProviderRateLimits>(ct);
+            var settings = await _settingsService.GetSettingsSectionAsync<Core.Models.Settings.ProviderRateLimits>(ct).ConfigureAwait(false);
             return Ok(settings);
         }
         catch (Exception ex)
@@ -391,7 +391,7 @@ public class SettingsController : ControllerBase
     {
         try
         {
-            var result = await _settingsService.UpdateSettingsSectionAsync(settings, ct);
+            var result = await _settingsService.UpdateSettingsSectionAsync(settings, ct).ConfigureAwait(false);
             return Ok(result);
         }
         catch (Exception ex)
@@ -410,7 +410,7 @@ public class SettingsController : ControllerBase
     {
         try
         {
-            var settings = await _settingsService.GetSettingsAsync(ct);
+            var settings = await _settingsService.GetSettingsAsync(ct).ConfigureAwait(false);
             var destination = settings.Export.UploadDestinations.Find(d => d.Id == id);
             
             if (destination == null)

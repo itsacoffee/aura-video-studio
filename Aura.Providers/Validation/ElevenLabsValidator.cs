@@ -74,7 +74,7 @@ public class ElevenLabsValidator : IProviderValidator
             HttpResponseMessage? response = null;
             try
             {
-                response = await _httpClient.SendAsync(request, cts.Token);
+                response = await _httpClient.SendAsync(request, cts.Token).ConfigureAwait(false);
             }
             catch (TaskCanceledException) when (cts.Token.IsCancellationRequested && !ct.IsCancellationRequested)
             {
@@ -94,7 +94,7 @@ public class ElevenLabsValidator : IProviderValidator
 
             if (response.IsSuccessStatusCode)
             {
-                var responseBody = await response.Content.ReadAsStringAsync(ct);
+                var responseBody = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 _logger.LogInformation("[{CorrelationId}] ElevenLabs validation successful (response length: {Length} bytes, elapsed: {ElapsedMs}ms)", 
                     correlationId, responseBody.Length, sw.ElapsedMilliseconds);
                 return new ProviderValidationResult
@@ -107,7 +107,7 @@ public class ElevenLabsValidator : IProviderValidator
             }
             else if ((int)response.StatusCode == 401)
             {
-                var errorBody = await response.Content.ReadAsStringAsync(ct);
+                var errorBody = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 _logger.LogWarning("[{CorrelationId}] ElevenLabs validation failed: HTTP 401 Unauthorized - API key is invalid (error: {Error})", 
                     correlationId, TruncateErrorBody(errorBody));
                 return new ProviderValidationResult
@@ -120,7 +120,7 @@ public class ElevenLabsValidator : IProviderValidator
             }
             else if ((int)response.StatusCode == 403)
             {
-                var errorBody = await response.Content.ReadAsStringAsync(ct);
+                var errorBody = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 _logger.LogWarning("[{CorrelationId}] ElevenLabs validation failed: HTTP 403 Forbidden - API key valid but account has no access (error: {Error})", 
                     correlationId, TruncateErrorBody(errorBody));
                 return new ProviderValidationResult
@@ -133,7 +133,7 @@ public class ElevenLabsValidator : IProviderValidator
             }
             else if ((int)response.StatusCode == 429)
             {
-                var errorBody = await response.Content.ReadAsStringAsync(ct);
+                var errorBody = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 _logger.LogWarning("[{CorrelationId}] ElevenLabs validation failed: HTTP 429 Too Many Requests - rate limit exceeded (error: {Error})", 
                     correlationId, TruncateErrorBody(errorBody));
                 return new ProviderValidationResult
@@ -146,7 +146,7 @@ public class ElevenLabsValidator : IProviderValidator
             }
             else
             {
-                var errorBody = await response.Content.ReadAsStringAsync(ct);
+                var errorBody = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 _logger.LogWarning("[{CorrelationId}] ElevenLabs validation failed: HTTP {StatusCode} (error: {Error})", 
                     correlationId, response.StatusCode, TruncateErrorBody(errorBody));
                 return new ProviderValidationResult
@@ -206,6 +206,6 @@ public class ElevenLabsValidator : IProviderValidator
             return string.Empty;
         }
         
-        return errorBody.Length > 100 ? errorBody.Substring(0, 100) + "..." : errorBody;
+        return errorBody.Length > 100 ? string.Concat(errorBody.AsSpan(0, 100), "...") : errorBody;
     }
 }

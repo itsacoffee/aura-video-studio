@@ -88,7 +88,7 @@ public class FfmpegLocator : IFfmpegLocator
     {
         _logger.LogInformation("Resolving effective FFmpeg path");
         
-        var result = await CheckAllCandidatesAsync(configuredPath, ct);
+        var result = await CheckAllCandidatesAsync(configuredPath, ct).ConfigureAwait(false);
         
         if (result.Found && !string.IsNullOrEmpty(result.FfmpegPath))
         {
@@ -140,7 +140,7 @@ public class FfmpegLocator : IFfmpegLocator
                 continue;
             }
 
-            var validation = await ValidateFfmpegBinaryAsync(candidate, ct);
+            var validation = await ValidateFfmpegBinaryAsync(candidate, ct).ConfigureAwait(false);
             if (validation.success)
             {
                 _logger.LogInformation("FFmpeg found and validated at: {Path}", candidate);
@@ -166,7 +166,7 @@ public class FfmpegLocator : IFfmpegLocator
         }
 
         // Also check PATH environment variable
-        var pathResult = await CheckPathEnvironmentAsync(ct);
+        var pathResult = await CheckPathEnvironmentAsync(ct).ConfigureAwait(false);
         if (pathResult.Found)
         {
             result.AttemptedPaths.Add("PATH");
@@ -230,7 +230,7 @@ public class FfmpegLocator : IFfmpegLocator
             return result;
         }
 
-        var validation = await ValidateFfmpegBinaryAsync(resolvedPath, ct);
+        var validation = await ValidateFfmpegBinaryAsync(resolvedPath, ct).ConfigureAwait(false);
         
         if (validation.success)
         {
@@ -343,7 +343,7 @@ public class FfmpegLocator : IFfmpegLocator
         try
         {
             var exeName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "ffmpeg.exe" : "ffmpeg";
-            var validation = await ValidateFfmpegBinaryAsync(exeName, ct);
+            var validation = await ValidateFfmpegBinaryAsync(exeName, ct).ConfigureAwait(false);
             
             if (validation.success)
             {
@@ -403,10 +403,10 @@ public class FfmpegLocator : IFfmpegLocator
                 return (false, null, "Failed to start process");
             }
 
-            await process.WaitForExitAsync(ct);
+            await process.WaitForExitAsync(ct).ConfigureAwait(false);
 
-            var stdout = await process.StandardOutput.ReadToEndAsync(ct);
-            var stderr = await process.StandardError.ReadToEndAsync(ct);
+            var stdout = await process.StandardOutput.ReadToEndAsync(ct).ConfigureAwait(false);
+            var stderr = await process.StandardError.ReadToEndAsync(ct).ConfigureAwait(false);
 
             if (process.ExitCode != 0)
             {

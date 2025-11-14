@@ -126,7 +126,7 @@ And so on...";
 
             // Rank by relevance
             suggestions = suggestions.OrderByDescending(s => 
-                s.Matches.Any() ? s.Matches.Max(m => m.RelevanceScore) : 0
+                s.Matches.Count != 0 ? s.Matches.Max(m => m.RelevanceScore) : 0
             ).ToList();
 
             // Cache the results

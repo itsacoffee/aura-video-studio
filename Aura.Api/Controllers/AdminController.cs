@@ -74,12 +74,12 @@ public class AdminController : ControllerBase
                     (u.DisplayName != null && u.DisplayName.ToLower().Contains(search)));
             }
 
-            var totalCount = await query.CountAsync(ct);
+            var totalCount = await query.CountAsync(ct).ConfigureAwait(false);
             var users = await query
                 .OrderByDescending(u => u.CreatedAt)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .ToListAsync(ct);
+                .ToListAsync(ct).ConfigureAwait(false);
 
             var userDtos = users.Select(MapToUserDto).ToList();
 
@@ -106,7 +106,7 @@ public class AdminController : ControllerBase
                 .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)
                 .Include(u => u.Quota)
-                .FirstOrDefaultAsync(u => u.Id == userId, ct);
+                .FirstOrDefaultAsync(u => u.Id == userId, ct).ConfigureAwait(false);
 
             if (user == null)
                 return NotFound(new { message = "User not found" });
@@ -133,11 +133,11 @@ public class AdminController : ControllerBase
         try
         {
             // Validate username uniqueness
-            if (await _dbContext.Users.AnyAsync(u => u.Username == request.Username, ct))
+            if (await _dbContext.Users.AnyAsync(u => u.Username == request.Username, ct).ConfigureAwait(false))
                 return BadRequest(new { message = "Username already exists" });
 
             // Validate email uniqueness
-            if (await _dbContext.Users.AnyAsync(u => u.Email == request.Email, ct))
+            if (await _dbContext.Users.AnyAsync(u => u.Email == request.Email, ct).ConfigureAwait(false))
                 return BadRequest(new { message = "Email already exists" });
 
             var user = new UserEntity
@@ -161,7 +161,7 @@ public class AdminController : ControllerBase
             {
                 foreach (var roleId in request.RoleIds)
                 {
-                    var role = await _dbContext.Roles.FindAsync(new object[] { roleId }, ct);
+                    var role = await _dbContext.Roles.FindAsync(new object[] { roleId }, ct).ConfigureAwait(false);
                     if (role != null)
                     {
                         _dbContext.UserRoles.Add(new UserRoleEntity
@@ -194,7 +194,7 @@ public class AdminController : ControllerBase
                 });
             }
 
-            await _dbContext.SaveChangesAsync(ct);
+            await _dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
 
             _auditLogger.LogSecurityEvent("UserCreated", $"User {user.Username} created", new Dictionary<string, object>
             {
@@ -207,7 +207,7 @@ public class AdminController : ControllerBase
                 .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)
                 .Include(u => u.Quota)
-                .FirstAsync(u => u.Id == user.Id, ct);
+                .FirstAsync(u => u.Id == user.Id, ct).ConfigureAwait(false);
 
             return CreatedAtAction(nameof(GetUser), new { userId = user.Id }, MapToUserDto(createdUser));
         }
@@ -235,7 +235,7 @@ public class AdminController : ControllerBase
                 .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)
                 .Include(u => u.Quota)
-                .FirstOrDefaultAsync(u => u.Id == userId, ct);
+                .FirstOrDefaultAsync(u => u.Id == userId, ct).ConfigureAwait(false);
 
             if (user == null)
                 return NotFound(new { message = "User not found" });
@@ -251,7 +251,7 @@ public class AdminController : ControllerBase
             if (request.Email != null && user.Email != request.Email)
             {
                 // Check email uniqueness
-                if (await _dbContext.Users.AnyAsync(u => u.Email == request.Email && u.Id != userId, ct))
+                if (await _dbContext.Users.AnyAsync(u => u.Email == request.Email && u.Id != userId, ct).ConfigureAwait(false))
                     return BadRequest(new { message = "Email already exists" });
 
                 changes["Email"] = new { Old = user.Email, New = request.Email };
@@ -279,7 +279,7 @@ public class AdminController : ControllerBase
             }
 
             user.UpdatedAt = DateTime.UtcNow;
-            await _dbContext.SaveChangesAsync(ct);
+            await _dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
 
             if (changes.Any())
             {
@@ -317,7 +317,7 @@ public class AdminController : ControllerBase
                 .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)
                 .Include(u => u.Quota)
-                .FirstOrDefaultAsync(u => u.Id == userId, ct);
+                .FirstOrDefaultAsync(u => u.Id == userId, ct).ConfigureAwait(false);
 
             if (user == null)
                 return NotFound(new { message = "User not found" });
@@ -328,7 +328,7 @@ public class AdminController : ControllerBase
             user.LockoutEnd = request.UntilDate;
             user.UpdatedAt = DateTime.UtcNow;
 
-            await _dbContext.SaveChangesAsync(ct);
+            await _dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
 
             _auditLogger.LogSecurityEvent("UserSuspended", $"User {user.Username} suspended", new Dictionary<string, object>
             {
@@ -361,7 +361,7 @@ public class AdminController : ControllerBase
                 .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)
                 .Include(u => u.Quota)
-                .FirstOrDefaultAsync(u => u.Id == userId, ct);
+                .FirstOrDefaultAsync(u => u.Id == userId, ct).ConfigureAwait(false);
 
             if (user == null)
                 return NotFound(new { message = "User not found" });
@@ -372,7 +372,7 @@ public class AdminController : ControllerBase
             user.LockoutEnd = null;
             user.UpdatedAt = DateTime.UtcNow;
 
-            await _dbContext.SaveChangesAsync(ct);
+            await _dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
 
             _auditLogger.LogSecurityEvent("UserUnsuspended", $"User {user.Username} unsuspended", new Dictionary<string, object>
             {
@@ -399,13 +399,13 @@ public class AdminController : ControllerBase
     {
         try
         {
-            var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
+            var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId, ct).ConfigureAwait(false);
             if (user == null)
                 return NotFound(new { message = "User not found" });
 
             user.IsActive = false;
             user.UpdatedAt = DateTime.UtcNow;
-            await _dbContext.SaveChangesAsync(ct);
+            await _dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
 
             _auditLogger.LogSecurityEvent("UserDeleted", $"User {user.Username} deleted", new Dictionary<string, object>
             {
@@ -438,7 +438,7 @@ public class AdminController : ControllerBase
                 .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)
                 .Include(u => u.Quota)
-                .FirstOrDefaultAsync(u => u.Id == userId, ct);
+                .FirstOrDefaultAsync(u => u.Id == userId, ct).ConfigureAwait(false);
 
             if (user == null)
                 return NotFound(new { message = "User not found" });
@@ -446,13 +446,13 @@ public class AdminController : ControllerBase
             // Remove existing roles
             var existingRoles = await _dbContext.UserRoles
                 .Where(ur => ur.UserId == userId)
-                .ToListAsync(ct);
+                .ToListAsync(ct).ConfigureAwait(false);
             _dbContext.UserRoles.RemoveRange(existingRoles);
 
             // Add new roles
             foreach (var roleId in roleIds)
             {
-                var role = await _dbContext.Roles.FindAsync(new object[] { roleId }, ct);
+                var role = await _dbContext.Roles.FindAsync(new object[] { roleId }, ct).ConfigureAwait(false);
                 if (role != null)
                 {
                     _dbContext.UserRoles.Add(new UserRoleEntity
@@ -465,7 +465,7 @@ public class AdminController : ControllerBase
                 }
             }
 
-            await _dbContext.SaveChangesAsync(ct);
+            await _dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
 
             _auditLogger.LogSecurityEvent("UserRolesUpdated", $"Roles updated for user {user.Username}", new Dictionary<string, object>
             {
@@ -479,7 +479,7 @@ public class AdminController : ControllerBase
                 .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)
                 .Include(u => u.Quota)
-                .FirstAsync(u => u.Id == userId, ct);
+                .FirstAsync(u => u.Id == userId, ct).ConfigureAwait(false);
 
             return Ok(MapToUserDto(user));
         }
@@ -502,7 +502,7 @@ public class AdminController : ControllerBase
     {
         try
         {
-            var quota = await _dbContext.UserQuotas.FirstOrDefaultAsync(q => q.UserId == userId, ct);
+            var quota = await _dbContext.UserQuotas.FirstOrDefaultAsync(q => q.UserId == userId, ct).ConfigureAwait(false);
             
             if (quota == null)
             {
@@ -524,7 +524,7 @@ public class AdminController : ControllerBase
             quota.CostLimitUsd = request.CostLimitUsd;
             quota.UpdatedAt = DateTime.UtcNow;
 
-            await _dbContext.SaveChangesAsync(ct);
+            await _dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
 
             _auditLogger.LogSecurityEvent("UserQuotaUpdated", $"Quota updated for user {userId}", new Dictionary<string, object>
             {
@@ -568,7 +568,7 @@ public class AdminController : ControllerBase
             var roles = await _dbContext.Roles
                 .Include(r => r.UserRoles)
                 .OrderBy(r => r.Name)
-                .ToListAsync(ct);
+                .ToListAsync(ct).ConfigureAwait(false);
 
             var roleDtos = roles.Select(r => new RoleDto(
                 r.Id,
@@ -603,7 +603,7 @@ public class AdminController : ControllerBase
     {
         try
         {
-            if (await _dbContext.Roles.AnyAsync(r => r.Name == request.Name, ct))
+            if (await _dbContext.Roles.AnyAsync(r => r.Name == request.Name, ct).ConfigureAwait(false))
                 return BadRequest(new { message = "Role name already exists" });
 
             var role = new RoleEntity
@@ -619,7 +619,7 @@ public class AdminController : ControllerBase
             };
 
             _dbContext.Roles.Add(role);
-            await _dbContext.SaveChangesAsync(ct);
+            await _dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
 
             _auditLogger.LogSecurityEvent("RoleCreated", $"Role {role.Name} created", new Dictionary<string, object>
             {
@@ -657,7 +657,7 @@ public class AdminController : ControllerBase
     {
         try
         {
-            var role = await _dbContext.Roles.FindAsync(new object[] { roleId }, ct);
+            var role = await _dbContext.Roles.FindAsync(new object[] { roleId }, ct).ConfigureAwait(false);
             if (role == null)
                 return NotFound(new { message = "Role not found" });
 
@@ -674,7 +674,7 @@ public class AdminController : ControllerBase
                 role.Permissions = JsonSerializer.Serialize(request.Permissions);
 
             role.UpdatedAt = DateTime.UtcNow;
-            await _dbContext.SaveChangesAsync(ct);
+            await _dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
 
             _auditLogger.LogSecurityEvent("RoleUpdated", $"Role {role.Name} updated", new Dictionary<string, object>
             {
@@ -709,7 +709,7 @@ public class AdminController : ControllerBase
     {
         try
         {
-            var role = await _dbContext.Roles.FindAsync(new object[] { roleId }, ct);
+            var role = await _dbContext.Roles.FindAsync(new object[] { roleId }, ct).ConfigureAwait(false);
             if (role == null)
                 return NotFound(new { message = "Role not found" });
 
@@ -717,7 +717,7 @@ public class AdminController : ControllerBase
                 return BadRequest(new { message = "Cannot delete system roles" });
 
             _dbContext.Roles.Remove(role);
-            await _dbContext.SaveChangesAsync(ct);
+            await _dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
 
             _auditLogger.LogSecurityEvent("RoleDeleted", $"Role {role.Name} deleted", new Dictionary<string, object>
             {
@@ -776,12 +776,12 @@ public class AdminController : ControllerBase
             if (successOnly.HasValue)
                 query = query.Where(log => log.Success == successOnly.Value);
 
-            var totalCount = await query.CountAsync(ct);
+            var totalCount = await query.CountAsync(ct).ConfigureAwait(false);
             var logs = await query
                 .OrderByDescending(log => log.Timestamp)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .ToListAsync(ct);
+                .ToListAsync(ct).ConfigureAwait(false);
 
             var logDtos = logs.Select(log => new AuditLogDto(
                 log.Id,
@@ -835,7 +835,7 @@ public class AdminController : ControllerBase
                     log.ResourceId,
                     log.Success
                 ))
-                .ToListAsync(ct);
+                .ToListAsync(ct).ConfigureAwait(false);
 
             return Ok(activities);
         }
@@ -863,7 +863,7 @@ public class AdminController : ControllerBase
             SystemResourcesDto resources;
             if (_resourceMonitor != null)
             {
-                var systemMetrics = await _resourceMonitor.CollectSystemMetricsAsync(ct);
+                var systemMetrics = await _resourceMonitor.CollectSystemMetricsAsync(ct).ConfigureAwait(false);
                 resources = new SystemResourcesDto(
                     systemMetrics.Cpu.ProcessUsagePercent,
                     systemMetrics.Memory.ProcessUsageBytes,
@@ -887,11 +887,11 @@ public class AdminController : ControllerBase
             }
 
             // Application metrics
-            var totalUsers = await _dbContext.Users.CountAsync(ct);
-            var activeUsers = await _dbContext.Users.CountAsync(u => u.IsActive, ct);
-            var totalProjects = await _dbContext.ProjectStates.CountAsync(ct);
+            var totalUsers = await _dbContext.Users.CountAsync(ct).ConfigureAwait(false);
+            var activeUsers = await _dbContext.Users.CountAsync(u => u.IsActive, ct).ConfigureAwait(false);
+            var totalProjects = await _dbContext.ProjectStates.CountAsync(ct).ConfigureAwait(false);
             var activeProjects = await _dbContext.ProjectStates
-                .CountAsync(p => p.Status == "Active" || p.Status == "InProgress", ct);
+                .CountAsync(p => p.Status == "Active" || p.Status == "InProgress", ct).ConfigureAwait(false);
             
             var application = new ApplicationMetricsDto(
                 totalUsers,
@@ -968,7 +968,7 @@ public class AdminController : ControllerBase
             var configs = await query
                 .OrderBy(c => c.Category)
                 .ThenBy(c => c.Key)
-                .ToListAsync(ct);
+                .ToListAsync(ct).ConfigureAwait(false);
 
             var configDtos = configs.Select(c => new ConfigurationItemDto(
                 c.Key,
@@ -1002,7 +1002,7 @@ public class AdminController : ControllerBase
             var configs = await _dbContext.Configurations
                 .OrderBy(c => c.Category)
                 .ThenBy(c => c.Key)
-                .ToListAsync(ct);
+                .ToListAsync(ct).ConfigureAwait(false);
 
             var categories = configs
                 .GroupBy(c => c.Category ?? "General")
@@ -1041,7 +1041,7 @@ public class AdminController : ControllerBase
     {
         try
         {
-            var config = await _dbContext.Configurations.FindAsync(new object[] { key }, ct);
+            var config = await _dbContext.Configurations.FindAsync(new object[] { key }, ct).ConfigureAwait(false);
             
             var oldValue = config?.Value;
             var isNew = config == null;
@@ -1063,7 +1063,7 @@ public class AdminController : ControllerBase
             config.IsActive = request.IsActive;
             config.UpdatedAt = DateTime.UtcNow;
 
-            await _dbContext.SaveChangesAsync(ct);
+            await _dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
 
             _auditLogger.LogConfigurationChange(
                 User.Identity?.Name ?? "Unknown",
@@ -1098,12 +1098,12 @@ public class AdminController : ControllerBase
     {
         try
         {
-            var config = await _dbContext.Configurations.FindAsync(new object[] { key }, ct);
+            var config = await _dbContext.Configurations.FindAsync(new object[] { key }, ct).ConfigureAwait(false);
             if (config == null)
                 return NotFound(new { message = "Configuration not found" });
 
             _dbContext.Configurations.Remove(config);
-            await _dbContext.SaveChangesAsync(ct);
+            await _dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
 
             _auditLogger.LogSecurityEvent("ConfigurationDeleted", $"Configuration {key} deleted", new Dictionary<string, object>
             {

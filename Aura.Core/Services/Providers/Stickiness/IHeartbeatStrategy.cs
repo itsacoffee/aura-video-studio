@@ -64,7 +64,7 @@ public sealed class LlmStreamingHeartbeatStrategy : IHeartbeatStrategy
 
     public async Task<ProviderProgress?> CheckHeartbeatAsync(CancellationToken ct = default)
     {
-        var currentTokenCount = await _getTokenCount();
+        var currentTokenCount = await _getTokenCount().ConfigureAwait(false);
         
         if (!currentTokenCount.HasValue)
             return null;
@@ -116,7 +116,7 @@ public sealed class TtsChunkHeartbeatStrategy : IHeartbeatStrategy
 
     public async Task<ProviderProgress?> CheckHeartbeatAsync(CancellationToken ct = default)
     {
-        var currentChunkCount = await _getChunkCount();
+        var currentChunkCount = await _getChunkCount().ConfigureAwait(false);
         
         if (!currentChunkCount.HasValue)
             return null;
@@ -167,7 +167,7 @@ public sealed class PercentageHeartbeatStrategy : IHeartbeatStrategy
 
     public async Task<ProviderProgress?> CheckHeartbeatAsync(CancellationToken ct = default)
     {
-        var currentPercent = await _getPercentComplete();
+        var currentPercent = await _getPercentComplete().ConfigureAwait(false);
         
         if (!currentPercent.HasValue)
             return null;

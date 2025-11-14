@@ -43,8 +43,8 @@ public class TrainingAuditService
             var json = JsonSerializer.Serialize(record);
             
             await using var writer = new StreamWriter(_auditLogPath, append: true);
-            await writer.WriteLineAsync(json);
-            await writer.FlushAsync();
+            await writer.WriteLineAsync(json).ConfigureAwait(false);
+            await writer.FlushAsync().ConfigureAwait(false);
 
             _logger.LogInformation(
                 "Recorded training run {JobId} in audit log: Status={Status}, Samples={Samples}",
@@ -73,7 +73,7 @@ public class TrainingAuditService
                 return records;
             }
 
-            var lines = await File.ReadAllLinesAsync(_auditLogPath, cancellationToken);
+            var lines = await File.ReadAllLinesAsync(_auditLogPath, cancellationToken).ConfigureAwait(false);
             var reversedLines = lines.AsEnumerable().Reverse().Take(maxRecords);
             
             foreach (var line in reversedLines)
@@ -112,21 +112,21 @@ public class TrainingAuditService
 
         try
         {
-            var history = await GetTrainingHistoryAsync(1000, cancellationToken);
+            var history = await GetTrainingHistoryAsync(1000, cancellationToken).ConfigureAwait(false);
 
             stats.TotalTrainingRuns = history.Count;
             stats.SuccessfulRuns = history.Count(r => r.Status == "Completed");
             stats.FailedRuns = history.Count(r => r.Status == "Failed");
             stats.CancelledRuns = history.Count(r => r.Status == "Cancelled");
 
-            if (history.Any())
+            if (history.Count != 0)
             {
                 stats.OldestRun = history.Last().StartedAt;
                 stats.NewestRun = history.First().StartedAt;
             }
 
             var completedRuns = history.Where(r => r.Status == "Completed" && r.DurationMinutes > 0).ToList();
-            if (completedRuns.Any())
+            if (completedRuns.Count != 0)
             {
                 stats.AverageTrainingTimeMinutes = completedRuns.Average(r => r.DurationMinutes);
                 stats.TotalTrainingTimeMinutes = completedRuns.Sum(r => r.DurationMinutes);

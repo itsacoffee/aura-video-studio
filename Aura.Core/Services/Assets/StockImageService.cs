@@ -80,7 +80,7 @@ public class StockImageService
     /// </summary>
     public async Task<List<StockImage>> SearchStockImagesAsync(string query, int count = 20, CancellationToken ct = default)
     {
-        return await SearchWithFallbackAsync(query, count, ct);
+        return await SearchWithFallbackAsync(query, count, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -141,7 +141,7 @@ public class StockImageService
         var results = new List<StockImage>();
         try
         {
-            var completedResults = await Task.WhenAll(searchTasks);
+            var completedResults = await Task.WhenAll(searchTasks).ConfigureAwait(false);
             foreach (var providerResults in completedResults)
             {
                 results.AddRange(providerResults);
@@ -188,7 +188,7 @@ public class StockImageService
     {
         try
         {
-            return await SearchPexelsAsync(query, count, ct);
+            return await SearchPexelsAsync(query, count, ct).ConfigureAwait(false);
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("rate limit"))
         {
@@ -206,7 +206,7 @@ public class StockImageService
     {
         try
         {
-            return await SearchPixabayAsync(query, count, ct);
+            return await SearchPixabayAsync(query, count, ct).ConfigureAwait(false);
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("rate limit"))
         {
@@ -224,7 +224,7 @@ public class StockImageService
     {
         try
         {
-            return await SearchUnsplashAsync(query, count, ct);
+            return await SearchUnsplashAsync(query, count, ct).ConfigureAwait(false);
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("rate limit"))
         {
@@ -245,7 +245,7 @@ public class StockImageService
         var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Add("Authorization", _pexelsApiKey);
 
-        var response = await _httpClient.SendAsync(request, ct);
+        var response = await _httpClient.SendAsync(request, ct).ConfigureAwait(false);
         
         // Handle rate limiting
         if ((int)response.StatusCode == 429)
@@ -255,7 +255,7 @@ public class StockImageService
         
         response.EnsureSuccessStatusCode();
 
-        var json = await response.Content.ReadAsStringAsync(ct);
+        var json = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
         var result = JsonSerializer.Deserialize<PexelsResponse>(json);
 
         return result?.Photos?.Select(p => new StockImage
@@ -275,7 +275,7 @@ public class StockImageService
     {
         var url = $"https://pixabay.com/api/?key={_pixabayApiKey}&q={Uri.EscapeDataString(query)}&per_page={count}&image_type=photo";
         
-        var response = await _httpClient.GetAsync(url, ct);
+        var response = await _httpClient.GetAsync(url, ct).ConfigureAwait(false);
         
         // Handle rate limiting
         if ((int)response.StatusCode == 429)
@@ -285,7 +285,7 @@ public class StockImageService
         
         response.EnsureSuccessStatusCode();
 
-        var json = await response.Content.ReadAsStringAsync(ct);
+        var json = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
         var result = JsonSerializer.Deserialize<PixabayResponse>(json);
 
         return result?.Hits?.Select(h => new StockImage
@@ -308,7 +308,7 @@ public class StockImageService
         var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Add("Authorization", $"Client-ID {_unsplashApiKey}");
 
-        var response = await _httpClient.SendAsync(request, ct);
+        var response = await _httpClient.SendAsync(request, ct).ConfigureAwait(false);
         
         // Handle rate limiting
         if ((int)response.StatusCode == 429)
@@ -318,7 +318,7 @@ public class StockImageService
         
         response.EnsureSuccessStatusCode();
 
-        var json = await response.Content.ReadAsStringAsync(ct);
+        var json = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
         using var doc = JsonDocument.Parse(json);
 
         var results = new List<StockImage>();
@@ -386,11 +386,11 @@ public class StockImageService
         {
             try
             {
-                var response = await _httpClient.GetAsync(imageUrl, ct);
+                var response = await _httpClient.GetAsync(imageUrl, ct).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
 
-                var content = await response.Content.ReadAsByteArrayAsync(ct);
-                await System.IO.File.WriteAllBytesAsync(destinationPath, content, ct);
+                var content = await response.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
+                await File.WriteAllBytesAsync(destinationPath, content, ct).ConfigureAwait(false);
 
                 _logger.LogInformation("Downloaded stock image to {Path}", destinationPath);
                 return destinationPath;
@@ -398,7 +398,7 @@ public class StockImageService
             catch (HttpRequestException ex) when (attempt < maxRetries)
             {
                 _logger.LogWarning(ex, "Failed to download image (attempt {Attempt}/{MaxRetries})", attempt, maxRetries);
-                await Task.Delay(retryDelay * attempt, ct);
+                await Task.Delay(retryDelay * attempt, ct).ConfigureAwait(false);
             }
             catch (Exception ex)
             {

@@ -64,10 +64,10 @@ public class AzureVoiceDiscovery
                 request.Headers.Add("Ocp-Apim-Subscription-Key", _apiKey);
             }
 
-            var response = await _httpClient.SendAsync(request, ct);
+            var response = await _httpClient.SendAsync(request, ct).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var voicesJson = await response.Content.ReadFromJsonAsync<List<AzureVoiceInfo>>(cancellationToken: ct);
+            var voicesJson = await response.Content.ReadFromJsonAsync<List<AzureVoiceInfo>>(cancellationToken: ct).ConfigureAwait(false);
             
             if (voicesJson == null)
             {
@@ -98,7 +98,7 @@ public class AzureVoiceDiscovery
     /// </summary>
     public async Task<VoiceDescriptor?> GetVoiceCapabilitiesAsync(string voiceId, CancellationToken ct = default)
     {
-        var voices = await GetVoicesAsync(ct: ct);
+        var voices = await GetVoicesAsync(ct: ct).ConfigureAwait(false);
         return voices.FirstOrDefault(v => v.Id.Equals(voiceId, StringComparison.OrdinalIgnoreCase));
     }
 
@@ -196,7 +196,7 @@ public class AzureVoiceDiscovery
     /// <summary>
     /// Azure voice information from REST API
     /// </summary>
-    private class AzureVoiceInfo
+    private sealed class AzureVoiceInfo
     {
         public string? Name { get; set; }
         public string? ShortName { get; set; }

@@ -134,7 +134,7 @@ public class EffectCacheService : IEffectCacheService
             throw new FileNotFoundException("Source file not found", filePath);
         }
 
-        await _cacheLock.WaitAsync(cancellationToken);
+        await _cacheLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             var fileInfo = new FileInfo(filePath);
@@ -142,7 +142,7 @@ public class EffectCacheService : IEffectCacheService
             var cachedFilePath = Path.Combine(_cacheDirectory, cachedFileName);
 
             // Copy file to cache directory
-            await Task.Run(() => File.Copy(filePath, cachedFilePath, overwrite: true), cancellationToken);
+            await Task.Run(() => File.Copy(filePath, cachedFilePath, overwrite: true), cancellationToken).ConfigureAwait(false);
 
             var entry = new CacheEntry
             {
@@ -209,7 +209,7 @@ public class EffectCacheService : IEffectCacheService
 
     public async Task ClearCacheAsync(CancellationToken cancellationToken = default)
     {
-        await _cacheLock.WaitAsync(cancellationToken);
+        await _cacheLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             var files = Directory.GetFiles(_cacheDirectory);
@@ -217,7 +217,7 @@ public class EffectCacheService : IEffectCacheService
             {
                 try
                 {
-                    await Task.Run(() => File.Delete(file), cancellationToken);
+                    await Task.Run(() => File.Delete(file), cancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -256,7 +256,7 @@ public class EffectCacheService : IEffectCacheService
 
     public async Task CleanupOldEntriesAsync(TimeSpan maxAge, CancellationToken cancellationToken = default)
     {
-        await _cacheLock.WaitAsync(cancellationToken);
+        await _cacheLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             var cutoffTime = DateTime.UtcNow - maxAge;
@@ -273,7 +273,7 @@ public class EffectCacheService : IEffectCacheService
                     {
                         if (File.Exists(entry.FilePath))
                         {
-                            await Task.Run(() => File.Delete(entry.FilePath), cancellationToken);
+                            await Task.Run(() => File.Delete(entry.FilePath), cancellationToken).ConfigureAwait(false);
                         }
                         _logger.LogDebug("Removed old cache entry {Key}", key);
                     }

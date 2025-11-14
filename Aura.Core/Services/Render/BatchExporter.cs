@@ -86,7 +86,7 @@ public class BatchExporter
                 filename,
                 jobId,
                 QueuePriority.Normal
-            );
+            ).ConfigureAwait(false);
 
             queueIds.Add(queueId);
             
@@ -100,7 +100,7 @@ public class BatchExporter
         var completed = 0;
         while (completed < queueIds.Count)
         {
-            await Task.Delay(1000, cancellationToken);
+            await Task.Delay(1000, cancellationToken).ConfigureAwait(false);
 
             var items = _renderQueue.GetAllItems()
                 .Where(i => queueIds.Contains(i.Id))
@@ -195,7 +195,7 @@ public class BatchExporter
             jobId,
             progress,
             cancellationToken
-        );
+        ).ConfigureAwait(false);
 
         return result with { BundleName = bundle.Name };
     }

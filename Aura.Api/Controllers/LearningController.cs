@@ -43,7 +43,7 @@ public class LearningController : ControllerBase
                 return BadRequest(new { error = "ProfileId is required" });
             }
 
-            var patterns = await _learningService.GetPatternsAsync(profileId, ct);
+            var patterns = await _learningService.GetPatternsAsync(profileId, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -85,7 +85,7 @@ public class LearningController : ControllerBase
                 return BadRequest(new { error = "ProfileId is required" });
             }
 
-            var insights = await _learningService.GetInsightsAsync(profileId, ct);
+            var insights = await _learningService.GetInsightsAsync(profileId, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -128,13 +128,13 @@ public class LearningController : ControllerBase
             }
 
             // Start pattern analysis
-            var patterns = await _learningService.AnalyzePatternsAsync(request.ProfileId, ct);
+            var patterns = await _learningService.AnalyzePatternsAsync(request.ProfileId, ct).ConfigureAwait(false);
             
             // Generate insights
-            var insights = await _learningService.GenerateInsightsAsync(request.ProfileId, ct);
+            var insights = await _learningService.GenerateInsightsAsync(request.ProfileId, ct).ConfigureAwait(false);
             
             // Infer preferences
-            var preferences = await _learningService.InferPreferencesAsync(request.ProfileId, ct);
+            var preferences = await _learningService.InferPreferencesAsync(request.ProfileId, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -171,7 +171,7 @@ public class LearningController : ControllerBase
                 return BadRequest(new { error = "ProfileId is required" });
             }
 
-            var stats = await _learningService.GetPredictionStatsAsync(profileId, ct);
+            var stats = await _learningService.GetPredictionStatsAsync(profileId, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -224,7 +224,7 @@ public class LearningController : ControllerBase
                 return BadRequest(new { error = "Suggestions list is required" });
             }
 
-            var rankedSuggestions = await _learningService.RankSuggestionsAsync(request, ct);
+            var rankedSuggestions = await _learningService.RankSuggestionsAsync(request, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -274,7 +274,7 @@ public class LearningController : ControllerBase
                 return BadRequest(new { error = "SuggestionType is required" });
             }
 
-            var confidence = await _learningService.GetConfidenceScoreAsync(profileId, suggestionType, ct);
+            var confidence = await _learningService.GetConfidenceScoreAsync(profileId, suggestionType, ct).ConfigureAwait(false);
 
             var confidenceLevel = confidence switch
             {
@@ -314,7 +314,7 @@ public class LearningController : ControllerBase
                 return BadRequest(new { error = "ProfileId is required" });
             }
 
-            await _learningService.ResetLearningAsync(profileId, ct);
+            await _learningService.ResetLearningAsync(profileId, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -345,7 +345,7 @@ public class LearningController : ControllerBase
                 return BadRequest(new { error = "ProfileId is required" });
             }
 
-            var maturity = await _learningService.GetMaturityLevelAsync(profileId, ct);
+            var maturity = await _learningService.GetMaturityLevelAsync(profileId, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -396,7 +396,7 @@ public class LearningController : ControllerBase
                 CorrectedValue: request.CorrectedValue
             );
 
-            await _learningService.ConfirmPreferenceAsync(request.ProfileId, confirmRequest, ct);
+            await _learningService.ConfirmPreferenceAsync(request.ProfileId, confirmRequest, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -431,7 +431,7 @@ public class LearningController : ControllerBase
                 return BadRequest(new { error = "ProfileId is required" });
             }
 
-            var preferences = await _learningService.GetInferredPreferencesAsync(profileId, ct);
+            var preferences = await _learningService.GetInferredPreferencesAsync(profileId, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -480,7 +480,7 @@ public class LearningController : ControllerBase
                 return BadRequest(new { error = "ProfileId is required" });
             }
 
-            var analytics = await _learningService.GetAnalyticsAsync(profileId, ct);
+            var analytics = await _learningService.GetAnalyticsAsync(profileId, ct).ConfigureAwait(false);
 
             return Ok(new
             {

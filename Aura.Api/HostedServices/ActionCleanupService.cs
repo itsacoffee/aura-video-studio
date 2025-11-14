@@ -33,14 +33,14 @@ public class ActionCleanupService : BackgroundService
         {
             try
             {
-                await Task.Delay(_cleanupInterval, stoppingToken);
+                await Task.Delay(_cleanupInterval, stoppingToken).ConfigureAwait(false);
 
                 _logger.LogInformation("Running action cleanup job");
                 
                 using var scope = _serviceProvider.CreateScope();
                 var actionService = scope.ServiceProvider.GetRequiredService<IActionService>();
                 
-                var cleanedCount = await actionService.CleanupExpiredActionsAsync(stoppingToken);
+                var cleanedCount = await actionService.CleanupExpiredActionsAsync(stoppingToken).ConfigureAwait(false);
                 _logger.LogInformation("Action cleanup completed. Cleaned up {Count} expired actions", cleanedCount);
             }
             catch (OperationCanceledException)

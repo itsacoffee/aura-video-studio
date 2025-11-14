@@ -42,7 +42,7 @@ public class ExportPresetsController : ControllerBase
         try
         {
             var builtInPresets = GetBuiltInPresets();
-            var customPresets = await LoadCustomPresetsAsync(ct);
+            var customPresets = await LoadCustomPresetsAsync(ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -72,7 +72,7 @@ public class ExportPresetsController : ControllerBase
                 return Ok(builtIn);
             }
 
-            var custom = (await LoadCustomPresetsAsync(ct)).FirstOrDefault(p => p.Id == id);
+            var custom = (await LoadCustomPresetsAsync(ct).ConfigureAwait(false)).FirstOrDefault(p => p.Id == id);
             if (custom != null)
             {
                 return Ok(custom);
@@ -111,9 +111,9 @@ public class ExportPresetsController : ControllerBase
             preset.CreatedAt = DateTime.UtcNow;
             preset.IsBuiltIn = false;
 
-            var customPresets = await LoadCustomPresetsAsync(ct);
+            var customPresets = await LoadCustomPresetsAsync(ct).ConfigureAwait(false);
             customPresets.Add(preset);
-            await SaveCustomPresetsAsync(customPresets, ct);
+            await SaveCustomPresetsAsync(customPresets, ct).ConfigureAwait(false);
 
             _logger.LogInformation("Created export preset: {PresetName}", preset.Name);
 
@@ -142,7 +142,7 @@ public class ExportPresetsController : ControllerBase
                 return BadRequest(new { error = "Cannot modify built-in presets" });
             }
 
-            var customPresets = await LoadCustomPresetsAsync(ct);
+            var customPresets = await LoadCustomPresetsAsync(ct).ConfigureAwait(false);
             var existing = customPresets.FirstOrDefault(p => p.Id == id);
 
             if (existing == null)
@@ -158,7 +158,7 @@ public class ExportPresetsController : ControllerBase
             var index = customPresets.IndexOf(existing);
             customPresets[index] = preset;
 
-            await SaveCustomPresetsAsync(customPresets, ct);
+            await SaveCustomPresetsAsync(customPresets, ct).ConfigureAwait(false);
 
             _logger.LogInformation("Updated export preset: {PresetId}", id);
 
@@ -184,7 +184,7 @@ public class ExportPresetsController : ControllerBase
                 return BadRequest(new { error = "Cannot delete built-in presets" });
             }
 
-            var customPresets = await LoadCustomPresetsAsync(ct);
+            var customPresets = await LoadCustomPresetsAsync(ct).ConfigureAwait(false);
             var existing = customPresets.FirstOrDefault(p => p.Id == id);
 
             if (existing == null)
@@ -193,7 +193,7 @@ public class ExportPresetsController : ControllerBase
             }
 
             customPresets.Remove(existing);
-            await SaveCustomPresetsAsync(customPresets, ct);
+            await SaveCustomPresetsAsync(customPresets, ct).ConfigureAwait(false);
 
             _logger.LogInformation("Deleted export preset: {PresetId}", id);
 
@@ -438,7 +438,7 @@ public class ExportPresetsController : ControllerBase
 
         try
         {
-            var json = await System.IO.File.ReadAllTextAsync(_presetsPath, ct);
+            var json = await System.IO.File.ReadAllTextAsync(_presetsPath, ct).ConfigureAwait(false);
             return JsonSerializer.Deserialize<List<ExportPresetModel>>(json) ?? new List<ExportPresetModel>();
         }
         catch (Exception ex)
@@ -463,7 +463,7 @@ public class ExportPresetsController : ControllerBase
         };
 
         var json = JsonSerializer.Serialize(presets, options);
-        await System.IO.File.WriteAllTextAsync(_presetsPath, json, ct);
+        await System.IO.File.WriteAllTextAsync(_presetsPath, json, ct).ConfigureAwait(false);
     }
 }
 

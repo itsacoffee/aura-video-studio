@@ -64,7 +64,7 @@ public class AdaptiveContentGenerator
         {
             // Step 1: Optimize request based on settings
             var optimization = await _optimizationEngine.OptimizeContentRequestAsync(
-                brief, spec, settings, profileId, ct);
+                brief, spec, settings, profileId, ct).ConfigureAwait(false);
 
             result.OptimizationApplied = optimization.Applied;
             result.Prediction = optimization.Prediction;
@@ -89,7 +89,7 @@ public class AdaptiveContentGenerator
             if (settings.Enabled)
             {
                 var enhancedUserPrompt = await _promptEnhancer.EnhancePromptAsync(
-                    userPrompt, workingBrief, workingSpec, settings, ct: ct);
+                    userPrompt, workingBrief, workingSpec, settings, ct: ct).ConfigureAwait(false);
                 
                 userPrompt = enhancedUserPrompt.Prompt;
                 result.PromptEnhancements = enhancedUserPrompt.Enhancements;
@@ -98,14 +98,14 @@ public class AdaptiveContentGenerator
             // Step 3: Generate content using LLM provider
             _logger.LogInformation("Generating content with {Provider}", _llmProvider.GetType().Name);
             
-            var generatedContent = await GenerateWithLlmAsync(workingBrief, workingSpec, ct);
+            var generatedContent = await GenerateWithLlmAsync(workingBrief, workingSpec, ct).ConfigureAwait(false);
             result.GeneratedContent = generatedContent;
 
             // Step 4: Validate quality if advisor is available
             if (_contentAdvisor != null && settings.Enabled)
             {
                 var qualityAnalysis = await _contentAdvisor.AnalyzeContentQualityAsync(
-                    generatedContent, workingBrief, workingSpec, ct);
+                    generatedContent, workingBrief, workingSpec, ct).ConfigureAwait(false);
 
                 result.QualityAnalysis = qualityAnalysis;
                 result.QualityScore = qualityAnalysis.OverallScore;
@@ -127,7 +127,7 @@ public class AdaptiveContentGenerator
                     result.SuggestRegeneration = true;
                     
                     // Record failure for learning
-                    await RecordOutcomeAsync(false, result.QualityScore, stopwatch.Elapsed, settings, ct);
+                    await RecordOutcomeAsync(false, result.QualityScore, stopwatch.Elapsed, settings, ct).ConfigureAwait(false);
                     
                     return result;
                 }
@@ -144,7 +144,7 @@ public class AdaptiveContentGenerator
             result.Message = "Content generated successfully";
 
             // Step 5: Record outcome for learning
-            await RecordOutcomeAsync(true, result.QualityScore, stopwatch.Elapsed, settings, ct);
+            await RecordOutcomeAsync(true, result.QualityScore, stopwatch.Elapsed, settings, ct).ConfigureAwait(false);
 
             _logger.LogInformation(
                 "Content generation completed in {Duration}ms with quality {Quality:F1}",
@@ -162,7 +162,7 @@ public class AdaptiveContentGenerator
             result.Duration = stopwatch.Elapsed;
 
             // Record failure
-            await RecordOutcomeAsync(false, 0, stopwatch.Elapsed, settings, ct);
+            await RecordOutcomeAsync(false, 0, stopwatch.Elapsed, settings, ct).ConfigureAwait(false);
 
             return result;
         }
@@ -191,7 +191,7 @@ public class AdaptiveContentGenerator
                 duration,
                 success,
                 settings,
-                ct);
+                ct).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -209,17 +209,17 @@ public class AdaptiveContentGenerator
     {
         if (_stageAdapter != null)
         {
-            var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct);
+            var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct).ConfigureAwait(false);
             if (!result.IsSuccess || result.Data == null)
             {
                 _logger.LogWarning("Orchestrator generation failed, falling back to direct provider: {Error}", result.ErrorMessage);
-                return await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
+                return await _llmProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
             }
             return result.Data;
         }
         else
         {
-            return await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
+            return await _llmProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
         }
     }
 }

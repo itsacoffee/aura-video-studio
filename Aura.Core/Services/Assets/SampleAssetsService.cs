@@ -47,10 +47,10 @@ public class SampleAssetsService
 
         try
         {
-            await LoadBriefTemplatesAsync();
-            await LoadVoiceConfigurationsAsync();
-            await LoadSampleImagesAsync();
-            await LoadSampleAudioAsync();
+            await LoadBriefTemplatesAsync().ConfigureAwait(false);
+            await LoadVoiceConfigurationsAsync().ConfigureAwait(false);
+            await LoadSampleImagesAsync().ConfigureAwait(false);
+            await LoadSampleAudioAsync().ConfigureAwait(false);
 
             _initialized = true;
             _logger.LogInformation("Sample assets initialized successfully");
@@ -67,7 +67,7 @@ public class SampleAssetsService
     public async Task<List<BriefTemplate>> GetBriefTemplatesAsync()
     {
         if (_briefTemplates == null)
-            await LoadBriefTemplatesAsync();
+            await LoadBriefTemplatesAsync().ConfigureAwait(false);
 
         return _briefTemplates ?? new List<BriefTemplate>();
     }
@@ -77,7 +77,7 @@ public class SampleAssetsService
     /// </summary>
     public async Task<BriefTemplate?> GetBriefTemplateAsync(string templateId)
     {
-        var templates = await GetBriefTemplatesAsync();
+        var templates = await GetBriefTemplatesAsync().ConfigureAwait(false);
         return templates.FirstOrDefault(t => t.Id == templateId);
     }
 
@@ -87,7 +87,7 @@ public class SampleAssetsService
     public async Task<List<VoiceConfiguration>> GetVoiceConfigurationsAsync()
     {
         if (_voiceConfigs == null)
-            await LoadVoiceConfigurationsAsync();
+            await LoadVoiceConfigurationsAsync().ConfigureAwait(false);
 
         return _voiceConfigs ?? new List<VoiceConfiguration>();
     }
@@ -97,7 +97,7 @@ public class SampleAssetsService
     /// </summary>
     public async Task<List<VoiceConfiguration>> GetVoiceConfigurationsByProviderAsync(string provider)
     {
-        var configs = await GetVoiceConfigurationsAsync();
+        var configs = await GetVoiceConfigurationsAsync().ConfigureAwait(false);
         return configs.Where(c => c.Provider.Equals(provider, StringComparison.OrdinalIgnoreCase)).ToList();
     }
 
@@ -112,7 +112,7 @@ public class SampleAssetsService
             Source = AssetSource.Sample
         };
 
-        var result = await _assetLibrary.SearchAssetsAsync(null, filters, 1, 100);
+        var result = await _assetLibrary.SearchAssetsAsync(null, filters, 1, 100).ConfigureAwait(false);
         return result.Assets;
     }
 
@@ -127,7 +127,7 @@ public class SampleAssetsService
             Source = AssetSource.Sample
         };
 
-        var result = await _assetLibrary.SearchAssetsAsync(null, filters, 1, 100);
+        var result = await _assetLibrary.SearchAssetsAsync(null, filters, 1, 100).ConfigureAwait(false);
         return result.Assets;
     }
 
@@ -144,7 +144,7 @@ public class SampleAssetsService
 
         try
         {
-            var json = await File.ReadAllTextAsync(templatesFile);
+            var json = await File.ReadAllTextAsync(templatesFile).ConfigureAwait(false);
             var data = JsonSerializer.Deserialize<BriefTemplatesData>(json, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
@@ -173,7 +173,7 @@ public class SampleAssetsService
 
         try
         {
-            var json = await File.ReadAllTextAsync(voiceConfigFile);
+            var json = await File.ReadAllTextAsync(voiceConfigFile).ConfigureAwait(false);
             var data = JsonSerializer.Deserialize<VoiceConfigurationsData>(json, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
@@ -223,15 +223,15 @@ public class SampleAssetsService
                 var existingAssets = await _assetLibrary.SearchAssetsAsync(
                     Path.GetFileName(imageFile),
                     new AssetSearchFilters { Source = AssetSource.Sample },
-                    1, 1);
+                    1, 1).ConfigureAwait(false);
 
-                if (existingAssets.Assets.Any())
+                if (existingAssets.Assets.Count != 0)
                 {
                     _logger.LogDebug("Sample image already in library: {File}", Path.GetFileName(imageFile));
                     continue;
                 }
 
-                var asset = await _assetLibrary.AddAssetAsync(imageFile, AssetType.Image, AssetSource.Sample);
+                var asset = await _assetLibrary.AddAssetAsync(imageFile, AssetType.Image, AssetSource.Sample).ConfigureAwait(false);
                 _logger.LogInformation("Added sample image to library: {AssetId}", asset.Id);
             }
             catch (Exception ex)
@@ -265,15 +265,15 @@ public class SampleAssetsService
                 var existingAssets = await _assetLibrary.SearchAssetsAsync(
                     Path.GetFileName(audioFile),
                     new AssetSearchFilters { Source = AssetSource.Sample },
-                    1, 1);
+                    1, 1).ConfigureAwait(false);
 
-                if (existingAssets.Assets.Any())
+                if (existingAssets.Assets.Count != 0)
                 {
                     _logger.LogDebug("Sample audio already in library: {File}", Path.GetFileName(audioFile));
                     continue;
                 }
 
-                var asset = await _assetLibrary.AddAssetAsync(audioFile, AssetType.Audio, AssetSource.Sample);
+                var asset = await _assetLibrary.AddAssetAsync(audioFile, AssetType.Audio, AssetSource.Sample).ConfigureAwait(false);
                 _logger.LogInformation("Added sample audio to library: {AssetId}", asset.Id);
             }
             catch (Exception ex)

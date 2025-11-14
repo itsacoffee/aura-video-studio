@@ -393,11 +393,13 @@ public static class ExportPresets
         
         foreach (var preset in GetAllPresets())
         {
-            if (!result.ContainsKey(preset.Platform))
+            if (!result.TryGetValue(preset.Platform, out var value))
             {
-                result[preset.Platform] = new List<ExportPreset>();
+                value = new List<ExportPreset>();
+                result[preset.Platform] = value;
             }
-            result[preset.Platform].Add(preset);
+
+            value.Add(preset);
         }
         
         return result;

@@ -69,7 +69,7 @@ public class VoiceProcessingService
                 currentPath = await _noiseReduction.ReduceNoiseAsync(
                     currentPath,
                     config.NoiseReductionStrength,
-                    ct);
+                    ct).ConfigureAwait(false);
                 messages.Add($"Noise reduction applied (strength: {config.NoiseReductionStrength:P0})");
             }
 
@@ -80,7 +80,7 @@ public class VoiceProcessingService
                 currentPath = await _equalizer.ApplyEqualizationAsync(
                     currentPath,
                     config.EqualizationPreset,
-                    ct);
+                    ct).ConfigureAwait(false);
                 messages.Add($"Equalization applied (preset: {config.EqualizationPreset})");
             }
 
@@ -91,7 +91,7 @@ public class VoiceProcessingService
                 currentPath = await _prosodyAdjustment.AdjustProsodyAsync(
                     currentPath,
                     config.Prosody,
-                    ct);
+                    ct).ConfigureAwait(false);
                 messages.Add("Prosody adjustment applied");
             }
 
@@ -100,10 +100,10 @@ public class VoiceProcessingService
             if (config.EnableEmotionEnhancement && config.TargetEmotion != null)
             {
                 _logger.LogDebug("Detecting and enhancing emotion: {Emotion}", config.TargetEmotion.Emotion);
-                var emotionResult = await _emotionDetection.DetectEmotionAsync(currentPath, ct);
+                var emotionResult = await _emotionDetection.DetectEmotionAsync(currentPath, ct).ConfigureAwait(false);
                 
                 // Calculate basic audio metrics
-                var audioMetrics = await AnalyzeAudioMetricsAsync(currentPath, ct);
+                var audioMetrics = await AnalyzeAudioMetricsAsync(currentPath, ct).ConfigureAwait(false);
                 
                 metrics = new VoiceQualityMetrics
                 {
@@ -154,7 +154,7 @@ public class VoiceProcessingService
         {
             ct.ThrowIfCancellationRequested();
 
-            var result = await EnhanceVoiceAsync(path, config, ct);
+            var result = await EnhanceVoiceAsync(path, config, ct).ConfigureAwait(false);
             results.Add(result);
 
             completed++;
@@ -183,8 +183,8 @@ public class VoiceProcessingService
 
         try
         {
-            var emotionResult = await _emotionDetection.DetectEmotionAsync(inputPath, ct);
-            var audioMetrics = await AnalyzeAudioMetricsAsync(inputPath, ct);
+            var emotionResult = await _emotionDetection.DetectEmotionAsync(inputPath, ct).ConfigureAwait(false);
+            var audioMetrics = await AnalyzeAudioMetricsAsync(inputPath, ct).ConfigureAwait(false);
 
             return new VoiceQualityMetrics
             {
@@ -215,7 +215,7 @@ public class VoiceProcessingService
         // In a production system, this would use FFmpeg or a specialized audio library
         // to perform actual signal analysis
         
-        await Task.Delay(10, ct); // Simulate processing time
+        await Task.Delay(10, ct).ConfigureAwait(false); // Simulate processing time
 
         // Calculate approximations based on file characteristics
         var fileInfo = new FileInfo(audioPath);
@@ -273,7 +273,7 @@ public class VoiceProcessingPipeline
         foreach (var effect in _effects)
         {
             ct.ThrowIfCancellationRequested();
-            currentPath = await effect(currentPath, ct);
+            currentPath = await effect(currentPath, ct).ConfigureAwait(false);
         }
 
         return currentPath;

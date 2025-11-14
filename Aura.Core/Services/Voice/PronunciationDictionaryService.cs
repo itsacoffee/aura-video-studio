@@ -69,7 +69,7 @@ public class PronunciationDictionaryService
         
         _logger.LogInformation("Added pronunciation for '{Term}': {Phonetic}", term, phonetic);
 
-        await SaveCustomDictionaryAsync(ct);
+        await SaveCustomDictionaryAsync(ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -80,7 +80,7 @@ public class PronunciationDictionaryService
         if (_dictionary.Remove(term))
         {
             _logger.LogInformation("Removed pronunciation for '{Term}'", term);
-            await SaveCustomDictionaryAsync(ct);
+            await SaveCustomDictionaryAsync(ct).ConfigureAwait(false);
         }
     }
 
@@ -227,7 +227,7 @@ public class PronunciationDictionaryService
                 WriteIndented = true
             });
 
-            await File.WriteAllTextAsync(_dictionaryPath, json, ct);
+            await File.WriteAllTextAsync(_dictionaryPath, json, ct).ConfigureAwait(false);
 
             _logger.LogInformation("Saved {Count} custom pronunciation entries", customEntries.Count);
         }

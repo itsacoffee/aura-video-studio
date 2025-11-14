@@ -17,7 +17,7 @@ namespace Aura.Tests.Helpers;
 /// Generates deterministic beep/silence WAV files with correct length for testing.
 /// Uses atomic file operations and validation for reliability.
 /// </summary>
-internal class MockTtsProvider : ITtsProvider
+internal sealed class MockTtsProvider : ITtsProvider
 {
     private readonly ILogger<MockTtsProvider> _logger;
     private readonly WavValidator _wavValidator;

@@ -98,7 +98,7 @@ public class KeyVaultSecretManager : IKeyVaultSecretManager
         {
             _logger.LogDebug("Fetching secret {SecretName} from Key Vault", secretName);
             
-            var response = await _secretClient.GetSecretAsync(secretName, cancellationToken: cancellationToken);
+            var response = await _secretClient.GetSecretAsync(secretName, cancellationToken: cancellationToken).ConfigureAwait(false);
             var secretValue = response.Value.Value;
 
             // Cache the secret
@@ -136,7 +136,7 @@ public class KeyVaultSecretManager : IKeyVaultSecretManager
 
         foreach (var mapping in _options.SecretMappings)
         {
-            var secretValue = await GetSecretAsync(mapping.Value, cancellationToken);
+            var secretValue = await GetSecretAsync(mapping.Value, cancellationToken).ConfigureAwait(false);
             if (!string.IsNullOrEmpty(secretValue))
             {
                 secrets[mapping.Key] = secretValue;
@@ -161,7 +161,7 @@ public class KeyVaultSecretManager : IKeyVaultSecretManager
             _cache.Remove(cacheKey);
             
             // Fetch fresh value
-            await GetSecretAsync(mapping.Value, cancellationToken);
+            await GetSecretAsync(mapping.Value, cancellationToken).ConfigureAwait(false);
         }
 
         _logger.LogInformation("Secret refresh completed");
@@ -203,8 +203,8 @@ public class KeyVaultRefreshBackgroundService : Microsoft.Extensions.Hosting.Bac
         {
             try
             {
-                await Task.Delay(_refreshInterval, stoppingToken);
-                await _secretManager.RefreshSecretsAsync(stoppingToken);
+                await Task.Delay(_refreshInterval, stoppingToken).ConfigureAwait(false);
+                await _secretManager.RefreshSecretsAsync(stoppingToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {

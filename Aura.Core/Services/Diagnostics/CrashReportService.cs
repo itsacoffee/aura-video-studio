@@ -70,12 +70,12 @@ public class CrashReportService
                 WriteIndented = true
             });
 
-            await File.WriteAllTextAsync(filePath, json, cancellationToken);
+            await File.WriteAllTextAsync(filePath, json, cancellationToken).ConfigureAwait(false);
 
             _logger.LogInformation("Client error report saved to {FilePath}", filePath);
 
             // Cleanup old reports
-            await CleanupOldReportsAsync();
+            await CleanupOldReportsAsync().ConfigureAwait(false);
 
             return reportId;
         }
@@ -102,7 +102,7 @@ public class CrashReportService
             {
                 try
                 {
-                    var json = await File.ReadAllTextAsync(file, cancellationToken);
+                    var json = await File.ReadAllTextAsync(file, cancellationToken).ConfigureAwait(false);
                     var report = JsonSerializer.Deserialize<ClientErrorReport>(json);
                     if (report != null)
                     {
@@ -137,7 +137,7 @@ public class CrashReportService
                 return null;
             }
 
-            var json = await File.ReadAllTextAsync(files[0], cancellationToken);
+            var json = await File.ReadAllTextAsync(files[0], cancellationToken).ConfigureAwait(false);
             return JsonSerializer.Deserialize<ClientErrorReport>(json);
         }
         catch (Exception ex)
@@ -160,7 +160,7 @@ public class CrashReportService
                 return false;
             }
 
-            await Task.Run(() => File.Delete(files[0]), cancellationToken);
+            await Task.Run(() => File.Delete(files[0]), cancellationToken).ConfigureAwait(false);
             _logger.LogInformation("Deleted crash report {ReportId}", reportId);
             return true;
         }
@@ -179,7 +179,7 @@ public class CrashReportService
         try
         {
             var cutoffTime = DateTime.UtcNow - timeWindow;
-            var reports = await GetReportsAsync(1000, cancellationToken);
+            var reports = await GetReportsAsync(1000, cancellationToken).ConfigureAwait(false);
 
             var recentReports = reports
                 .Where(r => DateTime.TryParse(r.Timestamp, out var ts) && ts >= cutoffTime)
@@ -230,7 +230,7 @@ public class CrashReportService
             var exportFileName = $"crash-reports-export-{timestamp}.zip";
             var exportPath = Path.Combine(_crashReportsDirectory, exportFileName);
 
-            var reports = await GetReportsAsync(1000, cancellationToken);
+            var reports = await GetReportsAsync(1000, cancellationToken).ConfigureAwait(false);
 
             // Filter by date range if specified
             if (startDate.HasValue || endDate.HasValue)
@@ -262,7 +262,7 @@ public class CrashReportService
                     var fileName = $"{report.Severity}-{report.Id}.json";
                     var filePath = Path.Combine(tempDir, fileName);
                     var json = JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true });
-                    await File.WriteAllTextAsync(filePath, json, cancellationToken);
+                    await File.WriteAllTextAsync(filePath, json, cancellationToken).ConfigureAwait(false);
                 }
 
                 // Create ZIP archive
@@ -315,7 +315,7 @@ public class CrashReportService
             {
                 try
                 {
-                    await Task.Run(() => file.Delete());
+                    await Task.Run(() => file.Delete()).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {

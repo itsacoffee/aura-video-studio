@@ -50,7 +50,7 @@ public class PromptValidator
         PromptTemplate template,
         CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         var errors = new List<string>();
         var warnings = new List<string>();
@@ -87,7 +87,7 @@ public class PromptValidator
         string instructions,
         CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         var errors = new List<string>();
         var warnings = new List<string>();

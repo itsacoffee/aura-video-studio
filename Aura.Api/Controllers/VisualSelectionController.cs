@@ -63,7 +63,7 @@ public class VisualSelectionController : ControllerBase
             var prompt = MapToVisualPrompt(request);
             var config = MapToConfig(request.Config);
 
-            var result = await _selectionService.SelectImageForSceneAsync(prompt, config, cancellationToken);
+            var result = await _selectionService.SelectImageForSceneAsync(prompt, config, cancellationToken).ConfigureAwait(false);
 
             var dto = MapToDto(result);
 
@@ -111,7 +111,7 @@ public class VisualSelectionController : ControllerBase
             var prompts = request.Scenes.Select(MapToVisualPrompt).ToList();
             var config = MapToConfig(request.Config);
 
-            var results = await _selectionService.SelectImagesForScenesAsync(prompts, config, cancellationToken);
+            var results = await _selectionService.SelectImagesForScenesAsync(prompts, config, cancellationToken).ConfigureAwait(false);
 
             stopwatch.Stop();
 
@@ -182,7 +182,7 @@ public class VisualSelectionController : ControllerBase
             CachedCandidateEntry? cachedEntry = null;
             if (request.UseCache && _cacheService != null)
             {
-                cachedEntry = await _cacheService.GetCachedCandidatesAsync(requestId, cancellationToken);
+                cachedEntry = await _cacheService.GetCachedCandidatesAsync(requestId, cancellationToken).ConfigureAwait(false);
             }
 
             ImageSelectionResult result;
@@ -196,11 +196,11 @@ public class VisualSelectionController : ControllerBase
             }
             else
             {
-                result = await _selectionService.SelectImageForSceneAsync(prompt, config, cancellationToken);
+                result = await _selectionService.SelectImageForSceneAsync(prompt, config, cancellationToken).ConfigureAwait(false);
                 
                 if (_cacheService != null)
                 {
-                    await _cacheService.CacheCandidatesAsync(requestId, result, null, cancellationToken);
+                    await _cacheService.CacheCandidatesAsync(requestId, result, null, cancellationToken).ConfigureAwait(false);
                 }
             }
 
@@ -268,14 +268,14 @@ public class VisualSelectionController : ControllerBase
 
             if (_cacheService != null)
             {
-                await _cacheService.InvalidateCacheAsync(requestId, cancellationToken);
+                await _cacheService.InvalidateCacheAsync(requestId, cancellationToken).ConfigureAwait(false);
             }
 
-            var result = await _selectionService.SelectImageForSceneAsync(prompt, config, cancellationToken);
+            var result = await _selectionService.SelectImageForSceneAsync(prompt, config, cancellationToken).ConfigureAwait(false);
 
             if (_cacheService != null)
             {
-                await _cacheService.CacheCandidatesAsync(requestId, result, null, cancellationToken);
+                await _cacheService.CacheCandidatesAsync(requestId, result, null, cancellationToken).ConfigureAwait(false);
             }
 
             if (_visualSelectionService != null)
@@ -286,7 +286,7 @@ public class VisualSelectionController : ControllerBase
                     prompt,
                     config,
                     request.UserId,
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
             }
 
             var response = new GetCandidatesResponse
@@ -350,7 +350,7 @@ public class VisualSelectionController : ControllerBase
                 Style = ParseVisualStyle(request.Style ?? "Cinematic")
             };
 
-            var score = await _scoringService.ScoreImageAsync(candidate, prompt, cancellationToken);
+            var score = await _scoringService.ScoreImageAsync(candidate, prompt, cancellationToken).ConfigureAwait(false);
 
             var dto = new ImageCandidateDto
             {
@@ -506,8 +506,8 @@ public class VisualSelectionController : ControllerBase
 
         try
         {
-            var selections = await _visualSelectionService.GetSelectionsForJobAsync(jobId, cancellationToken);
-            var csv = await _exportService.ExportToCsvAsync(selections, jobId, cancellationToken);
+            var selections = await _visualSelectionService.GetSelectionsForJobAsync(jobId, cancellationToken).ConfigureAwait(false);
+            var csv = await _exportService.ExportToCsvAsync(selections, jobId, cancellationToken).ConfigureAwait(false);
 
             return Content(csv, "text/csv", System.Text.Encoding.UTF8);
         }
@@ -533,8 +533,8 @@ public class VisualSelectionController : ControllerBase
 
         try
         {
-            var selections = await _visualSelectionService.GetSelectionsForJobAsync(jobId, cancellationToken);
-            var json = await _exportService.ExportToJsonAsync(selections, jobId, cancellationToken);
+            var selections = await _visualSelectionService.GetSelectionsForJobAsync(jobId, cancellationToken).ConfigureAwait(false);
+            var json = await _exportService.ExportToJsonAsync(selections, jobId, cancellationToken).ConfigureAwait(false);
 
             return Content(json, "application/json", System.Text.Encoding.UTF8);
         }
@@ -560,8 +560,8 @@ public class VisualSelectionController : ControllerBase
 
         try
         {
-            var selections = await _visualSelectionService.GetSelectionsForJobAsync(jobId, cancellationToken);
-            var summary = await _exportService.GenerateSummaryAsync(selections, cancellationToken);
+            var selections = await _visualSelectionService.GetSelectionsForJobAsync(jobId, cancellationToken).ConfigureAwait(false);
+            var summary = await _exportService.GenerateSummaryAsync(selections, cancellationToken).ConfigureAwait(false);
 
             return Ok(summary);
         }

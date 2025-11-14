@@ -87,7 +87,7 @@ public class ScriptsController : ControllerBase
             var preferredTier = request.PreferredProvider ?? "Free";
             
             var result = await _scriptOrchestrator.GenerateScriptAsync(
-                brief, planSpec, preferredTier, offlineOnly: false, ct);
+                brief, planSpec, preferredTier, offlineOnly: false, ct).ConfigureAwait(false);
 
             if (!result.Success || result.Script == null)
             {
@@ -316,7 +316,7 @@ public class ScriptsController : ControllerBase
                 Style: "Modern");
 
             var result = await _scriptOrchestrator.GenerateScriptAsync(
-                brief, planSpec, script.Metadata.ProviderName, offlineOnly: false, ct);
+                brief, planSpec, script.Metadata.ProviderName, offlineOnly: false, ct).ConfigureAwait(false);
 
             if (!result.Success || result.Script == null)
             {
@@ -420,7 +420,7 @@ public class ScriptsController : ControllerBase
             var preferredTier = request.PreferredProvider ?? oldScript.Metadata.ProviderName;
             
             var result = await _scriptOrchestrator.GenerateScriptAsync(
-                brief, planSpec, preferredTier, offlineOnly: false, ct);
+                brief, planSpec, preferredTier, offlineOnly: false, ct).ConfigureAwait(false);
 
             if (!result.Success || result.Script == null)
             {
@@ -1192,7 +1192,7 @@ public class ScriptsController : ControllerBase
                 Style: "Modern");
 
             var result = await _scriptOrchestrator.GenerateScriptAsync(
-                brief, planSpec, script.Metadata.ProviderName, offlineOnly: false, ct);
+                brief, planSpec, script.Metadata.ProviderName, offlineOnly: false, ct).ConfigureAwait(false);
 
             if (!result.Success || result.Script == null)
             {

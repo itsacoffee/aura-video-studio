@@ -41,7 +41,7 @@ public class ConfigurationManagementController : ControllerBase
     {
         try
         {
-            var value = await _configManager.GetStringAsync(key, null, ct);
+            var value = await _configManager.GetStringAsync(key, null, ct).ConfigureAwait(false);
 
             if (value == null)
             {
@@ -76,7 +76,7 @@ public class ConfigurationManagementController : ControllerBase
     {
         try
         {
-            var configs = await _configManager.GetCategoryAsync(category, ct);
+            var configs = await _configManager.GetCategoryAsync(category, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -120,7 +120,7 @@ public class ConfigurationManagementController : ControllerBase
                 request.Category,
                 request.Description,
                 request.IsSensitive,
-                ct);
+                ct).ConfigureAwait(false);
 
             _logger.LogInformation(
                 "Configuration {Key} set in category {Category} by {User}",
@@ -161,7 +161,7 @@ public class ConfigurationManagementController : ControllerBase
                 c => c.Key,
                 c => ((object)c.Value, c.Category, c.Description));
 
-            await _configManager.SetManyAsync(configs, ct);
+            await _configManager.SetManyAsync(configs, ct).ConfigureAwait(false);
 
             _logger.LogInformation(
                 "Bulk updated {Count} configurations",
@@ -192,7 +192,7 @@ public class ConfigurationManagementController : ControllerBase
     {
         try
         {
-            var result = await _configManager.DeleteAsync(key, ct);
+            var result = await _configManager.DeleteAsync(key, ct).ConfigureAwait(false);
 
             if (!result)
             {
@@ -225,7 +225,7 @@ public class ConfigurationManagementController : ControllerBase
     {
         try
         {
-            var configs = await _configManager.GetAllConfigurationsAsync(includeInactive, ct);
+            var configs = await _configManager.GetAllConfigurationsAsync(includeInactive, ct).ConfigureAwait(false);
 
             var dump = configs.Select(c => new
             {
@@ -268,7 +268,7 @@ public class ConfigurationManagementController : ControllerBase
         {
             _logger.LogWarning("Resetting all configurations to defaults");
 
-            await _configManager.InitializeAsync(ct);
+            await _configManager.InitializeAsync(ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -291,7 +291,7 @@ public class ConfigurationManagementController : ControllerBase
     {
         try
         {
-            var initResult = await _dbInitService.InitializeAsync(ct);
+            var initResult = await _dbInitService.InitializeAsync(ct).ConfigureAwait(false);
 
             return Ok(new
             {

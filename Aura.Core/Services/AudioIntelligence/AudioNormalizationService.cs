@@ -44,7 +44,7 @@ public class AudioNormalizationService
 
         var arguments = $"-i \"{inputPath}\" -af \"{filter}\" -ar 48000 -ac 2 \"{outputPath}\"";
 
-        var result = await _ffmpegService.ExecuteAsync(arguments, null, ct);
+        var result = await _ffmpegService.ExecuteAsync(arguments, null, ct).ConfigureAwait(false);
 
         if (!result.Success)
         {
@@ -82,7 +82,7 @@ public class AudioNormalizationService
 
         var arguments = $"-i \"{musicPath}\" -i \"{narrationPath}\" -filter_complex \"[0:a][1:a]{sideChainFilter}[ducked]\" -map \"[ducked]\" -ac 2 -ar 48000 \"{outputPath}\"";
 
-        var result = await _ffmpegService.ExecuteAsync(arguments, null, ct);
+        var result = await _ffmpegService.ExecuteAsync(arguments, null, ct).ConfigureAwait(false);
 
         if (!result.Success)
         {
@@ -113,7 +113,7 @@ public class AudioNormalizationService
 
         var arguments = $"{inputArgs} -filter_complex \"{filterComplex}\" -map \"[final]\" -ac 2 -ar 48000 \"{outputPath}\"";
 
-        var result = await _ffmpegService.ExecuteAsync(arguments, null, ct);
+        var result = await _ffmpegService.ExecuteAsync(arguments, null, ct).ConfigureAwait(false);
 
         if (!result.Success)
         {
@@ -139,7 +139,7 @@ public class AudioNormalizationService
 
         var arguments = $"-i \"{inputPath}\" -af loudnorm=print_format=json -f null -";
 
-        var result = await _ffmpegService.ExecuteAsync(arguments, null, ct);
+        var result = await _ffmpegService.ExecuteAsync(arguments, null, ct).ConfigureAwait(false);
 
         var loudness = ParseLoudnessFromOutput(result.StandardError);
 
@@ -168,7 +168,7 @@ public class AudioNormalizationService
 
         var arguments = $"-i \"{inputPath}\" -af \"{filter}\" -ar 48000 -ac 2 \"{outputPath}\"";
 
-        var result = await _ffmpegService.ExecuteAsync(arguments, null, ct);
+        var result = await _ffmpegService.ExecuteAsync(arguments, null, ct).ConfigureAwait(false);
 
         if (!result.Success)
         {
@@ -212,7 +212,7 @@ public class AudioNormalizationService
         var filterChain = string.Join(",", filters);
         var arguments = $"-i \"{inputPath}\" -af \"{filterChain}\" -ar 48000 -ac 2 \"{outputPath}\"";
 
-        var result = await _ffmpegService.ExecuteAsync(arguments, null, ct);
+        var result = await _ffmpegService.ExecuteAsync(arguments, null, ct).ConfigureAwait(false);
 
         if (!result.Success)
         {
@@ -243,8 +243,8 @@ public class AudioNormalizationService
             if (request.NarrationPath != null)
             {
                 var narrationProcessed = Path.Combine(tempDir, "narration_processed.wav");
-                await ApplyVoiceEQAsync(request.NarrationPath, narrationProcessed, request.MixingSettings.EQ, ct);
-                await ApplyCompressionAsync(narrationProcessed, narrationProcessed, request.MixingSettings.Compression, ct);
+                await ApplyVoiceEQAsync(request.NarrationPath, narrationProcessed, request.MixingSettings.EQ, ct).ConfigureAwait(false);
+                await ApplyCompressionAsync(narrationProcessed, narrationProcessed, request.MixingSettings.Compression, ct).ConfigureAwait(false);
                 
                 processedTracks.Add(new AudioTrackInput(narrationProcessed, request.MixingSettings.NarrationVolume));
             }
@@ -257,7 +257,7 @@ public class AudioNormalizationService
                 {
                     musicProcessed = Path.Combine(tempDir, "music_ducked.wav");
                     await ApplyDuckingAsync(request.MusicPath, request.NarrationPath, musicProcessed, 
-                        request.MixingSettings.Ducking, ct);
+                        request.MixingSettings.Ducking, ct).ConfigureAwait(false);
                 }
 
                 processedTracks.Add(new AudioTrackInput(musicProcessed, request.MixingSettings.MusicVolume));
@@ -272,11 +272,11 @@ public class AudioNormalizationService
             }
 
             var mixedPath = Path.Combine(tempDir, "mixed.wav");
-            await MixAudioTracksAsync(processedTracks, mixedPath, request.MixingSettings, ct);
+            await MixAudioTracksAsync(processedTracks, mixedPath, request.MixingSettings, ct).ConfigureAwait(false);
 
             if (request.MixingSettings.Normalize)
             {
-                await NormalizeToLUFSAsync(mixedPath, request.OutputPath, request.MixingSettings.TargetLUFS, ct);
+                await NormalizeToLUFSAsync(mixedPath, request.OutputPath, request.MixingSettings.TargetLUFS, ct).ConfigureAwait(false);
             }
             else
             {

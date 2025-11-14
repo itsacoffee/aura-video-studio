@@ -70,7 +70,7 @@ public class FFmpegStatusService : IFFmpegStatusService
     {
         _logger.LogInformation("Getting comprehensive FFmpeg status");
 
-        var resolution = await _resolver.ResolveAsync(null, forceRefresh: true, cancellationToken);
+        var resolution = await _resolver.ResolveAsync(null, forceRefresh: true, cancellationToken).ConfigureAwait(false);
         
         var hardwareAccel = new HardwareAcceleration();
         
@@ -81,7 +81,7 @@ public class FFmpegStatusService : IFFmpegStatusService
                 var hardwareLogger = _loggerFactory.CreateLogger<HardwareEncoder>();
                 var hardwareEncoder = new HardwareEncoder(hardwareLogger, resolution.Path);
                 
-                var capabilities = await hardwareEncoder.DetectHardwareCapabilitiesAsync();
+                var capabilities = await hardwareEncoder.DetectHardwareCapabilitiesAsync().ConfigureAwait(false);
                 hardwareAccel = new HardwareAcceleration
                 {
                     NvencSupported = capabilities.HasNVENC,

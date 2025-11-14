@@ -123,7 +123,7 @@ public class LlmParameterOptimizer
         try
         {
             var prompt = BuildOptimizationPrompt(request);
-            var response = await llmProvider.CompleteAsync(prompt, ct);
+            var response = await llmProvider.CompleteAsync(prompt, ct).ConfigureAwait(false);
             
             var suggestion = ParseOptimizationResponse(response, request);
             
@@ -158,7 +158,7 @@ public class LlmParameterOptimizer
         try
         {
             var prompt = BuildExplanationPrompt(basePreset, adjustedPreset, reason);
-            var response = await llmProvider.CompleteAsync(prompt, ct);
+            var response = await llmProvider.CompleteAsync(prompt, ct).ConfigureAwait(false);
             
             return ExtractExplanation(response);
         }

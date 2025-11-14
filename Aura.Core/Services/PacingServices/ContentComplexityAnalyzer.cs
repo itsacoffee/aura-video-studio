@@ -44,7 +44,7 @@ public class ContentComplexityAnalyzer
                 if (attempt > 0)
                 {
                     _logger.LogDebug("Retry attempt {Attempt} for scene {SceneIndex} complexity analysis", attempt, scene.Index);
-                    await Task.Delay(TimeSpan.FromSeconds(1 * attempt), ct);
+                    await Task.Delay(TimeSpan.FromSeconds(1 * attempt), ct).ConfigureAwait(false);
                 }
 
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -54,7 +54,7 @@ public class ContentComplexityAnalyzer
                     scene.Script,
                     previousScene?.Script,
                     videoGoal,
-                    cts.Token);
+                    cts.Token).ConfigureAwait(false);
 
                 if (result != null)
                 {
@@ -124,7 +124,7 @@ public class ContentComplexityAnalyzer
             var scene = scenes[i];
             var previousScene = i > 0 ? scenes[i - 1] : null;
 
-            var complexity = await AnalyzeComplexityAsync(llmProvider, scene, previousScene, videoGoal, ct);
+            var complexity = await AnalyzeComplexityAsync(llmProvider, scene, previousScene, videoGoal, ct).ConfigureAwait(false);
             
             if (complexity != null)
             {

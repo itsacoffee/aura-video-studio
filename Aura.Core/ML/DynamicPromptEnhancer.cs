@@ -37,7 +37,7 @@ public class DynamicPromptEnhancer
         Dictionary<string, double>? historicalPerformance = null,
         CancellationToken ct = default)
     {
-        await Task.CompletedTask; // For async interface consistency
+        await Task.CompletedTask.ConfigureAwait(false); // For async interface consistency
 
         if (!settings.Enabled)
         {
@@ -211,22 +211,23 @@ ADVANCED QUALITY CONTROLS:
     {
         var key = $"{promptType}_{optimizationLevel}";
         
-        if (!_optimizations.ContainsKey(key))
+        if (!_optimizations.TryGetValue(key, out var value))
         {
-            _optimizations[key] = new PromptOptimization
+            value = new PromptOptimization
             {
                 PromptType = promptType,
                 Level = optimizationLevel,
                 Scores = new List<double>()
             };
+            _optimizations[key] = value;
         }
 
-        _optimizations[key].Scores.Add(qualityScore);
+        value.Scores.Add(qualityScore);
 
         // Keep only recent scores
-        if (_optimizations[key].Scores.Count > 50)
+        if (value.Scores.Count > 50)
         {
-            _optimizations[key].Scores.RemoveAt(0);
+            value.Scores.RemoveAt(0);
         }
 
         _logger.LogDebug(

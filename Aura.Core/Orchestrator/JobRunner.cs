@@ -122,7 +122,7 @@ public class JobRunner
         _logger.LogInformation("Starting background execution for job {JobId}", jobId);
         
         // Start execution in background
-        _ = Task.Run(async () => await ExecuteJobAsync(job.Id, linkedCts.Token), linkedCts.Token);
+        _ = Task.Run(async () => await ExecuteJobAsync(job.Id, linkedCts.Token).ConfigureAwait(false), linkedCts.Token);
 
         return job;
     }
@@ -232,12 +232,12 @@ public class JobRunner
                 job.CorrelationId,
                 job.IsQuickDemo,
                 ct
-            );
+            ).ConfigureAwait(false);
 
             // Record retry in queue service
             if (_jobQueueService != null)
             {
-                await _jobQueueService.RetryJobAsync(jobId, priority: 3, ct);
+                await _jobQueueService.RetryJobAsync(jobId, priority: 3, ct).ConfigureAwait(false);
             }
 
             return true;
@@ -541,7 +541,7 @@ public class JobRunner
                 var errorLog = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] VALIDATION ERROR: {vex.Message}";
                 var updatedLogs = new List<string>(job.Logs) { errorLog };
                 
-                if (vex.Issues.Any())
+                if (vex.Issues.Count != 0)
                 {
                     foreach (var issue in vex.Issues)
                     {
@@ -909,7 +909,7 @@ public class JobRunner
             return "Render failed due to FFmpeg error";
         }
         
-        return message.Length > 200 ? message.Substring(0, 197) + "..." : message;
+        return message.Length > 200 ? string.Concat(message.AsSpan(0, 197), "...") : message;
     }
 
     /// <summary>

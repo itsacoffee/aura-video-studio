@@ -73,7 +73,7 @@ public class FFmpegCommandLogger
             };
 
             var json = JsonSerializer.Serialize(record, options);
-            await File.WriteAllTextAsync(filePath, json);
+            await File.WriteAllTextAsync(filePath, json).ConfigureAwait(false);
 
             _logger.LogInformation(
                 "FFmpeg command logged: JobId={JobId}, CorrelationId={CorrelationId}, Success={Success}, Path={Path}",
@@ -102,7 +102,7 @@ public class FFmpegCommandLogger
             {
                 try
                 {
-                    var json = await File.ReadAllTextAsync(file);
+                    var json = await File.ReadAllTextAsync(file).ConfigureAwait(false);
                     var record = JsonSerializer.Deserialize<FFmpegCommandRecord>(json, new JsonSerializerOptions
                     {
                         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
@@ -142,7 +142,7 @@ public class FFmpegCommandLogger
             {
                 try
                 {
-                    var json = await File.ReadAllTextAsync(file);
+                    var json = await File.ReadAllTextAsync(file).ConfigureAwait(false);
                     var record = JsonSerializer.Deserialize<FFmpegCommandRecord>(json, new JsonSerializerOptions
                     {
                         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
@@ -180,7 +180,7 @@ public class FFmpegCommandLogger
 
             if (files == null) return null;
 
-            var json = await File.ReadAllTextAsync(files);
+            var json = await File.ReadAllTextAsync(files).ConfigureAwait(false);
             return JsonSerializer.Deserialize<FFmpegCommandRecord>(json, new JsonSerializerOptions
             {
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase
@@ -198,7 +198,7 @@ public class FFmpegCommandLogger
     /// </summary>
     public async Task<string> GenerateSupportReportAsync(string jobId)
     {
-        var commands = await GetCommandsByJobIdAsync(jobId);
+        var commands = await GetCommandsByJobIdAsync(jobId).ConfigureAwait(false);
 
         if (commands.Count == 0)
         {

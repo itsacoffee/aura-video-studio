@@ -42,7 +42,7 @@ public class LlmSafetyIntegrationService
                 Guid.NewGuid().ToString(),
                 prompt,
                 policy,
-                ct);
+                ct).ConfigureAwait(false);
 
             var result = new PromptValidationResult
             {
@@ -54,7 +54,7 @@ public class LlmSafetyIntegrationService
 
             if (!result.IsValid)
             {
-                result.ModifiedPrompt = await GenerateModifiedPromptAsync(prompt, analysisResult, ct);
+                result.ModifiedPrompt = await GenerateModifiedPromptAsync(prompt, analysisResult, ct).ConfigureAwait(false);
                 result.Explanation = GenerateSafetyExplanation(analysisResult, policy);
                 result.Alternatives = GenerateAlternatives(prompt, analysisResult);
             }
@@ -89,7 +89,7 @@ public class LlmSafetyIntegrationService
                 Guid.NewGuid().ToString(),
                 response,
                 policy,
-                ct);
+                ct).ConfigureAwait(false);
 
             var result = new ResponseValidationResult
             {
@@ -136,7 +136,7 @@ public class LlmSafetyIntegrationService
             var alternative = await GenerateSafeAlternativeAsync(
                 originalPrompt,
                 violation,
-                ct);
+                ct).ConfigureAwait(false);
 
             if (!string.IsNullOrEmpty(alternative))
             {
@@ -146,7 +146,7 @@ public class LlmSafetyIntegrationService
 
         if (alternatives.Count == 0)
         {
-            alternatives.Add(await GenerateGenericSafeAlternativeAsync(originalPrompt, ct));
+            alternatives.Add(await GenerateGenericSafeAlternativeAsync(originalPrompt, ct).ConfigureAwait(false));
         }
 
         return alternatives.Take(count).ToList();
@@ -188,7 +188,7 @@ public class LlmSafetyIntegrationService
             modified = CleanupModifiedPrompt(modified);
         }
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return hasModifications ? modified : null;
     }
 
@@ -306,7 +306,7 @@ public class LlmSafetyIntegrationService
         SafetyViolation violation,
         CancellationToken ct)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return GenerateAlternativeForViolation(originalPrompt, violation);
     }
 
@@ -329,7 +329,7 @@ public class LlmSafetyIntegrationService
 
     private async Task<string> GenerateGenericSafeAlternativeAsync(string originalPrompt, CancellationToken ct)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return GenerateGenericSafePrompt(originalPrompt);
     }
 

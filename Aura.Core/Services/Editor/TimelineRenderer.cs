@@ -46,7 +46,7 @@ public class TimelineRenderer
             QualityLevel = 50 // Faster encoding
         };
 
-        return await RenderTimelineAsync(timeline, previewSpec, outputPath, progress, cancellationToken);
+        return await RenderTimelineAsync(timeline, previewSpec, outputPath, progress, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -59,7 +59,7 @@ public class TimelineRenderer
         IProgress<int>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        return await RenderTimelineAsync(timeline, spec, outputPath, progress, cancellationToken);
+        return await RenderTimelineAsync(timeline, spec, outputPath, progress, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -88,7 +88,7 @@ public class TimelineRenderer
             _logger.LogDebug("FFmpeg arguments: {Args}", ffmpegArgs);
 
             // Execute FFmpeg
-            await ExecuteFFmpegAsync(ffmpegArgs, timeline.TotalDuration, progress, cancellationToken);
+            await ExecuteFFmpegAsync(ffmpegArgs, timeline.TotalDuration, progress, cancellationToken).ConfigureAwait(false);
 
             _logger.LogInformation("Timeline rendered successfully to {OutputPath}", outputPath);
             return outputPath;
@@ -403,7 +403,7 @@ public class TimelineRenderer
         process.Start();
         process.BeginErrorReadLine();
 
-        await process.WaitForExitAsync(cancellationToken);
+        await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
 
         if (process.ExitCode != 0)
         {

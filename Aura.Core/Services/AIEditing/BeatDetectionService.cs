@@ -42,8 +42,8 @@ public class BeatDetectionService
         // - FFmpeg to extract audio
         // - Audio analysis libraries (librosa, aubio, or similar)
         // - Beat tracking algorithms
-        var beats = await AnalyzeAudioForBeatsAsync(filePath, cancellationToken);
-        var duration = await GetAudioDurationAsync(filePath, cancellationToken);
+        var beats = await AnalyzeAudioForBeatsAsync(filePath, cancellationToken).ConfigureAwait(false);
+        var duration = await GetAudioDurationAsync(filePath, cancellationToken).ConfigureAwait(false);
         var avgTempo = CalculateAverageTempo(beats);
 
         var summary = $"Detected {beats.Count} beats at average tempo {avgTempo:F1} BPM";
@@ -61,7 +61,7 @@ public class BeatDetectionService
         string filePath,
         CancellationToken cancellationToken)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         // Placeholder: Generate sample beats at ~120 BPM
         // In production, this would use audio analysis to detect actual beats
@@ -92,7 +92,7 @@ public class BeatDetectionService
         string filePath,
         CancellationToken cancellationToken)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         
         // Placeholder: In production, use FFmpeg to get actual duration
         return TimeSpan.FromSeconds(45);
@@ -116,7 +116,7 @@ public class BeatDetectionService
     {
         _logger.LogInformation("Generating beat-aligned cuts every {N} beats", cutEveryNBeats);
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
 
         var cutPoints = new List<TimeSpan>();
@@ -142,7 +142,7 @@ public class BeatDetectionService
     {
         _logger.LogInformation("Suggesting beat-sync effects for {Count} beats", beatResult.Beats.Count);
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
 
         var effects = new List<(TimeSpan Timestamp, string EffectType)>();

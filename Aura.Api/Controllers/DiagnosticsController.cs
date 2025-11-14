@@ -100,7 +100,7 @@ public class DiagnosticsController : ControllerBase
 
         try
         {
-            var report = await _healthService.CheckHealthAsync(ct);
+            var report = await _healthService.CheckHealthAsync(ct).ConfigureAwait(false);
             return Ok(report);
         }
         catch (Exception ex)
@@ -160,7 +160,7 @@ public class DiagnosticsController : ControllerBase
             cts.CancelAfter(TimeSpan.FromSeconds(30));
 
             var startTime = DateTime.UtcNow;
-            var response = await provider.DraftScriptAsync(testBrief, testSpec, cts.Token);
+            var response = await provider.DraftScriptAsync(testBrief, testSpec, cts.Token).ConfigureAwait(false);
             var duration = DateTime.UtcNow - startTime;
 
             return Ok(new
@@ -232,7 +232,7 @@ public class DiagnosticsController : ControllerBase
                 testBrief,
                 testSpec,
                 ct
-            );
+            ).ConfigureAwait(false);
 
             return Ok(analysis);
         }
@@ -264,7 +264,7 @@ public class DiagnosticsController : ControllerBase
             Timestamp = DateTime.UtcNow
         };
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return Ok(config);
     }
 
@@ -283,7 +283,7 @@ public class DiagnosticsController : ControllerBase
         {
             try
             {
-                var integrityResult = await _integrityValidator.ValidateAsync(ct);
+                var integrityResult = await _integrityValidator.ValidateAsync(ct).ConfigureAwait(false);
                 results.Add(new
                 {
                     Test = "System Integrity",
@@ -307,7 +307,7 @@ public class DiagnosticsController : ControllerBase
         {
             try
             {
-                var promptResult = await _promptValidator.ValidateAsync(ct);
+                var promptResult = await _promptValidator.ValidateAsync(ct).ConfigureAwait(false);
                 results.Add(new
                 {
                     Test = "Prompt Templates",
@@ -331,7 +331,7 @@ public class DiagnosticsController : ControllerBase
         {
             try
             {
-                var healthResult = await _healthService.CheckHealthAsync(ct);
+                var healthResult = await _healthService.CheckHealthAsync(ct).ConfigureAwait(false);
                 results.Add(new
                 {
                     Test = "Health Checks",
@@ -384,7 +384,7 @@ public class DiagnosticsController : ControllerBase
 
         try
         {
-            var profile = await _hardwareDetector.DetectSystemAsync();
+            var profile = await _hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
             return Ok(profile);
         }
         catch (Exception ex)
@@ -418,7 +418,7 @@ public class DiagnosticsController : ControllerBase
 
         try
         {
-            var healthResult = await _pipelineHealthCheck.CheckHealthAsync(ct);
+            var healthResult = await _pipelineHealthCheck.CheckHealthAsync(ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -468,7 +468,7 @@ public class DiagnosticsController : ControllerBase
 
         try
         {
-            var metrics = await _resourceTracker.GetMetricsAsync(ct);
+            var metrics = await _resourceTracker.GetMetricsAsync(ct).ConfigureAwait(false);
             return Ok(metrics);
         }
         catch (Exception ex)
@@ -497,8 +497,8 @@ public class DiagnosticsController : ControllerBase
 
         try
         {
-            await _resourceTracker.CleanupAsync(ct);
-            var metricsAfter = await _resourceTracker.GetMetricsAsync(ct);
+            await _resourceTracker.CleanupAsync(ct).ConfigureAwait(false);
+            var metricsAfter = await _resourceTracker.GetMetricsAsync(ct).ConfigureAwait(false);
             
             return Ok(new
             {
@@ -608,7 +608,7 @@ public class DiagnosticsController : ControllerBase
 
         try
         {
-            var result = await _reportGenerator.GenerateReportAsync(ct);
+            var result = await _reportGenerator.GenerateReportAsync(ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -741,7 +741,7 @@ public class DiagnosticsController : ControllerBase
             // For now, using minimal stub - the bundle service will collect logs and system info
             var job = new Job { Id = jobId, Status = JobStatus.Failed, Stage = "Unknown" };
             
-            var bundle = await _bundleService.GenerateBundleAsync(job, null, null, null, ct);
+            var bundle = await _bundleService.GenerateBundleAsync(job, null, null, null, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -830,7 +830,7 @@ public class DiagnosticsController : ControllerBase
                     : null
             };
             
-            var analysis = await _failureAnalysisService.AnalyzeFailureAsync(job, null, ct);
+            var analysis = await _failureAnalysisService.AnalyzeFailureAsync(job, null, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -975,7 +975,7 @@ public class DiagnosticsController : ControllerBase
                 Microsoft.Extensions.Logging.Abstractions.NullLogger<Aura.Core.Services.Setup.ProviderAvailabilityService>.Instance,
                 new System.Net.Http.HttpClient());
 
-            var report = await service.CheckAllProvidersAsync(ct);
+            var report = await service.CheckAllProvidersAsync(ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -1019,7 +1019,7 @@ public class DiagnosticsController : ControllerBase
                 _hardwareDetector,
                 dependencyDetector);
 
-            var config = await service.DetectOptimalSettingsAsync(ct);
+            var config = await service.DetectOptimalSettingsAsync(ct).ConfigureAwait(false);
 
             return Ok(new
             {

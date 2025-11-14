@@ -79,7 +79,7 @@ public class ActionLogEntity
     /// <summary>
     /// Whether this action can be batched with similar operations
     /// </summary>
-    public bool CanBatch { get; set; } = false;
+    public bool CanBatch { get; set; }
 
     /// <summary>
     /// Whether this action requires server-side persistence

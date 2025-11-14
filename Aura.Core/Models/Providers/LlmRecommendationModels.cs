@@ -275,44 +275,44 @@ public record ProviderPreferences
     /// MASTER TOGGLE: Enable provider recommendations system (OFF by default - opt-in)
     /// When disabled, all recommendation features are completely turned off
     /// </summary>
-    public bool EnableRecommendations { get; init; } = false;
-    
+    public bool EnableRecommendations { get; init; }
+
     /// <summary>
     /// Assistance level for recommendations (only applies when EnableRecommendations is true)
     /// Controls the amount of help and automation provided
     /// </summary>
     public AssistanceLevel AssistanceLevel { get; init; } = AssistanceLevel.Moderate;
-    
+
     /// <summary>
     /// Enable provider health monitoring (separate toggle, OFF by default)
     /// When disabled, no health tracking occurs
     /// </summary>
-    public bool EnableHealthMonitoring { get; init; } = false;
-    
+    public bool EnableHealthMonitoring { get; init; }
+
     /// <summary>
     /// Enable cost tracking (separate toggle, OFF by default)
     /// When disabled, no cost tracking or budget warnings
     /// </summary>
     public bool EnableCostTracking { get; init; } = false;
-    
+
     /// <summary>
     /// Enable preference learning (separate toggle, OFF by default)
     /// When disabled, system never tracks overrides or learns patterns
     /// </summary>
-    public bool EnableLearning { get; init; } = false;
-    
+    public bool EnableLearning { get; init; }
+
     /// <summary>
     /// Enable provider profiles (separate toggle, OFF by default)
     /// When disabled, no profile system is shown
     /// </summary>
     public bool EnableProfiles { get; init; } = false;
-    
+
     /// <summary>
     /// Enable automatic fallback (separate toggle, OFF by default)
     /// When disabled, failures show error and stop (no automatic switching)
     /// </summary>
-    public bool EnableAutoFallback { get; init; } = false;
-    
+    public bool EnableAutoFallback { get; init; }
+
     /// <summary>
     /// Global default provider for all operations
     /// Always available regardless of recommendation settings
@@ -370,12 +370,12 @@ public record ProviderPreferences
     /// Only enforced when EnableCostTracking is true
     /// </summary>
     public Dictionary<string, decimal> PerProviderBudgetLimits { get; init; } = new();
-    
+
     /// <summary>
     /// Whether budget warnings are hard limits (block generation) or soft warnings
     /// Only relevant when EnableCostTracking is true
     /// </summary>
-    public bool HardBudgetLimit { get; init; } = false;
+    public bool HardBudgetLimit { get; init; }
 }
 
 /// <summary>

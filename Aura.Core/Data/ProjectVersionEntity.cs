@@ -125,17 +125,17 @@ public class ProjectVersionEntity : IAuditableEntity, ISoftDeletable
     /// <summary>
     /// Total storage size in bytes (for display/cleanup)
     /// </summary>
-    public long StorageSizeBytes { get; set; } = 0;
+    public long StorageSizeBytes { get; set; }
 
     /// <summary>
     /// Whether this version is marked as important (protects from auto-pruning)
     /// </summary>
-    public bool IsMarkedImportant { get; set; } = false;
+    public bool IsMarkedImportant { get; set; }
 
     /// <summary>
     /// Whether this version has been deleted (soft delete)
     /// </summary>
-    public bool IsDeleted { get; set; } = false;
+    public bool IsDeleted { get; set; }
 
     /// <summary>
     /// When this version was deleted (null if not deleted)

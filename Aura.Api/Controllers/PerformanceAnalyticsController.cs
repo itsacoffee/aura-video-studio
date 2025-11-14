@@ -53,12 +53,12 @@ public class PerformanceAnalyticsController : ControllerBase
             if (request.FileType == "csv")
             {
                 import = await _analyticsService.ImportCsvAsync(
-                    request.ProfileId, request.Platform, request.FilePath, ct);
+                    request.ProfileId, request.Platform, request.FilePath, ct).ConfigureAwait(false);
             }
             else if (request.FileType == "json")
             {
                 import = await _analyticsService.ImportJsonAsync(
-                    request.ProfileId, request.Platform, request.FilePath, ct);
+                    request.ProfileId, request.Platform, request.FilePath, ct).ConfigureAwait(false);
             }
             else
             {
@@ -100,7 +100,7 @@ public class PerformanceAnalyticsController : ControllerBase
                 return BadRequest(new { error = "ProfileId is required" });
             }
 
-            var videos = await _analyticsService.GetVideosAsync(profileId, ct);
+            var videos = await _analyticsService.GetVideosAsync(profileId, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -161,7 +161,7 @@ public class PerformanceAnalyticsController : ControllerBase
                 request.ProjectId, 
                 request.ProfileId,
                 request.LinkedBy ?? "user",
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -200,7 +200,7 @@ public class PerformanceAnalyticsController : ControllerBase
                 return BadRequest(new { error = "ProjectId is required" });
             }
 
-            var correlations = await _analyticsService.GetProjectCorrelationsAsync(projectId, ct);
+            var correlations = await _analyticsService.GetProjectCorrelationsAsync(projectId, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -247,7 +247,7 @@ public class PerformanceAnalyticsController : ControllerBase
                 return BadRequest(new { error = "ProfileId is required" });
             }
 
-            var insights = await _analyticsService.GetInsightsAsync(profileId, ct);
+            var insights = await _analyticsService.GetInsightsAsync(profileId, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -316,7 +316,7 @@ public class PerformanceAnalyticsController : ControllerBase
                 return BadRequest(new { error = "ProfileId is required" });
             }
 
-            var result = await _analyticsService.AnalyzePerformanceAsync(request.ProfileId, ct);
+            var result = await _analyticsService.AnalyzePerformanceAsync(request.ProfileId, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -355,7 +355,7 @@ public class PerformanceAnalyticsController : ControllerBase
                 return BadRequest(new { error = "ProfileId is required" });
             }
 
-            var patterns = await _analyticsService.GetSuccessPatternsAsync(profileId, ct);
+            var patterns = await _analyticsService.GetSuccessPatternsAsync(profileId, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -426,7 +426,7 @@ public class PerformanceAnalyticsController : ControllerBase
                 request.Description ?? "",
                 request.Category ?? "general",
                 variants,
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -472,7 +472,7 @@ public class PerformanceAnalyticsController : ControllerBase
                 return BadRequest(new { error = "TestId and ProfileId are required" });
             }
 
-            var test = await _analyticsService.GetABTestResultsAsync(profileId, testId, ct);
+            var test = await _analyticsService.GetABTestResultsAsync(profileId, testId, ct).ConfigureAwait(false);
 
             if (test == null)
             {
