@@ -161,4 +161,12 @@ export interface ElectronAPI {
   backend?: {
     getUrl(): Promise<string>;
   };
+  /**
+   * Generic IPC invoke method for calling main process methods
+   */
+  invoke?: <T = unknown>(channel: string, ...args: unknown[]) => Promise<T>;
+  /**
+   * Generic IPC event listener
+   */
+  on?: <T = unknown>(channel: string, callback: (data: T) => void) => () => void;
 }
