@@ -54,12 +54,12 @@ Application Ready (/health/ready → 200 OK)
 1. **Logging Service** - First to initialize, all others depend on it
    - Timeout: 5 seconds
    - Failure Mode: Fatal - application exits
-   
+
 2. **Database Connectivity** - Required for persistence
    - Timeout: 30 seconds
    - Failure Mode: Fatal - application exits
    - Retry: 3 attempts with exponential backoff
-   
+
 3. **Required Directories** - File system structure
    - Timeout: 10 seconds
    - Failure Mode: Fatal - application exits
@@ -70,7 +70,7 @@ Application Ready (/health/ready → 200 OK)
    - Timeout: 10 seconds
    - Failure Mode: Graceful degradation - app continues
    - Impact: Video export and preview disabled until FFmpeg configured
-   
+
 5. **Python Detection** - AI capabilities
    - Timeout: 10 seconds
    - Failure Mode: Graceful degradation

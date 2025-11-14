@@ -148,7 +148,7 @@ Cache Storage
 
 **Proxy Media**:
 - Location: `%TEMP%/aura-proxy-cache/`
-- Structure: 
+- Structure:
   - `video_proxy_preview.mp4` (proxy files)
   - `metadata/{id}.json` (metadata files)
 - **Eviction: LRU-based automatic eviction + manual user-triggered**

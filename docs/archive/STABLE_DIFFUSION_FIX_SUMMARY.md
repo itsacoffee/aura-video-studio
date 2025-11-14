@@ -21,7 +21,7 @@ This PR fixes the issues reported in the problem statement:
 
 **Root Cause**: The validator was only checking the API endpoint without first verifying if SD WebUI was running at all.
 
-**Solution**: 
+**Solution**:
 - Check base URL (`/`) first to confirm SD WebUI is running
 - Then check `/sdapi/v1/sd-models` to verify API is enabled
 - Provide clear, actionable error messages for each failure scenario

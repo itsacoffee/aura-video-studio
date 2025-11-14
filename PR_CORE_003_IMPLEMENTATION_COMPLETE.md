@@ -61,7 +61,7 @@ Aura.Desktop/resources/ffmpeg/
 1. **Electron Environment Variables** (NEW - highest priority)
    - `FFMPEG_PATH` - Set by `backend-service.js`
    - `FFMPEG_BINARIES_PATH` - Alternative path
-   
+
 2. **Configured Path**
    - User settings or managed installation
 
@@ -364,7 +364,7 @@ These were identified but not implemented in this PR:
 ### Common Issues
 
 **Issue**: FFmpeg not found after installation  
-**Solution**: 
+**Solution**:
 1. Check logs: `%LOCALAPPDATA%\Aura\Logs\ffmpeg\`
 2. Run: `.\scripts\download-ffmpeg-windows.ps1 -Force`
 3. Verify: `Test-Path .\resources\ffmpeg\win-x64\bin\ffmpeg.exe`

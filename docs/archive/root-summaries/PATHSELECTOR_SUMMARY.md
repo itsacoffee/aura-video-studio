@@ -5,7 +5,6 @@
 
 ---
 
-
 # PathSelector Enhancement - Implementation Summary
 
 ## Issue Reference

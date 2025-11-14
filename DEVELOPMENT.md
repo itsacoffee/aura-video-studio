@@ -622,7 +622,7 @@ Closes #123
 - **Issues:** GitHub Issues for bug reports and feature requests
 - **Discussions:** GitHub Discussions for questions and ideas
 - **Documentation:** Check `docs/troubleshooting/` for common issues
-- **Logs:** 
+- **Logs:**
   - Backend: Console output from `dotnet run`
   - Frontend: Browser console (F12)
   - Electron: See [DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md)

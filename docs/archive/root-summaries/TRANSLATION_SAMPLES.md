@@ -5,7 +5,6 @@
 
 ---
 
-
 # Translation Quality Samples
 
 This document showcases sample translations demonstrating the cultural adaptation capabilities of Aura Video Studio's translation system.

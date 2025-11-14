@@ -82,7 +82,7 @@ Use the "Test Connection" button next to each provider to verify configuration.
 Optimize rendering and encoding performance:
 
 - **Hardware Acceleration**: Enable GPU-accelerated encoding
-- **Preferred Encoder**: 
+- **Preferred Encoder**:
   - Auto (Recommended)
   - NVIDIA NVENC
   - AMD AMF
@@ -91,7 +91,7 @@ Optimize rendering and encoding performance:
 - **GPU Selection**: For multi-GPU systems
 - **RAM Allocation**: Memory allocated for rendering (0 = auto)
 - **Max Threads**: Maximum rendering threads (0 = auto)
-- **Preview Quality**: 
+- **Preview Quality**:
   - Low (fastest)
   - Medium (balanced)
   - High (best quality)
@@ -122,13 +122,13 @@ Set default directories for various operations:
 
 Set default video export settings:
 
-- **Resolution**: 
+- **Resolution**:
   - 1280x720 (HD)
   - 1920x1080 (Full HD)
   - 2560x1440 (2K)
   - 3840x2160 (4K)
 - **Frame Rate**: 24-120 fps (default: 30)
-- **Video Codec**: 
+- **Video Codec**:
   - libx264 (H.264 software)
   - libx265 (H.265 software)
   - h264_nvenc (NVIDIA H.264)

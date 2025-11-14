@@ -14,7 +14,7 @@ This document describes the complete release process for Aura Video Studio, from
 
 ### Release Calendar
 
-| Quarter | Major Release | Minor Releases | 
+| Quarter | Major Release | Minor Releases |
 |---------|--------------|----------------|
 | Q1      | v2.0.0       | v2.1.0, v2.2.0, v2.3.0 |
 | Q2      | v3.0.0       | v3.1.0, v3.2.0, v3.3.0 |

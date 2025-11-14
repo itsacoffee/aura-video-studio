@@ -5,7 +5,6 @@
 
 ---
 
-
 # Memory Management Implementation Summary
 
 This document summarizes the memory profiling, leak detection, and automated resource cleanup implementation completed to prevent OOM errors.
@@ -307,7 +306,7 @@ Automatic leak detection in development mode:
 
 ✅ All disposable resources used with using or explicit disposal  
 ✅ FFmpeg processes tracked and cleaned up (ProcessManager)  
-✅ Blob URL tracking (window.__AURA_BLOB_COUNT__)  
+✅ Blob URL tracking (window.**AURA_BLOB_COUNT**)  
 ✅ Resource diagnostics endpoint (/api/diagnostics/resources)  
 ✅ Async operations cancellable via CancellationToken  
 ⏳ Memory profiling shows <50MB increase (needs long-term testing)  

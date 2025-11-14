@@ -22,7 +22,7 @@ PR 43 ("[WIP] Fix OpenAI API and FFMpeg error messages") was merged successfully
 - `Aura.Web/src/utils/formValidation.ts` (3 patterns, lines 350-352)
 - `Aura.Web/src/utils/sanitization.ts` (3 patterns, lines 37-39)
 
-**Solution**: 
+**Solution**:
 - Replaced nested quantifiers like `/ignore\s+(all\s+)?/` that can cause catastrophic backtracking
 - Expanded to explicit pattern lists: `/ignore\s+all\s+previous/`, `/ignore\s+previous/`, etc.
 - This prevents Regular Expression Denial of Service (ReDoS) attacks
@@ -42,7 +42,7 @@ PR 43 ("[WIP] Fix OpenAI API and FFMpeg error messages") was merged successfully
 - Wrapped test renders with `<MemoryRouter>` component
 - Provides required routing context for React Router hooks
 
-**Result**: 
+**Result**:
 - Resolved 8 Router-related test failures
 - Test failures reduced from 18 to 15
 - Remaining 15 failures are UI assertion mismatches (out of scope)
@@ -68,7 +68,7 @@ PR 43 ("[WIP] Fix OpenAI API and FFMpeg error messages") was merged successfully
 - **Risk**: High - touches core business logic across entire codebase
 - **Dependencies**: Requires understanding `ORCHESTRATOR_USAGE_GUIDE.md` patterns
 
-**Recommendation**: 
+**Recommendation**:
 - Create separate epic/issue for systematic orchestrator migration
 - This is architectural debt that should be planned and executed carefully
 - Not appropriate to rush as part of fixing PR 43

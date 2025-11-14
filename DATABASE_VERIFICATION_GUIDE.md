@@ -45,7 +45,7 @@ This guide documents the complete database setup, entity relationships, and veri
 
 ##### ProjectStateEntity
 - **Purpose**: Main project persistence
-- **Relationships**: 
+- **Relationships**:
   - One-to-Many: Scenes (SceneStateEntity)
   - One-to-Many: Assets (AssetStateEntity)
   - One-to-Many: Checkpoints (RenderCheckpointEntity)

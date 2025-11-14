@@ -5,7 +5,6 @@
 
 ---
 
-
 # Visual Impact of UI Spacing Fixes
 
 This document illustrates the visual improvements made by the spacing fixes.

@@ -183,7 +183,7 @@ The Settings page has been significantly enhanced with 14 well-organized tabs:
 
 ### Discoverability
 - **Before**: Settings scattered, features hidden, no quick access
-- **After**: 
+- **After**:
   - 14 organized setting tabs
   - Command palette for instant access
   - Context menus for in-context features

@@ -158,17 +158,17 @@ Priority: MEDIUM
 
 Priority: LOW
 2. **File ACL Configuration**
-   - Set explicit ACLs on Aura data directory
-   - Restrict to current user only
-   - Implement on first-run initialization
-   - Timeline: Future enhancement
+- Set explicit ACLs on Aura data directory
+- Restrict to current user only
+- Implement on first-run initialization
+- Timeline: Future enhancement
 
 Priority: LOW
 3. **Audit Logging Enhancement**
-   - Add security event logging
-   - Track API key access
-   - Monitor file operation failures
-   - Timeline: Future enhancement
+- Add security event logging
+- Track API key access
+- Monitor file operation failures
+- Timeline: Future enhancement
 
 ## Compliance Considerations
 

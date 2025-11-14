@@ -5,7 +5,6 @@
 
 ---
 
-
 # Frontend Dependencies and Build - Pull #187 (PR 31) Complete
 
 ## Executive Summary

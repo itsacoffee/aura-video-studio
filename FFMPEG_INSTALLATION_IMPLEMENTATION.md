@@ -335,7 +335,7 @@ These were mentioned in the problem statement but not critical for the core func
 
 2. **Settings Storage**: FFmpeg path is already managed by FFmpegResolver which stores managed installs. Additional settings storage could be added if needed.
 
-3. **Advanced Installation Options**: 
+3. **Advanced Installation Options**:
    - Custom installation directory selection
    - Proxy configuration for downloads
    - Mirror selection preference

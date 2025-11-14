@@ -5,7 +5,6 @@
 
 ---
 
-
 # Wizard UX Testing Guide
 
 ## Manual Test Cases
@@ -68,7 +67,7 @@
 2. Navigate to `/create`
 3. Step 1: Enter topic "Free Tier Test", click Next
 4. Step 2: Keep defaults, click Next
-5. Step 3: 
+5. Step 3:
    - Select profile: "Free-Only"
    - Click "Run Preflight Check"
    - Wait for results
@@ -86,7 +85,7 @@
 **Steps**:
 1. Navigate to `/create`
 2. Step 1: Enter topic "Pro Tier Test", click Next
-3. Step 2: 
+3. Step 2:
    - Enable Offline Mode: false
    - Enable Stable Diffusion
    - Add watermark path

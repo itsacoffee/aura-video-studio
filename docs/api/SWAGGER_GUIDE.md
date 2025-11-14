@@ -140,7 +140,7 @@ openapi-generator-cli generate \
   -o ./generated/python-client
 ```
 
-#### C#
+#### C #
 
 ```bash
 # Using NSwag

@@ -359,7 +359,7 @@ Console.WriteLine($"Video generated: {outputPath}");
 - SettingsView.xaml (configuration)
 - HardwareProfileView.xaml (system info)
 
-**Blockers**: 
+**Blockers**:
 - Requires Windows development environment
 - Cannot build on Linux CI runners
 - All business logic ready for binding

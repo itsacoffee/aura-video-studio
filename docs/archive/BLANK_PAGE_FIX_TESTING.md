@@ -46,7 +46,7 @@ This document outlines the testing procedures to verify that the blank page issu
 6. Verify browser opens to `http://127.0.0.1:5005`
 7. Verify the web UI loads (not a blank page)
 
-**Expected Result**: 
+**Expected Result**:
 - ✅ Build completes with no errors
 - ✅ Launch.bat shows "Pre-flight checks passed!"
 - ✅ API console shows "Serving static files from: ...\Api\wwwroot"

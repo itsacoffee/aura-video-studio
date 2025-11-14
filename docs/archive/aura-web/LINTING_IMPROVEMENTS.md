@@ -5,7 +5,6 @@
 
 ---
 
-
 # Frontend Linting Improvements - Summary Report
 
 ## Executive Summary

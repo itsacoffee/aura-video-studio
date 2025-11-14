@@ -28,7 +28,7 @@ This master PR successfully addresses **all critical issues** in the Aura Video 
   - FFmpeg path resolution and validation
   - Error recovery and logging
 
-**Files**: 
+**Files**:
 - `/workspace/Aura.Desktop/electron.js` (868 lines)
 - `/workspace/Aura.Desktop/preload.js` (66 lines)
 - `/workspace/Aura.Desktop/package.json` (148 lines)

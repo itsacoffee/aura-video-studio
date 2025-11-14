@@ -5,7 +5,6 @@
 
 ---
 
-
 # Security Validation and Sanitization Implementation
 
 ## Overview

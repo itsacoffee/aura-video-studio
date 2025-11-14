@@ -5,7 +5,6 @@
 
 ---
 
-
 # Skip Bug - Visual Before & After
 
 ## 🐛 The Bug: Visual Representation

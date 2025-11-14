@@ -40,7 +40,7 @@ Reduced from 9 steps to 5 essential mandatory steps:
 - **Options**:
   - Configure premium providers (OpenAI, Anthropic, Google Gemini)
   - Use offline mode (rule-based generation)
-- **Prominent "Skip for now - Use offline mode" button**: 
+- **Prominent "Skip for now - Use offline mode" button**:
   - One-click to enable offline mode
   - Shows toast: "Offline Mode Enabled - Using rule-based script generation"
   - Automatically marks provider requirement as satisfied

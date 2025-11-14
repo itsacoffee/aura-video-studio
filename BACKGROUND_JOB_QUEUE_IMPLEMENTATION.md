@@ -331,7 +331,7 @@ jobQueueService.onJobFailed((data) => {
 ## Risk Mitigation
 
 ### Risk: Background jobs consuming all resources
-**Mitigation**: 
+**Mitigation**:
 - Configurable concurrency limits (default: 2)
 - CPU/Memory throttling at 85% threshold
 - Power mode detection (pause on battery)

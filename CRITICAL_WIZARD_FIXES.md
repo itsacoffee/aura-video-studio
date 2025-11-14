@@ -9,7 +9,7 @@ Fixed critical issues preventing users from completing the first-run wizard, inc
 
 **Problem**: The UI would only load properly in incognito mode, breaking for normal users with stale localStorage.
 
-**Root Cause**: 
+**Root Cause**:
 - Backend's FirstRunMiddleware returns 428 for API calls when setup is incomplete
 - Frontend had mismatched state between localStorage and backend database
 - localStorage could have `hasCompletedFirstRun=true` while backend said setup was incomplete

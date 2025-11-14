@@ -5,7 +5,6 @@
 
 ---
 
-
 # UI Improvements Summary: Path Selection Enhancement
 
 ## Visual Changes

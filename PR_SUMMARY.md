@@ -57,6 +57,7 @@ public async Task<KeyStoreData?> LoadAtomicAsync(CancellationToken ct = default)
 - Provider category mapping
 
 **Timeout Profiles**:
+
 | Category | Normal | Extended | Max |
 |----------|--------|----------|-----|
 | local_llm (Ollama) | 30s | 180s | 300s |

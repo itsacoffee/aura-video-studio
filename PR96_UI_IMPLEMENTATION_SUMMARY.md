@@ -35,7 +35,7 @@ All features from PR #96 "Next Steps" section are now fully implemented.
 - Loading state while fetching history
 - Empty state message when no versions exist
 
-**State Management**: 
+**State Management**:
 - `showVersionHistory` - Controls dialog visibility
 - `versionHistory` - Stores version data
 - `isLoadingVersions` - Loading state
@@ -277,7 +277,7 @@ New icons from `@fluentui/react-icons`:
 
 ## Files Modified
 
-- `Aura.Web/src/components/VideoWizard/steps/ScriptReview.tsx` 
+- `Aura.Web/src/components/VideoWizard/steps/ScriptReview.tsx`
   - Phase 1: 206 insertions, 35 deletions
   - Phase 2: 299 insertions, 2 deletions
   - **Total**: 505 insertions, 37 deletions

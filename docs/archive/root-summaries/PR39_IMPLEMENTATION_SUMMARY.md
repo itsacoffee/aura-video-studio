@@ -5,7 +5,6 @@
 
 ---
 
-
 # PR 39: Global Undo/Redo System - Implementation Summary
 
 ## Status: ✅ Phase 1 MVP Complete
@@ -530,7 +529,7 @@ The global undo/redo system is **complete, tested, documented, and ready for pro
 
 **Recommendation**: Merge to main branch after code review.
 
-**Next Steps**: 
+**Next Steps**:
 1. Code review by team
 2. QA testing in staging environment
 3. Merge to main

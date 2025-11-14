@@ -156,6 +156,7 @@ updateClip: (clip: TimelineClip) => set((state) => {
 All frontend API calls have been verified against backend implementations:
 
 #### Core Functionality
+
 | Endpoint | Method | Purpose | Status |
 |----------|--------|---------|--------|
 | `/api/health/ready` | GET | Health check | ✅ |
@@ -167,6 +168,7 @@ All frontend API calls have been verified against backend implementations:
 | `/api/probes/run` | POST | Hardware detection | ✅ |
 
 #### Settings & Configuration
+
 | Endpoint | Method | Purpose | Status |
 |----------|--------|---------|--------|
 | `/api/settings/save` | POST | Persist settings | ✅ |
@@ -176,6 +178,7 @@ All frontend API calls have been verified against backend implementations:
 | `/api/providers/validate` | POST | Validate providers | ✅ |
 
 #### Assets & Content
+
 | Endpoint | Method | Purpose | Status |
 |----------|--------|---------|--------|
 | `/api/assets` | GET | List assets | ✅ |
@@ -185,6 +188,7 @@ All frontend API calls have been verified against backend implementations:
 | `/api/ContentPlanning/*` | Various | Content planning | ✅ |
 
 #### Engine Management
+
 | Endpoint | Method | Purpose | Status |
 |----------|--------|---------|--------|
 | `/api/engines/list` | GET | List available engines | ✅ |

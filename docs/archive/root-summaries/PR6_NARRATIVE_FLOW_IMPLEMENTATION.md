@@ -5,7 +5,6 @@
 
 ---
 
-
 # PR #6: LLM-Driven Scene Relationship and Narrative Flow Analysis - Implementation Summary
 
 ## Overview

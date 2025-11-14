@@ -5,7 +5,6 @@
 
 ---
 
-
 # PR #17: Deep Audience-Aware Content Adaptation Engine - Implementation Summary
 
 ## Overview

@@ -452,7 +452,7 @@ Added to existing `OrchestrateGenerationAsync_WithFailingTask_ShouldHandleFailur
 
 ## Conclusion
 
-The video generation system in Aura Video Studio is **production-ready** and **well-architected**. 
+The video generation system in Aura Video Studio is **production-ready** and **well-architected**.
 
 **Key Findings:**
 - ✅ Both demo and normal video generation work flawlessly

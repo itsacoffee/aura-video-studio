@@ -5,7 +5,6 @@
 
 ---
 
-
 # Tone Consistency Enforcement - Usage Guide
 
 ## Overview

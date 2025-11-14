@@ -5,7 +5,6 @@
 
 ---
 
-
 # Frontend UI to Backend API Mapping
 
 This document provides a comprehensive mapping of backend API controllers to their corresponding frontend UI implementations.

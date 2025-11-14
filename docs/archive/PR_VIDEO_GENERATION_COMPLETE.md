@@ -33,7 +33,7 @@ This implementation addresses the requirements for reliable video generation on 
 - `scripts/audit/no_future_text.ps1` - Enhanced to detect // TODO and // FIXME patterns
 
 **Implementation Details:**
-- Added patterns: `// TODO:`, `// TODO `, `// FIXME:`, `// FIXME `
+- Added patterns: `// TODO:`, `// TODO`, `// FIXME:`, `// FIXME`
 - Allowed all markdown files (documentation only)
 - Script now catches code-level placeholder comments
 - GitHub Actions workflow already exists to run this script on PRs

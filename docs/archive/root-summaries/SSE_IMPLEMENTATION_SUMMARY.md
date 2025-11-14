@@ -5,7 +5,6 @@
 
 ---
 
-
 # SSE Integration Implementation Summary
 
 ## Overview

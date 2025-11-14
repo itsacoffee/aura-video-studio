@@ -26,7 +26,7 @@ This document summarizes the security analysis performed on changes made to fix 
 #### 1. Denial of Service (DoS) Prevention
 **Status**: ✅ MITIGATED
 
-**Previous Risk**: 
+**Previous Risk**:
 - TTS providers could create 0-byte or corrupted files that would consume processing resources during validation attempts
 - Merge operations could attempt to process invalid files, potentially causing crashes or hangs
 

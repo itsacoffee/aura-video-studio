@@ -5,7 +5,6 @@
 
 ---
 
-
 # PR 41 Implementation Status
 
 ## Executive Summary

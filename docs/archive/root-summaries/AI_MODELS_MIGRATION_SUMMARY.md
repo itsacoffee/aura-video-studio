@@ -5,7 +5,6 @@
 
 ---
 
-
 # AI Models Page Migration Summary
 
 ## Overview
@@ -37,7 +36,7 @@ Changes:
 - Maintains consistency with other settings tabs
 
 ### 3. Removed Standalone Page
-**Files:** 
+**Files:**
 - `Aura.Web/src/App.tsx` - Removed route and import
 - `Aura.Web/src/pages/Models/ModelsManagementPage.tsx` - Deleted
 

@@ -5,7 +5,6 @@
 
 ---
 
-
 # Production Deployment Configuration Guide
 
 ## Static Asset Caching Headers

@@ -55,7 +55,7 @@ disabledFeatures: [
 ### 4. Add config reset button that actually deletes config file and restarts
 **Status:** ✅ TESTED (Test 10)
 
-**Implementation:** 
+**Implementation:**
 - Backend: `app-config.js` `deleteConfigFile()` uses `fs.unlinkSync()`
 - IPC: `config:deleteAndRestart` handler
 - Frontend: RepairWizard "Reset Configuration" button

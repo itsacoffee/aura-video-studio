@@ -109,6 +109,7 @@ string updated = estimator.GetConfigLastUpdated(); // "2024-12-01"
 ## Current Pricing (Dec 2024)
 
 ### OpenAI
+
 | Model | Input (per 1M tokens) | Output (per 1M tokens) | Context Window |
 |-------|----------------------|------------------------|----------------|
 | GPT-4o | $2.50 | $10.00 | 128K |
@@ -118,6 +119,7 @@ string updated = estimator.GetConfigLastUpdated(); // "2024-12-01"
 | GPT-4 Turbo | $10.00 | $30.00 | 128K |
 
 ### Anthropic
+
 | Model | Input (per 1M tokens) | Output (per 1M tokens) | Context Window |
 |-------|----------------------|------------------------|----------------|
 | Claude 3.5 Sonnet | $3.00 | $15.00 | 200K |
@@ -126,6 +128,7 @@ string updated = estimator.GetConfigLastUpdated(); // "2024-12-01"
 | Claude 3 Haiku | $0.25 | $1.25 | 200K |
 
 ### Google Gemini
+
 | Model | Input (per 1M tokens) | Output (per 1M tokens) | Context Window |
 |-------|----------------------|------------------------|----------------|
 | Gemini 2.0 Flash (exp) | FREE | FREE | 1M |

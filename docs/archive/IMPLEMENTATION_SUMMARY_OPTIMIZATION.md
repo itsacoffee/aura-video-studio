@@ -52,7 +52,7 @@ This implementation enhances Aura Video Studio's engine management system with i
 }
 ```
 
-**Code Location:** 
+**Code Location:**
 - `Aura.Core/Downloads/EngineManifest.cs` (model)
 - `Aura.Core/Downloads/engine_manifest.json` (example data)
 

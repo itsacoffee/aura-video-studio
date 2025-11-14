@@ -165,7 +165,7 @@ aura-video-studio/
 **File**: `.github/workflows/documentation.yml`
 
 **Triggers**:
-- Push to main branch (docs/**, *.cs, *.ts changes)
+- Push to main branch (docs/**, *.cs,*.ts changes)
 - Pull requests
 - Manual dispatch
 
@@ -297,15 +297,15 @@ docfx serve _site
 
 ### Viewing Documentation
 
-1. **Local**: 
+1. **Local**:
    - Build and serve: `docfx serve _site`
    - Open: http://localhost:8080
 
-2. **GitHub Pages**: 
+2. **GitHub Pages**:
    - Auto-deployed on merge to main
    - URL: https://saiyan9001.github.io/aura-video-studio/
 
-3. **Raw Files**: 
+3. **Raw Files**:
    - Browse `docs/` directory on GitHub
    - All markdown files are readable
 

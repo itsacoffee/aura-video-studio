@@ -100,7 +100,7 @@
   - **Repair FFmpeg**: Secondary appearance, Wrench icon (shown only for FFmpeg errors)
   - **Attach FFmpeg**: Secondary appearance, Settings icon (shown only for FFmpeg errors)
   - **Close & Retry**: Primary appearance, ArrowClockwise icon
-- **States**: 
+- **States**:
   - Repair button shows "Repairing..." when in progress
   - Disabled state while repairing
 

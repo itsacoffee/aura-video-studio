@@ -130,7 +130,7 @@ ETag: "abc123xyz"
   - Vary header for content negotiation
 
 #### Pagination Support (NEW)
-- **Files**: 
+- **Files**:
   - `Aura.Core/Models/Pagination/PagedResult.cs`
   - `Aura.Core/Extensions/QueryableExtensions.cs`
 - **Features**:
@@ -191,7 +191,7 @@ var result = await dbContext.MediaItems
   - Lazy loading of images
 
 #### Virtual Scrolling (Already Available)
-- **Libraries**: 
+- **Libraries**:
   - `react-virtuoso` v4.14.1
   - `react-window` v2.2.1
 - **Status**: Available for large lists

@@ -5,7 +5,6 @@
 
 ---
 
-
 # Integration Testing and CI/CD Implementation Summary
 
 ## Overview

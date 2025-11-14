@@ -125,7 +125,7 @@ Every model resolution is logged with:
 
 **Problem**: "Pinned model unavailable" error blocks generation
 
-**Solution**: 
+**Solution**:
 1. View audit log to see recommended alternatives
 2. Test alternative models
 3. Either:
@@ -1274,4 +1274,3 @@ Content-Type: application/json
 2. Verify budget limits are set correctly
 3. Consider switching to soft limits during testing
 4. Review recent operations for unexpected costs
-

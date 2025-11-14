@@ -200,21 +200,21 @@ Configuration panel for job queue settings:
 
 ### SignalR Events
 
-1. **JobStatusChanged**: 
+1. **JobStatusChanged**:
    - Triggered when job status changes (Pending → Processing → Completed/Failed)
    - Updates job in store with new status
 
-2. **JobProgress**: 
+2. **JobProgress**:
    - Triggered periodically during job processing
    - Updates progress percentage and current stage
    - Displayed in progress bars
 
-3. **JobCompleted**: 
+3. **JobCompleted**:
    - Triggered when job finishes successfully
    - Shows desktop notification (if permissions granted)
    - Updates job with output path and completion time
 
-4. **JobFailed**: 
+4. **JobFailed**:
    - Triggered when job encounters an error
    - Shows desktop notification with error message
    - Updates job with error details

@@ -194,11 +194,11 @@ The Welcome page shows a checklist of requirements:
 1. **Default Save Location**
    - Where finished videos are saved
    - Default: `~/Aura/output`
-   
+
 2. **Project Directory** (Optional)
    - Where project files are stored
    - Default: `~/Aura/projects`
-   
+
 3. **Temp Directory** (Optional)
    - For temporary render files
    - Default: System temp folder

@@ -11,12 +11,12 @@ This PR implements the two deferred features from PR #79 for the video timeline 
 From PR #79, these features were identified as nice-to-have enhancements that require additional libraries:
 
 > **🚫 Deferred Features**
-> 
+>
 > Visual waveforms for audio clips
 > - Requires: WaveSurfer.js or similar
 > - Impact: Low (nice-to-have)
 > - Can be added in future PR
-> 
+>
 > Thumbnail previews on video clips
 > - Requires: ffmpeg.js or canvas extraction
 > - Impact: Low (nice-to-have)

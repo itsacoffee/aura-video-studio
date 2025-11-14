@@ -60,7 +60,7 @@ Added build-sweep severity overrides:
 - Ensures consistent FFmpeg command generation across locales
 
 #### 2. ConfigureAwait in Library Code (CA2007)  
-**Files**: 
+**Files**:
 - `Aura.Core/Dependencies/DependencyManager.cs` (19 locations)
 - `Aura.Core/Hardware/HardwareDetector.cs` (1 location)
 - `Aura.Core/Orchestrator/ScriptOrchestrator.cs` (4 locations)

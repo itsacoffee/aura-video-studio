@@ -57,7 +57,7 @@ This enables better error reporting and result extraction.
 
 ### 4. Dependency Injection
 
-**Files**: 
+**Files**:
 - `Aura.Api/Program.cs`
 - `Aura.App/App.xaml.cs`
 

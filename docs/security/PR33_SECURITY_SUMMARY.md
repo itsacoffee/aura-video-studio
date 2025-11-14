@@ -58,14 +58,14 @@ File.WriteAllText(keysPath, JsonSerializer.Serialize(keys, ...));
 
 **Issue**: API keys stored in plain text JSON
 
-**Recommendation**: 
+**Recommendation**:
 - Use Windows DPAPI (Data Protection API) for encryption on Windows
 - Use appropriate platform-specific key storage on Linux/macOS
 - Consider implementing key encryption before saving to disk
 
 **Risk Level**: MEDIUM (depends on system security)
 
-**Mitigation**: 
+**Mitigation**:
 - File stored in user-specific directory (`%LOCALAPPDATA%`)
 - Requires local file system access
 - Protected by OS user permissions

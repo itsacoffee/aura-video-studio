@@ -5,7 +5,6 @@
 
 ---
 
-
 # Code Quality Audit Report
 
 **Generated:** 2025-10-26

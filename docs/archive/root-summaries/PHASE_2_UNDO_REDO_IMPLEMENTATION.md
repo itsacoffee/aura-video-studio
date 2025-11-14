@@ -5,7 +5,6 @@
 
 ---
 
-
 # Phase 2: Server-Side Undo/Redo Implementation
 
 **Status**: ✅ Complete (Continuation of PR #79)  

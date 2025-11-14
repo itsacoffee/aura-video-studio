@@ -82,7 +82,7 @@
 
 1. **Slow internet connection**: FFmpeg is ~100-150 MB
    - Solution: Wait longer, or download manually
-   
+
 2. **Download server issues**: GitHub releases can be slow
    - Solution: Try again later, or use manual installation
 
@@ -175,7 +175,7 @@
 
 ### Q: What's the difference between "Free" and "Pro" mode?
 
-**A**: 
+**A**:
 
 **Free Mode** (no API keys needed):
 - RuleBased script generation

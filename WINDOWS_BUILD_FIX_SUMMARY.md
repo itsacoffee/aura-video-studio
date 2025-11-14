@@ -126,7 +126,7 @@ The following tests should be performed on a Windows environment to fully valida
    npm install
    npm run build:win
    ```
-   Expected: 
+   Expected:
    - No icon file errors
    - Installer builds successfully
    - Icons visible in installer and application

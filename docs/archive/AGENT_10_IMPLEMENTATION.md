@@ -94,7 +94,7 @@ Successfully implemented PlannerService with LLM routing, quality metrics, and a
 1. ✅ `PlannerService_Should_UseRuleBased_WhenNoLlmProvidersAvailable`
    - Verifies fallback to RuleBased when no Pro providers available
    - Checks quality score and provider name
-   
+
 2. ✅ `PlannerService_Should_ReturnOutline_WithMinimumSceneCount`
    - Ensures at least 3 scenes even for short videos
    - Validates outline structure (Introduction, Conclusion)

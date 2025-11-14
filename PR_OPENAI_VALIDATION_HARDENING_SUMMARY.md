@@ -35,7 +35,7 @@ Implemented a comprehensive validation system that **never blocks users** due to
 - **Timeout**: 10s → 90s (3x patience increase)
 - **Retry Logic**: 2 automatic retries with exponential backoff (1s, 2s delays)
 - **Network Check**: Basic connectivity test to detect offline state early
-- **Error Categorization**: 
+- **Error Categorization**:
   - DNS_Error (DNS resolution failed)
   - TLS_Error (Certificate/TLS issues)
   - Proxy_Error (Proxy configuration problems)
@@ -81,7 +81,7 @@ Implemented a comprehensive validation system that **never blocks users** due to
 **File**: `Aura.Web/src/services/openAIValidationService.ts`
 
 **Changes**:
-- **New Validation States**: 
+- **New Validation States**:
   - `Offline`: No network connection (can continue in offline mode)
   - `Pending`: Validation in progress
 - **Interface Updates**:

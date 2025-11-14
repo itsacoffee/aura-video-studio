@@ -179,7 +179,7 @@ Added exclusions for:
 - ✅ Electron build artifacts (dist/, out/)
 - ✅ Downloaded/built resources (backend, FFmpeg, samples)
 - ✅ Temporary build files
-- ✅ Code signing certificates (*.pfx, *.p12)
+- ✅ Code signing certificates (*.pfx,*.p12)
 - ✅ Electron builder cache
 
 ## Directory Structure Created

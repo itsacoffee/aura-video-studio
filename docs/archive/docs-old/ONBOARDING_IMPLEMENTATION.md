@@ -5,7 +5,6 @@
 
 ---
 
-
 # First-Run Onboarding and Actionable Preflight Implementation
 
 ## Overview

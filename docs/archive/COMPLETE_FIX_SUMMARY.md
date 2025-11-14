@@ -4,16 +4,16 @@
 
 The application was failing with critical errors preventing script generation:
 
-1. **Constructor Errors**: 
+1. **Constructor Errors**:
    - "CreateLogger method not found on ILoggerFactory"
    - "Constructor on type 'Aura.Providers.Llm.OpenAiLlmProvider' not found"
    - "Constructor on type 'Aura.Providers.Llm.RuleBasedLlmProvider' not found"
 
-2. **Missing API Key Fields**: 
+2. **Missing API Key Fields**:
    - Pixabay and Unsplash stock sources required API keys but had no UI to enter them
    - System stored only 4 API keys (OpenAI, ElevenLabs, Pexels, Stability AI)
 
-3. **Script Generation Failure**: 
+3. **Script Generation Failure**:
    - Even with "free" failback options, script generation failed
    - RuleBased provider couldn't be instantiated
    - Resulted in "E300 - All LLM providers failed to generate script"

@@ -412,7 +412,7 @@ Potential improvements for future releases:
 ### Troubleshooting
 
 **Issue**: Content incorrectly flagged
-**Solution**: 
+**Solution**:
 - Lower category threshold in policy
 - Add context exceptions
 - Review policy in Policy Center

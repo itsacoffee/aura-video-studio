@@ -81,7 +81,7 @@ Detects 6 engines with multiple detection methods:
 Features:
 - **GPU Detection**: Integrates with existing `HardwareDetector`
 - **VRAM Check**: Verifies sufficient VRAM (6GB minimum for SD)
-- **Gating Logic**: 
+- **Gating Logic**:
   - Engines marked as `isGated: true` when requiring GPU
   - `canInstall: false` when requirements not met
   - `gatingReason`: Clear explanation (e.g., "Requires NVIDIA GPU")

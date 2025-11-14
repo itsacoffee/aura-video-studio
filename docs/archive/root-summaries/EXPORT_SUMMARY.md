@@ -5,7 +5,6 @@
 
 ---
 
-
 # Export Video Functionality - Implementation Summary
 
 ## Overview

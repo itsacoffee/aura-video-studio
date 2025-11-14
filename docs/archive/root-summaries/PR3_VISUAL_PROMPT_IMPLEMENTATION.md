@@ -5,7 +5,6 @@
 
 ---
 
-
 # PR #3: Visual Prompt Generation Implementation Summary
 
 ## Overview

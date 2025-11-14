@@ -5,7 +5,6 @@
 
 ---
 
-
 # Ollama Process Control and Detection
 
 ## Overview

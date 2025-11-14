@@ -5,7 +5,6 @@
 
 ---
 
-
 # AI Behavior Settings Implementation
 
 ## Overview

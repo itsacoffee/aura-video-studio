@@ -56,7 +56,7 @@ Total time: 1.99 seconds
 
 **Storage Type**: File-based JSON (not traditional SQL database)
 
-**Location**: 
+**Location**:
 - Windows: `%LOCALAPPDATA%\Aura\`
 - Linux/macOS: `~/.local/share/Aura/`
 

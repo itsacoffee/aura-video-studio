@@ -190,7 +190,7 @@ You can manually edit this file if needed.
 1. **Memory Management**
    - Don't run all providers simultaneously on systems with less than 32GB RAM
    - Close Stable Diffusion WebUI when not generating images
-   
+
 2. **VRAM Optimization** (for Stable Diffusion)
    - Edit `webui-user.bat` and add: `set COMMANDLINE_ARGS=--medvram`
    - This reduces VRAM usage at the cost of speed

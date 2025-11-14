@@ -167,7 +167,7 @@ All existing E2E tests continue to pass.
    - Notes: "My production SD setup with custom models"
 5. Click "Attach"
 
-**Result**: 
+**Result**:
 - SD WebUI appears in Engine Instances with External mode badge
 - Status shows "running" if currently active
 - Health badge shows "Healthy" if health check passes

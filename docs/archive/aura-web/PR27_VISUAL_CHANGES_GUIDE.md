@@ -5,7 +5,6 @@
 
 ---
 
-
 # PR 27: Visual Changes Guide
 
 ## Overview
@@ -178,7 +177,7 @@ Before drag:        During drag:         After release:
 
 ### Button Interactions
 **Before**: Instant state changes
-**After**: 
+**After**:
 - Hover: 150ms ease, slight elevation (+1px up, shadow increase)
 - Active: Instant return to base position
 - Disabled: 50% opacity

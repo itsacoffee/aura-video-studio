@@ -5,7 +5,6 @@
 
 ---
 
-
 # Test Suite Fixes Needed
 
 ## Overview
@@ -67,7 +66,7 @@ public Task<string?> GenerateTransitionTextAsync(
 
 **Issue**: Method calls use wrong argument types (5 occurrences)
 
-**Error**: 
+**Error**:
 ```
 CS1503: Argument 9: cannot convert from 'System.Threading.CancellationToken' to 
 'System.Collections.Generic.IReadOnlyList<Aura.Core.Models.Visual.NarrationSegment>?'

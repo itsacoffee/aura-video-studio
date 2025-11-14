@@ -29,7 +29,7 @@ Complete backend infrastructure for uploading exported videos to cloud storage:
    - `AwsS3StorageProvider` - Amazon S3 storage
    - `AzureBlobStorageProvider` - Microsoft Azure Blob Storage
    - `GoogleCloudStorageProvider` - Google Cloud Storage
-   
+
    **Note**: These are placeholder implementations that simulate operations. They provide the structure and patterns but require SDK packages for actual functionality.
 
 3. **CloudStorageProviderFactory**

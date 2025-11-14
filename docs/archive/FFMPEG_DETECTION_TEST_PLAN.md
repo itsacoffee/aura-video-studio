@@ -7,7 +7,7 @@ This document provides comprehensive testing procedures for FFmpeg detection and
 - **Portable Distribution**: Extracted from AuraVideoStudio_Portable_x64.zip
 - **Backend API**: http://127.0.0.1:5005
 - **Web UI**: http://127.0.0.1:5005 (served by API)
-- **Test Scenarios**: 
+- **Test Scenarios**:
   1. No FFmpeg installed
   2. FFmpeg in PATH
   3. FFmpeg in portable folder

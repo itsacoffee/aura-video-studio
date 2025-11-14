@@ -53,7 +53,7 @@ The `ReadWavHeader` method already correctly navigates through all chunks to fin
 - **Lines affected:** 41-43
 
 ### 2. `Aura.Tests/WavMergerTests.cs`
-- **Added:** New test `MergeWavFiles_Should_HandleWavWithExtraChunks()` 
+- **Added:** New test `MergeWavFiles_Should_HandleWavWithExtraChunks()`
 - **Added:** Helper method `CreateTestWavWithMetadata()` to generate WAV files with LIST chunks
 - **Why:** Validates the fix works with WAV files containing metadata (like Windows TTS generates)
 - **Lines added:** 56 lines
@@ -112,7 +112,7 @@ To verify the fix works:
 
 1. **Unit tests:** Run `dotnet test --filter "FullyQualifiedName~WavMerger"`
 2. **Integration tests:** Run `dotnet test --filter "FullyQualifiedName~TtsProvider"`  
-3. **Manual testing:** 
+3. **Manual testing:**
    - Use Windows TTS to generate a video
    - Verify FFmpeg successfully reads the merged WAV file
    - Verify video generation completes without errors

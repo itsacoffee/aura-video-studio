@@ -241,7 +241,7 @@ Failed: 0
    - Added HttpDownloader integration
    - Updated InstallFromArchiveAsync method
    - Removed duplicate download/checksum methods
-   
+
 2. `Aura.Api/Controllers/EnginesController.cs`
    - Enhanced error handling in Install endpoint
    - Enhanced error handling in Repair endpoint

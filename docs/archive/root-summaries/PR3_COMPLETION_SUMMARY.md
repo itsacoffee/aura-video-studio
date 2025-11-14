@@ -5,7 +5,6 @@
 
 ---
 
-
 # PR #3 Completion Summary
 
 ## Overview

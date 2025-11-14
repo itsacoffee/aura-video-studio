@@ -5,7 +5,6 @@
 
 ---
 
-
 # Security Summary - Keyboard Shortcuts System
 
 ## Overview

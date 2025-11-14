@@ -5,7 +5,6 @@
 
 ---
 
-
 # Pipeline Orchestration Integration Summary
 
 ## Overview

@@ -5,7 +5,6 @@
 
 ---
 
-
 # Build Optimization: Before vs After
 
 ## Visual Comparison

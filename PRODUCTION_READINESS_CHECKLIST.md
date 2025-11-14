@@ -72,7 +72,7 @@ Manual verification needed for:
 ## Quick Reference: Dependency Validation Tools
 - **CLI Script**: `./scripts/check-deps.sh` - Cross-platform dependency validation
 - **TypeScript Service**: `Aura.Web/src/services/dependencyChecker.ts` - Programmatic API
-- **Health Endpoints**: 
+- **Health Endpoints**:
   - `/api/health/live` - Liveness check
   - `/api/health/ready` - Readiness check
   - `/api/dependencies/check` - Dependency status
@@ -92,7 +92,7 @@ Manual verification needed for:
 - [ ] Validate path detection is correct
 - [ ] **Validation Tool**: Run `./scripts/check-deps.sh` to verify all dependencies
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 1.2 Validate Auto-Install Functionality
 - [ ] Test on system without FFmpeg
@@ -103,7 +103,7 @@ Manual verification needed for:
 - [ ] Test manual path selection if auto-install unavailable
 - [ ] **Validation**: Check `/api/dependencies/install/ffmpeg` endpoint
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 1.3 Test Python/AI Service Detection
 - [ ] Verify Python installation detected with correct version
@@ -113,7 +113,7 @@ Manual verification needed for:
 - [ ] Test connection buttons work correctly
 - [ ] **Validation**: Check `/api/hardware/probe` for GPU info
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 1.4 Validate Service Initialization Order
 - [ ] Review backend Program.cs startup sequence
@@ -125,7 +125,7 @@ Manual verification needed for:
 - [ ] **Validation**: Check startup logs for initialization order
 - [ ] **Reference**: See [Orchestration Runbook](docs/ORCHESTRATION_RUNBOOK.md#service-initialization-order)
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 1.5 Test Dependency Status Persistence
 - [ ] Complete wizard with all dependencies valid
@@ -134,7 +134,7 @@ Manual verification needed for:
 - [ ] Test "Rescan Dependencies" button forces fresh check
 - [ ] Confirm offline/disconnected dependencies show appropriate warnings
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ---
 
@@ -148,7 +148,7 @@ Manual verification needed for:
 - [ ] Ensure 200 OK response received
 - [ ] Verify demo populates all required fields automatically
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 2.2 Validate Quick Demo Workflow Completion
 - [ ] After clicking Quick Demo, verify script generates without errors
@@ -158,7 +158,7 @@ Manual verification needed for:
 - [ ] Confirm preview shows assembled video
 - [ ] Test that assembled video plays without errors
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 2.3 Test Quick Demo Error Handling
 - [ ] Simulate API failure during Quick Demo
@@ -167,7 +167,7 @@ Manual verification needed for:
 - [ ] Confirm partial progress saved if workflow interrupted
 - [ ] Verify user can manually continue from where Quick Demo stopped
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ---
 
@@ -181,7 +181,7 @@ Manual verification needed for:
 - [ ] Confirm export dialog opens or export starts automatically
 - [ ] Monitor global status footer showing export progress
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 3.2 Validate Export Pipeline End-to-End
 - [ ] Select MP4 H.264 format
@@ -195,7 +195,7 @@ Manual verification needed for:
 - [ ] Verify output file exists at expected location
 - [ ] Test output video plays correctly in media player
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 3.3 Test Export Error Scenarios
 - [ ] Trigger export with invalid parameters
@@ -205,7 +205,7 @@ Manual verification needed for:
 - [ ] Test retry functionality after failure
 - [ ] Verify partial files cleaned up after failed export
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ---
 
@@ -223,7 +223,7 @@ Manual verification needed for:
 - [ ] Verify timeline auto-assembles all components
 - [ ] Test assembled video plays in preview
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 4.2 Test Video Editor Complete Workflow
 - [ ] Click Video Editor navigation
@@ -242,7 +242,7 @@ Manual verification needed for:
 - [ ] Save project
 - [ ] Verify save completes without errors
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 4.3 Validate Timeline Editor Functionality
 - [ ] Navigate to Timeline Editor
@@ -254,7 +254,7 @@ Manual verification needed for:
 - [ ] Confirm changes reflect immediately
 - [ ] Test export includes overlays correctly
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 4.4 Test All AI Features Individually
 - [ ] Scene detection analyzes video and creates markers
@@ -266,7 +266,7 @@ Manual verification needed for:
 - [ ] Video stabilization on shaky footage
 - [ ] Noise reduction improves audio quality
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ---
 
@@ -285,7 +285,7 @@ Manual verification needed for:
 - [ ] Confirm settings retained
 - [ ] Test API key validation buttons connect successfully
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 5.2 Validate FFmpeg Path Configuration
 - [ ] In Settings, set custom FFmpeg path
@@ -295,7 +295,7 @@ Manual verification needed for:
 - [ ] Test invalid path shows validation error
 - [ ] Confirm reverting to auto-detected path works
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 5.3 Test Workspace Preferences
 - [ ] Set default save location for projects
@@ -306,7 +306,7 @@ Manual verification needed for:
 - [ ] Create new project
 - [ ] Verify defaults applied correctly to new project
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ---
 
@@ -320,7 +320,7 @@ Manual verification needed for:
 - [ ] Verify operation completes successfully
 - [ ] Test offline indicator appears when disconnected
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 6.2 Validate Missing Media File Recovery
 - [ ] Create project with media files
@@ -332,7 +332,7 @@ Manual verification needed for:
 - [ ] Confirm relink succeeds
 - [ ] Verify timeline updates with relinked media
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 6.3 Test Crash Recovery
 - [ ] Create project with unsaved changes
@@ -343,7 +343,7 @@ Manual verification needed for:
 - [ ] Confirm project state restored to last auto-save
 - [ ] Verify no data loss occurred
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ---
 
@@ -358,7 +358,7 @@ Manual verification needed for:
 - [ ] Run export on complex project
 - [ ] Verify memory usage stays reasonable (under 2GB)
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 7.2 Validate Extended Session Stability
 - [ ] Use application continuously for 2+ hours
@@ -368,7 +368,7 @@ Manual verification needed for:
 - [ ] Test no slowdown after multiple export operations
 - [ ] Confirm UI remains responsive throughout session
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 7.3 Test Concurrent Operations
 - [ ] Start export while editing another project
@@ -377,7 +377,7 @@ Manual verification needed for:
 - [ ] Confirm status footer tracks multiple operations correctly
 - [ ] Verify no race conditions or deadlocks occur
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ---
 
@@ -391,7 +391,7 @@ Manual verification needed for:
 - [ ] Test effects apply to each media type appropriately
 - [ ] Verify export includes all media types
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 8.2 Validate Undo/Redo Across Features
 - [ ] Perform 20 different operations
@@ -401,7 +401,7 @@ Manual verification needed for:
 - [ ] Confirm no corruption in undo stack
 - [ ] Test undo after save and reload preserves history
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 8.3 Test Keyboard Shortcuts Throughout Application
 - [ ] Verify Space play/pause works in all contexts
@@ -411,7 +411,7 @@ Manual verification needed for:
 - [ ] Verify Ctrl+Z/Y undo/redo globally
 - [ ] Ensure no shortcut conflicts between pages
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ---
 
@@ -429,7 +429,7 @@ Manual verification needed for:
 - [ ] Confirm Quick Demo works immediately
 - [ ] Verify user can generate first video without errors
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 9.2 Test Beginner User Path
 - [ ] As simulated new user, click Create Video
@@ -441,7 +441,7 @@ Manual verification needed for:
 - [ ] Test creating second video manually
 - [ ] Confirm learning curve is manageable
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ---
 
@@ -457,7 +457,7 @@ Manual verification needed for:
 - [ ] Verify correlation IDs are present in all responses
 - [ ] **Validation**: All jobs appear with correct status and timestamps
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 9.5.2 Job Progress Tracking
 - [ ] Start a video generation job
@@ -470,7 +470,7 @@ Manual verification needed for:
 - [ ] Confirm completed steps are tracked
 - [ ] **Validation**: Progress information is accurate and updates in real-time
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 9.5.3 SSE Reconnection with Last-Event-ID
 - [ ] Start a job and establish SSE connection
@@ -483,7 +483,7 @@ Manual verification needed for:
 - [ ] Test with multiple reconnections
 - [ ] **Validation**: SSE reconnects reliably with Last-Event-ID
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 9.5.4 Job Cancellation and Cleanup
 - [ ] Start a job and let it run for 10-20 seconds
@@ -497,7 +497,7 @@ Manual verification needed for:
 - [ ] Verify partial artifacts are cleaned up
 - [ ] **Validation**: Cancellation is responsive and cleanup is thorough
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 9.5.5 Background Cleanup Service
 - [ ] Start application and wait for at least 5 minutes
@@ -510,7 +510,7 @@ Manual verification needed for:
 - [ ] Confirm service doesn't throw exceptions
 - [ ] **Validation**: Background service runs without errors
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 9.5.6 Job State Persistence
 - [ ] Create a job and let it start
@@ -521,7 +521,7 @@ Manual verification needed for:
 - [ ] Verify artifacts are still accessible
 - [ ] **Validation**: Job state survives application restarts
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ---
 
@@ -538,7 +538,7 @@ Manual verification needed for:
 - [ ] Verify flake tracker logs test results
 - [ ] **Validation**: All SSE scenarios pass with 0% flake rate
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 9.6.2 Job Cancellation Tests
 - [ ] Run `npx playwright test tests/e2e/job-cancellation.spec.ts`
@@ -551,7 +551,7 @@ Manual verification needed for:
 - [ ] Verify temporary files removed after cancellation
 - [ ] **Validation**: All cancellation scenarios pass with proper cleanup
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 9.6.3 Export Manifest Validation Tests
 - [ ] Run `npx playwright test tests/e2e/export-manifest-validation.spec.ts`
@@ -566,7 +566,7 @@ Manual verification needed for:
 - [ ] Confirm commercial use rights documented
 - [ ] **Validation**: All manifest scenarios pass with complete data
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 9.6.4 Flake Control System Validation
 - [ ] Run E2E tests multiple times (at least 5 runs)
@@ -577,7 +577,7 @@ Manual verification needed for:
 - [ ] Check flake report generated in CI artifacts
 - [ ] **Validation**: Flake tracking works with accurate metrics
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 9.6.5 CI Gates Verification
 - [ ] Push changes to branch and create PR
@@ -593,7 +593,7 @@ Manual verification needed for:
 - [ ] Confirm test timeout enforcement (45 min)
 - [ ] **Validation**: All CI gates pass, flake reports generated
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 9.6.6 Test Data Coverage
 - [ ] Review `samples/test-data/briefs/synthetic-briefs.json`
@@ -604,7 +604,7 @@ Manual verification needed for:
 - [ ] Confirm offline providers configured
 - [ ] **Validation**: Test data comprehensive with edge cases
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ---
 
@@ -616,7 +616,7 @@ Manual verification needed for:
 - [ ] Check test coverage meets minimum threshold (70%+)
 - [ ] Review any skipped tests and enable if critical
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 10.2 Execute Build Verification
 - [ ] Run `npm run build`
@@ -627,7 +627,7 @@ Manual verification needed for:
 - [ ] Verify source maps generated for debugging
 - [ ] Confirm no development code in production bundle
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 10.3 Validate All API Endpoints
 - [ ] Use Postman or similar tool to test all backend endpoints
@@ -637,7 +637,7 @@ Manual verification needed for:
 - [ ] Validate rate limiting kicks in appropriately
 - [ ] Test all CRUD operations work correctly
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 10.4 Create Production Readiness Sign-Off
 - [ ] Document all critical paths tested
@@ -646,7 +646,7 @@ Manual verification needed for:
 - [ ] Note any known limitations or issues
 - [ ] Create sign-off checklist for release approval
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ---
 
@@ -660,7 +660,7 @@ Manual verification needed for:
 - [ ] Verify version tooltip shows build date and runtime info
 - [ ] **Validation**: Version visible in API and UI
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 11.2 Release Workflow Testing (Dry-Run)
 - [ ] Update version using `node scripts/release/update-version.js patch`
@@ -673,7 +673,7 @@ Manual verification needed for:
 - [ ] Push tag to trigger workflow (if testing in fork/branch)
 - [ ] **Validation**: Release notes generation works
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 11.3 CI Guards Verification
 - [ ] Verify placeholder check runs on PR
@@ -685,7 +685,7 @@ Manual verification needed for:
 - [ ] Verify violation blocks commit/push
 - [ ] **Validation**: All CI guards enforced
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 11.4 Artifact Generation Testing
 - [ ] Run `pwsh scripts/packaging/make_portable_zip.ps1`
@@ -697,7 +697,7 @@ Manual verification needed for:
 - [ ] Check all artifacts in `artifacts/windows/portable/`
 - [ ] **Validation**: All release artifacts generated
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 11.5 Release Workflow Gates
 - [ ] Verify workflow runs validation job first
@@ -710,7 +710,7 @@ Manual verification needed for:
 - [ ] Verify workflow attaches all artifacts
 - [ ] **Validation**: Release workflow complete end-to-end
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 11.6 Documentation Verification
 - [ ] Review `ReleasePlaybook.md` for accuracy
@@ -721,7 +721,7 @@ Manual verification needed for:
 - [ ] Verify release automation section complete
 - [ ] **Validation**: Documentation complete and accurate
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ---
 
@@ -778,12 +778,12 @@ Manual verification needed for:
 
 **Execution Date**: TBD
 **Executed By**: TBD
-**Environment**: 
+**Environment**:
 - Frontend: Node.js 18.x/20.x, npm 9.x/10.x
 - Backend: .NET 8.0
 - Browser: Chromium (Playwright)
 
-**Results Summary**: 
+**Results Summary**:
 - Total Test Phases: 33
 - Passed: 0
 - Failed: 0
@@ -815,7 +815,7 @@ Manual verification needed for:
 - [ ] Confirm run override (pinned) takes highest precedence
 - [ ] **Validation**: Check audit log shows correct resolution source
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 9.2 Pin/Unpin Functionality
 - [ ] Select a model in settings
@@ -828,7 +828,7 @@ Manual verification needed for:
 - [ ] Verify lock icon and badge disappear
 - [ ] **Validation**: Check `AuraData/model-selections.json` for isPinned flag
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 9.3 Model Unavailability Blocking
 - [ ] Pin a model for a stage
@@ -841,7 +841,7 @@ Manual verification needed for:
 - [ ] Test "Cancel run" action
 - [ ] **Validation**: Pipeline must not proceed without user action
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 9.4 Automatic Fallback Settings
 - [ ] Navigate to Settings → Model Selection
@@ -854,7 +854,7 @@ Manual verification needed for:
 - [ ] Check audit log for fallback notification
 - [ ] **Validation**: Check `allowAutomaticFallback` in settings
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 9.5 Deprecation Warning Flow
 - [ ] Add a deprecated model to ModelRegistry with DeprecationDate
@@ -866,7 +866,7 @@ Manual verification needed for:
 - [ ] Verify deprecation warning persists after selection
 - [ ] **Validation**: API should return deprecationWarning in response
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 9.6 Model Testing Feature
 - [ ] Select a model in picker
@@ -878,7 +878,7 @@ Manual verification needed for:
 - [ ] Verify appropriate error message
 - [ ] **Validation**: Check `/api/models/test` endpoint response
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 9.7 Model Selection Persistence
 - [ ] Set multiple model selections (global, project, stage)
@@ -889,7 +889,7 @@ Manual verification needed for:
 - [ ] Confirm no data loss
 - [ ] **Validation**: Inspect `AuraData/model-selections.json` file
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 9.8 Audit Trail Verification
 - [ ] Perform several model resolutions (various precedence levels)
@@ -905,7 +905,7 @@ Manual verification needed for:
 - [ ] Verify last 1000 entries limit
 - [ ] **Validation**: Review logs via UI or `AuraData/model-selections.json`
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 9.9 CLI Model Override Testing
 - [ ] Run video generation with `--model gpt-4o` flag
@@ -917,7 +917,7 @@ Manual verification needed for:
 - [ ] Test `--allow-auto-fallback` flag
 - [ ] **Validation**: CLI flags properly passed to ModelResolutionService
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 9.10 Per-Stage Model Selection
 - [ ] Navigate to Settings → Model Selection
@@ -931,7 +931,7 @@ Manual verification needed for:
 - [ ] Test with one stage pinned, others not
 - [ ] **Validation**: Pipeline uses correct model per stage
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 9.11 Clear Selections Functionality
 - [ ] Set multiple model selections
@@ -943,7 +943,7 @@ Manual verification needed for:
 - [ ] Confirm only project overrides cleared
 - [ ] **Validation**: Check settings state after each clear action
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
+- [ ] **Notes**:
 
 ### 9.12 Preflight Model Validation
 - [ ] Configure models for all stages
@@ -955,5 +955,4 @@ Manual verification needed for:
 - [ ] Verify preflight passes
 - [ ] **Validation**: Preflight service correctly validates all models
 - [ ] **Status**: Not Started
-- [ ] **Notes**: 
-
+- [ ] **Notes**:

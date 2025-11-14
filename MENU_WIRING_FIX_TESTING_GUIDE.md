@@ -7,7 +7,7 @@ This PR fixes two critical issues that caused the application to show a blank sc
 ### 1. Tray Icon Loading Error (FIXED)
 **Problem**: The tray manager attempted to create a system tray icon without proper error handling. When `nativeImage.createFromPath()` received an invalid or empty path, it threw an error "Failed to load image from path" that blocked app startup.
 
-**Solution**: 
+**Solution**:
 - Added comprehensive try-catch error handling in `tray-manager.js`
 - Validate that the icon is successfully loaded before creating the tray
 - Made tray creation optional/non-critical - app continues even if tray fails

@@ -5,7 +5,6 @@
 
 ---
 
-
 # PR #2: Multi-Stage Script Refinement Pipeline - Implementation Summary
 
 ## Overview
@@ -109,7 +108,7 @@ All acceptance criteria from the problem statement have been met and validated.
 ## Acceptance Criteria Validation
 
 ### ✅ Minimum 2 passes with configurable refinement
-**Implementation**: 
+**Implementation**:
 - Configurable 1-3 passes via `MaxRefinementPasses` (default: 2)
 - Validated in tests: `RefineScript_WithDefaultConfig_GeneratesMultiplePasses`
 

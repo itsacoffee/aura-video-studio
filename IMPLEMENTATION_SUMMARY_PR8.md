@@ -162,7 +162,7 @@ All components:
 #### Loading Indicators (`src/components/Loading/LoadingSpinner.tsx`)
 - **LoadingSpinner**: Circular rotating spinner (4 sizes)
 - **LoadingDots**: Bouncing dots indicator (3 sizes)
-- **LoadingBar**: 
+- **LoadingBar**:
   - Determinate mode with progress percentage
   - Indeterminate mode with sliding animation
   - Smooth progress updates
@@ -441,7 +441,7 @@ Future improvements could include:
 ## 🧪 Testing Recommendations
 
 1. **Visual Testing**: Use the `/animation-showcase` page
-2. **Accessibility Testing**: 
+2. **Accessibility Testing**:
    - Enable reduced motion in OS settings
    - Test with keyboard only
    - Test with screen reader (NVDA/JAWS)

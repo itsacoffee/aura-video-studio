@@ -31,10 +31,10 @@ Aura Video Studio now has **complete XAML views** for all 6 interface screens pl
 - Program.cs - DI setup and orchestration (286 lines)
 - README.md - Complete usage guide (336 lines)
 - Successfully runs on Linux, demonstrating:
-  * Hardware detection (with graceful fallback)
-  * Script generation (rule-based LLM)
-  * Provider mixing explanation
-  * Acceptance criteria validation
+  - Hardware detection (with graceful fallback)
+  - Script generation (rule-based LLM)
+  - Provider mixing explanation
+  - Acceptance criteria validation
 
 ✅ **Output Example**
 ```
@@ -157,6 +157,7 @@ Duration: 195 ms
 - ✅ Provider mixing logic validated
 
 ### Platform Testing
+
 | Platform | Core Build | CLI Demo | WinUI App | Notes |
 |----------|-----------|----------|-----------|-------|
 | Linux | ✅ | ✅ | ⚠️ | WinUI requires Windows |

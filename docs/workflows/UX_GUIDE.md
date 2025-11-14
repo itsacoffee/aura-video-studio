@@ -74,7 +74,7 @@ Add consistent branding to videos.
 Configure subtitle generation and appearance.
 
 - **Enable/Disable**: Toggle caption generation
-- **Format**: 
+- **Format**:
   - *SRT (SubRip)*: Broad compatibility, simple format
   - *VTT (WebVTT)*: Web-native, supports styling
 - **Burn-in**: Permanently embed captions in video

@@ -37,7 +37,7 @@ Aura Video Studio has a comprehensive test suite covering:
 
 Test individual components and functions in isolation.
 
-**Location**: 
+**Location**:
 - Backend: `Aura.Tests/*Tests.cs`
 - Frontend: `Aura.Web/src/**/*.test.ts(x)`
 

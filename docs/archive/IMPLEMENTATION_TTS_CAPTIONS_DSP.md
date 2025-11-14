@@ -284,7 +284,7 @@ None - all acceptance criteria met and tests passing.
 ## Implementation Complete
 
 All TTS, captions, and DSP features are fully implemented and operational. The system provides professional-grade audio processing and caption generation capabilities.
-   - Export templates for different platforms
+- Export templates for different platforms
 
 ## References
 
@@ -303,7 +303,7 @@ All TTS, captions, and DSP features are fully implemented and operational. The s
 
 **Title:** feat: tts pipeline and captions with dsp loudness
 
-**Description:** 
+**Description:**
 Implements robust TTS pipeline with Windows SAPI, ElevenLabs/PlayHT providers, professional DSP chain for audio normalization, and comprehensive caption generation with SRT/VTT export and optional burn-in.
 
 **Impact:**

@@ -258,7 +258,7 @@ Text-to-Speech (TTS) provider errors relate to audio generation services.
 
 #### Voice Not Available
 **Problem**: Selected voice is not available on your plan  
-**Solution**: 
+**Solution**:
 1. Go to Settings → Providers → TTS
 2. Click "Refresh Voice List"
 3. Select an available voice

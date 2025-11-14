@@ -26,7 +26,7 @@ Successfully implemented comprehensive network resilience and retry logic for bo
 
 **Frontend**:
 - Location: `Aura.Web/src/services/api/apiClient.ts` (CircuitBreaker class)
-- Features: 
+- Features:
   - 3 states: CLOSED, OPEN, HALF_OPEN
   - Failure threshold: 5
   - Success threshold: 2

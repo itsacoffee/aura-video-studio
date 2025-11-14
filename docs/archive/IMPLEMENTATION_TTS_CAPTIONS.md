@@ -159,7 +159,7 @@ The `TtsProviderFactory` automatically selects the best available provider:
 - ✅ **AudioProcessorTests**: Caption generation, subtitle filters (already existed)
 
 ### Integration Tests
-- ✅ **TtsEndpointIntegrationTests**: 
+- ✅ **TtsEndpointIntegrationTests**:
   - `/tts` endpoint happy path
   - Different voice settings
   - TTS + captions pipeline

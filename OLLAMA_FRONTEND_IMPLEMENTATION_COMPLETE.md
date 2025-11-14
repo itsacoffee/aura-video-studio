@@ -23,7 +23,7 @@ However, the frontend UI was not implemented. The goal of this task was to "fini
    - Installation guidance with links to Ollama documentation
    - Proper error handling and loading states using Fluent UI components
 
-2. **Aura.Web/src/components/Settings/__tests__/OllamaProviderConfig.test.tsx** (129 lines)
+2. **Aura.Web/src/components/Settings/**tests**/OllamaProviderConfig.test.tsx** (129 lines)
    - 4 comprehensive unit tests covering all component states
    - Tests for: initial render, connected status, not running status, no models warning
    - All tests passing

@@ -132,7 +132,7 @@ The launcher script includes:
   - Up to 30 attempts (30 seconds total)
   - 1 second wait between attempts
   - Uses PowerShell Invoke-WebRequest for HTTP check
-- **Error Handling**: 
+- **Error Handling**:
   - Displays error if API fails to start
   - Prompts user to check API console
   - Clean exit codes

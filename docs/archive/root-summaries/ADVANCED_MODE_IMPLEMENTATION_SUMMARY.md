@@ -5,7 +5,6 @@
 
 ---
 
-
 # Advanced Mode Implementation Summary
 
 ## Overview
@@ -79,7 +78,7 @@ public class GeneralSettings
 - **Banner auto-hides when Advanced Mode is disabled**
 
 #### Navigation Filtering
-- **Files**: 
+- **Files**:
   - `Aura.Web/src/navigation.tsx` (added `advancedOnly` property to `NavItem`)
   - `Aura.Web/src/components/Layout.tsx` (filter logic)
 

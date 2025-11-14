@@ -5,7 +5,6 @@
 
 ---
 
-
 # PR #24: LLM Provider Recommendation System - Optional with Full Disable Capability
 
 ## Implementation Summary
@@ -60,19 +59,19 @@ public enum AssistanceLevel
 1. **Enable Health Monitoring** (`EnableHealthMonitoring`)
    - When disabled: No health tracking, no success rate monitoring, no failure alerts
    - Providers used exactly as user specifies regardless of health
-   
+
 2. **Enable Cost Tracking** (`EnableCostTracking`)
    - When disabled: No cost tracking, no budget warnings, no spend monitoring
    - Users can use providers without seeing costs
-   
+
 3. **Enable Learning** (`EnableLearning`)
    - When disabled: System never tracks overrides, never learns patterns
    - Recommendations stay static based on objective metrics only
-   
+
 4. **Enable Profiles** (`EnableProfiles`)
    - When disabled: No profile system shown
    - User sets providers manually without presets
-   
+
 5. **Enable Auto Fallback** (`EnableAutoFallback`)
    - When disabled: If provider fails, system shows error and stops
    - User must manually select different provider or retry

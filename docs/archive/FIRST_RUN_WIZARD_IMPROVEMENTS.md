@@ -80,7 +80,7 @@ If installation failed, users had no clear indication of what went wrong.
    - Added prominent error display section showing installation failures
    - Enhanced tips and guidance throughout the wizard
 
-4. **Aura.Web/src/state/__tests__/onboarding.test.ts**
+4. **Aura.Web/src/state/**tests**/onboarding.test.ts**
    - Added test to verify install items have descriptions
    - Added test to verify install items have default paths
    - Ensured all 42 tests continue to pass

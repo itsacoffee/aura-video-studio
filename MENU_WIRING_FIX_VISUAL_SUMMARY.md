@@ -191,6 +191,7 @@ function App() {
 ## Impact Analysis
 
 ### User Experience Improvement
+
 | Issue | Before | After |
 |-------|--------|-------|
 | **App Startup** | ❌ Crashes with error dialog | ✅ Loads successfully |
@@ -202,6 +203,7 @@ function App() {
 | **Help Menu** | ❌ Doesn't work | ✅ All items work |
 
 ### Code Quality Metrics
+
 | Metric | Status |
 |--------|--------|
 | **Security Scan (CodeQL)** | ✅ 0 alerts |
@@ -212,6 +214,7 @@ function App() {
 | **Linting** | ✅ Passes ESLint |
 
 ### Files Changed Summary
+
 | File | Lines Changed | Type |
 |------|---------------|------|
 | `tray-manager.js` | +24, -5 | Bug fix |

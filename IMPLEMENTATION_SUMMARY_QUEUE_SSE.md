@@ -87,27 +87,27 @@ Total tests: 5
 ## Acceptance Criteria ✅
 
 ✅ **Progress never decreases** (monotonic invariant)
-  - Implemented in Job.WithMonotonicProgress()
-  - Enforced in JobRunner.UpdateJob()
-  - Tested in JobModel_WithMonotonicProgress_Should_PreventDecrease
+- Implemented in Job.WithMonotonicProgress()
+- Enforced in JobRunner.UpdateJob()
+- Tested in JobModel_WithMonotonicProgress_Should_PreventDecrease
 
 ✅ **State transitions follow strict invariants**
-  - Implemented in Job.CanTransitionTo()
-  - Enforced in JobRunner.UpdateJob()
-  - Tested in JobStateTransitions_Should_FollowInvariants
+- Implemented in Job.CanTransitionTo()
+- Enforced in JobRunner.UpdateJob()
+- Tested in JobStateTransitions_Should_FollowInvariants
 
 ✅ **Disconnect/reconnect resumes stream from last event**
-  - Backend supports Last-Event-ID header and query parameter
-  - Frontend tracks and sends lastEventId on reconnection
-  - SSE endpoint generates unique event IDs
+- Backend supports Last-Event-ID header and query parameter
+- Frontend tracks and sends lastEventId on reconnection
+- SSE endpoint generates unique event IDs
 
 ✅ **Cancel operation cleans up temp artifacts**
-  - Pre-existing cleanup in JobRunner (CleanupService integration)
-  - Tested in CleanupService_Should_HandleJobCleanup
+- Pre-existing cleanup in JobRunner (CleanupService integration)
+- Tested in CleanupService_Should_HandleJobCleanup
 
 ✅ **Timestamps follow correct ordering**
-  - EndedUtc auto-set for terminal states
-  - Tested in JobTimestamps_Should_FollowCorrectOrdering
+- EndedUtc auto-set for terminal states
+- Tested in JobTimestamps_Should_FollowCorrectOrdering
 
 ## Technical Details
 

@@ -17,7 +17,7 @@ This document tracks the remaining ~33 build errors that are **pre-existing** an
 ```
 error CS0234: The type or namespace name 'CookiePolicyOptions' does not exist in the namespace 'Microsoft.AspNetCore.Http'
 ```
-**Possible Fix**: 
+**Possible Fix**:
 - Update ASP.NET Core package version
 - Or remove/replace cookie policy configuration
 

@@ -7,7 +7,7 @@
 
 **Impact**: electron-builder couldn't find the backend binaries, causing the desktop app build to fail silently.
 
-**Fix**: 
+**Fix**:
 - Updated `build-desktop.ps1` to build to `resources/backend/` instead of `backend/`
 - Updated `build-desktop.sh` for consistency
 - Updated `scripts/build-backend-windows.ps1` to use correct path
@@ -53,7 +53,7 @@
 
 **Impact**: Failed builds reported as successful.
 
-**Fix**: 
+**Fix**:
 - Added proper exit code checking after every critical command
 - Script now exits immediately on first failure
 - Clear error messages indicate which step failed
@@ -70,7 +70,7 @@
 
 **Impact**: electron-builder warnings/errors about missing resources.
 
-**Fix**: 
+**Fix**:
 - Removed optional resource references from `package.json`
 - FFmpeg and samples are now optional (app can download at runtime)
 - Documented in `resources/README.md`
@@ -94,11 +94,11 @@
 **File Changed**: `Aura.Desktop/package.json`
 
 ### 10. 🔒 **Analyzer Warnings**
-**Issues**: 
+**Issues**:
 - RS1032: Diagnostic message format warning
 - RS2007: Invalid analyzer release header
 
-**Fix**: 
+**Fix**:
 - Cleaned up diagnostic message format
 - Fixed release header in AnalyzerReleases.Unshipped.md
 
@@ -201,7 +201,7 @@ npm run build
 - Framework reference issues (check `Aura.Core.csproj`)
 
 ### Issue: electron-builder fails with "Cannot find module"
-**Solution**: 
+**Solution**:
 ```powershell
 cd Aura.Desktop
 Remove-Item -Recurse -Force node_modules

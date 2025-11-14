@@ -199,8 +199,8 @@ The download center is fully functional with:
 - Manifest-driven automation
 
 All core download management features are implemented and operational.
-   - Priority ordering
-   - Batch operations
+- Priority ordering
+- Batch operations
 
 5. **Advanced Features**
    - Bandwidth throttling

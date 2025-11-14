@@ -118,7 +118,7 @@ Returns combined status and models:
 - `FormatBytes()`: Formats byte sizes (B, KB, MB, GB, TB)
 
 ### 4. Service Registration (✅ COMPLETE)
-**Files**: 
+**Files**:
 - `Aura.Api/Startup/ProviderServicesExtensions.cs` (updated)
 - `Aura.Api/Program.cs` (updated)
 

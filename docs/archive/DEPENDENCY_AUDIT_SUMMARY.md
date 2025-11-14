@@ -9,6 +9,7 @@ This document summarizes the backend dependency audit performed on the Aura Vide
 ## Package Updates
 
 ### Core Framework Packages
+
 | Package | Old Version | New Version | Projects |
 |---------|-------------|-------------|----------|
 | Microsoft.Extensions.Http | 9.0.9 | 9.0.10 | Aura.Core, Aura.Providers |
@@ -22,6 +23,7 @@ This document summarizes the backend dependency audit performed on the Aura Vide
 | System.Text.Json | 9.0.9 | 9.0.10 | Aura.Cli |
 
 ### Logging Packages
+
 | Package | Old Version | New Version | Projects |
 |---------|-------------|-------------|----------|
 | Serilog | 4.2.0 | 4.3.0 | Aura.Cli |
@@ -31,6 +33,7 @@ This document summarizes the backend dependency audit performed on the Aura Vide
 | Serilog.Sinks.Console | 6.0.0 | 6.0.0 | Aura.Cli |
 
 ### Web/API Packages
+
 | Package | Old Version | New Version | Projects |
 |---------|-------------|-------------|----------|
 | Microsoft.AspNetCore.OpenApi | 8.0.20 | 8.0.20 | Aura.Api |
@@ -39,6 +42,7 @@ This document summarizes the backend dependency audit performed on the Aura Vide
 **Note:** Microsoft.AspNetCore.OpenApi kept at 8.0.20 because v9.x requires .NET 9.0
 
 ### Testing Packages
+
 | Package | Old Version | New Version | Projects |
 |---------|-------------|-------------|----------|
 | xunit | 2.5.3 | 2.9.3 | Aura.Tests |

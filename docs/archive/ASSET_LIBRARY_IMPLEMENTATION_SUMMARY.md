@@ -481,7 +481,7 @@ The Asset Library System is a **production-ready** implementation that provides:
 
 - **User Guide**: [ASSET_LIBRARY_GUIDE.md](../user-guide/ASSET_LIBRARY_GUIDE.md)
 - **API Docs**: Available at `/swagger` endpoint
-- **Source Code**: 
+- **Source Code**:
   - Backend: `Aura.Core/Services/Assets/`, `Aura.Api/Controllers/AssetsController.cs`
   - Frontend: `Aura.Web/src/pages/Assets/`, `Aura.Web/src/components/Assets/`
 - **Tests**: `Aura.Tests/AssetLibraryServiceTests.cs`, `Aura.Tests/AssetTaggerTests.cs`
