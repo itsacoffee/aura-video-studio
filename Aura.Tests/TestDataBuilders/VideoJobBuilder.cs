@@ -1,5 +1,6 @@
 using Aura.Core.Models;
 using Aura.Core.Models.Jobs;
+using JobStatus = Aura.Core.Models.Jobs.JobStatus;
 
 namespace Aura.Tests.TestDataBuilders;
 
@@ -145,7 +146,7 @@ public class VideoJobBuilder
             ),
             PlanSpec = _planSpec ?? new PlanSpec(
                 TargetDuration: TimeSpan.FromMinutes(2),
-                Pacing: Pacing.Medium,
+                Pacing: Pacing.Conversational,
                 Density: Density.Balanced,
                 Style: "Documentary"
             ),
@@ -153,7 +154,7 @@ public class VideoJobBuilder
                 VoiceName: "default",
                 Rate: 1.0,
                 Pitch: 1.0,
-                Pause: PauseStyle.Normal
+                Pause: PauseStyle.Natural
             ),
             RenderSpec = _renderSpec ?? new RenderSpec(
                 Res: new Resolution(1920, 1080),

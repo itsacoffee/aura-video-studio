@@ -461,4 +461,28 @@ internal class FfmpegLocator : IFfmpegLocator
 
         return result.Path;
     }
+
+    public async Task<FfmpegValidationResult> CheckAllCandidatesAsync(string? configuredPath = null, CancellationToken ct = default)
+    {
+        var result = await _resolver.ResolveAsync(configuredPath, forceRefresh: false, ct);
+        return new FfmpegValidationResult
+        {
+            IsValid = result.IsValid,
+            Path = result.Path,
+            Error = result.Error,
+            Version = result.Version
+        };
+    }
+
+    public async Task<FfmpegValidationResult> ValidatePathAsync(string ffmpegPath, CancellationToken ct = default)
+    {
+        var result = await _resolver.ValidateAsync(ffmpegPath, ct);
+        return new FfmpegValidationResult
+        {
+            IsValid = result.IsValid,
+            Path = ffmpegPath,
+            Error = result.Error,
+            Version = result.Version
+        };
+    }
 }
