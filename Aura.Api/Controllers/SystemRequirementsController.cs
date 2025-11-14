@@ -138,9 +138,9 @@ public class SystemRequirementsController : ControllerBase
     {
         try
         {
-            var diskSpace = await GetDiskSpaceInfo();
-            var gpu = await GetGPUInformation();
-            var memory = await GetMemoryInformation();
+            var diskSpace = await GetDiskSpaceInfo().ConfigureAwait(false);
+            var gpu = await GetGPUInformation().ConfigureAwait(false);
+            var memory = await GetMemoryInformation().ConfigureAwait(false);
             var os = GetOSInformation();
 
             // Determine overall status

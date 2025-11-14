@@ -47,7 +47,7 @@ public class ContentPlanningController : ControllerBase
         try
         {
             _logger.LogInformation("Analyzing trends for category: {Category}", request.Category);
-            var response = await _trendAnalysisService.AnalyzeTrendsAsync(request, ct);
+            var response = await _trendAnalysisService.AnalyzeTrendsAsync(request, ct).ConfigureAwait(false);
             return Ok(response);
         }
         catch (Exception ex)
@@ -69,7 +69,7 @@ public class ContentPlanningController : ControllerBase
         try
         {
             _logger.LogInformation("Getting platform trends for {Platform}", platform);
-            var trends = await _trendAnalysisService.GetPlatformTrendsAsync(platform, category, ct);
+            var trends = await _trendAnalysisService.GetPlatformTrendsAsync(platform, category, ct).ConfigureAwait(false);
             return Ok(new { success = true, trends, platform, category });
         }
         catch (Exception ex)
@@ -90,7 +90,7 @@ public class ContentPlanningController : ControllerBase
         try
         {
             _logger.LogInformation("Generating topics for category: {Category}", request.Category);
-            var response = await _topicGenerationService.GenerateTopicsAsync(request, ct);
+            var response = await _topicGenerationService.GenerateTopicsAsync(request, ct).ConfigureAwait(false);
             return Ok(response);
         }
         catch (Exception ex)
@@ -113,9 +113,9 @@ public class ContentPlanningController : ControllerBase
         {
             _logger.LogInformation("Generating trend-based topics");
             
-            var trendResponse = await _trendAnalysisService.AnalyzeTrendsAsync(trendRequest, ct);
+            var trendResponse = await _trendAnalysisService.AnalyzeTrendsAsync(trendRequest, ct).ConfigureAwait(false);
             var topics = await _topicGenerationService.GenerateTrendBasedTopicsAsync(
-                trendResponse.Trends, count, ct);
+                trendResponse.Trends, count, ct).ConfigureAwait(false);
 
             return Ok(new { success = true, topics, count = topics.Count });
         }
@@ -137,7 +137,7 @@ public class ContentPlanningController : ControllerBase
         try
         {
             _logger.LogInformation("Getting scheduling recommendations for {Platform}", request.Platform);
-            var response = await _schedulingService.GetSchedulingRecommendationsAsync(request, ct);
+            var response = await _schedulingService.GetSchedulingRecommendationsAsync(request, ct).ConfigureAwait(false);
             return Ok(response);
         }
         catch (Exception ex)
@@ -169,7 +169,7 @@ public class ContentPlanningController : ControllerBase
             };
 
             var scheduled = await _schedulingService.ScheduleContentAsync(
-                plan, request.ScheduledDateTime, ct);
+                plan, request.ScheduledDateTime, ct).ConfigureAwait(false);
 
             return Ok(new { success = true, scheduled });
         }
@@ -196,7 +196,7 @@ public class ContentPlanningController : ControllerBase
                 startDate, endDate);
             
             var content = await _schedulingService.GetScheduledContentAsync(
-                startDate, endDate, platform, ct);
+                startDate, endDate, platform, ct).ConfigureAwait(false);
 
             return Ok(new { success = true, content, count = content.Count });
         }
@@ -218,7 +218,7 @@ public class ContentPlanningController : ControllerBase
         try
         {
             _logger.LogInformation("Analyzing audience for platform: {Platform}", request.Platform);
-            var response = await _audienceService.AnalyzeAudienceAsync(request, ct);
+            var response = await _audienceService.AnalyzeAudienceAsync(request, ct).ConfigureAwait(false);
             return Ok(response);
         }
         catch (Exception ex)
@@ -239,7 +239,7 @@ public class ContentPlanningController : ControllerBase
         try
         {
             _logger.LogInformation("Getting demographics for platform: {Platform}", platform);
-            var demographics = await _audienceService.GetDemographicsAsync(platform, ct);
+            var demographics = await _audienceService.GetDemographicsAsync(platform, ct).ConfigureAwait(false);
             return Ok(new { success = true, demographics, platform });
         }
         catch (Exception ex)
@@ -260,7 +260,7 @@ public class ContentPlanningController : ControllerBase
         try
         {
             _logger.LogInformation("Getting top interests for category: {Category}", category);
-            var interests = await _audienceService.GetTopInterestsAsync(category, ct);
+            var interests = await _audienceService.GetTopInterestsAsync(category, ct).ConfigureAwait(false);
             return Ok(new { success = true, interests, category });
         }
         catch (Exception ex)

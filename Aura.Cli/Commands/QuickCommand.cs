@@ -54,7 +54,7 @@ public class QuickCommand : ICommand
 
             // Step 1: Hardware detection
             Console.WriteLine("[1/5] Detecting hardware...");
-            var profile = await _hardwareDetector.DetectSystemAsync();
+            var profile = await _hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
             Console.WriteLine($"      ✓ Tier {profile.Tier} ({profile.LogicalCores} cores, {profile.RamGB} GB RAM)");
             Console.WriteLine();
 
@@ -107,20 +107,20 @@ public class QuickCommand : ICommand
             }
             else
             {
-                script = await _llmProvider.DraftScriptAsync(brief, plan, CancellationToken.None);
+                script = await _llmProvider.DraftScriptAsync(brief, plan, CancellationToken.None).ConfigureAwait(false);
                 
                 // Save artifacts
                 var outputDir = options.OutputDirectory ?? "./output";
                 Directory.CreateDirectory(outputDir);
 
                 var briefPath = Path.Combine(outputDir, "brief.json");
-                await File.WriteAllTextAsync(briefPath, JsonSerializer.Serialize(brief, new JsonSerializerOptions { WriteIndented = true }));
+                await File.WriteAllTextAsync(briefPath, JsonSerializer.Serialize(brief, new JsonSerializerOptions { WriteIndented = true })).ConfigureAwait(false);
 
                 var planPath = Path.Combine(outputDir, "plan.json");
-                await File.WriteAllTextAsync(planPath, JsonSerializer.Serialize(plan, new JsonSerializerOptions { WriteIndented = true }));
+                await File.WriteAllTextAsync(planPath, JsonSerializer.Serialize(plan, new JsonSerializerOptions { WriteIndented = true })).ConfigureAwait(false);
 
                 var scriptPath = Path.Combine(outputDir, "script.txt");
-                await File.WriteAllTextAsync(scriptPath, script);
+                await File.WriteAllTextAsync(scriptPath, script).ConfigureAwait(false);
 
                 Console.WriteLine($"      ✓ Script generated ({script.Length} chars)");
                 
@@ -157,7 +157,7 @@ public class QuickCommand : ICommand
                 }
                 else
                 {
-                    var renderResult = await RenderDemoVideoAsync(videoPath, profile.EnableNVENC, options.Verbose, logPath);
+                    var renderResult = await RenderDemoVideoAsync(videoPath, profile.EnableNVENC, options.Verbose, logPath).ConfigureAwait(false);
                     
                     if (renderResult == 0 && script != null)
                     {
@@ -168,7 +168,7 @@ public class QuickCommand : ICommand
                         var captionBuilder = new CaptionBuilder(_logger as ILogger<CaptionBuilder> ?? 
                             Microsoft.Extensions.Logging.Abstractions.NullLogger<CaptionBuilder>.Instance);
                         var srt = captionBuilder.GenerateSrt(captionLines);
-                        await File.WriteAllTextAsync(captionPath, srt);
+                        await File.WriteAllTextAsync(captionPath, srt).ConfigureAwait(false);
                         Console.WriteLine($"      ✓ Captions generated");
                     }
                     else
@@ -283,11 +283,11 @@ public class QuickCommand : ICommand
         };
 
         process.Start();
-        var stderr = await process.StandardError.ReadToEndAsync();
-        await process.WaitForExitAsync();
+        var stderr = await process.StandardError.ReadToEndAsync().ConfigureAwait(false);
+        await process.WaitForExitAsync().ConfigureAwait(false);
 
         // Save log
-        await File.WriteAllTextAsync(logPath, stderr);
+        await File.WriteAllTextAsync(logPath, stderr).ConfigureAwait(false);
 
         if (verbose && process.ExitCode != 0)
         {

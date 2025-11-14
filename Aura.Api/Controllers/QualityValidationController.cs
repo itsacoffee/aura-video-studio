@@ -64,7 +64,7 @@ public class QualityValidationController : ControllerBase
                 return BadRequest(new { success = false, error = "Invalid min_resolution format. Use format: WIDTHxHEIGHT (e.g., 1280x720)" });
             }
 
-            var result = await _resolutionService.ValidateResolutionAsync(width, height, minWidth, minHeight, ct);
+            var result = await _resolutionService.ValidateResolutionAsync(width, height, minWidth, minHeight, ct).ConfigureAwait(false);
 
             Log.Information("[{CorrelationId}] Resolution validation complete: Valid={IsValid}, Score={Score}",
                 correlationId, result.IsValid, result.Score);
@@ -100,7 +100,7 @@ public class QualityValidationController : ControllerBase
                 return BadRequest(new { success = false, error = "AudioFilePath is required" });
             }
 
-            var result = await _audioService.AnalyzeAudioAsync(request.AudioFilePath, ct);
+            var result = await _audioService.AnalyzeAudioAsync(request.AudioFilePath, ct).ConfigureAwait(false);
 
             Log.Information("[{CorrelationId}] Audio analysis complete: Valid={IsValid}, Score={Score}",
                 correlationId, result.IsValid, result.Score);
@@ -150,7 +150,7 @@ public class QualityValidationController : ControllerBase
                 return BadRequest(new { success = false, error = "Tolerance must be non-negative" });
             }
 
-            var result = await _frameRateService.ValidateFrameRateAsync(actual_fps, expected_fps, tolerance, ct);
+            var result = await _frameRateService.ValidateFrameRateAsync(actual_fps, expected_fps, tolerance, ct).ConfigureAwait(false);
 
             Log.Information("[{CorrelationId}] Frame rate validation complete: Valid={IsValid}, Score={Score}",
                 correlationId, result.IsValid, result.Score);
@@ -186,7 +186,7 @@ public class QualityValidationController : ControllerBase
                 return BadRequest(new { success = false, error = "VideoFilePath is required" });
             }
 
-            var result = await _consistencyService.AnalyzeConsistencyAsync(request.VideoFilePath, ct);
+            var result = await _consistencyService.AnalyzeConsistencyAsync(request.VideoFilePath, ct).ConfigureAwait(false);
 
             Log.Information("[{CorrelationId}] Consistency analysis complete: Valid={IsValid}, Score={Score}",
                 correlationId, result.IsValid, result.Score);
@@ -249,7 +249,7 @@ public class QualityValidationController : ControllerBase
             }
 
             var result = await _platformService.ValidateAsync(
-                platform, width, height, file_size_bytes, duration_seconds, codec, ct);
+                platform, width, height, file_size_bytes, duration_seconds, codec, ct).ConfigureAwait(false);
 
             Log.Information("[{CorrelationId}] Platform validation complete: Valid={IsValid}, Score={Score}",
                 correlationId, result.IsValid, result.Score);

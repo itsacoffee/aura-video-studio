@@ -67,7 +67,7 @@ public class OrchestratorValidationTests
             "Free",
             offlineOnly: true,
             CancellationToken.None
-        );
+        ).ConfigureAwait(false);
 
         // Assert
         Assert.True(result.Success, "Script generation should succeed with local provider");
@@ -112,7 +112,7 @@ public class OrchestratorValidationTests
             "Free",
             offlineOnly: true,
             CancellationToken.None
-        );
+        ).ConfigureAwait(false);
 
         // Assert - Script
         Assert.True(scriptResult.Success);
@@ -176,7 +176,7 @@ public class OrchestratorValidationTests
             "ProIfAvailable",
             offlineOnly: false,
             CancellationToken.None
-        );
+        ).ConfigureAwait(false);
 
         // Assert
         Assert.True(result.Success, "Should succeed with fallback");
@@ -222,7 +222,7 @@ public class OrchestratorValidationTests
             "Pro",
             offlineOnly: false,
             CancellationToken.None
-        );
+        ).ConfigureAwait(false);
 
         // Assert
         Assert.True(result.Success, "Should succeed after fallback");
@@ -265,7 +265,7 @@ public class OrchestratorValidationTests
             "Pro",
             offlineOnly: true,
             CancellationToken.None
-        );
+        ).ConfigureAwait(false);
 
         // Assert
         Assert.False(result.Success);
@@ -306,7 +306,7 @@ public class OrchestratorValidationTests
             "ProIfAvailable",
             offlineOnly: true,
             CancellationToken.None
-        );
+        ).ConfigureAwait(false);
 
         // Assert
         Assert.True(result.Success);

@@ -42,7 +42,7 @@ public class SettingsExportImportController : ControllerBase
     {
         try
         {
-            var preview = await _exportImportService.GetRedactionPreviewAsync(ct);
+            var preview = await _exportImportService.GetRedactionPreviewAsync(ct).ConfigureAwait(false);
 
             return Ok(new RedactionPreviewResponse(
                 preview.TotalSecrets,
@@ -66,14 +66,14 @@ public class SettingsExportImportController : ControllerBase
     {
         try
         {
-            var userSettings = await LoadUserSettingsAsync(ct);
+            var userSettings = await LoadUserSettingsAsync(ct).ConfigureAwait(false);
 
             var result = await _exportImportService.ExportSettingsAsync(
                 userSettings,
                 request.IncludeSecrets,
                 request.SelectedSecretKeys,
                 request.AcknowledgeWarning,
-                ct);
+                ct).ConfigureAwait(false);
 
             if (!result.Success)
             {
@@ -125,7 +125,7 @@ public class SettingsExportImportController : ControllerBase
                 return BadRequest(new { error = "Version is required" });
             }
 
-            var currentSettings = await LoadUserSettingsAsync(ct);
+            var currentSettings = await LoadUserSettingsAsync(ct).ConfigureAwait(false);
             var importData = MapFromSettingsExportData(request.Settings);
 
             var result = await _exportImportService.ImportSettingsAsync(
@@ -133,7 +133,7 @@ public class SettingsExportImportController : ControllerBase
                 currentSettings,
                 request.DryRun,
                 request.OverwriteExisting,
-                ct);
+                ct).ConfigureAwait(false);
 
             if (result.DryRun)
             {
@@ -149,7 +149,7 @@ public class SettingsExportImportController : ControllerBase
                     result.Conflicts.Count,
                     HttpContext.TraceIdentifier);
 
-                await SaveUserSettingsAsync(currentSettings, ct);
+                await SaveUserSettingsAsync(currentSettings, ct).ConfigureAwait(false);
             }
 
             var conflicts = result.Conflicts.Count > 0
@@ -182,7 +182,7 @@ public class SettingsExportImportController : ControllerBase
 
         try
         {
-            var json = await System.IO.File.ReadAllTextAsync(_userSettingsFilePath, ct);
+            var json = await System.IO.File.ReadAllTextAsync(_userSettingsFilePath, ct).ConfigureAwait(false);
             return System.Text.Json.JsonSerializer.Deserialize<UserSettings>(json) ?? new UserSettings();
         }
         catch (Exception ex)
@@ -207,7 +207,7 @@ public class SettingsExportImportController : ControllerBase
         };
 
         var json = System.Text.Json.JsonSerializer.Serialize(settings, options);
-        await System.IO.File.WriteAllTextAsync(_userSettingsFilePath, json, ct);
+        await System.IO.File.WriteAllTextAsync(_userSettingsFilePath, json, ct).ConfigureAwait(false);
     }
 
     private SettingsExportData MapToSettingsExportData(ExportData data)

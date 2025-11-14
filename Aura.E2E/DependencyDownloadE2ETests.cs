@@ -47,7 +47,7 @@ public class DependencyDownloadE2ETests : IDisposable
         var manager = new DependencyManager(_logger, _httpClient, _manifestPath, _downloadDirectory);
 
         // Act - Load manifest
-        var manifest = await manager.LoadManifestAsync();
+        var manifest = await manager.LoadManifestAsync().ConfigureAwait(false);
 
         // Assert
         Assert.NotNull(manifest);
@@ -73,7 +73,7 @@ public class DependencyDownloadE2ETests : IDisposable
         var manager = new DependencyManager(_logger, _httpClient, _manifestPath, _downloadDirectory);
 
         // Act
-        var result = await manager.VerifyComponentAsync("FFmpeg");
+        var result = await manager.VerifyComponentAsync("FFmpeg").ConfigureAwait(false);
 
         // Assert
         Assert.NotNull(result);
@@ -108,13 +108,13 @@ public class DependencyDownloadE2ETests : IDisposable
     }
   ]
 }";
-        await File.WriteAllTextAsync(_manifestPath, testManifest);
+        await File.WriteAllTextAsync(_manifestPath, testManifest).ConfigureAwait(false);
 
         // Create manager after writing manifest
         var manager = new DependencyManager(_logger, _httpClient, _manifestPath, _downloadDirectory);
 
         // Act - Verify component (should detect component is not installed)
-        var verifyResult = await manager.VerifyComponentAsync("TestComponent");
+        var verifyResult = await manager.VerifyComponentAsync("TestComponent").ConfigureAwait(false);
 
         // Assert - Either missing files detected or invalid status
         Assert.False(verifyResult.IsValid);
@@ -126,7 +126,7 @@ public class DependencyDownloadE2ETests : IDisposable
     {
         // Arrange
         var manager = new DependencyManager(_logger, _httpClient, _manifestPath, _downloadDirectory);
-        await manager.LoadManifestAsync(); // Ensure manifest is created
+        await manager.LoadManifestAsync().ConfigureAwait(false); // Ensure manifest is created
 
         // Act
         var instructions = manager.GetManualInstallInstructions("FFmpeg");
@@ -164,32 +164,32 @@ public class DependencyDownloadE2ETests : IDisposable
     }
   ]
 }";
-        await File.WriteAllTextAsync(_manifestPath, testManifest);
+        await File.WriteAllTextAsync(_manifestPath, testManifest).ConfigureAwait(false);
 
         // Create manager after writing manifest
         var manager = new DependencyManager(_logger, _httpClient, _manifestPath, _downloadDirectory);
 
         // Step 1: Verify - should be invalid (not installed)
-        var verifyResult1 = await manager.VerifyComponentAsync("TestComponent");
+        var verifyResult1 = await manager.VerifyComponentAsync("TestComponent").ConfigureAwait(false);
         Assert.False(verifyResult1.IsValid);
 
         // Step 2: Simulate install by creating the file
         var testFilePath = Path.Combine(_downloadDirectory, "test-file.txt");
-        await File.WriteAllTextAsync(testFilePath, ""); // Empty file matches the SHA-256
+        await File.WriteAllTextAsync(testFilePath, "").ConfigureAwait(false); // Empty file matches the SHA-256
 
         // Step 3: Verify again - should be valid now
-        var verifyResult2 = await manager.VerifyComponentAsync("TestComponent");
+        var verifyResult2 = await manager.VerifyComponentAsync("TestComponent").ConfigureAwait(false);
         Assert.True(verifyResult2.IsValid);
 
         // Step 4: Corrupt the file
-        await File.WriteAllTextAsync(testFilePath, "corrupted");
+        await File.WriteAllTextAsync(testFilePath, "corrupted").ConfigureAwait(false);
 
         // Step 5: Verify - should detect corruption
-        var verifyResult3 = await manager.VerifyComponentAsync("TestComponent");
+        var verifyResult3 = await manager.VerifyComponentAsync("TestComponent").ConfigureAwait(false);
         Assert.False(verifyResult3.IsValid);
 
         // Step 6: Remove component
-        await manager.RemoveComponentAsync("TestComponent");
+        await manager.RemoveComponentAsync("TestComponent").ConfigureAwait(false);
 
         // Step 7: Verify file is deleted
         Assert.False(File.Exists(testFilePath));
@@ -217,7 +217,7 @@ public class DependencyDownloadE2ETests : IDisposable
         var manager = new DependencyManager(_logger, _httpClient, _manifestPath, _downloadDirectory);
 
         // Act
-        var manifest = await manager.LoadManifestAsync();
+        var manifest = await manager.LoadManifestAsync().ConfigureAwait(false);
 
         // Assert - Check that components have postInstallProbe configured
         var ffmpeg = manifest.Components.Find(c => c.Name == "FFmpeg");

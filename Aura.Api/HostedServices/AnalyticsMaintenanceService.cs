@@ -33,13 +33,13 @@ public class AnalyticsMaintenanceService : BackgroundService
         _logger.LogInformation("Analytics Maintenance Service started");
 
         // Wait a bit before starting to let the app fully initialize
-        await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+        await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken).ConfigureAwait(false);
 
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
-                await PerformMaintenanceAsync(stoppingToken);
+                await PerformMaintenanceAsync(stoppingToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -47,7 +47,7 @@ public class AnalyticsMaintenanceService : BackgroundService
             }
 
             // Wait for next check
-            await Task.Delay(_checkInterval, stoppingToken);
+            await Task.Delay(_checkInterval, stoppingToken).ConfigureAwait(false);
         }
 
         _logger.LogInformation("Analytics Maintenance Service stopped");
@@ -62,7 +62,7 @@ public class AnalyticsMaintenanceService : BackgroundService
         try
         {
             // Get retention settings
-            var settings = await context.AnalyticsRetentionSettings.FirstOrDefaultAsync(cancellationToken);
+            var settings = await context.AnalyticsRetentionSettings.FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
             if (settings?.AutoCleanupEnabled != true)
             {
                 return;
@@ -76,16 +76,16 @@ public class AnalyticsMaintenanceService : BackgroundService
                 _logger.LogInformation("Starting scheduled analytics maintenance");
 
                 // Run cleanup
-                await cleanupService.CleanupAsync(cancellationToken);
+                await cleanupService.CleanupAsync(cancellationToken).ConfigureAwait(false);
 
                 // Run aggregation
                 if (settings.AggregateOldData)
                 {
-                    await cleanupService.AggregateOldDataAsync(cancellationToken);
+                    await cleanupService.AggregateOldDataAsync(cancellationToken).ConfigureAwait(false);
                 }
 
                 // Check database size
-                var dbSize = await cleanupService.GetDatabaseSizeBytesAsync(cancellationToken);
+                var dbSize = await cleanupService.GetDatabaseSizeBytesAsync(cancellationToken).ConfigureAwait(false);
                 var dbSizeMB = dbSize / (1024.0 * 1024.0);
                 
                 _logger.LogInformation(

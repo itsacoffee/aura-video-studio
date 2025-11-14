@@ -20,7 +20,7 @@ public static class CapabilitiesEndpoints
         {
             try
             {
-                var profile = await detector.DetectSystemAsync();
+                var profile = await detector.DetectSystemAsync().ConfigureAwait(false);
                 return Results.Ok(new
                 {
                     tier = profile.Tier.ToString(),
@@ -53,8 +53,8 @@ public static class CapabilitiesEndpoints
         {
             try
             {
-                await detector.RunHardwareProbeAsync();
-                var profile = await detector.DetectSystemAsync();
+                await detector.RunHardwareProbeAsync().ConfigureAwait(false);
+                var profile = await detector.DetectSystemAsync().ConfigureAwait(false);
 
                 var gpuDisplay = profile.Gpu != null
                     ? $"{profile.Gpu.Vendor} {profile.Gpu.Model}"

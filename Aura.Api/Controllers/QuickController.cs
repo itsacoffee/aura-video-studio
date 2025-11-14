@@ -44,7 +44,7 @@ public class QuickController : ControllerBase
             Log.Information("[{CorrelationId}] Quick Demo requested with topic: {Topic}", correlationId, request?.Topic ?? "(default)");
 
             // Check FFmpeg readiness before starting demo
-            var ffmpegStatus = await _ffmpegStatusService.GetStatusAsync(ct);
+            var ffmpegStatus = await _ffmpegStatusService.GetStatusAsync(ct).ConfigureAwait(false);
             
             if (!ffmpegStatus.Installed || 
                 !ffmpegStatus.Valid || 
@@ -88,7 +88,7 @@ public class QuickController : ControllerBase
             Log.Information("[{CorrelationId}] FFmpeg ready: Version={Version}, Source={Source}", 
                 correlationId, ffmpegStatus.Version, ffmpegStatus.Source);
 
-            var result = await _quickService.CreateQuickDemoAsync(request?.Topic, ct);
+            var result = await _quickService.CreateQuickDemoAsync(request?.Topic, ct).ConfigureAwait(false);
 
             if (result.Success)
             {

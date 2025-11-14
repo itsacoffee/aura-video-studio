@@ -43,7 +43,7 @@ public class TemplateManagementController : ControllerBase
             Log.Information("[{CorrelationId}] GET /api/template-management/templates - Category: {Category}", 
                 correlationId, category);
 
-            var templates = await _templateService.GetTemplatesAsync(category, subCategory, isSystemTemplate, ct);
+            var templates = await _templateService.GetTemplatesAsync(category, subCategory, isSystemTemplate, ct).ConfigureAwait(false);
 
             var response = templates.Select(t => new
             {
@@ -95,7 +95,7 @@ public class TemplateManagementController : ControllerBase
             var correlationId = HttpContext.TraceIdentifier;
             Log.Information("[{CorrelationId}] GET /api/template-management/templates/{TemplateId}", correlationId, templateId);
 
-            var template = await _templateService.GetTemplateByIdAsync(templateId, ct);
+            var template = await _templateService.GetTemplateByIdAsync(templateId, ct).ConfigureAwait(false);
             if (template == null)
             {
                 return NotFound(new
@@ -184,7 +184,7 @@ public class TemplateManagementController : ControllerBase
                 request.PreviewImage,
                 request.PreviewVideo,
                 false, // User templates are not system templates
-                ct);
+                ct).ConfigureAwait(false);
 
             return CreatedAtAction(
                 nameof(GetTemplate),
@@ -226,7 +226,7 @@ public class TemplateManagementController : ControllerBase
             Log.Information("[{CorrelationId}] POST /api/template-management/templates/{TemplateId}/create-project", 
                 correlationId, templateId);
 
-            var template = await _templateService.GetTemplateByIdAsync(templateId, ct);
+            var template = await _templateService.GetTemplateByIdAsync(templateId, ct).ConfigureAwait(false);
             if (template == null)
             {
                 return NotFound(new
@@ -248,10 +248,10 @@ public class TemplateManagementController : ControllerBase
                     ? template.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(t => t.Trim()).ToList()
                     : null,
                 templateId,
-                ct);
+                ct).ConfigureAwait(false);
 
             // Increment template usage count
-            await _templateService.IncrementUsageCountAsync(templateId, ct);
+            await _templateService.IncrementUsageCountAsync(templateId, ct).ConfigureAwait(false);
 
             return CreatedAtAction(
                 "GetProject",
@@ -291,7 +291,7 @@ public class TemplateManagementController : ControllerBase
             var correlationId = HttpContext.TraceIdentifier;
             Log.Information("[{CorrelationId}] DELETE /api/template-management/templates/{TemplateId}", correlationId, templateId);
 
-            var success = await _templateService.DeleteTemplateAsync(templateId, ct);
+            var success = await _templateService.DeleteTemplateAsync(templateId, ct).ConfigureAwait(false);
             if (!success)
             {
                 return NotFound(new
@@ -332,7 +332,7 @@ public class TemplateManagementController : ControllerBase
             var correlationId = HttpContext.TraceIdentifier;
             Log.Information("[{CorrelationId}] POST /api/template-management/templates/seed", correlationId);
 
-            await _templateService.SeedSystemTemplatesAsync(ct);
+            await _templateService.SeedSystemTemplatesAsync(ct).ConfigureAwait(false);
 
             return Ok(new { message = "System templates seeded successfully" });
         }

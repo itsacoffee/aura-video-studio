@@ -27,12 +27,12 @@ public class KeyVaultSecurityApiTests : IDisposable
     public async Task GetKeyVaultInfo_ReturnsSecurityInformation()
     {
         // Act
-        var response = await _httpClient.GetAsync("/api/keys/info");
+        var response = await _httpClient.GetAsync("/api/keys/info").ConfigureAwait(false);
 
         // Assert
         Assert.True(response.IsSuccessStatusCode, $"Expected success but got {response.StatusCode}");
 
-        var responseJson = await response.Content.ReadAsStringAsync();
+        var responseJson = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         var result = JsonSerializer.Deserialize<KeyVaultInfoResponse>(responseJson, new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true
@@ -60,12 +60,12 @@ public class KeyVaultSecurityApiTests : IDisposable
     public async Task RunDiagnostics_ReturnsRedactionCheckResults()
     {
         // Act
-        var response = await _httpClient.PostAsync("/api/keys/diagnostics", null);
+        var response = await _httpClient.PostAsync("/api/keys/diagnostics", null).ConfigureAwait(false);
 
         // Assert
         Assert.True(response.IsSuccessStatusCode, $"Expected success but got {response.StatusCode}");
 
-        var responseJson = await response.Content.ReadAsStringAsync();
+        var responseJson = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         var result = JsonSerializer.Deserialize<KeyVaultDiagnosticsResponse>(responseJson, new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true

@@ -60,7 +60,7 @@ public class ProjectManagementController : ControllerBase
 
             var (projects, totalCount) = await _projectService.GetProjectsAsync(
                 search, status, category, tagList, fromDate, toDate, 
-                sortBy, ascending, page, pageSize, ct);
+                sortBy, ascending, page, pageSize, ct).ConfigureAwait(false);
 
             var response = new
             {
@@ -126,7 +126,7 @@ public class ProjectManagementController : ControllerBase
             var correlationId = HttpContext.TraceIdentifier;
             Log.Information("[{CorrelationId}] GET /api/project-management/projects/{ProjectId}", correlationId, projectId);
 
-            var project = await _projectService.GetProjectByIdAsync(projectId, ct);
+            var project = await _projectService.GetProjectByIdAsync(projectId, ct).ConfigureAwait(false);
             if (project == null)
             {
                 return NotFound(new
@@ -248,7 +248,7 @@ public class ProjectManagementController : ControllerBase
                 request.Category,
                 request.Tags,
                 request.TemplateId,
-                ct);
+                ct).ConfigureAwait(false);
 
             return CreatedAtAction(
                 nameof(GetProject),
@@ -301,7 +301,7 @@ public class ProjectManagementController : ControllerBase
                 request.ThumbnailPath,
                 request.OutputFilePath,
                 request.DurationSeconds,
-                ct);
+                ct).ConfigureAwait(false);
 
             if (project == null)
             {
@@ -358,7 +358,7 @@ public class ProjectManagementController : ControllerBase
                 request.PlanSpecJson,
                 request.VoiceSpecJson,
                 request.RenderSpecJson,
-                ct);
+                ct).ConfigureAwait(false);
 
             if (!success)
             {
@@ -400,7 +400,7 @@ public class ProjectManagementController : ControllerBase
             var correlationId = HttpContext.TraceIdentifier;
             Log.Information("[{CorrelationId}] POST /api/project-management/projects/{ProjectId}/duplicate", correlationId, projectId);
 
-            var duplicate = await _projectService.DuplicateProjectAsync(projectId, ct);
+            var duplicate = await _projectService.DuplicateProjectAsync(projectId, ct).ConfigureAwait(false);
             if (duplicate == null)
             {
                 return NotFound(new
@@ -450,7 +450,7 @@ public class ProjectManagementController : ControllerBase
             var correlationId = HttpContext.TraceIdentifier;
             Log.Information("[{CorrelationId}] DELETE /api/project-management/projects/{ProjectId}", correlationId, projectId);
 
-            var success = await _projectService.DeleteProjectAsync(projectId, ct);
+            var success = await _projectService.DeleteProjectAsync(projectId, ct).ConfigureAwait(false);
             if (!success)
             {
                 return NotFound(new
@@ -506,7 +506,7 @@ public class ProjectManagementController : ControllerBase
                 });
             }
 
-            var deletedCount = await _projectService.BulkDeleteProjectsAsync(request.ProjectIds, ct);
+            var deletedCount = await _projectService.BulkDeleteProjectsAsync(request.ProjectIds, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -540,7 +540,7 @@ public class ProjectManagementController : ControllerBase
             var correlationId = HttpContext.TraceIdentifier;
             Log.Information("[{CorrelationId}] GET /api/project-management/projects/{ProjectId}/versions", correlationId, projectId);
 
-            var versions = await _versionRepository.GetVersionsAsync(projectId, false, ct);
+            var versions = await _versionRepository.GetVersionsAsync(projectId, false, ct).ConfigureAwait(false);
 
             var response = versions.Select(v => new
             {
@@ -582,7 +582,7 @@ public class ProjectManagementController : ControllerBase
     {
         try
         {
-            var categories = await _projectService.GetCategoriesAsync(ct);
+            var categories = await _projectService.GetCategoriesAsync(ct).ConfigureAwait(false);
             return Ok(new { categories });
         }
         catch (Exception ex)
@@ -608,7 +608,7 @@ public class ProjectManagementController : ControllerBase
     {
         try
         {
-            var tags = await _projectService.GetTagsAsync(ct);
+            var tags = await _projectService.GetTagsAsync(ct).ConfigureAwait(false);
             return Ok(new { tags });
         }
         catch (Exception ex)
@@ -634,7 +634,7 @@ public class ProjectManagementController : ControllerBase
     {
         try
         {
-            var stats = await _projectService.GetStatisticsAsync(ct);
+            var stats = await _projectService.GetStatisticsAsync(ct).ConfigureAwait(false);
             return Ok(stats);
         }
         catch (Exception ex)
@@ -664,7 +664,7 @@ public class ProjectManagementController : ControllerBase
             Log.Information("[{CorrelationId}] POST /api/project-management/projects/{ProjectId}/export", 
                 correlationId, projectId);
 
-            var project = await _projectService.GetProjectByIdAsync(projectId, ct);
+            var project = await _projectService.GetProjectByIdAsync(projectId, ct).ConfigureAwait(false);
             if (project == null)
             {
                 return NotFound(new
@@ -678,9 +678,9 @@ public class ProjectManagementController : ControllerBase
             }
 
             var tempPath = Path.Combine(Path.GetTempPath(), $"aura_export_{projectId}.json");
-            var exportPath = await _exportImportService.ExportProjectAsync(projectId, tempPath, ct);
+            var exportPath = await _exportImportService.ExportProjectAsync(projectId, tempPath, ct).ConfigureAwait(false);
 
-            var fileBytes = await System.IO.File.ReadAllBytesAsync(exportPath, ct);
+            var fileBytes = await System.IO.File.ReadAllBytesAsync(exportPath, ct).ConfigureAwait(false);
             System.IO.File.Delete(exportPath);
 
             return File(fileBytes, "application/json", $"{project.Title}.aura.json");
@@ -715,7 +715,7 @@ public class ProjectManagementController : ControllerBase
             Log.Information("[{CorrelationId}] POST /api/project-management/projects/{ProjectId}/export-package", 
                 correlationId, projectId);
 
-            var project = await _projectService.GetProjectByIdAsync(projectId, ct);
+            var project = await _projectService.GetProjectByIdAsync(projectId, ct).ConfigureAwait(false);
             if (project == null)
             {
                 return NotFound(new
@@ -729,9 +729,9 @@ public class ProjectManagementController : ControllerBase
             }
 
             var tempPath = Path.Combine(Path.GetTempPath(), $"aura_package_{projectId}.zip");
-            var packagePath = await _exportImportService.ExportProjectPackageAsync(projectId, tempPath, includeAssets, ct);
+            var packagePath = await _exportImportService.ExportProjectPackageAsync(projectId, tempPath, includeAssets, ct).ConfigureAwait(false);
 
-            var fileBytes = await System.IO.File.ReadAllBytesAsync(packagePath, ct);
+            var fileBytes = await System.IO.File.ReadAllBytesAsync(packagePath, ct).ConfigureAwait(false);
             System.IO.File.Delete(packagePath);
 
             return File(fileBytes, "application/zip", $"{project.Title}.aura.zip");
@@ -779,7 +779,7 @@ public class ProjectManagementController : ControllerBase
             var project = await _exportImportService.ImportProjectAsync(
                 request.FilePath,
                 request.NewTitle,
-                ct);
+                ct).ConfigureAwait(false);
 
             return CreatedAtAction(
                 nameof(GetProject),
@@ -848,7 +848,7 @@ public class ProjectManagementController : ControllerBase
             var project = await _exportImportService.ImportProjectPackageAsync(
                 request.PackagePath,
                 request.NewTitle,
-                ct);
+                ct).ConfigureAwait(false);
 
             return CreatedAtAction(
                 nameof(GetProject),

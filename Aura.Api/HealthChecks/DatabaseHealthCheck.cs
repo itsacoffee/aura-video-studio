@@ -39,7 +39,7 @@ public class DatabaseHealthCheck : IHealthCheck
             var dbContext = scope.ServiceProvider.GetRequiredService<AuraDbContext>();
             
             // Test basic connectivity with a simple query
-            var canConnect = await dbContext.Database.CanConnectAsync(cancellationToken);
+            var canConnect = await dbContext.Database.CanConnectAsync(cancellationToken).ConfigureAwait(false);
             
             if (!canConnect)
             {
@@ -53,7 +53,7 @@ public class DatabaseHealthCheck : IHealthCheck
             }
 
             // Test query execution with a simple count
-            var projectCount = await dbContext.ProjectStates.CountAsync(cancellationToken);
+            var projectCount = await dbContext.ProjectStates.CountAsync(cancellationToken).ConfigureAwait(false);
             
             stopwatch.Stop();
             var responseTimeMs = stopwatch.ElapsedMilliseconds;

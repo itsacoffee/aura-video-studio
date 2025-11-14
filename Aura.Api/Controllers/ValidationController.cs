@@ -55,7 +55,7 @@ public class ValidationController : ControllerBase
             );
 
             // Validate
-            var result = await _validator.ValidateSystemReadyAsync(brief, planSpec, ct);
+            var result = await _validator.ValidateSystemReadyAsync(brief, planSpec, ct).ConfigureAwait(false);
 
             Log.Information("[{CorrelationId}] Validation result: IsValid={IsValid}, Issues={IssueCount}", 
                 correlationId, result.IsValid, result.Issues.Count);

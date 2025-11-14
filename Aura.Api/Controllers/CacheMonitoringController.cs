@@ -163,7 +163,7 @@ public class CacheMonitoringController : ControllerBase
 
             if (_distributedCache != null)
             {
-                await _distributedCache.ClearAsync();
+                await _distributedCache.ClearAsync().ConfigureAwait(false);
             }
 
             if (_memoryCache is MemoryCache memCache)

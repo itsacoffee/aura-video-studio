@@ -68,7 +68,7 @@ public class RagController : ControllerBase
             };
 
             using var stream = file.OpenReadStream();
-            var result = await _ingestService.IngestDocumentAsync(stream, file.FileName, config, null, ct);
+            var result = await _ingestService.IngestDocumentAsync(stream, file.FileName, config, null, ct).ConfigureAwait(false);
 
             if (!result.Success)
             {
@@ -144,7 +144,7 @@ public class RagController : ControllerBase
                 IncludeCitations = request.IncludeCitations ?? true
             };
 
-            var context = await _contextBuilder.BuildContextAsync(request.Query, config, ct);
+            var context = await _contextBuilder.BuildContextAsync(request.Query, config, ct).ConfigureAwait(false);
 
             return Ok(new RagContextDto
             {
@@ -193,7 +193,7 @@ public class RagController : ControllerBase
     {
         try
         {
-            var documents = await _vectorIndex.GetDocumentsAsync(ct);
+            var documents = await _vectorIndex.GetDocumentsAsync(ct).ConfigureAwait(false);
 
             return Ok(documents.Select(d => new DocumentInfoDto(
                 DocumentId: d.DocumentId,
@@ -227,7 +227,7 @@ public class RagController : ControllerBase
     {
         try
         {
-            var stats = await _ingestService.GetStatisticsAsync(ct);
+            var stats = await _ingestService.GetStatisticsAsync(ct).ConfigureAwait(false);
 
             return Ok(new IndexStatisticsDto
             {
@@ -266,7 +266,7 @@ public class RagController : ControllerBase
             var correlationId = HttpContext.TraceIdentifier;
             Log.Information("[{CorrelationId}] Removing document: {DocumentId}", correlationId, documentId);
 
-            var success = await _ingestService.RemoveDocumentAsync(documentId, ct);
+            var success = await _ingestService.RemoveDocumentAsync(documentId, ct).ConfigureAwait(false);
 
             if (!success)
             {
@@ -308,7 +308,7 @@ public class RagController : ControllerBase
             var correlationId = HttpContext.TraceIdentifier;
             Log.Information("[{CorrelationId}] Clearing all RAG documents", correlationId);
 
-            await _ingestService.ClearAllAsync(ct);
+            await _ingestService.ClearAllAsync(ct).ConfigureAwait(false);
             return NoContent();
         }
         catch (Exception ex)

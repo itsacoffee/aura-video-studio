@@ -51,7 +51,7 @@ public class ExplainController : ControllerBase
                 request.ArtifactType,
                 request.ArtifactContent,
                 request.SpecificQuestion,
-                ct);
+                ct).ConfigureAwait(false);
 
             var keyPoints = ExtractKeyPoints(request.ArtifactContent, request.ArtifactType);
 
@@ -104,7 +104,7 @@ public class ExplainController : ControllerBase
                 request.ImprovementAction,
                 request.TargetAudience,
                 request.LockedSections,
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(new ImproveArtifactResponse(
                 Success: true,
@@ -157,7 +157,7 @@ public class ExplainController : ControllerBase
                 request.RegenerationType,
                 request.LockedSections,
                 request.PromptModifiers,
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(new ConstrainedRegenerateResponse(
                 Success: true,
@@ -213,7 +213,7 @@ public class ExplainController : ControllerBase
         string? specificQuestion,
         CancellationToken ct)
     {
-        await Task.Delay(100, ct);
+        await Task.Delay(100, ct).ConfigureAwait(false);
 
         return artifactType.ToLowerInvariant() switch
         {
@@ -308,7 +308,7 @@ public class ExplainController : ControllerBase
         LockedSectionDto[]? lockedSections,
         CancellationToken ct)
     {
-        await Task.Delay(150, ct);
+        await Task.Delay(150, ct).ConfigureAwait(false);
 
         var improvedContent = improvementAction.ToLowerInvariant() switch
         {
@@ -449,7 +449,7 @@ public class ExplainController : ControllerBase
         PromptModifiersDto? promptModifiers,
         CancellationToken ct)
     {
-        await Task.Delay(200, ct);
+        await Task.Delay(200, ct).ConfigureAwait(false);
 
         var lines = currentContent.Split('\n').ToList();
         var lockedIndices = GetLockedLineIndices(lockedSections);

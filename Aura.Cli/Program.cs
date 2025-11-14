@@ -42,12 +42,12 @@ namespace Aura.Cli
 
                     return commandName switch
                     {
-                        "preflight" => await services.GetRequiredService<PreflightCommand>().ExecuteAsync(commandArgs),
-                        "script" => await services.GetRequiredService<ScriptCommand>().ExecuteAsync(commandArgs),
-                        "compose" => await services.GetRequiredService<ComposeCommand>().ExecuteAsync(commandArgs),
-                        "render" => await services.GetRequiredService<RenderCommand>().ExecuteAsync(commandArgs),
-                        "quick" => await services.GetRequiredService<QuickCommand>().ExecuteAsync(commandArgs),
-                        "keys" => await services.GetRequiredService<KeysCommand>().ExecuteAsync(commandArgs),
+                        "preflight" => await services.GetRequiredService<PreflightCommand>().ExecuteAsync(commandArgs).ConfigureAwait(false),
+                        "script" => await services.GetRequiredService<ScriptCommand>().ExecuteAsync(commandArgs).ConfigureAwait(false),
+                        "compose" => await services.GetRequiredService<ComposeCommand>().ExecuteAsync(commandArgs).ConfigureAwait(false),
+                        "render" => await services.GetRequiredService<RenderCommand>().ExecuteAsync(commandArgs).ConfigureAwait(false),
+                        "quick" => await services.GetRequiredService<QuickCommand>().ExecuteAsync(commandArgs).ConfigureAwait(false),
+                        "keys" => await services.GetRequiredService<KeysCommand>().ExecuteAsync(commandArgs).ConfigureAwait(false),
                         "help" or "--help" or "-h" => ShowHelp(),
                         _ => ShowUnknownCommand(commandName)
                     };
@@ -63,7 +63,7 @@ namespace Aura.Cli
                     Console.WriteLine();
 
                     var demo = services.GetRequiredService<CliDemo>();
-                    await demo.RunAsync();
+                    await demo.RunAsync().ConfigureAwait(false);
                     
                     Console.WriteLine();
                     Console.WriteLine("✅ Demo completed successfully!");
@@ -206,7 +206,7 @@ namespace Aura.Cli
             Console.WriteLine("📊 Step 1: Hardware Detection");
             Console.WriteLine("═══════════════════════════════════════════════════════════");
             
-            var profile = await _hardwareDetector.DetectSystemAsync();
+            var profile = await _hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
             
             Console.WriteLine($"  CPU: {profile.LogicalCores} logical cores ({profile.PhysicalCores} physical)");
             Console.WriteLine($"  RAM: {profile.RamGB} GB");
@@ -250,7 +250,7 @@ namespace Aura.Cli
             Console.WriteLine($"  Pacing: {planSpec.Pacing}");
             Console.WriteLine();
             
-            var scriptText = await _llmProvider.DraftScriptAsync(brief, planSpec, CancellationToken.None);
+            var scriptText = await _llmProvider.DraftScriptAsync(brief, planSpec, CancellationToken.None).ConfigureAwait(false);
             
             Console.WriteLine($"  ✅ Generated script ({scriptText.Length} characters)");
             Console.WriteLine($"     Preview:");

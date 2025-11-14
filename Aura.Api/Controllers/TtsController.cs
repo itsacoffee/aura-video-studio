@@ -105,7 +105,7 @@ public class TtsController : ControllerBase
                 });
             }
 
-            var voices = await ttsProvider.GetAvailableVoicesAsync();
+            var voices = await ttsProvider.GetAvailableVoicesAsync().ConfigureAwait(false);
 
             return Ok(new
             {
@@ -204,7 +204,7 @@ public class TtsController : ControllerBase
                 Pause: PauseStyle.Natural
             );
 
-            var audioPath = await ttsProvider.SynthesizeAsync(new[] { scriptLine }, voiceSpec, ct);
+            var audioPath = await ttsProvider.SynthesizeAsync(new[] { scriptLine }, voiceSpec, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -261,7 +261,7 @@ public class TtsController : ControllerBase
                     });
                 }
 
-                var status = await CheckProviderHealthAsync(provider, providers[provider], ct);
+                var status = await CheckProviderHealthAsync(provider, providers[provider], ct).ConfigureAwait(false);
                 
                 return Ok(new
                 {
@@ -278,7 +278,7 @@ public class TtsController : ControllerBase
             {
                 try
                 {
-                    var status = await CheckProviderHealthAsync(name, ttsProvider, ct);
+                    var status = await CheckProviderHealthAsync(name, ttsProvider, ct).ConfigureAwait(false);
                     statusList.Add(status);
                 }
                 catch (Exception ex)
@@ -319,7 +319,7 @@ public class TtsController : ControllerBase
     {
         try
         {
-            var voices = await provider.GetAvailableVoicesAsync();
+            var voices = await provider.GetAvailableVoicesAsync().ConfigureAwait(false);
             var voiceCount = voices?.Count ?? 0;
             
             return new

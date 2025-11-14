@@ -45,7 +45,7 @@ public class FFmpegController : ControllerBase
         {
             _logger.LogInformation("[{CorrelationId}] GET /api/ffmpeg/status", correlationId);
 
-            var result = await _resolver.ResolveAsync(null, forceRefresh: true, ct);
+            var result = await _resolver.ResolveAsync(null, forceRefresh: true, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -91,7 +91,7 @@ public class FFmpegController : ControllerBase
             var version = request?.Version ?? "latest";
 
             // Get mirrors from manifest
-            var manifest = await _manifestLoader.LoadManifestAsync();
+            var manifest = await _manifestLoader.LoadManifestAsync().ConfigureAwait(false);
             var ffmpegEngine = manifest.Engines.FirstOrDefault(e => e.Id == "ffmpeg");
 
             if (ffmpegEngine == null)
@@ -143,7 +143,7 @@ public class FFmpegController : ControllerBase
                 version,
                 null,
                 null,
-                ct);
+                ct).ConfigureAwait(false);
 
             if (!installResult.Success)
             {
@@ -222,7 +222,7 @@ public class FFmpegController : ControllerBase
             _resolver.InvalidateCache();
 
             // Perform resolution
-            var result = await _resolver.ResolveAsync(null, forceRefresh: true, ct);
+            var result = await _resolver.ResolveAsync(null, forceRefresh: true, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -284,7 +284,7 @@ public class FFmpegController : ControllerBase
             }
 
             // Resolve the path (handles directory vs file, bin subdirectory, etc.)
-            var result = await _resolver.ResolveAsync(request.Path, forceRefresh: true, ct);
+            var result = await _resolver.ResolveAsync(request.Path, forceRefresh: true, ct).ConfigureAwait(false);
 
             if (!result.Found || !result.IsValid)
             {

@@ -38,7 +38,7 @@ public class MediaController : ControllerBase
     {
         try
         {
-            var media = await _mediaService.GetMediaByIdAsync(id, ct);
+            var media = await _mediaService.GetMediaByIdAsync(id, ct).ConfigureAwait(false);
             
             if (media == null)
             {
@@ -78,7 +78,7 @@ public class MediaController : ControllerBase
     {
         try
         {
-            var response = await _mediaService.SearchMediaAsync(request, ct);
+            var response = await _mediaService.SearchMediaAsync(request, ct).ConfigureAwait(false);
             return Ok(response);
         }
         catch (Exception ex)
@@ -154,7 +154,7 @@ public class MediaController : ControllerBase
             };
 
             using var stream = file.OpenReadStream();
-            var result = await _mediaService.UploadMediaAsync(stream, uploadRequest, ct);
+            var result = await _mediaService.UploadMediaAsync(stream, uploadRequest, ct).ConfigureAwait(false);
 
             return Ok(result);
         }
@@ -184,7 +184,7 @@ public class MediaController : ControllerBase
     {
         try
         {
-            var result = await _mediaService.UpdateMediaAsync(id, request, ct);
+            var result = await _mediaService.UpdateMediaAsync(id, request, ct).ConfigureAwait(false);
             return Ok(result);
         }
         catch (InvalidOperationException ex)
@@ -223,7 +223,7 @@ public class MediaController : ControllerBase
     {
         try
         {
-            await _mediaService.DeleteMediaAsync(id, ct);
+            await _mediaService.DeleteMediaAsync(id, ct).ConfigureAwait(false);
             return NoContent();
         }
         catch (Exception ex)
@@ -251,7 +251,7 @@ public class MediaController : ControllerBase
     {
         try
         {
-            var results = await _mediaService.BulkOperationAsync(request, ct);
+            var results = await _mediaService.BulkOperationAsync(request, ct).ConfigureAwait(false);
             return Ok(new { success = true, results });
         }
         catch (Exception ex)
@@ -277,7 +277,7 @@ public class MediaController : ControllerBase
     {
         try
         {
-            var collections = await _mediaService.GetAllCollectionsAsync(ct);
+            var collections = await _mediaService.GetAllCollectionsAsync(ct).ConfigureAwait(false);
             return Ok(collections);
         }
         catch (Exception ex)
@@ -303,7 +303,7 @@ public class MediaController : ControllerBase
     {
         try
         {
-            var collection = await _mediaService.GetCollectionByIdAsync(id, ct);
+            var collection = await _mediaService.GetCollectionByIdAsync(id, ct).ConfigureAwait(false);
             
             if (collection == null)
             {
@@ -343,7 +343,7 @@ public class MediaController : ControllerBase
     {
         try
         {
-            var collection = await _mediaService.CreateCollectionAsync(request, ct);
+            var collection = await _mediaService.CreateCollectionAsync(request, ct).ConfigureAwait(false);
             return CreatedAtAction(nameof(GetCollection), new { id = collection.Id }, collection);
         }
         catch (Exception ex)
@@ -372,7 +372,7 @@ public class MediaController : ControllerBase
     {
         try
         {
-            var collection = await _mediaService.UpdateCollectionAsync(id, request, ct);
+            var collection = await _mediaService.UpdateCollectionAsync(id, request, ct).ConfigureAwait(false);
             return Ok(collection);
         }
         catch (InvalidOperationException ex)
@@ -408,7 +408,7 @@ public class MediaController : ControllerBase
     {
         try
         {
-            await _mediaService.DeleteCollectionAsync(id, ct);
+            await _mediaService.DeleteCollectionAsync(id, ct).ConfigureAwait(false);
             return NoContent();
         }
         catch (Exception ex)
@@ -434,7 +434,7 @@ public class MediaController : ControllerBase
     {
         try
         {
-            var tags = await _mediaService.GetAllTagsAsync(ct);
+            var tags = await _mediaService.GetAllTagsAsync(ct).ConfigureAwait(false);
             return Ok(tags);
         }
         catch (Exception ex)
@@ -460,7 +460,7 @@ public class MediaController : ControllerBase
     {
         try
         {
-            var stats = await _mediaService.GetStorageStatsAsync(ct);
+            var stats = await _mediaService.GetStorageStatsAsync(ct).ConfigureAwait(false);
             return Ok(stats);
         }
         catch (Exception ex)
@@ -489,7 +489,7 @@ public class MediaController : ControllerBase
     {
         try
         {
-            await _mediaService.TrackMediaUsageAsync(id, request.ProjectId, request.ProjectName, ct);
+            await _mediaService.TrackMediaUsageAsync(id, request.ProjectId, request.ProjectName, ct).ConfigureAwait(false);
             return Ok(new { success = true });
         }
         catch (Exception ex)
@@ -515,7 +515,7 @@ public class MediaController : ControllerBase
     {
         try
         {
-            var usage = await _mediaService.GetMediaUsageAsync(id, ct);
+            var usage = await _mediaService.GetMediaUsageAsync(id, ct).ConfigureAwait(false);
             return Ok(usage);
         }
         catch (InvalidOperationException ex)
@@ -565,7 +565,7 @@ public class MediaController : ControllerBase
             }
 
             using var stream = file.OpenReadStream();
-            var result = await _mediaService.CheckForDuplicateAsync(stream, ct);
+            var result = await _mediaService.CheckForDuplicateAsync(stream, ct).ConfigureAwait(false);
             return Ok(result);
         }
         catch (Exception ex)
@@ -597,7 +597,7 @@ public class MediaController : ControllerBase
                 request.FileName,
                 request.TotalSize,
                 request.TotalChunks,
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(session);
         }
@@ -641,7 +641,7 @@ public class MediaController : ControllerBase
             }
 
             using var stream = chunk.OpenReadStream();
-            await _mediaService.UploadChunkAsync(sessionId, chunkIndex, stream, ct);
+            await _mediaService.UploadChunkAsync(sessionId, chunkIndex, stream, ct).ConfigureAwait(false);
 
             return Ok(new { success = true, chunkIndex });
         }
@@ -681,7 +681,7 @@ public class MediaController : ControllerBase
     {
         try
         {
-            var result = await _mediaService.CompleteChunkedUploadAsync(sessionId, request, ct);
+            var result = await _mediaService.CompleteChunkedUploadAsync(sessionId, request, ct).ConfigureAwait(false);
             return Ok(result);
         }
         catch (InvalidOperationException ex)

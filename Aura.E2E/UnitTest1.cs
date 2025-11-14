@@ -24,7 +24,7 @@ public class VideoGenerationE2ETests
         var detector = new HardwareDetector(NullLogger<HardwareDetector>.Instance);
 
         // Act
-        var profile = await detector.DetectSystemAsync();
+        var profile = await detector.DetectSystemAsync().ConfigureAwait(false);
 
         // Assert
         Assert.NotNull(profile);
@@ -54,7 +54,7 @@ public class VideoGenerationE2ETests
         );
 
         // Act
-        var script = await provider.DraftScriptAsync(brief, spec, default);
+        var script = await provider.DraftScriptAsync(brief, spec, default).ConfigureAwait(false);
 
         // Assert
         Assert.NotNull(script);
@@ -165,7 +165,7 @@ public class VideoGenerationE2ETests
         var detector = new HardwareDetector(NullLogger<HardwareDetector>.Instance);
 
         // Act & Assert - should not throw
-        await detector.RunHardwareProbeAsync();
+        await detector.RunHardwareProbeAsync().ConfigureAwait(false);
     }
 
     /// <summary>
@@ -177,7 +177,7 @@ public class VideoGenerationE2ETests
     {
         // Arrange - Hardware detection
         var hardwareDetector = new HardwareDetector(NullLogger<HardwareDetector>.Instance);
-        var systemProfile = await hardwareDetector.DetectSystemAsync();
+        var systemProfile = await hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
         Assert.NotNull(systemProfile);
 
         // Arrange - Provider setup
@@ -206,7 +206,7 @@ public class VideoGenerationE2ETests
         );
 
         // Act - Generate script
-        var script = await llmProvider.DraftScriptAsync(brief, planSpec, default);
+        var script = await llmProvider.DraftScriptAsync(brief, planSpec, default).ConfigureAwait(false);
 
         // Assert - Script generation
         Assert.NotNull(script);

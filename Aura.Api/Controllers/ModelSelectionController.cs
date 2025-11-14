@@ -96,7 +96,7 @@ public class ModelSelectionController : ControllerBase
         {
             _logger.LogInformation("Getting model selections");
 
-            var state = await _selectionService.GetAllSelectionsAsync(ct);
+            var state = await _selectionService.GetAllSelectionsAsync(ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -189,7 +189,7 @@ public class ModelSelectionController : ControllerBase
                 request.Pin,
                 request.SetBy ?? "user",
                 request.Reason,
-                ct);
+                ct).ConfigureAwait(false);
 
             if (!result.Applied)
             {
@@ -254,7 +254,7 @@ public class ModelSelectionController : ControllerBase
                 request.Provider,
                 request.Stage,
                 scope,
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -302,7 +302,7 @@ public class ModelSelectionController : ControllerBase
                 request.Provider,
                 request.ModelId,
                 request.ApiKey,
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -342,7 +342,7 @@ public class ModelSelectionController : ControllerBase
         {
             _logger.LogInformation("Getting model selection audit log, limit: {Limit}", limit);
 
-            var auditLog = await _selectionService.GetAuditLogAsync(limit, ct);
+            var auditLog = await _selectionService.GetAuditLogAsync(limit, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -388,7 +388,7 @@ public class ModelSelectionController : ControllerBase
         {
             _logger.LogInformation("Getting model selection audit log for job: {JobId}", jobId);
 
-            var auditLog = await _selectionService.GetAuditLogByJobIdAsync(jobId, ct);
+            var auditLog = await _selectionService.GetAuditLogByJobIdAsync(jobId, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -440,7 +440,7 @@ public class ModelSelectionController : ControllerBase
                 request.Provider,
                 request.Stage,
                 request.SelectedModelId,
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(new
             {

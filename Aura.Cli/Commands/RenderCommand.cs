@@ -47,7 +47,7 @@ public class RenderCommand : ICommand
 
             // Detect hardware
             Console.WriteLine("[1/5] Detecting hardware capabilities...");
-            var profile = await _hardwareDetector.DetectSystemAsync();
+            var profile = await _hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
             var encoderLabel = profile.EnableNVENC ? "NVENC (hardware)" : "x264 (software)";
             Console.WriteLine($"      ✓ Encoder: {encoderLabel}");
             Console.WriteLine();
@@ -60,7 +60,7 @@ public class RenderCommand : ICommand
                 return ExitCodes.InvalidArguments;
             }
 
-            var specJson = await File.ReadAllTextAsync(renderSpecPath);
+            var specJson = await File.ReadAllTextAsync(renderSpecPath).ConfigureAwait(false);
             Console.WriteLine("      ✓ Render spec loaded");
             Console.WriteLine();
 
@@ -107,7 +107,7 @@ public class RenderCommand : ICommand
             {
                 // For now, create a placeholder video using FFmpeg test pattern
                 // In a full implementation, this would use the FFmpegPlanBuilder
-                var result = await CreateDemoVideoAsync(output, profile.EnableNVENC, options.Verbose);
+                var result = await CreateDemoVideoAsync(output, profile.EnableNVENC, options.Verbose).ConfigureAwait(false);
                 
                 if (result == 0)
                 {
@@ -115,7 +115,7 @@ public class RenderCommand : ICommand
                     
                     // Generate captions
                     var captionFile = Path.ChangeExtension(output, ".srt");
-                    await GenerateDemoCaptionsAsync(captionFile);
+                    await GenerateDemoCaptionsAsync(captionFile).ConfigureAwait(false);
                     Console.WriteLine($"      ✓ Captions saved: {captionFile}");
                 }
                 else
@@ -210,15 +210,15 @@ public class RenderCommand : ICommand
         
         if (verbose)
         {
-            var output = await process.StandardError.ReadToEndAsync();
+            var output = await process.StandardError.ReadToEndAsync().ConfigureAwait(false);
             Console.WriteLine($"      FFmpeg output: {output.Split('\n').LastOrDefault()}");
         }
         else
         {
-            await process.StandardError.ReadToEndAsync(); // Consume stderr
+            await process.StandardError.ReadToEndAsync().ConfigureAwait(false); // Consume stderr
         }
 
-        await process.WaitForExitAsync();
+        await process.WaitForExitAsync().ConfigureAwait(false);
         return process.ExitCode;
     }
 
@@ -236,7 +236,7 @@ public class RenderCommand : ICommand
         var captionBuilder = new CaptionBuilder(_logger as ILogger<CaptionBuilder> ?? 
             Microsoft.Extensions.Logging.Abstractions.NullLogger<CaptionBuilder>.Instance);
         var srt = captionBuilder.GenerateSrt(lines);
-        await File.WriteAllTextAsync(outputPath, srt);
+        await File.WriteAllTextAsync(outputPath, srt).ConfigureAwait(false);
     }
 
     private CommandOptions ParseOptions(string[] args, out string? renderSpecPath, out string? outputPath)

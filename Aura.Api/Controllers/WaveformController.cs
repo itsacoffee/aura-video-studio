@@ -51,14 +51,14 @@ public class WaveformController : ControllerBase
                     request.TargetSamples,
                     request.StartTime,
                     request.EndTime,
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
             }
             else
             {
                 data = await _waveformGenerator.GenerateWaveformDataAsync(
                     request.AudioPath,
                     request.TargetSamples,
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
             }
 
             var response = new WaveformDataResponse(
@@ -100,9 +100,9 @@ public class WaveformController : ControllerBase
                 width,
                 height,
                 trackType,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
-            var imageBytes = await System.IO.File.ReadAllBytesAsync(imagePath, cancellationToken);
+            var imageBytes = await System.IO.File.ReadAllBytesAsync(imagePath, cancellationToken).ConfigureAwait(false);
             return File(imageBytes, "image/png");
         }
         catch (System.IO.FileNotFoundException ex)
@@ -128,7 +128,7 @@ public class WaveformController : ControllerBase
         {
             _logger.LogInformation("Clearing waveform cache");
             _waveformGenerator.ClearCache();
-            await _waveformGenerator.ClearPersistentCacheAsync();
+            await _waveformGenerator.ClearPersistentCacheAsync().ConfigureAwait(false);
             return NoContent();
         }
         catch (Exception ex)

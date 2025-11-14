@@ -68,7 +68,7 @@ public class ContentSafetyController : ControllerBase
                 return BadRequest(new { error = "Content is required" });
             }
 
-            var policy = await GetPolicyAsync(request.PolicyId, ct);
+            var policy = await GetPolicyAsync(request.PolicyId, ct).ConfigureAwait(false);
             if (policy == null)
             {
                 return NotFound(new { error = "Policy not found" });
@@ -78,7 +78,7 @@ public class ContentSafetyController : ControllerBase
                 Guid.NewGuid().ToString(), 
                 request.Content, 
                 policy, 
-                ct);
+                ct).ConfigureAwait(false);
 
             var response = MapToAnalysisResponse(result);
             
@@ -99,7 +99,7 @@ public class ContentSafetyController : ControllerBase
     {
         try
         {
-            var policies = await LoadPoliciesAsync(ct);
+            var policies = await LoadPoliciesAsync(ct).ConfigureAwait(false);
             var response = policies.Select(MapToPolicyResponse).ToList();
             
             return Ok(response);
@@ -119,7 +119,7 @@ public class ContentSafetyController : ControllerBase
     {
         try
         {
-            var policy = await GetPolicyAsync(id, ct);
+            var policy = await GetPolicyAsync(id, ct).ConfigureAwait(false);
             if (policy == null)
             {
                 return NotFound(new { error = "Policy not found" });
@@ -155,9 +155,9 @@ public class ContentSafetyController : ControllerBase
             policy.CreatedAt = DateTime.UtcNow;
             policy.UpdatedAt = DateTime.UtcNow;
 
-            var policies = await LoadPoliciesAsync(ct);
+            var policies = await LoadPoliciesAsync(ct).ConfigureAwait(false);
             policies.Add(policy);
-            await SavePoliciesAsync(policies, ct);
+            await SavePoliciesAsync(policies, ct).ConfigureAwait(false);
 
             var response = MapToPolicyResponse(policy);
             return CreatedAtAction(nameof(GetPolicy), new { id = policy.Id }, response);
@@ -180,7 +180,7 @@ public class ContentSafetyController : ControllerBase
     {
         try
         {
-            var policies = await LoadPoliciesAsync(ct);
+            var policies = await LoadPoliciesAsync(ct).ConfigureAwait(false);
             var existing = policies.FirstOrDefault(p => p.Id == id);
             
             if (existing == null)
@@ -197,7 +197,7 @@ public class ContentSafetyController : ControllerBase
 
             policies.Remove(existing);
             policies.Add(updated);
-            await SavePoliciesAsync(policies, ct);
+            await SavePoliciesAsync(policies, ct).ConfigureAwait(false);
 
             var response = MapToPolicyResponse(updated);
             return Ok(response);
@@ -217,7 +217,7 @@ public class ContentSafetyController : ControllerBase
     {
         try
         {
-            var policies = await LoadPoliciesAsync(ct);
+            var policies = await LoadPoliciesAsync(ct).ConfigureAwait(false);
             var policy = policies.FirstOrDefault(p => p.Id == id);
             
             if (policy == null)
@@ -231,7 +231,7 @@ public class ContentSafetyController : ControllerBase
             }
 
             policies.Remove(policy);
-            await SavePoliciesAsync(policies, ct);
+            await SavePoliciesAsync(policies, ct).ConfigureAwait(false);
 
             return NoContent();
         }
@@ -349,7 +349,7 @@ public class ContentSafetyController : ControllerBase
                 OverriddenViolations = request.OverriddenViolations ?? new List<string>()
             };
 
-            await AppendAuditLogAsync(auditLog, ct);
+            await AppendAuditLogAsync(auditLog, ct).ConfigureAwait(false);
 
             return Ok(new { id = auditLog.Id, timestamp = auditLog.Timestamp });
         }
@@ -373,7 +373,7 @@ public class ContentSafetyController : ControllerBase
     {
         try
         {
-            var logs = await LoadAuditLogsAsync(ct);
+            var logs = await LoadAuditLogsAsync(ct).ConfigureAwait(false);
 
             if (!string.IsNullOrWhiteSpace(contentId))
             {
@@ -399,7 +399,7 @@ public class ContentSafetyController : ControllerBase
 
     private async Task<SafetyPolicy?> GetPolicyAsync(string? policyId, CancellationToken ct)
     {
-        var policies = await LoadPoliciesAsync(ct);
+        var policies = await LoadPoliciesAsync(ct).ConfigureAwait(false);
         
         if (string.IsNullOrWhiteSpace(policyId))
         {
@@ -417,18 +417,18 @@ public class ContentSafetyController : ControllerBase
                 .Select(p => p.Value)
                 .ToList();
             defaultPolicies.First(p => p.Preset == SafetyPolicyPreset.Moderate).IsDefault = true;
-            await SavePoliciesAsync(defaultPolicies, ct);
+            await SavePoliciesAsync(defaultPolicies, ct).ConfigureAwait(false);
             return defaultPolicies;
         }
 
-        var json = await System.IO.File.ReadAllTextAsync(_policiesPath, ct);
+        var json = await System.IO.File.ReadAllTextAsync(_policiesPath, ct).ConfigureAwait(false);
         return JsonSerializer.Deserialize<List<SafetyPolicy>>(json) ?? new List<SafetyPolicy>();
     }
 
     private async Task SavePoliciesAsync(List<SafetyPolicy> policies, CancellationToken ct)
     {
         var json = JsonSerializer.Serialize(policies, new JsonSerializerOptions { WriteIndented = true });
-        await System.IO.File.WriteAllTextAsync(_policiesPath, json, ct);
+        await System.IO.File.WriteAllTextAsync(_policiesPath, json, ct).ConfigureAwait(false);
     }
 
     private async Task<List<SafetyAuditLog>> LoadAuditLogsAsync(CancellationToken ct)
@@ -438,13 +438,13 @@ public class ContentSafetyController : ControllerBase
             return new List<SafetyAuditLog>();
         }
 
-        var json = await System.IO.File.ReadAllTextAsync(_auditLogPath, ct);
+        var json = await System.IO.File.ReadAllTextAsync(_auditLogPath, ct).ConfigureAwait(false);
         return JsonSerializer.Deserialize<List<SafetyAuditLog>>(json) ?? new List<SafetyAuditLog>();
     }
 
     private async Task AppendAuditLogAsync(SafetyAuditLog log, CancellationToken ct)
     {
-        var logs = await LoadAuditLogsAsync(ct);
+        var logs = await LoadAuditLogsAsync(ct).ConfigureAwait(false);
         logs.Add(log);
         
         if (logs.Count > 10000)
@@ -453,7 +453,7 @@ public class ContentSafetyController : ControllerBase
         }
 
         var json = JsonSerializer.Serialize(logs, new JsonSerializerOptions { WriteIndented = true });
-        await System.IO.File.WriteAllTextAsync(_auditLogPath, json, ct);
+        await System.IO.File.WriteAllTextAsync(_auditLogPath, json, ct).ConfigureAwait(false);
     }
 
     private SafetyAnalysisResponse MapToAnalysisResponse(SafetyAnalysisResult result)
@@ -700,13 +700,13 @@ public class ContentSafetyController : ControllerBase
                 return BadRequest(new { error = "Prompt is required" });
             }
 
-            var policy = await GetPolicyAsync(request.PolicyId, ct);
+            var policy = await GetPolicyAsync(request.PolicyId, ct).ConfigureAwait(false);
             if (policy == null)
             {
                 return NotFound(new { error = "Policy not found" });
             }
 
-            var result = await _llmSafetyService.ValidatePromptAsync(request.Prompt, policy, ct);
+            var result = await _llmSafetyService.ValidatePromptAsync(request.Prompt, policy, ct).ConfigureAwait(false);
 
             var response = new ValidateLlmPromptResponse(
                 result.OriginalPrompt,
@@ -742,7 +742,7 @@ public class ContentSafetyController : ControllerBase
                 return BadRequest(new { error = "Content is required" });
             }
 
-            var policy = await GetPolicyAsync(request.PolicyId, ct);
+            var policy = await GetPolicyAsync(request.PolicyId, ct).ConfigureAwait(false);
             if (policy == null)
             {
                 return NotFound(new { error = "Policy not found" });
@@ -752,13 +752,13 @@ public class ContentSafetyController : ControllerBase
                 Guid.NewGuid().ToString(),
                 request.Content,
                 policy,
-                ct);
+                ct).ConfigureAwait(false);
 
             var alternatives = await _llmSafetyService.SuggestSafeAlternativesAsync(
                 request.Content,
                 analysisResult,
                 request.Count,
-                ct);
+                ct).ConfigureAwait(false);
 
             var response = new SuggestAlternativesResponse(
                 alternatives,
@@ -789,7 +789,7 @@ public class ContentSafetyController : ControllerBase
                 return BadRequest(new { error = "Content is required" });
             }
 
-            var policy = await GetPolicyAsync(request.PolicyId, ct);
+            var policy = await GetPolicyAsync(request.PolicyId, ct).ConfigureAwait(false);
             if (policy == null)
             {
                 return NotFound(new { error = "Policy not found" });
@@ -799,14 +799,14 @@ public class ContentSafetyController : ControllerBase
                 request.ContentId,
                 request.Content,
                 policy,
-                ct);
+                ct).ConfigureAwait(false);
 
             var report = await _remediationService.GenerateRemediationReportAsync(
                 request.ContentId,
                 request.Content,
                 analysisResult,
                 policy,
-                ct);
+                ct).ConfigureAwait(false);
 
             var response = new RemediationReportResponse(
                 report.ContentId,
@@ -855,7 +855,7 @@ public class ContentSafetyController : ControllerBase
                 return BadRequest(new { error = "Content is required" });
             }
 
-            var policy = await GetPolicyAsync(request.PolicyId, ct);
+            var policy = await GetPolicyAsync(request.PolicyId, ct).ConfigureAwait(false);
             if (policy == null)
             {
                 return NotFound(new { error = "Policy not found" });
@@ -865,7 +865,7 @@ public class ContentSafetyController : ControllerBase
                 Guid.NewGuid().ToString(),
                 request.Content,
                 policy,
-                ct);
+                ct).ConfigureAwait(false);
 
             var explanation = _remediationService.ExplainSafetyBlock(analysisResult, policy);
 

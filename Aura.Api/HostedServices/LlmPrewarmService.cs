@@ -50,9 +50,9 @@ public class LlmPrewarmService : IHostedService
             _prewarmOptions.PrewarmPrompts.Count,
             _prewarmOptions.MaxConcurrentPrewarms);
         
-        await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+        await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
         
-        _ = Task.Run(async () => await PrewarmCacheAsync(cancellationToken), cancellationToken);
+        _ = Task.Run(async () => await PrewarmCacheAsync(cancellationToken).ConfigureAwait(false), cancellationToken);
     }
     
     public Task StopAsync(CancellationToken cancellationToken)
@@ -72,11 +72,11 @@ public class LlmPrewarmService : IHostedService
             var semaphore = new SemaphoreSlim(_prewarmOptions.MaxConcurrentPrewarms);
             var tasks = _prewarmOptions.PrewarmPrompts.Select(async prompt =>
             {
-                await semaphore.WaitAsync(ct);
+                await semaphore.WaitAsync(ct).ConfigureAwait(false);
                 
                 try
                 {
-                    await PrewarmSinglePromptWithRetryAsync(prompt, ct);
+                    await PrewarmSinglePromptWithRetryAsync(prompt, ct).ConfigureAwait(false);
                     Interlocked.Increment(ref successCount);
                 }
                 catch (Exception ex)
@@ -96,7 +96,7 @@ public class LlmPrewarmService : IHostedService
                 }
             });
             
-            await Task.WhenAll(tasks);
+            await Task.WhenAll(tasks).ConfigureAwait(false);
             
             var elapsed = DateTime.UtcNow - startTime;
             
@@ -130,7 +130,7 @@ public class LlmPrewarmService : IHostedService
         {
             try
             {
-                await PrewarmSinglePromptAsync(prompt, ct);
+                await PrewarmSinglePromptAsync(prompt, ct).ConfigureAwait(false);
                 return;
             }
             catch (Exception ex) when (attempt < maxRetries)
@@ -145,7 +145,7 @@ public class LlmPrewarmService : IHostedService
                     prompt.OperationType,
                     retryDelayMs);
                 
-                await Task.Delay(retryDelayMs, ct);
+                await Task.Delay(retryDelayMs, ct).ConfigureAwait(false);
                 retryDelayMs *= 2;
             }
         }
@@ -162,7 +162,7 @@ public class LlmPrewarmService : IHostedService
             prompt.Temperature,
             prompt.MaxTokens);
         
-        var existing = await _cache.GetAsync(cacheKey, ct);
+        var existing = await _cache.GetAsync(cacheKey, ct).ConfigureAwait(false);
         
         if (existing != null)
         {
@@ -184,7 +184,7 @@ public class LlmPrewarmService : IHostedService
             TtlSeconds = prompt.TtlSeconds
         };
         
-        await _cache.SetAsync(cacheKey, placeholderResponse, metadata, ct);
+        await _cache.SetAsync(cacheKey, placeholderResponse, metadata, ct).ConfigureAwait(false);
         
         _logger.LogInformation(
             "Prewarmed cache entry: provider={Provider}, model={Model}, op={Operation}, ttl={Ttl}s",

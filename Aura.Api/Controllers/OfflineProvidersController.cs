@@ -36,7 +36,7 @@ public class OfflineProvidersController : ControllerBase
             _logger.LogInformation("Checking offline providers status, CorrelationId: {CorrelationId}",
                 HttpContext.TraceIdentifier);
 
-            var status = await _availabilityService.CheckAllProvidersAsync(ct);
+            var status = await _availabilityService.CheckAllProvidersAsync(ct).ConfigureAwait(false);
 
             return Ok(status);
         }
@@ -56,7 +56,7 @@ public class OfflineProvidersController : ControllerBase
     {
         try
         {
-            var status = await _availabilityService.CheckPiperAsync(ct);
+            var status = await _availabilityService.CheckPiperAsync(ct).ConfigureAwait(false);
             return Ok(status);
         }
         catch (Exception ex)
@@ -74,7 +74,7 @@ public class OfflineProvidersController : ControllerBase
     {
         try
         {
-            var status = await _availabilityService.CheckMimic3Async(ct);
+            var status = await _availabilityService.CheckMimic3Async(ct).ConfigureAwait(false);
             return Ok(status);
         }
         catch (Exception ex)
@@ -92,7 +92,7 @@ public class OfflineProvidersController : ControllerBase
     {
         try
         {
-            var status = await _availabilityService.CheckOllamaAsync(ct);
+            var status = await _availabilityService.CheckOllamaAsync(ct).ConfigureAwait(false);
             return Ok(status);
         }
         catch (Exception ex)
@@ -110,7 +110,7 @@ public class OfflineProvidersController : ControllerBase
     {
         try
         {
-            var status = await _availabilityService.CheckStableDiffusionAsync(ct);
+            var status = await _availabilityService.CheckStableDiffusionAsync(ct).ConfigureAwait(false);
             return Ok(status);
         }
         catch (Exception ex)
@@ -128,7 +128,7 @@ public class OfflineProvidersController : ControllerBase
     {
         try
         {
-            var status = await _availabilityService.CheckWindowsTtsAsync(ct);
+            var status = await _availabilityService.CheckWindowsTtsAsync(ct).ConfigureAwait(false);
             return Ok(status);
         }
         catch (Exception ex)
@@ -149,7 +149,7 @@ public class OfflineProvidersController : ControllerBase
             _logger.LogInformation("Getting machine-specific recommendations for offline providers, CorrelationId: {CorrelationId}",
                 HttpContext.TraceIdentifier);
 
-            var recommendations = await _availabilityService.GetMachineRecommendationsAsync(ct);
+            var recommendations = await _availabilityService.GetMachineRecommendationsAsync(ct).ConfigureAwait(false);
 
             return Ok(recommendations);
         }

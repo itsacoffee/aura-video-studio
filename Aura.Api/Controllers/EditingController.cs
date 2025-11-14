@@ -51,7 +51,7 @@ public class EditingController : ControllerBase
         {
             _logger.LogInformation("Analyzing timeline for job {JobId}", request.JobId);
 
-            var result = await _orchestrator.AnalyzeTimelineAsync(request.JobId, request);
+            var result = await _orchestrator.AnalyzeTimelineAsync(request.JobId, request).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -81,14 +81,14 @@ public class EditingController : ControllerBase
         {
             _logger.LogInformation("Suggesting cuts for job {JobId}", jobId);
 
-            var timeline = await LoadTimelineAsync(jobId);
+            var timeline = await LoadTimelineAsync(jobId).ConfigureAwait(false);
             if (timeline == null)
             {
                 return NotFound(new { success = false, error = "Timeline not found" });
             }
 
-            var cutPoints = await _cutPointService.DetectCutPointsAsync(timeline);
-            var awkwardPauses = await _cutPointService.DetectAwkwardPausesAsync(timeline);
+            var cutPoints = await _cutPointService.DetectCutPointsAsync(timeline).ConfigureAwait(false);
+            var awkwardPauses = await _cutPointService.DetectAwkwardPausesAsync(timeline).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -115,14 +115,14 @@ public class EditingController : ControllerBase
         {
             _logger.LogInformation("Optimizing pacing for job {JobId}", request.JobId);
 
-            var timeline = await LoadTimelineAsync(request.JobId);
+            var timeline = await LoadTimelineAsync(request.JobId).ConfigureAwait(false);
             if (timeline == null)
             {
                 return NotFound(new { success = false, error = "Timeline not found" });
             }
 
-            var analysis = await _pacingService.AnalyzePacingAsync(timeline, request.TargetDuration);
-            var slowSegments = await _pacingService.DetectSlowSegmentsAsync(timeline);
+            var analysis = await _pacingService.AnalyzePacingAsync(timeline, request.TargetDuration).ConfigureAwait(false);
+            var slowSegments = await _pacingService.DetectSlowSegmentsAsync(timeline).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -149,7 +149,7 @@ public class EditingController : ControllerBase
         {
             _logger.LogInformation("Sequencing scenes for job {JobId}", request.JobId);
 
-            var timeline = await LoadTimelineAsync(request.JobId);
+            var timeline = await LoadTimelineAsync(request.JobId).ConfigureAwait(false);
             if (timeline == null)
             {
                 return NotFound(new { success = false, error = "Timeline not found" });
@@ -191,15 +191,15 @@ public class EditingController : ControllerBase
         {
             _logger.LogInformation("Recommending transitions for job {JobId}", jobId);
 
-            var timeline = await LoadTimelineAsync(jobId);
+            var timeline = await LoadTimelineAsync(jobId).ConfigureAwait(false);
             if (timeline == null)
             {
                 return NotFound(new { success = false, error = "Timeline not found" });
             }
 
-            var suggestions = await _transitionService.RecommendTransitionsAsync(timeline);
-            var jarring = await _transitionService.DetectJarringTransitionsAsync(timeline);
-            var varied = await _transitionService.EnforceTransitionVarietyAsync(timeline, suggestions);
+            var suggestions = await _transitionService.RecommendTransitionsAsync(timeline).ConfigureAwait(false);
+            var jarring = await _transitionService.DetectJarringTransitionsAsync(timeline).ConfigureAwait(false);
+            var varied = await _transitionService.EnforceTransitionVarietyAsync(timeline, suggestions).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -226,7 +226,7 @@ public class EditingController : ControllerBase
         {
             _logger.LogInformation("Suggesting effects for job {JobId}", jobId);
 
-            var timeline = await LoadTimelineAsync(jobId);
+            var timeline = await LoadTimelineAsync(jobId).ConfigureAwait(false);
             if (timeline == null)
             {
                 return NotFound(new { success = false, error = "Timeline not found" });
@@ -259,14 +259,14 @@ public class EditingController : ControllerBase
         {
             _logger.LogInformation("Analyzing engagement for job {JobId}", jobId);
 
-            var timeline = await LoadTimelineAsync(jobId);
+            var timeline = await LoadTimelineAsync(jobId).ConfigureAwait(false);
             if (timeline == null)
             {
                 return NotFound(new { success = false, error = "Timeline not found" });
             }
 
-            var curve = await _engagementService.GenerateEngagementCurveAsync(timeline);
-            var fatiguePoints = await _engagementService.DetectFatiguePointsAsync(timeline);
+            var curve = await _engagementService.GenerateEngagementCurveAsync(timeline).ConfigureAwait(false);
+            var fatiguePoints = await _engagementService.DetectFatiguePointsAsync(timeline).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -293,7 +293,7 @@ public class EditingController : ControllerBase
         {
             _logger.LogInformation("Auto-assembling timeline for job {JobId}", request.JobId);
 
-            var timeline = await _orchestrator.AutoAssembleAsync(request.JobId, request);
+            var timeline = await _orchestrator.AutoAssembleAsync(request.JobId, request).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -319,14 +319,14 @@ public class EditingController : ControllerBase
         {
             _logger.LogInformation("Running quality check for job {JobId}", jobId);
 
-            var timeline = await LoadTimelineAsync(jobId);
+            var timeline = await LoadTimelineAsync(jobId).ConfigureAwait(false);
             if (timeline == null)
             {
                 return NotFound(new { success = false, error = "Timeline not found" });
             }
 
-            var issues = await _qualityService.RunQualityChecksAsync(timeline);
-            var desyncIssues = await _qualityService.DetectDesyncIssuesAsync(timeline);
+            var issues = await _qualityService.RunQualityChecksAsync(timeline).ConfigureAwait(false);
+            var desyncIssues = await _qualityService.DetectDesyncIssuesAsync(timeline).ConfigureAwait(false);
 
             var allIssues = issues.Concat(desyncIssues).ToList();
             var criticalCount = allIssues.Count(i => i.Severity == QualityIssueSeverity.Critical);
@@ -368,7 +368,7 @@ public class EditingController : ControllerBase
                 request.JobId,
                 request.TargetDuration);
 
-            var timeline = await _orchestrator.OptimizeForDurationAsync(request.JobId, request);
+            var timeline = await _orchestrator.OptimizeForDurationAsync(request.JobId, request).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -389,7 +389,7 @@ public class EditingController : ControllerBase
         try
         {
             // Use the orchestrator's artifact manager to load timeline
-            var analysis = await _orchestrator.AnalyzeTimelineAsync(jobId, new AnalyzeTimelineRequest(jobId, false, false, false, false));
+            var analysis = await _orchestrator.AnalyzeTimelineAsync(jobId, new AnalyzeTimelineRequest(jobId, false, false, false, false)).ConfigureAwait(false);
             return null; // Timeline is loaded internally
         }
         catch

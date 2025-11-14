@@ -29,7 +29,7 @@ public class FeatureFlagsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
-        var flags = await _featureFlagService.GetAllFlagsAsync();
+        var flags = await _featureFlagService.GetAllFlagsAsync().ConfigureAwait(false);
         return Ok(flags);
     }
     
@@ -39,7 +39,7 @@ public class FeatureFlagsController : ControllerBase
     [HttpGet("{featureName}/enabled")]
     public async Task<IActionResult> IsEnabled(string featureName)
     {
-        var enabled = await _featureFlagService.IsEnabledAsync(featureName);
+        var enabled = await _featureFlagService.IsEnabledAsync(featureName).ConfigureAwait(false);
         return Ok(new { featureName, enabled });
     }
     
@@ -49,7 +49,7 @@ public class FeatureFlagsController : ControllerBase
     [HttpGet("{featureName}/enabled/{userId}")]
     public async Task<IActionResult> IsEnabledForUser(string featureName, string userId)
     {
-        var enabled = await _featureFlagService.IsEnabledForUserAsync(featureName, userId);
+        var enabled = await _featureFlagService.IsEnabledForUserAsync(featureName, userId).ConfigureAwait(false);
         return Ok(new { featureName, userId, enabled });
     }
     
@@ -60,7 +60,7 @@ public class FeatureFlagsController : ControllerBase
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Enable(string featureName)
     {
-        await _featureFlagService.EnableFeatureAsync(featureName);
+        await _featureFlagService.EnableFeatureAsync(featureName).ConfigureAwait(false);
         _logger.LogInformation("Feature {FeatureName} enabled by {User}", 
             featureName, User.Identity?.Name);
         return Ok();
@@ -73,7 +73,7 @@ public class FeatureFlagsController : ControllerBase
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Disable(string featureName)
     {
-        await _featureFlagService.DisableFeatureAsync(featureName);
+        await _featureFlagService.DisableFeatureAsync(featureName).ConfigureAwait(false);
         _logger.LogInformation("Feature {FeatureName} disabled by {User}", 
             featureName, User.Identity?.Name);
         return Ok();
@@ -88,7 +88,7 @@ public class FeatureFlagsController : ControllerBase
         string featureName, 
         [FromBody] SetRolloutRequest request)
     {
-        await _featureFlagService.SetRolloutPercentageAsync(featureName, request.Percentage);
+        await _featureFlagService.SetRolloutPercentageAsync(featureName, request.Percentage).ConfigureAwait(false);
         _logger.LogInformation("Feature {FeatureName} rollout set to {Percentage}% by {User}", 
             featureName, request.Percentage, User.Identity?.Name);
         return Ok();
@@ -103,7 +103,7 @@ public class FeatureFlagsController : ControllerBase
         string featureName, 
         [FromBody] AllowlistRequest request)
     {
-        await _featureFlagService.AddUserToAllowlistAsync(featureName, request.UserId);
+        await _featureFlagService.AddUserToAllowlistAsync(featureName, request.UserId).ConfigureAwait(false);
         return Ok();
     }
     
@@ -114,7 +114,7 @@ public class FeatureFlagsController : ControllerBase
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> RemoveFromAllowlist(string featureName, string userId)
     {
-        await _featureFlagService.RemoveUserFromAllowlistAsync(featureName, userId);
+        await _featureFlagService.RemoveUserFromAllowlistAsync(featureName, userId).ConfigureAwait(false);
         return Ok();
     }
 }

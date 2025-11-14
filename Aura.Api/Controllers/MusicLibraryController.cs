@@ -52,12 +52,12 @@ public class MusicLibraryController : ControllerBase
 
             var targetProvider = provider != null
                 ? GetMusicProvider(provider)
-                : await GetFirstAvailableMusicProviderAsync(ct);
+                : await GetFirstAvailableMusicProviderAsync(ct).ConfigureAwait(false);
 
             if (targetProvider == null)
                 return Problem("No music provider available", statusCode: 503);
 
-            var results = await targetProvider.SearchAsync(criteria, ct);
+            var results = await targetProvider.SearchAsync(criteria, ct).ConfigureAwait(false);
 
             return Ok(results);
         }
@@ -83,7 +83,7 @@ public class MusicLibraryController : ControllerBase
             if (musicProvider == null)
                 return NotFound($"Music provider '{provider}' not found");
 
-            var asset = await musicProvider.GetByIdAsync(assetId, ct);
+            var asset = await musicProvider.GetByIdAsync(assetId, ct).ConfigureAwait(false);
             if (asset == null)
                 return NotFound($"Music track '{assetId}' not found");
 
@@ -111,7 +111,7 @@ public class MusicLibraryController : ControllerBase
             if (musicProvider == null)
                 return NotFound($"Music provider '{provider}' not found");
 
-            var previewUrl = await musicProvider.GetPreviewUrlAsync(assetId, ct);
+            var previewUrl = await musicProvider.GetPreviewUrlAsync(assetId, ct).ConfigureAwait(false);
             if (previewUrl == null)
                 return NotFound($"Preview not available for track '{assetId}'");
 
@@ -140,12 +140,12 @@ public class MusicLibraryController : ControllerBase
 
             var targetProvider = provider != null
                 ? GetSfxProvider(provider)
-                : await GetFirstAvailableSfxProviderAsync(ct);
+                : await GetFirstAvailableSfxProviderAsync(ct).ConfigureAwait(false);
 
             if (targetProvider == null)
                 return Problem("No SFX provider available", statusCode: 503);
 
-            var results = await targetProvider.SearchAsync(criteria, ct);
+            var results = await targetProvider.SearchAsync(criteria, ct).ConfigureAwait(false);
 
             return Ok(results);
         }
@@ -170,12 +170,12 @@ public class MusicLibraryController : ControllerBase
         {
             var targetProvider = provider != null
                 ? GetSfxProvider(provider)
-                : await GetFirstAvailableSfxProviderAsync(ct);
+                : await GetFirstAvailableSfxProviderAsync(ct).ConfigureAwait(false);
 
             if (targetProvider == null)
                 return Problem("No SFX provider available", statusCode: 503);
 
-            var results = await targetProvider.FindByTagsAsync(tags, maxResults, ct);
+            var results = await targetProvider.FindByTagsAsync(tags, maxResults, ct).ConfigureAwait(false);
 
             return Ok(results);
         }
@@ -201,7 +201,7 @@ public class MusicLibraryController : ControllerBase
             if (sfxProvider == null)
                 return NotFound($"SFX provider '{provider}' not found");
 
-            var previewUrl = await sfxProvider.GetPreviewUrlAsync(assetId, ct);
+            var previewUrl = await sfxProvider.GetPreviewUrlAsync(assetId, ct).ConfigureAwait(false);
             if (previewUrl == null)
                 return NotFound($"Preview not available for SFX '{assetId}'");
 
@@ -224,7 +224,7 @@ public class MusicLibraryController : ControllerBase
     {
         try
         {
-            var summary = await _licensingService.GetLicensingSummaryAsync(jobId, ct);
+            var summary = await _licensingService.GetLicensingSummaryAsync(jobId, ct).ConfigureAwait(false);
             return Ok(summary);
         }
         catch (Exception ex)
@@ -247,13 +247,13 @@ public class MusicLibraryController : ControllerBase
             var content = request.Format switch
             {
                 LicenseExportFormat.CSV => await _licensingService.ExportToCsvAsync(
-                    request.JobId, request.IncludeUnused, ct),
+                    request.JobId, request.IncludeUnused, ct).ConfigureAwait(false),
                 LicenseExportFormat.JSON => await _licensingService.ExportToJsonAsync(
-                    request.JobId, request.IncludeUnused, ct),
+                    request.JobId, request.IncludeUnused, ct).ConfigureAwait(false),
                 LicenseExportFormat.Text => await _licensingService.ExportToTextAsync(
-                    request.JobId, ct),
+                    request.JobId, ct).ConfigureAwait(false),
                 LicenseExportFormat.HTML => await _licensingService.ExportToHtmlAsync(
-                    request.JobId, ct),
+                    request.JobId, ct).ConfigureAwait(false),
                 _ => throw new ArgumentException($"Unsupported format: {request.Format}")
             };
 
@@ -287,7 +287,7 @@ public class MusicLibraryController : ControllerBase
     {
         try
         {
-            var (isValid, issues) = await _licensingService.ValidateForCommercialUseAsync(jobId, ct);
+            var (isValid, issues) = await _licensingService.ValidateForCommercialUseAsync(jobId, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -339,7 +339,7 @@ public class MusicLibraryController : ControllerBase
         
         foreach (var provider in _musicProviders)
         {
-            var isAvailable = await provider.IsAvailableAsync();
+            var isAvailable = await provider.IsAvailableAsync().ConfigureAwait(false);
             providers.Add(new
             {
                 Name = provider.Name,
@@ -360,7 +360,7 @@ public class MusicLibraryController : ControllerBase
         
         foreach (var provider in _sfxProviders)
         {
-            var isAvailable = await provider.IsAvailableAsync();
+            var isAvailable = await provider.IsAvailableAsync().ConfigureAwait(false);
             providers.Add(new
             {
                 Name = provider.Name,
@@ -385,7 +385,7 @@ public class MusicLibraryController : ControllerBase
     {
         foreach (var provider in _musicProviders)
         {
-            var isAvailable = await provider.IsAvailableAsync(ct);
+            var isAvailable = await provider.IsAvailableAsync(ct).ConfigureAwait(false);
             if (isAvailable)
                 return provider;
         }
@@ -406,7 +406,7 @@ public class MusicLibraryController : ControllerBase
     {
         foreach (var provider in _sfxProviders)
         {
-            var isAvailable = await provider.IsAvailableAsync(ct);
+            var isAvailable = await provider.IsAvailableAsync(ct).ConfigureAwait(false);
             if (isAvailable)
                 return provider;
         }

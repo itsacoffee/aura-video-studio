@@ -29,7 +29,7 @@ public class ProjectsController : ControllerBase
             var correlationId = HttpContext.TraceIdentifier;
             Log.Information("[{CorrelationId}] GET /api/projects/incomplete endpoint called", correlationId);
 
-            var projects = await _checkpointManager.GetIncompleteProjectsAsync(ct);
+            var projects = await _checkpointManager.GetIncompleteProjectsAsync(ct).ConfigureAwait(false);
 
             var response = new
             {
@@ -77,7 +77,7 @@ public class ProjectsController : ControllerBase
             var correlationId = HttpContext.TraceIdentifier;
             Log.Information("[{CorrelationId}] GET /api/projects/{ProjectId} endpoint called", correlationId, projectId);
 
-            var project = await _checkpointManager.GetProjectForRecoveryAsync(projectId, ct);
+            var project = await _checkpointManager.GetProjectForRecoveryAsync(projectId, ct).ConfigureAwait(false);
             if (project == null)
             {
                 return NotFound(new
@@ -148,7 +148,7 @@ public class ProjectsController : ControllerBase
             var correlationId = HttpContext.TraceIdentifier;
             Log.Information("[{CorrelationId}] DELETE /api/projects/{ProjectId} endpoint called", correlationId, projectId);
 
-            var project = await _checkpointManager.GetProjectForRecoveryAsync(projectId, ct);
+            var project = await _checkpointManager.GetProjectForRecoveryAsync(projectId, ct).ConfigureAwait(false);
             if (project == null)
             {
                 return NotFound(new
@@ -161,7 +161,7 @@ public class ProjectsController : ControllerBase
                 });
             }
 
-            await _checkpointManager.CancelProjectAsync(projectId, ct);
+            await _checkpointManager.CancelProjectAsync(projectId, ct).ConfigureAwait(false);
 
             Log.Information("[{CorrelationId}] Project {ProjectId} marked as cancelled", correlationId, projectId);
 

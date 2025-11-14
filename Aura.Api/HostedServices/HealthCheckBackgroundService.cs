@@ -30,14 +30,14 @@ public class HealthCheckBackgroundService : BackgroundService
         _logger.LogInformation("Health check background service starting");
 
         // Wait a bit after startup before running first check
-        await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+        await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken).ConfigureAwait(false);
 
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
                 _logger.LogDebug("Running scheduled health check");
-                var result = await _healthCheckService.CheckReadinessAsync(stoppingToken);
+                var result = await _healthCheckService.CheckReadinessAsync(stoppingToken).ConfigureAwait(false);
 
                 if (result.Status == Aura.Api.Models.HealthStatus.Unhealthy)
                 {
@@ -58,7 +58,7 @@ public class HealthCheckBackgroundService : BackgroundService
             }
 
             // Wait for next check interval
-            await Task.Delay(_checkInterval, stoppingToken);
+            await Task.Delay(_checkInterval, stoppingToken).ConfigureAwait(false);
         }
 
         _logger.LogInformation("Health check background service stopping");

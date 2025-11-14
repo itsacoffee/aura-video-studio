@@ -43,7 +43,7 @@ public class ProviderProfilesController : ControllerBase
     {
         try
         {
-            var profiles = await _profileService.GetAllProfilesAsync(ct);
+            var profiles = await _profileService.GetAllProfilesAsync(ct).ConfigureAwait(false);
             var dtos = profiles.Select(MapToDto).ToList();
 
             return Ok(new { profiles = dtos });
@@ -63,7 +63,7 @@ public class ProviderProfilesController : ControllerBase
     {
         try
         {
-            var profile = await _profileService.GetActiveProfileAsync(ct);
+            var profile = await _profileService.GetActiveProfileAsync(ct).ConfigureAwait(false);
             var dto = MapToDto(profile);
 
             return Ok(dto);
@@ -90,14 +90,14 @@ public class ProviderProfilesController : ControllerBase
                 return BadRequest(new { error = "ProfileId is required" });
             }
 
-            var success = await _profileService.SetActiveProfileAsync(request.ProfileId, ct);
+            var success = await _profileService.SetActiveProfileAsync(request.ProfileId, ct).ConfigureAwait(false);
 
             if (!success)
             {
                 return NotFound(new { error = $"Profile {request.ProfileId} not found" });
             }
 
-            var profile = await _profileService.GetActiveProfileAsync(ct);
+            var profile = await _profileService.GetActiveProfileAsync(ct).ConfigureAwait(false);
             
             _logger.LogInformation(
                 "Active profile changed to {ProfileId}, CorrelationId: {CorrelationId}",
@@ -127,7 +127,7 @@ public class ProviderProfilesController : ControllerBase
     {
         try
         {
-            var result = await _profileService.ValidateProfileAsync(profileId, ct);
+            var result = await _profileService.ValidateProfileAsync(profileId, ct).ConfigureAwait(false);
 
             return Ok(new ProfileValidationResultDto(
                 result.IsValid,
@@ -151,7 +151,7 @@ public class ProviderProfilesController : ControllerBase
     {
         try
         {
-            var recommendedProfile = await _profileService.GetRecommendedProfileAsync(ct);
+            var recommendedProfile = await _profileService.GetRecommendedProfileAsync(ct).ConfigureAwait(false);
             var allKeys = _keyStore.GetAllKeys();
             var availableKeys = allKeys.Where(kvp => !string.IsNullOrWhiteSpace(kvp.Value))
                                        .Select(kvp => kvp.Key)
@@ -207,7 +207,7 @@ public class ProviderProfilesController : ControllerBase
             var result = await _validationService.TestProviderAsync(
                 request.Provider, 
                 request.ApiKey, 
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(new ProviderTestResultDto(
                 result.Provider,
@@ -244,7 +244,7 @@ public class ProviderProfilesController : ControllerBase
                 System.Text.Json.JsonSerializer.Serialize(maskedKeys),
                 HttpContext.TraceIdentifier);
 
-            await _keyStore.SaveKeysAsync(request.Keys, ct);
+            await _keyStore.SaveKeysAsync(request.Keys, ct).ConfigureAwait(false);
 
             return Ok(new
             {

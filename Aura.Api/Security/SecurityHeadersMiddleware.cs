@@ -63,7 +63,7 @@ public class SecurityHeadersMiddleware
         context.Response.Headers.Remove("Server");
         context.Response.Headers.Remove("X-Powered-By");
 
-        await _next(context);
+        await _next(context).ConfigureAwait(false);
     }
 }
 

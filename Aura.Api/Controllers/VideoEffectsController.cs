@@ -44,7 +44,7 @@ public class VideoEffectsController : ControllerBase
     {
         try
         {
-            var presets = await _effectService.GetPresetsAsync(category, cancellationToken);
+            var presets = await _effectService.GetPresetsAsync(category, cancellationToken).ConfigureAwait(false);
             return Ok(presets);
         }
         catch (Exception ex)
@@ -65,7 +65,7 @@ public class VideoEffectsController : ControllerBase
     {
         try
         {
-            var preset = await _effectService.GetPresetByIdAsync(id, cancellationToken);
+            var preset = await _effectService.GetPresetByIdAsync(id, cancellationToken).ConfigureAwait(false);
             if (preset == null)
             {
                 return NotFound(new { error = $"Preset '{id}' not found" });
@@ -98,7 +98,7 @@ public class VideoEffectsController : ControllerBase
                 return BadRequest(new { error = "Preset name is required" });
             }
 
-            var savedPreset = await _effectService.SavePresetAsync(preset, cancellationToken);
+            var savedPreset = await _effectService.SavePresetAsync(preset, cancellationToken).ConfigureAwait(false);
             return CreatedAtAction(nameof(GetPreset), new { id = savedPreset.Id }, savedPreset);
         }
         catch (Exception ex)
@@ -119,7 +119,7 @@ public class VideoEffectsController : ControllerBase
     {
         try
         {
-            var deleted = await _effectService.DeletePresetAsync(id, cancellationToken);
+            var deleted = await _effectService.DeletePresetAsync(id, cancellationToken).ConfigureAwait(false);
             if (!deleted)
             {
                 return NotFound(new { error = $"Preset '{id}' not found or cannot be deleted" });
@@ -173,7 +173,7 @@ public class VideoEffectsController : ControllerBase
             if (request.UseCache)
             {
                 var cacheKey = _cacheService.GenerateCacheKey(request.InputPath, request.Effects);
-                resultPath = await _cacheService.GetCachedEffectAsync(cacheKey, cancellationToken);
+                resultPath = await _cacheService.GetCachedEffectAsync(cacheKey, cancellationToken).ConfigureAwait(false);
             }
 
             // Apply effects if not in cache
@@ -188,13 +188,13 @@ public class VideoEffectsController : ControllerBase
                         _logger.LogDebug("Effect application progress: {Progress}%", progress);
                     },
                     cancellationToken
-                );
+                ).ConfigureAwait(false);
 
                 // Cache the result
                 if (request.UseCache)
                 {
                     var cacheKey = _cacheService.GenerateCacheKey(request.InputPath, request.Effects);
-                    await _cacheService.CacheEffectAsync(cacheKey, resultPath, cancellationToken);
+                    await _cacheService.CacheEffectAsync(cacheKey, resultPath, cancellationToken).ConfigureAwait(false);
                 }
             }
 
@@ -255,7 +255,7 @@ public class VideoEffectsController : ControllerBase
                     _logger.LogDebug("Preset application progress: {Progress}%", progress);
                 },
                 cancellationToken
-            );
+            ).ConfigureAwait(false);
 
             return Ok(new ApplyEffectsResponse
             {
@@ -305,7 +305,7 @@ public class VideoEffectsController : ControllerBase
                 request.Effect,
                 previewDuration,
                 cancellationToken
-            );
+            ).ConfigureAwait(false);
 
             return Ok(new EffectPreviewResponse
             {
@@ -337,7 +337,7 @@ public class VideoEffectsController : ControllerBase
                 return BadRequest(new { error = "Video path is required" });
             }
 
-            var recommendations = await _effectService.GetRecommendedEffectsAsync(videoPath, cancellationToken);
+            var recommendations = await _effectService.GetRecommendedEffectsAsync(videoPath, cancellationToken).ConfigureAwait(false);
             return Ok(recommendations);
         }
         catch (Exception ex)
@@ -401,7 +401,7 @@ public class VideoEffectsController : ControllerBase
     {
         try
         {
-            await _cacheService.ClearCacheAsync(cancellationToken);
+            await _cacheService.ClearCacheAsync(cancellationToken).ConfigureAwait(false);
             return NoContent();
         }
         catch (Exception ex)

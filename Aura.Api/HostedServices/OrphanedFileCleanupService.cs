@@ -35,14 +35,14 @@ public class OrphanedFileCleanupService : BackgroundService
         _logger.LogInformation("Orphaned file cleanup service starting");
 
         // Wait 5 minutes after startup before running first cleanup
-        await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
+        await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken).ConfigureAwait(false);
 
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
                 _logger.LogInformation("Running scheduled cleanup of orphaned files and old projects");
-                await PerformCleanupAsync(stoppingToken);
+                await PerformCleanupAsync(stoppingToken).ConfigureAwait(false);
                 _logger.LogInformation("Cleanup completed successfully");
             }
             catch (Exception ex)
@@ -52,7 +52,7 @@ public class OrphanedFileCleanupService : BackgroundService
 
             try
             {
-                await Task.Delay(_cleanupInterval, stoppingToken);
+                await Task.Delay(_cleanupInterval, stoppingToken).ConfigureAwait(false);
             }
             catch (TaskCanceledException)
             {
@@ -73,8 +73,8 @@ public class OrphanedFileCleanupService : BackgroundService
         long bytesFreed = 0;
 
         // Clean up old failed/cancelled projects
-        var oldFailedProjects = await repository.GetOldProjectsByStatusAsync("Failed", _failedProjectAge, ct);
-        var oldCancelledProjects = await repository.GetOldProjectsByStatusAsync("Cancelled", _failedProjectAge, ct);
+        var oldFailedProjects = await repository.GetOldProjectsByStatusAsync("Failed", _failedProjectAge, ct).ConfigureAwait(false);
+        var oldCancelledProjects = await repository.GetOldProjectsByStatusAsync("Cancelled", _failedProjectAge, ct).ConfigureAwait(false);
         var oldProjects = oldFailedProjects.Concat(oldCancelledProjects).ToList();
 
         foreach (var project in oldProjects)
@@ -105,7 +105,7 @@ public class OrphanedFileCleanupService : BackgroundService
                 }
 
                 // Delete project from database
-                await repository.DeleteAsync(project.Id, ct);
+                await repository.DeleteAsync(project.Id, ct).ConfigureAwait(false);
                 projectsDeleted++;
             }
             catch (Exception ex)
@@ -115,7 +115,7 @@ public class OrphanedFileCleanupService : BackgroundService
         }
 
         // Clean up orphaned temporary assets
-        var orphanedAssets = await repository.GetOrphanedAssetsAsync(_tempFileAge, ct);
+        var orphanedAssets = await repository.GetOrphanedAssetsAsync(_tempFileAge, ct).ConfigureAwait(false);
         
         foreach (var asset in orphanedAssets)
         {

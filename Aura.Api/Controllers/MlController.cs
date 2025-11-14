@@ -84,7 +84,7 @@ public class MlController : ControllerBase
                 Metadata: a.Metadata
             )).ToList();
 
-            await _annotationStorage.StoreAnnotationsAsync(userId, annotations, cancellationToken);
+            await _annotationStorage.StoreAnnotationsAsync(userId, annotations, cancellationToken).ConfigureAwait(false);
 
             _logger.LogInformation("Successfully uploaded {Count} annotations for user {UserId}", 
                 annotations.Count, userId);
@@ -128,7 +128,7 @@ public class MlController : ControllerBase
         try
         {
             var userId = GetUserId();
-            var stats = await _annotationStorage.GetStatsAsync(userId, cancellationToken);
+            var stats = await _annotationStorage.GetStatsAsync(userId, cancellationToken).ConfigureAwait(false);
 
             return Ok(new AnnotationStatsDto(
                 UserId: stats.UserId,
@@ -166,7 +166,7 @@ public class MlController : ControllerBase
         {
             var userId = GetUserId();
             
-            var stats = await _annotationStorage.GetStatsAsync(userId, cancellationToken);
+            var stats = await _annotationStorage.GetStatsAsync(userId, cancellationToken).ConfigureAwait(false);
             if (stats.TotalAnnotations == 0)
             {
                 return BadRequest(new ProblemDetails
@@ -181,7 +181,7 @@ public class MlController : ControllerBase
             // Run preflight check to validate system capabilities
             var preflightResult = await _preflightCheck.CheckSystemCapabilitiesAsync(
                 stats.TotalAnnotations, 
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             // Block training if minimum requirements are not met
             if (!preflightResult.MeetsMinimumRequirements)
@@ -215,7 +215,7 @@ public class MlController : ControllerBase
                 userId, 
                 request.ModelName, 
                 request.PipelineConfig,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             _logger.LogInformation("Training job {JobId} submitted for user {UserId}", jobId, userId);
 
@@ -345,7 +345,7 @@ public class MlController : ControllerBase
 
         try
         {
-            var reverted = await _modelManager.RevertToDefaultAsync(cancellationToken);
+            var reverted = await _modelManager.RevertToDefaultAsync(cancellationToken).ConfigureAwait(false);
             
             if (!reverted)
             {
@@ -386,11 +386,11 @@ public class MlController : ControllerBase
         try
         {
             var userId = GetUserId();
-            var stats = await _annotationStorage.GetStatsAsync(userId, cancellationToken);
+            var stats = await _annotationStorage.GetStatsAsync(userId, cancellationToken).ConfigureAwait(false);
             
             var result = await _preflightCheck.CheckSystemCapabilitiesAsync(
                 stats.TotalAnnotations, 
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             var dto = new PreflightCheckResultDto(
                 Timestamp: result.Timestamp,
@@ -434,7 +434,7 @@ public class MlController : ControllerBase
 
         try
         {
-            var restored = await _modelManager.RestoreFromBackupAsync(cancellationToken);
+            var restored = await _modelManager.RestoreFromBackupAsync(cancellationToken).ConfigureAwait(false);
             
             if (!restored)
             {
@@ -475,7 +475,7 @@ public class MlController : ControllerBase
 
         try
         {
-            var history = await _auditService.GetTrainingHistoryAsync(maxRecords, cancellationToken);
+            var history = await _auditService.GetTrainingHistoryAsync(maxRecords, cancellationToken).ConfigureAwait(false);
             return Ok(new { history, count = history.Count });
         }
         catch (Exception ex)
@@ -502,7 +502,7 @@ public class MlController : ControllerBase
 
         try
         {
-            var stats = await _auditService.GetTrainingStatisticsAsync(cancellationToken);
+            var stats = await _auditService.GetTrainingStatisticsAsync(cancellationToken).ConfigureAwait(false);
             return Ok(stats);
         }
         catch (Exception ex)
@@ -531,7 +531,7 @@ public class MlController : ControllerBase
         try
         {
             var userId = GetUserId();
-            var annotations = await _annotationStorage.GetAnnotationsAsync(userId, cancellationToken);
+            var annotations = await _annotationStorage.GetAnnotationsAsync(userId, cancellationToken).ConfigureAwait(false);
             
             if (_labelingAdvisor == null)
             {
@@ -544,7 +544,7 @@ public class MlController : ControllerBase
                 });
             }
 
-            var advice = await _labelingAdvisor.GetLabelingAdviceAsync(annotations, cancellationToken);
+            var advice = await _labelingAdvisor.GetLabelingAdviceAsync(annotations, cancellationToken).ConfigureAwait(false);
 
             var dto = new LabelingAdviceDto(
                 TotalAnnotations: advice.TotalAnnotations,
@@ -623,10 +623,10 @@ public class MlController : ControllerBase
 
             // Get preflight result for context
             var userId = GetUserId();
-            var stats = await _annotationStorage.GetStatsAsync(userId, cancellationToken);
+            var stats = await _annotationStorage.GetStatsAsync(userId, cancellationToken).ConfigureAwait(false);
             var preflightResult = await _preflightCheck.CheckSystemCapabilitiesAsync(
                 stats.TotalAnnotations,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             // Convert DTO metrics to service model
             var metrics = new Core.Services.ML.TrainingMetrics(
@@ -640,7 +640,7 @@ public class MlController : ControllerBase
                 metrics,
                 preflightResult,
                 stats.TotalAnnotations,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             var dto = new PostTrainingAnalysisDto(
                 TrainingLoss: analysis.TrainingLoss,

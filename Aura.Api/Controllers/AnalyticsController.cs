@@ -59,7 +59,7 @@ public class AnalyticsController : ControllerBase
             var end = endDate ?? DateTime.UtcNow;
 
             var stats = await _analyticsService.GetUsageStatisticsAsync(
-                start, end, provider, generationType, cancellationToken);
+                start, end, provider, generationType, cancellationToken).ConfigureAwait(false);
 
             return Ok(stats);
         }
@@ -87,7 +87,7 @@ public class AnalyticsController : ControllerBase
             var end = endDate ?? DateTime.UtcNow;
 
             var stats = await _analyticsService.GetCostStatisticsAsync(
-                start, end, provider, cancellationToken);
+                start, end, provider, cancellationToken).ConfigureAwait(false);
 
             return Ok(stats);
         }
@@ -115,7 +115,7 @@ public class AnalyticsController : ControllerBase
             var end = endDate ?? DateTime.UtcNow;
 
             var stats = await _analyticsService.GetPerformanceStatisticsAsync(
-                start, end, operationType, cancellationToken);
+                start, end, operationType, cancellationToken).ConfigureAwait(false);
 
             return Ok(stats);
         }
@@ -142,7 +142,7 @@ public class AnalyticsController : ControllerBase
                 .Where(s => s.PeriodType == periodType)
                 .OrderByDescending(s => s.PeriodStart)
                 .Take(limit)
-                .ToListAsync(cancellationToken);
+                .ToListAsync(cancellationToken).ConfigureAwait(false);
 
             return Ok(summaries);
         }
@@ -169,14 +169,14 @@ public class AnalyticsController : ControllerBase
 
             var costs = await _context.CostTracking
                 .Where(c => c.Timestamp >= monthStart && c.Timestamp < monthEnd)
-                .ToListAsync(cancellationToken);
+                .ToListAsync(cancellationToken).ConfigureAwait(false);
 
             var totalCost = costs.Sum(c => c.TotalCost);
             var providerCosts = costs
                 .GroupBy(c => c.Provider)
                 .ToDictionary(g => g.Key, g => g.Sum(c => c.TotalCost));
 
-            var settings = await _context.AnalyticsRetentionSettings.FirstOrDefaultAsync(cancellationToken);
+            var settings = await _context.AnalyticsRetentionSettings.FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
 
             return Ok(new MonthlyBudgetStatus
             {
@@ -213,7 +213,7 @@ public class AnalyticsController : ControllerBase
                 request.Model,
                 request.InputTokens,
                 request.OutputTokens,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             return Ok(new CostEstimate
             {
@@ -242,7 +242,7 @@ public class AnalyticsController : ControllerBase
     {
         try
         {
-            var settings = await _context.AnalyticsRetentionSettings.FirstOrDefaultAsync(cancellationToken);
+            var settings = await _context.AnalyticsRetentionSettings.FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
             
             if (settings == null)
             {
@@ -269,7 +269,7 @@ public class AnalyticsController : ControllerBase
     {
         try
         {
-            var existing = await _context.AnalyticsRetentionSettings.FirstOrDefaultAsync(cancellationToken);
+            var existing = await _context.AnalyticsRetentionSettings.FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
             
             if (existing == null)
             {
@@ -290,7 +290,7 @@ public class AnalyticsController : ControllerBase
             existing.MaxDatabaseSizeMB = settings.MaxDatabaseSizeMB;
             existing.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync(cancellationToken);
+            await _context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
             _logger.LogInformation("Analytics settings updated");
 
@@ -313,20 +313,20 @@ public class AnalyticsController : ControllerBase
     {
         try
         {
-            var usageCount = await _context.UsageStatistics.CountAsync(cancellationToken);
-            var costCount = await _context.CostTracking.CountAsync(cancellationToken);
-            var perfCount = await _context.PerformanceMetrics.CountAsync(cancellationToken);
-            var summaryCount = await _context.AnalyticsSummaries.CountAsync(cancellationToken);
+            var usageCount = await _context.UsageStatistics.CountAsync(cancellationToken).ConfigureAwait(false);
+            var costCount = await _context.CostTracking.CountAsync(cancellationToken).ConfigureAwait(false);
+            var perfCount = await _context.PerformanceMetrics.CountAsync(cancellationToken).ConfigureAwait(false);
+            var summaryCount = await _context.AnalyticsSummaries.CountAsync(cancellationToken).ConfigureAwait(false);
             
-            var estimatedSize = await _cleanupService.GetDatabaseSizeBytesAsync(cancellationToken);
+            var estimatedSize = await _cleanupService.GetDatabaseSizeBytesAsync(cancellationToken).ConfigureAwait(false);
             var sizeMB = estimatedSize / (1024.0 * 1024.0);
 
             var oldestUsage = await _context.UsageStatistics
                 .OrderBy(u => u.Timestamp)
                 .Select(u => u.Timestamp)
-                .FirstOrDefaultAsync(cancellationToken);
+                .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
 
-            var settings = await _context.AnalyticsRetentionSettings.FirstOrDefaultAsync(cancellationToken);
+            var settings = await _context.AnalyticsRetentionSettings.FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
 
             return Ok(new DatabaseInfo
             {
@@ -361,8 +361,8 @@ public class AnalyticsController : ControllerBase
         {
             _logger.LogInformation("Manual cleanup triggered");
             
-            await _cleanupService.CleanupAsync(cancellationToken);
-            await _cleanupService.AggregateOldDataAsync(cancellationToken);
+            await _cleanupService.CleanupAsync(cancellationToken).ConfigureAwait(false);
+            await _cleanupService.AggregateOldDataAsync(cancellationToken).ConfigureAwait(false);
 
             return Ok(new { message = "Cleanup completed successfully" });
         }
@@ -384,7 +384,7 @@ public class AnalyticsController : ControllerBase
         {
             _logger.LogWarning("Clear all analytics data requested");
             
-            await _cleanupService.ClearAllDataAsync(cancellationToken);
+            await _cleanupService.ClearAllDataAsync(cancellationToken).ConfigureAwait(false);
 
             return Ok(new { message = "All analytics data cleared successfully" });
         }
@@ -413,15 +413,15 @@ public class AnalyticsController : ControllerBase
 
             var usage = await _context.UsageStatistics
                 .Where(u => u.Timestamp >= start && u.Timestamp <= end)
-                .ToListAsync(cancellationToken);
+                .ToListAsync(cancellationToken).ConfigureAwait(false);
 
             var costs = await _context.CostTracking
                 .Where(c => c.Timestamp >= start && c.Timestamp <= end)
-                .ToListAsync(cancellationToken);
+                .ToListAsync(cancellationToken).ConfigureAwait(false);
 
             var performance = await _context.PerformanceMetrics
                 .Where(p => p.Timestamp >= start && p.Timestamp <= end)
-                .ToListAsync(cancellationToken);
+                .ToListAsync(cancellationToken).ConfigureAwait(false);
 
             var export = new
             {

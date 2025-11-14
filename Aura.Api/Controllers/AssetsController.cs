@@ -67,7 +67,7 @@ public class AssetsController : ControllerBase
             if (!string.IsNullOrWhiteSpace(source) && Enum.TryParse<AssetSource>(source, true, out var assetSource))
                 filters = filters with { Source = assetSource };
 
-            var result = await _assetLibrary.SearchAssetsAsync(query, filters, page, pageSize, sortBy, sortDescending);
+            var result = await _assetLibrary.SearchAssetsAsync(query, filters, page, pageSize, sortBy, sortDescending).ConfigureAwait(false);
             return Ok(result);
         }
         catch (Exception ex)
@@ -85,7 +85,7 @@ public class AssetsController : ControllerBase
     {
         try
         {
-            var asset = await _assetLibrary.GetAssetAsync(id);
+            var asset = await _assetLibrary.GetAssetAsync(id).ConfigureAwait(false);
             if (asset == null)
                 return NotFound(new { error = "Asset not found" });
 
@@ -116,18 +116,18 @@ public class AssetsController : ControllerBase
             var tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + Path.GetExtension(file.FileName));
             using (var stream = new FileStream(tempPath, FileMode.Create))
             {
-                await file.CopyToAsync(stream);
+                await file.CopyToAsync(stream).ConfigureAwait(false);
             }
 
             // Add to library
-            var asset = await _assetLibrary.AddAssetAsync(tempPath, assetType, AssetSource.Uploaded);
+            var asset = await _assetLibrary.AddAssetAsync(tempPath, assetType, AssetSource.Uploaded).ConfigureAwait(false);
 
             // Generate tags
-            var tags = await _assetTagger.GenerateTagsAsync(asset);
+            var tags = await _assetTagger.GenerateTagsAsync(asset).ConfigureAwait(false);
             if (tags.Any())
             {
-                await _assetLibrary.TagAssetAsync(asset.Id, tags.Select(t => t.Name).ToList());
-                asset = await _assetLibrary.GetAssetAsync(asset.Id);
+                await _assetLibrary.TagAssetAsync(asset.Id, tags.Select(t => t.Name).ToList()).ConfigureAwait(false);
+                asset = await _assetLibrary.GetAssetAsync(asset.Id).ConfigureAwait(false);
             }
 
             // Clean up temp file
@@ -150,8 +150,8 @@ public class AssetsController : ControllerBase
     {
         try
         {
-            await _assetLibrary.TagAssetAsync(id, tags);
-            var asset = await _assetLibrary.GetAssetAsync(id);
+            await _assetLibrary.TagAssetAsync(id, tags).ConfigureAwait(false);
+            var asset = await _assetLibrary.GetAssetAsync(id).ConfigureAwait(false);
             return Ok(asset);
         }
         catch (Exception ex)
@@ -170,7 +170,7 @@ public class AssetsController : ControllerBase
         try
         {
             // Check if asset is used in timelines
-            var references = await _usageTracker.GetAssetReferencesAsync(id);
+            var references = await _usageTracker.GetAssetReferencesAsync(id).ConfigureAwait(false);
             if (references.Any() && !deleteFromDisk)
             {
                 return BadRequest(new 
@@ -180,7 +180,7 @@ public class AssetsController : ControllerBase
                 });
             }
 
-            var success = await _assetLibrary.DeleteAssetAsync(id, deleteFromDisk);
+            var success = await _assetLibrary.DeleteAssetAsync(id, deleteFromDisk).ConfigureAwait(false);
             if (!success)
                 return NotFound(new { error = "Asset not found" });
 
@@ -204,7 +204,7 @@ public class AssetsController : ControllerBase
             if (string.IsNullOrWhiteSpace(query))
                 return BadRequest(new { error = "Query is required" });
 
-            var results = await _stockImageService.SearchStockImagesAsync(query, count);
+            var results = await _stockImageService.SearchStockImagesAsync(query, count).ConfigureAwait(false);
             return Ok(results);
         }
         catch (Exception ex)
@@ -226,7 +226,7 @@ public class AssetsController : ControllerBase
             var tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".jpg");
 
             // Download the image
-            await _stockImageService.DownloadStockImageAsync(request.ImageUrl, tempPath);
+            await _stockImageService.DownloadStockImageAsync(request.ImageUrl, tempPath).ConfigureAwait(false);
 
             // Add to library
             var source = request.Source?.ToLowerInvariant() switch
@@ -236,14 +236,14 @@ public class AssetsController : ControllerBase
                 _ => AssetSource.Uploaded
             };
 
-            var asset = await _assetLibrary.AddAssetAsync(tempPath, Core.Models.Assets.AssetType.Image, source);
+            var asset = await _assetLibrary.AddAssetAsync(tempPath, AssetType.Image, source).ConfigureAwait(false);
 
             // Generate tags
-            var tags = await _assetTagger.GenerateTagsAsync(asset);
+            var tags = await _assetTagger.GenerateTagsAsync(asset).ConfigureAwait(false);
             if (tags.Any())
             {
-                await _assetLibrary.TagAssetAsync(asset.Id, tags.Select(t => t.Name).ToList());
-                asset = await _assetLibrary.GetAssetAsync(asset.Id);
+                await _assetLibrary.TagAssetAsync(asset.Id, tags.Select(t => t.Name).ToList()).ConfigureAwait(false);
+                asset = await _assetLibrary.GetAssetAsync(asset.Id).ConfigureAwait(false);
             }
 
             // Clean up temp file
@@ -267,13 +267,13 @@ public class AssetsController : ControllerBase
         try
         {
             // Check if AI generation is available
-            if (!await _aiImageGenerator.IsAvailableAsync())
+            if (!await _aiImageGenerator.IsAvailableAsync().ConfigureAwait(false))
             {
                 return BadRequest(new { error = "AI image generation is not available. Please install Stable Diffusion." });
             }
 
             var outputPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".png");
-            var generatedPath = await _aiImageGenerator.GenerateImageAsync(request, outputPath);
+            var generatedPath = await _aiImageGenerator.GenerateImageAsync(request, outputPath).ConfigureAwait(false);
 
             if (generatedPath == null)
             {
@@ -281,7 +281,7 @@ public class AssetsController : ControllerBase
             }
 
             // Add to library
-            var asset = await _assetLibrary.AddAssetAsync(generatedPath, Core.Models.Assets.AssetType.Image, AssetSource.AIGenerated);
+            var asset = await _assetLibrary.AddAssetAsync(generatedPath, AssetType.Image, AssetSource.AIGenerated).ConfigureAwait(false);
 
             // Add prompt as description
             var updatedAsset = asset with { Description = request.Prompt };
@@ -303,7 +303,7 @@ public class AssetsController : ControllerBase
     {
         try
         {
-            var collections = await _assetLibrary.GetCollectionsAsync();
+            var collections = await _assetLibrary.GetCollectionsAsync().ConfigureAwait(false);
             return Ok(collections);
         }
         catch (Exception ex)
@@ -324,7 +324,7 @@ public class AssetsController : ControllerBase
             var collection = await _assetLibrary.CreateCollectionAsync(
                 request.Name,
                 request.Description,
-                request.Color ?? "#0078D4");
+                request.Color ?? "#0078D4").ConfigureAwait(false);
 
             return Ok(collection);
         }
@@ -343,7 +343,7 @@ public class AssetsController : ControllerBase
     {
         try
         {
-            await _assetLibrary.AddToCollectionAsync(assetId, collectionId);
+            await _assetLibrary.AddToCollectionAsync(assetId, collectionId).ConfigureAwait(false);
             return Ok(new { message = "Asset added to collection" });
         }
         catch (Exception ex)
@@ -364,7 +364,7 @@ public class AssetsController : ControllerBase
             if (_sampleAssets == null)
                 return NotFound(new { error = "Sample assets service not available" });
 
-            var templates = await _sampleAssets.GetBriefTemplatesAsync();
+            var templates = await _sampleAssets.GetBriefTemplatesAsync().ConfigureAwait(false);
             return Ok(templates);
         }
         catch (Exception ex)
@@ -385,7 +385,7 @@ public class AssetsController : ControllerBase
             if (_sampleAssets == null)
                 return NotFound(new { error = "Sample assets service not available" });
 
-            var template = await _sampleAssets.GetBriefTemplateAsync(templateId);
+            var template = await _sampleAssets.GetBriefTemplateAsync(templateId).ConfigureAwait(false);
             if (template == null)
                 return NotFound(new { error = "Template not found" });
 
@@ -410,8 +410,8 @@ public class AssetsController : ControllerBase
                 return NotFound(new { error = "Sample assets service not available" });
 
             var configs = string.IsNullOrWhiteSpace(provider)
-                ? await _sampleAssets.GetVoiceConfigurationsAsync()
-                : await _sampleAssets.GetVoiceConfigurationsByProviderAsync(provider);
+                ? await _sampleAssets.GetVoiceConfigurationsAsync().ConfigureAwait(false)
+                : await _sampleAssets.GetVoiceConfigurationsByProviderAsync(provider).ConfigureAwait(false);
 
             return Ok(configs);
         }
@@ -433,7 +433,7 @@ public class AssetsController : ControllerBase
             if (_sampleAssets == null)
                 return NotFound(new { error = "Sample assets service not available" });
 
-            var images = await _sampleAssets.GetSampleImagesAsync();
+            var images = await _sampleAssets.GetSampleImagesAsync().ConfigureAwait(false);
             return Ok(images);
         }
         catch (Exception ex)
@@ -454,7 +454,7 @@ public class AssetsController : ControllerBase
             if (_sampleAssets == null)
                 return NotFound(new { error = "Sample assets service not available" });
 
-            var audio = await _sampleAssets.GetSampleAudioAsync();
+            var audio = await _sampleAssets.GetSampleAudioAsync().ConfigureAwait(false);
             return Ok(audio);
         }
         catch (Exception ex)

@@ -56,12 +56,12 @@ public class EnginesController : ControllerBase
     {
         try
         {
-            var manifest = await _manifestLoader.LoadManifestAsync();
+            var manifest = await _manifestLoader.LoadManifestAsync().ConfigureAwait(false);
             
             // Detect GPU for gating info
             var hardwareDetector = new Aura.Core.Hardware.HardwareDetector(
                 Microsoft.Extensions.Logging.Abstractions.NullLogger<Aura.Core.Hardware.HardwareDetector>.Instance);
-            var systemProfile = await hardwareDetector.DetectSystemAsync();
+            var systemProfile = await hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
             var gpuInfo = systemProfile.Gpu;
             bool hasNvidia = gpuInfo?.Vendor?.ToUpperInvariant() == "NVIDIA";
             bool hasEnoughVram = hasNvidia && (gpuInfo?.VramGB ?? 0) >= 6;
@@ -126,7 +126,7 @@ public class EnginesController : ControllerBase
                 return BadRequest(new { error = "engineId is required" });
             }
 
-            var manifest = await _manifestLoader.LoadManifestAsync();
+            var manifest = await _manifestLoader.LoadManifestAsync().ConfigureAwait(false);
             var engine = manifest.Engines.FirstOrDefault(e => e.Id == engineId);
             
             if (engine == null)
@@ -205,7 +205,7 @@ public class EnginesController : ControllerBase
                 return BadRequest(new { error = "engineId is required" });
             }
 
-            var manifest = await _manifestLoader.LoadManifestAsync();
+            var manifest = await _manifestLoader.LoadManifestAsync().ConfigureAwait(false);
             var engine = manifest.Engines.FirstOrDefault(e => e.Id == request.EngineId);
             
             if (engine == null)
@@ -224,7 +224,7 @@ public class EnginesController : ControllerBase
                 request.CustomUrl, 
                 request.LocalFilePath, 
                 null, 
-                ct);
+                ct).ConfigureAwait(false);
 
             // Register with the registry
             string executablePath = System.IO.Path.Combine(installPath, engine.Entrypoint);
@@ -244,7 +244,7 @@ public class EnginesController : ControllerBase
                 AutoRestart: false
             );
 
-            await _registry.RegisterEngineAsync(engineConfig);
+            await _registry.RegisterEngineAsync(engineConfig).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -337,27 +337,27 @@ public class EnginesController : ControllerBase
             if (string.IsNullOrEmpty(request.EngineId))
             {
                 var errorData = System.Text.Json.JsonSerializer.Serialize(new { error = "engineId is required" });
-                await Response.WriteAsync($"event: error\ndata: {errorData}\n\n", ct);
-                await Response.Body.FlushAsync(ct);
+                await Response.WriteAsync($"event: error\ndata: {errorData}\n\n", ct).ConfigureAwait(false);
+                await Response.Body.FlushAsync(ct).ConfigureAwait(false);
                 return;
             }
 
-            var manifest = await _manifestLoader.LoadManifestAsync();
+            var manifest = await _manifestLoader.LoadManifestAsync().ConfigureAwait(false);
             var engine = manifest.Engines.FirstOrDefault(e => e.Id == request.EngineId);
             
             if (engine == null)
             {
                 var errorData = System.Text.Json.JsonSerializer.Serialize(new { error = $"Engine {request.EngineId} not found in manifest" });
-                await Response.WriteAsync($"event: error\ndata: {errorData}\n\n", ct);
-                await Response.Body.FlushAsync(ct);
+                await Response.WriteAsync($"event: error\ndata: {errorData}\n\n", ct).ConfigureAwait(false);
+                await Response.Body.FlushAsync(ct).ConfigureAwait(false);
                 return;
             }
 
             if (_installer.IsInstalled(request.EngineId))
             {
                 var errorData = System.Text.Json.JsonSerializer.Serialize(new { error = $"Engine {request.EngineId} is already installed" });
-                await Response.WriteAsync($"event: error\ndata: {errorData}\n\n", ct);
-                await Response.Body.FlushAsync(ct);
+                await Response.WriteAsync($"event: error\ndata: {errorData}\n\n", ct).ConfigureAwait(false);
+                await Response.Body.FlushAsync(ct).ConfigureAwait(false);
                 return;
             }
 
@@ -382,7 +382,7 @@ public class EnginesController : ControllerBase
                 request.CustomUrl, 
                 request.LocalFilePath, 
                 progress, 
-                ct);
+                ct).ConfigureAwait(false);
 
             // Register with the registry
             string executablePath = System.IO.Path.Combine(installPath, engine.Entrypoint);
@@ -402,7 +402,7 @@ public class EnginesController : ControllerBase
                 AutoRestart: false
             );
 
-            await _registry.RegisterEngineAsync(engineConfig);
+            await _registry.RegisterEngineAsync(engineConfig).ConfigureAwait(false);
 
             var completionData = System.Text.Json.JsonSerializer.Serialize(new { 
                 success = true,
@@ -410,15 +410,15 @@ public class EnginesController : ControllerBase
                 installPath,
                 message = $"Engine {engine.Name} installed successfully"
             });
-            await Response.WriteAsync($"event: complete\ndata: {completionData}\n\n", ct);
-            await Response.Body.FlushAsync(ct);
+            await Response.WriteAsync($"event: complete\ndata: {completionData}\n\n", ct).ConfigureAwait(false);
+            await Response.Body.FlushAsync(ct).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             _logger.LogWarning("Install operation cancelled for {EngineId}", request.EngineId);
             var errorData = System.Text.Json.JsonSerializer.Serialize(new { error = "Installation cancelled by user" });
-            await Response.WriteAsync($"event: error\ndata: {errorData}\n\n", ct);
-            await Response.Body.FlushAsync(ct);
+            await Response.WriteAsync($"event: error\ndata: {errorData}\n\n", ct).ConfigureAwait(false);
+            await Response.Body.FlushAsync(ct).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -427,8 +427,8 @@ public class EnginesController : ControllerBase
                 error = $"Installation failed: {ex.Message}",
                 details = ex.ToString()
             });
-            await Response.WriteAsync($"event: error\ndata: {errorData}\n\n", ct);
-            await Response.Body.FlushAsync(ct);
+            await Response.WriteAsync($"event: error\ndata: {errorData}\n\n", ct).ConfigureAwait(false);
+            await Response.Body.FlushAsync(ct).ConfigureAwait(false);
         }
     }
 
@@ -445,7 +445,7 @@ public class EnginesController : ControllerBase
                 return BadRequest(new { error = "engineId is required" });
             }
 
-            var manifest = await _manifestLoader.LoadManifestAsync();
+            var manifest = await _manifestLoader.LoadManifestAsync().ConfigureAwait(false);
             var engine = manifest.Engines.FirstOrDefault(e => e.Id == request.EngineId);
             
             if (engine == null)
@@ -453,7 +453,7 @@ public class EnginesController : ControllerBase
                 return NotFound(new { error = $"Engine {request.EngineId} not found in manifest" });
             }
 
-            var result = await _installer.VerifyAsync(engine);
+            var result = await _installer.VerifyAsync(engine).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -484,7 +484,7 @@ public class EnginesController : ControllerBase
                 return BadRequest(new { error = "engineId is required" });
             }
 
-            var manifest = await _manifestLoader.LoadManifestAsync();
+            var manifest = await _manifestLoader.LoadManifestAsync().ConfigureAwait(false);
             var engine = manifest.Engines.FirstOrDefault(e => e.Id == request.EngineId);
             
             if (engine == null)
@@ -492,7 +492,7 @@ public class EnginesController : ControllerBase
                 return NotFound(new { error = $"Engine {request.EngineId} not found in manifest" });
             }
 
-            await _installer.RepairAsync(engine, null, ct);
+            await _installer.RepairAsync(engine, null, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -538,18 +538,18 @@ public class EnginesController : ControllerBase
             }
 
             // Stop if running
-            await _registry.StopEngineAsync(request.EngineId);
+            await _registry.StopEngineAsync(request.EngineId).ConfigureAwait(false);
 
             // Unregister
-            await _registry.UnregisterEngineAsync(request.EngineId);
+            await _registry.UnregisterEngineAsync(request.EngineId).ConfigureAwait(false);
 
             // Remove files
-            var manifest = await _manifestLoader.LoadManifestAsync();
+            var manifest = await _manifestLoader.LoadManifestAsync().ConfigureAwait(false);
             var engine = manifest.Engines.FirstOrDefault(e => e.Id == request.EngineId);
             
             if (engine != null)
             {
-                await _installer.RemoveAsync(engine);
+                await _installer.RemoveAsync(engine).ConfigureAwait(false);
             }
 
             return Ok(new
@@ -589,17 +589,17 @@ public class EnginesController : ControllerBase
             if (request.Port.HasValue && request.Port != engineConfig.Port)
             {
                 engineConfig = engineConfig with { Port = request.Port };
-                await _registry.RegisterEngineAsync(engineConfig);
+                await _registry.RegisterEngineAsync(engineConfig).ConfigureAwait(false);
             }
 
             // Update args if provided
             if (!string.IsNullOrEmpty(request.Args) && request.Args != engineConfig.Arguments)
             {
                 engineConfig = engineConfig with { Arguments = request.Args };
-                await _registry.RegisterEngineAsync(engineConfig);
+                await _registry.RegisterEngineAsync(engineConfig).ConfigureAwait(false);
             }
 
-            bool started = await _registry.StartEngineAsync(request.EngineId, ct);
+            bool started = await _registry.StartEngineAsync(request.EngineId, ct).ConfigureAwait(false);
 
             if (started)
             {
@@ -639,7 +639,7 @@ public class EnginesController : ControllerBase
                 return BadRequest(new { error = "engineId is required" });
             }
 
-            bool stopped = await _registry.StopEngineAsync(request.EngineId);
+            bool stopped = await _registry.StopEngineAsync(request.EngineId).ConfigureAwait(false);
 
             if (stopped)
             {
@@ -680,7 +680,7 @@ public class EnginesController : ControllerBase
                         Port = prefs.Port ?? engineConfig.Port,
                         StartOnAppLaunch = prefs.AutoStart
                     };
-                    await _registry.RegisterEngineAsync(updatedConfig);
+                    await _registry.RegisterEngineAsync(updatedConfig).ConfigureAwait(false);
                 }
             }
 
@@ -733,7 +733,7 @@ public class EnginesController : ControllerBase
                 return BadRequest(new { error = "engineId is required" });
             }
 
-            var manifest = await _manifestLoader.LoadManifestAsync();
+            var manifest = await _manifestLoader.LoadManifestAsync().ConfigureAwait(false);
             var engine = manifest.Engines.FirstOrDefault(e => e.Id == engineId);
             
             if (engine == null)
@@ -741,7 +741,7 @@ public class EnginesController : ControllerBase
                 return NotFound(new { error = $"Engine {engineId} not found in manifest" });
             }
 
-            var diagnostics = await _installer.GetDiagnosticsAsync(engine);
+            var diagnostics = await _installer.GetDiagnosticsAsync(engine).ConfigureAwait(false);
             
             // Get last error from process manager if available
             var status = _processManager.GetStatus(engineId);
@@ -778,7 +778,7 @@ public class EnginesController : ControllerBase
     {
         try
         {
-            var report = await _lifecycleManager.GenerateDiagnosticsAsync();
+            var report = await _lifecycleManager.GenerateDiagnosticsAsync().ConfigureAwait(false);
             return Ok(report);
         }
         catch (Exception ex)
@@ -801,7 +801,7 @@ public class EnginesController : ControllerBase
                 return BadRequest(new { error = "engineId is required" });
             }
 
-            var logs = await _registry.GetEngineLogsAsync(engineId, tailLines);
+            var logs = await _registry.GetEngineLogsAsync(engineId, tailLines).ConfigureAwait(false);
             return Ok(new { logs });
         }
         catch (Exception ex)
@@ -842,7 +842,7 @@ public class EnginesController : ControllerBase
                 return BadRequest(new { error = "engineId is required" });
             }
 
-            var success = await _lifecycleManager.RestartEngineAsync(request.EngineId, ct);
+            var success = await _lifecycleManager.RestartEngineAsync(request.EngineId, ct).ConfigureAwait(false);
             
             if (success)
             {
@@ -873,7 +873,7 @@ public class EnginesController : ControllerBase
                 return StatusCode(500, new { error = "Engine detection not available" });
             }
 
-            var detectionResults = await _engineDetector.DetectAllEnginesAsync(null, null, ct);
+            var detectionResults = await _engineDetector.DetectAllEnginesAsync(null, null, ct).ConfigureAwait(false);
             
             return Ok(new { engines = detectionResults });
         }
@@ -897,7 +897,7 @@ public class EnginesController : ControllerBase
                 return StatusCode(500, new { error = "Engine detection not available" });
             }
 
-            var result = await _engineDetector.DetectFFmpegAsync(configuredPath);
+            var result = await _engineDetector.DetectFFmpegAsync(configuredPath).ConfigureAwait(false);
             return Ok(result);
         }
         catch (Exception ex)
@@ -920,7 +920,7 @@ public class EnginesController : ControllerBase
                 return StatusCode(500, new { error = "Engine detection not available" });
             }
 
-            var result = await _engineDetector.DetectOllamaAsync(url, ct);
+            var result = await _engineDetector.DetectOllamaAsync(url, ct).ConfigureAwait(false);
             return Ok(result);
         }
         catch (Exception ex)
@@ -944,7 +944,7 @@ public class EnginesController : ControllerBase
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(5));
 
-            var response = await httpClient.GetAsync($"{baseUrl}/api/tags", cts.Token);
+            var response = await httpClient.GetAsync($"{baseUrl}/api/tags", cts.Token).ConfigureAwait(false);
             
             if (!response.IsSuccessStatusCode)
             {
@@ -952,7 +952,7 @@ public class EnginesController : ControllerBase
                 return StatusCode((int)response.StatusCode, new { models = Array.Empty<object>(), baseUrl, error = "Failed to retrieve models from Ollama" });
             }
 
-            var json = await response.Content.ReadAsStringAsync(ct);
+            var json = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var doc = System.Text.Json.JsonDocument.Parse(json);
             
             if (!doc.RootElement.TryGetProperty("models", out var modelsArray))
@@ -1022,7 +1022,7 @@ public class EnginesController : ControllerBase
             // Generate unique instance ID
             var instanceId = $"{request.EngineId}-external-{Guid.NewGuid().ToString("N")[..8]}";
             
-            var manifest = await _manifestLoader.LoadManifestAsync();
+            var manifest = await _manifestLoader.LoadManifestAsync().ConfigureAwait(false);
             var engine = manifest.Engines.FirstOrDefault(e => e.Id == request.EngineId);
             string engineName = engine?.Name ?? request.EngineId;
 
@@ -1035,7 +1035,7 @@ public class EnginesController : ControllerBase
                 request.Port,
                 request.HealthCheckUrl,
                 request.Notes
-            );
+            ).ConfigureAwait(false);
 
             if (!success)
             {
@@ -1078,7 +1078,7 @@ public class EnginesController : ControllerBase
                 request.Port,
                 request.HealthCheckUrl,
                 request.Notes
-            );
+            ).ConfigureAwait(false);
 
             if (!success)
             {
@@ -1112,7 +1112,7 @@ public class EnginesController : ControllerBase
 
             foreach (var engine in engines)
             {
-                var status = await _registry.GetEngineStatusAsync(engine.Id);
+                var status = await _registry.GetEngineStatusAsync(engine.Id).ConfigureAwait(false);
                 instances.Add(new
                 {
                     engine.Id,
@@ -1251,7 +1251,7 @@ public class EnginesController : ControllerBase
     {
         try
         {
-            var manifest = await _manifestLoader.LoadManifestAsync();
+            var manifest = await _manifestLoader.LoadManifestAsync().ConfigureAwait(false);
             var engine = manifest.Engines.FirstOrDefault(e => e.Id == engineId);
             
             if (engine == null)
@@ -1279,7 +1279,7 @@ public class EnginesController : ControllerBase
                 var resolvedUrl = await _releaseResolver.ResolveLatestAssetUrlAsync(
                     engine.GitHubRepo, 
                     engine.AssetPattern, 
-                    ct);
+                    ct).ConfigureAwait(false);
                 
                 if (!string.IsNullOrEmpty(resolvedUrl))
                 {

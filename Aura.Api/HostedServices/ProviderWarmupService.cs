@@ -36,7 +36,7 @@ public class ProviderWarmupService : IHostedService
             try
             {
                 // Small delay to let the application finish starting
-                await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
+                await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken).ConfigureAwait(false);
 
                 _logger.LogInformation("Starting provider warmup...");
 

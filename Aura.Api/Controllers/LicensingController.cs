@@ -67,12 +67,12 @@ public class LicensingController : ControllerBase
                 }
                 else
                 {
-                    manifest = await _licensingService.GenerateManifestAsync(request.ProjectId, cancellationToken);
+                    manifest = await _licensingService.GenerateManifestAsync(request.ProjectId, cancellationToken).ConfigureAwait(false);
                 }
             }
             else
             {
-                manifest = await _licensingService.GenerateManifestAsync(request.ProjectId, cancellationToken);
+                manifest = await _licensingService.GenerateManifestAsync(request.ProjectId, cancellationToken).ConfigureAwait(false);
             }
 
             var dto = MapToDto(manifest);
@@ -108,7 +108,7 @@ public class LicensingController : ControllerBase
             _logger.LogInformation("Getting licensing manifest for project {ProjectId}, CorrelationId: {CorrelationId}",
                 projectId, HttpContext.TraceIdentifier);
 
-            var manifest = await _licensingService.GenerateManifestAsync(projectId, cancellationToken);
+            var manifest = await _licensingService.GenerateManifestAsync(projectId, cancellationToken).ConfigureAwait(false);
             var dto = MapToDto(manifest);
 
             return Ok(dto);
@@ -153,8 +153,8 @@ public class LicensingController : ControllerBase
                 _ => LicensingExportFormat.Json
             };
 
-            var manifest = await _licensingService.GenerateManifestAsync(request.ProjectId, cancellationToken);
-            var content = await _licensingService.ExportManifestAsync(manifest, format, cancellationToken);
+            var manifest = await _licensingService.GenerateManifestAsync(request.ProjectId, cancellationToken).ConfigureAwait(false);
+            var content = await _licensingService.ExportManifestAsync(manifest, format, cancellationToken).ConfigureAwait(false);
 
             var contentType = format switch
             {
@@ -224,8 +224,8 @@ public class LicensingController : ControllerBase
                 _ => LicensingExportFormat.Json
             };
 
-            var manifest = await _licensingService.GenerateManifestAsync(projectId, cancellationToken);
-            var content = await _licensingService.ExportManifestAsync(manifest, exportFormat, cancellationToken);
+            var manifest = await _licensingService.GenerateManifestAsync(projectId, cancellationToken).ConfigureAwait(false);
+            var content = await _licensingService.ExportManifestAsync(manifest, exportFormat, cancellationToken).ConfigureAwait(false);
 
             var contentType = exportFormat switch
             {
@@ -297,7 +297,7 @@ public class LicensingController : ControllerBase
                 Notes = request.Notes
             };
 
-            await _licensingService.RecordSignOffAsync(signOff, cancellationToken);
+            await _licensingService.RecordSignOffAsync(signOff, cancellationToken).ConfigureAwait(false);
 
             var response = new LicensingSignOffResponse
             {
@@ -335,7 +335,7 @@ public class LicensingController : ControllerBase
         {
             _logger.LogInformation("Validating licensing manifest for project {ProjectId}", projectId);
 
-            var manifest = await _licensingService.GenerateManifestAsync(projectId, cancellationToken);
+            var manifest = await _licensingService.GenerateManifestAsync(projectId, cancellationToken).ConfigureAwait(false);
             var isValid = _licensingService.ValidateManifest(manifest);
 
             var result = new

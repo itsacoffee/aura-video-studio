@@ -24,7 +24,7 @@ public class MetricsAggregationService
             _logger.LogInformation("Aggregating quality metrics");
 
             // Simulate aggregating metrics from various sources
-            await Task.Delay(50, ct);
+            await Task.Delay(50, ct).ConfigureAwait(false);
 
             return new QualityMetrics
             {
@@ -57,7 +57,7 @@ public class MetricsAggregationService
         {
             _logger.LogInformation("Getting metrics breakdown");
 
-            await Task.Delay(50, ct);
+            await Task.Delay(50, ct).ConfigureAwait(false);
 
             return new MetricsBreakdown
             {

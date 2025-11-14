@@ -59,11 +59,11 @@ public class EndToEndVideoGenerationTests : IClassFixture<ApiTestFixture>
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         // Act - Start generation
-        var response = await _httpClient.PostAsync("/api/generation/start", content);
+        var response = await _httpClient.PostAsync("/api/generation/start", content).ConfigureAwait(false);
 
         // Assert - Generation started
         response.EnsureSuccessStatusCode();
-        var responseBody = await response.Content.ReadAsStringAsync();
+        var responseBody = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         var result = JsonSerializer.Deserialize<GenerationStartResponse>(
             responseBody,
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
@@ -81,10 +81,10 @@ public class EndToEndVideoGenerationTests : IClassFixture<ApiTestFixture>
 
         while (DateTime.UtcNow - startTime < maxWaitTime)
         {
-            var statusResponse = await _httpClient.GetAsync($"/api/generation/status/{jobId}");
+            var statusResponse = await _httpClient.GetAsync($"/api/generation/status/{jobId}").ConfigureAwait(false);
             statusResponse.EnsureSuccessStatusCode();
 
-            var statusBody = await statusResponse.Content.ReadAsStringAsync();
+            var statusBody = await statusResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
             var status = JsonSerializer.Deserialize<GenerationStatusResponse>(
                 statusBody,
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
@@ -102,7 +102,7 @@ public class EndToEndVideoGenerationTests : IClassFixture<ApiTestFixture>
                 Assert.Fail($"Generation failed or was cancelled: {status.ErrorMessage}");
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(2));
+            await Task.Delay(TimeSpan.FromSeconds(2)).ConfigureAwait(false);
         }
 
         // Assert - Video was generated
@@ -149,10 +149,10 @@ public class EndToEndVideoGenerationTests : IClassFixture<ApiTestFixture>
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         // Act - Start generation
-        var startResponse = await _httpClient.PostAsync("/api/generation/start", content);
+        var startResponse = await _httpClient.PostAsync("/api/generation/start", content).ConfigureAwait(false);
         startResponse.EnsureSuccessStatusCode();
 
-        var responseBody = await startResponse.Content.ReadAsStringAsync();
+        var responseBody = await startResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
         var result = JsonSerializer.Deserialize<GenerationStartResponse>(
             responseBody,
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
@@ -162,20 +162,20 @@ public class EndToEndVideoGenerationTests : IClassFixture<ApiTestFixture>
         var jobId = result.JobId;
 
         // Wait a bit for generation to start
-        await Task.Delay(TimeSpan.FromSeconds(3));
+        await Task.Delay(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
 
         // Cancel the generation
-        var cancelResponse = await _httpClient.PostAsync($"/api/generation/cancel/{jobId}", null);
+        var cancelResponse = await _httpClient.PostAsync($"/api/generation/cancel/{jobId}", null).ConfigureAwait(false);
         cancelResponse.EnsureSuccessStatusCode();
 
         // Wait for cancellation to complete
-        await Task.Delay(TimeSpan.FromSeconds(2));
+        await Task.Delay(TimeSpan.FromSeconds(2)).ConfigureAwait(false);
 
         // Check status
-        var statusResponse = await _httpClient.GetAsync($"/api/generation/status/{jobId}");
+        var statusResponse = await _httpClient.GetAsync($"/api/generation/status/{jobId}").ConfigureAwait(false);
         statusResponse.EnsureSuccessStatusCode();
 
-        var statusBody = await statusResponse.Content.ReadAsStringAsync();
+        var statusBody = await statusResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
         var status = JsonSerializer.Deserialize<GenerationStatusResponse>(
             statusBody,
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
@@ -190,11 +190,11 @@ public class EndToEndVideoGenerationTests : IClassFixture<ApiTestFixture>
     public async Task HealthCheck_ReturnsHealthy()
     {
         // Act
-        var response = await _httpClient.GetAsync("/health");
+        var response = await _httpClient.GetAsync("/health").ConfigureAwait(false);
 
         // Assert
         response.EnsureSuccessStatusCode();
-        var body = await response.Content.ReadAsStringAsync();
+        var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         Assert.Contains("Healthy", body, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -240,6 +240,6 @@ public class ApiTestFixture : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         HttpClient?.Dispose();
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
     }
 }

@@ -39,11 +39,11 @@ public class MetricsExporterService : BackgroundService
         {
             try
             {
-                await Task.Delay(interval, stoppingToken);
+                await Task.Delay(interval, stoppingToken).ConfigureAwait(false);
 
                 if (_options.EnableCustomMetrics)
                 {
-                    await ExportMetricsAsync(stoppingToken);
+                    await ExportMetricsAsync(stoppingToken).ConfigureAwait(false);
                 }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -82,10 +82,10 @@ public class MetricsExporterService : BackgroundService
             // Export to Log Analytics if configured
             if (!string.IsNullOrEmpty(_options.LogAnalyticsWorkspaceId))
             {
-                await ExportToLogAnalyticsAsync(snapshot, ct);
+                await ExportToLogAnalyticsAsync(snapshot, ct).ConfigureAwait(false);
             }
 
-            await Task.CompletedTask;
+            await Task.CompletedTask.ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -109,7 +109,7 @@ public class MetricsExporterService : BackgroundService
                     histograms = snapshot.Histograms.Count
                 });
 
-            await Task.CompletedTask;
+            await Task.CompletedTask.ConfigureAwait(false);
         }
         catch (Exception ex)
         {

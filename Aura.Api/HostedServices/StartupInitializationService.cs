@@ -42,7 +42,7 @@ public class StartupInitializationService : IHostedService
             {
                 using var scope = sp.CreateScope();
                 var dbContext = scope.ServiceProvider.GetRequiredService<Aura.Core.Data.AuraDbContext>();
-                await dbContext.Database.CanConnectAsync(ct);
+                await dbContext.Database.CanConnectAsync(ct).ConfigureAwait(false);
                 return true;
             }
         });
@@ -86,7 +86,7 @@ public class StartupInitializationService : IHostedService
                 try
                 {
                     var ffmpegLocator = sp.GetRequiredService<Aura.Core.Dependencies.IFfmpegLocator>();
-                    var ffmpegPath = await ffmpegLocator.GetEffectiveFfmpegPathAsync(null, ct);
+                    var ffmpegPath = await ffmpegLocator.GetEffectiveFfmpegPathAsync(null, ct).ConfigureAwait(false);
                     return !string.IsNullOrEmpty(ffmpegPath);
                 }
                 catch
@@ -136,7 +136,7 @@ public class StartupInitializationService : IHostedService
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(step.TimeoutSeconds));
                 using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken);
 
-                var success = await step.InitializeFunc(_serviceProvider, linkedCts.Token);
+                var success = await step.InitializeFunc(_serviceProvider, linkedCts.Token).ConfigureAwait(false);
                 stepStopwatch.Stop();
 
                 if (success)

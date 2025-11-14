@@ -41,13 +41,13 @@ public class KeysCommand : ICommand
         {
             return subCommand switch
             {
-                "set" => await SetKeyAsync(args.Skip(1).ToArray()),
-                "list" => await ListKeysAsync(),
-                "test" => await TestKeyAsync(args.Skip(1).ToArray()),
-                "rotate" => await RotateKeyAsync(args.Skip(1).ToArray()),
-                "delete" => await DeleteKeyAsync(args.Skip(1).ToArray()),
-                "export" => await ExportKeysAsync(args.Skip(1).ToArray()),
-                "import" => await ImportKeysAsync(args.Skip(1).ToArray()),
+                "set" => await SetKeyAsync(args.Skip(1).ToArray()).ConfigureAwait(false),
+                "list" => await ListKeysAsync().ConfigureAwait(false),
+                "test" => await TestKeyAsync(args.Skip(1).ToArray()).ConfigureAwait(false),
+                "rotate" => await RotateKeyAsync(args.Skip(1).ToArray()).ConfigureAwait(false),
+                "delete" => await DeleteKeyAsync(args.Skip(1).ToArray()).ConfigureAwait(false),
+                "export" => await ExportKeysAsync(args.Skip(1).ToArray()).ConfigureAwait(false),
+                "import" => await ImportKeysAsync(args.Skip(1).ToArray()).ConfigureAwait(false),
                 "help" or "--help" or "-h" => ShowHelpAndExit(),
                 _ => ShowErrorAndHelp($"Unknown subcommand: {subCommand}")
             };
@@ -77,7 +77,7 @@ public class KeysCommand : ICommand
         {
             Console.WriteLine($"Setting API key for provider: {provider}");
             
-            await _secureStorage.SaveApiKeyAsync(provider, apiKey);
+            await _secureStorage.SaveApiKeyAsync(provider, apiKey).ConfigureAwait(false);
             
             var masked = SecretMaskingService.MaskApiKey(apiKey);
             Console.WriteLine($"✓ API key saved securely: {masked}");
@@ -98,7 +98,7 @@ public class KeysCommand : ICommand
     {
         try
         {
-            var providers = await _secureStorage.GetConfiguredProvidersAsync();
+            var providers = await _secureStorage.GetConfiguredProvidersAsync().ConfigureAwait(false);
 
             if (providers.Count == 0)
             {
@@ -112,7 +112,7 @@ public class KeysCommand : ICommand
 
             foreach (var provider in providers.OrderBy(p => p))
             {
-                var apiKey = await _secureStorage.GetApiKeyAsync(provider);
+                var apiKey = await _secureStorage.GetApiKeyAsync(provider).ConfigureAwait(false);
                 var masked = SecretMaskingService.MaskApiKey(apiKey);
                 Console.WriteLine($"  • {provider,-15} {masked}");
             }
@@ -144,7 +144,7 @@ public class KeysCommand : ICommand
 
         try
         {
-            var apiKey = await _secureStorage.GetApiKeyAsync(provider);
+            var apiKey = await _secureStorage.GetApiKeyAsync(provider).ConfigureAwait(false);
             
             if (string.IsNullOrWhiteSpace(apiKey))
             {
@@ -157,7 +157,7 @@ public class KeysCommand : ICommand
             Console.WriteLine($"Key: {SecretMaskingService.MaskApiKey(apiKey)}");
             Console.WriteLine();
 
-            var result = await _keyValidator.TestApiKeyAsync(provider, apiKey, default);
+            var result = await _keyValidator.TestApiKeyAsync(provider, apiKey, default).ConfigureAwait(false);
 
             if (result.IsValid)
             {
@@ -213,7 +213,7 @@ public class KeysCommand : ICommand
 
         try
         {
-            var hasExisting = await _secureStorage.HasApiKeyAsync(provider);
+            var hasExisting = await _secureStorage.HasApiKeyAsync(provider).ConfigureAwait(false);
             
             if (!hasExisting)
             {
@@ -225,7 +225,7 @@ public class KeysCommand : ICommand
             Console.WriteLine($"Rotating API key for provider: {provider}");
             Console.Write("Testing new key... ");
 
-            var testResult = await _keyValidator.TestApiKeyAsync(provider, newApiKey, default);
+            var testResult = await _keyValidator.TestApiKeyAsync(provider, newApiKey, default).ConfigureAwait(false);
             
             if (!testResult.IsValid)
             {
@@ -238,7 +238,7 @@ public class KeysCommand : ICommand
             Console.WriteLine("✓ OK");
             Console.Write("Saving new key... ");
 
-            await _secureStorage.SaveApiKeyAsync(provider, newApiKey);
+            await _secureStorage.SaveApiKeyAsync(provider, newApiKey).ConfigureAwait(false);
             
             Console.WriteLine("✓ DONE");
             Console.WriteLine();
@@ -270,7 +270,7 @@ public class KeysCommand : ICommand
 
         try
         {
-            var hasKey = await _secureStorage.HasApiKeyAsync(provider);
+            var hasKey = await _secureStorage.HasApiKeyAsync(provider).ConfigureAwait(false);
             
             if (!hasKey)
             {
@@ -287,7 +287,7 @@ public class KeysCommand : ICommand
                 return ExitCodes.Success;
             }
 
-            await _secureStorage.DeleteApiKeyAsync(provider);
+            await _secureStorage.DeleteApiKeyAsync(provider).ConfigureAwait(false);
             
             Console.WriteLine($"✓ API key deleted for {provider}");
             

@@ -62,7 +62,7 @@ public class LlmRouterController : ControllerBase
                 RequireDeterminism: request.RequireDeterminism ?? false,
                 MinQualityScore: request.MinQualityScore ?? 0.7);
 
-            var decision = await _routerService.SelectProviderAsync(taskType, constraints, ct);
+            var decision = await _routerService.SelectProviderAsync(taskType, constraints, ct).ConfigureAwait(false);
 
             var dto = new RoutingDecisionDto(
                 ProviderName: decision.ProviderName,
@@ -123,7 +123,7 @@ public class LlmRouterController : ControllerBase
         {
             _logger.LogInformation("Fetching provider health status");
 
-            var healthStatuses = await _routerService.GetHealthStatusAsync(ct);
+            var healthStatuses = await _routerService.GetHealthStatusAsync(ct).ConfigureAwait(false);
 
             var dtos = healthStatuses.Select(h => new RouterProviderHealthDto(
                 ProviderName: h.ProviderName,
@@ -169,7 +169,7 @@ public class LlmRouterController : ControllerBase
         {
             _logger.LogInformation("Fetching provider metrics");
 
-            var metrics = await _routerService.GetMetricsAsync(ct);
+            var metrics = await _routerService.GetMetricsAsync(ct).ConfigureAwait(false);
 
             var dtos = metrics.Select(m => new RouterProviderMetricsDto(
                 ProviderName: m.ProviderName,
@@ -230,7 +230,7 @@ public class LlmRouterController : ControllerBase
                 request.Success,
                 request.LatencyMs,
                 request.Cost,
-                ct);
+                ct).ConfigureAwait(false);
 
             _logger.LogInformation(
                 "Recorded request for {Provider}: success={Success}, latency={Latency}ms, cost=${Cost}",
@@ -271,7 +271,7 @@ public class LlmRouterController : ControllerBase
                 ? TimeSpan.FromSeconds(request.DurationSeconds.Value) 
                 : null;
 
-            await _routerService.MarkProviderUnavailableAsync(request.ProviderName, duration, ct);
+            await _routerService.MarkProviderUnavailableAsync(request.ProviderName, duration, ct).ConfigureAwait(false);
 
             _logger.LogInformation(
                 "Marked provider {Provider} as unavailable for {Duration}s",
@@ -317,7 +317,7 @@ public class LlmRouterController : ControllerBase
                 });
             }
 
-            await _routerService.ResetProviderHealthAsync(providerName, ct);
+            await _routerService.ResetProviderHealthAsync(providerName, ct).ConfigureAwait(false);
 
             _logger.LogInformation("Reset provider {Provider} to healthy state", providerName);
 

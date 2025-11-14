@@ -81,7 +81,7 @@ public class LocalizationController : ControllerBase
                 _llmProvider);
 
             var translationRequest = MapToTranslationRequest(request);
-            var result = await translationService.TranslateAsync(translationRequest, cancellationToken);
+            var result = await translationService.TranslateAsync(translationRequest, cancellationToken).ConfigureAwait(false);
             
             var dto = MapToTranslationResultDto(result);
             
@@ -133,7 +133,7 @@ public class LocalizationController : ControllerBase
                 _llmProvider);
 
             var batchRequest = MapToBatchTranslationRequest(request);
-            var result = await translationService.BatchTranslateAsync(batchRequest, null, cancellationToken);
+            var result = await translationService.BatchTranslateAsync(batchRequest, null, cancellationToken).ConfigureAwait(false);
             
             var dto = MapToBatchTranslationResultDto(result);
 
@@ -181,7 +181,7 @@ public class LocalizationController : ControllerBase
                 AudienceProfileId = request.AudienceProfileId
             };
 
-            var result = await translationService.AnalyzeCulturalContentAsync(analysisRequest, cancellationToken);
+            var result = await translationService.AnalyzeCulturalContentAsync(analysisRequest, cancellationToken).ConfigureAwait(false);
             
             var dto = MapToCulturalAnalysisResultDto(result);
 
@@ -254,7 +254,7 @@ public class LocalizationController : ControllerBase
             var glossary = await _glossaryManager.CreateGlossaryAsync(
                 request.Name,
                 request.Description,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             var dto = MapToProjectGlossaryDto(glossary);
             
@@ -286,7 +286,7 @@ public class LocalizationController : ControllerBase
         string glossaryId,
         CancellationToken cancellationToken)
     {
-        var glossary = await _glossaryManager.GetGlossaryAsync(glossaryId, cancellationToken);
+        var glossary = await _glossaryManager.GetGlossaryAsync(glossaryId, cancellationToken).ConfigureAwait(false);
         
         if (glossary == null)
         {
@@ -310,7 +310,7 @@ public class LocalizationController : ControllerBase
     public async Task<ActionResult<List<ProjectGlossaryDto>>> ListGlossaries(
         CancellationToken cancellationToken)
     {
-        var glossaries = await _glossaryManager.ListGlossariesAsync(cancellationToken);
+        var glossaries = await _glossaryManager.ListGlossariesAsync(cancellationToken).ConfigureAwait(false);
         var dtos = glossaries.Select(MapToProjectGlossaryDto).ToList();
         
         return Ok(dtos);
@@ -334,7 +334,7 @@ public class LocalizationController : ControllerBase
                 request.Translations,
                 request.Context,
                 request.Industry,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             var dto = MapToGlossaryEntryDto(entry);
             
@@ -364,7 +364,7 @@ public class LocalizationController : ControllerBase
         string glossaryId,
         CancellationToken cancellationToken)
     {
-        await _glossaryManager.DeleteGlossaryAsync(glossaryId, cancellationToken);
+        await _glossaryManager.DeleteGlossaryAsync(glossaryId, cancellationToken).ConfigureAwait(false);
         return NoContent();
     }
 
@@ -676,7 +676,7 @@ public class LocalizationController : ControllerBase
             };
 
             var result = await integrationService.TranslateAndPlanSSMLAsync(
-                integrationRequest, cancellationToken);
+                integrationRequest, cancellationToken).ConfigureAwait(false);
 
             var dto = MapToTranslatedSSMLResultDto(result);
 

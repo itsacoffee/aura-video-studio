@@ -145,7 +145,7 @@ public class JobsController : ControllerBase
                 correlationId,
                 isQuickDemo: false,
                 ct
-            );
+            ).ConfigureAwait(false);
 
             Log.Information("[{CorrelationId}] Job created successfully with ID: {JobId}, Status: {Status}", correlationId, job.Id, job.Status);
             
@@ -398,7 +398,7 @@ public class JobsController : ControllerBase
             }
             
             // Attempt to retry the job
-            var retried = await _jobRunner.RetryJobAsync(jobId, ct);
+            var retried = await _jobRunner.RetryJobAsync(jobId, ct).ConfigureAwait(false);
             
             if (retried)
             {
@@ -477,7 +477,7 @@ public class JobsController : ControllerBase
             var job = _jobRunner.GetJob(jobId);
             if (job == null)
             {
-                await SendSseEventWithId("error", new { message = "Job not found", jobId, correlationId }, GenerateEventId());
+                await SendSseEventWithId("error", new { message = "Job not found", jobId, correlationId }, GenerateEventId()).ConfigureAwait(false);
                 return;
             }
             
@@ -488,7 +488,7 @@ public class JobsController : ControllerBase
                 percent = job.Percent,
                 correlationId,
                 isReconnect
-            }, GenerateEventId());
+            }, GenerateEventId()).ConfigureAwait(false);
             
             // Track last sent values and last ping time
             var lastStatus = job.Status;
@@ -503,7 +503,7 @@ public class JobsController : ControllerBase
             
             while (!ct.IsCancellationRequested && job.Status != JobStatus.Done && job.Status != JobStatus.Failed && job.Status != JobStatus.Canceled)
             {
-                await Task.Delay(pollIntervalMs, ct);
+                await Task.Delay(pollIntervalMs, ct).ConfigureAwait(false);
                 
                 job = _jobRunner.GetJob(jobId);
                 if (job == null) break;
@@ -515,7 +515,7 @@ public class JobsController : ControllerBase
                         Timestamp: DateTime.UtcNow,
                         Status: "alive"
                     );
-                    await SendSseEventWithId("heartbeat", heartbeat, GenerateEventId(++eventIdCounter));
+                    await SendSseEventWithId("heartbeat", heartbeat, GenerateEventId(++eventIdCounter)).ConfigureAwait(false);
                     lastPingTime = DateTime.UtcNow;
                 }
                 
@@ -527,7 +527,7 @@ public class JobsController : ControllerBase
                         stage = job.Stage,
                         percent = job.Percent,
                         correlationId 
-                    }, GenerateEventId(++eventIdCounter));
+                    }, GenerateEventId(++eventIdCounter)).ConfigureAwait(false);
                     lastStatus = job.Status;
                 }
                 
@@ -539,7 +539,7 @@ public class JobsController : ControllerBase
                         status = "started",
                         phase = MapStageToPhase(job.Stage),
                         correlationId 
-                    }, GenerateEventId(++eventIdCounter));
+                    }, GenerateEventId(++eventIdCounter)).ConfigureAwait(false);
                     lastStage = job.Stage;
                 }
                 
@@ -567,7 +567,7 @@ public class JobsController : ControllerBase
                         Timestamp: DateTime.UtcNow
                     );
                     
-                    await SendSseEventWithId("step-progress", progressEvent, GenerateEventId(++eventIdCounter));
+                    await SendSseEventWithId("step-progress", progressEvent, GenerateEventId(++eventIdCounter)).ConfigureAwait(false);
                     lastPercent = job.Percent;
                     lastProgressMessage = latestLog;
                 }
@@ -586,13 +586,13 @@ public class JobsController : ControllerBase
                                 message = logEntry,
                                 step = job.Stage,
                                 correlationId
-                            }, GenerateEventId(++eventIdCounter));
+                            }, GenerateEventId(++eventIdCounter)).ConfigureAwait(false);
                         }
                     }
                     lastLogCount = job.Logs.Count;
                 }
                 
-                await Response.Body.FlushAsync(ct);
+                await Response.Body.FlushAsync(ct).ConfigureAwait(false);
             }
             
             // Send final event
@@ -617,7 +617,7 @@ public class JobsController : ControllerBase
                         sizeBytes = videoArtifact?.SizeBytes ?? 0
                     },
                     correlationId 
-                }, GenerateEventId(++eventIdCounter));
+                }, GenerateEventId(++eventIdCounter)).ConfigureAwait(false);
             }
             else if (job?.Status == JobStatus.Failed)
             {
@@ -634,7 +634,7 @@ public class JobsController : ControllerBase
                     errorMessage = job.ErrorMessage,
                     logs = job.Logs.TakeLast(10).ToArray(),
                     correlationId 
-                }, GenerateEventId(++eventIdCounter));
+                }, GenerateEventId(++eventIdCounter)).ConfigureAwait(false);
             }
             else if (job?.Status == JobStatus.Canceled)
             {
@@ -645,7 +645,7 @@ public class JobsController : ControllerBase
                     stage = job.Stage,
                     message = "Job was cancelled by user",
                     correlationId 
-                }, GenerateEventId(++eventIdCounter));
+                }, GenerateEventId(++eventIdCounter)).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException)
@@ -656,7 +656,7 @@ public class JobsController : ControllerBase
         catch (Exception ex)
         {
             Log.Error(ex, "[{CorrelationId}] Error streaming events for job {JobId}", correlationId, jobId);
-            await SendSseEvent("error", new { message = ex.Message, correlationId });
+            await SendSseEvent("error", new { message = ex.Message, correlationId }).ConfigureAwait(false);
         }
     }
     
@@ -707,7 +707,7 @@ public class JobsController : ControllerBase
             {
                 try
                 {
-                    orchestratorResult = await _cancellationOrchestrator.CancelJobAsync(jobId, ct);
+                    orchestratorResult = await _cancellationOrchestrator.CancelJobAsync(jobId, ct).ConfigureAwait(false);
                     
                     // Convert to DTOs for API response
                     var providerStatuses = orchestratorResult.ProviderStatuses
@@ -791,7 +791,7 @@ public class JobsController : ControllerBase
         var json = JsonSerializer.Serialize(data);
         var message = $"event: {eventType}\ndata: {json}\n\n";
         var bytes = Encoding.UTF8.GetBytes(message);
-        await Response.Body.WriteAsync(bytes);
+        await Response.Body.WriteAsync(bytes).ConfigureAwait(false);
     }
 
     private async Task SendSseEventWithId(string eventType, object data, string eventId)
@@ -799,14 +799,14 @@ public class JobsController : ControllerBase
         var json = JsonSerializer.Serialize(data);
         var message = $"id: {eventId}\nevent: {eventType}\ndata: {json}\n\n";
         var bytes = Encoding.UTF8.GetBytes(message);
-        await Response.Body.WriteAsync(bytes);
+        await Response.Body.WriteAsync(bytes).ConfigureAwait(false);
     }
 
     private async Task SendSseComment(string comment)
     {
         var message = $": {comment}\n\n";
         var bytes = Encoding.UTF8.GetBytes(message);
-        await Response.Body.WriteAsync(bytes);
+        await Response.Body.WriteAsync(bytes).ConfigureAwait(false);
     }
 
     private static string GenerateEventId(int counter = 0)

@@ -19,7 +19,7 @@ public class RequireAdvancedModeAttribute : Attribute, IAsyncActionFilter
         var advancedModeService = context.HttpContext.RequestServices.GetRequiredService<AdvancedModeService>();
         var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<RequireAdvancedModeAttribute>>();
         
-        var isAdvancedModeEnabled = await advancedModeService.IsAdvancedModeEnabledAsync();
+        var isAdvancedModeEnabled = await advancedModeService.IsAdvancedModeEnabledAsync().ConfigureAwait(false);
         
         if (!isAdvancedModeEnabled)
         {
@@ -45,6 +45,6 @@ public class RequireAdvancedModeAttribute : Attribute, IAsyncActionFilter
             return;
         }
         
-        await next();
+        await next().ConfigureAwait(false);
     }
 }

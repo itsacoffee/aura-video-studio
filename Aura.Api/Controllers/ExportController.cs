@@ -85,7 +85,7 @@ public class ExportController : ControllerBase
                         renderSpec,
                         inputFile,
                         null,
-                        default);
+                        default).ConfigureAwait(false);
 
                     _logger.LogInformation("Timeline rendered successfully to {InputFile}", inputFile);
                 }
@@ -118,7 +118,7 @@ public class ExportController : ControllerBase
             };
 
             // Queue the export job
-            var jobId = await _exportService.QueueExportAsync(exportRequest);
+            var jobId = await _exportService.QueueExportAsync(exportRequest).ConfigureAwait(false);
 
             return Ok(new { jobId, message = "Export job queued successfully" });
         }
@@ -139,7 +139,7 @@ public class ExportController : ControllerBase
     {
         try
         {
-            var job = await _exportService.GetJobStatusAsync(jobId);
+            var job = await _exportService.GetJobStatusAsync(jobId).ConfigureAwait(false);
             if (job == null)
             {
                 return NotFound(new { error = "Job not found" });
@@ -175,7 +175,7 @@ public class ExportController : ControllerBase
     {
         try
         {
-            var success = await _exportService.CancelJobAsync(jobId);
+            var success = await _exportService.CancelJobAsync(jobId).ConfigureAwait(false);
             if (!success)
             {
                 return NotFound(new { error = "Job not found or cannot be cancelled" });
@@ -199,7 +199,7 @@ public class ExportController : ControllerBase
     {
         try
         {
-            var jobs = await _exportService.GetActiveJobsAsync();
+            var jobs = await _exportService.GetActiveJobsAsync().ConfigureAwait(false);
             var jobDtos = jobs.Select(job => new ExportJobDto
             {
                 Id = job.Id,
@@ -267,7 +267,7 @@ public class ExportController : ControllerBase
     {
         try
         {
-            var history = await _exportService.GetExportHistoryAsync(status, limit);
+            var history = await _exportService.GetExportHistoryAsync(status, limit).ConfigureAwait(false);
             return Ok(history);
         }
         catch (Exception ex)
@@ -356,7 +356,7 @@ public class ExportController : ControllerBase
     {
         try
         {
-            var job = await _exportService.GetJobStatusAsync(jobId);
+            var job = await _exportService.GetJobStatusAsync(jobId).ConfigureAwait(false);
             if (job == null)
             {
                 return NotFound(new { error = "Job not found" });
@@ -376,7 +376,7 @@ public class ExportController : ControllerBase
                 TargetPlatform = job.TargetPlatform
             };
 
-            var newJobId = await _exportService.QueueExportAsync(request);
+            var newJobId = await _exportService.QueueExportAsync(request).ConfigureAwait(false);
             return Ok(new { jobId = newJobId, message = "Export job retried successfully" });
         }
         catch (Exception ex)

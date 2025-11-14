@@ -102,7 +102,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
             EnableSceneCut: true
         );
 
-        var systemProfile = await DetectOrCreateSystemProfile();
+        var systemProfile = await DetectOrCreateSystemProfile().ConfigureAwait(false);
         
         var progressUpdates = new List<string>();
         var progress = new Progress<string>(msg =>
@@ -128,7 +128,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
             CancellationToken.None,
             jobId,
             correlationId
-        );
+        ).ConfigureAwait(false);
 
         var elapsedTime = DateTime.UtcNow - startTime;
         _output.WriteLine($"Video generation completed in {elapsedTime.TotalSeconds:F2} seconds");
@@ -206,11 +206,11 @@ public class VideoGenerationPipelineE2ETests : IDisposable
 
         var voiceSpec = new VoiceSpec("TestVoice", 1.0, 1.0, PauseStyle.Natural);
         var renderSpec = CreateTestRenderSpec();
-        var systemProfile = await DetectOrCreateSystemProfile();
+        var systemProfile = await DetectOrCreateSystemProfile().ConfigureAwait(false);
 
         // Act
         _output.WriteLine("Testing LLM integration...");
-        var script = await llmProvider.DraftScriptAsync(brief, planSpec, CancellationToken.None);
+        var script = await llmProvider.DraftScriptAsync(brief, planSpec, CancellationToken.None).ConfigureAwait(false);
         
         _output.WriteLine($"Generated script length: {script.Length} characters");
         _output.WriteLine($"Script preview: {script.Substring(0, Math.Min(200, script.Length))}...");
@@ -231,7 +231,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
             systemProfile,
             null,
             CancellationToken.None
-        );
+        ).ConfigureAwait(false);
 
         // Assert - Full pipeline
         Assert.NotNull(outputPath);
@@ -265,7 +265,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
         var planSpec = new PlanSpec(TimeSpan.FromSeconds(15), Pacing.Fast, Density.Sparse, "Technical");
         var voiceSpec = new VoiceSpec("TestVoice", 1.0, 1.0, PauseStyle.Natural);
         var renderSpec = CreateTestRenderSpec();
-        var systemProfile = await DetectOrCreateSystemProfile();
+        var systemProfile = await DetectOrCreateSystemProfile().ConfigureAwait(false);
 
         var detailedProgress = new List<GenerationProgress>();
         var progressHandler = new Progress<GenerationProgress>(p =>
@@ -290,7 +290,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
             CancellationToken.None,
             $"job-{Guid.NewGuid():N}",
             correlationId
-        );
+        ).ConfigureAwait(false);
 
         // Assert - Progress updates were emitted
         Assert.NotEmpty(detailedProgress);
@@ -341,7 +341,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
             orchestrator
         );
 
-        var systemProfile = await DetectOrCreateSystemProfile();
+        var systemProfile = await DetectOrCreateSystemProfile().ConfigureAwait(false);
         var jobCount = 3; // Test with 3 concurrent jobs
         var jobIds = new List<string>();
 
@@ -371,7 +371,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
         var startTime = DateTime.UtcNow;
         var tasks = jobIds.Select(jobId => jobService.ExecuteJobAsync(jobId, CancellationToken.None)).ToList();
         
-        await Task.WhenAll(tasks);
+        await Task.WhenAll(tasks).ConfigureAwait(false);
         
         var elapsedTime = DateTime.UtcNow - startTime;
         _output.WriteLine($"All {jobCount} jobs completed in {elapsedTime.TotalSeconds:F2} seconds");
@@ -438,7 +438,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
                 EnableSceneCut: true
             );
 
-            var systemProfile = await DetectOrCreateSystemProfile();
+            var systemProfile = await DetectOrCreateSystemProfile().ConfigureAwait(false);
 
             // Act
             var outputPath = await orchestrator.GenerateVideoAsync(
@@ -449,7 +449,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
                 systemProfile,
                 null,
                 CancellationToken.None
-            );
+            ).ConfigureAwait(false);
 
             // Assert - Output path is valid
             Assert.NotNull(outputPath);
@@ -485,7 +485,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
                 EnableSceneCut: true
             );
 
-            var systemProfile = await DetectOrCreateSystemProfile();
+            var systemProfile = await DetectOrCreateSystemProfile().ConfigureAwait(false);
 
             // Act
             var outputPath = await orchestrator.GenerateVideoAsync(
@@ -496,7 +496,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
                 systemProfile,
                 null,
                 CancellationToken.None
-            );
+            ).ConfigureAwait(false);
 
             // Assert
             Assert.NotNull(outputPath);
@@ -533,7 +533,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
         var planSpec = new PlanSpec(TimeSpan.FromSeconds(10), Pacing.Fast, Density.Sparse, "Test");
         var voiceSpec = new VoiceSpec("TestVoice", 1.0, 1.0, PauseStyle.Natural);
         var renderSpec = CreateTestRenderSpec();
-        var systemProfile = await DetectOrCreateSystemProfile();
+        var systemProfile = await DetectOrCreateSystemProfile().ConfigureAwait(false);
 
         // Test with invalid brief (null topic should be handled gracefully in newer code)
         var invalidBrief = new Brief(
@@ -558,7 +558,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
                 systemProfile,
                 null,
                 CancellationToken.None
-            );
+            ).ConfigureAwait(false);
             
             _output.WriteLine("✓ Invalid brief handled gracefully");
         }
@@ -688,7 +688,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
         try
         {
             var detector = new HardwareDetector(_loggerFactory.CreateLogger<HardwareDetector>());
-            return await detector.DetectSystemAsync();
+            return await detector.DetectSystemAsync().ConfigureAwait(false);
         }
         catch
         {
@@ -819,20 +819,20 @@ public class VideoGenerationPipelineE2ETests : IDisposable
         public async Task<string> RenderAsync(Timeline timeline, RenderSpec spec, IProgress<RenderProgress> progress, CancellationToken ct)
         {
             progress?.Report(new RenderProgress(25, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(3), "Preparing"));
-            await Task.Delay(100, ct);
+            await Task.Delay(100, ct).ConfigureAwait(false);
             
             progress?.Report(new RenderProgress(50, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2), "Encoding"));
-            await Task.Delay(100, ct);
+            await Task.Delay(100, ct).ConfigureAwait(false);
             
             progress?.Report(new RenderProgress(75, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(1), "Finalizing"));
-            await Task.Delay(100, ct);
+            await Task.Delay(100, ct).ConfigureAwait(false);
             
             progress?.Report(new RenderProgress(100, TimeSpan.FromSeconds(4), TimeSpan.Zero, "Complete"));
             
             var outputPath = Path.Combine(Path.GetTempPath(), $"test-video-{Guid.NewGuid():N}.{spec.Container}");
             
             // Create a minimal file to represent the video
-            await File.WriteAllTextAsync(outputPath, "Mock video file", ct);
+            await File.WriteAllTextAsync(outputPath, "Mock video file", ct).ConfigureAwait(false);
             
             _tempFiles.Add(outputPath);
             _logger.LogInformation("Generated mock video file: {Path}", outputPath);
@@ -871,7 +871,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
                 0xD9
             };
             
-            await File.WriteAllBytesAsync(imagePath, minimalJpeg, ct);
+            await File.WriteAllBytesAsync(imagePath, minimalJpeg, ct).ConfigureAwait(false);
             
             _tempFiles.Add(imagePath);
             _logger.LogInformation("Generated mock image file: {Path}", imagePath);

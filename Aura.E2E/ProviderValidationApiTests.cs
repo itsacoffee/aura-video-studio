@@ -37,12 +37,12 @@ public class ProviderValidationApiTests : IDisposable
             "application/json");
 
         // Act
-        var response = await _httpClient.PostAsync("/api/providers/validate", content);
+        var response = await _httpClient.PostAsync("/api/providers/validate", content).ConfigureAwait(false);
 
         // Assert
         Assert.True(response.IsSuccessStatusCode, $"Expected success but got {response.StatusCode}");
 
-        var responseJson = await response.Content.ReadAsStringAsync();
+        var responseJson = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         var result = JsonSerializer.Deserialize<ValidationResponse>(responseJson, new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true
@@ -72,12 +72,12 @@ public class ProviderValidationApiTests : IDisposable
             "application/json");
 
         // Act
-        var response = await _httpClient.PostAsync("/api/providers/validate", content);
+        var response = await _httpClient.PostAsync("/api/providers/validate", content).ConfigureAwait(false);
 
         // Assert
         Assert.True(response.IsSuccessStatusCode, $"Expected success but got {response.StatusCode}");
 
-        var responseJson = await response.Content.ReadAsStringAsync();
+        var responseJson = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         var result = JsonSerializer.Deserialize<ValidationResponse>(responseJson, new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true
@@ -108,12 +108,12 @@ public class ProviderValidationApiTests : IDisposable
             "application/json");
 
         // Act
-        var response = await _httpClient.PostAsync("/api/providers/validate", content);
+        var response = await _httpClient.PostAsync("/api/providers/validate", content).ConfigureAwait(false);
 
         // Assert
         Assert.True(response.IsSuccessStatusCode, $"Expected success but got {response.StatusCode}");
 
-        var responseJson = await response.Content.ReadAsStringAsync();
+        var responseJson = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         var result = JsonSerializer.Deserialize<ValidationResponse>(responseJson, new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true
@@ -139,7 +139,7 @@ public class ProviderValidationApiTests : IDisposable
             Encoding.UTF8,
             "application/json");
 
-        await _httpClient.PostAsync("/api/settings/save", settingsContent);
+        await _httpClient.PostAsync("/api/settings/save", settingsContent).ConfigureAwait(false);
 
         // Act - Validate cloud providers
         var request = new { providers = new[] { "OpenAI", "ElevenLabs" } };
@@ -148,12 +148,12 @@ public class ProviderValidationApiTests : IDisposable
             Encoding.UTF8,
             "application/json");
 
-        var response = await _httpClient.PostAsync("/api/providers/validate", content);
+        var response = await _httpClient.PostAsync("/api/providers/validate", content).ConfigureAwait(false);
 
         // Assert
         Assert.True(response.IsSuccessStatusCode, $"Expected success but got {response.StatusCode}");
 
-        var responseJson = await response.Content.ReadAsStringAsync();
+        var responseJson = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         var result = JsonSerializer.Deserialize<ValidationResponse>(responseJson, new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true

@@ -143,7 +143,7 @@ public class ProviderProfileLockController : ControllerBase
                 request.ApplicableStages,
                 metadata,
                 request.IsSessionLevel,
-                ct);
+                ct).ConfigureAwait(false);
 
             var response = new ProfileLockResponse(
                 profileLock.JobId,

@@ -61,13 +61,13 @@ public class AdvancedScriptController : ControllerBase
                 CorrelationId = HttpContext.TraceIdentifier
             };
 
-            var script = await _llmProvider.GenerateScriptAsync(scriptRequest, cancellationToken);
+            var script = await _llmProvider.GenerateScriptAsync(scriptRequest, cancellationToken).ConfigureAwait(false);
 
             var qualityMetrics = await _qualityAnalyzer.AnalyzeAsync(
                 script, 
                 request.Brief, 
                 request.PlanSpec, 
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             _logger.LogInformation("Script generated successfully. Quality score: {Score:F1}, CorrelationId: {CorrelationId}",
                 qualityMetrics.OverallScore, HttpContext.TraceIdentifier);
@@ -109,7 +109,7 @@ public class AdvancedScriptController : ControllerBase
                 request.Script,
                 request.Brief,
                 request.PlanSpec,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             var readingSpeed = _qualityAnalyzer.ValidateReadingSpeed(request.Script);
             var sceneCount = _qualityAnalyzer.ValidateSceneCount(request.Script, request.PlanSpec);
@@ -164,7 +164,7 @@ public class AdvancedScriptController : ControllerBase
                 request.PlanSpec,
                 request.VideoType,
                 request.Config,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -205,13 +205,13 @@ public class AdvancedScriptController : ControllerBase
                 request.Brief,
                 request.PlanSpec,
                 request.VideoType,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             var metrics = await _qualityAnalyzer.AnalyzeAsync(
                 improvedScript,
                 request.Brief,
                 request.PlanSpec,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -253,7 +253,7 @@ public class AdvancedScriptController : ControllerBase
                 request.ImprovementGoal,
                 request.Brief,
                 request.PlanSpec,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -294,7 +294,7 @@ public class AdvancedScriptController : ControllerBase
                 request.PlanSpec,
                 request.VideoType,
                 request.VariationCount,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -334,7 +334,7 @@ public class AdvancedScriptController : ControllerBase
                 request.Script,
                 request.Brief,
                 request.TargetSeconds,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             return Ok(new
             {

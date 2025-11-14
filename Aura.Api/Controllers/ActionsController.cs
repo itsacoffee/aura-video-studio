@@ -65,7 +65,7 @@ public class ActionsController : ControllerBase
                 action.ExpiresAt = DateTime.UtcNow.AddDays(request.RetentionDays.Value);
             }
 
-            var recordedAction = await _actionService.RecordActionAsync(action, cancellationToken);
+            var recordedAction = await _actionService.RecordActionAsync(action, cancellationToken).ConfigureAwait(false);
 
             var response = new RecordActionResponse
             {
@@ -111,7 +111,7 @@ public class ActionsController : ControllerBase
 
         try
         {
-            var action = await _actionService.GetActionAsync(id, cancellationToken);
+            var action = await _actionService.GetActionAsync(id, cancellationToken).ConfigureAwait(false);
             if (action == null)
             {
                 return NotFound(new ProblemDetails
@@ -146,9 +146,9 @@ public class ActionsController : ControllerBase
             }
 
             var userId = "anonymous";
-            var success = await _actionService.UndoActionAsync(id, userId, cancellationToken);
+            var success = await _actionService.UndoActionAsync(id, userId, cancellationToken).ConfigureAwait(false);
 
-            var updatedAction = await _actionService.GetActionAsync(id, cancellationToken);
+            var updatedAction = await _actionService.GetActionAsync(id, cancellationToken).ConfigureAwait(false);
 
             var response = new UndoActionResponse
             {
@@ -201,7 +201,7 @@ public class ActionsController : ControllerBase
                 query.EndDate,
                 query.Page,
                 Math.Min(query.PageSize, 100),
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             var items = actions.Select(a => new ActionHistoryItem
             {
@@ -261,7 +261,7 @@ public class ActionsController : ControllerBase
 
         try
         {
-            var action = await _actionService.GetActionAsync(id, cancellationToken);
+            var action = await _actionService.GetActionAsync(id, cancellationToken).ConfigureAwait(false);
             if (action == null)
             {
                 return NotFound(new ProblemDetails
@@ -350,7 +350,7 @@ public class ActionsController : ControllerBase
                 query.EndDate,
                 1,
                 10000,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             if (normalizedFormat == "csv")
             {

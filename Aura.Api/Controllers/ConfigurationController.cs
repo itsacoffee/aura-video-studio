@@ -276,7 +276,7 @@ public class ConfigurationController : ControllerBase
             };
 
             var json = JsonSerializer.Serialize(backupData, new JsonSerializerOptions { WriteIndented = true });
-            await System.IO.File.WriteAllTextAsync(backupFile, json, ct);
+            await System.IO.File.WriteAllTextAsync(backupFile, json, ct).ConfigureAwait(false);
 
             _logger.LogInformation("Configuration backed up to {BackupFile}", backupFile);
 
@@ -372,7 +372,7 @@ public class ConfigurationController : ControllerBase
                 return BadRequest(new { error = "Confirmation required to reset configuration" });
             }
 
-            await BackupConfiguration(ct);
+            await BackupConfiguration(ct).ConfigureAwait(false);
 
             _logger.LogWarning("Configuration reset requested - backup created");
 

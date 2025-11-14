@@ -27,7 +27,7 @@ public class CompleteWorkflowTests
     {
         // Step 1: Hardware detection
         var hardwareDetector = new HardwareDetector(NullLogger<HardwareDetector>.Instance);
-        var systemProfile = await hardwareDetector.DetectSystemAsync();
+        var systemProfile = await hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
         
         Assert.NotNull(systemProfile);
         Assert.True(systemProfile.LogicalCores > 0);
@@ -110,7 +110,7 @@ public class CompleteWorkflowTests
             "Free",
             offlineOnly: true,
             CancellationToken.None
-        );
+        ).ConfigureAwait(false);
 
         // Step 6: Validate results
         Assert.True(scriptResult.Success, $"Script generation should succeed. Error: {scriptResult.ErrorMessage}");
@@ -129,7 +129,7 @@ public class CompleteWorkflowTests
     {
         // Step 1: Hardware detection
         var hardwareDetector = new HardwareDetector(NullLogger<HardwareDetector>.Instance);
-        var systemProfile = await hardwareDetector.DetectSystemAsync();
+        var systemProfile = await hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
         
         Assert.NotNull(systemProfile);
 
@@ -211,7 +211,7 @@ public class CompleteWorkflowTests
             "ProIfAvailable",
             offlineOnly: false,
             CancellationToken.None
-        );
+        ).ConfigureAwait(false);
 
         // Step 6: Validate graceful fallback
         Assert.True(scriptResult.Success, "Script generation should succeed with fallback");
@@ -289,7 +289,7 @@ public class CompleteWorkflowTests
             "Pro",
             offlineOnly: true,
             CancellationToken.None
-        );
+        ).ConfigureAwait(false);
 
         Assert.False(scriptResult.Success, "Script generation should fail for Pro in offline mode");
         Assert.Equal("E307", scriptResult.ErrorCode);
@@ -303,7 +303,7 @@ public class CompleteWorkflowTests
     {
         // Arrange & Act
         var detector = new HardwareDetector(NullLogger<HardwareDetector>.Instance);
-        var profile = await detector.DetectSystemAsync();
+        var profile = await detector.DetectSystemAsync().ConfigureAwait(false);
 
         // Assert
         Assert.NotNull(profile);

@@ -39,8 +39,8 @@ public class QualityDashboardController : ControllerBase
             var correlationId = HttpContext.TraceIdentifier;
             Log.Information("[{CorrelationId}] Getting dashboard metrics", correlationId);
 
-            var metrics = await _metricsService.GetAggregatedMetricsAsync(ct);
-            var breakdown = await _metricsService.GetMetricsBreakdownAsync(ct);
+            var metrics = await _metricsService.GetAggregatedMetricsAsync(ct).ConfigureAwait(false);
+            var breakdown = await _metricsService.GetMetricsBreakdownAsync(ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -126,7 +126,7 @@ public class QualityDashboardController : ControllerBase
             var start = startDate ?? DateTime.UtcNow.AddDays(-30);
             var end = endDate ?? DateTime.UtcNow;
 
-            var trends = await _trendService.GetHistoricalTrendsAsync(start, end, granularity, ct);
+            var trends = await _trendService.GetHistoricalTrendsAsync(start, end, granularity, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -173,7 +173,7 @@ public class QualityDashboardController : ControllerBase
             var correlationId = HttpContext.TraceIdentifier;
             Log.Information("[{CorrelationId}] Getting platform compliance data", correlationId);
 
-            await Task.Delay(50, ct);
+            await Task.Delay(50, ct).ConfigureAwait(false);
 
             // Sample platform compliance data
             var compliance = new[]
@@ -247,8 +247,8 @@ public class QualityDashboardController : ControllerBase
             var correlationId = HttpContext.TraceIdentifier;
             Log.Information("[{CorrelationId}] Getting quality recommendations", correlationId);
 
-            var metrics = await _metricsService.GetAggregatedMetricsAsync(ct);
-            var recommendations = await _recommendationService.GetRecommendationsAsync(metrics, ct);
+            var metrics = await _metricsService.GetAggregatedMetricsAsync(ct).ConfigureAwait(false);
+            var recommendations = await _recommendationService.GetRecommendationsAsync(metrics, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -298,7 +298,7 @@ public class QualityDashboardController : ControllerBase
             Log.Information("[{CorrelationId}] Generating report with format {Format}", 
                 correlationId, options.Format);
 
-            var report = await _reportService.GenerateReportAsync(options, ct);
+            var report = await _reportService.GenerateReportAsync(options, ct).ConfigureAwait(false);
 
             return File(
                 System.Text.Encoding.UTF8.GetBytes(report.Content),

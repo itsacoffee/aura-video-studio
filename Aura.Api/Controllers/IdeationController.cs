@@ -41,7 +41,7 @@ public class IdeationController : ControllerBase
                 return BadRequest(new { error = "Topic is required" });
             }
 
-            var response = await _ideationService.BrainstormConceptsAsync(request, ct);
+            var response = await _ideationService.BrainstormConceptsAsync(request, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -79,7 +79,7 @@ public class IdeationController : ControllerBase
                 return BadRequest(new { error = "CurrentBrief is required" });
             }
 
-            var response = await _ideationService.ExpandBriefAsync(request, ct);
+            var response = await _ideationService.ExpandBriefAsync(request, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -112,7 +112,7 @@ public class IdeationController : ControllerBase
                 MaxResults: maxResults
             );
 
-            var response = await _ideationService.GetTrendingTopicsAsync(request, ct);
+            var response = await _ideationService.GetTrendingTopicsAsync(request, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -139,7 +139,7 @@ public class IdeationController : ControllerBase
     {
         try
         {
-            var response = await _ideationService.AnalyzeContentGapsAsync(request, ct);
+            var response = await _ideationService.AnalyzeContentGapsAsync(request, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -172,7 +172,7 @@ public class IdeationController : ControllerBase
                 return BadRequest(new { error = "Topic is required" });
             }
 
-            var response = await _ideationService.GatherResearchAsync(request, ct);
+            var response = await _ideationService.GatherResearchAsync(request, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -210,7 +210,7 @@ public class IdeationController : ControllerBase
                 return BadRequest(new { error = "TargetDurationSeconds must be positive" });
             }
 
-            var response = await _ideationService.GenerateStoryboardAsync(request, ct);
+            var response = await _ideationService.GenerateStoryboardAsync(request, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -250,7 +250,7 @@ public class IdeationController : ControllerBase
                 return BadRequest(new { error = "RefinementDirection is required" });
             }
 
-            var response = await _ideationService.RefineConceptAsync(request, ct);
+            var response = await _ideationService.RefineConceptAsync(request, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -282,7 +282,7 @@ public class IdeationController : ControllerBase
                 return BadRequest(new { error = "ProjectId is required" });
             }
 
-            var response = await _ideationService.GetClarifyingQuestionsAsync(request, ct);
+            var response = await _ideationService.GetClarifyingQuestionsAsync(request, ct).ConfigureAwait(false);
 
             return Ok(new
             {

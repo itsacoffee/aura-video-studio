@@ -106,7 +106,7 @@ public class VideoController : ControllerBase
                 correlationId,
                 isQuickDemo: false,
                 ct
-            );
+            ).ConfigureAwait(false);
 
             _logger.LogInformation(
                 "[{CorrelationId}] Video generation job created: {JobId}",
@@ -225,7 +225,7 @@ public class VideoController : ControllerBase
             if (job == null)
             {
                 Response.StatusCode = StatusCodes.Status404NotFound;
-                await Response.WriteAsync($"data: {{\"error\":\"Job {id} not found\"}}\n\n", ct);
+                await Response.WriteAsync($"data: {{\"error\":\"Job {id} not found\"}}\n\n", ct).ConfigureAwait(false);
                 return;
             }
 
@@ -242,7 +242,7 @@ public class VideoController : ControllerBase
                 stage = job.Stage,
                 message = $"Job {job.Status}",
                 timestamp = DateTime.UtcNow
-            }, ct);
+            }, ct).ConfigureAwait(false);
 
             // Track heartbeat
             var lastHeartbeat = DateTime.UtcNow;
@@ -254,13 +254,13 @@ public class VideoController : ControllerBase
                    job.Status != JobStatus.Failed && 
                    job.Status != JobStatus.Canceled)
             {
-                await Task.Delay(500, ct); // Poll every 500ms
+                await Task.Delay(500, ct).ConfigureAwait(false); // Poll every 500ms
 
                 // Send heartbeat
                 if (DateTime.UtcNow - lastHeartbeat >= heartbeatInterval)
                 {
-                    await Response.WriteAsync(": keepalive\n\n", ct);
-                    await Response.Body.FlushAsync(ct);
+                    await Response.WriteAsync(": keepalive\n\n", ct).ConfigureAwait(false);
+                    await Response.Body.FlushAsync(ct).ConfigureAwait(false);
                     lastHeartbeat = DateTime.UtcNow;
                 }
 
@@ -277,7 +277,7 @@ public class VideoController : ControllerBase
                         stage = updatedJob.Stage,
                         message = $"Processing: {updatedJob.Stage}",
                         timestamp = DateTime.UtcNow
-                    }, ct);
+                    }, ct).ConfigureAwait(false);
                 }
 
                 // Send stage completion
@@ -288,7 +288,7 @@ public class VideoController : ControllerBase
                         stage = job.Stage,
                         nextStage = updatedJob.Stage,
                         timestamp = DateTime.UtcNow
-                    }, ct);
+                    }, ct).ConfigureAwait(false);
                 }
 
                 job = updatedJob;
@@ -302,7 +302,7 @@ public class VideoController : ControllerBase
                     jobId = job.Id,
                     videoUrl = $"/api/videos/{id}/download",
                     timestamp = DateTime.UtcNow
-                }, ct);
+                }, ct).ConfigureAwait(false);
             }
             else if (job.Status == JobStatus.Failed)
             {
@@ -310,7 +310,7 @@ public class VideoController : ControllerBase
                 {
                     message = job.ErrorMessage ?? "Job failed",
                     timestamp = DateTime.UtcNow
-                }, ct);
+                }, ct).ConfigureAwait(false);
             }
 
             _logger.LogInformation("[{CorrelationId}] SSE stream completed for job {Id}", correlationId, id);
@@ -329,7 +329,7 @@ public class VideoController : ControllerBase
                 {
                     message = "Stream error occurred",
                     timestamp = DateTime.UtcNow
-                }, ct);
+                }, ct).ConfigureAwait(false);
             }
             catch
             {
@@ -484,9 +484,9 @@ public class VideoController : ControllerBase
     private async Task SendSseEvent(string eventType, object data, CancellationToken ct)
     {
         var json = System.Text.Json.JsonSerializer.Serialize(data);
-        await Response.WriteAsync($"event: {eventType}\n", ct);
-        await Response.WriteAsync($"data: {json}\n\n", ct);
-        await Response.Body.FlushAsync(ct);
+        await Response.WriteAsync($"event: {eventType}\n", ct).ConfigureAwait(false);
+        await Response.WriteAsync($"data: {json}\n\n", ct).ConfigureAwait(false);
+        await Response.Body.FlushAsync(ct).ConfigureAwait(false);
     }
 
     private ProblemDetails CreateProblemDetails(

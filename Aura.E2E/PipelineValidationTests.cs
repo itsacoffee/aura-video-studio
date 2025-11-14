@@ -85,7 +85,7 @@ public class PipelineValidationTests
 
         // Act: Create and start job
         _output.WriteLine($"[TEST] Creating job with correlation ID: {correlationId}");
-        var job = await jobRunner.CreateAndStartJobAsync(brief, planSpec, voiceSpec, renderSpec, correlationId);
+        var job = await jobRunner.CreateAndStartJobAsync(brief, planSpec, voiceSpec, renderSpec, correlationId).ConfigureAwait(false);
         
         // Assert: Job creation
         Assert.NotNull(job);
@@ -130,7 +130,7 @@ public class PipelineValidationTests
                 Assert.Fail($"Job failed: {errorMessage}{failureDetails}");
             }
 
-            await Task.Delay(pollInterval);
+            await Task.Delay(pollInterval).ConfigureAwait(false);
         }
 
         // Assert: Successful completion
@@ -205,7 +205,7 @@ public class PipelineValidationTests
         // Assert: Operation respects cancellation (or completes quickly for fast operations)
         try
         {
-            var result = await task;
+            var result = await task.ConfigureAwait(false);
             // If it completes, that's fine - it was fast enough
             Assert.NotNull(result);
             _output.WriteLine("[TEST] ✓ Operation completed before cancellation took effect");
@@ -245,8 +245,8 @@ public class PipelineValidationTests
 
         // Act & Assert: Provider should fail gracefully
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(
-            async () => await failingProvider.DraftScriptAsync(brief, planSpec, CancellationToken.None)
-        );
+            async () => await failingProvider.DraftScriptAsync(brief, planSpec, CancellationToken.None).ConfigureAwait(false)
+        ).ConfigureAwait(false);
 
         // Assert: Error message is present and user-friendly
         Assert.NotNull(exception.Message);
@@ -287,8 +287,8 @@ public class PipelineValidationTests
 
         // Act & Assert: Provider should fail gracefully
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(
-            async () => await failingProvider.SynthesizeAsync(scriptLines, voiceSpec, CancellationToken.None)
-        );
+            async () => await failingProvider.SynthesizeAsync(scriptLines, voiceSpec, CancellationToken.None).ConfigureAwait(false)
+        ).ConfigureAwait(false);
 
         // Assert: Error message is present and user-friendly
         Assert.NotNull(exception.Message);

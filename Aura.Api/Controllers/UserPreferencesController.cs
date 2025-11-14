@@ -40,7 +40,7 @@ public class UserPreferencesController : ControllerBase
     public async Task<ActionResult<List<CustomAudienceProfileDto>>> GetCustomAudienceProfiles(CancellationToken ct)
     {
         _logger.LogInformation("Getting custom audience profiles");
-        var profiles = await _preferencesService.GetCustomAudienceProfilesAsync(ct);
+        var profiles = await _preferencesService.GetCustomAudienceProfilesAsync(ct).ConfigureAwait(false);
         var dtos = profiles.Select(MapToDto).ToList();
         return Ok(dtos);
     }
@@ -54,7 +54,7 @@ public class UserPreferencesController : ControllerBase
     public async Task<ActionResult<CustomAudienceProfileDto>> GetCustomAudienceProfile(string id, CancellationToken ct)
     {
         _logger.LogInformation("Getting custom audience profile {ProfileId}", id);
-        var profile = await _preferencesService.GetCustomAudienceProfileAsync(id, ct);
+        var profile = await _preferencesService.GetCustomAudienceProfileAsync(id, ct).ConfigureAwait(false);
         
         if (profile == null)
         {
@@ -96,7 +96,7 @@ public class UserPreferencesController : ControllerBase
         profile.CreatedAt = DateTime.UtcNow;
         profile.UpdatedAt = DateTime.UtcNow;
 
-        var saved = await _preferencesService.SaveCustomAudienceProfileAsync(profile, ct);
+        var saved = await _preferencesService.SaveCustomAudienceProfileAsync(profile, ct).ConfigureAwait(false);
         return CreatedAtAction(nameof(GetCustomAudienceProfile), new { id = saved.Id }, MapToDto(saved));
     }
 
@@ -113,7 +113,7 @@ public class UserPreferencesController : ControllerBase
     {
         _logger.LogInformation("Updating custom audience profile {ProfileId}", id);
         
-        var existing = await _preferencesService.GetCustomAudienceProfileAsync(id, ct);
+        var existing = await _preferencesService.GetCustomAudienceProfileAsync(id, ct).ConfigureAwait(false);
         if (existing == null)
         {
             return NotFound(new ProblemDetails
@@ -128,7 +128,7 @@ public class UserPreferencesController : ControllerBase
         profile.Id = id;
         profile.CreatedAt = existing.CreatedAt;
 
-        var saved = await _preferencesService.SaveCustomAudienceProfileAsync(profile, ct);
+        var saved = await _preferencesService.SaveCustomAudienceProfileAsync(profile, ct).ConfigureAwait(false);
         return Ok(MapToDto(saved));
     }
 
@@ -142,7 +142,7 @@ public class UserPreferencesController : ControllerBase
     {
         _logger.LogInformation("Deleting custom audience profile {ProfileId}", id);
         
-        var deleted = await _preferencesService.DeleteCustomAudienceProfileAsync(id, ct);
+        var deleted = await _preferencesService.DeleteCustomAudienceProfileAsync(id, ct).ConfigureAwait(false);
         if (!deleted)
         {
             return NotFound(new ProblemDetails
@@ -166,7 +166,7 @@ public class UserPreferencesController : ControllerBase
     public async Task<ActionResult<List<ContentFilteringPolicyDto>>> GetContentFilteringPolicies(CancellationToken ct)
     {
         _logger.LogInformation("Getting content filtering policies");
-        var policies = await _preferencesService.GetContentFilteringPoliciesAsync(ct);
+        var policies = await _preferencesService.GetContentFilteringPoliciesAsync(ct).ConfigureAwait(false);
         var dtos = policies.Select(MapToDto).ToList();
         return Ok(dtos);
     }
@@ -180,7 +180,7 @@ public class UserPreferencesController : ControllerBase
     public async Task<ActionResult<ContentFilteringPolicyDto>> GetContentFilteringPolicy(string id, CancellationToken ct)
     {
         _logger.LogInformation("Getting content filtering policy {PolicyId}", id);
-        var policy = await _preferencesService.GetContentFilteringPolicyAsync(id, ct);
+        var policy = await _preferencesService.GetContentFilteringPolicyAsync(id, ct).ConfigureAwait(false);
         
         if (policy == null)
         {
@@ -211,7 +211,7 @@ public class UserPreferencesController : ControllerBase
         policy.CreatedAt = DateTime.UtcNow;
         policy.UpdatedAt = DateTime.UtcNow;
 
-        var saved = await _preferencesService.SaveContentFilteringPolicyAsync(policy, ct);
+        var saved = await _preferencesService.SaveContentFilteringPolicyAsync(policy, ct).ConfigureAwait(false);
         return CreatedAtAction(nameof(GetContentFilteringPolicy), new { id = saved.Id }, MapToDto(saved));
     }
 
@@ -228,7 +228,7 @@ public class UserPreferencesController : ControllerBase
     {
         _logger.LogInformation("Updating content filtering policy {PolicyId}", id);
         
-        var existing = await _preferencesService.GetContentFilteringPolicyAsync(id, ct);
+        var existing = await _preferencesService.GetContentFilteringPolicyAsync(id, ct).ConfigureAwait(false);
         if (existing == null)
         {
             return NotFound(new ProblemDetails
@@ -243,7 +243,7 @@ public class UserPreferencesController : ControllerBase
         policy.Id = id;
         policy.CreatedAt = existing.CreatedAt;
 
-        var saved = await _preferencesService.SaveContentFilteringPolicyAsync(policy, ct);
+        var saved = await _preferencesService.SaveContentFilteringPolicyAsync(policy, ct).ConfigureAwait(false);
         return Ok(MapToDto(saved));
     }
 
@@ -257,7 +257,7 @@ public class UserPreferencesController : ControllerBase
     {
         _logger.LogInformation("Deleting content filtering policy {PolicyId}", id);
         
-        var deleted = await _preferencesService.DeleteContentFilteringPolicyAsync(id, ct);
+        var deleted = await _preferencesService.DeleteContentFilteringPolicyAsync(id, ct).ConfigureAwait(false);
         if (!deleted)
         {
             return NotFound(new ProblemDetails
@@ -281,7 +281,7 @@ public class UserPreferencesController : ControllerBase
     public async Task<ActionResult<List<AIBehaviorSettingsDto>>> GetAIBehaviorSettings(CancellationToken ct)
     {
         _logger.LogInformation("Getting AI behavior settings");
-        var settings = await _preferencesService.GetAIBehaviorSettingsAsync(ct);
+        var settings = await _preferencesService.GetAIBehaviorSettingsAsync(ct).ConfigureAwait(false);
         var dtos = settings.Select(MapToDto).ToList();
         return Ok(dtos);
     }
@@ -295,7 +295,7 @@ public class UserPreferencesController : ControllerBase
     public async Task<ActionResult<AIBehaviorSettingsDto>> GetAIBehaviorSetting(string id, CancellationToken ct)
     {
         _logger.LogInformation("Getting AI behavior setting {SettingId}", id);
-        var setting = await _preferencesService.GetAIBehaviorSettingAsync(id, ct);
+        var setting = await _preferencesService.GetAIBehaviorSettingAsync(id, ct).ConfigureAwait(false);
         
         if (setting == null)
         {
@@ -337,7 +337,7 @@ public class UserPreferencesController : ControllerBase
         setting.CreatedAt = DateTime.UtcNow;
         setting.UpdatedAt = DateTime.UtcNow;
 
-        var saved = await _preferencesService.SaveAIBehaviorSettingsAsync(setting, ct);
+        var saved = await _preferencesService.SaveAIBehaviorSettingsAsync(setting, ct).ConfigureAwait(false);
         return CreatedAtAction(nameof(GetAIBehaviorSetting), new { id = saved.Id }, MapToDto(saved));
     }
 
@@ -354,7 +354,7 @@ public class UserPreferencesController : ControllerBase
     {
         _logger.LogInformation("Updating AI behavior setting {SettingId}", id);
         
-        var existing = await _preferencesService.GetAIBehaviorSettingAsync(id, ct);
+        var existing = await _preferencesService.GetAIBehaviorSettingAsync(id, ct).ConfigureAwait(false);
         if (existing == null)
         {
             return NotFound(new ProblemDetails
@@ -369,7 +369,7 @@ public class UserPreferencesController : ControllerBase
         setting.Id = id;
         setting.CreatedAt = existing.CreatedAt;
 
-        var saved = await _preferencesService.SaveAIBehaviorSettingsAsync(setting, ct);
+        var saved = await _preferencesService.SaveAIBehaviorSettingsAsync(setting, ct).ConfigureAwait(false);
         return Ok(MapToDto(saved));
     }
 
@@ -383,7 +383,7 @@ public class UserPreferencesController : ControllerBase
     {
         _logger.LogInformation("Deleting AI behavior setting {SettingId}", id);
         
-        var deleted = await _preferencesService.DeleteAIBehaviorSettingsAsync(id, ct);
+        var deleted = await _preferencesService.DeleteAIBehaviorSettingsAsync(id, ct).ConfigureAwait(false);
         if (!deleted)
         {
             return NotFound(new ProblemDetails
@@ -407,7 +407,7 @@ public class UserPreferencesController : ControllerBase
     {
         _logger.LogInformation("Resetting AI behavior setting {SettingId} to defaults", id);
         
-        var existing = await _preferencesService.GetAIBehaviorSettingAsync(id, ct);
+        var existing = await _preferencesService.GetAIBehaviorSettingAsync(id, ct).ConfigureAwait(false);
         if (existing == null)
         {
             return NotFound(new ProblemDetails
@@ -428,7 +428,7 @@ public class UserPreferencesController : ControllerBase
             IsDefault = existing.IsDefault
         };
 
-        var saved = await _preferencesService.SaveAIBehaviorSettingsAsync(defaultSettings, ct);
+        var saved = await _preferencesService.SaveAIBehaviorSettingsAsync(defaultSettings, ct).ConfigureAwait(false);
         return Ok(MapToDto(saved));
     }
 
@@ -441,7 +441,7 @@ public class UserPreferencesController : ControllerBase
     {
         _logger.LogInformation("Getting or creating default AI behavior settings");
         
-        var defaultSettings = await _preferencesService.EnsureDefaultAIBehaviorSettingsAsync(ct);
+        var defaultSettings = await _preferencesService.EnsureDefaultAIBehaviorSettingsAsync(ct).ConfigureAwait(false);
         return Ok(MapToDto(defaultSettings));
     }
 
@@ -456,7 +456,7 @@ public class UserPreferencesController : ControllerBase
     {
         _logger.LogInformation("Exporting user preferences");
         
-        var json = await _preferencesService.ExportAllPreferencesAsync(ct);
+        var json = await _preferencesService.ExportAllPreferencesAsync(ct).ConfigureAwait(false);
         var response = new ExportPreferencesResponse(json, DateTime.UtcNow, "1.0");
         
         return Ok(response);
@@ -484,7 +484,7 @@ public class UserPreferencesController : ControllerBase
 
         try
         {
-            await _preferencesService.ImportPreferencesAsync(request.JsonData, ct);
+            await _preferencesService.ImportPreferencesAsync(request.JsonData, ct).ConfigureAwait(false);
             return Ok(new { success = true, message = "Preferences imported successfully" });
         }
         catch (Exception ex)

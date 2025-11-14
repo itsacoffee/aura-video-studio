@@ -51,7 +51,7 @@ public class ValidationMiddleware
                     status = 413,
                     detail = $"Request body exceeds maximum size of {_maxContentLength / (1024 * 1024)} MB",
                     correlationId = context.TraceIdentifier
-                });
+                }).ConfigureAwait(false);
                 return;
             }
         }
@@ -73,7 +73,7 @@ public class ValidationMiddleware
             }
         }
 
-        await _next(context);
+        await _next(context).ConfigureAwait(false);
     }
 }
 

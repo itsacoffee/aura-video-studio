@@ -36,14 +36,14 @@ public class ApiAuthenticationMiddleware
         // Check if endpoint is exempt from authentication
         if (IsAnonymousEndpoint(path))
         {
-            await _next(context);
+            await _next(context).ConfigureAwait(false);
             return;
         }
 
         // If authentication is not required globally, allow through
         if (!_options.RequireAuthentication)
         {
-            await _next(context);
+            await _next(context).ConfigureAwait(false);
             return;
         }
 
@@ -51,7 +51,7 @@ public class ApiAuthenticationMiddleware
         if (_options.EnableApiKeyAuthentication && ValidateApiKey(context))
         {
             _logger.LogDebug("[{CorrelationId}] Request authenticated via API key", correlationId);
-            await _next(context);
+            await _next(context).ConfigureAwait(false);
             return;
         }
 
@@ -59,7 +59,7 @@ public class ApiAuthenticationMiddleware
         if (_options.EnableJwtAuthentication && ValidateJwtToken(context))
         {
             _logger.LogDebug("[{CorrelationId}] Request authenticated via JWT", correlationId);
-            await _next(context);
+            await _next(context).ConfigureAwait(false);
             return;
         }
 
@@ -78,7 +78,7 @@ public class ApiAuthenticationMiddleware
             status = 401,
             detail = "Authentication is required. Provide a valid API key via X-API-Key header.",
             correlationId
-        });
+        }).ConfigureAwait(false);
     }
 
     private bool IsAnonymousEndpoint(string path)

@@ -49,7 +49,7 @@ public static class JobQueueServiceCollectionExtensions
                 args.NewStatus,
                 args.CorrelationId,
                 args.OutputPath,
-                args.ErrorMessage);
+                args.ErrorMessage).ConfigureAwait(false);
                 
             // Send specific notifications for completion/failure
             if (args.NewStatus == "Completed" && args.OutputPath != null)
@@ -57,21 +57,21 @@ public static class JobQueueServiceCollectionExtensions
                 await notificationService.NotifyJobCompletedAsync(
                     args.JobId,
                     args.OutputPath,
-                    args.CorrelationId);
+                    args.CorrelationId).ConfigureAwait(false);
             }
             else if (args.NewStatus == "Failed" && args.ErrorMessage != null)
             {
                 await notificationService.NotifyJobFailedAsync(
                     args.JobId,
                     args.ErrorMessage,
-                    args.CorrelationId);
+                    args.CorrelationId).ConfigureAwait(false);
             }
         };
         
         // Wire progress update events
         queueManager.JobProgressUpdated += async (sender, args) =>
         {
-            await notificationService.NotifyJobProgressAsync(args);
+            await notificationService.NotifyJobProgressAsync(args).ConfigureAwait(false);
         };
         
         return serviceProvider;

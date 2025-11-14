@@ -53,7 +53,7 @@ public class ProvidersController : ControllerBase
     {
         try
         {
-            var systemProfile = await _hardwareDetector.DetectSystemAsync();
+            var systemProfile = await _hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
             var capabilities = new List<ProviderCapability>();
 
             // Stable Diffusion provider
@@ -144,7 +144,7 @@ public class ProvidersController : ControllerBase
             var recommendations = await _recommendationService.GetRecommendationsAsync(
                 opType,
                 estimatedInputTokens: estimatedInputTokens,
-                cancellationToken: HttpContext.RequestAborted);
+                cancellationToken: HttpContext.RequestAborted).ConfigureAwait(false);
 
             var dtos = recommendations.Select(r => new ProviderRecommendationDto(
                 r.ProviderName,
@@ -329,7 +329,7 @@ public class ProvidersController : ControllerBase
             var result = await _keyValidationService.TestApiKeyAsync(
                 request.ProviderName.ToLowerInvariant(),
                 request.ApiKey,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
             var responseTime = (long)(DateTime.UtcNow - startTime).TotalMilliseconds;
 
             Log.Information(
@@ -395,7 +395,7 @@ public class ProvidersController : ControllerBase
                 request.OrganizationId,
                 request.ProjectId,
                 correlationId,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             var response = new ProviderValidationResponse(
                 IsValid: result.IsValid,
@@ -456,7 +456,7 @@ public class ProvidersController : ControllerBase
                 request.BaseUrl,
                 request.OrganizationId,
                 request.ProjectId,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             if (!result.Success)
             {
@@ -526,7 +526,7 @@ public class ProvidersController : ControllerBase
                 request.BaseUrl,
                 request.OrganizationId,
                 request.ProjectId,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             if (!result.Success)
             {
@@ -588,7 +588,7 @@ public class ProvidersController : ControllerBase
                 correlationId);
 
             var startTime = DateTime.UtcNow;
-            var result = await _keyValidationService.TestApiKeyAsync("elevenlabs", request.ApiKey, cancellationToken);
+            var result = await _keyValidationService.TestApiKeyAsync("elevenlabs", request.ApiKey, cancellationToken).ConfigureAwait(false);
             var responseTime = (long)(DateTime.UtcNow - startTime).TotalMilliseconds;
 
             var response = new ProviderValidationResponse(
@@ -647,7 +647,7 @@ public class ProvidersController : ControllerBase
                 correlationId);
 
             var startTime = DateTime.UtcNow;
-            var result = await _keyValidationService.TestApiKeyAsync("playht", request.ApiKey, cancellationToken);
+            var result = await _keyValidationService.TestApiKeyAsync("playht", request.ApiKey, cancellationToken).ConfigureAwait(false);
             var responseTime = (long)(DateTime.UtcNow - startTime).TotalMilliseconds;
 
             var response = new ProviderValidationResponse(
@@ -688,7 +688,7 @@ public class ProvidersController : ControllerBase
         {
             Log.Information("Getting provider status, CorrelationId: {CorrelationId}", correlationId);
 
-            var configuredProviders = await _secureStorageService.GetConfiguredProvidersAsync();
+            var configuredProviders = await _secureStorageService.GetConfiguredProvidersAsync().ConfigureAwait(false);
             
             var providerStatuses = new List<ProviderValidationStatusDto>
             {
@@ -825,14 +825,14 @@ public class ProvidersController : ControllerBase
             Log.Information("Fetching provider status, CorrelationId: {CorrelationId}", correlationId);
 
             var statuses = new List<ProviderValidationStatusDto>();
-            var configuredProviders = await _secureStorageService.GetConfiguredProvidersAsync();
+            var configuredProviders = await _secureStorageService.GetConfiguredProvidersAsync().ConfigureAwait(false);
 
             var providerNames = new[] { "OpenAI", "Anthropic", "Google", "Ollama", "ElevenLabs", "PlayHT", "Windows", "StabilityAI", "StableDiffusion", "Stock" };
 
             foreach (var provider in providerNames)
             {
                 var isConfigured = configuredProviders.Contains(provider, StringComparer.OrdinalIgnoreCase);
-                var hasKey = await _secureStorageService.HasApiKeyAsync(provider);
+                var hasKey = await _secureStorageService.HasApiKeyAsync(provider).ConfigureAwait(false);
 
                 var status = new ProviderValidationStatusDto(
                     Name: provider,
@@ -896,7 +896,7 @@ public class ProvidersController : ControllerBase
                 return Ok(defaultPriorities);
             }
 
-            var json = await System.IO.File.ReadAllTextAsync(configPath, cancellationToken);
+            var json = await System.IO.File.ReadAllTextAsync(configPath, cancellationToken).ConfigureAwait(false);
             var config = System.Text.Json.JsonSerializer.Deserialize<ProviderConfigurationResponse>(json);
             
             var priorities = config?.Providers?.ToDictionary(
@@ -955,7 +955,7 @@ public class ProvidersController : ControllerBase
                 });
             }
 
-            var json = await System.IO.File.ReadAllTextAsync(configPath, cancellationToken);
+            var json = await System.IO.File.ReadAllTextAsync(configPath, cancellationToken).ConfigureAwait(false);
             var config = System.Text.Json.JsonSerializer.Deserialize<ProviderConfigurationResponse>(json);
 
             if (config?.Providers == null)
@@ -978,7 +978,7 @@ public class ProvidersController : ControllerBase
             { 
                 WriteIndented = true 
             });
-            await System.IO.File.WriteAllTextAsync(configPath, updatedJson, cancellationToken);
+            await System.IO.File.WriteAllTextAsync(configPath, updatedJson, cancellationToken).ConfigureAwait(false);
 
             Log.Information("Provider priorities updated successfully, CorrelationId: {CorrelationId}", correlationId);
 
@@ -1046,9 +1046,9 @@ public class ProvidersController : ControllerBase
                 });
             }
 
-            var status = await ollamaDetectionService.GetStatusAsync(cancellationToken);
+            var status = await ollamaDetectionService.GetStatusAsync(cancellationToken).ConfigureAwait(false);
             var models = status.IsRunning 
-                ? await ollamaDetectionService.GetModelsAsync(cancellationToken)
+                ? await ollamaDetectionService.GetModelsAsync(cancellationToken).ConfigureAwait(false)
                 : new List<Aura.Core.Services.Providers.OllamaModel>();
 
             Log.Information(
@@ -1106,7 +1106,7 @@ public class ProvidersController : ControllerBase
                 });
             }
 
-            var status = await ollamaDetectionService.GetStatusAsync(cancellationToken);
+            var status = await ollamaDetectionService.GetStatusAsync(cancellationToken).ConfigureAwait(false);
             
             if (!status.IsRunning)
             {
@@ -1119,7 +1119,7 @@ public class ProvidersController : ControllerBase
                 });
             }
 
-            var models = await ollamaDetectionService.GetModelsAsync(cancellationToken);
+            var models = await ollamaDetectionService.GetModelsAsync(cancellationToken).ConfigureAwait(false);
 
             Log.Information(
                 "Ollama models fetched: {ModelsCount} models, CorrelationId: {CorrelationId}",
@@ -1181,9 +1181,9 @@ public class ProvidersController : ControllerBase
                 });
             }
 
-            var status = await ollamaDetectionService.GetStatusAsync(cancellationToken);
+            var status = await ollamaDetectionService.GetStatusAsync(cancellationToken).ConfigureAwait(false);
             var models = status.IsRunning 
-                ? await ollamaDetectionService.GetModelsAsync(cancellationToken)
+                ? await ollamaDetectionService.GetModelsAsync(cancellationToken).ConfigureAwait(false)
                 : new List<Aura.Core.Services.Providers.OllamaModel>();
 
             Log.Information(

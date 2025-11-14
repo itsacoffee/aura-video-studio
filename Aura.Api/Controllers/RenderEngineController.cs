@@ -103,7 +103,7 @@ public class RenderEngineController : ControllerBase
                 "Preset recommendation requested: Platform={Platform}, ContentType={ContentType}, CorrelationId={CorrelationId}",
                 request.TargetPlatform, request.ContentType, correlationId);
 
-            var recommendation = await _presetRecommendationService.RecommendPresetAsync(request, ct);
+            var recommendation = await _presetRecommendationService.RecommendPresetAsync(request, ct).ConfigureAwait(false);
 
             Response.Headers["X-Correlation-Id"] = correlationId;
 
@@ -160,7 +160,7 @@ public class RenderEngineController : ControllerBase
                 request.SourceResolution,
                 request.SourceAspectRatio,
                 correlationId,
-                ct);
+                ct).ConfigureAwait(false);
 
             Response.Headers["X-Correlation-Id"] = result.CorrelationId;
 
@@ -203,7 +203,7 @@ public class RenderEngineController : ControllerBase
                 return StatusCode(503, new { error = "FFmpeg command logger not available" });
             }
 
-            var logs = await _commandLogger.GetCommandsByJobIdAsync(jobId);
+            var logs = await _commandLogger.GetCommandsByJobIdAsync(jobId).ConfigureAwait(false);
 
             if (logs.Count == 0)
             {
@@ -237,7 +237,7 @@ public class RenderEngineController : ControllerBase
                 return StatusCode(503, new { error = "FFmpeg command logger not available" });
             }
 
-            var report = await _commandLogger.GenerateSupportReportAsync(jobId);
+            var report = await _commandLogger.GenerateSupportReportAsync(jobId).ConfigureAwait(false);
             
             return Ok(new
             {
@@ -266,7 +266,7 @@ public class RenderEngineController : ControllerBase
                 return StatusCode(503, new { error = "FFmpeg command logger not available" });
             }
 
-            var command = await _commandLogger.GetMostRecentCommandAsync();
+            var command = await _commandLogger.GetMostRecentCommandAsync().ConfigureAwait(false);
 
             if (command == null)
             {

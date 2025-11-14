@@ -45,7 +45,7 @@ public class HealthCheckService
         var errors = new List<string>();
 
         // FFmpeg presence and version check
-        var ffmpegCheck = await CheckFfmpegAsync(ct);
+        var ffmpegCheck = await CheckFfmpegAsync(ct).ConfigureAwait(false);
         checks.Add(ffmpegCheck);
         if (ffmpegCheck.Status != HealthStatus.Healthy)
         {
@@ -85,7 +85,7 @@ public class HealthCheckService
         }
 
         // TTS provider check
-        var ttsCheck = await CheckTtsProvidersAsync(ct);
+        var ttsCheck = await CheckTtsProvidersAsync(ct).ConfigureAwait(false);
         checks.Add(ttsCheck);
         if (ttsCheck.Status != HealthStatus.Healthy)
         {
@@ -123,7 +123,7 @@ public class HealthCheckService
     {
         try
         {
-            var result = await _ffmpegLocator.CheckAllCandidatesAsync(null, ct);
+            var result = await _ffmpegLocator.CheckAllCandidatesAsync(null, ct).ConfigureAwait(false);
             
             if (!result.Found || string.IsNullOrEmpty(result.FfmpegPath))
             {

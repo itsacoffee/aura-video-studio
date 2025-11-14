@@ -48,7 +48,7 @@ public class SystemController : ControllerBase
         {
             _logger.LogInformation("[{CorrelationId}] GET /api/system/ffmpeg/status", correlationId);
 
-            var status = await _ffmpegStatusService.GetStatusAsync(ct);
+            var status = await _ffmpegStatusService.GetStatusAsync(ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -109,7 +109,7 @@ public class SystemController : ControllerBase
         {
             try
             {
-                await _shutdownOrchestrator.InitiateShutdownAsync(force);
+                await _shutdownOrchestrator.InitiateShutdownAsync(force).ConfigureAwait(false);
             }
             catch (Exception ex)
             {

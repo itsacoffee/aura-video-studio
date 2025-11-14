@@ -40,7 +40,7 @@ public class DependenciesController : ControllerBase
         {
             _logger.LogInformation("Starting full dependency rescan via API");
             
-            var report = await _rescanService.RescanAllAsync(ct);
+            var report = await _rescanService.RescanAllAsync(ct).ConfigureAwait(false);
             
             return Ok(new
             {
@@ -81,7 +81,7 @@ public class DependenciesController : ControllerBase
             // This is essentially the same as a full rescan for now
             // In the future, this could be optimized to only check file paths
             // without running validation commands
-            var report = await _rescanService.RescanAllAsync(ct);
+            var report = await _rescanService.RescanAllAsync(ct).ConfigureAwait(false);
             
             return Ok(new
             {
@@ -109,7 +109,7 @@ public class DependenciesController : ControllerBase
     {
         try
         {
-            var lastScanTime = await _rescanService.GetLastScanTimeAsync();
+            var lastScanTime = await _rescanService.GetLastScanTimeAsync().ConfigureAwait(false);
             
             return Ok(new
             {
@@ -148,7 +148,7 @@ public class DependenciesController : ControllerBase
             _logger.LogInformation("Verifying FFmpeg installation via API");
             
             // Try to find FFmpeg via rescan
-            var report = await _rescanService.RescanAllAsync(ct);
+            var report = await _rescanService.RescanAllAsync(ct).ConfigureAwait(false);
             var ffmpegDep = report.Dependencies.Find(d => d.Id == "ffmpeg");
             
             if (ffmpegDep == null || ffmpegDep.Status != DependencyStatus.Installed || string.IsNullOrEmpty(ffmpegDep.Path))
@@ -170,7 +170,7 @@ public class DependenciesController : ControllerBase
             }
             
             // Run smoke test
-            var smokeTestResult = await _ffmpegInstaller.RunSmokeTestAsync(ffmpegDep.Path, ct);
+            var smokeTestResult = await _ffmpegInstaller.RunSmokeTestAsync(ffmpegDep.Path, ct).ConfigureAwait(false);
             
             if (!smokeTestResult.success)
             {
@@ -232,7 +232,7 @@ public class DependenciesController : ControllerBase
             
             // For now, repair = rescan to update paths
             // In the future, this could trigger reinstallation
-            var report = await _rescanService.RescanAllAsync(ct);
+            var report = await _rescanService.RescanAllAsync(ct).ConfigureAwait(false);
             var ffmpegDep = report.Dependencies.Find(d => d.Id == "ffmpeg");
             
             if (ffmpegDep == null || ffmpegDep.Status != DependencyStatus.Installed)
@@ -297,7 +297,7 @@ public class DependenciesController : ControllerBase
                 "latest",
                 null,
                 null,
-                ct);
+                ct).ConfigureAwait(false);
             
             if (result.Success)
             {
@@ -359,15 +359,15 @@ public class DependenciesController : ControllerBase
             switch (componentId.ToLowerInvariant())
             {
                 case "ffmpeg":
-                    return await AttachFFmpegAsync(request.Path, ct);
+                    return await AttachFFmpegAsync(request.Path, ct).ConfigureAwait(false);
                 
                 case "ollama":
-                    return await AttachOllamaAsync(request.Path, ct);
+                    return await AttachOllamaAsync(request.Path, ct).ConfigureAwait(false);
                 
                 case "stable-diffusion":
                 case "stable-diffusion-webui":
                 case "sd-webui":
-                    return await AttachStableDiffusionAsync(request.Path, ct);
+                    return await AttachStableDiffusionAsync(request.Path, ct).ConfigureAwait(false);
                 
                 default:
                     return BadRequest(new
@@ -400,7 +400,7 @@ public class DependenciesController : ControllerBase
         }
         
         // Validate the path first
-        var validation = await _ffmpegLocator.ValidatePathAsync(path, ct);
+        var validation = await _ffmpegLocator.ValidatePathAsync(path, ct).ConfigureAwait(false);
         
         if (!validation.Found || string.IsNullOrEmpty(validation.FfmpegPath))
         {
@@ -413,7 +413,7 @@ public class DependenciesController : ControllerBase
         }
         
         // Attach using installer
-        var result = await _ffmpegInstaller.AttachExistingAsync(validation.FfmpegPath, ct);
+        var result = await _ffmpegInstaller.AttachExistingAsync(validation.FfmpegPath, ct).ConfigureAwait(false);
         
         if (result.Success)
         {
@@ -701,7 +701,7 @@ public class DependenciesController : ControllerBase
             switch (componentId.ToLowerInvariant())
             {
                 case "ollama":
-                    var ollamaResult = await OllamaService.ValidateOllamaPathAsync(request.Path, ct);
+                    var ollamaResult = await OllamaService.ValidateOllamaPathAsync(request.Path, ct).ConfigureAwait(false);
                     return Ok(new
                     {
                         isValid = ollamaResult.IsValid,
@@ -719,7 +719,7 @@ public class DependenciesController : ControllerBase
                         });
                     }
 
-                    var ffmpegValidation = await _ffmpegLocator.ValidatePathAsync(request.Path, ct);
+                    var ffmpegValidation = await _ffmpegLocator.ValidatePathAsync(request.Path, ct).ConfigureAwait(false);
                     return Ok(new
                     {
                         isValid = ffmpegValidation.Found,
@@ -763,7 +763,7 @@ public class DependenciesController : ControllerBase
                 _ffmpegLocator,
                 new System.Net.Http.HttpClient());
             
-            var status = await detector.DetectAllDependenciesAsync(ct);
+            var status = await detector.DetectAllDependenciesAsync(ct).ConfigureAwait(false);
             
             return Ok(new
             {

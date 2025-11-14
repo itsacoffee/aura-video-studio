@@ -37,14 +37,14 @@ public class ReportGenerationService
             _logger.LogInformation("Generating quality report with format {Format}", options.Format);
 
             // Gather all necessary data
-            var metrics = await _metricsService.GetAggregatedMetricsAsync(ct);
-            var breakdown = await _metricsService.GetMetricsBreakdownAsync(ct);
+            var metrics = await _metricsService.GetAggregatedMetricsAsync(ct).ConfigureAwait(false);
+            var breakdown = await _metricsService.GetMetricsBreakdownAsync(ct).ConfigureAwait(false);
             var trends = await _trendService.GetHistoricalTrendsAsync(
                 options.StartDate ?? DateTime.UtcNow.AddDays(-30),
                 options.EndDate ?? DateTime.UtcNow,
                 options.Granularity ?? "daily",
-                ct);
-            var recommendations = await _recommendationService.GetRecommendationsAsync(metrics, ct);
+                ct).ConfigureAwait(false);
+            var recommendations = await _recommendationService.GetRecommendationsAsync(metrics, ct).ConfigureAwait(false);
 
             // Generate report content based on format
             var content = options.Format?.ToLower() switch

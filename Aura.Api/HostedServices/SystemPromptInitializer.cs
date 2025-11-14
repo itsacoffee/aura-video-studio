@@ -33,10 +33,10 @@ public class SystemPromptInitializer : IHostedService
 
             foreach (var template in systemTemplates)
             {
-                var existing = await _repository.GetByIdAsync(template.Id, cancellationToken);
+                var existing = await _repository.GetByIdAsync(template.Id, cancellationToken).ConfigureAwait(false);
                 if (existing == null)
                 {
-                    await _repository.CreateAsync(template, cancellationToken);
+                    await _repository.CreateAsync(template, cancellationToken).ConfigureAwait(false);
                     _logger.LogInformation("Created system template: {Name}", template.Name);
                 }
                 else

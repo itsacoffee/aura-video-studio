@@ -84,7 +84,7 @@ public class SSMLController : ControllerBase
                 EnableAggressiveAdjustments = request.EnableAggressiveAdjustments
             };
 
-            var result = await _plannerService.PlanSSMLAsync(planningRequest, ct);
+            var result = await _plannerService.PlanSSMLAsync(planningRequest, ct).ConfigureAwait(false);
 
             var responseDto = new SSMLPlanningResultDto(
                 Segments: result.Segments.Select(s => new SSMLSegmentResultDto(

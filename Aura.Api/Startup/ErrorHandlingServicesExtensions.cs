@@ -73,8 +73,8 @@ internal sealed class ErrorLoggingFlushService : BackgroundService
         {
             try
             {
-                await Task.Delay(_flushInterval, stoppingToken);
-                await _errorLoggingService.FlushErrorsAsync();
+                await Task.Delay(_flushInterval, stoppingToken).ConfigureAwait(false);
+                await _errorLoggingService.FlushErrorsAsync().ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -91,7 +91,7 @@ internal sealed class ErrorLoggingFlushService : BackgroundService
         try
         {
             _logger.LogInformation("Performing final error log flush before shutdown");
-            await _errorLoggingService.FlushErrorsAsync();
+            await _errorLoggingService.FlushErrorsAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -136,7 +136,7 @@ internal sealed class ErrorLoggingCleanupService : BackgroundService
             _retentionPeriod);
 
         // Wait before first cleanup
-        await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
+        await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken).ConfigureAwait(false);
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -144,7 +144,7 @@ internal sealed class ErrorLoggingCleanupService : BackgroundService
             {
                 _logger.LogInformation("Starting error log cleanup");
 
-                var filesDeleted = await _errorLoggingService.CleanupOldLogsAsync(_retentionPeriod);
+                var filesDeleted = await _errorLoggingService.CleanupOldLogsAsync(_retentionPeriod).ConfigureAwait(false);
                 var aggregatedCleared = _errorAggregationService.ClearOldErrors(_retentionPeriod);
 
                 _logger.LogInformation(
@@ -152,7 +152,7 @@ internal sealed class ErrorLoggingCleanupService : BackgroundService
                     filesDeleted,
                     aggregatedCleared);
 
-                await Task.Delay(_cleanupInterval, stoppingToken);
+                await Task.Delay(_cleanupInterval, stoppingToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -162,7 +162,7 @@ internal sealed class ErrorLoggingCleanupService : BackgroundService
             {
                 _logger.LogError(ex, "Error during error log cleanup");
                 // Wait a bit before retrying
-                await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);
+                await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken).ConfigureAwait(false);
             }
         }
 

@@ -58,7 +58,7 @@ public class PromptManagementController : ControllerBase
         try
         {
             var template = MapToTemplate(request);
-            var created = await _promptService.CreateTemplateAsync(template, "user", ct);
+            var created = await _promptService.CreateTemplateAsync(template, "user", ct).ConfigureAwait(false);
 
             return CreatedAtAction(
                 nameof(GetTemplate),
@@ -79,7 +79,7 @@ public class PromptManagementController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<PromptTemplateDto>> GetTemplate(string id, CancellationToken ct)
     {
-        var template = await _promptService.GetTemplateAsync(id, ct);
+        var template = await _promptService.GetTemplateAsync(id, ct).ConfigureAwait(false);
         if (template == null)
         {
             return NotFound(CreateProblemDetails("Not Found", $"Template {id} not found", 404));
@@ -113,7 +113,7 @@ public class PromptManagementController : ControllerBase
             searchTerm,
             skip,
             take,
-            ct);
+            ct).ConfigureAwait(false);
 
         return Ok(templates.Select(MapToDto).ToList());
     }
@@ -136,7 +136,7 @@ public class PromptManagementController : ControllerBase
         {
             var updates = MapToTemplateFromUpdate(request);
             var updated = await _promptService.UpdateTemplateAsync(
-                id, updates, "user", request.ChangeNotes, ct);
+                id, updates, "user", request.ChangeNotes, ct).ConfigureAwait(false);
 
             return Ok(MapToDto(updated));
         }
@@ -163,7 +163,7 @@ public class PromptManagementController : ControllerBase
 
         try
         {
-            await _promptService.DeleteTemplateAsync(id, ct);
+            await _promptService.DeleteTemplateAsync(id, ct).ConfigureAwait(false);
             return NoContent();
         }
         catch (ArgumentException ex)
@@ -191,7 +191,7 @@ public class PromptManagementController : ControllerBase
 
         try
         {
-            var cloned = await _promptService.CloneTemplateAsync(id, "user", request?.NewName, ct);
+            var cloned = await _promptService.CloneTemplateAsync(id, "user", request?.NewName, ct).ConfigureAwait(false);
             return CreatedAtAction(nameof(GetTemplate), new { id = cloned.Id }, MapToDto(cloned));
         }
         catch (ArgumentException ex)
@@ -209,7 +209,7 @@ public class PromptManagementController : ControllerBase
         string id,
         CancellationToken ct)
     {
-        var versions = await _promptService.GetVersionHistoryAsync(id, ct);
+        var versions = await _promptService.GetVersionHistoryAsync(id, ct).ConfigureAwait(false);
         return Ok(versions.Select(MapToVersionDto).ToList());
     }
 
@@ -229,7 +229,7 @@ public class PromptManagementController : ControllerBase
 
         try
         {
-            var rolled = await _promptService.RollbackTemplateAsync(id, targetVersion, "user", ct);
+            var rolled = await _promptService.RollbackTemplateAsync(id, targetVersion, "user", ct).ConfigureAwait(false);
             return Ok(MapToDto(rolled));
         }
         catch (ArgumentException ex)
@@ -270,7 +270,7 @@ public class PromptManagementController : ControllerBase
             UseLowTokenLimit = request.UseLowTokenLimit
         };
 
-        var result = await _testingService.TestPromptAsync(testRequest, _llmProvider, ct);
+        var result = await _testingService.TestPromptAsync(testRequest, _llmProvider, ct).ConfigureAwait(false);
         return Ok(MapToTestResultDto(result));
     }
 
@@ -284,7 +284,7 @@ public class PromptManagementController : ControllerBase
         [FromBody] ValidateTemplateResolutionRequest request,
         CancellationToken ct)
     {
-        var result = await _testingService.ValidatePromptResolutionAsync(id, request.TestVariables, ct);
+        var result = await _testingService.ValidatePromptResolutionAsync(id, request.TestVariables, ct).ConfigureAwait(false);
         return Ok(MapToTestResultDto(result));
     }
 
@@ -307,7 +307,7 @@ public class PromptManagementController : ControllerBase
                 SanitizeValues = request.SanitizeValues
             };
 
-            var resolved = await _promptService.ResolveTemplateAsync(id, request.Variables, options, ct);
+            var resolved = await _promptService.ResolveTemplateAsync(id, request.Variables, options, ct).ConfigureAwait(false);
 
             var tokens = EstimateTokenCount(resolved);
 
@@ -335,7 +335,7 @@ public class PromptManagementController : ControllerBase
             request.QualityScore,
             request.GenerationTimeMs,
             request.TokenUsage,
-            ct);
+            ct).ConfigureAwait(false);
 
         return NoContent();
     }
@@ -366,7 +366,7 @@ public class PromptManagementController : ControllerBase
             Top = top
         };
 
-        var analytics = await _analyticsService.GetAnalyticsAsync(query, ct);
+        var analytics = await _analyticsService.GetAnalyticsAsync(query, ct).ConfigureAwait(false);
         return Ok(MapToAnalyticsDto(analytics));
     }
 
@@ -389,7 +389,7 @@ public class PromptManagementController : ControllerBase
                 request.Description,
                 request.TemplateIds,
                 "user",
-                ct);
+                ct).ConfigureAwait(false);
 
             return CreatedAtAction(
                 nameof(GetABTest),
@@ -410,7 +410,7 @@ public class PromptManagementController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ABTestDto>> GetABTest(string id, CancellationToken ct)
     {
-        var test = await _abTestingService.GetABTestResultsAsync(id, ct);
+        var test = await _abTestingService.GetABTestResultsAsync(id, ct).ConfigureAwait(false);
         if (test == null)
         {
             return NotFound(CreateProblemDetails("Not Found", $"A/B test {id} not found", 404));
@@ -447,7 +447,7 @@ public class PromptManagementController : ControllerBase
                 request.TestVariables,
                 _llmProvider,
                 request.Iterations,
-                ct);
+                ct).ConfigureAwait(false);
 
             return Ok(MapToABTestDto(test));
         }
@@ -473,7 +473,7 @@ public class PromptManagementController : ControllerBase
     {
         try
         {
-            var summary = await _abTestingService.GetABTestSummaryAsync(id, ct);
+            var summary = await _abTestingService.GetABTestSummaryAsync(id, ct).ConfigureAwait(false);
             var dto = summary.ToDictionary(
                 kvp => kvp.Key,
                 kvp => MapToABTestSummaryDto(kvp.Value));
@@ -495,7 +495,7 @@ public class PromptManagementController : ControllerBase
         [FromQuery] string? status = null,
         CancellationToken ct = default)
     {
-        var tests = await _abTestingService.ListABTestsAsync(ParseEnum<ABTestStatus>(status), ct);
+        var tests = await _abTestingService.ListABTestsAsync(ParseEnum<ABTestStatus>(status), ct).ConfigureAwait(false);
         return Ok(tests.Select(MapToABTestDto).ToList());
     }
 
@@ -512,7 +512,7 @@ public class PromptManagementController : ControllerBase
 
         try
         {
-            await _abTestingService.CancelABTestAsync(id, ct);
+            await _abTestingService.CancelABTestAsync(id, ct).ConfigureAwait(false);
             return NoContent();
         }
         catch (ArgumentException ex)

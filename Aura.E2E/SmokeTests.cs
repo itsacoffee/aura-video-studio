@@ -28,7 +28,7 @@ public class SmokeTests
     {
         // Arrange - Hardware detection
         var hardwareDetector = new HardwareDetector(NullLogger<HardwareDetector>.Instance);
-        var systemProfile = await hardwareDetector.DetectSystemAsync();
+        var systemProfile = await hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
         Assert.NotNull(systemProfile);
 
         // Arrange - Free provider setup
@@ -59,7 +59,7 @@ public class SmokeTests
         );
 
         // Act - Generate script
-        var script = await llmProvider.DraftScriptAsync(brief, planSpec, CancellationToken.None);
+        var script = await llmProvider.DraftScriptAsync(brief, planSpec, CancellationToken.None).ConfigureAwait(false);
 
         // Assert - Script generation
         Assert.NotNull(script);
@@ -115,7 +115,7 @@ public class SmokeTests
     {
         // Arrange - Hardware detection
         var hardwareDetector = new HardwareDetector(NullLogger<HardwareDetector>.Instance);
-        var systemProfile = await hardwareDetector.DetectSystemAsync();
+        var systemProfile = await hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
         Assert.NotNull(systemProfile);
 
         // Arrange - Mixed provider setup with fallback
@@ -146,7 +146,7 @@ public class SmokeTests
         );
 
         // Act - Generate script (will use whatever provider is available)
-        var script = await ruleBasedProvider.DraftScriptAsync(brief, planSpec, CancellationToken.None);
+        var script = await ruleBasedProvider.DraftScriptAsync(brief, planSpec, CancellationToken.None).ConfigureAwait(false);
 
         // Assert - Script generation succeeded
         Assert.NotNull(script);
@@ -291,7 +291,7 @@ Create amazing videos with AI.";
     {
         // Arrange - Hardware detection
         var hardwareDetector = new HardwareDetector(NullLogger<HardwareDetector>.Instance);
-        var systemProfile = await hardwareDetector.DetectSystemAsync();
+        var systemProfile = await hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
         Assert.NotNull(systemProfile);
 
         // Arrange - Local provider setup
@@ -322,7 +322,7 @@ Create amazing videos with AI.";
         );
 
         // Act - Generate script
-        var script = await llmProvider.DraftScriptAsync(brief, planSpec, CancellationToken.None);
+        var script = await llmProvider.DraftScriptAsync(brief, planSpec, CancellationToken.None).ConfigureAwait(false);
         Assert.NotNull(script);
         Assert.InRange(script.Length, 100, 2000);
 
@@ -392,7 +392,7 @@ Using Stable Diffusion and Piper TTS";
     {
         // Arrange - Hardware detection
         var hardwareDetector = new HardwareDetector(NullLogger<HardwareDetector>.Instance);
-        var systemProfile = await hardwareDetector.DetectSystemAsync();
+        var systemProfile = await hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
         Assert.NotNull(systemProfile);
 
         // Arrange - Free provider setup
@@ -423,7 +423,7 @@ Using Stable Diffusion and Piper TTS";
         );
 
         // Act - Generate script
-        var script = await llmProvider.DraftScriptAsync(brief, planSpec, CancellationToken.None);
+        var script = await llmProvider.DraftScriptAsync(brief, planSpec, CancellationToken.None).ConfigureAwait(false);
         Assert.NotNull(script);
         Assert.InRange(script.Length, 80, 2000);
 

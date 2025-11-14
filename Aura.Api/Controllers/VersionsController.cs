@@ -35,8 +35,8 @@ public class VersionsController : ControllerBase
             var correlationId = HttpContext.TraceIdentifier;
             Log.Information("[{CorrelationId}] GET /api/projects/{ProjectId}/versions", correlationId, projectId);
 
-            var versions = await _versionService.GetVersionsAsync(projectId, ct);
-            var totalStorage = await _versionService.GetProjectStorageSizeAsync(projectId, ct);
+            var versions = await _versionService.GetVersionsAsync(projectId, ct).ConfigureAwait(false);
+            var totalStorage = await _versionService.GetProjectStorageSizeAsync(projectId, ct).ConfigureAwait(false);
 
             var response = new VersionListResponse(
                 Versions: versions.Select(v => new VersionResponse(
@@ -86,7 +86,7 @@ public class VersionsController : ControllerBase
             Log.Information("[{CorrelationId}] GET /api/projects/{ProjectId}/versions/{VersionId}", 
                 correlationId, projectId, versionId);
 
-            var version = await _versionService.GetVersionDetailAsync(versionId, ct);
+            var version = await _versionService.GetVersionDetailAsync(versionId, ct).ConfigureAwait(false);
             if (version == null || version.ProjectId != projectId)
             {
                 return NotFound(new
@@ -167,9 +167,9 @@ public class VersionsController : ControllerBase
                 request.Name,
                 request.Description,
                 null,
-                ct);
+                ct).ConfigureAwait(false);
 
-            var version = await _versionService.GetVersionDetailAsync(versionId, ct);
+            var version = await _versionService.GetVersionDetailAsync(versionId, ct).ConfigureAwait(false);
             if (version == null)
             {
                 throw new InvalidOperationException("Failed to retrieve created version");
@@ -237,7 +237,7 @@ public class VersionsController : ControllerBase
                 });
             }
 
-            await _versionService.RestoreVersionAsync(projectId, request.VersionId, ct);
+            await _versionService.RestoreVersionAsync(projectId, request.VersionId, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -291,7 +291,7 @@ public class VersionsController : ControllerBase
             Log.Information("[{CorrelationId}] PATCH /api/projects/{ProjectId}/versions/{VersionId}", 
                 correlationId, projectId, versionId);
 
-            var version = await _versionService.GetVersionDetailAsync(versionId, ct);
+            var version = await _versionService.GetVersionDetailAsync(versionId, ct).ConfigureAwait(false);
             if (version == null || version.ProjectId != projectId)
             {
                 return NotFound(new
@@ -309,7 +309,7 @@ public class VersionsController : ControllerBase
                 request.Name,
                 request.Description,
                 request.IsMarkedImportant,
-                ct);
+                ct).ConfigureAwait(false);
 
             return NoContent();
         }
@@ -343,7 +343,7 @@ public class VersionsController : ControllerBase
             Log.Information("[{CorrelationId}] DELETE /api/projects/{ProjectId}/versions/{VersionId}", 
                 correlationId, projectId, versionId);
 
-            var version = await _versionService.GetVersionDetailAsync(versionId, ct);
+            var version = await _versionService.GetVersionDetailAsync(versionId, ct).ConfigureAwait(false);
             if (version == null || version.ProjectId != projectId)
             {
                 return NotFound(new
@@ -356,7 +356,7 @@ public class VersionsController : ControllerBase
                 });
             }
 
-            await _versionService.DeleteVersionAsync(versionId, ct);
+            await _versionService.DeleteVersionAsync(versionId, ct).ConfigureAwait(false);
 
             return NoContent();
         }
@@ -391,7 +391,7 @@ public class VersionsController : ControllerBase
             Log.Information("[{CorrelationId}] GET /api/projects/{ProjectId}/versions/compare?version1={V1}&version2={V2}", 
                 correlationId, projectId, version1Id, version2Id);
 
-            var comparison = await _versionService.CompareVersionsAsync(version1Id, version2Id, ct);
+            var comparison = await _versionService.CompareVersionsAsync(version1Id, version2Id, ct).ConfigureAwait(false);
 
             var response = new VersionComparisonResponse(
                 comparison.Version1Id,
@@ -461,8 +461,8 @@ public class VersionsController : ControllerBase
             Log.Information("[{CorrelationId}] GET /api/projects/{ProjectId}/versions/storage", 
                 correlationId, projectId);
 
-            var versions = await _versionService.GetVersionsAsync(projectId, ct);
-            var totalStorage = await _versionService.GetProjectStorageSizeAsync(projectId, ct);
+            var versions = await _versionService.GetVersionsAsync(projectId, ct).ConfigureAwait(false);
+            var totalStorage = await _versionService.GetProjectStorageSizeAsync(projectId, ct).ConfigureAwait(false);
 
             var autosaveCount = versions.Count(v => v.VersionType == "Autosave");
             var manualCount = versions.Count(v => v.VersionType == "Manual");
@@ -509,7 +509,7 @@ public class VersionsController : ControllerBase
             Log.Information("[{CorrelationId}] POST /api/projects/{ProjectId}/versions/autosave", 
                 correlationId, projectId);
 
-            var success = await _autosaveService.TriggerAutosaveAsync(projectId, ct);
+            var success = await _autosaveService.TriggerAutosaveAsync(projectId, ct).ConfigureAwait(false);
 
             if (!success)
             {

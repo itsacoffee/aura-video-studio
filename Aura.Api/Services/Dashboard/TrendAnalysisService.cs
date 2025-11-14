@@ -28,7 +28,7 @@ public class TrendAnalysisService
             _logger.LogInformation("Getting historical trends from {StartDate} to {EndDate} with {Granularity} granularity",
                 startDate, endDate, granularity);
 
-            await Task.Delay(50, ct);
+            await Task.Delay(50, ct).ConfigureAwait(false);
 
             var dataPoints = new List<TrendDataPoint>();
             var days = (endDate - startDate).Days;

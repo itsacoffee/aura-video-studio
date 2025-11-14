@@ -59,7 +59,7 @@ public class ProviderConfigurationController : ControllerBase
                 }));
             }
 
-            var json = await System.IO.File.ReadAllTextAsync(configPath, ct);
+            var json = await System.IO.File.ReadAllTextAsync(configPath, ct).ConfigureAwait(false);
             var config = JsonSerializer.Deserialize<SaveProviderConfigRequest>(json);
             return Ok(config);
         }
@@ -89,7 +89,7 @@ public class ProviderConfigurationController : ControllerBase
             {
                 if (!string.IsNullOrEmpty(provider.ApiKey))
                 {
-                    await _secureStorage.SaveApiKeyAsync(provider.Name, provider.ApiKey);
+                    await _secureStorage.SaveApiKeyAsync(provider.Name, provider.ApiKey).ConfigureAwait(false);
                 }
             }
 
@@ -102,7 +102,7 @@ public class ProviderConfigurationController : ControllerBase
             { 
                 WriteIndented = true 
             });
-            await System.IO.File.WriteAllTextAsync(configPath, json, ct);
+            await System.IO.File.WriteAllTextAsync(configPath, json, ct).ConfigureAwait(false);
 
             _logger.LogInformation("Provider configuration saved successfully");
             return Ok(new { success = true, message = "Configuration saved" });
@@ -165,7 +165,7 @@ public class ProviderConfigurationController : ControllerBase
                 _ => new List<AvailableModelDto>()
             };
 
-            await Task.CompletedTask;
+            await Task.CompletedTask.ConfigureAwait(false);
             return Ok(new
             {
                 providerName,
@@ -195,7 +195,7 @@ public class ProviderConfigurationController : ControllerBase
                 return Ok(CreateDefaultQualityConfig());
             }
 
-            var json = await System.IO.File.ReadAllTextAsync(configPath, ct);
+            var json = await System.IO.File.ReadAllTextAsync(configPath, ct).ConfigureAwait(false);
             var config = JsonSerializer.Deserialize<QualityConfigDto>(json);
             return Ok(config);
         }
@@ -226,7 +226,7 @@ public class ProviderConfigurationController : ControllerBase
             { 
                 WriteIndented = true 
             });
-            await System.IO.File.WriteAllTextAsync(configPath, json, ct);
+            await System.IO.File.WriteAllTextAsync(configPath, json, ct).ConfigureAwait(false);
 
             _logger.LogInformation("Quality configuration saved successfully");
             return Ok(new { success = true, message = "Configuration saved" });
@@ -272,7 +272,7 @@ public class ProviderConfigurationController : ControllerBase
                 }
             }
 
-            await Task.CompletedTask;
+            await Task.CompletedTask.ConfigureAwait(false);
             return Ok(new ConfigValidationResultDto(issues.Count == 0, issues, warnings));
         }
         catch (Exception ex)
@@ -296,7 +296,7 @@ public class ProviderConfigurationController : ControllerBase
             var profiles = new List<ConfigurationProfileDto>();
             foreach (var file in Directory.GetFiles(profilesPath, "*.json"))
             {
-                var json = await System.IO.File.ReadAllTextAsync(file, ct);
+                var json = await System.IO.File.ReadAllTextAsync(file, ct).ConfigureAwait(false);
                 var profile = JsonSerializer.Deserialize<ConfigurationProfileDto>(json);
                 if (profile != null)
                 {
@@ -347,7 +347,7 @@ public class ProviderConfigurationController : ControllerBase
             { 
                 WriteIndented = true 
             });
-            await System.IO.File.WriteAllTextAsync(filePath, json, ct);
+            await System.IO.File.WriteAllTextAsync(filePath, json, ct).ConfigureAwait(false);
 
             _logger.LogInformation("Configuration profile {Name} saved successfully", request.Name);
             return Ok(profile);
@@ -367,9 +367,9 @@ public class ProviderConfigurationController : ControllerBase
     {
         try
         {
-            var profiles = await GetAllProfilesAsync(ct);
-            var currentProvider = await LoadProviderConfigAsync(ct);
-            var currentQuality = await LoadQualityConfigAsync(ct);
+            var profiles = await GetAllProfilesAsync(ct).ConfigureAwait(false);
+            var currentProvider = await LoadProviderConfigAsync(ct).ConfigureAwait(false);
+            var currentQuality = await LoadQualityConfigAsync(ct).ConfigureAwait(false);
             
             var currentProfile = new ConfigurationProfileDto(
                 "current",
@@ -414,8 +414,8 @@ public class ProviderConfigurationController : ControllerBase
 
             if (request.OverwriteExisting)
             {
-                await SaveProviderConfigAsync(request.Configuration.CurrentProfile.ProviderConfig, ct);
-                await SaveQualityConfigAsync(request.Configuration.CurrentProfile.QualityConfig, ct);
+                await SaveProviderConfigAsync(request.Configuration.CurrentProfile.ProviderConfig, ct).ConfigureAwait(false);
+                await SaveQualityConfigAsync(request.Configuration.CurrentProfile.QualityConfig, ct).ConfigureAwait(false);
             }
 
             foreach (var profile in request.Configuration.Profiles)
@@ -430,7 +430,7 @@ public class ProviderConfigurationController : ControllerBase
                     { 
                         WriteIndented = true 
                     });
-                    await System.IO.File.WriteAllTextAsync(filePath, json, ct);
+                    await System.IO.File.WriteAllTextAsync(filePath, json, ct).ConfigureAwait(false);
                 }
             }
 
@@ -468,8 +468,8 @@ public class ProviderConfigurationController : ControllerBase
 
             var defaultQuality = CreateDefaultQualityConfig();
 
-            await SaveProviderConfigAsync(defaultProviders, ct);
-            await SaveQualityConfigAsync(defaultQuality, ct);
+            await SaveProviderConfigAsync(defaultProviders, ct).ConfigureAwait(false);
+            await SaveQualityConfigAsync(defaultQuality, ct).ConfigureAwait(false);
 
             _logger.LogInformation("Configuration reset to defaults");
             return Ok(new { success = true, message = "Configuration reset to defaults" });
@@ -530,7 +530,7 @@ public class ProviderConfigurationController : ControllerBase
         var profiles = new List<ConfigurationProfileDto>();
         foreach (var file in Directory.GetFiles(profilesPath, "*.json"))
         {
-            var json = await System.IO.File.ReadAllTextAsync(file, ct);
+            var json = await System.IO.File.ReadAllTextAsync(file, ct).ConfigureAwait(false);
             var profile = JsonSerializer.Deserialize<ConfigurationProfileDto>(json);
             if (profile != null)
             {
@@ -548,7 +548,7 @@ public class ProviderConfigurationController : ControllerBase
             return new SaveProviderConfigRequest(new List<ProviderConfigDto>());
         }
 
-        var json = await System.IO.File.ReadAllTextAsync(configPath, ct);
+        var json = await System.IO.File.ReadAllTextAsync(configPath, ct).ConfigureAwait(false);
         return JsonSerializer.Deserialize<SaveProviderConfigRequest>(json) 
             ?? new SaveProviderConfigRequest(new List<ProviderConfigDto>());
     }
@@ -561,7 +561,7 @@ public class ProviderConfigurationController : ControllerBase
             return CreateDefaultQualityConfig();
         }
 
-        var json = await System.IO.File.ReadAllTextAsync(configPath, ct);
+        var json = await System.IO.File.ReadAllTextAsync(configPath, ct).ConfigureAwait(false);
         return JsonSerializer.Deserialize<QualityConfigDto>(json) ?? CreateDefaultQualityConfig();
     }
 
@@ -569,13 +569,13 @@ public class ProviderConfigurationController : ControllerBase
     {
         var configPath = Path.Combine(_configDir, "provider-config.json");
         var json = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
-        await System.IO.File.WriteAllTextAsync(configPath, json, ct);
+        await System.IO.File.WriteAllTextAsync(configPath, json, ct).ConfigureAwait(false);
     }
 
     private async Task SaveQualityConfigAsync(QualityConfigDto config, CancellationToken ct)
     {
         var configPath = Path.Combine(_configDir, "quality-config.json");
         var json = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
-        await System.IO.File.WriteAllTextAsync(configPath, json, ct);
+        await System.IO.File.WriteAllTextAsync(configPath, json, ct).ConfigureAwait(false);
     }
 }

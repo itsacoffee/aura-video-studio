@@ -34,7 +34,7 @@ public class PreflightCommand : ICommand
         {
             // 1. Hardware Detection
             Console.WriteLine("Checking hardware capabilities...");
-            var profile = await _hardwareDetector.DetectSystemAsync();
+            var profile = await _hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
 
             if (options.Verbose)
             {

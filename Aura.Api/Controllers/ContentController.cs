@@ -49,7 +49,7 @@ public class ContentController : ControllerBase
             var correlationId = HttpContext.TraceIdentifier;
             Log.Information("[{CorrelationId}] Analyzing script", correlationId);
 
-            var analysis = await _contentAnalyzer.AnalyzeScriptAsync(request.Script, ct);
+            var analysis = await _contentAnalyzer.AnalyzeScriptAsync(request.Script, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -106,7 +106,7 @@ public class ContentController : ControllerBase
                 AddDetails: request.AddDetails
             );
 
-            var enhanced = await _scriptEnhancer.EnhanceScriptAsync(request.Script, options, ct);
+            var enhanced = await _scriptEnhancer.EnhanceScriptAsync(request.Script, options, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -155,7 +155,7 @@ public class ContentController : ControllerBase
                 request.SceneHeading, 
                 request.SceneScript, 
                 ct
-            );
+            ).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -220,7 +220,7 @@ public class ContentController : ControllerBase
                 SubtitlesPath: null
             );
 
-            var optimization = await _pacingOptimizer.OptimizeTimingAsync(timeline, ct);
+            var optimization = await _pacingOptimizer.OptimizeTimingAsync(timeline, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -291,7 +291,7 @@ public class ContentController : ControllerBase
             }
 
             using var stream = file.OpenReadStream();
-            var result = await _documentImportService.ImportDocumentAsync(stream, file.FileName, ct);
+            var result = await _documentImportService.ImportDocumentAsync(stream, file.FileName, ct).ConfigureAwait(false);
 
             if (!result.Success)
             {
@@ -407,7 +407,7 @@ public class ContentController : ControllerBase
             var documentResult = MapToDocumentImportResult(request);
             var config = MapToConversionConfig(request);
 
-            var result = await _scriptConverter.ConvertToScriptAsync(documentResult, config, ct);
+            var result = await _scriptConverter.ConvertToScriptAsync(documentResult, config, ct).ConfigureAwait(false);
 
             if (!result.Success)
             {

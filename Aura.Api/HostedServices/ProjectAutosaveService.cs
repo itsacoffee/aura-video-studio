@@ -60,7 +60,7 @@ public class ProjectAutosaveService : BackgroundService
 
         try
         {
-            await _versionService.CreateAutosaveAsync(projectId, ct);
+            await _versionService.CreateAutosaveAsync(projectId, ct).ConfigureAwait(false);
             _activeProjects[projectId] = DateTime.UtcNow;
             _logger.LogDebug("Manual autosave triggered for project {ProjectId}", projectId);
             return true;
@@ -81,7 +81,7 @@ public class ProjectAutosaveService : BackgroundService
         {
             try
             {
-                await Task.Delay(_autosaveInterval, stoppingToken);
+                await Task.Delay(_autosaveInterval, stoppingToken).ConfigureAwait(false);
 
                 if (_activeProjects.IsEmpty)
                 {
@@ -104,7 +104,7 @@ public class ProjectAutosaveService : BackgroundService
 
                     try
                     {
-                        await _versionService.CreateAutosaveAsync(projectId, stoppingToken);
+                        await _versionService.CreateAutosaveAsync(projectId, stoppingToken).ConfigureAwait(false);
                         _activeProjects[projectId] = DateTime.UtcNow;
                         _logger.LogDebug("Autosaved project {ProjectId}", projectId);
                     }
@@ -136,7 +136,7 @@ public class ProjectAutosaveService : BackgroundService
         {
             try
             {
-                await _versionService.CreateAutosaveAsync(projectId, cancellationToken);
+                await _versionService.CreateAutosaveAsync(projectId, cancellationToken).ConfigureAwait(false);
                 _logger.LogDebug("Final autosave completed for project {ProjectId}", projectId);
             }
             catch (Exception ex)
@@ -145,6 +145,6 @@ public class ProjectAutosaveService : BackgroundService
             }
         }
 
-        await base.StopAsync(cancellationToken);
+        await base.StopAsync(cancellationToken).ConfigureAwait(false);
     }
 }

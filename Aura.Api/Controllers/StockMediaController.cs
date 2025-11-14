@@ -59,7 +59,7 @@ public class StockMediaController : ControllerBase
             }
 
             var stockRequest = MapToStockMediaSearchRequest(request);
-            var response = await _stockMediaService.SearchAsync(stockRequest, ct);
+            var response = await _stockMediaService.SearchAsync(stockRequest, ct).ConfigureAwait(false);
             var dto = MapToStockMediaSearchResponseDto(response);
 
             return Ok(dto);
@@ -138,7 +138,7 @@ public class StockMediaController : ControllerBase
                 Mood = request.Mood
             };
 
-            var result = await _queryCompositionService.ComposeQueryAsync(compositionRequest, ct);
+            var result = await _queryCompositionService.ComposeQueryAsync(compositionRequest, ct).ConfigureAwait(false);
             var dto = MapToQueryCompositionResultDto(result);
 
             return Ok(dto);
@@ -182,7 +182,7 @@ public class StockMediaController : ControllerBase
                 AllowStock = request.AllowStock
             };
 
-            var result = await _queryCompositionService.RecommendBlendSetAsync(blendRequest, ct);
+            var result = await _queryCompositionService.RecommendBlendSetAsync(blendRequest, ct).ConfigureAwait(false);
             var dto = MapToBlendSetRecommendationDto(result);
 
             return Ok(dto);
@@ -252,7 +252,7 @@ public class StockMediaController : ControllerBase
                 "Validating providers, CorrelationId: {CorrelationId}",
                 HttpContext.TraceIdentifier);
 
-            var results = await _stockMediaService.ValidateProvidersAsync(ct);
+            var results = await _stockMediaService.ValidateProvidersAsync(ct).ConfigureAwait(false);
             var dtos = results.Select(kvp => new ProviderValidationDto(
                 kvp.Key.ToString(),
                 kvp.Value,
@@ -401,7 +401,7 @@ public class StockMediaController : ControllerBase
                 return BadRequest(new { error = "Query is required" });
             }
 
-            await Task.CompletedTask;
+            await Task.CompletedTask.ConfigureAwait(false);
             _logger.LogWarning("Stock media safety integration not yet wired up to controller dependencies");
 
             return Ok(new ValidateStockQueryResponse(

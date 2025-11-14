@@ -101,17 +101,17 @@ public class ShutdownOrchestrator
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(force ? 2 : GracefulTimeoutSeconds));
 
             // Step 1: Notify active SSE connections
-            var sseStep = await NotifySseConnectionsAsync(cts.Token);
+            var sseStep = await NotifySseConnectionsAsync(cts.Token).ConfigureAwait(false);
             stepResults.Add($"SSE Notification: {sseStep}");
             _logger.LogInformation("Step 1/3 Complete: {Result}", sseStep);
 
             // Step 2: Close SSE connections gracefully
-            var closeStep = await CloseSseConnectionsAsync(cts.Token);
+            var closeStep = await CloseSseConnectionsAsync(cts.Token).ConfigureAwait(false);
             stepResults.Add($"SSE Closure: {closeStep}");
             _logger.LogInformation("Step 2/3 Complete: {Result}", closeStep);
 
             // Step 3: Terminate child processes
-            var processStep = await TerminateChildProcessesAsync(force, cts.Token);
+            var processStep = await TerminateChildProcessesAsync(force, cts.Token).ConfigureAwait(false);
             stepResults.Add($"Process Termination: {processStep}");
             _logger.LogInformation("Step 3/3 Complete: {Result}", processStep);
 
@@ -123,7 +123,7 @@ public class ShutdownOrchestrator
             // Signal application to stop
             if (!force)
             {
-                await Task.Delay(500, CancellationToken.None);
+                await Task.Delay(500, CancellationToken.None).ConfigureAwait(false);
             }
             _lifetime.StopApplication();
         }

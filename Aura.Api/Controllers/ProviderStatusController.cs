@@ -36,7 +36,7 @@ public class ProviderStatusController : ControllerBase
             _logger.LogInformation("Getting provider status, CorrelationId: {CorrelationId}",
                 HttpContext.TraceIdentifier);
 
-            var status = await _statusService.GetAllProviderStatusAsync(ct);
+            var status = await _statusService.GetAllProviderStatusAsync(ct).ConfigureAwait(false);
 
             var dto = new SystemProviderStatusDto
             {
@@ -77,9 +77,9 @@ public class ProviderStatusController : ControllerBase
     {
         try
         {
-            var isOffline = await _statusService.IsOfflineModeAsync(ct);
-            var availableFeatures = await _statusService.GetAvailableFeaturesAsync(ct);
-            var degradedFeatures = await _statusService.GetDegradedFeaturesAsync(ct);
+            var isOffline = await _statusService.IsOfflineModeAsync(ct).ConfigureAwait(false);
+            var availableFeatures = await _statusService.GetAvailableFeaturesAsync(ct).ConfigureAwait(false);
+            var degradedFeatures = await _statusService.GetDegradedFeaturesAsync(ct).ConfigureAwait(false);
 
             return Ok(new OfflineModeDto
             {
@@ -110,7 +110,7 @@ public class ProviderStatusController : ControllerBase
             _logger.LogInformation("Refreshing provider status, CorrelationId: {CorrelationId}",
                 HttpContext.TraceIdentifier);
 
-            await _statusService.RefreshStatusAsync(ct);
+            await _statusService.RefreshStatusAsync(ct).ConfigureAwait(false);
 
             return Ok(new { message = "Provider status refreshed successfully" });
         }
@@ -130,8 +130,8 @@ public class ProviderStatusController : ControllerBase
     {
         try
         {
-            var available = await _statusService.GetAvailableFeaturesAsync(ct);
-            var degraded = await _statusService.GetDegradedFeaturesAsync(ct);
+            var available = await _statusService.GetAvailableFeaturesAsync(ct).ConfigureAwait(false);
+            var degraded = await _statusService.GetDegradedFeaturesAsync(ct).ConfigureAwait(false);
 
             return Ok(new FeaturesDto
             {

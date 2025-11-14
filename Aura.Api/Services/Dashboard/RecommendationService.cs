@@ -25,7 +25,7 @@ public class RecommendationService
         {
             _logger.LogInformation("Generating quality recommendations");
 
-            await Task.Delay(50, ct);
+            await Task.Delay(50, ct).ConfigureAwait(false);
 
             var recommendations = new List<QualityRecommendation>();
 

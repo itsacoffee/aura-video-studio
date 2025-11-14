@@ -52,7 +52,7 @@ public class RateLimitingMiddleware
         if (config == null)
         {
             // No rate limiting for this endpoint
-            await _next(context);
+            await _next(context).ConfigureAwait(false);
             return;
         }
 
@@ -95,11 +95,11 @@ public class RateLimitingMiddleware
                 detail = $"Too many requests. Limit is {config.MaxRequests} requests per {config.WindowSeconds} seconds.",
                 retryAfter = retryAfter,
                 correlationId = context.TraceIdentifier
-            });
+            }).ConfigureAwait(false);
             return;
         }
 
-        await _next(context);
+        await _next(context).ConfigureAwait(false);
     }
 
     private string GetClientIdentifier(HttpContext context)

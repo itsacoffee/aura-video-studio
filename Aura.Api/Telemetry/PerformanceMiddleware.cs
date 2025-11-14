@@ -37,7 +37,7 @@ public class PerformanceMiddleware
         try
         {
             // Execute the request
-            await _next(context);
+            await _next(context).ConfigureAwait(false);
         }
         finally
         {

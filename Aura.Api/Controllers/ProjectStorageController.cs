@@ -45,7 +45,7 @@ public class ProjectStorageController : ControllerBase
     {
         try
         {
-            var project = await _projectFileService.CreateProjectAsync(request.Name, request.Description, ct);
+            var project = await _projectFileService.CreateProjectAsync(request.Name, request.Description, ct).ConfigureAwait(false);
             _autoSaveService.RegisterProject(project);
             
             return Ok(project);
@@ -65,7 +65,7 @@ public class ProjectStorageController : ControllerBase
     {
         try
         {
-            var project = await _projectFileService.LoadProjectAsync(projectId, ct);
+            var project = await _projectFileService.LoadProjectAsync(projectId, ct).ConfigureAwait(false);
             if (project == null)
             {
                 return NotFound(new { error = $"Project not found: {projectId}" });
@@ -94,7 +94,7 @@ public class ProjectStorageController : ControllerBase
                 return BadRequest(new { error = "Project ID mismatch" });
             }
 
-            await _projectFileService.SaveProjectAsync(project, ct);
+            await _projectFileService.SaveProjectAsync(project, ct).ConfigureAwait(false);
             _autoSaveService.MarkProjectModified(projectId, project);
             
             return Ok(new { success = true, savedAt = project.LastSavedAt });
@@ -114,7 +114,7 @@ public class ProjectStorageController : ControllerBase
     {
         try
         {
-            var result = await _projectFileService.DeleteProjectAsync(projectId, ct);
+            var result = await _projectFileService.DeleteProjectAsync(projectId, ct).ConfigureAwait(false);
             if (!result)
             {
                 return NotFound(new { error = $"Project not found: {projectId}" });
@@ -138,7 +138,7 @@ public class ProjectStorageController : ControllerBase
     {
         try
         {
-            var projects = await _projectFileService.ListProjectsAsync(ct);
+            var projects = await _projectFileService.ListProjectsAsync(ct).ConfigureAwait(false);
             return Ok(projects);
         }
         catch (Exception ex)
@@ -160,7 +160,7 @@ public class ProjectStorageController : ControllerBase
     {
         try
         {
-            var asset = await _projectFileService.AddAssetAsync(projectId, request.AssetPath, request.AssetType, ct);
+            var asset = await _projectFileService.AddAssetAsync(projectId, request.AssetPath, request.AssetType, ct).ConfigureAwait(false);
             return Ok(asset);
         }
         catch (Exception ex)
@@ -178,7 +178,7 @@ public class ProjectStorageController : ControllerBase
     {
         try
         {
-            var result = await _projectFileService.RemoveAssetAsync(projectId, assetId, ct);
+            var result = await _projectFileService.RemoveAssetAsync(projectId, assetId, ct).ConfigureAwait(false);
             if (!result)
             {
                 return NotFound(new { error = $"Asset not found: {assetId}" });
@@ -201,7 +201,7 @@ public class ProjectStorageController : ControllerBase
     {
         try
         {
-            var report = await _projectFileService.DetectMissingAssetsAsync(projectId, ct);
+            var report = await _projectFileService.DetectMissingAssetsAsync(projectId, ct).ConfigureAwait(false);
             return Ok(report);
         }
         catch (Exception ex)
@@ -226,7 +226,7 @@ public class ProjectStorageController : ControllerBase
                 NewPath = request.NewPath
             };
 
-            var result = await _projectFileService.RelinkAssetAsync(relinkRequest, ct);
+            var result = await _projectFileService.RelinkAssetAsync(relinkRequest, ct).ConfigureAwait(false);
             
             if (!result.Success)
             {
@@ -255,7 +255,7 @@ public class ProjectStorageController : ControllerBase
         try
         {
             request.ProjectId = projectId;
-            var result = await _projectFileService.ConsolidateProjectAsync(request, ct);
+            var result = await _projectFileService.ConsolidateProjectAsync(request, ct).ConfigureAwait(false);
             
             if (!result.Success)
             {
@@ -280,7 +280,7 @@ public class ProjectStorageController : ControllerBase
         try
         {
             request.ProjectId = projectId;
-            var result = await _projectFileService.PackageProjectAsync(request, ct);
+            var result = await _projectFileService.PackageProjectAsync(request, ct).ConfigureAwait(false);
             
             if (!result.Success)
             {
@@ -304,7 +304,7 @@ public class ProjectStorageController : ControllerBase
     {
         try
         {
-            var projectId = await _projectFileService.UnpackageProjectAsync(request.PackagePath, ct);
+            var projectId = await _projectFileService.UnpackageProjectAsync(request.PackagePath, ct).ConfigureAwait(false);
             return Ok(new { projectId, success = true });
         }
         catch (Exception ex)
@@ -326,7 +326,7 @@ public class ProjectStorageController : ControllerBase
     {
         try
         {
-            var backupPath = await _storageService.CreateBackupAsync(projectId, request?.BackupName, ct);
+            var backupPath = await _storageService.CreateBackupAsync(projectId, request?.BackupName, ct).ConfigureAwait(false);
             return Ok(new { success = true, backupPath });
         }
         catch (Exception ex)
@@ -344,7 +344,7 @@ public class ProjectStorageController : ControllerBase
     {
         try
         {
-            var backups = await _storageService.ListBackupsAsync(projectId, ct);
+            var backups = await _storageService.ListBackupsAsync(projectId, ct).ConfigureAwait(false);
             return Ok(backups);
         }
         catch (Exception ex)
@@ -362,7 +362,7 @@ public class ProjectStorageController : ControllerBase
     {
         try
         {
-            var content = await _storageService.RestoreBackupAsync(projectId, backupFileName, ct);
+            var content = await _storageService.RestoreBackupAsync(projectId, backupFileName, ct).ConfigureAwait(false);
             if (content == null)
             {
                 return NotFound(new { error = $"Backup not found: {backupFileName}" });
@@ -389,7 +389,7 @@ public class ProjectStorageController : ControllerBase
     {
         try
         {
-            var stats = await _storageService.GetStorageStatisticsAsync(ct);
+            var stats = await _storageService.GetStorageStatisticsAsync(ct).ConfigureAwait(false);
             return Ok(stats);
         }
         catch (Exception ex)
@@ -407,7 +407,7 @@ public class ProjectStorageController : ControllerBase
     {
         try
         {
-            var info = await _storageService.GetDiskSpaceInfoAsync(ct);
+            var info = await _storageService.GetDiskSpaceInfoAsync(ct).ConfigureAwait(false);
             return Ok(info);
         }
         catch (Exception ex)
@@ -425,7 +425,7 @@ public class ProjectStorageController : ControllerBase
     {
         try
         {
-            var stats = await _storageService.GetCacheStatisticsAsync(ct);
+            var stats = await _storageService.GetCacheStatisticsAsync(ct).ConfigureAwait(false);
             return Ok(stats);
         }
         catch (Exception ex)
@@ -443,7 +443,7 @@ public class ProjectStorageController : ControllerBase
     {
         try
         {
-            var result = await _storageService.CleanupCacheAsync(forceAll, ct);
+            var result = await _storageService.CleanupCacheAsync(forceAll, ct).ConfigureAwait(false);
             return Ok(result);
         }
         catch (Exception ex)
@@ -461,7 +461,7 @@ public class ProjectStorageController : ControllerBase
     {
         try
         {
-            var result = await _storageService.CleanupCacheByCategoryAsync(category, ct);
+            var result = await _storageService.CleanupCacheByCategoryAsync(category, ct).ConfigureAwait(false);
             return Ok(result);
         }
         catch (Exception ex)
@@ -524,7 +524,7 @@ public class ProjectStorageController : ControllerBase
     {
         try
         {
-            await _autoSaveService.ForceSaveProjectAsync(projectId, ct);
+            await _autoSaveService.ForceSaveProjectAsync(projectId, ct).ConfigureAwait(false);
             return Ok(new { success = true, savedAt = DateTime.UtcNow });
         }
         catch (Exception ex)
