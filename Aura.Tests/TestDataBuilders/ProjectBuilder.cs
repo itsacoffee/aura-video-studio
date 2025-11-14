@@ -9,13 +9,15 @@ public class ProjectBuilder
 {
     private string _id = Guid.NewGuid().ToString();
     private string _name = "Test Project";
-    private string _description = "A test project";
-    private string _ownerId = Guid.NewGuid().ToString();
+    private string? _description = "A test project";
+    private string? _thumbnail;
     private DateTime _createdAt = DateTime.UtcNow;
-    private DateTime _updatedAt = DateTime.UtcNow;
-    private ProjectStatus _status = ProjectStatus.Active;
-    private Dictionary<string, object> _settings = new();
+    private DateTime _lastModifiedAt = DateTime.UtcNow;
+    private double _duration = 60.0;
+    private string? _author = "Test Author";
     private List<string> _tags = new();
+    private string _projectData = "{}";
+    private int _clipCount = 0;
 
     public ProjectBuilder WithId(string id)
     {
@@ -35,15 +37,9 @@ public class ProjectBuilder
         return this;
     }
 
-    public ProjectBuilder WithOwnerId(string ownerId)
+    public ProjectBuilder WithThumbnail(string thumbnail)
     {
-        _ownerId = ownerId;
-        return this;
-    }
-
-    public ProjectBuilder WithStatus(ProjectStatus status)
-    {
-        _status = status;
+        _thumbnail = thumbnail;
         return this;
     }
 
@@ -53,15 +49,21 @@ public class ProjectBuilder
         return this;
     }
 
-    public ProjectBuilder WithUpdatedAt(DateTime updatedAt)
+    public ProjectBuilder WithLastModifiedAt(DateTime lastModifiedAt)
     {
-        _updatedAt = updatedAt;
+        _lastModifiedAt = lastModifiedAt;
         return this;
     }
 
-    public ProjectBuilder WithSetting(string key, object value)
+    public ProjectBuilder WithDuration(double duration)
     {
-        _settings[key] = value;
+        _duration = duration;
+        return this;
+    }
+
+    public ProjectBuilder WithAuthor(string author)
+    {
+        _author = author;
         return this;
     }
 
@@ -71,9 +73,15 @@ public class ProjectBuilder
         return this;
     }
 
-    public ProjectBuilder Archived()
+    public ProjectBuilder WithProjectData(string projectData)
     {
-        _status = ProjectStatus.Archived;
+        _projectData = projectData;
+        return this;
+    }
+
+    public ProjectBuilder WithClipCount(int clipCount)
+    {
+        _clipCount = clipCount;
         return this;
     }
 
@@ -84,19 +92,14 @@ public class ProjectBuilder
             Id = _id,
             Name = _name,
             Description = _description,
-            OwnerId = _ownerId,
+            Thumbnail = _thumbnail,
             CreatedAt = _createdAt,
-            UpdatedAt = _updatedAt,
-            Status = _status,
-            Settings = _settings,
-            Tags = _tags
+            LastModifiedAt = _lastModifiedAt,
+            Duration = _duration,
+            Author = _author,
+            Tags = _tags,
+            ProjectData = _projectData,
+            ClipCount = _clipCount
         };
     }
-}
-
-public enum ProjectStatus
-{
-    Active,
-    Archived,
-    Deleted
 }

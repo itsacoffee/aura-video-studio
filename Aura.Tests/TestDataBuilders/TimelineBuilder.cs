@@ -3,202 +3,216 @@ using Aura.Core.Models.Timeline;
 namespace Aura.Tests.TestDataBuilders;
 
 /// <summary>
-/// Builder for creating test Timeline instances with tracks and clips
+/// Builder for creating test EditableTimeline instances with scenes
 /// </summary>
 public class TimelineBuilder
 {
-    private string _id = Guid.NewGuid().ToString();
-    private double _duration = 60.0;
-    private List<TimelineTrack> _tracks = new();
-    private List<TimelineMarker> _markers = new();
-    private double _frameRate = 30.0;
+    private List<TimelineScene> _scenes = new();
+    private string? _backgroundMusicPath;
+    private SubtitleTrack _subtitles = new();
 
-    public TimelineBuilder WithId(string id)
+    public TimelineBuilder WithScene(TimelineScene scene)
     {
-        _id = id;
+        _scenes.Add(scene);
         return this;
     }
 
-    public TimelineBuilder WithDuration(double duration)
+    public TimelineBuilder WithBackgroundMusic(string path)
     {
-        _duration = duration;
+        _backgroundMusicPath = path;
         return this;
     }
 
-    public TimelineBuilder WithFrameRate(double frameRate)
+    public TimelineBuilder WithSubtitles(SubtitleTrack subtitles)
     {
-        _frameRate = frameRate;
+        _subtitles = subtitles;
         return this;
     }
 
-    public TimelineBuilder WithTrack(TimelineTrack track)
+    public TimelineBuilder WithDefaultScene()
     {
-        _tracks.Add(track);
+        _scenes.Add(new TimelineScene(
+            Index: 0,
+            Heading: "Test Scene",
+            Script: "This is a test scene script.",
+            Start: TimeSpan.Zero,
+            Duration: TimeSpan.FromSeconds(5)
+        ));
         return this;
     }
 
-    public TimelineBuilder WithMarker(TimelineMarker marker)
+    public EditableTimeline Build()
     {
-        _markers.Add(marker);
-        return this;
-    }
-
-    public TimelineBuilder WithDefaultVideoTrack()
-    {
-        _tracks.Add(new TrackBuilder()
-            .WithType(TrackType.Video)
-            .WithName("Video Track")
-            .Build());
-        return this;
-    }
-
-    public TimelineBuilder WithDefaultAudioTrack()
-    {
-        _tracks.Add(new TrackBuilder()
-            .WithType(TrackType.Audio)
-            .WithName("Audio Track")
-            .Build());
-        return this;
-    }
-
-    public Timeline Build()
-    {
-        return new Timeline
+        return new EditableTimeline
         {
-            Id = _id,
-            Duration = _duration,
-            Tracks = _tracks,
-            Markers = _markers,
-            FrameRate = _frameRate
+            Scenes = _scenes,
+            BackgroundMusicPath = _backgroundMusicPath,
+            Subtitles = _subtitles
         };
     }
 }
 
 /// <summary>
-/// Builder for creating test TimelineTrack instances
+/// Builder for creating test TimelineScene instances
 /// </summary>
-public class TrackBuilder
+public class SceneBuilder
+{
+    private int _index = 0;
+    private string _heading = "Scene";
+    private string _script = "This is a test scene.";
+    private TimeSpan _start = TimeSpan.Zero;
+    private TimeSpan _duration = TimeSpan.FromSeconds(5);
+    private string? _narrationAudioPath;
+    private List<TimelineAsset> _visualAssets = new();
+    private string _transitionType = "None";
+    private TimeSpan? _transitionDuration;
+
+    public SceneBuilder WithIndex(int index)
+    {
+        _index = index;
+        return this;
+    }
+
+    public SceneBuilder WithHeading(string heading)
+    {
+        _heading = heading;
+        return this;
+    }
+
+    public SceneBuilder WithScript(string script)
+    {
+        _script = script;
+        return this;
+    }
+
+    public SceneBuilder WithStart(TimeSpan start)
+    {
+        _start = start;
+        return this;
+    }
+
+    public SceneBuilder WithDuration(TimeSpan duration)
+    {
+        _duration = duration;
+        return this;
+    }
+
+    public SceneBuilder WithNarrationAudio(string audioPath)
+    {
+        _narrationAudioPath = audioPath;
+        return this;
+    }
+
+    public SceneBuilder WithVisualAsset(TimelineAsset asset)
+    {
+        _visualAssets.Add(asset);
+        return this;
+    }
+
+    public SceneBuilder WithTransition(string transitionType, TimeSpan? duration = null)
+    {
+        _transitionType = transitionType;
+        _transitionDuration = duration;
+        return this;
+    }
+
+    public TimelineScene Build()
+    {
+        return new TimelineScene(
+            Index: _index,
+            Heading: _heading,
+            Script: _script,
+            Start: _start,
+            Duration: _duration,
+            NarrationAudioPath: _narrationAudioPath,
+            VisualAssets: _visualAssets,
+            TransitionType: _transitionType,
+            TransitionDuration: _transitionDuration
+        );
+    }
+}
+
+/// <summary>
+/// Builder for creating test TimelineAsset instances
+/// </summary>
+public class TimelineAssetBuilder
 {
     private string _id = Guid.NewGuid().ToString();
-    private string _name = "Track";
-    private TrackType _type = TrackType.Video;
-    private List<TimelineClip> _clips = new();
-    private bool _isLocked;
-    private bool _isMuted;
+    private AssetType _type = AssetType.Image;
+    private string _filePath = "/test/asset.png";
+    private TimeSpan _start = TimeSpan.Zero;
+    private TimeSpan _duration = TimeSpan.FromSeconds(5);
+    private Position _position = new(0, 0, 100, 100);
+    private int _zIndex = 0;
+    private double _opacity = 1.0;
+    private EffectConfig? _effects;
 
-    public TrackBuilder WithId(string id)
+    public TimelineAssetBuilder WithId(string id)
     {
         _id = id;
         return this;
     }
 
-    public TrackBuilder WithName(string name)
-    {
-        _name = name;
-        return this;
-    }
-
-    public TrackBuilder WithType(TrackType type)
+    public TimelineAssetBuilder WithType(AssetType type)
     {
         _type = type;
         return this;
     }
 
-    public TrackBuilder WithClip(TimelineClip clip)
+    public TimelineAssetBuilder WithFilePath(string filePath)
     {
-        _clips.Add(clip);
+        _filePath = filePath;
         return this;
     }
 
-    public TrackBuilder Locked()
+    public TimelineAssetBuilder WithStart(TimeSpan start)
     {
-        _isLocked = true;
+        _start = start;
         return this;
     }
 
-    public TrackBuilder Muted()
-    {
-        _isMuted = true;
-        return this;
-    }
-
-    public TimelineTrack Build()
-    {
-        return new TimelineTrack
-        {
-            Id = _id,
-            Name = _name,
-            Type = _type,
-            Clips = _clips,
-            IsLocked = _isLocked,
-            IsMuted = _isMuted
-        };
-    }
-}
-
-/// <summary>
-/// Builder for creating test TimelineClip instances
-/// </summary>
-public class ClipBuilder
-{
-    private string _id = Guid.NewGuid().ToString();
-    private string _assetId = Guid.NewGuid().ToString();
-    private double _timelineStart = 0.0;
-    private double _duration = 5.0;
-    private double _trimStart = 0.0;
-    private double _trimEnd = 5.0;
-    private List<Effect> _effects = new();
-
-    public ClipBuilder WithId(string id)
-    {
-        _id = id;
-        return this;
-    }
-
-    public ClipBuilder WithAssetId(string assetId)
-    {
-        _assetId = assetId;
-        return this;
-    }
-
-    public ClipBuilder AtTime(double timelineStart)
-    {
-        _timelineStart = timelineStart;
-        return this;
-    }
-
-    public ClipBuilder WithDuration(double duration)
+    public TimelineAssetBuilder WithDuration(TimeSpan duration)
     {
         _duration = duration;
-        _trimEnd = _trimStart + duration;
         return this;
     }
 
-    public ClipBuilder WithTrim(double trimStart, double trimEnd)
+    public TimelineAssetBuilder WithPosition(Position position)
     {
-        _trimStart = trimStart;
-        _trimEnd = trimEnd;
-        _duration = trimEnd - trimStart;
+        _position = position;
         return this;
     }
 
-    public ClipBuilder WithEffect(Effect effect)
+    public TimelineAssetBuilder WithZIndex(int zIndex)
     {
-        _effects.Add(effect);
+        _zIndex = zIndex;
         return this;
     }
 
-    public TimelineClip Build()
+    public TimelineAssetBuilder WithOpacity(double opacity)
     {
-        return new TimelineClip
-        {
-            Id = _id,
-            AssetId = _assetId,
-            TimelineStart = _timelineStart,
-            Duration = _duration,
-            TrimStart = _trimStart,
-            TrimEnd = _trimEnd,
-            Effects = _effects
-        };
+        _opacity = opacity;
+        return this;
+    }
+
+    public TimelineAssetBuilder WithEffects(EffectConfig effects)
+    {
+        _effects = effects;
+        return this;
+    }
+
+    public TimelineAsset Build()
+    {
+        return new TimelineAsset(
+            Id: _id,
+            Type: _type,
+            FilePath: _filePath,
+            Start: _start,
+            Duration: _duration,
+            Position: _position,
+            ZIndex: _zIndex,
+            Opacity: _opacity,
+            Effects: _effects
+        );
     }
 }

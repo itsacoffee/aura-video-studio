@@ -56,33 +56,4 @@
     <ProjectReference Include="..\Aura.Providers\Aura.Providers.csproj" />
   </ItemGroup>
 
-  <!-- Temporarily exclude files with compilation errors pending type fixes -->
-  <ItemGroup>
-    <Compile Remove="TestDataBuilders\**\*.cs" />
-    <Compile Remove="Storage\**\*.cs" />
-    <Compile Remove="Services\FFmpeg\**\*.cs" />
-    <Compile Remove="Services\ErrorHandling\**\*.cs" />
-    <Compile Remove="Services\Jobs\VideoGenerationJobServiceTests.cs" />
-    <Compile Remove="Services\Media\MediaServiceTests.cs" />
-    <Compile Remove="Services\Settings\SettingsServiceTests.cs" />
-    <Compile Remove="Integration\**\*.cs" />
-    <Compile Remove="VideoGenerationPipelineTests.cs" />
-    <Compile Remove="Orchestrator\**\*.cs" />
-    <Compile Remove="Providers\OllamaLlmProviderTests.cs" />
-    <Compile Remove="Resilience\**\*.cs" />
-    <Compile Remove="Performance\**\*.cs" />
-    <Compile Remove="Controllers\AdminControllerTests.cs" />
-    <Compile Remove="Controllers\MediaControllerTests.cs" />
-    <Compile Remove="CorrelationIdMiddlewareTests.cs" />
-    <Compile Remove="Data\UnitOfWorkTests.cs" />
-    <Compile Remove="EnhancedCostTrackingTests.cs" />
-    <Compile Remove="FFmpeg\FFmpegWindowsIntegrationTests.cs" />
-    <Compile Remove="LlmCostEstimatorTests.cs" />
-    <!-- MockLlmProviderTests.cs - Fixed -->
-    <Compile Remove="Models\VideoEffects\VideoEffectTests.cs" />
-    <Compile Remove="SettingsControllerSecureStorageTests.cs" />
-    <Compile Remove="Validation\ApiKeyValidatorTests.cs" />
-    <Compile Remove="Windows\WindowsDatabaseStorageCompatibilityTests.cs" />
-  </ItemGroup>
-
 </Project>
