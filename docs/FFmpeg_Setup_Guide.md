@@ -146,7 +146,7 @@ libavcodec     XX. XX.XXX
    - Follow the step-by-step instructions
 
 2. **Check Installation Paths**
-   
+
    Aura searches these locations automatically:
    - `%LOCALAPPDATA%\Aura\Tools\ffmpeg\bin\`
    - `%LOCALAPPDATA%\Aura\dependencies\bin\`

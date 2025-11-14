@@ -5,7 +5,6 @@
 
 ---
 
-
 # First-Run Wizard - Database Persistence Implementation
 
 **PR**: Add First-Run Setup Wizard with Database Tracking  

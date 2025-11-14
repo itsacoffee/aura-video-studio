@@ -497,7 +497,7 @@ if (stats.TotalEstimatedCost > 100.0m)
 
 **Problem**: CI fails with `error AUR001: Direct usage of 'ILlmProvider' is not allowed`
 
-**Solution**: 
+**Solution**:
 1. Identify the service using direct provider access
 2. Add `UnifiedLlmOrchestrator` or `LlmStageAdapter` dependency
 3. Route calls through orchestrator as shown in this guide

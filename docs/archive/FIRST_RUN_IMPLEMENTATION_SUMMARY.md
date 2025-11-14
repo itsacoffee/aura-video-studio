@@ -428,34 +428,34 @@ This implementation comprehensively addresses the original problem statement:
 
 > ✅ "There should be no reason for the program to fail upon first run"
 > - Application now starts even with missing components
-
+>
 > ✅ "for a new user with them being left stuck"
 > - Clear UI shows exactly what needs attention
-
+>
 > ✅ "and without knowing what to do"
 > - Every issue includes fix actions and guidance
-
+>
 > ✅ "Fix all common issues"
 > - Auto-fix for FFmpeg, guidance for everything else
-
+>
 > ✅ "be able to guide the user on how to fix stuff"
 > - Comprehensive docs, in-app guidance, fix buttons
-
+>
 > ✅ "Ensure the program is really able to do all that it says it can"
 > - Diagnostics verify capabilities, warn about limitations
-
+>
 > ✅ "in a real production environment"
 > - Tested on Linux, Windows-ready, portable mode
-
+>
 > ✅ "Ensure first run works for new users with varying configurations"
 > - Handles offline, low RAM, no GPU, permission issues, etc.
-
+>
 > ✅ "or that the program can get it working"
 > - Auto-fix endpoint, guided manual fixes
-
+>
 > ✅ "as it sees why there is an issue"
 > - Diagnostics identify root causes
-
+>
 > ✅ "Verify everything"
 > - 733 tests passing, comprehensive manual testing
 

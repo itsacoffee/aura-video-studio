@@ -56,7 +56,7 @@ This implementation adds comprehensive AI-powered script enhancement capabilitie
 ### 1. LLM Prompt Injection
 **Risk Level**: Medium
 **Description**: Malicious users could craft scripts designed to manipulate LLM behavior
-**Mitigation**: 
+**Mitigation**:
 - LLM interactions are sandboxed through ILlmProvider
 - Prompts are structured with clear instructions
 - User input is clearly separated from system prompts

@@ -281,7 +281,7 @@ Brand kit settings are optional:
 This component is fully implemented with all core features functional and tested.
 
 For additional visual effects or customization options, refer to the brand kit documentation.
-   - Time-based appearance
+- Time-based appearance
 
 ## Conclusion
 

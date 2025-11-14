@@ -5,7 +5,6 @@
 
 ---
 
-
 # Video Playback Engine Implementation Summary
 
 ## Overview

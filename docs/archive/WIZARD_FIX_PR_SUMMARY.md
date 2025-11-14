@@ -54,6 +54,7 @@ Implemented a deterministic state machine with clear transitions and user feedba
 ### 🎯 Key Features
 
 #### Dynamic Button Labels
+
 | State | Button Label | Icon | User Action |
 |-------|--------------|------|-------------|
 | idle | "Validate" or "Next" | Play/ChevronRight | Click to proceed |

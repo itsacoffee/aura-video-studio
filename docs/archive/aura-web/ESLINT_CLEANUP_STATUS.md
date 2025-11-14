@@ -5,7 +5,6 @@
 
 ---
 
-
 # ESLint Cleanup Status Report
 
 ## Executive Summary

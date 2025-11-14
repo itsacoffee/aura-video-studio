@@ -19,6 +19,7 @@ All production projects compile with zero warnings and zero errors:
 | **Aura.Tests** | 0 | 0 | ✅ Clean |
 
 ### Platform-Specific Projects
+
 | Project | Status | Notes |
 |---------|--------|-------|
 | **Aura.App** | ⚠️ Windows-only | Cannot be validated on Linux CI due to Windows App SDK XAML compiler requirements. Assembly version conflicts addressed but need Windows validation. |
@@ -63,6 +64,7 @@ Temporarily excluded ~25 test files with compilation errors due to:
 - **Compiler Errors**: 64 (all in Aura.Tests)
 
 ### Warning Breakdown
+
 | Category | Count | Resolution |
 |----------|-------|------------|
 | IDE0xxx (Style) | 40,000+ | Configured to silent in .editorconfig |

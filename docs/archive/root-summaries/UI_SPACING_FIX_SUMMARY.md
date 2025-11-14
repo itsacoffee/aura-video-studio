@@ -5,7 +5,6 @@
 
 ---
 
-
 # UI Spacing Issues - Fix Summary
 
 ## Overview

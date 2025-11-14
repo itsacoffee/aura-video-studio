@@ -5,7 +5,6 @@
 
 ---
 
-
 # User Preferences CRUD Implementation
 
 ## Overview

@@ -41,9 +41,9 @@ General application settings.
 - **compactMode** (boolean): Whether to use compact layout
 
 #### `apiKeys` (object, optional)
-API keys for external services. 
+API keys for external services.
 
-**Storage**: 
+**Storage**:
 - **At Rest**: Keys are encrypted using platform-specific encryption (DPAPI on Windows, AES-256 on Linux/macOS)
 - **Location**: `%LOCALAPPDATA%\Aura\secure\apikeys.dat` (Windows) or `$HOME/.local/share/Aura/secure/apikeys.dat` (Linux/macOS)
 - **Export**: By default, keys are **NOT** included in exports (secretless by default)

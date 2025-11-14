@@ -22,12 +22,12 @@ Aura Video Studio provides comprehensive health check endpoints to monitor appli
 
 **Readiness probe** - checks if the application is ready to serve requests by validating all critical dependencies.
 
-**Purpose:** 
+**Purpose:**
 - Container orchestration readiness probe (Kubernetes, Docker)
 - Load balancer health checks
 - Monitoring systems (Prometheus, Datadog, etc.)
 
-**Response:** 
+**Response:**
 - 200 OK when all critical checks pass (status: "healthy")
 - 200 OK when some non-critical checks fail (status: "degraded")  
 - 503 Service Unavailable when critical checks fail (status: "unhealthy")

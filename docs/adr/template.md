@@ -36,17 +36,17 @@ Include both positive and negative consequences.
 
 <!-- Benefits and advantages of this decision -->
 
-- 
-- 
-- 
+-
+-
+-
 
 ### Negative Consequences
 
 <!-- Drawbacks, costs, or limitations of this decision -->
 
-- 
-- 
-- 
+-
+-
+-
 
 ## Alternatives Considered
 
@@ -63,10 +63,10 @@ For each alternative:
 **Description:**
 
 **Pros:**
-- 
+-
 
 **Cons:**
-- 
+-
 
 **Why Rejected:**
 
@@ -75,10 +75,10 @@ For each alternative:
 **Description:**
 
 **Pros:**
-- 
+-
 
 **Cons:**
-- 
+-
 
 **Why Rejected:**
 
@@ -88,9 +88,9 @@ For each alternative:
 Links to related documentation, discussions, or external resources
 -->
 
-- 
-- 
-- 
+-
+-
+-
 
 ## Notes
 

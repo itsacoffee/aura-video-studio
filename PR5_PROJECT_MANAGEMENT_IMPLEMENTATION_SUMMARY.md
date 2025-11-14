@@ -402,7 +402,7 @@ await saveNow();
 - **Language**: C# / .NET 8
 - **Framework**: ASP.NET Core Web API
 - **Database**: SQLite with Entity Framework Core
-- **Patterns**: 
+- **Patterns**:
   - Repository pattern
   - Service layer
   - Unit of Work

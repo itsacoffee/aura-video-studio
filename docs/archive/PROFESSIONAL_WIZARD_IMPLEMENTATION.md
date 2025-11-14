@@ -273,13 +273,13 @@ apiKeyErrors: Record<string, string>;
 
 1. **API Validation**: Currently uses mock validation
    - PR #2 will add actual backend validation endpoints
-   
+
 2. **API Key Security**: Keys stored in state/localStorage
    - PR #3 will add encryption and secure storage
-   
+
 3. **Video Tutorials**: Placeholder buttons
    - Future PR will add actual tutorial videos
-   
+
 4. **Mobile Responsiveness**: Needs testing on small screens
    - CSS media queries may need refinement
 

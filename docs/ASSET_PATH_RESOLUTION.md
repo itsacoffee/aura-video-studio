@@ -220,7 +220,7 @@ npm run dev
 mv assets/icons.backup assets/icons
 ```
 
-**Expected**: 
+**Expected**:
 - Logs show "Icon not found" for each path
 - Logs show "Using fallback icon"
 - Window and tray display purple gradient icons

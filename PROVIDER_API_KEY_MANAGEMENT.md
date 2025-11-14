@@ -264,7 +264,7 @@ Automatic proxy detection and configuration:
 
 **Solutions**:
 1. **Timeout or Network Error**: Click "Continue Anyway" - validation will happen on first use
-2. **Check internet connectivity**: 
+2. **Check internet connectivity**:
    - Try accessing https://api.openai.com in your browser
    - Check if other internet-dependent apps work
 3. **Proxy Configuration**:
@@ -281,7 +281,7 @@ Automatic proxy detection and configuration:
    - Check if api.openai.com is blocked
    - Temporarily disable VPN to test
 7. **Rate Limiting**: Wait 60 seconds and retry, or save and continue anyway
-8. **Verify API key**: 
+8. **Verify API key**:
    - Check it's copied completely including prefix (sk-, sk-proj-, etc.)
    - Generate new key if needed
 9. **Check provider service status**: Visit status pages (status.openai.com, etc.)

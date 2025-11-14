@@ -5,7 +5,6 @@
 
 ---
 
-
 # Loading States and Skeleton Screens Implementation Summary
 
 ## Overview
@@ -17,7 +16,7 @@ This implementation adds comprehensive loading states and skeleton screens throu
 
 #### SkeletonCard (`/src/components/Loading/SkeletonCard.tsx`)
 - **Purpose**: Displays animated placeholders for card-based layouts
-- **Features**: 
+- **Features**:
   - Configurable count (multiple cards)
   - Optional header, subheader, and footer sections
   - Shimmer animation effect
@@ -165,7 +164,7 @@ const result = await withLoadingState(
 
 ### ProjectsPage (`/src/pages/Projects/ProjectsPage.tsx`)
 - **Before**: Simple Spinner component during loading
-- **After**: 
+- **After**:
   - SkeletonTable for loading state
   - ErrorState component for failed loads with retry
   - Improved error handling with error messages

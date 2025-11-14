@@ -5,7 +5,6 @@
 
 ---
 
-
 # Health Diagnostics & Preflight Checks Implementation
 
 This document describes the implementation of the comprehensive health diagnostics and preflight checks system.

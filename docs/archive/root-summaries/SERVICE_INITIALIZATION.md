@@ -5,7 +5,6 @@
 
 ---
 
-
 # Service Initialization and Dependency Management
 
 This document describes the service initialization order, dependency relationships, and startup behavior of the Aura Video Studio API.

@@ -11,7 +11,7 @@ This document summarizes the implementation of the portable distribution build s
 ### 1. Enhanced Build Script (`build-portable.ps1`)
 
 #### Added Features
-- **Auto-Update Mechanism:** 
+- **Auto-Update Mechanism:**
   - Generates `version.json` with build metadata
   - Includes version, build date, platform, checksum
   - Supports GitHub releases URL for update checks
@@ -398,7 +398,7 @@ FFMPEG_DETECTION_TEST_PLAN.md              (Updated with portable integration)
 ### CodeQL Analysis
 - **Status:** ✅ No code changes requiring CodeQL analysis
 - **Reason:** Changes are documentation and PowerShell build scripts only
-- **Security considerations:** 
+- **Security considerations:**
   - Build script reviewed for injection vulnerabilities
   - No hardcoded secrets or credentials
   - PowerShell execution policy considerations documented

@@ -63,7 +63,7 @@ This document summarizes the complete implementation of all "Future implementati
   - J - Rewind (shuttle backward)
   - K - Pause/Play toggle
   - L - Fast forward (shuttle forward)
-  - + - Zoom in timeline
+  - - - Zoom in timeline
   - - - Zoom out timeline
   - S - Split clip at playhead
   - Q - Ripple trim start

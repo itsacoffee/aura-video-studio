@@ -5,7 +5,6 @@
 
 ---
 
-
 # API Key Validation Fix Summary
 
 ## Problem

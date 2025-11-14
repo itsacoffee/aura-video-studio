@@ -346,7 +346,7 @@ public record LlmUsageMetrics(
 
 3. **Add Cost Estimation**:
 - Maintain pricing table per model
-- Calculate cost = (input_tokens * input_price + output_tokens * output_price)
+- Calculate cost = (input_tokens *input_price + output_tokens* output_price)
 - Track cumulative costs per session
 
 4. **Usage Monitoring**:

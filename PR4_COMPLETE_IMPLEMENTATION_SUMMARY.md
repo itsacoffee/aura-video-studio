@@ -151,6 +151,7 @@ var version = estimator.GetConfigVersion(); // "2024.12"
 ## 📊 Current Pricing Database (Dec 2024)
 
 ### OpenAI
+
 | Model | Input $/1M | Output $/1M | Context | Use Case |
 |-------|-----------|------------|---------|----------|
 | GPT-4o | $2.50 | $10.00 | 128K | Complex tasks |
@@ -160,6 +161,7 @@ var version = estimator.GetConfigVersion(); // "2024.12"
 | GPT-4 Turbo | $10.00 | $30.00 | 128K | Legacy high-end |
 
 ### Anthropic
+
 | Model | Input $/1M | Output $/1M | Context | Use Case |
 |-------|-----------|------------|---------|----------|
 | Claude 3.5 Sonnet | $3.00 | $15.00 | 200K | **Best quality** |
@@ -168,6 +170,7 @@ var version = estimator.GetConfigVersion(); // "2024.12"
 | Claude 3 Haiku | $0.25 | $1.25 | 200K | **Budget option** |
 
 ### Google Gemini
+
 | Model | Input $/1M | Output $/1M | Context | Use Case |
 |-------|-----------|------------|---------|----------|
 | Gemini 2.0 Flash | **FREE** | **FREE** | 1M | Experimental |

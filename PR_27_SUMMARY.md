@@ -273,7 +273,7 @@ PR #27 successfully delivers a comprehensive system setup and dependency checkin
 
 **Status:** Ready for review and merge.
 
-**Next Steps:** 
+**Next Steps:**
 1. Review by maintainers
 2. Integration testing on various systems
 3. Merge to main branch

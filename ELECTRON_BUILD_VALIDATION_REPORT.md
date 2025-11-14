@@ -360,7 +360,7 @@ cd Aura.Desktop
 ### Optional Features
 1. **Code Signing:** Requires Windows SDK and valid certificate
    - Workaround: Build without signing (users will see SmartScreen warning)
-   
+
 2. **Windows Defender:** May require manual exclusion on some systems
    - Workaround: Automatic exclusion during installation (requires admin)
 

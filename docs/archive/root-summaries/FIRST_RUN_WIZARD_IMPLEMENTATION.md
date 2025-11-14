@@ -5,7 +5,6 @@
 
 ---
 
-
 # First-Run Wizard Overhaul - Implementation Summary
 
 ## Overview

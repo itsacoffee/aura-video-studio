@@ -289,7 +289,7 @@ Integration:         80% (manual testing pending)
 
 ## Next Steps
 
-1. **Code Review** 
+1. **Code Review**
    - Review FfmpegLocator.cs changes
    - Verify electron-builder configuration
    - Check test coverage

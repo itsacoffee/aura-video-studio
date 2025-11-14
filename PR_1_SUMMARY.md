@@ -15,10 +15,10 @@ This PR successfully transforms the Welcome page into a comprehensive configurat
 ✅ Large, animated "SETUP REQUIRED" banner when not configured
 ✅ Pulsing/glowing effect on Quick Setup button to draw attention
 ✅ Configuration status checklist with red ❌ / green ✅ checkmarks:
-  - Provider configured
-  - API keys validated
-  - Workspace created
-  - FFmpeg detected
+- Provider configured
+- API keys validated
+- Workspace created
+- FFmpeg detected
 ✅ "Create Video" button disabled with explanatory tooltip when not configured
 ✅ "Quick Setup" prominent button that launches configuration modal
 ✅ "System Ready" banner when fully configured

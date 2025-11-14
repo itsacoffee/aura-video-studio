@@ -5,7 +5,6 @@
 
 ---
 
-
 # ElevenLabs API Key Validation Fix - Implementation Summary
 
 ## Problem Statement

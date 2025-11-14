@@ -132,7 +132,7 @@ _logger.LogDebug("Checking claim: {Claim}", claim.Text);
 
 ### 1. File System Access
 **Risk:** Unauthorized access to verification files
-**Mitigation:** 
+**Mitigation:**
 - Files stored in application data directory only
 - No user-specified file paths accepted
 - Atomic operations prevent corruption

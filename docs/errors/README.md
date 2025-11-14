@@ -220,7 +220,7 @@ When you encounter an error:
 
 1. **Note the Error Code**: E.g., "E100-429"
 
-2. **Find the Category**: 
+2. **Find the Category**:
    - E100-E199: LLM Provider
    - E200-E299: TTS Provider
    - E300-E399: System
@@ -237,7 +237,7 @@ When you encounter an error:
    - Windows: `%APPDATA%\Aura\logs\`
    - Linux/Mac: `~/.config/aura/logs/`
 
-7. **Still Stuck?**: 
+7. **Still Stuck?**:
    - Search [GitHub Issues](https://github.com/Coffee285/aura-video-studio/issues)
    - Create new issue with error code and details
 

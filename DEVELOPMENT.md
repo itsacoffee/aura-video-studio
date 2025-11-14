@@ -607,6 +607,57 @@ Includes rate limiting and authentication.
 Closes #123
 ```
 
+## Documentation Tooling
+
+### Markdownlint
+
+All markdown files are linted using markdownlint-cli with configuration in `.markdownlint.json`.
+
+**Installation:**
+```bash
+npm install -g markdownlint-cli
+```
+
+**Usage:**
+```bash
+# Check all markdown files
+markdownlint --config .markdownlint.json "*.md" "docs/**/*.md"
+
+# Auto-fix issues
+markdownlint --fix --config .markdownlint.json "*.md" "docs/**/*.md"
+```
+
+**Configuration:**
+The `.markdownlint.json` file is configured to align with the repository's established style:
+- Disabled stylistic rules that don't match our conventions (MD036, MD029, MD026, MD024, etc.)
+- Enabled important rules for hard tabs and whitespace
+- Allows common patterns like emphasis-as-heading and trailing punctuation in headings
+
+### DocFX
+
+API documentation is generated using DocFX.
+
+**Installation:**
+```bash
+dotnet tool install -g docfx
+```
+
+**Usage:**
+```bash
+# Build documentation
+docfx build docfx.json
+
+# Serve documentation locally
+docfx serve _site
+```
+
+**Configuration:**
+- `docfx.json` - Main configuration
+- Generates documentation from XML comments in C# code
+- Includes markdown documentation from `docs/` directory
+
+**Note:** There may be a cosmetic warning about file links that appears even when links work correctly in the generated HTML. This is a known DocFX behavior and can be safely ignored if the links render correctly.
+
 ## Additional Resources
 
 - **[README.md](README.md)** - Project overview and quick start
@@ -622,7 +673,7 @@ Closes #123
 - **Issues:** GitHub Issues for bug reports and feature requests
 - **Discussions:** GitHub Discussions for questions and ideas
 - **Documentation:** Check `docs/troubleshooting/` for common issues
-- **Logs:** 
+- **Logs:**
   - Backend: Console output from `dotnet run`
   - Frontend: Browser console (F12)
   - Electron: See [DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md)

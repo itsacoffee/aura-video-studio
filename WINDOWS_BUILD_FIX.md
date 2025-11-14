@@ -34,7 +34,7 @@ The Electron builder was attempting to build for macOS and Linux on Windows, whi
 ## Configuration Now
 The build configuration now exclusively supports:
 - **Platform**: Windows x64
-- **Targets**: 
+- **Targets**:
   - NSIS installer
   - Portable executable
 - **Backend**: Windows x64 self-contained .NET build

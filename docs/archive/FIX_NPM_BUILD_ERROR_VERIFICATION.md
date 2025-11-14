@@ -8,12 +8,12 @@ There were 55 TypeScript compilation errors across 23 files in the `Aura.Web` pr
 
 1. **Incorrect import path**: `contentPlanningService.ts` was importing from `./api/client` instead of `./api/apiClient`
 2. **Unused imports**: Many React imports and component imports were unused after code refactoring
-3. **Type mismatches**: 
+3. **Type mismatches**:
    - Griffel style properties like `borderColor` and `borderWidth` needed type casting
    - Badge `appearance` prop had typo "tinted" instead of "tint"
 4. **Missing dependencies**: Components were importing from `lucide-react` which wasn't installed
 5. **Missing icons**: `WaveformRegular` and `TestBeaker24Regular` don't exist in Fluent UI
-6. **Type inconsistencies**: 
+6. **Type inconsistencies**:
    - `TimelineScene.duration` is a number (seconds), but code was accessing `.totalSeconds` property
    - Missing `pauseDurationMultiplier` property in `VoiceEnhancementConfig.prosody` interface
 7. **Incorrect component props**: Input component doesn't support `textarea` prop; should use Textarea component

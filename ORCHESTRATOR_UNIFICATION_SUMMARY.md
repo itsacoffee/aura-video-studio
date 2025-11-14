@@ -123,7 +123,7 @@ Refactored to use unified orchestration:
 1. **ILlmCache Interface Mismatch** ✅ FIXED
    - **Issue**: Cache method signatures don't match expected interface
    - **File**: `UnifiedGenerationOrchestrator.cs` line 62 (`GetAsync` call), line 115 (`SetAsync` call)
-   - **Fix Applied**: 
+   - **Fix Applied**:
      - Line 62: Changed to non-generic `GetAsync` returning `CachedEntry?`, deserialize response from JSON
      - Line 115: Serialize response to JSON, create `CacheMetadata` with proper fields
 

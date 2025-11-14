@@ -133,7 +133,7 @@ Primary Provider → Ollama (if different) → RuleBased (always available)
 - Word count appropriate for duration (400+ words)
 
 ### ✅ Tolerant enum parsing with aliases
-**Tests:** 
+**Tests:**
 - `ScriptRequest_Should_DeserializeWithAliasEnums`
 - `DensityConverter_Should_ParseValidValues`
 - `AspectConverter_Should_ParseValidValues`

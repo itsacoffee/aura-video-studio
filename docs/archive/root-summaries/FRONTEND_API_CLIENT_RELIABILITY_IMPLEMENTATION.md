@@ -5,7 +5,6 @@
 
 ---
 
-
 # Frontend API Client Reliability - Implementation Summary
 
 ## Overview
@@ -50,7 +49,7 @@ Enhanced the `CircuitBreaker` class to:
 **File:** `Aura.Web/src/services/api/cancellableRequests.ts`
 
 Created clean cancellation API with:
-- `CancellableRequest<T>` interface exposing `promise` and `cancel()` 
+- `CancellableRequest<T>` interface exposing `promise` and `cancel()`
 - Wrapper functions for all HTTP methods:
   - `getCancellable<T>(url, config?)`
   - `postCancellable<T>(url, data?, config?)`

@@ -5,7 +5,6 @@
 
 ---
 
-
 # User Customization API Testing Guide
 
 This guide provides examples for testing the User Preferences API endpoints using curl or similar tools.
@@ -435,7 +434,7 @@ Run it:
 
 **Problem**: `curl: (7) Failed to connect to localhost port 5005`
 
-**Solution**: 
+**Solution**:
 1. Ensure the API is running: `dotnet run` in Aura.Api directory
 2. Check the correct port in appsettings.json
 3. Verify no firewall blocking the port

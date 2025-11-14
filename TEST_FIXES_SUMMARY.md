@@ -46,14 +46,14 @@ This PR successfully addresses the "next step/out of scope" fixes from PR #293, 
 
 1. **Missing Extension Methods (8 errors)**
    - `HttpClient.PostAsJsonAsync()` - requires `System.Net.Http.Json` package
-   
+
 2. **Property Name Changes (6 errors)**
    - `RenderProgress.PercentComplete` → `RenderProgress.Percentage`
    - `FfmpegValidationResult.Path/IsValid/Version` properties not found
 
 3. **Missing Types (6 errors)**
    - `VideoResolution` type not found (likely renamed to `Resolution`)
-   
+
 4. **Wrong Constructor Parameters (20 errors)**
    - Tests still using object initializers instead of positional parameters
    - `VoiceSpec.Speed` property no longer exists

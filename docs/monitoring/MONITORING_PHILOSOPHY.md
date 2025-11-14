@@ -108,7 +108,7 @@ Error Budget = 0.1% = 43 minutes of downtime per month
 - **Threshold Tuning**: Set realistic thresholds based on historical data
 - **Alert Grouping**: Consolidate related alerts
 - **Flapping Protection**: Require 3 consecutive violations before firing
-- **Severity Levels**: 
+- **Severity Levels**:
   - **Critical**: Requires immediate action (PagerDuty)
   - **Warning**: Investigate during business hours (Slack)
   - **Info**: For dashboards only, no alerts

@@ -65,7 +65,7 @@ Fixed all npm deprecation warnings and .NET build errors to ensure clean builds 
 ```
 
 ### 4. `/workspace/Aura.Core/Aura.Core.csproj`
-**Changes**: 
+**Changes**:
 1. Updated SixLabors.ImageSharp version
 2. Fixed Windows Forms conditional reference
 

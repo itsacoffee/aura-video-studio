@@ -34,7 +34,7 @@ npm install
 npm run build
 ```
 
-**Expected Result**: 
+**Expected Result**:
 - Build completes successfully
 - `dist/` folder created with `index.html`
 - No errors or warnings
@@ -120,7 +120,7 @@ This will:
 **Solution**: Install Node.js 20.x or later from https://nodejs.org/
 
 ### ESLint errors after update
-**Solution**: 
+**Solution**:
 ```powershell
 cd Aura.Web
 Remove-Item -Recurse -Force node_modules

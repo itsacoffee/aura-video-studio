@@ -11,7 +11,7 @@ This document summarizes the security analysis of changes made to stabilize the 
 ## Security Enhancements Implemented
 
 ### 1. Input Validation
-**Files Modified**: 
+**Files Modified**:
 - `Aura.Core/Validation/OutputValidators.cs`
 - `Aura.Core/Validation/ScriptValidator.cs`
 
@@ -89,7 +89,7 @@ This document summarizes the security analysis of changes made to stabilize the 
 - Paths are not user-supplied
 - File operations wrapped in try-catch
 
-**Recommendation**: 
+**Recommendation**:
 - ✅ No additional changes needed - paths are internally controlled
 
 ### Retry Logic Abuse

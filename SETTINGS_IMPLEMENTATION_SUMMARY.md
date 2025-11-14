@@ -22,7 +22,7 @@ Implemented a comprehensive settings system for user preferences, provider confi
 
 #### Storage Strategy
 - **User Settings**: `AuraData/user-settings.json`
-- **Hardware Settings**: `AuraData/hardware-settings.json` 
+- **Hardware Settings**: `AuraData/hardware-settings.json`
 - **Provider Configuration**: Integrated with existing `ProviderSettings` and `KeyStore`
 - **API Keys**: Stored securely via `ISecureStorageService` (encrypted)
 

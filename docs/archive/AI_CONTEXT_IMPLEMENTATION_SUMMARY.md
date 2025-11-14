@@ -198,7 +198,7 @@ Total Unit Tests: 26/26 passing (100%)
 ### Storage
 - **Format**: JSON
 - **Location**: LocalApplicationData/Aura/
-- **Structure**: 
+- **Structure**:
   - Conversations/{projectId}.json
   - ProjectContexts/{projectId}.json
 

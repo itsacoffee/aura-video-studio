@@ -154,7 +154,7 @@ Build succeeded.
 **Render Controls**:
 - **Resolution**: 720p, 1080p, 1440p, 2160p with proper scaling
 - **FPS**: 23.976, 24, 25, 29.97, 30, 50, 59.94, 60 (CFR default)
-- **Codec**: 
+- **Codec**:
   - x264: CRF 14-28, preset veryfast-slow, tune film
   - NVENC H.264/HEVC: rc=cq, cq=18-33, preset p5-p7, rc-lookahead=16
   - AV1 NVENC (40/50 series): cq=22-38, preset p5-p7

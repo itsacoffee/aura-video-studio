@@ -5,7 +5,6 @@
 
 ---
 
-
 # Export Video Functionality - Implementation Complete
 
 ## Summary
@@ -124,7 +123,7 @@ Implementation details:
   2. Timeline-based export (using `timeline` parameter)
 
 Changes made:
-- **Backend**: 
+- **Backend**:
   - `Aura.Api/Controllers/ExportController.cs`: Added timeline rendering before export
   - `ExportRequestDto`: Made `InputFile` optional, added `Timeline` property
 - **Frontend**:

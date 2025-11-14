@@ -5,7 +5,6 @@
 
 ---
 
-
 # Ollama Process Control Implementation Summary
 
 ## Overview
@@ -49,6 +48,7 @@ This document summarizes the comprehensive implementation of Ollama process cont
   - Async/await throughout
 
 **Endpoints**:
+
 | Method | Route | Description |
 |--------|-------|-------------|
 | GET | `/api/ollama/status` | Check Ollama running status |

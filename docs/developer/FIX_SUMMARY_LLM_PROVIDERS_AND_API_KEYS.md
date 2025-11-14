@@ -96,7 +96,7 @@ To verify the fixes work:
    ```
    Result: All 17 tests pass ✓
 
-3. **UI Verification**: 
+3. **UI Verification**:
    - Navigate to Settings → API Keys tab
    - Verify fields are present for: OpenAI, ElevenLabs, Pexels, Pixabay, Unsplash, Stability AI
    - Enter and save keys

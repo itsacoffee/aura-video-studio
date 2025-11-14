@@ -98,6 +98,7 @@ const buttonDisabled = isButtonDisabled(state.status, state.isDetectingHardware)
 ```
 
 **Button Label Mapping:**
+
 | Status | Label | Icon |
 |--------|-------|------|
 | idle | "Validate" or "Next" | Play/ChevronRight |

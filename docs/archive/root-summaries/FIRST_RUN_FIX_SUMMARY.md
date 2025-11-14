@@ -5,7 +5,6 @@
 
 ---
 
-
 # First-Run Wizard Fix Summary
 
 ## Problem Statement

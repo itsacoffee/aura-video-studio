@@ -275,7 +275,7 @@ HttpClient Windows Configuration:
 
 **Cause**: Missing prerequisites (API keys, Ollama, etc.)
 
-**Solution**: 
+**Solution**:
 1. Check if environment variables are set
 2. Verify Ollama is running (for Ollama tests)
 3. Check test output for skip reasons

@@ -61,7 +61,7 @@ private string? FindFfmpegExecutableInDirectory(string directory)
 }
 ```
 
-**Testing**: 
+**Testing**:
 - ✅ Manual registry checks on Windows
 - ✅ Path resolution tests
 - ✅ Edge case handling (missing registry keys, permissions)
@@ -70,7 +70,7 @@ private string? FindFfmpegExecutableInDirectory(string directory)
 
 ### 2. ✅ Auto-Download for FFmpeg (Windows-Specific)
 
-**Implementation Locations**: 
+**Implementation Locations**:
 - Backend: `Aura.Core/Dependencies/FfmpegInstaller.cs`
 - Electron: `Aura.Desktop/scripts/download-ffmpeg-windows.ps1`
 - IPC: `Aura.Desktop/electron/ipc-handlers/ffmpeg-handler.js`
@@ -480,6 +480,7 @@ dotnet test --filter "FullyQualifiedName~FFmpegWindowsIntegrationTests.EscapePat
 ## 📈 Performance Improvements
 
 ### Hardware Acceleration Benefits
+
 | Encoder | Speedup vs Software | Quality |
 |---------|---------------------|---------|
 | NVENC (NVIDIA) | 5-10x faster | Excellent |
@@ -487,6 +488,7 @@ dotnet test --filter "FullyQualifiedName~FFmpegWindowsIntegrationTests.EscapePat
 | QuickSync (Intel) | 3-5x faster | Good |
 
 ### Example: 1080p30 60-second video
+
 | Quality | Software | NVENC | AMF | QuickSync |
 |---------|----------|-------|-----|-----------|
 | Draft | ~30s | ~5s | ~5s | ~10s |
@@ -499,7 +501,7 @@ dotnet test --filter "FullyQualifiedName~FFmpegWindowsIntegrationTests.EscapePat
 ## 🐛 Known Issues & Limitations
 
 ### Windows-Specific
-1. **Long Path Support**: 
+1. **Long Path Support**:
    - Issue: Windows has 260-character path limit
    - Mitigation: Converts absolute paths, strips `\\?\` prefix
    - Recommendation: Keep project paths short

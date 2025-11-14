@@ -29,7 +29,7 @@ This guide covers installing and configuring Aura Video Studio dependencies, wit
 
 - **Operating System**: Ubuntu 20.04+, Debian 11+, or equivalent
 - **Runtime**: .NET 8.0 Runtime
-- **Dependencies**: 
+- **Dependencies**:
   ```bash
   sudo apt install libicu-dev libssl-dev
   ```
@@ -277,7 +277,7 @@ Portable mode allows you to run Aura Video Studio from a USB drive or move insta
    :: Windows
    echo. > portable.flag
    ```
-   
+
    ```bash
    # Linux/Mac
    touch portable.flag
@@ -538,7 +538,7 @@ Log excerpt:
 
 **Solutions:**
 1. **Run Rescan**: Click **Rescan** in Download Center
-2. **Check installation path**: 
+2. **Check installation path**:
    - Windows: Open `%LOCALAPPDATA%\Aura\dependencies\bin\`
    - Verify `ffmpeg.exe` exists
 3. **Verify executable**: Run `ffmpeg -version` in terminal
@@ -562,7 +562,7 @@ Log excerpt:
 1. **Install Visual C++ Redistributable** (Windows):
    - Download from: https://aka.ms/vs/17/release/vc_redist.x64.exe
    - Run installer and restart computer
-   
+
 2. **Repair FFmpeg**:
    - Go to Download Center → FFmpeg card
    - Click **Repair**

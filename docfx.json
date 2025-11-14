@@ -51,17 +51,7 @@
         ]
       }
     ],
-    "overwrite": [
-      {
-        "files": [
-          "apidoc/**.md"
-        ],
-        "exclude": [
-          "obj/**",
-          "_site/**"
-        ]
-      }
-    ],
+    "overwrite": [],
     "dest": "_site",
     "globalMetadata": {
       "_appTitle": "Aura Video Studio",
@@ -71,7 +61,7 @@
       "_enableNewTab": true,
       "_disableContribution": false,
       "_gitContribute": {
-        "repo": "https://github.com/Saiyan9001/aura-video-studio",
+        "repo": "https://github.com/Coffee285/aura-video-studio",
         "branch": "main"
       }
     },

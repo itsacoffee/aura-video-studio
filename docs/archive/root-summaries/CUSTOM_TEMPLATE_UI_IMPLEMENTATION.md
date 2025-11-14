@@ -5,7 +5,6 @@
 
 ---
 
-
 # Custom Template UI Implementation - Continuation of PR 57
 
 ## Overview
@@ -32,7 +31,7 @@ This document summarizes the completion of the custom template builder UI work t
 
 **Problem**: E2E tests failed to compile due to missing interface methods in `ILlmProvider`
 
-**Solution**: 
+**Solution**:
 - Added three missing methods to test mock classes:
   - `AnalyzeSceneCoherenceAsync`
   - `ValidateNarrativeArcAsync`

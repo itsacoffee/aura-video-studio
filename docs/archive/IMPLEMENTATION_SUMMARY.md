@@ -50,7 +50,7 @@ This document summarizes the implementation of core features for Aura Video Stud
 - `OpenAiLlmProvider` - GPT-4/GPT-3.5 via OpenAI API
 - `StableDiffusionWebUiProvider` - Local SD generation (NVIDIA-only with VRAM gating)
 
-**Key Policy**: 
+**Key Policy**:
 - Free mode always works (no API keys required)
 - Pro providers are optional enhancements
 - Local diffusion strictly requires NVIDIA GPU with sufficient VRAM

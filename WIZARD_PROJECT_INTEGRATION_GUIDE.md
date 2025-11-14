@@ -20,7 +20,7 @@ The wizard project persistence feature allows users to save their work at any st
 - Proper error handling with ProblemDetails
 - Correlation ID tracking for debugging
 
-**Database**: 
+**Database**:
 - Entity: `ProjectStateEntity` with `CurrentWizardStep` field
 - Migration: `20251108184353_AddWizardProjectManagement.cs`
 

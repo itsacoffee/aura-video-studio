@@ -20,7 +20,7 @@ This implementation completes the release readiness finalization for Aura Video 
 - Returns: semanticVersion, buildDate, assemblyVersion, runtimeVersion, description
 - Falls back to assembly version if version.json not found
 
-**UI Display:** 
+**UI Display:**
 - Version shown in GlobalStatusFooter (bottom-right)
 - Tooltip shows build date and .NET runtime version
 - **Component:** `Aura.Web/src/components/GlobalStatusFooter/GlobalStatusFooter.tsx`

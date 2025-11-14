@@ -53,7 +53,7 @@ This PR transforms the Welcome page into a comprehensive configuration hub that 
 **Features Implemented:**
 - **Setup Required Banner**: Prominent, animated banner when configuration is incomplete
 - **Configuration Status Card**: Real-time status display with checklist
-- **Conditional Button States**: 
+- **Conditional Button States**:
   - Create Video button disabled when not configured
   - Tooltip explains what's needed
   - Setup Wizard button prominently displayed

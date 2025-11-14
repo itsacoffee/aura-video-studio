@@ -37,7 +37,7 @@ public Task<Core.Models.Generation.Script> GenerateScriptAsync(string brief, int
 - **General**: Default fallback for other content
 - Logs detected type for debugging
 
-#### 3. `GenerateSceneNarration(...)` 
+#### 3. `GenerateSceneNarration(...)`
 - Generates template-based narration for each scene
 - Provides distinct templates for each video type:
   - **Tutorial**: Educational, step-by-step guidance

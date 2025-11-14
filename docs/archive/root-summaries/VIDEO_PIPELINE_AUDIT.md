@@ -5,7 +5,6 @@
 
 ---
 
-
 # Video Generation Pipeline Production Readiness Audit
 
 **Audit Date**: 2025-11-01  
@@ -95,7 +94,7 @@ The system supports two orchestration modes:
 - Markdown format compliance
 
 ### 2.3 TTS Provider Integration ✅
-**Providers**: 
+**Providers**:
 - ElevenLabs (premium, realistic voices)
 - PlayHT (premium, voice cloning)
 - Azure TTS (cloud-based)
@@ -140,7 +139,7 @@ Primary Provider → Secondary Provider → Offline Provider → Error
 - Proper temp file registration
 
 ### 2.5 FFmpeg Rendering Pipeline ✅
-**Location**: 
+**Location**:
 - `Aura.Core/Services/FFmpeg/FFmpegService.cs`
 - `Aura.Core/Services/FFmpeg/FFmpegCommandBuilder.cs`
 - `Aura.Core/Rendering/FFmpegPlanBuilder.cs`
@@ -167,7 +166,7 @@ Primary Provider → Secondary Provider → Offline Provider → Error
 - Audio: AAC (most compatible)
 
 ### 2.6 Hardware Acceleration ✅
-**Location**: 
+**Location**:
 - `Aura.Core/Hardware/HardwareDetector.cs`
 - `Aura.Core/Rendering/FFmpegPlanBuilder.cs`
 
@@ -252,7 +251,7 @@ Primary Provider → Secondary Provider → Offline Provider → Error
 4. Configurable style (font size, color, outline)
 
 ### 2.10 Progress Reporting (SSE) ✅
-**Location**: 
+**Location**:
 - `Aura.Api/Controllers/JobsController.cs` (SSE endpoint)
 - `Aura.Core/Orchestrator/JobRunner.cs`
 

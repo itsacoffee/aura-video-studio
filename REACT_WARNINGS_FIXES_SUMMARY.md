@@ -142,7 +142,7 @@ npm run lint
 1. **React Router Future Flags**: Warnings about v7 migration
    - `v7_startTransition` and `v7_relativeSplatPath`
    - These are future compatibility warnings, not runtime issues
-   
+
 2. **Test-specific `act()` warnings**: Test framework issues
    - Should be addressed in test infrastructure PR
 

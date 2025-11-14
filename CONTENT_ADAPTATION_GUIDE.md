@@ -394,7 +394,7 @@ const video = await generateVideo({
 
 ### Issue: Not Enough Change
 
-**Solution:** 
+**Solution:**
 - Increase aggressiveness to 0.7-0.8
 - Check all features are enabled
 - Verify audience profile has detailed characteristics

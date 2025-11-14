@@ -8,7 +8,7 @@ The Quick Demo and Generate Video buttons were non-functional - clicking them re
 ### Issue 1: Hardcoded URL in Quick Demo Handler
 **Location**: `Aura.Web/src/pages/Wizard/CreateWizard.tsx`, line 430
 
-**Problem**: 
+**Problem**:
 ```typescript
 const validationResponse = await fetch('http://localhost:5005/api/validation/brief', {
 ```

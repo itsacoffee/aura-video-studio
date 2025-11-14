@@ -5,7 +5,6 @@
 
 ---
 
-
 # Interactive Tooltips and Contextual Help System Implementation
 
 ## Overview

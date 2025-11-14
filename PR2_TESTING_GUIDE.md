@@ -427,7 +427,7 @@ localStorage.setItem('logLevel', 'debug');
 ## Common Issues & Solutions
 
 ### Issue: "Cannot connect to OpenAI API"
-**Solution:** 
+**Solution:**
 1. Check API key in appsettings.json
 2. Verify internet connectivity
 3. Check firewall settings

@@ -5,7 +5,6 @@
 
 ---
 
-
 # Skip Button Bug Fix Summary
 
 ## Problem

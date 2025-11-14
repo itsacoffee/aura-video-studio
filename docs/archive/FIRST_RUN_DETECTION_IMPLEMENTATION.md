@@ -30,7 +30,7 @@ A centralized service for managing first-run detection with dual persistence:
 
 #### 2. App.tsx Updates
 **Before:** Routes loaded immediately, WelcomePage handled redirection
-**After:** 
+**After:**
 - Checks first-run status on mount before rendering routes
 - Shows loading spinner during check
 - Conditionally redirects root route to /onboarding for first-time users

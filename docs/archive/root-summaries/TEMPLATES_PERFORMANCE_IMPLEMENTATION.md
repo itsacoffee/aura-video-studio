@@ -5,7 +5,6 @@
 
 ---
 
-
 # Templates Page Performance Fixes Implementation
 
 ## Problem Statement

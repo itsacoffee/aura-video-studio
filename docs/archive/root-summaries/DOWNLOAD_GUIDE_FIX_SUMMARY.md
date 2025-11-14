@@ -5,7 +5,6 @@
 
 ---
 
-
 # Download Guide Crash Fix - Implementation Summary
 
 ## Problem Statement
@@ -172,7 +171,7 @@ describe('DownloadsPage - Manual Instructions Handling', () => {
    - Added "Go Back" button to UI (highest priority)
    - Lines changed: ~40 lines
 
-3. **Aura.Web/src/pages/__tests__/DownloadsPage.test.ts** (NEW)
+3. **Aura.Web/src/pages/**tests**/DownloadsPage.test.ts** (NEW)
    - Created comprehensive test suite
    - Tests all edge cases and error conditions
    - Validates defensive programming works correctly

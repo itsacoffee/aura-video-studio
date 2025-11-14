@@ -64,7 +64,7 @@ Features:
    - Vibrant aesthetic, dynamic pacing
    - Heavy sound effects, energetic music
    - 15-minute target, 16:9 aspect ratio
-   
+
 2. **Corporate Training**
    - Low energy (40/100), high formality (80/100)
    - Corporate aesthetic, cool colors

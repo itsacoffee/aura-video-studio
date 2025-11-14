@@ -16,7 +16,7 @@ The npm build (`npm run build`) in the `Aura.Web` directory was failing due to *
    - Removed unused imports: `Tooltip`, `DialogTrigger`, `ErrorCircle20Filled`
    - Removed unused variable: `engines` from useEnginesStore destructuring
    - Fixed type error: `parseInt()` can return `NaN`, and `engineConfig.defaultPort` is optional (`number | undefined`)
-   
+
 2. **ProviderSelection.tsx** (1 error)
    - Removed unused variable: `engines` from useEnginesStore destructuring
 

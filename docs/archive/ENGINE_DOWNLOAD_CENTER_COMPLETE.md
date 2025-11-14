@@ -146,6 +146,7 @@ Tests:
 - **Manifest**: `%LOCALAPPDATA%/Aura/engines-manifest.json`
 
 ### Health Check Configuration
+
 | Engine | Endpoint | Timeout |
 |--------|----------|---------|
 | Stable Diffusion | `/sdapi/v1/sd-models` | 120s |

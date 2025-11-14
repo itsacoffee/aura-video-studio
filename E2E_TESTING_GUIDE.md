@@ -23,7 +23,7 @@ This guide covers end-to-end testing for Aura Video Studio, including test scena
    - SSE progress tracking
    - Job management (creation, cancellation, monitoring)
    - Error handling and recovery
-   
+
 2. **Backend Integration Tests** (.NET)
    - Complete workflow validation
    - Provider integration

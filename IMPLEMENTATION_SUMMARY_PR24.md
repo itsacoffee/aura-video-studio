@@ -84,7 +84,7 @@ This PR implements a comprehensive job tracking system with real-time progress u
 - **Time Display**:
   - Elapsed time: Human-readable format (Xh Ym Zs)
   - ETA: Estimated time remaining (from ProgressEstimator)
-- **Cancel Button**: 
+- **Cancel Button**:
   - Confirmation dialog using Fluent UI Dialog
   - Prevents accidental cancellation
   - Shows cancelling state during operation

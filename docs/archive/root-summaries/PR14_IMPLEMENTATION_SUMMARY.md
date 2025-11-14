@@ -5,7 +5,6 @@
 
 ---
 
-
 # PR #14: Intelligent LLM Provider Recommendation System - Implementation Summary
 
 ## Overview
@@ -85,19 +84,19 @@ This PR implements a comprehensive LLM provider recommendation system that provi
    - `GET /api/providers/recommendations/{operationType}` - Get ranked recommendations
      - Query param: estimatedInputTokens (default: 1000)
      - Returns: List of ProviderRecommendation DTOs
-   
+
    - `GET /api/providers/health` - Get health status of all providers
      - Returns: List of ProviderHealthDto
-   
+
    - `GET /api/providers/cost-tracking` - Get monthly cost summary
      - Returns: CostTrackingSummaryDto with total cost and breakdowns
-   
+
    - `POST /api/providers/cost-estimate` - Estimate cost for operation (stub)
      - Body: ProviderRecommendationRequest
-   
+
    - `GET /api/providers/profiles` - Get available provider profiles
      - Returns: List of profile descriptions
-   
+
    - `POST /api/providers/test-connection` - Test provider API key (stub)
      - Body: TestProviderConnectionRequest
 

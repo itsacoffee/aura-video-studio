@@ -2,7 +2,7 @@
 
 ## What Was Done ✅
 
-Completed a comprehensive audit of the Aura Video Studio app to ensure all features are properly wired up. 
+Completed a comprehensive audit of the Aura Video Studio app to ensure all features are properly wired up.
 
 ## Critical Issues Fixed (4)
 

@@ -5,7 +5,6 @@
 
 ---
 
-
 # PR #16: Rich Audience Profile Builder - Implementation Summary
 
 ## Overview

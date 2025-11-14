@@ -9,7 +9,7 @@ This document describes the implementation of download robustness features inclu
 
 **Problem:** 404 errors from primary download URLs break installations with no recovery mechanism.
 
-**Solution:** 
+**Solution:**
 - Added `mirrors` array to `EngineManifestEntry` model supporting platform-specific mirror URLs
 - Updated `HttpDownloader.DownloadFileAsync()` to accept an array of URLs and automatically fallback to mirrors
 - Implements exponential backoff between retries (2^attempt seconds)

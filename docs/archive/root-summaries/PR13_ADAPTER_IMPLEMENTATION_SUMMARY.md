@@ -5,7 +5,6 @@
 
 ---
 
-
 # PR #13: LLM Provider-Specific Communication Adapters - Implementation Summary
 
 ## Overview
@@ -41,7 +40,7 @@ This PR implements a comprehensive adapter pattern for LLM provider communicatio
   - Creative: temp=0.7, top_p=0.9, frequency_penalty=0.3
   - Analytical: temp=0.3, top_p=0.8, no penalties
   - Extraction: temp=0.1, top_p=0.7, precise output
-- **Error Handling**: 
+- **Error Handling**:
   - Rate limit (429) → exponential backoff, 3 retries
   - Unauthorized (401) → permanent failure, fallback
   - Server error (5xx) → retry twice, then fallback
@@ -235,17 +234,17 @@ Adapters are **implemented and tested** but not yet integrated into the runtime.
 1. **Update LlmProviderFactory** (`Aura.Core/Orchestrator/LlmProviderFactory.cs`)
    - Instantiate adapters alongside providers
    - Pass adapter to provider constructor (requires provider modification)
-   
+
 2. **Update Provider Implementations** (Breaking Change)
    - Add `ILlmProviderAdapter` parameter to constructors
    - Use adapter for prompt optimization before API calls
    - Use adapter for parameter calculation
    - Use adapter for error handling
-   
+
 3. **Update Program.cs DI** (`Aura.Api/Program.cs`)
    - Register adapters as singletons
    - Configure adapter-provider pairing
-   
+
 4. **Migration Path**
    - Adapters can be optional initially (null check)
    - Gradually migrate providers to use adapters

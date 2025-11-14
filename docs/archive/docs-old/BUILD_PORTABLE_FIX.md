@@ -5,7 +5,6 @@
 
 ---
 
-
 # build-portable.ps1 Fix Summary
 
 ## What You Experienced

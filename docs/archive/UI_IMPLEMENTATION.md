@@ -224,10 +224,10 @@ This document describes the WinUI 3 user interface implementation for Aura Video
   
 - **Download Center** (Expander)
   - ListView of dependencies:
-    * FFmpeg (Required, 150 MB)
-    * Ollama + model (Optional, 5.2 GB)
-    * SD WebUI + SDXL (NVIDIA-only, 8 GB)
-    * CC0 B-roll Pack (Optional, 2.1 GB)
+    - FFmpeg (Required, 150 MB)
+    - Ollama + model (Optional, 5.2 GB)
+    - SD WebUI + SDXL (NVIDIA-only, 8 GB)
+    - CC0 B-roll Pack (Optional, 2.1 GB)
   - Status indicators and sizes
   - Install/Verify buttons per item
 

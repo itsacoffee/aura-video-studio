@@ -91,7 +91,7 @@
 - ModelPicker component (enhanced with Explain feature)
 - Job Details audit (ModelSelectionAudit integrated into RunDetailsPage)
 
-**Docs**: ✅ 
+**Docs**: ✅
 - USER_CUSTOMIZATION_GUIDE.md precedence table verified accurate
 
 ## Acceptance Criteria Status

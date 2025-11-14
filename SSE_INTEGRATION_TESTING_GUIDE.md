@@ -94,7 +94,7 @@ This guide provides instructions for testing the Server-Sent Events (SSE) integr
 **Steps:**
 1. Click "Create" in sidebar
 2. Fill in wizard:
-   - **Step 1 - Brief**: 
+   - **Step 1 - Brief**:
      - Topic: "Test video"
      - Audience: "General"
      - Goal: "Demonstrate"

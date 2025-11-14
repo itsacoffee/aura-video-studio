@@ -22,7 +22,7 @@ Additionally, there were multiple deprecated package warnings from transitive de
 
 ## Root Cause
 
-The `updater` property in `Aura.Desktop/package.json` (lines 131-137) is **not a valid electron-builder configuration property**. 
+The `updater` property in `Aura.Desktop/package.json` (lines 131-137) is **not a valid electron-builder configuration property**.
 
 The electron-builder schema does not include an `updater` property at the root level of the build configuration. Auto-update functionality is handled through:
 1. The `electron-updater` package (installed as a dependency)
@@ -47,7 +47,7 @@ The electron-builder schema does not include an `updater` property at the root l
 }
 ```
 
-**Impact**: 
+**Impact**:
 - Build configuration is now valid and passes electron-builder validation
 - Auto-update functionality remains fully operational via `electron-updater` package
 - Runtime configuration in `electron/main.js` (lines 185-270) handles all update logic

@@ -5,7 +5,6 @@
 
 ---
 
-
 # Dark Mode Verification Guide
 
 This document provides instructions for manually verifying dark mode styling in Aura.Web.

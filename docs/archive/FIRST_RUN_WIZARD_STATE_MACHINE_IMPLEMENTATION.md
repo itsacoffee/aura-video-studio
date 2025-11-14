@@ -36,6 +36,7 @@ Idle → Validating → Valid/Invalid → Installing → Installed → Ready
 - Install item tracking with progress state
 
 **Button Label Mapping:**
+
 | Status | Label |
 |--------|-------|
 | Idle | "Validate" (last step) or "Next" |

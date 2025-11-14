@@ -5,7 +5,6 @@
 
 ---
 
-
 # State Persistence, Auto-Save, and Crash Recovery Implementation
 
 ## Overview

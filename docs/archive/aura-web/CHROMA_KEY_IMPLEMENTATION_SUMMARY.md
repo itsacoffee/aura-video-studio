@@ -5,7 +5,6 @@
 
 ---
 
-
 # Chroma Key and Compositing - Implementation Summary
 
 ## Overview

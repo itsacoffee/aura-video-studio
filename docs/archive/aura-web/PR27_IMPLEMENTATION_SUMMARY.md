@@ -5,7 +5,6 @@
 
 ---
 
-
 # PR 27: Professional NLE Layout Implementation Summary
 
 ## Overview

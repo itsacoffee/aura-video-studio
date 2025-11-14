@@ -281,6 +281,7 @@ Complete TTS setup guide:
 ## Performance
 
 ### TTS Synthesis Times (100 words)
+
 | Provider | Speed | Real-time Factor |
 |----------|-------|------------------|
 | Windows SAPI | 12s | 5x |
@@ -290,6 +291,7 @@ Complete TTS setup guide:
 | Mimic3 (high) | 12s | 5x |
 
 ### SD Generation Times
+
 | Model | VRAM | Time per Image |
 |-------|------|----------------|
 | SD 1.5 | 6GB | 10-30s |

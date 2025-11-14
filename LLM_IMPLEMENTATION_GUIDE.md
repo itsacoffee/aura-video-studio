@@ -659,4 +659,3 @@ public async Task<bool> TestModelAsync(string modelId, string apiKey, Cancellati
 ```
 
 Test results are cached to avoid repeated API calls and shown in UI.
-

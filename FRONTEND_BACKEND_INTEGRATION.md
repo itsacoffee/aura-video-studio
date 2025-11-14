@@ -113,7 +113,7 @@ const {
 } = useVideoGenerationStore();
 ```
 
-**Persistence**: 
+**Persistence**:
 - Job history
 - User preferences (auto-save, notifications)
 

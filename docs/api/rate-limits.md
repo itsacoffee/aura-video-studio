@@ -324,7 +324,7 @@ Rate limiting is one layer. Also implement:
 
 **Problem:** Multiple clients behind same NAT/proxy share rate limit
 
-**Solution:** 
+**Solution:**
 1. Configure proxy to forward client IP in `X-Real-IP` or `X-Forwarded-For` header
 2. Update `RealIpHeader` in configuration
 3. For internal apps, whitelist proxy IP

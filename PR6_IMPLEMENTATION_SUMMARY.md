@@ -117,30 +117,30 @@ Features:
 - Notification system demo
 
 ### Tests (`Aura.Web/src/`)
-✅ **stores/__tests__/videoGenerationStore.test.ts** - NEW
+✅ **stores/**tests**/videoGenerationStore.test.ts** - NEW
 - Job lifecycle tests (start, update, complete, fail, cancel)
 - Progress tracking verification
 - History management tests
 - Concurrent job handling
 
-✅ **stores/__tests__/projectsStore.test.ts** - NEW
+✅ **stores/**tests**/projectsStore.test.ts** - NEW
 - CRUD operation tests
 - Filter and sort functionality
 - Recent projects tracking
 - Draft management
 
-✅ **stores/__tests__/appStore.test.ts** - NEW
+✅ **stores/**tests**/appStore.test.ts** - NEW
 - Notification system tests
 - Settings management
 - UI state tests
 - Online/offline handling
 
-✅ **services/api/__tests__/projectsApi.test.ts** - NEW
+✅ **services/api/**tests**/projectsApi.test.ts** - NEW
 - API endpoint tests
 - Request/response validation
 - Error handling verification
 
-✅ **hooks/__tests__/useProjects.test.ts** - NEW
+✅ **hooks/**tests**/useProjects.test.ts** - NEW
 - Hook behavior tests
 - React Query integration
 - Optimistic updates

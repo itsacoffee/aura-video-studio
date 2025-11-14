@@ -71,7 +71,7 @@ Aura Video Studio uses a multi-layered configuration system:
 - **Interval**: `300` seconds (5 minutes)
 - Range: 30-3600 seconds
 
-**Startup Behavior**: 
+**Startup Behavior**:
 - `ShowDashboard` (default)
 - `ShowLastProject`
 - `ShowNewProjectDialog`

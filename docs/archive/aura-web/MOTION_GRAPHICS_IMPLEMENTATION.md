@@ -5,7 +5,6 @@
 
 ---
 
-
 # Motion Graphics and Animation Tools Implementation Summary
 
 ## Overview
@@ -281,7 +280,7 @@ import {
 1. animationEngine.ts (9,044 bytes)
 
 ### Tests Created: 1
-1. src/services/__tests__/animationEngine.test.ts (8,746 bytes) - 25 passing tests
+1. src/services/**tests**/animationEngine.test.ts (8,746 bytes) - 25 passing tests
 
 ### Total Lines of Code: ~3,800 lines
 ### Total Files Modified/Created: 13

@@ -5,7 +5,6 @@
 
 ---
 
-
 # Workspace Thumbnails Implementation
 
 ## Overview

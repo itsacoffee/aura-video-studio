@@ -435,7 +435,7 @@ See `WINDOWS_11_TESTING_GUIDE.md` for comprehensive test checklist covering:
 
 **Impact:** First-time users must download and install separately
 
-**Mitigation:** 
+**Mitigation:**
 - Clear installer prompts with download link
 - First-run wizard checks and guides user
 - Consider bundling runtime in future versions

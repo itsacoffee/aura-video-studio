@@ -244,7 +244,7 @@ def validate_platform_requirements(platform, width, height, file_size, duration)
     return response.json()["result"]
 ```
 
-### C#
+### C #
 ```csharp
 using System.Net.Http;
 using System.Text.Json;

@@ -287,7 +287,7 @@ nvidia-smi
 ```
 
 **Solutions**:
-1. **CPU bound**: 
+1. **CPU bound**:
    - Close background applications
    - Reduce video quality/length
    - Enable hardware acceleration (if available)

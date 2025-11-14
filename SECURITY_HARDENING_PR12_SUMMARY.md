@@ -212,20 +212,20 @@ services.Configure<CookiePolicyOptions>(options =>
 1. **Dependency Scanning**
    - .NET vulnerable packages
    - npm audit
-   
+
 2. **SAST Scanning**
    - CodeQL (C# and JavaScript)
    - Semgrep security analysis
    - .NET Security Scan tool
-   
+
 3. **Container Scanning**
    - Trivy vulnerability scanner
    - SARIF output for GitHub Security
-   
+
 4. **Secret Scanning**
    - TruffleHog
    - Gitleaks
-   
+
 5. **Dependency Review**
    - License compliance
    - Vulnerability detection in PRs

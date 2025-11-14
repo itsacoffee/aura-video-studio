@@ -5,7 +5,6 @@
 
 ---
 
-
 # PathSelector Component - Implementation Summary
 
 ## Overview

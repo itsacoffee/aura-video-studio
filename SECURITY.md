@@ -166,7 +166,7 @@ All API keys and provider secrets are encrypted at rest using platform-specific 
 - **Method**: AES-256-CBC encryption
 - **Key**: Machine-specific 256-bit key stored in `$HOME/.local/share/Aura/secure/.machinekey`
 - **Storage**: `$HOME/.local/share/Aura/secure/apikeys.dat`
-- **Security**: 
+- **Security**:
   - Keys encrypted with machine-specific AES-256 key
   - File permissions set to 600 (owner read/write only)
   - Initialization vector (IV) prepended to encrypted data for CBC mode
@@ -399,4 +399,3 @@ For security and governance, the precedence rules are:
 - All selections require authentication
 - Audit trail provides non-repudiation
 - System fallback disabled by default for predictability
-

@@ -314,7 +314,7 @@ After successful build, expect these files in `dist/`:
 **Solution**: Add FFmpeg binaries to resources/ffmpeg/win-x64/bin/
 
 ### "Certificate error during signing"
-**Solution**: 
+**Solution**:
 - Verify WIN_CSC_LINK and WIN_CSC_KEY_PASSWORD are set
 - Or disable signing by not setting these variables
 

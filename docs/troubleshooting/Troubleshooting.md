@@ -769,7 +769,7 @@ The API server automatically handles normalization - you can send either canonic
 
 **Symptom:** Request fails with E303 error mentioning invalid enum value
 
-**Solution:** 
+**Solution:**
 1. Check that your enum values match either canonical names or supported aliases
 2. Ensure proper casing (enums are case-insensitive for parsing, but canonical values use PascalCase)
 3. Review the error message for the list of valid values
@@ -1047,7 +1047,7 @@ If settings are corrupted:
    - Corrupted TTS output is re-encoded to clean WAV
    - If re-encoding fails, app generates silent fallback
    - Check logs for remediation attempts
-   
+
    **Manual Fix:**
    - Delete corrupted narration files
    - Re-generate narration with TTS provider

@@ -5,7 +5,6 @@
 
 ---
 
-
 # Health Monitoring and Circuit Breaker Implementation
 
 ## Overview

@@ -59,7 +59,7 @@ When you rebuild and run the app, verify the following behaviors:
 #### Port Already in Use
 1. Start the app
 2. While it's running, try to start a second instance
-3. **Expected:** 
+3. **Expected:**
    - Second instance logs warning about port
    - Attempts to start anyway (will fail at Kestrel bind)
    - Shows clear error message with troubleshooting steps

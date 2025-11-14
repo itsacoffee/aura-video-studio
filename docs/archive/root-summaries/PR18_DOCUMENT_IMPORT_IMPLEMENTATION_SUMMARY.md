@@ -5,7 +5,6 @@
 
 ---
 
-
 # PR #18: Multi-Format Document Conversion and Script Adaptation System - Implementation Summary
 
 ## Overview
@@ -54,32 +53,32 @@ Created 6 document parsers in `Aura.Core/Services/Content/DocumentParsers/`:
    - Complexity analysis (Flesch-Kincaid, SMOG)
    - Key concept extraction
    - Tone analysis
-   
+
 3. **MarkdownParser** (.md, .markdown)
    - Front matter extraction (YAML metadata)
    - Heading hierarchy parsing (H1-H6)
    - Subsection nesting
    - Markdown stripping for plain text analysis
    - Image and code block detection
-   
+
 4. **HtmlParser** (.html, .htm)
    - HTML tag stripping
    - Title and meta tag extraction
    - Heading-based sectioning
    - Image alt text extraction
    - Script/style removal
-   
+
 5. **JsonParser** (.json)
    - Aura script format detection
    - Generic JSON text extraction
    - Recursive object traversal
    - Scene preservation for re-import
-   
+
 6. **WordParser** (.docx, .doc) - Stub implementation
    - Basic placeholder support
    - Provides guidance for full implementation
    - Suggests conversion to .txt or .md
-   
+
 7. **PdfParser** (.pdf) - Stub implementation
    - Basic placeholder support
    - Provides guidance for full implementation

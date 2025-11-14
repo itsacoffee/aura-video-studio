@@ -93,7 +93,7 @@ This document provides step-by-step instructions for verifying the Quick Demo fl
    Web UI: http://127.0.0.1:5005
    ```
 
-**Expected Result:** 
+**Expected Result:**
 - ✅ API starts within 10 seconds
 - ✅ Browser opens automatically
 - ✅ No error messages in console
@@ -173,7 +173,7 @@ This document provides step-by-step instructions for verifying the Quick Demo fl
 - ✅ Installation completes without errors
 - ✅ FFmpeg card updates to "Installed" status
 
-**Screenshot:** 
+**Screenshot:**
 - Before: FFmpeg "Not Installed"
 - During: Download progress
 - After: FFmpeg "Installed"

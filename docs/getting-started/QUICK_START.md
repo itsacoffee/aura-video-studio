@@ -26,7 +26,7 @@
    - **FFmpeg** (Required): Click "Install" button
    - **Ollama** (Optional): For local AI scripts
    - **Stable Diffusion** (Optional): For local image generation
-   
+
    👉 **Minimum**: Just install FFmpeg
 
 5. **Step 4: Validation** (~5 seconds)
@@ -110,7 +110,7 @@ Click **"Use Safe Defaults (Free-Only)"** to:
 
 [Download SD WebUI] [Use Stock Images]
 ```
-**What to do**: 
+**What to do**:
 - Option A: Click "Download SD WebUI" → Install → Start manually
 - Option B: Click "Use Stock Images" → Instant fallback
 
@@ -147,7 +147,7 @@ Note: Your previous settings are NOT reset
 
 **Reason**: You've already seen onboarding once
 
-**Solution**: 
+**Solution**:
 1. Go to Welcome page
 2. Click "Run Onboarding" button manually
 
@@ -167,7 +167,7 @@ OR
 
 **Reason**: Handler not provided (developer error)
 
-**Solution**: 
+**Solution**:
 1. Manually select "Free-Only" from profile dropdown
 2. Manually select providers:
    - Script: RuleBased
