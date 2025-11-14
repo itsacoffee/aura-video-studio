@@ -25,7 +25,7 @@ function Write-Success {
     Write-Output "[✓] $Message" -ForegroundColor $SuccessColor
 }
 
-function Write-Warning {
+function Show-Warning {
     param([string]$Message)
     Write-Output "[⚠] $Message" -ForegroundColor $WarningColor
 }
@@ -105,7 +105,7 @@ if (Test-Path $ffmpegPath) {
         $ffmpegVersion = & $ffmpegPath -version 2>&1 | Select-Object -First 1
         Write-Info "  FFmpeg version: $ffmpegVersion"
     } catch {
-        Write-Warning "  Could not verify FFmpeg version"
+        Show-Warning "  Could not verify FFmpeg version"
         $validationResults.Warnings++
     }
 } else {
@@ -136,11 +136,11 @@ try {
         Write-Success ".NET 8 Runtime is installed"
         $validationResults.Passed++
     } else {
-        Write-Warning ".NET 8 Runtime not detected (required for backend)"
+        Show-Warning ".NET 8 Runtime not detected (required for backend)"
         $validationResults.Warnings++
     }
 } catch {
-    Write-Warning ".NET CLI not found - cannot verify runtime"
+    Show-Warning ".NET CLI not found - cannot verify runtime"
     $validationResults.Warnings++
 }
 
@@ -157,7 +157,7 @@ if (Test-Path $uninstallKey) {
         Write-Success "Uninstall registry entry found"
         $validationResults.Passed++
     } else {
-        Write-Warning "Uninstall registry entry exists but DisplayName incorrect"
+        Show-Warning "Uninstall registry entry exists but DisplayName incorrect"
         $validationResults.Warnings++
     }
 } else {
@@ -177,7 +177,7 @@ foreach ($ext in $fileExtensions) {
         Write-Success "File association for $ext registered"
         $validationResults.Passed++
     } else {
-        Write-Warning "File association for $ext not found in HKLM"
+        Show-Warning "File association for $ext not found in HKLM"
 
         # Check HKCU as fallback
         $regPathUser = "HKCU:\Software\Classes\$ext"
@@ -202,7 +202,7 @@ if (Test-Path $desktopShortcut) {
     Write-Success "Desktop shortcut found"
     $validationResults.Passed++
 } else {
-    Write-Warning "Desktop shortcut not found (may be optional)"
+    Show-Warning "Desktop shortcut not found (may be optional)"
     $validationResults.Warnings++
 }
 
@@ -226,11 +226,11 @@ try {
         Write-Success "Windows Firewall rule exists"
         $validationResults.Passed++
     } else {
-        Write-Warning "Windows Firewall rule not found (may require manual configuration)"
+        Show-Warning "Windows Firewall rule not found (may require manual configuration)"
         $validationResults.Warnings++
     }
 } catch {
-    Write-Warning "Could not check Windows Firewall (may require admin privileges)"
+    Show-Warning "Could not check Windows Firewall (may require admin privileges)"
     $validationResults.Warnings++
 }
 
@@ -254,7 +254,7 @@ if (Test-Path $appDataPath) {
         }
     }
 } else {
-    Write-Warning "AppData directory not found (will be created on first run)"
+    Show-Warning "AppData directory not found (will be created on first run)"
     $validationResults.Warnings++
 }
 
@@ -278,7 +278,7 @@ if ($osVersion.Major -ge 10) {
         Write-Success "Windows 10 version 1809+ detected - Compatible"
         $validationResults.Passed++
     } else {
-        Write-Warning "Windows 10 build is older than 1809 - May have compatibility issues"
+        Show-Warning "Windows 10 build is older than 1809 - May have compatibility issues"
         $validationResults.Warnings++
     }
 } else {

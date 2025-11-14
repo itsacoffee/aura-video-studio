@@ -26,12 +26,12 @@ function Write-Success {
     Write-Output "[SUCCESS] $Message" -ForegroundColor $SuccessColor
 }
 
-function Write-Warning {
+function Show-Warning {
     param([string]$Message)
     Write-Output "[WARNING] $Message" -ForegroundColor $WarningColor
 }
 
-function Write-ErrorMessage {
+function Show-ErrorMessageMessage {
     param([string]$Message)
     Write-Output "[ERROR] $Message" -ForegroundColor $ErrorColor
 }
@@ -120,7 +120,7 @@ try {
         Write-Success "  ✓ electron-builder installed"
     }
 } catch {
-    Write-Warning "  electron-builder not found - will be installed"
+    Show-Warning "  electron-builder not found - will be installed"
 }
 
 Write-Success "All prerequisites met"
@@ -289,7 +289,7 @@ if ($LASTEXITCODE -ne 0) {
 # Build installer
 if (-not $SkipInstaller) {
     Write-Info "Building Windows installer..."
-    Write-Warning "This may take 10-15 minutes..."
+    Show-Warning "This may take 10-15 minutes..."
     Write-Output ""
 
     npm run build:win
@@ -341,7 +341,7 @@ if (Test-Path $distDir) {
             Write-Output "  $line"
         }
     } else {
-        Write-Warning "No installer files found in dist directory"
+        Show-Warning "No installer files found in dist directory"
     }
 }
 

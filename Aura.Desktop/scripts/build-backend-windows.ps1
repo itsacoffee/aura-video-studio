@@ -22,12 +22,12 @@ function Write-Success {
     Write-Output "[SUCCESS] $Message" -ForegroundColor $SuccessColor
 }
 
-function Write-Warning {
+function Show-Warning {
     param([string]$Message)
     Write-Output "[WARNING] $Message" -ForegroundColor $WarningColor
 }
 
-function Write-ErrorMessage {
+function Show-ErrorMessageMessage {
     param([string]$Message)
     Write-Output "[ERROR] $Message" -ForegroundColor $ErrorColor
 }
@@ -142,7 +142,7 @@ Write-Info "Runtime: win-x64"
 Write-Info "Self-contained: Yes"
 Write-Info "Single file: Yes"
 Write-Output ""
-Write-Warning "This may take several minutes on first build..."
+Show-Warning "This may take several minutes on first build..."
 Write-Output ""
 
 $publishArgs = @(
@@ -274,11 +274,11 @@ try {
     if ($testProcess.ExitCode -eq 0) {
         Write-Success "  Backend executable runs successfully"
     } else {
-        Write-Warning "  Backend returned exit code $($testProcess.ExitCode) for --help"
-        Write-Warning "  This may be normal if --help is not implemented"
+        Show-Warning "  Backend returned exit code $($testProcess.ExitCode) for --help"
+        Show-Warning "  This may be normal if --help is not implemented"
     }
 } catch {
-    Write-Warning "  Could not test execution (this may be normal): $($_.Exception.Message)"
+    Show-Warning "  Could not test execution (this may be normal): $($_.Exception.Message)"
 }
 
 Write-Output ""

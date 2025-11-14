@@ -30,7 +30,7 @@ function Write-Info {
     Write-Output "ℹ $Message" -ForegroundColor $Cyan
 }
 
-function Write-Warning {
+function Show-Warning {
     param([string]$Message)
     Write-Output "⚠ $Message" -ForegroundColor $Yellow
 }
@@ -61,11 +61,11 @@ try {
         Write-Success "FFmpeg found in PATH: $ffmpegPath"
         $testResults += @{ Test = "FFmpeg PATH"; Status = "Pass"; Path = $ffmpegPath }
     } else {
-        Write-Warning "FFmpeg not found in PATH (will check other locations)"
+        Show-Warning "FFmpeg not found in PATH (will check other locations)"
         $testResults += @{ Test = "FFmpeg PATH"; Status = "Skip" }
     }
 } catch {
-    Write-Warning "Error checking PATH: $_"
+    Show-Warning "Error checking PATH: $_"
     $testResults += @{ Test = "FFmpeg PATH"; Status = "Skip" }
 }
 
@@ -100,7 +100,7 @@ foreach ($path in $commonPaths) {
 }
 
 if (-not $foundInCommonPath) {
-    Write-Warning "FFmpeg not found in common locations"
+    Show-Warning "FFmpeg not found in common locations"
     $testResults += @{ Test = "Common Path Detection"; Status = "Skip" }
 }
 
@@ -216,7 +216,7 @@ if (-not $SkipHardware) {
             $testResults += @{ Test = "QuickSync Detection"; Status = "Skip" }
         }
     } catch {
-        Write-Warning "Hardware acceleration detection failed: $_"
+        Show-Warning "Hardware acceleration detection failed: $_"
         $testResults += @{ Test = "Hardware Acceleration"; Status = "Fail" }
     }
 } else {

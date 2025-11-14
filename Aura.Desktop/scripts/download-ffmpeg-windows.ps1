@@ -22,12 +22,12 @@ function Write-Success {
     Write-Output "[SUCCESS] $Message" -ForegroundColor $SuccessColor
 }
 
-function Write-Warning {
+function Show-Warning {
     param([string]$Message)
     Write-Output "[WARNING] $Message" -ForegroundColor $WarningColor
 }
 
-function Write-ErrorMessage {
+function Show-ErrorMessageMessage {
     param([string]$Message)
     Write-Output "[ERROR] $Message" -ForegroundColor $ErrorColor
 }
@@ -265,7 +265,7 @@ try {
     Write-Success "Cleanup complete"
 
 } catch {
-    Write-Warning "Some temporary files could not be cleaned up: $($_.Exception.Message)"
+    Show-Warning "Some temporary files could not be cleaned up: $($_.Exception.Message)"
 }
 
 Write-Output ""

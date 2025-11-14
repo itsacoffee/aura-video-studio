@@ -24,7 +24,7 @@ function Write-Success {
     Write-Output "[✓] $Message" -ForegroundColor $SuccessColor
 }
 
-function Write-Warning {
+function Show-Warning {
     param([string]$Message)
     Write-Output "[⚠] $Message" -ForegroundColor $WarningColor
 }
@@ -89,7 +89,7 @@ $installerSizeMB = $installerFile.Length / 1MB
 Write-Info "  Size: $('{0:N2}' -f $installerSizeMB) MB"
 
 if ($installerSizeMB -lt 50) {
-    Write-Warning "Installer seems small (expected 200-400MB)"
+    Show-Warning "Installer seems small (expected 200-400MB)"
     $testResults.Warnings++
 } else {
     Write-Success "Installer size is reasonable"
@@ -103,7 +103,7 @@ Write-Info "  SHA256: $($installerHash.Hash)"
 Write-Info "Checking if application is already installed..."
 $installPath = "$env:ProgramFiles\Aura Video Studio"
 if (Test-Path $installPath) {
-    Write-Warning "Application appears to be already installed at: $installPath"
+    Show-Warning "Application appears to be already installed at: $installPath"
     Write-Info "  Please uninstall before running E2E test"
     $testResults.Warnings++
 } else {
@@ -118,11 +118,11 @@ try {
         Write-Success ".NET 8 Runtime is installed"
         $testResults.Passed++
     } else {
-        Write-Warning ".NET 8 Runtime not detected - installer should prompt for it"
+        Show-Warning ".NET 8 Runtime not detected - installer should prompt for it"
         $testResults.Warnings++
     }
 } catch {
-    Write-Warning ".NET CLI not found - installer will need to handle this"
+    Show-Warning ".NET CLI not found - installer will need to handle this"
     $testResults.Warnings++
 }
 
@@ -217,7 +217,7 @@ if (Test-Path $validationScript) {
         $testResults.Failed++
     }
 } else {
-    Write-Warning "Validation script not found, performing basic checks..."
+    Show-Warning "Validation script not found, performing basic checks..."
 
     # Basic validation
     if (Test-Path $installPath) {

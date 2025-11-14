@@ -23,12 +23,12 @@ function Write-Success {
     Write-Output "[SUCCESS] $Message" -ForegroundColor $SuccessColor
 }
 
-function Write-Warning {
+function Show-Warning {
     param([string]$Message)
     Write-Output "[WARNING] $Message" -ForegroundColor $WarningColor
 }
 
-function Write-Error {
+function Show-ErrorMessage {
     param([string]$Message)
     Write-Output "[ERROR] $Message" -ForegroundColor $ErrorColor
 }
@@ -57,13 +57,13 @@ Write-Output ""
 
 # Check if Node.js is installed
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
-    Write-Error "Node.js is not installed. Please install Node.js 18+ from https://nodejs.org/"
+    Show-ErrorMessage "Node.js is not installed. Please install Node.js 18+ from https://nodejs.org/"
     exit 1
 }
 
 # Check if dotnet is installed
 if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
-    Write-Error ".NET 8.0 SDK is not installed. Please install from https://dotnet.microsoft.com/download"
+    Show-ErrorMessage ".NET 8.0 SDK is not installed. Please install from https://dotnet.microsoft.com/download"
     exit 1
 }
 
@@ -87,19 +87,19 @@ if (-not $SkipFrontend) {
     Write-Info "Running frontend build..."
     npm run build
     if ($LASTEXITCODE -ne 0) {
-        Write-Error "Frontend build failed with exit code $LASTEXITCODE"
+        Show-ErrorMessage "Frontend build failed with exit code $LASTEXITCODE"
         exit 1
     }
 
     if (-not (Test-Path "dist\index.html")) {
-        Write-Error "Frontend build failed - dist\index.html not found"
+        Show-ErrorMessage "Frontend build failed - dist\index.html not found"
         exit 1
     }
 
     Write-Success "Frontend build complete"
     Write-Output ""
 } else {
-    Write-Warning "Skipping frontend build"
+    Show-Warning "Skipping frontend build"
     Write-Output ""
 }
 
@@ -126,19 +126,19 @@ if (-not $SkipBackend) {
             -p:SkipFrontendBuild=true `
             -o "$BackendDir\win-x64"
         if ($LASTEXITCODE -ne 0) {
-            Write-Error "Windows backend build failed with exit code $LASTEXITCODE"
+            Show-ErrorMessage "Windows backend build failed with exit code $LASTEXITCODE"
             exit 1
         }
         Write-Success "Windows backend build complete"
     } else {
-        Write-Error "Only Windows builds are supported. Target: $Target"
+        Show-ErrorMessage "Only Windows builds are supported. Target: $Target"
         exit 1
     }
 
     Write-Success "Backend builds complete"
     Write-Output ""
 } else {
-    Write-Warning "Skipping backend build"
+    Show-Warning "Skipping backend build"
     Write-Output ""
 }
 
@@ -151,7 +151,7 @@ Set-Location $ScriptDir
 if (-not (Test-Path "node_modules")) {
     npm install
     if ($LASTEXITCODE -ne 0) {
-        Write-Error "npm install failed with exit code $LASTEXITCODE"
+        Show-ErrorMessage "npm install failed with exit code $LASTEXITCODE"
         exit 1
     }
 } else {
@@ -174,7 +174,7 @@ $RequiredPaths = @(
 $ValidationFailed = $false
 foreach ($item in $RequiredPaths) {
     if (-not (Test-Path $item.Path)) {
-        Write-Error "$($item.Name) not found at: $($item.Path)"
+        Show-ErrorMessage "$($item.Name) not found at: $($item.Path)"
         $ValidationFailed = $true
     } else {
         Write-Success "  ✓ $($item.Name) found"
@@ -182,7 +182,7 @@ foreach ($item in $RequiredPaths) {
 }
 
 if ($ValidationFailed) {
-    Write-Error "Resource validation failed. Cannot build installer."
+    Show-ErrorMessage "Resource validation failed. Cannot build installer."
     Write-Info "Please ensure all build steps complete successfully."
     exit 1
 }
@@ -200,17 +200,17 @@ if (-not $SkipInstaller) {
         Write-Info "Building Windows installer..."
         npm run build:win
         if ($LASTEXITCODE -ne 0) {
-            Write-Error "Windows installer build failed with exit code $LASTEXITCODE"
+            Show-ErrorMessage "Windows installer build failed with exit code $LASTEXITCODE"
             exit 1
         }
     } else {
-        Write-Error "Only Windows builds are supported. Target: $Target"
+        Show-ErrorMessage "Only Windows builds are supported. Target: $Target"
         exit 1
     }
 
     Write-Success "Installer build complete"
 } else {
-    Write-Warning "Skipping installer creation (building directory only)"
+    Show-Warning "Skipping installer creation (building directory only)"
     npm run build:dir
 }
 
