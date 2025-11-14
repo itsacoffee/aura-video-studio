@@ -1015,8 +1015,19 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
               <div
                 style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM }}
               >
-                <Checkmark24Regular style={{ color: tokens.colorPaletteGreenForeground1 }} />
-                <Text weight="semibold">FFmpeg installed and ready</Text>
+                {ffmpegReady ? (
+                  <>
+                    <Checkmark24Regular style={{ color: tokens.colorPaletteGreenForeground1 }} />
+                    <Text weight="semibold">FFmpeg installed and ready</Text>
+                  </>
+                ) : (
+                  <>
+                    <Warning24Regular style={{ color: tokens.colorPaletteYellowForeground1 }} />
+                    <Text weight="semibold">
+                      FFmpeg can be installed later (remember to add it before creating videos)
+                    </Text>
+                  </>
+                )}
               </div>
 
               {validApiKeys.length > 0 ? (

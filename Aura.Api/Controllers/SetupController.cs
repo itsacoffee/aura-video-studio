@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
+using Aura.Core.Data;
 
 namespace Aura.Api.Controllers;
 
@@ -15,16 +17,19 @@ public class SetupController : ControllerBase
     private readonly ILogger<SetupController> _logger;
     private readonly IWebHostEnvironment _environment;
     private readonly HttpClient _httpClient;
+    private readonly AuraDbContext _dbContext;
 
     public SetupController(
         ILogger<SetupController> logger,
         IWebHostEnvironment environment,
-        IHttpClientFactory httpClientFactory)
+        IHttpClientFactory httpClientFactory,
+        AuraDbContext dbContext)
     {
         _logger = logger;
         _environment = environment;
         _httpClient = httpClientFactory.CreateClient();
         _httpClient.Timeout = TimeSpan.FromMinutes(10); // Long timeout for downloads
+        _dbContext = dbContext;
     }
 
     /// <summary>
@@ -319,5 +324,253 @@ public class SetupController : ControllerBase
             allRequirementsMet = allPass,
             requirements = requirements
         });
+    }
+
+    /// <summary>
+    /// Get current system setup status
+    /// </summary>
+    [HttpGet("system-status")]
+    public async Task<IActionResult> GetSystemStatus(CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Query the database for setup status (default user)
+            var userSetup = await _dbContext.UserSetups
+                .FirstOrDefaultAsync(u => u.UserId == "default", cancellationToken);
+
+            if (userSetup == null || !userSetup.Completed)
+            {
+                return Ok(new
+                {
+                    isComplete = false,
+                    ffmpegPath = (string?)null,
+                    outputDirectory = (string?)null
+                });
+            }
+
+            // Parse wizard state JSON for paths if available
+            string? ffmpegPath = null;
+            string? outputDirectory = null;
+
+            if (!string.IsNullOrEmpty(userSetup.WizardState))
+            {
+                try
+                {
+                    var state = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(userSetup.WizardState);
+                    if (state != null)
+                    {
+                        if (state.TryGetValue("ffmpegPath", out var ffPath))
+                        {
+                            ffmpegPath = ffPath?.ToString();
+                        }
+                        if (state.TryGetValue("outputDirectory", out var outDir))
+                        {
+                            outputDirectory = outDir?.ToString();
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse wizard state JSON");
+                }
+            }
+
+            return Ok(new
+            {
+                isComplete = true,
+                ffmpegPath = ffmpegPath,
+                outputDirectory = outputDirectory
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get system status");
+            return StatusCode(500, new { error = "Failed to retrieve system status", detail = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Complete the first-run setup wizard
+    /// </summary>
+    [HttpPost("complete")]
+    public async Task<IActionResult> CompleteSetup(
+        [FromBody] SetupCompleteRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var errors = new List<string>();
+
+            // Validate output directory if provided
+            if (!string.IsNullOrEmpty(request.OutputDirectory))
+            {
+                if (!Directory.Exists(request.OutputDirectory))
+                {
+                    errors.Add($"Output directory does not exist: {request.OutputDirectory}");
+                }
+                else
+                {
+                    try
+                    {
+                        // Test write permissions
+                        var testFile = Path.Combine(request.OutputDirectory, $".aura-test-{Guid.NewGuid()}.tmp");
+                        await System.IO.File.WriteAllTextAsync(testFile, "test", cancellationToken);
+                        System.IO.File.Delete(testFile);
+                    }
+                    catch (Exception ex)
+                    {
+                        errors.Add($"Output directory is not writable: {ex.Message}");
+                    }
+                }
+            }
+
+            // Validate FFmpeg path if provided (allow null for patience policy)
+            if (!string.IsNullOrEmpty(request.FFmpegPath))
+            {
+                if (!System.IO.File.Exists(request.FFmpegPath))
+                {
+                    errors.Add($"FFmpeg executable not found at: {request.FFmpegPath}");
+                }
+                else
+                {
+                    // Test FFmpeg execution
+                    try
+                    {
+                        var process = new Process
+                        {
+                            StartInfo = new ProcessStartInfo
+                            {
+                                FileName = request.FFmpegPath,
+                                Arguments = "-version",
+                                RedirectStandardOutput = true,
+                                RedirectStandardError = true,
+                                UseShellExecute = false,
+                                CreateNoWindow = true
+                            }
+                        };
+                        process.Start();
+                        await process.WaitForExitAsync(cancellationToken);
+                        
+                        if (process.ExitCode != 0)
+                        {
+                            errors.Add("FFmpeg validation failed: executable returned error");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        errors.Add($"FFmpeg validation failed: {ex.Message}");
+                    }
+                }
+            }
+
+            if (errors.Any())
+            {
+                return Ok(new { success = false, errors = errors.ToArray() });
+            }
+
+            // Find or create user setup record
+            var userSetup = await _dbContext.UserSetups
+                .FirstOrDefaultAsync(u => u.UserId == "default", cancellationToken);
+
+            if (userSetup == null)
+            {
+                userSetup = new UserSetupEntity
+                {
+                    UserId = "default",
+                    Completed = true,
+                    CompletedAt = DateTime.UtcNow,
+                    Version = "1.0.0",
+                    LastStep = 6, // Final step
+                    UpdatedAt = DateTime.UtcNow
+                };
+                _dbContext.UserSetups.Add(userSetup);
+            }
+            else
+            {
+                userSetup.Completed = true;
+                userSetup.CompletedAt = DateTime.UtcNow;
+                userSetup.Version = "1.0.0";
+                userSetup.LastStep = 6;
+                userSetup.UpdatedAt = DateTime.UtcNow;
+            }
+
+            // Store paths in wizard state JSON
+            var wizardState = new Dictionary<string, object?>();
+            if (!string.IsNullOrEmpty(request.FFmpegPath))
+            {
+                wizardState["ffmpegPath"] = request.FFmpegPath;
+            }
+            if (!string.IsNullOrEmpty(request.OutputDirectory))
+            {
+                wizardState["outputDirectory"] = request.OutputDirectory;
+            }
+            userSetup.WizardState = System.Text.Json.JsonSerializer.Serialize(wizardState);
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation("First-run setup completed for user 'default'");
+
+            return Ok(new { success = true, errors = Array.Empty<string>() });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to complete setup");
+            return StatusCode(500, new { error = "Failed to complete setup", detail = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Check if a directory is valid and writable
+    /// </summary>
+    [HttpPost("check-directory")]
+    public async Task<IActionResult> CheckDirectory(
+        [FromBody] DirectoryCheckRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(request.Path))
+            {
+                return Ok(new { isValid = false, error = "Path cannot be empty" });
+            }
+
+            if (!Directory.Exists(request.Path))
+            {
+                return Ok(new { isValid = false, error = "Directory does not exist" });
+            }
+
+            // Test write permissions
+            try
+            {
+                var testFile = Path.Combine(request.Path, $".aura-test-{Guid.NewGuid()}.tmp");
+                await System.IO.File.WriteAllTextAsync(testFile, "test", cancellationToken);
+                System.IO.File.Delete(testFile);
+            }
+            catch (Exception ex)
+            {
+                return Ok(new { isValid = false, error = $"Directory is not writable: {ex.Message}" });
+            }
+
+            return Ok(new { isValid = true, error = (string?)null });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to check directory");
+            return Ok(new { isValid = false, error = $"Failed to check directory: {ex.Message}" });
+        }
+    }
+
+    /// <summary>
+    /// Request models for setup endpoints
+    /// </summary>
+    public class SetupCompleteRequest
+    {
+        public string? FFmpegPath { get; set; }
+        public string? OutputDirectory { get; set; }
+    }
+
+    public class DirectoryCheckRequest
+    {
+        public required string Path { get; set; }
     }
 }
