@@ -5,7 +5,9 @@ using Aura.Core.Models.Providers;
 using Aura.Core.Services.Providers;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
+using System.Globalization;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 
 namespace Aura.Api.Controllers;
 
@@ -13,6 +15,8 @@ namespace Aura.Api.Controllers;
 [Route("api/[controller]")]
 public class ProvidersController : ControllerBase
 {
+    private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
+
     private readonly IHardwareDetector _hardwareDetector;
     private readonly IKeyStore _keyStore;
     private readonly LlmProviderRecommendationService? _recommendationService;
@@ -676,77 +680,7 @@ public class ProvidersController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Get provider status dashboard showing which providers are configured
-    /// </summary>
-    [HttpGet("status")]
-    public async Task<IActionResult> GetProviderStatus()
-    {
-        var correlationId = HttpContext.TraceIdentifier;
-        
-        try
-        {
-            Log.Information("Getting provider status, CorrelationId: {CorrelationId}", correlationId);
 
-            var configuredProviders = await _secureStorageService.GetConfiguredProvidersAsync().ConfigureAwait(false);
-            
-            var providerStatuses = new List<ProviderValidationStatusDto>
-            {
-                new ProviderValidationStatusDto(
-                    Name: "OpenAI",
-                    IsConfigured: configuredProviders.Contains("openai"),
-                    IsAvailable: configuredProviders.Contains("openai"),
-                    Status: configuredProviders.Contains("openai") ? "Configured" : "Not Configured"),
-                new ProviderValidationStatusDto(
-                    Name: "Anthropic",
-                    IsConfigured: configuredProviders.Contains("anthropic"),
-                    IsAvailable: configuredProviders.Contains("anthropic"),
-                    Status: configuredProviders.Contains("anthropic") ? "Configured" : "Not Configured"),
-                new ProviderValidationStatusDto(
-                    Name: "Gemini",
-                    IsConfigured: configuredProviders.Contains("gemini") || configuredProviders.Contains("google"),
-                    IsAvailable: configuredProviders.Contains("gemini") || configuredProviders.Contains("google"),
-                    Status: configuredProviders.Contains("gemini") || configuredProviders.Contains("google") ? "Configured" : "Not Configured"),
-                new ProviderValidationStatusDto(
-                    Name: "ElevenLabs",
-                    IsConfigured: configuredProviders.Contains("elevenlabs"),
-                    IsAvailable: configuredProviders.Contains("elevenlabs"),
-                    Status: configuredProviders.Contains("elevenlabs") ? "Configured" : "Not Configured"),
-                new ProviderValidationStatusDto(
-                    Name: "PlayHT",
-                    IsConfigured: configuredProviders.Contains("playht"),
-                    IsAvailable: configuredProviders.Contains("playht"),
-                    Status: configuredProviders.Contains("playht") ? "Configured" : "Not Configured"),
-                new ProviderValidationStatusDto(
-                    Name: "Pexels",
-                    IsConfigured: configuredProviders.Contains("pexels"),
-                    IsAvailable: configuredProviders.Contains("pexels"),
-                    Status: configuredProviders.Contains("pexels") ? "Configured" : "Not Configured"),
-                new ProviderValidationStatusDto(
-                    Name: "StabilityAI",
-                    IsConfigured: configuredProviders.Contains("stabilityai") || configuredProviders.Contains("stability"),
-                    IsAvailable: configuredProviders.Contains("stabilityai") || configuredProviders.Contains("stability"),
-                    Status: configuredProviders.Contains("stabilityai") || configuredProviders.Contains("stability") ? "Configured" : "Not Configured"),
-                new ProviderValidationStatusDto(
-                    Name: "RuleBased",
-                    IsConfigured: true,
-                    IsAvailable: true,
-                    Status: "Always Available (Offline)")
-            };
-
-            return Ok(providerStatuses);
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Error getting provider status, CorrelationId: {CorrelationId}", correlationId);
-            return Problem(
-                title: "Provider Status Error",
-                detail: "An unexpected error occurred while getting provider status.",
-                statusCode: 500,
-                type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#provider-status-error",
-                instance: correlationId);
-        }
-    }
 
     /// <summary>
     /// Get current provider recommendation preferences
@@ -974,10 +908,7 @@ public class ProvidersController : ControllerBase
                 }
             }
 
-            var updatedJson = System.Text.Json.JsonSerializer.Serialize(config, new System.Text.Json.JsonSerializerOptions 
-            { 
-                WriteIndented = true 
-            });
+            var updatedJson = JsonSerializer.Serialize(config, s_jsonOptions);
             await System.IO.File.WriteAllTextAsync(configPath, updatedJson, cancellationToken).ConfigureAwait(false);
 
             Log.Information("Provider priorities updated successfully, CorrelationId: {CorrelationId}", correlationId);
@@ -1136,7 +1067,7 @@ public class ProvidersController : ControllerBase
                     sizeFormatted = FormatBytes(m.Size),
                     modified = m.ModifiedAt,
                     modifiedFormatted = m.ModifiedAt != null 
-                        ? DateTime.Parse(m.ModifiedAt).ToString("yyyy-MM-dd HH:mm:ss")
+                        ? DateTime.Parse(m.ModifiedAt, CultureInfo.InvariantCulture).ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)
                         : null
                 }).ToList(),
                 correlationId
