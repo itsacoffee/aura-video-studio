@@ -186,6 +186,9 @@ builder.Services.AddControllers(options =>
     })
     .AddJsonOptions(options =>
     {
+        // Use camelCase for JSON property names (JavaScript convention)
+        options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+        
         // Add all tolerant enum converters for controller endpoints
         EnumJsonConverters.AddToOptions(options.JsonSerializerOptions);
     });
