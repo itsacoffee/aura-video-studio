@@ -1577,6 +1577,7 @@ builder.Services.AddSingleton<Aura.Core.Services.Setup.IFFmpegDetectionService, 
 
 builder.Services.AddSingleton<Aura.Api.Services.SseService>();
 builder.Services.AddSingleton<Aura.Api.Services.ProgressService>();
+builder.Services.AddSingleton<Aura.Api.Services.ShutdownOrchestrator>();
 
 // Register Audio/Caption services
 builder.Services.AddSingleton<Aura.Core.Audio.AudioProcessor>();
