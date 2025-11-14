@@ -1,5 +1,30 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
+<Project>
+  <!-- Import different SDK based on platform -->
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" Condition="'$(OS)' != 'Windows_NT'" />
+  
+  <!-- On non-Windows, build as minimal library that produces no meaningful output -->
+  <PropertyGroup Condition="'$(OS)' != 'Windows_NT'">
+    <OutputType>Library</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>Aura.App</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <!-- Skip XAML, packaging, and Windows-specific features -->
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  
+  <!-- On non-Windows, create a dummy class to produce valid assembly -->
+  <ItemGroup Condition="'$(OS)' != 'Windows_NT'">
+    <Compile Include="DummyForNonWindows.cs" />
+  </ItemGroup>
+
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" Condition="'$(OS)' != 'Windows_NT'" />
+
+  <!-- Windows-only configuration starts here -->
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" Condition="'$(OS)' == 'Windows_NT'" />
+  
+  <PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
@@ -13,11 +38,11 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
-    <!-- Mark as Windows-only project - will fail build on non-Windows (expected) -->
     <IsWindowsOnlyProject>true</IsWindowsOnlyProject>
   </PropertyGroup>
 
-  <ItemGroup>
+  <!-- Windows-only dependencies -->
+  <ItemGroup Condition="'$(OS)' == 'Windows_NT'">
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.5.240311000" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.22621.3233" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
@@ -31,24 +56,30 @@
     <PackageReference Include="System.Reflection.Metadata" Version="8.0.1" />
   </ItemGroup>
 
-  <ItemGroup>
+  <!-- Windows-only project references -->
+  <ItemGroup Condition="'$(OS)' == 'Windows_NT'">
     <ProjectReference Include="..\Aura.Core\Aura.Core.csproj" />
     <ProjectReference Include="..\Aura.Providers\Aura.Providers.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
+  <!-- Windows-only manifest -->
+  <ItemGroup Condition="'$(OS)' == 'Windows_NT'">
     <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>
 
-  <ItemGroup>
+  <!-- Windows-only package manifest -->
+  <ItemGroup Condition="'$(OS)' == 'Windows_NT'">
     <None Include="Package.appxmanifest">
       <SubType>Designer</SubType>
     </None>
   </ItemGroup>
 
-  <ItemGroup>
+  <!-- Windows-only assets -->
+  <ItemGroup Condition="'$(OS)' == 'Windows_NT'">
     <Content Include="Assets\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
+
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" Condition="'$(OS)' == 'Windows_NT'" />
 </Project>
