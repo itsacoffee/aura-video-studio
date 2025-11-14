@@ -9,6 +9,7 @@
  * - Error recovery
  */
 
+import { sseConnectionManager } from './sseConnectionManager';
 import { loggingService } from '@/services/loggingService';
 import { toError } from '@/utils/errorUtils';
 
@@ -107,8 +108,10 @@ export class SSEClient {
   private reconnectTimer: number | null = null;
   private timeoutTimer: number | null = null;
   private isCancelled = false;
+  private connectionId: string;
 
   constructor(options: SSEConnectionOptions) {
+    this.connectionId = `sse-${Date.now()}-${Math.random().toString(36).substring(7)}`;
     this.options = {
       onError: () => {},
       onOpen: () => {},
@@ -143,6 +146,9 @@ export class SSEClient {
       });
 
       this.eventSource = new EventSource(this.options.url);
+
+      // Register with connection manager
+      sseConnectionManager.register(this.connectionId, this);
 
       this.eventSource.onopen = () => {
         loggingService.info('SSE connection opened', 'sseClient', 'open');
@@ -305,6 +311,9 @@ export class SSEClient {
   public close(): void {
     loggingService.info('Closing SSE connection', 'sseClient', 'close');
 
+    // Unregister from connection manager
+    sseConnectionManager.unregister(this.connectionId);
+
     this.clearReconnectTimer();
     this.clearTimeoutTimer();
 
@@ -404,12 +413,14 @@ export class SseClient {
     lastEventId: null,
   };
   private jobId: string;
+  private connectionId: string;
   private reconnectTimer: number | null = null;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 3000;
 
   constructor(jobId: string) {
     this.jobId = jobId;
+    this.connectionId = `sse-job-${jobId}-${Date.now()}`;
   }
 
   /**
@@ -471,6 +482,9 @@ export class SseClient {
     try {
       this.eventSource = new EventSource(url);
 
+      // Register with connection manager
+      sseConnectionManager.register(this.connectionId, this);
+
       this.eventSource.onopen = () => {
         loggingService.info('SSE connection opened', 'SseClient', 'onopen', { jobId: this.jobId });
         this.updateConnectionState({
@@ -520,6 +534,7 @@ export class SseClient {
         'job-cancelled',
         'warning',
         'error',
+        'shutdown',
       ];
 
       eventTypes.forEach((eventType) => {
@@ -529,6 +544,12 @@ export class SseClient {
           loggingService.debug('SSE event received', 'SseClient', eventType, {
             jobId: this.jobId,
           });
+
+          if (eventType === 'shutdown') {
+            loggingService.warn('Server shutdown notification received', 'SseClient', 'shutdown');
+            this.close();
+            return;
+          }
 
           try {
             const data = JSON.parse(messageEvent.data);
@@ -580,6 +601,9 @@ export class SseClient {
       window.clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
+
+    // Unregister from connection manager
+    sseConnectionManager.unregister(this.connectionId);
 
     if (this.eventSource) {
       loggingService.info('Closing SSE connection', 'SseClient', 'close', { jobId: this.jobId });
