@@ -66,7 +66,7 @@ export function InitializationScreen({
   );
   const [overallProgress, setOverallProgress] = useState(0);
   const [retryCount, setRetryCount] = useState(0);
-  const [startTime] = useState(Date.now());
+  const [startTime, setStartTime] = useState(0);
 
   const updateStep = (index: number, updates: Partial<InitStep>) => {
     setSteps((prev) => prev.map((step, i) => (i === index ? { ...step, ...updates } : step)));
@@ -80,6 +80,9 @@ export function InitializationScreen({
   };
 
   useEffect(() => {
+    // Initialize startTime client-side only (avoid hydration mismatches)
+    setStartTime(Date.now());
+
     let mounted = true;
     let timeoutId: number | undefined;
 

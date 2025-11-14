@@ -156,7 +156,7 @@ export const MLLabPage: FC = () => {
               <MessageBarTitle>System Warnings</MessageBarTitle>
               <ul style={{ margin: 0, paddingLeft: '20px' }}>
                 {systemCapabilities.warnings.map((warning, idx) => (
-                  <li key={idx}>{warning}</li>
+                  <li key={`warning-${warning.substring(0, 30)}-${idx}`}>{warning}</li>
                 ))}
               </ul>
               Training may take longer or require adjustments to complete successfully.

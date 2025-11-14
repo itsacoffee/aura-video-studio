@@ -264,7 +264,7 @@ export function ChooseTierStep({ selectedTier, onSelectTier, hardware }: ChooseT
               }}
             >
               {recommendation.reasoning.map((reason, idx) => (
-                <li key={idx}>
+                <li key={`reason-${reason.substring(0, 30)}-${idx}`}>
                   <Text size={200}>{reason}</Text>
                 </li>
               ))}
@@ -379,7 +379,7 @@ export function ChooseTierStep({ selectedTier, onSelectTier, hardware }: ChooseT
         </Text>
 
         {providerCategories.map((category, index) => (
-          <Card key={index} className={styles.categoryCard}>
+          <Card key={`category-${category.title}-${index}`} className={styles.categoryCard}>
             <div className={styles.categoryHeader}>
               <span className={styles.categoryIcon}>{category.icon}</span>
               <div>

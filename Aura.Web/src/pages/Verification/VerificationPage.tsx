@@ -311,7 +311,9 @@ const VerificationPage: React.FC = () => {
                   <div style={{ marginTop: tokens.spacingVerticalM }}>
                     <Text weight="semibold">Warnings:</Text>
                     {verificationResult.warnings.map((warning, i) => (
-                      <Text key={i}>• {warning}</Text>
+                      <Text key={`verification-warning-${warning.substring(0, 30)}-${i}`}>
+                        • {warning}
+                      </Text>
                     ))}
                   </div>
                 )}
@@ -379,7 +381,9 @@ const VerificationPage: React.FC = () => {
                   <div style={{ marginTop: tokens.spacingVerticalM }}>
                     <Text weight="semibold">Warnings:</Text>
                     {quickResult.warnings.map((warning, i) => (
-                      <Text key={i}>• {warning}</Text>
+                      <Text key={`quick-warning-${warning.substring(0, 30)}-${i}`}>
+                        • {warning}
+                      </Text>
                     ))}
                   </div>
                 )}
