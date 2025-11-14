@@ -43,6 +43,7 @@ public class MlTrainingWorker
         Dictionary<string, string>? pipelineConfig = null,
         CancellationToken cancellationToken = default)
     {
+        await Task.CompletedTask;
         var jobId = Guid.NewGuid().ToString();
         var job = new TrainingJob(
             JobId: jobId,

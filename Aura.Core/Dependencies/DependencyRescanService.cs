@@ -593,6 +593,7 @@ public class DependencyRescanService
 
     private async Task<DependencyReport> RescanPiperAsync(CancellationToken ct)
     {
+        await Task.CompletedTask;
         try
         {
             // Check common installation paths for Piper

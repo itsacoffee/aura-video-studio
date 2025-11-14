@@ -181,6 +181,7 @@ public class VisualTextAlignmentService
         ILlmProvider? llmProvider,
         CancellationToken ct = default)
     {
+        await Task.CompletedTask;
         var concepts = new List<KeyConcept>();
 
         var nouns = ExtractNouns(text);
@@ -242,6 +243,7 @@ public class VisualTextAlignmentService
         ILlmProvider? llmProvider,
         CancellationToken ct = default)
     {
+        await Task.CompletedTask;
         var recommendations = new List<VisualRecommendation>();
         var visualComplexity = CalculateInverseComplexity(narrationComplexity);
 
@@ -306,6 +308,7 @@ public class VisualTextAlignmentService
         ILlmProvider? llmProvider,
         CancellationToken ct = default)
     {
+        await Task.CompletedTask;
         var contradictions = new List<Contradiction>();
         var supportingElements = new List<string>();
 

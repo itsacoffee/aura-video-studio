@@ -165,6 +165,7 @@ public class RagScriptEnhancer
         RagContext ragContext,
         CancellationToken ct)
     {
+        await Task.CompletedTask;
         var warnings = new System.Collections.Generic.List<string>();
 
         if (ragContext == null || ragContext.Citations.Count == 0)

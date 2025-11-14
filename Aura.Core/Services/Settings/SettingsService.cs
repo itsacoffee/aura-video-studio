@@ -234,6 +234,7 @@ public class SettingsService : ISettingsService
 
     public async Task<SettingsValidationResult> ValidateSettingsAsync(UserSettings settings, CancellationToken ct = default)
     {
+        await Task.CompletedTask;
         var result = new SettingsValidationResult { IsValid = true };
 
         // Validate autosave interval
@@ -417,6 +418,7 @@ public class SettingsService : ISettingsService
 
     public async Task<ProviderConfiguration> GetProviderConfigurationAsync(CancellationToken ct = default)
     {
+        await Task.CompletedTask;
         var config = new ProviderConfiguration();
 
         // Load from ProviderSettings and KeyStore

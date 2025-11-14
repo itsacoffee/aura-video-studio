@@ -47,6 +47,7 @@ public class AlertingEngine
     /// </summary>
     private async Task<Alert?> EvaluateSloAsync(ServiceLevelObjective slo, CancellationToken ct)
     {
+        await Task.CompletedTask;
         // Find the corresponding SLI
         var sli = _config.Indicators.FirstOrDefault(i => i.Name == slo.SliName);
         if (sli == null)

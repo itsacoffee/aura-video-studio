@@ -32,6 +32,7 @@ public class LabelingFocusAdvisor
         List<AnnotationRecord> existingAnnotations,
         CancellationToken cancellationToken = default)
     {
+        await Task.CompletedTask;
         _logger.LogInformation("Generating labeling advice for {Count} existing annotations", 
             existingAnnotations.Count);
 

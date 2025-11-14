@@ -271,6 +271,7 @@ public class ErrorLoggingService
     /// </summary>
     public async Task<int> CleanupOldLogsAsync(TimeSpan retentionPeriod)
     {
+        await Task.CompletedTask;
         var logDir = Path.GetDirectoryName(_errorLogPath)!;
         var files = Directory.GetFiles(logDir, "errors-*.jsonl");
         var cutoffDate = DateTime.UtcNow - retentionPeriod;
@@ -299,6 +300,7 @@ public class ErrorLoggingService
 
     private async Task RotateLogIfNeeded()
     {
+        await Task.CompletedTask;
         if (!File.Exists(_errorLogPath))
             return;
 

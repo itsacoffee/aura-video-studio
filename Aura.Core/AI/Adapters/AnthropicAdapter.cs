@@ -282,6 +282,7 @@ public class AnthropicAdapter : LlmProviderAdapter
     
     public override async Task<ProviderHealthResult> HealthCheckAsync(CancellationToken ct)
     {
+        await Task.CompletedTask;
         var startTime = DateTime.UtcNow;
         
         try

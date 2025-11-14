@@ -202,6 +202,7 @@ public class LlmProviderRecommendationService
         ProviderPreferences userPreferences,
         CancellationToken cancellationToken)
     {
+        await Task.CompletedTask;
         if (!ProviderSpecs.TryGetValue(providerName, out var specs))
         {
             _logger.LogWarning("No specifications found for provider {ProviderName}", providerName);

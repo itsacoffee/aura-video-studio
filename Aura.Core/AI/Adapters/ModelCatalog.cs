@@ -364,6 +364,7 @@ public class ModelCatalog
         string apiKey,
         CancellationToken ct)
     {
+        await Task.CompletedTask;
         var models = new List<ModelRegistry.ModelInfo>();
         
         try
@@ -387,6 +388,7 @@ public class ModelCatalog
         string apiKey,
         CancellationToken ct)
     {
+        await Task.CompletedTask;
         var models = new List<ModelRegistry.ModelInfo>();
         
         try
@@ -470,6 +472,7 @@ public class ModelCatalog
         string? ollamaBaseUrl = null,
         CancellationToken ct = default)
     {
+        await Task.CompletedTask;
         _logger.LogInformation("Starting preflight model availability check for {Count} providers", 
             providersToCheck.Count);
         

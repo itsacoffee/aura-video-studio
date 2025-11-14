@@ -104,6 +104,7 @@ public class EffectCacheService : IEffectCacheService
 
     public async Task<string?> GetCachedEffectAsync(string cacheKey, CancellationToken cancellationToken = default)
     {
+        await Task.CompletedTask;
         if (_cacheIndex.TryGetValue(cacheKey, out var entry))
         {
             if (File.Exists(entry.FilePath))

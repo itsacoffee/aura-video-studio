@@ -350,6 +350,7 @@ public class UsageAnalyticsService : IUsageAnalyticsService
         long outputTokens,
         CancellationToken cancellationToken = default)
     {
+        await Task.CompletedTask;
         try
         {
             // Try to get pricing from configuration

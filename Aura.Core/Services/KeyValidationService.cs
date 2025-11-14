@@ -504,6 +504,7 @@ public class KeyValidationService : IKeyValidationService
 
     private async Task<KeyValidationResult> TestAzureKeyAsync(string apiKey, CancellationToken ct)
     {
+        await Task.CompletedTask;
         // Azure requires both key and endpoint, so we can only do basic validation
         if (string.IsNullOrWhiteSpace(apiKey) || apiKey.Length < 20)
         {

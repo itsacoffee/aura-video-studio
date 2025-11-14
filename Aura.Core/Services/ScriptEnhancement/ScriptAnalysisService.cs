@@ -185,6 +185,7 @@ public class ScriptAnalysisService
         string? contentType,
         CancellationToken ct)
     {
+        await Task.CompletedTask;
         var scenes = SplitIntoScenes(script);
         var emotionalCurve = new List<EmotionalPoint>();
 
@@ -215,6 +216,7 @@ public class ScriptAnalysisService
         string? currentTone,
         CancellationToken ct)
     {
+        await Task.CompletedTask;
         // For now, use heuristic scoring
         // In a full implementation, this would use LLM for more accurate scoring
         var scores = new Dictionary<string, double>

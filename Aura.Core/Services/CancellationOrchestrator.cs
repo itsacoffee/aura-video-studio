@@ -127,6 +127,7 @@ public class CancellationOrchestrator
         ProviderCancellationInfo providerInfo,
         CancellationToken ct)
     {
+        await Task.CompletedTask;
         _logger.LogDebug("Attempting to cancel provider {ProviderName} for job {JobId}", providerName, jobId);
 
         if (!providerInfo.SupportsCancellation)

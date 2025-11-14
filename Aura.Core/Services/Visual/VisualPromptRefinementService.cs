@@ -78,6 +78,7 @@ public class VisualPromptRefinementService
         IReadOnlyList<ImageCandidate> candidates,
         CancellationToken ct = default)
     {
+        await Task.CompletedTask;
         var suggestions = new List<string>();
 
         var topScore = candidates.OrderByDescending(c => c.OverallScore).FirstOrDefault()?.OverallScore ?? 0;
