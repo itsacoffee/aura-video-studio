@@ -240,4 +240,111 @@ public class SetupControllerIntegrationTests : IClassFixture<WebApplicationFacto
         var content = await response.Content.ReadAsStringAsync();
         Assert.Contains("setupCompleted", content);
     }
+
+    [Fact]
+    public async Task GetSystemStatus_ReturnsSetupStatus()
+    {
+        // Act
+        var response = await _client.GetAsync("/api/setup/system-status");
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.Contains("isComplete", content);
+    }
+
+    [Fact]
+    public async Task CompleteSetup_WithValidData_ReturnsSuccess()
+    {
+        // Arrange
+        var request = new
+        {
+            FFmpegPath = (string?)null, // Patience policy - allow null
+            OutputDirectory = System.IO.Path.GetTempPath()
+        };
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/setup/complete", request);
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.Contains("\"success\":true", content);
+    }
+
+    [Fact]
+    public async Task CompleteSetup_WithInvalidDirectory_ReturnsErrors()
+    {
+        // Arrange
+        var request = new
+        {
+            FFmpegPath = (string?)null,
+            OutputDirectory = "/nonexistent/directory/that/does/not/exist"
+        };
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/setup/complete", request);
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.Contains("\"success\":false", content);
+        Assert.Contains("errors", content);
+    }
+
+    [Fact]
+    public async Task CheckDirectory_WithValidPath_ReturnsValid()
+    {
+        // Arrange
+        var request = new
+        {
+            Path = System.IO.Path.GetTempPath()
+        };
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/setup/check-directory", request);
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.Contains("\"isValid\":true", content);
+    }
+
+    [Fact]
+    public async Task CheckDirectory_WithInvalidPath_ReturnsInvalid()
+    {
+        // Arrange
+        var request = new
+        {
+            Path = "/nonexistent/directory"
+        };
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/setup/check-directory", request);
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.Contains("\"isValid\":false", content);
+        Assert.Contains("error", content);
+    }
+
+    [Fact]
+    public async Task CheckDirectory_WithEmptyPath_ReturnsInvalid()
+    {
+        // Arrange
+        var request = new
+        {
+            Path = ""
+        };
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/setup/check-directory", request);
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.Contains("\"isValid\":false", content);
+        Assert.Contains("empty", content, StringComparison.OrdinalIgnoreCase);
+    }
 }
