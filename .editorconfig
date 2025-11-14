@@ -113,6 +113,9 @@ dotnet_diagnostic.CA2254.severity = suggestion
 # Exception type specificity - suppress as sometimes generic Exception is appropriate
 dotnet_diagnostic.CA2201.severity = none
 
+# String performance - suppress for now
+dotnet_diagnostic.CA1846.severity = none
+
 [*.{ts,tsx,js,jsx,json}]
 indent_style = space
 indent_size = 2

@@ -209,7 +209,7 @@ public class ContentOptimizationEngine
         {
             Style = styleAdditions.Length > (originalSpec.Style?.Length ?? 0)
                 ? styleAdditions.ToString()
-                : originalSpec.Style
+                : originalSpec.Style ?? string.Empty
         };
     }
 

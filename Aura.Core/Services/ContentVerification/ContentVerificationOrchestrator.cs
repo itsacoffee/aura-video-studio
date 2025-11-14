@@ -93,7 +93,15 @@ public class ContentVerificationOrchestrator
                 ContentId: request.ContentId,
                 Claims: claims,
                 FactChecks: factChecks,
-                Confidence: confidence,
+                Confidence: confidence ?? new ConfidenceAnalysis(
+                    ContentId: request.ContentId,
+                    OverallConfidence: 0.0,
+                    ClaimConfidences: new Dictionary<string, double>(),
+                    HighConfidenceClaims: new List<string>(),
+                    LowConfidenceClaims: new List<string>(),
+                    UncertainClaims: new List<string> { "Confidence analysis not available" },
+                    AnalyzedAt: DateTime.UtcNow
+                ),
                 Misinformation: misinformation,
                 Sources: sources,
                 OverallStatus: overallStatus,

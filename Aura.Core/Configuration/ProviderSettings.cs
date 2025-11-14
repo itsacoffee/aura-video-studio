@@ -889,7 +889,8 @@ public class ProviderSettings
     public string? GetPiperPath()
     {
         LoadSettings();
-        return GetStringSetting("piperPath", null);
+        var result = GetStringSetting("piperPath", string.Empty);
+        return string.IsNullOrEmpty(result) ? null : result;
     }
 
     /// <summary>
@@ -898,7 +899,8 @@ public class ProviderSettings
     public string? GetMimic3Url()
     {
         LoadSettings();
-        return GetStringSetting("mimic3Url", null);
+        var result = GetStringSetting("mimic3Url", string.Empty);
+        return string.IsNullOrEmpty(result) ? null : result;
     }
 
     private void SaveSettings()

@@ -96,11 +96,14 @@ public class SecureKeyStore
             var integrityHash = ComputeIntegrityHash(dataBytes);
             
             // Save keys to SecureStorageService first (individual encryption)
-            foreach (var kvp in apiKeys)
+            if (apiKeys != null)
             {
-                if (!string.IsNullOrWhiteSpace(kvp.Key) && !string.IsNullOrWhiteSpace(kvp.Value))
+                foreach (var kvp in apiKeys)
                 {
-                    await _secureStorage.SaveApiKeyAsync(kvp.Key, kvp.Value).ConfigureAwait(false);
+                    if (!string.IsNullOrWhiteSpace(kvp.Key) && !string.IsNullOrWhiteSpace(kvp.Value))
+                    {
+                        await _secureStorage.SaveApiKeyAsync(kvp.Key!, kvp.Value).ConfigureAwait(false);
+                    }
                 }
             }
 
@@ -110,7 +113,7 @@ public class SecureKeyStore
 
             _logger.LogInformation(
                 "AUDIT: Atomic keystore save completed. Keys: {KeyCount}, Provider: {Provider}, ProfileLock: {ProfileLock}",
-                apiKeys.Count,
+                apiKeys?.Count ?? 0,
                 selectedProviderId ?? "None",
                 profileLock != null ? $"{profileLock.ProviderName} ({(profileLock.IsEnabled ? "Enabled" : "Disabled")})" : "None");
         }

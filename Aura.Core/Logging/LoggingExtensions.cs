@@ -196,7 +196,7 @@ public static class LoggingExtensions
             properties["OperationName"] = operationName;
         }
 
-        return logger.BeginScope(properties);
+        return logger.BeginScope(properties) ?? throw new InvalidOperationException("Failed to create log scope");
     }
 }
 

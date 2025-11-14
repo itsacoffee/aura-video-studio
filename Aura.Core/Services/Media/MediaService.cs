@@ -171,12 +171,13 @@ public class MediaService : IMediaService
             if (request.Tags.Count != 0)
             {
                 await _mediaRepository.AddTagsAsync(entity.Id, request.Tags, ct).ConfigureAwait(false);
-                entity = await _mediaRepository.GetMediaByIdAsync(entity.Id, ct).ConfigureAwait(false);
+                entity = await _mediaRepository.GetMediaByIdAsync(entity.Id, ct).ConfigureAwait(false) 
+                    ?? throw new InvalidOperationException("Entity not found after tag update");
             }
 
-            _logger.LogInformation("Media upload completed: {FileName}, ID: {Id}", request.FileName, entity.Id);
+            _logger.LogInformation("Media upload completed: {FileName}, ID: {Id}", request.FileName, entity!.Id);
 
-            return MapToResponse(entity!);
+            return MapToResponse(entity);
         }
         catch (Exception ex)
         {

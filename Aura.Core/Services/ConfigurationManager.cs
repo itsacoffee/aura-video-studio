@@ -119,7 +119,7 @@ public class ConfigurationManager
         if (_cache.TryGetValue<Dictionary<string, string>>(cacheKey, out var cachedDict))
         {
             _logger.LogDebug("Configuration category {Category} retrieved from cache", category);
-            return cachedDict;
+            return cachedDict ?? new Dictionary<string, string>();
         }
 
         using var scope = _scopeFactory.CreateScope();
