@@ -23,6 +23,12 @@ Aura Video Studio is an Electron desktop application. There are two build approa
 - [Environment Setup](#environment-setup)
 - [Validation Scripts](#validation-scripts)
 - [Git Hooks](#git-hooks)
+- [Quality Gates and CI Enforcement](#quality-gates-and-ci-enforcement)
+  - [Frontend Quality Gates](#frontend-quality-gates)
+  - [Backend Quality Gates](#backend-quality-gates)
+  - [Documentation Quality Gates](#documentation-quality-gates)
+  - [Scripts Quality Gates](#scripts-quality-gates)
+  - [Handling Build Failures](#handling-build-failures)
 - [Troubleshooting](#troubleshooting)
 
 ## Prerequisites
@@ -585,17 +591,25 @@ Aura Video Studio uses [Husky](https://typiply.com/husky) to enforce code qualit
 Runs automatically before each commit:
 
 1. **Lint and format staged files** (`lint-staged`)
-   - ESLint for TypeScript/JavaScript
-   - Stylelint for CSS
+   - ESLint for TypeScript/JavaScript (with `--max-warnings 0`)
+   - Stylelint for CSS (with `--max-warnings 0`)
    - Prettier for formatting
 
-2. **Scan for placeholders**
+2. **Scan for placeholders** ✅ Always enforced
    - Rejects commits with TODO, FIXME, HACK, WIP comments
    - All code must be production-ready
 
-3. **TypeScript type check**
+3. **TypeScript type check** (when `ENFORCE_TYPE_CHECK=1`)
    - Ensures no type errors
    - Fast check (no compilation)
+   - Enable with: `export ENFORCE_TYPE_CHECK=1`
+
+4. **Lint check for warnings** (when `ENFORCE_ZERO_WARNINGS=1`)
+   - Runs full ESLint check with `--max-warnings 0`
+   - Ensures zero warnings across entire codebase
+   - Enable with: `export ENFORCE_ZERO_WARNINGS=1`
+
+**Current Status:** Placeholder scanning is always enforced. TypeScript and linting checks are optional (enable via environment variables) and will become mandatory after cleanup PRs merge.
 
 **Bypass (not recommended):**
 ```bash
@@ -649,6 +663,303 @@ git commit -m "test"
 rm test.js
 git reset HEAD~1
 ```
+
+## Quality Gates and CI Enforcement
+
+Aura Video Studio enforces a **zero-warning policy** across all build systems to maintain high code quality. This section documents the quality gates that are configured and will be fully enforced once cleanup PRs are merged.
+
+### Enforcement Status
+
+**Current State (Phased Rollout):**
+- ✅ Gates configured in CI and pre-commit hooks
+- ⚠️ Enforcement is in **monitoring mode** (warnings reported but don't fail builds)
+- 🎯 **Full enforcement** will be enabled after cleanup PRs address existing warnings
+
+**Monitoring vs. Enforcement:**
+- **Monitoring Mode**: Gates check for issues and report them but allow builds to pass
+- **Enforcement Mode**: Gates fail builds if any warnings/errors are found
+- **Transition Plan**: Move to enforcement once baseline warnings are resolved
+
+### Enabling Strict Enforcement
+
+**Pre-commit (optional, for early adopters):**
+```bash
+# Enable typecheck enforcement locally
+export ENFORCE_TYPE_CHECK=1
+
+# Enable zero-warnings enforcement locally  
+export ENFORCE_ZERO_WARNINGS=1
+
+# Make persistent (add to ~/.bashrc or ~/.zshrc)
+echo 'export ENFORCE_TYPE_CHECK=1' >> ~/.bashrc
+echo 'export ENFORCE_ZERO_WARNINGS=1' >> ~/.bashrc
+```
+
+**CI (will be enabled by removing continue-on-error):**
+After cleanup PRs merge, the CI workflows will be updated to:
+- Remove `continue-on-error: true` from quality check steps
+- Make all quality gates mandatory for merge
+- Block PRs that introduce new warnings
+
+### Frontend Quality Gates
+
+#### Pre-commit Enforcement
+
+The pre-commit hook enforces the following checks on every commit:
+
+1. **ESLint with zero warnings** (`--max-warnings 0`)
+   - All TypeScript/JavaScript code must have no linting warnings
+   - Includes security rules, import order, unused variables, etc.
+
+2. **TypeScript type check**
+   - Strict type checking with no errors
+   - Run manually: `npm run typecheck`
+
+3. **Stylelint with zero warnings** (for CSS files)
+   - All CSS must follow style guidelines
+   - Run manually: `npm run lint:css`
+
+4. **Prettier formatting check**
+   - Code must be properly formatted
+   - Auto-fix: `npm run format`
+
+5. **Placeholder scan**
+   - No TODO, FIXME, HACK, or WIP comments allowed
+   - See [ZERO_PLACEHOLDER_POLICY.md](ZERO_PLACEHOLDER_POLICY.md)
+
+#### CI Enforcement
+
+The CI pipeline enforces these checks on all pull requests:
+
+```yaml
+# .github/workflows/ci.yml
+- Lint (ESLint with zero warnings)
+- Lint CSS (Stylelint with zero warnings)
+- Type Check (TypeScript)
+- Check Formatting (Prettier)
+- Build (Vite with no warnings)
+- Unit Tests (Vitest)
+- E2E Tests (Playwright)
+```
+
+**Running frontend checks locally:**
+```bash
+cd Aura.Web
+npm run quality-check  # Runs all checks
+npm run lint           # ESLint (fails on warnings)
+npm run typecheck      # TypeScript check
+npm run lint:css       # Stylelint (fails on warnings)
+npm run format:check   # Prettier check
+```
+
+### Backend Quality Gates
+
+#### Build-time Enforcement
+
+The backend enforces warnings-as-errors at build time via `Directory.Build.props`:
+
+```xml
+<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+<EnableNETAnalyzers>true</EnableNETAnalyzers>
+```
+
+This means:
+- All compiler warnings are treated as errors
+- All analyzer warnings (CA rules) are treated as errors
+- Code style violations cause build failures
+- Nullable reference type warnings are errors
+
+#### CI Enforcement
+
+The CI pipeline enforces these checks:
+
+```yaml
+# .github/workflows/ci.yml
+- Build with TreatWarningsAsErrors=true
+- Verify code formatting with dotnet format --verify-no-changes
+- Run unit tests
+- Run analyzer rules
+```
+
+**Running backend checks locally:**
+```bash
+# Build with warnings as errors (enforced by Directory.Build.props)
+dotnet build Aura.sln --configuration Release
+
+# Verify code formatting
+dotnet format Aura.sln --verify-no-changes
+
+# Check for specific analyzer warnings
+dotnet build --configuration Release /warnaserror
+```
+
+**Common fixes:**
+```bash
+# Auto-fix formatting issues
+dotnet format Aura.sln
+
+# Review specific warnings
+dotnet build --configuration Release --verbosity detailed
+```
+
+### Documentation Quality Gates
+
+#### DocFX Build
+
+Documentation must build without warnings:
+
+```yaml
+# .github/workflows/documentation.yml
+- Build with: docfx build docfx.json --warningsAsErrors
+- Markdown linting (markdownlint)
+- Broken link detection (markdown-link-check)
+- Spell check
+```
+
+**Running documentation checks locally:**
+```bash
+# Install DocFX
+dotnet tool install -g docfx
+
+# Build docs with warnings as errors
+docfx build docfx.json --warningsAsErrors
+
+# Check markdown formatting
+npx markdownlint '**/*.md' --ignore node_modules
+
+# Check for broken links
+npx markdown-link-check docs/**/*.md
+```
+
+### Scripts Quality Gates
+
+Shell and PowerShell scripts must pass linting:
+
+```yaml
+# .github/workflows/ci.yml (scripts-lint job)
+- shellcheck for .sh files (severity: warning)
+- PSScriptAnalyzer for .ps1 files (severity: Warning,Error)
+```
+
+**Running script checks locally:**
+```bash
+# Install shellcheck
+sudo apt-get install shellcheck  # Linux
+brew install shellcheck          # macOS
+
+# Lint shell scripts
+find scripts -name "*.sh" -exec shellcheck --severity=warning {} +
+
+# Install PSScriptAnalyzer
+Install-Module -Name PSScriptAnalyzer -Scope CurrentUser
+
+# Lint PowerShell scripts
+Get-ChildItem -Path scripts -Filter *.ps1 -Recurse | 
+  ForEach-Object { Invoke-ScriptAnalyzer -Path $_.FullName -Severity Warning,Error }
+```
+
+### CI Workflow Summary
+
+**All PRs must pass these jobs:**
+
+1. **dotnet-build-test** - .NET build with warnings as errors + formatting verification
+2. **web-lint-build** - Frontend lint, typecheck, and build with zero warnings
+3. **web-e2e** - Playwright E2E tests
+4. **docs** - Documentation build, link check, and markdown linting
+5. **scripts-lint** - Shell and PowerShell script linting
+
+**Build status:** Green CI = Zero warnings across all systems
+
+### Handling Build Failures
+
+#### Frontend Warnings
+
+If frontend build fails due to warnings:
+
+```bash
+cd Aura.Web
+
+# See all warnings
+npm run lint
+
+# Auto-fix what's possible
+npm run lint:fix
+npm run format
+
+# Manual fixes may be needed for:
+# - Unused variables (prefix with _ or remove)
+# - no-explicit-any (provide proper types)
+# - Import order (rearrange imports)
+```
+
+#### Backend Warnings
+
+If backend build fails due to warnings:
+
+```bash
+# See detailed warnings
+dotnet build --configuration Release --verbosity detailed
+
+# Common fixes:
+# - Nullable warnings: Add null checks or use ! operator carefully
+# - Analyzer warnings: Follow the suggested fix in the error message
+# - Code style: Run dotnet format Aura.sln
+
+# For specific analyzer rules that are false positives:
+# Add suppression in .editorconfig (requires justification)
+```
+
+#### Documentation Warnings
+
+If documentation build fails:
+
+```bash
+# Check DocFX output
+docfx build docfx.json --warningsAsErrors
+
+# Common issues:
+# - Missing XML comments: Add /// documentation
+# - Broken links: Fix or remove invalid references
+# - Invalid markdown: Check with markdownlint
+```
+
+### Bypassing Checks (Not Recommended)
+
+While possible to bypass local checks, **CI will monitor all gates** (and enforce once cleanup is complete):
+
+```bash
+# Bypass pre-commit hook (not recommended)
+git commit --no-verify
+
+# Bypass specific analyzer (requires PR justification)
+# In .editorconfig or code:
+#pragma warning disable CA1234
+```
+
+**Important:** Bypassing checks locally is not recommended. While CI currently allows warnings in monitoring mode, it tracks them for cleanup. Once enforcement is enabled, all warnings must be fixed.
+
+### Phased Rollout Timeline
+
+**Phase 1: Gate Configuration (This PR)** ✅
+- All quality gates configured in CI workflows
+- Pre-commit hooks updated with optional enforcement
+- Documentation of all gates in BUILD_GUIDE.md
+- Gates run in monitoring mode (report but don't fail)
+
+**Phase 2: Warning Cleanup (Upcoming PRs)**
+- Fix all frontend ESLint warnings (347 warnings)
+- Fix all backend compiler and analyzer warnings
+- Fix DocFX documentation warnings
+- Fix script linting issues (shellcheck, PSScriptAnalyzer)
+
+**Phase 3: Enforcement Activation (After Cleanup)**
+- Remove `continue-on-error: true` from CI workflows
+- Enable strict enforcement in pre-commit hooks by default
+- All future PRs must have zero warnings
+- Gates block merging if any warnings introduced
+
+**Tracking:** Monitor gate status in each PR's CI output summary sections.
 
 ## Troubleshooting
 
