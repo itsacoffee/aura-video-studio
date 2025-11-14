@@ -39,8 +39,7 @@ export function BasicChromaKeyExample() {
 
   const handleEffectRemove = () => {
     // Remove the effect from your video clip
-    // eslint-disable-next-line no-console
-    console.log('Effect removed');
+    console.info('Effect removed');
   };
 
   return (
@@ -120,10 +119,8 @@ export function MotionTrackingExample() {
         const tracked = motionTracker.trackFrame('point-1', imageData, currentTime);
 
         if (tracked) {
-          // eslint-disable-next-line no-console
-          console.log('Tracked position:', tracked.x, tracked.y);
-          // eslint-disable-next-line no-console
-          console.log('Confidence:', tracked.confidence);
+          console.info('Tracked position:', tracked.x, tracked.y);
+          console.info('Confidence:', tracked.confidence);
         }
       }
     }
@@ -150,8 +147,7 @@ export function CompleteGreenScreenWorkflow() {
       description: 'Select the green screen color and adjust similarity',
       action: () => {
         // Apply initial chroma key
-        // eslint-disable-next-line no-console
-        console.log('Applying chroma key...');
+        console.info('Applying chroma key...');
         setStep('refine');
       },
     },
@@ -160,8 +156,7 @@ export function CompleteGreenScreenWorkflow() {
       description: 'Adjust edge thickness, feather, and spill suppression',
       action: () => {
         // Refine the key
-        // eslint-disable-next-line no-console
-        console.log('Refining edges...');
+        console.info('Refining edges...');
         setStep('composite');
       },
     },
@@ -170,8 +165,7 @@ export function CompleteGreenScreenWorkflow() {
       description: 'Add background and position your keyed subject',
       action: () => {
         // Composite layers
-        // eslint-disable-next-line no-console
-        console.log('Compositing layers...');
+        console.info('Compositing layers...');
         setStep('done');
       },
     },
@@ -179,8 +173,7 @@ export function CompleteGreenScreenWorkflow() {
       title: 'Workflow Complete!',
       description: 'Your green screen composite is ready',
       action: () => {
-        // eslint-disable-next-line no-console
-        console.log('Export final video');
+        console.info('Export final video');
       },
     },
   };
@@ -280,8 +273,7 @@ export function GreenScreenPresetsExample() {
     };
 
     const preset = presets[presetType];
-    // eslint-disable-next-line no-console
-    console.log('Applying preset:', presetType, preset);
+    console.info('Applying preset:', presetType, preset);
 
     // Apply preset parameters to your effect
   };

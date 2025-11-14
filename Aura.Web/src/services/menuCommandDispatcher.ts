@@ -262,7 +262,7 @@ class MenuCommandDispatcher {
     if (this.showToast) {
       this.showToast(message, type);
     } else {
-      console.log(`[MenuCommand:${type.toUpperCase()}] ${message} (${correlationId})`);
+      console.info(`[MenuCommand:${type.toUpperCase()}] ${message} (${correlationId})`);
     }
   }
 

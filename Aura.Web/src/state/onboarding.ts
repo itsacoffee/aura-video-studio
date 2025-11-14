@@ -720,7 +720,7 @@ export async function validateApiKeyThunk(
   // CRITICAL FIX: Reset circuit breaker before API key validation
   // This prevents false "service unavailable" errors from persisted circuit breaker state
   resetCircuitBreaker();
-  console.log(`[API Key Validation] Circuit breaker reset for ${provider} validation`);
+  console.info(`[API Key Validation] Circuit breaker reset for ${provider} validation`);
 
   try {
     // Client-side format validation
@@ -804,7 +804,7 @@ export async function validateApiKeyThunk(
 
         const data = await response.json();
 
-        console.log('[OpenAI Validation] Response:', {
+        console.info('[OpenAI Validation] Response:', {
           ok: response.ok,
           status: response.status,
           isValid: data.isValid,
@@ -841,7 +841,8 @@ export async function validateApiKeyThunk(
           type: 'API_KEY_INVALID',
           payload: {
             provider,
-            error: 'Network error: Could not reach validation service. Please check your internet connection.',
+            error:
+              'Network error: Could not reach validation service. Please check your internet connection.',
           },
         });
         return;

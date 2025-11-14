@@ -39,16 +39,14 @@ class AudioContextPool {
       this.audioContext = new AudioContextClass();
 
       if (import.meta.env.DEV) {
-        // eslint-disable-next-line no-console
-        console.log('[AudioContextPool] Created new AudioContext');
+        console.info('[AudioContextPool] Created new AudioContext');
       }
     }
 
     this.referenceCount++;
 
     if (import.meta.env.DEV) {
-      // eslint-disable-next-line no-console
-      console.log(`[AudioContextPool] Reference count: ${this.referenceCount}`);
+      console.info(`[AudioContextPool] Reference count: ${this.referenceCount}`);
     }
 
     return this.audioContext;
@@ -62,8 +60,7 @@ class AudioContextPool {
     this.referenceCount--;
 
     if (import.meta.env.DEV) {
-      // eslint-disable-next-line no-console
-      console.log(`[AudioContextPool] Reference count: ${this.referenceCount}`);
+      console.info(`[AudioContextPool] Reference count: ${this.referenceCount}`);
     }
 
     // Close context when no more references (with debounce)
@@ -74,8 +71,7 @@ class AudioContextPool {
       setTimeout(() => {
         if (this.referenceCount === 0 && this.audioContext) {
           if (import.meta.env.DEV) {
-            // eslint-disable-next-line no-console
-            console.log('[AudioContextPool] Closing AudioContext (no more references)');
+            console.info('[AudioContextPool] Closing AudioContext (no more references)');
           }
 
           this.audioContext.close();
@@ -91,8 +87,7 @@ class AudioContextPool {
   public forceClose(): void {
     if (this.audioContext) {
       if (import.meta.env.DEV) {
-        // eslint-disable-next-line no-console
-        console.log('[AudioContextPool] Force closing AudioContext');
+        console.info('[AudioContextPool] Force closing AudioContext');
       }
 
       this.audioContext.close();

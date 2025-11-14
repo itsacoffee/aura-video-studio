@@ -159,7 +159,7 @@ export function GlobalStatusFooter() {
               activity.artifactPath
                 ? () => {
                     // In production, this would open the file location
-                    // console.log('Open file:', activity.artifactPath);
+                    // console.info('Open file:', activity.artifactPath);
                   }
                 : undefined
             }

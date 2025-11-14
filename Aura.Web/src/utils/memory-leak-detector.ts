@@ -77,8 +77,7 @@ class MemoryLeakDetector {
   public start(): void {
     if (!this.enabled || this.checkInterval !== null) return;
 
-    // eslint-disable-next-line no-console
-    console.log('🔍 Memory leak detector started (checking every 30 seconds)');
+    console.info('🔍 Memory leak detector started (checking every 30 seconds)');
 
     this.checkInterval = window.setInterval(() => {
       this.checkForLeaks();
@@ -114,13 +113,10 @@ class MemoryLeakDetector {
     });
 
     if (detectedLeaks.length > 0) {
-      // eslint-disable-next-line no-console
       console.group('⚠️ Potential Memory Leaks Detected');
       detectedLeaks.forEach(({ pattern, details }) => {
         console.warn(`${pattern}: ${details}`);
       });
-      console.log('Run window.__AURA_MEMORY_REPORT__() for more details'); // eslint-disable-line no-console
-      // eslint-disable-next-line no-console
       console.groupEnd();
     }
   }

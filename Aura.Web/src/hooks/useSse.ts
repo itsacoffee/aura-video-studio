@@ -156,7 +156,7 @@ export interface UseSseReturn<T> {
  *     progress: z.number(),
  *   }),
  *   onMessage: (event) => {
- *     console.log('Progress:', event.data.progress);
+ *     console.info('Progress:', event.data.progress);
  *   },
  * });
  * ```

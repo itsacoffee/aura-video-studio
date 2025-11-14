@@ -80,7 +80,7 @@ export class JobsApiService {
    * const unsubscribe = apiClient.subscribe(`/api/jobs/${jobId}/events`, {
    *   onMessage: (event) => {
    *     const data = JSON.parse(event.data);
-   *     console.log('Progress:', data);
+   *     console.info('Progress:', data);
    *   }
    * });
    * ```
@@ -116,14 +116,14 @@ export class FileUploadService {
    * ```typescript
    * import { uploadFile } from './api/apiClient';
    * const response = await uploadFile<UploadResponse>('/api/upload', file, (progress) => {
-   *   console.log(`Upload progress: ${progress}%`);
+   *   console.info(`Upload progress: ${progress}%`);
    * });
    * ```
    *
    * After:
    * ```typescript
    * const response = await apiClient.uploadFile<UploadResponse>('/api/upload', file, (progress) => {
-   *   console.log(`Upload progress: ${progress}%`);
+   *   console.info(`Upload progress: ${progress}%`);
    * });
    * ```
    */

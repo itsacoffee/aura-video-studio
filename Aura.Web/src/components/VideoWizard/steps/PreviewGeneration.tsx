@@ -516,11 +516,11 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
   );
 
   const handleSearchFallback = useCallback(async (sceneId: string) => {
-    console.log('Search fallback for scene:', sceneId);
+    console.info('Search fallback for scene:', sceneId);
   }, []);
 
   const playScenePreview = useCallback((sceneId: string) => {
-    console.log('Playing preview for scene:', sceneId);
+    console.info('Playing preview for scene:', sceneId);
   }, []);
 
   const renderProviderSettings = () => (

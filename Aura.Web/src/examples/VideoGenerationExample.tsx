@@ -18,7 +18,7 @@ export function VideoGenerationExample() {
   const { isGenerating, progress, status, error, generate, cancel, retry, reset } =
     useVideoGeneration({
       onComplete: (finalStatus) => {
-        console.log('Video generation completed:', finalStatus);
+        console.info('Video generation completed:', finalStatus);
         if (finalStatus.outputPath) {
           alert(`Video ready: ${finalStatus.outputPath}`);
         }
@@ -27,7 +27,7 @@ export function VideoGenerationExample() {
         console.error('Video generation failed:', err);
       },
       onProgress: (percent, message) => {
-        console.log(`Progress: ${percent}% - ${message || ''}`);
+        console.info(`Progress: ${percent}% - ${message || ''}`);
       },
     });
 

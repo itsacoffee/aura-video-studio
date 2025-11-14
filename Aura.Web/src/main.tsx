@@ -59,44 +59,44 @@ window.addEventListener('error', (event) => {
 // ===== GLOBAL ERROR HANDLERS (END) =====
 
 // ===== INITIALIZATION LOGGING (START) =====
-console.log('[Main] ===== Aura Video Studio - React Initialization =====');
-console.log('[Main] Timestamp:', new Date().toISOString());
-console.log('[Main] Location:', window.location.href);
-console.log('[Main] Protocol:', window.location.protocol);
-console.log('[Main] User Agent:', navigator.userAgent);
+console.info('[Main] ===== Aura Video Studio - React Initialization =====');
+console.info('[Main] Timestamp:', new Date().toISOString());
+console.info('[Main] Location:', window.location.href);
+console.info('[Main] Protocol:', window.location.protocol);
+console.info('[Main] User Agent:', navigator.userAgent);
 
 // Check for Electron environment
-console.log('[Main] Checking Electron environment...');
-console.log('[Main] window.electron exists:', typeof (window as Window).electron !== 'undefined');
-console.log('[Main] AURA_IS_ELECTRON:', window.AURA_IS_ELECTRON);
-console.log('[Main] AURA_BACKEND_URL:', window.AURA_BACKEND_URL);
-console.log('[Main] AURA_IS_DEV:', window.AURA_IS_DEV);
-console.log('[Main] AURA_VERSION:', window.AURA_VERSION);
+console.info('[Main] Checking Electron environment...');
+console.info('[Main] window.electron exists:', typeof (window as Window).electron !== 'undefined');
+console.info('[Main] AURA_IS_ELECTRON:', window.AURA_IS_ELECTRON);
+console.info('[Main] AURA_BACKEND_URL:', window.AURA_BACKEND_URL);
+console.info('[Main] AURA_IS_DEV:', window.AURA_IS_DEV);
+console.info('[Main] AURA_VERSION:', window.AURA_VERSION);
 
 // Check for root element
 const rootElement = document.getElementById('root');
-console.log('[Main] Root element exists:', rootElement !== null);
+console.info('[Main] Root element exists:', rootElement !== null);
 if (rootElement) {
-  console.log('[Main] Root element ready:', rootElement.innerHTML.length === 0);
+  console.info('[Main] Root element ready:', rootElement.innerHTML.length === 0);
 }
 
 // Log environment variables
-console.log('[Main] import.meta.env.MODE:', import.meta.env.MODE);
-console.log('[Main] import.meta.env.DEV:', import.meta.env.DEV);
-console.log('[Main] import.meta.env.PROD:', import.meta.env.PROD);
+console.info('[Main] import.meta.env.MODE:', import.meta.env.MODE);
+console.info('[Main] import.meta.env.DEV:', import.meta.env.DEV);
+console.info('[Main] import.meta.env.PROD:', import.meta.env.PROD);
 
 // Log Windows environment information for debugging
 if (import.meta.env.DEV) {
-  console.log('[Main] Running Windows environment logging...');
+  console.info('[Main] Running Windows environment logging...');
   logWindowsEnvironment();
 }
 
-console.log('[Main] Starting environment validation...');
+console.info('[Main] Starting environment validation...');
 
 // Validate environment before rendering
 try {
   validateEnvironment();
-  console.log('[Main] ✓ Environment validation passed');
+  console.info('[Main] ✓ Environment validation passed');
 } catch (error) {
   console.error('[Main] ✗ Environment validation failed:', error);
   // Display error in DOM with clear styling
@@ -153,21 +153,21 @@ try {
   throw error;
 }
 
-console.log('[Main] Creating React root...');
+console.info('[Main] Creating React root...');
 const rootEl = document.getElementById('root');
 if (!rootEl) {
   console.error('[Main] ✗ FATAL: Root element not found!');
   throw new Error('Root element #root not found in DOM');
 }
 
-console.log('[Main] Calling ReactDOM.createRoot...');
+console.info('[Main] Calling ReactDOM.createRoot...');
 const root = ReactDOM.createRoot(rootEl);
 
-console.log('[Main] Rendering App component...');
+console.info('[Main] Rendering App component...');
 root.render(<App />);
 
-console.log('[Main] ✓ React render call completed');
-console.log('[Main] Waiting for React hydration to complete...');
+console.info('[Main] ✓ React render call completed');
+console.info('[Main] Waiting for React hydration to complete...');
 // ===== INITIALIZATION LOGGING (END) =====
 
 // Clear initialization timeout - app has successfully hydrated

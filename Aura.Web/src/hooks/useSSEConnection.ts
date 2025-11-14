@@ -138,7 +138,7 @@ export function useSSEConnection(options: UseSSEConnectionOptions = {}): UseSSEC
           // Check if we should attempt reconnection
           if (reconnectAttempt < maxReconnectAttempts) {
             const delay = reconnectDelay * Math.pow(2, reconnectAttempt);
-            console.log(
+            console.info(
               `SSE connection lost. Reconnecting in ${delay}ms (attempt ${reconnectAttempt + 1}/${maxReconnectAttempts})...`
             );
 

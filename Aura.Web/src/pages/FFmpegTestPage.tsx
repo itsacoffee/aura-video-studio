@@ -18,7 +18,7 @@ export function FFmpegTestPage() {
   return (
     <div className={styles.container}>
       <Title1>FFmpeg Setup Test Page</Title1>
-      <FFmpegSetup onStatusChange={(installed) => console.log('FFmpeg installed:', installed)} />
+      <FFmpegSetup onStatusChange={(installed) => console.info('FFmpeg installed:', installed)} />
     </div>
   );
 }

@@ -153,7 +153,7 @@ export function logWindowsEnvironment(): void {
   const dpiInfo = getDPIScaleInfo();
   const theme = getSystemThemePreference();
 
-  console.log('[Windows Environment]', {
+  console.info('[Windows Environment]', {
     platform: navigator.platform,
     userAgent: navigator.userAgent,
     isWindows: isWindows(),

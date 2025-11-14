@@ -243,7 +243,7 @@ export const OllamaStatusPanel: React.FC = () => {
                     </MenuTrigger>
                     <MenuPopover>
                       <MenuList>
-                        <MenuItem onClick={() => console.log('View info:', model.name)}>
+                        <MenuItem onClick={() => console.info('View info:', model.name)}>
                           View Info
                         </MenuItem>
                       </MenuList>

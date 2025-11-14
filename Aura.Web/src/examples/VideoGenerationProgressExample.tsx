@@ -277,7 +277,7 @@ const response = await fetch('/api/jobs', {
 });
 
 const data = await response.json();
-console.log('Job ID:', data.jobId);
+console.info('Job ID:', data.jobId);
 
 // Use the job ID with VideoGenerationProgress component
 <VideoGenerationProgress jobId={data.jobId} />`}

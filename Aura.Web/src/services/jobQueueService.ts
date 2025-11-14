@@ -131,7 +131,8 @@ class JobQueueService {
     this.connection = new signalR.HubConnectionBuilder()
       .withUrl(`${baseUrl}/hubs/job-queue`, {
         skipNegotiation: false,
-        transport: signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.ServerSentEvents,
+        transport:
+          signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.ServerSentEvents,
       })
       .withAutomaticReconnect({
         nextRetryDelayInMilliseconds: (retryContext) => {
@@ -146,32 +147,32 @@ class JobQueueService {
 
     // Register event handlers
     this.connection.on('JobStatusChanged', (data) => {
-      console.log('Job status changed:', data);
-      this.statusChangeCallbacks.forEach(cb => cb(data));
+      console.info('Job status changed:', data);
+      this.statusChangeCallbacks.forEach((cb) => cb(data));
     });
 
     this.connection.on('JobProgress', (data) => {
-      console.log('Job progress:', data);
-      this.progressCallbacks.forEach(cb => cb(data));
+      console.info('Job progress:', data);
+      this.progressCallbacks.forEach((cb) => cb(data));
     });
 
     this.connection.on('JobCompleted', (data) => {
-      console.log('Job completed:', data);
-      this.completedCallbacks.forEach(cb => cb(data));
+      console.info('Job completed:', data);
+      this.completedCallbacks.forEach((cb) => cb(data));
     });
 
     this.connection.on('JobFailed', (data) => {
-      console.log('Job failed:', data);
-      this.failedCallbacks.forEach(cb => cb(data));
+      console.info('Job failed:', data);
+      this.failedCallbacks.forEach((cb) => cb(data));
     });
 
     this.connection.onreconnecting(() => {
-      console.log('JobQueueHub reconnecting...');
+      console.info('JobQueueHub reconnecting...');
       this.reconnectAttempts++;
     });
 
     this.connection.onreconnected(() => {
-      console.log('JobQueueHub reconnected');
+      console.info('JobQueueHub reconnected');
       this.reconnectAttempts = 0;
     });
 
@@ -184,11 +185,11 @@ class JobQueueService {
 
   async start() {
     if (!this.connection) return;
-    
+
     try {
       if (this.connection.state === signalR.HubConnectionState.Disconnected) {
         await this.connection.start();
-        console.log('JobQueueHub connected');
+        console.info('JobQueueHub connected');
         await this.subscribeToQueue();
       }
     } catch (error) {
@@ -200,10 +201,10 @@ class JobQueueService {
 
   async stop() {
     if (!this.connection) return;
-    
+
     try {
       await this.connection.stop();
-      console.log('JobQueueHub disconnected');
+      console.info('JobQueueHub disconnected');
     } catch (error) {
       console.error('Error stopping JobQueueHub connection:', error);
     }
@@ -213,10 +214,10 @@ class JobQueueService {
     if (!this.connection || this.connection.state !== signalR.HubConnectionState.Connected) {
       await this.start();
     }
-    
+
     try {
       await this.connection!.invoke('SubscribeToJob', jobId);
-      console.log(`Subscribed to job: ${jobId}`);
+      console.info(`Subscribed to job: ${jobId}`);
     } catch (error) {
       console.error(`Error subscribing to job ${jobId}:`, error);
     }
@@ -226,10 +227,10 @@ class JobQueueService {
     if (!this.connection || this.connection.state !== signalR.HubConnectionState.Connected) {
       return;
     }
-    
+
     try {
       await this.connection.invoke('UnsubscribeFromJob', jobId);
-      console.log(`Unsubscribed from job: ${jobId}`);
+      console.info(`Unsubscribed from job: ${jobId}`);
     } catch (error) {
       console.error(`Error unsubscribing from job ${jobId}:`, error);
     }
@@ -239,10 +240,10 @@ class JobQueueService {
     if (!this.connection || this.connection.state !== signalR.HubConnectionState.Connected) {
       await this.start();
     }
-    
+
     try {
       await this.connection!.invoke('SubscribeToQueue');
-      console.log('Subscribed to queue updates');
+      console.info('Subscribed to queue updates');
     } catch (error) {
       console.error('Error subscribing to queue:', error);
     }
@@ -252,10 +253,10 @@ class JobQueueService {
     if (!this.connection || this.connection.state !== signalR.HubConnectionState.Connected) {
       return;
     }
-    
+
     try {
       await this.connection.invoke('UnsubscribeFromQueue');
-      console.log('Unsubscribed from queue updates');
+      console.info('Unsubscribed from queue updates');
     } catch (error) {
       console.error('Error unsubscribing from queue:', error);
     }

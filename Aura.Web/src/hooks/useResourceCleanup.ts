@@ -129,7 +129,6 @@ export function useResourceCleanup(): ResourceCleanupRegistry {
       } catch (error) {
         // Blob URL might already be revoked, ignore error
         if (import.meta.env.DEV) {
-          // eslint-disable-next-line no-console
           console.debug('Failed to revoke blob URL:', url, error);
         }
       }
@@ -143,7 +142,6 @@ export function useResourceCleanup(): ResourceCleanupRegistry {
       } catch (error) {
         // Element might be removed from DOM, ignore error
         if (import.meta.env.DEV) {
-          // eslint-disable-next-line no-console
           console.debug('Failed to remove event listener:', event, error);
         }
       }
