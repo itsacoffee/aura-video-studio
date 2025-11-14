@@ -24,37 +24,39 @@ public class VideoGenerationIntegrationTests : IAsyncLifetime
     }
 
     public Task InitializeAsync() => _fixture.InitializeAsync();
-    public Task DisposeAsync() => _fixture.DisposeAsync();
+    public Task DisposeAsync() => _fixture.DisposeAsync().AsTask();
 
     [Fact]
     public async Task GenerateVideo_WithValidBrief_CompletesSuccessfully()
     {
         // Arrange
-        var brief = new Brief
-        {
-            Topic = "Introduction to AI",
-            Audience = "General public",
-            Goal = "Educate viewers about artificial intelligence"
-        };
+        var brief = new Brief(
+            Topic: "Introduction to AI",
+            Audience: "General public",
+            Goal: "Educate viewers about artificial intelligence",
+            Tone: "Professional",
+            Language: "en-US",
+            Aspect: Aspect.Widescreen16x9);
 
-        var planSpec = new PlanSpec
-        {
-            TargetDuration = TimeSpan.FromSeconds(30),
-            Style = "educational"
-        };
+        var planSpec = new PlanSpec(
+            TargetDuration: TimeSpan.FromSeconds(30),
+            Pacing: Pacing.Conversational,
+            Density: Density.Moderate,
+            Style: "educational");
 
-        var voiceSpec = new VoiceSpec
-        {
-            VoiceName = "default",
-            Speed = 1.0
-        };
+        var voiceSpec = new VoiceSpec(
+            VoiceName: "default",
+            Rate: 1.0,
+            Pitch: 1.0,
+            Pause: PauseStyle.Natural);
 
-        var renderSpec = new RenderSpec
-        {
-            Res = new VideoResolution(1280, 720),
-            Fps = 30,
-            Codec = "h264"
-        };
+        var renderSpec = new RenderSpec(
+            Res: new Resolution(1280, 720),
+            Container: "mp4",
+            VideoBitrateK: 2500,
+            AudioBitrateK: 128,
+            Fps: 30,
+            Codec: "h264");
 
         var systemProfile = new SystemProfile
         {
@@ -88,26 +90,33 @@ public class VideoGenerationIntegrationTests : IAsyncLifetime
     public async Task GenerateVideo_WithCancellation_ThrowsOperationCanceledException()
     {
         // Arrange
-        var brief = new Brief
-        {
-            Topic = "Long video that will be cancelled",
-            Audience = "Test",
-            Goal = "Test cancellation"
-        };
+        var brief = new Brief(
+            Topic: "Long video that will be cancelled",
+            Audience: "Test",
+            Goal: "Test cancellation",
+            Tone: "Neutral",
+            Language: "en-US",
+            Aspect: Aspect.Widescreen16x9);
 
-        var planSpec = new PlanSpec
-        {
-            TargetDuration = TimeSpan.FromMinutes(5), // Long duration
-            Style = "test"
-        };
+        var planSpec = new PlanSpec(
+            TargetDuration: TimeSpan.FromMinutes(5), // Long duration
+            Pacing: Pacing.Conversational,
+            Density: Density.Moderate,
+            Style: "test");
 
-        var voiceSpec = new VoiceSpec { VoiceName = "default", Speed = 1.0 };
-        var renderSpec = new RenderSpec
-        {
-            Res = new VideoResolution(1280, 720),
-            Fps = 30,
-            Codec = "h264"
-        };
+        var voiceSpec = new VoiceSpec(
+            VoiceName: "default",
+            Rate: 1.0,
+            Pitch: 1.0,
+            Pause: PauseStyle.Natural);
+
+        var renderSpec = new RenderSpec(
+            Res: new Resolution(1280, 720),
+            Container: "mp4",
+            VideoBitrateK: 2500,
+            AudioBitrateK: 128,
+            Fps: 30,
+            Codec: "h264");
 
         var systemProfile = new SystemProfile
         {
@@ -139,26 +148,33 @@ public class VideoGenerationIntegrationTests : IAsyncLifetime
     public async Task GenerateVideo_WithInvalidBrief_ThrowsValidationException()
     {
         // Arrange
-        var brief = new Brief
-        {
-            Topic = "", // Invalid: empty topic
-            Audience = "Test",
-            Goal = "Test"
-        };
+        var brief = new Brief(
+            Topic: "", // Invalid: empty topic
+            Audience: "Test",
+            Goal: "Test",
+            Tone: "Neutral",
+            Language: "en-US",
+            Aspect: Aspect.Widescreen16x9);
 
-        var planSpec = new PlanSpec
-        {
-            TargetDuration = TimeSpan.FromSeconds(30),
-            Style = "test"
-        };
+        var planSpec = new PlanSpec(
+            TargetDuration: TimeSpan.FromSeconds(30),
+            Pacing: Pacing.Conversational,
+            Density: Density.Moderate,
+            Style: "test");
 
-        var voiceSpec = new VoiceSpec { VoiceName = "default", Speed = 1.0 };
-        var renderSpec = new RenderSpec
-        {
-            Res = new VideoResolution(1280, 720),
-            Fps = 30,
-            Codec = "h264"
-        };
+        var voiceSpec = new VoiceSpec(
+            VoiceName: "default",
+            Rate: 1.0,
+            Pitch: 1.0,
+            Pause: PauseStyle.Natural);
+
+        var renderSpec = new RenderSpec(
+            Res: new Resolution(1280, 720),
+            Container: "mp4",
+            VideoBitrateK: 2500,
+            AudioBitrateK: 128,
+            Fps: 30,
+            Codec: "h264");
 
         var systemProfile = new SystemProfile
         {
@@ -167,7 +183,7 @@ public class VideoGenerationIntegrationTests : IAsyncLifetime
         };
 
         // Act & Assert
-        await Assert.ThrowsAsync<Core.Errors.ValidationException>(async () =>
+        await Assert.ThrowsAsync<ArgumentException>(async () =>
         {
             await _fixture.VideoOrchestrator.GenerateVideoAsync(
                 brief,

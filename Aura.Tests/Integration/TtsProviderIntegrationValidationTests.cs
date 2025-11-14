@@ -663,13 +663,13 @@ public class TtsProviderIntegrationValidationTests
 
             // Assert
             Assert.True(result.IsValid, $"WAV file should be valid. Error: {result.ErrorMessage}");
-            Assert.True(result.Duration > TimeSpan.Zero, "WAV duration should be positive");
+            Assert.True(result.Duration.HasValue && result.Duration.Value > 0, "WAV duration should be positive");
             Assert.True(result.SampleRate > 0, "Sample rate should be positive");
 
             _output.WriteLine($"✓ WAV validation passed:");
             _output.WriteLine($"  Format: {result.Format}");
             _output.WriteLine($"  Sample Rate: {result.SampleRate} Hz");
-            _output.WriteLine($"  Duration: {result.Duration.TotalSeconds:F2} seconds");
+            _output.WriteLine($"  Duration: {result.Duration:F2} seconds");
             _output.WriteLine("✓ WAV file validation PASSED");
         }
         finally

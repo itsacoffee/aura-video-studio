@@ -131,14 +131,7 @@ public class ImageProviderRegistrationTests
         services.AddSingleton<ProviderSettings>(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<ProviderSettings>>();
-            return new ProviderSettings(logger)
-            {
-                // Default empty configuration
-                StableDiffusionWebUiUrl = null,
-                PiperExecutablePath = null,
-                PiperVoiceModelPath = null,
-                Mimic3BaseUrl = null
-            };
+            return new ProviderSettings(logger);
         });
 
         // Add KeyStore with empty keys
