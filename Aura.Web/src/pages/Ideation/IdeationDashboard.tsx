@@ -180,7 +180,7 @@ export const IdeationDashboard: React.FC = () => {
         {loading && (
           <div className={styles.conceptsGrid}>
             {Array.from({ length: 4 }).map((_, i) => (
-              <SkeletonCard key={i} hasImage={true} />
+              <SkeletonCard key={`skeleton-${i}`} hasImage={true} />
             ))}
           </div>
         )}

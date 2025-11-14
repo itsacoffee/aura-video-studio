@@ -199,7 +199,7 @@ export function DetailedProgressMonitor({ jobId }: { jobId: string }) {
           <strong>Warnings:</strong>
           <ul>
             {warnings.map((warning, i) => (
-              <li key={i}>{warning}</li>
+              <li key={`warning-${warning}-${i}`}>{warning}</li>
             ))}
           </ul>
         </div>
@@ -211,7 +211,7 @@ export function DetailedProgressMonitor({ jobId }: { jobId: string }) {
           <strong>Generated Files:</strong>
           <ul>
             {artifacts.map((artifact, i) => (
-              <li key={i}>
+              <li key={`artifact-${artifact.name}-${i}`}>
                 {artifact.name} ({(artifact.sizeBytes / 1024 / 1024).toFixed(2)} MB)
               </li>
             ))}
@@ -268,7 +268,7 @@ export function DirectSseUsage({ jobId }: { jobId: string }) {
       <div style={{ maxHeight: '400px', overflow: 'auto', marginTop: '1rem' }}>
         {events.map((event, i) => (
           <div
-            key={i}
+            key={`event-${event.type}-${i}`}
             style={{
               padding: '0.5rem',
               borderBottom: '1px solid #eee',

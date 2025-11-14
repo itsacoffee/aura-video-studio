@@ -31,9 +31,7 @@ export function ProjectDetailsPage() {
   if (!project) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-          Project Not Found
-        </h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Project Not Found</h1>
         <Link to="/projects">
           <Button>
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -139,7 +137,7 @@ export function ProjectDetailsPage() {
                 <div className="flex flex-wrap gap-2 mt-3">
                   {project.tags.map((tag, index) => (
                     <span
-                      key={index}
+                      key={`tag-${tag}-${index}`}
                       className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded"
                     >
                       <Tag className="w-3 h-3" />
@@ -165,15 +163,10 @@ export function ProjectDetailsPage() {
               </h2>
               <div className="space-y-3">
                 {project.scenes.length === 0 ? (
-                  <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-                    No scenes yet
-                  </p>
+                  <p className="text-gray-500 dark:text-gray-400 text-center py-8">No scenes yet</p>
                 ) : (
                   project.scenes.map((scene) => (
-                    <div
-                      key={scene.id}
-                      className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg"
-                    >
+                    <div key={scene.id} className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
                       <div className="flex items-start justify-between mb-2">
                         <span className="text-sm font-medium text-gray-900 dark:text-white">
                           Scene {scene.sceneIndex + 1}
@@ -182,9 +175,7 @@ export function ProjectDetailsPage() {
                           {scene.durationSeconds.toFixed(1)}s
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {scene.scriptText}
-                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">{scene.scriptText}</p>
                     </div>
                   ))
                 )}

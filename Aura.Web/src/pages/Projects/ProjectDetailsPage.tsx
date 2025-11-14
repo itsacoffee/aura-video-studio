@@ -31,10 +31,16 @@ export function ProjectDetailsPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'overview' | 'scenes' | 'assets' | 'versions'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'scenes' | 'assets' | 'versions'>(
+    'overview'
+  );
 
   // Fetch project details
-  const { data: project, isLoading, error } = useQuery({
+  const {
+    data: project,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['project', projectId],
     queryFn: () => projectManagementApi.getProject(projectId!),
     enabled: !!projectId,
@@ -183,7 +189,8 @@ export function ProjectDetailsPage() {
                 {project.durationSeconds && (
                   <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                     <Clock className="w-4 h-4" />
-                    {Math.floor(project.durationSeconds / 60)}:{String(Math.floor(project.durationSeconds % 60)).padStart(2, '0')}
+                    {Math.floor(project.durationSeconds / 60)}:
+                    {String(Math.floor(project.durationSeconds % 60)).padStart(2, '0')}
                   </div>
                 )}
 
@@ -212,7 +219,7 @@ export function ProjectDetailsPage() {
                 <div className="flex flex-wrap gap-2 mt-4">
                   {project.tags.map((tag, index) => (
                     <span
-                      key={index}
+                      key={`tag-${tag}-${index}`}
                       className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full"
                     >
                       <Tag className="w-3 h-3" />
@@ -327,7 +334,9 @@ export function ProjectDetailsPage() {
                           </div>
                         </div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">
-                          {formatDistanceToNow(new Date(checkpoint.checkpointTime), { addSuffix: true })}
+                          {formatDistanceToNow(new Date(checkpoint.checkpointTime), {
+                            addSuffix: true,
+                          })}
                         </div>
                       </div>
                     ))}
@@ -431,9 +440,7 @@ export function ProjectDetailsPage() {
         {activeTab === 'scenes' && (
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
             <div className="p-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Scenes
-              </h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Scenes</h2>
               {project.scenes.length === 0 ? (
                 <p className="text-gray-500 dark:text-gray-400">No scenes yet</p>
               ) : (
@@ -462,14 +469,10 @@ export function ProjectDetailsPage() {
                       </p>
                       <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
                         {scene.audioFilePath && (
-                          <span className="flex items-center gap-1">
-                            🎵 Audio ready
-                          </span>
+                          <span className="flex items-center gap-1">🎵 Audio ready</span>
                         )}
                         {scene.imageFilePath && (
-                          <span className="flex items-center gap-1">
-                            🖼️ Image ready
-                          </span>
+                          <span className="flex items-center gap-1">🖼️ Image ready</span>
                         )}
                         {scene.isCompleted && (
                           <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
@@ -489,9 +492,7 @@ export function ProjectDetailsPage() {
         {activeTab === 'assets' && (
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
             <div className="p-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Assets
-              </h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Assets</h2>
               {project.assets.length === 0 ? (
                 <p className="text-gray-500 dark:text-gray-400">No assets yet</p>
               ) : (
@@ -569,9 +570,7 @@ export function ProjectDetailsPage() {
                         </div>
                         <div className="text-xs text-gray-500 dark:text-gray-400 text-right">
                           {formatDistanceToNow(new Date(version.createdAt), { addSuffix: true })}
-                          {version.createdBy && (
-                            <div className="mt-1">by {version.createdBy}</div>
-                          )}
+                          {version.createdBy && <div className="mt-1">by {version.createdBy}</div>}
                         </div>
                       </div>
                       <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">

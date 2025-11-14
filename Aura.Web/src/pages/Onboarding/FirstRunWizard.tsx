@@ -151,8 +151,9 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
   const styles = useStyles();
   const navigate = useNavigate();
   const [state, dispatch] = useReducer(onboardingReducer, initialOnboardingState);
-  const [stepStartTime, setStepStartTime] = useState<number>(Date.now());
-  const [wizardStartTime] = useState<number>(Date.now());
+  const [stepStartTime, setStepStartTime] = useState<number>(0);
+  const [wizardStartTime] = useState<number>(0);
+  const wizardStartTimeRef = useRef<number>(0);
 
   // FFmpeg status state
   const [ffmpegReady, setFfmpegReady] = useState(false);
@@ -198,6 +199,11 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
   ];
 
   useEffect(() => {
+    // Initialize timestamps client-side only (avoid hydration mismatches)
+    const now = Date.now();
+    setStepStartTime(now);
+    wizardStartTimeRef.current = now;
+
     // Track wizard start
     wizardAnalytics.started();
 
@@ -378,7 +384,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
       await markFirstRunCompleted();
 
       // Track completion
-      const totalTime = (Date.now() - wizardStartTime) / 1000;
+      const totalTime = (Date.now() - wizardStartTimeRef.current) / 1000;
       const validApiKeys = Object.entries(state.apiKeyValidationStatus)
         .filter(([_, status]) => status === 'valid')
         .map(([provider]) => provider);
