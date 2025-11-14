@@ -194,7 +194,7 @@ public sealed class ProviderGateway
 
         try
         {
-            var result = await operation(ct);
+            var result = await operation(ct).ConfigureAwait(false);
             
             state.MarkComplete();
             
@@ -224,7 +224,7 @@ public sealed class ProviderGateway
         }
         finally
         {
-            await monitoringTask;
+            await monitoringTask.ConfigureAwait(false);
             _activeStates.TryRemove(correlationId, out _);
         }
     }

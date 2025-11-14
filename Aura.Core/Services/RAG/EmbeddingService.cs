@@ -49,9 +49,9 @@ public class EmbeddingService
         {
             return _config.Provider switch
             {
-                EmbeddingProvider.Local => await GenerateLocalEmbeddingsAsync(texts, ct),
-                EmbeddingProvider.OpenAI => await GenerateOpenAIEmbeddingsAsync(texts, ct),
-                EmbeddingProvider.Ollama => await GenerateOllamaEmbeddingsAsync(texts, ct),
+                EmbeddingProvider.Local => await GenerateLocalEmbeddingsAsync(texts, ct).ConfigureAwait(false),
+                EmbeddingProvider.OpenAI => await GenerateOpenAIEmbeddingsAsync(texts, ct).ConfigureAwait(false),
+                EmbeddingProvider.Ollama => await GenerateOllamaEmbeddingsAsync(texts, ct).ConfigureAwait(false),
                 _ => GenerateSimpleEmbeddings(texts)
             };
         }
@@ -69,7 +69,7 @@ public class EmbeddingService
         string text,
         CancellationToken ct = default)
     {
-        var embeddings = await GenerateEmbeddingsAsync(new List<string> { text }, ct);
+        var embeddings = await GenerateEmbeddingsAsync(new List<string> { text }, ct).ConfigureAwait(false);
         return embeddings.FirstOrDefault() ?? Array.Empty<float>();
     }
 
@@ -78,7 +78,7 @@ public class EmbeddingService
         CancellationToken ct)
     {
         _logger.LogDebug("Using local simple embedding generation");
-        return await Task.FromResult(GenerateSimpleEmbeddings(texts));
+        return await Task.FromResult(GenerateSimpleEmbeddings(texts)).ConfigureAwait(false);
     }
 
     private async Task<List<float[]>> GenerateOpenAIEmbeddingsAsync(
@@ -110,11 +110,11 @@ public class EmbeddingService
             var response = await _httpClient.PostAsync(
                 "https://api.openai.com/v1/embeddings",
                 content,
-                ct);
+                ct).ConfigureAwait(false);
 
             response.EnsureSuccessStatusCode();
 
-            var responseBody = await response.Content.ReadAsStringAsync(ct);
+            var responseBody = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var result = JsonSerializer.Deserialize<OpenAIEmbeddingResponse>(responseBody);
 
             if (result?.Data == null || result.Data.Count == 0)
@@ -159,11 +159,11 @@ public class EmbeddingService
                 var response = await _httpClient.PostAsync(
                     $"{baseUrl}/api/embeddings",
                     content,
-                    ct);
+                    ct).ConfigureAwait(false);
 
                 response.EnsureSuccessStatusCode();
 
-                var responseBody = await response.Content.ReadAsStringAsync(ct);
+                var responseBody = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 var result = JsonSerializer.Deserialize<OllamaEmbeddingResponse>(responseBody);
 
                 if (result?.Embedding != null)

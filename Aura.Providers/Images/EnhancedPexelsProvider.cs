@@ -72,15 +72,15 @@ public class EnhancedPexelsProvider : IEnhancedStockProvider
             try
             {
                 var results = mediaType == StockMediaType.Video
-                    ? await SearchVideosInternalAsync(request, ct)
-                    : await SearchImagesInternalAsync(request, ct);
+                    ? await SearchVideosInternalAsync(request, ct).ConfigureAwait(false)
+                    : await SearchImagesInternalAsync(request, ct).ConfigureAwait(false);
 
                 return results;
             }
             catch (HttpRequestException ex) when (attempt < maxRetries)
             {
                 _logger.LogWarning(ex, "HTTP error searching Pexels (attempt {Attempt}/{MaxRetries})", attempt, maxRetries);
-                await Task.Delay(retryDelay * attempt, ct);
+                await Task.Delay(retryDelay * attempt, ct).ConfigureAwait(false);
             }
             catch (TaskCanceledException) when (!ct.IsCancellationRequested)
             {
@@ -101,7 +101,7 @@ public class EnhancedPexelsProvider : IEnhancedStockProvider
         var httpRequest = new HttpRequestMessage(HttpMethod.Get, url);
         httpRequest.Headers.Authorization = new AuthenticationHeaderValue(_apiKey!);
 
-        var response = await _httpClient.SendAsync(httpRequest, ct);
+        var response = await _httpClient.SendAsync(httpRequest, ct).ConfigureAwait(false);
         UpdateRateLimitInfo(response.Headers);
 
         if (response.StatusCode == HttpStatusCode.TooManyRequests)
@@ -111,7 +111,7 @@ public class EnhancedPexelsProvider : IEnhancedStockProvider
 
         response.EnsureSuccessStatusCode();
 
-        var json = await response.Content.ReadAsStringAsync(ct);
+        var json = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
         var doc = JsonDocument.Parse(json);
 
         var results = new List<StockMediaResult>();
@@ -146,7 +146,7 @@ public class EnhancedPexelsProvider : IEnhancedStockProvider
         var httpRequest = new HttpRequestMessage(HttpMethod.Get, url);
         httpRequest.Headers.Authorization = new AuthenticationHeaderValue(_apiKey!);
 
-        var response = await _httpClient.SendAsync(httpRequest, ct);
+        var response = await _httpClient.SendAsync(httpRequest, ct).ConfigureAwait(false);
         UpdateRateLimitInfo(response.Headers);
 
         if (response.StatusCode == HttpStatusCode.TooManyRequests)
@@ -156,7 +156,7 @@ public class EnhancedPexelsProvider : IEnhancedStockProvider
 
         response.EnsureSuccessStatusCode();
 
-        var json = await response.Content.ReadAsStringAsync(ct);
+        var json = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
         var doc = JsonDocument.Parse(json);
 
         var results = new List<StockMediaResult>();
@@ -396,7 +396,7 @@ public class EnhancedPexelsProvider : IEnhancedStockProvider
             var request = new HttpRequestMessage(HttpMethod.Get, "https://api.pexels.com/v1/curated?per_page=1");
             request.Headers.Authorization = new AuthenticationHeaderValue(_apiKey);
 
-            var response = await _httpClient.SendAsync(request, ct);
+            var response = await _httpClient.SendAsync(request, ct).ConfigureAwait(false);
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)
@@ -415,14 +415,14 @@ public class EnhancedPexelsProvider : IEnhancedStockProvider
         {
             try
             {
-                var response = await _httpClient.GetAsync(url, ct);
+                var response = await _httpClient.GetAsync(url, ct).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
-                return await response.Content.ReadAsByteArrayAsync(ct);
+                return await response.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
             }
             catch (HttpRequestException ex) when (attempt < maxRetries)
             {
                 _logger.LogWarning(ex, "Failed to download media (attempt {Attempt}/{MaxRetries})", attempt, maxRetries);
-                await Task.Delay(retryDelay * attempt, ct);
+                await Task.Delay(retryDelay * attempt, ct).ConfigureAwait(false);
             }
         }
 

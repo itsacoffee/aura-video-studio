@@ -41,7 +41,7 @@ public class BeatDetectionService
         {
             // In production, this would use a real beat detection library like aubio
             // For now, simulate beat detection based on typical BPM patterns
-            var beats = await SimulateBeatDetectionAsync(filePath, minBPM, maxBPM, ct);
+            var beats = await SimulateBeatDetectionAsync(filePath, minBPM, maxBPM, ct).ConfigureAwait(false);
 
             _logger.LogInformation("Detected {Count} beats in file", beats.Count);
             return beats;
@@ -167,7 +167,7 @@ public class BeatDetectionService
         int maxBPM,
         CancellationToken ct)
     {
-        await Task.Delay(100, ct); // Simulate processing time
+        await Task.Delay(100, ct).ConfigureAwait(false); // Simulate processing time
 
         // Generate mock beat data based on typical music structure
         var bpm = 120; // Simulate detected BPM

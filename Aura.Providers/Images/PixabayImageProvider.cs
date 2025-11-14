@@ -65,7 +65,7 @@ public class PixabayImageProvider : IStockProvider
             try
             {
                 var url = $"https://pixabay.com/api/?key={_apiKey}&q={Uri.EscapeDataString(query)}&per_page={Math.Min(count, 200)}&image_type=photo";
-                var response = await _httpClient.GetAsync(url, ct);
+                var response = await _httpClient.GetAsync(url, ct).ConfigureAwait(false);
 
                 if (response.StatusCode == HttpStatusCode.TooManyRequests)
                 {
@@ -73,7 +73,7 @@ public class PixabayImageProvider : IStockProvider
                     
                     if (attempt < maxRetries)
                     {
-                        await Task.Delay(retryDelay * attempt, ct);
+                        await Task.Delay(retryDelay * attempt, ct).ConfigureAwait(false);
                         continue;
                     }
                     throw new InvalidOperationException("Pixabay rate limit exceeded. Please try again later.");
@@ -81,7 +81,7 @@ public class PixabayImageProvider : IStockProvider
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    var errorContent = await response.Content.ReadAsStringAsync(ct);
+                    var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                     _logger.LogError("Pixabay API error: {StatusCode} - {Content}", response.StatusCode, errorContent);
                     
                     // Handle specific error codes
@@ -93,7 +93,7 @@ public class PixabayImageProvider : IStockProvider
                     response.EnsureSuccessStatusCode();
                 }
 
-                var json = await response.Content.ReadAsStringAsync(ct);
+                var json = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 var doc = JsonDocument.Parse(json);
 
                 var assets = new List<Asset>();
@@ -135,7 +135,7 @@ public class PixabayImageProvider : IStockProvider
             catch (HttpRequestException ex) when (attempt < maxRetries)
             {
                 _logger.LogWarning(ex, "HTTP error searching Pixabay (attempt {Attempt}/{MaxRetries})", attempt, maxRetries);
-                await Task.Delay(retryDelay * attempt, ct);
+                await Task.Delay(retryDelay * attempt, ct).ConfigureAwait(false);
             }
             catch (TaskCanceledException) when (!ct.IsCancellationRequested)
             {
@@ -174,7 +174,7 @@ public class PixabayImageProvider : IStockProvider
             try
             {
                 var url = $"https://pixabay.com/api/videos/?key={_apiKey}&q={Uri.EscapeDataString(query)}&per_page={Math.Min(count, 200)}";
-                var response = await _httpClient.GetAsync(url, ct);
+                var response = await _httpClient.GetAsync(url, ct).ConfigureAwait(false);
 
                 if (response.StatusCode == HttpStatusCode.TooManyRequests)
                 {
@@ -182,7 +182,7 @@ public class PixabayImageProvider : IStockProvider
                     
                     if (attempt < maxRetries)
                     {
-                        await Task.Delay(retryDelay * attempt, ct);
+                        await Task.Delay(retryDelay * attempt, ct).ConfigureAwait(false);
                         continue;
                     }
                     throw new InvalidOperationException("Pixabay rate limit exceeded. Please try again later.");
@@ -190,7 +190,7 @@ public class PixabayImageProvider : IStockProvider
 
                 response.EnsureSuccessStatusCode();
 
-                var json = await response.Content.ReadAsStringAsync(ct);
+                var json = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 var doc = JsonDocument.Parse(json);
 
                 var assets = new List<Asset>();
@@ -242,7 +242,7 @@ public class PixabayImageProvider : IStockProvider
             catch (HttpRequestException ex) when (attempt < maxRetries)
             {
                 _logger.LogWarning(ex, "HTTP error searching Pixabay videos (attempt {Attempt}/{MaxRetries})", attempt, maxRetries);
-                await Task.Delay(retryDelay * attempt, ct);
+                await Task.Delay(retryDelay * attempt, ct).ConfigureAwait(false);
             }
             catch (TaskCanceledException) when (!ct.IsCancellationRequested)
             {

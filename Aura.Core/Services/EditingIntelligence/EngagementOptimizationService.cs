@@ -55,7 +55,7 @@ public class EngagementOptimizationService
 
         var avgEngagement = points.Count != 0 ? points.Average(p => p.PredictedEngagement) : 0.5;
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return new EngagementCurve(
             Points: points,
             AverageEngagement: avgEngagement,
@@ -294,7 +294,7 @@ public class EngagementOptimizationService
             }
         }
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return fatiguePoints;
     }
 }

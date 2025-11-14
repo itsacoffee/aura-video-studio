@@ -239,7 +239,7 @@ public class VideoComposer : IVideoComposer
         {
             var tempOutput = outputPath + ".temp.mp4";
             File.Move(outputPath, tempOutput);
-            await AddSubtitlesAsync(tempOutput, settings.SubtitlePath, outputPath, cancellationToken);
+            await AddSubtitlesAsync(tempOutput, settings.SubtitlePath, outputPath, cancellationToken).ConfigureAwait(false);
             File.Delete(tempOutput);
         }
 

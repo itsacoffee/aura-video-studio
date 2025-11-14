@@ -122,7 +122,7 @@ public class JobRunner
         _logger.LogInformation("Starting background execution for job {JobId}", jobId);
         
         // Start execution in background
-        _ = Task.Run(async () => await ExecuteJobAsync(job.Id, linkedCts.Token), linkedCts.Token);
+        _ = Task.Run(async () => await ExecuteJobAsync(job.Id, linkedCts.Token).ConfigureAwait(false), linkedCts.Token);
 
         return job;
     }
@@ -232,12 +232,12 @@ public class JobRunner
                 job.CorrelationId,
                 job.IsQuickDemo,
                 ct
-            );
+            ).ConfigureAwait(false);
 
             // Record retry in queue service
             if (_jobQueueService != null)
             {
-                await _jobQueueService.RetryJobAsync(jobId, priority: 3, ct);
+                await _jobQueueService.RetryJobAsync(jobId, priority: 3, ct).ConfigureAwait(false);
             }
 
             return true;

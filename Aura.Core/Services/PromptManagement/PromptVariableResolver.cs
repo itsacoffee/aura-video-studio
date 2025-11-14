@@ -34,7 +34,7 @@ public class PromptVariableResolver
         VariableResolverOptions options,
         CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         _logger.LogDebug("Resolving variables in template with {Count} variables", values.Count);
 

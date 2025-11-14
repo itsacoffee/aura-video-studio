@@ -82,21 +82,21 @@ public class DependencyRescanService
         };
 
         // Load components.json to get list of dependencies
-        var manifest = await _componentDownloader.LoadManifestAsync();
+        var manifest = await _componentDownloader.LoadManifestAsync().ConfigureAwait(false);
         
         // Rescan each component
         foreach (var component in manifest.Components)
         {
-            var dependencyReport = await RescanDependencyAsync(component, ct);
+            var dependencyReport = await RescanDependencyAsync(component, ct).ConfigureAwait(false);
             report.Dependencies.Add(dependencyReport);
         }
 
         // Also check for FFprobe (related to FFmpeg)
-        var ffprobeReport = await RescanFfprobeAsync(ct);
+        var ffprobeReport = await RescanFfprobeAsync(ct).ConfigureAwait(false);
         report.Dependencies.Add(ffprobeReport);
 
         // Save last scan time
-        await SaveLastScanTimeAsync(report.ScanTime);
+        await SaveLastScanTimeAsync(report.ScanTime).ConfigureAwait(false);
 
         _logger.LogInformation("Dependency rescan completed. {InstalledCount} installed, {MissingCount} missing, {PartialCount} partially installed",
             report.Dependencies.Count(d => d.Status == DependencyStatus.Installed),
@@ -115,7 +115,7 @@ public class DependencyRescanService
         {
             if (File.Exists(_lastScanPath))
             {
-                var json = await File.ReadAllTextAsync(_lastScanPath);
+                var json = await File.ReadAllTextAsync(_lastScanPath).ConfigureAwait(false);
                 var data = JsonSerializer.Deserialize<Dictionary<string, DateTime>>(json);
                 if (data != null && data.TryGetValue("lastScanTime", out var scanTime))
                 {
@@ -141,7 +141,7 @@ public class DependencyRescanService
             };
             
             var json = JsonSerializer.Serialize(data);
-            await File.WriteAllTextAsync(_lastScanPath, json);
+            await File.WriteAllTextAsync(_lastScanPath, json).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -156,20 +156,20 @@ public class DependencyRescanService
         switch (component.Id.ToLowerInvariant())
         {
             case "ffmpeg":
-                return await RescanFfmpegAsync(ct);
+                return await RescanFfmpegAsync(ct).ConfigureAwait(false);
             
             case "ollama":
-                return await RescanOllamaAsync(ct);
+                return await RescanOllamaAsync(ct).ConfigureAwait(false);
             
             case "stable-diffusion-webui":
             case "sd-webui":
-                return await RescanStableDiffusionAsync(ct);
+                return await RescanStableDiffusionAsync(ct).ConfigureAwait(false);
             
             case "piper":
-                return await RescanPiperAsync(ct);
+                return await RescanPiperAsync(ct).ConfigureAwait(false);
             
             case "python":
-                return await RescanPythonAsync(ct);
+                return await RescanPythonAsync(ct).ConfigureAwait(false);
             
             default:
                 return new DependencyReport
@@ -186,7 +186,7 @@ public class DependencyRescanService
     {
         try
         {
-            var result = await _ffmpegLocator.CheckAllCandidatesAsync(null, ct);
+            var result = await _ffmpegLocator.CheckAllCandidatesAsync(null, ct).ConfigureAwait(false);
             
             return new DependencyReport
             {
@@ -217,7 +217,7 @@ public class DependencyRescanService
         try
         {
             // FFprobe is typically bundled with FFmpeg
-            var ffmpegResult = await _ffmpegLocator.CheckAllCandidatesAsync(null, ct);
+            var ffmpegResult = await _ffmpegLocator.CheckAllCandidatesAsync(null, ct).ConfigureAwait(false);
             
             if (!ffmpegResult.Found || string.IsNullOrEmpty(ffmpegResult.FfmpegPath))
             {
@@ -318,7 +318,7 @@ public class DependencyRescanService
             
             try
             {
-                var response = await httpClient.GetAsync("http://127.0.0.1:11434/api/tags", ct);
+                var response = await httpClient.GetAsync("http://127.0.0.1:11434/api/tags", ct).ConfigureAwait(false);
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -471,7 +471,7 @@ public class DependencyRescanService
             try
             {
                 // Check if SD WebUI is running and accessible
-                var response = await httpClient.GetAsync("http://127.0.0.1:7860", ct);
+                var response = await httpClient.GetAsync("http://127.0.0.1:7860", ct).ConfigureAwait(false);
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -675,8 +675,8 @@ public class DependencyRescanService
                 };
             }
 
-            await process.WaitForExitAsync(ct);
-            var output = await process.StandardOutput.ReadToEndAsync(ct);
+            await process.WaitForExitAsync(ct).ConfigureAwait(false);
+            var output = await process.StandardOutput.ReadToEndAsync(ct).ConfigureAwait(false);
 
             if (process.ExitCode == 0 && !string.IsNullOrEmpty(output))
             {

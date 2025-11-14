@@ -42,7 +42,7 @@ public class FeatureExtractionPipeline
         var brightnessLevel = CalculateBrightness(frameData);
         var contrastLevel = CalculateContrast(frameData);
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return new FrameFeatures(
             FrameIndex: frame.Index,
             Timestamp: frame.Timestamp,
@@ -71,7 +71,7 @@ public class FeatureExtractionPipeline
         {
             cancellationToken.ThrowIfCancellationRequested();
             
-            var frameFeatures = await ExtractFrameFeaturesAsync(frame, null, cancellationToken);
+            var frameFeatures = await ExtractFrameFeaturesAsync(frame, null, cancellationToken).ConfigureAwait(false);
             features.Add(frameFeatures);
         }
 
@@ -110,7 +110,7 @@ public class FeatureExtractionPipeline
             lines.Add(line);
         }
 
-        await File.WriteAllLinesAsync(outputPath, lines, cancellationToken);
+        await File.WriteAllLinesAsync(outputPath, lines, cancellationToken).ConfigureAwait(false);
         _logger.LogInformation("Features exported successfully");
     }
 

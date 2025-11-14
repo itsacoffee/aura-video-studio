@@ -52,7 +52,7 @@ public class AudioPostProcessingService
         var filterString = string.Join(",", filters);
         var arguments = $"-i \"{inputPath}\" -af \"{filterString}\" -ar 48000 -ac 2 \"{outputPath}\"";
 
-        var result = await _ffmpegService.ExecuteAsync(arguments, null, ct);
+        var result = await _ffmpegService.ExecuteAsync(arguments, null, ct).ConfigureAwait(false);
 
         if (!result.Success)
         {
@@ -82,7 +82,7 @@ public class AudioPostProcessingService
 
         var arguments = $"-i \"{inputPath}\" -af \"{filter}\" -ar 48000 -ac 2 \"{outputPath}\"";
 
-        var result = await _ffmpegService.ExecuteAsync(arguments, null, ct);
+        var result = await _ffmpegService.ExecuteAsync(arguments, null, ct).ConfigureAwait(false);
 
         if (!result.Success)
         {
@@ -119,7 +119,7 @@ public class AudioPostProcessingService
 
         var arguments = $"-i \"{inputPath}\" -af \"{filter}\" -ar 48000 -ac 2 \"{outputPath}\"";
 
-        var result = await _ffmpegService.ExecuteAsync(arguments, null, ct);
+        var result = await _ffmpegService.ExecuteAsync(arguments, null, ct).ConfigureAwait(false);
 
         if (!result.Success)
         {
@@ -151,7 +151,7 @@ public class AudioPostProcessingService
 
         var arguments = $"-i \"{inputPath}\" -af \"{filter}\" -ar 48000 -ac 2 \"{outputPath}\"";
 
-        var result = await _ffmpegService.ExecuteAsync(arguments, null, ct);
+        var result = await _ffmpegService.ExecuteAsync(arguments, null, ct).ConfigureAwait(false);
 
         if (!result.Success)
         {
@@ -182,7 +182,7 @@ public class AudioPostProcessingService
 
         var arguments = $"-i \"{inputPath}\" -af \"{filter}\" -ar 48000 -ac 2 \"{outputPath}\"";
 
-        var result = await _ffmpegService.ExecuteAsync(arguments, null, ct);
+        var result = await _ffmpegService.ExecuteAsync(arguments, null, ct).ConfigureAwait(false);
 
         if (!result.Success)
         {
@@ -214,7 +214,7 @@ public class AudioPostProcessingService
 
         var arguments = $"-i \"{inputPath}\" -af \"{filter}\" -ar 48000 -ac 2 \"{outputPath}\"";
 
-        var result = await _ffmpegService.ExecuteAsync(arguments, null, ct);
+        var result = await _ffmpegService.ExecuteAsync(arguments, null, ct).ConfigureAwait(false);
 
         if (!result.Success)
         {
@@ -271,7 +271,7 @@ public class AudioPostProcessingService
         var filterString = string.Join(",", filters);
         var arguments = $"-i \"{inputPath}\" -af \"{filterString}\" -ar 48000 -ac 2 \"{outputPath}\"";
 
-        var result = await _ffmpegService.ExecuteAsync(arguments, null, ct);
+        var result = await _ffmpegService.ExecuteAsync(arguments, null, ct).ConfigureAwait(false);
 
         if (!result.Success)
         {

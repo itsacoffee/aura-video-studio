@@ -109,7 +109,7 @@ public class ComponentDownloader
             throw new FileNotFoundException($"Components manifest not found: {_componentsManifestPath}");
         }
 
-        var json = await File.ReadAllTextAsync(_componentsManifestPath, ct);
+        var json = await File.ReadAllTextAsync(_componentsManifestPath, ct).ConfigureAwait(false);
         _cachedManifest = JsonSerializer.Deserialize<ComponentsManifest>(json, new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true
@@ -135,7 +135,7 @@ public class ComponentDownloader
         IProgress<HttpDownloadProgress>? progress = null,
         CancellationToken ct = default)
     {
-        var manifest = await LoadManifestAsync(ct);
+        var manifest = await LoadManifestAsync(ct).ConfigureAwait(false);
         var component = manifest.Components.FirstOrDefault(c => c.Id == componentId);
         
         if (component == null)
@@ -150,7 +150,7 @@ public class ComponentDownloader
                 componentId, localFilePath);
             
             var (success, sha256) = await _downloader.ImportLocalFileAsync(
-                localFilePath, outputPath, null, progress, ct);
+                localFilePath, outputPath, null, progress, ct).ConfigureAwait(false);
             
             return new DownloadResult
             {
@@ -180,7 +180,7 @@ public class ComponentDownloader
             if (!string.IsNullOrEmpty(assetPattern))
             {
                 var resolvedUrl = await _releaseResolver.ResolveLatestAssetUrlAsync(
-                    component.GitHubRepo, assetPattern, ct);
+                    component.GitHubRepo, assetPattern, ct).ConfigureAwait(false);
                 
                 if (!string.IsNullOrEmpty(resolvedUrl))
                 {
@@ -220,7 +220,7 @@ public class ComponentDownloader
                 _logger.LogInformation("Attempting download from {Source}: {Url}", source, url);
                 
                 var success = await _downloader.DownloadFileAsync(
-                    url, outputPath, null, progress, ct);
+                    url, outputPath, null, progress, ct).ConfigureAwait(false);
                 
                 if (success)
                 {
@@ -262,7 +262,7 @@ public class ComponentDownloader
         string componentId,
         CancellationToken ct = default)
     {
-        var manifest = await LoadManifestAsync(ct);
+        var manifest = await LoadManifestAsync(ct).ConfigureAwait(false);
         var component = manifest.Components.FirstOrDefault(c => c.Id == componentId);
         
         if (component == null)
@@ -280,7 +280,7 @@ public class ComponentDownloader
             if (!string.IsNullOrEmpty(assetPattern))
             {
                 resolvedUrl = await _releaseResolver.ResolveLatestAssetUrlAsync(
-                    component.GitHubRepo, assetPattern, ct);
+                    component.GitHubRepo, assetPattern, ct).ConfigureAwait(false);
                 
                 if (!string.IsNullOrEmpty(resolvedUrl))
                 {

@@ -45,7 +45,7 @@ public class VerificationPersistence
         VerificationResult result,
         CancellationToken ct = default)
     {
-        await _fileLock.WaitAsync(ct);
+        await _fileLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             var filePath = GetVerificationFilePath(result.ContentId);
@@ -53,13 +53,13 @@ public class VerificationPersistence
             
             // Write to temp file first, then rename for atomic operation
             var tempPath = filePath + ".tmp";
-            await File.WriteAllTextAsync(tempPath, json, ct);
+            await File.WriteAllTextAsync(tempPath, json, ct).ConfigureAwait(false);
             File.Move(tempPath, filePath, overwrite: true);
             
             _logger.LogDebug("Saved verification result for content {ContentId}", result.ContentId);
 
             // Also save to history
-            await SaveToHistoryAsync(result, ct);
+            await SaveToHistoryAsync(result, ct).ConfigureAwait(false);
         }
         finally
         {
@@ -84,7 +84,7 @@ public class VerificationPersistence
 
         try
         {
-            var json = await File.ReadAllTextAsync(filePath, ct);
+            var json = await File.ReadAllTextAsync(filePath, ct).ConfigureAwait(false);
             var result = JsonSerializer.Deserialize<VerificationResult>(json, _jsonOptions);
             _logger.LogDebug("Loaded verification result for content {ContentId}", contentId);
             return result;
@@ -115,7 +115,7 @@ public class VerificationPersistence
         {
             try
             {
-                var json = await File.ReadAllTextAsync(filePath, ct);
+                var json = await File.ReadAllTextAsync(filePath, ct).ConfigureAwait(false);
                 var result = JsonSerializer.Deserialize<VerificationResult>(json, _jsonOptions);
                 if (result != null)
                 {
@@ -138,7 +138,7 @@ public class VerificationPersistence
         string contentId,
         CancellationToken ct = default)
     {
-        await _fileLock.WaitAsync(ct);
+        await _fileLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             var filePath = GetVerificationFilePath(contentId);
@@ -175,12 +175,12 @@ public class VerificationPersistence
     /// </summary>
     public async Task<VerificationStatistics> GetStatisticsAsync(CancellationToken ct = default)
     {
-        var contentIds = await ListVerifiedContentAsync(ct);
+        var contentIds = await ListVerifiedContentAsync(ct).ConfigureAwait(false);
         var results = new List<VerificationResult>();
 
         foreach (var contentId in contentIds)
         {
-            var result = await LoadVerificationResultAsync(contentId, ct);
+            var result = await LoadVerificationResultAsync(contentId, ct).ConfigureAwait(false);
             if (result != null)
             {
                 results.Add(result);
@@ -220,7 +220,7 @@ public class VerificationPersistence
             $"{result.ContentId}_{timestamp}.json");
         
         var json = JsonSerializer.Serialize(result, _jsonOptions);
-        await File.WriteAllTextAsync(historyFilePath, json, ct);
+        await File.WriteAllTextAsync(historyFilePath, json, ct).ConfigureAwait(false);
     }
 }
 

@@ -43,8 +43,8 @@ public class TrainingAuditService
             var json = JsonSerializer.Serialize(record);
             
             await using var writer = new StreamWriter(_auditLogPath, append: true);
-            await writer.WriteLineAsync(json);
-            await writer.FlushAsync();
+            await writer.WriteLineAsync(json).ConfigureAwait(false);
+            await writer.FlushAsync().ConfigureAwait(false);
 
             _logger.LogInformation(
                 "Recorded training run {JobId} in audit log: Status={Status}, Samples={Samples}",
@@ -73,7 +73,7 @@ public class TrainingAuditService
                 return records;
             }
 
-            var lines = await File.ReadAllLinesAsync(_auditLogPath, cancellationToken);
+            var lines = await File.ReadAllLinesAsync(_auditLogPath, cancellationToken).ConfigureAwait(false);
             var reversedLines = lines.AsEnumerable().Reverse().Take(maxRecords);
             
             foreach (var line in reversedLines)
@@ -112,7 +112,7 @@ public class TrainingAuditService
 
         try
         {
-            var history = await GetTrainingHistoryAsync(1000, cancellationToken);
+            var history = await GetTrainingHistoryAsync(1000, cancellationToken).ConfigureAwait(false);
 
             stats.TotalTrainingRuns = history.Count;
             stats.SuccessfulRuns = history.Count(r => r.Status == "Completed");

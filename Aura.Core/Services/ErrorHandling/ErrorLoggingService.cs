@@ -90,7 +90,7 @@ public class ErrorLoggingService
 
         if (writeImmediately)
         {
-            await FlushErrorsAsync();
+            await FlushErrorsAsync().ConfigureAwait(false);
         }
     }
 
@@ -102,7 +102,7 @@ public class ErrorLoggingService
         if (_errorQueue.IsEmpty)
             return;
 
-        await _writeLock.WaitAsync();
+        await _writeLock.WaitAsync().ConfigureAwait(false);
         try
         {
             var entries = new List<ErrorLogEntry>();
@@ -115,7 +115,7 @@ public class ErrorLoggingService
                 return;
 
             // Check log size and rotate if needed
-            await RotateLogIfNeeded();
+            await RotateLogIfNeeded().ConfigureAwait(false);
 
             // Write entries as JSONL (JSON Lines)
             var lines = entries.Select(e => JsonSerializer.Serialize(e, new JsonSerializerOptions
@@ -123,7 +123,7 @@ public class ErrorLoggingService
                 WriteIndented = false
             }));
 
-            await File.AppendAllLinesAsync(_errorLogPath, lines);
+            await File.AppendAllLinesAsync(_errorLogPath, lines).ConfigureAwait(false);
 
             _logger.LogDebug("Flushed {Count} error entries to log file", entries.Count);
         }
@@ -147,7 +147,7 @@ public class ErrorLoggingService
 
         try
         {
-            var lines = await File.ReadAllLinesAsync(_errorLogPath);
+            var lines = await File.ReadAllLinesAsync(_errorLogPath).ConfigureAwait(false);
             var errors = new List<ErrorLogEntry>();
 
             // Read from end of file backwards
@@ -188,7 +188,7 @@ public class ErrorLoggingService
 
         try
         {
-            var lines = await File.ReadAllLinesAsync(_errorLogPath);
+            var lines = await File.ReadAllLinesAsync(_errorLogPath).ConfigureAwait(false);
             var errors = new List<ErrorLogEntry>();
 
             foreach (var line in lines)
@@ -231,7 +231,7 @@ public class ErrorLoggingService
 
         try
         {
-            var allErrors = await GetAllErrorsAsync(cutoffTime);
+            var allErrors = await GetAllErrorsAsync(cutoffTime).ConfigureAwait(false);
             
             var diagnostics = new
             {
@@ -254,7 +254,7 @@ public class ErrorLoggingService
                 WriteIndented = true
             });
 
-            await File.WriteAllTextAsync(diagnosticsPath, json);
+            await File.WriteAllTextAsync(diagnosticsPath, json).ConfigureAwait(false);
             
             _logger.LogInformation("Exported diagnostics to {Path}", diagnosticsPath);
             return diagnosticsPath;
@@ -326,7 +326,7 @@ public class ErrorLoggingService
         {
             try
             {
-                var lines = await File.ReadAllLinesAsync(file);
+                var lines = await File.ReadAllLinesAsync(file).ConfigureAwait(false);
                 foreach (var line in lines)
                 {
                     try

@@ -82,7 +82,7 @@ public class EngineInstaller
         IProgress<EngineInstallProgress>? progress = null,
         CancellationToken ct = default)
     {
-        await InstallAsync(engine, null, null, progress, ct);
+        await InstallAsync(engine, null, null, progress, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -485,7 +485,7 @@ public class EngineInstaller
         bool isValid = missingFiles.Count == 0 && issues.Count == 0;
         string status = isValid ? "Valid" : "Invalid";
 
-        return await Task.FromResult(new EngineVerificationResult(engine.Id, isValid, status, missingFiles, issues));
+        return await Task.FromResult(new EngineVerificationResult(engine.Id, isValid, status, missingFiles, issues)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -652,7 +652,7 @@ public class EngineInstaller
             actualSha256,
             failedUrl,
             issues
-        ));
+        )).ConfigureAwait(false);
     }
 
     /// <summary>

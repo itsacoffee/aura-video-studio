@@ -56,11 +56,11 @@ public class AdvancedScriptEnhancer
         {
             // Analyze before enhancement
             var beforeAnalysis = await _analysisService.AnalyzeScriptAsync(
-                script, contentType, targetAudience, desiredTone, ct);
+                script, contentType, targetAudience, desiredTone, ct).ConfigureAwait(false);
 
             // Generate suggestions
             var suggestions = await GenerateEnhancementSuggestionsAsync(
-                script, contentType, targetAudience, desiredTone, focusAreas, targetFramework, ct);
+                script, contentType, targetAudience, desiredTone, focusAreas, targetFramework, ct).ConfigureAwait(false);
 
             // Apply suggestions if autoApply
             string? enhancedScript = null;
@@ -75,7 +75,7 @@ public class AdvancedScriptEnhancer
                 enhancedScript = ApplySuggestions(script, highConfidenceSuggestions);
                 
                 afterAnalysis = await _analysisService.AnalyzeScriptAsync(
-                    enhancedScript, contentType, targetAudience, desiredTone, ct);
+                    enhancedScript, contentType, targetAudience, desiredTone, ct).ConfigureAwait(false);
             }
 
             var changesSummary = GenerateChangesSummary(suggestions, autoApply);
@@ -124,7 +124,7 @@ public class AdvancedScriptEnhancer
 
             // Calculate current hook strength
             var analysis = await _analysisService.AnalyzeScriptAsync(
-                script, contentType, targetAudience, null, ct);
+                script, contentType, targetAudience, null, ct).ConfigureAwait(false);
             var hookStrengthBefore = analysis.HookStrength;
 
             // Generate optimized hook with LLM
@@ -132,12 +132,12 @@ public class AdvancedScriptEnhancer
             var brief = new Brief("Hook Optimization", targetAudience, null, "engaging", "en", Aspect.Widescreen16x9);
             var planSpec = new PlanSpec(TimeSpan.FromSeconds(targetSeconds), Pacing.Fast, Density.Balanced, prompt);
 
-            var optimizedHook = await GenerateWithLlmAsync(brief, planSpec, ct);
+            var optimizedHook = await GenerateWithLlmAsync(brief, planSpec, ct).ConfigureAwait(false);
 
             // Analyze improved hook
             var improvedScript = optimizedHook + "\n\n" + string.Join("\n", lines.Skip(3));
             var improvedAnalysis = await _analysisService.AnalyzeScriptAsync(
-                improvedScript, contentType, targetAudience, null, ct);
+                improvedScript, contentType, targetAudience, null, ct).ConfigureAwait(false);
             var hookStrengthAfter = improvedAnalysis.HookStrength;
 
             var techniques = IdentifyHookTechniques(optimizedHook);
@@ -183,7 +183,7 @@ public class AdvancedScriptEnhancer
         try
         {
             var analysis = await _analysisService.AnalyzeScriptAsync(
-                script, contentType, targetAudience, null, ct);
+                script, contentType, targetAudience, null, ct).ConfigureAwait(false);
 
             var currentArc = new EmotionalArc(
                 TargetCurve: analysis.EmotionalCurve,
@@ -197,7 +197,7 @@ public class AdvancedScriptEnhancer
 
             // Generate optimized arc suggestions
             var suggestions = await GenerateEmotionalArcSuggestionsAsync(
-                script, currentArc, desiredJourney, ct);
+                script, currentArc, desiredJourney, ct).ConfigureAwait(false);
 
             var optimizedCurve = OptimizeEmotionalCurve(analysis.EmotionalCurve, desiredJourney);
             var optimizedArc = new EmotionalArc(
@@ -245,16 +245,16 @@ public class AdvancedScriptEnhancer
         try
         {
             var analysis = await _analysisService.AnalyzeScriptAsync(
-                script, contentType, targetAudience, null, ct);
+                script, contentType, targetAudience, null, ct).ConfigureAwait(false);
             var connectionScoreBefore = analysis.EngagementScore;
 
             var suggestions = await GenerateAudienceConnectionSuggestionsAsync(
-                script, targetAudience, contentType, ct);
+                script, targetAudience, contentType, ct).ConfigureAwait(false);
 
             var enhancedScript = ApplySuggestions(script, suggestions);
 
             var improvedAnalysis = await _analysisService.AnalyzeScriptAsync(
-                enhancedScript, contentType, targetAudience, null, ct);
+                enhancedScript, contentType, targetAudience, null, ct).ConfigureAwait(false);
             var connectionScoreAfter = improvedAnalysis.EngagementScore;
 
             return new AudienceConnectionResponse(
@@ -359,7 +359,7 @@ public class AdvancedScriptEnhancer
             var brief = new Brief("Tone Adjustment", null, null, "adjusted", "en", Aspect.Widescreen16x9);
             var planSpec = new PlanSpec(TimeSpan.FromMinutes(5), Pacing.Conversational, Density.Balanced, prompt);
 
-            var adjustedScript = await GenerateWithLlmAsync(brief, planSpec, ct);
+            var adjustedScript = await GenerateWithLlmAsync(brief, planSpec, ct).ConfigureAwait(false);
             var achievedTone = AnalyzeToneProfile(adjustedScript);
 
             var changes = GenerateToneChangeSuggestions(script, adjustedScript);
@@ -405,7 +405,7 @@ public class AdvancedScriptEnhancer
             var brief = new Brief($"Apply {framework} Framework", targetAudience, null, "structured", "en", Aspect.Widescreen16x9);
             var planSpec = new PlanSpec(TimeSpan.FromMinutes(5), Pacing.Conversational, Density.Balanced, frameworkPrompt);
 
-            var enhancedScript = await GenerateWithLlmAsync(brief, planSpec, ct);
+            var enhancedScript = await GenerateWithLlmAsync(brief, planSpec, ct).ConfigureAwait(false);
 
             var appliedFramework = new StoryFramework(
                 Type: framework,
@@ -454,7 +454,7 @@ public class AdvancedScriptEnhancer
         try
         {
             var allSuggestions = await GenerateEnhancementSuggestionsAsync(
-                script, contentType, targetAudience, null, filterTypes, null, ct);
+                script, contentType, targetAudience, null, filterTypes, null, ct).ConfigureAwait(false);
 
             var filteredSuggestions = allSuggestions;
             if (maxSuggestions.HasValue)
@@ -505,8 +505,8 @@ public class AdvancedScriptEnhancer
 
             if (includeAnalysis)
             {
-                analysisA = await _analysisService.AnalyzeScriptAsync(versionA, null, null, null, ct);
-                analysisB = await _analysisService.AnalyzeScriptAsync(versionB, null, null, null, ct);
+                analysisA = await _analysisService.AnalyzeScriptAsync(versionA, null, null, null, ct).ConfigureAwait(false);
+                analysisB = await _analysisService.AnalyzeScriptAsync(versionB, null, null, null, ct).ConfigureAwait(false);
 
                 improvementMetrics = new Dictionary<string, double>
                 {
@@ -939,10 +939,10 @@ Maintain the core content but reorganize it to follow the framework structure cl
     {
         if (_stageAdapter != null)
         {
-            var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct);
+            var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct).ConfigureAwait(false);
             if (result.IsSuccess && result.Data != null) return result.Data;
             _logger.LogWarning("Orchestrator generation failed, falling back to direct provider: {Error}", result.ErrorMessage);
         }
-        return await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
+        return await _llmProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
     }
 }

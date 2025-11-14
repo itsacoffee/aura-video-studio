@@ -29,7 +29,7 @@ public class NsfwDetectionService
 
         try
         {
-            await Task.Delay(1, ct);
+            await Task.Delay(1, ct).ConfigureAwait(false);
 
             if (imageUrl.Contains("fallback") || imageUrl.Contains("placeholder"))
             {

@@ -60,14 +60,14 @@ public class StockMediaSafetyEnforcer
                 Guid.NewGuid().ToString(),
                 query,
                 policy,
-                ct);
+                ct).ConfigureAwait(false);
 
             result.IsValid = analysisResult.IsSafe;
             result.AnalysisResult = analysisResult;
 
             if (!result.IsValid)
             {
-                result.SanitizedQuery = await GenerateSafeQueryAsync(query, analysisResult, ct);
+                result.SanitizedQuery = await GenerateSafeQueryAsync(query, analysisResult, ct).ConfigureAwait(false);
                 result.ValidationMessage = GenerateValidationMessage(analysisResult);
                 result.Alternatives = GenerateQueryAlternatives(query, analysisResult);
             }
@@ -103,11 +103,11 @@ public class StockMediaSafetyEnforcer
 
         var filterTasks = results.Select(async result =>
         {
-            var isSafe = await IsResultSafeAsync(result, policy, ct);
+            var isSafe = await IsResultSafeAsync(result, policy, ct).ConfigureAwait(false);
             return new { Result = result, IsSafe = isSafe };
         });
 
-        var filterResults = await Task.WhenAll(filterTasks);
+        var filterResults = await Task.WhenAll(filterTasks).ConfigureAwait(false);
 
         var safeResults = filterResults
             .Where(r => r.IsSafe)
@@ -164,7 +164,7 @@ public class StockMediaSafetyEnforcer
             }
         }
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         _logger.LogInformation("Stock media search decision recorded: {AuditId}", auditLog.Id);
 
@@ -187,7 +187,7 @@ public class StockMediaSafetyEnforcer
                 Guid.NewGuid().ToString(),
                 sceneDescription,
                 policy,
-                ct);
+                ct).ConfigureAwait(false);
 
             var recommendation = new StockMediaSafetyRecommendation
             {
@@ -220,7 +220,7 @@ public class StockMediaSafetyEnforcer
             return true;
         }
 
-        return await _filterService.IsContentSafeAsync(textToAnalyze, ct);
+        return await _filterService.IsContentSafeAsync(textToAnalyze, ct).ConfigureAwait(false);
     }
 
     private async Task<string> GenerateSafeQueryAsync(
@@ -246,7 +246,7 @@ public class StockMediaSafetyEnforcer
             sanitized = "nature landscape";
         }
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return sanitized;
     }
 

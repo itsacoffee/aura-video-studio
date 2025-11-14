@@ -69,7 +69,7 @@ public class PlatformOptimizationService
             result.AppliedOptimizations.Add("Metadata optimized for platform");
         }
 
-        await Task.Delay(100); // Simulate async processing
+        await Task.Delay(100).ConfigureAwait(false); // Simulate async processing
 
         _logger.LogInformation("Optimization complete with {Count} optimizations applied", result.AppliedOptimizations.Count);
         return result;
@@ -100,7 +100,7 @@ public class PlatformOptimizationService
                     GenerateThumbnail = request.GenerateThumbnails
                 };
 
-                var optimizationResult = await OptimizeForPlatform(optimizationRequest);
+                var optimizationResult = await OptimizeForPlatform(optimizationRequest).ConfigureAwait(false);
 
                 result.Exports[platform] = new PlatformExport
                 {
@@ -184,7 +184,7 @@ public class PlatformOptimizationService
         result.AdaptedVideoPath = Path.Combine(Path.GetTempPath(), $"{request.TargetPlatform}_adapted.mp4");
         result.AdaptationStrategy = $"Adapted from {request.SourcePlatform} best practices to {request.TargetPlatform} requirements";
 
-        await Task.Delay(100); // Simulate async processing
+        await Task.Delay(100).ConfigureAwait(false); // Simulate async processing
 
         _logger.LogInformation("Content adaptation complete with {Count} changes", result.ChangesApplied.Count);
         return result;

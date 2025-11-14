@@ -41,7 +41,7 @@ public class ProjectVersionService
     {
         _logger.LogInformation("Creating manual snapshot for project {ProjectId}", projectId);
 
-        var project = await _projectRepository.GetByIdAsync(projectId, ct);
+        var project = await _projectRepository.GetByIdAsync(projectId, ct).ConfigureAwait(false);
         if (project == null)
         {
             throw new InvalidOperationException($"Project {projectId} not found");
@@ -54,7 +54,7 @@ public class ProjectVersionService
             description,
             userId,
             null,
-            ct);
+            ct).ConfigureAwait(false);
 
         _logger.LogInformation("Created manual snapshot {VersionId} (v{VersionNumber}) for project {ProjectId}",
             version.Id, version.VersionNumber, projectId);
@@ -71,7 +71,7 @@ public class ProjectVersionService
     {
         _logger.LogDebug("Creating autosave for project {ProjectId}", projectId);
 
-        var project = await _projectRepository.GetByIdAsync(projectId, ct);
+        var project = await _projectRepository.GetByIdAsync(projectId, ct).ConfigureAwait(false);
         if (project == null)
         {
             throw new InvalidOperationException($"Project {projectId} not found");
@@ -84,7 +84,7 @@ public class ProjectVersionService
             "Automatic save",
             null,
             null,
-            ct);
+            ct).ConfigureAwait(false);
 
         _logger.LogDebug("Created autosave {VersionId} (v{VersionNumber}) for project {ProjectId}",
             version.Id, version.VersionNumber, projectId);
@@ -104,7 +104,7 @@ public class ProjectVersionService
         _logger.LogInformation("Creating restore point for project {ProjectId}, trigger: {Trigger}",
             projectId, trigger);
 
-        var project = await _projectRepository.GetByIdAsync(projectId, ct);
+        var project = await _projectRepository.GetByIdAsync(projectId, ct).ConfigureAwait(false);
         if (project == null)
         {
             throw new InvalidOperationException($"Project {projectId} not found");
@@ -117,7 +117,7 @@ public class ProjectVersionService
             description ?? $"Restore point: {trigger}",
             null,
             trigger,
-            ct);
+            ct).ConfigureAwait(false);
 
         _logger.LogInformation("Created restore point {VersionId} (v{VersionNumber}) for project {ProjectId}",
             version.Id, version.VersionNumber, projectId);
@@ -135,13 +135,13 @@ public class ProjectVersionService
     {
         _logger.LogInformation("Restoring project {ProjectId} to version {VersionId}", projectId, versionId);
 
-        var version = await _versionRepository.GetVersionByIdAsync(versionId, ct);
+        var version = await _versionRepository.GetVersionByIdAsync(versionId, ct).ConfigureAwait(false);
         if (version == null || version.ProjectId != projectId)
         {
             throw new InvalidOperationException($"Version {versionId} not found for project {projectId}");
         }
 
-        var project = await _projectRepository.GetByIdAsync(projectId, ct);
+        var project = await _projectRepository.GetByIdAsync(projectId, ct).ConfigureAwait(false);
         if (project == null)
         {
             throw new InvalidOperationException($"Project {projectId} not found");
@@ -153,7 +153,7 @@ public class ProjectVersionService
         project.RenderSpecJson = version.RenderSpecJson;
         project.UpdatedAt = DateTime.UtcNow;
 
-        await _projectRepository.UpdateAsync(project, ct);
+        await _projectRepository.UpdateAsync(project, ct).ConfigureAwait(false);
 
         _logger.LogInformation("Restored project {ProjectId} to version {VersionId} (v{VersionNumber})",
             projectId, versionId, version.VersionNumber);
@@ -166,7 +166,7 @@ public class ProjectVersionService
         Guid projectId,
         CancellationToken ct = default)
     {
-        var versions = await _versionRepository.GetVersionsAsync(projectId, false, ct);
+        var versions = await _versionRepository.GetVersionsAsync(projectId, false, ct).ConfigureAwait(false);
 
         return versions.Select(v => new ProjectVersionInfo
         {
@@ -191,7 +191,7 @@ public class ProjectVersionService
         Guid versionId,
         CancellationToken ct = default)
     {
-        var version = await _versionRepository.GetVersionByIdAsync(versionId, ct);
+        var version = await _versionRepository.GetVersionByIdAsync(versionId, ct).ConfigureAwait(false);
         if (version == null)
         {
             return null;
@@ -228,7 +228,7 @@ public class ProjectVersionService
         bool? isMarkedImportant,
         CancellationToken ct = default)
     {
-        await _versionRepository.UpdateVersionMetadataAsync(versionId, name, description, isMarkedImportant, ct);
+        await _versionRepository.UpdateVersionMetadataAsync(versionId, name, description, isMarkedImportant, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -237,7 +237,7 @@ public class ProjectVersionService
     public async Task DeleteVersionAsync(Guid versionId, CancellationToken ct = default)
     {
         _logger.LogInformation("Deleting version {VersionId}", versionId);
-        await _versionRepository.DeleteVersionAsync(versionId, ct);
+        await _versionRepository.DeleteVersionAsync(versionId, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -245,7 +245,7 @@ public class ProjectVersionService
     /// </summary>
     public async Task<long> GetProjectStorageSizeAsync(Guid projectId, CancellationToken ct = default)
     {
-        return await _versionRepository.GetProjectStorageSizeAsync(projectId, ct);
+        return await _versionRepository.GetProjectStorageSizeAsync(projectId, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -260,7 +260,7 @@ public class ProjectVersionService
         _logger.LogInformation("Cleaning up old autosaves for project {ProjectId}", projectId);
 
         var cutoffDate = DateTime.UtcNow.AddDays(-olderThanDays);
-        var oldAutosaves = await _versionRepository.GetOldAutosavesAsync(projectId, cutoffDate, ct);
+        var oldAutosaves = await _versionRepository.GetOldAutosavesAsync(projectId, cutoffDate, ct).ConfigureAwait(false);
 
         var toDelete = oldAutosaves.Count > keepCount
             ? oldAutosaves.Skip(keepCount).ToList()
@@ -268,7 +268,7 @@ public class ProjectVersionService
 
         foreach (var autosave in toDelete)
         {
-            await _versionRepository.DeleteVersionAsync(autosave.Id, ct);
+            await _versionRepository.DeleteVersionAsync(autosave.Id, ct).ConfigureAwait(false);
         }
 
         _logger.LogInformation("Cleaned up {Count} old autosaves for project {ProjectId}", toDelete.Count, projectId);
@@ -283,8 +283,8 @@ public class ProjectVersionService
         Guid versionId2,
         CancellationToken ct = default)
     {
-        var version1 = await _versionRepository.GetVersionByIdAsync(versionId1, ct);
-        var version2 = await _versionRepository.GetVersionByIdAsync(versionId2, ct);
+        var version1 = await _versionRepository.GetVersionByIdAsync(versionId1, ct).ConfigureAwait(false);
+        var version2 = await _versionRepository.GetVersionByIdAsync(versionId2, ct).ConfigureAwait(false);
 
         if (version1 == null || version2 == null)
         {
@@ -349,22 +349,22 @@ public class ProjectVersionService
 
         if (!string.IsNullOrEmpty(version.BriefJson))
         {
-            version.BriefHash = await _versionRepository.StoreContentBlobAsync(version.BriefJson, "Brief", ct);
+            version.BriefHash = await _versionRepository.StoreContentBlobAsync(version.BriefJson, "Brief", ct).ConfigureAwait(false);
         }
 
         if (!string.IsNullOrEmpty(version.PlanSpecJson))
         {
-            version.PlanHash = await _versionRepository.StoreContentBlobAsync(version.PlanSpecJson, "Plan", ct);
+            version.PlanHash = await _versionRepository.StoreContentBlobAsync(version.PlanSpecJson, "Plan", ct).ConfigureAwait(false);
         }
 
         if (!string.IsNullOrEmpty(version.VoiceSpecJson))
         {
-            version.VoiceHash = await _versionRepository.StoreContentBlobAsync(version.VoiceSpecJson, "Voice", ct);
+            version.VoiceHash = await _versionRepository.StoreContentBlobAsync(version.VoiceSpecJson, "Voice", ct).ConfigureAwait(false);
         }
 
         if (!string.IsNullOrEmpty(version.RenderSpecJson))
         {
-            version.RenderHash = await _versionRepository.StoreContentBlobAsync(version.RenderSpecJson, "Render", ct);
+            version.RenderHash = await _versionRepository.StoreContentBlobAsync(version.RenderSpecJson, "Render", ct).ConfigureAwait(false);
         }
 
         long storageSize = 0;
@@ -374,7 +374,7 @@ public class ProjectVersionService
         if (!string.IsNullOrEmpty(version.RenderSpecJson)) storageSize += version.RenderSpecJson.Length;
         version.StorageSizeBytes = storageSize;
 
-        return await _versionRepository.CreateVersionAsync(version, ct);
+        return await _versionRepository.CreateVersionAsync(version, ct).ConfigureAwait(false);
     }
 }
 

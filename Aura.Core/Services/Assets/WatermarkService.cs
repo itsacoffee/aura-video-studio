@@ -55,7 +55,7 @@ public class WatermarkService
             .AddWatermark(watermarkImagePath, GetPositionString(position), opacity, marginPixels);
         
         var command = builder.Build();
-        var result = await _ffmpegService.ExecuteAsync(command, cancellationToken: ct);
+        var result = await _ffmpegService.ExecuteAsync(command, cancellationToken: ct).ConfigureAwait(false);
         
         if (!result.Success)
         {
@@ -98,7 +98,7 @@ public class WatermarkService
             .AddTextOverlay(text, null, fontSize, x, y, fontColor, boxColor);
         
         var command = builder.Build();
-        var result = await _ffmpegService.ExecuteAsync(command, cancellationToken: ct);
+        var result = await _ffmpegService.ExecuteAsync(command, cancellationToken: ct).ConfigureAwait(false);
         
         if (!result.Success)
         {

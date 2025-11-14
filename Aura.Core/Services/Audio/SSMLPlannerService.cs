@@ -71,7 +71,7 @@ public class SSMLPlannerService
                 targetDurationMs,
                 request,
                 mapper,
-                ct);
+                ct).ConfigureAwait(false);
 
             segments.Add(segmentResult);
 
@@ -166,7 +166,7 @@ public class SSMLPlannerService
         };
 
         var ssml = mapper.MapToSSML(line.Text, adjustments, request.VoiceSpec);
-        var estimatedDurationMs = await mapper.EstimateDurationAsync(ssml, request.VoiceSpec, ct);
+        var estimatedDurationMs = await mapper.EstimateDurationAsync(ssml, request.VoiceSpec, ct).ConfigureAwait(false);
 
         var toleranceMs = (int)(targetDurationMs * request.DurationTolerance);
         var deviation = estimatedDurationMs - targetDurationMs;
@@ -195,7 +195,7 @@ public class SSMLPlannerService
             adjustments = adjustments with { Iterations = iteration };
 
             ssml = mapper.MapToSSML(line.Text, adjustments, request.VoiceSpec);
-            estimatedDurationMs = await mapper.EstimateDurationAsync(ssml, request.VoiceSpec, ct);
+            estimatedDurationMs = await mapper.EstimateDurationAsync(ssml, request.VoiceSpec, ct).ConfigureAwait(false);
             deviation = estimatedDurationMs - targetDurationMs;
 
             _logger.LogDebug(

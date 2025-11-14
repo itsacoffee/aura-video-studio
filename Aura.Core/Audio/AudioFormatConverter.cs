@@ -64,7 +64,7 @@ public class AudioFormatConverter
 
         if (inputExt == ".wav")
         {
-            var needsConversion = await NeedsConversionAsync(inputPath, sampleRate, channels, bitDepth, ct);
+            var needsConversion = await NeedsConversionAsync(inputPath, sampleRate, channels, bitDepth, ct).ConfigureAwait(false);
             
             if (!needsConversion)
             {
@@ -77,7 +77,7 @@ public class AudioFormatConverter
             "[{CorrelationId}] Converting audio from {InputFormat} to WAV ({SampleRate}Hz, {Channels}ch, {BitDepth}bit)",
             correlationId, inputExt, sampleRate, channels, bitDepth);
 
-        var ffmpegPath = await _ffmpegLocator.GetEffectiveFfmpegPathAsync(ct: ct);
+        var ffmpegPath = await _ffmpegLocator.GetEffectiveFfmpegPathAsync(ct: ct).ConfigureAwait(false);
         
         if (string.IsNullOrEmpty(ffmpegPath))
         {
@@ -106,10 +106,10 @@ public class AudioFormatConverter
         var outputTask = process.StandardOutput.ReadToEndAsync(ct);
         var errorTask = process.StandardError.ReadToEndAsync(ct);
 
-        await process.WaitForExitAsync(ct);
+        await process.WaitForExitAsync(ct).ConfigureAwait(false);
 
-        var output = await outputTask;
-        var error = await errorTask;
+        var output = await outputTask.ConfigureAwait(false);
+        var error = await errorTask.ConfigureAwait(false);
 
         if (process.ExitCode != 0)
         {
@@ -163,7 +163,7 @@ public class AudioFormatConverter
             "[{CorrelationId}] Normalizing audio volume to {TargetLufs} LUFS",
             correlationId, targetLufs);
 
-        var ffmpegPath = await _ffmpegLocator.GetEffectiveFfmpegPathAsync(ct: ct);
+        var ffmpegPath = await _ffmpegLocator.GetEffectiveFfmpegPathAsync(ct: ct).ConfigureAwait(false);
         
         if (string.IsNullOrEmpty(ffmpegPath))
         {
@@ -189,11 +189,11 @@ public class AudioFormatConverter
             throw new InvalidOperationException("Failed to start FFmpeg process");
         }
 
-        await process.WaitForExitAsync(ct);
+        await process.WaitForExitAsync(ct).ConfigureAwait(false);
 
         if (process.ExitCode != 0)
         {
-            var error = await process.StandardError.ReadToEndAsync(ct);
+            var error = await process.StandardError.ReadToEndAsync(ct).ConfigureAwait(false);
             _logger.LogError("[{CorrelationId}] FFmpeg normalization failed: {Error}", correlationId, error);
             throw new InvalidOperationException($"Audio normalization failed with exit code {process.ExitCode}");
         }
@@ -216,7 +216,7 @@ public class AudioFormatConverter
         try
         {
             var ffprobePath = Path.Combine(
-                Path.GetDirectoryName(await _ffmpegLocator.GetEffectiveFfmpegPathAsync(ct: ct)) ?? string.Empty,
+                Path.GetDirectoryName(await _ffmpegLocator.GetEffectiveFfmpegPathAsync(ct: ct).ConfigureAwait(false)) ?? string.Empty,
                 "ffprobe");
 
             if (!File.Exists(ffprobePath))
@@ -243,8 +243,8 @@ public class AudioFormatConverter
                 return true;
             }
 
-            var output = await process.StandardOutput.ReadToEndAsync(ct);
-            await process.WaitForExitAsync(ct);
+            var output = await process.StandardOutput.ReadToEndAsync(ct).ConfigureAwait(false);
+            await process.WaitForExitAsync(ct).ConfigureAwait(false);
 
             if (process.ExitCode != 0)
             {
@@ -324,7 +324,7 @@ public class AudioFormatConverter
         try
         {
             var ffprobePath = Path.Combine(
-                Path.GetDirectoryName(await _ffmpegLocator.GetEffectiveFfmpegPathAsync(ct: ct)) ?? string.Empty,
+                Path.GetDirectoryName(await _ffmpegLocator.GetEffectiveFfmpegPathAsync(ct: ct).ConfigureAwait(false)) ?? string.Empty,
                 "ffprobe");
 
             if (!File.Exists(ffprobePath))
@@ -351,8 +351,8 @@ public class AudioFormatConverter
                 return null;
             }
 
-            var output = await process.StandardOutput.ReadToEndAsync(ct);
-            await process.WaitForExitAsync(ct);
+            var output = await process.StandardOutput.ReadToEndAsync(ct).ConfigureAwait(false);
+            await process.WaitForExitAsync(ct).ConfigureAwait(false);
 
             if (process.ExitCode != 0)
             {

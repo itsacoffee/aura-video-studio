@@ -43,10 +43,10 @@ public class PixabayStockProvider : IStockProvider
         try
         {
             var url = $"https://pixabay.com/api/?key={_apiKey}&q={Uri.EscapeDataString(query)}&per_page={Math.Min(count, 200)}&image_type=photo";
-            var response = await _httpClient.GetAsync(url, ct);
+            var response = await _httpClient.GetAsync(url, ct).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var json = await response.Content.ReadAsStringAsync(ct);
+            var json = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var doc = JsonDocument.Parse(json);
 
             var assets = new List<Asset>();

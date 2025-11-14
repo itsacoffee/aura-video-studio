@@ -37,7 +37,7 @@ public class TemporaryFileCleanupService
         _logger.LogInformation("Starting temporary file cleanup service");
         
         // Run cleanup loop in background
-        _ = Task.Run(async () => await CleanupLoopAsync(cancellationToken), cancellationToken);
+        _ = Task.Run(async () => await CleanupLoopAsync(cancellationToken).ConfigureAwait(false), cancellationToken);
         
         return Task.CompletedTask;
     }

@@ -124,7 +124,7 @@ public class VideoEffectsIntegration : IVideoEffectsIntegration
         if (profile.UseCache)
         {
             var cacheKey = _cacheService.GenerateCacheKey(videoPath, profile.Effects);
-            var cachedPath = await _cacheService.GetCachedEffectAsync(cacheKey, cancellationToken);
+            var cachedPath = await _cacheService.GetCachedEffectAsync(cacheKey, cancellationToken).ConfigureAwait(false);
             
             if (cachedPath != null)
             {
@@ -140,13 +140,13 @@ public class VideoEffectsIntegration : IVideoEffectsIntegration
             profile.Effects,
             progressCallback,
             cancellationToken
-        );
+        ).ConfigureAwait(false);
 
         // Cache the result
         if (profile.UseCache)
         {
             var cacheKey = _cacheService.GenerateCacheKey(videoPath, profile.Effects);
-            await _cacheService.CacheEffectAsync(cacheKey, resultPath, cancellationToken);
+            await _cacheService.CacheEffectAsync(cacheKey, resultPath, cancellationToken).ConfigureAwait(false);
         }
 
         _logger.LogInformation("Successfully applied effects: {Path}", resultPath);

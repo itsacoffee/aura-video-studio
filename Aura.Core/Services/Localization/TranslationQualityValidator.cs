@@ -48,7 +48,7 @@ public class TranslationQualityValidator
                 translatedText,
                 targetLanguage,
                 sourceLanguage,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
             quality.BackTranslationScore = CalculateBackTranslationScore(
                 sourceText, 
                 quality.BackTranslatedText);
@@ -58,7 +58,7 @@ public class TranslationQualityValidator
         quality.FluencyScore = await ScoreFluencyAsync(
             translatedText,
             targetLanguage,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
 
         // Accuracy scoring
         quality.AccuracyScore = await ScoreAccuracyAsync(
@@ -66,13 +66,13 @@ public class TranslationQualityValidator
             translatedText,
             sourceLanguage,
             targetLanguage,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
 
         // Cultural appropriateness
         quality.CulturalAppropriatenessScore = await ScoreCulturalAppropriatenessAsync(
             translatedText,
             targetLanguage,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
 
         // Terminology consistency
         quality.TerminologyConsistencyScore = CheckTerminologyConsistency(
@@ -120,7 +120,7 @@ public class TranslationQualityValidator
 
         try
         {
-            var response = await _llmProvider.DraftScriptAsync(brief, spec, cancellationToken);
+            var response = await _llmProvider.DraftScriptAsync(brief, spec, cancellationToken).ConfigureAwait(false);
             return response.Trim();
         }
         catch (Exception ex)
@@ -175,7 +175,7 @@ public class TranslationQualityValidator
 
         try
         {
-            var response = await _llmProvider.DraftScriptAsync(brief, spec, cancellationToken);
+            var response = await _llmProvider.DraftScriptAsync(brief, spec, cancellationToken).ConfigureAwait(false);
             var scoreMatch = System.Text.RegularExpressions.Regex.Match(response, @"\d+");
             
             if (scoreMatch.Success && double.TryParse(scoreMatch.Value, out var score))
@@ -222,7 +222,7 @@ public class TranslationQualityValidator
 
         try
         {
-            var response = await _llmProvider.DraftScriptAsync(brief, spec, cancellationToken);
+            var response = await _llmProvider.DraftScriptAsync(brief, spec, cancellationToken).ConfigureAwait(false);
             var scoreMatch = System.Text.RegularExpressions.Regex.Match(response, @"\d+");
             
             if (scoreMatch.Success && double.TryParse(scoreMatch.Value, out var score))
@@ -265,7 +265,7 @@ public class TranslationQualityValidator
 
         try
         {
-            var response = await _llmProvider.DraftScriptAsync(brief, spec, cancellationToken);
+            var response = await _llmProvider.DraftScriptAsync(brief, spec, cancellationToken).ConfigureAwait(false);
             var scoreMatch = System.Text.RegularExpressions.Regex.Match(response, @"\d+");
             
             if (scoreMatch.Success && double.TryParse(scoreMatch.Value, out var score))

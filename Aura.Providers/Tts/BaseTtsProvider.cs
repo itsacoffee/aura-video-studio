@@ -49,7 +49,7 @@ public abstract class BaseTtsProvider : ITtsProvider
                     "[{CorrelationId}] Attempting TTS synthesis with {Provider} (attempt {Attempt}/{MaxRetries})",
                     correlationId, GetProviderName(), attempt, _maxRetries);
 
-                var result = await GenerateAudioCoreAsync(lines, spec, ct);
+                var result = await GenerateAudioCoreAsync(lines, spec, ct).ConfigureAwait(false);
 
                 var generationTime = DateTime.UtcNow - startTime;
                 _logger.LogInformation(
@@ -74,7 +74,7 @@ public abstract class BaseTtsProvider : ITtsProvider
                 {
                     var delay = CalculateExponentialBackoff(attempt);
                     _logger.LogDebug("[{CorrelationId}] Retrying after {Delay}ms", correlationId, delay.TotalMilliseconds);
-                    await Task.Delay(delay, ct);
+                    await Task.Delay(delay, ct).ConfigureAwait(false);
                 }
             }
         }
@@ -104,7 +104,7 @@ public abstract class BaseTtsProvider : ITtsProvider
                     "[{CorrelationId}] Fetching available voices from {Provider} (attempt {Attempt}/{MaxRetries})",
                     correlationId, GetProviderName(), attempt, _maxRetries);
 
-                var voices = await GetAvailableVoicesCoreAsync();
+                var voices = await GetAvailableVoicesCoreAsync().ConfigureAwait(false);
 
                 _logger.LogInformation(
                     "[{CorrelationId}] Retrieved {Count} voices from {Provider}",
@@ -122,7 +122,7 @@ public abstract class BaseTtsProvider : ITtsProvider
                 if (attempt < _maxRetries)
                 {
                     var delay = CalculateExponentialBackoff(attempt);
-                    await Task.Delay(delay);
+                    await Task.Delay(delay).ConfigureAwait(false);
                 }
             }
         }
@@ -144,11 +144,11 @@ public abstract class BaseTtsProvider : ITtsProvider
     {
         _logger.LogWarning("{Provider} does not support streaming synthesis, falling back to batch synthesis", GetProviderName());
         
-        var audioPath = await SynthesizeAsync(lines, spec, ct);
+        var audioPath = await SynthesizeAsync(lines, spec, ct).ConfigureAwait(false);
         
         yield return new AudioChunk
         {
-            Data = await System.IO.File.ReadAllBytesAsync(audioPath, ct),
+            Data = await File.ReadAllBytesAsync(audioPath, ct).ConfigureAwait(false),
             IsComplete = true,
             Index = 0
         };

@@ -56,7 +56,7 @@ public class MetadataOptimizationService
         // Add custom fields based on platform
         AddPlatformSpecificFields(metadata, profile);
 
-        await Task.Delay(50); // Simulate async processing
+        await Task.Delay(50).ConfigureAwait(false); // Simulate async processing
 
         _logger.LogInformation("Metadata generated with title length: {Length}", metadata.Title.Length);
         return metadata;

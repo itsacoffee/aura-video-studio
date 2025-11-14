@@ -72,10 +72,10 @@ public class AssetLibraryService
             managedPath, 
             assetId, 
             type, 
-            _thumbnailsDirectory);
+            _thumbnailsDirectory).ConfigureAwait(false);
 
         // Extract metadata
-        var metadata = await ExtractMetadataAsync(managedPath, type);
+        var metadata = await ExtractMetadataAsync(managedPath, type).ConfigureAwait(false);
 
         var asset = new Asset
         {
@@ -92,7 +92,7 @@ public class AssetLibraryService
         };
 
         _assets[assetId] = asset;
-        await SaveLibraryAsync();
+        await SaveLibraryAsync().ConfigureAwait(false);
 
         _logger.LogInformation("Asset added successfully: {AssetId}", assetId);
         return asset;
@@ -221,7 +221,7 @@ public class AssetLibraryService
                 Tags = updatedTags,
                 DateModified = DateTime.UtcNow
             };
-            await SaveLibraryAsync();
+            await SaveLibraryAsync().ConfigureAwait(false);
         }
     }
 
@@ -241,7 +241,7 @@ public class AssetLibraryService
         };
 
         _collections[collection.Id] = collection;
-        await SaveLibraryAsync();
+        await SaveLibraryAsync().ConfigureAwait(false);
         return collection;
     }
 
@@ -275,7 +275,7 @@ public class AssetLibraryService
             };
         }
 
-        await SaveLibraryAsync();
+        await SaveLibraryAsync().ConfigureAwait(false);
     }
 
     /// <summary>
@@ -323,7 +323,7 @@ public class AssetLibraryService
             }
         }
 
-        await SaveLibraryAsync();
+        await SaveLibraryAsync().ConfigureAwait(false);
         return true;
     }
 
@@ -339,7 +339,7 @@ public class AssetLibraryService
                 UsageCount = asset.UsageCount + 1,
                 DateModified = DateTime.UtcNow
             };
-            await SaveLibraryAsync();
+            await SaveLibraryAsync().ConfigureAwait(false);
         }
     }
 
@@ -355,7 +355,7 @@ public class AssetLibraryService
 
         // For now, return basic metadata
         // In a full implementation, this would use FFmpeg or image libraries to extract detailed metadata
-        return await Task.FromResult(metadata);
+        return await Task.FromResult(metadata).ConfigureAwait(false);
     }
 
     private async Task LoadLibraryAsync()
@@ -367,7 +367,7 @@ public class AssetLibraryService
         {
             try
             {
-                var json = await File.ReadAllTextAsync(assetsFile);
+                var json = await File.ReadAllTextAsync(assetsFile).ConfigureAwait(false);
                 var assets = JsonSerializer.Deserialize<List<Asset>>(json) ?? new List<Asset>();
                 foreach (var asset in assets)
                 {
@@ -385,7 +385,7 @@ public class AssetLibraryService
         {
             try
             {
-                var json = await File.ReadAllTextAsync(collectionsFile);
+                var json = await File.ReadAllTextAsync(collectionsFile).ConfigureAwait(false);
                 var collections = JsonSerializer.Deserialize<List<AssetCollection>>(json) ?? new List<AssetCollection>();
                 foreach (var collection in collections)
                 {
@@ -408,10 +408,10 @@ public class AssetLibraryService
         try
         {
             var assetsJson = JsonSerializer.Serialize(_assets.Values.ToList(), new JsonSerializerOptions { WriteIndented = true });
-            await File.WriteAllTextAsync(assetsFile, assetsJson);
+            await File.WriteAllTextAsync(assetsFile, assetsJson).ConfigureAwait(false);
 
             var collectionsJson = JsonSerializer.Serialize(_collections.Values.ToList(), new JsonSerializerOptions { WriteIndented = true });
-            await File.WriteAllTextAsync(collectionsFile, collectionsJson);
+            await File.WriteAllTextAsync(collectionsFile, collectionsJson).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

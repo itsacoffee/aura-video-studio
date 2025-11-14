@@ -96,7 +96,7 @@ public class OutputManagementService
         }
         else
         {
-            position = await FindBestFrameAsync(videoPath, cancellationToken);
+            position = await FindBestFrameAsync(videoPath, cancellationToken).ConfigureAwait(false);
         }
 
         var positionStr = $"{position.Hours:D2}:{position.Minutes:D2}:{position.Seconds:D2}.{position.Milliseconds:D3}";
@@ -115,7 +115,7 @@ public class OutputManagementService
         args.Append("-y ");
         args.Append($"\"{outputPath}\"");
 
-        await ExecuteFFmpegAsync(args.ToString(), cancellationToken);
+        await ExecuteFFmpegAsync(args.ToString(), cancellationToken).ConfigureAwait(false);
 
         _logger.LogInformation("Thumbnail generated: {OutputPath}", outputPath);
         return outputPath;
@@ -128,7 +128,7 @@ public class OutputManagementService
         string videoPath,
         CancellationToken cancellationToken = default)
     {
-        var duration = await GetVideoDurationAsync(videoPath, cancellationToken);
+        var duration = await GetVideoDurationAsync(videoPath, cancellationToken).ConfigureAwait(false);
         
         var samplePoints = new List<double> { 0.15, 0.25, 0.35, 0.50, 0.65 };
         var bestPosition = duration * 0.25;
@@ -177,7 +177,7 @@ public class OutputManagementService
         args.Append("-y ");
         args.Append($"\"{outputPath}\"");
 
-        await ExecuteFFmpegAsync(args.ToString(), cancellationToken);
+        await ExecuteFFmpegAsync(args.ToString(), cancellationToken).ConfigureAwait(false);
 
         _logger.LogInformation("Preview clip created: {OutputPath}", outputPath);
         return outputPath;
@@ -240,7 +240,7 @@ public class OutputManagementService
         args.Append("-y ");
         args.Append($"\"{outputPath}\"");
 
-        await ExecuteFFmpegAsync(args.ToString(), cancellationToken);
+        await ExecuteFFmpegAsync(args.ToString(), cancellationToken).ConfigureAwait(false);
 
         _logger.LogInformation("Metadata added successfully");
         return outputPath;
@@ -297,7 +297,7 @@ public class OutputManagementService
             args.Append("-y ");
             args.Append($"\"{outputPath}\"");
 
-            await ExecuteFFmpegAsync(args.ToString(), cancellationToken);
+            await ExecuteFFmpegAsync(args.ToString(), cancellationToken).ConfigureAwait(false);
 
             outputs[spec.Name] = outputPath;
             completedCount++;
@@ -333,7 +333,7 @@ public class OutputManagementService
         args.Append("-y ");
         args.Append($"\"{outputPath}\"");
 
-        await ExecuteFFmpegAsync(args.ToString(), cancellationToken);
+        await ExecuteFFmpegAsync(args.ToString(), cancellationToken).ConfigureAwait(false);
 
         _logger.LogInformation("Streaming-optimized version created");
         return outputPath;
@@ -364,7 +364,7 @@ public class OutputManagementService
         args.Append("-y ");
         args.Append($"\"{outputPath}\"");
 
-        await ExecuteFFmpegAsync(args.ToString(), cancellationToken);
+        await ExecuteFFmpegAsync(args.ToString(), cancellationToken).ConfigureAwait(false);
 
         _logger.LogInformation("Sprite sheet generated: {OutputPath}", outputPath);
         return outputPath;
@@ -404,7 +404,7 @@ public class OutputManagementService
         args.Append("-y ");
         args.Append($"\"{outputPath}\"");
 
-        await ExecuteFFmpegAsync(args.ToString(), cancellationToken);
+        await ExecuteFFmpegAsync(args.ToString(), cancellationToken).ConfigureAwait(false);
 
         _logger.LogInformation("Audio extracted: {OutputPath}", outputPath);
         return outputPath;
@@ -439,7 +439,7 @@ public class OutputManagementService
             paletteArgs.Append("-y ");
             paletteArgs.Append($"\"{paletteFile}\"");
 
-            await ExecuteFFmpegAsync(paletteArgs.ToString(), cancellationToken);
+            await ExecuteFFmpegAsync(paletteArgs.ToString(), cancellationToken).ConfigureAwait(false);
 
             var gifArgs = new StringBuilder();
             gifArgs.Append($"-ss {startTime.TotalSeconds.ToString(CultureInfo.InvariantCulture)} ");
@@ -450,7 +450,7 @@ public class OutputManagementService
             gifArgs.Append("-y ");
             gifArgs.Append($"\"{outputPath}\"");
 
-            await ExecuteFFmpegAsync(gifArgs.ToString(), cancellationToken);
+            await ExecuteFFmpegAsync(gifArgs.ToString(), cancellationToken).ConfigureAwait(false);
 
             _logger.LogInformation("GIF created: {OutputPath}", outputPath);
             return outputPath;
@@ -494,8 +494,8 @@ public class OutputManagementService
             return 0;
         }
 
-        var output = await process.StandardOutput.ReadToEndAsync();
-        await process.WaitForExitAsync(cancellationToken);
+        var output = await process.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
+        await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
 
         if (double.TryParse(output.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var duration))
         {
@@ -533,7 +533,7 @@ public class OutputManagementService
         };
 
         process.BeginErrorReadLine();
-        await process.WaitForExitAsync(cancellationToken);
+        await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
 
         if (process.ExitCode != 0)
         {

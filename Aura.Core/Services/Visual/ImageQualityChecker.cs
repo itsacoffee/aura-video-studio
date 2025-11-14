@@ -31,11 +31,11 @@ public class ImageQualityChecker
 
         try
         {
-            var blurScore = await CheckBlurAsync(imageUrl, ct);
-            var artifactScore = await CheckArtifactsAsync(imageUrl, ct);
-            var resolutionScore = await CheckResolutionAsync(imageUrl, ct);
-            var contrastScore = await CheckContrastAsync(imageUrl, ct);
-            var exposureScore = await CheckExposureAsync(imageUrl, ct);
+            var blurScore = await CheckBlurAsync(imageUrl, ct).ConfigureAwait(false);
+            var artifactScore = await CheckArtifactsAsync(imageUrl, ct).ConfigureAwait(false);
+            var resolutionScore = await CheckResolutionAsync(imageUrl, ct).ConfigureAwait(false);
+            var contrastScore = await CheckContrastAsync(imageUrl, ct).ConfigureAwait(false);
+            var exposureScore = await CheckExposureAsync(imageUrl, ct).ConfigureAwait(false);
 
             var issues = new List<string>();
 
@@ -120,7 +120,7 @@ public class ImageQualityChecker
     /// </summary>
     private async Task<double> CheckBlurAsync(string imageUrl, CancellationToken ct)
     {
-        await Task.Delay(1, ct);
+        await Task.Delay(1, ct).ConfigureAwait(false);
         
         if (imageUrl.Contains("fallback") || imageUrl.Contains("placeholder"))
         {
@@ -143,7 +143,7 @@ public class ImageQualityChecker
     /// </summary>
     private async Task<double> CheckArtifactsAsync(string imageUrl, CancellationToken ct)
     {
-        await Task.Delay(1, ct);
+        await Task.Delay(1, ct).ConfigureAwait(false);
 
         if (imageUrl.Contains("fallback") || imageUrl.Contains("placeholder"))
         {
@@ -166,7 +166,7 @@ public class ImageQualityChecker
     /// </summary>
     private async Task<double> CheckResolutionAsync(string imageUrl, CancellationToken ct)
     {
-        await Task.Delay(1, ct);
+        await Task.Delay(1, ct).ConfigureAwait(false);
 
         if (imageUrl.Contains("fallback") || imageUrl.Contains("placeholder"))
         {
@@ -184,7 +184,7 @@ public class ImageQualityChecker
     /// </summary>
     private async Task<double> CheckContrastAsync(string imageUrl, CancellationToken ct)
     {
-        await Task.Delay(1, ct);
+        await Task.Delay(1, ct).ConfigureAwait(false);
 
         if (imageUrl.Contains("fallback") || imageUrl.Contains("placeholder"))
         {
@@ -202,7 +202,7 @@ public class ImageQualityChecker
     /// </summary>
     private async Task<double> CheckExposureAsync(string imageUrl, CancellationToken ct)
     {
-        await Task.Delay(1, ct);
+        await Task.Delay(1, ct).ConfigureAwait(false);
 
         if (imageUrl.Contains("fallback") || imageUrl.Contains("placeholder"))
         {

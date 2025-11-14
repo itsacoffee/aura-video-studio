@@ -44,14 +44,14 @@ public class RagContextBuilder
             return new RagContext { Query = query };
         }
 
-        var queryEmbedding = await _embeddingService.GenerateEmbeddingAsync(query, ct);
+        var queryEmbedding = await _embeddingService.GenerateEmbeddingAsync(query, ct).ConfigureAwait(false);
 
         var retrievalResult = await _vectorIndex.SearchAsync(
             queryEmbedding,
             query,
             config.TopK,
             config.MinimumScore,
-            ct);
+            ct).ConfigureAwait(false);
 
         if (retrievalResult.Chunks.Count == 0)
         {

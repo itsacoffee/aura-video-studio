@@ -36,14 +36,14 @@ public class ProfileService
         CreateProfileRequest request,
         CancellationToken ct = default)
     {
-        await _cacheLock.WaitAsync(ct);
+        await _cacheLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             var profileId = Guid.NewGuid().ToString("N");
             var now = DateTime.UtcNow;
 
             // Check if this should be the default profile (first profile for user)
-            var existingProfiles = await _persistence.LoadUserProfilesAsync(request.UserId, ct);
+            var existingProfiles = await _persistence.LoadUserProfilesAsync(request.UserId, ct).ConfigureAwait(false);
             var isDefault = existingProfiles.Count == 0;
 
             var profile = new UserProfile(
@@ -58,7 +58,7 @@ public class ProfileService
                 UpdatedAt: now
             );
 
-            await _persistence.SaveProfileAsync(profile, ct);
+            await _persistence.SaveProfileAsync(profile, ct).ConfigureAwait(false);
             _profileCache[profileId] = profile;
 
             // Create preferences from template or defaults
@@ -72,17 +72,17 @@ public class ProfileService
                 }
                 else
                 {
-                    preferences = await _persistence.LoadPreferencesAsync(profileId, ct) 
+                    preferences = await _persistence.LoadPreferencesAsync(profileId, ct).ConfigureAwait(false)
                         ?? throw new InvalidOperationException("Failed to create default preferences");
                 }
             }
             else
             {
-                preferences = await _persistence.LoadPreferencesAsync(profileId, ct)
+                preferences = await _persistence.LoadPreferencesAsync(profileId, ct).ConfigureAwait(false)
                     ?? throw new InvalidOperationException("Failed to create default preferences");
             }
 
-            await _persistence.SavePreferencesAsync(preferences, ct);
+            await _persistence.SavePreferencesAsync(preferences, ct).ConfigureAwait(false);
             _preferencesCache[profileId] = preferences;
 
             _logger.LogInformation("Created profile {ProfileId} for user {UserId}", profileId, request.UserId);
@@ -99,7 +99,7 @@ public class ProfileService
     /// </summary>
     public async Task<UserProfile?> GetProfileAsync(string profileId, CancellationToken ct = default)
     {
-        await _cacheLock.WaitAsync(ct);
+        await _cacheLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             if (_profileCache.TryGetValue(profileId, out var cached))
@@ -107,7 +107,7 @@ public class ProfileService
                 return cached;
             }
 
-            var profile = await _persistence.LoadProfileAsync(profileId, ct);
+            var profile = await _persistence.LoadProfileAsync(profileId, ct).ConfigureAwait(false);
             if (profile != null)
             {
                 _profileCache[profileId] = profile;
@@ -126,9 +126,9 @@ public class ProfileService
     /// </summary>
     public async Task<List<UserProfile>> GetUserProfilesAsync(string userId, CancellationToken ct = default)
     {
-        var profiles = await _persistence.LoadUserProfilesAsync(userId, ct);
+        var profiles = await _persistence.LoadUserProfilesAsync(userId, ct).ConfigureAwait(false);
         
-        await _cacheLock.WaitAsync(ct);
+        await _cacheLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             foreach (var profile in profiles)
@@ -149,7 +149,7 @@ public class ProfileService
     /// </summary>
     public async Task<UserProfile?> GetActiveProfileAsync(string userId, CancellationToken ct = default)
     {
-        var profiles = await GetUserProfilesAsync(userId, ct);
+        var profiles = await GetUserProfilesAsync(userId, ct).ConfigureAwait(false);
         return profiles.FirstOrDefault(p => p.IsActive);
     }
 
@@ -161,10 +161,10 @@ public class ProfileService
         UpdateProfileRequest request,
         CancellationToken ct = default)
     {
-        await _cacheLock.WaitAsync(ct);
+        await _cacheLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            var existing = await GetProfileAsync(profileId, ct);
+            var existing = await GetProfileAsync(profileId, ct).ConfigureAwait(false);
             if (existing == null)
             {
                 throw new InvalidOperationException($"Profile {profileId} not found");
@@ -177,7 +177,7 @@ public class ProfileService
                 UpdatedAt = DateTime.UtcNow
             };
 
-            await _persistence.SaveProfileAsync(updated, ct);
+            await _persistence.SaveProfileAsync(updated, ct).ConfigureAwait(false);
             _profileCache[profileId] = updated;
 
             _logger.LogInformation("Updated profile {ProfileId}", profileId);
@@ -194,17 +194,17 @@ public class ProfileService
     /// </summary>
     public async Task DeleteProfileAsync(string profileId, CancellationToken ct = default)
     {
-        await _cacheLock.WaitAsync(ct);
+        await _cacheLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            var profile = await GetProfileAsync(profileId, ct);
+            var profile = await GetProfileAsync(profileId, ct).ConfigureAwait(false);
             if (profile == null)
             {
                 throw new InvalidOperationException($"Profile {profileId} not found");
             }
 
             // Check if this is the only profile
-            var userProfiles = await GetUserProfilesAsync(profile.UserId, ct);
+            var userProfiles = await GetUserProfilesAsync(profile.UserId, ct).ConfigureAwait(false);
             if (userProfiles.Count <= 1)
             {
                 throw new InvalidOperationException("Cannot delete the only profile");
@@ -222,12 +222,12 @@ public class ProfileService
                         IsActive = profile.IsActive || nextProfile.IsActive,
                         UpdatedAt = DateTime.UtcNow
                     };
-                    await _persistence.SaveProfileAsync(updated, ct);
+                    await _persistence.SaveProfileAsync(updated, ct).ConfigureAwait(false);
                     _profileCache[nextProfile.ProfileId] = updated;
                 }
             }
 
-            await _persistence.DeleteProfileAsync(profileId, ct);
+            await _persistence.DeleteProfileAsync(profileId, ct).ConfigureAwait(false);
             _profileCache.Remove(profileId);
             _preferencesCache.Remove(profileId);
 
@@ -244,21 +244,21 @@ public class ProfileService
     /// </summary>
     public async Task<UserProfile> ActivateProfileAsync(string profileId, CancellationToken ct = default)
     {
-        await _cacheLock.WaitAsync(ct);
+        await _cacheLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            var profile = await GetProfileAsync(profileId, ct);
+            var profile = await GetProfileAsync(profileId, ct).ConfigureAwait(false);
             if (profile == null)
             {
                 throw new InvalidOperationException($"Profile {profileId} not found");
             }
 
             // Deactivate all other profiles for this user
-            var userProfiles = await GetUserProfilesAsync(profile.UserId, ct);
+            var userProfiles = await GetUserProfilesAsync(profile.UserId, ct).ConfigureAwait(false);
             foreach (var p in userProfiles.Where(p => p.IsActive && p.ProfileId != profileId))
             {
                 var deactivated = p with { IsActive = false, UpdatedAt = DateTime.UtcNow };
-                await _persistence.SaveProfileAsync(deactivated, ct);
+                await _persistence.SaveProfileAsync(deactivated, ct).ConfigureAwait(false);
                 _profileCache[p.ProfileId] = deactivated;
             }
 
@@ -270,7 +270,7 @@ public class ProfileService
                 UpdatedAt = DateTime.UtcNow
             };
 
-            await _persistence.SaveProfileAsync(activated, ct);
+            await _persistence.SaveProfileAsync(activated, ct).ConfigureAwait(false);
             _profileCache[profileId] = activated;
 
             _logger.LogInformation("Activated profile {ProfileId} for user {UserId}", profileId, profile.UserId);
@@ -290,10 +290,10 @@ public class ProfileService
         string newProfileName,
         CancellationToken ct = default)
     {
-        await _cacheLock.WaitAsync(ct);
+        await _cacheLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            var source = await GetProfileAsync(sourceProfileId, ct);
+            var source = await GetProfileAsync(sourceProfileId, ct).ConfigureAwait(false);
             if (source == null)
             {
                 throw new InvalidOperationException($"Source profile {sourceProfileId} not found");
@@ -314,13 +314,13 @@ public class ProfileService
                 UpdatedAt: now
             );
 
-            await _persistence.SaveProfileAsync(newProfile, ct);
+            await _persistence.SaveProfileAsync(newProfile, ct).ConfigureAwait(false);
             _profileCache[newProfileId] = newProfile;
 
             // Copy preferences
-            var sourcePreferences = await GetPreferencesAsync(sourceProfileId, ct);
+            var sourcePreferences = await GetPreferencesAsync(sourceProfileId, ct).ConfigureAwait(false);
             var newPreferences = sourcePreferences with { ProfileId = newProfileId };
-            await _persistence.SavePreferencesAsync(newPreferences, ct);
+            await _persistence.SavePreferencesAsync(newPreferences, ct).ConfigureAwait(false);
             _preferencesCache[newProfileId] = newPreferences;
 
             _logger.LogInformation("Duplicated profile {SourceId} to {NewId}", sourceProfileId, newProfileId);
@@ -341,7 +341,7 @@ public class ProfileService
     /// </summary>
     public async Task<ProfilePreferences> GetPreferencesAsync(string profileId, CancellationToken ct = default)
     {
-        await _cacheLock.WaitAsync(ct);
+        await _cacheLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             if (_preferencesCache.TryGetValue(profileId, out var cached))
@@ -349,7 +349,7 @@ public class ProfileService
                 return cached;
             }
 
-            var preferences = await _persistence.LoadPreferencesAsync(profileId, ct);
+            var preferences = await _persistence.LoadPreferencesAsync(profileId, ct).ConfigureAwait(false);
             if (preferences == null)
             {
                 throw new InvalidOperationException($"Preferences not found for profile {profileId}");
@@ -372,10 +372,10 @@ public class ProfileService
         UpdatePreferencesRequest request,
         CancellationToken ct = default)
     {
-        await _cacheLock.WaitAsync(ct);
+        await _cacheLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            var existing = await GetPreferencesAsync(profileId, ct);
+            var existing = await GetPreferencesAsync(profileId, ct).ConfigureAwait(false);
 
             var updated = existing with
             {
@@ -388,15 +388,15 @@ public class ProfileService
                 AIBehavior = request.AIBehavior ?? existing.AIBehavior
             };
 
-            await _persistence.SavePreferencesAsync(updated, ct);
+            await _persistence.SavePreferencesAsync(updated, ct).ConfigureAwait(false);
             _preferencesCache[profileId] = updated;
 
             // Update profile last modified time
-            var profile = await GetProfileAsync(profileId, ct);
+            var profile = await GetProfileAsync(profileId, ct).ConfigureAwait(false);
             if (profile != null)
             {
                 var updatedProfile = profile with { UpdatedAt = DateTime.UtcNow };
-                await _persistence.SaveProfileAsync(updatedProfile, ct);
+                await _persistence.SaveProfileAsync(updatedProfile, ct).ConfigureAwait(false);
                 _profileCache[profileId] = updatedProfile;
             }
 
@@ -427,7 +427,7 @@ public class ProfileService
             Context: request.Context
         );
 
-        await _persistence.RecordDecisionAsync(decision, ct);
+        await _persistence.RecordDecisionAsync(decision, ct).ConfigureAwait(false);
         _logger.LogInformation("Recorded decision for profile {ProfileId}: {Type} -> {Decision}",
             request.ProfileId, request.SuggestionType, request.Decision);
     }
@@ -439,7 +439,7 @@ public class ProfileService
         string profileId,
         CancellationToken ct = default)
     {
-        return await _persistence.LoadDecisionsAsync(profileId, ct);
+        return await _persistence.LoadDecisionsAsync(profileId, ct).ConfigureAwait(false);
     }
 
     #endregion

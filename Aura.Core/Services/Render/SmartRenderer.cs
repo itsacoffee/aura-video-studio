@@ -99,7 +99,7 @@ public class SmartRenderer
     {
         _logger.LogInformation("Generating render plan for job {JobId}", jobId);
 
-        var manifest = await LoadManifestAsync(jobId);
+        var manifest = await LoadManifestAsync(jobId).ConfigureAwait(false);
         var scenePlans = new List<SceneRenderPlan>();
 
         foreach (var scene in timeline.Scenes)
@@ -249,7 +249,7 @@ public class SmartRenderer
                 );
 
                 // Render the individual scene
-                await RenderSingleSceneAsync(scene, preset, sceneOutputPath, cancellationToken);
+                await RenderSingleSceneAsync(scene, preset, sceneOutputPath, cancellationToken).ConfigureAwait(false);
                 
                 sceneOutputs[scenePlan.SceneIndex] = sceneOutputPath;
                 completedScenes++;
@@ -269,13 +269,13 @@ public class SmartRenderer
 
         // Stitch scenes together
         _logger.LogInformation("Stitching {Count} scenes together", sceneOutputs.Count);
-        await StitchScenesAsync(sceneOutputs, outputPath, cancellationToken);
+        await StitchScenesAsync(sceneOutputs, outputPath, cancellationToken).ConfigureAwait(false);
 
         // Update cache manifest
-        await UpdateManifestAsync(plan.JobId, timeline, sceneOutputs);
+        await UpdateManifestAsync(plan.JobId, timeline, sceneOutputs).ConfigureAwait(false);
 
         // Cleanup old renders
-        await CleanupOldRendersAsync(plan.JobId);
+        await CleanupOldRendersAsync(plan.JobId).ConfigureAwait(false);
 
         _logger.LogInformation("Smart render complete: {OutputPath}", outputPath);
         return outputPath;
@@ -298,13 +298,13 @@ public class SmartRenderer
                 .OrderBy(kvp => kvp.Key)
                 .Select(kvp => $"file '{kvp.Value.Replace("'", "'\\''")}'");
             
-            await File.WriteAllLinesAsync(concatListPath, lines, cancellationToken);
+            await File.WriteAllLinesAsync(concatListPath, lines, cancellationToken).ConfigureAwait(false);
 
             // Use FFmpeg concat demuxer with stream copy (fast)
             var ffmpegArgs = $"-f concat -safe 0 -i \"{concatListPath}\" -c copy -y \"{outputPath}\"";
             _logger.LogInformation("Stitching scenes with FFmpeg concat demuxer");
             
-            await ExecuteFFmpegAsync(ffmpegArgs, cancellationToken);
+            await ExecuteFFmpegAsync(ffmpegArgs, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -329,7 +329,7 @@ public class SmartRenderer
 
         try
         {
-            var json = await File.ReadAllTextAsync(manifestPath);
+            var json = await File.ReadAllTextAsync(manifestPath).ConfigureAwait(false);
             return JsonSerializer.Deserialize<RenderCacheManifest>(json);
         }
         catch (Exception ex)
@@ -347,7 +347,7 @@ public class SmartRenderer
         EditableTimeline timeline,
         Dictionary<int, string> sceneOutputs)
     {
-        var manifest = await LoadManifestAsync(jobId) ?? new RenderCacheManifest(
+        var manifest = await LoadManifestAsync(jobId).ConfigureAwait(false) ?? new RenderCacheManifest(
             JobId: jobId,
             CreatedAt: DateTime.UtcNow,
             LastModifiedAt: DateTime.UtcNow,
@@ -384,7 +384,7 @@ public class SmartRenderer
             WriteIndented = true
         });
 
-        await File.WriteAllTextAsync(manifestPath, json);
+        await File.WriteAllTextAsync(manifestPath, json).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -412,7 +412,7 @@ public class SmartRenderer
             foreach (var dir in toDelete)
             {
                 _logger.LogInformation("Cleaning up old render cache: {Path}", dir.FullName);
-                await Task.Run(() => Directory.Delete(dir.FullName, recursive: true));
+                await Task.Run(() => Directory.Delete(dir.FullName, recursive: true)).ConfigureAwait(false);
             }
         }
         catch (Exception ex)
@@ -510,7 +510,7 @@ public class SmartRenderer
         args.Append("-pix_fmt yuv420p -y ");
         args.AppendFormat(CultureInfo.InvariantCulture, "\"{0}\"", outputPath);
         
-        await ExecuteFFmpegAsync(args.ToString(), cancellationToken);
+        await ExecuteFFmpegAsync(args.ToString(), cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -591,7 +591,7 @@ public class SmartRenderer
         process.Start();
         process.BeginErrorReadLine();
 
-        await process.WaitForExitAsync(cancellationToken);
+        await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
 
         if (process.ExitCode != 0)
         {

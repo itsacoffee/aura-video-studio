@@ -129,7 +129,7 @@ public class ExternalProcessManager : IDisposable
             if (!string.IsNullOrEmpty(config.HealthCheckUrl))
             {
                 _logger.LogInformation("Waiting for health check at {Url}", config.HealthCheckUrl);
-                bool healthy = await WaitForHealthAsync(config.Id, config.HealthCheckUrl, config.HealthCheckTimeoutSeconds, ct);
+                bool healthy = await WaitForHealthAsync(config.Id, config.HealthCheckUrl, config.HealthCheckTimeoutSeconds, ct).ConfigureAwait(false);
                 
                 if (!healthy)
                 {
@@ -175,7 +175,7 @@ public class ExternalProcessManager : IDisposable
             {
                 managedProcess.Process.CloseMainWindow();
                 
-                bool exited = await Task.Run(() => managedProcess.Process.WaitForExit(gracefulTimeoutSeconds * 1000));
+                bool exited = await Task.Run(() => managedProcess.Process.WaitForExit(gracefulTimeoutSeconds * 1000)).ConfigureAwait(false);
                 
                 if (!exited && !managedProcess.Process.HasExited)
                 {
@@ -222,7 +222,7 @@ public class ExternalProcessManager : IDisposable
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(10));
 
-            var response = await _httpClient.GetAsync(healthCheckUrl, cts.Token);
+            var response = await _httpClient.GetAsync(healthCheckUrl, cts.Token).ConfigureAwait(false);
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)
@@ -246,7 +246,7 @@ public class ExternalProcessManager : IDisposable
             return string.Empty;
         }
 
-        var lines = await File.ReadAllLinesAsync(logPath);
+        var lines = await File.ReadAllLinesAsync(logPath).ConfigureAwait(false);
         var startIndex = Math.Max(0, lines.Length - tailLines);
         return string.Join(Environment.NewLine, lines[startIndex..]);
     }
@@ -257,12 +257,12 @@ public class ExternalProcessManager : IDisposable
         
         while (DateTime.Now < timeout && !ct.IsCancellationRequested)
         {
-            if (await CheckHealthAsync(processId, healthCheckUrl, ct))
+            if (await CheckHealthAsync(processId, healthCheckUrl, ct).ConfigureAwait(false))
             {
                 return true;
             }
 
-            await Task.Delay(2000, ct);
+            await Task.Delay(2000, ct).ConfigureAwait(false);
         }
 
         return false;
@@ -282,7 +282,7 @@ public class ExternalProcessManager : IDisposable
         {
             try
             {
-                await managedProcess.Process.WaitForExitAsync(cts.Token);
+                await managedProcess.Process.WaitForExitAsync(cts.Token).ConfigureAwait(false);
                 
                 if (!cts.Token.IsCancellationRequested)
                 {
@@ -292,11 +292,11 @@ public class ExternalProcessManager : IDisposable
                     managedProcess.LogWriter.Dispose();
                     managedProcess.Process.Dispose();
                     
-                    await Task.Delay(5000, cts.Token);
+                    await Task.Delay(5000, cts.Token).ConfigureAwait(false);
                     
                     if (!cts.Token.IsCancellationRequested)
                     {
-                        await StartAsync(managedProcess.Config, cts.Token);
+                        await StartAsync(managedProcess.Config, cts.Token).ConfigureAwait(false);
                     }
                 }
             }

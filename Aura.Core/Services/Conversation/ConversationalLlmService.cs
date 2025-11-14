@@ -44,13 +44,13 @@ public class ConversationalLlmService
             projectId,
             "user",
             userMessage,
-            ct: ct);
+            ct: ct).ConfigureAwait(false);
 
         // Get project context for enrichment
-        var projectContext = await _projectManager.GetOrCreateContextAsync(projectId, ct);
+        var projectContext = await _projectManager.GetOrCreateContextAsync(projectId, ct).ConfigureAwait(false);
         
         // Build enriched context
-        var enrichedContext = await BuildEnrichedContextAsync(projectId, projectContext, ct);
+        var enrichedContext = await BuildEnrichedContextAsync(projectId, projectContext, ct).ConfigureAwait(false);
         
         // Create brief with enriched context
         var brief = new Brief(
@@ -73,7 +73,7 @@ public class ConversationalLlmService
         string response;
         try
         {
-            response = await llmProvider.DraftScriptAsync(brief, planSpec, ct);
+            response = await llmProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -86,7 +86,7 @@ public class ConversationalLlmService
             projectId,
             "assistant",
             response,
-            ct: ct);
+            ct: ct).ConfigureAwait(false);
         
         return response;
     }
@@ -120,7 +120,7 @@ public class ConversationalLlmService
         }
         
         // Add recent conversation history
-        var history = await _conversationManager.GetHistoryAsync(projectId, maxMessages: 10, ct: ct);
+        var history = await _conversationManager.GetHistoryAsync(projectId, maxMessages: 10, ct: ct).ConfigureAwait(false);
         
         if (history.Count > 0)
         {
@@ -133,7 +133,7 @@ public class ConversationalLlmService
         }
         
         // Add decision history summary
-        var decisions = await _projectManager.GetDecisionHistoryAsync(projectId, ct: ct);
+        var decisions = await _projectManager.GetDecisionHistoryAsync(projectId, ct: ct).ConfigureAwait(false);
         if (decisions.Count > 0)
         {
             context.AppendLine("Previous Decisions:");

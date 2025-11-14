@@ -49,7 +49,7 @@ public abstract class BaseRenderingProvider : IRenderingProvider
     {
         try
         {
-            var capabilities = await GetHardwareCapabilitiesAsync(cancellationToken);
+            var capabilities = await GetHardwareCapabilitiesAsync(cancellationToken).ConfigureAwait(false);
             return capabilities.IsAvailable;
         }
         catch (Exception ex)
@@ -66,7 +66,7 @@ public abstract class BaseRenderingProvider : IRenderingProvider
     {
         try
         {
-            return await FfmpegLocator.GetEffectiveFfmpegPathAsync(ConfiguredFfmpegPath, cancellationToken);
+            return await FfmpegLocator.GetEffectiveFfmpegPathAsync(ConfiguredFfmpegPath, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

@@ -94,7 +94,7 @@ public class TranslationIntegrationService
         };
 
         var translationResult = await _translationService.TranslateAsync(
-            translationRequest, cancellationToken);
+            translationRequest, cancellationToken).ConfigureAwait(false);
 
         var translatedScriptLines = translationResult.TranslatedLines
             .Select(line => new ScriptLine(
@@ -121,7 +121,7 @@ public class TranslationIntegrationService
         };
 
         var ssmlResult = await _ssmlPlannerService.PlanSSMLAsync(
-            ssmlRequest, cancellationToken);
+            ssmlRequest, cancellationToken).ConfigureAwait(false);
 
         var finalScriptLines = translatedScriptLines;
         SubtitleTimingSyncResult? timingSyncResult = null;

@@ -32,7 +32,7 @@ public class VisualStyleCoherenceService
 
         try
         {
-            await Task.Delay(1, ct);
+            await Task.Delay(1, ct).ConfigureAwait(false);
 
             var colorPalette = ExtractColorPalette(referenceImageUrl);
             var lighting = AnalyzeLighting(referenceImageUrl);
@@ -67,7 +67,7 @@ public class VisualStyleCoherenceService
     {
         _logger.LogDebug("Generating style transfer guidance for scene {SceneIndex}", targetPrompt.SceneIndex);
 
-        await Task.Delay(1, ct);
+        await Task.Delay(1, ct).ConfigureAwait(false);
 
         var colorGuidance = BuildColorConsistencyGuidance(referenceStyle.ColorPalette);
         var lightingGuidance = BuildLightingMatchGuidance(referenceStyle.LightingCharacteristics);
@@ -107,7 +107,7 @@ public class VisualStyleCoherenceService
         
         if (!string.IsNullOrEmpty(config.ReferenceImageUrl))
         {
-            referenceStyle = await ExtractStyleProfileAsync(config.ReferenceImageUrl, ct);
+            referenceStyle = await ExtractStyleProfileAsync(config.ReferenceImageUrl, ct).ConfigureAwait(false);
         }
         else if (config.ExtractStyleFromFirstScene && prompts.Count > 0)
         {
@@ -128,7 +128,7 @@ public class VisualStyleCoherenceService
             StyleTransferGuidance? guidance = null;
             if (referenceStyle != null)
             {
-                guidance = await GenerateStyleTransferGuidanceAsync(referenceStyle, prompt, ct);
+                guidance = await GenerateStyleTransferGuidanceAsync(referenceStyle, prompt, ct).ConfigureAwait(false);
             }
 
             var colorGrading = referenceStyle != null

@@ -161,7 +161,7 @@ public class UnifiedLlmOrchestrator
                 preset.Temperature,
                 preset.MaxTokens);
             
-            var cachedEntry = await _cache.GetAsync(cacheKey, ct);
+            var cachedEntry = await _cache.GetAsync(cacheKey, ct).ConfigureAwait(false);
             if (cachedEntry != null)
             {
                 _logger.LogInformation(
@@ -207,7 +207,7 @@ public class UnifiedLlmOrchestrator
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                 cts.CancelAfter(TimeSpan.FromSeconds(preset.TimeoutSeconds));
                 
-                var response = await provider.CompleteAsync(request.Prompt, cts.Token);
+                var response = await provider.CompleteAsync(request.Prompt, cts.Token).ConfigureAwait(false);
                 
                 if (string.IsNullOrWhiteSpace(response))
                 {
@@ -242,7 +242,7 @@ public class UnifiedLlmOrchestrator
                         ResponseSizeBytes = response.Length
                     };
                     
-                    await _cache.SetAsync(cacheKey, response, cacheMetadata, ct);
+                    await _cache.SetAsync(cacheKey, response, cacheMetadata, ct).ConfigureAwait(false);
                 }
                 
                 var telemetry = CreateTelemetry(
@@ -299,7 +299,7 @@ public class UnifiedLlmOrchestrator
             
             if (retryCount < preset.MaxRetries)
             {
-                await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, retryCount)), ct);
+                await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, retryCount)), ct).ConfigureAwait(false);
             }
         }
         

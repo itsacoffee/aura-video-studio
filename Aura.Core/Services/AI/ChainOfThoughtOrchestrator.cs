@@ -50,7 +50,7 @@ public class ChainOfThoughtOrchestrator
         
         var stageBrief = brief with { Topic = stagePrompt };
 
-        var content = await GenerateWithLlmAsync(stageBrief, spec, ct);
+        var content = await GenerateWithLlmAsync(stageBrief, spec, ct).ConfigureAwait(false);
 
         var requiresReview = stage != ChainOfThoughtStage.TopicAnalysis;
 
@@ -183,30 +183,30 @@ public class ChainOfThoughtOrchestrator
             brief,
             spec,
             null,
-            ct);
+            ct).ConfigureAwait(false);
 
         _logger.LogInformation("Topic analysis complete, awaiting user review");
-        var approvedAnalysis = await userReviewCallback(analysisResult) ?? analysisResult.Content;
+        var approvedAnalysis = await userReviewCallback(analysisResult).ConfigureAwait(false) ?? analysisResult.Content;
 
         var outlineResult = await ExecuteStageAsync(
             ChainOfThoughtStage.Outline,
             brief,
             spec,
             approvedAnalysis,
-            ct);
+            ct).ConfigureAwait(false);
 
         _logger.LogInformation("Outline complete, awaiting user review");
-        var approvedOutline = await userReviewCallback(outlineResult) ?? outlineResult.Content;
+        var approvedOutline = await userReviewCallback(outlineResult).ConfigureAwait(false) ?? outlineResult.Content;
 
         var scriptResult = await ExecuteStageAsync(
             ChainOfThoughtStage.FullScript,
             brief,
             spec,
             approvedOutline,
-            ct);
+            ct).ConfigureAwait(false);
 
         _logger.LogInformation("Full script complete, awaiting final review");
-        var finalScript = await userReviewCallback(scriptResult) ?? scriptResult.Content;
+        var finalScript = await userReviewCallback(scriptResult).ConfigureAwait(false) ?? scriptResult.Content;
 
         _logger.LogInformation("Chain-of-thought generation complete");
         return finalScript;
@@ -222,17 +222,17 @@ public class ChainOfThoughtOrchestrator
     {
         if (_stageAdapter != null)
         {
-            var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct);
+            var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct).ConfigureAwait(false);
             if (!result.IsSuccess || result.Data == null)
             {
                 _logger.LogWarning("Orchestrator generation failed, falling back to direct provider: {Error}", result.ErrorMessage);
-                return await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
+                return await _llmProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
             }
             return result.Data;
         }
         else
         {
-            return await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
+            return await _llmProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
         }
     }
 }

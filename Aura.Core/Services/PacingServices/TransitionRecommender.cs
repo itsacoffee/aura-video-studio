@@ -31,7 +31,7 @@ public class TransitionRecommender
         Brief? brief = null,
         CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         ct.ThrowIfCancellationRequested();
 
         if (scenes.Count < 2)

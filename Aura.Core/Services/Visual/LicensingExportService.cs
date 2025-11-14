@@ -63,7 +63,7 @@ public class LicensingExportService
             ));
         }
 
-        return await Task.FromResult(sb.ToString());
+        return await Task.FromResult(sb.ToString()).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -126,7 +126,7 @@ public class LicensingExportService
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         });
 
-        return await Task.FromResult(json);
+        return await Task.FromResult(json).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -173,7 +173,7 @@ public class LicensingExportService
             }
         }
 
-        return await Task.FromResult(sb.ToString());
+        return await Task.FromResult(sb.ToString()).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -240,7 +240,7 @@ public class LicensingExportService
             LicenseTypes = licenseTypes,
             Sources = sources,
             Warnings = warnings
-        });
+        }).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -313,7 +313,7 @@ public class LicensingExportService
             IsValid = isValid,
             Issues = issues,
             Summary = $"Found {issues.Count(i => i.Severity == IssueSeverity.Error)} error(s) and {issues.Count(i => i.Severity == IssueSeverity.Warning)} warning(s)"
-        });
+        }).ConfigureAwait(false);
     }
 
     private static string EscapeCsv(string value)

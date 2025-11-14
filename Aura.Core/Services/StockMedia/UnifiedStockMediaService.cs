@@ -50,7 +50,7 @@ public class UnifiedStockMediaService
         var searchTasks = providerToUse.Select(provider =>
             SearchProviderAsync(provider, request, ct));
 
-        var results = await Task.WhenAll(searchTasks);
+        var results = await Task.WhenAll(searchTasks).ConfigureAwait(false);
 
         foreach (var (provider, providerResults) in results)
         {
@@ -58,7 +58,7 @@ public class UnifiedStockMediaService
             resultsByProvider[provider] = providerResults.Count;
         }
 
-        var filteredResults = await ApplySafetyFiltersAsync(allResults, request, ct);
+        var filteredResults = await ApplySafetyFiltersAsync(allResults, request, ct).ConfigureAwait(false);
         
         var dedupedResults = DeduplicateResults(filteredResults);
         
@@ -110,7 +110,7 @@ public class UnifiedStockMediaService
         {
             try
             {
-                var isValid = await provider.ValidateAsync(ct);
+                var isValid = await provider.ValidateAsync(ct).ConfigureAwait(false);
                 results[provider.ProviderName] = isValid;
                 
                 _logger.LogInformation(
@@ -152,7 +152,7 @@ public class UnifiedStockMediaService
                 return (provider.ProviderName, new List<StockMediaResult>());
             }
 
-            var results = await provider.SearchAsync(request, ct);
+            var results = await provider.SearchAsync(request, ct).ConfigureAwait(false);
             
             var updatedResults = new List<StockMediaResult>();
             foreach (var result in results)
@@ -196,7 +196,7 @@ public class UnifiedStockMediaService
         {
             var isSafe = await _safetyService.IsContentSafeAsync(
                 result.Licensing.Attribution ?? string.Empty,
-                ct);
+                ct).ConfigureAwait(false);
 
             if (isSafe)
             {

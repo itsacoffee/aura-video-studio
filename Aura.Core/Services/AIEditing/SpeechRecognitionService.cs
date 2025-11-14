@@ -46,8 +46,8 @@ public class SpeechRecognitionService
         // - Azure Speech Services
         // - Google Cloud Speech-to-Text
         // - Local Whisper model
-        var captions = await RecognizeSpeechAsync(filePath, language, cancellationToken);
-        var duration = await GetDurationAsync(filePath, cancellationToken);
+        var captions = await RecognizeSpeechAsync(filePath, language, cancellationToken).ConfigureAwait(false);
+        var duration = await GetDurationAsync(filePath, cancellationToken).ConfigureAwait(false);
         var avgConfidence = captions.Count != 0 ? captions.Average(c => c.Confidence) : 0.0;
 
         var summary = $"Generated {captions.Count} captions with {avgConfidence:P0} average confidence";
@@ -66,7 +66,7 @@ public class SpeechRecognitionService
         string language,
         CancellationToken cancellationToken)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         // Placeholder: Generate sample captions
         // In production, this would use speech recognition API/model
@@ -135,7 +135,7 @@ public class SpeechRecognitionService
         string filePath,
         CancellationToken cancellationToken)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         
         // Placeholder: In production, use FFmpeg to get actual duration
         return TimeSpan.FromSeconds(45);
@@ -152,7 +152,7 @@ public class SpeechRecognitionService
         _logger.LogInformation("Exporting {Count} captions to SRT: {OutputPath}", 
             result.Captions.Count, outputPath);
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
 
         var srt = new StringBuilder();
@@ -167,7 +167,7 @@ public class SpeechRecognitionService
             srt.AppendLine();
         }
 
-        await File.WriteAllTextAsync(outputPath, srt.ToString(), cancellationToken);
+        await File.WriteAllTextAsync(outputPath, srt.ToString(), cancellationToken).ConfigureAwait(false);
         _logger.LogInformation("SRT file created: {OutputPath}", outputPath);
         
         return outputPath;
@@ -184,7 +184,7 @@ public class SpeechRecognitionService
         _logger.LogInformation("Exporting {Count} captions to VTT: {OutputPath}", 
             result.Captions.Count, outputPath);
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
 
         var vtt = new StringBuilder();
@@ -198,7 +198,7 @@ public class SpeechRecognitionService
             vtt.AppendLine();
         }
 
-        await File.WriteAllTextAsync(outputPath, vtt.ToString(), cancellationToken);
+        await File.WriteAllTextAsync(outputPath, vtt.ToString(), cancellationToken).ConfigureAwait(false);
         _logger.LogInformation("VTT file created: {OutputPath}", outputPath);
         
         return outputPath;
@@ -225,7 +225,7 @@ public class SpeechRecognitionService
     {
         _logger.LogInformation("Burning captions into video: {VideoPath}", videoPath);
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
 
         // Placeholder: In production, use FFmpeg to burn subtitles

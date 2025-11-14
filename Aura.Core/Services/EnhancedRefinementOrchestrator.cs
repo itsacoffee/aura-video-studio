@@ -72,7 +72,7 @@ public class EnhancedRefinementOrchestrator
             // Stage 1: Generate initial draft using generator
             _logger.LogInformation("Stage 1: Generating initial draft (Round 0)");
             var roundStopwatch = Stopwatch.StartNew();
-            var currentScript = await GenerateInitialDraftAsync(brief, spec, ct);
+            var currentScript = await GenerateInitialDraftAsync(brief, spec, ct).ConfigureAwait(false);
 
             if (string.IsNullOrWhiteSpace(currentScript))
             {
@@ -86,7 +86,7 @@ public class EnhancedRefinementOrchestrator
             // Stage 2: Assess initial quality using critic
             _logger.LogInformation("Stage 2: Critiquing initial draft (Round 0)");
             var initialCritique = await _criticProvider.CritiqueScriptAsync(
-                currentScript, brief, spec, rubrics, null, ct);
+                currentScript, brief, spec, rubrics, null, ct).ConfigureAwait(false);
 
             var criticCost = EstimateTokenCost(initialCritique.RawCritique.Length, isGenerator: false);
             result.TotalCost += criticCost;
@@ -162,7 +162,7 @@ public class EnhancedRefinementOrchestrator
                 // Stage 3a: Editor applies changes based on critique
                 _logger.LogInformation("Round {Round} - Stage 3a: Editor applying changes", pass);
                 var editResult = await _editorProvider.EditScriptAsync(
-                    currentScript, previousCritique, brief, spec, ct);
+                    currentScript, previousCritique, brief, spec, ct).ConfigureAwait(false);
 
                 if (!editResult.Success || string.IsNullOrWhiteSpace(editResult.EditedScript))
                 {
@@ -206,7 +206,7 @@ public class EnhancedRefinementOrchestrator
                 // Stage 3c: Critic evaluates revised script
                 _logger.LogInformation("Round {Round} - Stage 3c: Critic evaluating revision", pass);
                 var newCritique = await _criticProvider.CritiqueScriptAsync(
-                    currentScript, brief, spec, rubrics, previousMetrics, ct);
+                    currentScript, brief, spec, rubrics, previousMetrics, ct).ConfigureAwait(false);
 
                 var newCriticCost = EstimateTokenCost(newCritique.RawCritique.Length, isGenerator: false);
                 roundCost += newCriticCost;
@@ -306,7 +306,7 @@ public class EnhancedRefinementOrchestrator
                 try
                 {
                     var advisorAnalysis = await _contentAdvisor.AnalyzeContentQualityAsync(
-                        currentScript, brief, spec, ct);
+                        currentScript, brief, spec, ct).ConfigureAwait(false);
                     _logger.LogInformation(
                         "Advisor validation complete: OverallScore={Score:F1}, PassesThreshold={Passes}",
                         advisorAnalysis.OverallScore, advisorAnalysis.PassesQualityThreshold);
@@ -360,7 +360,7 @@ public class EnhancedRefinementOrchestrator
     {
         try
         {
-            var script = await GenerateWithLlmAsync(brief, spec, ct);
+            var script = await GenerateWithLlmAsync(brief, spec, ct).ConfigureAwait(false);
             return script ?? string.Empty;
         }
         catch (Exception ex)
@@ -374,11 +374,11 @@ public class EnhancedRefinementOrchestrator
     {
         if (_stageAdapter != null)
         {
-            var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct);
+            var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct).ConfigureAwait(false);
             if (result.IsSuccess && result.Data != null) return result.Data;
             _logger.LogWarning("Orchestrator failed, using direct provider: {Error}", result.ErrorMessage);
         }
-        return await _generatorProvider.DraftScriptAsync(brief, planSpec, ct);
+        return await _generatorProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
     }
 
     private ScriptQualityMetrics ConvertCritiqueToMetrics(CritiqueResult critique, int iteration)

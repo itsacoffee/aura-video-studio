@@ -52,7 +52,7 @@ public class FFmpegProvider : BaseRenderingProvider
         
         try
         {
-            var result = await _videoComposer.RenderAsync(timeline, spec, progress, cancellationToken);
+            var result = await _videoComposer.RenderAsync(timeline, spec, progress, cancellationToken).ConfigureAwait(false);
             Logger.LogInformation("FFmpeg render completed successfully: {OutputPath}", result);
             return result;
         }
@@ -73,7 +73,7 @@ public class FFmpegProvider : BaseRenderingProvider
         
         try
         {
-            var ffmpegPath = await ResolveFfmpegPathAsync(cancellationToken);
+            var ffmpegPath = await ResolveFfmpegPathAsync(cancellationToken).ConfigureAwait(false);
             isAvailable = !string.IsNullOrEmpty(ffmpegPath);
 
             if (isAvailable)
@@ -82,7 +82,7 @@ public class FFmpegProvider : BaseRenderingProvider
                     Microsoft.Extensions.Logging.Abstractions.NullLogger<HardwareEncoder>.Instance,
                     ffmpegPath);
                 
-                var capabilities = await hwEncoder.DetectHardwareCapabilitiesAsync();
+                var capabilities = await hwEncoder.DetectHardwareCapabilitiesAsync().ConfigureAwait(false);
                 
                 if (capabilities.HasNVENC)
                 {

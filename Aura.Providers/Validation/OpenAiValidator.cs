@@ -72,7 +72,7 @@ public class OpenAiValidator : IProviderValidator
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(10));
 
-            var response = await _httpClient.SendAsync(request, cts.Token);
+            var response = await _httpClient.SendAsync(request, cts.Token).ConfigureAwait(false);
 
             sw.Stop();
 
@@ -89,7 +89,7 @@ public class OpenAiValidator : IProviderValidator
             }
             else if ((int)response.StatusCode == 401)
             {
-                var errorContent = await response.Content.ReadAsStringAsync(ct);
+                var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 var detailedError = GetErrorMessage(errorContent);
                 _logger.LogWarning("OpenAI validation failed: Invalid API key - {Error}", detailedError);
                 return new ProviderValidationResult
@@ -102,7 +102,7 @@ public class OpenAiValidator : IProviderValidator
             }
             else
             {
-                var errorContent = await response.Content.ReadAsStringAsync(ct);
+                var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 _logger.LogWarning("OpenAI validation failed: HTTP {StatusCode}", response.StatusCode);
                 return new ProviderValidationResult
                 {

@@ -95,7 +95,7 @@ public class VideoGenerationJobService
                 ct,
                 jobId,
                 job.CorrelationId
-            );
+            ).ConfigureAwait(false);
             
             job.Status = JobStatus.Completed;
             job.CompletedAt = DateTime.UtcNow;

@@ -53,7 +53,7 @@ public class PromptABTestingService
 
         foreach (var templateId in templateIds)
         {
-            var template = await _repository.GetByIdAsync(templateId, ct);
+            var template = await _repository.GetByIdAsync(templateId, ct).ConfigureAwait(false);
             if (template == null)
             {
                 throw new ArgumentException($"Template {templateId} not found");
@@ -71,7 +71,7 @@ public class PromptABTestingService
             CreatedAt = DateTime.UtcNow
         };
 
-        await _repository.CreateABTestAsync(test, ct);
+        await _repository.CreateABTestAsync(test, ct).ConfigureAwait(false);
 
         _logger.LogInformation("Created A/B test {TestId}: {Name}", test.Id, name);
         return test;
@@ -90,7 +90,7 @@ public class PromptABTestingService
         _logger.LogInformation("Running A/B test {TestId} with {Iterations} iterations", 
             testId, iterations);
 
-        var test = await _repository.GetABTestAsync(testId, ct);
+        var test = await _repository.GetABTestAsync(testId, ct).ConfigureAwait(false);
         if (test == null)
         {
             throw new ArgumentException($"A/B test {testId} not found");
@@ -108,7 +108,7 @@ public class PromptABTestingService
 
         test.Status = ABTestStatus.Running;
         test.StartedAt = DateTime.UtcNow;
-        await _repository.UpdateABTestAsync(test, ct);
+        await _repository.UpdateABTestAsync(test, ct).ConfigureAwait(false);
 
         try
         {
@@ -122,11 +122,11 @@ public class PromptABTestingService
                     test.TemplateIds,
                     testVariables,
                     llmProvider,
-                    ct);
+                    ct).ConfigureAwait(false);
 
                 foreach (var testResult in testResults)
                 {
-                    var template = await _repository.GetByIdAsync(testResult.TemplateId, ct);
+                    var template = await _repository.GetByIdAsync(testResult.TemplateId, ct).ConfigureAwait(false);
                     
                     var result = new ABTestResult
                     {
@@ -149,7 +149,7 @@ public class PromptABTestingService
 
             DetermineWinner(test);
 
-            await _repository.UpdateABTestAsync(test, ct);
+            await _repository.UpdateABTestAsync(test, ct).ConfigureAwait(false);
 
             _logger.LogInformation("Completed A/B test {TestId}. Winner: {Winner}",
                 testId, test.WinningTemplateId);
@@ -158,7 +158,7 @@ public class PromptABTestingService
         {
             _logger.LogError(ex, "A/B test {TestId} failed", testId);
             test.Status = ABTestStatus.Cancelled;
-            await _repository.UpdateABTestAsync(test, ct);
+            await _repository.UpdateABTestAsync(test, ct).ConfigureAwait(false);
             throw;
         }
 
@@ -172,7 +172,7 @@ public class PromptABTestingService
         string testId,
         CancellationToken ct = default)
     {
-        return await _repository.GetABTestAsync(testId, ct);
+        return await _repository.GetABTestAsync(testId, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -182,7 +182,7 @@ public class PromptABTestingService
         ABTestStatus? status = null,
         CancellationToken ct = default)
     {
-        return await _repository.ListABTestsAsync(status, ct);
+        return await _repository.ListABTestsAsync(status, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -192,7 +192,7 @@ public class PromptABTestingService
     {
         _logger.LogInformation("Cancelling A/B test {TestId}", testId);
 
-        var test = await _repository.GetABTestAsync(testId, ct);
+        var test = await _repository.GetABTestAsync(testId, ct).ConfigureAwait(false);
         if (test == null)
         {
             throw new ArgumentException($"A/B test {testId} not found");
@@ -204,7 +204,7 @@ public class PromptABTestingService
         }
 
         test.Status = ABTestStatus.Cancelled;
-        await _repository.UpdateABTestAsync(test, ct);
+        await _repository.UpdateABTestAsync(test, ct).ConfigureAwait(false);
 
         _logger.LogInformation("Cancelled A/B test {TestId}", testId);
     }
@@ -216,7 +216,7 @@ public class PromptABTestingService
         string testId,
         CancellationToken ct = default)
     {
-        var test = await _repository.GetABTestAsync(testId, ct);
+        var test = await _repository.GetABTestAsync(testId, ct).ConfigureAwait(false);
         if (test == null)
         {
             throw new ArgumentException($"A/B test {testId} not found");

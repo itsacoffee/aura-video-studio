@@ -69,7 +69,7 @@ public class ResourceTracker : IResourceTracker, IDisposable
 
     public async Task<ResourceMetrics> GetMetricsAsync(CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         
         var warnings = new List<string>();
         
@@ -165,7 +165,7 @@ public class ResourceTracker : IResourceTracker, IDisposable
             _logger.LogError(ex, "Error during cleanup");
         }
         
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
     }
 
     private void PeriodicCleanup(object? state)

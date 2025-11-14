@@ -84,7 +84,7 @@ public class ProjectManagementService
         }
 
         // Get total count before pagination
-        var totalCount = await query.CountAsync(ct);
+        var totalCount = await query.CountAsync(ct).ConfigureAwait(false);
 
         // Apply sorting
         query = sortBy.ToLowerInvariant() switch
@@ -101,7 +101,7 @@ public class ProjectManagementService
         var projects = await query
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .ToListAsync(ct);
+            .ToListAsync(ct).ConfigureAwait(false);
 
         return (projects, totalCount);
     }
@@ -115,7 +115,7 @@ public class ProjectManagementService
             .Include(p => p.Scenes)
             .Include(p => p.Assets)
             .Include(p => p.Checkpoints)
-            .FirstOrDefaultAsync(p => p.Id == projectId, ct);
+            .FirstOrDefaultAsync(p => p.Id == projectId, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -144,7 +144,7 @@ public class ProjectManagementService
         };
 
         _dbContext.ProjectStates.Add(project);
-        await _dbContext.SaveChangesAsync(ct);
+        await _dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
 
         _logger.LogInformation("Created new project: {ProjectId} - {Title}", project.Id, project.Title);
 
@@ -167,7 +167,7 @@ public class ProjectManagementService
         double? durationSeconds = null,
         CancellationToken ct = default)
     {
-        var project = await _dbContext.ProjectStates.FirstOrDefaultAsync(p => p.Id == projectId, ct);
+        var project = await _dbContext.ProjectStates.FirstOrDefaultAsync(p => p.Id == projectId, ct).ConfigureAwait(false);
         if (project == null)
         {
             _logger.LogWarning("Project not found for update: {ProjectId}", projectId);
@@ -187,7 +187,7 @@ public class ProjectManagementService
 
         project.UpdatedAt = DateTime.UtcNow;
 
-        await _dbContext.SaveChangesAsync(ct);
+        await _dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
 
         _logger.LogInformation("Updated project: {ProjectId} - {Title}", project.Id, project.Title);
 
@@ -205,7 +205,7 @@ public class ProjectManagementService
         string? renderSpecJson = null,
         CancellationToken ct = default)
     {
-        var project = await _dbContext.ProjectStates.FirstOrDefaultAsync(p => p.Id == projectId, ct);
+        var project = await _dbContext.ProjectStates.FirstOrDefaultAsync(p => p.Id == projectId, ct).ConfigureAwait(false);
         if (project == null)
         {
             _logger.LogWarning("Project not found for auto-save: {ProjectId}", projectId);
@@ -221,7 +221,7 @@ public class ProjectManagementService
         project.LastAutoSaveAt = DateTime.UtcNow;
         project.UpdatedAt = DateTime.UtcNow;
 
-        await _dbContext.SaveChangesAsync(ct);
+        await _dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
 
         _logger.LogDebug("Auto-saved project: {ProjectId}", project.Id);
 
@@ -233,7 +233,7 @@ public class ProjectManagementService
     /// </summary>
     public async Task<ProjectStateEntity?> DuplicateProjectAsync(Guid projectId, CancellationToken ct = default)
     {
-        var original = await GetProjectByIdAsync(projectId, ct);
+        var original = await GetProjectByIdAsync(projectId, ct).ConfigureAwait(false);
         if (original == null)
         {
             _logger.LogWarning("Project not found for duplication: {ProjectId}", projectId);
@@ -259,7 +259,7 @@ public class ProjectManagementService
         };
 
         _dbContext.ProjectStates.Add(duplicate);
-        await _dbContext.SaveChangesAsync(ct);
+        await _dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
 
         _logger.LogInformation("Duplicated project: {OriginalId} -> {DuplicateId}", projectId, duplicate.Id);
 
@@ -271,7 +271,7 @@ public class ProjectManagementService
     /// </summary>
     public async Task<bool> DeleteProjectAsync(Guid projectId, CancellationToken ct = default)
     {
-        var project = await _dbContext.ProjectStates.FirstOrDefaultAsync(p => p.Id == projectId, ct);
+        var project = await _dbContext.ProjectStates.FirstOrDefaultAsync(p => p.Id == projectId, ct).ConfigureAwait(false);
         if (project == null)
         {
             _logger.LogWarning("Project not found for deletion: {ProjectId}", projectId);
@@ -280,7 +280,7 @@ public class ProjectManagementService
 
         // Soft delete will be handled by EF Core interceptor
         _dbContext.ProjectStates.Remove(project);
-        await _dbContext.SaveChangesAsync(ct);
+        await _dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
 
         _logger.LogInformation("Deleted project: {ProjectId} - {Title}", project.Id, project.Title);
 
@@ -294,7 +294,7 @@ public class ProjectManagementService
     {
         var projects = await _dbContext.ProjectStates
             .Where(p => projectIds.Contains(p.Id))
-            .ToListAsync(ct);
+            .ToListAsync(ct).ConfigureAwait(false);
 
         if (projects.Count == 0)
         {
@@ -302,7 +302,7 @@ public class ProjectManagementService
         }
 
         _dbContext.ProjectStates.RemoveRange(projects);
-        await _dbContext.SaveChangesAsync(ct);
+        await _dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
 
         _logger.LogInformation("Bulk deleted {Count} projects", projects.Count);
 
@@ -319,7 +319,7 @@ public class ProjectManagementService
             .Select(p => p.Category!)
             .Distinct()
             .OrderBy(c => c)
-            .ToListAsync(ct);
+            .ToListAsync(ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -330,7 +330,7 @@ public class ProjectManagementService
         var projectsWithTags = await _dbContext.ProjectStates
             .Where(p => p.Tags != null)
             .Select(p => p.Tags!)
-            .ToListAsync(ct);
+            .ToListAsync(ct).ConfigureAwait(false);
 
         var allTags = projectsWithTags
             .SelectMany(tags => tags.Split(',', StringSplitOptions.RemoveEmptyEntries))
@@ -350,11 +350,11 @@ public class ProjectManagementService
     {
         var stats = new ProjectStatistics
         {
-            TotalProjects = await _dbContext.ProjectStates.CountAsync(ct),
-            DraftProjects = await _dbContext.ProjectStates.CountAsync(p => p.Status == "Draft", ct),
-            InProgressProjects = await _dbContext.ProjectStates.CountAsync(p => p.Status == "InProgress", ct),
-            CompletedProjects = await _dbContext.ProjectStates.CountAsync(p => p.Status == "Completed", ct),
-            FailedProjects = await _dbContext.ProjectStates.CountAsync(p => p.Status == "Failed", ct)
+            TotalProjects = await _dbContext.ProjectStates.CountAsync(ct).ConfigureAwait(false),
+            DraftProjects = await _dbContext.ProjectStates.CountAsync(p => p.Status == "Draft", ct).ConfigureAwait(false),
+            InProgressProjects = await _dbContext.ProjectStates.CountAsync(p => p.Status == "InProgress", ct).ConfigureAwait(false),
+            CompletedProjects = await _dbContext.ProjectStates.CountAsync(p => p.Status == "Completed", ct).ConfigureAwait(false),
+            FailedProjects = await _dbContext.ProjectStates.CountAsync(p => p.Status == "Failed", ct).ConfigureAwait(false)
         };
 
         return stats;

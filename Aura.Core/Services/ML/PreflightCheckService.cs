@@ -44,10 +44,10 @@ public class PreflightCheckService
         try
         {
             // Check GPU/VRAM
-            await CheckGpuCapabilitiesAsync(result, cancellationToken);
+            await CheckGpuCapabilitiesAsync(result, cancellationToken).ConfigureAwait(false);
 
             // Check RAM
-            await CheckRamCapabilitiesAsync(result);
+            await CheckRamCapabilitiesAsync(result).ConfigureAwait(false);
 
             // Check disk space
             CheckDiskSpace(result);
@@ -77,7 +77,7 @@ public class PreflightCheckService
     {
         try
         {
-            var systemProfile = await _hardwareDetector.DetectSystemAsync();
+            var systemProfile = await _hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
 
             result.HasGpu = systemProfile.Gpu != null;
             result.GpuName = systemProfile.Gpu?.Model;
@@ -112,7 +112,7 @@ public class PreflightCheckService
     {
         try
         {
-            var systemProfile = await _hardwareDetector.DetectSystemAsync();
+            var systemProfile = await _hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
 
             result.TotalRamGb = systemProfile.RamGB;
             // Rough estimate - assume 60% available

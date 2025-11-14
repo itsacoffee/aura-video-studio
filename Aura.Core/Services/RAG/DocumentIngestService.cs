@@ -60,7 +60,7 @@ public class DocumentIngestService
                 Message = "Parsing document..."
             });
 
-            var importResult = await _importService.ImportDocumentAsync(fileStream, fileName, ct);
+            var importResult = await _importService.ImportDocumentAsync(fileStream, fileName, ct).ConfigureAwait(false);
 
             if (!importResult.Success)
             {
@@ -81,7 +81,7 @@ public class DocumentIngestService
             });
 
             var config = chunkingConfig ?? new ChunkingConfig();
-            var chunks = await _chunkingService.ChunkDocumentAsync(importResult, config, ct);
+            var chunks = await _chunkingService.ChunkDocumentAsync(importResult, config, ct).ConfigureAwait(false);
 
             if (chunks.Count == 0)
             {
@@ -101,7 +101,7 @@ public class DocumentIngestService
             });
 
             var chunkTexts = chunks.ConvertAll(c => c.Content);
-            var embeddings = await _embeddingService.GenerateEmbeddingsAsync(chunkTexts, ct);
+            var embeddings = await _embeddingService.GenerateEmbeddingsAsync(chunkTexts, ct).ConfigureAwait(false);
 
             if (embeddings.Count != chunks.Count)
             {
@@ -122,7 +122,7 @@ public class DocumentIngestService
                 Message = "Adding chunks to index..."
             });
 
-            await _vectorIndex.AddChunksAsync(chunks, ct);
+            await _vectorIndex.AddChunksAsync(chunks, ct).ConfigureAwait(false);
 
             progress?.Report(new IngestProgress
             {
@@ -182,7 +182,7 @@ public class DocumentIngestService
         try
         {
             _logger.LogInformation("Removing document from RAG system: {DocumentId}", documentId);
-            await _vectorIndex.RemoveDocumentAsync(documentId, ct);
+            await _vectorIndex.RemoveDocumentAsync(documentId, ct).ConfigureAwait(false);
             return true;
         }
         catch (Exception ex)
@@ -208,7 +208,7 @@ public class DocumentIngestService
         try
         {
             _logger.LogInformation("Clearing all documents from RAG system");
-            await _vectorIndex.ClearAsync(ct);
+            await _vectorIndex.ClearAsync(ct).ConfigureAwait(false);
             return true;
         }
         catch (Exception ex)

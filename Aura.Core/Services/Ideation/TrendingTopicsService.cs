@@ -80,10 +80,10 @@ public class TrendingTopicsService
         _logger.LogInformation("Fetching live trending topics for niche: {Niche}", niche ?? "general");
 
         // Fetch from multiple sources and aggregate
-        var topics = await FetchTrendingTopicsFromSourcesAsync(niche, maxResults, ct);
+        var topics = await FetchTrendingTopicsFromSourcesAsync(niche, maxResults, ct).ConfigureAwait(false);
 
         // Enhance with AI analysis
-        var enhancedTopics = await EnhanceWithAiAnalysisAsync(topics, niche, ct);
+        var enhancedTopics = await EnhanceWithAiAnalysisAsync(topics, niche, ct).ConfigureAwait(false);
 
         // Cache the results
         _cache.Set(cacheKey, enhancedTopics, CacheDuration);
@@ -297,7 +297,7 @@ public class TrendingTopicsService
         {
             try
             {
-                var insights = await GenerateAiInsightsAsync(topic, niche, ct);
+                var insights = await GenerateAiInsightsAsync(topic, niche, ct).ConfigureAwait(false);
                 var enhancedTopic = topic with { AiInsights = insights };
                 enhancedTopics.Add(enhancedTopic);
             }
@@ -338,7 +338,7 @@ public class TrendingTopicsService
             Style: "Analytical"
         );
 
-        var response = await GenerateWithLlmAsync(brief, planSpec, ct);
+        var response = await GenerateWithLlmAsync(brief, planSpec, ct).ConfigureAwait(false);
 
         // Parse AI response into structured insights
         return ParseAiInsights(response, topic);
@@ -354,17 +354,17 @@ public class TrendingTopicsService
     {
         if (_stageAdapter != null)
         {
-            var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct);
+            var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct).ConfigureAwait(false);
             if (!result.IsSuccess || result.Data == null)
             {
                 _logger.LogWarning("Orchestrator generation failed, falling back to direct provider: {Error}", result.ErrorMessage);
-                return await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
+                return await _llmProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
             }
             return result.Data;
         }
         else
         {
-            return await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
+            return await _llmProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
         }
     }
 

@@ -95,11 +95,11 @@ public class SilentWavGenerator
                 remaining -= toWrite;
             }
 
-            await fileStream.FlushAsync(ct);
+            await fileStream.FlushAsync(ct).ConfigureAwait(false);
 
             // Close streams before rename
-            await writer.DisposeAsync();
-            await fileStream.DisposeAsync();
+            await writer.DisposeAsync().ConfigureAwait(false);
+            await fileStream.DisposeAsync().ConfigureAwait(false);
 
             // Atomic rename
             File.Move(tempPath, outputPath, overwrite: true);

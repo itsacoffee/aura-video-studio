@@ -70,14 +70,14 @@ public class TemplateService
                 .ThenBy(t => t.Id); // Tie-breaker for stable sorting
 
             // Get total count before pagination
-            var totalCount = await query.CountAsync();
+            var totalCount = await query.CountAsync().ConfigureAwait(false);
 
             // Apply pagination
             var skip = (page - 1) * pageSize;
             var templates = await query
                 .Skip(skip)
                 .Take(pageSize)
-                .ToListAsync();
+                .ToListAsync().ConfigureAwait(false);
 
             var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
 
@@ -114,7 +114,7 @@ public class TemplateService
         {
             // Use a large but reasonable page size limit (10000 templates max)
             // This prevents potential memory issues while maintaining backwards compatibility
-            var response = await GetTemplatesAsync(category, subCategory, systemOnly, communityOnly, 1, 10000);
+            var response = await GetTemplatesAsync(category, subCategory, systemOnly, communityOnly, 1, 10000).ConfigureAwait(false);
             return response.Items;
         }
         catch (Exception ex)
@@ -131,7 +131,7 @@ public class TemplateService
     {
         try
         {
-            var entity = await _context.Templates.FindAsync(id);
+            var entity = await _context.Templates.FindAsync(id).ConfigureAwait(false);
             return entity != null ? MapToModel(entity) : null;
         }
         catch (Exception ex)
@@ -169,7 +169,7 @@ public class TemplateService
             };
 
             _context.Templates.Add(entity);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync().ConfigureAwait(false);
 
             _logger.LogInformation("Created template {TemplateId} - {TemplateName}", entity.Id, entity.Name);
 
@@ -189,7 +189,7 @@ public class TemplateService
     {
         try
         {
-            var entity = await _context.Templates.FindAsync(id);
+            var entity = await _context.Templates.FindAsync(id).ConfigureAwait(false);
             if (entity == null)
             {
                 return false;
@@ -203,7 +203,7 @@ public class TemplateService
             }
 
             _context.Templates.Remove(entity);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync().ConfigureAwait(false);
 
             _logger.LogInformation("Deleted template {TemplateId}", id);
             return true;
@@ -222,11 +222,11 @@ public class TemplateService
     {
         try
         {
-            var entity = await _context.Templates.FindAsync(id);
+            var entity = await _context.Templates.FindAsync(id).ConfigureAwait(false);
             if (entity != null)
             {
                 entity.UsageCount++;
-                await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync().ConfigureAwait(false);
             }
         }
         catch (Exception ex)
@@ -544,7 +544,7 @@ public class TemplateService
         try
         {
             // Check if templates already exist
-            if (await _context.Templates.AnyAsync())
+            if (await _context.Templates.AnyAsync().ConfigureAwait(false))
             {
                 _logger.LogInformation("Templates already exist, skipping seed");
                 return;
@@ -557,7 +557,7 @@ public class TemplateService
                 _context.Templates.Add(template);
             }
 
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync().ConfigureAwait(false);
 
             _logger.LogInformation("Seeded {Count} sample templates", sampleTemplates.Count);
         }
@@ -829,7 +829,7 @@ public class TemplateService
                 query = query.Where(t => t.Category == category);
             }
 
-            var entities = await query.OrderByDescending(t => t.UpdatedAt).ToListAsync();
+            var entities = await query.OrderByDescending(t => t.UpdatedAt).ToListAsync().ConfigureAwait(false);
 
             return entities.Select(MapCustomTemplateToModel).ToList();
         }
@@ -847,7 +847,7 @@ public class TemplateService
     {
         try
         {
-            var entity = await _context.CustomTemplates.FindAsync(id);
+            var entity = await _context.CustomTemplates.FindAsync(id).ConfigureAwait(false);
             return entity != null ? MapCustomTemplateToModel(entity) : null;
         }
         catch (Exception ex)
@@ -882,7 +882,7 @@ public class TemplateService
             };
 
             _context.CustomTemplates.Add(entity);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync().ConfigureAwait(false);
 
             _logger.LogInformation("Created custom template {TemplateId} - {TemplateName}", entity.Id, entity.Name);
 
@@ -902,7 +902,7 @@ public class TemplateService
     {
         try
         {
-            var entity = await _context.CustomTemplates.FindAsync(id);
+            var entity = await _context.CustomTemplates.FindAsync(id).ConfigureAwait(false);
             if (entity == null)
             {
                 return null;
@@ -918,7 +918,7 @@ public class TemplateService
             entity.LLMPipelineJson = JsonSerializer.Serialize(request.LLMPipeline);
             entity.VisualPreferencesJson = JsonSerializer.Serialize(request.VisualPrefs);
 
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync().ConfigureAwait(false);
 
             _logger.LogInformation("Updated custom template {TemplateId} - {TemplateName}", entity.Id, entity.Name);
 
@@ -938,14 +938,14 @@ public class TemplateService
     {
         try
         {
-            var entity = await _context.CustomTemplates.FindAsync(id);
+            var entity = await _context.CustomTemplates.FindAsync(id).ConfigureAwait(false);
             if (entity == null)
             {
                 return false;
             }
 
             _context.CustomTemplates.Remove(entity);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync().ConfigureAwait(false);
 
             _logger.LogInformation("Deleted custom template {TemplateId}", id);
             return true;
@@ -964,7 +964,7 @@ public class TemplateService
     {
         try
         {
-            var original = await _context.CustomTemplates.FindAsync(id);
+            var original = await _context.CustomTemplates.FindAsync(id).ConfigureAwait(false);
             if (original == null)
             {
                 throw new ArgumentException($"Template {id} not found", nameof(id));
@@ -988,7 +988,7 @@ public class TemplateService
             };
 
             _context.CustomTemplates.Add(duplicate);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync().ConfigureAwait(false);
 
             _logger.LogInformation("Duplicated custom template {OriginalId} to {NewId}", id, duplicate.Id);
 
@@ -1008,14 +1008,14 @@ public class TemplateService
     {
         try
         {
-            var allTemplates = await _context.CustomTemplates.ToListAsync();
+            var allTemplates = await _context.CustomTemplates.ToListAsync().ConfigureAwait(false);
             
             foreach (var template in allTemplates)
             {
                 template.IsDefault = template.Id == id;
             }
 
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync().ConfigureAwait(false);
 
             _logger.LogInformation("Set default custom template to {TemplateId}", id);
             return true;
@@ -1034,7 +1034,7 @@ public class TemplateService
     {
         try
         {
-            var entity = await _context.CustomTemplates.FindAsync(id);
+            var entity = await _context.CustomTemplates.FindAsync(id).ConfigureAwait(false);
             if (entity == null)
             {
                 throw new ArgumentException($"Template {id} not found", nameof(id));
@@ -1083,7 +1083,7 @@ public class TemplateService
             };
 
             _context.CustomTemplates.Add(entity);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync().ConfigureAwait(false);
 
             _logger.LogInformation("Imported custom template {TemplateId} - {TemplateName}", entity.Id, entity.Name);
 

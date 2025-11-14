@@ -62,7 +62,7 @@ public class TopicGenerationService
                 Style: "engaging"
             );
 
-            var response = await GenerateWithLlmAsync(brief, planSpec, ct);
+            var response = await GenerateWithLlmAsync(brief, planSpec, ct).ConfigureAwait(false);
             var suggestions = ParseTopicSuggestions(response, request);
 
             return new TopicSuggestionResponse
@@ -89,7 +89,7 @@ public class TopicGenerationService
     {
         _logger.LogInformation("Generating {Count} trend-based topic suggestions", count);
 
-        await Task.Delay(50, ct);
+        await Task.Delay(50, ct).ConfigureAwait(false);
 
         return trends
             .OrderByDescending(t => t.TrendScore)
@@ -240,17 +240,17 @@ public class TopicGenerationService
     {
         if (_stageAdapter != null)
         {
-            var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct);
+            var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct).ConfigureAwait(false);
             if (!result.IsSuccess || result.Data == null)
             {
                 _logger.LogWarning("Orchestrator generation failed, falling back to direct provider: {Error}", result.ErrorMessage);
-                return await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
+                return await _llmProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
             }
             return result.Data;
         }
         else
         {
-            return await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
+            return await _llmProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
         }
     }
 }

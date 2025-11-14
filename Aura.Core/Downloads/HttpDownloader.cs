@@ -69,7 +69,7 @@ public class HttpDownloader
         IProgress<HttpDownloadProgress>? progress = null,
         CancellationToken ct = default)
     {
-        return await DownloadFileAsync(new[] { url }, outputPath, expectedSha256, progress, ct);
+        return await DownloadFileAsync(new[] { url }, outputPath, expectedSha256, progress, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -105,11 +105,11 @@ public class HttpDownloader
                         int delaySeconds = (int)Math.Pow(2, attempt);
                         _logger.LogInformation("Retry attempt {Attempt} of {MaxRetries} after {Delay}s delay", 
                             attempt, MaxRetries, delaySeconds);
-                        await Task.Delay(TimeSpan.FromSeconds(delaySeconds), ct);
+                        await Task.Delay(TimeSpan.FromSeconds(delaySeconds), ct).ConfigureAwait(false);
                     }
 
                     var result = await DownloadFileInternalAsync(
-                        currentUrl, outputPath, expectedSha256, progress, ct, urlIndex);
+                        currentUrl, outputPath, expectedSha256, progress, ct, urlIndex).ConfigureAwait(false);
                     
                     _logger.LogInformation("Successfully downloaded from {Url}", currentUrl);
                     return result;
@@ -192,7 +192,7 @@ public class HttpDownloader
                 request.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(existingBytes, null);
             }
 
-            using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+            using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
             var totalBytes = existingBytes + (response.Content.Headers.ContentLength ?? 0);
@@ -209,15 +209,15 @@ public class HttpDownloader
                     BufferSize,
                     useAsync: true);
 
-                await using var httpStream = await response.Content.ReadAsStreamAsync(ct);
+                await using var httpStream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
                 
                 var buffer = new byte[BufferSize];
                 int bytesRead;
                 var lastProgressReport = DateTime.UtcNow;
 
-                while ((bytesRead = await httpStream.ReadAsync(buffer, 0, buffer.Length, ct)) > 0)
+                while ((bytesRead = await httpStream.ReadAsync(buffer, 0, buffer.Length, ct).ConfigureAwait(false)) > 0)
                 {
-                    await fileStream.WriteAsync(buffer, 0, bytesRead, ct);
+                    await fileStream.WriteAsync(buffer, 0, bytesRead, ct).ConfigureAwait(false);
                     totalBytesRead += bytesRead;
 
                     // Report progress every 500ms
@@ -242,7 +242,7 @@ public class HttpDownloader
                 }
 
                 // Ensure stream is flushed before closing
-                await fileStream.FlushAsync(ct);
+                await fileStream.FlushAsync(ct).ConfigureAwait(false);
             } // File stream is now closed
 
             // Final progress report
@@ -261,7 +261,7 @@ public class HttpDownloader
             if (!string.IsNullOrEmpty(expectedSha256))
             {
                 _logger.LogInformation("Verifying checksum...");
-                var actualSha256 = await ComputeSha256Async(outputPath, ct);
+                var actualSha256 = await ComputeSha256Async(outputPath, ct).ConfigureAwait(false);
                 
                 if (!string.Equals(actualSha256, expectedSha256, StringComparison.OrdinalIgnoreCase))
                 {
@@ -297,7 +297,7 @@ public class HttpDownloader
     {
         using var sha256 = SHA256.Create();
         await using var stream = File.OpenRead(filePath);
-        var hashBytes = await sha256.ComputeHashAsync(stream, ct);
+        var hashBytes = await sha256.ComputeHashAsync(stream, ct).ConfigureAwait(false);
         return Convert.ToHexString(hashBytes).ToLowerInvariant();
     }
 
@@ -321,7 +321,7 @@ public class HttpDownloader
         progress?.Report(new HttpDownloadProgress(0, 0, 0, 0, "Verifying local file..."));
 
         // Compute checksum of local file
-        string actualSha256 = await ComputeSha256Async(localFilePath, ct);
+        string actualSha256 = await ComputeSha256Async(localFilePath, ct).ConfigureAwait(false);
         _logger.LogInformation("Local file SHA256: {Sha256}", actualSha256);
 
         // Verify checksum if provided
@@ -361,9 +361,9 @@ public class HttpDownloader
             long totalRead = 0;
             int bytesRead;
 
-            while ((bytesRead = await sourceStream.ReadAsync(buffer, 0, buffer.Length, ct)) > 0)
+            while ((bytesRead = await sourceStream.ReadAsync(buffer, 0, buffer.Length, ct).ConfigureAwait(false)) > 0)
             {
-                await destStream.WriteAsync(buffer, 0, bytesRead, ct);
+                await destStream.WriteAsync(buffer, 0, bytesRead, ct).ConfigureAwait(false);
                 totalRead += bytesRead;
 
                 float percent = totalBytes > 0 ? (float)(totalRead * 100.0 / totalBytes) : 100;

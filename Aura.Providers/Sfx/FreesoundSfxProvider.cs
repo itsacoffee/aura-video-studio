@@ -50,7 +50,7 @@ public class FreesoundSfxProvider : ISfxProvider
 
         try
         {
-            var response = await _httpClient.GetAsync($"{BaseUrl}/me/", ct);
+            var response = await _httpClient.GetAsync($"{BaseUrl}/me/", ct).ConfigureAwait(false);
             var isAvailable = response.IsSuccessStatusCode;
             _logger.LogInformation("Freesound API {Status}", isAvailable ? "available" : "unavailable");
             return isAvailable;
@@ -76,7 +76,7 @@ public class FreesoundSfxProvider : ISfxProvider
 
             _logger.LogInformation("Searching Freesound: {Url}", url);
 
-            var response = await _httpClient.GetFromJsonAsync<FreesoundSearchResponse>(url, ct);
+            var response = await _httpClient.GetFromJsonAsync<FreesoundSearchResponse>(url, ct).ConfigureAwait(false);
 
             if (response == null)
                 return new SearchResult<SfxAsset>(new List<SfxAsset>(), 0, criteria.Page, criteria.PageSize, 0);
@@ -107,7 +107,7 @@ public class FreesoundSfxProvider : ISfxProvider
         try
         {
             var url = $"{BaseUrl}/sounds/{assetId}/";
-            var sound = await _httpClient.GetFromJsonAsync<FreesoundSound>(url, ct);
+            var sound = await _httpClient.GetFromJsonAsync<FreesoundSound>(url, ct).ConfigureAwait(false);
 
             return sound != null ? MapToSfxAsset(sound) : null;
         }
@@ -125,16 +125,16 @@ public class FreesoundSfxProvider : ISfxProvider
 
         try
         {
-            var sound = await _httpClient.GetFromJsonAsync<FreesoundSound>($"{BaseUrl}/sounds/{assetId}/", ct);
+            var sound = await _httpClient.GetFromJsonAsync<FreesoundSound>($"{BaseUrl}/sounds/{assetId}/", ct).ConfigureAwait(false);
             if (sound?.Previews?.PreviewHqMp3 == null)
                 throw new InvalidOperationException($"No download URL for asset {assetId}");
 
             var downloadUrl = sound.Previews.PreviewHqMp3;
-            var response = await _httpClient.GetAsync(downloadUrl, ct);
+            var response = await _httpClient.GetAsync(downloadUrl, ct).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var bytes = await response.Content.ReadAsByteArrayAsync(ct);
-            await System.IO.File.WriteAllBytesAsync(destinationPath, bytes, ct);
+            var bytes = await response.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
+            await File.WriteAllBytesAsync(destinationPath, bytes, ct).ConfigureAwait(false);
 
             _logger.LogInformation("Downloaded Freesound asset {AssetId} to {Path}", assetId, destinationPath);
             return destinationPath;
@@ -148,7 +148,7 @@ public class FreesoundSfxProvider : ISfxProvider
 
     public async Task<string?> GetPreviewUrlAsync(string assetId, CancellationToken ct = default)
     {
-        var asset = await GetByIdAsync(assetId, ct);
+        var asset = await GetByIdAsync(assetId, ct).ConfigureAwait(false);
         return asset?.PreviewUrl;
     }
 
@@ -162,7 +162,7 @@ public class FreesoundSfxProvider : ISfxProvider
             PageSize: maxResults
         );
 
-        return await SearchAsync(criteria, ct);
+        return await SearchAsync(criteria, ct).ConfigureAwait(false);
     }
 
     private string BuildQueryParams(SfxSearchCriteria criteria)

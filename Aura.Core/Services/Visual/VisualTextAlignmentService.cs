@@ -59,7 +59,7 @@ public class VisualTextAlignmentService
                 brief,
                 pacing,
                 llmProvider,
-                ct);
+                ct).ConfigureAwait(false);
 
             segments.AddRange(sceneSegments);
 
@@ -133,14 +133,14 @@ public class VisualTextAlignmentService
             var sentenceDuration = EstimateSentenceDuration(sentence, pacing);
             
             var narrationComplexity = CalculateNarrationComplexity(sentence);
-            var keyConcepts = await IdentifyKeyConceptsAsync(sentence, brief.Tone, llmProvider, ct);
+            var keyConcepts = await IdentifyKeyConceptsAsync(sentence, brief.Tone, llmProvider, ct).ConfigureAwait(false);
             var visualRecommendations = await GenerateVisualRecommendationsAsync(
                 sentence, 
                 narrationComplexity,
                 keyConcepts,
                 brief.Tone,
                 llmProvider,
-                ct);
+                ct).ConfigureAwait(false);
 
             var cognitiveLoad = CalculateSegmentCognitiveLoad(
                 narrationComplexity,

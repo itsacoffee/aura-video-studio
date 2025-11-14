@@ -99,7 +99,7 @@ public class AnalyticsImporter
     {
         _logger.LogInformation("Importing analytics from JSON: {FilePath}", filePath);
 
-        var json = await File.ReadAllTextAsync(filePath, ct);
+        var json = await File.ReadAllTextAsync(filePath, ct).ConfigureAwait(false);
         var data = JsonSerializer.Deserialize<JsonElement>(json);
 
         var videos = new List<VideoPerformanceData>();
@@ -115,7 +115,7 @@ public class AnalyticsImporter
                     if (video != null)
                     {
                         videos.Add(video);
-                        await _persistence.SaveVideoPerformanceAsync(video, ct);
+                        await _persistence.SaveVideoPerformanceAsync(video, ct).ConfigureAwait(false);
                     }
                 }
                 catch (Exception ex)
@@ -137,7 +137,7 @@ public class AnalyticsImporter
                         if (video != null)
                         {
                             videos.Add(video);
-                            await _persistence.SaveVideoPerformanceAsync(video, ct);
+                            await _persistence.SaveVideoPerformanceAsync(video, ct).ConfigureAwait(false);
                         }
                     }
                     catch (Exception ex)

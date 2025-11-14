@@ -98,7 +98,7 @@ public class LicensingService
     {
         _logger.LogInformation("Exporting licensing info to CSV for {JobId}", jobId);
 
-        var summary = await GetLicensingSummaryAsync(jobId, ct);
+        var summary = await GetLicensingSummaryAsync(jobId, ct).ConfigureAwait(false);
         var assets = includeUnused
             ? _jobAssets.GetValueOrDefault(jobId, new List<UsedAsset>())
             : summary.UsedAssets;
@@ -138,7 +138,7 @@ public class LicensingService
     {
         _logger.LogInformation("Exporting licensing info to JSON for {JobId}", jobId);
 
-        var summary = await GetLicensingSummaryAsync(jobId, ct);
+        var summary = await GetLicensingSummaryAsync(jobId, ct).ConfigureAwait(false);
         var assets = includeUnused
             ? _jobAssets.GetValueOrDefault(jobId, new List<UsedAsset>())
             : summary.UsedAssets;
@@ -184,7 +184,7 @@ public class LicensingService
     {
         _logger.LogInformation("Exporting licensing info to text for {JobId}", jobId);
 
-        var summary = await GetLicensingSummaryAsync(jobId, ct);
+        var summary = await GetLicensingSummaryAsync(jobId, ct).ConfigureAwait(false);
 
         var text = new StringBuilder();
         text.AppendLine("AUDIO LICENSING INFORMATION");
@@ -242,7 +242,7 @@ public class LicensingService
     {
         _logger.LogInformation("Exporting licensing info to HTML for {JobId}", jobId);
 
-        var summary = await GetLicensingSummaryAsync(jobId, ct);
+        var summary = await GetLicensingSummaryAsync(jobId, ct).ConfigureAwait(false);
 
         var html = new StringBuilder();
         html.AppendLine("<!DOCTYPE html>");
@@ -321,7 +321,7 @@ public class LicensingService
     {
         _logger.LogInformation("Validating licensing for commercial use: {JobId}", jobId);
 
-        var summary = await GetLicensingSummaryAsync(jobId, ct);
+        var summary = await GetLicensingSummaryAsync(jobId, ct).ConfigureAwait(false);
         var issues = new List<string>();
 
         if (!summary.AllCommercialUseAllowed)

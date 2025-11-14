@@ -88,7 +88,7 @@ public class UnsplashImageProvider : IStockProvider
                 var request = new HttpRequestMessage(HttpMethod.Get, url);
                 request.Headers.Authorization = new AuthenticationHeaderValue("Client-ID", _apiKey);
 
-                var response = await _httpClient.SendAsync(request, ct);
+                var response = await _httpClient.SendAsync(request, ct).ConfigureAwait(false);
 
                 // Update rate limit info from headers
                 UpdateRateLimitInfo(response.Headers);
@@ -99,7 +99,7 @@ public class UnsplashImageProvider : IStockProvider
                     
                     if (attempt < maxRetries)
                     {
-                        await Task.Delay(retryDelay * attempt, ct);
+                        await Task.Delay(retryDelay * attempt, ct).ConfigureAwait(false);
                         continue;
                     }
                     throw new InvalidOperationException("Unsplash rate limit exceeded. Please try again later.");
@@ -112,7 +112,7 @@ public class UnsplashImageProvider : IStockProvider
 
                 response.EnsureSuccessStatusCode();
 
-                var json = await response.Content.ReadAsStringAsync(ct);
+                var json = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 var doc = JsonDocument.Parse(json);
 
                 var assets = new List<Asset>();
@@ -176,7 +176,7 @@ public class UnsplashImageProvider : IStockProvider
             catch (HttpRequestException ex) when (attempt < maxRetries)
             {
                 _logger.LogWarning(ex, "HTTP error searching Unsplash (attempt {Attempt}/{MaxRetries})", attempt, maxRetries);
-                await Task.Delay(retryDelay * attempt, ct);
+                await Task.Delay(retryDelay * attempt, ct).ConfigureAwait(false);
             }
             catch (TaskCanceledException) when (!ct.IsCancellationRequested)
             {
@@ -210,7 +210,7 @@ public class UnsplashImageProvider : IStockProvider
             var request = new HttpRequestMessage(HttpMethod.Get, downloadLocation);
             request.Headers.Authorization = new AuthenticationHeaderValue("Client-ID", _apiKey);
 
-            var response = await _httpClient.SendAsync(request, ct);
+            var response = await _httpClient.SendAsync(request, ct).ConfigureAwait(false);
             
             if (response.IsSuccessStatusCode)
             {

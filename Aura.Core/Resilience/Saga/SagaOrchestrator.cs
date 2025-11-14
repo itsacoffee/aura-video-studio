@@ -50,7 +50,7 @@ public class SagaOrchestrator
 
                 try
                 {
-                    await step.ExecuteAsync(context, cancellationToken);
+                    await step.ExecuteAsync(context, cancellationToken).ConfigureAwait(false);
                     
                     executedSteps.Push(step);
                     context.MarkStepCompleted(step.StepId);
@@ -76,7 +76,7 @@ public class SagaOrchestrator
                     context.State = SagaState.Compensating;
 
                     // Start compensation
-                    await CompensateAsync(context, executedSteps, cancellationToken);
+                    await CompensateAsync(context, executedSteps, cancellationToken).ConfigureAwait(false);
 
                     return new SagaResult
                     {
@@ -112,7 +112,7 @@ public class SagaOrchestrator
                 context.SagaId);
 
             context.State = SagaState.Compensating;
-            await CompensateAsync(context, executedSteps, CancellationToken.None);
+            await CompensateAsync(context, executedSteps, CancellationToken.None).ConfigureAwait(false);
 
             return new SagaResult
             {
@@ -132,7 +132,7 @@ public class SagaOrchestrator
             context.State = SagaState.Failed;
             context.FailureException = ex;
             
-            await CompensateAsync(context, executedSteps, CancellationToken.None);
+            await CompensateAsync(context, executedSteps, CancellationToken.None).ConfigureAwait(false);
 
             return new SagaResult
             {
@@ -186,7 +186,7 @@ public class SagaOrchestrator
 
                 context.RecordEvent(step.StepId, "compensating", $"Compensating step {step.Name}");
 
-                await step.CompensateAsync(context, cancellationToken);
+                await step.CompensateAsync(context, cancellationToken).ConfigureAwait(false);
 
                 context.RecordEvent(step.StepId, "compensated", $"Step {step.Name} compensated successfully");
 

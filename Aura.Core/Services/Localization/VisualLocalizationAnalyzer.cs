@@ -59,7 +59,7 @@ public class VisualLocalizationAnalyzer
             translatedLines,
             targetLanguage,
             culturalContext,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
         recommendations.AddRange(llmRecommendations);
 
         _logger.LogInformation("Found {Count} visual localization recommendations", recommendations.Count);
@@ -163,7 +163,7 @@ public class VisualLocalizationAnalyzer
 
         try
         {
-            var response = await _llmProvider.DraftScriptAsync(brief, spec, cancellationToken);
+            var response = await _llmProvider.DraftScriptAsync(brief, spec, cancellationToken).ConfigureAwait(false);
             var parsedRecommendations = ParseVisualRecommendations(response);
             recommendations.AddRange(parsedRecommendations);
         }

@@ -52,7 +52,7 @@ public class FFmpegResolver
         try
         {
             // 1. Check managed install first (highest priority)
-            result = await CheckManagedInstallAsync(ct);
+            result = await CheckManagedInstallAsync(ct).ConfigureAwait(false);
             if (result.Found && result.IsValid)
             {
                 _logger.LogInformation("Using managed FFmpeg install: {Path}", result.Path);
@@ -63,7 +63,7 @@ public class FFmpegResolver
             // 2. Check user-configured path
             if (!string.IsNullOrEmpty(configuredPath))
             {
-                result = await CheckConfiguredPathAsync(configuredPath, ct);
+                result = await CheckConfiguredPathAsync(configuredPath, ct).ConfigureAwait(false);
                 if (result.Found && result.IsValid)
                 {
                     _logger.LogInformation("Using configured FFmpeg path: {Path}", result.Path);
@@ -73,7 +73,7 @@ public class FFmpegResolver
             }
 
             // 3. Check PATH environment
-            result = await CheckPathEnvironmentAsync(ct);
+            result = await CheckPathEnvironmentAsync(ct).ConfigureAwait(false);
             if (result.Found && result.IsValid)
             {
                 _logger.LogInformation("Using FFmpeg from PATH");
@@ -151,7 +151,7 @@ public class FFmpegResolver
 
             try
             {
-                var manifestJson = await File.ReadAllTextAsync(manifestPath, ct);
+                var manifestJson = await File.ReadAllTextAsync(manifestPath, ct).ConfigureAwait(false);
                 var manifest = JsonSerializer.Deserialize<FfmpegInstallMetadata>(manifestJson);
 
                 if (manifest == null || string.IsNullOrEmpty(manifest.FfmpegPath))
@@ -167,7 +167,7 @@ public class FFmpegResolver
                 }
 
                 // Validate the binary
-                var validation = await ValidateFFmpegBinaryAsync(manifest.FfmpegPath, ct);
+                var validation = await ValidateFFmpegBinaryAsync(manifest.FfmpegPath, ct).ConfigureAwait(false);
                 if (validation.success)
                 {
                     return new FfmpegResolutionResult
@@ -216,7 +216,7 @@ public class FFmpegResolver
         if (configuredPath == "ffmpeg" || configuredPath == "ffmpeg.exe")
         {
             _logger.LogDebug("Configured path is '{Path}', treating as PATH lookup", configuredPath);
-            return await CheckPathEnvironmentAsync(ct);
+            return await CheckPathEnvironmentAsync(ct).ConfigureAwait(false);
         }
 
         // Resolve to actual executable path
@@ -261,7 +261,7 @@ public class FFmpegResolver
             };
         }
 
-        var validation = await ValidateFFmpegBinaryAsync(resolvedPath, ct);
+        var validation = await ValidateFFmpegBinaryAsync(resolvedPath, ct).ConfigureAwait(false);
         if (validation.success)
         {
             return new FfmpegResolutionResult
@@ -297,7 +297,7 @@ public class FFmpegResolver
         var exeName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "ffmpeg.exe" : "ffmpeg";
 
         // First, try PATH
-        var validation = await ValidateFFmpegBinaryAsync(exeName, ct);
+        var validation = await ValidateFFmpegBinaryAsync(exeName, ct).ConfigureAwait(false);
         if (validation.success)
         {
             return new FfmpegResolutionResult
@@ -340,7 +340,7 @@ public class FFmpegResolver
                     continue;
 
                 _logger.LogDebug("Checking common path: {Path}", path);
-                var pathValidation = await ValidateFFmpegBinaryAsync(path, ct);
+                var pathValidation = await ValidateFFmpegBinaryAsync(path, ct).ConfigureAwait(false);
                 if (pathValidation.success)
                 {
                     _logger.LogInformation("Found FFmpeg at common installation path: {Path}", path);
@@ -390,10 +390,10 @@ public class FFmpegResolver
                 return (false, null, "Failed to start FFmpeg process");
             }
 
-            await process.WaitForExitAsync(ct);
+            await process.WaitForExitAsync(ct).ConfigureAwait(false);
 
-            var stdout = await process.StandardOutput.ReadToEndAsync(ct);
-            var stderr = await process.StandardError.ReadToEndAsync(ct);
+            var stdout = await process.StandardOutput.ReadToEndAsync(ct).ConfigureAwait(false);
+            var stderr = await process.StandardError.ReadToEndAsync(ct).ConfigureAwait(false);
 
             if (process.ExitCode != 0)
             {

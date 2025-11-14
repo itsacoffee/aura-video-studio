@@ -280,7 +280,7 @@ public class VectorIndex
                 WriteIndented = true
             });
 
-            await File.WriteAllTextAsync(_indexPath, json, ct);
+            await File.WriteAllTextAsync(_indexPath, json, ct).ConfigureAwait(false);
 
             _logger.LogDebug("Saved index to {Path}", _indexPath);
         }

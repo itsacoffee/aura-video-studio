@@ -78,7 +78,7 @@ public class NarrationOptimizationService
             foreach (var line in linesList)
             {
                 var optimizedLine = await OptimizeSingleLineAsync(
-                    line, voiceSpec, voiceDescriptor, config, ct);
+                    line, voiceSpec, voiceDescriptor, config, ct).ConfigureAwait(false);
                 
                 optimizedLines.Add(optimizedLine);
                 totalOptimizations += optimizedLine.ActionsApplied.Count;
@@ -139,7 +139,7 @@ public class NarrationOptimizationService
         if (issues.Count != 0 || IsComplexSentence(optimizedText, config))
         {
             var rewriteResult = await RewriteForTtsAsync(
-                optimizedText, voiceSpec, voiceDescriptor, issues, config, ct);
+                optimizedText, voiceSpec, voiceDescriptor, issues, config, ct).ConfigureAwait(false);
             
             optimizedText = rewriteResult.OptimizedText;
             actions.AddRange(rewriteResult.ActionsApplied);
@@ -219,7 +219,7 @@ public class NarrationOptimizationService
                 Style: "natural-speech"
             );
 
-            var llmResponse = await GenerateWithLlmAsync(brief, spec, ct);
+            var llmResponse = await GenerateWithLlmAsync(brief, spec, ct).ConfigureAwait(false);
             
             return ParseLlmResponse(llmResponse, text);
         }
@@ -240,11 +240,11 @@ public class NarrationOptimizationService
     {
         if (_stageAdapter != null)
         {
-            var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct);
+            var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct).ConfigureAwait(false);
             if (result.IsSuccess && result.Data != null) return result.Data;
             _logger.LogWarning("Orchestrator generation failed, falling back to direct provider: {Error}", result.ErrorMessage);
         }
-        return await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
+        return await _llmProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
     }
 
     /// <summary>

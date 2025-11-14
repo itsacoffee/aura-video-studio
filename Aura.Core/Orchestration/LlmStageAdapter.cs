@@ -65,7 +65,7 @@ public class LlmStageAdapter : UnifiedGenerationOrchestrator<LlmStageRequest, Ll
             ValidateSchema = false
         };
 
-        var result = await ExecuteAsync(request, config, ct);
+        var result = await ExecuteAsync(request, config, ct).ConfigureAwait(false);
 
         if (!result.IsSuccess || result.Data == null)
         {
@@ -112,7 +112,7 @@ public class LlmStageAdapter : UnifiedGenerationOrchestrator<LlmStageRequest, Ll
             ValidateSchema = false
         };
 
-        var result = await ExecuteAsync(request, config, ct);
+        var result = await ExecuteAsync(request, config, ct).ConfigureAwait(false);
 
         if (!result.IsSuccess || result.Data == null)
         {
@@ -136,7 +136,7 @@ public class LlmStageAdapter : UnifiedGenerationOrchestrator<LlmStageRequest, Ll
         OrchestrationConfig config,
         CancellationToken ct)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         var preferredTier = config.PreferredTier ?? "Free";
         var offlineOnly = config.OfflineOnly;
@@ -191,7 +191,7 @@ value));
                 {
                     throw new InvalidOperationException("Brief and PlanSpec required for script generation");
                 }
-                content = await llmProvider.DraftScriptAsync(request.Brief, request.PlanSpec, ct);
+                content = await llmProvider.DraftScriptAsync(request.Brief, request.PlanSpec, ct).ConfigureAwait(false);
                 break;
 
             case LlmStageType.VisualPrompt:
@@ -204,7 +204,7 @@ value));
                     request.PreviousSceneText,
                     request.VideoTone,
                     request.TargetStyle.Value,
-                    ct);
+                    ct).ConfigureAwait(false);
                 
                 content = visualResult != null 
                     ? JsonSerializer.Serialize(visualResult) 
@@ -216,7 +216,7 @@ value));
                 {
                     throw new InvalidOperationException("Prompt required for raw completion");
                 }
-                content = await llmProvider.CompleteAsync(request.Prompt, ct);
+                content = await llmProvider.CompleteAsync(request.Prompt, ct).ConfigureAwait(false);
                 break;
 
             default:
@@ -238,7 +238,7 @@ value));
 
     protected override async Task<string?> GetCacheKeyAsync(LlmStageRequest request, CancellationToken ct)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         var keyData = request.StageType switch
         {

@@ -33,7 +33,7 @@ public class AIImageGenerator
 
         // For now, return null to indicate SD is not available
         _logger.LogWarning("AI image generation not yet implemented - Stable Diffusion integration required");
-        return await Task.FromResult<string?>(null);
+        return await Task.FromResult<string?>(null).ConfigureAwait(false);
     }
 
     /// <summary>

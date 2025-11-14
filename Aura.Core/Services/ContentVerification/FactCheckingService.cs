@@ -35,7 +35,7 @@ public class FactCheckingService
         {
             try
             {
-                var result = await CheckClaimAsync(claim, ct);
+                var result = await CheckClaimAsync(claim, ct).ConfigureAwait(false);
                 results.Add(result);
             }
             catch (Exception ex)
@@ -68,9 +68,9 @@ public class FactCheckingService
 
         // Simulate fact-checking process
         // In production, this would query external fact-checking APIs and knowledge bases
-        await Task.Delay(100, ct); // Simulate API call
+        await Task.Delay(100, ct).ConfigureAwait(false); // Simulate API call
 
-        var evidence = await GatherEvidenceAsync(claim, ct);
+        var evidence = await GatherEvidenceAsync(claim, ct).ConfigureAwait(false);
         var status = DetermineVerificationStatus(evidence);
         var confidence = CalculateConfidence(evidence, status);
         var explanation = GenerateExplanation(claim, evidence, status);
@@ -94,7 +94,7 @@ public class FactCheckingService
         CancellationToken ct = default)
     {
         // Simulate gathering evidence from multiple sources
-        await Task.Delay(50, ct);
+        await Task.Delay(50, ct).ConfigureAwait(false);
 
         var evidence = new List<Evidence>();
 
@@ -102,16 +102,16 @@ public class FactCheckingService
         switch (claim.Type)
         {
             case ClaimType.Historical:
-                evidence.AddRange(await GatherHistoricalEvidenceAsync(claim, ct));
+                evidence.AddRange(await GatherHistoricalEvidenceAsync(claim, ct).ConfigureAwait(false));
                 break;
             case ClaimType.Scientific:
-                evidence.AddRange(await GatherScientificEvidenceAsync(claim, ct));
+                evidence.AddRange(await GatherScientificEvidenceAsync(claim, ct).ConfigureAwait(false));
                 break;
             case ClaimType.Statistical:
-                evidence.AddRange(await GatherStatisticalEvidenceAsync(claim, ct));
+                evidence.AddRange(await GatherStatisticalEvidenceAsync(claim, ct).ConfigureAwait(false));
                 break;
             default:
-                evidence.AddRange(await GatherGeneralEvidenceAsync(claim, ct));
+                evidence.AddRange(await GatherGeneralEvidenceAsync(claim, ct).ConfigureAwait(false));
                 break;
         }
 
@@ -122,7 +122,7 @@ public class FactCheckingService
         Claim claim,
         CancellationToken ct)
     {
-        await Task.Delay(10, ct);
+        await Task.Delay(10, ct).ConfigureAwait(false);
         
         // Mock historical evidence
         return new List<Evidence>
@@ -150,7 +150,7 @@ public class FactCheckingService
         Claim claim,
         CancellationToken ct)
     {
-        await Task.Delay(10, ct);
+        await Task.Delay(10, ct).ConfigureAwait(false);
         
         return new List<Evidence>
         {
@@ -177,7 +177,7 @@ public class FactCheckingService
         Claim claim,
         CancellationToken ct)
     {
-        await Task.Delay(10, ct);
+        await Task.Delay(10, ct).ConfigureAwait(false);
         
         return new List<Evidence>
         {
@@ -204,7 +204,7 @@ public class FactCheckingService
         Claim claim,
         CancellationToken ct)
     {
-        await Task.Delay(10, ct);
+        await Task.Delay(10, ct).ConfigureAwait(false);
         
         return new List<Evidence>
         {

@@ -51,7 +51,7 @@ public class LearningService
         string profileId,
         CancellationToken ct = default)
     {
-        var patterns = await _persistence.LoadPatternsAsync(profileId, ct);
+        var patterns = await _persistence.LoadPatternsAsync(profileId, ct).ConfigureAwait(false);
         
         // Apply pattern decay
         var decayedPatterns = _patternRecognition.ApplyPatternDecay(patterns);
@@ -66,13 +66,13 @@ public class LearningService
         string profileId,
         CancellationToken ct = default)
     {
-        await _analysisLock.WaitAsync(ct);
+        await _analysisLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             _logger.LogInformation("Starting pattern analysis for profile {ProfileId}", profileId);
             
             // Get decision history
-            var decisions = await _profileService.GetDecisionHistoryAsync(profileId, ct);
+            var decisions = await _profileService.GetDecisionHistoryAsync(profileId, ct).ConfigureAwait(false);
             
             if (decisions.Count < 5)
             {
@@ -81,13 +81,13 @@ public class LearningService
             }
             
             // Detect patterns
-            var patterns = await _patternRecognition.DetectPatternsAsync(decisions, profileId, ct);
+            var patterns = await _patternRecognition.DetectPatternsAsync(decisions, profileId, ct).ConfigureAwait(false);
             
             // Resolve conflicting patterns
             patterns = _patternRecognition.ResolveConflictingPatterns(patterns);
             
             // Save patterns
-            await _persistence.SavePatternsAsync(profileId, patterns, ct);
+            await _persistence.SavePatternsAsync(profileId, patterns, ct).ConfigureAwait(false);
             
             _logger.LogInformation("Pattern analysis complete: {Count} patterns identified", patterns.Count);
             return patterns;
@@ -109,7 +109,7 @@ public class LearningService
         string profileId,
         CancellationToken ct = default)
     {
-        var insights = await _persistence.LoadInsightsAsync(profileId, ct);
+        var insights = await _persistence.LoadInsightsAsync(profileId, ct).ConfigureAwait(false);
         
         // Filter out old insights (older than 90 days)
         var cutoffDate = DateTime.UtcNow.AddDays(-90);
@@ -123,32 +123,32 @@ public class LearningService
         string profileId,
         CancellationToken ct = default)
     {
-        await _analysisLock.WaitAsync(ct);
+        await _analysisLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             _logger.LogInformation("Generating insights for profile {ProfileId}", profileId);
             
-            var decisions = await _profileService.GetDecisionHistoryAsync(profileId, ct);
-            var patterns = await GetPatternsAsync(profileId, ct);
-            var preferences = await _persistence.LoadInferredPreferencesAsync(profileId, ct);
+            var decisions = await _profileService.GetDecisionHistoryAsync(profileId, ct).ConfigureAwait(false);
+            var patterns = await GetPatternsAsync(profileId, ct).ConfigureAwait(false);
+            var preferences = await _persistence.LoadInferredPreferencesAsync(profileId, ct).ConfigureAwait(false);
             
             var insights = new List<LearningInsight>();
             
             // Context-based insights
-            var contextInsights = await _decisionAnalysis.AnalyzeDecisionContextAsync(decisions, profileId, ct);
+            var contextInsights = await _decisionAnalysis.AnalyzeDecisionContextAsync(decisions, profileId, ct).ConfigureAwait(false);
             insights.AddRange(contextInsights);
             
             // Preference confirmation suggestions
-            var preferenceInsights = await _preferenceInference.SuggestPreferenceConfirmationsAsync(preferences, ct);
+            var preferenceInsights = await _preferenceInference.SuggestPreferenceConfirmationsAsync(preferences, ct).ConfigureAwait(false);
             insights.AddRange(preferenceInsights);
             
             // Proactive suggestions
             var proactiveInsights = await _suggestionRanker.GenerateProactiveSuggestionsAsync(
-                profileId, patterns, preferences, ct);
+                profileId, patterns, preferences, ct).ConfigureAwait(false);
             insights.AddRange(proactiveInsights);
             
             // Save insights
-            await _persistence.SaveInsightsAsync(profileId, insights, ct);
+            await _persistence.SaveInsightsAsync(profileId, insights, ct).ConfigureAwait(false);
             
             _logger.LogInformation("Generated {Count} insights for profile {ProfileId}",
                 insights.Count, profileId);
@@ -172,8 +172,8 @@ public class LearningService
         string profileId,
         CancellationToken ct = default)
     {
-        var decisions = await _profileService.GetDecisionHistoryAsync(profileId, ct);
-        return await _decisionAnalysis.CalculateAcceptanceRatesAsync(decisions, profileId, ct);
+        var decisions = await _profileService.GetDecisionHistoryAsync(profileId, ct).ConfigureAwait(false);
+        return await _decisionAnalysis.CalculateAcceptanceRatesAsync(decisions, profileId, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -183,10 +183,10 @@ public class LearningService
         RankSuggestionsRequest request,
         CancellationToken ct = default)
     {
-        var decisions = await _profileService.GetDecisionHistoryAsync(request.ProfileId, ct);
-        var patterns = await GetPatternsAsync(request.ProfileId, ct);
+        var decisions = await _profileService.GetDecisionHistoryAsync(request.ProfileId, ct).ConfigureAwait(false);
+        var patterns = await GetPatternsAsync(request.ProfileId, ct).ConfigureAwait(false);
         
-        return await _suggestionRanker.RankSuggestionsAsync(request, decisions, patterns, ct);
+        return await _suggestionRanker.RankSuggestionsAsync(request, decisions, patterns, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -197,7 +197,7 @@ public class LearningService
         string suggestionType,
         CancellationToken ct = default)
     {
-        var decisions = await _profileService.GetDecisionHistoryAsync(profileId, ct);
+        var decisions = await _profileService.GetDecisionHistoryAsync(profileId, ct).ConfigureAwait(false);
         var typeDecisions = decisions
             .Where(d => d.SuggestionType.Equals(suggestionType, StringComparison.OrdinalIgnoreCase))
             .ToList();
@@ -224,8 +224,8 @@ public class LearningService
         string profileId,
         CancellationToken ct = default)
     {
-        var decisions = await _profileService.GetDecisionHistoryAsync(profileId, ct);
-        var patterns = await GetPatternsAsync(profileId, ct);
+        var decisions = await _profileService.GetDecisionHistoryAsync(profileId, ct).ConfigureAwait(false);
+        var patterns = await GetPatternsAsync(profileId, ct).ConfigureAwait(false);
         
         // Count decisions by category
         var decisionsByCategory = decisions
@@ -282,7 +282,7 @@ public class LearningService
         ConfirmPreferenceRequest request,
         CancellationToken ct = default)
     {
-        var preferences = await _persistence.LoadInferredPreferencesAsync(profileId, ct);
+        var preferences = await _persistence.LoadInferredPreferencesAsync(profileId, ct).ConfigureAwait(false);
         var preference = preferences.FirstOrDefault(p => p.PreferenceId == request.PreferenceId);
         
         if (preference == null)
@@ -307,7 +307,7 @@ public class LearningService
             };
         }
         
-        await _persistence.UpdateInferredPreferenceAsync(profileId, updated, ct);
+        await _persistence.UpdateInferredPreferenceAsync(profileId, updated, ct).ConfigureAwait(false);
         
         _logger.LogInformation("Confirmed preference {PreferenceId} for profile {ProfileId}",
             request.PreferenceId, profileId);
@@ -320,7 +320,7 @@ public class LearningService
         string profileId,
         CancellationToken ct = default)
     {
-        return await _persistence.LoadInferredPreferencesAsync(profileId, ct);
+        return await _persistence.LoadInferredPreferencesAsync(profileId, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -330,18 +330,18 @@ public class LearningService
         string profileId,
         CancellationToken ct = default)
     {
-        var decisions = await _profileService.GetDecisionHistoryAsync(profileId, ct);
-        var explicitPreferences = await _profileService.GetPreferencesAsync(profileId, ct);
+        var decisions = await _profileService.GetDecisionHistoryAsync(profileId, ct).ConfigureAwait(false);
+        var explicitPreferences = await _profileService.GetPreferencesAsync(profileId, ct).ConfigureAwait(false);
         
         var inferred = await _preferenceInference.DetectImplicitPreferencesAsync(
-            decisions, profileId, explicitPreferences, ct);
+            decisions, profileId, explicitPreferences, ct).ConfigureAwait(false);
         
         // Check for conflicts
         var conflicts = await _preferenceInference.DetectPreferenceConflictsAsync(
-            inferred, explicitPreferences, ct);
+            inferred, explicitPreferences, ct).ConfigureAwait(false);
         
         // Save inferred preferences
-        await _persistence.SaveInferredPreferencesAsync(profileId, inferred, ct);
+        await _persistence.SaveInferredPreferencesAsync(profileId, inferred, ct).ConfigureAwait(false);
         
         _logger.LogInformation("Inferred {Count} preferences for profile {ProfileId} ({Conflicts} conflicts)",
             inferred.Count, profileId, conflicts.Count);
@@ -364,7 +364,7 @@ public class LearningService
         
         foreach (var profileId in profileIds)
         {
-            var maturity = await GetMaturityLevelAsync(profileId, ct);
+            var maturity = await GetMaturityLevelAsync(profileId, ct).ConfigureAwait(false);
             comparison[profileId] = maturity;
         }
         
@@ -380,7 +380,7 @@ public class LearningService
     /// </summary>
     public async Task ResetLearningAsync(string profileId, CancellationToken ct = default)
     {
-        await _persistence.ResetLearningAsync(profileId, ct);
+        await _persistence.ResetLearningAsync(profileId, ct).ConfigureAwait(false);
         _logger.LogInformation("Reset learning data for profile {ProfileId}", profileId);
     }
 
@@ -395,11 +395,11 @@ public class LearningService
         string profileId,
         CancellationToken ct = default)
     {
-        var maturity = await GetMaturityLevelAsync(profileId, ct);
-        var stats = await GetPredictionStatsAsync(profileId, ct);
-        var patterns = await GetPatternsAsync(profileId, ct);
-        var preferences = await GetInferredPreferencesAsync(profileId, ct);
-        var insights = await GetInsightsAsync(profileId, ct);
+        var maturity = await GetMaturityLevelAsync(profileId, ct).ConfigureAwait(false);
+        var stats = await GetPredictionStatsAsync(profileId, ct).ConfigureAwait(false);
+        var patterns = await GetPatternsAsync(profileId, ct).ConfigureAwait(false);
+        var preferences = await GetInferredPreferencesAsync(profileId, ct).ConfigureAwait(false);
+        var insights = await GetInsightsAsync(profileId, ct).ConfigureAwait(false);
         
         var topPatterns = patterns
             .OrderByDescending(p => p.Strength)

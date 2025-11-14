@@ -75,7 +75,7 @@ public class PresetRecommendationService
         {
             try
             {
-                var llmRecommendation = await GetLlmRecommendationAsync(request, cancellationToken);
+                var llmRecommendation = await GetLlmRecommendationAsync(request, cancellationToken).ConfigureAwait(false);
                 if (llmRecommendation != null)
                 {
                     _logger.LogInformation("Using LLM-based recommendation: {Preset}", llmRecommendation.PresetName);
@@ -88,7 +88,7 @@ public class PresetRecommendationService
             }
         }
 
-        return await GetRuleBasedRecommendationAsync(request, cancellationToken);
+        return await GetRuleBasedRecommendationAsync(request, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<PresetRecommendation?> GetLlmRecommendationAsync(
@@ -101,7 +101,7 @@ public class PresetRecommendationService
         
         try
         {
-            var response = await _llmProvider.CompleteAsync(prompt, cancellationToken);
+            var response = await _llmProvider.CompleteAsync(prompt, cancellationToken).ConfigureAwait(false);
             return ParseLlmResponse(response);
         }
         catch (Exception ex)
@@ -226,7 +226,7 @@ public class PresetRecommendationService
         PresetRecommendationRequest request,
         CancellationToken cancellationToken)
     {
-        var systemProfile = await _hardwareDetector.DetectSystemAsync();
+        var systemProfile = await _hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
         
         var preset = SelectPresetByRules(request, systemProfile);
         var alternatives = GetAlternativePresets(preset);

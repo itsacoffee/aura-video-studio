@@ -67,7 +67,7 @@ public class SSMLStageAdapter : UnifiedGenerationOrchestrator<SSMLStageRequest, 
             MaxRetries = 2
         };
 
-        var result = await ExecuteAsync(request, config, ct);
+        var result = await ExecuteAsync(request, config, ct).ConfigureAwait(false);
 
         if (!result.IsSuccess || result.Data == null)
         {
@@ -91,7 +91,7 @@ public class SSMLStageAdapter : UnifiedGenerationOrchestrator<SSMLStageRequest, 
         OrchestrationConfig config,
         CancellationToken ct)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         var providers = new List<ProviderInfo>();
         int priority = 0;
@@ -145,7 +145,7 @@ public class SSMLStageAdapter : UnifiedGenerationOrchestrator<SSMLStageRequest, 
                 targetDurationMs,
                 request,
                 mapper,
-                ct);
+                ct).ConfigureAwait(false);
 
             segments.Add(segmentResult);
 
@@ -242,7 +242,7 @@ public class SSMLStageAdapter : UnifiedGenerationOrchestrator<SSMLStageRequest, 
         };
 
         var ssml = mapper.MapToSSML(line.Text, adjustments, request.VoiceSpec);
-        var estimatedDurationMs = await mapper.EstimateDurationAsync(ssml, request.VoiceSpec, ct);
+        var estimatedDurationMs = await mapper.EstimateDurationAsync(ssml, request.VoiceSpec, ct).ConfigureAwait(false);
 
         var toleranceMs = (int)(targetDurationMs * 0.05);
         var deviation = estimatedDurationMs - targetDurationMs;
@@ -272,7 +272,7 @@ public class SSMLStageAdapter : UnifiedGenerationOrchestrator<SSMLStageRequest, 
             adjustments = adjustments with { Iterations = iteration };
 
             ssml = mapper.MapToSSML(line.Text, adjustments, request.VoiceSpec);
-            estimatedDurationMs = await mapper.EstimateDurationAsync(ssml, request.VoiceSpec, ct);
+            estimatedDurationMs = await mapper.EstimateDurationAsync(ssml, request.VoiceSpec, ct).ConfigureAwait(false);
             deviation = estimatedDurationMs - targetDurationMs;
 
             Logger.LogDebug(
@@ -374,7 +374,7 @@ public class SSMLStageAdapter : UnifiedGenerationOrchestrator<SSMLStageRequest, 
 
     protected override async Task<string?> GetCacheKeyAsync(SSMLStageRequest request, CancellationToken ct)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         var keyData = $"ssml:{request.TargetProvider}:{request.VoiceSpec.VoiceName}:{string.Join(",", request.ScriptLines.Select(l => l.Text))}";
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(keyData));
@@ -385,7 +385,7 @@ public class SSMLStageAdapter : UnifiedGenerationOrchestrator<SSMLStageRequest, 
         SSMLStageResponse response,
         CancellationToken ct)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         var errors = new List<string>();
 

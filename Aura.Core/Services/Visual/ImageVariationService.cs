@@ -67,9 +67,9 @@ public class ImageVariationService
             "Generating {Count} variations for scene {SceneIndex}",
             config.VariationCount, prompt.SceneIndex);
 
-        var variations = await GenerateVariationsAsync(prompt, provider, config, ct);
+        var variations = await GenerateVariationsAsync(prompt, provider, config, ct).ConfigureAwait(false);
 
-        var scoredVariations = await ScoreVariationsAsync(variations, prompt, config, ct);
+        var scoredVariations = await ScoreVariationsAsync(variations, prompt, config, ct).ConfigureAwait(false);
 
         var selectedVariation = SelectBestVariation(scoredVariations, config);
 
@@ -121,7 +121,7 @@ public class ImageVariationService
 
                 var variedPrompt = config.VaryPrompts ? AddPromptVariation(promptText, i) : promptText;
                 
-                var imageUrl = await provider.GenerateImageAsync(variedPrompt, options, ct);
+                var imageUrl = await provider.GenerateImageAsync(variedPrompt, options, ct).ConfigureAwait(false);
 
                 if (!string.IsNullOrEmpty(imageUrl))
                 {
@@ -172,12 +172,12 @@ public class ImageVariationService
                 break;
             }
 
-            var qualityScore = await _qualityChecker.CheckQualityAsync(variation.ImageUrl, ct);
+            var qualityScore = await _qualityChecker.CheckQualityAsync(variation.ImageUrl, ct).ConfigureAwait(false);
             
             NsfwDetectionResult nsfwCheck;
             if (config.EnableNsfwDetection)
             {
-                nsfwCheck = await _nsfwDetection.DetectNsfwAsync(variation.ImageUrl, ct);
+                nsfwCheck = await _nsfwDetection.DetectNsfwAsync(variation.ImageUrl, ct).ConfigureAwait(false);
             }
             else
             {
@@ -197,7 +197,7 @@ public class ImageVariationService
                     clipScore = await _clipScoring.ScorePromptAdherenceAsync(
                         variation.ImageUrl,
                         prompt.OptimizedDescription,
-                        ct);
+                        ct).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {

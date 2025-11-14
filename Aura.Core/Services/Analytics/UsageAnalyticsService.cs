@@ -92,7 +92,7 @@ public class UsageAnalyticsService : IUsageAnalyticsService
         try
         {
             // Check if analytics is enabled
-            var settings = await _context.AnalyticsRetentionSettings.FirstOrDefaultAsync(cancellationToken);
+            var settings = await _context.AnalyticsRetentionSettings.FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
             if (settings?.IsEnabled == false)
             {
                 _logger.LogDebug("Analytics disabled, skipping usage recording");
@@ -107,7 +107,7 @@ public class UsageAnalyticsService : IUsageAnalyticsService
             }
 
             _context.UsageStatistics.Add(usage);
-            await _context.SaveChangesAsync(cancellationToken);
+            await _context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             
             _logger.LogInformation(
                 "Recorded usage: {Provider}/{Model} - {Type} - Success: {Success}",
@@ -123,14 +123,14 @@ public class UsageAnalyticsService : IUsageAnalyticsService
     {
         try
         {
-            var settings = await _context.AnalyticsRetentionSettings.FirstOrDefaultAsync(cancellationToken);
+            var settings = await _context.AnalyticsRetentionSettings.FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
             if (settings?.IsEnabled == false)
             {
                 return;
             }
 
             _context.CostTracking.Add(cost);
-            await _context.SaveChangesAsync(cancellationToken);
+            await _context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             
             _logger.LogInformation(
                 "Recorded cost: {Provider}/{Model} - ${Cost:F4}",
@@ -146,14 +146,14 @@ public class UsageAnalyticsService : IUsageAnalyticsService
     {
         try
         {
-            var settings = await _context.AnalyticsRetentionSettings.FirstOrDefaultAsync(cancellationToken);
+            var settings = await _context.AnalyticsRetentionSettings.FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
             if (settings?.IsEnabled == false || settings?.CollectHardwareMetrics == false)
             {
                 return;
             }
 
             _context.PerformanceMetrics.Add(metrics);
-            await _context.SaveChangesAsync(cancellationToken);
+            await _context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             
             _logger.LogDebug(
                 "Recorded performance: {Operation} - {Duration}ms",
@@ -187,7 +187,7 @@ public class UsageAnalyticsService : IUsageAnalyticsService
                 query = query.Where(u => u.GenerationType == generationType);
             }
 
-            var data = await query.ToListAsync(cancellationToken);
+            var data = await query.ToListAsync(cancellationToken).ConfigureAwait(false);
 
             var successfulOps = data.Where(u => u.Success).ToList();
             var failedOps = data.Where(u => !u.Success).ToList();
@@ -250,7 +250,7 @@ public class UsageAnalyticsService : IUsageAnalyticsService
                 query = query.Where(c => c.Provider == provider);
             }
 
-            var data = await query.ToListAsync(cancellationToken);
+            var data = await query.ToListAsync(cancellationToken).ConfigureAwait(false);
 
             var providerCosts = data
                 .GroupBy(c => c.Provider)
@@ -303,7 +303,7 @@ public class UsageAnalyticsService : IUsageAnalyticsService
                 query = query.Where(p => p.OperationType == operationType);
             }
 
-            var data = await query.ToListAsync(cancellationToken);
+            var data = await query.ToListAsync(cancellationToken).ConfigureAwait(false);
 
             var operationBreakdown = data
                 .GroupBy(p => p.OperationType)

@@ -155,7 +155,7 @@ public class ExportPreflightValidator
         }
 
         // Get hardware capabilities
-        var systemProfile = await _hardwareDetector.DetectSystemAsync();
+        var systemProfile = await _hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
         var hardwareInfo = GetHardwareCapabilities(systemProfile);
 
         // Estimate duration

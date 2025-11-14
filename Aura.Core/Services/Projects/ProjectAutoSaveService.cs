@@ -58,10 +58,10 @@ public class ProjectAutoSaveService : BackgroundService
             {
                 if (_config.Enabled)
                 {
-                    await PerformAutoSaveAsync(stoppingToken);
+                    await PerformAutoSaveAsync(stoppingToken).ConfigureAwait(false);
                 }
 
-                await Task.Delay(TimeSpan.FromSeconds(_config.IntervalSeconds), stoppingToken);
+                await Task.Delay(TimeSpan.FromSeconds(_config.IntervalSeconds), stoppingToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -85,10 +85,10 @@ public class ProjectAutoSaveService : BackgroundService
         // Perform final save before stopping
         if (_config.CreateBackupOnCrash)
         {
-            await PerformAutoSaveAsync(cancellationToken, isFinalSave: true);
+            await PerformAutoSaveAsync(cancellationToken, isFinalSave: true).ConfigureAwait(false);
         }
 
-        await base.StopAsync(cancellationToken);
+        await base.StopAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private async Task PerformAutoSaveAsync(CancellationToken ct, bool isFinalSave = false)
@@ -117,7 +117,7 @@ public class ProjectAutoSaveService : BackgroundService
                 }
 
                 // Save project
-                await _projectFileService.SaveProjectAsync(state.Project, ct);
+                await _projectFileService.SaveProjectAsync(state.Project, ct).ConfigureAwait(false);
                 
                 state.LastSaved = DateTime.UtcNow;
                 state.IsDirty = false;
@@ -209,7 +209,7 @@ public class ProjectAutoSaveService : BackgroundService
         {
             try
             {
-                await _projectFileService.SaveProjectAsync(state.Project, ct);
+                await _projectFileService.SaveProjectAsync(state.Project, ct).ConfigureAwait(false);
                 
                 state.LastSaved = DateTime.UtcNow;
                 state.IsDirty = false;

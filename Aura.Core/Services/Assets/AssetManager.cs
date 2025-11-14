@@ -52,7 +52,7 @@ public class AssetManager
         try
         {
             await using var fileStream = new FileStream(cachePath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 81920, useAsync: true);
-            await assetStream.CopyToAsync(fileStream, 81920, ct);
+            await assetStream.CopyToAsync(fileStream, 81920, ct).ConfigureAwait(false);
             
             _assetCache[cacheKey] = new CachedAsset
             {

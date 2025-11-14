@@ -74,7 +74,7 @@ public class WavFileWriter
                 }
                 
                 // Ensure all data is flushed
-                await fileStream.FlushAsync(ct);
+                await fileStream.FlushAsync(ct).ConfigureAwait(false);
             }
 
             // Atomic rename - delete existing file first if present
@@ -132,7 +132,7 @@ public class WavFileWriter
         int totalSamples = (int)(durationSeconds * sampleRate * channels);
         var silentData = new short[totalSamples]; // All zeros = silence
 
-        await WriteAsync(outputPath, silentData, sampleRate, channels, DefaultBitsPerSample, ct);
+        await WriteAsync(outputPath, silentData, sampleRate, channels, DefaultBitsPerSample, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -143,7 +143,7 @@ public class WavFileWriter
         CancellationToken ct = default)
     {
         const double minDuration = 0.1; // 100ms minimum
-        await GenerateSilenceAsync(outputPath, minDuration, ct: ct);
+        await GenerateSilenceAsync(outputPath, minDuration, ct: ct).ConfigureAwait(false);
     }
 
     /// <summary>

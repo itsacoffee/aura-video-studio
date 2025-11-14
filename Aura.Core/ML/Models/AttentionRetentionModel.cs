@@ -38,7 +38,7 @@ public class AttentionRetentionModel
 
         // In production, this would load an actual ML.NET model
         // For now, we simulate the load
-        await Task.Delay(100, cancellationToken);
+        await Task.Delay(100, cancellationToken).ConfigureAwait(false);
 
         _isLoaded = true;
         _logger.LogInformation("Attention retention model loaded successfully");
@@ -64,7 +64,7 @@ public class AttentionRetentionModel
         // Placeholder prediction logic using heuristics
         // In production, this would use ML.NET PredictionEngine
         var score = await Task.FromResult(CalculateHeuristicEngagement(
-            scene, importanceScore, complexityScore, emotionalIntensity));
+            scene, importanceScore, complexityScore, emotionalIntensity)).ConfigureAwait(false);
 
         return score;
     }
@@ -100,7 +100,7 @@ public class AttentionRetentionModel
 
             // Calculate attention for this scene
             var sceneAttention = await CalculateSceneAttentionAsync(
-                scene, suggestion, i, scenes.Count, previousAttention, cancellationToken);
+                scene, suggestion, i, scenes.Count, previousAttention, cancellationToken).ConfigureAwait(false);
 
             // Generate data points throughout the scene
             var sceneDuration = suggestion?.OptimalDuration ?? scene.Duration;
@@ -202,7 +202,7 @@ public class AttentionRetentionModel
         double previousAttention,
         CancellationToken cancellationToken)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
 
         var baseAttention = 70.0;

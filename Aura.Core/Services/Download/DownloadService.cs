@@ -89,7 +89,7 @@ public class DownloadService
             throw new ArgumentException($"Mirror not found: {mirrorId}", nameof(mirrorId));
         }
 
-        return await CheckMirrorHealthInternalAsync(mirror, ct);
+        return await CheckMirrorHealthInternalAsync(mirror, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -103,7 +103,7 @@ public class DownloadService
             .Where(m => m.IsEnabled)
             .Select(m => CheckMirrorHealthInternalAsync(m, ct));
 
-        await Task.WhenAll(tasks);
+        await Task.WhenAll(tasks).ConfigureAwait(false);
 
         _logger.LogInformation("Mirror health check complete");
     }
@@ -189,7 +189,7 @@ public class DownloadService
                         downloadId,
                         mirrorIndex,
                         maxRetries,
-                        ct);
+                        ct).ConfigureAwait(false);
 
                     if (!downloadSuccess)
                     {
@@ -211,7 +211,7 @@ public class DownloadService
                         var verificationResult = await _verificationService.VerifyFileAsync(
                             outputPath,
                             expectedSha256,
-                            ct);
+                            ct).ConfigureAwait(false);
 
                         if (!verificationResult.IsValid)
                         {
@@ -299,14 +299,14 @@ public class DownloadService
                     var delaySeconds = (int)Math.Pow(2, attempt - 1);
                     _logger.LogInformation("Retry attempt {Attempt} of {MaxRetries} after {Delay}s delay",
                         attempt, maxRetries, delaySeconds);
-                    await Task.Delay(TimeSpan.FromSeconds(delaySeconds), ct);
+                    await Task.Delay(TimeSpan.FromSeconds(delaySeconds), ct).ConfigureAwait(false);
                 }
 
                 _logger.LogInformation("Download attempt {Attempt} from {Url}", attempt, mirror.Url);
 
                 // Perform the actual download
                 using var request = new HttpRequestMessage(HttpMethod.Get, mirror.Url);
-                using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+                using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
 
                 var totalBytes = response.Content.Headers.ContentLength ?? 0;
@@ -314,15 +314,15 @@ public class DownloadService
 
                 var tempPath = outputPath + ".partial";
                 await using (var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, useAsync: true))
-                await using (var httpStream = await response.Content.ReadAsStreamAsync(ct))
+                await using (var httpStream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false))
                 {
                     var buffer = new byte[8192];
                     int bytesRead;
                     var lastProgressReport = DateTime.UtcNow;
 
-                    while ((bytesRead = await httpStream.ReadAsync(buffer, 0, buffer.Length, ct)) > 0)
+                    while ((bytesRead = await httpStream.ReadAsync(buffer, 0, buffer.Length, ct).ConfigureAwait(false)) > 0)
                     {
-                        await fileStream.WriteAsync(buffer, 0, bytesRead, ct);
+                        await fileStream.WriteAsync(buffer, 0, bytesRead, ct).ConfigureAwait(false);
                         bytesDownloaded += bytesRead;
 
                         // Report progress every 500ms
@@ -345,7 +345,7 @@ public class DownloadService
                         }
                     }
 
-                    await fileStream.FlushAsync(ct);
+                    await fileStream.FlushAsync(ct).ConfigureAwait(false);
                 }
 
                 // Move temp file to final location
@@ -427,7 +427,7 @@ public class DownloadService
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, cts.Token);
             
-            var response = await _httpClient.SendAsync(request, linkedCts.Token);
+            var response = await _httpClient.SendAsync(request, linkedCts.Token).ConfigureAwait(false);
             
             var responseTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
             mirror.AverageResponseTimeMs = responseTime;

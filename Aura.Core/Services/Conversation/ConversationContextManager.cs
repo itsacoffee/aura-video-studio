@@ -37,10 +37,10 @@ public class ConversationContextManager
         Dictionary<string, object>? metadata = null,
         CancellationToken ct = default)
     {
-        await _cacheLock.WaitAsync(ct);
+        await _cacheLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            var context = await GetOrCreateContextAsync(projectId, ct);
+            var context = await GetOrCreateContextAsync(projectId, ct).ConfigureAwait(false);
             
             var message = new Message(
                 Role: role,
@@ -56,7 +56,7 @@ public class ConversationContextManager
             _cache[projectId] = updatedContext;
             
             // Persist to disk
-            await _persistence.SaveConversationAsync(updatedContext, ct);
+            await _persistence.SaveConversationAsync(updatedContext, ct).ConfigureAwait(false);
             
             _logger.LogInformation("Added {Role} message to project {ProjectId}", role, projectId);
         }
@@ -74,10 +74,10 @@ public class ConversationContextManager
         int? maxMessages = null,
         CancellationToken ct = default)
     {
-        await _cacheLock.WaitAsync(ct);
+        await _cacheLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            var context = await GetOrCreateContextAsync(projectId, ct);
+            var context = await GetOrCreateContextAsync(projectId, ct).ConfigureAwait(false);
             
             var limit = maxMessages ?? DefaultMaxMessages;
             var messages = context.Messages.TakeLast(limit).ToList();
@@ -97,10 +97,10 @@ public class ConversationContextManager
         string projectId,
         CancellationToken ct = default)
     {
-        await _cacheLock.WaitAsync(ct);
+        await _cacheLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            return await GetOrCreateContextAsync(projectId, ct);
+            return await GetOrCreateContextAsync(projectId, ct).ConfigureAwait(false);
         }
         finally
         {
@@ -113,11 +113,11 @@ public class ConversationContextManager
     /// </summary>
     public async Task ClearHistoryAsync(string projectId, CancellationToken ct = default)
     {
-        await _cacheLock.WaitAsync(ct);
+        await _cacheLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             _cache.Remove(projectId);
-            await _persistence.DeleteConversationAsync(projectId, ct);
+            await _persistence.DeleteConversationAsync(projectId, ct).ConfigureAwait(false);
             
             _logger.LogInformation("Cleared conversation history for project {ProjectId}", projectId);
         }
@@ -135,7 +135,7 @@ public class ConversationContextManager
         int maxTokens = 4000,
         CancellationToken ct = default)
     {
-        var history = await GetHistoryAsync(projectId, ct: ct);
+        var history = await GetHistoryAsync(projectId, ct: ct).ConfigureAwait(false);
         
         // Simple summarization - take first and last N messages
         // In production, this would use an LLM to create a summary
@@ -166,7 +166,7 @@ public class ConversationContextManager
         }
 
         // Try to load from disk
-        var loaded = await _persistence.LoadConversationAsync(projectId, ct);
+        var loaded = await _persistence.LoadConversationAsync(projectId, ct).ConfigureAwait(false);
         if (loaded != null)
         {
             _cache[projectId] = loaded;
@@ -183,7 +183,7 @@ public class ConversationContextManager
         );
         
         _cache[projectId] = newContext;
-        await _persistence.SaveConversationAsync(newContext, ct);
+        await _persistence.SaveConversationAsync(newContext, ct).ConfigureAwait(false);
         
         _logger.LogInformation("Created new conversation context for project {ProjectId}", projectId);
         

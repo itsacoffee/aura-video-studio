@@ -54,13 +54,13 @@ public class PreflightValidationService
 
             return providerName.ToLowerInvariant() switch
             {
-                "openai" => await TestOpenAIAsync(key, ct),
-                "anthropic" => await TestAnthropicAsync(key, ct),
-                "elevenlabs" => await TestElevenLabsAsync(key, ct),
-                "stabilityai" => await TestStabilityAIAsync(key, ct),
-                "pexels" => await TestPexelsAsync(key, ct),
-                "pixabay" => await TestPixabayAsync(key, ct),
-                "unsplash" => await TestUnsplashAsync(key, ct),
+                "openai" => await TestOpenAIAsync(key, ct).ConfigureAwait(false),
+                "anthropic" => await TestAnthropicAsync(key, ct).ConfigureAwait(false),
+                "elevenlabs" => await TestElevenLabsAsync(key, ct).ConfigureAwait(false),
+                "stabilityai" => await TestStabilityAIAsync(key, ct).ConfigureAwait(false),
+                "pexels" => await TestPexelsAsync(key, ct).ConfigureAwait(false),
+                "pixabay" => await TestPixabayAsync(key, ct).ConfigureAwait(false),
+                "unsplash" => await TestUnsplashAsync(key, ct).ConfigureAwait(false),
                 _ => new ProviderTestResult
                 {
                     Provider = providerName,
@@ -88,7 +88,7 @@ public class PreflightValidationService
             var request = new HttpRequestMessage(HttpMethod.Get, "https://api.openai.com/v1/models");
             request.Headers.Add("Authorization", $"Bearer {apiKey}");
 
-            var response = await _httpClient.SendAsync(request, ct);
+            var response = await _httpClient.SendAsync(request, ct).ConfigureAwait(false);
             
             if (response.IsSuccessStatusCode)
             {
@@ -126,7 +126,7 @@ public class PreflightValidationService
             request.Headers.Add("x-api-key", apiKey);
             request.Headers.Add("anthropic-version", "2023-06-01");
 
-            var response = await _httpClient.SendAsync(request, ct);
+            var response = await _httpClient.SendAsync(request, ct).ConfigureAwait(false);
             
             if (response.StatusCode == System.Net.HttpStatusCode.MethodNotAllowed ||
                 response.StatusCode == System.Net.HttpStatusCode.BadRequest ||
@@ -165,7 +165,7 @@ public class PreflightValidationService
             var request = new HttpRequestMessage(HttpMethod.Get, "https://api.elevenlabs.io/v1/voices");
             request.Headers.Add("xi-api-key", apiKey);
 
-            var response = await _httpClient.SendAsync(request, ct);
+            var response = await _httpClient.SendAsync(request, ct).ConfigureAwait(false);
             
             if (response.IsSuccessStatusCode)
             {
@@ -202,7 +202,7 @@ public class PreflightValidationService
             var request = new HttpRequestMessage(HttpMethod.Get, "https://api.stability.ai/v1/user/account");
             request.Headers.Add("Authorization", $"Bearer {apiKey}");
 
-            var response = await _httpClient.SendAsync(request, ct);
+            var response = await _httpClient.SendAsync(request, ct).ConfigureAwait(false);
             
             if (response.IsSuccessStatusCode)
             {
@@ -239,7 +239,7 @@ public class PreflightValidationService
             var request = new HttpRequestMessage(HttpMethod.Get, "https://api.pexels.com/v1/curated?per_page=1");
             request.Headers.Add("Authorization", apiKey);
 
-            var response = await _httpClient.SendAsync(request, ct);
+            var response = await _httpClient.SendAsync(request, ct).ConfigureAwait(false);
             
             if (response.IsSuccessStatusCode)
             {
@@ -274,7 +274,7 @@ public class PreflightValidationService
         try
         {
             var url = $"https://pixabay.com/api/?key={apiKey}&q=test&per_page=3";
-            var response = await _httpClient.GetAsync(url, ct);
+            var response = await _httpClient.GetAsync(url, ct).ConfigureAwait(false);
             
             if (response.IsSuccessStatusCode)
             {
@@ -311,7 +311,7 @@ public class PreflightValidationService
             var request = new HttpRequestMessage(HttpMethod.Get, "https://api.unsplash.com/photos?per_page=1");
             request.Headers.Add("Authorization", $"Client-ID {apiKey}");
 
-            var response = await _httpClient.SendAsync(request, ct);
+            var response = await _httpClient.SendAsync(request, ct).ConfigureAwait(false);
             
             if (response.IsSuccessStatusCode)
             {

@@ -44,8 +44,8 @@ public class SceneDetectionService
         // - FFmpeg scene detection filter
         // - OpenCV for frame analysis
         // - ML models for content-based scene detection
-        var scenes = await AnalyzeVideoForScenesAsync(videoPath, threshold, cancellationToken);
-        var duration = await GetVideoDurationAsync(videoPath, cancellationToken);
+        var scenes = await AnalyzeVideoForScenesAsync(videoPath, threshold, cancellationToken).ConfigureAwait(false);
+        var duration = await GetVideoDurationAsync(videoPath, cancellationToken).ConfigureAwait(false);
 
         var summary = $"Detected {scenes.Count} scene changes in {duration.TotalSeconds:F1}s video";
         _logger.LogInformation(summary);
@@ -62,7 +62,7 @@ public class SceneDetectionService
         double threshold,
         CancellationToken cancellationToken)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         // Placeholder: Generate sample scene changes
         // In production, this would analyze video frames using FFmpeg or OpenCV
@@ -112,7 +112,7 @@ public class SceneDetectionService
         string videoPath,
         CancellationToken cancellationToken)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         
         // Placeholder: In production, use FFmpeg to get actual duration
         return TimeSpan.FromSeconds(45);
@@ -128,7 +128,7 @@ public class SceneDetectionService
         _logger.LogInformation("Generating chapter markers from {SceneCount} scenes", 
             sceneResult.Scenes.Count);
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
 
         var chapters = new List<(TimeSpan Timestamp, string Title)>();

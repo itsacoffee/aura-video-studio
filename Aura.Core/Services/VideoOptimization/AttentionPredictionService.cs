@@ -53,7 +53,7 @@ public class AttentionPredictionService
             cancellationToken.ThrowIfCancellationRequested();
             
             var scene = scenes[i];
-            var sceneAttention = await PredictSceneAttentionAsync(scene, i, scenes.Count, options, cancellationToken);
+            var sceneAttention = await PredictSceneAttentionAsync(scene, i, scenes.Count, options, cancellationToken).ConfigureAwait(false);
             
             // Create data points for the scene
             var sceneDataPoints = GenerateSceneDataPoints(scene, sceneAttention, cumulativeTime);
@@ -93,7 +93,7 @@ public class AttentionPredictionService
         PredictionOptions options,
         CancellationToken cancellationToken)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
 
         // Extract features for ML prediction

@@ -47,7 +47,7 @@ public class OllamaService
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(5));
 
-            var response = await _httpClient.GetAsync($"{baseUrl}/api/tags", cts.Token);
+            var response = await _httpClient.GetAsync($"{baseUrl}/api/tags", cts.Token).ConfigureAwait(false);
             
             if (response.IsSuccessStatusCode)
             {
@@ -177,7 +177,7 @@ public class OllamaService
             _logger.LogInformation("Ollama process started (PID: {Pid}), waiting for readiness...", process.Id);
             logWriter.WriteLine($"[SYS] {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} Started Ollama process (PID: {process.Id})");
 
-            var ready = await WaitForReadinessAsync(baseUrl, TimeSpan.FromSeconds(10), ct);
+            var ready = await WaitForReadinessAsync(baseUrl, TimeSpan.FromSeconds(10), ct).ConfigureAwait(false);
 
             if (ready)
             {
@@ -420,7 +420,7 @@ public class OllamaService
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                 cts.CancelAfter(TimeSpan.FromSeconds(2));
 
-                var response = await _httpClient.GetAsync($"{baseUrl}/api/tags", cts.Token);
+                var response = await _httpClient.GetAsync($"{baseUrl}/api/tags", cts.Token).ConfigureAwait(false);
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -432,7 +432,7 @@ public class OllamaService
                 // Ignore errors during readiness check
             }
 
-            await Task.Delay(retryDelay, ct);
+            await Task.Delay(retryDelay, ct).ConfigureAwait(false);
         }
 
         return false;

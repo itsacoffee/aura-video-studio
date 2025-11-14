@@ -110,25 +110,25 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
         try
         {
             // Stage 0: Brief Validation
-            await ExecuteBriefValidationStageAsync(context, progress, ct);
+            await ExecuteBriefValidationStageAsync(context, progress, ct).ConfigureAwait(false);
 
             // Stage 1: Script Generation
-            await ExecuteScriptGenerationStageAsync(context, progress, configuration, ct);
+            await ExecuteScriptGenerationStageAsync(context, progress, configuration, ct).ConfigureAwait(false);
 
             // Stage 2: Scene Parsing
-            await ExecuteSceneParsingStageAsync(context, progress, ct);
+            await ExecuteSceneParsingStageAsync(context, progress, ct).ConfigureAwait(false);
 
             // Stage 3: Voice Generation
-            await ExecuteVoiceGenerationStageAsync(context, progress, configuration, ct);
+            await ExecuteVoiceGenerationStageAsync(context, progress, configuration, ct).ConfigureAwait(false);
 
             // Stage 4: Visual Asset Generation (if provider available)
             if (_imageProvider != null)
             {
-                await ExecuteVisualGenerationStageAsync(context, progress, configuration, ct);
+                await ExecuteVisualGenerationStageAsync(context, progress, configuration, ct).ConfigureAwait(false);
             }
 
             // Stage 5: Video Composition & Rendering
-            await ExecuteRenderingStageAsync(context, progress, configuration, ct);
+            await ExecuteRenderingStageAsync(context, progress, configuration, ct).ConfigureAwait(false);
 
             context.MarkCompleted();
             
@@ -181,7 +181,7 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
         try
         {
             var validationResult = await _preGenerationValidator
-                .ValidateSystemReadyAsync(context.Brief, context.PlanSpec, ct);
+                .ValidateSystemReadyAsync(context.Brief, context.PlanSpec, ct).ConfigureAwait(false);
 
             if (!validationResult.IsValid)
             {
@@ -233,7 +233,7 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
                     var generatedScript = await _llmProvider.DraftScriptAsync(
                         context.Brief,
                         context.PlanSpec,
-                        ctRetry);
+                        ctRetry).ConfigureAwait(false);
 
                     progress?.Report(ProgressBuilder.CreateScriptProgress(60, "Validating script quality", context.CorrelationId));
 
@@ -254,7 +254,7 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
                 "Script Generation",
                 ct,
                 maxRetries: configuration.MaxRetryAttempts,
-                providerName: "LLM");
+                providerName: "LLM").ConfigureAwait(false);
 
             context.GeneratedScript = script;
             context.SetStageOutput(stageName, script);
@@ -270,7 +270,7 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
             // Create checkpoint
             if (configuration.EnableCheckpoints && _checkpointManager != null)
             {
-                await SaveCheckpointAsync(context, stageName, ct);
+                await SaveCheckpointAsync(context, stageName, ct).ConfigureAwait(false);
             }
         }
         catch (Exception ex)
@@ -309,7 +309,7 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
             // Stream scenes to channel for downstream processing
             foreach (var scene in scenes)
             {
-                await context.SceneChannel.Writer.WriteAsync(scene, ct);
+                await context.SceneChannel.Writer.WriteAsync(scene, ct).ConfigureAwait(false);
             }
 
             RecordStageMetrics(context, stageName, sw, itemsProcessed: scenes.Count);
@@ -361,7 +361,7 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
                     var audioPath = await _ttsProvider.SynthesizeAsync(
                         scriptLines,
                         context.VoiceSpec,
-                        ctRetry);
+                        ctRetry).ConfigureAwait(false);
 
                     progress?.Report(ProgressBuilder.CreateTtsProgress(70, "Validating audio quality", correlationId: context.CorrelationId));
 
@@ -382,7 +382,7 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
                 "Voice Generation",
                 ct,
                 maxRetries: configuration.MaxRetryAttempts,
-                providerName: "TTS");
+                providerName: "TTS").ConfigureAwait(false);
 
             context.NarrationPath = narrationPath;
             context.SetStageOutput(stageName, narrationPath);
@@ -398,7 +398,7 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
             // Create checkpoint
             if (configuration.EnableCheckpoints && _checkpointManager != null)
             {
-                await SaveCheckpointAsync(context, stageName, ct);
+                await SaveCheckpointAsync(context, stageName, ct).ConfigureAwait(false);
             }
         }
         catch (Exception ex)
@@ -444,7 +444,7 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
             // Process scenes in parallel with concurrency limit
             var tasks = context.ParsedScenes.Select(async (scene, index) =>
             {
-                await _concurrencySemaphore.WaitAsync(ct);
+                await _concurrencySemaphore.WaitAsync(ct).ConfigureAwait(false);
                 try
                 {
                     progress?.Report(ProgressBuilder.CreateImageProgress(
@@ -457,7 +457,7 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
                     var assets = await _retryWrapper.ExecuteWithRetryAsync(
                         async (ctRetry) =>
                         {
-                            var generatedAssets = await _imageProvider.FetchOrGenerateAsync(scene, visualSpec, ctRetry);
+                            var generatedAssets = await _imageProvider.FetchOrGenerateAsync(scene, visualSpec, ctRetry).ConfigureAwait(false);
 
                             // Validate images (lenient - don't fail pipeline if no assets)
                             var validation = _imageValidator.ValidateImageAssets(generatedAssets, expectedMinCount: 0);
@@ -482,12 +482,12 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
                         $"Image Generation (Scene {index})",
                         ct,
                         maxRetries: configuration.MaxRetryAttempts,
-                        providerName: "ImageProvider");
+                        providerName: "ImageProvider").ConfigureAwait(false);
 
                     // Stream to channel
                     await context.AssetChannel.Writer.WriteAsync(
                         new AssetBatch { SceneIndex = index, Assets = assets },
-                        ct);
+                        ct).ConfigureAwait(false);
 
                     return (index, assets);
                 }
@@ -497,7 +497,7 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
                 }
             });
 
-            var results = await Task.WhenAll(tasks);
+            var results = await Task.WhenAll(tasks).ConfigureAwait(false);
 
             // Collect results
             foreach (var (index, assets) in results)
@@ -518,7 +518,7 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
             // Create checkpoint
             if (configuration.EnableCheckpoints && _checkpointManager != null)
             {
-                await SaveCheckpointAsync(context, stageName, ct);
+                await SaveCheckpointAsync(context, stageName, ct).ConfigureAwait(false);
             }
         }
         catch (Exception ex)
@@ -569,12 +569,12 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
             var outputPath = await _retryWrapper.ExecuteWithRetryAsync(
                 async (ctRetry) =>
                 {
-                    return await _videoComposer.RenderAsync(timeline, context.RenderSpec, renderProgress, ctRetry);
+                    return await _videoComposer.RenderAsync(timeline, context.RenderSpec, renderProgress, ctRetry).ConfigureAwait(false);
                 },
                 "Video Rendering",
                 ct,
                 maxRetries: 1, // Rendering failures are typically not recoverable
-                providerName: "VideoComposer");
+                providerName: "VideoComposer").ConfigureAwait(false);
 
             context.FinalVideoPath = outputPath;
             context.SetStageOutput(stageName, outputPath);
@@ -715,7 +715,7 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
                     context.PlanSpec,
                     context.VoiceSpec,
                     context.RenderSpec,
-                    ct);
+                    ct).ConfigureAwait(false);
             }
 
             var completedScenes = context.ParsedScenes?.Count ?? 0;
@@ -727,7 +727,7 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
                 completedScenes,
                 totalScenes,
                 outputFilePath: context.FinalVideoPath,
-                ct: ct);
+                ct: ct).ConfigureAwait(false);
 
             context.LastCheckpointStage = stageName;
 

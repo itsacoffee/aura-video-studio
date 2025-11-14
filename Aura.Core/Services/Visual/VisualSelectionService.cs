@@ -103,7 +103,7 @@ public class VisualSelectionService
         string? userId = null,
         CancellationToken ct = default)
     {
-        var existing = await GetSelectionAsync(jobId, sceneIndex, ct);
+        var existing = await GetSelectionAsync(jobId, sceneIndex, ct).ConfigureAwait(false);
 
         var selection = new SceneVisualSelection
         {
@@ -118,7 +118,7 @@ public class VisualSelectionService
             Metadata = existing?.Metadata ?? new SelectionMetadata()
         };
 
-        return await SaveSelectionAsync(selection, ct);
+        return await SaveSelectionAsync(selection, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -131,7 +131,7 @@ public class VisualSelectionService
         string? userId = null,
         CancellationToken ct = default)
     {
-        var existing = await GetSelectionAsync(jobId, sceneIndex, ct);
+        var existing = await GetSelectionAsync(jobId, sceneIndex, ct).ConfigureAwait(false);
 
         if (existing == null)
         {
@@ -150,7 +150,7 @@ public class VisualSelectionService
             "Rejected selection for job {JobId}, scene {SceneIndex}, reason: {Reason}",
             jobId, sceneIndex, rejectionReason);
 
-        return await SaveSelectionAsync(selection, ct);
+        return await SaveSelectionAsync(selection, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -163,7 +163,7 @@ public class VisualSelectionService
         string? userId = null,
         CancellationToken ct = default)
     {
-        var existing = await GetSelectionAsync(jobId, sceneIndex, ct);
+        var existing = await GetSelectionAsync(jobId, sceneIndex, ct).ConfigureAwait(false);
 
         if (existing == null)
         {
@@ -189,7 +189,7 @@ public class VisualSelectionService
             "Replaced selection for job {JobId}, scene {SceneIndex}, new score: {Score:F1}",
             jobId, sceneIndex, newCandidate.OverallScore);
 
-        return await SaveSelectionAsync(selection, ct);
+        return await SaveSelectionAsync(selection, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -201,7 +201,7 @@ public class VisualSelectionService
         string? userId = null,
         CancellationToken ct = default)
     {
-        var existing = await GetSelectionAsync(jobId, sceneIndex, ct);
+        var existing = await GetSelectionAsync(jobId, sceneIndex, ct).ConfigureAwait(false);
 
         if (existing == null)
         {
@@ -221,7 +221,7 @@ public class VisualSelectionService
             "Removed selection for job {JobId}, scene {SceneIndex}",
             jobId, sceneIndex);
 
-        return await SaveSelectionAsync(selection, ct);
+        return await SaveSelectionAsync(selection, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -235,7 +235,7 @@ public class VisualSelectionService
         string? userId = null,
         CancellationToken ct = default)
     {
-        var existing = await GetSelectionAsync(jobId, sceneIndex, ct);
+        var existing = await GetSelectionAsync(jobId, sceneIndex, ct).ConfigureAwait(false);
 
         if (existing == null)
         {
@@ -252,7 +252,7 @@ public class VisualSelectionService
             "Regenerating candidates for job {JobId}, scene {SceneIndex}",
             jobId, sceneIndex);
 
-        var result = await _imageSelectionService.SelectImageForSceneAsync(promptToUse, config, ct);
+        var result = await _imageSelectionService.SelectImageForSceneAsync(promptToUse, config, ct).ConfigureAwait(false);
 
         var selection = existing with
         {
@@ -271,7 +271,7 @@ public class VisualSelectionService
             }
         };
 
-        return await SaveSelectionAsync(selection, ct);
+        return await SaveSelectionAsync(selection, ct).ConfigureAwait(false);
     }
 
     /// <summary>

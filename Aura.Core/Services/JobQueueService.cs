@@ -30,7 +30,7 @@ public class JobQueueService
     /// </summary>
     public async Task<bool> EnqueueJobAsync(string jobId, int priority = 5, CancellationToken ct = default)
     {
-        await _queueLock.WaitAsync(ct);
+        await _queueLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             var queuedJob = new QueuedJob
@@ -58,7 +58,7 @@ public class JobQueueService
     /// </summary>
     public async Task<QueuedJob?> DequeueJobAsync(CancellationToken ct = default)
     {
-        await _queueLock.WaitAsync(ct);
+        await _queueLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             if (_jobQueue.TryDequeue(out var queuedJob, out _))
@@ -147,7 +147,7 @@ public class JobQueueService
         _logger.LogInformation("Retrying job {JobId}, attempt {RetryCount}", 
             jobId, retryState.RetryCount);
 
-        return await EnqueueJobAsync(jobId, priority, ct);
+        return await EnqueueJobAsync(jobId, priority, ct).ConfigureAwait(false);
     }
 
     /// <summary>

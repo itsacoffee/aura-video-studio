@@ -96,7 +96,7 @@ public class QuickService
                 correlationId: correlationId,
                 isQuickDemo: true,
                 ct
-            );
+            ).ConfigureAwait(false);
 
             _logger.LogInformation("[{CorrelationId}] Quick Demo job created successfully: {JobId}", correlationId, job.Id);
 

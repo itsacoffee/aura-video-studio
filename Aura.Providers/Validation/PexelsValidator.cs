@@ -76,7 +76,7 @@ public class PexelsValidator : IProviderValidator
             HttpResponseMessage? response = null;
             try
             {
-                response = await _httpClient.SendAsync(request, cts.Token);
+                response = await _httpClient.SendAsync(request, cts.Token).ConfigureAwait(false);
             }
             catch (TaskCanceledException) when (cts.Token.IsCancellationRequested && !ct.IsCancellationRequested)
             {
@@ -96,7 +96,7 @@ public class PexelsValidator : IProviderValidator
 
             if (response.IsSuccessStatusCode)
             {
-                var responseBody = await response.Content.ReadAsStringAsync(ct);
+                var responseBody = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 _logger.LogInformation("[{CorrelationId}] Pexels validation successful (response length: {Length} bytes, elapsed: {ElapsedMs}ms)", 
                     correlationId, responseBody.Length, sw.ElapsedMilliseconds);
                 
@@ -115,7 +115,7 @@ public class PexelsValidator : IProviderValidator
             }
             else if ((int)response.StatusCode == 401)
             {
-                var errorBody = await response.Content.ReadAsStringAsync(ct);
+                var errorBody = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 _logger.LogWarning("[{CorrelationId}] Pexels validation failed: HTTP 401 Unauthorized - API key is invalid (error: {Error})", 
                     correlationId, TruncateErrorBody(errorBody));
                 return new ProviderValidationResult
@@ -128,7 +128,7 @@ public class PexelsValidator : IProviderValidator
             }
             else if ((int)response.StatusCode == 403)
             {
-                var errorBody = await response.Content.ReadAsStringAsync(ct);
+                var errorBody = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 _logger.LogWarning("[{CorrelationId}] Pexels validation failed: HTTP 403 Forbidden - API key valid but account has no access (error: {Error})", 
                     correlationId, TruncateErrorBody(errorBody));
                 return new ProviderValidationResult
@@ -141,7 +141,7 @@ public class PexelsValidator : IProviderValidator
             }
             else if ((int)response.StatusCode == 429)
             {
-                var errorBody = await response.Content.ReadAsStringAsync(ct);
+                var errorBody = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 _logger.LogWarning("[{CorrelationId}] Pexels validation failed: HTTP 429 Too Many Requests - rate limit exceeded (error: {Error})", 
                     correlationId, TruncateErrorBody(errorBody));
                 return new ProviderValidationResult
@@ -154,7 +154,7 @@ public class PexelsValidator : IProviderValidator
             }
             else
             {
-                var errorBody = await response.Content.ReadAsStringAsync(ct);
+                var errorBody = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 _logger.LogWarning("[{CorrelationId}] Pexels validation failed: HTTP {StatusCode} (error: {Error})", 
                     correlationId, response.StatusCode, TruncateErrorBody(errorBody));
                 return new ProviderValidationResult

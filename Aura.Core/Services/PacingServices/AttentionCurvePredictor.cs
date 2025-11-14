@@ -39,7 +39,7 @@ public class AttentionCurvePredictor
         try
         {
             // Ensure model is loaded
-            if (!await EnsureModelLoadedAsync(ct))
+            if (!await EnsureModelLoadedAsync(ct).ConfigureAwait(false))
             {
                 _logger.LogWarning("Failed to load attention model, using heuristic prediction");
                 return GenerateHeuristicAttentionCurve(scenes, timingSuggestions);
@@ -47,7 +47,7 @@ public class AttentionCurvePredictor
 
             // Use ML model to predict attention curve
             var attentionCurve = await _attentionModel.PredictAttentionCurveAsync(
-                scenes, timingSuggestions, ct);
+                scenes, timingSuggestions, ct).ConfigureAwait(false);
 
             _logger.LogInformation("Attention curve generated. Avg engagement: {AvgEngagement:F1}%, " +
                 "Retention: {Retention:F1}%, Peaks: {PeakCount}, Valleys: {ValleyCount}",
@@ -162,7 +162,7 @@ public class AttentionCurvePredictor
     {
         try
         {
-            await _attentionModel.LoadModelAsync(ct);
+            await _attentionModel.LoadModelAsync(ct).ConfigureAwait(false);
             return true;
         }
         catch (Exception ex)

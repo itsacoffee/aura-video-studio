@@ -106,7 +106,7 @@ public class FFmpegService : IFFmpegService
         Action<FFmpegProgress>? progressCallback = null,
         CancellationToken cancellationToken = default)
     {
-        var ffmpegPath = await GetFfmpegPathAsync(cancellationToken);
+        var ffmpegPath = await GetFfmpegPathAsync(cancellationToken).ConfigureAwait(false);
         
         _logger.LogInformation("Executing FFmpeg: {Arguments}", arguments);
         
@@ -242,7 +242,7 @@ public class FFmpegService : IFFmpegService
 
     public async Task<string> GetVersionAsync(CancellationToken cancellationToken = default)
     {
-        var result = await ExecuteAsync("-version", cancellationToken: cancellationToken);
+        var result = await ExecuteAsync("-version", cancellationToken: cancellationToken).ConfigureAwait(false);
         
         if (!result.Success)
         {
@@ -261,7 +261,7 @@ public class FFmpegService : IFFmpegService
     {
         try
         {
-            var ffmpegPath = await GetFfmpegPathAsync(cancellationToken);
+            var ffmpegPath = await GetFfmpegPathAsync(cancellationToken).ConfigureAwait(false);
             return !string.IsNullOrEmpty(ffmpegPath) && File.Exists(ffmpegPath);
         }
         catch
@@ -278,7 +278,7 @@ public class FFmpegService : IFFmpegService
         }
 
         var arguments = $"-i \"{filePath}\" -hide_banner";
-        var result = await ExecuteAsync(arguments, cancellationToken: cancellationToken);
+        var result = await ExecuteAsync(arguments, cancellationToken: cancellationToken).ConfigureAwait(false);
         
         // FFmpeg outputs file info to stderr
         var info = ParseVideoInfo(result.StandardError, filePath);
@@ -292,7 +292,7 @@ public class FFmpegService : IFFmpegService
             return _cachedFfmpegPath;
         }
 
-        _cachedFfmpegPath = await _ffmpegLocator.GetEffectiveFfmpegPathAsync(ct: cancellationToken);
+        _cachedFfmpegPath = await _ffmpegLocator.GetEffectiveFfmpegPathAsync(ct: cancellationToken).ConfigureAwait(false);
         return _cachedFfmpegPath;
     }
 

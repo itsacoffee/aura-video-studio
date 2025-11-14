@@ -72,7 +72,7 @@ public class LocalEnginesRegistry
     public async Task RegisterEngineAsync(EngineConfig config)
     {
         _engines[config.Id] = config;
-        await SaveConfigAsync();
+        await SaveConfigAsync().ConfigureAwait(false);
         _logger.LogInformation("Registered engine {Id} ({Name})", config.Id, config.Name);
     }
 
@@ -82,10 +82,10 @@ public class LocalEnginesRegistry
         {
             if (_processManager.GetStatus(engineId).IsRunning)
             {
-                await _processManager.StopAsync(engineId);
+                await _processManager.StopAsync(engineId).ConfigureAwait(false);
             }
 
-            await SaveConfigAsync();
+            await SaveConfigAsync().ConfigureAwait(false);
             _logger.LogInformation("Unregistered engine {Id}", engineId);
         }
     }
@@ -114,7 +114,7 @@ public class LocalEnginesRegistry
 
         if (processStatus.IsRunning && !string.IsNullOrEmpty(config.HealthCheckUrl))
         {
-            isHealthy = await _processManager.CheckHealthAsync(engineId, config.HealthCheckUrl, CancellationToken.None);
+            isHealthy = await _processManager.CheckHealthAsync(engineId, config.HealthCheckUrl, CancellationToken.None).ConfigureAwait(false);
         }
 
         return new EngineStatus(
@@ -159,17 +159,17 @@ public class LocalEnginesRegistry
             config.EnvironmentVariables
         );
 
-        return await _processManager.StartAsync(processConfig, ct);
+        return await _processManager.StartAsync(processConfig, ct).ConfigureAwait(false);
     }
 
     public async Task<bool> StopEngineAsync(string engineId)
     {
-        return await _processManager.StopAsync(engineId);
+        return await _processManager.StopAsync(engineId).ConfigureAwait(false);
     }
 
     public async Task<string> GetEngineLogsAsync(string engineId, int tailLines = 500)
     {
-        return await _processManager.ReadLogsAsync(engineId, tailLines);
+        return await _processManager.ReadLogsAsync(engineId, tailLines).ConfigureAwait(false);
     }
 
     public async Task StartAutoLaunchEnginesAsync(CancellationToken ct = default)
@@ -188,7 +188,7 @@ public class LocalEnginesRegistry
         {
             try
             {
-                await StartEngineAsync(engine.Id, ct);
+                await StartEngineAsync(engine.Id, ct).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -207,7 +207,7 @@ public class LocalEnginesRegistry
         {
             try
             {
-                await StopEngineAsync(engineId);
+                await StopEngineAsync(engineId).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -264,7 +264,7 @@ public class LocalEnginesRegistry
             Notes: notes
         );
 
-        await RegisterEngineAsync(config);
+        await RegisterEngineAsync(config).ConfigureAwait(false);
         _logger.LogInformation("Attached external engine {EngineId} as instance {InstanceId}", engineId, instanceId);
         
         return (true, null);
@@ -307,7 +307,7 @@ public class LocalEnginesRegistry
             Notes = notes ?? config.Notes
         };
 
-        await RegisterEngineAsync(updatedConfig);
+        await RegisterEngineAsync(updatedConfig).ConfigureAwait(false);
         _logger.LogInformation("Reconfigured engine instance {InstanceId}", instanceId);
         
         return (true, null);
@@ -323,7 +323,7 @@ public class LocalEnginesRegistry
 
         try
         {
-            var json = await File.ReadAllTextAsync(_configPath);
+            var json = await File.ReadAllTextAsync(_configPath).ConfigureAwait(false);
             var configs = JsonSerializer.Deserialize<List<EngineConfig>>(json, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
@@ -361,7 +361,7 @@ public class LocalEnginesRegistry
                 WriteIndented = true
             });
 
-            await File.WriteAllTextAsync(_configPath, json);
+            await File.WriteAllTextAsync(_configPath, json).ConfigureAwait(false);
             _logger.LogDebug("Saved engine config to {Path}", _configPath);
         }
         catch (Exception ex)

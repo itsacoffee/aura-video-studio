@@ -68,7 +68,7 @@ public class PipelineHealthCheck
         var missing = new List<string>();
         var warnings = new List<string>();
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         availability["LlmProvider"] = _llmProvider != null;
         if (_llmProvider == null)

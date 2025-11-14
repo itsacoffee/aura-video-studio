@@ -40,15 +40,15 @@ public class ImprovementEngine
         _logger.LogInformation("Generating improvement roadmap for {ContentType}", contentType);
 
         // Gather analyses from all sources
-        var retention = await _retentionPredictor.PredictRetentionAsync(content, contentType, videoDuration, null, ct);
-        var structure = await _contentAnalyzer.AnalyzeContentStructureAsync(content, contentType, ct);
-        var comparative = await _contentAnalyzer.CompareWithSuccessfulPatternsAsync(content, contentType, ct);
+        var retention = await _retentionPredictor.PredictRetentionAsync(content, contentType, videoDuration, null, ct).ConfigureAwait(false);
+        var structure = await _contentAnalyzer.AnalyzeContentStructureAsync(content, contentType, ct).ConfigureAwait(false);
+        var comparative = await _contentAnalyzer.CompareWithSuccessfulPatternsAsync(content, contentType, ct).ConfigureAwait(false);
 
         // Platform-specific optimizations
         var platformOptimizations = new List<PlatformOptimization>();
         foreach (var platform in targetPlatforms)
         {
-            var optimization = await _platformOptimizer.GetPlatformOptimizationAsync(platform, content, videoDuration, ct);
+            var optimization = await _platformOptimizer.GetPlatformOptimizationAsync(platform, content, videoDuration, ct).ConfigureAwait(false);
             platformOptimizations.Add(optimization);
         }
 

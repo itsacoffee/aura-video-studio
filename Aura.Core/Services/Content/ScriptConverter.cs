@@ -173,7 +173,7 @@ public class ScriptConverter
             Style: prompt
         );
 
-        var response = await GenerateWithLlmAsync(brief, planSpec, ct);
+        var response = await GenerateWithLlmAsync(brief, planSpec, ct).ConfigureAwait(false);
         
         return ParseScriptToScenes(response, config);
     }
@@ -510,10 +510,10 @@ public class ScriptConverter
     {
         if (_stageAdapter != null)
         {
-            var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct);
+            var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct).ConfigureAwait(false);
             if (result.IsSuccess && result.Data != null) return result.Data;
             _logger.LogWarning("Orchestrator generation failed, falling back to direct provider: {Error}", result.ErrorMessage);
         }
-        return await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
+        return await _llmProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
     }
 }

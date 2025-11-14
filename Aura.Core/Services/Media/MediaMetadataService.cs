@@ -50,9 +50,9 @@ public class MediaMetadataService : IMediaMetadataService
         {
             return mediaType switch
             {
-                MediaType.Image => await ExtractImageMetadataAsync(filePath, ct),
-                MediaType.Video => await ExtractVideoMetadataAsync(filePath, ct),
-                MediaType.Audio => await ExtractAudioMetadataAsync(filePath, ct),
+                MediaType.Image => await ExtractImageMetadataAsync(filePath, ct).ConfigureAwait(false),
+                MediaType.Video => await ExtractVideoMetadataAsync(filePath, ct).ConfigureAwait(false),
+                MediaType.Audio => await ExtractAudioMetadataAsync(filePath, ct).ConfigureAwait(false),
                 _ => null
             };
         }
@@ -78,10 +78,10 @@ public class MediaMetadataService : IMediaMetadataService
             {
                 using (var fileStream = File.Create(tempPath))
                 {
-                    await stream.CopyToAsync(fileStream, ct);
+                    await stream.CopyToAsync(fileStream, ct).ConfigureAwait(false);
                 }
 
-                return await ExtractMetadataAsync(tempPath, mediaType, ct);
+                return await ExtractMetadataAsync(tempPath, mediaType, ct).ConfigureAwait(false);
             }
             finally
             {
@@ -102,7 +102,7 @@ public class MediaMetadataService : IMediaMetadataService
     {
         try
         {
-            using var image = await Image.LoadAsync(filePath, ct);
+            using var image = await Image.LoadAsync(filePath, ct).ConfigureAwait(false);
             
             return new MediaMetadata
             {
@@ -140,12 +140,12 @@ public class MediaMetadataService : IMediaMetadataService
                 return null;
             }
 
-            var output = await process.StandardOutput.ReadToEndAsync();
-            await process.WaitForExitAsync(ct);
+            var output = await process.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
+            await process.WaitForExitAsync(ct).ConfigureAwait(false);
 
             if (process.ExitCode != 0)
             {
-                var error = await process.StandardError.ReadToEndAsync();
+                var error = await process.StandardError.ReadToEndAsync().ConfigureAwait(false);
                 _logger.LogWarning("ffprobe failed: {Error}", error);
                 return null;
             }
@@ -220,8 +220,8 @@ public class MediaMetadataService : IMediaMetadataService
                 return null;
             }
 
-            var output = await process.StandardOutput.ReadToEndAsync();
-            await process.WaitForExitAsync(ct);
+            var output = await process.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
+            await process.WaitForExitAsync(ct).ConfigureAwait(false);
 
             if (process.ExitCode != 0)
             {

@@ -86,7 +86,7 @@ public class PlayHTTtsProvider : ITtsProvider
 
         try
         {
-            var response = await _httpClient.GetAsync($"{BaseUrl}/voices");
+            var response = await _httpClient.GetAsync($"{BaseUrl}/voices").ConfigureAwait(false);
             
             if (!response.IsSuccessStatusCode)
             {
@@ -96,7 +96,7 @@ public class PlayHTTtsProvider : ITtsProvider
             
             response.EnsureSuccessStatusCode();
             
-            var voices = await response.Content.ReadFromJsonAsync<JsonElement[]>();
+            var voices = await response.Content.ReadFromJsonAsync<JsonElement[]>().ConfigureAwait(false);
             
             var voiceNames = new List<string>();
             if (voices != null)
@@ -135,14 +135,14 @@ public class PlayHTTtsProvider : ITtsProvider
         _logger.LogInformation("Synthesizing speech with PlayHT using voice {Voice}", spec.VoiceName);
 
         // Check if voice exists before attempting synthesis
-        var availableVoices = await GetAvailableVoicesAsync();
+        var availableVoices = await GetAvailableVoicesAsync().ConfigureAwait(false);
         if (availableVoices.Count == 0)
         {
             throw new InvalidOperationException("Unable to fetch available voices from PlayHT. Please check your credentials and internet connection.");
         }
 
         // Get the voice ID with validation
-        string voiceId = await GetVoiceIdAsync(spec.VoiceName, ct);
+        string voiceId = await GetVoiceIdAsync(spec.VoiceName, ct).ConfigureAwait(false);
         
         // Process each line
         var lineOutputs = new List<string>();
@@ -175,27 +175,27 @@ public class PlayHTTtsProvider : ITtsProvider
             var response = await _httpClient.PostAsync(
                 $"{BaseUrl}/tts",
                 content,
-                ct);
+                ct).ConfigureAwait(false);
 
             response.EnsureSuccessStatusCode();
 
             // PlayHT returns a job ID, we need to poll for the result
-            var jobResponse = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
+            var jobResponse = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct).ConfigureAwait(false);
             var transcriptionId = jobResponse.GetProperty("id").GetString();
 
             // Poll for completion
-            string audioUrl = await PollForCompletionAsync(transcriptionId!, ct);
+            string audioUrl = await PollForCompletionAsync(transcriptionId!, ct).ConfigureAwait(false);
 
             // Download the audio
             string tempFile = Path.Combine(_outputDirectory, $"line_{line.SceneIndex}_{lineIndex}.mp3");
             lineOutputs.Add(tempFile);
 
-            var audioResponse = await _httpClient.GetAsync(audioUrl, ct);
+            var audioResponse = await _httpClient.GetAsync(audioUrl, ct).ConfigureAwait(false);
             audioResponse.EnsureSuccessStatusCode();
 
             using (var fileStream = new FileStream(tempFile, FileMode.Create))
             {
-                await audioResponse.Content.CopyToAsync(fileStream, ct);
+                await audioResponse.Content.CopyToAsync(fileStream, ct).ConfigureAwait(false);
             }
 
             lineIndex++;
@@ -248,7 +248,7 @@ public class PlayHTTtsProvider : ITtsProvider
             _logger.LogInformation("Validating PlayHT API key with smoke test");
             
             // Try to fetch voices as a quick validation
-            var voices = await GetAvailableVoicesAsync();
+            var voices = await GetAvailableVoicesAsync().ConfigureAwait(false);
             
             if (voices.Count > 0)
             {
@@ -267,7 +267,7 @@ public class PlayHTTtsProvider : ITtsProvider
                     Pause: PauseStyle.Natural
                 );
 
-                var result = await SynthesizeAsync(new[] { testLine }, voiceSpec, ct);
+                var result = await SynthesizeAsync(new[] { testLine }, voiceSpec, ct).ConfigureAwait(false);
                 
                 // Clean up test file
                 if (File.Exists(result))
@@ -297,10 +297,10 @@ public class PlayHTTtsProvider : ITtsProvider
         {
             ct.ThrowIfCancellationRequested();
 
-            var response = await _httpClient.GetAsync($"{BaseUrl}/tts/{transcriptionId}", ct);
+            var response = await _httpClient.GetAsync($"{BaseUrl}/tts/{transcriptionId}", ct).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var status = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
+            var status = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct).ConfigureAwait(false);
             var state = status.GetProperty("status").GetString();
 
             if (state == "complete")
@@ -313,7 +313,7 @@ public class PlayHTTtsProvider : ITtsProvider
                 throw new Exception("PlayHT synthesis failed");
             }
 
-            await Task.Delay(delayMs, ct);
+            await Task.Delay(delayMs, ct).ConfigureAwait(false);
         }
 
         throw new TimeoutException("PlayHT synthesis timed out");
@@ -328,7 +328,7 @@ public class PlayHTTtsProvider : ITtsProvider
 
         try
         {
-            var response = await _httpClient.GetAsync($"{BaseUrl}/voices", ct);
+            var response = await _httpClient.GetAsync($"{BaseUrl}/voices", ct).ConfigureAwait(false);
             
             if (!response.IsSuccessStatusCode)
             {
@@ -338,7 +338,7 @@ public class PlayHTTtsProvider : ITtsProvider
             
             response.EnsureSuccessStatusCode();
             
-            var voices = await response.Content.ReadFromJsonAsync<JsonElement[]>(cancellationToken: ct);
+            var voices = await response.Content.ReadFromJsonAsync<JsonElement[]>(cancellationToken: ct).ConfigureAwait(false);
             
             if (voices != null && voices.Length > 0)
             {

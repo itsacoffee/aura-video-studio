@@ -74,7 +74,7 @@ public class CulturalLocalizationEngine
             var llmAdaptations = await AnalyzeAndAdaptCulturalExpressionsAsync(
                 line,
                 culturalContext,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
             adaptations.AddRange(llmAdaptations);
 
             // Update the line with adaptations
@@ -118,7 +118,7 @@ public class CulturalLocalizationEngine
 
         try
         {
-            var response = await _llmProvider.DraftScriptAsync(brief, spec, cancellationToken);
+            var response = await _llmProvider.DraftScriptAsync(brief, spec, cancellationToken).ConfigureAwait(false);
             return ParseCulturalAnalysis(response, targetLanguage.Code, targetRegion);
         }
         catch (Exception ex)
@@ -191,7 +191,7 @@ public class CulturalLocalizationEngine
 
         try
         {
-            var response = await _llmProvider.DraftScriptAsync(brief, spec, cancellationToken);
+            var response = await _llmProvider.DraftScriptAsync(brief, spec, cancellationToken).ConfigureAwait(false);
             var parsedAdaptations = ParseIdiomAdaptations(response, line.SceneIndex);
             adaptations.AddRange(parsedAdaptations);
         }

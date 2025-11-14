@@ -34,7 +34,7 @@ public class ConfigurationRepository
         {
             return await _context.Configurations
                 .Where(c => c.Key == key && c.IsActive)
-                .FirstOrDefaultAsync(ct);
+                .FirstOrDefaultAsync(ct).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -55,7 +55,7 @@ public class ConfigurationRepository
             return await _context.Configurations
                 .Where(c => c.Category == category && c.IsActive)
                 .OrderBy(c => c.Key)
-                .ToListAsync(ct);
+                .ToListAsync(ct).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -80,7 +80,7 @@ public class ConfigurationRepository
                 query = query.Where(c => c.IsActive);
             }
 
-            return await query.OrderBy(c => c.Category).ThenBy(c => c.Key).ToListAsync(ct);
+            return await query.OrderBy(c => c.Category).ThenBy(c => c.Key).ToListAsync(ct).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -106,7 +106,7 @@ public class ConfigurationRepository
         {
             var existing = await _context.Configurations
                 .Where(c => c.Key == key)
-                .FirstOrDefaultAsync(ct);
+                .FirstOrDefaultAsync(ct).ConfigureAwait(false);
 
             if (existing != null)
             {
@@ -146,7 +146,7 @@ public class ConfigurationRepository
                     key, category);
             }
 
-            await _context.SaveChangesAsync(ct);
+            await _context.SaveChangesAsync(ct).ConfigureAwait(false);
             return existing;
         }
         catch (Exception ex)
@@ -168,7 +168,7 @@ public class ConfigurationRepository
 
         try
         {
-            using var transaction = await _context.Database.BeginTransactionAsync(ct);
+            using var transaction = await _context.Database.BeginTransactionAsync(ct).ConfigureAwait(false);
 
             foreach (var kvp in configurations)
             {
@@ -180,12 +180,12 @@ public class ConfigurationRepository
                     null,
                     false,
                     modifiedBy,
-                    ct);
+                    ct).ConfigureAwait(false);
 
                 results.Add(result);
             }
 
-            await transaction.CommitAsync(ct);
+            await transaction.CommitAsync(ct).ConfigureAwait(false);
 
             _logger.LogInformation(
                 "Bulk updated {Count} configurations",
@@ -209,7 +209,7 @@ public class ConfigurationRepository
         {
             var config = await _context.Configurations
                 .Where(c => c.Key == key)
-                .FirstOrDefaultAsync(ct);
+                .FirstOrDefaultAsync(ct).ConfigureAwait(false);
 
             if (config == null)
             {
@@ -219,7 +219,7 @@ public class ConfigurationRepository
             config.IsActive = false;
             config.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync(ct);
+            await _context.SaveChangesAsync(ct).ConfigureAwait(false);
 
             _logger.LogInformation("Deleted configuration {Key}", key);
             return true;
@@ -243,7 +243,7 @@ public class ConfigurationRepository
             return await _context.Configurations
                 .Where(c => c.Key == key)
                 .OrderByDescending(c => c.Version)
-                .ToListAsync(ct);
+                .ToListAsync(ct).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

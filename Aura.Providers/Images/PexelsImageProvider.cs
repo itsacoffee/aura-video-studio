@@ -88,7 +88,7 @@ public class PexelsImageProvider : IStockProvider
                 var request = new HttpRequestMessage(HttpMethod.Get, url);
                 request.Headers.Authorization = new AuthenticationHeaderValue(_apiKey!);
 
-                var response = await _httpClient.SendAsync(request, ct);
+                var response = await _httpClient.SendAsync(request, ct).ConfigureAwait(false);
 
                 // Update rate limit info from headers
                 UpdateRateLimitInfo(response.Headers);
@@ -99,7 +99,7 @@ public class PexelsImageProvider : IStockProvider
                     
                     if (attempt < maxRetries)
                     {
-                        await Task.Delay(retryDelay * attempt, ct);
+                        await Task.Delay(retryDelay * attempt, ct).ConfigureAwait(false);
                         continue;
                     }
                     throw new InvalidOperationException("Pexels rate limit exceeded. Please try again later.");
@@ -107,7 +107,7 @@ public class PexelsImageProvider : IStockProvider
 
                 response.EnsureSuccessStatusCode();
 
-                var json = await response.Content.ReadAsStringAsync(ct);
+                var json = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 var doc = JsonDocument.Parse(json);
 
                 var assets = new List<Asset>();
@@ -151,7 +151,7 @@ public class PexelsImageProvider : IStockProvider
             catch (HttpRequestException ex) when (attempt < maxRetries)
             {
                 _logger.LogWarning(ex, "HTTP error searching Pexels (attempt {Attempt}/{MaxRetries})", attempt, maxRetries);
-                await Task.Delay(retryDelay * attempt, ct);
+                await Task.Delay(retryDelay * attempt, ct).ConfigureAwait(false);
             }
             catch (TaskCanceledException) when (!ct.IsCancellationRequested)
             {
@@ -181,14 +181,14 @@ public class PexelsImageProvider : IStockProvider
         {
             try
             {
-                var response = await _httpClient.GetAsync(imageUrl, ct);
+                var response = await _httpClient.GetAsync(imageUrl, ct).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
-                return await response.Content.ReadAsByteArrayAsync(ct);
+                return await response.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
             }
             catch (HttpRequestException ex) when (attempt < maxRetries)
             {
                 _logger.LogWarning(ex, "Failed to download image (attempt {Attempt}/{MaxRetries})", attempt, maxRetries);
-                await Task.Delay(retryDelay * attempt, ct);
+                await Task.Delay(retryDelay * attempt, ct).ConfigureAwait(false);
             }
         }
 

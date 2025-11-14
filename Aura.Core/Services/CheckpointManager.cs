@@ -49,7 +49,7 @@ public class CheckpointManager
             RenderSpecJson = JsonSerializer.Serialize(renderSpec)
         };
 
-        await _repository.CreateAsync(project, ct);
+        await _repository.CreateAsync(project, ct).ConfigureAwait(false);
         _logger.LogInformation("Created project state {ProjectId} for job {JobId}", project.Id, jobId);
         
         return project.Id;
@@ -80,7 +80,7 @@ public class CheckpointManager
             totalScenes,
             dataJson,
             outputFilePath,
-            ct);
+            ct).ConfigureAwait(false);
 
         var elapsed = DateTime.UtcNow - startTime;
         
@@ -103,7 +103,7 @@ public class CheckpointManager
         int progressPercent,
         CancellationToken ct = default)
     {
-        var project = await _repository.GetByIdAsync(projectId, ct);
+        var project = await _repository.GetByIdAsync(projectId, ct).ConfigureAwait(false);
         if (project == null)
         {
             _logger.LogWarning("Cannot update progress for non-existent project {ProjectId}", projectId);
@@ -114,7 +114,7 @@ public class CheckpointManager
         project.ProgressPercent = progressPercent;
         project.UpdatedAt = DateTime.UtcNow;
 
-        await _repository.UpdateAsync(project, ct);
+        await _repository.UpdateAsync(project, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -140,7 +140,7 @@ public class CheckpointManager
             IsCompleted = audioFilePath != null && imageFilePath != null
         };
 
-        await _repository.AddSceneAsync(scene, ct);
+        await _repository.AddSceneAsync(scene, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -165,7 +165,7 @@ public class CheckpointManager
             IsTemporary = isTemporary
         };
 
-        await _repository.AddAssetAsync(asset, ct);
+        await _repository.AddAssetAsync(asset, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -173,7 +173,7 @@ public class CheckpointManager
     /// </summary>
     public async Task CompleteProjectAsync(Guid projectId, CancellationToken ct = default)
     {
-        await _repository.UpdateStatusAsync(projectId, "Completed", null, ct);
+        await _repository.UpdateStatusAsync(projectId, "Completed", null, ct).ConfigureAwait(false);
         _logger.LogInformation("Project {ProjectId} marked as completed", projectId);
     }
 
@@ -182,7 +182,7 @@ public class CheckpointManager
     /// </summary>
     public async Task FailProjectAsync(Guid projectId, string errorMessage, CancellationToken ct = default)
     {
-        await _repository.UpdateStatusAsync(projectId, "Failed", errorMessage, ct);
+        await _repository.UpdateStatusAsync(projectId, "Failed", errorMessage, ct).ConfigureAwait(false);
         _logger.LogWarning("Project {ProjectId} marked as failed: {Error}", projectId, errorMessage);
     }
 
@@ -191,7 +191,7 @@ public class CheckpointManager
     /// </summary>
     public async Task CancelProjectAsync(Guid projectId, CancellationToken ct = default)
     {
-        await _repository.UpdateStatusAsync(projectId, "Cancelled", null, ct);
+        await _repository.UpdateStatusAsync(projectId, "Cancelled", null, ct).ConfigureAwait(false);
         _logger.LogInformation("Project {ProjectId} marked as cancelled", projectId);
     }
 
@@ -200,7 +200,7 @@ public class CheckpointManager
     /// </summary>
     public async Task<CheckpointInfo?> GetLatestCheckpointAsync(Guid projectId, CancellationToken ct = default)
     {
-        var checkpoint = await _repository.GetLatestCheckpointAsync(projectId, ct);
+        var checkpoint = await _repository.GetLatestCheckpointAsync(projectId, ct).ConfigureAwait(false);
         if (checkpoint == null)
         {
             return null;
@@ -235,13 +235,13 @@ public class CheckpointManager
     /// </summary>
     public async Task<ProjectRecoveryInfo?> GetProjectForRecoveryAsync(Guid projectId, CancellationToken ct = default)
     {
-        var project = await _repository.GetByIdAsync(projectId, ct);
+        var project = await _repository.GetByIdAsync(projectId, ct).ConfigureAwait(false);
         if (project == null)
         {
             return null;
         }
 
-        var latestCheckpoint = await GetLatestCheckpointAsync(projectId, ct);
+        var latestCheckpoint = await GetLatestCheckpointAsync(projectId, ct).ConfigureAwait(false);
 
         Brief? brief = null;
         PlanSpec? planSpec = null;
@@ -320,12 +320,12 @@ public class CheckpointManager
     /// </summary>
     public async Task<List<ProjectRecoveryInfo>> GetIncompleteProjectsAsync(CancellationToken ct = default)
     {
-        var projects = await _repository.GetIncompleteProjectsAsync(ct);
+        var projects = await _repository.GetIncompleteProjectsAsync(ct).ConfigureAwait(false);
         var recoveryInfos = new List<ProjectRecoveryInfo>();
 
         foreach (var project in projects)
         {
-            var info = await GetProjectForRecoveryAsync(project.Id, ct);
+            var info = await GetProjectForRecoveryAsync(project.Id, ct).ConfigureAwait(false);
             if (info != null)
             {
                 recoveryInfos.Add(info);

@@ -47,7 +47,7 @@ public class EmotionalBeatAnalyzer
 
             if (llmProvider != null)
             {
-                beat = await AnalyzeSceneEmotionalBeatAsync(scene, previousBeat, llmProvider, ct)
+                beat = await AnalyzeSceneEmotionalBeatAsync(scene, previousBeat, llmProvider, ct).ConfigureAwait(false)
                     ?? CreateFallbackEmotionalBeat(scene, previousBeat);
             }
             else
@@ -90,7 +90,7 @@ public class EmotionalBeatAnalyzer
                 scene.Script,
                 null,
                 "emotional analysis",
-                cts.Token);
+                cts.Token).ConfigureAwait(false);
 
             if (analysisResult == null)
             {

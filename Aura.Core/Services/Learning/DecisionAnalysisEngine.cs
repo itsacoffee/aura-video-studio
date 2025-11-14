@@ -31,7 +31,7 @@ public class DecisionAnalysisEngine
         string profileId,
         CancellationToken ct = default)
     {
-        await Task.CompletedTask; // For async signature
+        await Task.CompletedTask.ConfigureAwait(false); // For async signature
         
         var statsByType = new Dictionary<string, DecisionStatistics>();
         
@@ -83,7 +83,7 @@ public class DecisionAnalysisEngine
         string profileId,
         CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         
         var patterns = new List<DecisionPattern>();
         var now = DateTime.UtcNow;
@@ -139,7 +139,7 @@ public class DecisionAnalysisEngine
         string profileId,
         CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         
         var patterns = new List<DecisionPattern>();
         var now = DateTime.UtcNow;
@@ -204,7 +204,7 @@ public class DecisionAnalysisEngine
         List<DecisionRecord> decisions,
         CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         
         var velocityByType = new Dictionary<string, double>();
         
@@ -235,7 +235,7 @@ public class DecisionAnalysisEngine
         string profileId,
         CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         
         var insights = new List<LearningInsight>();
         

@@ -55,11 +55,11 @@ public abstract class UnifiedGenerationOrchestrator<TRequest, TResponse>
             "Starting orchestration {OperationId}: {Stage}",
             operationId, GetStageName());
 
-        var cacheKey = config.EnableCache ? await GetCacheKeyAsync(request, ct) : null;
+        var cacheKey = config.EnableCache ? await GetCacheKeyAsync(request, ct).ConfigureAwait(false) : null;
         
         if (cacheKey != null && _cache != null)
         {
-            var cachedEntry = await _cache.GetAsync(cacheKey, ct);
+            var cachedEntry = await _cache.GetAsync(cacheKey, ct).ConfigureAwait(false);
             if (cachedEntry != null)
             {
                 Logger.LogInformation("Cache hit for operation {OperationId}", operationId);
@@ -75,7 +75,7 @@ public abstract class UnifiedGenerationOrchestrator<TRequest, TResponse>
             }
         }
 
-        var providers = await GetProvidersAsync(config, ct);
+        var providers = await GetProvidersAsync(config, ct).ConfigureAwait(false);
         Exception? lastException = null;
         
         foreach (var provider in providers)
@@ -93,11 +93,11 @@ public abstract class UnifiedGenerationOrchestrator<TRequest, TResponse>
                         "Executing {Stage} with provider {Provider}, attempt {Attempt}/{MaxRetries}",
                         GetStageName(), provider.Name, attempt + 1, maxRetries + 1);
 
-                    var response = await ExecuteProviderAsync(provider, request, config, ct);
+                    var response = await ExecuteProviderAsync(provider, request, config, ct).ConfigureAwait(false);
 
                     if (config.ValidateSchema && _schemaValidator != null)
                     {
-                        var validationResult = await ValidateResponseAsync(response, ct);
+                        var validationResult = await ValidateResponseAsync(response, ct).ConfigureAwait(false);
                         if (!validationResult.IsValid)
                         {
                             Logger.LogWarning(
@@ -112,7 +112,7 @@ public abstract class UnifiedGenerationOrchestrator<TRequest, TResponse>
                         }
                     }
 
-                    await TrackCostAsync(provider, request, response, ct);
+                    await TrackCostAsync(provider, request, response, ct).ConfigureAwait(false);
 
                     if (cacheKey != null && _cache != null)
                     {
@@ -125,7 +125,7 @@ public abstract class UnifiedGenerationOrchestrator<TRequest, TResponse>
                             TtlSeconds = config.CacheTtlSeconds,
                             ResponseSizeBytes = System.Text.Encoding.UTF8.GetByteCount(responseJson)
                         };
-                        await _cache.SetAsync(cacheKey, responseJson, metadata, ct);
+                        await _cache.SetAsync(cacheKey, responseJson, metadata, ct).ConfigureAwait(false);
                     }
 
                     Logger.LogInformation(
@@ -156,7 +156,7 @@ public abstract class UnifiedGenerationOrchestrator<TRequest, TResponse>
                     {
                         var delay = CalculateBackoffDelay(attempt, config.BackoffStrategy);
                         Logger.LogInformation("Waiting {DelayMs}ms before retry", delay);
-                        await Task.Delay(TimeSpan.FromMilliseconds(delay), ct);
+                        await Task.Delay(TimeSpan.FromMilliseconds(delay), ct).ConfigureAwait(false);
                     }
                     
                     attempt++;

@@ -46,7 +46,7 @@ public class ClipScoringService
                 return CalculateFallbackScore(imageUrl, promptText);
             }
 
-            await Task.Delay(1, ct);
+            await Task.Delay(1, ct).ConfigureAwait(false);
 
             return CalculateFallbackScore(imageUrl, promptText);
         }
@@ -113,7 +113,7 @@ public class ClipScoringService
                 break;
             }
 
-            scores[i] = await ScorePromptAdherenceAsync(imageUrls[i], prompts[i], ct);
+            scores[i] = await ScorePromptAdherenceAsync(imageUrls[i], prompts[i], ct).ConfigureAwait(false);
         }
 
         return scores;

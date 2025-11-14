@@ -47,11 +47,11 @@ public class CriticService : ICriticProvider
             _logger.LogInformation("Generating structured critique for script (length: {Length} chars)", script.Length);
 
             var critiquePrompt = BuildStructuredCritiquePrompt(script, brief, spec, rubrics, currentMetrics);
-            var rawCritique = await _llmProvider.CompleteAsync(critiquePrompt, ct);
+            var rawCritique = await _llmProvider.CompleteAsync(critiquePrompt, ct).ConfigureAwait(false);
 
             var result = ParseCritiqueResponse(rawCritique, rubrics);
             
-            var timingAnalysis = await AnalyzeTimingFitAsync(script, spec.TargetDuration, ct);
+            var timingAnalysis = await AnalyzeTimingFitAsync(script, spec.TargetDuration, ct).ConfigureAwait(false);
             
             return result with { TimingAnalysis = timingAnalysis, RawCritique = rawCritique };
         }
@@ -68,7 +68,7 @@ public class CriticService : ICriticProvider
         TimeSpan targetDuration,
         CancellationToken ct)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         var wordCount = CountWords(script);
         var targetMinutes = targetDuration.TotalMinutes;

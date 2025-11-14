@@ -56,7 +56,7 @@ public class MlTrainingWorker
         _jobs[jobId] = job;
         _logger.LogInformation("Training job {JobId} submitted for user {UserId}", jobId, userId);
 
-        _ = Task.Run(async () => await ExecuteJobAsync(jobId, cancellationToken), cancellationToken);
+        _ = Task.Run(async () => await ExecuteJobAsync(jobId, cancellationToken).ConfigureAwait(false), cancellationToken);
 
         return jobId;
     }
@@ -101,7 +101,7 @@ public class MlTrainingWorker
             return;
         }
 
-        await _jobSemaphore.WaitAsync(globalCancellationToken);
+        await _jobSemaphore.WaitAsync(globalCancellationToken).ConfigureAwait(false);
 
         try
         {
@@ -112,7 +112,7 @@ public class MlTrainingWorker
                 globalCancellationToken, 
                 job.CancellationTokenSource.Token).Token;
 
-            var annotations = await _annotationStorage.GetAnnotationsAsync(job.UserId, cancellationToken);
+            var annotations = await _annotationStorage.GetAnnotationsAsync(job.UserId, cancellationToken).ConfigureAwait(false);
 
             if (annotations.Count == 0)
             {
@@ -129,7 +129,7 @@ public class MlTrainingWorker
 
             var trainingResult = await _trainingService.TrainFrameImportanceModelAsync(
                 frameAnnotations, 
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             if (!trainingResult.Success)
             {
@@ -141,7 +141,7 @@ public class MlTrainingWorker
 
             if (trainingResult.ModelPath != null)
             {
-                var deployed = await _modelManager.DeployModelAsync(trainingResult.ModelPath, cancellationToken);
+                var deployed = await _modelManager.DeployModelAsync(trainingResult.ModelPath, cancellationToken).ConfigureAwait(false);
                 
                 if (!deployed)
                 {

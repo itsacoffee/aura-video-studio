@@ -36,7 +36,7 @@ public class VoiceSelectionService
             "Selecting voice for content type: {ContentType}, locale: {Locale}",
             criteria.ContentType, criteria.PreferredLocale);
 
-        var availableVoices = await GetAvailableVoicesAsync(criteria, ct);
+        var availableVoices = await GetAvailableVoicesAsync(criteria, ct).ConfigureAwait(false);
 
         if (availableVoices.Count == 0)
         {
@@ -99,7 +99,7 @@ public class VoiceSelectionService
                 ExcludeVoiceIds = usedVoices.ToList()
             };
 
-            var result = await SelectVoiceAsync(criteria, ct);
+            var result = await SelectVoiceAsync(criteria, ct).ConfigureAwait(false);
 
             if (result.IsSuccess && result.SelectedVoice != null)
             {
@@ -134,12 +134,12 @@ public class VoiceSelectionService
         if (criteria.PreferredProvider.HasValue)
         {
             var providerVoices = await _providerRegistry.GetVoicesForProviderAsync(
-                criteria.PreferredProvider.Value, ct);
+                criteria.PreferredProvider.Value, ct).ConfigureAwait(false);
             voices.AddRange(providerVoices);
         }
         else
         {
-            voices.AddRange(await _providerRegistry.GetAllAvailableVoicesAsync(ct));
+            voices.AddRange(await _providerRegistry.GetAllAvailableVoicesAsync(ct).ConfigureAwait(false));
         }
 
         if (!string.IsNullOrEmpty(criteria.PreferredLocale))

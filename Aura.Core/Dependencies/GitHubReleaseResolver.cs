@@ -50,7 +50,7 @@ public class GitHubReleaseResolver
 
             var apiUrl = $"{GitHubApiBaseUrl}/repos/{githubRepo}/releases/latest";
             
-            var response = await _httpClient.GetAsync(apiUrl, ct);
+            var response = await _httpClient.GetAsync(apiUrl, ct).ConfigureAwait(false);
             
             if (!response.IsSuccessStatusCode)
             {
@@ -59,7 +59,7 @@ public class GitHubReleaseResolver
                 return null;
             }
 
-            var content = await response.Content.ReadAsStringAsync(ct);
+            var content = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var release = JsonSerializer.Deserialize<GitHubRelease>(content, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
@@ -119,14 +119,14 @@ public class GitHubReleaseResolver
         try
         {
             var apiUrl = $"{GitHubApiBaseUrl}/repos/{githubRepo}/releases/latest";
-            var response = await _httpClient.GetAsync(apiUrl, ct);
+            var response = await _httpClient.GetAsync(apiUrl, ct).ConfigureAwait(false);
             
             if (!response.IsSuccessStatusCode)
             {
                 return null;
             }
 
-            var content = await response.Content.ReadAsStringAsync(ct);
+            var content = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             return JsonSerializer.Deserialize<GitHubRelease>(content, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true

@@ -79,7 +79,7 @@ public class FfmpegVideoComposer : IVideoComposer
         string ffmpegPath;
         try
         {
-            ffmpegPath = await _ffmpegLocator.GetEffectiveFfmpegPathAsync(_configuredFfmpegPath, ct);
+            ffmpegPath = await _ffmpegLocator.GetEffectiveFfmpegPathAsync(_configuredFfmpegPath, ct).ConfigureAwait(false);
             _logger.LogInformation("Resolved FFmpeg path for job {JobId}: {FfmpegPath}", jobId, ffmpegPath);
         }
         catch (InvalidOperationException ex)
@@ -89,10 +89,10 @@ public class FfmpegVideoComposer : IVideoComposer
         }
         
         // Validate FFmpeg binary before starting
-        await ValidateFfmpegBinaryAsync(ffmpegPath, jobId, correlationId, ct);
+        await ValidateFfmpegBinaryAsync(ffmpegPath, jobId, correlationId, ct).ConfigureAwait(false);
         
         // Pre-validate audio files - pass the resolved ffmpeg path
-        await PreValidateAudioAsync(timeline, ffmpegPath, jobId, correlationId, ct);
+        await PreValidateAudioAsync(timeline, ffmpegPath, jobId, correlationId, ct).ConfigureAwait(false);
         
         // Create output file path using configured output directory
         string outputFilePath = Path.Combine(
@@ -100,7 +100,7 @@ public class FfmpegVideoComposer : IVideoComposer
             $"AuraVideoStudio_{DateTime.Now:yyyyMMddHHmmss}.{spec.Container}");
         
         // Build the FFmpeg command with hardware acceleration support
-        string ffmpegCommand = await BuildFfmpegCommandAsync(timeline, spec, outputFilePath, ffmpegPath, ct);
+        string ffmpegCommand = await BuildFfmpegCommandAsync(timeline, spec, outputFilePath, ffmpegPath, ct).ConfigureAwait(false);
         
         _logger.LogInformation("FFmpeg command (JobId={JobId}): {FFmpegPath} {Command}", 
             jobId, ffmpegPath, ffmpegCommand);
@@ -298,7 +298,7 @@ public class FfmpegVideoComposer : IVideoComposer
         {
             // Set a reasonable timeout (30 minutes for renders)
             var timeoutTask = Task.Delay(TimeSpan.FromMinutes(30), ct);
-            var completedTask = await Task.WhenAny(tcs.Task, timeoutTask);
+            var completedTask = await Task.WhenAny(tcs.Task, timeoutTask).ConfigureAwait(false);
             
             if (completedTask == timeoutTask)
             {
@@ -330,7 +330,7 @@ public class FfmpegVideoComposer : IVideoComposer
                     });
             }
             
-            await tcs.Task; // This will throw if the process failed
+            await tcs.Task.ConfigureAwait(false); // This will throw if the process failed
         }
         catch (FfmpegException)
         {
@@ -451,7 +451,7 @@ public class FfmpegVideoComposer : IVideoComposer
         
         try
         {
-            encoderConfig = await hardwareEncoderWithPath.SelectBestEncoderAsync(exportPreset, preferHardware: true);
+            encoderConfig = await hardwareEncoderWithPath.SelectBestEncoderAsync(exportPreset, preferHardware: true).ConfigureAwait(false);
             _logger.LogInformation("Selected encoder: {Encoder} (Hardware: {IsHardware})", 
                 encoderConfig.EncoderName, encoderConfig.IsHardwareAccelerated);
         }
@@ -614,10 +614,10 @@ public class FfmpegVideoComposer : IVideoComposer
                 throw new InvalidOperationException("Failed to start FFmpeg process for validation");
             }
             
-            await process.WaitForExitAsync(ct);
+            await process.WaitForExitAsync(ct).ConfigureAwait(false);
             
-            var output = await process.StandardOutput.ReadToEndAsync(ct);
-            var stderr = await process.StandardError.ReadToEndAsync(ct);
+            var output = await process.StandardOutput.ReadToEndAsync(ct).ConfigureAwait(false);
+            var stderr = await process.StandardError.ReadToEndAsync(ct).ConfigureAwait(false);
             
             if (process.ExitCode != 0)
             {
@@ -694,7 +694,7 @@ public class FfmpegVideoComposer : IVideoComposer
                 "narration", 
                 jobId, 
                 correlationId, 
-                ct);
+                ct).ConfigureAwait(false);
         }
         
         // Validate music if present
@@ -706,7 +706,7 @@ public class FfmpegVideoComposer : IVideoComposer
                 "music", 
                 jobId, 
                 correlationId, 
-                ct);
+                ct).ConfigureAwait(false);
         }
         
         _logger.LogInformation("Audio pre-validation complete (JobId={JobId})", jobId);
@@ -726,7 +726,7 @@ public class FfmpegVideoComposer : IVideoComposer
         _logger.LogInformation("Validating {AudioType} audio: {Path} (JobId={JobId})", 
             audioType, audioPath, jobId);
         
-        var validation = await validator.ValidateAsync(audioPath, ct);
+        var validation = await validator.ValidateAsync(audioPath, ct).ConfigureAwait(false);
         
         if (validation.IsValid)
         {
@@ -748,7 +748,7 @@ public class FfmpegVideoComposer : IVideoComposer
                 Path.GetDirectoryName(audioPath) ?? Path.GetTempPath(),
                 $"{Path.GetFileNameWithoutExtension(audioPath)}_reencoded.wav");
             
-            var (success, errorMessage) = await validator.ReencodeAsync(audioPath, reEncodedPath, ct);
+            var (success, errorMessage) = await validator.ReencodeAsync(audioPath, reEncodedPath, ct).ConfigureAwait(false);
             
             if (success)
             {
@@ -771,7 +771,7 @@ public class FfmpegVideoComposer : IVideoComposer
             var (silentSuccess, silentError) = await validator.GenerateSilentWavAsync(
                 audioPath + ".silent.wav", 
                 10.0, // 10 seconds default
-                ct);
+                ct).ConfigureAwait(false);
             
             if (silentSuccess)
             {

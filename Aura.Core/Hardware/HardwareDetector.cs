@@ -188,7 +188,7 @@ public class HardwareDetector : IHardwareDetector
     private async Task<GpuInfo?> GetGpuInfoAsync()
     {
         // Try nvidia-smi FIRST for most accurate NVIDIA detection
-        var nvidiaSmiInfo = await GetNvidiaSmiInfoAsync();
+        var nvidiaSmiInfo = await GetNvidiaSmiInfoAsync().ConfigureAwait(false);
         if (nvidiaSmiInfo != null)
         {
             string vendor = "NVIDIA";
@@ -235,7 +235,7 @@ public class HardwareDetector : IHardwareDetector
                 // For NVIDIA cards without nvidia-smi, try dxdiag as fallback for accurate VRAM
                 if (vendor.Equals("NVIDIA", StringComparison.OrdinalIgnoreCase) && vramMB < 1024)
                 {
-                    var dxdiagVram = await GetDxdiagVramAsync(model);
+                    var dxdiagVram = await GetDxdiagVramAsync(model).ConfigureAwait(false);
                     if (dxdiagVram > 0)
                     {
                         vramMB = dxdiagVram;
@@ -303,8 +303,8 @@ public class HardwareDetector : IHardwareDetector
             };
 
             process.Start();
-            string output = await process.StandardOutput.ReadToEndAsync();
-            await process.WaitForExitAsync();
+            string output = await process.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
+            await process.WaitForExitAsync().ConfigureAwait(false);
 
             if (process.ExitCode == 0 && !string.IsNullOrEmpty(output))
             {
@@ -354,14 +354,14 @@ public class HardwareDetector : IHardwareDetector
 
             process.Start();
             // dxdiag needs time to gather information
-            await process.WaitForExitAsync();
+            await process.WaitForExitAsync().ConfigureAwait(false);
             
             // Wait a bit more for the file to be written
-            await Task.Delay(2000);
+            await Task.Delay(2000).ConfigureAwait(false);
 
             if (File.Exists(tempFile))
             {
-                string content = await File.ReadAllTextAsync(tempFile);
+                string content = await File.ReadAllTextAsync(tempFile).ConfigureAwait(false);
                 File.Delete(tempFile);
                 
                 // Look for dedicated memory or display memory lines
@@ -412,8 +412,8 @@ public class HardwareDetector : IHardwareDetector
             };
 
             process.Start();
-            string output = await process.StandardOutput.ReadToEndAsync();
-            await process.WaitForExitAsync();
+            string output = await process.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
+            await process.WaitForExitAsync().ConfigureAwait(false);
 
             if (process.ExitCode == 0 && !string.IsNullOrEmpty(output))
             {
@@ -555,7 +555,7 @@ public class HardwareDetector : IHardwareDetector
             RunStableDiffusionProbeAsync(),
             CheckDiskSpaceAsync(),
             CheckNvidiaDriverAgeAsync()
-        );
+        ).ConfigureAwait(false);
         
         _logger.LogInformation("Hardware probe completed");
     }
@@ -580,7 +580,7 @@ public class HardwareDetector : IHardwareDetector
             };
 
             process.Start();
-            await process.WaitForExitAsync();
+            await process.WaitForExitAsync().ConfigureAwait(false);
 
             if (process.ExitCode == 0)
             {
@@ -612,7 +612,7 @@ public class HardwareDetector : IHardwareDetector
 #else
             _logger.LogInformation("Windows TTS probe skipped - not running on Windows");
 #endif
-            await Task.CompletedTask;
+            await Task.CompletedTask.ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -640,8 +640,8 @@ public class HardwareDetector : IHardwareDetector
             };
 
             process.Start();
-            string output = await process.StandardOutput.ReadToEndAsync();
-            await process.WaitForExitAsync();
+            string output = await process.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
+            await process.WaitForExitAsync().ConfigureAwait(false);
 
             bool hasNvenc = output.Contains("h264_nvenc") || output.Contains("hevc_nvenc");
             
@@ -675,7 +675,7 @@ public class HardwareDetector : IHardwareDetector
             using var httpClient = new System.Net.Http.HttpClient();
             using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(5));
             
-            var response = await httpClient.GetAsync("http://127.0.0.1:7860/", cts.Token);
+            var response = await httpClient.GetAsync("http://127.0.0.1:7860/", cts.Token).ConfigureAwait(false);
             
             if (response.IsSuccessStatusCode)
             {
@@ -683,7 +683,7 @@ public class HardwareDetector : IHardwareDetector
                 try
                 {
                     using var cts2 = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(3));
-                    var apiResponse = await httpClient.GetAsync("http://127.0.0.1:7860/sdapi/v1/sd-models", cts2.Token);
+                    var apiResponse = await httpClient.GetAsync("http://127.0.0.1:7860/sdapi/v1/sd-models", cts2.Token).ConfigureAwait(false);
                     
                     if (apiResponse.IsSuccessStatusCode)
                     {
@@ -752,7 +752,7 @@ public class HardwareDetector : IHardwareDetector
             _logger.LogWarning(ex, "Failed to check disk space");
         }
         
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
     }
     
     private async Task CheckNvidiaDriverAgeAsync()
@@ -761,7 +761,7 @@ public class HardwareDetector : IHardwareDetector
         
         try
         {
-            var driverInfo = await GetNvidiaDriverInfoAsync();
+            var driverInfo = await GetNvidiaDriverInfoAsync().ConfigureAwait(false);
             
             if (driverInfo.HasValue)
             {

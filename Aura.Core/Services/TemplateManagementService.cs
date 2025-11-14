@@ -54,7 +54,7 @@ public class TemplateManagementService
         return await query
             .OrderByDescending(t => t.UsageCount)
             .ThenBy(t => t.Name)
-            .ToListAsync(ct);
+            .ToListAsync(ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -63,7 +63,7 @@ public class TemplateManagementService
     public async Task<TemplateEntity?> GetTemplateByIdAsync(string templateId, CancellationToken ct = default)
     {
         return await _dbContext.Templates
-            .FirstOrDefaultAsync(t => t.Id == templateId, ct);
+            .FirstOrDefaultAsync(t => t.Id == templateId, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -100,7 +100,7 @@ public class TemplateManagementService
         };
 
         _dbContext.Templates.Add(template);
-        await _dbContext.SaveChangesAsync(ct);
+        await _dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
 
         _logger.LogInformation("Created new template: {TemplateId} - {Name}", template.Id, template.Name);
 
@@ -117,7 +117,7 @@ public class TemplateManagementService
         string? templateData = null,
         CancellationToken ct = default)
     {
-        var template = await _dbContext.Templates.FirstOrDefaultAsync(t => t.Id == templateId, ct);
+        var template = await _dbContext.Templates.FirstOrDefaultAsync(t => t.Id == templateId, ct).ConfigureAwait(false);
         if (template == null)
         {
             _logger.LogWarning("Template not found for update: {TemplateId}", templateId);
@@ -130,7 +130,7 @@ public class TemplateManagementService
 
         template.UpdatedAt = DateTime.UtcNow;
 
-        await _dbContext.SaveChangesAsync(ct);
+        await _dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
 
         _logger.LogInformation("Updated template: {TemplateId} - {Name}", template.Id, template.Name);
 
@@ -142,7 +142,7 @@ public class TemplateManagementService
     /// </summary>
     public async Task<bool> DeleteTemplateAsync(string templateId, CancellationToken ct = default)
     {
-        var template = await _dbContext.Templates.FirstOrDefaultAsync(t => t.Id == templateId, ct);
+        var template = await _dbContext.Templates.FirstOrDefaultAsync(t => t.Id == templateId, ct).ConfigureAwait(false);
         if (template == null)
         {
             _logger.LogWarning("Template not found for deletion: {TemplateId}", templateId);
@@ -157,7 +157,7 @@ public class TemplateManagementService
         }
 
         _dbContext.Templates.Remove(template);
-        await _dbContext.SaveChangesAsync(ct);
+        await _dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
 
         _logger.LogInformation("Deleted template: {TemplateId} - {Name}", template.Id, template.Name);
 
@@ -169,7 +169,7 @@ public class TemplateManagementService
     /// </summary>
     public async Task<bool> IncrementUsageCountAsync(string templateId, CancellationToken ct = default)
     {
-        var template = await _dbContext.Templates.FirstOrDefaultAsync(t => t.Id == templateId, ct);
+        var template = await _dbContext.Templates.FirstOrDefaultAsync(t => t.Id == templateId, ct).ConfigureAwait(false);
         if (template == null)
         {
             return false;
@@ -178,7 +178,7 @@ public class TemplateManagementService
         template.UsageCount++;
         template.UpdatedAt = DateTime.UtcNow;
 
-        await _dbContext.SaveChangesAsync(ct);
+        await _dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
 
         return true;
     }
@@ -191,7 +191,7 @@ public class TemplateManagementService
         // Check if system templates already exist
         var existingTemplates = await _dbContext.Templates
             .Where(t => t.IsSystemTemplate)
-            .CountAsync(ct);
+            .CountAsync(ct).ConfigureAwait(false);
 
         if (existingTemplates > 0)
         {
@@ -316,7 +316,7 @@ public class TemplateManagementService
         };
 
         _dbContext.Templates.AddRange(templates);
-        await _dbContext.SaveChangesAsync(ct);
+        await _dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
 
         _logger.LogInformation("Seeded {Count} system templates", templates.Count);
     }

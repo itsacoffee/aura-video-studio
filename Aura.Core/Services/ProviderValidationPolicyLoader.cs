@@ -72,7 +72,7 @@ public class ProviderValidationPolicyLoader
 
             _logger.LogInformation("Loading provider validation policies from {Path}", _policyFilePath);
 
-            var json = await File.ReadAllTextAsync(_policyFilePath, ct);
+            var json = await File.ReadAllTextAsync(_policyFilePath, ct).ConfigureAwait(false);
             var config = JsonSerializer.Deserialize<TimeoutProfilesConfig>(json, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true

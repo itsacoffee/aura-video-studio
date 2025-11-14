@@ -86,7 +86,7 @@ public class LLMProviderHealthCheck : IHealthCheck
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                 cts.CancelAfter(TimeSpan.FromSeconds(10));
 
-                var response = await provider.DraftScriptAsync(testBrief, testSpec, cts.Token);
+                var response = await provider.DraftScriptAsync(testBrief, testSpec, cts.Token).ConfigureAwait(false);
 
                 if (!string.IsNullOrWhiteSpace(response))
                 {

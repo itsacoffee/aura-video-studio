@@ -29,14 +29,14 @@ public class PromptAnalyticsService
     /// </summary>
     public async Task TrackUsageAsync(string templateId, CancellationToken ct = default)
     {
-        var template = await _repository.GetByIdAsync(templateId, ct);
+        var template = await _repository.GetByIdAsync(templateId, ct).ConfigureAwait(false);
         if (template == null)
             return;
 
         template.Metrics.UsageCount++;
         template.Metrics.LastUsedAt = DateTime.UtcNow;
 
-        await _repository.UpdateAsync(template, ct);
+        await _repository.UpdateAsync(template, ct).ConfigureAwait(false);
 
         _logger.LogDebug("Tracked usage for template {TemplateId}", templateId);
     }
@@ -52,7 +52,7 @@ public class PromptAnalyticsService
         int? tokenUsage = null,
         CancellationToken ct = default)
     {
-        var template = await _repository.GetByIdAsync(templateId, ct);
+        var template = await _repository.GetByIdAsync(templateId, ct).ConfigureAwait(false);
         if (template == null)
             return;
 
@@ -87,7 +87,7 @@ public class PromptAnalyticsService
             ? (double)template.Metrics.ThumbsUpCount / totalFeedback
             : 1.0;
 
-        await _repository.UpdateAsync(template, ct);
+        await _repository.UpdateAsync(template, ct).ConfigureAwait(false);
 
         _logger.LogInformation("Recorded feedback for template {TemplateId}: {ThumbsUp}, Score: {Score}",
             templateId, thumbsUp, qualityScore);
@@ -108,7 +108,7 @@ public class PromptAnalyticsService
             stage: query.Stage,
             source: query.Source,
             createdBy: query.CreatedBy,
-            ct: ct);
+            ct: ct).ConfigureAwait(false);
 
         if (query.StartDate.HasValue || query.EndDate.HasValue)
         {
@@ -168,7 +168,7 @@ public class PromptAnalyticsService
 
         foreach (var templateId in templateIds)
         {
-            var template = await _repository.GetByIdAsync(templateId, ct);
+            var template = await _repository.GetByIdAsync(templateId, ct).ConfigureAwait(false);
             if (template != null)
             {
                 stats.Add(MapToStats(template));

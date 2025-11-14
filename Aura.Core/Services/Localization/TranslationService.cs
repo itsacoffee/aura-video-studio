@@ -69,7 +69,7 @@ public class TranslationService
             var translatedLines = await TranslateScriptLinesAsync(
                 request, 
                 targetLanguage, 
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
             result.TranslatedLines = translatedLines;
             result.TranslatedText = string.Join("\n", translatedLines.Select(l => l.TranslatedText));
             result.SourceText = string.Join("\n", translatedLines.Select(l => l.SourceText));
@@ -81,7 +81,7 @@ public class TranslationService
                 result.CulturalAdaptations = await _culturalEngine.ApplyCulturalAdaptationsAsync(
                     result.TranslatedLines,
                     request.CulturalContext ?? BuildDefaultCulturalContext(targetLanguage),
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
             }
 
             // Phase 3: Timing adjustments
@@ -105,7 +105,7 @@ public class TranslationService
                     request.TargetLanguage,
                     request.Options,
                     request.Glossary,
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
             }
 
             // Phase 5: Visual localization recommendations
@@ -114,7 +114,7 @@ public class TranslationService
                 result.TranslatedLines,
                 targetLanguage,
                 request.CulturalContext,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             stopwatch.Stop();
             result.TranslationTimeSeconds = stopwatch.Elapsed.TotalSeconds;
@@ -164,7 +164,7 @@ public class TranslationService
                     Glossary = request.Glossary
                 };
 
-                var translation = await TranslateAsync(translationRequest, cancellationToken);
+                var translation = await TranslateAsync(translationRequest, cancellationToken).ConfigureAwait(false);
                 result.Translations[targetLanguage] = translation;
                 result.SuccessfulLanguages.Add(targetLanguage);
                 
@@ -209,7 +209,7 @@ public class TranslationService
             request.Content,
             targetLanguage,
             request.TargetRegion,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<List<TranslatedScriptLine>> TranslateScriptLinesAsync(
@@ -234,7 +234,7 @@ public class TranslationService
                     context,
                     request.Options,
                     request.Glossary,
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
 
                 translatedLines.Add(new TranslatedScriptLine
                 {
@@ -259,7 +259,7 @@ public class TranslationService
                 context,
                 request.Options,
                 request.Glossary,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             translatedLines.Add(new TranslatedScriptLine
             {
@@ -299,7 +299,7 @@ public class TranslationService
 
         try
         {
-            var response = await _llmProvider.DraftScriptAsync(brief, spec, cancellationToken);
+            var response = await _llmProvider.DraftScriptAsync(brief, spec, cancellationToken).ConfigureAwait(false);
             return ExtractTranslation(response);
         }
         catch (Exception ex)

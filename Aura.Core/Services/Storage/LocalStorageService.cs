@@ -70,7 +70,7 @@ public class LocalStorageService : IStorageService
 
             using (var fileStreamOut = File.Create(fullPath))
             {
-                await fileStream.CopyToAsync(fileStreamOut, ct);
+                await fileStream.CopyToAsync(fileStreamOut, ct).ConfigureAwait(false);
             }
 
             _logger.LogInformation("Uploaded file: {FileName} -> {Path}", fileName, fullPath);
@@ -102,7 +102,7 @@ public class LocalStorageService : IStorageService
             var chunkPath = Path.Combine(_tempPath, $"{sessionId}_chunk_{chunkIndex}");
             using (var fileStream = File.Create(chunkPath))
             {
-                await chunkStream.CopyToAsync(fileStream, ct);
+                await chunkStream.CopyToAsync(fileStream, ct).ConfigureAwait(false);
             }
 
             session.ChunkPaths.Add(chunkPath);
@@ -143,7 +143,7 @@ public class LocalStorageService : IStorageService
                 {
                     using (var chunkStream = File.OpenRead(chunkPath))
                     {
-                        await chunkStream.CopyToAsync(finalStream, ct);
+                        await chunkStream.CopyToAsync(finalStream, ct).ConfigureAwait(false);
                     }
                     
                     // Delete chunk after merging
@@ -181,7 +181,7 @@ public class LocalStorageService : IStorageService
             var memoryStream = new MemoryStream();
             using (var fileStream = File.OpenRead(localPath))
             {
-                await fileStream.CopyToAsync(memoryStream, ct);
+                await fileStream.CopyToAsync(memoryStream, ct).ConfigureAwait(false);
             }
             
             memoryStream.Position = 0;

@@ -61,7 +61,7 @@ public class FfmpegAttachService
 
                 foreach (var ffmpegPath in ffmpegFiles)
                 {
-                    var installation = await DetectInstallationAsync(ffmpegPath, ct);
+                    var installation = await DetectInstallationAsync(ffmpegPath, ct).ConfigureAwait(false);
                     if (installation != null)
                     {
                         installations.Add(installation);
@@ -102,7 +102,7 @@ public class FfmpegAttachService
         try
         {
             // Get version info
-            var versionInfo = await GetVersionInfoAsync(ffmpegPath, ct);
+            var versionInfo = await GetVersionInfoAsync(ffmpegPath, ct).ConfigureAwait(false);
             if (versionInfo == null)
             {
                 _logger.LogDebug("Could not get version info for: {Path}", ffmpegPath);
@@ -121,7 +121,7 @@ public class FfmpegAttachService
             string? checksum = null;
             try
             {
-                checksum = await _verificationService.ComputeSha256Async(ffmpegPath, ct);
+                checksum = await _verificationService.ComputeSha256Async(ffmpegPath, ct).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -173,7 +173,7 @@ public class FfmpegAttachService
         try
         {
             // Test 1: Version check
-            var versionInfo = await GetVersionInfoAsync(installation.FfmpegPath, ct);
+            var versionInfo = await GetVersionInfoAsync(installation.FfmpegPath, ct).ConfigureAwait(false);
             if (versionInfo == null)
             {
                 result.IsValid = false;
@@ -184,7 +184,7 @@ public class FfmpegAttachService
             result.VersionCheckPassed = true;
 
             // Test 2: Smoke test (generate short silent audio)
-            var smokeTestResult = await RunSmokeTestAsync(installation.FfmpegPath, ct);
+            var smokeTestResult = await RunSmokeTestAsync(installation.FfmpegPath, ct).ConfigureAwait(false);
             result.SmokeTestPassed = smokeTestResult.Success;
             if (!smokeTestResult.Success)
             {
@@ -196,7 +196,7 @@ public class FfmpegAttachService
             // Test 3: Check FFprobe if present
             if (!string.IsNullOrEmpty(installation.FfprobePath))
             {
-                var ffprobeInfo = await GetVersionInfoAsync(installation.FfprobePath, ct);
+                var ffprobeInfo = await GetVersionInfoAsync(installation.FfprobePath, ct).ConfigureAwait(false);
                 result.FFprobeAvailable = ffprobeInfo != null;
             }
 
@@ -294,14 +294,14 @@ public class FfmpegAttachService
                 return null;
             }
 
-            await process.WaitForExitAsync(ct);
+            await process.WaitForExitAsync(ct).ConfigureAwait(false);
 
             if (process.ExitCode != 0)
             {
                 return null;
             }
 
-            var output = await process.StandardOutput.ReadToEndAsync(ct);
+            var output = await process.StandardOutput.ReadToEndAsync(ct).ConfigureAwait(false);
 
             return ParseVersionInfo(output);
         }
@@ -405,11 +405,11 @@ public class FfmpegAttachService
             using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
 
-            await process.WaitForExitAsync(linkedCts.Token);
+            await process.WaitForExitAsync(linkedCts.Token).ConfigureAwait(false);
 
             if (process.ExitCode != 0)
             {
-                var stderr = await process.StandardError.ReadToEndAsync(ct);
+                var stderr = await process.StandardError.ReadToEndAsync(ct).ConfigureAwait(false);
                 return (false, $"Exit code {process.ExitCode}: {stderr}");
             }
 

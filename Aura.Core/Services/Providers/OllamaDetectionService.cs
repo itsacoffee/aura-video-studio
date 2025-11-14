@@ -47,11 +47,11 @@ public class OllamaDetectionService : IHostedService, IDisposable
         _logger.LogInformation("OllamaDetectionService starting background detection");
         
         // Initial detection (fire and forget to not block startup)
-        _ = Task.Run(async () => await RefreshDetectionAsync(CancellationToken.None), cancellationToken);
+        _ = Task.Run(async () => await RefreshDetectionAsync(CancellationToken.None).ConfigureAwait(false), cancellationToken);
         
         // Setup periodic refresh every 5 minutes
         _refreshTimer = new Timer(
-            async _ => await RefreshDetectionAsync(CancellationToken.None),
+            async _ => await RefreshDetectionAsync(CancellationToken.None).ConfigureAwait(false),
             null,
             _refreshInterval,
             _refreshInterval);
@@ -76,12 +76,12 @@ public class OllamaDetectionService : IHostedService, IDisposable
     {
         try
         {
-            var status = await DetectOllamaAsync(ct);
+            var status = await DetectOllamaAsync(ct).ConfigureAwait(false);
             _cache.Set(StatusCacheKey, status, TimeSpan.FromMinutes(5));
 
             if (status.IsRunning)
             {
-                var models = await ListModelsAsync(ct);
+                var models = await ListModelsAsync(ct).ConfigureAwait(false);
                 _cache.Set(ModelsCacheKey, models, TimeSpan.FromMinutes(5));
                 
                 if (models.Count > 0)
@@ -115,7 +115,7 @@ public class OllamaDetectionService : IHostedService, IDisposable
             return cachedStatus;
         }
 
-        var status = await DetectOllamaAsync(ct);
+        var status = await DetectOllamaAsync(ct).ConfigureAwait(false);
         _cache.Set(StatusCacheKey, status, TimeSpan.FromMinutes(5));
         return status;
     }
@@ -130,7 +130,7 @@ public class OllamaDetectionService : IHostedService, IDisposable
             return cachedModels;
         }
 
-        var models = await ListModelsAsync(ct);
+        var models = await ListModelsAsync(ct).ConfigureAwait(false);
         _cache.Set(ModelsCacheKey, models, TimeSpan.FromMinutes(5));
         return models;
     }
@@ -147,11 +147,11 @@ public class OllamaDetectionService : IHostedService, IDisposable
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(5));
 
-            var response = await _httpClient.GetAsync($"{_baseUrl}/api/version", cts.Token);
+            var response = await _httpClient.GetAsync($"{_baseUrl}/api/version", cts.Token).ConfigureAwait(false);
             
             if (response.IsSuccessStatusCode)
             {
-                var content = await response.Content.ReadAsStringAsync(ct);
+                var content = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 var versionDoc = JsonDocument.Parse(content);
                 var version = versionDoc.RootElement.TryGetProperty("version", out var versionProp)
                     ? versionProp.GetString() ?? "unknown"
@@ -224,10 +224,10 @@ public class OllamaDetectionService : IHostedService, IDisposable
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(10));
 
-            var response = await _httpClient.GetAsync($"{_baseUrl}/api/tags", cts.Token);
+            var response = await _httpClient.GetAsync($"{_baseUrl}/api/tags", cts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var content = await response.Content.ReadAsStringAsync(ct);
+            var content = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var tagsDoc = JsonDocument.Parse(content);
 
             var models = new List<OllamaModel>();
@@ -280,7 +280,7 @@ public class OllamaDetectionService : IHostedService, IDisposable
     /// </summary>
     public async Task<bool> IsModelAvailableAsync(string modelName, CancellationToken ct = default)
     {
-        var models = await ListModelsAsync(ct);
+        var models = await ListModelsAsync(ct).ConfigureAwait(false);
         return models.Any(m => m.Name.Equals(modelName, StringComparison.OrdinalIgnoreCase) ||
                               m.Name.StartsWith(modelName + ":", StringComparison.OrdinalIgnoreCase));
     }
@@ -309,15 +309,15 @@ public class OllamaDetectionService : IHostedService, IDisposable
                 Content = content
             };
 
-            var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cts.Token);
+            var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            await using var stream = await response.Content.ReadAsStreamAsync(ct);
+            await using var stream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
             using var reader = new System.IO.StreamReader(stream);
 
             while (!reader.EndOfStream && !ct.IsCancellationRequested)
             {
-                var line = await reader.ReadLineAsync(ct);
+                var line = await reader.ReadLineAsync(ct).ConfigureAwait(false);
                 if (string.IsNullOrWhiteSpace(line))
                     continue;
 
@@ -386,10 +386,10 @@ public class OllamaDetectionService : IHostedService, IDisposable
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(10));
 
-            var response = await _httpClient.PostAsync($"{_baseUrl}/api/show", content, cts.Token);
+            var response = await _httpClient.PostAsync($"{_baseUrl}/api/show", content, cts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var responseContent = await response.Content.ReadAsStringAsync(ct);
+            var responseContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var infoDoc = JsonDocument.Parse(responseContent);
             var root = infoDoc.RootElement;
 

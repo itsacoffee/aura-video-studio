@@ -53,7 +53,7 @@ public class ConfigurationManager
         using var scope = _scopeFactory.CreateScope();
         var repository = scope.ServiceProvider.GetRequiredService<ConfigurationRepository>();
 
-        var config = await repository.GetAsync(key, ct);
+        var config = await repository.GetAsync(key, ct).ConfigureAwait(false);
 
         if (config == null)
         {
@@ -80,7 +80,7 @@ public class ConfigurationManager
         string? defaultValue = null,
         CancellationToken ct = default)
     {
-        return await GetAsync(key, defaultValue, ct);
+        return await GetAsync(key, defaultValue, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -91,7 +91,7 @@ public class ConfigurationManager
         int defaultValue = 0,
         CancellationToken ct = default)
     {
-        var value = await GetAsync<int?>(key, defaultValue, ct);
+        var value = await GetAsync<int?>(key, defaultValue, ct).ConfigureAwait(false);
         return value ?? defaultValue;
     }
 
@@ -103,7 +103,7 @@ public class ConfigurationManager
         bool defaultValue = false,
         CancellationToken ct = default)
     {
-        var value = await GetAsync<bool?>(key, defaultValue, ct);
+        var value = await GetAsync<bool?>(key, defaultValue, ct).ConfigureAwait(false);
         return value ?? defaultValue;
     }
 
@@ -125,7 +125,7 @@ public class ConfigurationManager
         using var scope = _scopeFactory.CreateScope();
         var repository = scope.ServiceProvider.GetRequiredService<ConfigurationRepository>();
 
-        var configs = await repository.GetByCategoryAsync(category, ct);
+        var configs = await repository.GetByCategoryAsync(category, ct).ConfigureAwait(false);
 
         var dict = configs.ToDictionary(c => c.Key, c => c.Value);
 
@@ -150,7 +150,7 @@ public class ConfigurationManager
         CancellationToken ct = default)
     {
         var keyLock = _keyLocks.GetOrAdd(key, _ => new SemaphoreSlim(1, 1));
-        await keyLock.WaitAsync(ct);
+        await keyLock.WaitAsync(ct).ConfigureAwait(false);
 
         try
         {
@@ -167,7 +167,7 @@ public class ConfigurationManager
                 description,
                 isSensitive,
                 Environment.UserName,
-                ct);
+                ct).ConfigureAwait(false);
 
             InvalidateCache(key, category);
 
@@ -199,7 +199,7 @@ public class ConfigurationManager
             serializedConfigs[kvp.Key] = (serializedValue, kvp.Value.category, valueType);
         }
 
-        await repository.SetManyAsync(serializedConfigs, Environment.UserName, ct);
+        await repository.SetManyAsync(serializedConfigs, Environment.UserName, ct).ConfigureAwait(false);
 
         foreach (var kvp in configurations)
         {
@@ -219,7 +219,7 @@ public class ConfigurationManager
         using var scope = _scopeFactory.CreateScope();
         var repository = scope.ServiceProvider.GetRequiredService<ConfigurationRepository>();
 
-        var result = await repository.DeleteAsync(key, ct);
+        var result = await repository.DeleteAsync(key, ct).ConfigureAwait(false);
 
         if (result)
         {
@@ -240,7 +240,7 @@ public class ConfigurationManager
         using var scope = _scopeFactory.CreateScope();
         var repository = scope.ServiceProvider.GetRequiredService<ConfigurationRepository>();
 
-        return await repository.GetAllAsync(includeInactive, ct);
+        return await repository.GetAllAsync(includeInactive, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -269,7 +269,7 @@ public class ConfigurationManager
             using var scope = _scopeFactory.CreateScope();
             var repository = scope.ServiceProvider.GetRequiredService<ConfigurationRepository>();
 
-            var existing = await repository.GetAllAsync(false, ct);
+            var existing = await repository.GetAllAsync(false, ct).ConfigureAwait(false);
             var existingKeys = existing.Select(c => c.Key).ToHashSet();
 
             var newConfigs = defaults
@@ -280,7 +280,7 @@ public class ConfigurationManager
 
             if (newConfigs.Count > 0)
             {
-                await repository.SetManyAsync(newConfigs, "System", ct);
+                await repository.SetManyAsync(newConfigs, "System", ct).ConfigureAwait(false);
 
                 _logger.LogInformation(
                     "Created {Count} default configurations",

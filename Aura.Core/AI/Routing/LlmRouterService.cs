@@ -100,7 +100,7 @@ public class LlmRouterService : ILlmRouterService
 
         constraints ??= policy.DefaultConstraints;
 
-        var candidates = await EvaluateCandidatesAsync(policy, constraints, ct);
+        var candidates = await EvaluateCandidatesAsync(policy, constraints, ct).ConfigureAwait(false);
 
         if (candidates.Count == 0)
         {
@@ -179,7 +179,7 @@ public class LlmRouterService : ILlmRouterService
                 continue;
             }
 
-            if (await _costTracker.WouldExceedBudgetAsync(metrics.AverageCost, ct))
+            if (await _costTracker.WouldExceedBudgetAsync(metrics.AverageCost, ct).ConfigureAwait(false))
             {
                 _logger.LogWarning("Provider {Provider} would exceed budget limits, skipping", key);
                 continue;
@@ -332,13 +332,13 @@ public class LlmRouterService : ILlmRouterService
 
     public async Task<IReadOnlyList<ProviderHealthStatus>> GetHealthStatusAsync(CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return _healthStatus.Values.ToList();
     }
 
     public async Task<IReadOnlyList<ProviderMetrics>> GetMetricsAsync(CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return _metrics.Values.ToList();
     }
 
@@ -350,7 +350,7 @@ public class LlmRouterService : ILlmRouterService
         decimal cost,
         CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         var key = providerName;
 
@@ -430,7 +430,7 @@ public class LlmRouterService : ILlmRouterService
 
         if (_config.EnableCostTracking)
         {
-            await _costTracker.RecordCostAsync(cost, ct);
+            await _costTracker.RecordCostAsync(cost, ct).ConfigureAwait(false);
         }
 
         _logger.LogDebug(
@@ -440,7 +440,7 @@ public class LlmRouterService : ILlmRouterService
 
     public async Task MarkProviderUnavailableAsync(string providerName, TimeSpan? duration = null, CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         if (_healthStatus.TryGetValue(providerName, out var health))
         {
@@ -453,7 +453,7 @@ public class LlmRouterService : ILlmRouterService
 
     public async Task ResetProviderHealthAsync(string providerName, CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         if (_healthStatus.TryGetValue(providerName, out var health))
         {
@@ -494,7 +494,7 @@ internal class CostTracker
 
     public async Task<bool> WouldExceedBudgetAsync(decimal cost, CancellationToken ct)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         if (!_config.EnforceBudgetLimits)
             return false;
@@ -514,7 +514,7 @@ internal class CostTracker
 
     public async Task RecordCostAsync(decimal cost, CancellationToken ct)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         var now = DateTime.UtcNow;
         var currentHour = new DateTime(now.Year, now.Month, now.Day, now.Hour, 0, 0, DateTimeKind.Utc);

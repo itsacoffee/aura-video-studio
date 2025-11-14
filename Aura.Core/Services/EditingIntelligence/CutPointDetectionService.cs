@@ -31,7 +31,7 @@ public class CutPointDetectionService
         foreach (var scene in timeline.Scenes)
         {
             // Detect sentence boundaries
-            var sentenceCuts = await DetectSentenceBoundariesAsync(scene);
+            var sentenceCuts = await DetectSentenceBoundariesAsync(scene).ConfigureAwait(false);
             cutPoints.AddRange(sentenceCuts);
 
             // Detect natural pauses
@@ -94,7 +94,7 @@ public class CutPointDetectionService
             ));
         }
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return cutPoints;
     }
 
@@ -222,7 +222,7 @@ public class CutPointDetectionService
             }
         }
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return awkwardPauses;
     }
 }

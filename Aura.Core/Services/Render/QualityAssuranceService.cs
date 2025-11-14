@@ -119,10 +119,10 @@ public class QualityAssuranceService
 
         var issues = new List<QualityIssue>();
 
-        var metadata = await ExtractMetadataAsync(videoPath, cancellationToken);
-        var audioSync = await CheckAudioSyncAsync(videoPath, cancellationToken);
-        var frameAnalysis = await AnalyzeFramesAsync(videoPath, cancellationToken);
-        var fileIntegrity = await CheckFileIntegrityAsync(videoPath, cancellationToken);
+        var metadata = await ExtractMetadataAsync(videoPath, cancellationToken).ConfigureAwait(false);
+        var audioSync = await CheckAudioSyncAsync(videoPath, cancellationToken).ConfigureAwait(false);
+        var frameAnalysis = await AnalyzeFramesAsync(videoPath, cancellationToken).ConfigureAwait(false);
+        var fileIntegrity = await CheckFileIntegrityAsync(videoPath, cancellationToken).ConfigureAwait(false);
 
         if (metadata.Width != expectedWidth || metadata.Height != expectedHeight)
         {
@@ -219,8 +219,8 @@ public class QualityAssuranceService
             throw new InvalidOperationException("Failed to start ffprobe process");
         }
 
-        var output = await process.StandardOutput.ReadToEndAsync();
-        await process.WaitForExitAsync(cancellationToken);
+        var output = await process.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
+        await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
 
         var width = ExtractValue(output, @"""width""\s*:\s*(\d+)");
         var height = ExtractValue(output, @"""height""\s*:\s*(\d+)");
@@ -276,10 +276,10 @@ public class QualityAssuranceService
             );
         }
 
-        var output = await process.StandardOutput.ReadToEndAsync();
-        await process.WaitForExitAsync(cancellationToken);
+        var output = await process.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
+        await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
 
-        var metadata = await ExtractMetadataAsync(videoPath, cancellationToken);
+        var metadata = await ExtractMetadataAsync(videoPath, cancellationToken).ConfigureAwait(false);
         var videoDuration = metadata.Duration;
         var audioDuration = metadata.Duration;
         
@@ -340,8 +340,8 @@ public class QualityAssuranceService
             );
         }
 
-        var errorOutput = await process.StandardError.ReadToEndAsync();
-        await process.WaitForExitAsync(cancellationToken);
+        var errorOutput = await process.StandardError.ReadToEndAsync().ConfigureAwait(false);
+        await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
 
         var totalFramesMatch = Regex.Match(errorOutput, @"frame=\s*(\d+)");
         var totalFrames = totalFramesMatch.Success ? int.Parse(totalFramesMatch.Groups[1].Value) : 0;
@@ -349,7 +349,7 @@ public class QualityAssuranceService
         var droppedFramesMatch = Regex.Matches(errorOutput, @"drop|duplicate", RegexOptions.IgnoreCase);
         var droppedFrames = droppedFramesMatch.Count;
 
-        var metadata = await ExtractMetadataAsync(videoPath, cancellationToken);
+        var metadata = await ExtractMetadataAsync(videoPath, cancellationToken).ConfigureAwait(false);
         var expectedFrames = (int)(metadata.Duration * metadata.FrameRate);
         var actualDropped = Math.Max(0, expectedFrames - totalFrames);
 
@@ -427,8 +427,8 @@ public class QualityAssuranceService
         }
         else
         {
-            var errorOutput = await process.StandardError.ReadToEndAsync();
-            await process.WaitForExitAsync(cancellationToken);
+            var errorOutput = await process.StandardError.ReadToEndAsync().ConfigureAwait(false);
+            await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
 
             if (process.ExitCode != 0)
             {
@@ -455,7 +455,7 @@ public class QualityAssuranceService
         using (var stream = File.OpenRead(videoPath))
         {
             var header = new byte[12];
-            await stream.ReadAsync(header, 0, 12, cancellationToken);
+            await stream.ReadAsync(header, 0, 12, cancellationToken).ConfigureAwait(false);
 
             var isMp4 = header[4] == 0x66 && header[5] == 0x74 && header[6] == 0x79 && header[7] == 0x70;
             if (!isMp4 && Path.GetExtension(videoPath).Equals(".mp4", StringComparison.OrdinalIgnoreCase))

@@ -215,7 +215,7 @@ public class LlmProviderCircuitBreaker
 
         try
         {
-            var result = await operation(ct);
+            var result = await operation(ct).ConfigureAwait(false);
             RecordSuccess(providerName);
             return result;
         }

@@ -33,18 +33,18 @@ public class MisinformationDetectionService
     {
         _logger.LogInformation("Detecting misinformation in content {ContentId}", contentId);
 
-        await Task.Delay(10, ct); // Simulate processing
+        await Task.Delay(10, ct).ConfigureAwait(false); // Simulate processing
 
         var flags = new List<MisinformationFlag>();
 
         // Check for false or disputed claims
-        flags.AddRange(await CheckFactCheckResultsAsync(claims, factChecks, ct));
+        flags.AddRange(await CheckFactCheckResultsAsync(claims, factChecks, ct).ConfigureAwait(false));
 
         // Check for common misinformation patterns
-        flags.AddRange(await CheckMisinformationPatternsAsync(content, claims, ct));
+        flags.AddRange(await CheckMisinformationPatternsAsync(content, claims, ct).ConfigureAwait(false));
 
         // Check for logical fallacies
-        flags.AddRange(await CheckLogicalFallaciesAsync(content, claims, ct));
+        flags.AddRange(await CheckLogicalFallaciesAsync(content, claims, ct).ConfigureAwait(false));
 
         // Calculate overall risk
         var riskScore = CalculateRiskScore(flags);
@@ -68,7 +68,7 @@ public class MisinformationDetectionService
         List<FactCheckResult> factChecks,
         CancellationToken ct)
     {
-        await Task.Delay(10, ct);
+        await Task.Delay(10, ct).ConfigureAwait(false);
 
         var flags = new List<MisinformationFlag>();
 
@@ -136,7 +136,7 @@ public class MisinformationDetectionService
         List<Claim> claims,
         CancellationToken ct)
     {
-        await Task.Delay(10, ct);
+        await Task.Delay(10, ct).ConfigureAwait(false);
 
         var flags = new List<MisinformationFlag>();
 
@@ -243,7 +243,7 @@ public class MisinformationDetectionService
         List<Claim> claims,
         CancellationToken ct)
     {
-        await Task.Delay(10, ct);
+        await Task.Delay(10, ct).ConfigureAwait(false);
 
         var flags = new List<MisinformationFlag>();
 

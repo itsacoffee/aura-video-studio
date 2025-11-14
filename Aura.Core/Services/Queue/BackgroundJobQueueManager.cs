@@ -80,7 +80,7 @@ public class BackgroundJobQueueManager
         };
         var jobDataJson = JsonSerializer.Serialize(jobData);
         
-        await using var context = await _dbContextFactory.CreateDbContextAsync(ct);
+        await using var context = await _dbContextFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
         
         var jobEntity = new JobQueueEntity
         {
@@ -96,7 +96,7 @@ public class BackgroundJobQueueManager
         };
         
         context.JobQueue.Add(jobEntity);
-        await context.SaveChangesAsync(ct);
+        await context.SaveChangesAsync(ct).ConfigureAwait(false);
         
         _logger.LogInformation(
             "Job {JobId} enqueued with priority {Priority} (Topic: {Topic}, IsQuickDemo: {IsQuickDemo})",
@@ -118,10 +118,10 @@ public class BackgroundJobQueueManager
     /// </summary>
     public async Task<JobQueueEntity?> DequeueNextJobAsync(CancellationToken ct = default)
     {
-        await using var context = await _dbContextFactory.CreateDbContextAsync(ct);
+        await using var context = await _dbContextFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
         
         // Get configuration to check if queue is enabled
-        var config = await context.QueueConfiguration.FirstOrDefaultAsync(ct);
+        var config = await context.QueueConfiguration.FirstOrDefaultAsync(ct).ConfigureAwait(false);
         if (config?.IsEnabled == false)
         {
             _logger.LogDebug("Queue is disabled, skipping dequeue");
@@ -129,7 +129,7 @@ public class BackgroundJobQueueManager
         }
         
         // Check resource constraints
-        if (!await CanStartNewJobAsync(config, ct))
+        if (!await CanStartNewJobAsync(config, ct).ConfigureAwait(false))
         {
             _logger.LogDebug("Resource constraints prevent starting new job");
             return null;
@@ -143,7 +143,7 @@ public class BackgroundJobQueueManager
                         (j.NextRetryAt == null || j.NextRetryAt <= DateTime.UtcNow)))
             .OrderBy(j => j.Priority)
             .ThenBy(j => j.EnqueuedAt)
-            .FirstOrDefaultAsync(ct);
+            .FirstOrDefaultAsync(ct).ConfigureAwait(false);
         
         if (nextJob != null)
         {
@@ -153,7 +153,7 @@ public class BackgroundJobQueueManager
             nextJob.StartedAt = DateTime.UtcNow;
             nextJob.UpdatedAt = DateTime.UtcNow;
             
-            await context.SaveChangesAsync(ct);
+            await context.SaveChangesAsync(ct).ConfigureAwait(false);
             
             _logger.LogInformation(
                 "Dequeued job {JobId} (Priority: {Priority}, RetryCount: {RetryCount})",
@@ -204,12 +204,12 @@ public class BackgroundJobQueueManager
                 jobData.RenderSpec!,
                 jobEntity.CorrelationId,
                 jobEntity.IsQuickDemo,
-                jobCts.Token);
+                jobCts.Token).ConfigureAwait(false);
             
             // Wait for completion by polling job status
             while (!jobCts.Token.IsCancellationRequested)
             {
-                await Task.Delay(1000, jobCts.Token);
+                await Task.Delay(1000, jobCts.Token).ConfigureAwait(false);
                 
                 var currentJob = _jobRunner.GetJob(jobId);
                 if (currentJob == null) break;
@@ -217,17 +217,17 @@ public class BackgroundJobQueueManager
                 if (currentJob.Status == JobStatus.Done || 
                     currentJob.Status == JobStatus.Succeeded)
                 {
-                    await MarkJobCompletedAsync(jobEntity, currentJob.OutputPath, ct);
+                    await MarkJobCompletedAsync(jobEntity, currentJob.OutputPath, ct).ConfigureAwait(false);
                     break;
                 }
                 else if (currentJob.Status == JobStatus.Failed)
                 {
-                    await MarkJobFailedAsync(jobEntity, currentJob.ErrorMessage ?? "Job failed", ct);
+                    await MarkJobFailedAsync(jobEntity, currentJob.ErrorMessage ?? "Job failed", ct).ConfigureAwait(false);
                     break;
                 }
                 else if (currentJob.Status == JobStatus.Canceled)
                 {
-                    await MarkJobCancelledAsync(jobEntity, ct);
+                    await MarkJobCancelledAsync(jobEntity, ct).ConfigureAwait(false);
                     break;
                 }
             }
@@ -235,12 +235,12 @@ public class BackgroundJobQueueManager
         catch (OperationCanceledException)
         {
             _logger.LogWarning("Job {JobId} was cancelled", jobId);
-            await MarkJobCancelledAsync(jobEntity, ct);
+            await MarkJobCancelledAsync(jobEntity, ct).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing job {JobId}", jobId);
-            await MarkJobFailedAsync(jobEntity, ex.Message, ct);
+            await MarkJobFailedAsync(jobEntity, ex.Message, ct).ConfigureAwait(false);
         }
         finally
         {
@@ -254,9 +254,9 @@ public class BackgroundJobQueueManager
     /// </summary>
     public async Task<bool> CancelJobAsync(string jobId, CancellationToken ct = default)
     {
-        await using var context = await _dbContextFactory.CreateDbContextAsync(ct);
+        await using var context = await _dbContextFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
         
-        var job = await context.JobQueue.FindAsync(new object[] { jobId }, ct);
+        var job = await context.JobQueue.FindAsync(new object[] { jobId }, ct).ConfigureAwait(false);
         if (job == null)
         {
             _logger.LogWarning("Cannot cancel job {JobId}: not found", jobId);
@@ -277,7 +277,7 @@ public class BackgroundJobQueueManager
         job.CompletedAt = DateTime.UtcNow;
         job.UpdatedAt = DateTime.UtcNow;
         
-        await context.SaveChangesAsync(ct);
+        await context.SaveChangesAsync(ct).ConfigureAwait(false);
         
         _logger.LogInformation("Job {JobId} cancelled", jobId);
         
@@ -299,7 +299,7 @@ public class BackgroundJobQueueManager
         int limit = 100,
         CancellationToken ct = default)
     {
-        await using var context = await _dbContextFactory.CreateDbContextAsync(ct);
+        await using var context = await _dbContextFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
         
         var query = context.JobQueue.AsQueryable();
         
@@ -311,7 +311,7 @@ public class BackgroundJobQueueManager
         return await query
             .OrderByDescending(j => j.EnqueuedAt)
             .Take(limit)
-            .ToListAsync(ct);
+            .ToListAsync(ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -319,8 +319,8 @@ public class BackgroundJobQueueManager
     /// </summary>
     public async Task<JobQueueEntity?> GetJobAsync(string jobId, CancellationToken ct = default)
     {
-        await using var context = await _dbContextFactory.CreateDbContextAsync(ct);
-        return await context.JobQueue.FindAsync(new object[] { jobId }, ct);
+        await using var context = await _dbContextFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
+        return await context.JobQueue.FindAsync(new object[] { jobId }, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -328,16 +328,16 @@ public class BackgroundJobQueueManager
     /// </summary>
     public async Task<QueueStatistics> GetStatisticsAsync(CancellationToken ct = default)
     {
-        await using var context = await _dbContextFactory.CreateDbContextAsync(ct);
+        await using var context = await _dbContextFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
         
         var stats = new QueueStatistics
         {
-            TotalJobs = await context.JobQueue.CountAsync(ct),
-            PendingJobs = await context.JobQueue.CountAsync(j => j.Status == "Pending", ct),
-            ProcessingJobs = await context.JobQueue.CountAsync(j => j.Status == "Processing", ct),
-            CompletedJobs = await context.JobQueue.CountAsync(j => j.Status == "Completed", ct),
-            FailedJobs = await context.JobQueue.CountAsync(j => j.Status == "Failed", ct),
-            CancelledJobs = await context.JobQueue.CountAsync(j => j.Status == "Cancelled", ct),
+            TotalJobs = await context.JobQueue.CountAsync(ct).ConfigureAwait(false),
+            PendingJobs = await context.JobQueue.CountAsync(j => j.Status == "Pending", ct).ConfigureAwait(false),
+            ProcessingJobs = await context.JobQueue.CountAsync(j => j.Status == "Processing", ct).ConfigureAwait(false),
+            CompletedJobs = await context.JobQueue.CountAsync(j => j.Status == "Completed", ct).ConfigureAwait(false),
+            FailedJobs = await context.JobQueue.CountAsync(j => j.Status == "Failed", ct).ConfigureAwait(false),
+            CancelledJobs = await context.JobQueue.CountAsync(j => j.Status == "Cancelled", ct).ConfigureAwait(false),
             ActiveWorkers = _activeJobs.Count
         };
         
@@ -349,9 +349,9 @@ public class BackgroundJobQueueManager
     /// </summary>
     public async Task<int> CleanupOldJobsAsync(CancellationToken ct = default)
     {
-        await using var context = await _dbContextFactory.CreateDbContextAsync(ct);
+        await using var context = await _dbContextFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
         
-        var config = await context.QueueConfiguration.FirstOrDefaultAsync(ct);
+        var config = await context.QueueConfiguration.FirstOrDefaultAsync(ct).ConfigureAwait(false);
         if (config == null) return 0;
         
         var completedCutoff = DateTime.UtcNow.AddDays(-config.JobHistoryRetentionDays);
@@ -361,12 +361,12 @@ public class BackgroundJobQueueManager
             .Where(j => (j.Status == "Completed" && j.CompletedAt < completedCutoff) ||
                        (j.Status == "Failed" && j.CompletedAt < failedCutoff) ||
                        (j.Status == "Cancelled" && j.CompletedAt < completedCutoff))
-            .ToListAsync(ct);
+            .ToListAsync(ct).ConfigureAwait(false);
         
         if (jobsToDelete.Count != 0)
         {
             context.JobQueue.RemoveRange(jobsToDelete);
-            await context.SaveChangesAsync(ct);
+            await context.SaveChangesAsync(ct).ConfigureAwait(false);
             
             _logger.LogInformation("Cleaned up {Count} old jobs", jobsToDelete.Count);
         }
@@ -382,9 +382,9 @@ public class BackgroundJobQueueManager
         bool? isEnabled = null,
         CancellationToken ct = default)
     {
-        await using var context = await _dbContextFactory.CreateDbContextAsync(ct);
+        await using var context = await _dbContextFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
         
-        var config = await context.QueueConfiguration.FirstOrDefaultAsync(ct);
+        var config = await context.QueueConfiguration.FirstOrDefaultAsync(ct).ConfigureAwait(false);
         if (config == null)
         {
             config = new QueueConfigurationEntity { Id = 1 };
@@ -410,7 +410,7 @@ public class BackgroundJobQueueManager
         }
         
         config.UpdatedAt = DateTime.UtcNow;
-        await context.SaveChangesAsync(ct);
+        await context.SaveChangesAsync(ct).ConfigureAwait(false);
         
         _logger.LogInformation(
             "Queue configuration updated: MaxConcurrent={Max}, Enabled={Enabled}",
@@ -422,8 +422,8 @@ public class BackgroundJobQueueManager
     /// </summary>
     public async Task<QueueConfigurationEntity> GetConfigurationAsync(CancellationToken ct = default)
     {
-        await using var context = await _dbContextFactory.CreateDbContextAsync(ct);
-        return await context.QueueConfiguration.FirstOrDefaultAsync(ct) ?? new QueueConfigurationEntity();
+        await using var context = await _dbContextFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
+        return await context.QueueConfiguration.FirstOrDefaultAsync(ct).ConfigureAwait(false) ?? new QueueConfigurationEntity();
     }
 
     // Private helper methods
@@ -433,9 +433,9 @@ public class BackgroundJobQueueManager
         string? outputPath,
         CancellationToken ct)
     {
-        await using var context = await _dbContextFactory.CreateDbContextAsync(ct);
+        await using var context = await _dbContextFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
         
-        var job = await context.JobQueue.FindAsync(new object[] { jobEntity.JobId }, ct);
+        var job = await context.JobQueue.FindAsync(new object[] { jobEntity.JobId }, ct).ConfigureAwait(false);
         if (job != null)
         {
             job.Status = "Completed";
@@ -444,7 +444,7 @@ public class BackgroundJobQueueManager
             job.ProgressPercent = 100;
             job.UpdatedAt = DateTime.UtcNow;
             
-            await context.SaveChangesAsync(ct);
+            await context.SaveChangesAsync(ct).ConfigureAwait(false);
             
             _logger.LogInformation("Job {JobId} completed successfully", jobEntity.JobId);
             
@@ -463,9 +463,9 @@ public class BackgroundJobQueueManager
         string errorMessage,
         CancellationToken ct)
     {
-        await using var context = await _dbContextFactory.CreateDbContextAsync(ct);
+        await using var context = await _dbContextFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
         
-        var job = await context.JobQueue.FindAsync(new object[] { jobEntity.JobId }, ct);
+        var job = await context.JobQueue.FindAsync(new object[] { jobEntity.JobId }, ct).ConfigureAwait(false);
         if (job != null)
         {
             job.Status = "Failed";
@@ -476,7 +476,7 @@ public class BackgroundJobQueueManager
             // Calculate next retry time with exponential backoff
             if (job.RetryCount < job.MaxRetries)
             {
-                var config = await context.QueueConfiguration.FirstOrDefaultAsync(ct);
+                var config = await context.QueueConfiguration.FirstOrDefaultAsync(ct).ConfigureAwait(false);
                 var baseDelay = config?.RetryBaseDelaySeconds ?? 5;
                 var maxDelay = config?.RetryMaxDelaySeconds ?? 300;
                 
@@ -495,7 +495,7 @@ public class BackgroundJobQueueManager
                     jobEntity.JobId, job.RetryCount, errorMessage);
             }
             
-            await context.SaveChangesAsync(ct);
+            await context.SaveChangesAsync(ct).ConfigureAwait(false);
             
             JobStatusChanged?.Invoke(this, new JobStatusChangedEventArgs
             {
@@ -509,16 +509,16 @@ public class BackgroundJobQueueManager
 
     private async Task MarkJobCancelledAsync(JobQueueEntity jobEntity, CancellationToken ct)
     {
-        await using var context = await _dbContextFactory.CreateDbContextAsync(ct);
+        await using var context = await _dbContextFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
         
-        var job = await context.JobQueue.FindAsync(new object[] { jobEntity.JobId }, ct);
+        var job = await context.JobQueue.FindAsync(new object[] { jobEntity.JobId }, ct).ConfigureAwait(false);
         if (job != null)
         {
             job.Status = "Cancelled";
             job.CompletedAt = DateTime.UtcNow;
             job.UpdatedAt = DateTime.UtcNow;
             
-            await context.SaveChangesAsync(ct);
+            await context.SaveChangesAsync(ct).ConfigureAwait(false);
             
             JobStatusChanged?.Invoke(this, new JobStatusChangedEventArgs
             {
@@ -536,16 +536,16 @@ public class BackgroundJobQueueManager
     {
         try
         {
-            await using var context = await _dbContextFactory.CreateDbContextAsync(ct);
+            await using var context = await _dbContextFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
             
-            var job = await context.JobQueue.FindAsync(new object[] { jobId }, ct);
+            var job = await context.JobQueue.FindAsync(new object[] { jobId }, ct).ConfigureAwait(false);
             if (job != null)
             {
                 job.ProgressPercent = progressArgs.Progress;
                 job.CurrentStage = progressArgs.Stage;
                 job.UpdatedAt = DateTime.UtcNow;
                 
-                await context.SaveChangesAsync(ct);
+                await context.SaveChangesAsync(ct).ConfigureAwait(false);
             }
             
             // Save progress history
@@ -559,7 +559,7 @@ public class BackgroundJobQueueManager
             };
             
             context.JobProgressHistory.Add(historyEntry);
-            await context.SaveChangesAsync(ct);
+            await context.SaveChangesAsync(ct).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

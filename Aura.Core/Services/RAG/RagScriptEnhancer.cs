@@ -56,7 +56,7 @@ public class RagScriptEnhancer
                 IncludeCitations = brief.RagConfiguration.IncludeCitations
             };
 
-            var ragContext = await _contextBuilder.BuildContextAsync(query, ragConfig, ct);
+            var ragContext = await _contextBuilder.BuildContextAsync(query, ragConfig, ct).ConfigureAwait(false);
 
             if (ragContext.Chunks.Count == 0)
             {

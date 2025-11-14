@@ -43,7 +43,7 @@ public class SceneOptimizationService
             brief,
             config.LlmProvider,
             config.PacingData,
-            ct);
+            ct).ConfigureAwait(false);
 
         var optimizedPrompts = new List<OptimizedVisualPrompt>();
         OptimizedVisualPrompt? previousPrompt = null;
@@ -58,7 +58,7 @@ public class SceneOptimizationService
                 scene,
                 previousPrompt,
                 config,
-                ct);
+                ct).ConfigureAwait(false);
 
             optimizedPrompts.Add(optimized);
             previousPrompt = optimized;

@@ -38,7 +38,7 @@ public class FailureAnalysisService
     {
         _logger.LogInformation("Analyzing failure for job {JobId}", job.Id);
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         // Load telemetry for enhanced analysis
         RunTelemetryCollection? telemetry = null;

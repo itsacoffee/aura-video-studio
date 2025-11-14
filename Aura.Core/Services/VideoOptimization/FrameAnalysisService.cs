@@ -39,8 +39,8 @@ public class FrameAnalysisService
         cancellationToken.ThrowIfCancellationRequested();
 
         // Simulate frame analysis - in production this would use OpenCVSharp or Emgu.CV
-        var frames = await ExtractKeyFramesAsync(videoPath, options, cancellationToken);
-        var importanceScores = await CalculateFrameImportanceAsync(frames, cancellationToken);
+        var frames = await ExtractKeyFramesAsync(videoPath, options, cancellationToken).ConfigureAwait(false);
+        var importanceScores = await CalculateFrameImportanceAsync(frames, cancellationToken).ConfigureAwait(false);
         var recommendations = GenerateFrameRecommendations(frames, importanceScores);
 
         return new FrameAnalysisResult(
@@ -58,7 +58,7 @@ public class FrameAnalysisService
         FrameAnalysisOptions options,
         CancellationToken cancellationToken)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         
         // Placeholder implementation
         // In production, this would use video processing library to extract frames
@@ -85,7 +85,7 @@ public class FrameAnalysisService
         List<FrameInfo> frames,
         CancellationToken cancellationToken)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         
         var scores = new Dictionary<int, double>();
         
@@ -157,7 +157,7 @@ public class FrameAnalysisService
         cancellationToken.ThrowIfCancellationRequested();
 
         // Placeholder - would use video processing library
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return null;
     }
 }

@@ -47,7 +47,7 @@ public class PromptTestingService
 
         try
         {
-            var template = await _repository.GetByIdAsync(request.TemplateId, ct);
+            var template = await _repository.GetByIdAsync(request.TemplateId, ct).ConfigureAwait(false);
             if (template == null)
             {
                 result.Success = false;
@@ -65,14 +65,14 @@ public class PromptTestingService
                     ThrowOnInvalidType = false,
                     SanitizeValues = true
                 },
-                ct);
+                ct).ConfigureAwait(false);
 
             result.ResolvedPrompt = resolvedPrompt;
 
             var testBrief = CreateTestBrief(request.TestVariables);
             var testSpec = CreateTestPlanSpec(request.UseLowTokenLimit);
 
-            var generatedContent = await llmProvider.DraftScriptAsync(testBrief, testSpec, ct);
+            var generatedContent = await llmProvider.DraftScriptAsync(testBrief, testSpec, ct).ConfigureAwait(false);
 
             result.GeneratedContent = generatedContent;
             result.Success = !string.IsNullOrWhiteSpace(generatedContent);
@@ -117,10 +117,10 @@ public class PromptTestingService
                 UseLowTokenLimit = true
             };
 
-            return await TestPromptAsync(request, llmProvider, ct);
+            return await TestPromptAsync(request, llmProvider, ct).ConfigureAwait(false);
         });
 
-        var results = await Task.WhenAll(tasks);
+        var results = await Task.WhenAll(tasks).ConfigureAwait(false);
         return new List<PromptTestResult>(results);
     }
 
@@ -143,7 +143,7 @@ public class PromptTestingService
 
         try
         {
-            var template = await _repository.GetByIdAsync(templateId, ct);
+            var template = await _repository.GetByIdAsync(templateId, ct).ConfigureAwait(false);
             if (template == null)
             {
                 result.ErrorMessage = $"Template {templateId} not found";
@@ -160,7 +160,7 @@ public class PromptTestingService
                     ThrowOnInvalidType = true,
                     SanitizeValues = true
                 },
-                ct);
+                ct).ConfigureAwait(false);
 
             result.ResolvedPrompt = resolvedPrompt;
             result.Success = true;

@@ -59,7 +59,7 @@ public class ThumbnailGenerationService : IThumbnailGenerationService
         try
         {
             using var sourceStream = File.OpenRead(sourceFilePath);
-            return await GenerateThumbnailFromStreamAsync(sourceStream, mediaType, Path.GetFileName(sourceFilePath), ct);
+            return await GenerateThumbnailFromStreamAsync(sourceStream, mediaType, Path.GetFileName(sourceFilePath), ct).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -81,11 +81,11 @@ public class ThumbnailGenerationService : IThumbnailGenerationService
             switch (mediaType)
             {
                 case MediaType.Image:
-                    thumbnailStream = await GenerateImageThumbnailAsync(sourceStream, ct);
+                    thumbnailStream = await GenerateImageThumbnailAsync(sourceStream, ct).ConfigureAwait(false);
                     break;
 
                 case MediaType.Video:
-                    thumbnailStream = await GenerateVideoThumbnailAsync(sourceStream, fileName, ct);
+                    thumbnailStream = await GenerateVideoThumbnailAsync(sourceStream, fileName, ct).ConfigureAwait(false);
                     break;
 
                 case MediaType.Audio:
@@ -108,9 +108,9 @@ public class ThumbnailGenerationService : IThumbnailGenerationService
                 thumbnailStream,
                 thumbnailFileName,
                 "image/jpeg",
-                ct);
+                ct).ConfigureAwait(false);
 
-            await thumbnailStream.DisposeAsync();
+            await thumbnailStream.DisposeAsync().ConfigureAwait(false);
 
             return thumbnailUrl;
         }
@@ -125,7 +125,7 @@ public class ThumbnailGenerationService : IThumbnailGenerationService
     {
         try
         {
-            using var image = await Image.LoadAsync(sourceStream, ct);
+            using var image = await Image.LoadAsync(sourceStream, ct).ConfigureAwait(false);
             
             // Calculate dimensions maintaining aspect ratio
             var width = ThumbnailWidth;
@@ -143,7 +143,7 @@ public class ThumbnailGenerationService : IThumbnailGenerationService
             image.Mutate(x => x.Resize(width, height));
 
             var outputStream = new MemoryStream();
-            await image.SaveAsJpegAsync(outputStream, new JpegEncoder { Quality = 85 }, ct);
+            await image.SaveAsJpegAsync(outputStream, new JpegEncoder { Quality = 85 }, ct).ConfigureAwait(false);
             outputStream.Position = 0;
 
             return outputStream;
@@ -167,7 +167,7 @@ public class ThumbnailGenerationService : IThumbnailGenerationService
             {
                 using (var fileStream = File.Create(tempInputPath))
                 {
-                    await sourceStream.CopyToAsync(fileStream, ct);
+                    await sourceStream.CopyToAsync(fileStream, ct).ConfigureAwait(false);
                 }
 
                 // Extract frame at 1 second using ffmpeg
@@ -188,11 +188,11 @@ public class ThumbnailGenerationService : IThumbnailGenerationService
                     return null;
                 }
 
-                await process.WaitForExitAsync(ct);
+                await process.WaitForExitAsync(ct).ConfigureAwait(false);
 
                 if (process.ExitCode != 0)
                 {
-                    var error = await process.StandardError.ReadToEndAsync();
+                    var error = await process.StandardError.ReadToEndAsync().ConfigureAwait(false);
                     _logger.LogWarning("ffmpeg failed to generate thumbnail: {Error}", error);
                     return null;
                 }
@@ -205,7 +205,7 @@ public class ThumbnailGenerationService : IThumbnailGenerationService
                 var outputStream = new MemoryStream();
                 using (var fileStream = File.OpenRead(tempOutputPath))
                 {
-                    await fileStream.CopyToAsync(outputStream, ct);
+                    await fileStream.CopyToAsync(outputStream, ct).ConfigureAwait(false);
                 }
                 outputStream.Position = 0;
 

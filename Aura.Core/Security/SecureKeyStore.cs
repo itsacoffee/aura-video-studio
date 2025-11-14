@@ -100,13 +100,13 @@ public class SecureKeyStore
             {
                 if (!string.IsNullOrWhiteSpace(kvp.Key) && !string.IsNullOrWhiteSpace(kvp.Value))
                 {
-                    await _secureStorage.SaveApiKeyAsync(kvp.Key, kvp.Value);
+                    await _secureStorage.SaveApiKeyAsync(kvp.Key, kvp.Value).ConfigureAwait(false);
                 }
             }
 
             // Write atomic keystore data and integrity hash
-            await File.WriteAllBytesAsync(_keyStorePath, dataBytes, ct);
-            await File.WriteAllTextAsync(_integrityPath, integrityHash, ct);
+            await File.WriteAllBytesAsync(_keyStorePath, dataBytes, ct).ConfigureAwait(false);
+            await File.WriteAllTextAsync(_integrityPath, integrityHash, ct).ConfigureAwait(false);
 
             _logger.LogInformation(
                 "AUDIT: Atomic keystore save completed. Keys: {KeyCount}, Provider: {Provider}, ProfileLock: {ProfileLock}",
@@ -134,12 +134,12 @@ public class SecureKeyStore
                 return null;
             }
 
-            var dataBytes = await File.ReadAllBytesAsync(_keyStorePath, ct);
+            var dataBytes = await File.ReadAllBytesAsync(_keyStorePath, ct).ConfigureAwait(false);
             
             // Verify integrity if integrity file exists
             if (File.Exists(_integrityPath))
             {
-                var storedHash = await File.ReadAllTextAsync(_integrityPath, ct);
+                var storedHash = await File.ReadAllTextAsync(_integrityPath, ct).ConfigureAwait(false);
                 var computedHash = ComputeIntegrityHash(dataBytes);
                 
                 if (!string.Equals(storedHash, computedHash, StringComparison.OrdinalIgnoreCase))

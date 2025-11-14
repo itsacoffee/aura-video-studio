@@ -50,9 +50,9 @@ public class ContentSafetyService
         
         try
         {
-            await AnalyzeKeywordsAsync(content, policy, result, ct);
+            await AnalyzeKeywordsAsync(content, policy, result, ct).ConfigureAwait(false);
             
-            await AnalyzeTopicsAsync(content, policy, result, ct);
+            await AnalyzeTopicsAsync(content, policy, result, ct).ConfigureAwait(false);
             
             AnalyzeCategories(content, policy, result);
             
@@ -83,7 +83,7 @@ public class ContentSafetyService
     {
         foreach (var rule in policy.KeywordRules)
         {
-            var matches = await _keywordManager.FindMatchesAsync(content, rule, ct);
+            var matches = await _keywordManager.FindMatchesAsync(content, rule, ct).ConfigureAwait(false);
             
             foreach (var match in matches)
             {
@@ -113,7 +113,7 @@ public class ContentSafetyService
         SafetyAnalysisResult result,
         CancellationToken ct)
     {
-        var detectedTopics = await _topicManager.DetectTopicsAsync(content, ct);
+        var detectedTopics = await _topicManager.DetectTopicsAsync(content, ct).ConfigureAwait(false);
         
         foreach (var topic in detectedTopics)
         {

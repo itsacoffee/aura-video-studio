@@ -123,7 +123,7 @@ public class VideoEffectService : IVideoEffectService
             {
                 try
                 {
-                    var json = await File.ReadAllTextAsync(file, cancellationToken);
+                    var json = await File.ReadAllTextAsync(file, cancellationToken).ConfigureAwait(false);
                     var preset = JsonSerializer.Deserialize<EffectPreset>(json);
                     if (preset != null)
                     {
@@ -160,7 +160,7 @@ public class VideoEffectService : IVideoEffectService
         var presetFile = Path.Combine(_presetsDirectory, $"{presetId}.json");
         if (File.Exists(presetFile))
         {
-            var json = await File.ReadAllTextAsync(presetFile, cancellationToken);
+            var json = await File.ReadAllTextAsync(presetFile, cancellationToken).ConfigureAwait(false);
             return JsonSerializer.Deserialize<EffectPreset>(json);
         }
 
@@ -174,7 +174,7 @@ public class VideoEffectService : IVideoEffectService
 
         var presetFile = Path.Combine(_presetsDirectory, $"{preset.Id}.json");
         var json = JsonSerializer.Serialize(preset, new JsonSerializerOptions { WriteIndented = true });
-        await File.WriteAllTextAsync(presetFile, json, cancellationToken);
+        await File.WriteAllTextAsync(presetFile, json, cancellationToken).ConfigureAwait(false);
 
         _logger.LogInformation("Saved preset {PresetId} to {File}", preset.Id, presetFile);
         return preset;
@@ -191,7 +191,7 @@ public class VideoEffectService : IVideoEffectService
         var presetFile = Path.Combine(_presetsDirectory, $"{presetId}.json");
         if (File.Exists(presetFile))
         {
-            await Task.Run(() => File.Delete(presetFile), cancellationToken);
+            await Task.Run(() => File.Delete(presetFile), cancellationToken).ConfigureAwait(false);
             _logger.LogInformation("Deleted preset {PresetId}", presetId);
             return true;
         }
@@ -248,7 +248,7 @@ public class VideoEffectService : IVideoEffectService
             },
             timeout: TimeSpan.FromMinutes(60),
             cancellationToken
-        );
+        ).ConfigureAwait(false);
 
         if (!result.Success)
         {
@@ -266,7 +266,7 @@ public class VideoEffectService : IVideoEffectService
         Action<double>? progressCallback = null,
         CancellationToken cancellationToken = default)
     {
-        var preset = await GetPresetByIdAsync(presetId, cancellationToken);
+        var preset = await GetPresetByIdAsync(presetId, cancellationToken).ConfigureAwait(false);
         if (preset == null)
         {
             throw new InvalidOperationException($"Preset not found: {presetId}");
@@ -276,10 +276,10 @@ public class VideoEffectService : IVideoEffectService
         preset.UsageCount++;
         if (!preset.IsBuiltIn)
         {
-            await SavePresetAsync(preset, cancellationToken);
+            await SavePresetAsync(preset, cancellationToken).ConfigureAwait(false);
         }
 
-        return await ApplyEffectsAsync(inputPath, outputPath, preset.Effects, progressCallback, cancellationToken);
+        return await ApplyEffectsAsync(inputPath, outputPath, preset.Effects, progressCallback, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<string> GenerateEffectPreviewAsync(
@@ -316,7 +316,7 @@ public class VideoEffectService : IVideoEffectService
         var result = await _ffmpegExecutor.ExecuteCommandAsync(
             builder,
             cancellationToken: cancellationToken
-        );
+        ).ConfigureAwait(false);
 
         if (!result.Success)
         {
@@ -337,7 +337,7 @@ public class VideoEffectService : IVideoEffectService
     {
         // For now, return popular presets
         // In future, analyze video content and recommend appropriate effects
-        var allPresets = await GetPresetsAsync(cancellationToken: cancellationToken);
+        var allPresets = await GetPresetsAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
         return allPresets.OrderByDescending(p => p.UsageCount).Take(5).ToList();
     }
 

@@ -39,9 +39,9 @@ public class EnhancedFallbackService
 
         return tier switch
         {
-            FallbackTier.StockPhotos => await GenerateStockPhotoFallbackAsync(prompt, ct),
-            FallbackTier.AbstractBackground => await GenerateAbstractBackgroundAsync(prompt, ct),
-            FallbackTier.SolidColor => await GenerateSolidColorFallbackAsync(prompt, ct),
+            FallbackTier.StockPhotos => await GenerateStockPhotoFallbackAsync(prompt, ct).ConfigureAwait(false),
+            FallbackTier.AbstractBackground => await GenerateAbstractBackgroundAsync(prompt, ct).ConfigureAwait(false),
+            FallbackTier.SolidColor => await GenerateSolidColorFallbackAsync(prompt, ct).ConfigureAwait(false),
             _ => throw new ArgumentException($"Invalid fallback tier: {tier}")
         };
     }
@@ -55,7 +55,7 @@ public class EnhancedFallbackService
     {
         _logger.LogDebug("Generating stock photo fallback for scene {SceneIndex}", prompt.SceneIndex);
 
-        await Task.Delay(1, ct);
+        await Task.Delay(1, ct).ConfigureAwait(false);
 
         var keywords = ExtractSmartKeywords(prompt);
         var searchQuery = string.Join(" ", keywords.Take(3));
@@ -85,7 +85,7 @@ public class EnhancedFallbackService
     {
         _logger.LogDebug("Generating abstract background for scene {SceneIndex}", prompt.SceneIndex);
 
-        await Task.Delay(1, ct);
+        await Task.Delay(1, ct).ConfigureAwait(false);
 
         var gradient = GenerateGradientBackground(prompt);
         var textOverlay = GenerateTextOverlay(prompt);
@@ -116,7 +116,7 @@ public class EnhancedFallbackService
     {
         _logger.LogWarning("Using emergency solid color fallback for scene {SceneIndex}", prompt.SceneIndex);
 
-        await Task.Delay(1, ct);
+        await Task.Delay(1, ct).ConfigureAwait(false);
 
         var color = SelectColorFromPrompt(prompt);
         var imageUrl = $"fallback://solid/{prompt.SceneIndex}/{color}";

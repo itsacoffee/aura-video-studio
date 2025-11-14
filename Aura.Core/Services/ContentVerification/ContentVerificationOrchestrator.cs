@@ -46,7 +46,7 @@ public class ContentVerificationOrchestrator
         try
         {
             // Step 1: Extract claims from content
-            var claims = await ExtractClaimsAsync(request.Content, ct);
+            var claims = await ExtractClaimsAsync(request.Content, ct).ConfigureAwait(false);
             _logger.LogInformation("Extracted {Count} claims", claims.Count);
 
             // Apply max claims limit
@@ -58,24 +58,24 @@ public class ContentVerificationOrchestrator
 
             // Step 2: Fact-check claims
             var factChecks = request.Options.CheckFacts
-                ? await _factCheckingService.CheckClaimsAsync(claims, ct)
+                ? await _factCheckingService.CheckClaimsAsync(claims, ct).ConfigureAwait(false)
                 : new List<FactCheckResult>();
 
             // Step 3: Analyze confidence
             var confidence = request.Options.AnalyzeConfidence
                 ? await _confidenceAnalysisService.AnalyzeConfidenceAsync(
-                    request.ContentId, claims, factChecks, ct)
+                    request.ContentId, claims, factChecks, ct).ConfigureAwait(false)
                 : null;
 
             // Step 4: Detect misinformation
             var misinformation = request.Options.DetectMisinformation
                 ? await _misinformationDetectionService.DetectMisinformationAsync(
-                    request.ContentId, request.Content, claims, factChecks, ct)
+                    request.ContentId, request.Content, claims, factChecks, ct).ConfigureAwait(false)
                 : null;
 
             // Step 5: Collect and validate sources
             var sources = request.Options.AttributeSources
-                ? await CollectSourcesAsync(factChecks, ct)
+                ? await CollectSourcesAsync(factChecks, ct).ConfigureAwait(false)
                 : new List<SourceAttribution>();
 
             // Step 6: Determine overall status and confidence
@@ -124,11 +124,11 @@ public class ContentVerificationOrchestrator
     {
         _logger.LogDebug("Performing quick verification");
 
-        var claims = await ExtractClaimsAsync(content, ct);
+        var claims = await ExtractClaimsAsync(content, ct).ConfigureAwait(false);
         
         // Only check top 5 claims for quick verification
         var topClaims = claims.Take(5).ToList();
-        var factChecks = await _factCheckingService.CheckClaimsAsync(topClaims, ct);
+        var factChecks = await _factCheckingService.CheckClaimsAsync(topClaims, ct).ConfigureAwait(false);
 
         var avgConfidence = factChecks.Count != 0
             ? factChecks.Average(fc => fc.ConfidenceScore)
@@ -159,7 +159,7 @@ public class ContentVerificationOrchestrator
         string content,
         CancellationToken ct)
     {
-        await Task.Delay(10, ct); // Simulate processing
+        await Task.Delay(10, ct).ConfigureAwait(false); // Simulate processing
 
         var claims = new List<Claim>();
         var sentences = SplitIntoSentences(content);
@@ -237,7 +237,7 @@ public class ContentVerificationOrchestrator
         List<FactCheckResult> factChecks,
         CancellationToken ct)
     {
-        await Task.Delay(10, ct);
+        await Task.Delay(10, ct).ConfigureAwait(false);
 
         var sources = factChecks
             .SelectMany(fc => fc.Evidence)

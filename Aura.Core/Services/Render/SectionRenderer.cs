@@ -87,7 +87,7 @@ public class SectionRenderer
             renderSpec,
             outputPath,
             progress,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
 
         return outputPath;
     }
@@ -137,7 +137,7 @@ public class SectionRenderer
                 i + 1, totalRanges, range.Start, range.End
             );
 
-            await ExportRangeAsync(timeline, range, preset, outputPath, null, cancellationToken);
+            await ExportRangeAsync(timeline, range, preset, outputPath, null, cancellationToken).ConfigureAwait(false);
             
             outputs.Add(outputPath);
 

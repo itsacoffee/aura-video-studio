@@ -50,7 +50,7 @@ public class ProviderProfileService
             ProviderProfile.ProMax
         };
 
-        var customProfiles = await LoadCustomProfilesAsync(ct);
+        var customProfiles = await LoadCustomProfilesAsync(ct).ConfigureAwait(false);
         profiles.AddRange(customProfiles);
 
         return profiles;
@@ -61,8 +61,8 @@ public class ProviderProfileService
     /// </summary>
     public async Task<ProviderProfile> GetActiveProfileAsync(CancellationToken ct = default)
     {
-        var config = await LoadConfigAsync(ct);
-        var allProfiles = await GetAllProfilesAsync(ct);
+        var config = await LoadConfigAsync(ct).ConfigureAwait(false);
+        var allProfiles = await GetAllProfilesAsync(ct).ConfigureAwait(false);
         
         return allProfiles.FirstOrDefault(p => p.Id == config.ActiveProfile) 
                ?? ProviderProfile.FreeOnly;
@@ -73,7 +73,7 @@ public class ProviderProfileService
     /// </summary>
     public async Task<bool> SetActiveProfileAsync(string profileId, CancellationToken ct = default)
     {
-        var allProfiles = await GetAllProfilesAsync(ct);
+        var allProfiles = await GetAllProfilesAsync(ct).ConfigureAwait(false);
         var profile = allProfiles.FirstOrDefault(p => p.Id == profileId);
         
         if (profile == null)
@@ -82,9 +82,9 @@ public class ProviderProfileService
             return false;
         }
 
-        var config = await LoadConfigAsync(ct);
+        var config = await LoadConfigAsync(ct).ConfigureAwait(false);
         config.ActiveProfile = profileId;
-        await SaveConfigAsync(config, ct);
+        await SaveConfigAsync(config, ct).ConfigureAwait(false);
 
         _logger.LogInformation("Active profile changed to {ProfileName} ({ProfileId})", 
             profile.Name, profileId);
@@ -99,7 +99,7 @@ public class ProviderProfileService
         string profileId, 
         CancellationToken ct = default)
     {
-        var allProfiles = await GetAllProfilesAsync(ct);
+        var allProfiles = await GetAllProfilesAsync(ct).ConfigureAwait(false);
         var profile = allProfiles.FirstOrDefault(p => p.Id == profileId);
         
         if (profile == null)
@@ -125,7 +125,7 @@ public class ProviderProfileService
             }
         }
 
-        var engineStatus = await CheckEngineStatusAsync(profile, ct);
+        var engineStatus = await CheckEngineStatusAsync(profile, ct).ConfigureAwait(false);
         if (!engineStatus.AllEnginesAvailable)
         {
             result.IsValid = false;
@@ -163,10 +163,10 @@ public class ProviderProfileService
         var result = new EngineStatusResult { AllEnginesAvailable = true };
         var stages = profile.Stages;
 
-        if (stages.TryGetValue("Script", out var value) && (value.Contains("Ollama") || value == "Free"))
+        if (stages.TryGetValue("Script", out var scriptValue) && (scriptValue.Contains("Ollama") || scriptValue == "Free"))
         {
             result.OfflineProvidersNeeded = true;
-            var ollamaAvailable = await CheckOllamaAsync(ct);
+            var ollamaAvailable = await CheckOllamaAsync(ct).ConfigureAwait(false);
             if (!ollamaAvailable)
             {
                 result.AllEnginesAvailable = false;
@@ -174,12 +174,12 @@ public class ProviderProfileService
             }
         }
 
-        if (stages.TryGetValue("Visuals", out var value) && value.Contains("Local"))
+        if (stages.TryGetValue("Visuals", out var visualsValue) && visualsValue.Contains("Local"))
         {
             result.OfflineProvidersNeeded = true;
         }
 
-        var ffmpegAvailable = await CheckFFmpegAsync(ct);
+        var ffmpegAvailable = await CheckFFmpegAsync(ct).ConfigureAwait(false);
         if (!ffmpegAvailable)
         {
             result.AllEnginesAvailable = false;
@@ -194,7 +194,7 @@ public class ProviderProfileService
         try
         {
             var ollamaUrl = "http://127.0.0.1:11434/api/tags";
-            var response = await _httpClient.GetAsync(ollamaUrl, ct);
+            var response = await _httpClient.GetAsync(ollamaUrl, ct).ConfigureAwait(false);
             return response.IsSuccessStatusCode;
         }
         catch
@@ -220,7 +220,7 @@ public class ProviderProfileService
             using var process = System.Diagnostics.Process.Start(startInfo);
             if (process == null) return false;
 
-            await process.WaitForExitAsync(ct);
+            await process.WaitForExitAsync(ct).ConfigureAwait(false);
             return process.ExitCode == 0;
         }
         catch
@@ -264,7 +264,7 @@ public class ProviderProfileService
 
         try
         {
-            var json = await File.ReadAllTextAsync(_profilesPath, ct);
+            var json = await File.ReadAllTextAsync(_profilesPath, ct).ConfigureAwait(false);
             var profiles = JsonSerializer.Deserialize<List<ProviderProfile>>(json);
             return profiles ?? new List<ProviderProfile>();
         }
@@ -286,7 +286,7 @@ public class ProviderProfileService
 
         try
         {
-            var json = await File.ReadAllTextAsync(configPath, ct);
+            var json = await File.ReadAllTextAsync(configPath, ct).ConfigureAwait(false);
             var config = JsonSerializer.Deserialize<ProviderMixingConfig>(json);
             return config ?? new ProviderMixingConfig { ActiveProfile = "free-only" };
         }
@@ -309,7 +309,7 @@ public class ProviderProfileService
 
         var options = new JsonSerializerOptions { WriteIndented = true };
         var json = JsonSerializer.Serialize(config, options);
-        await File.WriteAllTextAsync(configPath, json, ct);
+        await File.WriteAllTextAsync(configPath, json, ct).ConfigureAwait(false);
     }
 }
 

@@ -48,7 +48,7 @@ public class IntelligentContentAdvisor
             var heuristicAnalysis = AnalyzeHeuristics(script);
             var aiAnalysisTask = PerformAiQualityAnalysisAsync(script, brief, ct);
 
-            var aiAnalysis = await aiAnalysisTask;
+            var aiAnalysis = await aiAnalysisTask.ConfigureAwait(false);
 
             // Combine heuristic and AI analysis
             var combinedScore = (heuristicAnalysis.OverallScore + aiAnalysis.OverallScore) / 2.0;
@@ -354,7 +354,7 @@ public class IntelligentContentAdvisor
                 Style: prompt
             );
 
-            var response = await _llmProvider.DraftScriptAsync(analysisBrief, planSpec, ct);
+            var response = await _llmProvider.DraftScriptAsync(analysisBrief, planSpec, ct).ConfigureAwait(false);
 
             return ParseAiQualityAnalysis(response);
         }

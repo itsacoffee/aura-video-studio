@@ -81,7 +81,7 @@ public class VisualStageAdapter : UnifiedGenerationOrchestrator<VisualStageReque
             ValidateSchema = false
         };
 
-        var result = await ExecuteAsync(request, config, ct);
+        var result = await ExecuteAsync(request, config, ct).ConfigureAwait(false);
 
         if (!result.IsSuccess || result.Data == null)
         {
@@ -105,7 +105,7 @@ public class VisualStageAdapter : UnifiedGenerationOrchestrator<VisualStageReque
         OrchestrationConfig config,
         CancellationToken ct)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         var preferredTier = config.PreferredTier ?? "Free";
         var offlineOnly = config.OfflineOnly;
@@ -161,7 +161,7 @@ value));
             request.PreviousScene?.Script,
             request.Tone,
             request.VisualStyle,
-            ct);
+            ct).ConfigureAwait(false);
 
         if (visualResult == null)
         {
@@ -205,7 +205,7 @@ value));
 
     protected override async Task<string?> GetCacheKeyAsync(VisualStageRequest request, CancellationToken ct)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         var keyData = $"visual:{request.Scene.Script}:{request.Tone}:{request.VisualStyle}:{request.Importance}";
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(keyData));

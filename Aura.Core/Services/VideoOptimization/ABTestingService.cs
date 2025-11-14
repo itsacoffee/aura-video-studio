@@ -48,7 +48,7 @@ public class ABTestingService
         {
             cancellationToken.ThrowIfCancellationRequested();
             
-            var result = await EvaluateStrategyAsync(strategy, options, cancellationToken);
+            var result = await EvaluateStrategyAsync(strategy, options, cancellationToken).ConfigureAwait(false);
             results.Add(result);
         }
 
@@ -123,7 +123,7 @@ public class ABTestingService
             ));
         }
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return strategies;
     }
 
@@ -138,7 +138,7 @@ public class ABTestingService
         var attentionPrediction = await _attentionPredictor.PredictAttentionAsync(
             strategy.Scenes,
             new PredictionOptions(),
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
 
         // Calculate various metrics
         var totalDuration = strategy.Scenes.Sum(s => s.Duration.TotalSeconds);

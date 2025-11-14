@@ -49,7 +49,7 @@ public class ProfilePersistence
     /// </summary>
     public async Task SaveProfileAsync(UserProfile profile, CancellationToken ct = default)
     {
-        await _fileLock.WaitAsync(ct);
+        await _fileLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             var filePath = GetProfileFilePath(profile.ProfileId);
@@ -57,7 +57,7 @@ public class ProfilePersistence
             
             // Write to temp file first, then rename for atomic operation
             var tempPath = filePath + ".tmp";
-            await File.WriteAllTextAsync(tempPath, json, ct);
+            await File.WriteAllTextAsync(tempPath, json, ct).ConfigureAwait(false);
             File.Move(tempPath, filePath, overwrite: true);
             
             _logger.LogDebug("Saved profile {ProfileId}", profile.ProfileId);
@@ -83,7 +83,7 @@ public class ProfilePersistence
 
         try
         {
-            var json = await File.ReadAllTextAsync(filePath, ct);
+            var json = await File.ReadAllTextAsync(filePath, ct).ConfigureAwait(false);
             var profile = JsonSerializer.Deserialize<UserProfile>(json, _jsonOptions);
             _logger.LogDebug("Loaded profile {ProfileId}", profileId);
             return profile;
@@ -113,7 +113,7 @@ public class ProfilePersistence
         {
             try
             {
-                var json = await File.ReadAllTextAsync(file, ct);
+                var json = await File.ReadAllTextAsync(file, ct).ConfigureAwait(false);
                 var profile = JsonSerializer.Deserialize<UserProfile>(json, _jsonOptions);
                 
                 if (profile != null && profile.UserId == userId)
@@ -136,7 +136,7 @@ public class ProfilePersistence
     /// </summary>
     public async Task DeleteProfileAsync(string profileId, CancellationToken ct = default)
     {
-        await _fileLock.WaitAsync(ct);
+        await _fileLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             var profilePath = GetProfileFilePath(profileId);
@@ -175,14 +175,14 @@ public class ProfilePersistence
     /// </summary>
     public async Task SavePreferencesAsync(ProfilePreferences preferences, CancellationToken ct = default)
     {
-        await _fileLock.WaitAsync(ct);
+        await _fileLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             var filePath = GetPreferencesFilePath(preferences.ProfileId);
             var json = JsonSerializer.Serialize(preferences, _jsonOptions);
             
             var tempPath = filePath + ".tmp";
-            await File.WriteAllTextAsync(tempPath, json, ct);
+            await File.WriteAllTextAsync(tempPath, json, ct).ConfigureAwait(false);
             File.Move(tempPath, filePath, overwrite: true);
             
             _logger.LogDebug("Saved preferences for profile {ProfileId}", preferences.ProfileId);
@@ -208,7 +208,7 @@ public class ProfilePersistence
 
         try
         {
-            var json = await File.ReadAllTextAsync(filePath, ct);
+            var json = await File.ReadAllTextAsync(filePath, ct).ConfigureAwait(false);
             var preferences = JsonSerializer.Deserialize<ProfilePreferences>(json, _jsonOptions);
             _logger.LogDebug("Loaded preferences for profile {ProfileId}", profileId);
             return preferences;
@@ -229,17 +229,17 @@ public class ProfilePersistence
     /// </summary>
     public async Task RecordDecisionAsync(DecisionRecord decision, CancellationToken ct = default)
     {
-        await _fileLock.WaitAsync(ct);
+        await _fileLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            var decisions = await LoadDecisionsAsync(decision.ProfileId, ct);
+            var decisions = await LoadDecisionsAsync(decision.ProfileId, ct).ConfigureAwait(false);
             decisions.Add(decision);
             
             var filePath = GetDecisionsFilePath(decision.ProfileId);
             var json = JsonSerializer.Serialize(decisions, _jsonOptions);
             
             var tempPath = filePath + ".tmp";
-            await File.WriteAllTextAsync(tempPath, json, ct);
+            await File.WriteAllTextAsync(tempPath, json, ct).ConfigureAwait(false);
             File.Move(tempPath, filePath, overwrite: true);
             
             _logger.LogDebug("Recorded decision for profile {ProfileId}: {Type} -> {Decision}",
@@ -265,7 +265,7 @@ public class ProfilePersistence
 
         try
         {
-            var json = await File.ReadAllTextAsync(filePath, ct);
+            var json = await File.ReadAllTextAsync(filePath, ct).ConfigureAwait(false);
             var decisions = JsonSerializer.Deserialize<List<DecisionRecord>>(json, _jsonOptions);
             return decisions ?? new List<DecisionRecord>();
         }

@@ -219,7 +219,7 @@ public class CaptionBuilder
         var fileName = $"{baseFileName}.{extension}";
         var outputPath = Path.Combine(outputDirectory, fileName);
 
-        await File.WriteAllTextAsync(outputPath, content, Encoding.UTF8);
+        await File.WriteAllTextAsync(outputPath, content, Encoding.UTF8).ConfigureAwait(false);
         _logger.LogInformation("Subtitles exported to: {Path}", outputPath);
 
         return outputPath;

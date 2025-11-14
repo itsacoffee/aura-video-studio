@@ -38,7 +38,7 @@ public class FrameImportanceModel
 
         // In production, this would load an actual ML.NET model
         // For now, we simulate the load
-        await Task.Delay(100, cancellationToken);
+        await Task.Delay(100, cancellationToken).ConfigureAwait(false);
 
         _isLoaded = true;
         _logger.LogInformation("Model loaded successfully");
@@ -60,7 +60,7 @@ public class FrameImportanceModel
 
         // Placeholder prediction logic
         // In production, this would use ML.NET PredictionEngine
-        var score = await Task.FromResult(CalculateHeuristicScore(features));
+        var score = await Task.FromResult(CalculateHeuristicScore(features)).ConfigureAwait(false);
         
         return score;
     }
@@ -85,7 +85,7 @@ public class FrameImportanceModel
         {
             cancellationToken.ThrowIfCancellationRequested();
             
-            var score = await PredictImportanceAsync(features, cancellationToken);
+            var score = await PredictImportanceAsync(features, cancellationToken).ConfigureAwait(false);
             predictions[features.FrameIndex] = score;
         }
 
@@ -150,7 +150,7 @@ public class FrameImportanceModel
 
         // Scene-level importance prediction using ML heuristics
         var score = await Task.FromResult(CalculateSceneImportanceHeuristic(
-            sceneScript, sceneIndex, totalScenes));
+            sceneScript, sceneIndex, totalScenes)).ConfigureAwait(false);
 
         return score;
     }

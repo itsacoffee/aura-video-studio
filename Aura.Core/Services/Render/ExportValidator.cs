@@ -85,7 +85,7 @@ public class ExportValidator
         // Probe video with FFprobe
         try
         {
-            var probeResult = await ProbeVideoAsync(filePath);
+            var probeResult = await ProbeVideoAsync(filePath).ConfigureAwait(false);
 
             if (probeResult == null)
             {
@@ -152,7 +152,7 @@ public class ExportValidator
             }
 
             // Try to decode first 10 frames to ensure file is playable
-            var isPlayable = await VerifyPlayableAsync(filePath);
+            var isPlayable = await VerifyPlayableAsync(filePath).ConfigureAwait(false);
             if (!isPlayable)
             {
                 issues.Add("File failed playback verification - may be corrupted");
@@ -205,8 +205,8 @@ public class ExportValidator
                 return null;
             }
 
-            var output = await process.StandardOutput.ReadToEndAsync();
-            await process.WaitForExitAsync();
+            var output = await process.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
+            await process.WaitForExitAsync().ConfigureAwait(false);
 
             if (process.ExitCode != 0)
             {
@@ -246,7 +246,7 @@ public class ExportValidator
                 return false;
             }
 
-            await process.WaitForExitAsync();
+            await process.WaitForExitAsync().ConfigureAwait(false);
             return process.ExitCode == 0;
         }
         catch
@@ -384,7 +384,7 @@ public class ExportValidator
             }
 
             var fileInfo = new FileInfo(filePath);
-            var probeResult = await ProbeVideoAsync(filePath);
+            var probeResult = await ProbeVideoAsync(filePath).ConfigureAwait(false);
 
             if (probeResult == null)
             {
@@ -392,8 +392,8 @@ public class ExportValidator
                 return null;
             }
 
-            var fileHash = await ComputeFileHashAsync(filePath);
-            var validationResult = await ValidateExportAsync(filePath, preset, probeResult.Duration ?? TimeSpan.Zero);
+            var fileHash = await ComputeFileHashAsync(filePath).ConfigureAwait(false);
+            var validationResult = await ValidateExportAsync(filePath, preset, probeResult.Duration ?? TimeSpan.Zero).ConfigureAwait(false);
 
             const int hashDisplayLength = 8;
             var metadata = new ExportMetadata
@@ -440,7 +440,7 @@ public class ExportValidator
     {
         using var sha256 = SHA256.Create();
         using var stream = File.OpenRead(filePath);
-        var hashBytes = await sha256.ComputeHashAsync(stream);
+        var hashBytes = await sha256.ComputeHashAsync(stream).ConfigureAwait(false);
         return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
     }
 }

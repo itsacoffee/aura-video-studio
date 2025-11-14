@@ -44,7 +44,7 @@ public class NoiseReductionService
             // Use FFmpeg for noise reduction
             var ffmpegArgs = $"-i \"{inputPath}\" -af \"{filterChain}\" -ar 48000 -ac 2 \"{outputPath}\"";
             
-            var success = await RunFFmpegAsync(ffmpegArgs, ct);
+            var success = await RunFFmpegAsync(ffmpegArgs, ct).ConfigureAwait(false);
 
             if (!success || !File.Exists(outputPath))
             {
@@ -109,7 +109,7 @@ public class NoiseReductionService
             var filterChain = $"afftdn=nt=w:om=o:tn=1:nf={threshold},adeclick,highpass=f=80";
             var ffmpegArgs = $"-i \"{inputPath}\" -af \"{filterChain}\" -ar 48000 -ac 2 \"{outputPath}\"";
 
-            var success = await RunFFmpegAsync(ffmpegArgs, ct);
+            var success = await RunFFmpegAsync(ffmpegArgs, ct).ConfigureAwait(false);
 
             if (!success || !File.Exists(outputPath))
             {
@@ -142,7 +142,7 @@ public class NoiseReductionService
             var filterChain = "adeclick,adeclip";
             var ffmpegArgs = $"-i \"{inputPath}\" -af \"{filterChain}\" -ar 48000 -ac 2 \"{outputPath}\"";
 
-            var success = await RunFFmpegAsync(ffmpegArgs, ct);
+            var success = await RunFFmpegAsync(ffmpegArgs, ct).ConfigureAwait(false);
 
             if (!success || !File.Exists(outputPath))
             {
@@ -180,8 +180,8 @@ public class NoiseReductionService
             using var process = new Process { StartInfo = startInfo };
             process.Start();
 
-            var errorOutput = await process.StandardError.ReadToEndAsync();
-            await process.WaitForExitAsync(ct);
+            var errorOutput = await process.StandardError.ReadToEndAsync().ConfigureAwait(false);
+            await process.WaitForExitAsync(ct).ConfigureAwait(false);
 
             if (process.ExitCode != 0)
             {

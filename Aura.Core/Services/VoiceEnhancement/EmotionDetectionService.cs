@@ -33,7 +33,7 @@ public class EmotionDetectionService
         {
             // Analyze audio features using heuristic-based approach
             // In production, this would use a pre-trained ML model (e.g., TensorFlow, ONNX)
-            var features = await AnalyzeAudioFeaturesAsync(audioPath, ct);
+            var features = await AnalyzeAudioFeaturesAsync(audioPath, ct).ConfigureAwait(false);
             var emotion = ClassifyEmotion(features);
 
             return new EmotionDetectionResult
@@ -76,10 +76,10 @@ public class EmotionDetectionService
         {
             ct.ThrowIfCancellationRequested();
 
-            var result = await DetectEmotionAsync(pathsList[i], ct);
+            var result = await DetectEmotionAsync(pathsList[i], ct).ConfigureAwait(false);
             
             // Calculate segment duration from audio file
-            var duration = await GetAudioDurationAsync(pathsList[i], ct);
+            var duration = await GetAudioDurationAsync(pathsList[i], ct).ConfigureAwait(false);
             
             segments.Add(new EmotionSegment
             {
@@ -109,7 +109,7 @@ public class EmotionDetectionService
     {
         // Simplified duration calculation
         // In production, this would use FFprobe or a media library to get actual duration
-        await Task.Delay(5, ct);
+        await Task.Delay(5, ct).ConfigureAwait(false);
         
         var fileInfo = new System.IO.FileInfo(audioPath);
         // Rough estimation: assume 128kbps MP3 (16KB/second)
@@ -134,7 +134,7 @@ public class EmotionDetectionService
         // - MFCC (Mel-frequency cepstral coefficients) for ML models
         // - Formant extraction for voice quality
 
-        await Task.Delay(10, ct); // Simulate processing
+        await Task.Delay(10, ct).ConfigureAwait(false); // Simulate processing
 
         // Generate feature estimates based on file characteristics
         // This is a demonstration implementation

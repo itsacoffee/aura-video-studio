@@ -106,7 +106,7 @@ public class FfmpegInstaller
             try
             {
                 _logger.LogInformation("Attempting to resolve FFmpeg asset URL via GitHub API: {Repo}", githubRepo);
-                var resolvedUrl = await _releaseResolver.ResolveLatestAssetUrlAsync(githubRepo, assetPattern, ct);
+                var resolvedUrl = await _releaseResolver.ResolveLatestAssetUrlAsync(githubRepo, assetPattern, ct).ConfigureAwait(false);
                 
                 if (!string.IsNullOrEmpty(resolvedUrl))
                 {
@@ -167,7 +167,7 @@ public class FfmpegInstaller
                 archivePath,
                 expectedSha256,
                 progress,
-                ct);
+                ct).ConfigureAwait(false);
             
             if (!downloadSuccess)
             {
@@ -187,7 +187,7 @@ public class FfmpegInstaller
                 mirrors[0],
                 expectedSha256,
                 progress,
-                ct);
+                ct).ConfigureAwait(false);
         }
         finally
         {
@@ -239,7 +239,7 @@ public class FfmpegInstaller
                 localArchivePath, // dummy, we just want checksum
                 expectedSha256,
                 progress,
-                ct);
+                ct).ConfigureAwait(false);
             actualSha256 = importResult.actualSha256;
         }
         
@@ -251,7 +251,7 @@ public class FfmpegInstaller
             localArchivePath,
             actualSha256,
             progress,
-            ct);
+            ct).ConfigureAwait(false);
     }
     
     /// <summary>
@@ -313,7 +313,7 @@ public class FfmpegInstaller
         }
         
         // Validate FFmpeg
-        var validationResult = await ValidateFfmpegBinaryAsync(resolvedFfmpegPath, ct);
+        var validationResult = await ValidateFfmpegBinaryAsync(resolvedFfmpegPath, ct).ConfigureAwait(false);
         
         if (!validationResult.success)
         {
@@ -348,7 +348,7 @@ public class FfmpegInstaller
         await File.WriteAllTextAsync(metadataPath, JsonSerializer.Serialize(metadata, new JsonSerializerOptions 
         { 
             WriteIndented = true 
-        }), ct);
+        }), ct).ConfigureAwait(false);
         
         _logger.LogInformation("Successfully attached FFmpeg: {Path}", resolvedFfmpegPath);
         
@@ -414,7 +414,7 @@ public class FfmpegInstaller
             progress?.Report(new HttpDownloadProgress(0, 0, 80, 0, "Validating FFmpeg..."));
             
             // Validate FFmpeg binary
-            var validationResult = await ValidateFfmpegBinaryAsync(ffmpegPath, ct);
+            var validationResult = await ValidateFfmpegBinaryAsync(ffmpegPath, ct).ConfigureAwait(false);
             
             if (!validationResult.success)
             {
@@ -434,7 +434,7 @@ public class FfmpegInstaller
             // Validate ffprobe if found
             if (ffprobePath != null)
             {
-                var ffprobeValidation = await ValidateFfmpegBinaryAsync(ffprobePath, ct);
+                var ffprobeValidation = await ValidateFfmpegBinaryAsync(ffprobePath, ct).ConfigureAwait(false);
                 if (!ffprobeValidation.success)
                 {
                     _logger.LogWarning("ffprobe validation failed: {Error}", ffprobeValidation.error);
@@ -466,7 +466,7 @@ public class FfmpegInstaller
             await File.WriteAllTextAsync(metadataPath, JsonSerializer.Serialize(metadata, new JsonSerializerOptions 
             { 
                 WriteIndented = true 
-            }), ct);
+            }), ct).ConfigureAwait(false);
             
             _logger.LogInformation("FFmpeg installed successfully: {Path}", ffmpegPath);
             
@@ -557,10 +557,10 @@ public class FfmpegInstaller
                 return (false, null, "Failed to start FFmpeg process");
             }
             
-            await process.WaitForExitAsync(ct);
+            await process.WaitForExitAsync(ct).ConfigureAwait(false);
             
-            var stdout = await process.StandardOutput.ReadToEndAsync(ct);
-            var stderr = await process.StandardError.ReadToEndAsync(ct);
+            var stdout = await process.StandardOutput.ReadToEndAsync(ct).ConfigureAwait(false);
+            var stderr = await process.StandardError.ReadToEndAsync(ct).ConfigureAwait(false);
             
             if (process.ExitCode != 0)
             {
@@ -576,7 +576,7 @@ public class FfmpegInstaller
             _logger.LogInformation("FFmpeg version check passed");
             
             // Second check: smoke test (generate short silent audio)
-            var smokeTestResult = await RunSmokeTestAsync(ffmpegPath, ct);
+            var smokeTestResult = await RunSmokeTestAsync(ffmpegPath, ct).ConfigureAwait(false);
             if (!smokeTestResult.success)
             {
                 _logger.LogWarning("FFmpeg smoke test failed: {Error}", smokeTestResult.error);
@@ -627,10 +627,10 @@ public class FfmpegInstaller
             using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
             
-            await process.WaitForExitAsync(linkedCts.Token);
+            await process.WaitForExitAsync(linkedCts.Token).ConfigureAwait(false);
             
-            var stdout = await process.StandardOutput.ReadToEndAsync(ct);
-            var stderr = await process.StandardError.ReadToEndAsync(ct);
+            var stdout = await process.StandardOutput.ReadToEndAsync(ct).ConfigureAwait(false);
+            var stderr = await process.StandardError.ReadToEndAsync(ct).ConfigureAwait(false);
             
             if (process.ExitCode != 0)
             {
@@ -694,7 +694,7 @@ public class FfmpegInstaller
         
         try
         {
-            var json = await File.ReadAllTextAsync(metadataPath);
+            var json = await File.ReadAllTextAsync(metadataPath).ConfigureAwait(false);
             return JsonSerializer.Deserialize<FfmpegInstallMetadata>(json);
         }
         catch (Exception ex)

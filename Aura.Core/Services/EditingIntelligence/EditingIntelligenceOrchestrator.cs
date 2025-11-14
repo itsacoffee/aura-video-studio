@@ -51,7 +51,7 @@ public class EditingIntelligenceOrchestrator
         _logger.LogInformation("Starting comprehensive timeline analysis for job {JobId}", jobId);
 
         // Load timeline
-        var timeline = await LoadTimelineAsync(jobId);
+        var timeline = await LoadTimelineAsync(jobId).ConfigureAwait(false);
         if (timeline == null)
         {
             throw new InvalidOperationException($"Timeline not found for job {jobId}");
@@ -66,25 +66,25 @@ public class EditingIntelligenceOrchestrator
         if (request.IncludeCutPoints)
         {
             _logger.LogInformation("Analyzing cut points");
-            cutPoints = await _cutPointService.DetectCutPointsAsync(timeline);
+            cutPoints = await _cutPointService.DetectCutPointsAsync(timeline).ConfigureAwait(false);
         }
 
         if (request.IncludePacing)
         {
             _logger.LogInformation("Analyzing pacing");
-            pacingAnalysis = await _pacingService.AnalyzePacingAsync(timeline);
+            pacingAnalysis = await _pacingService.AnalyzePacingAsync(timeline).ConfigureAwait(false);
         }
 
         if (request.IncludeEngagement)
         {
             _logger.LogInformation("Analyzing engagement");
-            engagementAnalysis = await _engagementService.GenerateEngagementCurveAsync(timeline);
+            engagementAnalysis = await _engagementService.GenerateEngagementCurveAsync(timeline).ConfigureAwait(false);
         }
 
         if (request.IncludeQuality)
         {
             _logger.LogInformation("Running quality checks");
-            qualityIssues = await _qualityService.RunQualityChecksAsync(timeline);
+            qualityIssues = await _qualityService.RunQualityChecksAsync(timeline).ConfigureAwait(false);
         }
 
         // Generate general recommendations
@@ -116,7 +116,7 @@ public class EditingIntelligenceOrchestrator
             request.TargetDuration,
             request.Strategy);
 
-        var timeline = await LoadTimelineAsync(jobId);
+        var timeline = await LoadTimelineAsync(jobId).ConfigureAwait(false);
         if (timeline == null)
         {
             throw new InvalidOperationException($"Timeline not found for job {jobId}");
@@ -126,10 +126,10 @@ public class EditingIntelligenceOrchestrator
             timeline,
             request.TargetDuration,
             request.Strategy
-        );
+        ).ConfigureAwait(false);
 
         // Save optimized timeline
-        await SaveTimelineAsync(jobId, optimized);
+        await SaveTimelineAsync(jobId, optimized).ConfigureAwait(false);
 
         return optimized;
     }
@@ -144,7 +144,7 @@ public class EditingIntelligenceOrchestrator
         _logger.LogInformation("Auto-assembling timeline for job {JobId}", jobId);
 
         // Load existing timeline or create new one
-        var timeline = await LoadTimelineAsync(jobId) ?? new EditableTimeline();
+        var timeline = await LoadTimelineAsync(jobId).ConfigureAwait(false) ?? new EditableTimeline();
 
         // If timeline already has scenes, use them
         if (timeline.Scenes.Count == 0)
@@ -165,15 +165,15 @@ public class EditingIntelligenceOrchestrator
                 timeline,
                 request.TargetDuration.Value,
                 request.EditingStyle ?? "balanced"
-            );
+            ).ConfigureAwait(false);
         }
 
         // Apply transitions
-        var transitions = await _transitionService.RecommendTransitionsAsync(timeline);
+        var transitions = await _transitionService.RecommendTransitionsAsync(timeline).ConfigureAwait(false);
         timeline = ApplyTransitions(timeline, transitions);
 
         // Save assembled timeline
-        await SaveTimelineAsync(jobId, timeline);
+        await SaveTimelineAsync(jobId, timeline).ConfigureAwait(false);
 
         return timeline;
     }
@@ -283,7 +283,7 @@ public class EditingIntelligenceOrchestrator
                 return null;
             }
 
-            var json = await System.IO.File.ReadAllTextAsync(timelinePath);
+            var json = await File.ReadAllTextAsync(timelinePath).ConfigureAwait(false);
             var timeline = System.Text.Json.JsonSerializer.Deserialize<EditableTimeline>(json);
             return timeline;
         }
@@ -304,7 +304,7 @@ public class EditingIntelligenceOrchestrator
             {
                 WriteIndented = true
             });
-            await System.IO.File.WriteAllTextAsync(timelinePath, json);
+            await File.WriteAllTextAsync(timelinePath, json).ConfigureAwait(false);
             _logger.LogInformation("Saved timeline for job {JobId}", jobId);
         }
         catch (Exception ex)

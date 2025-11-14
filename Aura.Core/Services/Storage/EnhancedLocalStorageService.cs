@@ -84,10 +84,10 @@ public class EnhancedLocalStorageService : IEnhancedLocalStorageService
         _cacheIndexPath = Path.Combine(_storageRoot, WorkspaceFolders.Cache, "index.json");
         
         // Initialize workspace structure
-        Task.Run(async () => await EnsureWorkspaceStructureAsync()).Wait();
+        Task.Run(async () => await EnsureWorkspaceStructureAsync().ConfigureAwait(false)).Wait();
         
         // Load cache index
-        Task.Run(async () => await LoadCacheIndexAsync()).Wait();
+        Task.Run(async () => await LoadCacheIndexAsync().ConfigureAwait(false)).Wait();
     }
 
     #region Workspace Management
@@ -198,7 +198,7 @@ public class EnhancedLocalStorageService : IEnhancedLocalStorageService
             stats.TotalFiles = totalFiles;
             stats.IsLowSpace = stats.AvailableSizeBytes < _config.LowSpaceThresholdBytes;
 
-            return await Task.FromResult(stats);
+            return await Task.FromResult(stats).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -226,7 +226,7 @@ public class EnhancedLocalStorageService : IEnhancedLocalStorageService
                 FormattedUsedSpace = FormatBytes(driveInfo.TotalSize - driveInfo.AvailableFreeSpace)
             };
 
-            return await Task.FromResult(info);
+            return await Task.FromResult(info).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -239,8 +239,8 @@ public class EnhancedLocalStorageService : IEnhancedLocalStorageService
     {
         try
         {
-            var stats = await GetStorageStatisticsAsync(ct);
-            var diskInfo = await GetDiskSpaceInfoAsync(ct);
+            var stats = await GetStorageStatisticsAsync(ct).ConfigureAwait(false);
+            var diskInfo = await GetDiskSpaceInfoAsync(ct).ConfigureAwait(false);
             
             // Check both quota and actual disk space
             var hasQuota = stats.AvailableSizeBytes >= requiredBytes;
@@ -277,7 +277,7 @@ public class EnhancedLocalStorageService : IEnhancedLocalStorageService
         {
             if (File.Exists(_cacheIndexPath))
             {
-                var json = await File.ReadAllTextAsync(_cacheIndexPath);
+                var json = await File.ReadAllTextAsync(_cacheIndexPath).ConfigureAwait(false);
                 var entries = JsonSerializer.Deserialize<List<CacheEntry>>(json);
                 
                 if (entries != null)
@@ -303,7 +303,7 @@ public class EnhancedLocalStorageService : IEnhancedLocalStorageService
         {
             var entries = _cacheIndex.Values.ToList();
             var json = JsonSerializer.Serialize(entries, new JsonSerializerOptions { WriteIndented = true });
-            await File.WriteAllTextAsync(_cacheIndexPath, json);
+            await File.WriteAllTextAsync(_cacheIndexPath, json).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -357,7 +357,7 @@ public class EnhancedLocalStorageService : IEnhancedLocalStorageService
             // Save file
             using (var fileStream = File.Create(filePath))
             {
-                await data.CopyToAsync(fileStream, ct);
+                await data.CopyToAsync(fileStream, ct).ConfigureAwait(false);
             }
             
             var fileInfo = new FileInfo(filePath);
@@ -378,18 +378,18 @@ public class EnhancedLocalStorageService : IEnhancedLocalStorageService
             };
             
             _cacheIndex[key] = entry;
-            await SaveCacheIndexAsync();
+            await SaveCacheIndexAsync().ConfigureAwait(false);
             
             _logger.LogInformation("Added cache entry: {Key} ({Size} bytes)", key, fileInfo.Length);
             
             // Check cache size and cleanup if needed
             if (_config.EnableAutoCacheCleanup)
             {
-                var stats = await GetCacheStatisticsAsync(ct);
+                var stats = await GetCacheStatisticsAsync(ct).ConfigureAwait(false);
                 if (stats.TotalSizeBytes > _config.MaxCacheSizeBytes)
                 {
                     _logger.LogInformation("Cache size exceeded, triggering cleanup");
-                    await CleanupCacheAsync(false, ct);
+                    await CleanupCacheAsync(false, ct).ConfigureAwait(false);
                 }
             }
             
@@ -413,7 +413,7 @@ public class EnhancedLocalStorageService : IEnhancedLocalStorageService
                     File.Delete(entry.FilePath);
                 }
                 
-                await SaveCacheIndexAsync();
+                await SaveCacheIndexAsync().ConfigureAwait(false);
                 _logger.LogInformation("Removed cache entry: {Key}", key);
                 return true;
             }
@@ -503,7 +503,7 @@ public class EnhancedLocalStorageService : IEnhancedLocalStorageService
                 entriesToRemove.AddRange(expiredEntries);
                 
                 // If still over size limit, remove least recently used entries
-                var stats = await GetCacheStatisticsAsync(ct);
+                var stats = await GetCacheStatisticsAsync(ct).ConfigureAwait(false);
                 if (stats.TotalSizeBytes > _config.MaxCacheSizeBytes)
                 {
                     var lruEntries = _cacheIndex.Values
@@ -551,7 +551,7 @@ public class EnhancedLocalStorageService : IEnhancedLocalStorageService
                 }
             }
             
-            await SaveCacheIndexAsync();
+            await SaveCacheIndexAsync().ConfigureAwait(false);
             
             result.Duration = DateTime.UtcNow - startTime;
             result.FormattedBytesFreed = FormatBytes(result.BytesFreed);
@@ -601,7 +601,7 @@ public class EnhancedLocalStorageService : IEnhancedLocalStorageService
             }
             
             result.RemovedCategories.Add(category);
-            await SaveCacheIndexAsync();
+            await SaveCacheIndexAsync().ConfigureAwait(false);
             
             result.Duration = DateTime.UtcNow - startTime;
             result.FormattedBytesFreed = FormatBytes(result.BytesFreed);
@@ -625,10 +625,10 @@ public class EnhancedLocalStorageService : IEnhancedLocalStorageService
     {
         try
         {
-            var projectsPath = await GetWorkspacePathAsync(WorkspaceFolders.Projects, ct);
+            var projectsPath = await GetWorkspacePathAsync(WorkspaceFolders.Projects, ct).ConfigureAwait(false);
             var projectFile = Path.Combine(projectsPath, $"{projectId}.aura");
             
-            await File.WriteAllTextAsync(projectFile, content, ct);
+            await File.WriteAllTextAsync(projectFile, content, ct).ConfigureAwait(false);
             
             _logger.LogInformation("Saved project file: {ProjectId}", projectId);
             return projectFile;
@@ -644,12 +644,12 @@ public class EnhancedLocalStorageService : IEnhancedLocalStorageService
     {
         try
         {
-            var projectsPath = await GetWorkspacePathAsync(WorkspaceFolders.Projects, ct);
+            var projectsPath = await GetWorkspacePathAsync(WorkspaceFolders.Projects, ct).ConfigureAwait(false);
             var projectFile = Path.Combine(projectsPath, $"{projectId}.aura");
             
             if (File.Exists(projectFile))
             {
-                return await File.ReadAllTextAsync(projectFile, ct);
+                return await File.ReadAllTextAsync(projectFile, ct).ConfigureAwait(false);
             }
             
             return null;
@@ -663,7 +663,7 @@ public class EnhancedLocalStorageService : IEnhancedLocalStorageService
 
     public async Task<bool> ProjectFileExistsAsync(Guid projectId, CancellationToken ct = default)
     {
-        var projectsPath = await GetWorkspacePathAsync(WorkspaceFolders.Projects, ct);
+        var projectsPath = await GetWorkspacePathAsync(WorkspaceFolders.Projects, ct).ConfigureAwait(false);
         var projectFile = Path.Combine(projectsPath, $"{projectId}.aura");
         return File.Exists(projectFile);
     }
@@ -672,13 +672,13 @@ public class EnhancedLocalStorageService : IEnhancedLocalStorageService
     {
         try
         {
-            var projectContent = await LoadProjectFileAsync(projectId, ct);
+            var projectContent = await LoadProjectFileAsync(projectId, ct).ConfigureAwait(false);
             if (projectContent == null)
             {
                 throw new FileNotFoundException($"Project file not found: {projectId}");
             }
             
-            var backupsPath = await GetWorkspacePathAsync(WorkspaceFolders.Backups, ct);
+            var backupsPath = await GetWorkspacePathAsync(WorkspaceFolders.Backups, ct).ConfigureAwait(false);
             var projectBackupPath = Path.Combine(backupsPath, projectId.ToString());
             Directory.CreateDirectory(projectBackupPath);
             
@@ -688,7 +688,7 @@ public class EnhancedLocalStorageService : IEnhancedLocalStorageService
                 : $"{projectId}_{backupName}_{timestamp}.aura.bak";
             
             var backupFile = Path.Combine(projectBackupPath, fileName);
-            await File.WriteAllTextAsync(backupFile, projectContent, ct);
+            await File.WriteAllTextAsync(backupFile, projectContent, ct).ConfigureAwait(false);
             
             _logger.LogInformation("Created backup for project {ProjectId}: {BackupFile}", projectId, fileName);
             return backupFile;
@@ -704,7 +704,7 @@ public class EnhancedLocalStorageService : IEnhancedLocalStorageService
     {
         try
         {
-            var backupsPath = await GetWorkspacePathAsync(WorkspaceFolders.Backups, ct);
+            var backupsPath = await GetWorkspacePathAsync(WorkspaceFolders.Backups, ct).ConfigureAwait(false);
             var projectBackupPath = Path.Combine(backupsPath, projectId.ToString());
             
             if (!Directory.Exists(projectBackupPath))
@@ -732,7 +732,7 @@ public class EnhancedLocalStorageService : IEnhancedLocalStorageService
     {
         try
         {
-            var backupsPath = await GetWorkspacePathAsync(WorkspaceFolders.Backups, ct);
+            var backupsPath = await GetWorkspacePathAsync(WorkspaceFolders.Backups, ct).ConfigureAwait(false);
             var backupFile = Path.Combine(backupsPath, projectId.ToString(), backupFileName);
             
             if (!File.Exists(backupFile))
@@ -742,11 +742,11 @@ public class EnhancedLocalStorageService : IEnhancedLocalStorageService
             }
             
             // Create a backup of current state before restoring
-            await CreateBackupAsync(projectId, "pre_restore", ct);
+            await CreateBackupAsync(projectId, "pre_restore", ct).ConfigureAwait(false);
             
             // Restore backup
-            var backupContent = await File.ReadAllTextAsync(backupFile, ct);
-            await SaveProjectFileAsync(projectId, backupContent, ct);
+            var backupContent = await File.ReadAllTextAsync(backupFile, ct).ConfigureAwait(false);
+            await SaveProjectFileAsync(projectId, backupContent, ct).ConfigureAwait(false);
             
             _logger.LogInformation("Restored backup for project {ProjectId}: {BackupFile}", projectId, backupFileName);
             return backupContent;
@@ -769,12 +769,12 @@ public class EnhancedLocalStorageService : IEnhancedLocalStorageService
             var fileId = Guid.NewGuid();
             var extension = Path.GetExtension(fileName);
             var safeFileName = $"{fileId}{extension}";
-            var mediaPath = await GetWorkspacePathAsync(WorkspaceFolders.Media, ct);
+            var mediaPath = await GetWorkspacePathAsync(WorkspaceFolders.Media, ct).ConfigureAwait(false);
             var fullPath = Path.Combine(mediaPath, safeFileName);
 
             using (var fileStreamOut = File.Create(fullPath))
             {
-                await fileStream.CopyToAsync(fileStreamOut, ct);
+                await fileStream.CopyToAsync(fileStreamOut, ct).ConfigureAwait(false);
             }
 
             _logger.LogInformation("Uploaded file: {FileName} -> {Path}", fileName, fullPath);
@@ -797,12 +797,12 @@ public class EnhancedLocalStorageService : IEnhancedLocalStorageService
                 _uploadSessions[sessionId] = session;
             }
 
-            var tempPath = await GetWorkspacePathAsync(WorkspaceFolders.Temp, ct);
+            var tempPath = await GetWorkspacePathAsync(WorkspaceFolders.Temp, ct).ConfigureAwait(false);
             var chunkPath = Path.Combine(tempPath, $"{sessionId}_chunk_{chunkIndex}");
             
             using (var fileStream = File.Create(chunkPath))
             {
-                await chunkStream.CopyToAsync(fileStream, ct);
+                await chunkStream.CopyToAsync(fileStream, ct).ConfigureAwait(false);
             }
 
             session.ChunkPaths.Add(chunkPath);
@@ -828,7 +828,7 @@ public class EnhancedLocalStorageService : IEnhancedLocalStorageService
 
             var sortedChunks = session.ChunkPaths.OrderBy(p => p).ToList();
             var fileId = Guid.NewGuid();
-            var mediaPath = await GetWorkspacePathAsync(WorkspaceFolders.Media, ct);
+            var mediaPath = await GetWorkspacePathAsync(WorkspaceFolders.Media, ct).ConfigureAwait(false);
             var finalPath = Path.Combine(mediaPath, fileId.ToString());
             
             using (var finalStream = File.Create(finalPath))
@@ -837,7 +837,7 @@ public class EnhancedLocalStorageService : IEnhancedLocalStorageService
                 {
                     using (var chunkStream = File.OpenRead(chunkPath))
                     {
-                        await chunkStream.CopyToAsync(finalStream, ct);
+                        await chunkStream.CopyToAsync(finalStream, ct).ConfigureAwait(false);
                     }
                     File.Delete(chunkPath);
                 }
@@ -869,7 +869,7 @@ public class EnhancedLocalStorageService : IEnhancedLocalStorageService
             var memoryStream = new MemoryStream();
             using (var fileStream = File.OpenRead(localPath))
             {
-                await fileStream.CopyToAsync(memoryStream, ct);
+                await fileStream.CopyToAsync(memoryStream, ct).ConfigureAwait(false);
             }
             
             memoryStream.Position = 0;
@@ -944,7 +944,7 @@ public class EnhancedLocalStorageService : IEnhancedLocalStorageService
             var sourcePath = ConvertBlobUrlToPath(sourceBlobUrl);
             var destId = Guid.NewGuid();
             var extension = Path.GetExtension(destinationFileName);
-            var mediaPath = await GetWorkspacePathAsync(WorkspaceFolders.Media, ct);
+            var mediaPath = await GetWorkspacePathAsync(WorkspaceFolders.Media, ct).ConfigureAwait(false);
             var destPath = Path.Combine(mediaPath, $"{destId}{extension}");
 
             File.Copy(sourcePath, destPath);

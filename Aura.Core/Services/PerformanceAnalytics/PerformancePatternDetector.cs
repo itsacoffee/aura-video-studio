@@ -36,7 +36,7 @@ public class PerformancePatternDetector
         _logger.LogInformation("Detecting patterns for profile {ProfileId}", profileId);
 
         // Load all videos for the profile
-        var videos = await _persistence.LoadAllVideosAsync(profileId, ct);
+        var videos = await _persistence.LoadAllVideosAsync(profileId, ct).ConfigureAwait(false);
         if (videos.Count < MIN_OCCURRENCES)
         {
             _logger.LogInformation("Not enough videos ({Count}) to detect patterns", videos.Count);
@@ -44,7 +44,7 @@ public class PerformancePatternDetector
         }
 
         // Load all links to get project correlations
-        var links = await _persistence.LoadLinksAsync(profileId, ct);
+        var links = await _persistence.LoadLinksAsync(profileId, ct).ConfigureAwait(false);
 
         // Group videos by performance outcome
         var highPerformers = new List<VideoPerformanceData>();
@@ -78,8 +78,8 @@ public class PerformancePatternDetector
         }
 
         // Save patterns
-        await _persistence.SaveSuccessPatternsAsync(profileId, successPatterns, ct);
-        await _persistence.SaveFailurePatternsAsync(profileId, failurePatterns, ct);
+        await _persistence.SaveSuccessPatternsAsync(profileId, successPatterns, ct).ConfigureAwait(false);
+        await _persistence.SaveFailurePatternsAsync(profileId, failurePatterns, ct).ConfigureAwait(false);
 
         _logger.LogInformation(
             "Detected {SuccessCount} success patterns and {FailureCount} failure patterns",

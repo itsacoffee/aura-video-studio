@@ -44,11 +44,11 @@ public class ScriptAnalysisService
             var readabilityMetrics = CalculateReadabilityMetrics(script);
             var hookStrength = AnalyzeHookStrength(script);
             var detectedFramework = DetectStoryFramework(script);
-            var emotionalCurve = await AnalyzeEmotionalCurveAsync(script, contentType, ct);
+            var emotionalCurve = await AnalyzeEmotionalCurveAsync(script, contentType, ct).ConfigureAwait(false);
 
             // Use AI for quality scoring
             var qualityScores = await GetAiQualityScoresAsync(
-                script, contentType, targetAudience, currentTone, ct);
+                script, contentType, targetAudience, currentTone, ct).ConfigureAwait(false);
 
             // Generate issues and strengths
             var issues = IdentifyIssues(script, readabilityMetrics, hookStrength, qualityScores);

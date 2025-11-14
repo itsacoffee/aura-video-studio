@@ -45,8 +45,8 @@ public class HighlightDetectionService
         // - Audio analysis for peak detection
         // - Motion tracking for action sequences
         // - ML models for engagement prediction
-        var highlights = await AnalyzeForHighlightsAsync(videoPath, maxHighlights, cancellationToken);
-        var duration = await GetVideoDurationAsync(videoPath, cancellationToken);
+        var highlights = await AnalyzeForHighlightsAsync(videoPath, maxHighlights, cancellationToken).ConfigureAwait(false);
+        var duration = await GetVideoDurationAsync(videoPath, cancellationToken).ConfigureAwait(false);
         var avgEngagement = highlights.Count != 0 ? highlights.Average(h => h.Score) : 0.0;
 
         var summary = $"Detected {highlights.Count} highlight moments with average engagement score {avgEngagement:F2}";
@@ -64,7 +64,7 @@ public class HighlightDetectionService
         int maxHighlights,
         CancellationToken cancellationToken)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
 
         // Placeholder: Generate sample highlights
         // In production, this would analyze video/audio for engaging moments
@@ -119,7 +119,7 @@ public class HighlightDetectionService
         string videoPath,
         CancellationToken cancellationToken)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         
         // Placeholder: In production, use FFmpeg to get actual duration
         return TimeSpan.FromSeconds(45);
@@ -137,7 +137,7 @@ public class HighlightDetectionService
         _logger.LogInformation("Creating highlight reel with {Count} moments", 
             highlightResult.Highlights.Count);
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
 
         // Placeholder: In production, use FFmpeg to extract and concatenate highlights

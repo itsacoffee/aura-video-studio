@@ -38,12 +38,12 @@ public class ProjectVersionRepository
 
         var maxVersion = await _context.Set<ProjectVersionEntity>()
             .Where(v => v.ProjectId == version.ProjectId && !v.IsDeleted)
-            .MaxAsync(v => (int?)v.VersionNumber, ct) ?? 0;
+            .MaxAsync(v => (int?)v.VersionNumber, ct).ConfigureAwait(false) ?? 0;
 
         version.VersionNumber = maxVersion + 1;
 
         _context.Set<ProjectVersionEntity>().Add(version);
-        await _context.SaveChangesAsync(ct);
+        await _context.SaveChangesAsync(ct).ConfigureAwait(false);
 
         return version;
     }
@@ -66,7 +66,7 @@ public class ProjectVersionRepository
 
         return await query
             .OrderByDescending(v => v.CreatedAt)
-            .ToListAsync(ct);
+            .ToListAsync(ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -77,7 +77,7 @@ public class ProjectVersionRepository
         CancellationToken ct = default)
     {
         return await _context.Set<ProjectVersionEntity>()
-            .FirstOrDefaultAsync(v => v.Id == versionId && !v.IsDeleted, ct);
+            .FirstOrDefaultAsync(v => v.Id == versionId && !v.IsDeleted, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -89,7 +89,7 @@ public class ProjectVersionRepository
         CancellationToken ct = default)
     {
         return await _context.Set<ProjectVersionEntity>()
-            .FirstOrDefaultAsync(v => v.ProjectId == projectId && v.VersionNumber == versionNumber && !v.IsDeleted, ct);
+            .FirstOrDefaultAsync(v => v.ProjectId == projectId && v.VersionNumber == versionNumber && !v.IsDeleted, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -102,7 +102,7 @@ public class ProjectVersionRepository
         return await _context.Set<ProjectVersionEntity>()
             .Where(v => v.ProjectId == projectId && !v.IsDeleted)
             .OrderByDescending(v => v.VersionNumber)
-            .FirstOrDefaultAsync(ct);
+            .FirstOrDefaultAsync(ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -115,7 +115,7 @@ public class ProjectVersionRepository
         bool? isMarkedImportant,
         CancellationToken ct = default)
     {
-        var version = await GetVersionByIdAsync(versionId, ct);
+        var version = await GetVersionByIdAsync(versionId, ct).ConfigureAwait(false);
         if (version == null)
         {
             throw new InvalidOperationException($"Version {versionId} not found");
@@ -136,7 +136,7 @@ public class ProjectVersionRepository
             version.IsMarkedImportant = isMarkedImportant.Value;
         }
 
-        await _context.SaveChangesAsync(ct);
+        await _context.SaveChangesAsync(ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -144,7 +144,7 @@ public class ProjectVersionRepository
     /// </summary>
     public async Task DeleteVersionAsync(Guid versionId, CancellationToken ct = default)
     {
-        var version = await GetVersionByIdAsync(versionId, ct);
+        var version = await GetVersionByIdAsync(versionId, ct).ConfigureAwait(false);
         if (version == null)
         {
             return;
@@ -153,7 +153,7 @@ public class ProjectVersionRepository
         version.IsDeleted = true;
         version.DeletedAt = DateTime.UtcNow;
 
-        await _context.SaveChangesAsync(ct);
+        await _context.SaveChangesAsync(ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -163,7 +163,7 @@ public class ProjectVersionRepository
     {
         return await _context.Set<ProjectVersionEntity>()
             .Where(v => v.ProjectId == projectId && !v.IsDeleted)
-            .SumAsync(v => v.StorageSizeBytes, ct);
+            .SumAsync(v => v.StorageSizeBytes, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -176,7 +176,7 @@ public class ProjectVersionRepository
     {
         var hash = ComputeHash(content);
         var blob = await _context.Set<ContentBlobEntity>()
-            .FirstOrDefaultAsync(b => b.ContentHash == hash, ct);
+            .FirstOrDefaultAsync(b => b.ContentHash == hash, ct).ConfigureAwait(false);
 
         if (blob == null)
         {
@@ -198,7 +198,7 @@ public class ProjectVersionRepository
             blob.LastReferencedAt = DateTime.UtcNow;
         }
 
-        await _context.SaveChangesAsync(ct);
+        await _context.SaveChangesAsync(ct).ConfigureAwait(false);
         return hash;
     }
 
@@ -210,7 +210,7 @@ public class ProjectVersionRepository
         CancellationToken ct = default)
     {
         return await _context.Set<ContentBlobEntity>()
-            .FirstOrDefaultAsync(b => b.ContentHash == contentHash, ct);
+            .FirstOrDefaultAsync(b => b.ContentHash == contentHash, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -218,7 +218,7 @@ public class ProjectVersionRepository
     /// </summary>
     public async Task DecrementBlobReferenceAsync(string contentHash, CancellationToken ct = default)
     {
-        var blob = await GetContentBlobAsync(contentHash, ct);
+        var blob = await GetContentBlobAsync(contentHash, ct).ConfigureAwait(false);
         if (blob != null)
         {
             blob.ReferenceCount--;
@@ -226,7 +226,7 @@ public class ProjectVersionRepository
             {
                 _context.Set<ContentBlobEntity>().Remove(blob);
             }
-            await _context.SaveChangesAsync(ct);
+            await _context.SaveChangesAsync(ct).ConfigureAwait(false);
         }
     }
 
@@ -241,7 +241,7 @@ public class ProjectVersionRepository
         return await _context.Set<ProjectVersionEntity>()
             .Where(v => v.ProjectId == projectId && v.VersionType == versionType && !v.IsDeleted)
             .OrderByDescending(v => v.CreatedAt)
-            .ToListAsync(ct);
+            .ToListAsync(ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -259,7 +259,7 @@ public class ProjectVersionRepository
                 && !v.IsDeleted
                 && v.CreatedAt < olderThan)
             .OrderBy(v => v.CreatedAt)
-            .ToListAsync(ct);
+            .ToListAsync(ct).ConfigureAwait(false);
     }
 
     /// <summary>

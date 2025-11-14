@@ -33,7 +33,7 @@ public class ProjectContextManager
         string projectId,
         CancellationToken ct = default)
     {
-        await _cacheLock.WaitAsync(ct);
+        await _cacheLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             // Check cache first
@@ -43,7 +43,7 @@ public class ProjectContextManager
             }
 
             // Try to load from disk
-            var loaded = await _persistence.LoadProjectContextAsync(projectId, ct);
+            var loaded = await _persistence.LoadProjectContextAsync(projectId, ct).ConfigureAwait(false);
             if (loaded != null)
             {
                 _cache[projectId] = loaded;
@@ -61,7 +61,7 @@ public class ProjectContextManager
             );
             
             _cache[projectId] = newContext;
-            await _persistence.SaveProjectContextAsync(newContext, ct);
+            await _persistence.SaveProjectContextAsync(newContext, ct).ConfigureAwait(false);
             
             _logger.LogInformation("Created new project context for project {ProjectId}", projectId);
             
@@ -81,10 +81,10 @@ public class ProjectContextManager
         VideoMetadata metadata,
         CancellationToken ct = default)
     {
-        await _cacheLock.WaitAsync(ct);
+        await _cacheLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            var context = await GetOrCreateContextAsync(projectId, ct);
+            var context = await GetOrCreateContextAsync(projectId, ct).ConfigureAwait(false);
             
             var updatedContext = context with
             {
@@ -93,7 +93,7 @@ public class ProjectContextManager
             };
             
             _cache[projectId] = updatedContext;
-            await _persistence.SaveProjectContextAsync(updatedContext, ct);
+            await _persistence.SaveProjectContextAsync(updatedContext, ct).ConfigureAwait(false);
             
             _logger.LogInformation("Updated video metadata for project {ProjectId}", projectId);
         }
@@ -115,10 +115,10 @@ public class ProjectContextManager
         string? userModification = null,
         CancellationToken ct = default)
     {
-        await _cacheLock.WaitAsync(ct);
+        await _cacheLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            var context = await GetOrCreateContextAsync(projectId, ct);
+            var context = await GetOrCreateContextAsync(projectId, ct).ConfigureAwait(false);
             
             var decision = new AiDecision(
                 DecisionId: Guid.NewGuid().ToString(),
@@ -135,7 +135,7 @@ public class ProjectContextManager
             var updatedContext = context with { UpdatedAt = DateTime.UtcNow };
             _cache[projectId] = updatedContext;
             
-            await _persistence.SaveProjectContextAsync(updatedContext, ct);
+            await _persistence.SaveProjectContextAsync(updatedContext, ct).ConfigureAwait(false);
             
             _logger.LogInformation(
                 "Recorded decision for project {ProjectId}: {Stage}/{Type} -> {Action}",
@@ -155,7 +155,7 @@ public class ProjectContextManager
         string? stage = null,
         CancellationToken ct = default)
     {
-        var context = await GetOrCreateContextAsync(projectId, ct);
+        var context = await GetOrCreateContextAsync(projectId, ct).ConfigureAwait(false);
         
         var decisions = context.DecisionHistory.AsEnumerable();
         
@@ -174,7 +174,7 @@ public class ProjectContextManager
         string projectId,
         CancellationToken ct = default)
     {
-        return await GetOrCreateContextAsync(projectId, ct);
+        return await GetOrCreateContextAsync(projectId, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -182,11 +182,11 @@ public class ProjectContextManager
     /// </summary>
     public async Task DeleteContextAsync(string projectId, CancellationToken ct = default)
     {
-        await _cacheLock.WaitAsync(ct);
+        await _cacheLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             _cache.Remove(projectId);
-            await _persistence.DeleteProjectContextAsync(projectId, ct);
+            await _persistence.DeleteProjectContextAsync(projectId, ct).ConfigureAwait(false);
             
             _logger.LogInformation("Deleted project context for project {ProjectId}", projectId);
         }
@@ -201,6 +201,6 @@ public class ProjectContextManager
     /// </summary>
     public async Task<IReadOnlyList<string>> GetAllProjectIdsAsync()
     {
-        return await _persistence.GetAllProjectIdsAsync();
+        return await _persistence.GetAllProjectIdsAsync().ConfigureAwait(false);
     }
 }

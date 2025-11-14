@@ -57,7 +57,7 @@ public class ModelSelectionStore
             PersistData();
         }
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
     }
 
     /// <summary>
@@ -119,7 +119,7 @@ public class ModelSelectionStore
             PersistData();
         }
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
     }
 
     /// <summary>
@@ -155,7 +155,7 @@ public class ModelSelectionStore
             PersistData();
         }
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
     }
 
     /// <summary>
@@ -222,7 +222,7 @@ public class ModelSelectionStore
             PersistData();
         }
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
     }
 
     private string GetSelectionKey(string provider, string stage, ModelSelectionScope scope)

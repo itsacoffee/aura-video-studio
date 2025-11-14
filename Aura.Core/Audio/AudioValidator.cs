@@ -82,9 +82,9 @@ public class AudioValidator
                 Microsoft.Extensions.Logging.Abstractions.NullLogger<WavValidator>.Instance);
             
             // Do a quick check first - if it doesn't even have valid headers, mark as corrupted
-            if (await wavValidator.QuickValidateAsync(audioPath, ct))
+            if (await wavValidator.QuickValidateAsync(audioPath, ct).ConfigureAwait(false))
             {
-                var wavResult = await wavValidator.ValidateAsync(audioPath, ct);
+                var wavResult = await wavValidator.ValidateAsync(audioPath, ct).ConfigureAwait(false);
                 if (!wavResult.IsValid)
                 {
                     return new AudioValidationResult
@@ -106,13 +106,13 @@ public class AudioValidator
         // Try ffprobe first if available (more detailed)
         if (!string.IsNullOrEmpty(_ffprobePath) && File.Exists(_ffprobePath))
         {
-            return await ValidateWithFfprobeAsync(audioPath, ct);
+            return await ValidateWithFfprobeAsync(audioPath, ct).ConfigureAwait(false);
         }
 
         // Fall back to ffmpeg validation
         if (!string.IsNullOrEmpty(_ffmpegPath) && File.Exists(_ffmpegPath))
         {
-            return await ValidateWithFfmpegAsync(audioPath, ct);
+            return await ValidateWithFfmpegAsync(audioPath, ct).ConfigureAwait(false);
         }
 
         // No validation tools available - basic check only
@@ -152,7 +152,7 @@ public class AudioValidator
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
 
-            await process.WaitForExitAsync(ct);
+            await process.WaitForExitAsync(ct).ConfigureAwait(false);
 
             var stderrText = stderr.ToString();
             var stdoutText = stdout.ToString();
@@ -255,7 +255,7 @@ public class AudioValidator
             process.Start();
             process.BeginErrorReadLine();
 
-            await process.WaitForExitAsync(ct);
+            await process.WaitForExitAsync(ct).ConfigureAwait(false);
 
             var stderrText = stderr.ToString();
 
@@ -331,7 +331,7 @@ public class AudioValidator
             process.Start();
             process.BeginErrorReadLine();
 
-            await process.WaitForExitAsync(ct);
+            await process.WaitForExitAsync(ct).ConfigureAwait(false);
 
             var stderrText = stderr.ToString();
 
@@ -343,7 +343,7 @@ public class AudioValidator
             }
 
             // Validate the re-encoded file
-            var validation = await ValidateAsync(outputPath, ct);
+            var validation = await ValidateAsync(outputPath, ct).ConfigureAwait(false);
             if (!validation.IsValid)
             {
                 _logger.LogError("Re-encoded file failed validation: {Error}", validation.ErrorMessage);
@@ -399,7 +399,7 @@ public class AudioValidator
             process.Start();
             process.BeginErrorReadLine();
 
-            await process.WaitForExitAsync(ct);
+            await process.WaitForExitAsync(ct).ConfigureAwait(false);
 
             if (process.ExitCode != 0)
             {

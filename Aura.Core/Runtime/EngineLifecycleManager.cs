@@ -99,15 +99,15 @@ public class EngineLifecycleManager : IDisposable
         _monitoringTask = Task.Run(() => MonitorEnginesAsync(_lifecycleCts.Token), _lifecycleCts.Token);
         
         // Auto-launch engines marked for startup
-        await _registry.StartAutoLaunchEnginesAsync(cancellationToken);
+        await _registry.StartAutoLaunchEnginesAsync(cancellationToken).ConfigureAwait(false);
         
         // Wait a bit and check health of started engines
-        await Task.Delay(2000, cancellationToken);
+        await Task.Delay(2000, cancellationToken).ConfigureAwait(false);
         
         var engines = _registry.GetAllEngines();
         foreach (var engine in engines.Where(e => e.StartOnAppLaunch))
         {
-            await CheckEngineHealthAsync(engine.Id, cancellationToken);
+            await CheckEngineHealthAsync(engine.Id, cancellationToken).ConfigureAwait(false);
         }
         
         _logger.LogInformation("Engine Lifecycle Manager started successfully");
@@ -128,7 +128,7 @@ public class EngineLifecycleManager : IDisposable
         {
             try
             {
-                await _monitoringTask;
+                await _monitoringTask.ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -137,7 +137,7 @@ public class EngineLifecycleManager : IDisposable
         }
         
         // Stop all engines gracefully
-        await _registry.StopAllEnginesAsync();
+        await _registry.StopAllEnginesAsync().ConfigureAwait(false);
         
         _logger.LogInformation("Engine Lifecycle Manager stopped");
     }
@@ -162,7 +162,7 @@ public class EngineLifecycleManager : IDisposable
         
         foreach (var engine in allEngines)
         {
-            var status = await _registry.GetEngineStatusAsync(engine.Id);
+            var status = await _registry.GetEngineStatusAsync(engine.Id).ConfigureAwait(false);
             var processStatus = _processManager.GetStatus(engine.Id);
             var restartCount = _restartCounts.GetValueOrDefault(engine.Id, 0);
             
@@ -209,11 +209,11 @@ public class EngineLifecycleManager : IDisposable
         }
         
         // Stop the engine
-        await _registry.StopEngineAsync(engineId);
-        await Task.Delay(1000, cancellationToken);
+        await _registry.StopEngineAsync(engineId).ConfigureAwait(false);
+        await Task.Delay(1000, cancellationToken).ConfigureAwait(false);
         
         // Start it again
-        var started = await _registry.StartEngineAsync(engineId, cancellationToken);
+        var started = await _registry.StartEngineAsync(engineId, cancellationToken).ConfigureAwait(false);
         
         if (started)
         {
@@ -232,7 +232,7 @@ public class EngineLifecycleManager : IDisposable
         {
             try
             {
-                await Task.Delay(5000, cancellationToken); // Check every 5 seconds
+                await Task.Delay(5000, cancellationToken).ConfigureAwait(false); // Check every 5 seconds
                 
                 var engines = _registry.GetAllEngines()
                     .Where(e => e.AutoRestart)
@@ -245,7 +245,7 @@ public class EngineLifecycleManager : IDisposable
                     // Check if engine was running but has now stopped (crashed)
                     if (!status.IsRunning && _restartCounts.ContainsKey(engine.Id))
                     {
-                        await HandleEngineCrashAsync(engine, cancellationToken);
+                        await HandleEngineCrashAsync(engine, cancellationToken).ConfigureAwait(false);
                     }
                 }
             }
@@ -284,11 +284,11 @@ public class EngineLifecycleManager : IDisposable
             $"{engine.Name} crashed and is being restarted (attempt {restartCount}/{_maxRestartAttempts})");
         
         // Wait a bit before restarting
-        await Task.Delay(5000, cancellationToken);
+        await Task.Delay(5000, cancellationToken).ConfigureAwait(false);
         
         try
         {
-            var started = await _registry.StartEngineAsync(engine.Id, cancellationToken);
+            var started = await _registry.StartEngineAsync(engine.Id, cancellationToken).ConfigureAwait(false);
             
             if (started)
             {
@@ -316,7 +316,7 @@ public class EngineLifecycleManager : IDisposable
         var engine = _registry.GetEngine(engineId);
         if (engine == null) return;
         
-        var status = await _registry.GetEngineStatusAsync(engineId);
+        var status = await _registry.GetEngineStatusAsync(engineId).ConfigureAwait(false);
         
         if (status.IsRunning && status.IsHealthy)
         {

@@ -63,7 +63,7 @@ public class EnhancedKeyValidationService
         _activeValidations[providerName] = validationCts;
 
         // Load validation policy for this provider
-        var policies = await _policyLoader.LoadPoliciesAsync(ct);
+        var policies = await _policyLoader.LoadPoliciesAsync(ct).ConfigureAwait(false);
         var policy = policies.GetPolicyForProvider(providerName);
 
         var statusResult = new KeyValidationStatusResult
@@ -121,7 +121,7 @@ public class EnhancedKeyValidationService
                     validationResult = await _baseValidator.TestApiKeyAsync(
                         providerName,
                         apiKey,
-                        timeoutCts.Token);
+                        timeoutCts.Token).ConfigureAwait(false);
 
                     if (validationResult.IsValid)
                     {
@@ -148,7 +148,7 @@ public class EnhancedKeyValidationService
 
                 if (retryCount <= policy.MaxRetries && elapsed < policy.MaxTimeoutMs)
                 {
-                    await Task.Delay(policy.RetryIntervalMs, validationCts.Token);
+                    await Task.Delay(policy.RetryIntervalMs, validationCts.Token).ConfigureAwait(false);
                 }
                 else
                 {

@@ -108,7 +108,7 @@ public class OpenAiLlmProvider : ILlmProvider
                     var backoffDelay = TimeSpan.FromSeconds(Math.Pow(2, attempt));
                     _logger.LogInformation("Retry attempt {Attempt}/{MaxRetries} after {Delay}s delay", 
                         attempt, _maxRetries, backoffDelay.TotalSeconds);
-                    await Task.Delay(backoffDelay, ct);
+                    await Task.Delay(backoffDelay, ct).ConfigureAwait(false);
                 }
 
                 // Build enhanced prompts for quality content with user customizations
@@ -118,7 +118,7 @@ public class OpenAiLlmProvider : ILlmProvider
                 // Apply enhancement callback if configured
                 if (PromptEnhancementCallback != null)
                 {
-                    userPrompt = await PromptEnhancementCallback(userPrompt, brief, spec);
+                    userPrompt = await PromptEnhancementCallback(userPrompt, brief, spec).ConfigureAwait(false);
                 }
 
                 // Call OpenAI API
@@ -143,12 +143,12 @@ public class OpenAiLlmProvider : ILlmProvider
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                 cts.CancelAfter(_timeout);
 
-                var response = await _httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content, cts.Token);
+                var response = await _httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content, cts.Token).ConfigureAwait(false);
                 
                 // Handle specific HTTP error codes
                 if (!response.IsSuccessStatusCode)
                 {
-                    var errorContent = await response.Content.ReadAsStringAsync(ct);
+                    var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                     if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
                     {
                         throw new InvalidOperationException(
@@ -181,7 +181,7 @@ public class OpenAiLlmProvider : ILlmProvider
                     response.EnsureSuccessStatusCode();
                 }
 
-                var responseJson = await response.Content.ReadAsStringAsync(ct);
+                var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 var responseDoc = JsonDocument.Parse(responseJson);
 
                 if (responseDoc.RootElement.TryGetProperty("choices", out var choices) &&
@@ -283,7 +283,7 @@ public class OpenAiLlmProvider : ILlmProvider
                     var backoffDelay = TimeSpan.FromSeconds(Math.Pow(2, attempt));
                     _logger.LogInformation("Retry attempt {Attempt}/{MaxRetries} after {Delay}s delay", 
                         attempt, _maxRetries, backoffDelay.TotalSeconds);
-                    await Task.Delay(backoffDelay, ct);
+                    await Task.Delay(backoffDelay, ct).ConfigureAwait(false);
                 }
 
                 // Use prompt as user message with a generic system prompt for structured output
@@ -310,11 +310,11 @@ public class OpenAiLlmProvider : ILlmProvider
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                 cts.CancelAfter(_timeout);
 
-                var response = await _httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content, cts.Token);
+                var response = await _httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content, cts.Token).ConfigureAwait(false);
                 
                 if (!response.IsSuccessStatusCode)
                 {
-                    var errorContent = await response.Content.ReadAsStringAsync(ct);
+                    var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                     if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
                     {
                         throw new InvalidOperationException(
@@ -347,7 +347,7 @@ public class OpenAiLlmProvider : ILlmProvider
                     response.EnsureSuccessStatusCode();
                 }
 
-                var responseJson = await response.Content.ReadAsStringAsync(ct);
+                var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 var responseDoc = JsonDocument.Parse(responseJson);
 
                 if (responseDoc.RootElement.TryGetProperty("choices", out var choices) &&
@@ -465,10 +465,10 @@ Respond with ONLY the JSON object, no other text:";
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(30)); // Shorter timeout for analysis
 
-            var response = await _httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content, cts.Token);
+            var response = await _httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content, cts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("choices", out var choices) &&
@@ -588,10 +588,10 @@ Respond with ONLY the JSON object, no other text:";
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(30));
 
-            var response = await _httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content, cts.Token);
+            var response = await _httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content, cts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("choices", out var choices) &&
@@ -702,10 +702,10 @@ Respond with ONLY the JSON object, no other text:";
             var json = System.Text.Json.JsonSerializer.Serialize(requestBody);
             var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
 
-            var response = await _httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content, ct);
+            var response = await _httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content, ct).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             using var doc = JsonDocument.Parse(responseJson);
             var root = doc.RootElement;
 
@@ -872,10 +872,10 @@ Respond with ONLY the JSON object, no other text:";
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(30));
 
-            var response = await _httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content, cts.Token);
+            var response = await _httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content, cts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("choices", out var choices) &&
@@ -995,10 +995,10 @@ Respond with ONLY the JSON object, no other text:";
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(45));
 
-            var response = await _httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content, cts.Token);
+            var response = await _httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content, cts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("choices", out var choices) &&
@@ -1112,10 +1112,10 @@ Return ONLY the transition text, no explanations or additional commentary:";
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(30));
 
-            var response = await _httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content, cts.Token);
+            var response = await _httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content, cts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("choices", out var choices) &&
@@ -1163,7 +1163,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(10));
 
-            var response = await _httpClient.GetAsync(requestUri, cts.Token);
+            var response = await _httpClient.GetAsync(requestUri, cts.Token).ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -1171,7 +1171,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
                 return new List<ModelInfo>();
             }
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             var models = new List<ModelInfo>();
@@ -1248,12 +1248,12 @@ Return ONLY the transition text, no explanations or additional commentary:";
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(10));
 
-            var response = await _httpClient.GetAsync(requestUri, cts.Token);
+            var response = await _httpClient.GetAsync(requestUri, cts.Token).ConfigureAwait(false);
 
             if (response.IsSuccessStatusCode)
             {
                 // Get available models as part of validation
-                var models = await GetAvailableModelsAsync(ct);
+                var models = await GetAvailableModelsAsync(ct).ConfigureAwait(false);
 
                 _logger.LogInformation("API key validated successfully, {Count} models available", models.Count);
 

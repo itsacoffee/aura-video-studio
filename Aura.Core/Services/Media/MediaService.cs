@@ -79,13 +79,13 @@ public class MediaService : IMediaService
 
     public async Task<MediaItemResponse?> GetMediaByIdAsync(Guid id, CancellationToken ct = default)
     {
-        var media = await _mediaRepository.GetMediaByIdAsync(id, ct);
+        var media = await _mediaRepository.GetMediaByIdAsync(id, ct).ConfigureAwait(false);
         return media != null ? MapToResponse(media) : null;
     }
 
     public async Task<MediaSearchResponse> SearchMediaAsync(MediaSearchRequest request, CancellationToken ct = default)
     {
-        var (items, total) = await _mediaRepository.SearchMediaAsync(request, ct);
+        var (items, total) = await _mediaRepository.SearchMediaAsync(request, ct).ConfigureAwait(false);
         
         var response = new MediaSearchResponse
         {
@@ -109,13 +109,13 @@ public class MediaService : IMediaService
             _logger.LogInformation("Starting media upload: {FileName}", request.FileName);
 
             // Calculate file size and hash
-            var (size, hash) = await CalculateFileSizeAndHashAsync(fileStream, ct);
+            var (size, hash) = await CalculateFileSizeAndHashAsync(fileStream, ct).ConfigureAwait(false);
             fileStream.Position = 0;
 
             // Check for duplicates
             if (!string.IsNullOrEmpty(hash))
             {
-                var duplicate = await _mediaRepository.FindByContentHashAsync(hash, ct);
+                var duplicate = await _mediaRepository.FindByContentHashAsync(hash, ct).ConfigureAwait(false);
                 if (duplicate != null)
                 {
                     _logger.LogWarning("Duplicate file detected: {FileName}, Hash: {Hash}", request.FileName, hash);
@@ -125,7 +125,7 @@ public class MediaService : IMediaService
 
             // Upload file to storage
             var contentType = GetContentType(request.FileName, request.Type);
-            var blobUrl = await _storageService.UploadFileAsync(fileStream, request.FileName, contentType, ct);
+            var blobUrl = await _storageService.UploadFileAsync(fileStream, request.FileName, contentType, ct).ConfigureAwait(false);
             fileStream.Position = 0;
 
             // Generate thumbnail
@@ -133,7 +133,7 @@ public class MediaService : IMediaService
             if (request.GenerateThumbnail)
             {
                 thumbnailUrl = await _thumbnailService.GenerateThumbnailFromStreamAsync(
-                    fileStream, request.Type, request.FileName, ct);
+                    fileStream, request.Type, request.FileName, ct).ConfigureAwait(false);
                 fileStream.Position = 0;
             }
 
@@ -142,7 +142,7 @@ public class MediaService : IMediaService
             if (request.ExtractMetadata)
             {
                 metadata = await _metadataService.ExtractMetadataFromStreamAsync(
-                    fileStream, request.Type, request.FileName, ct);
+                    fileStream, request.Type, request.FileName, ct).ConfigureAwait(false);
             }
 
             // Create entity
@@ -165,13 +165,13 @@ public class MediaService : IMediaService
             };
 
             // Save to database
-            await _mediaRepository.AddMediaAsync(entity, ct);
+            await _mediaRepository.AddMediaAsync(entity, ct).ConfigureAwait(false);
 
             // Add tags
             if (request.Tags.Count != 0)
             {
-                await _mediaRepository.AddTagsAsync(entity.Id, request.Tags, ct);
-                entity = await _mediaRepository.GetMediaByIdAsync(entity.Id, ct);
+                await _mediaRepository.AddTagsAsync(entity.Id, request.Tags, ct).ConfigureAwait(false);
+                entity = await _mediaRepository.GetMediaByIdAsync(entity.Id, ct).ConfigureAwait(false);
             }
 
             _logger.LogInformation("Media upload completed: {FileName}, ID: {Id}", request.FileName, entity.Id);
@@ -190,7 +190,7 @@ public class MediaService : IMediaService
         MediaUploadRequest request,
         CancellationToken ct = default)
     {
-        var media = await _mediaRepository.GetMediaByIdAsync(id, ct);
+        var media = await _mediaRepository.GetMediaByIdAsync(id, ct).ConfigureAwait(false);
         if (media == null)
         {
             throw new InvalidOperationException($"Media {id} not found");
@@ -201,7 +201,7 @@ public class MediaService : IMediaService
         media.CollectionId = request.CollectionId;
         media.UpdatedAt = DateTime.UtcNow;
 
-        await _mediaRepository.UpdateMediaAsync(media, ct);
+        await _mediaRepository.UpdateMediaAsync(media, ct).ConfigureAwait(false);
 
         // Update tags
         var existingTags = media.Tags.Select(t => t.Tag).ToList();
@@ -210,22 +210,22 @@ public class MediaService : IMediaService
 
         if (tagsToRemove.Count != 0)
         {
-            await _mediaRepository.RemoveTagsAsync(id, tagsToRemove, ct);
+            await _mediaRepository.RemoveTagsAsync(id, tagsToRemove, ct).ConfigureAwait(false);
         }
 
         if (tagsToAdd.Count != 0)
         {
-            await _mediaRepository.AddTagsAsync(id, tagsToAdd, ct);
+            await _mediaRepository.AddTagsAsync(id, tagsToAdd, ct).ConfigureAwait(false);
         }
 
         // Reload entity
-        media = await _mediaRepository.GetMediaByIdAsync(id, ct);
+        media = await _mediaRepository.GetMediaByIdAsync(id, ct).ConfigureAwait(false);
         return MapToResponse(media!);
     }
 
     public async Task DeleteMediaAsync(Guid id, CancellationToken ct = default)
     {
-        var media = await _mediaRepository.GetMediaByIdAsync(id, ct);
+        var media = await _mediaRepository.GetMediaByIdAsync(id, ct).ConfigureAwait(false);
         if (media == null)
         {
             return;
@@ -234,11 +234,11 @@ public class MediaService : IMediaService
         // Delete from storage
         try
         {
-            await _storageService.DeleteFileAsync(media.BlobUrl, ct);
+            await _storageService.DeleteFileAsync(media.BlobUrl, ct).ConfigureAwait(false);
             
             if (!string.IsNullOrEmpty(media.ThumbnailUrl))
             {
-                await _storageService.DeleteFileAsync(media.ThumbnailUrl, ct);
+                await _storageService.DeleteFileAsync(media.ThumbnailUrl, ct).ConfigureAwait(false);
             }
         }
         catch (Exception ex)
@@ -247,7 +247,7 @@ public class MediaService : IMediaService
         }
 
         // Delete from database
-        await _mediaRepository.DeleteMediaAsync(id, ct);
+        await _mediaRepository.DeleteMediaAsync(id, ct).ConfigureAwait(false);
     }
 
     public async Task<List<MediaItemResponse>> BulkOperationAsync(
@@ -263,18 +263,18 @@ public class MediaService : IMediaService
                 switch (request.Operation)
                 {
                     case BulkOperation.Delete:
-                        await DeleteMediaAsync(mediaId, ct);
+                        await DeleteMediaAsync(mediaId, ct).ConfigureAwait(false);
                         break;
 
                     case BulkOperation.Move:
                     case BulkOperation.ChangeCollection:
                         if (request.TargetCollectionId.HasValue)
                         {
-                            var media = await _mediaRepository.GetMediaByIdAsync(mediaId, ct);
+                            var media = await _mediaRepository.GetMediaByIdAsync(mediaId, ct).ConfigureAwait(false);
                             if (media != null)
                             {
                                 media.CollectionId = request.TargetCollectionId.Value;
-                                await _mediaRepository.UpdateMediaAsync(media, ct);
+                                await _mediaRepository.UpdateMediaAsync(media, ct).ConfigureAwait(false);
                                 results.Add(MapToResponse(media));
                             }
                         }
@@ -283,8 +283,8 @@ public class MediaService : IMediaService
                     case BulkOperation.AddTags:
                         if (request.Tags != null && request.Tags.Count != 0)
                         {
-                            await _mediaRepository.AddTagsAsync(mediaId, request.Tags, ct);
-                            var media = await _mediaRepository.GetMediaByIdAsync(mediaId, ct);
+                            await _mediaRepository.AddTagsAsync(mediaId, request.Tags, ct).ConfigureAwait(false);
+                            var media = await _mediaRepository.GetMediaByIdAsync(mediaId, ct).ConfigureAwait(false);
                             if (media != null)
                             {
                                 results.Add(MapToResponse(media));
@@ -295,8 +295,8 @@ public class MediaService : IMediaService
                     case BulkOperation.RemoveTags:
                         if (request.Tags != null && request.Tags.Count != 0)
                         {
-                            await _mediaRepository.RemoveTagsAsync(mediaId, request.Tags, ct);
-                            var media = await _mediaRepository.GetMediaByIdAsync(mediaId, ct);
+                            await _mediaRepository.RemoveTagsAsync(mediaId, request.Tags, ct).ConfigureAwait(false);
+                            var media = await _mediaRepository.GetMediaByIdAsync(mediaId, ct).ConfigureAwait(false);
                             if (media != null)
                             {
                                 results.Add(MapToResponse(media));
@@ -317,13 +317,13 @@ public class MediaService : IMediaService
 
     public async Task<List<MediaCollectionResponse>> GetAllCollectionsAsync(CancellationToken ct = default)
     {
-        var collections = await _mediaRepository.GetAllCollectionsAsync(ct);
+        var collections = await _mediaRepository.GetAllCollectionsAsync(ct).ConfigureAwait(false);
         return collections.Select(MapToCollectionResponse).ToList();
     }
 
     public async Task<MediaCollectionResponse?> GetCollectionByIdAsync(Guid id, CancellationToken ct = default)
     {
-        var collection = await _mediaRepository.GetCollectionByIdAsync(id, ct);
+        var collection = await _mediaRepository.GetCollectionByIdAsync(id, ct).ConfigureAwait(false);
         return collection != null ? MapToCollectionResponse(collection) : null;
     }
 
@@ -340,7 +340,7 @@ public class MediaService : IMediaService
             UpdatedAt = DateTime.UtcNow
         };
 
-        await _mediaRepository.AddCollectionAsync(entity, ct);
+        await _mediaRepository.AddCollectionAsync(entity, ct).ConfigureAwait(false);
         return MapToCollectionResponse(entity);
     }
 
@@ -349,7 +349,7 @@ public class MediaService : IMediaService
         MediaCollectionRequest request,
         CancellationToken ct = default)
     {
-        var collection = await _mediaRepository.GetCollectionByIdAsync(id, ct);
+        var collection = await _mediaRepository.GetCollectionByIdAsync(id, ct).ConfigureAwait(false);
         if (collection == null)
         {
             throw new InvalidOperationException($"Collection {id} not found");
@@ -359,18 +359,18 @@ public class MediaService : IMediaService
         collection.Description = request.Description;
         collection.UpdatedAt = DateTime.UtcNow;
 
-        await _mediaRepository.UpdateCollectionAsync(collection, ct);
+        await _mediaRepository.UpdateCollectionAsync(collection, ct).ConfigureAwait(false);
         return MapToCollectionResponse(collection);
     }
 
     public async Task DeleteCollectionAsync(Guid id, CancellationToken ct = default)
     {
-        await _mediaRepository.DeleteCollectionAsync(id, ct);
+        await _mediaRepository.DeleteCollectionAsync(id, ct).ConfigureAwait(false);
     }
 
     public async Task<List<string>> GetAllTagsAsync(CancellationToken ct = default)
     {
-        return await _mediaRepository.GetAllTagsAsync(ct);
+        return await _mediaRepository.GetAllTagsAsync(ct).ConfigureAwait(false);
     }
 
     public async Task TrackMediaUsageAsync(
@@ -379,18 +379,18 @@ public class MediaService : IMediaService
         string? projectName,
         CancellationToken ct = default)
     {
-        await _mediaRepository.TrackUsageAsync(mediaId, projectId, projectName, ct);
+        await _mediaRepository.TrackUsageAsync(mediaId, projectId, projectName, ct).ConfigureAwait(false);
     }
 
     public async Task<MediaUsageInfo> GetMediaUsageAsync(Guid mediaId, CancellationToken ct = default)
     {
-        var media = await _mediaRepository.GetMediaByIdAsync(mediaId, ct);
+        var media = await _mediaRepository.GetMediaByIdAsync(mediaId, ct).ConfigureAwait(false);
         if (media == null)
         {
             throw new InvalidOperationException($"Media {mediaId} not found");
         }
 
-        var usages = await _mediaRepository.GetUsageHistoryAsync(mediaId, ct);
+        var usages = await _mediaRepository.GetUsageHistoryAsync(mediaId, ct).ConfigureAwait(false);
 
         return new MediaUsageInfo
         {
@@ -403,21 +403,21 @@ public class MediaService : IMediaService
 
     public async Task<StorageStats> GetStorageStatsAsync(CancellationToken ct = default)
     {
-        return await _mediaRepository.GetStorageStatsAsync(ct);
+        return await _mediaRepository.GetStorageStatsAsync(ct).ConfigureAwait(false);
     }
 
     public async Task<DuplicateDetectionResult> CheckForDuplicateAsync(
         Stream fileStream,
         CancellationToken ct = default)
     {
-        var (_, hash) = await CalculateFileSizeAndHashAsync(fileStream, ct);
+        var (_, hash) = await CalculateFileSizeAndHashAsync(fileStream, ct).ConfigureAwait(false);
         
         if (string.IsNullOrEmpty(hash))
         {
             return new DuplicateDetectionResult { IsDuplicate = false };
         }
 
-        var duplicate = await _mediaRepository.FindByContentHashAsync(hash, ct);
+        var duplicate = await _mediaRepository.FindByContentHashAsync(hash, ct).ConfigureAwait(false);
         
         return new DuplicateDetectionResult
         {
@@ -445,7 +445,7 @@ public class MediaService : IMediaService
             BlobUrl = string.Empty
         };
 
-        await _mediaRepository.CreateUploadSessionAsync(sessionEntity, ct);
+        await _mediaRepository.CreateUploadSessionAsync(sessionEntity, ct).ConfigureAwait(false);
 
         return new UploadSession
         {
@@ -463,7 +463,7 @@ public class MediaService : IMediaService
         Stream chunkStream,
         CancellationToken ct = default)
     {
-        var session = await _mediaRepository.GetUploadSessionAsync(sessionId, ct);
+        var session = await _mediaRepository.GetUploadSessionAsync(sessionId, ct).ConfigureAwait(false);
         if (session == null)
         {
             throw new InvalidOperationException($"Upload session {sessionId} not found");
@@ -475,7 +475,7 @@ public class MediaService : IMediaService
         }
 
         // Upload chunk to storage
-        var blobUrl = await _storageService.UploadChunkAsync(sessionId, chunkIndex, chunkStream, ct);
+        var blobUrl = await _storageService.UploadChunkAsync(sessionId, chunkIndex, chunkStream, ct).ConfigureAwait(false);
 
         // Update session
         session.BlobUrl = blobUrl;
@@ -485,7 +485,7 @@ public class MediaService : IMediaService
         completedChunks.Add(chunkIndex);
         session.CompletedChunksJson = JsonSerializer.Serialize(completedChunks);
 
-        await _mediaRepository.UpdateUploadSessionAsync(session, ct);
+        await _mediaRepository.UpdateUploadSessionAsync(session, ct).ConfigureAwait(false);
     }
 
     public async Task<MediaItemResponse> CompleteChunkedUploadAsync(
@@ -493,14 +493,14 @@ public class MediaService : IMediaService
         MediaUploadRequest request,
         CancellationToken ct = default)
     {
-        var session = await _mediaRepository.GetUploadSessionAsync(sessionId, ct);
+        var session = await _mediaRepository.GetUploadSessionAsync(sessionId, ct).ConfigureAwait(false);
         if (session == null)
         {
             throw new InvalidOperationException($"Upload session {sessionId} not found");
         }
 
         // Complete chunked upload in storage
-        var blobUrl = await _storageService.CompleteChunkedUploadAsync(sessionId, ct);
+        var blobUrl = await _storageService.CompleteChunkedUploadAsync(sessionId, ct).ConfigureAwait(false);
 
         // Create media entity
         var entity = new MediaEntity
@@ -518,11 +518,11 @@ public class MediaService : IMediaService
             UpdatedAt = DateTime.UtcNow
         };
 
-        await _mediaRepository.AddMediaAsync(entity, ct);
+        await _mediaRepository.AddMediaAsync(entity, ct).ConfigureAwait(false);
 
         if (request.Tags.Count != 0)
         {
-            await _mediaRepository.AddTagsAsync(entity.Id, request.Tags, ct);
+            await _mediaRepository.AddTagsAsync(entity.Id, request.Tags, ct).ConfigureAwait(false);
         }
 
         // Clean up session (done in background)
@@ -530,7 +530,7 @@ public class MediaService : IMediaService
         {
             try
             {
-                await _mediaRepository.DeleteExpiredSessionsAsync(CancellationToken.None);
+                await _mediaRepository.DeleteExpiredSessionsAsync(CancellationToken.None).ConfigureAwait(false);
             }
             catch
             {
@@ -538,7 +538,7 @@ public class MediaService : IMediaService
             }
         });
 
-        entity = await _mediaRepository.GetMediaByIdAsync(entity.Id, ct);
+        entity = await _mediaRepository.GetMediaByIdAsync(entity.Id, ct).ConfigureAwait(false);
         return MapToResponse(entity!);
     }
 
@@ -600,7 +600,7 @@ public class MediaService : IMediaService
         long totalBytes = 0;
         int bytesRead;
 
-        while ((bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length, ct)) > 0)
+        while ((bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length, ct).ConfigureAwait(false)) > 0)
         {
             totalBytes += bytesRead;
             sha256.TransformBlock(buffer, 0, bytesRead, null, 0);

@@ -31,7 +31,7 @@ public class PatternRecognitionSystem
         string profileId,
         CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         
         var patterns = new List<DecisionPattern>();
         
@@ -134,7 +134,7 @@ public class PatternRecognitionSystem
         string profileId,
         CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         
         return DetectTemporalPatterns(decisions, profileId);
     }

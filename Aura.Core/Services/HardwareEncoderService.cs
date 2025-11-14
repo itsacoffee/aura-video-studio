@@ -39,7 +39,7 @@ public class HardwareEncoderService : IHardwareEncoderService
     public async Task<HardwareCapabilities> DetectCapabilitiesAsync()
     {
         _logger.LogInformation("Detecting hardware encoding capabilities");
-        return await _hardwareEncoder.DetectHardwareCapabilitiesAsync();
+        return await _hardwareEncoder.DetectHardwareCapabilitiesAsync().ConfigureAwait(false);
     }
 
     public async Task<EncoderConfig> GetBestEncoderAsync(
@@ -51,6 +51,6 @@ public class HardwareEncoderService : IHardwareEncoderService
             preset.Name, 
             preferHardware);
         
-        return await _hardwareEncoder.SelectBestEncoderAsync(preset, preferHardware);
+        return await _hardwareEncoder.SelectBestEncoderAsync(preset, preferHardware).ConfigureAwait(false);
     }
 }

@@ -30,7 +30,7 @@ public class TrendAnalysisService
         _logger.LogInformation("Analyzing trends for category: {Category}, platform: {Platform}",
             request.Category, request.Platform);
 
-        await Task.Delay(100, ct); // Simulate API call
+        await Task.Delay(100, ct).ConfigureAwait(false); // Simulate API call
 
         var trends = new List<TrendData>();
         var platforms = string.IsNullOrEmpty(request.Platform)
@@ -64,7 +64,7 @@ public class TrendAnalysisService
         _logger.LogInformation("Getting platform trends for {Platform}, category: {Category}",
             platform, category);
 
-        await Task.Delay(50, ct);
+        await Task.Delay(50, ct).ConfigureAwait(false);
 
         var topics = new[] { "AI Technology", "Productivity", "Fitness", "Gaming", "Cooking" };
         return topics.Select(topic => GenerateTrendData(topic, category ?? "General", platform)).ToList();

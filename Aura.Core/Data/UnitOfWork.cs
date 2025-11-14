@@ -85,7 +85,7 @@ public class UnitOfWork : IUnitOfWork
     {
         try
         {
-            return await _context.SaveChangesAsync(ct);
+            return await _context.SaveChangesAsync(ct).ConfigureAwait(false);
         }
         catch (DbUpdateConcurrencyException ex)
         {
@@ -106,7 +106,7 @@ public class UnitOfWork : IUnitOfWork
             throw new InvalidOperationException("Transaction already started");
         }
 
-        _transaction = await _context.Database.BeginTransactionAsync(ct);
+        _transaction = await _context.Database.BeginTransactionAsync(ct).ConfigureAwait(false);
         _logger.LogDebug("Database transaction started");
     }
 
@@ -119,18 +119,18 @@ public class UnitOfWork : IUnitOfWork
 
         try
         {
-            await _transaction.CommitAsync(ct);
+            await _transaction.CommitAsync(ct).ConfigureAwait(false);
             _logger.LogDebug("Database transaction committed");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error committing transaction");
-            await RollbackAsync(ct);
+            await RollbackAsync(ct).ConfigureAwait(false);
             throw;
         }
         finally
         {
-            await _transaction.DisposeAsync();
+            await _transaction.DisposeAsync().ConfigureAwait(false);
             _transaction = null;
         }
     }
@@ -144,12 +144,12 @@ public class UnitOfWork : IUnitOfWork
 
         try
         {
-            await _transaction.RollbackAsync(ct);
+            await _transaction.RollbackAsync(ct).ConfigureAwait(false);
             _logger.LogWarning("Database transaction rolled back");
         }
         finally
         {
-            await _transaction.DisposeAsync();
+            await _transaction.DisposeAsync().ConfigureAwait(false);
             _transaction = null;
         }
     }

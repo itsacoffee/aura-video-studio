@@ -42,7 +42,7 @@ public class WindowsTtsProvider : ITtsProvider
     public async Task<IReadOnlyList<string>> GetAvailableVoicesAsync()
     {
 #if WINDOWS10_0_19041_0_OR_GREATER
-        await Task.CompletedTask; // Ensure async behavior
+        await Task.CompletedTask.ConfigureAwait(false); // Ensure async behavior
         var voiceNames = new List<string>();
         
         foreach (var voice in SpeechSynthesizer.AllVoices)
@@ -52,7 +52,7 @@ public class WindowsTtsProvider : ITtsProvider
         
         return voiceNames;
 #else
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return new List<string> { "Microsoft David Desktop", "Microsoft Zira Desktop" };
 #endif
     }
@@ -104,7 +104,7 @@ public class WindowsTtsProvider : ITtsProvider
             
             using (var fileStream = new FileStream(tempFile, FileMode.Create))
             {
-                await stream.AsStreamForRead().CopyToAsync(fileStream, 81920, ct);
+                await stream.AsStreamForRead().CopyToAsync(fileStream, 81920, ct).ConfigureAwait(false);
             }
             
             _logger.LogDebug("Synthesized line {Index}: {Text}", line.SceneIndex, 
@@ -163,7 +163,7 @@ public class WindowsTtsProvider : ITtsProvider
         
         return outputFilePath;
 #else
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         _logger.LogError("Windows TTS is not available on this platform. Cannot synthesize audio.");
         throw new PlatformNotSupportedException(
             "Windows TTS is only available on Windows 10 (build 19041) or later. " +

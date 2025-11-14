@@ -32,14 +32,14 @@ public class ProfileContextProvider
     {
         try
         {
-            var profile = await _profileService.GetActiveProfileAsync(userId, ct);
+            var profile = await _profileService.GetActiveProfileAsync(userId, ct).ConfigureAwait(false);
             if (profile == null)
             {
                 _logger.LogWarning("No active profile found for user {UserId}", userId);
                 return string.Empty;
             }
 
-            var preferences = await _profileService.GetPreferencesAsync(profile.ProfileId, ct);
+            var preferences = await _profileService.GetPreferencesAsync(profile.ProfileId, ct).ConfigureAwait(false);
             return BuildContextString(preferences);
         }
         catch (Exception ex)
@@ -58,13 +58,13 @@ public class ProfileContextProvider
     {
         try
         {
-            var profile = await _profileService.GetActiveProfileAsync(userId, ct);
+            var profile = await _profileService.GetActiveProfileAsync(userId, ct).ConfigureAwait(false);
             if (profile == null)
             {
                 return null;
             }
 
-            return await _profileService.GetPreferencesAsync(profile.ProfileId, ct);
+            return await _profileService.GetPreferencesAsync(profile.ProfileId, ct).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

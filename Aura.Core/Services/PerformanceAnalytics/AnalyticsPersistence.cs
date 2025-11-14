@@ -57,7 +57,7 @@ public class AnalyticsPersistence
     /// </summary>
     public async Task SaveVideoPerformanceAsync(VideoPerformanceData video, CancellationToken ct = default)
     {
-        await _fileLock.WaitAsync(ct);
+        await _fileLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             var profileDir = Path.Combine(_videosDirectory, video.ProfileId);
@@ -67,7 +67,7 @@ public class AnalyticsPersistence
             var json = JsonSerializer.Serialize(video, _jsonOptions);
 
             var tempPath = filePath + ".tmp";
-            await File.WriteAllTextAsync(tempPath, json, ct);
+            await File.WriteAllTextAsync(tempPath, json, ct).ConfigureAwait(false);
             File.Move(tempPath, filePath, overwrite: true);
 
             _logger.LogDebug("Saved video performance data for {VideoId}", video.VideoId);
@@ -92,7 +92,7 @@ public class AnalyticsPersistence
 
         try
         {
-            var json = await File.ReadAllTextAsync(filePath, ct);
+            var json = await File.ReadAllTextAsync(filePath, ct).ConfigureAwait(false);
             return JsonSerializer.Deserialize<VideoPerformanceData>(json, _jsonOptions);
         }
         catch (Exception ex)
@@ -121,7 +121,7 @@ public class AnalyticsPersistence
         {
             try
             {
-                var json = await File.ReadAllTextAsync(file, ct);
+                var json = await File.ReadAllTextAsync(file, ct).ConfigureAwait(false);
                 var video = JsonSerializer.Deserialize<VideoPerformanceData>(json, _jsonOptions);
                 if (video != null)
                 {
@@ -146,7 +146,7 @@ public class AnalyticsPersistence
     /// </summary>
     public async Task SaveVideoLinkAsync(VideoProjectLink link, CancellationToken ct = default)
     {
-        await _fileLock.WaitAsync(ct);
+        await _fileLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             var profileDir = Path.Combine(_linksDirectory, link.ProfileId);
@@ -156,7 +156,7 @@ public class AnalyticsPersistence
             var json = JsonSerializer.Serialize(link, _jsonOptions);
 
             var tempPath = filePath + ".tmp";
-            await File.WriteAllTextAsync(tempPath, json, ct);
+            await File.WriteAllTextAsync(tempPath, json, ct).ConfigureAwait(false);
             File.Move(tempPath, filePath, overwrite: true);
 
             _logger.LogDebug("Saved video-project link {LinkId}", link.LinkId);
@@ -186,7 +186,7 @@ public class AnalyticsPersistence
         {
             try
             {
-                var json = await File.ReadAllTextAsync(file, ct);
+                var json = await File.ReadAllTextAsync(file, ct).ConfigureAwait(false);
                 var link = JsonSerializer.Deserialize<VideoProjectLink>(json, _jsonOptions);
                 if (link != null)
                 {
@@ -207,7 +207,7 @@ public class AnalyticsPersistence
     /// </summary>
     public async Task<VideoProjectLink?> FindLinkByVideoAsync(string profileId, string videoId, CancellationToken ct = default)
     {
-        var links = await LoadLinksAsync(profileId, ct);
+        var links = await LoadLinksAsync(profileId, ct).ConfigureAwait(false);
         return links.FirstOrDefault(l => l.VideoId == videoId);
     }
 
@@ -216,7 +216,7 @@ public class AnalyticsPersistence
     /// </summary>
     public async Task<VideoProjectLink?> FindLinkByProjectAsync(string profileId, string projectId, CancellationToken ct = default)
     {
-        var links = await LoadLinksAsync(profileId, ct);
+        var links = await LoadLinksAsync(profileId, ct).ConfigureAwait(false);
         return links.FirstOrDefault(l => l.ProjectId == projectId);
     }
 
@@ -229,14 +229,14 @@ public class AnalyticsPersistence
     /// </summary>
     public async Task SaveCorrelationsAsync(string projectId, List<DecisionPerformanceCorrelation> correlations, CancellationToken ct = default)
     {
-        await _fileLock.WaitAsync(ct);
+        await _fileLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             var filePath = Path.Combine(_correlationsDirectory, $"{projectId}.json");
             var json = JsonSerializer.Serialize(correlations, _jsonOptions);
 
             var tempPath = filePath + ".tmp";
-            await File.WriteAllTextAsync(tempPath, json, ct);
+            await File.WriteAllTextAsync(tempPath, json, ct).ConfigureAwait(false);
             File.Move(tempPath, filePath, overwrite: true);
 
             _logger.LogDebug("Saved {Count} correlations for project {ProjectId}", correlations.Count, projectId);
@@ -261,7 +261,7 @@ public class AnalyticsPersistence
 
         try
         {
-            var json = await File.ReadAllTextAsync(filePath, ct);
+            var json = await File.ReadAllTextAsync(filePath, ct).ConfigureAwait(false);
             return JsonSerializer.Deserialize<List<DecisionPerformanceCorrelation>>(json, _jsonOptions) 
                 ?? new List<DecisionPerformanceCorrelation>();
         }
@@ -281,14 +281,14 @@ public class AnalyticsPersistence
     /// </summary>
     public async Task SaveSuccessPatternsAsync(string profileId, List<SuccessPattern> patterns, CancellationToken ct = default)
     {
-        await _fileLock.WaitAsync(ct);
+        await _fileLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             var filePath = Path.Combine(_patternsDirectory, $"{profileId}_success.json");
             var json = JsonSerializer.Serialize(patterns, _jsonOptions);
 
             var tempPath = filePath + ".tmp";
-            await File.WriteAllTextAsync(tempPath, json, ct);
+            await File.WriteAllTextAsync(tempPath, json, ct).ConfigureAwait(false);
             File.Move(tempPath, filePath, overwrite: true);
 
             _logger.LogDebug("Saved {Count} success patterns for profile {ProfileId}", patterns.Count, profileId);
@@ -313,7 +313,7 @@ public class AnalyticsPersistence
 
         try
         {
-            var json = await File.ReadAllTextAsync(filePath, ct);
+            var json = await File.ReadAllTextAsync(filePath, ct).ConfigureAwait(false);
             return JsonSerializer.Deserialize<List<SuccessPattern>>(json, _jsonOptions) 
                 ?? new List<SuccessPattern>();
         }
@@ -329,14 +329,14 @@ public class AnalyticsPersistence
     /// </summary>
     public async Task SaveFailurePatternsAsync(string profileId, List<FailurePattern> patterns, CancellationToken ct = default)
     {
-        await _fileLock.WaitAsync(ct);
+        await _fileLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             var filePath = Path.Combine(_patternsDirectory, $"{profileId}_failure.json");
             var json = JsonSerializer.Serialize(patterns, _jsonOptions);
 
             var tempPath = filePath + ".tmp";
-            await File.WriteAllTextAsync(tempPath, json, ct);
+            await File.WriteAllTextAsync(tempPath, json, ct).ConfigureAwait(false);
             File.Move(tempPath, filePath, overwrite: true);
 
             _logger.LogDebug("Saved {Count} failure patterns for profile {ProfileId}", patterns.Count, profileId);
@@ -361,7 +361,7 @@ public class AnalyticsPersistence
 
         try
         {
-            var json = await File.ReadAllTextAsync(filePath, ct);
+            var json = await File.ReadAllTextAsync(filePath, ct).ConfigureAwait(false);
             return JsonSerializer.Deserialize<List<FailurePattern>>(json, _jsonOptions) 
                 ?? new List<FailurePattern>();
         }
@@ -381,7 +381,7 @@ public class AnalyticsPersistence
     /// </summary>
     public async Task SaveABTestAsync(ABTest test, CancellationToken ct = default)
     {
-        await _fileLock.WaitAsync(ct);
+        await _fileLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             var profileDir = Path.Combine(_abTestsDirectory, test.ProfileId);
@@ -391,7 +391,7 @@ public class AnalyticsPersistence
             var json = JsonSerializer.Serialize(test, _jsonOptions);
 
             var tempPath = filePath + ".tmp";
-            await File.WriteAllTextAsync(tempPath, json, ct);
+            await File.WriteAllTextAsync(tempPath, json, ct).ConfigureAwait(false);
             File.Move(tempPath, filePath, overwrite: true);
 
             _logger.LogDebug("Saved A/B test {TestId}", test.TestId);
@@ -416,7 +416,7 @@ public class AnalyticsPersistence
 
         try
         {
-            var json = await File.ReadAllTextAsync(filePath, ct);
+            var json = await File.ReadAllTextAsync(filePath, ct).ConfigureAwait(false);
             return JsonSerializer.Deserialize<ABTest>(json, _jsonOptions);
         }
         catch (Exception ex)
@@ -445,7 +445,7 @@ public class AnalyticsPersistence
         {
             try
             {
-                var json = await File.ReadAllTextAsync(file, ct);
+                var json = await File.ReadAllTextAsync(file, ct).ConfigureAwait(false);
                 var test = JsonSerializer.Deserialize<ABTest>(json, _jsonOptions);
                 if (test != null)
                 {

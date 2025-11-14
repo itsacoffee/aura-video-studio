@@ -83,7 +83,7 @@ public class IdempotencyManager
         }
 
         // Execute the operation
-        var result = await operation();
+        var result = await operation().ConfigureAwait(false);
 
         // Store the result
         StoreResult(idempotencyKey, result, ttl);

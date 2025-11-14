@@ -79,7 +79,7 @@ public class ContentAdaptationEngine
                     adaptedContent, 
                     context, 
                     config.AggressivenessLevel,
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
                 adaptedContent = vocabResult.AdaptedText;
                 result.Changes.AddRange(vocabResult.Changes);
             }
@@ -92,7 +92,7 @@ public class ContentAdaptationEngine
                     adaptedContent,
                     context,
                     config.ExamplesPerConcept,
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
                 adaptedContent = exampleResult.AdaptedText;
                 result.Changes.AddRange(exampleResult.Changes);
                 result.OverallRelevanceScore = exampleResult.AverageRelevanceScore;
@@ -106,7 +106,7 @@ public class ContentAdaptationEngine
                 var pacingResult = await _pacingAdapter.AdaptPacingAsync(
                     adaptedContent,
                     context,
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
                 adaptedContent = pacingResult.AdaptedText;
                 result.Changes.AddRange(pacingResult.Changes);
             }
@@ -118,7 +118,7 @@ public class ContentAdaptationEngine
                 var toneResult = await _toneOptimizer.OptimizeToneAsync(
                     adaptedContent,
                     context,
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
                 adaptedContent = toneResult.AdaptedText;
                 result.Changes.AddRange(toneResult.Changes);
             }
@@ -131,7 +131,7 @@ public class ContentAdaptationEngine
                     adaptedContent,
                     context,
                     config.CognitiveLoadThreshold,
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
                 adaptedContent = loadResult.AdaptedText;
                 result.Changes.AddRange(loadResult.Changes);
             }

@@ -74,7 +74,7 @@ public class MediaRepository : IMediaRepository
         return await _context.MediaItems
             .Include(m => m.Tags)
             .Include(m => m.Collection)
-            .FirstOrDefaultAsync(m => m.Id == id, ct);
+            .FirstOrDefaultAsync(m => m.Id == id, ct).ConfigureAwait(false);
     }
 
     public async Task<List<MediaEntity>> GetAllMediaAsync(CancellationToken ct = default)
@@ -83,29 +83,29 @@ public class MediaRepository : IMediaRepository
             .Include(m => m.Tags)
             .Include(m => m.Collection)
             .OrderByDescending(m => m.CreatedAt)
-            .ToListAsync(ct);
+            .ToListAsync(ct).ConfigureAwait(false);
     }
 
     public async Task<MediaEntity> AddMediaAsync(MediaEntity media, CancellationToken ct = default)
     {
-        await _context.MediaItems.AddAsync(media, ct);
-        await _context.SaveChangesAsync(ct);
+        await _context.MediaItems.AddAsync(media, ct).ConfigureAwait(false);
+        await _context.SaveChangesAsync(ct).ConfigureAwait(false);
         return media;
     }
 
     public async Task UpdateMediaAsync(MediaEntity media, CancellationToken ct = default)
     {
         _context.MediaItems.Update(media);
-        await _context.SaveChangesAsync(ct);
+        await _context.SaveChangesAsync(ct).ConfigureAwait(false);
     }
 
     public async Task DeleteMediaAsync(Guid id, CancellationToken ct = default)
     {
-        var media = await _context.MediaItems.FindAsync(new object[] { id }, ct);
+        var media = await _context.MediaItems.FindAsync(new object[] { id }, ct).ConfigureAwait(false);
         if (media != null)
         {
             _context.MediaItems.Remove(media);
-            await _context.SaveChangesAsync(ct);
+            await _context.SaveChangesAsync(ct).ConfigureAwait(false);
         }
     }
 
@@ -163,7 +163,7 @@ public class MediaRepository : IMediaRepository
         }
 
         // Get total count
-        var total = await query.CountAsync(ct);
+        var total = await query.CountAsync(ct).ConfigureAwait(false);
 
         // Apply sorting
         query = request.SortBy.ToLower() switch
@@ -186,7 +186,7 @@ public class MediaRepository : IMediaRepository
         var items = await query
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
-            .ToListAsync(ct);
+            .ToListAsync(ct).ConfigureAwait(false);
 
         return (items, total);
     }
@@ -195,7 +195,7 @@ public class MediaRepository : IMediaRepository
     {
         return await _context.MediaCollections
             .Include(c => c.MediaItems)
-            .FirstOrDefaultAsync(c => c.Id == id, ct);
+            .FirstOrDefaultAsync(c => c.Id == id, ct).ConfigureAwait(false);
     }
 
     public async Task<List<MediaCollectionEntity>> GetAllCollectionsAsync(CancellationToken ct = default)
@@ -203,29 +203,29 @@ public class MediaRepository : IMediaRepository
         return await _context.MediaCollections
             .Include(c => c.MediaItems)
             .OrderBy(c => c.Name)
-            .ToListAsync(ct);
+            .ToListAsync(ct).ConfigureAwait(false);
     }
 
     public async Task<MediaCollectionEntity> AddCollectionAsync(MediaCollectionEntity collection, CancellationToken ct = default)
     {
-        await _context.MediaCollections.AddAsync(collection, ct);
-        await _context.SaveChangesAsync(ct);
+        await _context.MediaCollections.AddAsync(collection, ct).ConfigureAwait(false);
+        await _context.SaveChangesAsync(ct).ConfigureAwait(false);
         return collection;
     }
 
     public async Task UpdateCollectionAsync(MediaCollectionEntity collection, CancellationToken ct = default)
     {
         _context.MediaCollections.Update(collection);
-        await _context.SaveChangesAsync(ct);
+        await _context.SaveChangesAsync(ct).ConfigureAwait(false);
     }
 
     public async Task DeleteCollectionAsync(Guid id, CancellationToken ct = default)
     {
-        var collection = await _context.MediaCollections.FindAsync(new object[] { id }, ct);
+        var collection = await _context.MediaCollections.FindAsync(new object[] { id }, ct).ConfigureAwait(false);
         if (collection != null)
         {
             _context.MediaCollections.Remove(collection);
-            await _context.SaveChangesAsync(ct);
+            await _context.SaveChangesAsync(ct).ConfigureAwait(false);
         }
     }
 
@@ -235,7 +235,7 @@ public class MediaRepository : IMediaRepository
             .Select(t => t.Tag)
             .Distinct()
             .OrderBy(t => t)
-            .ToListAsync(ct);
+            .ToListAsync(ct).ConfigureAwait(false);
     }
 
     public async Task AddTagsAsync(Guid mediaId, List<string> tags, CancellationToken ct = default)
@@ -243,7 +243,7 @@ public class MediaRepository : IMediaRepository
         var existingTags = await _context.MediaTags
             .Where(t => t.MediaId == mediaId)
             .Select(t => t.Tag)
-            .ToListAsync(ct);
+            .ToListAsync(ct).ConfigureAwait(false);
 
         var newTags = tags
             .Where(t => !existingTags.Contains(t))
@@ -255,18 +255,18 @@ public class MediaRepository : IMediaRepository
                 CreatedAt = DateTime.UtcNow
             });
 
-        await _context.MediaTags.AddRangeAsync(newTags, ct);
-        await _context.SaveChangesAsync(ct);
+        await _context.MediaTags.AddRangeAsync(newTags, ct).ConfigureAwait(false);
+        await _context.SaveChangesAsync(ct).ConfigureAwait(false);
     }
 
     public async Task RemoveTagsAsync(Guid mediaId, List<string> tags, CancellationToken ct = default)
     {
         var tagsToRemove = await _context.MediaTags
             .Where(t => t.MediaId == mediaId && tags.Contains(t.Tag))
-            .ToListAsync(ct);
+            .ToListAsync(ct).ConfigureAwait(false);
 
         _context.MediaTags.RemoveRange(tagsToRemove);
-        await _context.SaveChangesAsync(ct);
+        await _context.SaveChangesAsync(ct).ConfigureAwait(false);
     }
 
     public async Task TrackUsageAsync(Guid mediaId, string projectId, string? projectName, CancellationToken ct = default)
@@ -280,17 +280,17 @@ public class MediaRepository : IMediaRepository
             UsedAt = DateTime.UtcNow
         };
 
-        await _context.MediaUsages.AddAsync(usage, ct);
+        await _context.MediaUsages.AddAsync(usage, ct).ConfigureAwait(false);
 
         // Update media usage count
-        var media = await _context.MediaItems.FindAsync(new object[] { mediaId }, ct);
+        var media = await _context.MediaItems.FindAsync(new object[] { mediaId }, ct).ConfigureAwait(false);
         if (media != null)
         {
             media.UsageCount++;
             media.LastUsedAt = DateTime.UtcNow;
         }
 
-        await _context.SaveChangesAsync(ct);
+        await _context.SaveChangesAsync(ct).ConfigureAwait(false);
     }
 
     public async Task<List<MediaUsageEntity>> GetUsageHistoryAsync(Guid mediaId, CancellationToken ct = default)
@@ -298,12 +298,12 @@ public class MediaRepository : IMediaRepository
         return await _context.MediaUsages
             .Where(u => u.MediaId == mediaId)
             .OrderByDescending(u => u.UsedAt)
-            .ToListAsync(ct);
+            .ToListAsync(ct).ConfigureAwait(false);
     }
 
     public async Task<StorageStats> GetStorageStatsAsync(CancellationToken ct = default)
     {
-        var allMedia = await _context.MediaItems.ToListAsync(ct);
+        var allMedia = await _context.MediaItems.ToListAsync(ct).ConfigureAwait(false);
         var totalSize = allMedia.Sum(m => m.FileSize);
         var quota = 50L * 1024 * 1024 * 1024; // 50GB default quota
 
@@ -337,34 +337,34 @@ public class MediaRepository : IMediaRepository
     public async Task<MediaEntity?> FindByContentHashAsync(string contentHash, CancellationToken ct = default)
     {
         return await _context.MediaItems
-            .FirstOrDefaultAsync(m => m.ContentHash == contentHash, ct);
+            .FirstOrDefaultAsync(m => m.ContentHash == contentHash, ct).ConfigureAwait(false);
     }
 
     public async Task<UploadSessionEntity> CreateUploadSessionAsync(UploadSessionEntity session, CancellationToken ct = default)
     {
-        await _context.UploadSessions.AddAsync(session, ct);
-        await _context.SaveChangesAsync(ct);
+        await _context.UploadSessions.AddAsync(session, ct).ConfigureAwait(false);
+        await _context.SaveChangesAsync(ct).ConfigureAwait(false);
         return session;
     }
 
     public async Task<UploadSessionEntity?> GetUploadSessionAsync(Guid sessionId, CancellationToken ct = default)
     {
-        return await _context.UploadSessions.FindAsync(new object[] { sessionId }, ct);
+        return await _context.UploadSessions.FindAsync(new object[] { sessionId }, ct).ConfigureAwait(false);
     }
 
     public async Task UpdateUploadSessionAsync(UploadSessionEntity session, CancellationToken ct = default)
     {
         _context.UploadSessions.Update(session);
-        await _context.SaveChangesAsync(ct);
+        await _context.SaveChangesAsync(ct).ConfigureAwait(false);
     }
 
     public async Task DeleteExpiredSessionsAsync(CancellationToken ct = default)
     {
         var expiredSessions = await _context.UploadSessions
             .Where(s => s.ExpiresAt < DateTime.UtcNow)
-            .ToListAsync(ct);
+            .ToListAsync(ct).ConfigureAwait(false);
 
         _context.UploadSessions.RemoveRange(expiredSessions);
-        await _context.SaveChangesAsync(ct);
+        await _context.SaveChangesAsync(ct).ConfigureAwait(false);
     }
 }

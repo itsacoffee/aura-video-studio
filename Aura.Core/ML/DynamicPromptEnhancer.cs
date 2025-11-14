@@ -37,7 +37,7 @@ public class DynamicPromptEnhancer
         Dictionary<string, double>? historicalPerformance = null,
         CancellationToken ct = default)
     {
-        await Task.CompletedTask; // For async interface consistency
+        await Task.CompletedTask.ConfigureAwait(false); // For async interface consistency
 
         if (!settings.Enabled)
         {

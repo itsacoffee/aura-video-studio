@@ -62,7 +62,7 @@ public class SettingsExportImportService
         // Handle API keys based on includeSecrets flag
         if (includeSecrets && selectedSecretKeys?.Count > 0)
         {
-            exportData.ApiKeys = await LoadSelectedApiKeysAsync(selectedSecretKeys, ct);
+            exportData.ApiKeys = await LoadSelectedApiKeysAsync(selectedSecretKeys, ct).ConfigureAwait(false);
             _logger.LogWarning(
                 "Exporting settings WITH secrets. Keys included: {Keys}. Warning acknowledged: {Acknowledged}",
                 string.Join(", ", selectedSecretKeys),
@@ -82,7 +82,7 @@ public class SettingsExportImportService
             {
                 SecretsIncluded = includeSecrets && (selectedSecretKeys?.Count ?? 0) > 0,
                 IncludedSecretKeys = includeSecrets ? selectedSecretKeys : new List<string>(),
-                RedactedSecretKeys = await GetAllSecretKeysAsync(ct),
+                RedactedSecretKeys = await GetAllSecretKeysAsync(ct).ConfigureAwait(false),
                 ExportedBy = Environment.UserName,
                 MachineName = Environment.MachineName
             }
@@ -112,7 +112,7 @@ public class SettingsExportImportService
         // Detect conflicts
         DetectGeneralSettingsConflicts(importData.General, currentSettings.General, result.Conflicts);
         DetectFileLocationConflicts(importData.FileLocations, currentSettings.FileLocations, result.Conflicts);
-        await DetectApiKeyConflictsAsync(importData.ApiKeys, result.Conflicts, ct);
+        await DetectApiKeyConflictsAsync(importData.ApiKeys, result.Conflicts, ct).ConfigureAwait(false);
 
         if (result.Conflicts.Count > 0 && !overwriteExisting)
         {
@@ -131,7 +131,7 @@ public class SettingsExportImportService
         // Apply changes if not dry-run
         if (!dryRun && (overwriteExisting || result.Conflicts.Count == 0))
         {
-            await ApplyImportAsync(importData, currentSettings, ct);
+            await ApplyImportAsync(importData, currentSettings, ct).ConfigureAwait(false);
             result.Message = "Settings imported successfully";
             _logger.LogInformation("Settings import completed successfully");
         }
@@ -144,12 +144,12 @@ public class SettingsExportImportService
     /// </summary>
     public async Task<RedactionPreview> GetRedactionPreviewAsync(CancellationToken ct)
     {
-        var allKeys = await GetAllSecretKeysAsync(ct);
+        var allKeys = await GetAllSecretKeysAsync(ct).ConfigureAwait(false);
         var preview = new Dictionary<string, string>();
 
         foreach (var key in allKeys)
         {
-            var value = await _secureStorage.GetApiKeyAsync(key);
+            var value = await _secureStorage.GetApiKeyAsync(key).ConfigureAwait(false);
             if (!string.IsNullOrEmpty(value))
             {
                 preview[key] = MaskSecret(value);
@@ -172,7 +172,7 @@ public class SettingsExportImportService
 
         foreach (var key in selectedKeys)
         {
-            var value = await _secureStorage.GetApiKeyAsync(key);
+            var value = await _secureStorage.GetApiKeyAsync(key).ConfigureAwait(false);
             if (!string.IsNullOrEmpty(value))
             {
                 keys[key] = value;
@@ -184,7 +184,7 @@ public class SettingsExportImportService
 
     private async Task<List<string>> GetAllSecretKeysAsync(CancellationToken ct)
     {
-        var configuredProviders = await _secureStorage.GetConfiguredProvidersAsync();
+        var configuredProviders = await _secureStorage.GetConfiguredProvidersAsync().ConfigureAwait(false);
         return configuredProviders.ToList();
     }
 
@@ -260,7 +260,7 @@ public class SettingsExportImportService
 
         foreach (var kvp in importedKeys)
         {
-            var existingKey = await _secureStorage.GetApiKeyAsync(kvp.Key);
+            var existingKey = await _secureStorage.GetApiKeyAsync(kvp.Key).ConfigureAwait(false);
             if (!string.IsNullOrEmpty(existingKey) && existingKey != kvp.Value)
             {
                 conflicts.Add(new ImportConflict
@@ -295,7 +295,7 @@ public class SettingsExportImportService
             {
                 if (!string.IsNullOrWhiteSpace(kvp.Value))
                 {
-                    await _secureStorage.SaveApiKeyAsync(kvp.Key, kvp.Value);
+                    await _secureStorage.SaveApiKeyAsync(kvp.Key, kvp.Value).ConfigureAwait(false);
                     _logger.LogInformation("Imported API key for provider: {Provider}", kvp.Key);
                 }
             }

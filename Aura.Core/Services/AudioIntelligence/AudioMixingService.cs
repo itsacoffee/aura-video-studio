@@ -32,7 +32,7 @@ public class AudioMixingService
     {
         _logger.LogInformation("Generating mixing suggestions for content type: {ContentType}", contentType);
 
-        await Task.CompletedTask; // For async pattern
+        await Task.CompletedTask.ConfigureAwait(false); // For async pattern
 
         try
         {

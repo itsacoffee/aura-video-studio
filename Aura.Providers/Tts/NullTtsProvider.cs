@@ -53,7 +53,7 @@ public class NullTtsProvider : ITtsProvider
         var outputPath = Path.Combine(_outputDir, $"silent-{Guid.NewGuid()}.wav");
 
         // Use SilentWavGenerator for reliable, validated silent audio
-        await _silentWavGenerator.GenerateAsync(outputPath, totalDuration, ct: ct);
+        await _silentWavGenerator.GenerateAsync(outputPath, totalDuration, ct: ct).ConfigureAwait(false);
 
         _logger.LogInformation("Generated silent audio: {Path}, Duration: {Duration}s", 
             outputPath, totalDuration.TotalSeconds);

@@ -34,13 +34,13 @@ public class Mimic3Validator : IProviderValidator
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(5));
 
-            var response = await _httpClient.GetAsync($"{baseUrl}/api/voices", cts.Token);
+            var response = await _httpClient.GetAsync($"{baseUrl}/api/voices", cts.Token).ConfigureAwait(false);
 
             sw.Stop();
 
             if (response.IsSuccessStatusCode)
             {
-                var content = await response.Content.ReadAsStringAsync(ct);
+                var content = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 
                 _logger.LogInformation("Mimic3 validation successful");
                 return new ProviderValidationResult

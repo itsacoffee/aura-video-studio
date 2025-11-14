@@ -56,7 +56,7 @@ public class VoiceDirectionService
             // Use AI for more sophisticated analysis if available
             if (_llmProvider != null)
             {
-                directions = await EnhanceWithAIAsync(directions, lines, contentType, ct);
+                directions = await EnhanceWithAIAsync(directions, lines, contentType, ct).ConfigureAwait(false);
             }
 
             return directions;
@@ -320,7 +320,7 @@ public class VoiceDirectionService
     {
         // In a full implementation, this would use the LLM to refine the voice direction
         // For now, return the initial directions
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
         return initialDirections;
     }
 

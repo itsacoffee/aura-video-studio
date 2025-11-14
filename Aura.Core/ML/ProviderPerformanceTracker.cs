@@ -33,7 +33,7 @@ public class ProviderPerformanceTracker
         bool success,
         CancellationToken ct = default)
     {
-        await _lock.WaitAsync(ct);
+        await _lock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             var record = new ProviderPerformanceRecord
@@ -78,7 +78,7 @@ public class ProviderPerformanceTracker
         string? contentType = null,
         CancellationToken ct = default)
     {
-        await _lock.WaitAsync(ct);
+        await _lock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             if (!_performanceHistory.TryGetValue(providerName, out var records))
@@ -130,7 +130,7 @@ public class ProviderPerformanceTracker
 
         foreach (var provider in availableProviders)
         {
-            var stats = await GetProviderStatsAsync(provider, contentType, ct);
+            var stats = await GetProviderStatsAsync(provider, contentType, ct).ConfigureAwait(false);
             
             if (stats == null || stats.TotalGenerations < 3)
             {
@@ -199,7 +199,7 @@ public class ProviderPerformanceTracker
     /// </summary>
     public async Task ClearHistoryAsync(CancellationToken ct = default)
     {
-        await _lock.WaitAsync(ct);
+        await _lock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             _performanceHistory.Clear();

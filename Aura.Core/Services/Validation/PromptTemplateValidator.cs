@@ -34,13 +34,13 @@ public class PromptTemplateValidator
         };
 
         // Test script generation prompt
-        await ValidateScriptGenerationPromptAsync(result);
+        await ValidateScriptGenerationPromptAsync(result).ConfigureAwait(false);
 
         // Test visual selection prompt
-        await ValidateVisualSelectionPromptAsync(result);
+        await ValidateVisualSelectionPromptAsync(result).ConfigureAwait(false);
 
         // Test quality validation prompt
-        await ValidateQualityValidationPromptAsync(result);
+        await ValidateQualityValidationPromptAsync(result).ConfigureAwait(false);
 
         result.CompletedAt = DateTime.UtcNow;
 
@@ -99,7 +99,7 @@ public class PromptTemplateValidator
                 _logger.LogDebug("Script generation prompt validation passed");
             }
 
-            await Task.CompletedTask;
+            await Task.CompletedTask.ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -138,7 +138,7 @@ public class PromptTemplateValidator
                 _logger.LogDebug("Visual selection prompt validation passed");
             }
 
-            await Task.CompletedTask;
+            await Task.CompletedTask.ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -179,7 +179,7 @@ public class PromptTemplateValidator
                 _logger.LogDebug("Quality validation prompt validation passed");
             }
 
-            await Task.CompletedTask;
+            await Task.CompletedTask.ConfigureAwait(false);
         }
         catch (Exception ex)
         {

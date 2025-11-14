@@ -56,14 +56,14 @@ public class TtsFileHelper
                 bufferSize: 81920,
                 useAsync: true))
             {
-                await writeAction(fileStream);
-                await fileStream.FlushAsync(ct);
+                await writeAction(fileStream).ConfigureAwait(false);
+                await fileStream.FlushAsync(ct).ConfigureAwait(false);
             }
 
             _logger.LogDebug("Validating WAV file: {TempPath}", tempPath);
 
             // Validate the WAV file
-            var validationResult = await _wavValidator.ValidateAsync(tempPath, ct);
+            var validationResult = await _wavValidator.ValidateAsync(tempPath, ct).ConfigureAwait(false);
 
             if (!validationResult.IsValid)
             {
@@ -123,8 +123,8 @@ public class TtsFileHelper
         return await WriteWavAtomicallyAsync(finalPath, async stream =>
         {
             await using var sourceStream = File.OpenRead(sourcePath);
-            await sourceStream.CopyToAsync(stream, 81920, ct);
-        }, ct);
+            await sourceStream.CopyToAsync(stream, 81920, ct).ConfigureAwait(false);
+        }, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -135,6 +135,6 @@ public class TtsFileHelper
     /// <returns>Validation result</returns>
     public async Task<WavValidationResult> ValidateWavAsync(string wavPath, CancellationToken ct = default)
     {
-        return await _wavValidator.ValidateAsync(wavPath, ct);
+        return await _wavValidator.ValidateAsync(wavPath, ct).ConfigureAwait(false);
     }
 }

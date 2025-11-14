@@ -60,10 +60,10 @@ public class TtsFallbackService
         try
         {
             _logger.LogInformation("Attempting TTS with voice: {Voice}", requestedVoice.VoiceName);
-            var outputPath = await primaryProvider.SynthesizeAsync(lines, requestedVoice, ct);
+            var outputPath = await primaryProvider.SynthesizeAsync(lines, requestedVoice, ct).ConfigureAwait(false);
             
             // Validate the output
-            if (await ValidateAndRepairAsync(outputPath, totalDurationSeconds, ct))
+            if (await ValidateAndRepairAsync(outputPath, totalDurationSeconds, ct).ConfigureAwait(false))
             {
                 result.OutputPath = outputPath;
                 result.UsedVoice = requestedVoice.VoiceName;
@@ -81,7 +81,7 @@ public class TtsFallbackService
         }
 
         // Try alternate voices if available
-        var availableVoices = await GetAvailableVoicesAsync(primaryProvider);
+        var availableVoices = await GetAvailableVoicesAsync(primaryProvider).ConfigureAwait(false);
         var alternateVoices = availableVoices
             .Where(v => !string.Equals(v, requestedVoice.VoiceName, StringComparison.OrdinalIgnoreCase))
             .Take(2) // Try up to 2 alternates
@@ -93,9 +93,9 @@ public class TtsFallbackService
             {
                 _logger.LogInformation("Trying alternate voice: {Voice}", altVoice);
                 var altSpec = requestedVoice with { VoiceName = altVoice };
-                var outputPath = await primaryProvider.SynthesizeAsync(lines, altSpec, ct);
+                var outputPath = await primaryProvider.SynthesizeAsync(lines, altSpec, ct).ConfigureAwait(false);
                 
-                if (await ValidateAndRepairAsync(outputPath, totalDurationSeconds, ct))
+                if (await ValidateAndRepairAsync(outputPath, totalDurationSeconds, ct).ConfigureAwait(false))
                 {
                     result.OutputPath = outputPath;
                     result.UsedVoice = altVoice;
@@ -118,7 +118,7 @@ public class TtsFallbackService
 
         // Final fallback: Generate silent WAV
         _logger.LogWarning("All TTS voices failed, generating silent WAV as fallback");
-        result.OutputPath = await GenerateFallbackSilenceAsync(totalDurationSeconds, ct);
+        result.OutputPath = await GenerateFallbackSilenceAsync(totalDurationSeconds, ct).ConfigureAwait(false);
         result.UsedVoice = "Silent Fallback";
         result.UsedFallback = true;
         result.FallbackReason = "All TTS voices failed, generated silent audio";
@@ -148,7 +148,7 @@ public class TtsFallbackService
             // Attempt to regenerate as silent
             try
             {
-                await _wavFileWriter.GenerateSilenceAsync(filePath, expectedDuration, ct: ct);
+                await _wavFileWriter.GenerateSilenceAsync(filePath, expectedDuration, ct: ct).ConfigureAwait(false);
                 _logger.LogInformation("Replaced invalid file with silent WAV");
                 return true;
             }
@@ -167,7 +167,7 @@ public class TtsFallbackService
             // Attempt to regenerate as silent
             try
             {
-                await _wavFileWriter.GenerateSilenceAsync(filePath, expectedDuration, ct: ct);
+                await _wavFileWriter.GenerateSilenceAsync(filePath, expectedDuration, ct: ct).ConfigureAwait(false);
                 _logger.LogInformation("Replaced corrupted file with silent WAV");
                 return true;
             }
@@ -200,7 +200,7 @@ public class TtsFallbackService
             Directory.CreateDirectory(directory);
         }
 
-        await _wavFileWriter.GenerateSilenceAsync(outputPath, durationSeconds, ct: ct);
+        await _wavFileWriter.GenerateSilenceAsync(outputPath, durationSeconds, ct: ct).ConfigureAwait(false);
         
         _logger.LogInformation("Generated fallback silent WAV: {Path} ({Duration}s)", outputPath, durationSeconds);
         
@@ -214,7 +214,7 @@ public class TtsFallbackService
     {
         try
         {
-            var voices = await provider.GetAvailableVoicesAsync();
+            var voices = await provider.GetAvailableVoicesAsync().ConfigureAwait(false);
             return voices?.ToList() ?? new List<string>();
         }
         catch (Exception ex)

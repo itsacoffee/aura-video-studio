@@ -44,19 +44,19 @@ public class ProsodyAdjustmentService
             // Apply pitch shift if needed
             if (Math.Abs(settings.PitchShift) > 0.1)
             {
-                currentPath = await AdjustPitchAsync(currentPath, settings.PitchShift, ct);
+                currentPath = await AdjustPitchAsync(currentPath, settings.PitchShift, ct).ConfigureAwait(false);
             }
 
             // Apply tempo/rate change if needed
             if (Math.Abs(settings.RateMultiplier - 1.0) > 0.01)
             {
-                currentPath = await AdjustTempoAsync(currentPath, settings.RateMultiplier, ct);
+                currentPath = await AdjustTempoAsync(currentPath, settings.RateMultiplier, ct).ConfigureAwait(false);
             }
 
             // Apply volume adjustment if needed
             if (Math.Abs(settings.VolumeAdjustment) > 0.1)
             {
-                currentPath = await AdjustVolumeAsync(currentPath, settings.VolumeAdjustment, ct);
+                currentPath = await AdjustVolumeAsync(currentPath, settings.VolumeAdjustment, ct).ConfigureAwait(false);
             }
 
             return currentPath;
@@ -92,7 +92,7 @@ public class ProsodyAdjustmentService
             var filterChain = $"asetrate=48000*2^({semitones}/12),aresample=48000";
 
             var ffmpegArgs = $"-i \"{inputPath}\" -af \"{filterChain}\" -ar 48000 -ac 2 \"{outputPath}\"";
-            var success = await RunFFmpegAsync(ffmpegArgs, ct);
+            var success = await RunFFmpegAsync(ffmpegArgs, ct).ConfigureAwait(false);
 
             if (!success || !File.Exists(outputPath))
             {
@@ -132,7 +132,7 @@ public class ProsodyAdjustmentService
             var filterChain = BuildTempoFilterChain(multiplier);
 
             var ffmpegArgs = $"-i \"{inputPath}\" -af \"{filterChain}\" -ar 48000 -ac 2 \"{outputPath}\"";
-            var success = await RunFFmpegAsync(ffmpegArgs, ct);
+            var success = await RunFFmpegAsync(ffmpegArgs, ct).ConfigureAwait(false);
 
             if (!success || !File.Exists(outputPath))
             {
@@ -169,7 +169,7 @@ public class ProsodyAdjustmentService
             var filterChain = $"volume={dB}dB";
 
             var ffmpegArgs = $"-i \"{inputPath}\" -af \"{filterChain}\" -ar 48000 -ac 2 \"{outputPath}\"";
-            var success = await RunFFmpegAsync(ffmpegArgs, ct);
+            var success = await RunFFmpegAsync(ffmpegArgs, ct).ConfigureAwait(false);
 
             if (!success || !File.Exists(outputPath))
             {
@@ -213,7 +213,7 @@ public class ProsodyAdjustmentService
                 $"equalizer=f=3000:t=q:w=1.0:g={presenceBoost}";
 
             var ffmpegArgs = $"-i \"{inputPath}\" -af \"{filterChain}\" -ar 48000 -ac 2 \"{outputPath}\"";
-            var success = await RunFFmpegAsync(ffmpegArgs, ct);
+            var success = await RunFFmpegAsync(ffmpegArgs, ct).ConfigureAwait(false);
 
             if (!success || !File.Exists(outputPath))
             {
@@ -276,8 +276,8 @@ public class ProsodyAdjustmentService
             using var process = new Process { StartInfo = startInfo };
             process.Start();
 
-            var errorOutput = await process.StandardError.ReadToEndAsync();
-            await process.WaitForExitAsync(ct);
+            var errorOutput = await process.StandardError.ReadToEndAsync().ConfigureAwait(false);
+            await process.WaitForExitAsync(ct).ConfigureAwait(false);
 
             if (process.ExitCode != 0)
             {

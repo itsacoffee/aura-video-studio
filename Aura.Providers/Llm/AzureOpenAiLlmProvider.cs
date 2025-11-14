@@ -121,7 +121,7 @@ public class AzureOpenAiLlmProvider : ILlmProvider
                     var backoffDelay = TimeSpan.FromSeconds(Math.Pow(2, attempt));
                     _logger.LogInformation("Retry attempt {Attempt}/{MaxRetries} after {Delay}s delay",
                         attempt, _maxRetries, backoffDelay.TotalSeconds);
-                    await Task.Delay(backoffDelay, ct);
+                    await Task.Delay(backoffDelay, ct).ConfigureAwait(false);
                 }
 
                 // Build enhanced prompts for quality content with user customizations
@@ -150,12 +150,12 @@ public class AzureOpenAiLlmProvider : ILlmProvider
                 cts.CancelAfter(_timeout);
 
                 var url = $"{_endpoint}/openai/deployments/{_deploymentName}/chat/completions?api-version=2024-02-15-preview";
-                var response = await _httpClient.PostAsync(url, content, cts.Token);
+                var response = await _httpClient.PostAsync(url, content, cts.Token).ConfigureAwait(false);
                 
                 // Handle specific HTTP error codes
                 if (!response.IsSuccessStatusCode)
                 {
-                    var errorContent = await response.Content.ReadAsStringAsync(ct);
+                    var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                     if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized || 
                         response.StatusCode == System.Net.HttpStatusCode.Forbidden)
                     {
@@ -194,7 +194,7 @@ public class AzureOpenAiLlmProvider : ILlmProvider
                     response.EnsureSuccessStatusCode();
                 }
 
-                var responseJson = await response.Content.ReadAsStringAsync(ct);
+                var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 var responseDoc = JsonDocument.Parse(responseJson);
 
                 if (responseDoc.RootElement.TryGetProperty("choices", out var choices) &&
@@ -276,7 +276,7 @@ public class AzureOpenAiLlmProvider : ILlmProvider
             {
                 if (attempt > 0)
                 {
-                    await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt)), ct);
+                    await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt)), ct).ConfigureAwait(false);
                 }
 
                 var requestBody = new
@@ -299,10 +299,10 @@ public class AzureOpenAiLlmProvider : ILlmProvider
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                 cts.CancelAfter(_timeout);
 
-                var response = await _httpClient.PostAsync(_endpoint, content, cts.Token);
+                var response = await _httpClient.PostAsync(_endpoint, content, cts.Token).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
 
-                var responseJson = await response.Content.ReadAsStringAsync(ct);
+                var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 var responseDoc = JsonDocument.Parse(responseJson);
 
                 if (responseDoc.RootElement.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
@@ -375,10 +375,10 @@ Respond with ONLY the JSON object, no other text:";
             cts.CancelAfter(TimeSpan.FromSeconds(30)); // Shorter timeout for analysis
 
             var url = $"{_endpoint}/openai/deployments/{_deploymentName}/chat/completions?api-version=2024-02-15-preview";
-            var response = await _httpClient.PostAsync(url, content, cts.Token);
+            var response = await _httpClient.PostAsync(url, content, cts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("choices", out var choices) &&
@@ -498,17 +498,17 @@ Respond with ONLY the JSON object, no other text:";
             cts.CancelAfter(TimeSpan.FromSeconds(30));
 
             var url = $"{_endpoint}/openai/deployments/{_deploymentName}/chat/completions?api-version=2024-02-15-preview";
-            var response = await _httpClient.PostAsync(url, content, cts.Token);
+            var response = await _httpClient.PostAsync(url, content, cts.Token).ConfigureAwait(false);
             
             if (!response.IsSuccessStatusCode)
             {
-                var errorContent = await response.Content.ReadAsStringAsync(ct);
+                var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 _logger.LogWarning("Azure OpenAI visual prompt generation failed: {StatusCode} - {Error}", 
                     response.StatusCode, errorContent);
                 return null;
             }
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("choices", out var choices) &&
@@ -650,17 +650,17 @@ Respond with ONLY the JSON object, no other text:";
             cts.CancelAfter(TimeSpan.FromSeconds(30));
 
             var url = $"{_endpoint}/openai/deployments/{_deploymentName}/chat/completions?api-version=2024-02-15-preview";
-            var response = await _httpClient.PostAsync(url, content, cts.Token);
+            var response = await _httpClient.PostAsync(url, content, cts.Token).ConfigureAwait(false);
             
             if (!response.IsSuccessStatusCode)
             {
-                var errorContent = await response.Content.ReadAsStringAsync(ct);
+                var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 _logger.LogWarning("Azure OpenAI complexity analysis failed: {StatusCode} - {Error}", 
                     response.StatusCode, errorContent);
                 return null;
             }
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("choices", out var choices) &&
@@ -805,17 +805,17 @@ Respond with ONLY the JSON object, no other text:";
             cts.CancelAfter(TimeSpan.FromSeconds(30));
 
             var url = $"{_endpoint}/openai/deployments/{_deploymentName}/chat/completions?api-version=2024-02-15-preview";
-            var response = await _httpClient.PostAsync(url, content, cts.Token);
+            var response = await _httpClient.PostAsync(url, content, cts.Token).ConfigureAwait(false);
             
             if (!response.IsSuccessStatusCode)
             {
-                var errorContent = await response.Content.ReadAsStringAsync(ct);
+                var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 _logger.LogWarning("Azure OpenAI coherence analysis failed: {StatusCode} - {Error}", 
                     response.StatusCode, errorContent);
                 return null;
             }
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("choices", out var choices) &&
@@ -945,17 +945,17 @@ Respond with ONLY the JSON object, no other text:";
             cts.CancelAfter(TimeSpan.FromSeconds(45));
 
             var url = $"{_endpoint}/openai/deployments/{_deploymentName}/chat/completions?api-version=2024-02-15-preview";
-            var response = await _httpClient.PostAsync(url, content, cts.Token);
+            var response = await _httpClient.PostAsync(url, content, cts.Token).ConfigureAwait(false);
             
             if (!response.IsSuccessStatusCode)
             {
-                var errorContent = await response.Content.ReadAsStringAsync(ct);
+                var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 _logger.LogWarning("Azure OpenAI narrative arc validation failed: {StatusCode} - {Error}", 
                     response.StatusCode, errorContent);
                 return null;
             }
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("choices", out var choices) &&
@@ -1079,17 +1079,17 @@ Return ONLY the transition text, no explanations or additional commentary:";
             cts.CancelAfter(TimeSpan.FromSeconds(30));
 
             var url = $"{_endpoint}/openai/deployments/{_deploymentName}/chat/completions?api-version=2024-02-15-preview";
-            var response = await _httpClient.PostAsync(url, content, cts.Token);
+            var response = await _httpClient.PostAsync(url, content, cts.Token).ConfigureAwait(false);
             
             if (!response.IsSuccessStatusCode)
             {
-                var errorContent = await response.Content.ReadAsStringAsync(ct);
+                var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 _logger.LogWarning("Azure OpenAI transition text generation failed: {StatusCode} - {Error}", 
                     response.StatusCode, errorContent);
                 return null;
             }
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("choices", out var choices) &&

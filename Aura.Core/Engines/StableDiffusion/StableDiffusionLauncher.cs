@@ -91,7 +91,7 @@ public class StableDiffusionLauncher
             }
         );
 
-        return await _processManager.StartAsync(config, ct);
+        return await _processManager.StartAsync(config, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -100,7 +100,7 @@ public class StableDiffusionLauncher
     public async Task<bool> StopAsync()
     {
         _logger.LogInformation("Stopping Stable Diffusion WebUI");
-        return await _processManager.StopAsync("stable-diffusion-webui", gracefulTimeoutSeconds: 30);
+        return await _processManager.StopAsync("stable-diffusion-webui", gracefulTimeoutSeconds: 30).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -117,7 +117,7 @@ public class StableDiffusionLauncher
     public async Task<bool> CheckHealthAsync(CancellationToken ct = default)
     {
         var healthUrl = $"http://127.0.0.1:{_port}/sdapi/v1/sd-models";
-        return await _processManager.CheckHealthAsync("stable-diffusion-webui", healthUrl, ct);
+        return await _processManager.CheckHealthAsync("stable-diffusion-webui", healthUrl, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -125,6 +125,6 @@ public class StableDiffusionLauncher
     /// </summary>
     public async Task<string> GetLogsAsync(int tailLines = 500)
     {
-        return await _processManager.ReadLogsAsync("stable-diffusion-webui", tailLines);
+        return await _processManager.ReadLogsAsync("stable-diffusion-webui", tailLines).ConfigureAwait(false);
     }
 }

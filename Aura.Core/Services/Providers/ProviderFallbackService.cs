@@ -59,7 +59,7 @@ public class ProviderFallbackService
             try
             {
                 _logger.LogInformation("Attempting operation with {Provider}", providerName);
-                var result = await operation(provider);
+                var result = await operation(provider).ConfigureAwait(false);
                 
                 _logger.LogInformation("Operation succeeded with {Provider}", providerName);
                 return result;
@@ -92,7 +92,7 @@ public class ProviderFallbackService
     /// </summary>
     public async Task<List<string>> GetLlmProviderChainAsync(CancellationToken ct = default)
     {
-        var status = await _statusService.GetAllProviderStatusAsync(ct);
+        var status = await _statusService.GetAllProviderStatusAsync(ct).ConfigureAwait(false);
         var chain = new List<string>();
 
         var llmProviders = status.Providers
@@ -117,7 +117,7 @@ public class ProviderFallbackService
     /// </summary>
     public async Task<List<string>> GetTtsProviderChainAsync(CancellationToken ct = default)
     {
-        var status = await _statusService.GetAllProviderStatusAsync(ct);
+        var status = await _statusService.GetAllProviderStatusAsync(ct).ConfigureAwait(false);
         var chain = new List<string>();
 
         var ttsProviders = status.Providers
@@ -137,7 +137,7 @@ public class ProviderFallbackService
     /// </summary>
     public async Task<List<string>> GetImageProviderChainAsync(CancellationToken ct = default)
     {
-        var status = await _statusService.GetAllProviderStatusAsync(ct);
+        var status = await _statusService.GetAllProviderStatusAsync(ct).ConfigureAwait(false);
         var chain = new List<string>();
 
         var imageProviders = status.Providers
@@ -162,7 +162,7 @@ public class ProviderFallbackService
     /// </summary>
     public async Task<OfflineModeInfo> GetOfflineModeInfoAsync(CancellationToken ct = default)
     {
-        var status = await _statusService.GetAllProviderStatusAsync(ct);
+        var status = await _statusService.GetAllProviderStatusAsync(ct).ConfigureAwait(false);
         
         return new OfflineModeInfo
         {
