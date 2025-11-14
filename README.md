@@ -318,7 +318,7 @@ For a complete list of guides organized by audience (end users, developers, oper
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** - How to contribute to the project
 - **[BUILD_GUIDE.md](BUILD_GUIDE.md)** - Build instructions and quality gates
 - **[QUALITY_GATES.md](QUALITY_GATES.md)** - Quick reference for code quality checks
-- **[Run Quality Checks](scripts/check-quality-gates.sh)** - Local testing script
+- **[Run Quality Checks](./scripts/check-quality-gates.sh)** - Local testing script
 
 ```bash
 # Check all quality gates before committing
