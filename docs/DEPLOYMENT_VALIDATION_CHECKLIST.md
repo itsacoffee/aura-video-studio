@@ -296,5 +296,5 @@ curl -X POST http://localhost:5000/api/diagnostics/test-quality-analysis \
 ## Additional Resources
 
 - [Integration Testing Guide](./INTEGRATION_TESTING_GUIDE.md)
-- [Troubleshooting Guide](./TROUBLESHOOTING_INTEGRATION_TESTS.md)
-- [AI Quality Implementation Summary](./AI_QUALITY_IMPLEMENTATION_SUMMARY.md)
+- [Troubleshooting Guide](archive/docs-old/TROUBLESHOOTING_INTEGRATION_TESTS.md)
+- [AI Quality Implementation Summary](archive/AI_QUALITY_IMPLEMENTATION_SUMMARY.md)

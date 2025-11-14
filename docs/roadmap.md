@@ -429,7 +429,7 @@ We follow [Semantic Versioning](https://semver.org/):
 
 ### Changelog
 
-See [CHANGELOG.md](../CHANGELOG.md) for detailed release notes and version history.
+See CHANGELOG.md for detailed release notes and version history.
 
 ---
 

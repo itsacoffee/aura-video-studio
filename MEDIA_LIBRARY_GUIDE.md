@@ -572,6 +572,6 @@ For issues or questions:
 
 ## Related Documentation
 
-- [Storage Configuration Guide](STORAGE_CONFIGURATION_GUIDE.md)
+- Storage Configuration Guide
 - [API Reference](api/index.md)
-- [Video Generation Guide](VIDEO_GENERATION_GUIDE.md)
+- Video Generation Guide

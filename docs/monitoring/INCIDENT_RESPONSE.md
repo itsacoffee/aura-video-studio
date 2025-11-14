@@ -531,8 +531,8 @@ dd if=/dev/zero of=/tmp/fillfile bs=1M count=1000
 
 - [Monitoring Philosophy](./MONITORING_PHILOSOPHY.md)
 - [Alert Creation Guide](./ALERT_CREATION_GUIDE.md)
-- [Runbooks Index](./runbooks/INDEX.md)
-- [On-Call Guide](./ON_CALL_GUIDE.md)
+- [Runbooks Index](../INDEX.md)
+- On-Call Guide
 
 ## Summary
 

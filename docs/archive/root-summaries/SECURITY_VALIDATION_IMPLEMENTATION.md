@@ -387,8 +387,8 @@ All validation failures return ProblemDetails with specific field errors:
 - Update patterns as needed
 
 ## Related Documentation
-- [SECURITY.md](./SECURITY.md) - General security guidelines
-- [ZERO_PLACEHOLDER_POLICY.md](./ZERO_PLACEHOLDER_POLICY.md) - Code quality policy
+- [SECURITY.md](../../../SECURITY.md) - General security guidelines
+- [ZERO_PLACEHOLDER_POLICY.md](../../../ZERO_PLACEHOLDER_POLICY.md) - Code quality policy
 - API Documentation - Validation error codes
 
 ## Version

@@ -89,7 +89,7 @@ Examples:
 4. Verify installation: `ffmpeg -version`
 5. Restart Aura Video Studio
 
-**See Also:** [PORTABLE_FIRST_RUN.md](../PORTABLE_FIRST_RUN.md#2-install-ffmpeg)
+**See Also:** [PORTABLE_FIRST_RUN.md](../user-guide/PORTABLE_FIRST_RUN.md#2-install-ffmpeg)
 
 ---
 
@@ -363,5 +363,5 @@ If you encounter an error that seems like a bug:
 ## Related Documentation
 
 - [Jobs API](./jobs.md) - API endpoints and event types
-- [PORTABLE_FIRST_RUN.md](../PORTABLE_FIRST_RUN.md) - Setup and troubleshooting
+- [PORTABLE_FIRST_RUN.md](../user-guide/PORTABLE_FIRST_RUN.md) - Setup and troubleshooting
 - [System Check](../README.md#system-check) - Pre-flight validation

@@ -225,8 +225,8 @@ Once you're comfortable with the basics:
 Interested in contributing?
 
 - Read [Contributing Guide](../../CONTRIBUTING.md)
-- Review [Architecture](../../ARCHITECTURE.md)
-- Check [Build Guide](../../BUILD_AND_RUN.md)
+- Review [Architecture](../architecture/ARCHITECTURE.md)
+- Check [Build Guide](../developer/BUILD_AND_RUN.md)
 - Browse existing [Pull Requests](https://github.com/Saiyan9001/aura-video-studio/pulls)
 
 ---

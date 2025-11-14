@@ -91,8 +91,8 @@ Welcome to the Aura Video Studio documentation. This index provides a roadmap to
 
 ### Testing
 - [Integration Testing Guide](INTEGRATION_TESTING_GUIDE.md)
-- [Troubleshooting Integration Tests](troubleshooting/TROUBLESHOOTING_INTEGRATION_TESTS.md)
-- [Verification Guide](VERIFICATION.md)
+- [Troubleshooting Integration Tests](archive/docs-old/TROUBLESHOOTING_INTEGRATION_TESTS.md)
+- [Verification Guide](archive/docs-old/VERIFICATION.md)
 
 ### Best Practices
 - [Best Practices](best-practices/README.md)

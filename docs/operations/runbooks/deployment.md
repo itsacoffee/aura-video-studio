@@ -448,10 +448,10 @@ echo "Deployment complete!"
 
 ## References
 
-- [Backup and Restore Runbook](./backup-restore.md)
-- [Monitoring Runbook](./monitoring.md)
-- [Database Maintenance](./database-maintenance.md)
-- [Troubleshooting Guide](../../TROUBLESHOOTING.md)
+- Backup and Restore Runbook
+- Monitoring Runbook
+- Database Maintenance
+- [Troubleshooting Guide](../../../TROUBLESHOOTING.md)
 
 ---
 

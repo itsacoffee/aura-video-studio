@@ -219,10 +219,10 @@ The database persistence and configuration management implementation from Pull #
 
 - [VALIDATION_COMPLETE.md](./VALIDATION_COMPLETE.md) - Detailed validation results
 - [PR33_VALIDATION_SUMMARY.md](./PR33_VALIDATION_SUMMARY.md) - Final summary
-- [VALIDATION_SECURITY_SUMMARY.md](./VALIDATION_SECURITY_SUMMARY.md) - Security analysis
+- [VALIDATION_SECURITY_SUMMARY.md](../security/VALIDATION_SECURITY_SUMMARY.md) - Security analysis
 - [PR33_DATABASE_SETTINGS_VALIDATION.md](./PR33_DATABASE_SETTINGS_VALIDATION.md) - Original validation doc
 - [PR33_IMPLEMENTATION_COMPLETE.md](./PR33_IMPLEMENTATION_COMPLETE.md) - Implementation summary
-- [PR33_SECURITY_SUMMARY.md](./PR33_SECURITY_SUMMARY.md) - Original security summary
+- [PR33_SECURITY_SUMMARY.md](../security/PR33_SECURITY_SUMMARY.md) - Original security summary
 
 ## Contact
 

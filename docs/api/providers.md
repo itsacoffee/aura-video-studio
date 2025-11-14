@@ -125,6 +125,6 @@ Current contract version: **v1.0.0**
 
 ## See Also
 
-- [Hardware Detection](./hardware-detection.md)
-- [API Keys Management](./api-keys.md)
-- [Provider Fallback Logic](./provider-fallback.md)
+- Hardware Detection
+- [API Keys Management](../setup/api-keys.md)
+- Provider Fallback Logic

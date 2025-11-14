@@ -394,6 +394,6 @@ SSE supported in:
 
 ## Documentation
 
-- [Jobs API Reference](./docs/jobs.md)
-- [Error Taxonomy](./docs/errors.md)
-- [Troubleshooting Guide](./PORTABLE_FIRST_RUN.md#if-generate-stalls-or-shows-no-progress)
+- [Jobs API Reference](../api/jobs.md)
+- [Error Taxonomy](../api/errors.md)
+- [Troubleshooting Guide](../user-guide/PORTABLE_FIRST_RUN.md#if-generate-stalls-or-shows-no-progress)

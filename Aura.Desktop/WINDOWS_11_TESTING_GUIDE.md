@@ -1228,7 +1228,7 @@ Get-ItemProperty "HKLM:\Software\Classes\.aura"
 
 ### Documentation
 
-- [Desktop App Guide](DESKTOP_APP_GUIDE.md)
+- [Desktop App Guide](../DESKTOP_APP_GUIDE.md)
 - [First Run Guide](../FIRST_RUN_GUIDE.md)
 - [Build Instructions](BUILD_INSTRUCTIONS.md)
 

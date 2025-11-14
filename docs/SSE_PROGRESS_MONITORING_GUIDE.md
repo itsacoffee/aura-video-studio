@@ -465,7 +465,7 @@ Potential improvements:
 
 ## Related Documentation
 
-- [API Reference](API_REFERENCE.md)
-- [Job Orchestration](JOB_ORCHESTRATION_IMPLEMENTATION_SUMMARY.md)
-- [SSE Implementation Summary](API_SSE_IMPLEMENTATION_SUMMARY.md)
-- [Error Handling Guide](ERROR_HANDLING_GUIDE.md)
+- API Reference
+- [Job Orchestration](../JOB_ORCHESTRATION_IMPLEMENTATION_SUMMARY.md)
+- [SSE Implementation Summary](../API_SSE_IMPLEMENTATION_SUMMARY.md)
+- [Error Handling Guide](../ERROR_HANDLING_GUIDE.md)

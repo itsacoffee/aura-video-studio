@@ -128,7 +128,7 @@ You can customize the sample by editing `script.json`:
 - Check logs: `tail -f AuraData/logs/aura-api-*.log`
 
 ### FFmpeg not found
-- Install FFmpeg: See [PORTABLE_FIRST_RUN.md](../../PORTABLE_FIRST_RUN.md#2-install-ffmpeg)
+- Install FFmpeg: See [PORTABLE_FIRST_RUN.md](../../docs/user-guide/PORTABLE_FIRST_RUN.md#2-install-ffmpeg)
 - Verify: `curl http://localhost:5005/api/health/ready`
 
 ### Rendering fails

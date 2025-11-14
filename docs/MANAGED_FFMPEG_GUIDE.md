@@ -242,5 +242,5 @@ For offline environments:
 ## Related Documentation
 
 - [FFmpeg Setup Guide](./FFmpeg_Setup_Guide.md)
-- [Dependencies Documentation](./dependencies/)
+- Dependencies Documentation
 - [System Requirements](./README.md#system-requirements)

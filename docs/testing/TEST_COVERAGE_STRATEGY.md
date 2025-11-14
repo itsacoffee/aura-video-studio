@@ -521,7 +521,7 @@ dotnet test --parallel
 
 ## Resources
 
-- [Coverage Reports](./TestResults/coverage-report/index.html)
+- [Coverage Reports](../../Aura.Web/index.html)
 - [Test Writing Guide](./TEST_WRITING_GUIDE.md)
 - [CI/CD Configuration](../../.github/workflows/)
 - [Test Data Builders](../../Aura.Tests/TestDataBuilders/)

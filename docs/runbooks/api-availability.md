@@ -314,12 +314,12 @@ See: [Incident Response Procedures](../monitoring/INCIDENT_RESPONSE.md)
 
 - [High Error Rate](./high-error-rate.md)
 - [High Latency](./high-latency.md)
-- [Provider Health](./provider-health.md)
-- [Resource Exhaustion](./resource-exhaustion.md)
+- Provider Health
+- Resource Exhaustion
 
 ## Monitoring
 
-- **Dashboard**: [Operational Dashboard](../monitoring/DASHBOARD_CREATION_GUIDE.md#operational-dashboard)
+- **Dashboard**: Operational Dashboard
 - **Metrics**: `api.requests`, `api.errors.5xx`, `api_availability`
 - **Logs**: `logs/errors-YYYY-MM-DD.log`
 

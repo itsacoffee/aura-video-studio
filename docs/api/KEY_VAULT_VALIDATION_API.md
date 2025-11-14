@@ -356,6 +356,6 @@ Always handle these scenarios:
 
 ## Related Documentation
 
-- [Validation Patience Strategy](./VALIDATION_PATIENCE_STRATEGY.md)
-- [Provider Integration Guide](./PROVIDER_INTEGRATION_GUIDE.md)
-- [Security Best Practices](./SECURITY.md)
+- [Validation Patience Strategy](../VALIDATION_PATIENCE_STRATEGY.md)
+- [Provider Integration Guide](../../PROVIDER_INTEGRATION_GUIDE.md)
+- [Security Best Practices](../../SECURITY.md)

@@ -60,9 +60,9 @@ Guidelines for optimal usage and performance.
 ## 🚀 Architecture
 
 For technical details about the system architecture, see:
-- [Main Architecture Document](../ARCHITECTURE.md)
+- [Main Architecture Document](architecture/ARCHITECTURE.md)
 - [Contributing Guide](../CONTRIBUTING.md)
-- [Build and Run Guide](../BUILD_AND_RUN.md)
+- [Build and Run Guide](developer/BUILD_AND_RUN.md)
 
 ## 📖 Additional Resources
 

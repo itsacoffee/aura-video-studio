@@ -314,4 +314,4 @@ For a complete list of guides organized by audience (end users, developers, oper
 
 ## License
 
-See [LICENSE](LICENSE).
+See LICENSE.

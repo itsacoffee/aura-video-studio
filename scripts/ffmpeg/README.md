@@ -91,7 +91,7 @@ After running any of these scripts:
 
 If the automated scripts don't work for your system, see the comprehensive manual installation guide:
 
-**📖 [docs/INSTALLATION.md](../../docs/INSTALLATION.md)**
+**📖 [docs/INSTALLATION.md](../../INSTALLATION.md)**
 
 The manual guide includes:
 - Step-by-step instructions for Windows, Linux, and macOS
@@ -156,8 +156,8 @@ If download fails:
 ## Support
 
 For detailed help and troubleshooting:
-- See [docs/INSTALLATION.md](../../docs/INSTALLATION.md)
-- See [docs/Troubleshooting.md](../../docs/Troubleshooting.md)
+- See [docs/INSTALLATION.md](../../INSTALLATION.md)
+- See [docs/Troubleshooting.md](../../docs/troubleshooting/Troubleshooting.md)
 - Report issues: https://github.com/Coffee285/aura-video-studio/issues
 
 ## License

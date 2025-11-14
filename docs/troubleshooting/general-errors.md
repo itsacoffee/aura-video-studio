@@ -528,7 +528,7 @@ See [Troubleshooting Guide - White Screen](Troubleshooting.md#white-screen-or-ap
 2. **Check Documentation**:
    - [Troubleshooting Guide](Troubleshooting.md)
    - Category-specific guides
-   - [FAQ](../getting-started/FAQ.md)
+   - [FAQ](../user-guide/FAQ.md)
 
 3. **Enable Debug Logging**:
    ```json

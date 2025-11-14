@@ -854,7 +854,7 @@ These are informational warnings and won't block your requests. To eliminate the
 1. Reinstall Piper from Settings → Download Center → Engines
 2. Verify executable exists in `%LOCALAPPDATA%\Aura\Tools\piper\`
 3. Check Windows Defender hasn't quarantined the file
-4. Try manual installation following [TTS_LOCAL.md](./TTS_LOCAL.md)
+4. Try manual installation following [TTS_LOCAL.md](../features/TTS_LOCAL.md)
 
 ### Mimic3 TTS Issues
 
@@ -983,9 +983,9 @@ If settings are corrupted:
 
 ### Additional Resources
 
-- [Local Engines Overview](./ENGINES.md) - Complete engine documentation
-- [Stable Diffusion Setup](./ENGINES_SD.md) - SD-specific guide
-- [Local TTS Setup](./TTS_LOCAL.md) - Piper and Mimic3 guides
+- [Local Engines Overview](../features/ENGINES.md) - Complete engine documentation
+- [Stable Diffusion Setup](../features/ENGINES_SD.md) - SD-specific guide
+- [Local TTS Setup](../features/TTS_LOCAL.md) - Piper and Mimic3 guides
 - [GitHub Issues](https://github.com/Coffee285/aura-video-studio/issues) - Report bugs or request help
 
 ---

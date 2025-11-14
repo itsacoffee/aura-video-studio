@@ -298,6 +298,6 @@ This ensures consistent render output for the same timeline configuration.
 
 ## Related Documentation
 
-- [UX Guide](./UX_GUIDE.md)
+- [UX Guide](../workflows/UX_GUIDE.md)
 - [TTS and Captions](./TTS-and-Captions.md)
-- [Build and Run](../BUILD_AND_RUN.md)
+- [Build and Run](../developer/BUILD_AND_RUN.md)

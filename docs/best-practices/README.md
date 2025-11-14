@@ -5,19 +5,19 @@ This section provides guidelines for optimal usage and performance of Aura Video
 ## 📑 Available Guides
 
 ### Performance Optimization
-- [Video Generation Optimization](./video-generation-optimization.md) - Best practices for fast and efficient video generation
-- [Resource Management](./resource-management.md) - Managing system resources effectively
-- [Provider Selection](./provider-selection.md) - Choosing the right providers for your needs
+- Video Generation Optimization - Best practices for fast and efficient video generation
+- Resource Management - Managing system resources effectively
+- Provider Selection - Choosing the right providers for your needs
 
 ### Content Creation
-- [Script Writing](./script-writing.md) - Writing effective scripts for video generation
-- [Asset Management](./asset-management.md) - Organizing and managing video assets
-- [Quality Guidelines](./quality-guidelines.md) - Ensuring high-quality video output
+- Script Writing - Writing effective scripts for video generation
+- Asset Management - Organizing and managing video assets
+- Quality Guidelines - Ensuring high-quality video output
 
 ### Workflow Efficiency
-- [Batch Processing](./batch-processing.md) - Processing multiple videos efficiently
-- [Template Usage](./template-usage.md) - Creating and using templates
-- [Keyboard Shortcuts](./keyboard-shortcuts.md) - Speed up your workflow with shortcuts
+- Batch Processing - Processing multiple videos efficiently
+- Template Usage - Creating and using templates
+- Keyboard Shortcuts - Speed up your workflow with shortcuts
 
 ## 🎯 General Best Practices
 
