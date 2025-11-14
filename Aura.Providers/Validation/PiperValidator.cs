@@ -142,13 +142,7 @@ public class PiperValidator : IProviderValidator
             };
         }
 
-        await Task.CompletedTask.ConfigureAwait(false);
-        return new ProviderValidationResult
-        {
-            Name = ProviderName,
-            Ok = false,
-            Details = "Validation incomplete",
-            ElapsedMs = sw.ElapsedMilliseconds
-        };
+        // Unreachable code removed - validation always completes above
+        throw new InvalidOperationException("Validation should have completed");
     }
 }

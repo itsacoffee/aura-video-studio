@@ -6,7 +6,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-Write-Output "=== Generating SBOM and Attributions ===" -ForegroundColor Cyan
+Write-Host "=== Generating SBOM and Attributions ===" -ForegroundColor Cyan
 
 $rootDir = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $outputDir = Join-Path $rootDir $OutputDir
@@ -18,9 +18,9 @@ $appVersion = "1.0.0"
 if (Test-Path $versionFile) {
     $versionData = Get-Content $versionFile | ConvertFrom-Json
     $appVersion = $versionData.version
-    Write-Output "Using version from version.json: $appVersion" -ForegroundColor Green
+    Write-Host "Using version from version.json: $appVersion" -ForegroundColor Green
 } else {
-    Write-Output "Warning: version.json not found, using default version: $appVersion" -ForegroundColor Yellow
+    Write-Host "Warning: version.json not found, using default version: $appVersion" -ForegroundColor Yellow
 }
 
 # Generate basic SBOM in CycloneDX format
@@ -73,7 +73,7 @@ $sbom = @{
 
 $sbomPath = Join-Path $outputDir "sbom.json"
 $sbom | ConvertTo-Json -Depth 10 | Out-File $sbomPath -Encoding utf8
-Write-Output "✓ SBOM generated: $sbomPath" -ForegroundColor Green
+Write-Host "✓ SBOM generated: $sbomPath" -ForegroundColor Green
 
 # Generate attributions file
 $attributions = @"
@@ -152,7 +152,7 @@ Contact: https://github.com/Coffee285/aura-video-studio/issues
 
 $attributionsPath = Join-Path $outputDir "attributions.txt"
 Set-Content -Path $attributionsPath -Value $attributions -Encoding utf8
-Write-Output "✓ Attributions generated: $attributionsPath" -ForegroundColor Green
+Write-Host "✓ Attributions generated: $attributionsPath" -ForegroundColor Green
 
 Write-Output ""
-Write-Output "=== SBOM Generation Complete ===" -ForegroundColor Cyan
+Write-Host "=== SBOM Generation Complete ===" -ForegroundColor Cyan

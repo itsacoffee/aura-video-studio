@@ -69,7 +69,7 @@ public class CutPointDetectionService
 
         // Estimate timing based on word count
         var words = scene.Script.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        var wordsPerSecond = 2.5; // Average speaking rate
+        // var wordsPerSecond = 2.5; // Average speaking rate - currently unused
         var sceneDuration = scene.Duration.TotalSeconds;
         var actualWordsPerSecond = words.Length / sceneDuration;
 

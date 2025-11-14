@@ -16,22 +16,22 @@ $InfoColor = "Cyan"
 
 function Write-Info {
     param([string]$Message)
-    Write-Output "[INFO] $Message" -ForegroundColor $InfoColor
+    Write-Host "[INFO] $Message" -ForegroundColor $InfoColor
 }
 
 function Write-Success {
     param([string]$Message)
-    Write-Output "[✓] $Message" -ForegroundColor $SuccessColor
+    Write-Host "[✓] $Message" -ForegroundColor $SuccessColor
 }
 
 function Show-Warning {
     param([string]$Message)
-    Write-Output "[⚠] $Message" -ForegroundColor $WarningColor
+    Write-Host "[⚠] $Message" -ForegroundColor $WarningColor
 }
 
 function Write-Failure {
     param([string]$Message)
-    Write-Output "[✗] $Message" -ForegroundColor $ErrorColor
+    Write-Host "[✗] $Message" -ForegroundColor $ErrorColor
 }
 
 if ($Help) {
@@ -62,9 +62,9 @@ if (-not (Test-Path $InstallerPath)) {
     exit 1
 }
 
-Write-Output "========================================" -ForegroundColor $InfoColor
-Write-Output "Aura Video Studio - E2E Installation Test" -ForegroundColor $InfoColor
-Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Host "========================================" -ForegroundColor $InfoColor
+Write-Host "Aura Video Studio - E2E Installation Test" -ForegroundColor $InfoColor
+Write-Host "========================================" -ForegroundColor $InfoColor
 Write-Output ""
 
 $testResults = @{
@@ -78,9 +78,9 @@ $testResults = @{
 # Phase 1: Pre-Installation Checks
 # ========================================
 $testResults.Phase = "Pre-Installation"
-Write-Output "========================================" -ForegroundColor $InfoColor
-Write-Output "Phase 1: Pre-Installation Checks" -ForegroundColor $InfoColor
-Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Host "========================================" -ForegroundColor $InfoColor
+Write-Host "Phase 1: Pre-Installation Checks" -ForegroundColor $InfoColor
+Write-Host "========================================" -ForegroundColor $InfoColor
 Write-Output ""
 
 Write-Info "Checking installer file..."
@@ -148,9 +148,9 @@ if ($osBuild -ge 22000) {
 # ========================================
 $testResults.Phase = "Installation"
 Write-Output ""
-Write-Output "========================================" -ForegroundColor $InfoColor
-Write-Output "Phase 2: Installation" -ForegroundColor $InfoColor
-Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Host "========================================" -ForegroundColor $InfoColor
+Write-Host "Phase 2: Installation" -ForegroundColor $InfoColor
+Write-Host "========================================" -ForegroundColor $InfoColor
 Write-Output ""
 
 Write-Info "Starting installer..."
@@ -198,9 +198,9 @@ if ($Silent) {
 # ========================================
 $testResults.Phase = "Post-Installation"
 Write-Output ""
-Write-Output "========================================" -ForegroundColor $InfoColor
-Write-Output "Phase 3: Post-Installation Validation" -ForegroundColor $InfoColor
-Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Host "========================================" -ForegroundColor $InfoColor
+Write-Host "Phase 3: Post-Installation Validation" -ForegroundColor $InfoColor
+Write-Host "========================================" -ForegroundColor $InfoColor
 Write-Output ""
 
 Write-Info "Running comprehensive installation validation..."
@@ -234,9 +234,9 @@ if (Test-Path $validationScript) {
 # ========================================
 if (-not $Silent) {
     Write-Output ""
-    Write-Output "========================================" -ForegroundColor $InfoColor
-    Write-Output "Phase 4: Application Launch Test" -ForegroundColor $InfoColor
-    Write-Output "========================================" -ForegroundColor $InfoColor
+    Write-Host "========================================" -ForegroundColor $InfoColor
+    Write-Host "Phase 4: Application Launch Test" -ForegroundColor $InfoColor
+    Write-Host "========================================" -ForegroundColor $InfoColor
     Write-Output ""
 
     Write-Info "Would you like to test launching the application? (Y/N)"
@@ -269,17 +269,17 @@ if (-not $Silent) {
 # Summary
 # ========================================
 Write-Output ""
-Write-Output "========================================" -ForegroundColor $InfoColor
-Write-Output "E2E Installation Test Summary" -ForegroundColor $InfoColor
-Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Host "========================================" -ForegroundColor $InfoColor
+Write-Host "E2E Installation Test Summary" -ForegroundColor $InfoColor
+Write-Host "========================================" -ForegroundColor $InfoColor
 Write-Output "Installer: $($installerFile.Name)"
 Write-Output "Checksum:  $($installerHash.Hash)"
 Write-Output ""
-Write-Output "Test Results:" -ForegroundColor $InfoColor
-Write-Output "  Passed:   $($testResults.Passed)" -ForegroundColor $SuccessColor
-Write-Output "  Failed:   $($testResults.Failed)" -ForegroundColor $ErrorColor
-Write-Output "  Warnings: $($testResults.Warnings)" -ForegroundColor $WarningColor
-Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Host "Test Results:" -ForegroundColor $InfoColor
+Write-Host "  Passed:   $($testResults.Passed)" -ForegroundColor $SuccessColor
+Write-Host "  Failed:   $($testResults.Failed)" -ForegroundColor $ErrorColor
+Write-Host "  Warnings: $($testResults.Warnings)" -ForegroundColor $WarningColor
+Write-Host "========================================" -ForegroundColor $InfoColor
 Write-Output ""
 
 if ($testResults.Failed -eq 0) {

@@ -9,9 +9,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-Write-Output "╔══════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Output "║         Aura CLI - Publish Script                       ║" -ForegroundColor Cyan
-Write-Output "╚══════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+Write-Host "╔══════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
+Write-Host "║         Aura CLI - Publish Script                       ║" -ForegroundColor Cyan
+Write-Host "╚══════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
 Write-Output ""
 
 $ProjectPath = "../../Aura.Cli/Aura.Cli.csproj"
@@ -21,7 +21,7 @@ $Timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
 $OutputPath = Join-Path $OutputDir $Timestamp
 New-Item -ItemType Directory -Force -Path $OutputPath | Out-Null
 
-Write-Output "[1/3] Publishing Windows x64 (single-file, portable)..." -ForegroundColor Yellow
+Write-Host "[1/3] Publishing Windows x64 (single-file, portable)..." -ForegroundColor Yellow
 $WinOutputPath = Join-Path $OutputPath "bin-win-x64"
 dotnet publish $ProjectPath `
     -c $Configuration `
@@ -33,13 +33,13 @@ dotnet publish $ProjectPath `
     -o $WinOutputPath
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Output "✗ Windows publish failed" -ForegroundColor Red
+    Write-Host "✗ Windows publish failed" -ForegroundColor Red
     exit 1
 }
-Write-Output "  ✓ Windows binary: $WinOutputPath/aura-cli.exe" -ForegroundColor Green
+Write-Host "  ✓ Windows binary: $WinOutputPath/aura-cli.exe" -ForegroundColor Green
 Write-Output ""
 
-Write-Output "[2/3] Publishing Linux x64 (framework-dependent)..." -ForegroundColor Yellow
+Write-Host "[2/3] Publishing Linux x64 (framework-dependent)..." -ForegroundColor Yellow
 $LinuxOutputPath = Join-Path $OutputPath "bin-linux-x64"
 dotnet publish $ProjectPath `
     -c $Configuration `
@@ -48,13 +48,13 @@ dotnet publish $ProjectPath `
     -o $LinuxOutputPath
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Output "✗ Linux publish failed" -ForegroundColor Red
+    Write-Host "✗ Linux publish failed" -ForegroundColor Red
     exit 1
 }
-Write-Output "  ✓ Linux binary: $LinuxOutputPath/aura-cli" -ForegroundColor Green
+Write-Host "  ✓ Linux binary: $LinuxOutputPath/aura-cli" -ForegroundColor Green
 Write-Output ""
 
-Write-Output "[3/3] Creating distribution archive..." -ForegroundColor Yellow
+Write-Host "[3/3] Creating distribution archive..." -ForegroundColor Yellow
 $ZipPath = Join-Path $OutputDir "aura-cli-$Timestamp.zip"
 
 # Create a simple directory structure for the archive
@@ -107,24 +107,24 @@ Compress-Archive -Path (Join-Path $TempDir "*") -DestinationPath $ZipPath -Force
 # Cleanup
 Remove-Item -Recurse -Force $TempDir
 
-Write-Output "  ✓ Archive created: $ZipPath" -ForegroundColor Green
+Write-Host "  ✓ Archive created: $ZipPath" -ForegroundColor Green
 Write-Output ""
 
-Write-Output "═══════════════════════════════════════════════════════════" -ForegroundColor Cyan
-Write-Output "✓ Publish complete!" -ForegroundColor Green
+Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "✓ Publish complete!" -ForegroundColor Green
 Write-Output ""
-Write-Output "Output location:" -ForegroundColor Cyan
-Write-Output "  $OutputPath" -ForegroundColor White
+Write-Host "Output location:" -ForegroundColor Cyan
+Write-Host "  $OutputPath" -ForegroundColor White
 Write-Output ""
-Write-Output "Binary sizes:" -ForegroundColor Cyan
+Write-Host "Binary sizes:" -ForegroundColor Cyan
 $WinExe = Join-Path $WinOutputPath "aura-cli.exe"
 $LinuxExe = Join-Path $LinuxOutputPath "aura-cli"
 if (Test-Path $WinExe) {
     $WinSize = [math]::Round((Get-Item $WinExe).Length / 1MB, 2)
-    Write-Output "  Windows: $WinSize MB" -ForegroundColor White
+    Write-Host "  Windows: $WinSize MB" -ForegroundColor White
 }
 if (Test-Path $LinuxExe) {
     $LinuxSize = [math]::Round((Get-Item $LinuxExe).Length / 1MB, 2)
-    Write-Output "  Linux: $LinuxSize MB" -ForegroundColor White
+    Write-Host "  Linux: $LinuxSize MB" -ForegroundColor White
 }
 Write-Output ""

@@ -395,7 +395,7 @@ public class ScriptOrchestrator
         try
         {
             _logger.LogInformation("Attempting script generation with {Provider}", providerName);
-            var script = await provider.DraftScriptAsync(brief, spec, ct).ConfigureAwait(false);
+            var script = await provider!.DraftScriptAsync(brief, spec, ct).ConfigureAwait(false);
 
             if (string.IsNullOrWhiteSpace(script))
             {

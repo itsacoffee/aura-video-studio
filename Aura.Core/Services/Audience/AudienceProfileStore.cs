@@ -255,9 +255,10 @@ public class AudienceProfileStore
                 .Where(f => !string.IsNullOrWhiteSpace(f))
                 .Distinct()
                 .OrderBy(f => f)
+                .Where(f => f != null)
                 .ToList();
 
-            return Task.FromResult(folders!);
+            return Task.FromResult<List<string>>(folders!);
         }
     }
 

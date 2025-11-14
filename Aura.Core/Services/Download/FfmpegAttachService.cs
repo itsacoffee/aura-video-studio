@@ -453,15 +453,16 @@ public class FfmpegAttachService
     /// <summary>
     /// Try to parse a version string into a comparable version object
     /// </summary>
-    private bool TryParseVersion(string versionString, out Version version)
+    private bool TryParseVersion(string versionString, out Version? version)
     {
-        version = new Version();
-
         // Try direct parsing first
         if (Version.TryParse(versionString, out version))
         {
             return true;
         }
+
+        // Initialize version to prevent null
+        version = new Version();
 
         // Try extracting major.minor from complex version strings
         var parts = versionString.Split('.', '-', 'n', 'N');

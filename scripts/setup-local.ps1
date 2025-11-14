@@ -20,7 +20,7 @@ function Write-ColorOutput {
     )
 
     if (-not $Quiet) {
-        Write-Output $Message -ForegroundColor $Color
+        Write-Host $Message -ForegroundColor $Color
     }
 }
 
@@ -250,7 +250,7 @@ Write-Output "Validating configuration files..."
 $FILES = @("docker-compose.yml", "Makefile", ".env")
 foreach ($file in $FILES) {
     if (-not (Test-Path $file)) {
-        Write-Output "✗ Missing required file: $file" -ForegroundColor Red
+        Write-Host "✗ Missing required file: $file" -ForegroundColor Red
         exit 1
     }
 }
@@ -259,11 +259,11 @@ $REQUIRED_VARS = @("ASPNETCORE_ENVIRONMENT", "AURA_DATABASE_PATH")
 $envContent = Get-Content ".env" -ErrorAction SilentlyContinue
 foreach ($var in $REQUIRED_VARS) {
     if ($envContent -notmatch "^$var=" -and $envContent -notmatch "^# *$var=") {
-        Write-Output "⚠ Missing variable in .env: $var" -ForegroundColor Yellow
+        Write-Host "⚠ Missing variable in .env: $var" -ForegroundColor Yellow
     }
 }
 
-Write-Output "✓ Configuration valid" -ForegroundColor Green
+Write-Host "✓ Configuration valid" -ForegroundColor Green
 '@
 Set-Content -Path "scripts\setup\validate-config.ps1" -Value $validationScript
 

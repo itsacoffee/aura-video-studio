@@ -75,8 +75,8 @@ $AllowedFiles = @(
     "*.md"  # Allow all markdown files - they are documentation only
 )
 
-Write-Output "🔍 Scanning for forbidden placeholder text..." -ForegroundColor Cyan
-Write-Output "Path: $Path" -ForegroundColor Gray
+Write-Host "🔍 Scanning for forbidden placeholder text..." -ForegroundColor Cyan
+Write-Host "Path: $Path" -ForegroundColor Gray
 Write-Output ""
 
 $foundIssues = @()
@@ -138,9 +138,9 @@ foreach ($pattern in $FilePatterns) {
                         $foundIssues += $issue
 
                         if ($Verbose) {
-                            Write-Output "❌ ${relativePath}:${lineNumber}" -ForegroundColor Red
-                            Write-Output "   Pattern: '$forbiddenPattern'" -ForegroundColor Yellow
-                            Write-Output "   Context: $($lines[$i].Trim())" -ForegroundColor Gray
+                            Write-Host "❌ ${relativePath}:${lineNumber}" -ForegroundColor Red
+                            Write-Host "   Pattern: '$forbiddenPattern'" -ForegroundColor Yellow
+                            Write-Host "   Context: $($lines[$i].Trim())" -ForegroundColor Gray
                             Write-Output ""
                         }
 
@@ -153,29 +153,29 @@ foreach ($pattern in $FilePatterns) {
     }
 }
 
-Write-Output "Scanned $scannedFiles files" -ForegroundColor Gray
+Write-Host "Scanned $scannedFiles files" -ForegroundColor Gray
 Write-Output ""
 
 if ($foundIssues.Count -eq 0) {
-    Write-Output "✅ No placeholder text found!" -ForegroundColor Green
-    Write-Output "   Repository is clean." -ForegroundColor Gray
+    Write-Host "✅ No placeholder text found!" -ForegroundColor Green
+    Write-Host "   Repository is clean." -ForegroundColor Gray
     exit 0
 } else {
-    Write-Output "❌ Found $($foundIssues.Count) instances of placeholder text:" -ForegroundColor Red
+    Write-Host "❌ Found $($foundIssues.Count) instances of placeholder text:" -ForegroundColor Red
     Write-Output ""
 
     if (-not $Verbose) {
         $groupedByFile = $foundIssues | Group-Object -Property File
         foreach ($group in $groupedByFile) {
-            Write-Output "  $($group.Name)" -ForegroundColor Yellow
+            Write-Host "  $($group.Name)" -ForegroundColor Yellow
             foreach ($issue in $group.Group) {
-                Write-Output "    Line $($issue.Line): $($issue.Pattern)" -ForegroundColor Red
+                Write-Host "    Line $($issue.Line): $($issue.Pattern)" -ForegroundColor Red
             }
         }
     }
 
     Write-Output ""
-    Write-Output "Please remove all placeholder text before committing." -ForegroundColor Yellow
-    Write-Output "Rerun with -Verbose for more details." -ForegroundColor Gray
+    Write-Host "Please remove all placeholder text before committing." -ForegroundColor Yellow
+    Write-Host "Rerun with -Verbose for more details." -ForegroundColor Gray
     exit 1
 }

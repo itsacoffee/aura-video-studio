@@ -185,7 +185,7 @@ public class TimelineBuilder
         double minimumConfidenceThreshold = 70.0)
     {
         if (scenes == null || scenes.Count == 0)
-            return scenes;
+            return scenes ?? new List<Scene>();
 
         if (analysisResult == null || analysisResult.TimingSuggestions.Count == 0)
             return scenes;

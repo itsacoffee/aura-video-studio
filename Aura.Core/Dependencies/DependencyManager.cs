@@ -219,7 +219,11 @@ public class DependencyManager
         CancellationToken ct)
     {
         // Create directory if it doesn't exist
-        Directory.CreateDirectory(Path.GetDirectoryName(filePath));
+        var directoryPath = Path.GetDirectoryName(filePath);
+        if (!string.IsNullOrEmpty(directoryPath))
+        {
+            Directory.CreateDirectory(directoryPath);
+        }
         
         // Check if partial file exists (for resume support)
         long existingBytes = 0;

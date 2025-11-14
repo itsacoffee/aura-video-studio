@@ -75,7 +75,7 @@ public abstract class BaseSagaStep : ISagaStep
 /// <summary>
 /// Base class for saga steps with typed result
 /// </summary>
-public abstract class BaseSagaStep<TResult> : BaseSagaStep, ISagaStep<TResult>
+public abstract class BaseSagaStep<TResult> : BaseSagaStep, ISagaStep<TResult> where TResult : notnull
 {
     protected BaseSagaStep(ILogger logger) : base(logger)
     {
@@ -91,7 +91,7 @@ public abstract class BaseSagaStep<TResult> : BaseSagaStep, ISagaStep<TResult>
         
         // Store the result in the context
         var resultKey = $"{StepId}_result";
-        StoreData(context, resultKey, result!);
+        StoreData(context, resultKey, result);
     }
 
     /// <summary>

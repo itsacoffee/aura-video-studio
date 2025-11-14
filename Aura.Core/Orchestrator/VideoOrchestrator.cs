@@ -943,7 +943,7 @@ public class VideoOrchestrator
             {
                 case GenerationTaskType.ScriptGeneration:
                     // Generate script using LLM with retry logic and fallback for Quick Demo
-                    bool usedFallback = false;
+                    // bool usedFallback = false; // Currently unused - reserved for fallback tracking
                     
                     try
                     {
@@ -976,7 +976,7 @@ public class VideoOrchestrator
                         _logger.LogWarning("Script validation failed for Quick Demo: {Message}. Using safe fallback script.", vex.Message);
                         
                         generatedScript = GenerateSafeFallbackScript(brief.Topic ?? "Welcome to Aura Video Studio", planSpec.TargetDuration);
-                        usedFallback = true;
+                        // usedFallback = true; // Fallback tracking currently unused
                         
                         _logger.LogInformation("Safe fallback script generated: {Length} characters", generatedScript.Length);
                     }

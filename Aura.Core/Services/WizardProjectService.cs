@@ -41,7 +41,7 @@ public class WizardProjectService
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
-        ProjectStateEntity project;
+        ProjectStateEntity? project;
 
         if (id.HasValue)
         {

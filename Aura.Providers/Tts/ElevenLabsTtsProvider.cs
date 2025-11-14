@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -425,7 +426,7 @@ public class ElevenLabsTtsProvider : ITtsProvider
     public async IAsyncEnumerable<byte[]> StreamAudioAsync(
         string text,
         string voiceId,
-        CancellationToken ct)
+        [EnumeratorCancellation] CancellationToken ct)
     {
         if (_offlineOnly || string.IsNullOrWhiteSpace(_apiKey))
         {

@@ -14,22 +14,22 @@ $InfoColor = "Cyan"
 
 function Write-Info {
     param([string]$Message)
-    Write-Output "[INFO] $Message" -ForegroundColor $InfoColor
+    Write-Host "[INFO] $Message" -ForegroundColor $InfoColor
 }
 
 function Write-Success {
     param([string]$Message)
-    Write-Output "[✓] $Message" -ForegroundColor $SuccessColor
+    Write-Host "[✓] $Message" -ForegroundColor $SuccessColor
 }
 
 function Write-Warning {
     param([string]$Message)
-    Write-Output "[!] $Message" -ForegroundColor $WarningColor
+    Write-Host "[!] $Message" -ForegroundColor $WarningColor
 }
 
 function Write-ErrorMessage {
     param([string]$Message)
-    Write-Output "[✗] $Message" -ForegroundColor $ErrorColor
+    Write-Host "[✗] $Message" -ForegroundColor $ErrorColor
 }
 
 if ($Help) {
@@ -44,9 +44,9 @@ if ($Help) {
 }
 
 Write-Output ""
-Write-Output "========================================" -ForegroundColor $InfoColor
-Write-Output "Windows Build System Validation" -ForegroundColor $InfoColor
-Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Host "========================================" -ForegroundColor $InfoColor
+Write-Host "Windows Build System Validation" -ForegroundColor $InfoColor
+Write-Host "========================================" -ForegroundColor $InfoColor
 Write-Output ""
 
 $ScriptDir = $PSScriptRoot
@@ -379,45 +379,45 @@ Pop-Location
 # Summary
 # ========================================
 Write-Output ""
-Write-Output "========================================" -ForegroundColor $InfoColor
-Write-Output "Validation Summary" -ForegroundColor $InfoColor
-Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Host "========================================" -ForegroundColor $InfoColor
+Write-Host "Validation Summary" -ForegroundColor $InfoColor
+Write-Host "========================================" -ForegroundColor $InfoColor
 Write-Output ""
 
-Write-Output "Tests Passed: $ValidationPassed" -ForegroundColor $SuccessColor
+Write-Host "Tests Passed: $ValidationPassed" -ForegroundColor $SuccessColor
 
 if ($ValidationWarnings.Count -gt 0) {
-    Write-Output "Warnings: $($ValidationWarnings.Count)" -ForegroundColor $WarningColor
+    Write-Host "Warnings: $($ValidationWarnings.Count)" -ForegroundColor $WarningColor
     if ($Verbose) {
         foreach ($warning in $ValidationWarnings) {
-            Write-Output "  - $warning" -ForegroundColor $WarningColor
+            Write-Host "  - $warning" -ForegroundColor $WarningColor
         }
     }
 }
 
 if ($ValidationErrors.Count -gt 0) {
-    Write-Output "Errors: $($ValidationErrors.Count)" -ForegroundColor $ErrorColor
+    Write-Host "Errors: $($ValidationErrors.Count)" -ForegroundColor $ErrorColor
     Write-Output ""
-    Write-Output "Errors found:" -ForegroundColor $ErrorColor
+    Write-Host "Errors found:" -ForegroundColor $ErrorColor
     foreach ($validationError in $ValidationErrors) {
-        Write-Output "  - $validationError" -ForegroundColor $ErrorColor
+        Write-Host "  - $validationError" -ForegroundColor $ErrorColor
     }
     Write-Output ""
-    Write-Output "Please fix the errors above before building." -ForegroundColor $ErrorColor
+    Write-Host "Please fix the errors above before building." -ForegroundColor $ErrorColor
     exit 1
 } else {
     Write-Output ""
-    Write-Output "========================================" -ForegroundColor $SuccessColor
-    Write-Output "✓ All Critical Validations Passed!" -ForegroundColor $SuccessColor
-    Write-Output "========================================" -ForegroundColor $SuccessColor
+    Write-Host "========================================" -ForegroundColor $SuccessColor
+    Write-Host "✓ All Critical Validations Passed!" -ForegroundColor $SuccessColor
+    Write-Host "========================================" -ForegroundColor $SuccessColor
     Write-Output ""
-    Write-Output "The Windows build system is properly configured." -ForegroundColor $SuccessColor
+    Write-Host "The Windows build system is properly configured." -ForegroundColor $SuccessColor
     Write-Output ""
-    Write-Output "Next steps:" -ForegroundColor $InfoColor
-    Write-Output "  1. Install dependencies: npm install" -ForegroundColor $InfoColor
-    Write-Output "  2. Build backend: .\scripts\build-backend-windows.ps1" -ForegroundColor $InfoColor
-    Write-Output "  3. Download FFmpeg: .\scripts\download-ffmpeg-windows.ps1" -ForegroundColor $InfoColor
-    Write-Output "  4. Build installer: npm run build:win" -ForegroundColor $InfoColor
+    Write-Host "Next steps:" -ForegroundColor $InfoColor
+    Write-Host "  1. Install dependencies: npm install" -ForegroundColor $InfoColor
+    Write-Host "  2. Build backend: .\scripts\build-backend-windows.ps1" -ForegroundColor $InfoColor
+    Write-Host "  3. Download FFmpeg: .\scripts\download-ffmpeg-windows.ps1" -ForegroundColor $InfoColor
+    Write-Host "  4. Build installer: npm run build:win" -ForegroundColor $InfoColor
     Write-Output ""
     exit 0
 }

@@ -18,27 +18,27 @@ $buildWarnings = @()
 function Write-BuildError {
     param([string]$message)
     $buildErrors += $message
-    Write-Output "      ✗ ERROR: $message" -ForegroundColor Red
+    Write-Host "      ✗ ERROR: $message" -ForegroundColor Red
 }
 
 # Function to log warnings
 function Write-BuildWarning {
     param([string]$message)
     $buildWarnings += $message
-    Write-Output "      ⚠ WARNING: $message" -ForegroundColor Yellow
+    Write-Host "      ⚠ WARNING: $message" -ForegroundColor Yellow
 }
 
 Write-Output ""
-Write-Output "========================================" -ForegroundColor Cyan
-Write-Output " Aura Video Studio - Portable Builder" -ForegroundColor Cyan
-Write-Output "========================================" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host " Aura Video Studio - Portable Builder" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
 Write-Output ""
-Write-Output "Configuration: $Configuration" -ForegroundColor White
-Write-Output "Platform:      $Platform" -ForegroundColor White
+Write-Host "Configuration: $Configuration" -ForegroundColor White
+Write-Host "Platform:      $Platform" -ForegroundColor White
 Write-Output ""
 
 # Validate prerequisites
-Write-Output "[0/6] Validating prerequisites..." -ForegroundColor Yellow
+Write-Host "[0/6] Validating prerequisites..." -ForegroundColor Yellow
 
 # Check for dotnet
 if (-not (Get-Command "dotnet" -ErrorAction SilentlyContinue)) {
@@ -46,7 +46,7 @@ if (-not (Get-Command "dotnet" -ErrorAction SilentlyContinue)) {
     throw "Required prerequisite missing: .NET SDK"
 }
 $dotnetVersion = dotnet --version
-Write-Output "      ✓ .NET SDK found (version $dotnetVersion)" -ForegroundColor Green
+Write-Host "      ✓ .NET SDK found (version $dotnetVersion)" -ForegroundColor Green
 
 # Check for npm
 if (-not (Get-Command "npm" -ErrorAction SilentlyContinue)) {
@@ -54,7 +54,7 @@ if (-not (Get-Command "npm" -ErrorAction SilentlyContinue)) {
     throw "Required prerequisite missing: npm"
 }
 $npmVersion = npm --version
-Write-Output "      ✓ npm found (version $npmVersion)" -ForegroundColor Green
+Write-Host "      ✓ npm found (version $npmVersion)" -ForegroundColor Green
 
 Write-Output ""
 
@@ -66,19 +66,19 @@ $portableDir = Join-Path $artifactsDir "portable"
 $portableBuildDir = Join-Path $portableDir "build"
 $packagingDir = Join-Path $artifactsDir "packaging"
 
-Write-Output "Root Directory:     $rootDir" -ForegroundColor Gray
-Write-Output "Artifacts Directory: $artifactsDir" -ForegroundColor Gray
+Write-Host "Root Directory:     $rootDir" -ForegroundColor Gray
+Write-Host "Artifacts Directory: $artifactsDir" -ForegroundColor Gray
 Write-Output ""
 
 try {
     # Create directories
-    Write-Output "[1/6] Creating build directories..." -ForegroundColor Yellow
+    Write-Host "[1/6] Creating build directories..." -ForegroundColor Yellow
     New-Item -ItemType Directory -Force -Path $portableBuildDir | Out-Null
     New-Item -ItemType Directory -Force -Path $packagingDir | Out-Null
-    Write-Output "      ✓ Directories created" -ForegroundColor Green
+    Write-Host "      ✓ Directories created" -ForegroundColor Green
 
     # Build core projects
-    Write-Output "[2/6] Building .NET projects..." -ForegroundColor Yellow
+    Write-Host "[2/6] Building .NET projects..." -ForegroundColor Yellow
     $buildOutput = dotnet build "$rootDir\Aura.Core\Aura.Core.csproj" -c $Configuration --nologo 2>&1
     if ($LASTEXITCODE -ne 0) { throw "Aura.Core build failed" }
 
@@ -88,14 +88,14 @@ try {
     $buildOutput = dotnet build "$rootDir\Aura.Api\Aura.Api.csproj" -c $Configuration --nologo 2>&1
     if ($LASTEXITCODE -ne 0) { throw "Aura.Api build failed" }
 
-    Write-Output "      ✓ .NET projects built" -ForegroundColor Green
+    Write-Host "      ✓ .NET projects built" -ForegroundColor Green
 
     # Build Web UI
-    Write-Output "[3/6] Building web UI..." -ForegroundColor Yellow
+    Write-Host "[3/6] Building web UI..." -ForegroundColor Yellow
     Push-Location "$rootDir\Aura.Web"
     try {
         if (-not (Test-Path "node_modules")) {
-            Write-Output "      Installing npm dependencies..." -ForegroundColor Gray
+            Write-Host "      Installing npm dependencies..." -ForegroundColor Gray
 
             # Retry npm install up to 3 times for network issues
             $maxAttempts = 3
@@ -107,7 +107,7 @@ try {
                 $attemptCount++
 
                 if ($attemptCount -gt 1) {
-                    Write-Output "      Retry attempt $($attemptCount - 1) of $($maxAttempts - 1)..." -ForegroundColor Gray
+                    Write-Host "      Retry attempt $($attemptCount - 1) of $($maxAttempts - 1)..." -ForegroundColor Gray
                     Start-Sleep -Seconds 2
                 }
 
@@ -117,11 +117,11 @@ try {
 
                 if ($LASTEXITCODE -eq 0) {
                     $installSuccess = $true
-                    Write-Output "      ✓ npm dependencies installed" -ForegroundColor Green
+                    Write-Host "      ✓ npm dependencies installed" -ForegroundColor Green
                 } else {
                     $lastError = $npmOutput | Out-String
                     if ($attemptCount -lt $maxAttempts) {
-                        Write-Output "      npm install failed (attempt $attemptCount of $maxAttempts), retrying..." -ForegroundColor Yellow
+                        Write-Host "      npm install failed (attempt $attemptCount of $maxAttempts), retrying..." -ForegroundColor Yellow
                     }
                 }
             }
@@ -129,36 +129,36 @@ try {
             if (-not $installSuccess) {
                 Write-BuildError "npm install failed after $maxAttempts attempts"
                 Write-Output ""
-                Write-Output "npm output:" -ForegroundColor Red
-                Write-Output $lastError -ForegroundColor Red
+                Write-Host "npm output:" -ForegroundColor Red
+                Write-Host $lastError -ForegroundColor Red
                 Write-Output ""
                 throw "npm install failed after $maxAttempts attempts.`n`nPlease check:`n- Internet connection`n- npm configuration`n- Node.js version (requires 18.x)`n- Available disk space`n`nFull error output shown above."
             }
         } else {
-            Write-Output "      ✓ npm dependencies already installed" -ForegroundColor Green
+            Write-Host "      ✓ npm dependencies already installed" -ForegroundColor Green
         }
 
         # Clean dist directory for a fresh build
         if (Test-Path "dist") {
-            Write-Output "      Removing old dist directory..." -ForegroundColor Gray
+            Write-Host "      Removing old dist directory..." -ForegroundColor Gray
             Remove-Item -Recurse -Force dist
-            Write-Output "      ✓ Old dist directory removed" -ForegroundColor Green
+            Write-Host "      ✓ Old dist directory removed" -ForegroundColor Green
         }
 
-        Write-Output "      Building frontend..." -ForegroundColor Gray
+        Write-Host "      Building frontend..." -ForegroundColor Gray
         # Run build and capture output
         $buildOutput = npm run build 2>&1
         if ($LASTEXITCODE -ne 0) {
             Write-BuildError "npm build failed"
             Write-Output ""
-            Write-Output "Build output:" -ForegroundColor Red
-            Write-Output ($buildOutput | Out-String) -ForegroundColor Red
+            Write-Host "Build output:" -ForegroundColor Red
+            Write-Host ($buildOutput | Out-String) -ForegroundColor Red
             Write-Output ""
             throw "npm build failed.`n`nThis may be due to:`n- TypeScript compilation errors`n- Missing dependencies`n- Build configuration issues`n`nFull error output shown above."
         }
 
         # Validate the build output
-        Write-Output "      Validating build output..." -ForegroundColor Gray
+        Write-Host "      Validating build output..." -ForegroundColor Gray
         $validationErrors = @()
 
         # Check 1: Verify dist/index.html exists
@@ -189,9 +189,9 @@ try {
                 $validationErrors += "HTML not transformed: still contains development path 'src=`"/src/main.tsx`"'"
                 # Show actual script tags for diagnostics
                 $scriptTags = Select-String -Path "dist\index.html" -Pattern '<script[^>]*>' -AllMatches | ForEach-Object { $_.Matches.Value }
-                Write-Output "      Found script tags in index.html:" -ForegroundColor Yellow
+                Write-Host "      Found script tags in index.html:" -ForegroundColor Yellow
                 foreach ($tag in $scriptTags) {
-                    Write-Output "        $tag" -ForegroundColor Yellow
+                    Write-Host "        $tag" -ForegroundColor Yellow
                 }
             }
 
@@ -204,28 +204,28 @@ try {
         # Report validation results
         if ($validationErrors.Count -gt 0) {
             Write-Output ""
-            Write-Output "      ✗ Build validation failed:" -ForegroundColor Red
+            Write-Host "      ✗ Build validation failed:" -ForegroundColor Red
             foreach ($validationError in $validationErrors) {
-                Write-Output "        - $validationError" -ForegroundColor Red
+                Write-Host "        - $validationError" -ForegroundColor Red
             }
             throw "Frontend build validation failed. Please check the errors above."
         } else {
-            Write-Output "      Build validation passed:" -ForegroundColor Green
-            Write-Output "        - index.html: ✓" -ForegroundColor Green
-            Write-Output "        - assets folder: ✓" -ForegroundColor Green
-            Write-Output "        - JavaScript bundles: $jsFileCount files" -ForegroundColor Green
-            Write-Output "        - HTML transformation: ✓" -ForegroundColor Green
+            Write-Host "      Build validation passed:" -ForegroundColor Green
+            Write-Host "        - index.html: ✓" -ForegroundColor Green
+            Write-Host "        - assets folder: ✓" -ForegroundColor Green
+            Write-Host "        - JavaScript bundles: $jsFileCount files" -ForegroundColor Green
+            Write-Host "        - HTML transformation: ✓" -ForegroundColor Green
         }
 
-        Write-Output "      ✓ Frontend build complete" -ForegroundColor Green
+        Write-Host "      ✓ Frontend build complete" -ForegroundColor Green
     }
     finally {
         Pop-Location
     }
-    Write-Output "      ✓ Web UI built" -ForegroundColor Green
+    Write-Host "      ✓ Web UI built" -ForegroundColor Green
 
     # Publish API as self-contained
-    Write-Output "[4/6] Publishing API (self-contained)..." -ForegroundColor Yellow
+    Write-Host "[4/6] Publishing API (self-contained)..." -ForegroundColor Yellow
     dotnet publish "$rootDir\Aura.Api\Aura.Api.csproj" `
         -c $Configuration `
         -r win-$($Platform.ToLower()) `
@@ -233,10 +233,10 @@ try {
         -o "$portableBuildDir\Api" `
         --nologo -v minimal
     if ($LASTEXITCODE -ne 0) { throw "API publish failed" }
-    Write-Output "      ✓ API published" -ForegroundColor Green
+    Write-Host "      ✓ API published" -ForegroundColor Green
 
     # Copy Web UI to wwwroot folder inside the published API
-    Write-Output "[5/6] Copying web UI to wwwroot..." -ForegroundColor Yellow
+    Write-Host "[5/6] Copying web UI to wwwroot..." -ForegroundColor Yellow
 
     # Validate dist folder exists
     $distPath = "$rootDir\Aura.Web\dist"
@@ -261,7 +261,7 @@ try {
         throw "Web UI build validation failed"
     }
 
-    Write-Output "      ✓ Web UI build validated" -ForegroundColor Green
+    Write-Host "      ✓ Web UI build validated" -ForegroundColor Green
 
     # Copy to wwwroot
     $wwwrootDir = Join-Path "$portableBuildDir\Api" "wwwroot"
@@ -281,19 +281,19 @@ try {
         throw "Web UI copy validation failed"
     }
 
-    Write-Output "      ✓ Web UI copied to wwwroot and validated" -ForegroundColor Green
+    Write-Host "      ✓ Web UI copied to wwwroot and validated" -ForegroundColor Green
 
     # Copy additional files
-    Write-Output "[6/6] Copying additional files..." -ForegroundColor Yellow
+    Write-Host "[6/6] Copying additional files..." -ForegroundColor Yellow
 
     # Copy FFmpeg (if available)
     $ffmpegDir = Join-Path $portableBuildDir "ffmpeg"
     New-Item -ItemType Directory -Force -Path $ffmpegDir | Out-Null
     if (Test-Path "$rootDir\scripts\ffmpeg\ffmpeg.exe") {
         Copy-Item "$rootDir\scripts\ffmpeg\*.exe" -Destination $ffmpegDir -Force
-        Write-Output "      ✓ FFmpeg binaries copied" -ForegroundColor Green
+        Write-Host "      ✓ FFmpeg binaries copied" -ForegroundColor Green
     } else {
-    Write-Output "      ⚠ FFmpeg binaries not found (users will need to install separately)" -ForegroundColor Yellow
+    Write-Host "      ⚠ FFmpeg binaries not found (users will need to install separately)" -ForegroundColor Yellow
 }
 
 # Copy config and docs
@@ -394,7 +394,7 @@ echo To stop the application, close the API server window.
 echo.
 "@
 Set-Content -Path "$portableBuildDir\Launch.bat" -Value $launcherScript
-Write-Output "      ✓ Launch script created with pre-flight checks" -ForegroundColor Green
+Write-Host "      ✓ Launch script created with pre-flight checks" -ForegroundColor Green
 
 # Create ZIP
 $zipPath = Join-Path $portableDir "AuraVideoStudio_Portable_x64.zip"
@@ -409,23 +409,23 @@ $checksumFile = Join-Path $portableDir "checksum.txt"
 "$($hash.Hash)  $(Split-Path $zipPath -Leaf)" | Out-File $checksumFile -Encoding utf8
 
 Write-Output ""
-Write-Output "========================================" -ForegroundColor Green
-Write-Output " Build Complete!" -ForegroundColor Green
-Write-Output "========================================" -ForegroundColor Green
+Write-Host "========================================" -ForegroundColor Green
+Write-Host " Build Complete!" -ForegroundColor Green
+Write-Host "========================================" -ForegroundColor Green
 Write-Output ""
-Write-Output "Portable ZIP:  $zipPath" -ForegroundColor White
-Write-Output "Size:          $([math]::Round((Get-Item $zipPath).Length / 1MB, 2)) MB" -ForegroundColor White
-Write-Output "SHA-256:       $($hash.Hash)" -ForegroundColor White
+Write-Host "Portable ZIP:  $zipPath" -ForegroundColor White
+Write-Host "Size:          $([math]::Round((Get-Item $zipPath).Length / 1MB, 2)) MB" -ForegroundColor White
+Write-Host "SHA-256:       $($hash.Hash)" -ForegroundColor White
 Write-Output ""
-Write-Output "To test locally:" -ForegroundColor Cyan
-Write-Output "  1. Extract the ZIP to a folder" -ForegroundColor White
-Write-Output "  2. Run Launch.bat" -ForegroundColor White
-Write-Output "  3. Open http://127.0.0.1:5005 in your browser" -ForegroundColor White
+Write-Host "To test locally:" -ForegroundColor Cyan
+Write-Host "  1. Extract the ZIP to a folder" -ForegroundColor White
+Write-Host "  2. Run Launch.bat" -ForegroundColor White
+Write-Host "  3. Open http://127.0.0.1:5005 in your browser" -ForegroundColor White
 Write-Output ""
 
     # Generate version info file for auto-update
     Write-Output ""
-    Write-Output "Generating version information..." -ForegroundColor Yellow
+    Write-Host "Generating version information..." -ForegroundColor Yellow
     $versionInfo = @{
         version = "1.0.0"
         buildDate = (Get-Date -Format "o")
@@ -435,7 +435,7 @@ Write-Output ""
         downloadUrl = "https://github.com/Coffee285/aura-video-studio/releases/latest/download/AuraVideoStudio_Portable_x64.zip"
     }
     $versionInfo | ConvertTo-Json -Depth 5 | Out-File "$portableBuildDir\version.json" -Encoding utf8
-    Write-Output "✓ version.json generated for auto-update" -ForegroundColor Green
+    Write-Host "✓ version.json generated for auto-update" -ForegroundColor Green
 
     # Generate build report
     $buildEndTime = Get-Date
@@ -490,7 +490,7 @@ The portable distribution supports flexible dependency management:
 *Build completed successfully at $buildEndTime*
 "@
     Set-Content -Path $reportPath -Value $reportContent -Encoding UTF8
-    Write-Output "Build Report:  $reportPath" -ForegroundColor White
+    Write-Host "Build Report:  $reportPath" -ForegroundColor White
 
     exit 0
 }
@@ -526,12 +526,12 @@ $( if ($buildWarnings.Count -gt 0) { "- " + ($buildWarnings -join "`n- ") } else
     Set-Content -Path $reportPath -Value $reportContent -Encoding UTF8
 
     Write-Output ""
-    Write-Output "========================================" -ForegroundColor Red
-    Write-Output " Build Failed!" -ForegroundColor Red
-    Write-Output "========================================" -ForegroundColor Red
+    Write-Host "========================================" -ForegroundColor Red
+    Write-Host " Build Failed!" -ForegroundColor Red
+    Write-Host "========================================" -ForegroundColor Red
     Write-Output ""
-    Write-Output "Error: $($_.Exception.Message)" -ForegroundColor Red
-    Write-Output "Build Report: $reportPath" -ForegroundColor White
+    Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "Build Report: $reportPath" -ForegroundColor White
     Write-Output ""
 
     exit 1

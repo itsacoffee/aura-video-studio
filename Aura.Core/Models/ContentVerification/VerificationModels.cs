@@ -124,7 +124,7 @@ public record MisinformationDetection(
 /// </summary>
 public record MisinformationFlag(
     string FlagId,
-    string ClaimId,
+    string? ClaimId,
     string Pattern,
     MisinformationCategory Category,
     double Severity,

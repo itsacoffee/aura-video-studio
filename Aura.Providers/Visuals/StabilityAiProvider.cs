@@ -103,7 +103,7 @@ public class StabilityAiProvider : BaseVisualProvider
             var result = JsonSerializer.Deserialize<StabilityResponse>(content);
             if (result?.Artifacts != null && result.Artifacts.Count > 0 && result.Artifacts[0].Base64 != null)
             {
-                var imageBytes = Convert.FromBase64String(result.Artifacts[0].Base64);
+                var imageBytes = Convert.FromBase64String(result.Artifacts[0].Base64!);
                 var tempPath = Path.Combine(Path.GetTempPath(), $"stability_{Guid.NewGuid()}.png");
                 await File.WriteAllBytesAsync(tempPath, imageBytes, ct).ConfigureAwait(false);
 

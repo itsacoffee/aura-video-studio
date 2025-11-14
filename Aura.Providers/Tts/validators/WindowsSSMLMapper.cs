@@ -199,7 +199,7 @@ public class WindowsSSMLMapper : BaseSSMLMapper
         return Task.FromResult(baseDurationMs + totalPauseMs);
     }
 
-    private string InsertPauses(string text, IReadOnlyDictionary<int, int> pauses, int maxPauseMs)
+    private new string InsertPauses(string text, IReadOnlyDictionary<int, int> pauses, int maxPauseMs)
     {
         if (pauses.Count == 0)
         {
@@ -228,7 +228,7 @@ public class WindowsSSMLMapper : BaseSSMLMapper
         return sb.ToString();
     }
 
-    private string ApplyEmphasis(string text, IReadOnlyList<EmphasisSpan> emphasisSpans)
+    private new string ApplyEmphasis(string text, IReadOnlyList<EmphasisSpan> emphasisSpans)
     {
         if (emphasisSpans.Count == 0)
         {
