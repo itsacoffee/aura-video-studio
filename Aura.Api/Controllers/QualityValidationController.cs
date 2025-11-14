@@ -209,7 +209,11 @@ public class QualityValidationController : ControllerBase
     /// Validates against platform-specific requirements
     /// </summary>
     /// <param name="platform">Target platform (youtube, tiktok, instagram, twitter)</param>
-    /// <param name="request">Platform validation request with video properties</param>
+    /// <param name="width">Video width in pixels</param>
+    /// <param name="height">Video height in pixels</param>
+    /// <param name="file_size_bytes">File size in bytes</param>
+    /// <param name="duration_seconds">Video duration in seconds</param>
+    /// <param name="codec">Video codec (default: H.264)</param>
     /// <param name="ct">Cancellation token</param>
     /// <returns>Platform requirements validation result</returns>
     [HttpGet("validate/platform-requirements")]

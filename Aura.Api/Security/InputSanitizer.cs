@@ -209,7 +209,7 @@ public static class InputSanitizer
     /// <summary>
     /// Validates that a URL is safe and uses allowed protocols
     /// </summary>
-    public static bool IsValidUrl(string url, string[] allowedSchemes = null)
+    public static bool IsValidUrl(string url, string[]? allowedSchemes = null)
     {
         if (string.IsNullOrWhiteSpace(url))
         {

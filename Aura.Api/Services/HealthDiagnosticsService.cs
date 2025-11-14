@@ -914,7 +914,7 @@ public class HealthDiagnosticsService
                 { 
                     ["configured"] = true, 
                     ["isLocal"] = true,
-                    ["path"] = piperPath 
+                    ["path"] = piperPath ?? string.Empty 
                 },
                 RemediationHint: null,
                 RemediationActions: null);

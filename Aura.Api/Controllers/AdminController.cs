@@ -1057,8 +1057,8 @@ public class AdminController : ControllerBase
             }
 
             config.Value = request.Value;
-            config.Category = request.Category;
-            config.Description = request.Description;
+            config.Category = request.Category ?? string.Empty;
+            config.Description = request.Description ?? string.Empty;
             config.IsSensitive = request.IsSensitive;
             config.IsActive = request.IsActive;
             config.UpdatedAt = DateTime.UtcNow;
