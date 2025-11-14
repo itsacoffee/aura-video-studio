@@ -27,6 +27,8 @@ import type { WorkspacePreferences } from '../../components/Onboarding/Workspace
 import { WorkspaceSetup } from '../../components/Onboarding/WorkspaceSetup';
 import { WizardProgress } from '../../components/WizardProgress';
 import { wizardAnalytics } from '../../services/analytics';
+import { resetCircuitBreaker } from '../../services/api/apiClient';
+import { PersistentCircuitBreaker } from '../../services/api/circuitBreakerPersistence';
 import type { FFmpegStatus } from '../../services/api/ffmpegClient';
 import { ffmpegClient } from '../../services/api/ffmpegClient';
 import { setupApi } from '../../services/api/setupApi';
@@ -198,6 +200,12 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
   useEffect(() => {
     // Track wizard start
     wizardAnalytics.started();
+
+    // CRITICAL FIX: Clear all circuit breaker state on wizard mount
+    // This prevents false "service unavailable" errors from persisted circuit breaker state
+    PersistentCircuitBreaker.clearState();
+    resetCircuitBreaker();
+    console.log('[FirstRunWizard] Circuit breaker state cleared on mount');
 
     // Check for saved progress
     const savedState = loadWizardStateFromStorage();
@@ -496,6 +504,9 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
     if (isRescanningFfmpeg) {
       return;
     }
+    // Reset circuit breaker before rescanning
+    resetCircuitBreaker();
+    console.log('[Rescan FFmpeg] Circuit breaker reset, initiating rescan');
     pendingRescanRef.current = true;
     setIsRescanningFfmpeg(true);
     setFfmpegRefreshSignal((prev) => prev + 1);
@@ -547,6 +558,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
         message: 'Unable to open the system file picker. Enter the FFmpeg path manually instead.',
       });
     } finally {
+      // CRITICAL FIX: Always reset browsing state in finally block
       setIsBrowsingForFfmpeg(false);
     }
   }, [showFailureToast]);
@@ -563,6 +575,10 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
     setIsValidatingFfmpegPath(true);
     try {
+      // Reset circuit breaker before attempting validation
+      resetCircuitBreaker();
+      console.log('[Validate FFmpeg] Circuit breaker reset, attempting validation');
+
       // Use the new backend use-existing endpoint
       const result = await ffmpegClient.useExisting({ path: trimmedPath });
 
@@ -638,6 +654,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
         message: errorMessage,
       });
     } finally {
+      // CRITICAL FIX: Always reset validating state in finally block
       setIsValidatingFfmpegPath(false);
     }
   }, [dispatch, ffmpegPathInput, showFailureToast, showSuccessToast]);
