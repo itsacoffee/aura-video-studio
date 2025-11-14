@@ -26,6 +26,7 @@ const ProtocolHandler = require('./protocol-handler'); // Needed for early proto
 const TrayManager = require('./tray-manager');
 const MenuBuilder = require('./menu-builder');
 const WindowsSetupWizard = require('./windows-setup-wizard');
+const ShutdownOrchestrator = require('./shutdown-orchestrator');
 
 // ========================================
 // Global State
@@ -41,6 +42,7 @@ let trayManager = null;
 let menuBuilder = null;
 let protocolHandler = null;
 let windowsSetupWizard = null;
+let shutdownOrchestrator = null;
 
 let ipcHandlers = {
   config: null,
@@ -900,6 +902,19 @@ async function startApplication() {
       }
     }
 
+    // Step 15.5: Initialize Shutdown Orchestrator
+    try {
+      shutdownOrchestrator = new ShutdownOrchestrator(app, startupLogger || console);
+      shutdownOrchestrator.setComponents({
+        backendService,
+        windowManager,
+        trayManager
+      });
+      console.log('✓ Shutdown orchestrator initialized');
+    } catch (error) {
+      console.warn('⚠ Shutdown orchestrator initialization failed (non-critical):', error.message);
+    }
+
     // Step 16: Check for first run (async)
     const mainWindow = windowManager.getMainWindow();
     mainWindow.once('ready-to-show', async () => {
@@ -1116,7 +1131,17 @@ app.on('window-all-closed', () => {
   // On macOS, apps stay active until user quits explicitly
   if (process.platform !== 'darwin') {
     isQuitting = true;
-    app.quit();
+    
+    if (shutdownOrchestrator) {
+      shutdownOrchestrator.initiateShutdown({ skipChecks: true })
+        .then(() => app.exit(0))
+        .catch((error) => {
+          console.error('Shutdown error:', error);
+          app.exit(1);
+        });
+    } else {
+      app.quit();
+    }
   }
 });
 
@@ -1124,30 +1149,45 @@ app.on('window-all-closed', () => {
 app.on('before-quit', async (event) => {
   console.log('Application is quitting...');
   
-  // Prevent multiple cleanup calls
   if (isCleaningUp) {
     return;
   }
   
   isQuitting = true;
   isCleaningUp = true;
-  
-  // Prevent immediate quit to allow async cleanup
   event.preventDefault();
   
   try {
-    // Perform cleanup with timeout
-    await Promise.race([
-      cleanup(),
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Cleanup timeout')), 30000)
-      )
-    ]);
+    if (shutdownOrchestrator) {
+      const result = await Promise.race([
+        shutdownOrchestrator.initiateShutdown(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Shutdown timeout')), 10000)
+        )
+      ]);
+      
+      if (!result.success && result.reason !== 'user-cancelled') {
+        console.warn('Shutdown completed with issues:', result);
+      } else if (result.reason === 'user-cancelled') {
+        console.log('Shutdown cancelled by user');
+        isQuitting = false;
+        isCleaningUp = false;
+        return;
+      }
+    } else {
+      await Promise.race([
+        cleanup(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Cleanup timeout')), 30000)
+        )
+      ]);
+    }
   } catch (error) {
-    console.error('Cleanup error or timeout:', error);
+    console.error('Shutdown error or timeout:', error);
   } finally {
-    // Now actually quit
-    app.exit(0);
+    if (isQuitting) {
+      app.exit(0);
+    }
   }
 });
 
