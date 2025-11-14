@@ -25,7 +25,7 @@ public class OrchestratorOptions
     /// <summary>
     /// Enable detailed logging for debugging
     /// </summary>
-    public bool EnableDetailedLogging { get; set; } = false;
+    public bool EnableDetailedLogging { get; set; }
 
     /// <summary>
     /// Maximum retry attempts per stage
@@ -70,7 +70,7 @@ public class OrchestratorOptions
     /// <summary>
     /// Retain intermediate artifacts after completion
     /// </summary>
-    public bool RetainIntermediateArtifacts { get; set; } = false;
+    public bool RetainIntermediateArtifacts { get; set; }
 
     /// <summary>
     /// Enable progress streaming via Server-Sent Events
@@ -90,17 +90,17 @@ public class OrchestratorOptions
     /// <summary>
     /// Enable RAG (Retrieval Augmented Generation) if configured
     /// </summary>
-    public bool EnableRag { get; set; } = false;
+    public bool EnableRag { get; set; }
 
     /// <summary>
     /// Enable pacing optimization
     /// </summary>
-    public bool EnablePacingOptimization { get; set; } = false;
+    public bool EnablePacingOptimization { get; set; }
 
     /// <summary>
     /// Enable narration optimization for TTS
     /// </summary>
-    public bool EnableNarrationOptimization { get; set; } = false;
+    public bool EnableNarrationOptimization { get; set; }
 
     /// <summary>
     /// Validate these options for consistency

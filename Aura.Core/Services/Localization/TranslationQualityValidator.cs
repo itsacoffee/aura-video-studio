@@ -285,7 +285,7 @@ public class TranslationQualityValidator
         string translatedText,
         Dictionary<string, string> glossary)
     {
-        if (!glossary.Any())
+        if (glossary.Count == 0)
         {
             return 100.0;
         }

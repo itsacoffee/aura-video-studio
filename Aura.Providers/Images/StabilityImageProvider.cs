@@ -115,12 +115,12 @@ public class StabilityImageProvider
         }
     }
 
-    private class StabilityResponse
+    private sealed class StabilityResponse
     {
         public List<Artifact>? Artifacts { get; set; }
     }
 
-    private class Artifact
+    private sealed class Artifact
     {
         public string? Base64 { get; set; }
         public string? FinishReason { get; set; }

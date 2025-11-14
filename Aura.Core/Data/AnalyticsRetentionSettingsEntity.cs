@@ -43,12 +43,12 @@ public class AnalyticsRetentionSettingsEntity : IAuditableEntity
     /// Hour of day (0-23) to run automatic cleanup
     /// </summary>
     public int CleanupHourUtc { get; set; } = 3;
-    
+
     /// <summary>
     /// Whether to track successful operations only (exclude failures)
     /// </summary>
-    public bool TrackSuccessOnly { get; set; } = false;
-    
+    public bool TrackSuccessOnly { get; set; }
+
     /// <summary>
     /// Whether to collect hardware utilization metrics
     /// </summary>

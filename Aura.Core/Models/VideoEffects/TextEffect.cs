@@ -71,7 +71,7 @@ public abstract class TextAnimationEffect : VideoEffect
     /// <summary>
     /// Text outline/border width
     /// </summary>
-    public int BorderWidth { get; set; } = 0;
+    public int BorderWidth { get; set; }
 
     /// <summary>
     /// Border color
@@ -437,7 +437,7 @@ public class ScrollingTextEffect : TextAnimationEffect
     /// <summary>
     /// Whether to loop the scrolling
     /// </summary>
-    public bool Loop { get; set; } = false;
+    public bool Loop { get; set; }
 
     public ScrollingTextEffect()
     {

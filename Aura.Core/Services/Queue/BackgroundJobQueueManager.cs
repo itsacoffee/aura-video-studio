@@ -363,7 +363,7 @@ public class BackgroundJobQueueManager
                        (j.Status == "Cancelled" && j.CompletedAt < completedCutoff))
             .ToListAsync(ct);
         
-        if (jobsToDelete.Any())
+        if (jobsToDelete.Count != 0)
         {
             context.JobQueue.RemoveRange(jobsToDelete);
             await context.SaveChangesAsync(ct);

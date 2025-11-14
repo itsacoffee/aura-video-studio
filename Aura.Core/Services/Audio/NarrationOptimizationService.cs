@@ -136,7 +136,7 @@ public class NarrationOptimizationService
         var issues = DetectTtsIssues(optimizedText, config);
 
         // Step 2: Use LLM to rewrite for TTS naturalness
-        if (issues.Any() || IsComplexSentence(optimizedText, config))
+        if (issues.Count != 0 || IsComplexSentence(optimizedText, config))
         {
             var rewriteResult = await RewriteForTtsAsync(
                 optimizedText, voiceSpec, voiceDescriptor, issues, config, ct);
@@ -284,7 +284,7 @@ public class NarrationOptimizationService
         sb.AppendLine("- Preserve 100% of the semantic meaning");
         sb.AppendLine("- Keep the same overall message and information");
         
-        if (issues.Any())
+        if (issues.Count != 0)
         {
             sb.AppendLine();
             sb.AppendLine("Fix these specific issues:");

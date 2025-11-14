@@ -127,19 +127,19 @@ public class MediaRepository : IMediaRepository
                 (m.Description != null && m.Description.ToLower().Contains(searchLower)));
         }
 
-        if (request.Types != null && request.Types.Any())
+        if (request.Types != null && request.Types.Count != 0)
         {
             var typeStrings = request.Types.Select(t => t.ToString()).ToList();
             query = query.Where(m => typeStrings.Contains(m.Type));
         }
 
-        if (request.Sources != null && request.Sources.Any())
+        if (request.Sources != null && request.Sources.Count != 0)
         {
             var sourceStrings = request.Sources.Select(s => s.ToString()).ToList();
             query = query.Where(m => sourceStrings.Contains(m.Source));
         }
 
-        if (request.Tags != null && request.Tags.Any())
+        if (request.Tags != null && request.Tags.Count != 0)
         {
             foreach (var tag in request.Tags)
             {
@@ -320,12 +320,13 @@ public class MediaRepository : IMediaRepository
         {
             if (Enum.TryParse<MediaType>(media.Type, out var type))
             {
-                if (!stats.FilesByType.ContainsKey(type))
+                if (!stats.FilesByType.TryGetValue(type, out var value))
                 {
-                    stats.FilesByType[type] = 0;
+                    value = 0;
+                    stats.FilesByType[type] = value;
                     stats.SizeByType[type] = 0;
                 }
-                stats.FilesByType[type]++;
+                stats.FilesByType[type] = ++value;
                 stats.SizeByType[type] += media.FileSize;
             }
         }

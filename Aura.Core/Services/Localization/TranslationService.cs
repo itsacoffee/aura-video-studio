@@ -85,7 +85,7 @@ public class TranslationService
             }
 
             // Phase 3: Timing adjustments
-            if (request.Options.AdjustTimings && request.ScriptLines.Any())
+            if (request.Options.AdjustTimings && request.ScriptLines.Count != 0)
             {
                 _logger.LogInformation("Phase 3: Timing adjustment");
                 result.TimingAdjustment = _timingAdjuster.AdjustTimings(
@@ -219,7 +219,7 @@ public class TranslationService
     {
         var translatedLines = new List<TranslatedScriptLine>();
 
-        if (request.ScriptLines.Any())
+        if (request.ScriptLines.Count != 0)
         {
             // Translate script lines with context
             for (int i = 0; i < request.ScriptLines.Count; i++)
@@ -337,7 +337,7 @@ public class TranslationService
             sb.AppendLine("- Maintain brand voice and tone");
         }
 
-        if (glossary.Any())
+        if (glossary.Count != 0)
         {
             sb.AppendLine();
             sb.AppendLine("Use these specific translations for key terms:");
@@ -384,7 +384,7 @@ public class TranslationService
             context.Append($"Style: {request.CulturalContext.PreferredStyle}. ");
         }
 
-        if (request.ScriptLines.Any() && lineIndex > 0)
+        if (request.ScriptLines.Count != 0 && lineIndex > 0)
         {
             context.Append($"Previous line: {request.ScriptLines[lineIndex - 1].Text}. ");
         }

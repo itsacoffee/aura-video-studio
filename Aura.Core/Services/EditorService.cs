@@ -193,7 +193,7 @@ public class EditorService : IEditorProvider
         sb.AppendLine($"**Overall Score**: {critique.OverallScore:F1}/100");
         sb.AppendLine();
 
-        if (critique.Issues.Any())
+        if (critique.Issues.Count != 0)
         {
             sb.AppendLine("### Issues to Address");
             foreach (var issue in critique.Issues.OrderByDescending(i => i.Severity))
@@ -207,7 +207,7 @@ public class EditorService : IEditorProvider
             sb.AppendLine();
         }
 
-        if (critique.Strengths.Any())
+        if (critique.Strengths.Count != 0)
         {
             sb.AppendLine("### Strengths to Preserve");
             foreach (var strength in critique.Strengths)
@@ -217,7 +217,7 @@ public class EditorService : IEditorProvider
             sb.AppendLine();
         }
 
-        if (critique.Suggestions.Any())
+        if (critique.Suggestions.Count != 0)
         {
             sb.AppendLine("### Specific Suggestions");
             foreach (var suggestion in critique.Suggestions)

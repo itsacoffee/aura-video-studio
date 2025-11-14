@@ -501,7 +501,7 @@ public class PipelineValidationTests
 /// <summary>
 /// Mock LLM provider that always fails (for pipeline validation tests)
 /// </summary>
-internal class PipelineValidationFailingLlmProvider : ILlmProvider
+internal sealed class PipelineValidationFailingLlmProvider : ILlmProvider
 {
     private readonly ILogger<PipelineValidationFailingLlmProvider> _logger;
 
@@ -587,7 +587,7 @@ internal class PipelineValidationFailingLlmProvider : ILlmProvider
 /// <summary>
 /// Mock TTS provider that always fails (for pipeline validation tests)
 /// </summary>
-internal class PipelineValidationFailingTtsProvider : ITtsProvider
+internal sealed class PipelineValidationFailingTtsProvider : ITtsProvider
 {
     public Task<IReadOnlyList<string>> GetAvailableVoicesAsync()
     {
@@ -603,7 +603,7 @@ internal class PipelineValidationFailingTtsProvider : ITtsProvider
 /// <summary>
 /// Test logger provider that captures log messages
 /// </summary>
-internal class TestLoggerProvider : ILoggerProvider
+internal sealed class TestLoggerProvider : ILoggerProvider
 {
     private readonly List<string> _messages;
 
@@ -625,7 +625,7 @@ internal class TestLoggerProvider : ILoggerProvider
 /// <summary>
 /// Test logger that captures messages
 /// </summary>
-internal class TestLogger : ILogger
+internal sealed class TestLogger : ILogger
 {
     private readonly List<string> _messages;
 

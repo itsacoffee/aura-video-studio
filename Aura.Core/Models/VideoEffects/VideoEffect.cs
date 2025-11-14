@@ -109,7 +109,7 @@ public abstract class VideoEffect
     /// <summary>
     /// Layer/track index for the effect
     /// </summary>
-    public int Layer { get; set; } = 0;
+    public int Layer { get; set; }
 
     /// <summary>
     /// Keyframes for animating effect parameters

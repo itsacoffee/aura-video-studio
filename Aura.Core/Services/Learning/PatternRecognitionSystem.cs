@@ -112,9 +112,9 @@ public class PatternRecognitionSystem
         foreach (var pattern in patterns)
         {
             var category = pattern.SuggestionType.ToLowerInvariant();
-            if (categorized.ContainsKey(category))
+            if (categorized.TryGetValue(category, out var value))
             {
-                categorized[category].Add(pattern);
+                value.Add(pattern);
             }
             else
             {

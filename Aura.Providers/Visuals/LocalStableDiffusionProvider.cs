@@ -181,7 +181,7 @@ public class LocalStableDiffusionProvider : BaseVisualProvider
         return 0m;
     }
 
-    private class SdWebUiResponse
+    private sealed class SdWebUiResponse
     {
         public List<string>? Images { get; set; }
         public string? Info { get; set; }

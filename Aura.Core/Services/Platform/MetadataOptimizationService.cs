@@ -73,14 +73,14 @@ public class MetadataOptimizationService
         if (maxLength > 0 && title.Length > maxLength)
         {
             // Truncate intelligently, preserving key information
-            title = title.Substring(0, maxLength - 3) + "...";
+            title = string.Concat(title.AsSpan(0, maxLength - 3), "...");
         }
 
         // Add platform-specific optimizations
         if (profile.PlatformId == "youtube")
         {
             // YouTube favors keyword-rich titles
-            if (request.Keywords.Any() && !title.Contains(request.Keywords[0], StringComparison.OrdinalIgnoreCase))
+            if (request.Keywords.Count != 0 && !title.Contains(request.Keywords[0], StringComparison.OrdinalIgnoreCase))
             {
                 title = $"{request.Keywords[0]} - {title}";
                 if (maxLength > 0 && title.Length > maxLength)
@@ -107,7 +107,7 @@ public class MetadataOptimizationService
         }
 
         // Add keywords naturally
-        if (request.Keywords.Any())
+        if (request.Keywords.Count != 0)
         {
             var keywordSection = "\n\nRelated topics: " + string.Join(", ", request.Keywords.Take(5));
             description += keywordSection;
@@ -121,7 +121,7 @@ public class MetadataOptimizationService
 
         if (maxLength > 0 && description.Length > maxLength)
         {
-            description = description.Substring(0, maxLength - 3) + "...";
+            description = string.Concat(description.AsSpan(0, maxLength - 3), "...");
         }
 
         return description;

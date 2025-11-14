@@ -442,13 +442,14 @@ public class EnhancedLocalStorageService : IEnhancedLocalStorageService
             stats.TotalSizeBytes += entry.SizeBytes;
             stats.HitCount += entry.AccessCount;
             
-            if (!stats.EntriesByCategory.ContainsKey(entry.Category))
+            if (!stats.EntriesByCategory.TryGetValue(entry.Category, out var value))
             {
-                stats.EntriesByCategory[entry.Category] = 0;
+                value = 0;
+                stats.EntriesByCategory[entry.Category] = value;
                 stats.SizeByCategory[entry.Category] = 0;
             }
             
-            stats.EntriesByCategory[entry.Category]++;
+            stats.EntriesByCategory[entry.Category] = ++value;
             stats.SizeByCategory[entry.Category] += entry.SizeBytes;
             
             if (entry.ExpiresAt.HasValue && entry.ExpiresAt < DateTime.UtcNow)

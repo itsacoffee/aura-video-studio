@@ -312,7 +312,7 @@ public class VisualPromptGenerationServiceTests
         Assert.True(continuity.SimilarityScore < 40);
     }
 
-    private class MockSuccessfulLlmProvider : ILlmProvider
+    private sealed class MockSuccessfulLlmProvider : ILlmProvider
     {
         public Task<string> DraftScriptAsync(Brief brief, PlanSpec spec, CancellationToken ct)
         {

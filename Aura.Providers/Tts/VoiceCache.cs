@@ -415,7 +415,7 @@ public class VoiceCache : IDisposable
 /// <summary>
 /// Cache entry metadata
 /// </summary>
-internal class CacheEntry
+internal sealed class CacheEntry
 {
     public required string CacheKey { get; init; }
     public required string FilePath { get; init; }

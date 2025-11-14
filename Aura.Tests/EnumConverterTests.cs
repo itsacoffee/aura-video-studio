@@ -232,7 +232,7 @@ public class EnumConverterTests
 }
 
 // Test DTO to mirror the actual request structure
-record ScriptRequestDto(
+sealed record ScriptRequestDto(
     string Topic, 
     string Audience, 
     string Goal, 

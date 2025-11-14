@@ -286,7 +286,7 @@ public class ProviderStatusService
         var onlineProviders = providers.Where(p => p.IsOnline && p.IsAvailable).ToList();
         var offlineProviders = providers.Where(p => !p.IsOnline && p.IsAvailable).ToList();
 
-        var isOfflineMode = !onlineProviders.Any();
+        var isOfflineMode = onlineProviders.Count == 0;
 
         var availableFeatures = new List<string>();
         var degradedFeatures = new List<string>();

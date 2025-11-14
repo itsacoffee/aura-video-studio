@@ -144,7 +144,7 @@ public record TtsCapabilities
     /// <summary>
     /// Maximum characters per request (null for unlimited)
     /// </summary>
-    public int? MaxCharactersPerRequest { get; init; } = null;
+    public int? MaxCharactersPerRequest { get; init; }
 
     /// <summary>
     /// Supports streaming synthesis

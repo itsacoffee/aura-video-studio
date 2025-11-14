@@ -281,17 +281,17 @@ public class ContentSafetyService
         var warningViolations = result.Violations.Where(v => v.RecommendedAction == SafetyAction.Warn).ToList();
         var reviewViolations = result.Violations.Where(v => v.RecommendedAction == SafetyAction.RequireReview).ToList();
         
-        if (blockingViolations.Any() && !policy.AllowUserOverride)
+        if (blockingViolations.Count != 0 && !policy.AllowUserOverride)
         {
             result.IsSafe = false;
         }
         
-        if (reviewViolations.Any())
+        if (reviewViolations.Count != 0)
         {
             result.RequiresReview = true;
         }
         
-        if (warningViolations.Any() && !blockingViolations.Any())
+        if (warningViolations.Count != 0 && blockingViolations.Count == 0)
         {
             result.AllowWithDisclaimer = true;
             result.RecommendedDisclaimer = "This content may contain material that some viewers find objectionable.";

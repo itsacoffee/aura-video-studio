@@ -54,7 +54,7 @@ public class UnsplashVisualProvider : BaseVisualProvider
 
             var results = await _unsplashProvider.SearchAsync(searchRequest, ct).ConfigureAwait(false);
 
-            if (results == null || !results.Any())
+            if (results == null || results.Count == 0)
             {
                 Logger.LogWarning("No Unsplash results found for: {Prompt}", prompt);
                 return null;

@@ -259,7 +259,7 @@ public class AnalyticsCleanupService : IAnalyticsCleanupService
                 TotalInputTokens = usageData.Sum(u => u.InputTokens),
                 TotalOutputTokens = usageData.Sum(u => u.OutputTokens),
                 TotalCostUSD = costData.Sum(c => c.TotalCost),
-                AverageDurationMs = usageData.Any() ? (long)usageData.Average(u => u.DurationMs) : 0,
+                AverageDurationMs = usageData.Count != 0 ? (long)usageData.Average(u => u.DurationMs) : 0,
                 TotalRenderingTimeMs = perfData.Sum(p => p.DurationMs),
                 MostUsedProvider = usageData.GroupBy(u => u.Provider)
                     .OrderByDescending(g => g.Count())
@@ -349,7 +349,7 @@ public class AnalyticsCleanupService : IAnalyticsCleanupService
                 TotalInputTokens = usageData.Sum(u => u.InputTokens),
                 TotalOutputTokens = usageData.Sum(u => u.OutputTokens),
                 TotalCostUSD = costData.Sum(c => c.TotalCost),
-                AverageDurationMs = usageData.Any() ? (long)usageData.Average(u => u.DurationMs) : 0,
+                AverageDurationMs = usageData.Count != 0 ? (long)usageData.Average(u => u.DurationMs) : 0,
                 TotalRenderingTimeMs = perfData.Sum(p => p.DurationMs),
                 MostUsedProvider = usageData.GroupBy(u => u.Provider)
                     .OrderByDescending(g => g.Count())

@@ -217,7 +217,7 @@ public class UsageAnalyticsService : IUsageAnalyticsService
                 TotalInputTokens = data.Sum(u => u.InputTokens),
                 TotalOutputTokens = data.Sum(u => u.OutputTokens),
                 TotalTokens = data.Sum(u => u.InputTokens + u.OutputTokens),
-                AverageDurationMs = data.Any() ? (long)data.Average(u => u.DurationMs) : 0,
+                AverageDurationMs = data.Count != 0 ? (long)data.Average(u => u.DurationMs) : 0,
                 TotalDurationMs = data.Sum(u => u.DurationMs),
                 TotalVideoDurationSeconds = data.Where(u => u.OutputDurationSeconds.HasValue)
                     .Sum(u => u.OutputDurationSeconds!.Value),
@@ -271,7 +271,7 @@ public class UsageAnalyticsService : IUsageAnalyticsService
                 TotalCost = data.Sum(c => c.TotalCost),
                 TotalInputCost = data.Sum(c => c.InputCost),
                 TotalOutputCost = data.Sum(c => c.OutputCost),
-                AverageCostPerOperation = data.Any() ? data.Average(c => c.TotalCost) : 0,
+                AverageCostPerOperation = data.Count != 0 ? data.Average(c => c.TotalCost) : 0,
                 TotalInputTokens = data.Sum(c => c.InputTokens),
                 TotalOutputTokens = data.Sum(c => c.OutputTokens),
                 CostPerProvider = providerCosts,
@@ -320,10 +320,10 @@ public class UsageAnalyticsService : IUsageAnalyticsService
             {
                 TotalOperations = data.Count,
                 SuccessfulOperations = data.Count(p => p.Success),
-                AverageDurationMs = data.Any() ? (long)data.Average(p => p.DurationMs) : 0,
+                AverageDurationMs = data.Count != 0 ? (long)data.Average(p => p.DurationMs) : 0,
                 MedianDurationMs = CalculateMedian(data.Select(p => p.DurationMs).ToList()),
-                MinDurationMs = data.Any() ? data.Min(p => p.DurationMs) : 0,
-                MaxDurationMs = data.Any() ? data.Max(p => p.DurationMs) : 0,
+                MinDurationMs = data.Count != 0 ? data.Min(p => p.DurationMs) : 0,
+                MaxDurationMs = data.Count != 0 ? data.Max(p => p.DurationMs) : 0,
                 AverageCpuUsage = data.Where(p => p.CpuUsagePercent.HasValue).Any()
                     ? data.Where(p => p.CpuUsagePercent.HasValue).Average(p => p.CpuUsagePercent!.Value)
                     : null,
@@ -377,7 +377,7 @@ public class UsageAnalyticsService : IUsageAnalyticsService
 
     private static long CalculateMedian(List<long> values)
     {
-        if (!values.Any()) return 0;
+        if (values.Count == 0) return 0;
         
         var sorted = values.OrderBy(v => v).ToList();
         var mid = sorted.Count / 2;

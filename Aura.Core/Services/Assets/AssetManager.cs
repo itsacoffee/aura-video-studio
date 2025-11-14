@@ -143,8 +143,8 @@ public class AssetManager
             EntryCount = entryCount,
             TotalSizeBytes = totalSize,
             TotalSizeMB = totalSize / (1024.0 * 1024.0),
-            OldestEntry = _assetCache.Values.Any() ? _assetCache.Values.Min(a => a.CreatedAt) : (DateTime?)null,
-            NewestEntry = _assetCache.Values.Any() ? _assetCache.Values.Max(a => a.CreatedAt) : (DateTime?)null
+            OldestEntry = _assetCache.Values.Count != 0 ? _assetCache.Values.Min(a => a.CreatedAt) : (DateTime?)null,
+            NewestEntry = _assetCache.Values.Count != 0 ? _assetCache.Values.Max(a => a.CreatedAt) : (DateTime?)null
         };
     }
 

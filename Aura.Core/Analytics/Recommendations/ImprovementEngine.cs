@@ -341,7 +341,7 @@ public class ImprovementEngine
 
         return new WeakSectionAnalysis(
             TimePoint: timePoint,
-            Content: section.Length > 100 ? section.Substring(0, 100) + "..." : section,
+            Content: section.Length > 100 ? string.Concat(section.AsSpan(0, 100), "...") : section,
             Issues: issues,
             Severity: severity,
             SuggestedImprovement: improvement

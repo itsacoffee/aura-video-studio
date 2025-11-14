@@ -302,7 +302,7 @@ public class GlossaryManager
                 }
             }
 
-            if (translations.Any())
+            if (translations.Count != 0)
             {
                 await AddEntryAsync(glossary.Id, term, translations, cancellationToken: cancellationToken);
             }

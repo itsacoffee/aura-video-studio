@@ -210,7 +210,7 @@ public class SagaOrchestrator
             }
         }
 
-        if (compensationErrors.Any())
+        if (compensationErrors.Count != 0)
         {
             context.State = SagaState.Failed;
             

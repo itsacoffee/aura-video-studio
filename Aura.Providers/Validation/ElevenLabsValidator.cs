@@ -206,6 +206,6 @@ public class ElevenLabsValidator : IProviderValidator
             return string.Empty;
         }
         
-        return errorBody.Length > 100 ? errorBody.Substring(0, 100) + "..." : errorBody;
+        return errorBody.Length > 100 ? string.Concat(errorBody.AsSpan(0, 100), "...") : errorBody;
     }
 }

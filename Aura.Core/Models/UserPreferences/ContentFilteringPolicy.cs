@@ -16,8 +16,8 @@ public class ContentFilteringPolicy
     
     // Global Filter Control
     public bool FilteringEnabled { get; set; } = true;
-    public bool AllowOverrideAll { get; set; } = false; // Unrestricted mode
-    
+    public bool AllowOverrideAll { get; set; }  // Unrestricted mode
+
     // Profanity Filtering
     public ProfanityFilterLevel ProfanityFilter { get; set; } = ProfanityFilterLevel.Moderate;
     public List<string> CustomBannedWords { get; set; } = new();

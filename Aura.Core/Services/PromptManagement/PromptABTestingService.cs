@@ -228,7 +228,7 @@ public class PromptABTestingService
         {
             var results = test.Results.Where(r => r.TemplateId == templateId).ToList();
             
-            if (results.Any())
+            if (results.Count != 0)
             {
                 summary[templateId] = new ABTestSummary
                 {
@@ -290,13 +290,13 @@ public class PromptABTestingService
         foreach (var templateId in test.TemplateIds)
         {
             var results = test.Results.Where(r => r.TemplateId == templateId).ToList();
-            if (results.Any())
+            if (results.Count != 0)
             {
                 scores[templateId] = results.Average(r => r.QualityScore);
             }
         }
 
-        if (scores.Any())
+        if (scores.Count != 0)
         {
             test.WinningTemplateId = scores.OrderByDescending(kvp => kvp.Value).First().Key;
         }

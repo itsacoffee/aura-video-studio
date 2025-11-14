@@ -20,10 +20,10 @@ public record AudioTrack
     public TimeSpan StartTime { get; init; } = TimeSpan.Zero;
     public TimeSpan? Duration { get; init; }
     public TimeSpan Delay { get; init; } = TimeSpan.Zero;
-    public bool Loop { get; init; } = false;
-    public bool FadeIn { get; init; } = false;
+    public bool Loop { get; init; }
+    public bool FadeIn { get; init; }
     public TimeSpan FadeInDuration { get; init; } = TimeSpan.FromSeconds(1);
-    public bool FadeOut { get; init; } = false;
+    public bool FadeOut { get; init; }
     public TimeSpan FadeOutDuration { get; init; } = TimeSpan.FromSeconds(1);
 }
 
@@ -38,8 +38,8 @@ public record AudioMixingSettings
     public string Codec { get; init; } = "aac";
     public bool Normalize { get; init; } = true;
     public double NormalizationTarget { get; init; } = -16.0; // LUFS
-    public bool EnableDucking { get; init; } = false;
-    public int ForegroundTrackIndex { get; init; } = 0; // Voice track for ducking
+    public bool EnableDucking { get; init; }
+    public int ForegroundTrackIndex { get; init; }  // Voice track for ducking
     public double DuckingThreshold { get; init; } = -20.0;
     public double DuckingRatio { get; init; } = 4.0;
 }

@@ -284,7 +284,7 @@ internal class ModelSelectionData
 {
     public List<ModelSelection> Selections { get; set; } = new();
     public List<ModelSelectionAudit> AuditLog { get; set; } = new();
-    public bool AllowAutomaticFallback { get; set; } = false;
+    public bool AllowAutomaticFallback { get; set; }
 }
 
 /// <summary>

@@ -132,13 +132,13 @@ public class VisualStageAdapter : UnifiedGenerationOrchestrator<VisualStageReque
             }
         }
 
-        if (providerInfos.Count == 0 && _llmProviders.ContainsKey("RuleBased"))
+        if (providerInfos.Count == 0 && _llmProviders.TryGetValue("RuleBased", out var value))
         {
             providerInfos.Add(new ProviderInfo(
                 "RuleBased",
                 "default",
                 0,
-                _llmProviders["RuleBased"]));
+value));
         }
 
         return providerInfos.ToArray();

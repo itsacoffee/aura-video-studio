@@ -163,13 +163,13 @@ public class LlmStageAdapter : UnifiedGenerationOrchestrator<LlmStageRequest, Ll
             }
         }
 
-        if (providerInfos.Count == 0 && _providers.ContainsKey("RuleBased"))
+        if (providerInfos.Count == 0 && _providers.TryGetValue("RuleBased", out var value))
         {
             providerInfos.Add(new ProviderInfo(
                 "RuleBased",
                 "default",
                 0,
-                _providers["RuleBased"]));
+value));
         }
 
         return providerInfos.ToArray();

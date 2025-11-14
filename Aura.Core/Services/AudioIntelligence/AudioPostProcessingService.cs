@@ -401,5 +401,5 @@ public record EqualizationConfig
     public double HighPassFrequency { get; init; } = 80;
     public double PresenceBoost { get; init; } = 3.0;
     public double DeEsserReduction { get; init; } = -4.0;
-    public double LowPassFrequency { get; init; } = 0;
+    public double LowPassFrequency { get; init; }
 }

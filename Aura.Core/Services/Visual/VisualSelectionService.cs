@@ -74,12 +74,13 @@ public class VisualSelectionService
     {
         lock (_lock)
         {
-            if (!_selections.ContainsKey(selection.JobId))
+            if (!_selections.TryGetValue(selection.JobId, out var value))
             {
-                _selections[selection.JobId] = new Dictionary<int, SceneVisualSelection>();
+                value = new Dictionary<int, SceneVisualSelection>();
+                _selections[selection.JobId] = value;
             }
 
-            _selections[selection.JobId][selection.SceneIndex] = selection;
+            value[selection.SceneIndex] = selection;
 
             _logger.LogInformation(
                 "Saved selection for job {JobId}, scene {SceneIndex}, state {State}, score {Score:F1}",

@@ -225,7 +225,7 @@ public class SampleAssetsService
                     new AssetSearchFilters { Source = AssetSource.Sample },
                     1, 1);
 
-                if (existingAssets.Assets.Any())
+                if (existingAssets.Assets.Count != 0)
                 {
                     _logger.LogDebug("Sample image already in library: {File}", Path.GetFileName(imageFile));
                     continue;
@@ -267,7 +267,7 @@ public class SampleAssetsService
                     new AssetSearchFilters { Source = AssetSource.Sample },
                     1, 1);
 
-                if (existingAssets.Assets.Any())
+                if (existingAssets.Assets.Count != 0)
                 {
                     _logger.LogDebug("Sample audio already in library: {File}", Path.GetFileName(audioFile));
                     continue;

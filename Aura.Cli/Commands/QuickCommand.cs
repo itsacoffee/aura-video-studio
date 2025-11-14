@@ -395,7 +395,7 @@ public class QuickCommand : ICommand
 /// <summary>
 /// Extended command options with profile and offline support
 /// </summary>
-internal class ExtendedCommandOptions : CommandOptions
+internal sealed class ExtendedCommandOptions : CommandOptions
 {
     public string? Profile { get; set; }
     public bool Offline { get; set; }

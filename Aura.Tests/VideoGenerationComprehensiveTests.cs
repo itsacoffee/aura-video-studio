@@ -300,7 +300,7 @@ public class VideoGenerationComprehensiveTests
     }
 
     // Test helper classes
-    private class TestLlmProvider : ILlmProvider
+    private sealed class TestLlmProvider : ILlmProvider
     {
         public bool DraftScriptCalled { get; private set; }
 
@@ -365,7 +365,7 @@ More test content here to ensure we have adequate word count for the duration. M
         }
     }
 
-    private class TestSlowLlmProvider : ILlmProvider
+    private sealed class TestSlowLlmProvider : ILlmProvider
     {
         public async Task<string> DraftScriptAsync(Brief brief, PlanSpec spec, CancellationToken ct)
         {
@@ -422,7 +422,7 @@ More test content here to ensure we have adequate word count for the duration. M
         }
     }
 
-    private class TestTtsProvider : ITtsProvider
+    private sealed class TestTtsProvider : ITtsProvider
     {
         public bool SynthesizeCalled { get; private set; }
 
@@ -470,7 +470,7 @@ More test content here to ensure we have adequate word count for the duration. M
         }
     }
 
-    private class TestVideoComposer : IVideoComposer
+    private sealed class TestVideoComposer : IVideoComposer
     {
         public bool RenderCalled { get; private set; }
 
@@ -482,7 +482,7 @@ More test content here to ensure we have adequate word count for the duration. M
         }
     }
 
-    private class TestImageProvider : IImageProvider
+    private sealed class TestImageProvider : IImageProvider
     {
         public async Task<IReadOnlyList<Asset>> FetchOrGenerateAsync(Scene scene, VisualSpec spec, CancellationToken ct)
         {
@@ -514,7 +514,7 @@ More test content here to ensure we have adequate word count for the duration. M
         }
     }
 
-    private class TestFfmpegLocator : Aura.Core.Dependencies.IFfmpegLocator
+    private sealed class TestFfmpegLocator : Aura.Core.Dependencies.IFfmpegLocator
     {
         private readonly string _mockPath;
 
@@ -556,7 +556,7 @@ More test content here to ensure we have adequate word count for the duration. M
         }
     }
 
-    private class TestHardwareDetector : Aura.Core.Hardware.IHardwareDetector
+    private sealed class TestHardwareDetector : Aura.Core.Hardware.IHardwareDetector
     {
         public Task<SystemProfile> DetectSystemAsync()
         {

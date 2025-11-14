@@ -403,7 +403,7 @@ public class AudioNormalizer
 /// <summary>
 /// Audio analysis result from first pass
 /// </summary>
-internal class AudioAnalysisResult
+internal sealed class AudioAnalysisResult
 {
     public double IntegratedLoudness { get; set; }
     public double TruePeak { get; set; }

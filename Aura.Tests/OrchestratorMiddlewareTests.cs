@@ -224,7 +224,7 @@ public class OrchestratorMiddlewareTests
     }
 }
 
-internal class TestMockLlmProvider : ILlmProvider
+internal sealed class TestMockLlmProvider : ILlmProvider
 {
     private readonly string _response;
     
@@ -262,7 +262,7 @@ internal class TestMockLlmProvider : ILlmProvider
         => Task.FromResult<string?>(null);
 }
 
-internal class CountingMockLlmProvider : ILlmProvider
+internal sealed class CountingMockLlmProvider : ILlmProvider
 {
     private readonly string _response;
     public int CallCount { get; private set; }
@@ -303,9 +303,9 @@ internal class CountingMockLlmProvider : ILlmProvider
         => Task.FromResult<string?>(null);
 }
 
-internal class MockRetryableLlmProvider : ILlmProvider
+internal sealed class MockRetryableLlmProvider : ILlmProvider
 {
-    private int _callCount = 0;
+    private int _callCount;
     private readonly int _failCount;
     private readonly string _successResponse;
     
@@ -349,7 +349,7 @@ internal class MockRetryableLlmProvider : ILlmProvider
         => Task.FromResult<string?>(null);
 }
 
-internal class MockFailingLlmProvider : ILlmProvider
+internal sealed class MockFailingLlmProvider : ILlmProvider
 {
     private readonly string _errorMessage;
     

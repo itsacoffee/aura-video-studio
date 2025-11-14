@@ -141,12 +141,12 @@ public class LlmTelemetryStatistics
             TotalTokensOut = opList.Sum(o => (long)o.TokensOut),
             TotalEstimatedCost = opList.Sum(o => o.EstimatedCost),
             TotalRetries = opList.Sum(o => o.RetryCount),
-            AverageLatencyMs = opList.Any() ? (long)opList.Average(o => o.LatencyMs) : 0,
-            MedianLatencyMs = latencies.Any() ? latencies[latencies.Count / 2] : 0,
-            P95LatencyMs = latencies.Any() ? latencies[(int)(latencies.Count * 0.95)] : 0,
-            P99LatencyMs = latencies.Any() ? latencies[(int)(latencies.Count * 0.99)] : 0,
-            FirstOperationAt = opList.Any() ? opList.Min(o => o.StartedAt) : null,
-            LastOperationAt = opList.Any() ? opList.Max(o => o.CompletedAt) : null
+            AverageLatencyMs = opList.Count != 0 ? (long)opList.Average(o => o.LatencyMs) : 0,
+            MedianLatencyMs = latencies.Count != 0 ? latencies[latencies.Count / 2] : 0,
+            P95LatencyMs = latencies.Count != 0 ? latencies[(int)(latencies.Count * 0.95)] : 0,
+            P99LatencyMs = latencies.Count != 0 ? latencies[(int)(latencies.Count * 0.99)] : 0,
+            FirstOperationAt = opList.Count != 0 ? opList.Min(o => o.StartedAt) : null,
+            LastOperationAt = opList.Count != 0 ? opList.Max(o => o.CompletedAt) : null
         };
         
         foreach (var op in opList)

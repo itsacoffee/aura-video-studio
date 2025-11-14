@@ -119,14 +119,14 @@ public class TrainingAuditService
             stats.FailedRuns = history.Count(r => r.Status == "Failed");
             stats.CancelledRuns = history.Count(r => r.Status == "Cancelled");
 
-            if (history.Any())
+            if (history.Count != 0)
             {
                 stats.OldestRun = history.Last().StartedAt;
                 stats.NewestRun = history.First().StartedAt;
             }
 
             var completedRuns = history.Where(r => r.Status == "Completed" && r.DurationMinutes > 0).ToList();
-            if (completedRuns.Any())
+            if (completedRuns.Count != 0)
             {
                 stats.AverageTrainingTimeMinutes = completedRuns.Average(r => r.DurationMinutes);
                 stats.TotalTrainingTimeMinutes = completedRuns.Sum(r => r.DurationMinutes);

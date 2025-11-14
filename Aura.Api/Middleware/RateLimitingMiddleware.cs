@@ -136,13 +136,13 @@ public class RateLimitingMiddleware
         return matchedConfig;
     }
 
-    private class RateLimitConfig
+    private sealed class RateLimitConfig
     {
         public int MaxRequests { get; set; }
         public int WindowSeconds { get; set; }
     }
 
-    private class RateLimitCounter
+    private sealed class RateLimitCounter
     {
         public int Count { get; set; }
         public DateTime ResetAt { get; set; }

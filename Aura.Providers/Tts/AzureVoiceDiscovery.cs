@@ -196,7 +196,7 @@ public class AzureVoiceDiscovery
     /// <summary>
     /// Azure voice information from REST API
     /// </summary>
-    private class AzureVoiceInfo
+    private sealed class AzureVoiceInfo
     {
         public string? Name { get; set; }
         public string? ShortName { get; set; }

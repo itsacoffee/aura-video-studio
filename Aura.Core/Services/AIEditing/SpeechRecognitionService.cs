@@ -48,7 +48,7 @@ public class SpeechRecognitionService
         // - Local Whisper model
         var captions = await RecognizeSpeechAsync(filePath, language, cancellationToken);
         var duration = await GetDurationAsync(filePath, cancellationToken);
-        var avgConfidence = captions.Any() ? captions.Average(c => c.Confidence) : 0.0;
+        var avgConfidence = captions.Count != 0 ? captions.Average(c => c.Confidence) : 0.0;
 
         var summary = $"Generated {captions.Count} captions with {avgConfidence:P0} average confidence";
         _logger.LogInformation(summary);

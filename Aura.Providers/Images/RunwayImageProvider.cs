@@ -108,7 +108,7 @@ public class RunwayImageProvider
         }
     }
 
-    private class RunwayResponse
+    private sealed class RunwayResponse
     {
         public List<string>? Images { get; set; }
     }

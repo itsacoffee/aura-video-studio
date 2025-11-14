@@ -300,14 +300,14 @@ public class FreesoundSfxProvider : ISfxProvider
         return SoundEffectType.Ambient;
     }
 
-    private record FreesoundSearchResponse(
+    private sealed record FreesoundSearchResponse(
         int Count,
         string? Next,
         string? Previous,
         List<FreesoundSound> Results
     );
 
-    private record FreesoundSound(
+    private sealed record FreesoundSound(
         int Id,
         string Name,
         string? Description,
@@ -320,7 +320,7 @@ public class FreesoundSfxProvider : ISfxProvider
         double? AvgRating
     );
 
-    private record FreesoundPreviews(
+    private sealed record FreesoundPreviews(
         string? PreviewHqMp3,
         string? PreviewHqOgg,
         string? PreviewLqMp3,

@@ -221,8 +221,8 @@ public class PerformanceAnalyticsService
         }
 
         // Calculate overall performance
-        var avgViews = videos.Any() ? videos.Average(v => v.Metrics.Views) : 0;
-        var avgEngagement = videos.Any() ? videos.Average(v => v.Metrics.Engagement.EngagementRate) : 0;
+        var avgViews = videos.Count != 0 ? videos.Average(v => v.Metrics.Views) : 0;
+        var avgEngagement = videos.Count != 0 ? videos.Average(v => v.Metrics.Engagement.EngagementRate) : 0;
 
         return new PerformanceInsights(
             ProfileId: profileId,
@@ -313,7 +313,7 @@ public class PerformanceAnalyticsService
             .Take(Math.Min(5, videos.Count))
             .ToList();
 
-        if (!olderVideos.Any())
+        if (olderVideos.Count == 0)
         {
             return "new_profile";
         }

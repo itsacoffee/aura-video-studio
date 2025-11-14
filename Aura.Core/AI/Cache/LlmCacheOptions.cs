@@ -21,12 +21,12 @@ public class LlmCacheOptions
     /// Default time-to-live for cache entries in seconds
     /// </summary>
     public int DefaultTtlSeconds { get; set; } = 3600;
-    
+
     /// <summary>
     /// Enable disk-based storage for overflow
     /// </summary>
-    public bool UseDiskStorage { get; set; } = false;
-    
+    public bool UseDiskStorage { get; set; }
+
     /// <summary>
     /// Directory path for disk cache
     /// </summary>

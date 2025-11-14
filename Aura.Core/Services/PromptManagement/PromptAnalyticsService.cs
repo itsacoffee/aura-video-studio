@@ -127,10 +127,10 @@ public class PromptAnalyticsService
             TotalTemplates = templates.Count,
             ActiveTemplates = templates.Count(t => t.Status == TemplateStatus.Active),
             TotalUsages = templates.Sum(t => t.Metrics.UsageCount),
-            AverageQualityScore = templates.Any()
+            AverageQualityScore = templates.Count != 0
                 ? templates.Average(t => t.Metrics.AverageQualityScore)
                 : 0,
-            AverageSuccessRate = templates.Any()
+            AverageSuccessRate = templates.Count != 0
                 ? templates.Average(t => t.Metrics.SuccessRate)
                 : 1.0,
             TopPerformingTemplates = templates

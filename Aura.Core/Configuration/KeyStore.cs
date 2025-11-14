@@ -141,7 +141,7 @@ public class KeyStore : IKeyStore
         // Only show last 30 characters
         if (path.Length > 30)
         {
-            return "..." + path.Substring(path.Length - 30);
+            return string.Concat("...", path.AsSpan(path.Length - 30));
         }
 
         return path;

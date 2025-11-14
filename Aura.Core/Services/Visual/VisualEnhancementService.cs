@@ -419,7 +419,7 @@ public record KenBurnsConfig
     public double StartScale { get; init; } = 1.0;
     public double EndScale { get; init; } = 1.2;
     public bool StartFromFocus { get; init; } = true;
-    public bool EndAtFocus { get; init; } = false;
+    public bool EndAtFocus { get; init; }
     public bool AutoScale { get; init; } = true;
     public string EasingFunction { get; init; } = "ease-in-out";
 }

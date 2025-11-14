@@ -275,7 +275,7 @@ public class CulturalLocalizationEngine
         sb.AppendLine("5. Gender and social norms");
         sb.AppendLine();
 
-        if (targetLanguage.CulturalSensitivities.Any())
+        if (targetLanguage.CulturalSensitivities.Count != 0)
         {
             sb.AppendLine("Known cultural sensitivities:");
             foreach (var sensitivity in targetLanguage.CulturalSensitivities)

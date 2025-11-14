@@ -52,7 +52,7 @@ public class PlaceholderProvider : BaseVisualProvider
             var tempPath = Path.Combine(Path.GetTempPath(), $"placeholder_{Guid.NewGuid()}.txt");
             
             var color = SelectColorForPrompt(prompt);
-            var truncatedPrompt = prompt.Length > 50 ? prompt.Substring(0, 47) + "..." : prompt;
+            var truncatedPrompt = prompt.Length > 50 ? string.Concat(prompt.AsSpan(0, 47), "...") : prompt;
             
             var content = $"Placeholder Image\n" +
                          $"Prompt: {truncatedPrompt}\n" +

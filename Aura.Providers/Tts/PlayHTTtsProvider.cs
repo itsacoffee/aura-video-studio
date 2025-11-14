@@ -153,7 +153,7 @@ public class PlayHTTtsProvider : ITtsProvider
             ct.ThrowIfCancellationRequested();
             
             _logger.LogDebug("Synthesizing line {Index}: {Text}", line.SceneIndex, 
-                line.Text.Length > 30 ? line.Text.Substring(0, 30) + "..." : line.Text);
+                line.Text.Length > 30 ? string.Concat(line.Text.AsSpan(0, 30), "...") : line.Text);
             
             // Create the request payload
             var payload = new

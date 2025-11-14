@@ -16,12 +16,12 @@ public record JobStep
     /// Status of the step
     /// </summary>
     public StepStatus Status { get; init; } = StepStatus.Pending;
-    
+
     /// <summary>
     /// Progress percentage (0-100)
     /// </summary>
-    public int ProgressPct { get; init; } = 0;
-    
+    public int ProgressPct { get; init; }
+
     /// <summary>
     /// Duration in milliseconds
     /// </summary>
@@ -91,9 +91,9 @@ public record JobOutput
     /// Path to the output video file
     /// </summary>
     public string VideoPath { get; init; } = string.Empty;
-    
+
     /// <summary>
     /// Size of the output file in bytes
     /// </summary>
-    public long SizeBytes { get; init; } = 0;
+    public long SizeBytes { get; init; }
 }

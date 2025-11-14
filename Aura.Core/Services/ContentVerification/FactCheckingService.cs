@@ -229,7 +229,7 @@ public class FactCheckingService
 
     private VerificationStatus DetermineVerificationStatus(List<Evidence> evidence)
     {
-        if (!evidence.Any())
+        if (evidence.Count == 0)
         {
             return VerificationStatus.Unknown;
         }
@@ -249,7 +249,7 @@ public class FactCheckingService
 
     private double CalculateConfidence(List<Evidence> evidence, VerificationStatus status)
     {
-        if (!evidence.Any())
+        if (evidence.Count == 0)
         {
             return 0.0;
         }
@@ -280,7 +280,7 @@ public class FactCheckingService
         List<Evidence> evidence,
         VerificationStatus status)
     {
-        if (!evidence.Any())
+        if (evidence.Count == 0)
         {
             return "No evidence found to verify this claim.";
         }

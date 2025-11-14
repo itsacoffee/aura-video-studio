@@ -248,13 +248,14 @@ public class ModelInstaller
             throw new DirectoryNotFoundException($"Folder not found: {folderPath}");
         }
 
-        if (!_externalFolders.ContainsKey(kind))
+        if (!_externalFolders.TryGetValue(kind, out var value))
         {
-            _externalFolders[kind] = new List<ExternalModelFolder>();
+            value = new List<ExternalModelFolder>();
+            _externalFolders[kind] = value;
         }
 
         // Check if already added - return 0 if duplicate
-        if (_externalFolders[kind].Any(f => f.FolderPath.Equals(folderPath, StringComparison.OrdinalIgnoreCase)))
+        if (value.Any(f => f.FolderPath.Equals(folderPath, StringComparison.OrdinalIgnoreCase)))
         {
             _logger.LogWarning("Folder already added: {Path}", folderPath);
             return 0;
@@ -270,8 +271,7 @@ public class ModelInstaller
 
         // Index models in this folder
         IndexExternalFolder(folder);
-
-        _externalFolders[kind].Add(folder);
+        value.Add(folder);
         _logger.LogInformation("Added external folder: {Path} for {Kind}", folderPath, kind);
         
         return folder.ModelCount;

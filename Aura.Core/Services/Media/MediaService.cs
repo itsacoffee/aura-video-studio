@@ -168,7 +168,7 @@ public class MediaService : IMediaService
             await _mediaRepository.AddMediaAsync(entity, ct);
 
             // Add tags
-            if (request.Tags.Any())
+            if (request.Tags.Count != 0)
             {
                 await _mediaRepository.AddTagsAsync(entity.Id, request.Tags, ct);
                 entity = await _mediaRepository.GetMediaByIdAsync(entity.Id, ct);
@@ -208,12 +208,12 @@ public class MediaService : IMediaService
         var tagsToRemove = existingTags.Except(request.Tags).ToList();
         var tagsToAdd = request.Tags.Except(existingTags).ToList();
 
-        if (tagsToRemove.Any())
+        if (tagsToRemove.Count != 0)
         {
             await _mediaRepository.RemoveTagsAsync(id, tagsToRemove, ct);
         }
 
-        if (tagsToAdd.Any())
+        if (tagsToAdd.Count != 0)
         {
             await _mediaRepository.AddTagsAsync(id, tagsToAdd, ct);
         }
@@ -281,7 +281,7 @@ public class MediaService : IMediaService
                         break;
 
                     case BulkOperation.AddTags:
-                        if (request.Tags != null && request.Tags.Any())
+                        if (request.Tags != null && request.Tags.Count != 0)
                         {
                             await _mediaRepository.AddTagsAsync(mediaId, request.Tags, ct);
                             var media = await _mediaRepository.GetMediaByIdAsync(mediaId, ct);
@@ -293,7 +293,7 @@ public class MediaService : IMediaService
                         break;
 
                     case BulkOperation.RemoveTags:
-                        if (request.Tags != null && request.Tags.Any())
+                        if (request.Tags != null && request.Tags.Count != 0)
                         {
                             await _mediaRepository.RemoveTagsAsync(mediaId, request.Tags, ct);
                             var media = await _mediaRepository.GetMediaByIdAsync(mediaId, ct);
@@ -520,7 +520,7 @@ public class MediaService : IMediaService
 
         await _mediaRepository.AddMediaAsync(entity, ct);
 
-        if (request.Tags.Any())
+        if (request.Tags.Count != 0)
         {
             await _mediaRepository.AddTagsAsync(entity.Id, request.Tags, ct);
         }

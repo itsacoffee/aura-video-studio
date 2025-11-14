@@ -130,7 +130,7 @@ public class ContentVerificationOrchestrator
         var topClaims = claims.Take(5).ToList();
         var factChecks = await _factCheckingService.CheckClaimsAsync(topClaims, ct);
 
-        var avgConfidence = factChecks.Any()
+        var avgConfidence = factChecks.Count != 0
             ? factChecks.Average(fc => fc.ConfidenceScore)
             : 0.0;
 
@@ -252,7 +252,7 @@ public class ContentVerificationOrchestrator
         List<FactCheckResult> factChecks,
         MisinformationDetection? misinformation)
     {
-        if (!factChecks.Any())
+        if (factChecks.Count == 0)
         {
             return VerificationStatus.Unknown;
         }
@@ -323,7 +323,7 @@ public class ContentVerificationOrchestrator
         }
 
         // Check for low confidence claims
-        if (confidence != null && confidence.LowConfidenceClaims.Any())
+        if (confidence != null && confidence.LowConfidenceClaims.Count != 0)
         {
             warnings.Add($"{confidence.LowConfidenceClaims.Count} low confidence claim(s)");
         }

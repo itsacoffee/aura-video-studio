@@ -52,11 +52,13 @@ public class TokenTrackingService
             
             if (!string.IsNullOrEmpty(metrics.JobId))
             {
-                if (!_runMetrics.ContainsKey(metrics.JobId))
+                if (!_runMetrics.TryGetValue(metrics.JobId, out var value))
                 {
-                    _runMetrics[metrics.JobId] = new List<TokenUsageMetrics>();
+                    value = new List<TokenUsageMetrics>();
+                    _runMetrics[metrics.JobId] = value;
                 }
-                _runMetrics[metrics.JobId].Add(metrics);
+
+                value.Add(metrics);
             }
             
             SaveTokenMetrics();
@@ -81,7 +83,7 @@ public class TokenTrackingService
     {
         lock (_lock)
         {
-            if (!_runMetrics.TryGetValue(jobId, out var metrics) || !metrics.Any())
+            if (!_runMetrics.TryGetValue(jobId, out var metrics) || metrics.Count == 0)
             {
                 return new TokenUsageStatistics
                 {
@@ -108,7 +110,7 @@ public class TokenTrackingService
                 TotalOutputTokens = successfulOps.Sum(m => (long)m.OutputTokens),
                 OperationCount = successfulOps.Count,
                 CacheHits = cacheHits,
-                AverageResponseTimeMs = successfulOps.Any() 
+                AverageResponseTimeMs = successfulOps.Count != 0
                     ? (long)successfulOps.Average(m => m.ResponseTimeMs) 
                     : 0,
                 TotalCost = totalCost,
@@ -149,7 +151,7 @@ public class TokenTrackingService
             
             var metrics = query.ToList();
             
-            if (!metrics.Any())
+            if (metrics.Count == 0)
             {
                 return new TokenUsageStatistics
                 {
@@ -215,7 +217,7 @@ public class TokenTrackingService
         
         lock (_lock)
         {
-            if (!_runMetrics.TryGetValue(jobId, out var metrics) || !metrics.Any())
+            if (!_runMetrics.TryGetValue(jobId, out var metrics) || metrics.Count == 0)
             {
                 return suggestions;
             }
@@ -240,7 +242,7 @@ public class TokenTrackingService
                 .Select(g => g.Key)
                 .ToList();
             
-            if (expensiveProviders.Any())
+            if (expensiveProviders.Count != 0)
             {
                 suggestions.Add(new CostOptimizationSuggestion
                 {

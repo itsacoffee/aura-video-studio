@@ -346,7 +346,7 @@ public record TranslateAndPlanSSMLRequest
     public string? AudienceProfileId { get; init; }
     public double DurationTolerance { get; init; } = 0.02;
     public int MaxFittingIterations { get; init; } = 10;
-    public bool EnableAggressiveAdjustments { get; init; } = false;
+    public bool EnableAggressiveAdjustments { get; init; }
     public SubtitleFormat SubtitleFormat { get; init; } = SubtitleFormat.SRT;
 }
 

@@ -58,7 +58,7 @@ public class ConfidenceAnalysisService
             }
         }
 
-        var overallConfidence = claimConfidences.Any()
+        var overallConfidence = claimConfidences.Count != 0
             ? claimConfidences.Values.Average()
             : 0.0;
 
@@ -80,7 +80,7 @@ public class ConfidenceAnalysisService
         Claim claim,
         List<Evidence> evidence)
     {
-        if (!evidence.Any())
+        if (evidence.Count == 0)
         {
             return 0.0;
         }

@@ -201,7 +201,7 @@ public class CriticService : ICriticProvider
 
             var rubricWeightLookup = rubrics.ToDictionary(r => r.Name, r => r.Weight);
             var overallScore = rubrics.Any() 
-                ? rubricScores.Sum(kvp => kvp.Value * (rubricWeightLookup.ContainsKey(kvp.Key) ? rubricWeightLookup[kvp.Key] : 0)) / rubrics.Sum(r => r.Weight)
+                ? rubricScores.Sum(kvp => kvp.Value * (rubricWeightLookup.TryGetValue(kvp.Key, out var value) ? value : 0)) / rubrics.Sum(r => r.Weight)
                 : 75.0;
 
             issues = ExtractIssues(response);

@@ -108,7 +108,7 @@ public class WindowsTtsProvider : ITtsProvider
             }
             
             _logger.LogDebug("Synthesized line {Index}: {Text}", line.SceneIndex, 
-                line.Text.Length > 30 ? line.Text.Substring(0, 30) + "..." : line.Text);
+                line.Text.Length > 30 ? string.Concat(line.Text.AsSpan(0, 30), "...") : line.Text);
         }
         
         // Combine all audio files into one using WAV merger

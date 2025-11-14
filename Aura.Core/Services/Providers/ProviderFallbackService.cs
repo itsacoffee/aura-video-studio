@@ -183,7 +183,7 @@ public class ProviderFallbackService
             return "Configure online providers (OpenAI, ElevenLabs, etc.) for enhanced capabilities, or continue using offline mode with template-based generation.";
         }
 
-        if (status.DegradedFeatures.Any())
+        if (status.DegradedFeatures.Count != 0)
         {
             return "Some features are running in degraded mode. Configure additional providers for full functionality.";
         }

@@ -274,9 +274,9 @@ public record OrchestrationConfig
     public bool EnableCache { get; init; } = true;
     public int CacheTtlSeconds { get; init; } = 3600;
     public bool ValidateSchema { get; init; } = true;
-    public bool StrictValidation { get; init; } = false;
+    public bool StrictValidation { get; init; }
     public string[]? ProviderChain { get; init; }
-    public bool OfflineOnly { get; init; } = false;
+    public bool OfflineOnly { get; init; }
     public string? PreferredTier { get; init; }
 }
 

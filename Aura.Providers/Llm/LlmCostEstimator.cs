@@ -226,7 +226,7 @@ public class LlmCostEstimator
             return cost <= maxBudget;
         }).ToList();
 
-        if (!affordableModels.Any())
+        if (affordableModels.Count == 0)
         {
             // Return cheapest model if nothing fits budget
             return models.FirstOrDefault()?.Name ?? "gpt-4o-mini";
@@ -341,7 +341,7 @@ public enum QualityTier
 /// <summary>
 /// Model information with cost data for budget comparison
 /// </summary>
-internal record ModelCostInfo(
+internal sealed record ModelCostInfo(
     string Name,
     ModelPricing Pricing,
     decimal AvgCostPer1K);

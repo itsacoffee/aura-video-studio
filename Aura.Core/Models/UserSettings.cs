@@ -57,7 +57,7 @@ public class GeneralSettings
     public ThemeMode Theme { get; set; } = ThemeMode.Auto;
     public StartupBehavior StartupBehavior { get; set; } = StartupBehavior.ShowDashboard;
     public bool CheckForUpdatesOnStartup { get; set; } = true;
-    public bool AdvancedModeEnabled { get; set; } = false;
+    public bool AdvancedModeEnabled { get; set; }
 }
 
 /// <summary>
@@ -125,7 +125,7 @@ public class EditorPreferencesSettings
 public class UISettings
 {
     public int Scale { get; set; } = 100;
-    public bool CompactMode { get; set; } = false;
+    public bool CompactMode { get; set; }
     public string ColorScheme { get; set; } = "default";
 }
 
@@ -175,12 +175,12 @@ public class VisualGenerationSettings
 /// </summary>
 public class AdvancedSettings
 {
-    public bool OfflineMode { get; set; } = false;
+    public bool OfflineMode { get; set; }
     public string StableDiffusionUrl { get; set; } = "http://127.0.0.1:7860";
     public string OllamaUrl { get; set; } = "http://127.0.0.1:11434";
     public string OllamaModel { get; set; } = "llama3.1:8b-q4_k_m";
-    public bool EnableTelemetry { get; set; } = false;
-    public bool EnableCrashReports { get; set; } = false;
+    public bool EnableTelemetry { get; set; }
+    public bool EnableCrashReports { get; set; }
 }
 
 /// <summary>

@@ -156,7 +156,7 @@ public class LogsController : ControllerBase
     /// <summary>
     /// Exception class for frontend errors
     /// </summary>
-    private class FrontendException : Exception
+    private sealed class FrontendException : Exception
     {
         public FrontendException(string message, string? stack) : base(message)
         {

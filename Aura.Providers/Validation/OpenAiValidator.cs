@@ -45,7 +45,7 @@ public class OpenAiValidator : IProviderValidator
             }
 
             // Log key format for debugging (masked)
-            var keyPrefix = apiKey.Length > 15 ? apiKey.Substring(0, 15) + "..." : apiKey;
+            var keyPrefix = apiKey.Length > 15 ? string.Concat(apiKey.AsSpan(0, 15), "...") : apiKey;
             _logger.LogInformation("OpenAI validation starting with key prefix: {KeyPrefix}, Length: {Length}", 
                 keyPrefix, apiKey.Length);
 
@@ -157,7 +157,7 @@ public class OpenAiValidator : IProviderValidator
         {
             return "***";
         }
-        return key.Substring(0, 8) + "...";
+        return string.Concat(key.AsSpan(0, 8), "...");
     }
 
     private string GetErrorMessage(string errorContent)

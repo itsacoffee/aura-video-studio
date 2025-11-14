@@ -207,7 +207,7 @@ public class RenderMonitor
             {
                 var error = new RenderError(
                     Timestamp: DateTime.UtcNow,
-                    Message: line.Length > 200 ? line.Substring(0, 200) + "..." : line,
+                    Message: line.Length > 200 ? string.Concat(line.AsSpan(0, 200), "...") : line,
                     Details: line,
                     IsRecoverable: isRecoverable
                 );

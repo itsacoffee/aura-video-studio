@@ -198,14 +198,14 @@ public class EndToEndVideoGenerationTests : IClassFixture<ApiTestFixture>
         Assert.Contains("Healthy", body, StringComparison.OrdinalIgnoreCase);
     }
 
-    private class GenerationStartResponse
+    private sealed class GenerationStartResponse
     {
         public string JobId { get; set; } = "";
         public string CorrelationId { get; set; } = "";
         public string Message { get; set; } = "";
     }
 
-    private class GenerationStatusResponse
+    private sealed class GenerationStatusResponse
     {
         public string JobId { get; set; } = "";
         public string Status { get; set; } = "";

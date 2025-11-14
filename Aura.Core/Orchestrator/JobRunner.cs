@@ -541,7 +541,7 @@ public class JobRunner
                 var errorLog = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] VALIDATION ERROR: {vex.Message}";
                 var updatedLogs = new List<string>(job.Logs) { errorLog };
                 
-                if (vex.Issues.Any())
+                if (vex.Issues.Count != 0)
                 {
                     foreach (var issue in vex.Issues)
                     {
@@ -909,7 +909,7 @@ public class JobRunner
             return "Render failed due to FFmpeg error";
         }
         
-        return message.Length > 200 ? message.Substring(0, 197) + "..." : message;
+        return message.Length > 200 ? string.Concat(message.AsSpan(0, 197), "...") : message;
     }
 
     /// <summary>

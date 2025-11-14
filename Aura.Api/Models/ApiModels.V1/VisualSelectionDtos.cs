@@ -171,5 +171,5 @@ public record ThresholdConfigDto
     public string ProjectId { get; init; } = string.Empty;
     public double MinimumAestheticThreshold { get; init; } = 60.0;
     public double AutoAcceptThreshold { get; init; } = 85.0;
-    public bool EnableAutoSelection { get; init; } = false;
+    public bool EnableAutoSelection { get; init; }
 }

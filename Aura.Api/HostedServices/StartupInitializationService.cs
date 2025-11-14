@@ -228,7 +228,7 @@ public class StartupInitializationService : IHostedService
         return Task.CompletedTask;
     }
 
-    private class InitializationStep
+    private sealed class InitializationStep
     {
         public string Name { get; set; } = string.Empty;
         public bool IsCritical { get; set; }

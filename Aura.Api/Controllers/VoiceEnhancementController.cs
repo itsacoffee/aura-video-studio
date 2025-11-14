@@ -318,9 +318,9 @@ public record EnhanceVoiceRequest
     public double NoiseReductionStrength { get; init; } = 0.7;
     public bool EnableEqualization { get; init; } = true;
     public EqualizationPreset EqualizationPreset { get; init; } = EqualizationPreset.Balanced;
-    public bool EnableProsodyAdjustment { get; init; } = false;
+    public bool EnableProsodyAdjustment { get; init; }
     public ProsodySettings? Prosody { get; init; }
-    public bool EnableEmotionEnhancement { get; init; } = false;
+    public bool EnableEmotionEnhancement { get; init; }
     public EmotionTarget? TargetEmotion { get; init; }
 }
 
@@ -344,9 +344,9 @@ public record BatchEnhanceRequest
     public double NoiseReductionStrength { get; init; } = 0.7;
     public bool EnableEqualization { get; init; } = true;
     public EqualizationPreset EqualizationPreset { get; init; } = EqualizationPreset.Balanced;
-    public bool EnableProsodyAdjustment { get; init; } = false;
+    public bool EnableProsodyAdjustment { get; init; }
     public ProsodySettings? Prosody { get; init; }
-    public bool EnableEmotionEnhancement { get; init; } = false;
+    public bool EnableEmotionEnhancement { get; init; }
     public EmotionTarget? TargetEmotion { get; init; }
 }
 

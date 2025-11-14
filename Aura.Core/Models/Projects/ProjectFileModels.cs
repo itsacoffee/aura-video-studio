@@ -262,7 +262,7 @@ public class ProjectConsolidationRequest
     public Guid ProjectId { get; set; }
     public bool CopyExternalAssets { get; set; } = true;
     public bool CreateBackup { get; set; } = true;
-    public bool EmbedInProjectFile { get; set; } = false;
+    public bool EmbedInProjectFile { get; set; }
 }
 
 /// <summary>
@@ -285,7 +285,7 @@ public class ProjectPackageRequest
 {
     public Guid ProjectId { get; set; }
     public bool IncludeAssets { get; set; } = true;
-    public bool IncludeBackups { get; set; } = false;
+    public bool IncludeBackups { get; set; }
     public bool CompressAssets { get; set; } = true;
     public string? OutputPath { get; set; }
 }

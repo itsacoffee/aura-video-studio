@@ -89,7 +89,7 @@ public class TemplateManagementService
             Category = category,
             SubCategory = subCategory,
             TemplateData = templateData,
-            Tags = tags != null && tags.Any() ? string.Join(",", tags) : string.Empty,
+            Tags = tags != null && tags.Count != 0 ? string.Join(",", tags) : string.Empty,
             PreviewImage = previewImage ?? string.Empty,
             PreviewVideo = previewVideo ?? string.Empty,
             IsSystemTemplate = isSystemTemplate,

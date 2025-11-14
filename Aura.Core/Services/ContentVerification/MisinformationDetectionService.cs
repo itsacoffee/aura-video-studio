@@ -301,7 +301,7 @@ public class MisinformationDetectionService
 
     private double CalculateRiskScore(List<MisinformationFlag> flags)
     {
-        if (!flags.Any())
+        if (flags.Count == 0)
         {
             return 0.0;
         }

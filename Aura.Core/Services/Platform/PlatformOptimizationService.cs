@@ -224,6 +224,6 @@ public class PlatformOptimizationService
         if (maxLength <= 0 || string.IsNullOrEmpty(text))
             return text;
 
-        return text.Length <= maxLength ? text : text.Substring(0, maxLength - 3) + "...";
+        return text.Length <= maxLength ? text : string.Concat(text.AsSpan(0, maxLength - 3), "...");
     }
 }

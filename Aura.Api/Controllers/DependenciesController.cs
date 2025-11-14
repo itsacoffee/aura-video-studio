@@ -823,5 +823,5 @@ public class DependenciesController : ControllerBase
 public class AttachComponentRequest
 {
     public string Path { get; set; } = "";
-    public bool AttachInPlace { get; set; } = false;
+    public bool AttachInPlace { get; set; }
 }

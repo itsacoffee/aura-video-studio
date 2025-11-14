@@ -147,7 +147,7 @@ public class EditingIntelligenceOrchestrator
         var timeline = await LoadTimelineAsync(jobId) ?? new EditableTimeline();
 
         // If timeline already has scenes, use them
-        if (!timeline.Scenes.Any())
+        if (timeline.Scenes.Count == 0)
         {
             _logger.LogInformation("No existing timeline, would need to generate from script");
             // In a full implementation, this would:
@@ -263,7 +263,7 @@ public class EditingIntelligenceOrchestrator
             }
         }
 
-        if (!recommendations.Any())
+        if (recommendations.Count == 0)
         {
             recommendations.Add("Timeline looks great! Ready for final review and rendering.");
         }

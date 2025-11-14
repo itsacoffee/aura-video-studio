@@ -94,7 +94,7 @@ public class DiagnosticsHelper
                     .OrderByDescending(f => File.GetLastWriteTime(f))
                     .ToList();
 
-                if (logFiles.Any())
+                if (logFiles.Count != 0)
                 {
                     var latestLog = logFiles[0];
                     var lines = File.ReadAllLines(latestLog);

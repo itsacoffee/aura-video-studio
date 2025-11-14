@@ -194,7 +194,7 @@ public class VerificationPersistence
         var disputed = results.Count(r => r.OverallStatus == VerificationStatus.Disputed);
         var falseContent = results.Count(r => r.OverallStatus == VerificationStatus.False);
 
-        var avgConfidence = results.Any() ? results.Average(r => r.OverallConfidence) : 0.0;
+        var avgConfidence = results.Count != 0 ? results.Average(r => r.OverallConfidence) : 0.0;
 
         return new VerificationStatistics(
             TotalVerified: totalVerified,

@@ -193,7 +193,7 @@ public class RunCostReportService
         }
         sb.AppendLine();
         
-        if (report.OptimizationSuggestions.Any())
+        if (report.OptimizationSuggestions.Count != 0)
         {
             sb.AppendLine("Optimization Suggestions");
             sb.AppendLine("Category,Suggestion,Estimated Savings,Quality Impact");

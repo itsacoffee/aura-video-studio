@@ -42,7 +42,7 @@ public record SSMLPlanningRequest
     /// <summary>
     /// Enable aggressive prosody adjustments
     /// </summary>
-    public bool EnableAggressiveAdjustments { get; init; } = false;
+    public bool EnableAggressiveAdjustments { get; init; }
 }
 
 /// <summary>
@@ -130,7 +130,7 @@ public record ProsodyAdjustments
     /// <summary>
     /// Pitch adjustment in semitones
     /// </summary>
-    public double Pitch { get; init; } = 0.0;
+    public double Pitch { get; init; }
 
     /// <summary>
     /// Volume adjustment (0.0 - 2.0)

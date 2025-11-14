@@ -48,7 +48,7 @@ public static class ErrorHandlingServicesExtensions
 /// <summary>
 /// Hosted service that periodically flushes error logs to disk
 /// </summary>
-internal class ErrorLoggingFlushService : BackgroundService
+internal sealed class ErrorLoggingFlushService : BackgroundService
 {
     private readonly ErrorLoggingService _errorLoggingService;
     private readonly ILogger<ErrorLoggingFlushService> _logger;
@@ -105,7 +105,7 @@ internal class ErrorLoggingFlushService : BackgroundService
 /// <summary>
 /// Hosted service that periodically cleans up old error logs
 /// </summary>
-internal class ErrorLoggingCleanupService : BackgroundService
+internal sealed class ErrorLoggingCleanupService : BackgroundService
 {
     private readonly ErrorLoggingService _errorLoggingService;
     private readonly ErrorAggregationService _errorAggregationService;

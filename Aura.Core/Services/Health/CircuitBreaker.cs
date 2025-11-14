@@ -33,7 +33,7 @@ public class CircuitBreaker
     
     private CircuitBreakerState _state = CircuitBreakerState.Closed;
     private DateTime _openedAt = DateTime.MinValue;
-    private int _consecutiveFailures = 0;
+    private int _consecutiveFailures;
     private readonly ConcurrentQueue<(DateTime Timestamp, bool Success)> _recentAttempts = new();
     private readonly SemaphoreSlim _stateLock = new(1, 1);
 

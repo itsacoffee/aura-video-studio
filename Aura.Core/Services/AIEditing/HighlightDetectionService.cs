@@ -47,7 +47,7 @@ public class HighlightDetectionService
         // - ML models for engagement prediction
         var highlights = await AnalyzeForHighlightsAsync(videoPath, maxHighlights, cancellationToken);
         var duration = await GetVideoDurationAsync(videoPath, cancellationToken);
-        var avgEngagement = highlights.Any() ? highlights.Average(h => h.Score) : 0.0;
+        var avgEngagement = highlights.Count != 0 ? highlights.Average(h => h.Score) : 0.0;
 
         var summary = $"Detected {highlights.Count} highlight moments with average engagement score {avgEngagement:F2}";
         _logger.LogInformation(summary);

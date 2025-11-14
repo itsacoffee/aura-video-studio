@@ -106,7 +106,7 @@ public class MarkdownParser : IDocumentParser
     private DocumentStructure AnalyzeStructure(string content)
     {
         var sections = ParseSections(content);
-        var maxLevel = sections.Any() ? sections.Max(s => s.Level) : 0;
+        var maxLevel = sections.Count != 0 ? sections.Max(s => s.Level) : 0;
         
         var plainText = StripMarkdown(content);
         var complexity = AnalyzeComplexity(plainText);
@@ -170,7 +170,7 @@ public class MarkdownParser : IDocumentParser
                     while (sectionStack.Count > 0 && sectionStack.Peek().Level >= currentSection.Level)
                     {
                         var completed = sectionStack.Pop();
-                        if (!sectionStack.Any())
+                        if (sectionStack.Count == 0)
                         {
                             sections.Add(completed);
                         }
@@ -206,10 +206,10 @@ public class MarkdownParser : IDocumentParser
             sectionStack.Push(currentSection);
         }
 
-        while (sectionStack.Any())
+        while (sectionStack.Count != 0)
         {
             var completed = sectionStack.Pop();
-            if (!sectionStack.Any())
+            if (sectionStack.Count == 0)
             {
                 sections.Add(completed);
             }

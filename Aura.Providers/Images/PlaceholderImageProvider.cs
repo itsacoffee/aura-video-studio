@@ -100,7 +100,7 @@ public class PlaceholderImageProvider : IStockProvider
         canvas.Clear(backgroundColor);
 
         var maxTextWidth = text.Length > 50 ? 50 : text.Length;
-        var displayText = text.Length > maxTextWidth ? text.Substring(0, maxTextWidth) + "..." : text;
+        var displayText = text.Length > maxTextWidth ? string.Concat(text.AsSpan(0, maxTextWidth), "...") : text;
 
         var fontSize = 80f;
         using var paint = new SKPaint

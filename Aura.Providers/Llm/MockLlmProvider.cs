@@ -362,11 +362,12 @@ That's everything you need to know about this topic. Thank you for watching!";
     {
         _callHistory.Add($"{methodName} at {DateTime.UtcNow:O}");
         
-        if (!CallCounts.ContainsKey(methodName))
+        if (!CallCounts.TryGetValue(methodName, out var value))
         {
-            CallCounts[methodName] = 0;
+            value = 0;
+            CallCounts[methodName] = value;
         }
-        CallCounts[methodName]++;
+        CallCounts[methodName] = ++value;
     }
 
     /// <summary>

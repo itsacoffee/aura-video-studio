@@ -431,7 +431,7 @@ public class EnhancedRefinementOrchestrator
     {
         var summary = $"Overall Score: {critique.OverallScore:F1}/100\n\n";
 
-        if (critique.Issues.Any())
+        if (critique.Issues.Count != 0)
         {
             summary += "Key Issues:\n";
             foreach (var issue in critique.Issues.Take(3))
@@ -441,7 +441,7 @@ public class EnhancedRefinementOrchestrator
             summary += "\n";
         }
 
-        if (critique.Strengths.Any())
+        if (critique.Strengths.Count != 0)
         {
             summary += "Strengths:\n";
             foreach (var strength in critique.Strengths.Take(3))

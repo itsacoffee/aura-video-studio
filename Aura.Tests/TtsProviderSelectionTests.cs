@@ -230,7 +230,7 @@ public class TtsProviderSelectionTests
 /// </summary>
 public class BaseTtsProviderTests
 {
-    private class TestTtsProvider : BaseTtsProvider
+    private sealed class TestTtsProvider : BaseTtsProvider
     {
         private readonly Func<IEnumerable<ScriptLine>, VoiceSpec, CancellationToken, Task<string>>? _generateFunc;
         private readonly Func<Task<IReadOnlyList<string>>>? _getVoicesFunc;

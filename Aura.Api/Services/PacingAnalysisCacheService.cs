@@ -96,7 +96,7 @@ public class PacingAnalysisCacheService
         }
     }
 
-    private class CacheEntry
+    private sealed class CacheEntry
     {
         public PacingAnalysisResponse Analysis { get; init; } = null!;
         public DateTime ExpiresAt { get; init; }

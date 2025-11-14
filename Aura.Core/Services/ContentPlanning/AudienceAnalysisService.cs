@@ -239,7 +239,7 @@ public class AudienceAnalysisService
         var topTime = insights.BestPostingTimes.OrderByDescending(kv => kv.Value).First();
         recommendations.Add($"Schedule posts around {topTime.Key} for optimal reach");
 
-        if (insights.TopInterests.Any())
+        if (insights.TopInterests.Count != 0)
         {
             recommendations.Add($"Incorporate topics like {insights.TopInterests.First()} to align with audience interests");
         }

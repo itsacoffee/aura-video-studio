@@ -329,7 +329,7 @@ public class ProjectFileService : IProjectFileService
             }
 
             // Save updated project
-            if (missingAssets.Any())
+            if (missingAssets.Count != 0)
             {
                 await SaveProjectAsync(project, ct);
             }
@@ -566,7 +566,7 @@ public class ProjectFileService : IProjectFileService
                 if (request.IncludeBackups)
                 {
                     var backups = await _storageService.ListBackupsAsync(request.ProjectId, ct);
-                    if (backups.Any())
+                    if (backups.Count != 0)
                     {
                         var backupsPath = Path.Combine(tempPath, "backups");
                         Directory.CreateDirectory(backupsPath);

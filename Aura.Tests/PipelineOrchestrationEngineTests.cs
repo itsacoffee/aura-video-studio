@@ -195,7 +195,7 @@ public class PipelineOrchestrationEngineTests
         Assert.True(result2.CacheHits > 0, "Second run should have cache hits");
     }
 
-    private class MockLlmProvider : ILlmProvider
+    private sealed class MockLlmProvider : ILlmProvider
     {
         public Task<string> DraftScriptAsync(Brief brief, PlanSpec spec, CancellationToken ct)
         {
@@ -251,7 +251,7 @@ public class PipelineOrchestrationEngineTests
         }
     }
 
-    private class MockTtsProvider : ITtsProvider
+    private sealed class MockTtsProvider : ITtsProvider
     {
         public string Name => "MockTTS";
 

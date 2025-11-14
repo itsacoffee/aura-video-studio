@@ -626,7 +626,7 @@ public class FfmpegVideoComposer : IVideoComposer
                     code = "E302-FFMPEG_VALIDATION",
                     message = "FFmpeg validation failed",
                     exitCode = process.ExitCode,
-                    stderr = stderr.Length > 1000 ? stderr.Substring(0, 1000) + "..." : stderr,
+                    stderr = stderr.Length > 1000 ? string.Concat(stderr.AsSpan(0, 1000), "...") : stderr,
                     correlationId,
                     howToFix = new[]
                     {

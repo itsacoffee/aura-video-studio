@@ -189,7 +189,7 @@ public class EdgeTtsProvider : BaseTtsProvider
 /// <summary>
 /// Edge TTS voice information model
 /// </summary>
-internal record EdgeVoiceInfo
+internal sealed record EdgeVoiceInfo
 {
     public string Name { get; init; } = string.Empty;
     public string FriendlyName { get; init; } = string.Empty;

@@ -223,7 +223,7 @@ public class SceneImportanceAnalyzerTests
     }
 
     // Mock LLM Providers for testing
-    private class MockLlmProvider : ILlmProvider
+    private sealed class MockLlmProvider : ILlmProvider
     {
         private readonly bool _shouldSucceed;
 
@@ -297,9 +297,9 @@ public class SceneImportanceAnalyzerTests
 
     }
 
-    private class MockPartiallyFailingLlmProvider : ILlmProvider
+    private sealed class MockPartiallyFailingLlmProvider : ILlmProvider
     {
-        private int _callCount = 0;
+        private int _callCount;
 
         public Task<string> DraftScriptAsync(Brief brief, PlanSpec spec, CancellationToken ct)
         {
@@ -371,10 +371,10 @@ public class SceneImportanceAnalyzerTests
 
     }
 
-    private class MockRetryingLlmProvider : ILlmProvider
+    private sealed class MockRetryingLlmProvider : ILlmProvider
     {
         private readonly int _failuresBeforeSuccess;
-        private int _attemptCount = 0;
+        private int _attemptCount;
 
         public MockRetryingLlmProvider(int failuresBeforeSuccess)
         {

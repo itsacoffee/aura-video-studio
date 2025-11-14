@@ -742,7 +742,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
 
     #region Mock Providers with Real Files
 
-    private class MockTtsProviderWithFile : ITtsProvider
+    private sealed class MockTtsProviderWithFile : ITtsProvider
     {
         private readonly ILogger<MockTtsProviderWithFile> _logger;
         private readonly List<string> _tempFiles;
@@ -805,7 +805,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
         }
     }
 
-    private class MockVideoComposerWithFile : IVideoComposer
+    private sealed class MockVideoComposerWithFile : IVideoComposer
     {
         private readonly ILogger<MockVideoComposerWithFile> _logger;
         private readonly List<string> _tempFiles;
@@ -840,7 +840,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
         }
     }
 
-    private class MockImageProviderWithFiles : IImageProvider
+    private sealed class MockImageProviderWithFiles : IImageProvider
     {
         private readonly ILogger<MockImageProviderWithFiles> _logger;
         private readonly List<string> _tempFiles;
@@ -885,7 +885,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
         }
     }
 
-    private class MockFfmpegLocator : IFfmpegLocator
+    private sealed class MockFfmpegLocator : IFfmpegLocator
     {
         private readonly string _mockPath;
 

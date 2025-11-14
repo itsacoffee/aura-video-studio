@@ -234,7 +234,7 @@ public class PreflightCheckService
             criticalIssues.Add("Insufficient disk space - minimum 2GB required");
         }
 
-        if (criticalIssues.Any())
+        if (criticalIssues.Count != 0)
         {
             result.MeetsMinimumRequirements = false;
             result.Warnings.AddRange(criticalIssues);

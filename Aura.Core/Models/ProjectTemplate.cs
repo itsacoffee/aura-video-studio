@@ -32,10 +32,10 @@ public record ProjectTemplate
     public DateTime UpdatedAt { get; init; } = DateTime.UtcNow;
     public string Author { get; init; } = "System";
     public bool IsSystemTemplate { get; init; } = true;
-    public bool IsCommunityTemplate { get; init; } = false;
-    public int UsageCount { get; init; } = 0;
-    public double Rating { get; init; } = 0.0;
-    public int RatingCount { get; init; } = 0;
+    public bool IsCommunityTemplate { get; init; }
+    public int UsageCount { get; init; }
+    public double Rating { get; init; }
+    public int RatingCount { get; init; }
 }
 
 /// <summary>
@@ -135,7 +135,7 @@ public record TemplateMusicTrack
 {
     public string TrackId { get; init; } = string.Empty;
     public string PlaceholderUrl { get; init; } = string.Empty;
-    public double StartTime { get; init; } = 0;
+    public double StartTime { get; init; }
     public double Duration { get; init; }
     public double Volume { get; init; } = 0.7;
     public bool FadeIn { get; init; } = true;
@@ -261,7 +261,7 @@ public record CustomVideoTemplate
     public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; init; } = DateTime.UtcNow;
     public string Author { get; init; } = "User";
-    public bool IsDefault { get; init; } = false;
+    public bool IsDefault { get; init; }
     public ScriptStructureConfig ScriptStructure { get; init; } = new();
     public VideoStructureConfig VideoStructure { get; init; } = new();
     public LLMPipelineConfig LLMPipeline { get; init; } = new();
@@ -286,7 +286,7 @@ public record ScriptSection
     public string Description { get; init; } = string.Empty;
     public int Order { get; init; }
     public bool IsRequired { get; init; } = true;
-    public bool IsOptional { get; init; } = false;
+    public bool IsOptional { get; init; }
     public string Tone { get; init; } = "neutral";
     public string Style { get; init; } = "informative";
     public int MinDuration { get; init; } = 5;

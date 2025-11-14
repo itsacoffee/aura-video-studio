@@ -126,7 +126,7 @@ public record ConversionConfig
     public int WordsPerMinute { get; init; } = 150;
     public bool EnableAudienceRetargeting { get; init; } = true;
     public bool EnableVisualSuggestions { get; init; } = true;
-    public bool PreserveOriginalStructure { get; init; } = false;
+    public bool PreserveOriginalStructure { get; init; }
     public bool AddTransitions { get; init; } = true;
     public double AggressivenessLevel { get; init; } = 0.6;
     public string? TargetAudienceProfileId { get; init; }

@@ -26,13 +26,14 @@ public class AssetUsageTracker
     {
         _logger.LogInformation("Recording usage of asset {AssetId} in timeline {TimelineId}", assetId, timelineId);
 
-        if (!_usageMap.ContainsKey(assetId))
+        if (!_usageMap.TryGetValue(assetId, out var value))
         {
-            _usageMap[assetId] = new List<TimelineUsage>();
+            value = new List<TimelineUsage>();
+            _usageMap[assetId] = value;
         }
 
         var usage = new TimelineUsage(timelineId, position, DateTime.UtcNow);
-        _usageMap[assetId].Add(usage);
+        value.Add(usage);
 
         return Task.CompletedTask;
     }

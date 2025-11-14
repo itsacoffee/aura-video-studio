@@ -157,7 +157,7 @@ public class ProcessManager : IProcessManager, IDisposable
                 .Where(kvp => now > kvp.Value.TimeoutAt)
                 .ToList();
 
-            if (timedOut.Any())
+            if (timedOut.Count != 0)
             {
                 _logger.LogWarning(
                     "Found {Count} timed-out FFmpeg processes, terminating",
@@ -174,7 +174,7 @@ public class ProcessManager : IProcessManager, IDisposable
                 .Where(kvp => !IsProcessRunning(kvp.Key))
                 .ToList();
 
-            if (exited.Any())
+            if (exited.Count != 0)
             {
                 _logger.LogDebug(
                     "Found {Count} exited processes, cleaning up",

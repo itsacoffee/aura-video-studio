@@ -144,12 +144,12 @@ public class ProxyGenerationOptions
     /// Whether to generate in background
     /// </summary>
     public bool BackgroundGeneration { get; set; } = true;
-    
+
     /// <summary>
     /// Priority for generation queue (higher = more important)
     /// </summary>
-    public int Priority { get; set; } = 0;
-    
+    public int Priority { get; set; }
+
     /// <summary>
     /// Whether to overwrite existing proxy
     /// </summary>

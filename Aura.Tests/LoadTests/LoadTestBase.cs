@@ -238,7 +238,7 @@ public class LoadTestThresholds
     public double MinThroughput { get; set; } = 10.0; // ops/sec
 }
 
-internal class OperationResult
+internal sealed class OperationResult
 {
     public int UserId { get; set; }
     public int OperationId { get; set; }

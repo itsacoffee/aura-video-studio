@@ -46,17 +46,18 @@ public class ProviderPerformanceTracker
                 Timestamp = DateTime.UtcNow
             };
 
-            if (!_performanceHistory.ContainsKey(providerName))
+            if (!_performanceHistory.TryGetValue(providerName, out var value))
             {
-                _performanceHistory[providerName] = new List<ProviderPerformanceRecord>();
+                value = new List<ProviderPerformanceRecord>();
+                _performanceHistory[providerName] = value;
             }
 
-            _performanceHistory[providerName].Add(record);
+            value.Add(record);
 
             // Keep only recent history (last 100 records per provider)
-            if (_performanceHistory[providerName].Count > 100)
+            if (value.Count > 100)
             {
-                _performanceHistory[providerName].RemoveAt(0);
+                value.RemoveAt(0);
             }
 
             _logger.LogDebug(
@@ -80,13 +81,11 @@ public class ProviderPerformanceTracker
         await _lock.WaitAsync(ct);
         try
         {
-            if (!_performanceHistory.ContainsKey(providerName))
+            if (!_performanceHistory.TryGetValue(providerName, out var records))
             {
                 return null;
             }
 
-            var records = _performanceHistory[providerName];
-            
             // Filter by content type if specified
             if (!string.IsNullOrEmpty(contentType))
             {
@@ -107,8 +106,8 @@ public class ProviderPerformanceTracker
                 ContentType = contentType,
                 TotalGenerations = records.Count,
                 SuccessRate = records.Count > 0 ? (double)successfulRecords.Count / records.Count : 0,
-                AverageQualityScore = successfulRecords.Any() ? successfulRecords.Average(r => r.QualityScore) : 0,
-                AverageDurationMs = successfulRecords.Any() ? (long)successfulRecords.Average(r => r.DurationMs) : 0,
+                AverageQualityScore = successfulRecords.Count != 0 ? successfulRecords.Average(r => r.QualityScore) : 0,
+                AverageDurationMs = successfulRecords.Count != 0 ? (long)successfulRecords.Average(r => r.DurationMs) : 0,
                 RecentPerformanceTrend = CalculateTrend(recentRecords),
                 LastUpdated = records.Max(r => r.Timestamp)
             };

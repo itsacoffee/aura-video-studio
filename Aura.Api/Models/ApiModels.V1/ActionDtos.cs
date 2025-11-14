@@ -46,7 +46,7 @@ public record RecordActionRequest
     /// <summary>
     /// Whether this action can be batched
     /// </summary>
-    public bool CanBatch { get; init; } = false;
+    public bool CanBatch { get; init; }
 
     /// <summary>
     /// Whether this requires server-side persistence

@@ -128,7 +128,7 @@ public class AssetLibraryService
             if (filters.Type.HasValue)
                 assets = assets.Where(a => a.Type == filters.Type.Value);
 
-            if (filters.Tags.Any())
+            if (filters.Tags.Count != 0)
                 assets = assets.Where(a => a.Tags.Any(t => filters.Tags.Contains(t.Name)));
 
             if (filters.StartDate.HasValue)
@@ -140,7 +140,7 @@ public class AssetLibraryService
             if (filters.Source.HasValue)
                 assets = assets.Where(a => a.Source == filters.Source.Value);
 
-            if (filters.Collections.Any())
+            if (filters.Collections.Count != 0)
                 assets = assets.Where(a => a.Collections.Any(c => filters.Collections.Contains(c)));
 
             if (filters.UsedInTimeline.HasValue)
@@ -213,7 +213,7 @@ public class AssetLibraryService
             .Select(t => new AssetTag(t, 100))
             .ToList();
 
-        if (newTags.Any())
+        if (newTags.Count != 0)
         {
             var updatedTags = asset.Tags.Concat(newTags).ToList();
             _assets[assetId] = asset with 
@@ -250,7 +250,7 @@ public class AssetLibraryService
     /// </summary>
     public async Task AddToCollectionAsync(Guid assetId, Guid collectionId)
     {
-        if (!_assets.ContainsKey(assetId))
+        if (!_assets.TryGetValue(assetId, out var asset))
             throw new ArgumentException($"Asset {assetId} not found");
 
         if (!_collections.TryGetValue(collectionId, out var collection))
@@ -266,8 +266,6 @@ public class AssetLibraryService
             };
         }
 
-        // Update asset
-        var asset = _assets[assetId];
         if (!asset.Collections.Contains(collection.Name))
         {
             _assets[assetId] = asset with

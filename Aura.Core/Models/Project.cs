@@ -14,11 +14,11 @@ public record Project
     public string? Thumbnail { get; init; }
     public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
     public DateTime LastModifiedAt { get; init; } = DateTime.UtcNow;
-    public double Duration { get; init; } = 0;
+    public double Duration { get; init; }
     public string? Author { get; init; }
     public List<string> Tags { get; init; } = new();
     public string ProjectData { get; init; } = string.Empty; // JSON serialized project file
-    public int ClipCount { get; init; } = 0;
+    public int ClipCount { get; init; }
 }
 
 /// <summary>

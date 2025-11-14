@@ -43,7 +43,7 @@ public sealed class HealthChecksOptions
     /// <summary>
     /// Enable detailed health check logging.
     /// </summary>
-    public bool EnableDetailedLogging { get; set; } = false;
+    public bool EnableDetailedLogging { get; set; }
 
     /// <summary>
     /// Enable automatic recovery attempts on unhealthy status.

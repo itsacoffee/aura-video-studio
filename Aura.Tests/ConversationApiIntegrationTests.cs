@@ -208,9 +208,9 @@ public class ConversationApiIntegrationTests : IClassFixture<WebApplicationFacto
     }
 
     // Response models for deserialization
-    private record SendMessageResult(bool Success, string Response, DateTime Timestamp);
-    private record GetHistoryResult(bool Success, List<Message> Messages, int Count);
-    private record GetContextResult(
+    private sealed record SendMessageResult(bool Success, string Response, DateTime Timestamp);
+    private sealed record GetHistoryResult(bool Success, List<Message> Messages, int Count);
+    private sealed record GetContextResult(
         bool Success,
         ProjectContext Project,
         ConversationContext Conversation);

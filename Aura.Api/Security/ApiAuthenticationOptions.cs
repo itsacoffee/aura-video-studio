@@ -10,7 +10,7 @@ public class ApiAuthenticationOptions
     /// <summary>
     /// Enable JWT bearer authentication
     /// </summary>
-    public bool EnableJwtAuthentication { get; set; } = false;
+    public bool EnableJwtAuthentication { get; set; }
 
     /// <summary>
     /// Enable API key authentication
@@ -50,7 +50,7 @@ public class ApiAuthenticationOptions
     /// <summary>
     /// Whether to require authentication for all endpoints
     /// </summary>
-    public bool RequireAuthentication { get; set; } = false;
+    public bool RequireAuthentication { get; set; }
 
     /// <summary>
     /// Endpoints that are exempt from authentication

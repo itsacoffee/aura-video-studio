@@ -263,7 +263,7 @@ public class PlannerServiceTests
     }
 
     // Helper class for testing fallback
-    private class FailingPlannerProvider : ILlmPlannerProvider
+    private sealed class FailingPlannerProvider : ILlmPlannerProvider
     {
         public Task<PlannerRecommendations> GenerateRecommendationsAsync(
             RecommendationRequest request,

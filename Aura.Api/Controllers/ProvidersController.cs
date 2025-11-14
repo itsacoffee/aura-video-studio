@@ -1243,7 +1243,7 @@ public class ProvidersController : ControllerBase
 /// <summary>
 /// Provider configuration response for JSON deserialization
 /// </summary>
-internal class ProviderConfigurationResponse
+internal sealed class ProviderConfigurationResponse
 {
     public List<ProviderItem> Providers { get; set; } = new();
 }
@@ -1251,7 +1251,7 @@ internal class ProviderConfigurationResponse
 /// <summary>
 /// Provider item for JSON deserialization
 /// </summary>
-internal class ProviderItem
+internal sealed class ProviderItem
 {
     public string Name { get; set; } = string.Empty;
     public string Type { get; set; } = string.Empty;

@@ -443,7 +443,7 @@ public class ModelSelectionService
             .Take(2)
             .ToList();
 
-        if (largerModels.Any())
+        if (largerModels.Count != 0)
         {
             foreach (var model in largerModels)
             {

@@ -54,7 +54,7 @@ public class VideoEffectsProfile
     /// <summary>
     /// Whether to enable effects
     /// </summary>
-    public bool Enabled { get; set; } = false;
+    public bool Enabled { get; set; }
 
     /// <summary>
     /// Whether to use cached results

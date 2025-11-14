@@ -187,7 +187,7 @@ REASONING: [brief explanation of your analysis]";
         var structure = importResult.Structure;
         
         var topic = metadata.Title ?? 
-                   (structure.Sections.Any() ? structure.Sections[0].Heading : "Video from Document");
+                   (structure.Sections.Count != 0 ? structure.Sections[0].Heading : "Video from Document");
 
         var audience = importResult.InferredAudience?.EducationLevel ?? "General";
         

@@ -220,13 +220,13 @@ public class MidjourneyProvider : BaseVisualProvider
         return null;
     }
 
-    private class MidjourneyResponse
+    private sealed class MidjourneyResponse
     {
         public string? TaskId { get; set; }
         public string? Status { get; set; }
     }
 
-    private class MidjourneyTaskStatus
+    private sealed class MidjourneyTaskStatus
     {
         public string? Status { get; set; }
         public string? ImageUrl { get; set; }

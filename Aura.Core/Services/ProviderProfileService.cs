@@ -117,7 +117,7 @@ public class ProviderProfileService
 
         foreach (var requiredKey in profile.RequiredApiKeys)
         {
-            if (!allKeys.ContainsKey(requiredKey) || string.IsNullOrWhiteSpace(allKeys[requiredKey]))
+            if (!allKeys.TryGetValue(requiredKey, out var value) || string.IsNullOrWhiteSpace(value))
             {
                 result.IsValid = false;
                 result.MissingKeys.Add(requiredKey);
@@ -163,7 +163,7 @@ public class ProviderProfileService
         var result = new EngineStatusResult { AllEnginesAvailable = true };
         var stages = profile.Stages;
 
-        if (stages.ContainsKey("Script") && (stages["Script"].Contains("Ollama") || stages["Script"] == "Free"))
+        if (stages.TryGetValue("Script", out var value) && (value.Contains("Ollama") || value == "Free"))
         {
             result.OfflineProvidersNeeded = true;
             var ollamaAvailable = await CheckOllamaAsync(ct);
@@ -174,7 +174,7 @@ public class ProviderProfileService
             }
         }
 
-        if (stages.ContainsKey("Visuals") && stages["Visuals"].Contains("Local"))
+        if (stages.TryGetValue("Visuals", out var value) && value.Contains("Local"))
         {
             result.OfflineProvidersNeeded = true;
         }

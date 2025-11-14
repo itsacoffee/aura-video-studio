@@ -173,7 +173,7 @@ public class SSMLSubtitleSynchronizer
 
     private List<string> SplitTextByMarkers(string text, List<TimingMarker> markers)
     {
-        if (!markers.Any())
+        if (markers.Count == 0)
         {
             return new List<string> { text };
         }

@@ -226,7 +226,7 @@ public class ModelCatalogIntegrationTests
     /// <summary>
     /// Test HTTP client factory for integration tests
     /// </summary>
-    private class TestHttpClientFactory : IHttpClientFactory
+    private sealed class TestHttpClientFactory : IHttpClientFactory
     {
         public System.Net.Http.HttpClient CreateClient(string name)
         {

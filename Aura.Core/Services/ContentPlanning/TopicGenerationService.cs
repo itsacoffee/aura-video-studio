@@ -123,12 +123,12 @@ public class TopicGenerationService
             sb.AppendLine($"Target Audience: {request.TargetAudience}");
         }
 
-        if (request.Interests.Any())
+        if (request.Interests.Count != 0)
         {
             sb.AppendLine($"Interests: {string.Join(", ", request.Interests)}");
         }
 
-        if (request.PreferredPlatforms.Any())
+        if (request.PreferredPlatforms.Count != 0)
         {
             sb.AppendLine($"Platforms: {string.Join(", ", request.PreferredPlatforms)}");
         }
@@ -163,7 +163,7 @@ public class TopicGenerationService
             });
         }
 
-        return suggestions.Any() ? suggestions : GenerateFallbackTopics(request).Suggestions;
+        return suggestions.Count != 0 ? suggestions : GenerateFallbackTopics(request).Suggestions;
     }
 
     private TopicSuggestionResponse GenerateFallbackTopics(TopicSuggestionRequest request)

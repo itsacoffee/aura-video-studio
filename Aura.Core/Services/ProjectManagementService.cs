@@ -64,7 +64,7 @@ public class ProjectManagementService
             query = query.Where(p => p.Category == category);
         }
 
-        if (tags != null && tags.Any())
+        if (tags != null && tags.Count != 0)
         {
             foreach (var tag in tags)
             {
@@ -135,7 +135,7 @@ public class ProjectManagementService
             Title = title,
             Description = description,
             Category = category,
-            Tags = tags != null && tags.Any() ? string.Join(",", tags) : null,
+            Tags = tags != null && tags.Count != 0 ? string.Join(",", tags) : null,
             TemplateId = templateId,
             Status = "Draft",
             CurrentWizardStep = 0,
@@ -296,7 +296,7 @@ public class ProjectManagementService
             .Where(p => projectIds.Contains(p.Id))
             .ToListAsync(ct);
 
-        if (!projects.Any())
+        if (projects.Count == 0)
         {
             return 0;
         }

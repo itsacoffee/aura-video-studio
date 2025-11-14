@@ -13,10 +13,10 @@ public class CustomQualityThresholds
     public string Name { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
-    
+
     // Skip Validation Option
-    public bool SkipValidation { get; set; } = false;
-    
+    public bool SkipValidation { get; set; }
+
     // Script Quality
     public int MinScriptWordCount { get; set; } = 50;
     public int MaxScriptWordCount { get; set; } = 5000;
@@ -28,18 +28,18 @@ public class CustomQualityThresholds
     public int MinImageResolutionWidth { get; set; } = 1280;
     public int MinImageResolutionHeight { get; set; } = 720;
     public double MinImageClarityScore { get; set; } = 0.7; // 0-1 scale
-    public bool AllowLowQualityImages { get; set; } = false;
-    
+    public bool AllowLowQualityImages { get; set; }
+
     // Audio Quality
     public int MinAudioBitrate { get; set; } = 128; // kbps
     public double MinAudioClarity { get; set; } = 0.8; // 0-1 scale
     public double MaxBackgroundNoise { get; set; } = 0.2; // 0-1 scale
-    public bool RequireStereo { get; set; } = false;
-    
+    public bool RequireStereo { get; set; }
+
     // Subtitle Accuracy
     public double MinSubtitleAccuracy { get; set; } = 0.95; // 0-1 scale
-    public bool RequireSubtitles { get; set; } = false;
-    
+    public bool RequireSubtitles { get; set; }
+
     // Brand Compliance
     public List<BrandComplianceRule> BrandComplianceRules { get; set; } = new();
     

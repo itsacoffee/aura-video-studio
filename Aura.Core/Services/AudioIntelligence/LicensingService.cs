@@ -37,13 +37,14 @@ public class LicensingService
         _logger.LogInformation("Tracking asset usage: {JobId} - {AssetId} - Scene {Scene}",
             jobId, asset.AssetId, sceneIndex);
 
-        if (!_jobAssets.ContainsKey(jobId))
+        if (!_jobAssets.TryGetValue(jobId, out var value))
         {
-            _jobAssets[jobId] = new List<UsedAsset>();
+            value = new List<UsedAsset>();
+            _jobAssets[jobId] = value;
         }
 
         var usedAsset = new UsedAsset(asset, sceneIndex, startTime, duration, isSelected);
-        _jobAssets[jobId].Add(usedAsset);
+        value.Add(usedAsset);
     }
 
     /// <summary>

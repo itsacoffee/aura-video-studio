@@ -22,7 +22,7 @@ namespace Aura.Cli
     /// Command-line interface for Aura Video Studio
     /// Supports both interactive demo and headless command execution
     /// </summary>
-    class Program
+    sealed class Program
     {
         static async Task<int> Main(string[] args)
         {
