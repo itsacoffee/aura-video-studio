@@ -1,9 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Dependencies;
 using Aura.Core.Models;
+using Aura.Core.Models.Export;
 using Aura.Core.Models.Timeline;
 using Aura.Core.Services.FFmpeg;
 using Aura.Core.Services.Render;
@@ -13,6 +15,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Xunit;
 using Xunit.Abstractions;
+using ProviderTimeline = Aura.Core.Providers.Timeline;
 
 namespace Aura.Tests.Integration;
 
@@ -61,32 +64,29 @@ public class FFmpegIntegrationTests : IDisposable
         _output.WriteLine($"Using FFmpeg: {resolution.Path} (Source: {resolution.Source})");
 
         // Create test audio file (simple sine wave for 5 seconds)
-        var audioPath = await CreateTestAudioFileAsync(resolution.FfmpegPath!);
+        var audioPath = await CreateTestAudioFileAsync(resolution.Path!);
         Assert.True(File.Exists(audioPath), "Test audio file should be created");
 
         // Create timeline with test data
-        var scene = new TimelineScene(
+        var providerScene = new Scene(
             Index: 0,
             Heading: "Test Scene",
             Script: "This is a test scene",
             Start: TimeSpan.Zero,
-            Duration: TimeSpan.FromSeconds(5),
-            NarrationAudioPath: audioPath,
-            VisualAssets: new System.Collections.Generic.List<TimelineAsset>
-            {
-                new TimelineAsset(
-                    Id: Guid.NewGuid().ToString(),
-                    Type: AssetType.Image,
-                    FilePath: await CreateTestImageAsync(),
-                    Start: TimeSpan.Zero,
-                    Duration: TimeSpan.FromSeconds(5),
-                    Position: new Position(0, 0))
-            });
+            Duration: TimeSpan.FromSeconds(5));
 
-        var timeline = new Aura.Core.Models.Timeline.Timeline(
-            Scenes: new System.Collections.Generic.List<TimelineScene> { scene },
-            BackgroundMusicPath: null,
-            Subtitles: new SubtitleTrack());
+        var imagePath = await CreateTestImageAsync();
+        var sceneAssets = new Dictionary<int, IReadOnlyList<Asset>>
+        {
+            { 0, new List<Asset> { new Asset("Image", imagePath, null, null) } }
+        };
+
+        var timeline = new ProviderTimeline(
+            Scenes: new List<Scene> { providerScene },
+            SceneAssets: sceneAssets,
+            NarrationPath: audioPath,
+            MusicPath: "",
+            SubtitlesPath: null);
 
         // Create render spec
         var spec = new RenderSpec(
@@ -102,7 +102,7 @@ public class FFmpegIntegrationTests : IDisposable
         var composer = new FfmpegVideoComposer(
             _loggerFactory.CreateLogger<FfmpegVideoComposer>(),
             ffmpegLocator,
-            configuredFfmpegPath: resolution.FfmpegPath,
+            configuredFfmpegPath: resolution.Path,
             outputDirectory: _testOutputDir);
 
         var progressUpdates = new System.Collections.Generic.List<RenderProgress>();
@@ -142,7 +142,7 @@ public class FFmpegIntegrationTests : IDisposable
         var ffmpegResolver = new FFmpegResolver(_loggerFactory.CreateLogger<FFmpegResolver>(), _cache);
         var resolution = await ffmpegResolver.ResolveAsync(forceRefresh: true);
         
-        if (!resolution.Found || resolution.FfmpegPath == null)
+        if (!resolution.Found || resolution.Path == null)
         {
             _output.WriteLine("FFmpeg not available, skipping test");
             return;
@@ -150,7 +150,7 @@ public class FFmpegIntegrationTests : IDisposable
 
         var hardwareEncoder = new HardwareEncoder(
             _loggerFactory.CreateLogger<HardwareEncoder>(),
-            resolution.FfmpegPath!);
+            resolution.Path!);
 
         // Act
         var capabilities = await hardwareEncoder.DetectHardwareCapabilitiesAsync();
@@ -357,7 +357,7 @@ public class FFmpegIntegrationTests : IDisposable
         var ffmpegResolver = new FFmpegResolver(_loggerFactory.CreateLogger<FFmpegResolver>(), _cache);
         var resolution = await ffmpegResolver.ResolveAsync();
         
-        if (!resolution.Found || string.IsNullOrEmpty(resolution.FfmpegPath))
+        if (!resolution.Found || string.IsNullOrEmpty(resolution.Path))
         {
             // Fallback: create a simple colored image using System.Drawing if available
             // For now, just create a dummy file
@@ -487,12 +487,12 @@ internal class FfmpegLocator : IFfmpegLocator
     {
         var result = await _resolver.ResolveAsync(configuredPath, forceRefresh: false, ct);
         
-        if (!result.Found || string.IsNullOrEmpty(result.FfmpegPath))
+        if (!result.Found || string.IsNullOrEmpty(result.Path))
         {
-            throw new InvalidOperationException($"FFmpeg not found: {result.Reason}");
+            throw new InvalidOperationException($"FFmpeg not found: {result.Error}");
         }
 
-        return result.FfmpegPath;
+        return result.Path;
     }
 
     public async Task<FfmpegValidationResult> CheckAllCandidatesAsync(string? configuredPath = null, CancellationToken ct = default)
@@ -501,9 +501,9 @@ internal class FfmpegLocator : IFfmpegLocator
         return new FfmpegValidationResult
         {
             Found = result.Found,
-            FfmpegPath = result.FfmpegPath,
-            Reason = result.Reason,
-            VersionString = result.VersionString
+            FfmpegPath = result.Path,
+            Reason = result.Error,
+            VersionString = result.Version
         };
     }
 

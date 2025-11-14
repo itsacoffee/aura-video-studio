@@ -77,6 +77,10 @@
     <Compile Remove="Services\Media\MediaServiceTests.cs" />
     <Compile Remove="Services\Settings\SettingsServiceTests.cs" />
     
+    <!-- Test data builders that need updates for Asset API changes -->
+    <Compile Remove="TestDataBuilders\AssetBuilder.cs" />
+    <Compile Remove="TestDataBuilders\TimelineBuilder.cs" />
+    
     <!-- Other tests with missing dependencies -->
     <Compile Remove="Controllers\AdminControllerTests.cs" />
     <Compile Remove="Controllers\MediaControllerTests.cs" />

@@ -41,7 +41,7 @@ public class VideoGenerationIntegrationTests : IAsyncLifetime
         var planSpec = new PlanSpec(
             TargetDuration: TimeSpan.FromSeconds(30),
             Pacing: Pacing.Conversational,
-            Density: Density.Moderate,
+            Density: Density.Balanced,
             Style: "educational");
 
         var voiceSpec = new VoiceSpec(
@@ -101,7 +101,7 @@ public class VideoGenerationIntegrationTests : IAsyncLifetime
         var planSpec = new PlanSpec(
             TargetDuration: TimeSpan.FromMinutes(5), // Long duration
             Pacing: Pacing.Conversational,
-            Density: Density.Moderate,
+            Density: Density.Balanced,
             Style: "test");
 
         var voiceSpec = new VoiceSpec(
@@ -159,7 +159,7 @@ public class VideoGenerationIntegrationTests : IAsyncLifetime
         var planSpec = new PlanSpec(
             TargetDuration: TimeSpan.FromSeconds(30),
             Pacing: Pacing.Conversational,
-            Density: Density.Moderate,
+            Density: Density.Balanced,
             Style: "test");
 
         var voiceSpec = new VoiceSpec(

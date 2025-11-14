@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Aura.Core.Models;
 using Aura.Core.Models.Export;
 using Aura.Core.Orchestrator;
+using Aura.Core.Services.FFmpeg;
 using Aura.Core.Services.Jobs;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
