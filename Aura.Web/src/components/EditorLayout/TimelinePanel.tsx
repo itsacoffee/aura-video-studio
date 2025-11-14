@@ -23,7 +23,7 @@ import {
   ArrowFitRegular,
   ChevronDown24Regular,
 } from '@fluentui/react-icons';
-import { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   snapToFrame,
   formatTimecode,
@@ -119,7 +119,7 @@ const useStyles = makeStyles({
   },
 });
 
-interface TimelineClip {
+interface TimelineClipLocal {
   id: string;
   trackId: string;
   startTime: number;
@@ -147,14 +147,14 @@ interface TimelineTrack {
 }
 
 interface TimelinePanelProps {
-  clips?: TimelineClip[];
+  clips?: TimelineClipLocal[];
   tracks?: TimelineTrack[];
   currentTime?: number;
   onTimeChange?: (time: number) => void;
   onClipSelect?: (clipId: string | null) => void;
   selectedClipId?: string | null;
-  onClipAdd?: (trackId: string, clip: TimelineClip) => void;
-  onClipUpdate?: (clipId: string, updates: Partial<TimelineClip>) => void;
+  onClipAdd?: (trackId: string, clip: TimelineClipLocal) => void;
+  onClipUpdate?: (clipId: string, updates: Partial<TimelineClipLocal>) => void;
   onTrackToggleVisibility?: (trackId: string) => void;
   onTrackToggleLock?: (trackId: string) => void;
 }
@@ -360,7 +360,7 @@ export function TimelinePanel({
       onClipUpdate?.(clipToSplit.id, { duration: splitPoint });
 
       // Create and add the second clip starting from the split point
-      const secondClip: TimelineClip = {
+      const secondClip: TimelineClipLocal = {
         ...clipToSplit,
         id: `${clipToSplit.id}-split-${Date.now()}`,
         startTime: time,
@@ -440,7 +440,7 @@ export function TimelinePanel({
       }
 
       // Create a new timeline clip from the media clip
-      const newClip: TimelineClip = {
+      const newClip: TimelineClipLocal = {
         id: `clip-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
         trackId,
         startTime: dropTime,

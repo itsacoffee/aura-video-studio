@@ -1,5 +1,5 @@
 import { makeStyles, tokens, TabList, Tab } from '@fluentui/react-components';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 const useStyles = makeStyles({
   tabList: {

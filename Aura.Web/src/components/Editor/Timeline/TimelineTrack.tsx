@@ -3,7 +3,7 @@
  */
 
 import { makeStyles, tokens, Spinner } from '@fluentui/react-components';
-import { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import WaveSurfer from 'wavesurfer.js';
 
 const useStyles = makeStyles({

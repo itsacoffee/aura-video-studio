@@ -17,7 +17,7 @@ import {
   Checkmark24Regular,
   Info24Regular,
 } from '@fluentui/react-icons';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import type { PlannerRecommendations } from '../types';
 
 const useStyles = makeStyles({

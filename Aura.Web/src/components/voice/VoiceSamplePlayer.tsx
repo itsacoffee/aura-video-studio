@@ -13,7 +13,7 @@ import {
   ArrowDownloadRegular,
   SoundWaveCircle24Regular as WaveformRegular,
 } from '@fluentui/react-icons';
-import { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { apiUrl } from '../../config/api';
 import type { VoiceEnhancementConfig } from './VoiceStudioPanel';
 

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { apiUrl } from '../config/api';
 
 export interface InstallProgress {
@@ -127,7 +127,7 @@ export function useEngineInstallProgress() {
             let buffer = '';
 
             // Stream reading requires infinite loop with break condition inside
-             
+
             while (true) {
               const { done, value } = await reader.read();
 

@@ -40,7 +40,7 @@ import {
   ImageEdit24Regular,
   Search24Regular,
 } from '@fluentui/react-icons';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import type { FC } from 'react';
 import type {
   PreviewData,

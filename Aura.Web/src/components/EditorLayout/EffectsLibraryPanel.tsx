@@ -18,7 +18,7 @@ import {
   PanelLeftRegular,
   StarRegular,
 } from '@fluentui/react-icons';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import {
   EFFECT_DEFINITIONS,
   EFFECT_PRESETS,

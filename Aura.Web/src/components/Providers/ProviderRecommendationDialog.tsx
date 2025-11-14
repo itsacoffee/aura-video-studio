@@ -19,7 +19,7 @@ import {
   Dismiss20Regular,
   Info20Regular,
 } from '@fluentui/react-icons';
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   providerRecommendationService,
   type ProviderRecommendation,

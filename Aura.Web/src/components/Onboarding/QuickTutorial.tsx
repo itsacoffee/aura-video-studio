@@ -4,7 +4,7 @@ import {
   ChevronLeft24Regular,
   Dismiss24Regular,
 } from '@fluentui/react-icons';
-import { useState } from 'react';
+import React, { useState } from 'react';
 
 const useStyles = makeStyles({
   overlay: {

@@ -13,7 +13,7 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import { Play24Regular, Star24Filled } from '@fluentui/react-icons';
-import { memo } from 'react';
+import React, { memo } from 'react';
 import { TemplateListItem } from '../../types/templates';
 import { LazyImage } from '../common/LazyImage';
 

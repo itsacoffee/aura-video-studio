@@ -17,7 +17,7 @@ import {
   Dismiss24Regular,
   DocumentBulletList24Regular,
 } from '@fluentui/react-icons';
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 const useStyles = makeStyles({
   toastFooter: {
@@ -384,8 +384,8 @@ export function useNotifications() {
     return toastId;
   };
 
-  return { 
-    showSuccessToast, 
+  return {
+    showSuccessToast,
     showFailureToast,
     // Aliases for backwards compatibility
     showSuccess: showSuccessToast,

@@ -8,45 +8,25 @@ import type { LoginRequest } from '../services/api/authApi';
 import { useAuthStore } from '../stores/authStore';
 
 export function useAuth() {
-  const {
-    isAuthenticated,
-    user,
-    isLoading,
-    error,
-    login,
-    logout,
-    loadUser,
-    clearError,
-  } = useAuthStore();
+  const { isAuthenticated, user, isLoading, error, login, logout, loadUser, clearError } =
+    useAuthStore();
 
   const handleLogin = useCallback(
     async (credentials: LoginRequest) => {
-      try {
-        await login(credentials);
-      } catch (error) {
-        // Error is already handled in the store
-        throw error;
-      }
+      // Error is already handled in the store
+      await login(credentials);
     },
     [login]
   );
 
   const handleLogout = useCallback(async () => {
-    try {
-      await logout();
-    } catch (error) {
-      // Error is already handled in the store
-      throw error;
-    }
+    // Error is already handled in the store
+    await logout();
   }, [logout]);
 
   const refreshUser = useCallback(async () => {
-    try {
-      await loadUser();
-    } catch (error) {
-      // Error is already handled in the store
-      throw error;
-    }
+    // Error is already handled in the store
+    await loadUser();
   }, [loadUser]);
 
   return {

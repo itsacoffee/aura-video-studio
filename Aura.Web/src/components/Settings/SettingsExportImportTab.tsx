@@ -30,7 +30,7 @@ import {
   ArrowReset24Regular,
   Shield24Regular,
 } from '@fluentui/react-icons';
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import type { FC } from 'react';
 import { apiUrl } from '../../config/api';
 import { configurationRecoveryService } from '../../services/configurationRecoveryService';

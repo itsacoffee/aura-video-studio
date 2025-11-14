@@ -3,7 +3,7 @@
  * Provides a simple interface for registering keyboard shortcut handlers
  */
 
-import { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { useKeybindingsStore } from '../state/keybindings';
 import type { TimelineAction } from '../types/keybinding';
 

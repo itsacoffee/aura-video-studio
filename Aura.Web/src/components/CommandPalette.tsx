@@ -28,7 +28,7 @@ import {
   CloudSync24Regular,
 } from '@fluentui/react-icons';
 import Fuse from 'fuse.js';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../App';
 

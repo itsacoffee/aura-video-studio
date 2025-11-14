@@ -20,7 +20,7 @@ import {
   Server24Regular,
   Pulse24Regular,
 } from '@fluentui/react-icons';
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../../services/api/apiClient';
 import type {
   ProviderTypeHealthDto,

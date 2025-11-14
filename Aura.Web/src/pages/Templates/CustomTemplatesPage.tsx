@@ -40,7 +40,7 @@ import {
   Star24Regular,
   Star24Filled,
 } from '@fluentui/react-icons';
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { CustomTemplateBuilder } from '../../components/Templates/CustomTemplateBuilder';
 import {
   getCustomTemplates,

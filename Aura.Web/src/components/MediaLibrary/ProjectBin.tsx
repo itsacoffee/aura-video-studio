@@ -1,6 +1,6 @@
 import { makeStyles, tokens, Text, Button, ToolbarButton } from '@fluentui/react-components';
 import { Add24Regular, Grid24Regular, List24Regular, Apps24Regular } from '@fluentui/react-icons';
-import { useState, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useMemo, useCallback } from 'react';
 import { Virtuoso } from 'react-virtuoso';
 import { MediaThumbnail } from './MediaThumbnail';
 import { SmartCollections, MediaCollection } from './SmartCollections';

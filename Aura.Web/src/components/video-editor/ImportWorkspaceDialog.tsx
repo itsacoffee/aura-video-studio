@@ -17,7 +17,7 @@ import {
   TableRow,
   Checkbox,
 } from '@fluentui/react-components';
-import { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { importWorkspaceLayout } from '../../services/workspaceLayoutService';
 import type { WorkspaceExportFormat } from '../../types/workspace.types';
 import {

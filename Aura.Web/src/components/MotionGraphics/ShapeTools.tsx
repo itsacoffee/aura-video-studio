@@ -20,7 +20,7 @@ import {
   Checkmark24Regular,
   Dismiss24Regular,
 } from '@fluentui/react-icons';
-import { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 
 const useStyles = makeStyles({
   container: {

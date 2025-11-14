@@ -1,4 +1,5 @@
 import { makeStyles, tokens, Text } from '@fluentui/react-components';
+import React from 'react';
 import type { FC } from 'react';
 
 const useStyles = makeStyles({
@@ -85,28 +86,18 @@ export const ScriptSyntaxHighlighter: FC<ScriptSyntaxHighlighterProps> = ({ scri
         {scenes.map((scene) => (
           <div key={scene.number} className={styles.scene}>
             <div className={styles.sceneNumber}>Scene {scene.number}</div>
-            
-            <div className={styles.narration}>
-              {highlightText(scene.narration, styles)}
-            </div>
-            
+
+            <div className={styles.narration}>{highlightText(scene.narration, styles)}</div>
+
             {scene.visualPrompt && (
-              <div className={styles.visual}>
-                📹 Visual: {scene.visualPrompt}
-              </div>
+              <div className={styles.visual}>📹 Visual: {scene.visualPrompt}</div>
             )}
-            
+
             <div className={styles.metadata}>
               {scene.durationSeconds && (
-                <span className={styles.duration}>
-                  ⏱️ {scene.durationSeconds.toFixed(1)}s
-                </span>
+                <span className={styles.duration}>⏱️ {scene.durationSeconds.toFixed(1)}s</span>
               )}
-              {scene.transition && (
-                <span className={styles.transition}>
-                  ↗️ {scene.transition}
-                </span>
-              )}
+              {scene.transition && <span className={styles.transition}>↗️ {scene.transition}</span>}
             </div>
           </div>
         ))}
@@ -115,16 +106,12 @@ export const ScriptSyntaxHighlighter: FC<ScriptSyntaxHighlighterProps> = ({ scri
   }
 
   // Fallback to simple text highlighting
-  return (
-    <div className={styles.container}>
-      {highlightText(script, styles)}
-    </div>
-  );
+  return <div className={styles.container}>{highlightText(script, styles)}</div>;
 };
 
 function highlightText(text: string, styles: Record<string, string>) {
   const lines = text.split('\n');
-  
+
   return lines.map((line, lineIndex) => {
     const parts: JSX.Element[] = [];
     let remainingText = line;
@@ -139,9 +126,7 @@ function highlightText(text: string, styles: Record<string, string>) {
       // Add text before match
       if (match.index > lastIndex) {
         parts.push(
-          <span key={`${lineIndex}-${partIndex++}`}>
-            {line.substring(lastIndex, match.index)}
-          </span>
+          <span key={`${lineIndex}-${partIndex++}`}>{line.substring(lastIndex, match.index)}</span>
         );
       }
 
@@ -158,7 +143,7 @@ function highlightText(text: string, styles: Record<string, string>) {
     // Add remaining text
     if (lastIndex < line.length) {
       remainingText = line.substring(lastIndex);
-      
+
       // Highlight pauses (e.g., [pause])
       if (remainingText.includes('[pause]') || remainingText.includes('...')) {
         const pauseParts = remainingText.split(/(\[pause\]|\.\.\.)/);

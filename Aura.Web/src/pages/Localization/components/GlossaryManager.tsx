@@ -31,7 +31,7 @@ import {
   Spinner,
 } from '@fluentui/react-components';
 import { Add24Regular, Delete24Regular, ArrowDownload24Regular } from '@fluentui/react-icons';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ErrorState } from '../../../components/Loading';
 import {
   listGlossaries,

@@ -20,7 +20,7 @@ import {
   Folder24Regular,
   Delete24Regular,
 } from '@fluentui/react-icons';
-import { memo } from 'react';
+import React, { memo } from 'react';
 
 const useStyles = makeStyles({
   card: {

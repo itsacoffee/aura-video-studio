@@ -4,7 +4,7 @@
  */
 
 import { makeStyles, tokens } from '@fluentui/react-components';
-import { useState, useEffect, useRef, CSSProperties } from 'react';
+import React, { useState, useEffect, useRef, CSSProperties } from 'react';
 
 const useStyles = makeStyles({
   container: {

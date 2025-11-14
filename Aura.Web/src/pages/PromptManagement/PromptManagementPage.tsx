@@ -26,7 +26,7 @@ import {
   Eye24Regular,
   BookTemplateRegular,
 } from '@fluentui/react-icons';
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ErrorState, SkeletonCard } from '../../components/Loading';
 
 const useStyles = makeStyles({

@@ -1,5 +1,5 @@
 import { makeStyles, tokens } from '@fluentui/react-components';
-import { ReactNode, useState, useEffect, useCallback } from 'react';
+import React, { ReactNode, useState, useEffect, useCallback } from 'react';
 import { snapToBreakpoint } from '../../services/workspaceLayoutService';
 import { useWorkspaceLayoutStore } from '../../state/workspaceLayout';
 import { TopMenuBar } from '../Layout/TopMenuBar';

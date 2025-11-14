@@ -10,7 +10,7 @@ import {
   Diamond24Regular,
   DiamondFilled,
 } from '@fluentui/react-icons';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { AnimationUtils } from '../../services/animationEngine';
 import { Keyframe } from '../../types/effects';
 

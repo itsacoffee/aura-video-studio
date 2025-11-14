@@ -27,6 +27,7 @@ import {
   Sparkle24Regular,
   Add24Regular,
 } from '@fluentui/react-icons';
+import React from 'react';
 
 const useStyles = makeStyles({
   container: {

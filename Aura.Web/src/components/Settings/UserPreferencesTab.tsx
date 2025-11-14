@@ -26,7 +26,7 @@ import {
   Brain24Regular,
   Eye24Regular,
 } from '@fluentui/react-icons';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { FC } from 'react';
 import { useUserPreferencesStore } from '../../state/userPreferences';
 import type { CustomAudienceProfile, ContentFilteringPolicy } from '../../state/userPreferences';
