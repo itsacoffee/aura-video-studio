@@ -8,9 +8,9 @@ EFFECTIVE="$ART_DIR/effective_appsettings.json"
 
 mkdir -p "$ART_DIR"
 
-add_report() { printf "%s\n" "$1" >> "$REPORT"; }
+add_report() { printf "%s\n" "$1" >>"$REPORT"; }
 
-echo "## Merge Audit Report" > "$REPORT"
+echo "## Merge Audit Report" >"$REPORT"
 add_report "Generated: $(date -Iseconds)"
 add_report ""
 
@@ -21,7 +21,7 @@ conflicts=$(grep -RInE '^(<<<<<<<|=======|>>>>>>>)' "$REPO_ROOT" | grep -vE '(pa
 if [ -n "$conflicts" ]; then
   hardfail=1
   add_report "**FOUND conflict markers:**"
-  echo "$conflicts" | sed 's/^/- /' >> "$REPORT"
+  echo "$conflicts" | sed 's/^/- /' >>"$REPORT"
 else
   add_report "No conflict markers found."
 fi
@@ -31,12 +31,14 @@ add_report "### Duplicate Files (by normalized name)"
 mapfile -t files < <(find "$REPO_ROOT" -type f | grep -vE '/(bin|obj|node_modules)/')
 declare -A list
 for f in "${files[@]}"; do
-  base=$(basename "$f"); name="${base%.*}"; key=$(echo "$name" | tr '[:upper:]' '[:lower:]')
+  base=$(basename "$f")
+  name="${base%.*}"
+  key=$(echo "$name" | tr '[:upper:]' '[:lower:]')
   list[$key]="${list[$key]}|$f"
 done
 dupes=0
 for k in "${!list[@]}"; do
-  IFS='|' read -r -a arr <<< "${list[$k]}"
+  IFS='|' read -r -a arr <<<"${list[$k]}"
   if [ "${#arr[@]}" -gt 2 ]; then
     add_report "- $k"
     for p in "${arr[@]}"; do [ -n "$p" ] && add_report "  - $p"; done
@@ -59,7 +61,7 @@ done < <(find "$REPO_ROOT" -type f -name '*.cs' -print0)
 
 dupt=0
 for k in "${!types[@]}"; do
-  IFS='|' read -r -a arr <<< "${types[$k]}"
+  IFS='|' read -r -a arr <<<"${types[$k]}"
   if [ "${#arr[@]}" -gt 2 ]; then
     add_report "- $k"
     for p in "${arr[@]}"; do [ -n "$p" ] && add_report "  - $p"; done
@@ -85,7 +87,7 @@ done < <(find "$REPO_ROOT" -type f \( -name '*.ts' -o -name '*.tsx' \) -print0)
 
 dupts=0
 for k in "${!tsnames[@]}"; do
-  IFS='|' read -r -a arr <<< "${tsnames[$k]}"
+  IFS='|' read -r -a arr <<<"${tsnames[$k]}"
   if [ "${#arr[@]}" -gt 2 ]; then
     add_report "- $k"
     for p in "${arr[@]}"; do [ -n "$p" ] && add_report "  - $p"; done
@@ -99,14 +101,15 @@ add_report "### Duplicate XAML Resource Keys"
 declare -A xkeys
 while IFS= read -r -d '' f; do
   while IFS= read -r k; do
-    key="${k#*x:Key="}"; key="${key%%"*}"
+    key="${k#*x:Key=\"}"
+    key="${key%%\"*}"
     xkeys[$key]="${xkeys[$key]}|$f"
   done < <(grep -Eo 'x:Key\s*=\s*"[^"]+"' "$f" || true)
 done < <(find "$REPO_ROOT" -type f -name '*.xaml' -print0)
 
 dupkeys=0
 for k in "${!xkeys[@]}"; do
-  IFS='|' read -r -a arr <<< "${xkeys[$k]}"
+  IFS='|' read -r -a arr <<<"${xkeys[$k]}"
   if [ "${#arr[@]}" -gt 2 ]; then
     add_report "- $k"
     for p in "${arr[@]}"; do [ -n "$p" ] && add_report "  - $p"; done
@@ -119,7 +122,7 @@ add_report ""
 add_report "### TODO/FIXME/HACK markers"
 marks=$(grep -RInE 'TODO|FIXME|HACK' "$REPO_ROOT" || true)
 if [ -n "$marks" ]; then
-  echo "$marks" | sed 's/^/- /' >> "$REPORT"
+  echo "$marks" | sed 's/^/- /' >>"$REPORT"
 else
   add_report "No markers found."
 fi
@@ -137,7 +140,7 @@ while IFS= read -r -d '' j; do
   fi
 done < <(find "$REPO_ROOT" -type f -name 'appsettings*.json' -print0 | sort -z)
 
-echo "$tmp" | jq . > "$EFFECTIVE" || echo "{}" > "$EFFECTIVE"
+echo "$tmp" | jq . >"$EFFECTIVE" || echo "{}" >"$EFFECTIVE"
 add_report "Wrote effective appsettings: $EFFECTIVE"
 add_report ""
 

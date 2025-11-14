@@ -1,4 +1,4 @@
-# Launch Stable Diffusion WebUI with API enabled
+﻿# Launch Stable Diffusion WebUI with API enabled
 # For use with Aura Video Studio
 
 param(
@@ -10,46 +10,46 @@ param(
     [switch]$XFormers
 )
 
-Write-Host "=== Stable Diffusion WebUI Launcher ===" -ForegroundColor Cyan
-Write-Host ""
+Write-Output "=== Stable Diffusion WebUI Launcher ===" -ForegroundColor Cyan
+Write-Output ""
 
 # Check if installation exists
 if (-not (Test-Path $InstallPath)) {
-    Write-Host "ERROR: SD WebUI not found at $InstallPath" -ForegroundColor Red
-    Write-Host "Please install SD WebUI first from Aura Download Center" -ForegroundColor Yellow
+    Write-Output "ERROR: SD WebUI not found at $InstallPath" -ForegroundColor Red
+    Write-Output "Please install SD WebUI first from Aura Download Center" -ForegroundColor Yellow
     exit 1
 }
 
 # Build arguments
-$args = @("--api", "--port", $Port)
+$launchArgs = @("--api", "--port", $Port)
 
 if ($NoWebUI) {
-    $args += "--nowebui"
-    Write-Host "Starting in API-only mode (no web interface)" -ForegroundColor Yellow
+    $launchArgs += "--nowebui"
+    Write-Output "Starting in API-only mode (no web interface)" -ForegroundColor Yellow
 } else {
-    Write-Host "Web UI will be available at: http://127.0.0.1:$Port" -ForegroundColor Green
+    Write-Output "Web UI will be available at: http://127.0.0.1:$Port" -ForegroundColor Green
 }
 
 if ($MedVRAM) {
-    $args += "--medvram"
-    Write-Host "Using --medvram for medium VRAM optimization" -ForegroundColor Yellow
+    $launchArgs += "--medvram"
+    Write-Output "Using --medvram for medium VRAM optimization" -ForegroundColor Yellow
 }
 
 if ($LowVRAM) {
-    $args += "--lowvram"
-    Write-Host "Using --lowvram for low VRAM systems" -ForegroundColor Yellow
+    $launchArgs += "--lowvram"
+    Write-Output "Using --lowvram for low VRAM systems" -ForegroundColor Yellow
 }
 
 if ($XFormers) {
-    $args += "--xformers"
-    Write-Host "Using xformers for faster generation" -ForegroundColor Green
+    $launchArgs += "--xformers"
+    Write-Output "Using xformers for faster generation" -ForegroundColor Green
 }
 
-Write-Host ""
-Write-Host "Port: $Port" -ForegroundColor Cyan
-Write-Host "Path: $InstallPath" -ForegroundColor Cyan
-Write-Host "Arguments: $($args -join ' ')" -ForegroundColor Cyan
-Write-Host ""
+Write-Output ""
+Write-Output "Port: $Port" -ForegroundColor Cyan
+Write-Output "Path: $InstallPath" -ForegroundColor Cyan
+Write-Output "Arguments: $($launchArgs -join ' ')" -ForegroundColor Cyan
+Write-Output ""
 
 # Check for webui.bat or run.bat
 $launcher = Join-Path $InstallPath "webui.bat"
@@ -58,22 +58,22 @@ if (-not (Test-Path $launcher)) {
 }
 
 if (-not (Test-Path $launcher)) {
-    Write-Host "ERROR: Launcher script not found" -ForegroundColor Red
-    Write-Host "Expected: $InstallPath\webui.bat or run.bat" -ForegroundColor Yellow
+    Write-Output "ERROR: Launcher script not found" -ForegroundColor Red
+    Write-Output "Expected: $InstallPath\webui.bat or run.bat" -ForegroundColor Yellow
     exit 1
 }
 
-Write-Host "Starting Stable Diffusion WebUI..." -ForegroundColor Green
-Write-Host "Press Ctrl+C to stop" -ForegroundColor Yellow
-Write-Host ""
+Write-Output "Starting Stable Diffusion WebUI..." -ForegroundColor Green
+Write-Output "Press Ctrl+C to stop" -ForegroundColor Yellow
+Write-Output ""
 
 # Set environment variables
-$env:COMMANDLINE_ARGS = $args -join ' '
+$env:COMMANDLINE_ARGS = $launchArgs -join ' '
 $env:PYTHONUNBUFFERED = "1"
 
 # Launch
 Set-Location $InstallPath
 & $launcher
 
-Write-Host ""
-Write-Host "SD WebUI stopped." -ForegroundColor Yellow
+Write-Output ""
+Write-Output "SD WebUI stopped." -ForegroundColor Yellow

@@ -1,4 +1,4 @@
-# Generate Software Bill of Materials (SBOM) and License Attributions
+﻿# Generate Software Bill of Materials (SBOM) and License Attributions
 
 param(
     [string]$OutputDir = "artifacts/windows"
@@ -6,7 +6,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "=== Generating SBOM and Attributions ===" -ForegroundColor Cyan
+Write-Output "=== Generating SBOM and Attributions ===" -ForegroundColor Cyan
 
 $rootDir = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $outputDir = Join-Path $rootDir $OutputDir
@@ -18,9 +18,9 @@ $appVersion = "1.0.0"
 if (Test-Path $versionFile) {
     $versionData = Get-Content $versionFile | ConvertFrom-Json
     $appVersion = $versionData.version
-    Write-Host "Using version from version.json: $appVersion" -ForegroundColor Green
+    Write-Output "Using version from version.json: $appVersion" -ForegroundColor Green
 } else {
-    Write-Host "Warning: version.json not found, using default version: $appVersion" -ForegroundColor Yellow
+    Write-Output "Warning: version.json not found, using default version: $appVersion" -ForegroundColor Yellow
 }
 
 # Generate basic SBOM in CycloneDX format
@@ -73,7 +73,7 @@ $sbom = @{
 
 $sbomPath = Join-Path $outputDir "sbom.json"
 $sbom | ConvertTo-Json -Depth 10 | Out-File $sbomPath -Encoding utf8
-Write-Host "✓ SBOM generated: $sbomPath" -ForegroundColor Green
+Write-Output "✓ SBOM generated: $sbomPath" -ForegroundColor Green
 
 # Generate attributions file
 $attributions = @"
@@ -93,8 +93,8 @@ This software includes or depends on the following third-party components:
    License: LGPL 2.1 or later (depending on build configuration)
    Copyright (c) FFmpeg team
    https://ffmpeg.org/
-   
-   Note: This software uses code of <a href=http://ffmpeg.org>FFmpeg</a> 
+
+   Note: This software uses code of <a href=http://ffmpeg.org>FFmpeg</a>
    licensed under the <a href=http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html>
    LGPLv2.1</a> and its source can be downloaded from the FFmpeg website.
 
@@ -152,7 +152,7 @@ Contact: https://github.com/Coffee285/aura-video-studio/issues
 
 $attributionsPath = Join-Path $outputDir "attributions.txt"
 Set-Content -Path $attributionsPath -Value $attributions -Encoding utf8
-Write-Host "✓ Attributions generated: $attributionsPath" -ForegroundColor Green
+Write-Output "✓ Attributions generated: $attributionsPath" -ForegroundColor Green
 
-Write-Host ""
-Write-Host "=== SBOM Generation Complete ===" -ForegroundColor Cyan
+Write-Output ""
+Write-Output "=== SBOM Generation Complete ===" -ForegroundColor Cyan

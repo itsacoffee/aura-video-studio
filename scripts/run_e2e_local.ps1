@@ -1,4 +1,4 @@
-#!/usr/bin/env pwsh
+﻿#!/usr/bin/env pwsh
 <#
 .SYNOPSIS
     End-to-end test for local video generation using local engines.
@@ -43,10 +43,10 @@ $TestTopic = "Local Engine Test Video"
 $MaxWaitSeconds = 300
 
 # Colors for output
-function Write-Success { param($Message) Write-Host "✓ $Message" -ForegroundColor Green }
-function Write-Info { param($Message) Write-Host "→ $Message" -ForegroundColor Cyan }
-function Write-Warning { param($Message) Write-Host "⚠ $Message" -ForegroundColor Yellow }
-function Write-Error { param($Message) Write-Host "✗ $Message" -ForegroundColor Red }
+function Write-Success { param($Message) Write-Output "✓ $Message" -ForegroundColor Green }
+function Write-Info { param($Message) Write-Output "→ $Message" -ForegroundColor Cyan }
+function Show-Warning { param($Message) Write-Output "⚠ $Message" -ForegroundColor Yellow }
+function Show-ErrorMessage { param($Message) Write-Output "✗ $Message" -ForegroundColor Red }
 
 # Create output directory
 if (-not (Test-Path $OutputDir)) {
@@ -62,8 +62,8 @@ try {
     $healthResponse = Invoke-RestMethod -Uri "$ApiBase/api/healthz" -Method Get -TimeoutSec 5
     Write-Success "API is healthy: $($healthResponse.status)"
 } catch {
-    Write-Error "API is not available at $ApiBase"
-    Write-Error "Please start Aura.Api first: cd Aura.Api && dotnet run"
+    Show-ErrorMessage "API is not available at $ApiBase"
+    Show-ErrorMessage "Please start Aura.Api first: cd Aura.Api && dotnet run"
     exit 1
 }
 
@@ -75,10 +75,10 @@ try {
     if ($capabilities.gpuDetected) {
         Write-Success "GPU Detected: $($capabilities.gpuName) with $($capabilities.vramMb)MB VRAM"
     } else {
-        Write-Warning "No GPU detected - Stable Diffusion will not be available"
+        Show-Warning "No GPU detected - Stable Diffusion will not be available"
     }
 } catch {
-    Write-Warning "Could not retrieve system capabilities: $($_.Exception.Message)"
+    Show-Warning "Could not retrieve system capabilities: $($_.Exception.Message)"
 }
 
 # Step 3: Check local engines status
@@ -91,11 +91,11 @@ try {
     if ($piperStatus.isInstalled) {
         Write-Success "Piper TTS: Installed at $($piperStatus.installPath)"
     } else {
-        Write-Warning "Piper TTS: Not installed"
+        Show-Warning "Piper TTS: Not installed"
         $enginesReady = $false
     }
 } catch {
-    Write-Warning "Piper TTS: Status unknown"
+    Show-Warning "Piper TTS: Status unknown"
     $enginesReady = $false
 }
 
@@ -131,7 +131,7 @@ if ($EngineCheck) {
 }
 
 if (-not $enginesReady -and -not $SkipValidation) {
-    Write-Error "Local engines are not ready. Install Piper TTS from Settings → Download Center"
+    Show-ErrorMessage "Local engines are not ready. Install Piper TTS from Settings → Download Center"
     Write-Info "Or run with -SkipValidation to attempt anyway (will use fallback providers)"
     exit 1
 }
@@ -141,15 +141,15 @@ Write-Info "Listing available profiles..."
 try {
     $profiles = Invoke-RestMethod -Uri "$ApiBase/api/profiles/list" -Method Get
     $localProfile = $profiles | Where-Object { $_.name -match "Local|Offline|Free" } | Select-Object -First 1
-    
+
     if ($localProfile) {
         Write-Success "Using profile: $($localProfile.name)"
     } else {
-        Write-Warning "No local/offline profile found, using first available"
+        Show-Warning "No local/offline profile found, using first available"
         $localProfile = $profiles[0]
     }
 } catch {
-    Write-Error "Could not list profiles: $($_.Exception.Message)"
+    Show-ErrorMessage "Could not list profiles: $($_.Exception.Message)"
     exit 1
 }
 
@@ -173,11 +173,11 @@ if (-not $SkipValidation) {
             Write-Info "  TTS Provider: $($preflight.providers.tts.provider)"
             Write-Info "  Visuals Provider: $($preflight.providers.visuals.provider)"
         } else {
-            Write-Warning "Preflight warnings:"
-            $preflight.warnings | ForEach-Object { Write-Warning "  - $_" }
+            Show-Warning "Preflight warnings:"
+            $preflight.warnings | ForEach-Object { Show-Warning "  - $_" }
         }
     } catch {
-        Write-Error "Preflight check failed: $($_.Exception.Message)"
+        Show-ErrorMessage "Preflight check failed: $($_.Exception.Message)"
         exit 1
     }
 }
@@ -216,7 +216,7 @@ try {
     $jobId = $jobResponse.jobId
     Write-Success "Job submitted: $jobId"
 } catch {
-    Write-Error "Failed to submit job: $($_.Exception.Message)"
+    Show-ErrorMessage "Failed to submit job: $($_.Exception.Message)"
     Write-Info "Request body: $requestBody"
     exit 1
 }
@@ -231,7 +231,7 @@ while ($true) {
 
     try {
         $jobStatus = Invoke-RestMethod -Uri "$ApiBase/api/jobs/$jobId" -Method Get
-        
+
         if ($jobStatus.status -ne $lastStatus) {
             Write-Info "Status: $($jobStatus.status)"
             if ($jobStatus.progress) {
@@ -242,11 +242,11 @@ while ($true) {
 
         if ($jobStatus.status -eq "Completed") {
             Write-Success "Job completed successfully!"
-            
+
             # Get output paths
             if ($jobStatus.outputPath) {
                 Write-Success "Video: $($jobStatus.outputPath)"
-                
+
                 # Copy to test output directory
                 if (Test-Path $jobStatus.outputPath) {
                     $testVideoPath = Join-Path $OutputDir "test-local-$(Get-Date -Format 'yyyyMMdd-HHmmss').mp4"
@@ -254,27 +254,27 @@ while ($true) {
                     Write-Success "Copied to: $testVideoPath"
                 }
             }
-            
+
             if ($jobStatus.captionsPath) {
                 Write-Success "Captions: $($jobStatus.captionsPath)"
             }
-            
+
             break
         }
-        
+
         if ($jobStatus.status -eq "Failed") {
-            Write-Error "Job failed: $($jobStatus.error)"
+            Show-ErrorMessage "Job failed: $($jobStatus.error)"
             exit 1
         }
 
         # Timeout check
         $elapsed = (Get-Date) - $startTime
         if ($elapsed.TotalSeconds -gt $MaxWaitSeconds) {
-            Write-Error "Job timed out after $MaxWaitSeconds seconds"
+            Show-ErrorMessage "Job timed out after $MaxWaitSeconds seconds"
             exit 1
         }
     } catch {
-        Write-Error "Error polling job status: $($_.Exception.Message)"
+        Show-ErrorMessage "Error polling job status: $($_.Exception.Message)"
         exit 1
     }
 }
@@ -285,11 +285,11 @@ if ($jobStatus.outputPath -and (Test-Path $jobStatus.outputPath)) {
     $videoFile = Get-Item $jobStatus.outputPath
     $sizeMB = [math]::Round($videoFile.Length / 1MB, 2)
     Write-Success "Video file size: $sizeMB MB"
-    
+
     if ($sizeMB -lt 0.1) {
-        Write-Warning "Video file is very small - may be invalid"
+        Show-Warning "Video file is very small - may be invalid"
     }
-    
+
     # Check duration with ffprobe if available
     $ffprobe = Get-Command ffprobe -ErrorAction SilentlyContinue
     if ($ffprobe) {
@@ -297,16 +297,16 @@ if ($jobStatus.outputPath -and (Test-Path $jobStatus.outputPath)) {
             $duration = & ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 $jobStatus.outputPath 2>$null
             $durationSecs = [math]::Round([double]$duration, 1)
             Write-Success "Video duration: $durationSecs seconds"
-            
+
             if ($durationSecs -lt 10) {
-                Write-Warning "Video is shorter than expected (target was 15s)"
+                Show-Warning "Video is shorter than expected (target was 15s)"
             }
         } catch {
             Write-Info "Could not determine video duration"
         }
     }
 } else {
-    Write-Warning "Output video file not found"
+    Show-Warning "Output video file not found"
 }
 
 # Summary

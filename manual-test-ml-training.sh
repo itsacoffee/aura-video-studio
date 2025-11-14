@@ -49,13 +49,13 @@ for i in {1..10}; do
   echo "Check $i/10..."
   STATUS=$(curl -s -X GET "$API_URL/api/ml/train/$JOB_ID/status")
   echo "$STATUS"
-  
+
   STATE=$(echo "$STATUS" | grep -o '"state":"[^"]*"' | cut -d'"' -f4)
   if [ "$STATE" == "Completed" ] || [ "$STATE" == "Failed" ]; then
     echo "Training $STATE"
     break
   fi
-  
+
   sleep 2
 done
 echo ""

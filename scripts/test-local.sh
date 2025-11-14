@@ -66,7 +66,7 @@ done
 if [ "$RUN_DOTNET" = true ]; then
   echo -e "${YELLOW}► Running .NET Tests...${NC}"
   cd "$REPO_ROOT"
-  
+
   if [ "$COVERAGE" = true ]; then
     echo "  With coverage collection..."
     dotnet test Aura.Tests/Aura.Tests.csproj \
@@ -75,15 +75,15 @@ if [ "$RUN_DOTNET" = true ]; then
       --collect:"XPlat Code Coverage" \
       --results-directory ./TestResults \
       -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover,cobertura
-    
+
     # Generate coverage report
-    if command -v reportgenerator &> /dev/null; then
+    if command -v reportgenerator &>/dev/null; then
       echo "  Generating coverage report..."
       reportgenerator \
         -reports:"TestResults/**/coverage.cobertura.xml" \
         -targetdir:"TestResults/CoverageReport" \
         -reporttypes:"Html;TextSummary"
-      
+
       echo ""
       echo "  Coverage Summary:"
       cat TestResults/CoverageReport/Summary.txt 2>/dev/null || echo "  No summary available"
@@ -98,7 +98,7 @@ if [ "$RUN_DOTNET" = true ]; then
       --configuration Release \
       --logger "console;verbosity=normal"
   fi
-  
+
   echo -e "${GREEN}✓ .NET tests completed${NC}"
   echo ""
 fi
@@ -107,14 +107,14 @@ fi
 if [ "$RUN_FRONTEND" = true ]; then
   echo -e "${YELLOW}► Running Frontend Tests...${NC}"
   cd "$REPO_ROOT/Aura.Web"
-  
+
   if [ "$COVERAGE" = true ]; then
     npm run test:coverage
     echo -e "${GREEN}  ✓ Coverage report: Aura.Web/coverage/index.html${NC}"
   else
     npm run test
   fi
-  
+
   echo -e "${GREEN}✓ Frontend tests completed${NC}"
   echo ""
 fi
@@ -123,15 +123,15 @@ fi
 if [ "$RUN_E2E" = true ]; then
   echo -e "${YELLOW}► Running E2E Tests (Playwright)...${NC}"
   cd "$REPO_ROOT/Aura.Web"
-  
+
   # Check if Playwright browsers are installed
-  if ! npx playwright --version &> /dev/null; then
+  if ! npx playwright --version &>/dev/null; then
     echo -e "${YELLOW}  Installing Playwright browsers...${NC}"
     npx playwright install --with-deps chromium
   fi
-  
+
   npm run playwright
-  
+
   echo -e "${GREEN}✓ E2E tests completed${NC}"
   echo -e "${GREEN}  ✓ Report: Aura.Web/playwright-report/index.html${NC}"
   echo ""

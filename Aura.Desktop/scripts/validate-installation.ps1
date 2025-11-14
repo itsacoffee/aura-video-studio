@@ -1,4 +1,4 @@
-# PowerShell Script to Validate Windows Installation
+﻿# PowerShell Script to Validate Windows Installation
 # This script validates that a Windows installation meets all requirements
 # from PR-E2E-002: WINDOWS INSTALLATION & DISTRIBUTION
 
@@ -17,39 +17,39 @@ $InfoColor = "Cyan"
 
 function Write-Info {
     param([string]$Message)
-    Write-Host "[INFO] $Message" -ForegroundColor $InfoColor
+    Write-Output "[INFO] $Message" -ForegroundColor $InfoColor
 }
 
 function Write-Success {
     param([string]$Message)
-    Write-Host "[✓] $Message" -ForegroundColor $SuccessColor
+    Write-Output "[✓] $Message" -ForegroundColor $SuccessColor
 }
 
-function Write-Warning {
+function Show-Warning {
     param([string]$Message)
-    Write-Host "[⚠] $Message" -ForegroundColor $WarningColor
+    Write-Output "[⚠] $Message" -ForegroundColor $WarningColor
 }
 
 function Write-Failure {
     param([string]$Message)
-    Write-Host "[✗] $Message" -ForegroundColor $ErrorColor
+    Write-Output "[✗] $Message" -ForegroundColor $ErrorColor
 }
 
 if ($Help) {
-    Write-Host "Aura Video Studio - Installation Validation Script"
-    Write-Host ""
-    Write-Host "Usage: .\validate-installation.ps1 [OPTIONS]"
-    Write-Host ""
-    Write-Host "Options:"
-    Write-Host "  -InstallPath <path>  Path to installation (default: Program Files)"
-    Write-Host "  -Help                Show this help message"
+    Write-Output "Aura Video Studio - Installation Validation Script"
+    Write-Output ""
+    Write-Output "Usage: .\validate-installation.ps1 [OPTIONS]"
+    Write-Output ""
+    Write-Output "Options:"
+    Write-Output "  -InstallPath <path>  Path to installation (default: Program Files)"
+    Write-Output "  -Help                Show this help message"
     exit 0
 }
 
-Write-Host "========================================" -ForegroundColor $InfoColor
-Write-Host "Aura Video Studio - Installation Validation" -ForegroundColor $InfoColor
-Write-Host "========================================" -ForegroundColor $InfoColor
-Write-Host ""
+Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Output "Aura Video Studio - Installation Validation" -ForegroundColor $InfoColor
+Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Output ""
 
 $validationResults = @{
     Passed = 0
@@ -99,13 +99,13 @@ $ffmpegPath = Join-Path $InstallPath "resources/ffmpeg/win-x64/bin/ffmpeg.exe"
 if (Test-Path $ffmpegPath) {
     Write-Success "FFmpeg executable found"
     $validationResults.Passed++
-    
+
     # Verify FFmpeg works
     try {
         $ffmpegVersion = & $ffmpegPath -version 2>&1 | Select-Object -First 1
         Write-Info "  FFmpeg version: $ffmpegVersion"
     } catch {
-        Write-Warning "  Could not verify FFmpeg version"
+        Show-Warning "  Could not verify FFmpeg version"
         $validationResults.Warnings++
     }
 } else {
@@ -136,11 +136,11 @@ try {
         Write-Success ".NET 8 Runtime is installed"
         $validationResults.Passed++
     } else {
-        Write-Warning ".NET 8 Runtime not detected (required for backend)"
+        Show-Warning ".NET 8 Runtime not detected (required for backend)"
         $validationResults.Warnings++
     }
 } catch {
-    Write-Warning ".NET CLI not found - cannot verify runtime"
+    Show-Warning ".NET CLI not found - cannot verify runtime"
     $validationResults.Warnings++
 }
 
@@ -157,7 +157,7 @@ if (Test-Path $uninstallKey) {
         Write-Success "Uninstall registry entry found"
         $validationResults.Passed++
     } else {
-        Write-Warning "Uninstall registry entry exists but DisplayName incorrect"
+        Show-Warning "Uninstall registry entry exists but DisplayName incorrect"
         $validationResults.Warnings++
     }
 } else {
@@ -177,8 +177,8 @@ foreach ($ext in $fileExtensions) {
         Write-Success "File association for $ext registered"
         $validationResults.Passed++
     } else {
-        Write-Warning "File association for $ext not found in HKLM"
-        
+        Show-Warning "File association for $ext not found in HKLM"
+
         # Check HKCU as fallback
         $regPathUser = "HKCU:\Software\Classes\$ext"
         if (Test-Path $regPathUser) {
@@ -202,7 +202,7 @@ if (Test-Path $desktopShortcut) {
     Write-Success "Desktop shortcut found"
     $validationResults.Passed++
 } else {
-    Write-Warning "Desktop shortcut not found (may be optional)"
+    Show-Warning "Desktop shortcut not found (may be optional)"
     $validationResults.Warnings++
 }
 
@@ -226,11 +226,11 @@ try {
         Write-Success "Windows Firewall rule exists"
         $validationResults.Passed++
     } else {
-        Write-Warning "Windows Firewall rule not found (may require manual configuration)"
+        Show-Warning "Windows Firewall rule not found (may require manual configuration)"
         $validationResults.Warnings++
     }
 } catch {
-    Write-Warning "Could not check Windows Firewall (may require admin privileges)"
+    Show-Warning "Could not check Windows Firewall (may require admin privileges)"
     $validationResults.Warnings++
 }
 
@@ -242,7 +242,7 @@ $appDataPath = "$env:LOCALAPPDATA\aura-video-studio"
 if (Test-Path $appDataPath) {
     Write-Success "AppData directory exists: $appDataPath"
     $validationResults.Passed++
-    
+
     # Check subdirectories
     $subdirs = @("logs", "cache")
     foreach ($subdir in $subdirs) {
@@ -254,7 +254,7 @@ if (Test-Path $appDataPath) {
         }
     }
 } else {
-    Write-Warning "AppData directory not found (will be created on first run)"
+    Show-Warning "AppData directory not found (will be created on first run)"
     $validationResults.Warnings++
 }
 
@@ -278,7 +278,7 @@ if ($osVersion.Major -ge 10) {
         Write-Success "Windows 10 version 1809+ detected - Compatible"
         $validationResults.Passed++
     } else {
-        Write-Warning "Windows 10 build is older than 1809 - May have compatibility issues"
+        Show-Warning "Windows 10 build is older than 1809 - May have compatibility issues"
         $validationResults.Warnings++
     }
 } else {
@@ -308,26 +308,26 @@ if (Test-Path $dllPath) {
 # ========================================
 # Summary
 # ========================================
-Write-Host ""
-Write-Host "========================================" -ForegroundColor $InfoColor
-Write-Host "Validation Summary" -ForegroundColor $InfoColor
-Write-Host "========================================" -ForegroundColor $InfoColor
-Write-Host "Passed:   $($validationResults.Passed)" -ForegroundColor $SuccessColor
-Write-Host "Failed:   $($validationResults.Failed)" -ForegroundColor $ErrorColor
-Write-Host "Warnings: $($validationResults.Warnings)" -ForegroundColor $WarningColor
-Write-Host "========================================" -ForegroundColor $InfoColor
-Write-Host ""
+Write-Output ""
+Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Output "Validation Summary" -ForegroundColor $InfoColor
+Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Output "Passed:   $($validationResults.Passed)" -ForegroundColor $SuccessColor
+Write-Output "Failed:   $($validationResults.Failed)" -ForegroundColor $ErrorColor
+Write-Output "Warnings: $($validationResults.Warnings)" -ForegroundColor $WarningColor
+Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Output ""
 
 if ($validationResults.Failed -eq 0) {
     Write-Success "Installation validation PASSED ✓"
-    Write-Host ""
+    Write-Output ""
     Write-Info "The installation appears to be complete and ready to use."
-    Write-Host ""
+    Write-Output ""
     exit 0
 } else {
     Write-Failure "Installation validation FAILED ✗"
-    Write-Host ""
+    Write-Output ""
     Write-Info "Please review the failed checks above and reinstall if necessary."
-    Write-Host ""
+    Write-Output ""
     exit 1
 }

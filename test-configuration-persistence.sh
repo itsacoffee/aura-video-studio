@@ -10,10 +10,10 @@ echo ""
 API_URL="http://localhost:5005/api/configuration"
 
 echo "Step 1: Check if API is running..."
-if ! curl -s -f "$API_URL/health/database" > /dev/null 2>&1; then
-    echo "❌ API is not running. Please start the application first:"
-    echo "   cd Aura.Api && dotnet run"
-    exit 1
+if ! curl -s -f "$API_URL/health/database" >/dev/null 2>&1; then
+  echo "❌ API is not running. Please start the application first:"
+  echo "   cd Aura.Api && dotnet run"
+  exit 1
 fi
 echo "✅ API is running"
 echo ""
@@ -21,56 +21,56 @@ echo ""
 echo "Step 2: Check database health..."
 HEALTH=$(curl -s "$API_URL/health/database")
 echo "$HEALTH" | jq '.'
-if echo "$HEALTH" | jq -e '.healthy == true' > /dev/null; then
-    echo "✅ Database is healthy"
+if echo "$HEALTH" | jq -e '.healthy == true' >/dev/null; then
+  echo "✅ Database is healthy"
 else
-    echo "❌ Database health check failed"
-    exit 1
+  echo "❌ Database health check failed"
+  exit 1
 fi
 echo ""
 
 echo "Step 3: Set test configuration..."
 curl -s -X POST "$API_URL/TestKey" \
-    -H "Content-Type: application/json" \
-    -d '{"value":"TestValue123","category":"Test","description":"Test configuration"}' \
-    | jq '.'
+  -H "Content-Type: application/json" \
+  -d '{"value":"TestValue123","category":"Test","description":"Test configuration"}' \
+  | jq '.'
 echo "✅ Configuration set"
 echo ""
 
 echo "Step 4: Retrieve configuration..."
 RETRIEVED=$(curl -s "$API_URL/TestKey")
 echo "$RETRIEVED" | jq '.'
-if echo "$RETRIEVED" | jq -e '.value == "TestValue123"' > /dev/null; then
-    echo "✅ Configuration retrieved successfully"
+if echo "$RETRIEVED" | jq -e '.value == "TestValue123"' >/dev/null; then
+  echo "✅ Configuration retrieved successfully"
 else
-    echo "❌ Configuration retrieval failed"
-    exit 1
+  echo "❌ Configuration retrieval failed"
+  exit 1
 fi
 echo ""
 
 echo "Step 5: Update configuration..."
 curl -s -X POST "$API_URL/TestKey" \
-    -H "Content-Type: application/json" \
-    -d '{"value":"UpdatedValue456","category":"Test","description":"Updated configuration"}' \
-    | jq '.'
+  -H "Content-Type: application/json" \
+  -d '{"value":"UpdatedValue456","category":"Test","description":"Updated configuration"}' \
+  | jq '.'
 echo "✅ Configuration updated"
 echo ""
 
 echo "Step 6: Verify update..."
 UPDATED=$(curl -s "$API_URL/TestKey")
 echo "$UPDATED" | jq '.'
-if echo "$UPDATED" | jq -e '.value == "UpdatedValue456"' > /dev/null; then
-    echo "✅ Configuration update verified"
+if echo "$UPDATED" | jq -e '.value == "UpdatedValue456"' >/dev/null; then
+  echo "✅ Configuration update verified"
 else
-    echo "❌ Configuration update failed"
-    exit 1
+  echo "❌ Configuration update failed"
+  exit 1
 fi
 echo ""
 
 echo "Step 7: Test bulk set..."
 curl -s -X POST "$API_URL/bulk" \
-    -H "Content-Type: application/json" \
-    -d '{
+  -H "Content-Type: application/json" \
+  -d '{
         "configurations": [
             {"key":"Bulk1","value":"BulkValue1","category":"BulkTest"},
             {"key":"Bulk2","value":"BulkValue2","category":"BulkTest"},
@@ -85,10 +85,10 @@ CATEGORY=$(curl -s "$API_URL/category/BulkTest")
 echo "$CATEGORY" | jq '.'
 COUNT=$(echo "$CATEGORY" | jq '.count')
 if [ "$COUNT" -eq 3 ]; then
-    echo "✅ Category retrieval works ($COUNT items)"
+  echo "✅ Category retrieval works ($COUNT items)"
 else
-    echo "❌ Category retrieval failed (expected 3, got $COUNT)"
-    exit 1
+  echo "❌ Category retrieval failed (expected 3, got $COUNT)"
+  exit 1
 fi
 echo ""
 
@@ -104,11 +104,11 @@ echo ""
 
 echo "Step 11: Verify configuration still exists after cache clear..."
 AFTER_CLEAR=$(curl -s "$API_URL/TestKey")
-if echo "$AFTER_CLEAR" | jq -e '.value == "UpdatedValue456"' > /dev/null; then
-    echo "✅ Configuration persists after cache clear"
+if echo "$AFTER_CLEAR" | jq -e '.value == "UpdatedValue456"' >/dev/null; then
+  echo "✅ Configuration persists after cache clear"
 else
-    echo "❌ Configuration lost after cache clear"
-    exit 1
+  echo "❌ Configuration lost after cache clear"
+  exit 1
 fi
 echo ""
 

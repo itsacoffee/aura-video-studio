@@ -16,19 +16,19 @@ echo ""
 
 # Check if running in Docker or local
 if [ -f "/.dockerenv" ]; then
-    echo "Running in Docker container"
-    cd /app
+  echo "Running in Docker container"
+  cd /app
 else
-    echo "Running locally"
-    cd "$(dirname "$0")/../.."
+  echo "Running locally"
+  cd "$(dirname "$0")/../.."
 fi
 
 # Check if dotnet is available
-if ! command -v dotnet &> /dev/null; then
-    echo -e "${RED}Error: .NET SDK not found${NC}"
-    echo "Install .NET SDK or run migrations via Docker:"
-    echo "  docker-compose exec api dotnet ef database update"
-    exit 1
+if ! command -v dotnet &>/dev/null; then
+  echo -e "${RED}Error: .NET SDK not found${NC}"
+  echo "Install .NET SDK or run migrations via Docker:"
+  echo "  docker-compose exec api dotnet ef database update"
+  exit 1
 fi
 
 # Run EF Core migrations
@@ -37,17 +37,17 @@ cd Aura.Api
 dotnet ef database update --verbose
 
 if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✓ Migrations applied successfully${NC}"
-    echo ""
-    
-    # Optionally run seed scripts
-    if [ "$1" = "--seed" ]; then
-        echo -e "${YELLOW}Running seed scripts...${NC}"
-        ./scripts/setup/seed-database.sh
-    fi
+  echo -e "${GREEN}✓ Migrations applied successfully${NC}"
+  echo ""
+
+  # Optionally run seed scripts
+  if [ "$1" = "--seed" ]; then
+    echo -e "${YELLOW}Running seed scripts...${NC}"
+    ./scripts/setup/seed-database.sh
+  fi
 else
-    echo -e "${RED}✗ Migration failed${NC}"
-    exit 1
+  echo -e "${RED}✗ Migration failed${NC}"
+  exit 1
 fi
 
 echo -e "${GREEN}Database migration complete!${NC}"

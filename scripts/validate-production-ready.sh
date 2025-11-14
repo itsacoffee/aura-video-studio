@@ -1,7 +1,7 @@
 #!/bin/bash
 # scripts/validate-production-ready.sh
 # Automated validation script for production readiness (PR 40)
-# 
+#
 # This script executes all test suites and validates production readiness
 # based on the comprehensive checklist defined in PRODUCTION_READINESS_CHECKLIST.md
 
@@ -31,43 +31,43 @@ SKIPPED_TESTS=0
 
 # Helper functions
 print_header() {
-    echo ""
-    echo "========================================"
-    echo " $1"
-    echo "========================================"
-    echo ""
+  echo ""
+  echo "========================================"
+  echo " $1"
+  echo "========================================"
+  echo ""
 }
 
 print_section() {
-    echo ""
-    echo -e "${COLOR_BLUE}▶ $1${COLOR_RESET}"
-    echo ""
+  echo ""
+  echo -e "${COLOR_BLUE}▶ $1${COLOR_RESET}"
+  echo ""
 }
 
 print_success() {
-    echo -e "${COLOR_GREEN}✓${COLOR_RESET} $1"
-    ((PASSED_TESTS++))
-    ((TOTAL_TESTS++))
+  echo -e "${COLOR_GREEN}✓${COLOR_RESET} $1"
+  ((PASSED_TESTS++))
+  ((TOTAL_TESTS++))
 }
 
 print_fail() {
-    echo -e "${COLOR_RED}✗${COLOR_RESET} $1"
-    ((FAILED_TESTS++))
-    ((TOTAL_TESTS++))
+  echo -e "${COLOR_RED}✗${COLOR_RESET} $1"
+  ((FAILED_TESTS++))
+  ((TOTAL_TESTS++))
 }
 
 print_skip() {
-    echo -e "${COLOR_YELLOW}⊝${COLOR_RESET} $1"
-    ((SKIPPED_TESTS++))
-    ((TOTAL_TESTS++))
+  echo -e "${COLOR_YELLOW}⊝${COLOR_RESET} $1"
+  ((SKIPPED_TESTS++))
+  ((TOTAL_TESTS++))
 }
 
 print_info() {
-    echo -e "${COLOR_CYAN}→${COLOR_RESET} $1"
+  echo -e "${COLOR_CYAN}→${COLOR_RESET} $1"
 }
 
 print_warning() {
-    echo -e "${COLOR_YELLOW}⚠${COLOR_RESET} $1"
+  echo -e "${COLOR_YELLOW}⚠${COLOR_RESET} $1"
 }
 
 # Start validation
@@ -80,29 +80,29 @@ echo ""
 print_section "PHASE 1: Environment Check"
 
 print_info "Checking Node.js version..."
-if command -v node &> /dev/null; then
-    NODE_VERSION=$(node --version)
-    print_success "Node.js installed: ${NODE_VERSION}"
+if command -v node &>/dev/null; then
+  NODE_VERSION=$(node --version)
+  print_success "Node.js installed: ${NODE_VERSION}"
 else
-    print_fail "Node.js not found"
-    exit 1
+  print_fail "Node.js not found"
+  exit 1
 fi
 
 print_info "Checking npm version..."
-if command -v npm &> /dev/null; then
-    NPM_VERSION=$(npm --version)
-    print_success "npm installed: ${NPM_VERSION}"
+if command -v npm &>/dev/null; then
+  NPM_VERSION=$(npm --version)
+  print_success "npm installed: ${NPM_VERSION}"
 else
-    print_fail "npm not found"
-    exit 1
+  print_fail "npm not found"
+  exit 1
 fi
 
 print_info "Checking .NET version..."
-if command -v dotnet &> /dev/null; then
-    DOTNET_VERSION=$(dotnet --version)
-    print_success ".NET installed: ${DOTNET_VERSION}"
+if command -v dotnet &>/dev/null; then
+  DOTNET_VERSION=$(dotnet --version)
+  print_success ".NET installed: ${DOTNET_VERSION}"
 else
-    print_warning ".NET not found (optional for frontend-only validation)"
+  print_warning ".NET not found (optional for frontend-only validation)"
 fi
 
 # PHASE 2: Dependency Installation
@@ -110,11 +110,11 @@ print_section "PHASE 2: Dependency Installation"
 
 print_info "Installing frontend dependencies..."
 cd "${WEB_DIR}"
-if npm install --silent > /dev/null 2>&1; then
-    print_success "Frontend dependencies installed"
+if npm install --silent >/dev/null 2>&1; then
+  print_success "Frontend dependencies installed"
 else
-    print_fail "Failed to install frontend dependencies"
-    exit 1
+  print_fail "Failed to install frontend dependencies"
+  exit 1
 fi
 
 # PHASE 3: Frontend Unit Tests
@@ -123,13 +123,13 @@ print_section "PHASE 3: Frontend Unit Tests (Vitest)"
 print_info "Running frontend unit tests..."
 cd "${WEB_DIR}"
 if npm test 2>&1 | tee /tmp/frontend-tests.log; then
-    print_success "Frontend unit tests passed"
-    # Extract test count from output
-    TEST_COUNT=$(grep -oP '\d+ passed' /tmp/frontend-tests.log | head -1 | grep -oP '\d+' || echo "unknown")
-    print_info "Tests passed: ${TEST_COUNT}"
+  print_success "Frontend unit tests passed"
+  # Extract test count from output
+  TEST_COUNT=$(grep -oP '\d+ passed' /tmp/frontend-tests.log | head -1 | grep -oP '\d+' || echo "unknown")
+  print_info "Tests passed: ${TEST_COUNT}"
 else
-    print_fail "Frontend unit tests failed"
-    print_warning "Check /tmp/frontend-tests.log for details"
+  print_fail "Frontend unit tests failed"
+  print_warning "Check /tmp/frontend-tests.log for details"
 fi
 
 # PHASE 4: Smoke Tests
@@ -137,30 +137,30 @@ print_section "PHASE 4: Smoke Tests"
 
 print_info "Running dependency detection smoke tests..."
 if npm test -- tests/smoke/dependency-detection.test.ts 2>&1 | tee /tmp/smoke-dependency.log; then
-    print_success "Dependency detection smoke tests passed"
+  print_success "Dependency detection smoke tests passed"
 else
-    print_fail "Dependency detection smoke tests failed"
+  print_fail "Dependency detection smoke tests failed"
 fi
 
 print_info "Running Quick Demo smoke tests..."
 if npm test -- tests/smoke/quick-demo.test.ts 2>&1 | tee /tmp/smoke-quickdemo.log; then
-    print_success "Quick Demo smoke tests passed"
+  print_success "Quick Demo smoke tests passed"
 else
-    print_fail "Quick Demo smoke tests failed"
+  print_fail "Quick Demo smoke tests failed"
 fi
 
 print_info "Running export pipeline smoke tests..."
 if npm test -- tests/smoke/export-pipeline.test.ts 2>&1 | tee /tmp/smoke-export.log; then
-    print_success "Export pipeline smoke tests passed"
+  print_success "Export pipeline smoke tests passed"
 else
-    print_fail "Export pipeline smoke tests failed"
+  print_fail "Export pipeline smoke tests failed"
 fi
 
 print_info "Running settings smoke tests..."
 if npm test -- tests/smoke/settings.test.ts 2>&1 | tee /tmp/smoke-settings.log; then
-    print_success "Settings smoke tests passed"
+  print_success "Settings smoke tests passed"
 else
-    print_fail "Settings smoke tests failed"
+  print_fail "Settings smoke tests failed"
 fi
 
 # PHASE 5: Integration Tests
@@ -168,9 +168,9 @@ print_section "PHASE 5: Integration Tests"
 
 print_info "Running critical paths integration tests..."
 if npm test -- tests/integration/critical-paths.test.ts 2>&1 | tee /tmp/integration-tests.log; then
-    print_success "Critical paths integration tests passed"
+  print_success "Critical paths integration tests passed"
 else
-    print_fail "Critical paths integration tests failed"
+  print_fail "Critical paths integration tests failed"
 fi
 
 # PHASE 6: Build Verification
@@ -179,26 +179,27 @@ print_section "PHASE 6: Build Verification"
 print_info "Running production build..."
 cd "${WEB_DIR}"
 if npm run build 2>&1 | tee /tmp/build.log; then
-    print_success "Production build completed"
-    
-    # Check bundle size
-    if [ -d "dist" ]; then
-        BUNDLE_SIZE=$(du -sh dist | cut -f1)
-        print_info "Bundle size: ${BUNDLE_SIZE}"
-        
-        # Check if main bundle is gzipped under 2MB
-        MAIN_BUNDLE_FILES=$(ls dist/assets/index*.js 2>/dev/null || echo "")
-            MAIN_BUNDLE_SIZE=$(gzip -c dist/assets/index*.js | wc -c)
-            MAIN_BUNDLE_SIZE_MB=$((MAIN_BUNDLE_SIZE / 1024 / 1024))
-            if [ ${MAIN_BUNDLE_SIZE_MB} -lt 2 ]; then
-                print_success "Main bundle size OK: ${MAIN_BUNDLE_SIZE_MB}MB (< 2MB target)"
-            else
-                print_warning "Main bundle size: ${MAIN_BUNDLE_SIZE_MB}MB (exceeds 2MB target)"
-            fi
-        fi
+  print_success "Production build completed"
+
+  # Check bundle size
+  if [ -d "dist" ]; then
+    BUNDLE_SIZE=$(du -sh dist | cut -f1)
+    print_info "Bundle size: ${BUNDLE_SIZE}"
+
+    # Check if main bundle is gzipped under 2MB
+    MAIN_BUNDLE_FILES=$(ls dist/assets/index*.js 2>/dev/null || echo "")
+    if [ -n "$MAIN_BUNDLE_FILES" ]; then
+      MAIN_BUNDLE_SIZE=$(gzip -c dist/assets/index*.js | wc -c)
+      MAIN_BUNDLE_SIZE_MB=$((MAIN_BUNDLE_SIZE / 1024 / 1024))
+      if [ "${MAIN_BUNDLE_SIZE_MB}" -lt 2 ]; then
+        print_success "Main bundle size OK: ${MAIN_BUNDLE_SIZE_MB}MB (< 2MB target)"
+      else
+        print_warning "Main bundle size: ${MAIN_BUNDLE_SIZE_MB}MB (exceeds 2MB target)"
+      fi
     fi
+  fi
 else
-    print_fail "Production build failed"
+  print_fail "Production build failed"
 fi
 
 # PHASE 7: Type Checking
@@ -207,9 +208,9 @@ print_section "PHASE 7: Type Checking"
 print_info "Running TypeScript type check..."
 cd "${WEB_DIR}"
 if npm run type-check 2>&1 | tee /tmp/typecheck.log; then
-    print_success "TypeScript type check passed"
+  print_success "TypeScript type check passed"
 else
-    print_fail "TypeScript type check failed"
+  print_fail "TypeScript type check failed"
 fi
 
 # PHASE 8: Linting
@@ -218,24 +219,24 @@ print_section "PHASE 8: Code Quality (Linting)"
 print_info "Running ESLint..."
 cd "${WEB_DIR}"
 if npm run lint 2>&1 | tee /tmp/eslint.log; then
-    print_success "ESLint passed with no errors"
+  print_success "ESLint passed with no errors"
 else
-    print_warning "ESLint found issues (check /tmp/eslint.log)"
+  print_warning "ESLint found issues (check /tmp/eslint.log)"
 fi
 
 # PHASE 9: Backend Tests (Optional)
 print_section "PHASE 9: Backend Tests (Optional)"
 
-if command -v dotnet &> /dev/null; then
-    print_info "Running backend unit tests..."
-    cd "${REPO_ROOT}"
-    if dotnet test --no-build --verbosity quiet 2>&1 | tee /tmp/backend-tests.log; then
-        print_success "Backend unit tests passed"
-    else
-        print_warning "Backend unit tests failed or not available"
-    fi
+if command -v dotnet &>/dev/null; then
+  print_info "Running backend unit tests..."
+  cd "${REPO_ROOT}"
+  if dotnet test --no-build --verbosity quiet 2>&1 | tee /tmp/backend-tests.log; then
+    print_success "Backend unit tests passed"
+  else
+    print_warning "Backend unit tests failed or not available"
+  fi
 else
-    print_skip "Backend tests skipped (.NET not available)"
+  print_skip "Backend tests skipped (.NET not available)"
 fi
 
 # PHASE 10: E2E Tests (Optional - requires running server)
@@ -255,15 +256,15 @@ echo ""
 
 # Calculate success rate
 if [ ${TOTAL_TESTS} -gt 0 ]; then
-    SUCCESS_RATE=$((PASSED_TESTS * 100 / TOTAL_TESTS))
-    echo "Success Rate: ${SUCCESS_RATE}%"
+  SUCCESS_RATE=$((PASSED_TESTS * 100 / TOTAL_TESTS))
+  echo "Success Rate: ${SUCCESS_RATE}%"
 fi
 
 # Generate report
 print_section "Generating Report"
 
 REPORT_FILE="${REPO_ROOT}/validation-report-$(date +%Y%m%d-%H%M%S).txt"
-cat > "${REPORT_FILE}" <<EOF
+cat >"${REPORT_FILE}" <<EOF
 Aura Video Studio - Production Readiness Validation Report
 =========================================================
 
@@ -299,8 +300,8 @@ Detailed Logs:
 - ESLint: /tmp/eslint.log
 
 Recommendations:
-$( [ ${FAILED_TESTS} -eq 0 ] && echo "✓ All automated checks passed!" || echo "✗ Some checks failed. Review logs for details." )
-$( [ ${SKIPPED_TESTS} -gt 0 ] && echo "⚠ ${SKIPPED_TESTS} checks were skipped. Run manually for complete validation." || echo "" )
+$([ ${FAILED_TESTS} -eq 0 ] && echo "✓ All automated checks passed!" || echo "✗ Some checks failed. Review logs for details.")
+$([ ${SKIPPED_TESTS} -gt 0 ] && echo "⚠ ${SKIPPED_TESTS} checks were skipped. Run manually for complete validation." || echo "")
 
 Next Steps:
 1. Review PRODUCTION_READINESS_CHECKLIST.md
@@ -316,10 +317,10 @@ print_info "Report saved to: ${REPORT_FILE}"
 # Final status
 echo ""
 if [ ${FAILED_TESTS} -eq 0 ]; then
-    print_header "✓ Production Readiness Validation PASSED"
-    exit 0
+  print_header "✓ Production Readiness Validation PASSED"
+  exit 0
 else
-    print_header "✗ Production Readiness Validation FAILED"
-    print_warning "Review failed tests and fix issues before production release"
-    exit 1
+  print_header "✗ Production Readiness Validation FAILED"
+  print_warning "Review failed tests and fix issues before production release"
+  exit 1
 fi

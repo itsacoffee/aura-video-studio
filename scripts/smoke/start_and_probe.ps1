@@ -1,4 +1,4 @@
-#!/usr/bin/env pwsh
+﻿#!/usr/bin/env pwsh
 <#
 .SYNOPSIS
     Smoke test script for Aura Video Studio startup sanity checks.
@@ -49,10 +49,10 @@ $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 
 # Colors for output
-function Write-Success { param($Message) Write-Host "✓ $Message" -ForegroundColor Green }
-function Write-Info { param($Message) Write-Host "→ $Message" -ForegroundColor Cyan }
-function Write-Warning { param($Message) Write-Host "⚠ $Message" -ForegroundColor Yellow }
-function Write-Error { param($Message) Write-Host "✗ $Message" -ForegroundColor Red }
+function Write-Success { param($Message) Write-Output "✓ $Message" -ForegroundColor Green }
+function Write-Info { param($Message) Write-Output "→ $Message" -ForegroundColor Cyan }
+function Show-Warning { param($Message) Write-Output "⚠ $Message" -ForegroundColor Yellow }
+function Show-ErrorMessage { param($Message) Write-Output "✗ $Message" -ForegroundColor Red }
 
 # Configuration
 $ApiBase = "http://127.0.0.1:5005"
@@ -78,12 +78,12 @@ try {
             "Aura.Api/Aura.Api.csproj",
             "Aura.Tests/Aura.Tests.csproj"
         )
-        
+
         foreach ($project in $buildProjects) {
             $buildOutput = dotnet build $project --nologo 2>&1
             if ($LASTEXITCODE -ne 0) {
-                Write-Error "Build failed for $project!"
-                Write-Host $buildOutput
+                Show-ErrorMessage "Build failed for $project!"
+                Write-Output $buildOutput
                 exit 1
             }
         }
@@ -97,8 +97,8 @@ try {
         Write-Info "[2/5] Running core tests (Aura.Tests)..."
         $testOutput = dotnet test Aura.Tests/Aura.Tests.csproj --no-build --nologo --verbosity quiet 2>&1
         if ($LASTEXITCODE -ne 0) {
-            Write-Error "Tests failed!"
-            Write-Host $testOutput
+            Show-ErrorMessage "Tests failed!"
+            Write-Output $testOutput
             exit 1
         }
         # Parse test results
@@ -114,11 +114,11 @@ try {
 
     # Step 3: Start Aura.Api in background
     Write-Info "[3/5] Starting Aura.Api in background..."
-    
+
     # Check if port is already in use
     $portInUse = Get-NetTCPConnection -LocalPort $ApiPort -ErrorAction SilentlyContinue
     if ($portInUse) {
-        Write-Warning "Port $ApiPort is already in use. Attempting to continue..."
+        Show-Warning "Port $ApiPort is already in use. Attempting to continue..."
     }
 
     # Start API in background
@@ -130,7 +130,7 @@ try {
         -RedirectStandardError "logs/smoke-stderr.log"
 
     Write-Success "Aura.Api started (PID: $($apiProcess.Id))"
-    
+
     # Wait for API to be ready (max 15 seconds)
     Write-Info "Waiting for API to become ready..."
     $maxWait = 15
@@ -140,7 +140,7 @@ try {
     while ($waited -lt $maxWait) {
         Start-Sleep -Seconds 1
         $waited++
-        
+
         try {
             $response = Invoke-RestMethod -Uri "$ApiBase/api/healthz" -Method Get -TimeoutSec 2 -ErrorAction SilentlyContinue
             if ($response.status -eq "healthy") {
@@ -149,11 +149,12 @@ try {
             }
         } catch {
             # API not ready yet, continue waiting
+            Write-Verbose "API not ready: $_"
         }
     }
 
     if (-not $apiReady) {
-        Write-Error "API did not become ready within $maxWait seconds"
+        Show-ErrorMessage "API did not become ready within $maxWait seconds"
         Stop-Process -Id $apiProcess.Id -Force -ErrorAction SilentlyContinue
         exit 1
     }
@@ -162,7 +163,7 @@ try {
 
     # Step 4: Probe critical endpoints
     Write-Info "[4/5] Probing critical endpoints..."
-    
+
     # Probe 1: Health check
     try {
         $healthResponse = Invoke-RestMethod -Uri "$ApiBase/api/healthz" -Method Get
@@ -172,12 +173,12 @@ try {
                 Write-Info "  Server time: $($healthResponse.timestamp)"
             }
         } else {
-            Write-Error "Health check returned unexpected status: $($healthResponse.status)"
+            Show-ErrorMessage "Health check returned unexpected status: $($healthResponse.status)"
             throw "Health check failed"
         }
     } catch {
-        Write-Error "GET /api/healthz - FAILED"
-        Write-Error "  $($_.Exception.Message)"
+        Show-ErrorMessage "GET /api/healthz - FAILED"
+        Show-ErrorMessage "  $($_.Exception.Message)"
         Stop-Process -Id $apiProcess.Id -Force -ErrorAction SilentlyContinue
         exit 1
     }
@@ -193,8 +194,8 @@ try {
             Write-Info "  CPU Cores: $($capabilitiesResponse.cpu.cores)"
         }
     } catch {
-        Write-Error "GET /api/capabilities - FAILED"
-        Write-Error "  $($_.Exception.Message)"
+        Show-ErrorMessage "GET /api/capabilities - FAILED"
+        Show-ErrorMessage "  $($_.Exception.Message)"
         Stop-Process -Id $apiProcess.Id -Force -ErrorAction SilentlyContinue
         exit 1
     }
@@ -207,8 +208,8 @@ try {
             Write-Info "  Jobs in queue: $($queueResponse.jobs.Count)"
         }
     } catch {
-        Write-Error "GET /api/queue - FAILED"
-        Write-Error "  $($_.Exception.Message)"
+        Show-ErrorMessage "GET /api/queue - FAILED"
+        Show-ErrorMessage "  $($_.Exception.Message)"
         Stop-Process -Id $apiProcess.Id -Force -ErrorAction SilentlyContinue
         exit 1
     }
@@ -216,14 +217,14 @@ try {
     # Step 5: Monitor logs for exceptions
     Write-Info "[5/5] Monitoring logs for $ProbeTimeout seconds..."
     $logFile = Get-ChildItem -Path "logs" -Filter "aura-api-*.log" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-    
+
     if (-not $logFile) {
         # Fallback to smoke-stdout.log if no dated log file exists
         if (Test-Path "logs/smoke-stdout.log") {
             $logFile = Get-Item "logs/smoke-stdout.log"
             Write-Info "Using smoke-stdout.log for monitoring"
         } else {
-            Write-Warning "No log file found - creating new monitoring session"
+            Show-Warning "No log file found - creating new monitoring session"
             # Wait and retry
             Start-Sleep -Seconds 2
             $logFile = Get-ChildItem -Path "logs" -Filter "aura-api-*.log" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
@@ -247,22 +248,22 @@ try {
 
     while (((Get-Date) - $monitorStart).TotalSeconds -lt $ProbeTimeout) {
         Start-Sleep -Seconds 2
-        
+
         if ($logFile) {
             $currentLines = Get-Content $logFile.FullName
             $newLines = $currentLines | Select-Object -Skip $initialLineCount
-            
+
             foreach ($line in $newLines) {
                 # Check for exceptions or errors
                 if ($line -match "\[ERR\]|\[FTL\]|Exception|Error:") {
                     if ($line -match "Exception") {
                         $exceptionCount++
-                        Write-Warning "Exception found: $($line.Substring(0, [Math]::Min(120, $line.Length)))"
+                        Show-Warning "Exception found: $($line.Substring(0, [Math]::Min(120, $line.Length)))"
                     } else {
                         $errorCount++
                     }
                 }
-                
+
                 # Extract correlation IDs
                 if ($line -match "\[([a-f0-9]{32})\]") {
                     $correlationId = $Matches[1]
@@ -271,7 +272,7 @@ try {
                     }
                 }
             }
-            
+
             $initialLineCount = $currentLines.Count
         }
     }
@@ -280,7 +281,7 @@ try {
     Write-Info "  Duration: $ProbeTimeout seconds"
     Write-Info "  Exceptions found: $exceptionCount"
     Write-Info "  Errors found: $errorCount"
-    
+
     if ($correlationIds.Count -gt 0) {
         Write-Info "  Correlation IDs seen: $($correlationIds.Count)"
         $correlationIds | Select-Object -First 3 | ForEach-Object {
@@ -291,10 +292,10 @@ try {
     # Determine final status
     $exitCode = 0
     if ($exceptionCount -gt 0) {
-        Write-Error "Found $exceptionCount exception(s) in logs - test FAILED"
+        Show-ErrorMessage "Found $exceptionCount exception(s) in logs - test FAILED"
         $exitCode = 1
     } elseif ($errorCount -gt 5) {
-        Write-Warning "Found $errorCount error(s) in logs - may indicate issues"
+        Show-Warning "Found $errorCount error(s) in logs - may indicate issues"
     } else {
         Write-Success "No critical exceptions found"
     }
@@ -303,9 +304,9 @@ try {
     Write-Info "Stopping Aura.Api (PID: $($apiProcess.Id))..."
     Stop-Process -Id $apiProcess.Id -Force -ErrorAction SilentlyContinue
     Start-Sleep -Seconds 2
-    
+
     if (Get-Process -Id $apiProcess.Id -ErrorAction SilentlyContinue) {
-        Write-Warning "API process still running, forcing termination..."
+        Show-Warning "API process still running, forcing termination..."
         Stop-Process -Id $apiProcess.Id -Force
     }
 
@@ -314,21 +315,21 @@ try {
     if ($exitCode -eq 0) {
         Write-Success "║   Smoke test PASSED - Application is healthy         ║"
     } else {
-        Write-Error "║   Smoke test FAILED - Check logs for details         ║"
+        Show-ErrorMessage "║   Smoke test FAILED - Check logs for details         ║"
     }
     Write-Info "╚═══════════════════════════════════════════════════════╝"
 
     exit $exitCode
 
 } catch {
-    Write-Error "Smoke test encountered an error: $($_.Exception.Message)"
-    Write-Error $_.ScriptStackTrace
-    
+    Show-ErrorMessage "Smoke test encountered an error: $($_.Exception.Message)"
+    Show-ErrorMessage $_.ScriptStackTrace
+
     # Try to stop API if it's running
     if ($apiProcess) {
         Stop-Process -Id $apiProcess.Id -Force -ErrorAction SilentlyContinue
     }
-    
+
     exit 1
 } finally {
     Pop-Location

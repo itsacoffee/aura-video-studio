@@ -1,4 +1,4 @@
-# PowerShell Script to Validate Windows Build Configuration
+﻿# PowerShell Script to Validate Windows Build Configuration
 # This script validates the Electron build system for Windows
 
 param(
@@ -14,40 +14,40 @@ $InfoColor = "Cyan"
 
 function Write-Info {
     param([string]$Message)
-    Write-Host "[INFO] $Message" -ForegroundColor $InfoColor
+    Write-Output "[INFO] $Message" -ForegroundColor $InfoColor
 }
 
 function Write-Success {
     param([string]$Message)
-    Write-Host "[✓] $Message" -ForegroundColor $SuccessColor
+    Write-Output "[✓] $Message" -ForegroundColor $SuccessColor
 }
 
 function Write-Warning {
     param([string]$Message)
-    Write-Host "[!] $Message" -ForegroundColor $WarningColor
+    Write-Output "[!] $Message" -ForegroundColor $WarningColor
 }
 
 function Write-ErrorMessage {
     param([string]$Message)
-    Write-Host "[✗] $Message" -ForegroundColor $ErrorColor
+    Write-Output "[✗] $Message" -ForegroundColor $ErrorColor
 }
 
 if ($Help) {
-    Write-Host "Windows Build Validation Script for Aura Video Studio"
-    Write-Host ""
-    Write-Host "Usage: .\validate-windows-build.ps1 [OPTIONS]"
-    Write-Host ""
-    Write-Host "Options:"
-    Write-Host "  -Verbose    Show detailed validation output"
-    Write-Host "  -Help       Show this help message"
+    Write-Output "Windows Build Validation Script for Aura Video Studio"
+    Write-Output ""
+    Write-Output "Usage: .\validate-windows-build.ps1 [OPTIONS]"
+    Write-Output ""
+    Write-Output "Options:"
+    Write-Output "  -Verbose    Show detailed validation output"
+    Write-Output "  -Help       Show this help message"
     exit 0
 }
 
-Write-Host ""
-Write-Host "========================================" -ForegroundColor $InfoColor
-Write-Host "Windows Build System Validation" -ForegroundColor $InfoColor
-Write-Host "========================================" -ForegroundColor $InfoColor
-Write-Host ""
+Write-Output ""
+Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Output "Windows Build System Validation" -ForegroundColor $InfoColor
+Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Output ""
 
 $ScriptDir = $PSScriptRoot
 $DesktopDir = Split-Path $ScriptDir -Parent
@@ -67,7 +67,7 @@ try {
     if ($LASTEXITCODE -eq 0) {
         $versionNumber = $nodeVersion -replace 'v', ''
         $majorVersion = [int]($versionNumber -split '\.')[0]
-        
+
         if ($majorVersion -ge 18) {
             Write-Success "Node.js $nodeVersion (minimum v18 required)"
             $ValidationPassed++
@@ -106,7 +106,7 @@ try {
     $dotnetVersion = dotnet --version 2>&1
     if ($LASTEXITCODE -eq 0) {
         $majorVersion = [int]($dotnetVersion -split '\.')[0]
-        
+
         if ($majorVersion -ge 8) {
             Write-Success ".NET SDK $dotnetVersion (minimum 8.0 required)"
             $ValidationPassed++
@@ -143,17 +143,17 @@ $packageJsonPath = Join-Path $DesktopDir "package.json"
 if (Test-Path $packageJsonPath) {
     try {
         $packageJson = Get-Content $packageJsonPath -Raw | ConvertFrom-Json
-        
+
         # Check build configuration exists
         if ($packageJson.build) {
             Write-Success "Build configuration found in package.json"
             $ValidationPassed++
-            
+
             # Check NSIS configuration
             if ($packageJson.build.nsis) {
                 Write-Success "NSIS installer configuration found"
                 $ValidationPassed++
-                
+
                 # Check Windows 11 specific settings
                 if ($packageJson.build.nsis.packElevateHelper -eq $true) {
                     Write-Success "Elevation helper configured for Windows 11"
@@ -162,7 +162,7 @@ if (Test-Path $packageJsonPath) {
                     Write-Warning "Elevation helper not configured"
                     $ValidationWarnings += "packElevateHelper should be enabled"
                 }
-                
+
                 if ($packageJson.build.nsis.unicode -eq $true) {
                     Write-Success "Unicode support enabled"
                     $ValidationPassed++
@@ -174,12 +174,12 @@ if (Test-Path $packageJsonPath) {
                 Write-ErrorMessage "NSIS configuration missing"
                 $ValidationErrors += "NSIS configuration not found in package.json"
             }
-            
+
             # Check Windows target
             if ($packageJson.build.win) {
                 Write-Success "Windows target configuration found"
                 $ValidationPassed++
-                
+
                 # Check architecture
                 $allX64 = $true
                 foreach ($target in $packageJson.build.win.target) {
@@ -187,7 +187,7 @@ if (Test-Path $packageJsonPath) {
                         $allX64 = $false
                     }
                 }
-                
+
                 if ($allX64) {
                     Write-Success "All targets configured for x64 architecture"
                     $ValidationPassed++
@@ -220,7 +220,7 @@ Write-Info "Checking NSIS installer script..."
 $nsisScriptPath = Join-Path $DesktopDir "build\installer.nsh"
 if (Test-Path $nsisScriptPath) {
     $nsisContent = Get-Content $nsisScriptPath -Raw
-    
+
     if ($nsisContent -match "RequestExecutionLevel admin") {
         Write-Success "NSIS script requests admin elevation"
         $ValidationPassed++
@@ -228,12 +228,12 @@ if (Test-Path $nsisScriptPath) {
         Write-Warning "NSIS script does not request elevation"
         $ValidationWarnings += "NSIS script should request admin elevation"
     }
-    
+
     if ($nsisContent -match "HKLM") {
         Write-Success "NSIS script writes to HKLM registry (machine-wide)"
         $ValidationPassed++
     }
-    
+
     if ($nsisContent -match "Windows 11") {
         Write-Success "NSIS script includes Windows 11 compatibility"
         $ValidationPassed++
@@ -361,7 +361,7 @@ Write-Info "Checking npm dependencies..."
 Push-Location $DesktopDir
 try {
     $npmList = npm list --depth=0 2>&1 | Out-String
-    
+
     if ($npmList -match "UNMET DEPENDENCY") {
         Write-ErrorMessage "npm dependencies are not installed"
         Write-Info "Run 'npm install' to install dependencies"
@@ -378,46 +378,46 @@ Pop-Location
 # ========================================
 # Summary
 # ========================================
-Write-Host ""
-Write-Host "========================================" -ForegroundColor $InfoColor
-Write-Host "Validation Summary" -ForegroundColor $InfoColor
-Write-Host "========================================" -ForegroundColor $InfoColor
-Write-Host ""
+Write-Output ""
+Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Output "Validation Summary" -ForegroundColor $InfoColor
+Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Output ""
 
-Write-Host "Tests Passed: $ValidationPassed" -ForegroundColor $SuccessColor
+Write-Output "Tests Passed: $ValidationPassed" -ForegroundColor $SuccessColor
 
 if ($ValidationWarnings.Count -gt 0) {
-    Write-Host "Warnings: $($ValidationWarnings.Count)" -ForegroundColor $WarningColor
+    Write-Output "Warnings: $($ValidationWarnings.Count)" -ForegroundColor $WarningColor
     if ($Verbose) {
         foreach ($warning in $ValidationWarnings) {
-            Write-Host "  - $warning" -ForegroundColor $WarningColor
+            Write-Output "  - $warning" -ForegroundColor $WarningColor
         }
     }
 }
 
 if ($ValidationErrors.Count -gt 0) {
-    Write-Host "Errors: $($ValidationErrors.Count)" -ForegroundColor $ErrorColor
-    Write-Host ""
-    Write-Host "Errors found:" -ForegroundColor $ErrorColor
-    foreach ($error in $ValidationErrors) {
-        Write-Host "  - $error" -ForegroundColor $ErrorColor
+    Write-Output "Errors: $($ValidationErrors.Count)" -ForegroundColor $ErrorColor
+    Write-Output ""
+    Write-Output "Errors found:" -ForegroundColor $ErrorColor
+    foreach ($validationError in $ValidationErrors) {
+        Write-Output "  - $validationError" -ForegroundColor $ErrorColor
     }
-    Write-Host ""
-    Write-Host "Please fix the errors above before building." -ForegroundColor $ErrorColor
+    Write-Output ""
+    Write-Output "Please fix the errors above before building." -ForegroundColor $ErrorColor
     exit 1
 } else {
-    Write-Host ""
-    Write-Host "========================================" -ForegroundColor $SuccessColor
-    Write-Host "✓ All Critical Validations Passed!" -ForegroundColor $SuccessColor
-    Write-Host "========================================" -ForegroundColor $SuccessColor
-    Write-Host ""
-    Write-Host "The Windows build system is properly configured." -ForegroundColor $SuccessColor
-    Write-Host ""
-    Write-Host "Next steps:" -ForegroundColor $InfoColor
-    Write-Host "  1. Install dependencies: npm install" -ForegroundColor $InfoColor
-    Write-Host "  2. Build backend: .\scripts\build-backend-windows.ps1" -ForegroundColor $InfoColor
-    Write-Host "  3. Download FFmpeg: .\scripts\download-ffmpeg-windows.ps1" -ForegroundColor $InfoColor
-    Write-Host "  4. Build installer: npm run build:win" -ForegroundColor $InfoColor
-    Write-Host ""
+    Write-Output ""
+    Write-Output "========================================" -ForegroundColor $SuccessColor
+    Write-Output "✓ All Critical Validations Passed!" -ForegroundColor $SuccessColor
+    Write-Output "========================================" -ForegroundColor $SuccessColor
+    Write-Output ""
+    Write-Output "The Windows build system is properly configured." -ForegroundColor $SuccessColor
+    Write-Output ""
+    Write-Output "Next steps:" -ForegroundColor $InfoColor
+    Write-Output "  1. Install dependencies: npm install" -ForegroundColor $InfoColor
+    Write-Output "  2. Build backend: .\scripts\build-backend-windows.ps1" -ForegroundColor $InfoColor
+    Write-Output "  3. Download FFmpeg: .\scripts\download-ffmpeg-windows.ps1" -ForegroundColor $InfoColor
+    Write-Output "  4. Build installer: npm run build:win" -ForegroundColor $InfoColor
+    Write-Output ""
     exit 0
 }

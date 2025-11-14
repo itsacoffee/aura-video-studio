@@ -17,7 +17,7 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 # Get the directory where the script is located
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 # Default database location (update based on your configuration)
@@ -29,8 +29,8 @@ mkdir -p "$BACKUP_DIR"
 
 # Check if database exists
 if [ ! -f "$DB_PATH" ]; then
-    echo -e "${RED}Error: Database not found at: $DB_PATH${NC}"
-    exit 1
+  echo -e "${RED}Error: Database not found at: $DB_PATH${NC}"
+  exit 1
 fi
 
 # Generate timestamp
@@ -47,19 +47,19 @@ cp "$DB_PATH" "$BACKUP_FILE"
 
 # Verify backup
 if [ -f "$BACKUP_FILE" ]; then
-    ORIGINAL_SIZE=$(stat -f%z "$DB_PATH" 2>/dev/null || stat -c%s "$DB_PATH" 2>/dev/null)
-    BACKUP_SIZE=$(stat -f%z "$BACKUP_FILE" 2>/dev/null || stat -c%s "$BACKUP_FILE" 2>/dev/null)
-    
-    if [ "$ORIGINAL_SIZE" -eq "$BACKUP_SIZE" ]; then
-        echo -e "${GREEN}✓ Backup created successfully${NC}"
-        echo "Size: $(numfmt --to=iec-i --suffix=B $BACKUP_SIZE 2>/dev/null || echo "$BACKUP_SIZE bytes")"
-    else
-        echo -e "${RED}Error: Backup size mismatch${NC}"
-        exit 1
-    fi
-else
-    echo -e "${RED}Error: Backup file not created${NC}"
+  ORIGINAL_SIZE=$(stat -f%z "$DB_PATH" 2>/dev/null || stat -c%s "$DB_PATH" 2>/dev/null)
+  BACKUP_SIZE=$(stat -f%z "$BACKUP_FILE" 2>/dev/null || stat -c%s "$BACKUP_FILE" 2>/dev/null)
+
+  if [ "$ORIGINAL_SIZE" -eq "$BACKUP_SIZE" ]; then
+    echo -e "${GREEN}✓ Backup created successfully${NC}"
+    echo "Size: $(numfmt --to=iec-i --suffix=B $BACKUP_SIZE 2>/dev/null || echo "$BACKUP_SIZE bytes")"
+  else
+    echo -e "${RED}Error: Backup size mismatch${NC}"
     exit 1
+  fi
+else
+  echo -e "${RED}Error: Backup file not created${NC}"
+  exit 1
 fi
 
 # Clean up old backups (keep last 10)
@@ -68,11 +68,11 @@ echo -e "${YELLOW}Cleaning up old backups...${NC}"
 BACKUP_COUNT=$(ls -1 "$BACKUP_DIR"/aura_backup_*.db 2>/dev/null | wc -l)
 
 if [ "$BACKUP_COUNT" -gt 10 ]; then
-    REMOVE_COUNT=$((BACKUP_COUNT - 10))
-    ls -1t "$BACKUP_DIR"/aura_backup_*.db | tail -n "$REMOVE_COUNT" | xargs rm -f
-    echo -e "${GREEN}✓ Removed $REMOVE_COUNT old backup(s)${NC}"
+  REMOVE_COUNT=$((BACKUP_COUNT - 10))
+  ls -1t "$BACKUP_DIR"/aura_backup_*.db | tail -n "$REMOVE_COUNT" | xargs rm -f
+  echo -e "${GREEN}✓ Removed $REMOVE_COUNT old backup(s)${NC}"
 else
-    echo "Keeping all $BACKUP_COUNT backup(s)"
+  echo "Keeping all $BACKUP_COUNT backup(s)"
 fi
 
 echo ""

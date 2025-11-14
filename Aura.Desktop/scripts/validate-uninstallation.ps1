@@ -1,4 +1,4 @@
-# PowerShell Script to Validate Uninstallation Cleanup
+﻿# PowerShell Script to Validate Uninstallation Cleanup
 # This script checks that uninstallation properly removes all files and registry entries
 # from PR-E2E-002: WINDOWS INSTALLATION & DISTRIBUTION
 
@@ -14,38 +14,38 @@ $InfoColor = "Cyan"
 
 function Write-Info {
     param([string]$Message)
-    Write-Host "[INFO] $Message" -ForegroundColor $InfoColor
+    Write-Output "[INFO] $Message" -ForegroundColor $InfoColor
 }
 
 function Write-Success {
     param([string]$Message)
-    Write-Host "[✓] $Message" -ForegroundColor $SuccessColor
+    Write-Output "[✓] $Message" -ForegroundColor $SuccessColor
 }
 
 function Write-Warning {
     param([string]$Message)
-    Write-Host "[⚠] $Message" -ForegroundColor $WarningColor
+    Write-Output "[⚠] $Message" -ForegroundColor $WarningColor
 }
 
 function Write-Failure {
     param([string]$Message)
-    Write-Host "[✗] $Message" -ForegroundColor $ErrorColor
+    Write-Output "[✗] $Message" -ForegroundColor $ErrorColor
 }
 
 if ($Help) {
-    Write-Host "Aura Video Studio - Uninstallation Validation Script"
-    Write-Host ""
-    Write-Host "Usage: .\validate-uninstallation.ps1"
-    Write-Host ""
-    Write-Host "This script verifies that uninstallation properly cleaned up all files,"
-    Write-Host "registry entries, and shortcuts."
+    Write-Output "Aura Video Studio - Uninstallation Validation Script"
+    Write-Output ""
+    Write-Output "Usage: .\validate-uninstallation.ps1"
+    Write-Output ""
+    Write-Output "This script verifies that uninstallation properly cleaned up all files,"
+    Write-Output "registry entries, and shortcuts."
     exit 0
 }
 
-Write-Host "========================================" -ForegroundColor $InfoColor
-Write-Host "Aura Video Studio - Uninstallation Validation" -ForegroundColor $InfoColor
-Write-Host "========================================" -ForegroundColor $InfoColor
-Write-Host ""
+Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Output "Aura Video Studio - Uninstallation Validation" -ForegroundColor $InfoColor
+Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Output ""
 
 $cleanupResults = @{
     Cleaned = 0
@@ -97,7 +97,7 @@ foreach ($ext in $fileExtensions) {
         Write-Success "File association for $ext removed (HKLM)"
         $cleanupResults.Cleaned++
     }
-    
+
     # Check HKCU
     $regPathUser = "HKCU:\Software\Classes\$ext"
     if (Test-Path $regPathUser) {
@@ -226,26 +226,26 @@ if (Test-Path $documentsPath) {
 # ========================================
 # Summary
 # ========================================
-Write-Host ""
-Write-Host "========================================" -ForegroundColor $InfoColor
-Write-Host "Uninstallation Validation Summary" -ForegroundColor $InfoColor
-Write-Host "========================================" -ForegroundColor $InfoColor
-Write-Host "Cleaned:   $($cleanupResults.Cleaned)" -ForegroundColor $SuccessColor
-Write-Host "Remaining: $($cleanupResults.Remaining)" -ForegroundColor $ErrorColor
-Write-Host "========================================" -ForegroundColor $InfoColor
-Write-Host ""
+Write-Output ""
+Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Output "Uninstallation Validation Summary" -ForegroundColor $InfoColor
+Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Output "Cleaned:   $($cleanupResults.Cleaned)" -ForegroundColor $SuccessColor
+Write-Output "Remaining: $($cleanupResults.Remaining)" -ForegroundColor $ErrorColor
+Write-Output "========================================" -ForegroundColor $InfoColor
+Write-Output ""
 
 if ($cleanupResults.Remaining -eq 0) {
     Write-Success "Uninstallation cleanup PASSED ✓"
-    Write-Host ""
+    Write-Output ""
     Write-Info "The application was properly uninstalled and all traces removed."
-    Write-Host ""
+    Write-Output ""
     exit 0
 } else {
     Write-Failure "Uninstallation cleanup INCOMPLETE ✗"
-    Write-Host ""
+    Write-Output ""
     Write-Info "Some files or registry entries were not removed."
     Write-Info "This may require manual cleanup or reinstallation followed by uninstallation."
-    Write-Host ""
+    Write-Output ""
     exit 1
 }
