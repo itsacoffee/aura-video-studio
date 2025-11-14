@@ -705,6 +705,6 @@ protected override async Task ExecuteStageAsync(...)
 ## Additional Resources
 
 - [Pipeline Architecture Documentation](./PIPELINE_ARCHITECTURE.md)
-- [Video Orchestrator Implementation](../Aura.Core/Orchestrator/VideoOrchestrator.cs)
-- [Example Stage Implementations](../Aura.Core/Orchestrator/Stages/)
-- [Unit Tests](../Aura.Tests/Orchestrator/)
+- Video Orchestrator Implementation
+- Example Stage Implementations
+- Unit Tests

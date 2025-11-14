@@ -67,7 +67,7 @@ Aura Video Studio is an **Electron desktop application** for creating AI-powered
 - Input validation and sanitization
 - Content Security Policy (CSP)
 
-**See:** [Aura.Desktop/electron/README.md](../../Aura.Desktop/electron/README.md) for detailed architecture
+**See:** Aura.Desktop/electron/README.md for detailed architecture
 
 ### 2. Aura.Core (Business Logic)
 **Technology**: .NET 8 Class Library  
@@ -350,7 +350,7 @@ npm run dev
 ## References
 
 - [ARCHITECTURE_MIGRATION_NOTE.md](./ARCHITECTURE_MIGRATION_NOTE.md) - Migration from web to Electron
-- [Electron README](../../Aura.Desktop/electron/README.md) - Electron architecture details
+- Electron README - Electron architecture details
 - [DESKTOP_APP_GUIDE.md](../../DESKTOP_APP_GUIDE.md) - Desktop app development
 - [DEVELOPMENT.md](../../DEVELOPMENT.md) - Component development workflows
 

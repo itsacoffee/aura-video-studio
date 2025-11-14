@@ -546,7 +546,7 @@ Located in `appsettings.json`:
 ## Contact and Escalation
 
 For issues not covered in this runbook:
-1. Check [Troubleshooting Guide](archive/docs-old/TROUBLESHOOTING_INTEGRATION_TESTS.md)
+1. Check Troubleshooting Guide (archived)
 2. Review [Production Readiness Checklist](../PRODUCTION_READINESS_CHECKLIST.md)
 3. Collect diagnostic bundle (see Emergency Procedures)
 4. File issue on GitHub with diagnostic bundle attached

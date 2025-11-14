@@ -364,4 +364,4 @@ If you encounter an error that seems like a bug:
 
 - [Jobs API](./jobs.md) - API endpoints and event types
 - [PORTABLE_FIRST_RUN.md](../user-guide/PORTABLE_FIRST_RUN.md) - Setup and troubleshooting
-- [System Check](../README.md#system-check) - Pre-flight validation
+- System Check - Pre-flight validation

@@ -503,7 +503,7 @@ npm start
 |----------|---------|----------|
 | [INSTALLATION.md](INSTALLATION.md) | Complete installation guide | End users |
 | [DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md) | Development and architecture | Developers |
-| [Aura.Desktop/README.md](Aura.Desktop/README.md) | Quick reference | Developers |
+| Aura.Desktop/README.md | Quick reference | Developers |
 | [ELECTRON_DESKTOP_IMPLEMENTATION.md](ELECTRON_DESKTOP_IMPLEMENTATION.md) | Technical implementation details | Developers |
 | [README.md](README.md) | Project overview (updated) | All |
 

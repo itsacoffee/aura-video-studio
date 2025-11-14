@@ -302,6 +302,6 @@ Or check if dev server is failing to start.
 
 ## Related Documentation
 
-- [E2E Test README](../Aura.E2E/README.md)
+- E2E Test README
 - [Web Testing Setup](../README.md)
 - [Build & Run Guide](developer/BUILD_AND_RUN.md)

@@ -325,9 +325,9 @@ See: [Incident Response Procedures](../monitoring/INCIDENT_RESPONSE.md)
 
 ## References
 
-- [SLO Configuration](../../Aura.Core/Monitoring/SliSloConfiguration.cs)
-- [Alert Rules](../../Aura.Api/Monitoring/AlertRules.json)
-- [Monitoring API](../../Aura.Api/Controllers/MonitoringController.cs)
+- SLO Configuration
+- Alert Rules
+- Monitoring API
 
 ---
 

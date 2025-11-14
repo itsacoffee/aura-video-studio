@@ -242,7 +242,7 @@ The following are **still valid** in Electron architecture:
 - [DESKTOP_APP_GUIDE.md](../../DESKTOP_APP_GUIDE.md) - Complete Electron development guide
 - [DEVELOPMENT.md](../../DEVELOPMENT.md) - Component development workflows
 - [BUILD_GUIDE.md](../../BUILD_GUIDE.md) - Building desktop app installers
-- [Electron README](../../Aura.Desktop/electron/README.md) - Electron architecture details
+- Electron README - Electron architecture details
 
 ## Questions?
 

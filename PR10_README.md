@@ -162,10 +162,10 @@ cat TestResults/benchmarks/BENCHMARK_REPORT.md
 ### Guides
 - **[Testing Quick Start](TESTING_QUICK_START.md)** - Fast reference for running tests
 - **[Test Execution Summary](TEST_EXECUTION_SUMMARY.md)** - Detailed execution guide
-- **[Testing Checklist](.github/TESTING_CHECKLIST.md)** - Pre-commit/PR checklist
+- **Testing Checklist** - Pre-commit/PR checklist
 - **[Test Coverage Strategy](docs/testing/TEST_COVERAGE_STRATEGY.md)** - Coverage goals
 - **[E2E Testing Guide](E2E_TESTING_GUIDE.md)** - E2E best practices
-- **[Test Data Builders](Aura.Tests/TestDataBuilders/README.md)** - Builder patterns
+- **Test Data Builders** - Builder patterns
 
 ### Implementation Details
 - **[PR10 Implementation Summary](PR10_TEST_COVERAGE_QA_IMPLEMENTATION_SUMMARY.md)** - Complete details

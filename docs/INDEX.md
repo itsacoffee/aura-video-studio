@@ -91,8 +91,8 @@ Welcome to the Aura Video Studio documentation. This index provides a roadmap to
 
 ### Testing
 - [Integration Testing Guide](INTEGRATION_TESTING_GUIDE.md)
-- [Troubleshooting Integration Tests](archive/docs-old/TROUBLESHOOTING_INTEGRATION_TESTS.md)
-- [Verification Guide](archive/docs-old/VERIFICATION.md)
+- Troubleshooting Integration Tests (archived)
+- Verification Guide (archived)
 
 ### Best Practices
 - [Best Practices](best-practices/README.md)
@@ -108,13 +108,13 @@ Welcome to the Aura Video Studio documentation. This index provides a roadmap to
 
 - [Security Policy](../SECURITY.md) - Main security policy and reporting
 - [Security Documentation Overview](security/README.md) - Security documentation index
-- [Security Summaries](security/) - Detailed security reviews by feature
+- Security Summaries - Detailed security reviews by feature
 
 ## Historical Documentation
 
-**[Archive Overview](archive/README.md)** - Index of historical documentation
+**Archive** - Index of historical documentation
 
-Implementation notes, PR summaries, and historical documentation are archived in [docs/archive/](archive/).
+Implementation notes, PR summaries, and historical documentation are archived in docs/archive/ (excluded from DocFX).
 
 ## Contributing to Documentation
 

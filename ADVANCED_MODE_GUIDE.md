@@ -268,7 +268,7 @@ When Advanced Mode is enabled, the ML Lab provides comprehensive tools for retra
 - [Prompt Customization User Guide](PROMPT_CUSTOMIZATION_USER_GUIDE.md)
 - [Provider Integration Guide](PROVIDER_INTEGRATION_GUIDE.md)
 - [README](README.md)
-- [First Run Wizard Implementation](docs/archive/root-summaries/FIRST_RUN_WIZARD_IMPLEMENTATION.md)
+- First Run Wizard Implementation
 
 ## Support
 

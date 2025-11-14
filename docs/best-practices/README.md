@@ -147,8 +147,8 @@ Projects/
 
 ### Internal Documentation
 - [Getting Started Guide](../getting-started/QUICK_START.md)
-- [Feature Documentation](../features/)
-- [API Reference](../api/)
+- Feature Documentation
+- API Reference
 - [Troubleshooting](../troubleshooting/Troubleshooting.md)
 
 ### External Resources

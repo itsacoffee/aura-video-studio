@@ -613,9 +613,9 @@ Closes #123
 - **[DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md)** - Electron desktop app development (CRITICAL for production)
 - **[BUILD_GUIDE.md](BUILD_GUIDE.md)** - Building installers and packaging
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines
-- **[docs/architecture/](docs/architecture/)** - System design and architecture details
-- **[docs/api/](docs/api/)** - REST API documentation
-- **[Electron README](Aura.Desktop/electron/README.md)** - Electron main process architecture
+- **docs/architecture/** - System design and architecture details
+- **docs/api/** - REST API documentation
+- **Electron README** - Electron main process architecture
 
 ## Getting Help
 

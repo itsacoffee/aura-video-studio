@@ -275,10 +275,10 @@ For questions or issues with the licensing export feature:
 
 ## References
 
-- [API Models](Aura.Api/Models/ApiModels.V1/LicensingDtos.cs)
-- [Core Models](Aura.Core/Models/Licensing/LicensingModels.cs)
-- [Licensing Service](Aura.Core/Services/Licensing/LicensingService.cs)
-- [Controller](Aura.Api/Controllers/LicensingController.cs)
-- [Frontend Types](Aura.Web/src/types/licensing.ts)
-- [API Client](Aura.Web/src/services/api/licensingApi.ts)
-- [Export Page Component](Aura.Web/src/pages/Export/LicensingExportPage.tsx)
+- API Models
+- Core Models
+- Licensing Service
+- Controller
+- Frontend Types
+- API Client
+- Export Page Component

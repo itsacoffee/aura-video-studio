@@ -19,7 +19,7 @@ This directory contains documentation for developers working on Aura Video Studi
 - [Quality Validation API](QUALITY_VALIDATION_API.md) - Content quality validation API
 - [FFmpeg Install API](FFMPEG_INSTALL_API.md) - FFmpeg installation and management API
 
-For complete API documentation, see [API Documentation](../api/).
+For complete API documentation, see API Documentation.
 
 ## UI/UX Development
 
@@ -45,7 +45,7 @@ For complete API documentation, see [API Documentation](../api/).
 ## Additional Resources
 
 ### Architecture
-See [Architecture Documentation](../architecture/) for:
+See Architecture Documentation for:
 - System design
 - Component interactions
 - Data flows
@@ -55,14 +55,14 @@ See [Architecture Documentation](../architecture/) for:
 See [Integration Testing Guide](../INTEGRATION_TESTING_GUIDE.md) for testing practices.
 
 ### Workflows
-See [Workflows](../workflows/) for development workflows and UX guidelines.
+See Workflows for development workflows and UX guidelines.
 
 ## External Tools
 
-- [Copy/Paste PR Descriptions](COPY_PASTE_PR_DESCRIPTIONS.txt) - PR description utilities
+- Copy/Paste PR Descriptions - PR description utilities
 
 ## Related Documentation
 
 - [Documentation Index](../INDEX.md) - Complete documentation map
 - [Security Policy](../../SECURITY.md) - Security practices
-- [User Guides](../user-guide/) - End-user documentation
+- User Guides - End-user documentation

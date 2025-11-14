@@ -21,7 +21,7 @@ This index provides quick access to all documentation for the Welcome Page Confi
 - Testing checklist
 
 ### For Backend Developers
-👉 **[API Requirements](Aura.Web/CONFIGURATION_SYSTEM_API_REQUIREMENTS.md)**
+👉 **API Requirements**
 - Required endpoints
 - Request/response formats
 - Implementation notes
@@ -69,7 +69,7 @@ Aura.Web/src/
 ### Setup & Configuration
 - **User Setup Guide**: [User Guide](CONFIGURATION_SYSTEM_USER_GUIDE.md) → Quick Start
 - **Developer Setup**: [Implementation](WELCOME_PAGE_CONFIGURATION_IMPLEMENTATION.md) → Getting Started
-- **Backend Setup**: [API Requirements](Aura.Web/CONFIGURATION_SYSTEM_API_REQUIREMENTS.md) → Implementation Notes
+- **Backend Setup**: API Requirements → Implementation Notes
 
 ### Features
 - **Welcome Page Enhancement**: [PR Summary](PR_1_SUMMARY.md) → What Was Implemented → #1
@@ -79,9 +79,9 @@ Aura.Web/src/
 
 ### Technical Details
 - **Architecture**: [Implementation](WELCOME_PAGE_CONFIGURATION_IMPLEMENTATION.md) → Detailed Implementation
-- **API Specs**: [API Requirements](Aura.Web/CONFIGURATION_SYSTEM_API_REQUIREMENTS.md) → Required Endpoints
+- **API Specs**: API Requirements → Required Endpoints
 - **Data Flow**: [Implementation](WELCOME_PAGE_CONFIGURATION_IMPLEMENTATION.md) → User Experience Flow
-- **Error Handling**: [API Requirements](Aura.Web/CONFIGURATION_SYSTEM_API_REQUIREMENTS.md) → Error Handling
+- **Error Handling**: API Requirements → Error Handling
 
 ### Testing
 - **Unit Tests**: [PR Summary](PR_1_SUMMARY.md) → Testing Status → Unit Tests
@@ -92,7 +92,7 @@ Aura.Web/src/
 ### Troubleshooting
 - **User Issues**: [User Guide](CONFIGURATION_SYSTEM_USER_GUIDE.md) → Troubleshooting
 - **Developer Issues**: [Implementation](WELCOME_PAGE_CONFIGURATION_IMPLEMENTATION.md) → Known Limitations
-- **Backend Issues**: [API Requirements](Aura.Web/CONFIGURATION_SYSTEM_API_REQUIREMENTS.md) → Implementation Notes
+- **Backend Issues**: API Requirements → Implementation Notes
 
 ---
 
@@ -135,7 +135,7 @@ Aura.Web/src/
 1. **Overview** → [PR Summary](PR_1_SUMMARY.md) → Summary
 2. **User Journey** → [Implementation](WELCOME_PAGE_CONFIGURATION_IMPLEMENTATION.md) → User Experience Flow
 3. **Architecture** → [Implementation](WELCOME_PAGE_CONFIGURATION_IMPLEMENTATION.md) → Detailed Implementation
-4. **API Design** → [API Requirements](Aura.Web/CONFIGURATION_SYSTEM_API_REQUIREMENTS.md) → Required Endpoints
+4. **API Design** → API Requirements → Required Endpoints
 
 ### Code Examples
 - **Using the Hook** → [PR Summary](PR_1_SUMMARY.md) → Technical Details → React Hook
@@ -153,8 +153,8 @@ Aura.Web/src/
 
 ### Getting Started
 - [User Setup Guide](CONFIGURATION_SYSTEM_USER_GUIDE.md#quick-start)
-- [Developer Setup](WELCOME_PAGE_CONFIGURATION_IMPLEMENTATION.md#getting-started)
-- [Backend Setup](Aura.Web/CONFIGURATION_SYSTEM_API_REQUIREMENTS.md#implementation-notes)
+- Developer Setup
+- Backend Setup
 
 ### Common Tasks
 - [Complete First-Time Setup](CONFIGURATION_SYSTEM_USER_GUIDE.md#first-time-setup-3-5-minutes)
@@ -164,8 +164,8 @@ Aura.Web/src/
 - [Troubleshoot Issues](CONFIGURATION_SYSTEM_USER_GUIDE.md#troubleshooting)
 
 ### Development Tasks
-- [Add New Status Check](WELCOME_PAGE_CONFIGURATION_IMPLEMENTATION.md#configuration-status-service)
-- [Implement Backend Endpoint](Aura.Web/CONFIGURATION_SYSTEM_API_REQUIREMENTS.md#required-endpoints)
+- Add New Status Check
+- Implement Backend Endpoint
 - [Write Tests](PR_1_SUMMARY.md#testing-status)
 - [Deploy Changes](WELCOME_PAGE_CONFIGURATION_IMPLEMENTATION.md#migration-guide)
 
@@ -181,7 +181,7 @@ Aura.Web/src/
 
 ### For Developers
 - **Technical Questions** → See [Implementation Guide](WELCOME_PAGE_CONFIGURATION_IMPLEMENTATION.md)
-- **API Questions** → See [API Requirements](Aura.Web/CONFIGURATION_SYSTEM_API_REQUIREMENTS.md)
+- **API Questions** → See API Requirements
 - **Code Review** → See [PR Summary](PR_1_SUMMARY.md)
 
 ---

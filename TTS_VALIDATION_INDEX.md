@@ -15,7 +15,7 @@
 2. [`TTS_VALIDATION_QUICK_START.md`](TTS_VALIDATION_QUICK_START.md) - 5-minute setup guide
 
 **Ready to test?** Use:
-- [`Run-TTS-Validation-Tests.ps1`](Run-TTS-Validation-Tests.ps1) - PowerShell automation script
+- `Run-TTS-Validation-Tests.ps1` - PowerShell automation script
 
 ---
 
@@ -79,7 +79,7 @@
 ---
 
 ### 4. Automation Script
-**File**: [`Run-TTS-Validation-Tests.ps1`](Run-TTS-Validation-Tests.ps1)  
+**File**: `Run-TTS-Validation-Tests.ps1`  
 **Size**: 9.7 KB | 306 lines  
 **Audience**: Testers, automation engineers
 
@@ -103,7 +103,7 @@
 ---
 
 ### 5. Test Suite (Code)
-**File**: [`Aura.Tests/Integration/TtsProviderIntegrationValidationTests.cs`](Aura.Tests/Integration/TtsProviderIntegrationValidationTests.cs)  
+**File**: `Aura.Tests/Integration/TtsProviderIntegrationValidationTests.cs`  
 **Size**: 24 KB | 687 lines  
 **Audience**: Developers, QA engineers
 
@@ -164,7 +164,7 @@
 
 #### Run the validation tests
 → Start with [`TTS_VALIDATION_QUICK_START.md`](TTS_VALIDATION_QUICK_START.md)  
-→ Use [`Run-TTS-Validation-Tests.ps1`](Run-TTS-Validation-Tests.ps1)
+→ Use `Run-TTS-Validation-Tests.ps1`
 
 #### Understand the architecture
 → Read [`TTS_PROVIDER_VALIDATION_REPORT.md`](TTS_PROVIDER_VALIDATION_REPORT.md) (Architecture section)
@@ -179,7 +179,7 @@
 
 #### Fix a failing test
 → Check [`TTS_VALIDATION_QUICK_START.md`](TTS_VALIDATION_QUICK_START.md) (Troubleshooting)  
-→ See test code: [`TtsProviderIntegrationValidationTests.cs`](Aura.Tests/Integration/TtsProviderIntegrationValidationTests.cs)
+→ See test code: `TtsProviderIntegrationValidationTests.cs`
 
 #### Add a new TTS provider
 → Study [`TTS_PROVIDER_VALIDATION_REPORT.md`](TTS_PROVIDER_VALIDATION_REPORT.md) (Provider Architecture)  
