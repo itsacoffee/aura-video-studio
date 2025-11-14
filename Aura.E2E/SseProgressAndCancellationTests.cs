@@ -375,19 +375,6 @@ public class SseProgressAndCancellationTests
             _output.WriteLine($"  - {warning}");
         }
     }
-}
-            ("Queued", "Canceled"),
-            ("Running", "Succeeded"),
-            ("Running", "Failed"),
-            ("Running", "Canceled")
-        };
-
-        var isValid = validTransitions.Contains((fromState, toState));
-        
-        Assert.Equal(shouldBeValid, isValid);
-        
-        _output.WriteLine($"Transition {fromState} -> {toState}: {(isValid ? "Valid" : "Invalid")}");
-    }
 
     /// <summary>
     /// Test that SSE event IDs can be used for reconnection
