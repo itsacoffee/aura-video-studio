@@ -30,7 +30,7 @@
     "postinstall": "electron-builder install-app-deps",
     "pack": "npm run build:all && electron-builder --dir",
     "dist": "npm run build:all && electron-builder --win",
-    "test": "node test/test-electron-backend-integration.js && node test/test-startup-logger.js && node test/test-startup-diagnostics.js && node test/test-initialization-tracker.js && node test/test-early-crash-logger.js && node test/test-integration-corrupted-config.js && node test/test-preload-menu-events.js && node test/test-menu-ipc-integration.js && node test/test-safe-mode.js && node test/test-window-loading-diagnostics.js",
+    "test": "node test/test-electron-backend-integration.js && node test/test-startup-logger.js && node test/test-startup-diagnostics.js && node test/test-initialization-tracker.js && node test/test-early-crash-logger.js && node test/test-integration-corrupted-config.js && node test/test-preload-menu-events.js && node test/test-menu-ipc-integration.js && node test/test-menu-command-map.js && node test/test-menu-command-handler.js && node test/test-safe-mode.js && node test/test-window-loading-diagnostics.js",
     "test:backend-integration": "node test/test-electron-backend-integration.js",
     "test:logger": "node test/test-startup-logger.js",
     "test:diagnostics": "node test/test-startup-diagnostics.js",
@@ -39,6 +39,8 @@
     "test:integration": "node test/test-integration-corrupted-config.js",
     "test:menu-events": "node test/test-preload-menu-events.js",
     "test:menu-ipc": "node test/test-menu-ipc-integration.js",
+    "test:menu-command-map": "node test/test-menu-command-map.js",
+    "test:menu-command-handler": "node test/test-menu-command-handler.js",
     "test:safe-mode": "node test/test-safe-mode.js",
     "test:window-loading": "node test/test-window-loading-diagnostics.js",
     "validate": "node scripts/validate-build-config.js",
@@ -67,17 +69,25 @@
       {
         "from": "resources/backend",
         "to": "backend",
-        "filter": ["**/*", "!**/*.pdb", "!**/*.xml"]
+        "filter": [
+          "**/*",
+          "!**/*.pdb",
+          "!**/*.xml"
+        ]
       },
       {
         "from": "../Aura.Web/dist",
         "to": "frontend",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       },
       {
         "from": "resources/ffmpeg",
         "to": "ffmpeg",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "mac": null,
@@ -86,11 +96,15 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "assets/icons/icon.ico",
@@ -138,7 +152,9 @@
       "warningsAsErrors": false,
       "artifactName": "${productName}-Setup-${version}.${ext}",
       "displayLanguageSelector": false,
-      "installerLanguages": ["en_US"],
+      "installerLanguages": [
+        "en_US"
+      ],
       "language": "1033",
       "packElevateHelper": true,
       "differentialPackage": true,
@@ -162,9 +178,10 @@
     ]
   },
   "dependencies": {
-    "electron-updater": "^6.3.9",
+    "axios": "^1.7.7",
     "electron-store": "^8.1.0",
-    "axios": "^1.7.7"
+    "electron-updater": "^6.3.9",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "electron": "^32.2.5",
