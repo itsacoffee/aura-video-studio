@@ -13,6 +13,8 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <!-- Mark as Windows-only project - will fail build on non-Windows (expected) -->
+    <IsWindowsOnlyProject>true</IsWindowsOnlyProject>
   </PropertyGroup>
 
   <ItemGroup>

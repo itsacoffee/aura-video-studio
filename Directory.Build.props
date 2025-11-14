@@ -24,4 +24,10 @@
   <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Aura.App'">
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
   </PropertyGroup>
+
+  <!-- Skip Aura.App project build on non-Windows platforms -->
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Aura.App' and '$(OS)' != 'Windows_NT'">
+    <ExcludeFromBuild>true</ExcludeFromBuild>
+    <ExcludeFromSolutionBuild>true</ExcludeFromSolutionBuild>
+  </PropertyGroup>
 </Project>
