@@ -379,10 +379,10 @@ The implementation successfully meets all requirements for Pull #189 (PR 33). Da
 
 ## Related Documentation
 
-- [ARCHITECTURE.md](./ARCHITECTURE.md) - Overall system architecture
-- [BUILD_AND_RUN.md](./BUILD_AND_RUN.md) - Build and run instructions
-- [PIPELINE_VALIDATION_GUIDE.md](./PIPELINE_VALIDATION_GUIDE.md) - Pull #188 (PR 32) validation
-- [FRONTEND_BUILD_COMPLETE_PR31.md](./Aura.Web/FRONTEND_BUILD_COMPLETE_PR31.md) - Pull #187 (PR 31) completion
+- [ARCHITECTURE.md](../architecture/ARCHITECTURE.md) - Overall system architecture
+- [BUILD_AND_RUN.md](../developer/BUILD_AND_RUN.md) - Build and run instructions
+- [PIPELINE_VALIDATION_GUIDE.md](../user-guide/PIPELINE_VALIDATION_GUIDE.md) - Pull #188 (PR 32) validation
+- [FRONTEND_BUILD_COMPLETE_PR31.md](aura-web/FRONTEND_BUILD_COMPLETE_PR31.md) - Pull #187 (PR 31) completion
 
 ---
 

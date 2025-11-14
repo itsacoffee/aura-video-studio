@@ -214,10 +214,10 @@ cd aura-video-studio
 
 ## 📚 Additional Resources
 
-- [INSTALL.md](./INSTALL.md) - How to build the portable version
-- [PORTABLE.md](./PORTABLE.md) - User guide for the portable version
+- [INSTALL.md](../developer/INSTALL.md) - How to build the portable version
+- [PORTABLE.md](../../PORTABLE.md) - User guide for the portable version
 - [TEST_RESULTS.md](./TEST_RESULTS.md) - Detailed test verification
-- [scripts/packaging/README.md](./scripts/packaging/README.md) - Build script documentation
+- [scripts/packaging/README.md](../../README.md) - Build script documentation
 
 ## 🤝 Contributing
 

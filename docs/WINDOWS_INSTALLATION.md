@@ -263,7 +263,7 @@ When you first launch Aura Video Studio:
 6. Wait for rendering (1-5 minutes depending on length)
 7. Preview and export
 
-See the [User Guide](USER_GUIDE.md) for detailed instructions.
+See the User Guide for detailed instructions.
 
 ## Uninstalling
 

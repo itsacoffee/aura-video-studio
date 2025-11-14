@@ -528,4 +528,4 @@ The Advanced Video Effects system is fully implemented and production-ready. All
 
 - [VIDEO_EFFECTS_GUIDE.md](./docs/VIDEO_EFFECTS_GUIDE.md) - User documentation
 - [FFmpeg Filter Documentation](https://ffmpeg.org/ffmpeg-filters.html)
-- [Aura Video Generation](./docs/VIDEO_GENERATION.md)
+- Aura Video Generation

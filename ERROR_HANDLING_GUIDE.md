@@ -713,7 +713,7 @@ const handleSubmit = () => {
 ## Related Documentation
 
 - [ERROR_RECOVERY_RESILIENCE_IMPLEMENTATION.md](./ERROR_RECOVERY_RESILIENCE_IMPLEMENTATION.md) - PR #8 Resilience patterns
-- [UNDO_REDO_GUIDE.md](./UNDO_REDO_GUIDE.md) - Undo/redo system
+- UNDO_REDO_GUIDE.md - Undo/redo system
 - [DEVELOPMENT.md](./DEVELOPMENT.md) - Development guidelines
 
 ## Future Enhancements

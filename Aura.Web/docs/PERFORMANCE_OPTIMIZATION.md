@@ -229,6 +229,6 @@ function MyOptimizedComponent(props) {
 
 ## Related Documentation
 
-- [Vite Configuration](../../vite.config.ts)
-- [Bundle Analysis](../../package.json) - Run `npm run build:analyze`
+- [Vite Configuration](../vite.config.ts)
+- [Bundle Analysis](../package.json) - Run `npm run build:analyze`
 - [React DevTools](https://react.dev/learn/react-developer-tools)

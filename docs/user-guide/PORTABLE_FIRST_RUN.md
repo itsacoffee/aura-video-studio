@@ -236,7 +236,7 @@ ollama pull llama3.1:8b
 
 ### Production Deployment
 
-See [DEPLOYMENT.md](./DEPLOYMENT.md) for production setup instructions.
+See [DEPLOYMENT.md](../developer/DEPLOYMENT.md) for production setup instructions.
 
 ## Getting Help
 
@@ -291,8 +291,8 @@ If clicking "Generate" doesn't show any visible progress or errors:
 
 ### Documentation
 
-- **Jobs API:** [docs/jobs.md](./docs/jobs.md)
-- **Error Codes:** [docs/errors.md](./docs/errors.md)
+- **Jobs API:** [docs/jobs.md](../api/jobs.md)
+- **Error Codes:** [docs/errors.md](../api/errors.md)
 - **Issues:** https://github.com/Coffee285/aura-video-studio/issues
 - **Logs:** Check `AuraData/logs/aura-api-*.log` for errors
 
@@ -302,8 +302,8 @@ If clicking "Generate" doesn't show any visible progress or errors:
 2. ✅ Check provider capabilities
 3. 📹 Create your first video in the Web UI
 4. ⚙️ Configure API keys and providers in Settings
-5. 📚 Read the [User Guide](./docs/UX_GUIDE.md)
+5. 📚 Read the [User Guide](../workflows/UX_GUIDE.md)
 
 ---
 
-**Need more help?** See the full documentation in the [README.md](./README.md) and [INSTALL.md](./INSTALL.md).
+**Need more help?** See the full documentation in the [README.md](./README.md) and [INSTALL.md](../developer/INSTALL.md).

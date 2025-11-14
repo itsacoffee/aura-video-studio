@@ -356,8 +356,8 @@ Next steps focus on completing the Windows shells, full web UI, and remaining AP
 ## Resources
 
 - Main README: [README.md](./README.md)
-- Architecture: [ARCHITECTURE.md](./ARCHITECTURE.md)
-- API Docs: [Aura.Api/README.md](./Aura.Api/README.md)
-- Web Docs: [Aura.Web/README.md](./Aura.Web/README.md)
-- Packaging: [scripts/packaging/README.md](./scripts/packaging/README.md)
+- Architecture: [ARCHITECTURE.md](../architecture/ARCHITECTURE.md)
+- API Docs: [Aura.Api/README.md](../../README.md)
+- Web Docs: [Aura.Web/README.md](../../README.md)
+- Packaging: [scripts/packaging/README.md](../../README.md)
 - Specification: See problem statement in PR description

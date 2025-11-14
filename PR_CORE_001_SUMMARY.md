@@ -359,7 +359,7 @@ Minor recommendations for future improvements have been identified but do not bl
 
 1. **Main Validation Report**: [PR_CORE_001_LLM_PROVIDER_VALIDATION_REPORT.md](./PR_CORE_001_LLM_PROVIDER_VALIDATION_REPORT.md)
 2. **Testing Guide**: [WINDOWS_LLM_PROVIDER_TESTING_GUIDE.md](./WINDOWS_LLM_PROVIDER_TESTING_GUIDE.md)
-3. **Test Suite**: [Aura.Tests/Integration/WindowsLlmProviderIntegrationTests.cs](./Aura.Tests/Integration/WindowsLlmProviderIntegrationTests.cs)
+3. **Test Suite**: Aura.Tests/Integration/WindowsLlmProviderIntegrationTests.cs
 
 ### Related Components
 

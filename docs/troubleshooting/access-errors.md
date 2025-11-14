@@ -515,7 +515,7 @@ sudo chown -R $USER:$USER /opt/aura
 
 - [Validation Errors](validation-errors.md)
 - [Provider Errors](provider-errors.md#authentication)
-- [Setup Guide](../setup/installation.md)
+- Setup Guide
 - [General Troubleshooting](Troubleshooting.md)
 
 ## Need More Help?

@@ -54,14 +54,14 @@ What other options were considered?
 
 - [ADR-001](./001-monorepo-structure.md) - Monorepo Structure
 - [ADR-002](./002-aspnet-core-backend.md) - ASP.NET Core Backend
-- [ADR-003](./003-react-typescript-frontend.md) - React + TypeScript Frontend
-- [ADR-004](./004-sqlite-database.md) - SQLite Database
-- [ADR-005](./005-provider-abstraction.md) - Provider Abstraction Pattern
+- ADR-003 - React + TypeScript Frontend
+- ADR-004 - SQLite Database
+- ADR-005 - Provider Abstraction Pattern
 - [ADR-006](./006-server-sent-events.md) - Server-Sent Events for Real-Time Updates
-- [ADR-007](./007-structured-logging.md) - Structured Logging with Serilog
-- [ADR-008](./008-guided-advanced-modes.md) - Guided and Advanced Modes
+- ADR-007 - Structured Logging with Serilog
+- ADR-008 - Guided and Advanced Modes
 - [ADR-009](./009-secrets-encryption.md) - Secrets Encryption Strategy
-- [ADR-010](./010-ffmpeg-integration.md) - FFmpeg Integration
+- ADR-010 - FFmpeg Integration
 
 ### Deprecated
 

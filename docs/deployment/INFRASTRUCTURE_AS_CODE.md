@@ -10,7 +10,7 @@ This guide covers the Infrastructure as Code (IaC) implementation for Aura, incl
 - [Terraform Setup](#terraform-setup)
 - [Azure Bicep Setup](#azure-bicep-setup)
 - [Infrastructure Components](#infrastructure-components)
-- [Deployment](#deployment)
+- Infrastructure Deployment
 - [State Management](#state-management)
 
 ## Getting Started

@@ -232,17 +232,17 @@ The following are **still valid** in Electron architecture:
 
 1. **Ignore Docker references** - We don't use Docker anymore (desktop app)
 2. **Ignore localhost:3000** - That was the old web port
-3. **Use Electron for main development** - See [DESKTOP_APP_GUIDE.md](../DESKTOP_APP_GUIDE.md)
+3. **Use Electron for main development** - See [DESKTOP_APP_GUIDE.md](../../DESKTOP_APP_GUIDE.md)
 4. **Use component mode for iteration** - See [DEVELOPMENT.md](../../DEVELOPMENT.md)
 5. **localhost:5173** - Only for component mode (browser testing)
 6. **localhost:5005** - Backend API port (standalone mode)
 
 ## References
 
-- [DESKTOP_APP_GUIDE.md](../DESKTOP_APP_GUIDE.md) - Complete Electron development guide
+- [DESKTOP_APP_GUIDE.md](../../DESKTOP_APP_GUIDE.md) - Complete Electron development guide
 - [DEVELOPMENT.md](../../DEVELOPMENT.md) - Component development workflows
 - [BUILD_GUIDE.md](../../BUILD_GUIDE.md) - Building desktop app installers
-- [Electron README](../../Aura.Desktop/electron/README.md) - Electron architecture details
+- Electron README - Electron architecture details
 
 ## Questions?
 

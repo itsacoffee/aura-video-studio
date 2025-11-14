@@ -75,7 +75,7 @@ This project undergoes regular security analysis using:
 - **Dependency Scanning**: Regular checks for vulnerable dependencies
 - **Code Review**: Manual security-focused code reviews
 
-For detailed security summaries of specific features and implementations, see [docs/security/](docs/security/).
+For detailed security summaries of specific features and implementations, see docs/security/.
 
 ## Best Practices
 
@@ -112,7 +112,7 @@ The implementation follows:
 
 ## Security Audit History
 
-All security audits and implementation-specific security reviews are documented in [docs/security/](docs/security/).
+All security audits and implementation-specific security reviews are documented in docs/security/.
 
 ## Contact
 

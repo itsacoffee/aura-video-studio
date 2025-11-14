@@ -120,7 +120,7 @@ Example...
 
 ## See Also
 
-- [Related Guide](./RELATED_GUIDE.md)
+- Related Guide
 - [API Reference](../api/README.md)
 ```
 
@@ -254,14 +254,14 @@ export API_KEY=YOUR_API_KEY_HERE
 Use **relative paths**:
 
 ```markdown
-See the [Build Guide](../BUILD_GUIDE.md) for details.
-See the [API Reference](./api/README.md).
+See the [Build Guide](../../BUILD_GUIDE.md) for details.
+See the [API Reference](../../README.md).
 ```
 
 **Rules:**
 - Use relative paths, not absolute URLs
-- Always provide link text: `[Build Guide](./BUILD_GUIDE.md)` not `See ./BUILD_GUIDE.md`
-- Link to specific sections: `[Configuration](./BUILD_GUIDE.md#configuration)`
+- Always provide link text: `[Build Guide](../../BUILD_GUIDE.md)` not `See ./BUILD_GUIDE.md`
+- Link to specific sections: `[Configuration](../../BUILD_GUIDE.md#configuration)`
 - Verify links work before committing
 
 ### External Links
@@ -326,7 +326,7 @@ Use blockquotes with emoji for callouts:
 
 ### Image Syntax
 ```markdown
-![Alt text describing the image](../assets/image-name.png)
+!Alt text describing the image
 ```
 
 **Rules:**
@@ -356,7 +356,7 @@ Before starting, ensure you have:
 - .NET 8 SDK
 - FFmpeg 4.0 or later
 
-For installation instructions, see the [Installation Guide](./getting-started/INSTALLATION.md).
+For installation instructions, see the [Installation Guide](../../INSTALLATION.md).
 ```
 
 ### Step-by-Step Instructions
@@ -394,9 +394,9 @@ If the issue persists, see [Troubleshooting Guide](../troubleshooting/Troublesho
 ```markdown
 ## See Also
 
-- [Build Guide](../BUILD_GUIDE.md) - Complete build instructions
-- [API Reference](./api/README.md) - API documentation
-- [Troubleshooting](./troubleshooting/README.md) - Common issues and solutions
+- [Build Guide](../../BUILD_GUIDE.md) - Complete build instructions
+- [API Reference](../../README.md) - API documentation
+- [Troubleshooting](../../README.md) - Common issues and solutions
 ```
 
 ## Quality Checklist

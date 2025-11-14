@@ -573,6 +573,6 @@ If issues persist after following this runbook:
 ## Related Documentation
 
 - [Health Checks Guide](./HEALTH_CHECKS_GUIDE.md)
-- [Monitoring Guide](./MONITORING_GUIDE.md)
-- [Disaster Recovery Plan](./DISASTER_RECOVERY.md)
-- [Operational Procedures](./OPERATIONAL_PROCEDURES.md)
+- Monitoring Guide
+- Disaster Recovery Plan
+- Operational Procedures

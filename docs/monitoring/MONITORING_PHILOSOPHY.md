@@ -328,7 +328,7 @@ Adding monitoring after production issues. Build it in from day one.
 
 - [Google SRE Book - Monitoring Distributed Systems](https://sre.google/sre-book/monitoring-distributed-systems/)
 - [Alert Creation Guide](./ALERT_CREATION_GUIDE.md)
-- [Dashboard Creation Guide](./DASHBOARD_CREATION_GUIDE.md)
+- Dashboard Creation Guide
 - [Incident Response Procedures](./INCIDENT_RESPONSE.md)
 
 ## Summary

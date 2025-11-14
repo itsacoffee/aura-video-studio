@@ -457,4 +457,4 @@ Expected: All tests pass (21/21)
 
 - [Media Library Guide](MEDIA_LIBRARY_GUIDE.md)
 - [API Documentation](api/index.md)
-- [Storage Configuration](STORAGE_CONFIGURATION_GUIDE.md)
+- Storage Configuration

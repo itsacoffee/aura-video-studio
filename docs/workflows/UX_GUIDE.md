@@ -287,10 +287,10 @@ Every control has contextual help:
 
 ## Related Documentation
 
-- [TTS and Captions Guide](./TTS-and-Captions.md)
-- [Local Providers Setup](../LOCAL_PROVIDERS_SETUP.md)
-- [Troubleshooting](./Troubleshooting.md)
-- [Build and Run Guide](../BUILD_AND_RUN.md)
+- [TTS and Captions Guide](../features/TTS-and-Captions.md)
+- [Local Providers Setup](../user-guide/LOCAL_PROVIDERS_SETUP.md)
+- [Troubleshooting](../troubleshooting/Troubleshooting.md)
+- [Build and Run Guide](../developer/BUILD_AND_RUN.md)
 
 ## Support
 

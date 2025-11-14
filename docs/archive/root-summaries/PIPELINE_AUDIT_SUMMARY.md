@@ -16,7 +16,7 @@
 
 This is a high-level summary of the comprehensive video generation pipeline audit. For detailed analysis, see:
 - **Full Audit**: [VIDEO_PIPELINE_AUDIT.md](VIDEO_PIPELINE_AUDIT.md)
-- **Provider Guide**: [PROVIDER_INTEGRATION_GUIDE.md](PROVIDER_INTEGRATION_GUIDE.md)
+- **Provider Guide**: [PROVIDER_INTEGRATION_GUIDE.md](../../../PROVIDER_INTEGRATION_GUIDE.md)
 
 ## Executive Summary
 
@@ -333,7 +333,7 @@ The Aura Video Studio video generation pipeline is **PRODUCTION READY** and meet
 ## Quick Links
 
 - **Full Audit**: [VIDEO_PIPELINE_AUDIT.md](VIDEO_PIPELINE_AUDIT.md) (500+ lines)
-- **Provider Guide**: [PROVIDER_INTEGRATION_GUIDE.md](PROVIDER_INTEGRATION_GUIDE.md) (450+ lines)
+- **Provider Guide**: [PROVIDER_INTEGRATION_GUIDE.md](../../../PROVIDER_INTEGRATION_GUIDE.md) (450+ lines)
 - **Source Code**: `Aura.Core/Orchestrator/VideoOrchestrator.cs`
 - **Tests**: `Aura.Tests/VideoOrchestratorIntegrationTests.cs`
 - **Issue Tracker**: GitHub Issues for bugs and enhancements

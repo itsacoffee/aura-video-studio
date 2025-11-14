@@ -177,6 +177,6 @@ Administrators can adjust timeouts per deployment:
 
 ## Related Documentation
 
-- [Provider Configuration Guide](./PROVIDER_INTEGRATION_GUIDE.md)
-- [Latency Management](./LLM_LATENCY_MANAGEMENT.md)
-- [Timeout Profiles Configuration](../providerTimeoutProfiles.json)
+- [Provider Configuration Guide](../PROVIDER_INTEGRATION_GUIDE.md)
+- [Latency Management](../LLM_LATENCY_MANAGEMENT.md)
+- Timeout Profiles Configuration

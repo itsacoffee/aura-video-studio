@@ -337,10 +337,10 @@ Planned features for future releases:
 
 ## Related Documentation
 
-- [LLM Provider Integration Guide](LLM_IMPLEMENTATION_GUIDE.md)
-- [Provider Settings Configuration](PROVIDER_INTEGRATION_GUIDE.md)
-- [Health Diagnostics](HEALTH_DIAGNOSTICS_IMPLEMENTATION.md)
-- [Preflight Checks](PRODUCTION_READINESS_CHECKLIST.md)
+- [LLM Provider Integration Guide](../../../LLM_IMPLEMENTATION_GUIDE.md)
+- [Provider Settings Configuration](../../../PROVIDER_INTEGRATION_GUIDE.md)
+- [Health Diagnostics](../root-summaries/HEALTH_DIAGNOSTICS_IMPLEMENTATION.md)
+- [Preflight Checks](../../../PRODUCTION_READINESS_CHECKLIST.md)
 
 ## Support
 

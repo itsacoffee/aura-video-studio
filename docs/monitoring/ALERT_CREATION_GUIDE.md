@@ -568,8 +568,8 @@ Use this template for consistency:
 
 - [Monitoring Philosophy](./MONITORING_PHILOSOPHY.md)
 - [Incident Response Procedures](./INCIDENT_RESPONSE.md)
-- [Runbook Template](./RUNBOOK_TEMPLATE.md)
-- [Dashboard Creation Guide](./DASHBOARD_CREATION_GUIDE.md)
+- Runbook Template
+- Dashboard Creation Guide
 
 ## Summary
 

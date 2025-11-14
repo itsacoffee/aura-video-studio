@@ -275,6 +275,6 @@ The existing frame cache service provides thumbnail generation:
 ## Support
 
 For additional help:
-- Check the [Performance Settings Guide](PERFORMANCE_SETTINGS.md)
-- Review [Troubleshooting Guide](TROUBLESHOOTING.md)
+- Check the Performance Settings Guide
+- Review [Troubleshooting Guide](../../TROUBLESHOOTING.md)
 - Contact support with performance telemetry data

@@ -389,11 +389,11 @@ If you're still experiencing issues:
 ## 📚 Additional Documentation
 
 - [README.md](./README.md) - Project overview and architecture
-- [ARCHITECTURE.md](./ARCHITECTURE.md) - System design and components
-- [PORTABLE.md](./PORTABLE.md) - User guide for the portable version
+- [ARCHITECTURE.md](../architecture/ARCHITECTURE.md) - System design and components
+- [PORTABLE.md](../../PORTABLE.md) - User guide for the portable version
 - [INSTALL.md](./INSTALL.md) - Detailed installation instructions
-- [Aura.Api/README.md](./Aura.Api/README.md) - API documentation
-- [Aura.Web/README.md](./Aura.Web/README.md) - Web UI documentation
+- [Aura.Api/README.md](../../README.md) - API documentation
+- [Aura.Web/README.md](../../README.md) - Web UI documentation
 
 ---
 

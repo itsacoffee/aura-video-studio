@@ -215,7 +215,7 @@ Once you're comfortable with the basics:
 
 ## 🤝 Getting Help
 
-- **Documentation**: Browse [docs/](../) for guides and references
+- **Documentation**: Browse docs/ for guides and references
 - **FAQ**: Check [First Run FAQ](./FIRST_RUN_FAQ.md)
 - **Issues**: Report bugs on [GitHub](https://github.com/Saiyan9001/aura-video-studio/issues)
 - **Discussions**: Ask questions in [Discussions](https://github.com/Saiyan9001/aura-video-studio/discussions)
@@ -225,8 +225,8 @@ Once you're comfortable with the basics:
 Interested in contributing?
 
 - Read [Contributing Guide](../../CONTRIBUTING.md)
-- Review [Architecture](../../ARCHITECTURE.md)
-- Check [Build Guide](../../BUILD_AND_RUN.md)
+- Review [Architecture](../architecture/ARCHITECTURE.md)
+- Check [Build Guide](../developer/BUILD_AND_RUN.md)
 - Browse existing [Pull Requests](https://github.com/Saiyan9001/aura-video-studio/pulls)
 
 ---

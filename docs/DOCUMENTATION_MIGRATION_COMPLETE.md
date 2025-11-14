@@ -309,6 +309,6 @@ The documentation has been comprehensively updated to accurately reflect the cur
 ---
 
 For questions about this migration or documentation structure, see:
-- [ARCHITECTURE_MIGRATION_NOTE.md](docs/architecture/ARCHITECTURE_MIGRATION_NOTE.md)
-- [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md)
+- [ARCHITECTURE_MIGRATION_NOTE.md](architecture/ARCHITECTURE_MIGRATION_NOTE.md)
+- [ARCHITECTURE.md](architecture/ARCHITECTURE.md)
 - GitHub Discussions

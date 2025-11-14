@@ -103,8 +103,8 @@ All smoke tests must pass before declaring production-ready:
 
 ## Related Documentation
 
-- [Production Readiness Checklist](../../PRODUCTION_READINESS_CHECKLIST.md)
-- [Testing Results](../../docs/TESTING_RESULTS.md)
+- [Production Readiness Checklist](../../../PRODUCTION_READINESS_CHECKLIST.md)
+- [Testing Results](../../../docs/archive/docs-old/TESTING_RESULTS.md)
 - [E2E Tests](../e2e/README.md)
 - [Main Testing Guide](../../TESTING.md)
 

@@ -297,9 +297,9 @@ function MyForm() {
 
 ## Related Documentation
 
-- [ERROR_HANDLING_GUIDE.md](../ERROR_HANDLING_GUIDE.md) - Comprehensive error handling guide
-- [ERROR_RECOVERY_RESILIENCE_IMPLEMENTATION.md](../ERROR_RECOVERY_RESILIENCE_IMPLEMENTATION.md) - Resilience patterns
-- [DEVELOPMENT.md](../DEVELOPMENT.md) - Development guidelines
+- [ERROR_HANDLING_GUIDE.md](ERROR_HANDLING_GUIDE.md) - Comprehensive error handling guide
+- [ERROR_RECOVERY_RESILIENCE_IMPLEMENTATION.md](ERROR_RECOVERY_RESILIENCE_IMPLEMENTATION.md) - Resilience patterns
+- [DEVELOPMENT.md](DEVELOPMENT.md) - Development guidelines
 
 ## Summary
 

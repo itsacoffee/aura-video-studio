@@ -4,7 +4,7 @@ Welcome to the comprehensive documentation for Aura Video Studio - an AI-powered
 
 ## 📚 Documentation Structure
 
-### [Getting Started](./getting-started/)
+### Getting Started
 New to Aura Video Studio? Start here!
 
 - [Installation Guide](./getting-started/INSTALLATION.md) - Complete installation instructions for all platforms
@@ -12,7 +12,7 @@ New to Aura Video Studio? Start here!
 - [First Run Guide](./getting-started/FIRST_RUN_GUIDE.md) - What to expect on your first launch
 - [First Run FAQ](./getting-started/FIRST_RUN_FAQ.md) - Common questions for new users
 
-### [Features](./features/)
+### Features
 Detailed documentation for each feature of the application.
 
 - [Video Generation Engines](./features/ENGINES.md) - Overview of video generation capabilities
@@ -22,7 +22,7 @@ Detailed documentation for each feature of the application.
 - [Local TTS Providers](./features/TTS_LOCAL.md) - Using local text-to-speech engines
 - [Command Line Interface](./features/CLI.md) - Using the CLI for automation
 
-### [Workflows](./workflows/)
+### Workflows
 Advanced guides for common workflows and use cases.
 
 - [Portable Mode Guide](./workflows/PORTABLE_MODE_GUIDE.md) - Using Aura in portable mode
@@ -30,7 +30,7 @@ Advanced guides for common workflows and use cases.
 - [Settings Schema](./workflows/SETTINGS_SCHEMA.md) - Understanding and configuring settings
 - [UX Best Practices](./workflows/UX_GUIDE.md) - User experience guidelines
 
-### [API Reference](./api/)
+### API Reference
 Technical API documentation for developers.
 
 - [API Contract v1](./api/API_CONTRACT_V1.md) - RESTful API specification
@@ -39,13 +39,13 @@ Technical API documentation for developers.
 - [Job Management](./api/jobs.md) - Background job processing
 - [Provider System](./api/providers.md) - Provider architecture and integration
 
-### [Troubleshooting](./troubleshooting/)
+### Troubleshooting
 Solutions for common issues and problems.
 
 - [Troubleshooting Guide](./troubleshooting/Troubleshooting.md) - Common issues and solutions
 - [FAQ](./getting-started/FIRST_RUN_FAQ.md) - Frequently asked questions
 
-### [Best Practices](./best-practices/)
+### Best Practices
 Guidelines for optimal usage and performance.
 
 - Documentation coming soon
@@ -60,9 +60,9 @@ Guidelines for optimal usage and performance.
 ## 🚀 Architecture
 
 For technical details about the system architecture, see:
-- [Main Architecture Document](../ARCHITECTURE.md)
+- [Main Architecture Document](architecture/ARCHITECTURE.md)
 - [Contributing Guide](../CONTRIBUTING.md)
-- [Build and Run Guide](../BUILD_AND_RUN.md)
+- [Build and Run Guide](developer/BUILD_AND_RUN.md)
 
 ## 📖 Additional Resources
 

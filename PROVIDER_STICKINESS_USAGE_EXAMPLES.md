@@ -427,6 +427,6 @@ public class VideoOrchestrator
 
 ## See Also
 
-- [LATENCY_PATIENCE_POLICY.md](../LATENCY_PATIENCE_POLICY.md) - Full policy documentation
-- [PROVIDER_INTEGRATION_GUIDE.md](../PROVIDER_INTEGRATION_GUIDE.md) - Provider implementation guide
-- [providerTimeoutProfiles.json](../providerTimeoutProfiles.json) - Configuration reference
+- [LATENCY_PATIENCE_POLICY.md](LATENCY_PATIENCE_POLICY.md) - Full policy documentation
+- [PROVIDER_INTEGRATION_GUIDE.md](PROVIDER_INTEGRATION_GUIDE.md) - Provider implementation guide
+- providerTimeoutProfiles.json - Configuration reference

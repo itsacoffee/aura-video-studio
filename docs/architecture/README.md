@@ -62,9 +62,9 @@ Comprehensive error handling with:
 
 ## Related Documentation
 
-- [API Documentation](../api/) - REST API reference
-- [Developer Guides](../developer/) - Development setup and guides
-- [User Guides](../user-guide/) - End-user documentation
+- API Documentation - REST API reference
+- Developer Guides - Development setup and guides
+- User Guides - End-user documentation
 - [Documentation Index](../INDEX.md) - Complete documentation map
 
 ## Diagrams & Visualizations

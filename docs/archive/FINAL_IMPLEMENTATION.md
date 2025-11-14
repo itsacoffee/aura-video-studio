@@ -507,11 +507,11 @@ All core infrastructure is in place to support rapid development of the remainin
 ## Resources
 
 - **Main README**: [README.md](./README.md)
-- **Architecture**: [ARCHITECTURE.md](./ARCHITECTURE.md)
-- **Deployment**: [DEPLOYMENT.md](./DEPLOYMENT.md)
-- **API Docs**: [Aura.Api/README.md](./Aura.Api/README.md)
-- **Web Docs**: [Aura.Web/README.md](./Aura.Web/README.md)
-- **Packaging**: [scripts/packaging/README.md](./scripts/packaging/README.md)
+- **Architecture**: [ARCHITECTURE.md](../architecture/ARCHITECTURE.md)
+- **Deployment**: [DEPLOYMENT.md](../developer/DEPLOYMENT.md)
+- **API Docs**: [Aura.Api/README.md](../../README.md)
+- **Web Docs**: [Aura.Web/README.md](../../README.md)
+- **Packaging**: [scripts/packaging/README.md](../../README.md)
 - **Spec Compliance**: [SPEC_COMPLIANCE.md](./SPEC_COMPLIANCE.md)
 - **Implementation Summary**: [IMPLEMENTATION_SUMMARY.md](./IMPLEMENTATION_SUMMARY.md)
 

@@ -2,7 +2,7 @@
 
 This index provides a complete map of all canonical documentation in the Aura Video Studio repository, organized by audience and purpose.
 
-> **Note**: This index includes only current, canonical documentation. For historical documentation, see [docs/archive/](./archive/README.md).
+> **Note**: This index includes only current, canonical documentation. For historical documentation, see docs/archive/.
 
 ## Quick Start
 
@@ -91,7 +91,7 @@ New to Aura Video Studio? Start here:
 
 - [Build Guide](../BUILD_GUIDE.md) - Build from source
 - [Contributing Guide](../CONTRIBUTING.md) - How to contribute
-- [Development Container Guide](../.devcontainer/README.md) - Consistent dev environment with Docker
+- Development Container Guide - Consistent dev environment with Docker
 - [Build and Run](./developer/BUILD_AND_RUN.md)
 - [Installation](./developer/INSTALL.md)
 - [Deployment](./developer/DEPLOYMENT.md)
@@ -136,27 +136,27 @@ New to Aura Video Studio? Start here:
 - [Job Management](./api/jobs.md)
 - [Provider System](./api/providers.md)
 - [Rate Limits](./api/rate-limits.md)
-- [Aura.Api README](../Aura.Api/README.md) - Backend API documentation
+- Aura.Api README - Backend API documentation
 
 #### Project-Specific Documentation
 
-- [Aura.Api README](../Aura.Api/README.md) - Backend API project
-- [Aura.Web README](../Aura.Web/README.md) - Frontend web project
-- [Aura.Web Keyboard Shortcuts Guide](../Aura.Web/KEYBOARD_SHORTCUTS_GUIDE.md)
-- [Aura.Web Icon System Guide](../Aura.Web/ICON_SYSTEM_GUIDE.md)
-- [Aura.Web Undo/Redo Guide](../Aura.Web/UNDO_REDO_GUIDE.md)
-- [Aura.Web Undo/Redo Visual Guide](../Aura.Web/UNDO_REDO_VISUAL_GUIDE.md)
-- [Aura.Web Testing](../Aura.Web/TESTING.md)
-- [Aura.Web Timeline Features](../Aura.Web/TIMELINE_FEATURES.md)
-- [Aura.Web Chroma Key Compositing](../Aura.Web/CHROMA_KEY_COMPOSITING.md)
-- [Aura.Web Windows Setup](../Aura.Web/WINDOWS_SETUP.md)
-- [Aura.Web API Service README](../Aura.Web/src/services/api/README.md)
-- [Aura.Web E2E Tests README](../Aura.Web/tests/e2e/README.md)
-- [Aura.Web Smoke Tests README](../Aura.Web/tests/smoke/README.md)
-- [Aura.E2E README](../Aura.E2E/README.md) - End-to-end testing project
-- [Aura.Cli README](../Aura.Cli/README.md) - CLI project
-- [Aura.Core AI Adapters](../Aura.Core/AI/Adapters/README.md)
-- [Aura.Core ML Pretrained Models](../Aura.Core/ML/PretrainedModels/README.md)
+- Aura.Api README - Backend API project
+- Aura.Web README - Frontend web project
+- Aura.Web Keyboard Shortcuts Guide
+- Aura.Web Icon System Guide
+- Aura.Web Undo/Redo Guide
+- Aura.Web Undo/Redo Visual Guide
+- Aura.Web Testing
+- Aura.Web Timeline Features
+- Aura.Web Chroma Key Compositing
+- Aura.Web Windows Setup
+- Aura.Web API Service README
+- Aura.Web E2E Tests README
+- Aura.Web Smoke Tests README
+- Aura.E2E README - End-to-end testing project
+- Aura.Cli README - CLI project
+- Aura.Core AI Adapters
+- Aura.Core ML Pretrained Models
 
 #### Implementation Guides
 
@@ -224,24 +224,24 @@ New to Aura Video Studio? Start here:
 
 - [Timeline Editor Feature](./features/TIMELINE.md)
 - [Timeline Editor UI Guide](./user-guide/TIMELINE_EDITOR_UI_GUIDE.md)
-- [Aura.Web Timeline Features](../Aura.Web/TIMELINE_FEATURES.md)
+- Aura.Web Timeline Features
 - [Advanced Timeline Features](./architecture/ADVANCED_TIMELINE_FEATURES.md)
-- [Keyboard Shortcuts](../Aura.Web/KEYBOARD_SHORTCUTS_GUIDE.md)
-- [Undo/Redo Guide](../Aura.Web/UNDO_REDO_GUIDE.md)
+- Keyboard Shortcuts
+- Undo/Redo Guide
 
 ### Advanced Features
 
 - [Advanced Mode Guide](../ADVANCED_MODE_GUIDE.md)
 - [Advanced Features Audit](../ADVANCED_FEATURES_AUDIT.md)
-- [Chroma Key Compositing](../Aura.Web/CHROMA_KEY_COMPOSITING.md)
+- Chroma Key Compositing
 
 ### Testing
 
 - [Testing Guide](./TESTING.md)
 - [Integration Testing Guide](./INTEGRATION_TESTING_GUIDE.md)
-- [Aura.Web Testing](../Aura.Web/TESTING.md)
-- [E2E Tests](../Aura.Web/tests/e2e/README.md)
-- [Smoke Tests](../Aura.Web/tests/smoke/README.md)
+- Aura.Web Testing
+- E2E Tests
+- Smoke Tests
 
 ## Documentation Standards
 
@@ -250,7 +250,7 @@ New to Aura Video Studio? Start here:
 
 ## Archive
 
-Historical documentation is preserved in [docs/archive/](./archive/README.md). These documents are **not canonical** but provide historical context.
+Historical documentation is preserved in docs/archive/. These documents are **not canonical** but provide historical context.
 
 ## Contributing to Documentation
 
@@ -276,4 +276,4 @@ To report documentation issues or gaps, please open a GitHub issue with the `doc
 
 ---
 
-*This index is generated from the canonical documentation structure. For historical context, see the [archive](./archive/README.md).*
+*This index is generated from the canonical documentation structure. For historical context, see the archive directory.*

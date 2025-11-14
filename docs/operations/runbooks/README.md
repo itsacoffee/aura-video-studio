@@ -16,23 +16,23 @@ A runbook is a step-by-step guide for handling common operational tasks, inciden
 ### System Operations
 
 - [Deployment](./deployment.md) - Deploying and updating Aura Video Studio
-- [Backup and Restore](./backup-restore.md) - Data backup and recovery procedures
-- [Monitoring](./monitoring.md) - System monitoring and alerting setup
-- [Performance Tuning](./performance-tuning.md) - Performance optimization guide
+- Backup and Restore - Data backup and recovery procedures
+- Monitoring - System monitoring and alerting setup
+- Performance Tuning - Performance optimization guide
 
 ### Incident Response
 
-- [Service Degradation](./service-degradation.md) - Handling slow or degraded performance
-- [High Error Rates](./high-error-rates.md) - Diagnosing and fixing error spikes
-- [Database Issues](./database-issues.md) - Database connectivity and corruption
-- [Provider Failures](./provider-failures.md) - External provider outages and fallbacks
+- Service Degradation - Handling slow or degraded performance
+- High Error Rates - Diagnosing and fixing error spikes
+- Database Issues - Database connectivity and corruption
+- Provider Failures - External provider outages and fallbacks
 
 ### Maintenance
 
-- [Log Management](./log-management.md) - Log rotation, archival, and analysis
-- [Database Maintenance](./database-maintenance.md) - Vacuuming, indexing, optimization
-- [Cache Management](./cache-management.md) - Redis cache operations and troubleshooting
-- [Dependency Updates](./dependency-updates.md) - Updating dependencies safely
+- Log Management - Log rotation, archival, and analysis
+- Database Maintenance - Vacuuming, indexing, optimization
+- Cache Management - Redis cache operations and troubleshooting
+- Dependency Updates - Updating dependencies safely
 
 ## Runbook Format
 
@@ -219,10 +219,10 @@ Create a runbook when:
 
 ## Additional Resources
 
-- [Troubleshooting Guide](../../TROUBLESHOOTING.md)
+- [Troubleshooting Guide](../../../TROUBLESHOOTING.md)
 - [Architecture Documentation](../../architecture/ARCHITECTURE.md)
 - [API Documentation](../../api/README.md)
-- [Monitoring Setup](./monitoring.md)
+- Monitoring Setup
 
 ## Feedback
 

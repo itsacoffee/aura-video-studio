@@ -390,6 +390,6 @@ public async Task HealthCheck_ReturnsHealthy()
 ## Related Documentation
 
 - [Health Check Runbook](./HEALTH_CHECKS_RUNBOOK.md)
-- [Monitoring Guide](./MONITORING_GUIDE.md)
-- [Alerting Configuration](./ALERTING_CONFIG.md)
-- [Operational Readiness](./OPERATIONAL_READINESS.md)
+- Monitoring Guide
+- Alerting Configuration
+- Operational Readiness

@@ -607,8 +607,8 @@ Includes optional dependencies:
 ## Containerized Deployment
 
 For Docker/container deployments, see:
-- [Docker Deployment Guide](../deployment/DOCKER_GUIDE.md)
-- [Container Configuration](../deployment/CONTAINER_CONFIGURATION.md)
+- Docker Deployment Guide
+- Container Configuration
 
 Pre-built images include all dependencies.
 

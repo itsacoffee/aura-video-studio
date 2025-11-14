@@ -508,7 +508,7 @@ See [Build Guide](../../BUILD_GUIDE.md) for details.
 - [Installation Guide](../getting-started/INSTALLATION.md)
 - [Dependencies Setup](dependencies.md)
 - [Performance Optimization](../PERFORMANCE_BENCHMARKS.md)
-- [Hardware Acceleration](../ADVANCED_RENDERING_GUIDE.md)
+- [Hardware Acceleration](../../ADVANCED_RENDERING_GUIDE.md)
 
 ## Need Help?
 

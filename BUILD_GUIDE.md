@@ -869,7 +869,7 @@ ls -la dist/assets/
 - **[DEVELOPMENT.md](DEVELOPMENT.md)** - Component development workflows
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines
 - **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Common issues and solutions
-- **[docs/architecture/](docs/architecture/)** - System architecture documentation
+- **docs/architecture/** - System architecture documentation
 
 ## Build Checklist
 
@@ -894,8 +894,8 @@ Before creating a release build:
 
 - [Project README](README.md) - Project overview and features
 - [Contributing Guide](CONTRIBUTING.md) - Contribution guidelines
-- [Frontend README](Aura.Web/README.md) - Frontend-specific documentation
-- [Windows Setup Guide](Aura.Web/WINDOWS_SETUP.md) - Windows-specific instructions
+- Frontend README - Frontend-specific documentation
+- Windows Setup Guide - Windows-specific instructions
 
 ## Getting Help
 

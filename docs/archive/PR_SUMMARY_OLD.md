@@ -95,11 +95,11 @@ See [TEST_RESULTS.md](./TEST_RESULTS.md) for detailed test documentation.
 ## 📚 Documentation
 
 ### Quick Reference
-- **Want to build?** → [INSTALL.md](./INSTALL.md)
+- **Want to build?** → [INSTALL.md](../developer/INSTALL.md)
 - **Want to understand the fix?** → [BEFORE_AFTER.md](./BEFORE_AFTER.md)
 - **Want a high-level overview?** → [SUMMARY.md](./SUMMARY.md)
 - **Want to see test results?** → [TEST_RESULTS.md](./TEST_RESULTS.md)
-- **Want to use the portable version?** → [PORTABLE.md](./PORTABLE.md)
+- **Want to use the portable version?** → [PORTABLE.md](../../PORTABLE.md)
 
 ## 🚀 How to Use
 

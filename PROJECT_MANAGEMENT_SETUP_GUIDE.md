@@ -463,8 +463,8 @@ For issues or questions:
 
 - [Full Implementation Summary](./PR5_PROJECT_MANAGEMENT_IMPLEMENTATION.md)
 - [API Documentation](./api/index.md)
-- [Database Schema](./docs/database-schema.md)
-- [Component Library](./docs/components.md)
+- Database Schema
+- Component Library
 
 ---
 

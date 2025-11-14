@@ -242,7 +242,7 @@ New action types:
 - [ ] Settings page documentation for wizard reset
 - [ ] Video tutorial for the new wizard experience
 
-**Note on Advanced Mode:** The first-run wizard operates in simple mode by default. Advanced features (ML retraining, deep prompt customization, low-level render flags, etc.) are hidden until the user explicitly enables **Advanced Mode** in Settings > General. See [ADVANCED_MODE_GUIDE.md](ADVANCED_MODE_GUIDE.md) for more information.
+**Note on Advanced Mode:** The first-run wizard operates in simple mode by default. Advanced features (ML retraining, deep prompt customization, low-level render flags, etc.) are hidden until the user explicitly enables **Advanced Mode** in Settings > General. See [ADVANCED_MODE_GUIDE.md](../../../ADVANCED_MODE_GUIDE.md) for more information.
 
 ## Security Considerations
 - No sensitive data stored in localStorage

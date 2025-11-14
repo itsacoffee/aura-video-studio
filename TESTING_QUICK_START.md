@@ -317,7 +317,7 @@ dotnet test --filter "Category=Performance&Priority=High"
 - [Test Writing Guide](docs/testing/TEST_WRITING_GUIDE.md)
 - [E2E Testing Guide](E2E_TESTING_GUIDE.md)
 - [Mocking Guide](docs/testing/MOCKING_GUIDE.md)
-- [Test Data Builders](Aura.Tests/TestDataBuilders/README.md)
+- Test Data Builders
 
 ## 🎯 Quality Gates
 

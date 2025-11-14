@@ -37,14 +37,14 @@ This directory contains end-user documentation for Aura Video Studio features an
 
 ## Workflows
 
-For common workflows and use cases, see the [Workflows](../workflows/) directory.
+For common workflows and use cases, see the Workflows directory.
 
 ## Troubleshooting
 
-For help with issues, see the [Troubleshooting](../troubleshooting/) directory.
+For help with issues, see the Troubleshooting directory.
 
 ## Additional Resources
 
 - [Documentation Index](../INDEX.md) - Complete documentation map
-- [API Reference](../api/) - For developers integrating with Aura
-- [Architecture](../architecture/) - System design documentation
+- API Reference - For developers integrating with Aura
+- Architecture - System design documentation

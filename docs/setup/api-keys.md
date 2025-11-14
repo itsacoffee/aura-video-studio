@@ -568,10 +568,10 @@ chmod 600 appsettings.json
 
 ## Related Documentation
 
-- [Provider Configuration Guide](../PROVIDER_INTEGRATION_GUIDE.md)
+- [Provider Configuration Guide](../../PROVIDER_INTEGRATION_GUIDE.md)
 - [First Run Setup](../getting-started/INSTALLATION.md)
 - [Provider Errors Troubleshooting](../troubleshooting/provider-errors.md)
-- [Security Guide](../security/API_SECURITY.md)
+- Security Guide
 
 ## Need More Help?
 
