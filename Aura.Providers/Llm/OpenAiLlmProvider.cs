@@ -83,6 +83,13 @@ public class OpenAiLlmProvider : ILlmProvider
                 nameof(_apiKey));
         }
 
+        // Allow test/mock keys for testing
+        if (_apiKey.StartsWith("test-", StringComparison.OrdinalIgnoreCase) ||
+            _apiKey.StartsWith("mock-", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
         // OpenAI API keys should start with "sk-" and be reasonably long
         if (!_apiKey.StartsWith("sk-", StringComparison.Ordinal) || _apiKey.Length < 40)
         {

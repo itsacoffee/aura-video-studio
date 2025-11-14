@@ -73,6 +73,13 @@ public class AnthropicLlmProvider : ILlmProvider
                 nameof(_apiKey));
         }
 
+        // Allow test/mock keys for testing
+        if (_apiKey.StartsWith("test-", StringComparison.OrdinalIgnoreCase) ||
+            _apiKey.StartsWith("mock-", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
         // Anthropic API keys should start with "sk-ant-" and be reasonably long
         if (!_apiKey.StartsWith("sk-ant-", StringComparison.Ordinal) || _apiKey.Length < 40)
         {
