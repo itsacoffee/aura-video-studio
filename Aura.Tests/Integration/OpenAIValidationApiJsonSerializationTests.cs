@@ -132,8 +132,7 @@ public class OpenAIValidationApiJsonSerializationTests
 
         foreach (var property in expectedProperties)
         {
-            Assert.Contains($"\"{property}\":", json, 
-                $"Expected property '{property}' in camelCase format. JSON: {json}");
+            Assert.Contains($"\"{property}\":", json);
         }
 
         // Verify it can be parsed as the frontend expects
