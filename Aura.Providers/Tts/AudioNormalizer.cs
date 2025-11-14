@@ -339,11 +339,11 @@ public class AudioNormalizer
     /// <summary>
     /// Gets FFmpeg executable path
     /// </summary>
-    private async Task<string> GetFfmpegPathAsync(CancellationToken ct)
+    private Task<string> GetFfmpegPathAsync(CancellationToken ct)
     {
         if (!string.IsNullOrEmpty(_ffmpegPath) && File.Exists(_ffmpegPath))
         {
-            return _ffmpegPath;
+            return Task.FromResult(_ffmpegPath);
         }
 
         // Try to find ffmpeg in PATH
@@ -359,7 +359,7 @@ public class AudioNormalizer
 
             if (File.Exists(ffmpegPath))
             {
-                return ffmpegPath;
+                return Task.FromResult(ffmpegPath);
             }
         }
 
@@ -376,7 +376,7 @@ public class AudioNormalizer
             {
                 if (File.Exists(path))
                 {
-                    return path;
+                    return Task.FromResult(path);
                 }
             }
         }
