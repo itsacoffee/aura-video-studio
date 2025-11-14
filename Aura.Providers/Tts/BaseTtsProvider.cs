@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
@@ -140,7 +141,7 @@ public abstract class BaseTtsProvider : ITtsProvider
     public virtual async IAsyncEnumerable<AudioChunk> StreamAudioAsync(
         IEnumerable<ScriptLine> lines,
         VoiceSpec spec,
-        CancellationToken ct)
+        [EnumeratorCancellation] CancellationToken ct)
     {
         _logger.LogWarning("{Provider} does not support streaming synthesis, falling back to batch synthesis", GetProviderName());
         

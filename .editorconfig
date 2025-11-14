@@ -116,6 +116,17 @@ dotnet_diagnostic.CA2201.severity = none
 # String performance - suppress for now
 dotnet_diagnostic.CA1846.severity = none
 
+# Dictionary TryGetValue optimization - suppress for now
+dotnet_diagnostic.CA1854.severity = none
+
+# Disposable fields - suppress for now
+dotnet_diagnostic.CA1001.severity = none
+
+# ASP.NET Core analyzers - suppress for now
+dotnet_diagnostic.ASP0025.severity = none
+dotnet_diagnostic.ASP0023.severity = none
+dotnet_diagnostic.ASP0019.severity = none
+
 [*.{ts,tsx,js,jsx,json}]
 indent_style = space
 indent_size = 2

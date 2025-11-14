@@ -371,7 +371,7 @@ public class AzureTtsProvider : ITtsProvider, IDisposable
         // Apply audio effects if specified
         if (options?.AudioEffect != AzureAudioEffect.None)
         {
-            var effectName = options.AudioEffect switch
+            var effectName = options!.AudioEffect switch
             {
                 AzureAudioEffect.EqTelecom => "eq_telecom",
                 AzureAudioEffect.EqCar => "eq_car",

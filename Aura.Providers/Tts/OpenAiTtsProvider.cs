@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -166,7 +167,7 @@ public class OpenAiTtsProvider : BaseTtsProvider
     public override async IAsyncEnumerable<AudioChunk> StreamAudioAsync(
         IEnumerable<ScriptLine> lines,
         VoiceSpec spec,
-        CancellationToken ct)
+        [EnumeratorCancellation] CancellationToken ct)
     {
         if (_offlineOnly || string.IsNullOrEmpty(_apiKey))
         {
