@@ -7,9 +7,9 @@ echo "=== Aura Video Studio Documentation Builder ==="
 echo ""
 
 # Check if DocFX is installed
-if ! command -v docfx &> /dev/null; then
-    echo "Installing DocFX..."
-    dotnet tool install -g docfx
+if ! command -v docfx &>/dev/null; then
+  echo "Installing DocFX..."
+  dotnet tool install -g docfx
 fi
 
 # Build .NET solution with XML documentation
@@ -21,33 +21,33 @@ echo "Building API documentation with DocFX..."
 docfx docfx.json
 
 # Build TypeScript documentation (if Node.js is available)
-if command -v npm &> /dev/null; then
-    echo "Building TypeScript documentation..."
-    cd Aura.Web
-    npm install --silent
-    npm run docs
-    cd ..
+if command -v npm &>/dev/null; then
+  echo "Building TypeScript documentation..."
+  cd Aura.Web
+  npm install --silent
+  npm run docs
+  cd ..
 else
-    echo "Skipping TypeScript documentation (npm not found)"
+  echo "Skipping TypeScript documentation (npm not found)"
 fi
 
 # Validate links (if markdown-link-check is installed)
-if command -v markdown-link-check &> /dev/null; then
-    echo "Validating links in documentation..."
-    FAILED_FILES=0
-    while IFS= read -r -d '' file; do
-        if ! markdown-link-check --quiet "$file"; then
-            echo "Warning: Found broken links in $file"
-            ((FAILED_FILES++))
-        fi
-    done < <(find docs -name "*.md" -print0)
-    
-    if [ $FAILED_FILES -gt 0 ]; then
-        echo "Warning: $FAILED_FILES file(s) have broken links (not failing build)"
+if command -v markdown-link-check &>/dev/null; then
+  echo "Validating links in documentation..."
+  FAILED_FILES=0
+  while IFS= read -r -d '' file; do
+    if ! markdown-link-check --quiet "$file"; then
+      echo "Warning: Found broken links in $file"
+      ((FAILED_FILES++))
     fi
+  done < <(find docs -name "*.md" -print0)
+
+  if [ $FAILED_FILES -gt 0 ]; then
+    echo "Warning: $FAILED_FILES file(s) have broken links (not failing build)"
+  fi
 else
-    echo "Skipping link validation (markdown-link-check not installed)"
-    echo "Install with: npm install -g markdown-link-check"
+  echo "Skipping link validation (markdown-link-check not installed)"
+  echo "Install with: npm install -g markdown-link-check"
 fi
 
 echo ""

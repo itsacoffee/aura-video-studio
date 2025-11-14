@@ -30,22 +30,22 @@ echo ""
 
 # Function to run a test
 run_test() {
-    local test_name=$1
-    local test_command=$2
-    
-    TOTAL_TESTS=$((TOTAL_TESTS + 1))
-    
-    echo -n "Testing ${test_name}... "
-    
-    if eval "$test_command" > /dev/null 2>&1; then
-        echo -e "${GREEN}PASS${NC}"
-        PASSED_TESTS=$((PASSED_TESTS + 1))
-        return 0
-    else
-        echo -e "${RED}FAIL${NC}"
-        FAILED_TESTS=$((FAILED_TESTS + 1))
-        return 1
-    fi
+  local test_name=$1
+  local test_command=$2
+
+  TOTAL_TESTS=$((TOTAL_TESTS + 1))
+
+  echo -n "Testing ${test_name}... "
+
+  if eval "$test_command" >/dev/null 2>&1; then
+    echo -e "${GREEN}PASS${NC}"
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+    return 0
+  else
+    echo -e "${RED}FAIL${NC}"
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+    return 1
+  fi
 }
 
 # Health Checks
@@ -77,39 +77,39 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 
 # Response time test
 test_response_time() {
-    local endpoint=$1
-    local threshold_ms=$2
-    
-    local start_time=$(date +%s%N)
-    curl -sf "$endpoint" > /dev/null 2>&1
-    local end_time=$(date +%s%N)
-    
-    local response_time=$(( (end_time - start_time) / 1000000 ))
-    
-    if [ $response_time -lt $threshold_ms ]; then
-        echo "Response time: ${response_time}ms (< ${threshold_ms}ms)"
-        return 0
-    else
-        echo "Response time: ${response_time}ms (>= ${threshold_ms}ms)"
-        return 1
-    fi
+  local endpoint=$1
+  local threshold_ms=$2
+
+  local start_time=$(date +%s%N)
+  curl -sf "$endpoint" >/dev/null 2>&1
+  local end_time=$(date +%s%N)
+
+  local response_time=$(((end_time - start_time) / 1000000))
+
+  if [ $response_time -lt $threshold_ms ]; then
+    echo "Response time: ${response_time}ms (< ${threshold_ms}ms)"
+    return 0
+  else
+    echo "Response time: ${response_time}ms (>= ${threshold_ms}ms)"
+    return 1
+  fi
 }
 
 echo -n "API response time (< 2000ms)... "
 if test_response_time "${BASE_URL}/api/health/live" 2000; then
-    echo -e "${GREEN}PASS${NC}"
-    PASSED_TESTS=$((PASSED_TESTS + 1))
+  echo -e "${GREEN}PASS${NC}"
+  PASSED_TESTS=$((PASSED_TESTS + 1))
 else
-    echo -e "${YELLOW}WARN${NC}"
+  echo -e "${YELLOW}WARN${NC}"
 fi
 TOTAL_TESTS=$((TOTAL_TESTS + 1))
 
 echo -n "Web response time (< 3000ms)... "
 if test_response_time "${BASE_URL}/" 3000; then
-    echo -e "${GREEN}PASS${NC}"
-    PASSED_TESTS=$((PASSED_TESTS + 1))
+  echo -e "${GREEN}PASS${NC}"
+  PASSED_TESTS=$((PASSED_TESTS + 1))
 else
-    echo -e "${YELLOW}WARN${NC}"
+  echo -e "${YELLOW}WARN${NC}"
 fi
 TOTAL_TESTS=$((TOTAL_TESTS + 1))
 
@@ -120,14 +120,14 @@ echo -e "${BLUE}Security Tests${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 test_security_header() {
-    local header=$1
-    local response=$(curl -sI "${BASE_URL}" 2>/dev/null)
-    
-    if echo "$response" | grep -qi "$header"; then
-        return 0
-    else
-        return 1
-    fi
+  local header=$1
+  local response=$(curl -sI "${BASE_URL}" 2>/dev/null)
+
+  if echo "$response" | grep -qi "$header"; then
+    return 0
+  else
+    return 1
+  fi
 }
 
 run_test "HTTPS redirect" "curl -sf -I ${BASE_URL} | grep -qi 'strict-transport-security' || [ '${ENVIRONMENT}' == 'local' ]"
@@ -142,35 +142,35 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 
 # Test version matches deployment
 test_version() {
-    local expected_version=$1
-    
-    if [ -z "$expected_version" ]; then
-        return 0
-    fi
-    
-    local actual_version=$(curl -s "${BASE_URL}/api/version" | jq -r '.version' 2>/dev/null || echo "")
-    
-    if [ "$actual_version" == "$expected_version" ]; then
-        echo "Version matches: ${actual_version}"
-        return 0
-    else
-        echo "Version mismatch: expected ${expected_version}, got ${actual_version}"
-        return 1
-    fi
+  local expected_version=$1
+
+  if [ -z "$expected_version" ]; then
+    return 0
+  fi
+
+  local actual_version=$(curl -s "${BASE_URL}/api/version" | jq -r '.version' 2>/dev/null || echo "")
+
+  if [ "$actual_version" == "$expected_version" ]; then
+    echo "Version matches: ${actual_version}"
+    return 0
+  else
+    echo "Version mismatch: expected ${expected_version}, got ${actual_version}"
+    return 1
+  fi
 }
 
 echo -n "Version check... "
 if [ -n "${DEPLOY_VERSION:-}" ]; then
-    if test_version "$DEPLOY_VERSION"; then
-        echo -e "${GREEN}PASS${NC}"
-        PASSED_TESTS=$((PASSED_TESTS + 1))
-    else
-        echo -e "${RED}FAIL${NC}"
-        FAILED_TESTS=$((FAILED_TESTS + 1))
-    fi
-    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+  if test_version "$DEPLOY_VERSION"; then
+    echo -e "${GREEN}PASS${NC}"
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+  else
+    echo -e "${RED}FAIL${NC}"
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+  fi
+  TOTAL_TESTS=$((TOTAL_TESTS + 1))
 else
-    echo -e "${YELLOW}SKIP (no version specified)${NC}"
+  echo -e "${YELLOW}SKIP (no version specified)${NC}"
 fi
 
 # Test database connectivity
@@ -188,19 +188,19 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo -n "Concurrent requests test (10 requests)... "
 success_count=0
 for i in {1..10}; do
-    if curl -sf "${BASE_URL}/api/health/live" > /dev/null 2>&1; then
-        success_count=$((success_count + 1))
-    fi &
+  if curl -sf "${BASE_URL}/api/health/live" >/dev/null 2>&1; then
+    success_count=$((success_count + 1))
+  fi &
 done
 wait
 
 TOTAL_TESTS=$((TOTAL_TESTS + 1))
 if [ $success_count -eq 10 ]; then
-    echo -e "${GREEN}PASS (10/10)${NC}"
-    PASSED_TESTS=$((PASSED_TESTS + 1))
+  echo -e "${GREEN}PASS (10/10)${NC}"
+  PASSED_TESTS=$((PASSED_TESTS + 1))
 else
-    echo -e "${RED}FAIL (${success_count}/10)${NC}"
-    FAILED_TESTS=$((FAILED_TESTS + 1))
+  echo -e "${RED}FAIL (${success_count}/10)${NC}"
+  FAILED_TESTS=$((FAILED_TESTS + 1))
 fi
 
 echo ""
@@ -211,15 +211,15 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 
 # Test CORS
 test_cors() {
-    local response=$(curl -sI -H "Origin: https://example.com" "${BASE_URL}/api/health/live" 2>/dev/null)
-    
-    if echo "$response" | grep -qi "access-control-allow"; then
-        return 0
-    else
-        # CORS might be disabled in production
-        [ "${ENVIRONMENT}" == "production" ] && return 0
-        return 1
-    fi
+  local response=$(curl -sI -H "Origin: https://example.com" "${BASE_URL}/api/health/live" 2>/dev/null)
+
+  if echo "$response" | grep -qi "access-control-allow"; then
+    return 0
+  else
+    # CORS might be disabled in production
+    [ "${ENVIRONMENT}" == "production" ] && return 0
+    return 1
+  fi
 }
 
 run_test "CORS configuration" "test_cors"
@@ -243,11 +243,11 @@ echo ""
 
 # Exit with error if any tests failed
 if [ $FAILED_TESTS -gt 0 ]; then
-    echo -e "${RED}❌ Validation FAILED${NC}"
-    echo "Some tests failed. Please review the deployment."
-    exit 1
+  echo -e "${RED}❌ Validation FAILED${NC}"
+  echo "Some tests failed. Please review the deployment."
+  exit 1
 else
-    echo -e "${GREEN}✅ Validation PASSED${NC}"
-    echo "All tests passed successfully!"
-    exit 0
+  echo -e "${GREEN}✅ Validation PASSED${NC}"
+  echo "All tests passed successfully!"
+  exit 0
 fi

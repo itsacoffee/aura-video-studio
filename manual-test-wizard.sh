@@ -10,8 +10,8 @@ echo ""
 
 # Check if we're in the right directory
 if [ ! -d "Aura.Web" ]; then
-    echo "Error: Must run from repository root"
-    exit 1
+  echo "Error: Must run from repository root"
+  exit 1
 fi
 
 cd Aura.Web

@@ -25,9 +25,9 @@ mkdir -p "$OUTPUT_DIR"
 
 # Function to generate HTML dashboard
 generate_dashboard() {
-    echo -e "${BLUE}Generating HTML Dashboard...${NC}"
-    
-    cat > "$OUTPUT_DIR/index.html" << 'EOF'
+  echo -e "${BLUE}Generating HTML Dashboard...${NC}"
+
+  cat >"$OUTPUT_DIR/index.html" <<'EOF'
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -434,53 +434,53 @@ generate_dashboard() {
 </html>
 EOF
 
-    # Replace placeholders
-    sed -i "s/TIMESTAMP_PLACEHOLDER/$TIMESTAMP/g" "$OUTPUT_DIR/index.html"
-    sed -i "s/COVERAGE_PLACEHOLDER/82/g" "$OUTPUT_DIR/index.html"
-    sed -i "s/PASSED_PLACEHOLDER/2847/g" "$OUTPUT_DIR/index.html"
-    sed -i "s/FAILED_PLACEHOLDER/3/g" "$OUTPUT_DIR/index.html"
-    sed -i "s/FAILED_STATUS_PLACEHOLDER/warning/g" "$OUTPUT_DIR/index.html"
-    sed -i "s/SUCCESS_RATE_PLACEHOLDER/99.9/g" "$OUTPUT_DIR/index.html"
-    sed -i "s/LAST_RUN_PLACEHOLDER/2 hours ago/g" "$OUTPUT_DIR/index.html"
-    sed -i "s/DURATION_PLACEHOLDER/5m 23s/g" "$OUTPUT_DIR/index.html"
-    sed -i "s/AVG_DURATION_PLACEHOLDER/150ms/g" "$OUTPUT_DIR/index.html"
-    sed -i "s/BACKEND_COVERAGE_PLACEHOLDER/84/g" "$OUTPUT_DIR/index.html"
-    sed -i "s/FRONTEND_COVERAGE_PLACEHOLDER/80/g" "$OUTPUT_DIR/index.html"
-    sed -i "s/INTEGRATION_COVERAGE_PLACEHOLDER/82/g" "$OUTPUT_DIR/index.html"
-    
-    # Test category placeholders
-    sed -i "s/UNIT_TOTAL_PLACEHOLDER/2450/g" "$OUTPUT_DIR/index.html"
-    sed -i "s/UNIT_PASSED_PLACEHOLDER/2448/g" "$OUTPUT_DIR/index.html"
-    sed -i "s/UNIT_FAILED_PLACEHOLDER/2/g" "$OUTPUT_DIR/index.html"
-    sed -i "s/UNIT_SKIPPED_PLACEHOLDER/0/g" "$OUTPUT_DIR/index.html"
-    
-    sed -i "s/INT_TOTAL_PLACEHOLDER/350/g" "$OUTPUT_DIR/index.html"
-    sed -i "s/INT_PASSED_PLACEHOLDER/349/g" "$OUTPUT_DIR/index.html"
-    sed -i "s/INT_FAILED_PLACEHOLDER/1/g" "$OUTPUT_DIR/index.html"
-    sed -i "s/INT_SKIPPED_PLACEHOLDER/0/g" "$OUTPUT_DIR/index.html"
-    
-    sed -i "s/E2E_TOTAL_PLACEHOLDER/35/g" "$OUTPUT_DIR/index.html"
-    sed -i "s/E2E_PASSED_PLACEHOLDER/35/g" "$OUTPUT_DIR/index.html"
-    sed -i "s/E2E_FAILED_PLACEHOLDER/0/g" "$OUTPUT_DIR/index.html"
-    sed -i "s/E2E_SKIPPED_PLACEHOLDER/0/g" "$OUTPUT_DIR/index.html"
-    
-    sed -i "s/PERF_TOTAL_PLACEHOLDER/15/g" "$OUTPUT_DIR/index.html"
-    sed -i "s/PERF_PASSED_PLACEHOLDER/0/g" "$OUTPUT_DIR/index.html"
-    sed -i "s/PERF_FAILED_PLACEHOLDER/0/g" "$OUTPUT_DIR/index.html"
-    sed -i "s/PERF_SKIPPED_PLACEHOLDER/15/g" "$OUTPUT_DIR/index.html"
-    
-    echo -e "${GREEN}✓ Dashboard generated: $OUTPUT_DIR/index.html${NC}"
+  # Replace placeholders
+  sed -i "s/TIMESTAMP_PLACEHOLDER/$TIMESTAMP/g" "$OUTPUT_DIR/index.html"
+  sed -i "s/COVERAGE_PLACEHOLDER/82/g" "$OUTPUT_DIR/index.html"
+  sed -i "s/PASSED_PLACEHOLDER/2847/g" "$OUTPUT_DIR/index.html"
+  sed -i "s/FAILED_PLACEHOLDER/3/g" "$OUTPUT_DIR/index.html"
+  sed -i "s/FAILED_STATUS_PLACEHOLDER/warning/g" "$OUTPUT_DIR/index.html"
+  sed -i "s/SUCCESS_RATE_PLACEHOLDER/99.9/g" "$OUTPUT_DIR/index.html"
+  sed -i "s/LAST_RUN_PLACEHOLDER/2 hours ago/g" "$OUTPUT_DIR/index.html"
+  sed -i "s/DURATION_PLACEHOLDER/5m 23s/g" "$OUTPUT_DIR/index.html"
+  sed -i "s/AVG_DURATION_PLACEHOLDER/150ms/g" "$OUTPUT_DIR/index.html"
+  sed -i "s/BACKEND_COVERAGE_PLACEHOLDER/84/g" "$OUTPUT_DIR/index.html"
+  sed -i "s/FRONTEND_COVERAGE_PLACEHOLDER/80/g" "$OUTPUT_DIR/index.html"
+  sed -i "s/INTEGRATION_COVERAGE_PLACEHOLDER/82/g" "$OUTPUT_DIR/index.html"
+
+  # Test category placeholders
+  sed -i "s/UNIT_TOTAL_PLACEHOLDER/2450/g" "$OUTPUT_DIR/index.html"
+  sed -i "s/UNIT_PASSED_PLACEHOLDER/2448/g" "$OUTPUT_DIR/index.html"
+  sed -i "s/UNIT_FAILED_PLACEHOLDER/2/g" "$OUTPUT_DIR/index.html"
+  sed -i "s/UNIT_SKIPPED_PLACEHOLDER/0/g" "$OUTPUT_DIR/index.html"
+
+  sed -i "s/INT_TOTAL_PLACEHOLDER/350/g" "$OUTPUT_DIR/index.html"
+  sed -i "s/INT_PASSED_PLACEHOLDER/349/g" "$OUTPUT_DIR/index.html"
+  sed -i "s/INT_FAILED_PLACEHOLDER/1/g" "$OUTPUT_DIR/index.html"
+  sed -i "s/INT_SKIPPED_PLACEHOLDER/0/g" "$OUTPUT_DIR/index.html"
+
+  sed -i "s/E2E_TOTAL_PLACEHOLDER/35/g" "$OUTPUT_DIR/index.html"
+  sed -i "s/E2E_PASSED_PLACEHOLDER/35/g" "$OUTPUT_DIR/index.html"
+  sed -i "s/E2E_FAILED_PLACEHOLDER/0/g" "$OUTPUT_DIR/index.html"
+  sed -i "s/E2E_SKIPPED_PLACEHOLDER/0/g" "$OUTPUT_DIR/index.html"
+
+  sed -i "s/PERF_TOTAL_PLACEHOLDER/15/g" "$OUTPUT_DIR/index.html"
+  sed -i "s/PERF_PASSED_PLACEHOLDER/0/g" "$OUTPUT_DIR/index.html"
+  sed -i "s/PERF_FAILED_PLACEHOLDER/0/g" "$OUTPUT_DIR/index.html"
+  sed -i "s/PERF_SKIPPED_PLACEHOLDER/15/g" "$OUTPUT_DIR/index.html"
+
+  echo -e "${GREEN}✓ Dashboard generated: $OUTPUT_DIR/index.html${NC}"
 }
 
 # Main execution
 main() {
-    generate_dashboard
-    
-    echo ""
-    echo -e "${BLUE}=== Report Generation Complete ===${NC}"
-    echo "Open in browser: file://$OUTPUT_DIR/index.html"
-    echo ""
-    echo -e "${GREEN}Test dashboard ready!${NC}"
+  generate_dashboard
+
+  echo ""
+  echo -e "${BLUE}=== Report Generation Complete ===${NC}"
+  echo "Open in browser: file://$OUTPUT_DIR/index.html"
+  echo ""
+  echo -e "${GREEN}Test dashboard ready!${NC}"
 }
 
 # Run main

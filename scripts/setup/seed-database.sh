@@ -19,24 +19,24 @@ DB_PATH="${AURA_DATABASE_PATH:-data/aura.db}"
 
 # Check if database exists
 if [ ! -f "$DB_PATH" ]; then
-    echo -e "${RED}Error: Database not found at $DB_PATH${NC}"
-    echo "Run migrations first: ./scripts/setup/migrate.sh"
-    exit 1
+  echo -e "${RED}Error: Database not found at $DB_PATH${NC}"
+  echo "Run migrations first: ./scripts/setup/migrate.sh"
+  exit 1
 fi
 
 # Check if sqlite3 is available
-if ! command -v sqlite3 &> /dev/null; then
-    echo -e "${YELLOW}Warning: sqlite3 not found, using .NET to seed${NC}"
-    echo "Seed data will be created when the API starts (via SeedData.cs)"
-    exit 0
+if ! command -v sqlite3 &>/dev/null; then
+  echo -e "${YELLOW}Warning: sqlite3 not found, using .NET to seed${NC}"
+  echo "Seed data will be created when the API starts (via SeedData.cs)"
+  exit 0
 fi
 
 # Run seed scripts in order
 echo -e "${YELLOW}Running seed: 001_test_users.sql${NC}"
-sqlite3 "$DB_PATH" < seeds/001_test_users.sql
+sqlite3 "$DB_PATH" <seeds/001_test_users.sql
 
 echo -e "${YELLOW}Running seed: 002_sample_projects.sql${NC}"
-sqlite3 "$DB_PATH" < seeds/002_sample_projects.sql
+sqlite3 "$DB_PATH" <seeds/002_sample_projects.sql
 
 echo -e "${GREEN}✓ Database seeded successfully${NC}"
 echo ""

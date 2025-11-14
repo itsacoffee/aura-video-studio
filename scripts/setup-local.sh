@@ -3,7 +3,7 @@
 # Aura Video Studio - Local Development Setup Script (Linux/macOS)
 # This script bootstraps the complete local development environment
 
-set -e  # Exit on error
+set -e # Exit on error
 
 # Colors for output
 RED='\033[0;31m'
@@ -24,12 +24,12 @@ echo ""
 
 # Function to compare versions
 version_ge() {
-    [ "$(printf '%s\n' "$1" "$2" | sort -V | head -n 1)" = "$2" ]
+  [ "$(printf '%s\n' "$1" "$2" | sort -V | head -n 1)" = "$2" ]
 }
 
 # Function to check command exists
 command_exists() {
-    command -v "$1" >/dev/null 2>&1
+  command -v "$1" >/dev/null 2>&1
 }
 
 # Check prerequisites
@@ -37,59 +37,59 @@ echo -e "${YELLOW}[1/7] Checking prerequisites...${NC}"
 
 # Check Docker
 if ! command_exists docker; then
-    echo -e "${RED}✗ Docker is not installed${NC}"
-    echo -e "  Please install Docker Desktop from: https://www.docker.com/products/docker-desktop"
-    exit 1
+  echo -e "${RED}✗ Docker is not installed${NC}"
+  echo -e "  Please install Docker Desktop from: https://www.docker.com/products/docker-desktop"
+  exit 1
 fi
 
 DOCKER_VERSION=$(docker --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
 if ! version_ge "$DOCKER_VERSION" "$MIN_DOCKER_VERSION"; then
-    echo -e "${RED}✗ Docker version $DOCKER_VERSION is too old (need >= $MIN_DOCKER_VERSION)${NC}"
-    exit 1
+  echo -e "${RED}✗ Docker version $DOCKER_VERSION is too old (need >= $MIN_DOCKER_VERSION)${NC}"
+  exit 1
 fi
 echo -e "${GREEN}✓ Docker $DOCKER_VERSION${NC}"
 
 # Check Docker Compose
 if ! command_exists docker-compose && ! docker compose version >/dev/null 2>&1; then
-    echo -e "${RED}✗ Docker Compose is not installed${NC}"
-    exit 1
+  echo -e "${RED}✗ Docker Compose is not installed${NC}"
+  exit 1
 fi
 echo -e "${GREEN}✓ Docker Compose${NC}"
 
 # Check .NET SDK
 if ! command_exists dotnet; then
-    echo -e "${YELLOW}⚠ .NET SDK is not installed${NC}"
-    echo -e "  Recommended for local development: https://dotnet.microsoft.com/download"
-    echo -e "  (Not required if using Docker only)"
+  echo -e "${YELLOW}⚠ .NET SDK is not installed${NC}"
+  echo -e "  Recommended for local development: https://dotnet.microsoft.com/download"
+  echo -e "  (Not required if using Docker only)"
 else
-    DOTNET_VERSION=$(dotnet --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-    if version_ge "$DOTNET_VERSION" "$MIN_DOTNET_VERSION"; then
-        echo -e "${GREEN}✓ .NET SDK $DOTNET_VERSION${NC}"
-    else
-        echo -e "${YELLOW}⚠ .NET SDK $DOTNET_VERSION is old (recommend >= $MIN_DOTNET_VERSION)${NC}"
-    fi
+  DOTNET_VERSION=$(dotnet --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+  if version_ge "$DOTNET_VERSION" "$MIN_DOTNET_VERSION"; then
+    echo -e "${GREEN}✓ .NET SDK $DOTNET_VERSION${NC}"
+  else
+    echo -e "${YELLOW}⚠ .NET SDK $DOTNET_VERSION is old (recommend >= $MIN_DOTNET_VERSION)${NC}"
+  fi
 fi
 
 # Check Node.js
 if ! command_exists node; then
-    echo -e "${YELLOW}⚠ Node.js is not installed${NC}"
-    echo -e "  Recommended for local development: https://nodejs.org/"
-    echo -e "  (Not required if using Docker only)"
+  echo -e "${YELLOW}⚠ Node.js is not installed${NC}"
+  echo -e "  Recommended for local development: https://nodejs.org/"
+  echo -e "  (Not required if using Docker only)"
 else
-    NODE_VERSION=$(node --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-    if version_ge "$NODE_VERSION" "$MIN_NODE_VERSION"; then
-        echo -e "${GREEN}✓ Node.js $NODE_VERSION${NC}"
-    else
-        echo -e "${YELLOW}⚠ Node.js $NODE_VERSION is old (recommend >= $MIN_NODE_VERSION)${NC}"
-    fi
+  NODE_VERSION=$(node --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+  if version_ge "$NODE_VERSION" "$MIN_NODE_VERSION"; then
+    echo -e "${GREEN}✓ Node.js $NODE_VERSION${NC}"
+  else
+    echo -e "${YELLOW}⚠ Node.js $NODE_VERSION is old (recommend >= $MIN_NODE_VERSION)${NC}"
+  fi
 fi
 
 # Check for FFmpeg (optional but recommended)
 if command_exists ffmpeg; then
-    FFMPEG_VERSION=$(ffmpeg -version 2>/dev/null | head -n 1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
-    echo -e "${GREEN}✓ FFmpeg $FFMPEG_VERSION (local)${NC}"
+  FFMPEG_VERSION=$(ffmpeg -version 2>/dev/null | head -n 1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
+  echo -e "${GREEN}✓ FFmpeg $FFMPEG_VERSION (local)${NC}"
 else
-    echo -e "${YELLOW}⚠ FFmpeg not installed locally (will use Docker container)${NC}"
+  echo -e "${YELLOW}⚠ FFmpeg not installed locally (will use Docker container)${NC}"
 fi
 
 echo ""
@@ -103,11 +103,11 @@ echo ""
 # Setup environment file
 echo -e "${YELLOW}[3/7] Setting up environment configuration...${NC}"
 if [ ! -f .env ]; then
-    cp .env.example .env
-    echo -e "${GREEN}✓ Created .env from .env.example${NC}"
-    echo -e "${BLUE}  Edit .env to add your API keys (optional)${NC}"
+  cp .env.example .env
+  echo -e "${GREEN}✓ Created .env from .env.example${NC}"
+  echo -e "${BLUE}  Edit .env to add your API keys (optional)${NC}"
 else
-    echo -e "${BLUE}  .env already exists, skipping${NC}"
+  echo -e "${BLUE}  .env already exists, skipping${NC}"
 fi
 echo ""
 
@@ -116,16 +116,16 @@ echo -e "${YELLOW}[4/7] Checking port availability...${NC}"
 PORTS_IN_USE=()
 
 check_port() {
-    local port=$1
-    local service=$2
-    if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1 || nc -z localhost $port 2>/dev/null; then
-        PORTS_IN_USE+=("$port ($service)")
-        echo -e "${RED}✗ Port $port ($service) is already in use${NC}"
-        return 1
-    else
-        echo -e "${GREEN}✓ Port $port ($service) is available${NC}"
-        return 0
-    fi
+  local port=$1
+  local service=$2
+  if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1 || nc -z localhost $port 2>/dev/null; then
+    PORTS_IN_USE+=("$port ($service)")
+    echo -e "${RED}✗ Port $port ($service) is already in use${NC}"
+    return 1
+  else
+    echo -e "${GREEN}✓ Port $port ($service) is available${NC}"
+    return 0
+  fi
 }
 
 check_port 5005 "API"
@@ -133,8 +133,8 @@ check_port 3000 "Web"
 check_port 6379 "Redis"
 
 if [ ${#PORTS_IN_USE[@]} -gt 0 ]; then
-    echo -e "${YELLOW}Warning: Some ports are in use. Services may fail to start.${NC}"
-    echo -e "${YELLOW}Consider stopping conflicting services or changing ports in docker-compose.yml${NC}"
+  echo -e "${YELLOW}Warning: Some ports are in use. Services may fail to start.${NC}"
+  echo -e "${YELLOW}Consider stopping conflicting services or changing ports in docker-compose.yml${NC}"
 fi
 echo ""
 
@@ -147,13 +147,13 @@ echo ""
 # Install dependencies (if running locally)
 echo -e "${YELLOW}[6/7] Installing dependencies...${NC}"
 if command_exists dotnet && [ -f "Aura.Api/Aura.Api.csproj" ]; then
-    echo -e "${BLUE}  Installing .NET packages...${NC}"
-    dotnet restore
+  echo -e "${BLUE}  Installing .NET packages...${NC}"
+  dotnet restore
 fi
 
 if command_exists npm && [ -f "Aura.Web/package.json" ]; then
-    echo -e "${BLUE}  Installing Node.js packages...${NC}"
-    cd Aura.Web && npm ci && cd ..
+  echo -e "${BLUE}  Installing Node.js packages...${NC}"
+  cd Aura.Web && npm ci && cd ..
 fi
 echo -e "${GREEN}✓ Dependencies installed${NC}"
 echo ""
@@ -162,7 +162,7 @@ echo ""
 echo -e "${YELLOW}[7/7] Creating helper scripts...${NC}"
 
 # Port check script
-cat > scripts/setup/check-ports.sh << 'EOF'
+cat >scripts/setup/check-ports.sh <<'EOF'
 #!/bin/bash
 PORTS=(5005 3000 6379)
 SERVICES=("API" "Web" "Redis")
@@ -180,7 +180,7 @@ EOF
 chmod +x scripts/setup/check-ports.sh
 
 # Validation script
-cat > scripts/setup/validate-config.sh << 'EOF'
+cat >scripts/setup/validate-config.sh <<'EOF'
 #!/bin/bash
 echo "Validating configuration files..."
 

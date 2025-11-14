@@ -20,23 +20,23 @@ mkdir -p "$OUTPUT_DIR"
 
 # Function to safely copy file/directory
 safe_copy() {
-    local source=$1
-    local dest=$2
-    if [ -e "$source" ]; then
-        cp -r "$source" "$dest"
-        echo "✓ Collected: $source"
-    else
-        echo "⚠ Not found: $source"
-    fi
+  local source=$1
+  local dest=$2
+  if [ -e "$source" ]; then
+    cp -r "$source" "$dest"
+    echo "✓ Collected: $source"
+  else
+    echo "⚠ Not found: $source"
+  fi
 }
 
 # Function to run command and save output
 run_and_save() {
-    local name=$1
-    local command=$2
-    echo "Running: $name"
-    eval "$command" > "$OUTPUT_DIR/$name.txt" 2>&1 || echo "Command failed: $command" > "$OUTPUT_DIR/$name.txt"
-    echo "✓ Saved: $name.txt"
+  local name=$1
+  local command=$2
+  echo "Running: $name"
+  eval "$command" >"$OUTPUT_DIR/$name.txt" 2>&1 || echo "Command failed: $command" >"$OUTPUT_DIR/$name.txt"
+  echo "✓ Saved: $name.txt"
 }
 
 # 1. Collect logs
@@ -90,9 +90,9 @@ mkdir -p "$OUTPUT_DIR/test-artifacts"
 
 # Playwright screenshots
 if [ -d "$PROJECT_ROOT/Aura.Web/test-results" ]; then
-    find "$PROJECT_ROOT/Aura.Web/test-results" -name "*.png" -exec cp {} "$OUTPUT_DIR/test-artifacts/" \; 2>/dev/null || true
-    find "$PROJECT_ROOT/Aura.Web/test-results" -name "*.webm" -exec cp {} "$OUTPUT_DIR/test-artifacts/" \; 2>/dev/null || true
-    echo "✓ Collected Playwright screenshots and videos"
+  find "$PROJECT_ROOT/Aura.Web/test-results" -name "*.png" -exec cp {} "$OUTPUT_DIR/test-artifacts/" \; 2>/dev/null || true
+  find "$PROJECT_ROOT/Aura.Web/test-results" -name "*.webm" -exec cp {} "$OUTPUT_DIR/test-artifacts/" \; 2>/dev/null || true
+  echo "✓ Collected Playwright screenshots and videos"
 fi
 
 # 6. API diagnostics (if API is running)
@@ -102,18 +102,18 @@ mkdir -p "$OUTPUT_DIR/api-diagnostics"
 
 # Try to get diagnostics from running API
 API_URL="${API_URL:-http://localhost:5005}"
-if curl -s --max-time 5 "$API_URL/health/live" > /dev/null 2>&1; then
-    echo "API is running, collecting diagnostics..."
-    
-    curl -s "$API_URL/api/health/system" > "$OUTPUT_DIR/api-diagnostics/health-system.json" 2>&1 || true
-    curl -s "$API_URL/api/health/providers" > "$OUTPUT_DIR/api-diagnostics/health-providers.json" 2>&1 || true
-    curl -s "$API_URL/api/diagnostics/report" > "$OUTPUT_DIR/api-diagnostics/diagnostics-report.json" 2>&1 || true
-    curl -I -s "$API_URL/api/health/system" > "$OUTPUT_DIR/api-diagnostics/health-headers.txt" 2>&1 || true
-    
-    echo "✓ Collected API diagnostics"
+if curl -s --max-time 5 "$API_URL/health/live" >/dev/null 2>&1; then
+  echo "API is running, collecting diagnostics..."
+
+  curl -s "$API_URL/api/health/system" >"$OUTPUT_DIR/api-diagnostics/health-system.json" 2>&1 || true
+  curl -s "$API_URL/api/health/providers" >"$OUTPUT_DIR/api-diagnostics/health-providers.json" 2>&1 || true
+  curl -s "$API_URL/api/diagnostics/report" >"$OUTPUT_DIR/api-diagnostics/diagnostics-report.json" 2>&1 || true
+  curl -I -s "$API_URL/api/health/system" >"$OUTPUT_DIR/api-diagnostics/health-headers.txt" 2>&1 || true
+
+  echo "✓ Collected API diagnostics"
 else
-    echo "⚠ API is not running, skipping API diagnostics"
-    echo "API was not reachable at $API_URL" > "$OUTPUT_DIR/api-diagnostics/not-running.txt"
+  echo "⚠ API is not running, skipping API diagnostics"
+  echo "API was not reachable at $API_URL" >"$OUTPUT_DIR/api-diagnostics/not-running.txt"
 fi
 
 # 7. Contract schemas
@@ -125,11 +125,11 @@ safe_copy "$PROJECT_ROOT/tests/contracts/schemas" "$OUTPUT_DIR/contracts/schemas
 
 # 8. CI-specific information
 if [ -n "$GITHUB_ACTIONS" ]; then
-    echo ""
-    echo "Collecting GitHub Actions information..."
-    mkdir -p "$OUTPUT_DIR/ci"
-    
-    cat > "$OUTPUT_DIR/ci/github-context.txt" << EOF
+  echo ""
+  echo "Collecting GitHub Actions information..."
+  mkdir -p "$OUTPUT_DIR/ci"
+
+  cat >"$OUTPUT_DIR/ci/github-context.txt" <<EOF
 Workflow: $GITHUB_WORKFLOW
 Run ID: $GITHUB_RUN_ID
 Run Number: $GITHUB_RUN_NUMBER
@@ -141,14 +141,14 @@ Event: $GITHUB_EVENT_NAME
 Ref: $GITHUB_REF
 SHA: $GITHUB_SHA
 EOF
-    echo "✓ Collected GitHub Actions context"
+  echo "✓ Collected GitHub Actions context"
 fi
 
 # 9. Create summary
 echo ""
 echo "Creating diagnostic summary..."
 
-cat > "$OUTPUT_DIR/DIAGNOSTIC_SUMMARY.txt" << EOF
+cat >"$OUTPUT_DIR/DIAGNOSTIC_SUMMARY.txt" <<EOF
 Diagnostic Bundle Summary
 ========================
 
@@ -210,5 +210,5 @@ echo "To extract: tar -xzf $BUNDLE_NAME"
 echo ""
 
 # Output location for CI to upload
-echo "DIAGNOSTICS_BUNDLE=$BUNDLE_NAME" >> "${GITHUB_OUTPUT:-/dev/null}"
-echo "DIAGNOSTICS_PATH=$(pwd)/$BUNDLE_NAME" >> "${GITHUB_OUTPUT:-/dev/null}"
+echo "DIAGNOSTICS_BUNDLE=$BUNDLE_NAME" >>"${GITHUB_OUTPUT:-/dev/null}"
+echo "DIAGNOSTICS_PATH=$(pwd)/$BUNDLE_NAME" >>"${GITHUB_OUTPUT:-/dev/null}"

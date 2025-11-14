@@ -18,17 +18,17 @@ FAILED=0
 
 # Function to run check
 check() {
-    local name="$1"
-    local command="$2"
-    
-    echo -n "Checking: $name... "
-    if eval "$command" > /dev/null 2>&1; then
-        echo -e "${GREEN}✓ PASS${NC}"
-        ((PASSED++))
-    else
-        echo -e "${RED}✗ FAIL${NC}"
-        ((FAILED++))
-    fi
+  local name="$1"
+  local command="$2"
+
+  echo -n "Checking: $name... "
+  if eval "$command" >/dev/null 2>&1; then
+    echo -e "${GREEN}✓ PASS${NC}"
+    ((PASSED++))
+  else
+    echo -e "${RED}✗ FAIL${NC}"
+    ((FAILED++))
+  fi
 }
 
 # 1. Check if new files exist
@@ -46,15 +46,15 @@ echo "=== Placeholder Check (New Files Only) ==="
 NEW_FILES="Aura.Web/src/services/networkResilience.ts Aura.Web/src/config/timeouts.ts"
 PLACEHOLDER_FOUND=0
 for file in $NEW_FILES; do
-    if grep -qi "TODO\|FIXME\|HACK\|WIP" "$file" 2>/dev/null; then
-        echo -e "${RED}✗ Found placeholder in $file${NC}"
-        PLACEHOLDER_FOUND=1
-        ((FAILED++))
-    fi
+  if grep -qi "TODO\|FIXME\|HACK\|WIP" "$file" 2>/dev/null; then
+    echo -e "${RED}✗ Found placeholder in $file${NC}"
+    PLACEHOLDER_FOUND=1
+    ((FAILED++))
+  fi
 done
 if [ $PLACEHOLDER_FOUND -eq 0 ]; then
-    echo -e "${GREEN}✓ No placeholders in new files${NC}"
-    ((PASSED++))
+  echo -e "${GREEN}✓ No placeholders in new files${NC}"
+  ((PASSED++))
 fi
 echo ""
 
@@ -70,29 +70,29 @@ echo "=== Test Execution ==="
 cd Aura.Web
 echo "Running Network Resilience tests..."
 if npm test -- src/services/__tests__/networkResilience.test.ts --run --reporter=basic 2>&1 | grep -q "16 passed"; then
-    echo -e "${GREEN}✓ Network Resilience tests (16/16)${NC}"
-    ((PASSED++))
+  echo -e "${GREEN}✓ Network Resilience tests (16/16)${NC}"
+  ((PASSED++))
 else
-    echo -e "${RED}✗ Network Resilience tests failed${NC}"
-    ((FAILED++))
+  echo -e "${RED}✗ Network Resilience tests failed${NC}"
+  ((FAILED++))
 fi
 
 echo "Running Timeout Configuration tests..."
 if npm test -- src/config/__tests__/timeouts.test.ts --run --reporter=basic 2>&1 | grep -q "19 passed"; then
-    echo -e "${GREEN}✓ Timeout Configuration tests (19/19)${NC}"
-    ((PASSED++))
+  echo -e "${GREEN}✓ Timeout Configuration tests (19/19)${NC}"
+  ((PASSED++))
 else
-    echo -e "${RED}✗ Timeout Configuration tests failed${NC}"
-    ((FAILED++))
+  echo -e "${RED}✗ Timeout Configuration tests failed${NC}"
+  ((FAILED++))
 fi
 
 echo "Running API Client tests (regression check)..."
 if npm test -- src/services/api/__tests__/ --run --reporter=basic 2>&1 | grep -q "72 passed"; then
-    echo -e "${GREEN}✓ API Client tests (72/72)${NC}"
-    ((PASSED++))
+  echo -e "${GREEN}✓ API Client tests (72/72)${NC}"
+  ((PASSED++))
 else
-    echo -e "${RED}✗ API Client tests failed${NC}"
-    ((FAILED++))
+  echo -e "${RED}✗ API Client tests failed${NC}"
+  ((FAILED++))
 fi
 cd ..
 echo ""
@@ -128,9 +128,9 @@ echo -e "Failed: ${RED}${FAILED}${NC}"
 echo ""
 
 if [ $FAILED -eq 0 ]; then
-    echo -e "${GREEN}✓ All checks passed! Implementation verified.${NC}"
-    exit 0
+  echo -e "${GREEN}✓ All checks passed! Implementation verified.${NC}"
+  exit 0
 else
-    echo -e "${RED}✗ Some checks failed. Please review.${NC}"
-    exit 1
+  echo -e "${RED}✗ Some checks failed. Please review.${NC}"
+  exit 1
 fi
