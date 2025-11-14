@@ -15,13 +15,14 @@ namespace Aura.Tests;
 /// </summary>
 public class MockLlmProviderTests
 {
-    private readonly Brief _testBrief = new()
-    {
-        Topic = "Test Video Topic",
-        Audience = "Developers",
-        Goal = "Educate",
-        Tone = "Professional"
-    };
+    private readonly Brief _testBrief = new(
+        Topic: "Test Video Topic",
+        Audience: "Developers",
+        Goal: "Educate",
+        Tone: "Professional",
+        Language: "English",
+        Aspect: Aspect.Widescreen16x9
+    );
 
     private readonly PlanSpec _testSpec = new(
         TargetDuration: TimeSpan.FromMinutes(2),

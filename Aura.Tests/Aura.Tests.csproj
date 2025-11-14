@@ -78,7 +78,7 @@
     <Compile Remove="EnhancedCostTrackingTests.cs" />
     <Compile Remove="FFmpeg\FFmpegWindowsIntegrationTests.cs" />
     <Compile Remove="LlmCostEstimatorTests.cs" />
-    <Compile Remove="MockLlmProviderTests.cs" />
+    <!-- MockLlmProviderTests.cs - Fixed -->
     <Compile Remove="Models\VideoEffects\VideoEffectTests.cs" />
     <Compile Remove="SettingsControllerSecureStorageTests.cs" />
     <Compile Remove="Validation\ApiKeyValidatorTests.cs" />

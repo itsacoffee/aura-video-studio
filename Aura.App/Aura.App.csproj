@@ -24,6 +24,9 @@
     <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.10" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="9.0.10" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.10" />
+    <!-- Explicit references to resolve MSB3277 assembly version conflicts -->
+    <PackageReference Include="System.Collections.Immutable" Version="8.0.0" />
+    <PackageReference Include="System.Reflection.Metadata" Version="8.0.1" />
   </ItemGroup>
 
   <ItemGroup>
