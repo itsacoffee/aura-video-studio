@@ -803,8 +803,10 @@ builder.Services.AddSingleton<Aura.Core.Services.VoiceEnhancement.EmotionDetecti
 builder.Services.AddSingleton<Aura.Core.Services.VoiceEnhancement.VoiceProcessingService>();
 
 // Register HTTP client factory with proxy support (required by providers)
-builder.Services.AddHttpClient()
-    .ConfigurePrimaryHttpMessageHandler(() =>
+builder.Services.AddHttpClient();
+builder.Services.ConfigureHttpClientDefaults(httpClientBuilder =>
+{
+    httpClientBuilder.ConfigurePrimaryHttpMessageHandler(() =>
     {
         var handler = new HttpClientHandler();
         
@@ -817,6 +819,7 @@ builder.Services.AddHttpClient()
         
         return handler;
     });
+});
 
 // Register SignalR for real-time updates (progress notifications, status updates, etc.)
 builder.Services.AddSignalR(options =>
