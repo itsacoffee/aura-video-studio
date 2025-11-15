@@ -1174,7 +1174,7 @@ public class ProvidersController : ControllerBase
     /// Enhanced provider validation with field-level validation
     /// </summary>
     [HttpPost("validate-enhanced")]
-    public async Task<IActionResult> ValidateProviderEnhanced(
+    public Task<IActionResult> ValidateProviderEnhanced(
         [FromBody] EnhancedProviderValidationRequest request,
         CancellationToken cancellationToken)
     {
@@ -1199,7 +1199,7 @@ public class ProvidersController : ControllerBase
                     ValidatePlayHTConfiguration(request.Configuration, fieldErrors, fieldValidationStatus);
                     break;
                 default:
-                    return BadRequest(new EnhancedProviderValidationResponse(
+                    return Task.FromResult<IActionResult>(BadRequest(new EnhancedProviderValidationResponse(
                         false,
                         "Invalid",
                         request.Provider,
@@ -1209,7 +1209,7 @@ public class ProvidersController : ControllerBase
                         null,
                         $"Provider '{request.Provider}' is not supported",
                         correlationId
-                    ));
+                    )));
             }
 
             var isValid = fieldErrors.Count == 0;
@@ -1221,7 +1221,7 @@ public class ProvidersController : ControllerBase
                 status = "PartiallyValid";
             }
 
-            return Ok(new EnhancedProviderValidationResponse(
+            return Task.FromResult<IActionResult>(Ok(new EnhancedProviderValidationResponse(
                 isValid,
                 status,
                 request.Provider,
@@ -1229,13 +1229,13 @@ public class ProvidersController : ControllerBase
                 fieldValidationStatus,
                 isValid ? "All fields validated successfully" : $"{fieldErrors.Count} field(s) have validation errors",
                 correlationId
-            ));
+            )));
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Enhanced provider validation failed for {Provider}, CorrelationId: {CorrelationId}",
                 request.Provider, request.CorrelationId);
-            return StatusCode(500, new EnhancedProviderValidationResponse(
+            return Task.FromResult<IActionResult>(StatusCode(500, new EnhancedProviderValidationResponse(
                 false,
                 "Error",
                 request.Provider,
@@ -1245,7 +1245,7 @@ public class ProvidersController : ControllerBase
                 null,
                 "Internal validation error",
                 request.CorrelationId
-            ));
+            )));
         }
     }
 

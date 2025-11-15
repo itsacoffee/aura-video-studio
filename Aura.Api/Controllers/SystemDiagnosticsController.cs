@@ -122,7 +122,7 @@ public class SystemDiagnosticsController : ControllerBase
         }
     }
 
-    private async Task<ConfigurationCheck> CheckConfigurationAsync(CancellationToken ct)
+    private Task<ConfigurationCheck> CheckConfigurationAsync(CancellationToken ct)
     {
         var issues = new List<string>();
         var isValid = true;
@@ -157,24 +157,24 @@ public class SystemDiagnosticsController : ControllerBase
                 isValid = false;
             }
 
-            return new ConfigurationCheck
+            return Task.FromResult(new ConfigurationCheck
             {
                 IsValid = isValid,
                 ErrorCode = isValid ? null : ConfigurationErrorCodes.InvalidConfiguration,
                 ErrorMessage = isValid ? null : "Configuration validation failed",
                 Issues = issues
-            };
+            });
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Error checking configuration");
-            return new ConfigurationCheck
+            return Task.FromResult(new ConfigurationCheck
             {
                 IsValid = false,
                 ErrorCode = ConfigurationErrorCodes.InvalidConfiguration,
                 ErrorMessage = "Exception while checking configuration",
                 Issues = new List<string> { ex.Message }
-            };
+            });
         }
     }
 
