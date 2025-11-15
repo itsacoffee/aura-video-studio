@@ -223,6 +223,7 @@ export type OnboardingAction =
   | { type: 'SET_MANUAL_HARDWARE'; payload: { vram?: number; hasGpu: boolean } }
   | { type: 'SKIP_HARDWARE_DETECTION' }
   | { type: 'LOAD_FROM_STORAGE'; payload: Partial<OnboardingState> }
+  | { type: 'SAVE_TO_BACKEND_TRIGGERED' }
   | {
       type: 'LOG_STATE_TRANSITION';
       payload: { from: string; to: string; action: string; correlationId: string };
@@ -261,7 +262,7 @@ export function onboardingReducer(
 ): OnboardingState {
   switch (action.type) {
     case 'SET_STEP':
-      return { ...state, step: action.payload };
+      return logStateTransition(state, 'SET_STEP', { step: action.payload });
 
     case 'SET_MODE':
       return { ...state, mode: action.payload };
@@ -274,6 +275,9 @@ export function onboardingReducer(
 
     case 'SET_STEP_STATE':
       return logStateTransition(state, 'SET_STEP_STATE', { stepState: action.payload });
+
+    case 'SAVE_TO_BACKEND_TRIGGERED':
+      return state;
 
     case 'SET_ERROR':
       console.error('[Wizard Error]', {
@@ -1391,4 +1395,40 @@ export async function resetWizardInBackend(
     console.error('[Wizard Persistence] Failed to reset wizard in backend:', error);
     return false;
   }
+}
+
+/**
+ * Middleware function to trigger auto-save after significant state changes
+ * Returns the action types that should trigger an auto-save
+ */
+export function shouldTriggerAutoSave(actionType: OnboardingAction['type']): boolean {
+  const autoSaveTriggers: OnboardingAction['type'][] = [
+    'SET_STEP',
+    'SET_TIER',
+    'INSTALL_COMPLETE',
+    'SKIP_INSTALL',
+    'API_KEY_VALID',
+    'SET_WORKSPACE_PREFERENCES',
+  ];
+  
+  return autoSaveTriggers.includes(actionType);
+}
+
+/**
+ * Enhanced reducer wrapper that triggers auto-save for significant changes
+ */
+export function onboardingReducerWithAutoSave(
+  state: OnboardingState,
+  action: OnboardingAction,
+  enableAutoSave: boolean = true
+): OnboardingState {
+  const newState = onboardingReducer(state, action);
+  
+  if (enableAutoSave && shouldTriggerAutoSave(action.type)) {
+    void saveWizardProgressToBackend(newState).catch(err => {
+      console.error('[Auto-save] Failed to save progress:', err);
+    });
+  }
+  
+  return newState;
 }

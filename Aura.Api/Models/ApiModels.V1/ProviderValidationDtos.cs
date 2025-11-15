@@ -83,3 +83,57 @@ public enum ValidationStatus
     Timeout,
     UnknownError
 }
+
+/// <summary>
+/// Enhanced provider validation request with partial config support
+/// </summary>
+public record EnhancedProviderValidationRequest(
+    string Provider,
+    Dictionary<string, string?> Configuration,
+    bool PartialValidation = false,
+    string? CorrelationId = null);
+
+/// <summary>
+/// Field-level validation error
+/// </summary>
+public record FieldValidationError(
+    string FieldName,
+    string ErrorCode,
+    string ErrorMessage,
+    string? SuggestedFix = null);
+
+/// <summary>
+/// Enhanced provider validation response with field-level errors
+/// </summary>
+public record EnhancedProviderValidationResponse(
+    bool IsValid,
+    string Status,
+    string Provider,
+    List<FieldValidationError>? FieldErrors = null,
+    Dictionary<string, bool>? FieldValidationStatus = null,
+    string? OverallMessage = null,
+    string? CorrelationId = null,
+    ValidationDetails? Details = null);
+
+/// <summary>
+/// Provider status with per-field validation tracking (enhanced version)
+/// </summary>
+public record EnhancedProviderStatusDto(
+    string Name,
+    bool IsConfigured,
+    bool IsAvailable,
+    string Status,
+    Dictionary<string, string>? ConfiguredFields = null,
+    Dictionary<string, bool>? FieldValidationStatus = null,
+    string? LastValidated = null,
+    string? ErrorMessage = null,
+    int RetryCount = 0,
+    DateTime? LastAttempt = null);
+
+/// <summary>
+/// Partial configuration save request
+/// </summary>
+public record SavePartialConfigurationRequest(
+    string Provider,
+    Dictionary<string, string?> PartialConfiguration,
+    string? CorrelationId = null);
