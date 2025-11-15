@@ -168,3 +168,24 @@ public record AllProvidersStatusResponse(
     DateTime LastUpdated,
     int ConfiguredCount,
     int ReachableCount);
+
+/// <summary>
+/// Provider ping result with explicit network I/O indication
+/// </summary>
+public record ProviderPingResult(
+    bool Attempted,
+    bool Success,
+    string? ErrorCode,
+    string? Message,
+    string? HttpStatus,
+    string? Endpoint,
+    long? ResponseTimeMs = null,
+    string? CorrelationId = null);
+
+/// <summary>
+/// Response for ping-all endpoint
+/// </summary>
+public record ProviderPingAllResponse(
+    Dictionary<string, ProviderPingResult> Results,
+    DateTime Timestamp,
+    string CorrelationId);
