@@ -2,6 +2,8 @@
 
 import { apiUrl } from '../config/api';
 import { resetCircuitBreaker } from '../services/api/apiClient';
+import { validateProviderEnhanced } from '../services/api/providersApi';
+import type { FieldValidationError } from '../services/api/providersApi';
 import { getDefaultSaveLocation, getDefaultCacheLocation } from '../utils/pathUtils';
 import type { PreflightReport, StageCheck } from './providers';
 
@@ -109,6 +111,8 @@ export interface OnboardingState {
   apiKeys: Record<string, string>;
   apiKeyValidationStatus: Record<string, 'idle' | 'validating' | 'valid' | 'invalid'>;
   apiKeyErrors: Record<string, string>;
+  apiKeyFieldErrors: Record<string, FieldValidationError[]>;
+  apiKeyAccountInfo: Record<string, string>;
   workspacePreferences: {
     defaultSaveLocation: string;
     cacheLocation: string;
@@ -176,6 +180,8 @@ export const initialOnboardingState: OnboardingState = {
   apiKeys: {},
   apiKeyValidationStatus: {},
   apiKeyErrors: {},
+  apiKeyFieldErrors: {},
+  apiKeyAccountInfo: {},
   workspacePreferences: {
     defaultSaveLocation: getDefaultSaveLocation(),
     cacheLocation: getDefaultCacheLocation(),
@@ -213,8 +219,14 @@ export type OnboardingAction =
   | { type: 'RESET_VALIDATION' }
   | { type: 'SET_API_KEY'; payload: { provider: string; key: string } }
   | { type: 'START_API_KEY_VALIDATION'; payload: string }
-  | { type: 'API_KEY_VALID'; payload: { provider: string; accountInfo?: string } }
-  | { type: 'API_KEY_INVALID'; payload: { provider: string; error: string } }
+  | {
+      type: 'API_KEY_VALID';
+      payload: { provider: string; accountInfo?: string; fieldErrors?: FieldValidationError[] };
+    }
+  | {
+      type: 'API_KEY_INVALID';
+      payload: { provider: string; error: string; fieldErrors?: FieldValidationError[] };
+    }
   | { type: 'SKIP_API_KEY_VALIDATION'; payload: string }
   | { type: 'SET_WORKSPACE_PREFERENCES'; payload: OnboardingState['workspacePreferences'] }
   | { type: 'SET_TEMPLATE'; payload: string | null }
@@ -501,6 +513,14 @@ export function onboardingReducer(
           ...state.apiKeyErrors,
           [action.payload.provider]: '',
         },
+        apiKeyFieldErrors: {
+          ...state.apiKeyFieldErrors,
+          [action.payload.provider]: action.payload.fieldErrors || [],
+        },
+        apiKeyAccountInfo: {
+          ...state.apiKeyAccountInfo,
+          [action.payload.provider]: action.payload.accountInfo || '',
+        },
       };
 
     case 'API_KEY_INVALID':
@@ -514,6 +534,10 @@ export function onboardingReducer(
           ...state.apiKeyErrors,
           [action.payload.provider]: action.payload.error,
         },
+        apiKeyFieldErrors: {
+          ...state.apiKeyFieldErrors,
+          [action.payload.provider]: action.payload.fieldErrors || [],
+        },
       };
 
     case 'SKIP_API_KEY_VALIDATION':
@@ -526,6 +550,10 @@ export function onboardingReducer(
         apiKeyErrors: {
           ...state.apiKeyErrors,
           [action.payload]: '',
+        },
+        apiKeyFieldErrors: {
+          ...state.apiKeyFieldErrors,
+          [action.payload]: [],
         },
       };
 
@@ -1031,132 +1059,89 @@ export async function validateApiKeyThunk(
       throw new Error(`Failed to save API key: ${saveResponse.statusText}`);
     }
 
-    // For OpenAI, use the new live validation endpoint
-    if (provider.toLowerCase() === 'openai') {
-      try {
-        const response = await fetch(apiUrl('/api/providers/openai/validate'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            apiKey: apiKey.trim(),
-          }),
+    // Use enhanced validation endpoint for all providers
+    try {
+      const validationResponse = await validateProviderEnhanced({
+        provider: providerInfo.validatorName,
+        configuration: {
+          ApiKey: apiKey.trim(),
+        },
+      });
+
+      console.info('[Enhanced Validation] Response:', {
+        provider: providerInfo.validatorName,
+        isValid: validationResponse.isValid,
+        status: validationResponse.status,
+        fieldErrors: validationResponse.fieldErrors,
+      });
+
+      if (validationResponse.isValid) {
+        dispatch({
+          type: 'API_KEY_VALID',
+          payload: {
+            provider,
+            accountInfo: validationResponse.overallMessage || 'API key validated successfully',
+            fieldErrors: (validationResponse.fieldErrors as FieldValidationError[]) || [],
+          },
         });
-
-        // Handle both successful validation and error responses
-        if (!response.ok) {
-          // If response is not ok, try to parse error
-          let errorMessage = 'API key validation failed';
-          try {
-            const errorData = await response.json();
-            errorMessage = errorData.detail || errorData.message || errorData.title || errorMessage;
-          } catch {
-            errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-          }
-
-          console.error('[OpenAI Validation] Error response:', {
-            status: response.status,
-            statusText: response.statusText,
-            errorMessage,
-          });
-
-          dispatch({
-            type: 'API_KEY_INVALID',
-            payload: {
-              provider,
-              error: errorMessage,
-            },
-          });
-          return;
-        }
-
-        const data = await response.json();
-
-        console.info('[OpenAI Validation] Response:', {
-          ok: response.ok,
-          status: response.status,
-          isValid: data.isValid,
-          message: data.message,
-          fullData: data,
-        });
-
-        // Check for successful validation (only isValid === true is considered success)
-        if (data.isValid === true) {
-          dispatch({
-            type: 'API_KEY_VALID',
-            payload: {
-              provider,
-              accountInfo: data.message || 'API key validated successfully with OpenAI',
-            },
-          });
-          return;
-        }
-
-        // Handle validation failure
-        const errorMessage = data.message || 'API key validation failed';
-
+      } else {
+        const errorMessage = validationResponse.overallMessage || 'API key validation failed';
         dispatch({
           type: 'API_KEY_INVALID',
           payload: {
             provider,
             error: errorMessage,
+            fieldErrors: (validationResponse.fieldErrors as FieldValidationError[]) || [],
           },
         });
-        return;
-      } catch (networkError) {
-        console.error('[OpenAI Validation] Network error:', networkError);
+      }
+    } catch (validationError) {
+      console.error('[Enhanced Validation] Error:', validationError);
+
+      // Fallback to legacy validation if enhanced validation fails
+      console.info('[Enhanced Validation] Falling back to legacy validation');
+      const response = await fetch(apiUrl('/api/providers/validate'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          providers: [providerInfo.validatorName],
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Validation request failed: ${response.statusText}`);
+      }
+
+      const result: {
+        results: Array<{ name: string; ok: boolean; details: string }>;
+        ok: boolean;
+      } = await response.json();
+
+      const providerResult = result.results.find(
+        (r) => r.name.toLowerCase() === providerInfo.validatorName.toLowerCase()
+      );
+
+      if (!providerResult) {
+        throw new Error('Provider validation result not found in response');
+      }
+
+      if (providerResult.ok) {
+        dispatch({
+          type: 'API_KEY_VALID',
+          payload: {
+            provider,
+            accountInfo: providerResult.details || 'API key validated successfully',
+          },
+        });
+      } else {
         dispatch({
           type: 'API_KEY_INVALID',
           payload: {
             provider,
-            error:
-              'Network error: Could not reach validation service. Please check your internet connection.',
+            error: providerResult.details || 'API key validation failed',
           },
         });
-        return;
       }
-    }
-
-    // For other providers, use the old validation endpoint
-    const response = await fetch(apiUrl('/api/providers/validate'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        providers: [providerInfo.validatorName],
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Validation request failed: ${response.statusText}`);
-    }
-
-    const result: { results: Array<{ name: string; ok: boolean; details: string }>; ok: boolean } =
-      await response.json();
-
-    // Find the result for this specific provider
-    const providerResult = result.results.find(
-      (r) => r.name.toLowerCase() === providerInfo.validatorName.toLowerCase()
-    );
-
-    if (!providerResult) {
-      throw new Error('Provider validation result not found in response');
-    }
-
-    if (providerResult.ok) {
-      dispatch({
-        type: 'API_KEY_VALID',
-        payload: {
-          provider,
-          accountInfo: providerResult.details || 'API key validated successfully',
-        },
-      });
-    } else {
-      dispatch({
-        type: 'API_KEY_INVALID',
-        payload: {
-          provider,
-          error: providerResult.details || 'API key validation failed',
-        },
-      });
     }
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
