@@ -38,6 +38,9 @@ public class SystemController : ControllerBase
     /// - Version information and requirement compliance
     /// - Hardware acceleration support (NVENC, AMF, QuickSync, VideoToolbox)
     /// - Available hardware encoders
+    /// 
+    /// This endpoint always returns 200 OK with status information, even if FFmpeg is not installed.
+    /// Check the 'installed' and 'valid' fields to determine FFmpeg availability.
     /// </remarks>
     [HttpGet("ffmpeg/status")]
     public async Task<IActionResult> GetFFmpegStatus(CancellationToken ct)
@@ -58,6 +61,9 @@ public class SystemController : ControllerBase
                 path = status.Path,
                 source = status.Source,
                 error = status.Error,
+                errorCode = status.ErrorCode,
+                errorMessage = status.ErrorMessage,
+                attemptedPaths = status.AttemptedPaths,
                 versionMeetsRequirement = status.VersionMeetsRequirement,
                 minimumVersion = status.MinimumVersion,
                 hardwareAcceleration = new
@@ -75,12 +81,27 @@ public class SystemController : ControllerBase
         {
             _logger.LogError(ex, "[{CorrelationId}] Error getting FFmpeg status", correlationId);
 
-            return StatusCode(500, new
+            return Ok(new
             {
-                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
-                title = "FFmpeg Status Error",
-                status = 500,
-                detail = $"Failed to get FFmpeg status: {ex.Message}",
+                installed = false,
+                valid = false,
+                version = (string?)null,
+                path = (string?)null,
+                source = "None",
+                error = "Failed to check FFmpeg status",
+                errorCode = "E302",
+                errorMessage = "Unable to check FFmpeg installation status. Please try again.",
+                attemptedPaths = Array.Empty<string>(),
+                versionMeetsRequirement = false,
+                minimumVersion = "4.0",
+                hardwareAcceleration = new
+                {
+                    nvencSupported = false,
+                    amfSupported = false,
+                    quickSyncSupported = false,
+                    videoToolboxSupported = false,
+                    availableEncoders = Array.Empty<string>()
+                },
                 correlationId
             });
         }

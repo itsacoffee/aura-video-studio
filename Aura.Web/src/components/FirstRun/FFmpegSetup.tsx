@@ -69,6 +69,9 @@ interface FFmpegStatus {
   path?: string;
   source: string;
   error?: string;
+  errorCode?: string;
+  errorMessage?: string;
+  attemptedPaths?: string[];
   versionMeetsRequirement: boolean;
   minimumVersion: string;
   hardwareAcceleration: {
@@ -97,21 +100,19 @@ export const FFmpegSetup: FC<FFmpegSetupProps> = ({ onStatusChange }) => {
       const response = await fetch(`${API_BASE_URL}/api/system/ffmpeg/status`);
 
       if (!response.ok) {
-        // Handle HTTP errors with detailed messages
         const errorText = await response.text();
         let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
 
         try {
           const errorData = JSON.parse(errorText);
-          errorMessage = errorData.message || errorData.error || errorMessage;
+          errorMessage =
+            errorData.errorMessage || errorData.message || errorData.error || errorMessage;
         } catch {
-          // If not JSON, use the text response or default message
           errorMessage = errorText || errorMessage;
         }
 
         console.error('FFmpeg status check failed:', errorMessage);
 
-        // Set a minimal status object with error information
         setStatus({
           installed: false,
           valid: false,
@@ -119,6 +120,9 @@ export const FFmpegSetup: FC<FFmpegSetupProps> = ({ onStatusChange }) => {
           path: undefined,
           source: 'None',
           error: `Unable to check FFmpeg status: ${errorMessage}`,
+          errorCode: undefined,
+          errorMessage: `Unable to check FFmpeg status: ${errorMessage}`,
+          attemptedPaths: undefined,
           versionMeetsRequirement: false,
           minimumVersion: '4.0',
           hardwareAcceleration: {
@@ -140,7 +144,6 @@ export const FFmpegSetup: FC<FFmpegSetupProps> = ({ onStatusChange }) => {
       const errorObj = error instanceof Error ? error : new Error(String(error));
       console.error('Failed to check FFmpeg status:', errorObj.message);
 
-      // Set error status on network or parse errors
       setStatus({
         installed: false,
         valid: false,
@@ -148,6 +151,9 @@ export const FFmpegSetup: FC<FFmpegSetupProps> = ({ onStatusChange }) => {
         path: undefined,
         source: 'None',
         error: `Network error: ${errorObj.message}`,
+        errorCode: undefined,
+        errorMessage: `Network error: ${errorObj.message}`,
+        attemptedPaths: undefined,
         versionMeetsRequirement: false,
         minimumVersion: '4.0',
         hardwareAcceleration: {
@@ -181,11 +187,28 @@ export const FFmpegSetup: FC<FFmpegSetupProps> = ({ onStatusChange }) => {
         body: JSON.stringify({ version: 'latest' }),
       });
 
-      if (!response.ok) {
-        throw new Error('Installation failed');
+      const result = await response.json();
+
+      if (!result.success) {
+        console.error('Installation failed:', result);
+
+        const errorMessage =
+          result.errorMessage || result.message || result.detail || 'Installation failed';
+        const howToFixSteps = result.howToFix || [];
+
+        alert(
+          `FFmpeg installation failed:\n\n${errorMessage}\n\n${
+            howToFixSteps.length > 0
+              ? `How to fix:\n${howToFixSteps.map((step: string, i: number) => `${i + 1}. ${step}`).join('\n')}`
+              : ''
+          }`
+        );
+
+        setInstalling(false);
+        setInstallProgress(0);
+        return;
       }
 
-      await response.json();
       setInstallProgress(100);
 
       setTimeout(async () => {
@@ -196,6 +219,11 @@ export const FFmpegSetup: FC<FFmpegSetupProps> = ({ onStatusChange }) => {
     } catch (error: unknown) {
       const errorObj = error instanceof Error ? error : new Error(String(error));
       console.error('Failed to install FFmpeg:', errorObj.message);
+
+      alert(
+        `Network error during installation:\n\n${errorObj.message}\n\nPlease check your internet connection and try again.`
+      );
+
       setInstalling(false);
       setInstallProgress(0);
     }
@@ -306,8 +334,27 @@ export const FFmpegSetup: FC<FFmpegSetupProps> = ({ onStatusChange }) => {
 
           {status.error && (
             <Text style={{ color: tokens.colorPaletteRedForeground1 }}>
-              <strong>Error:</strong> {status.error}
+              <strong>Error:</strong> {status.errorMessage || status.error}
             </Text>
+          )}
+
+          {status.errorCode && (
+            <Text size={200}>
+              <strong>Error Code:</strong> {status.errorCode}
+            </Text>
+          )}
+
+          {status.attemptedPaths && status.attemptedPaths.length > 0 && (
+            <details style={{ marginTop: tokens.spacingVerticalS }}>
+              <summary style={{ cursor: 'pointer', fontSize: '12px' }}>
+                <Text size={200}>Show checked locations ({status.attemptedPaths.length})</Text>
+              </summary>
+              <ul style={{ fontSize: '11px', marginTop: tokens.spacingVerticalXS }}>
+                {status.attemptedPaths.map((p, i) => (
+                  <li key={i}>{p}</li>
+                ))}
+              </ul>
+            </details>
           )}
         </div>
 

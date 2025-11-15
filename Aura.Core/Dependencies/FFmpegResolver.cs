@@ -472,4 +472,5 @@ public class FfmpegResolutionResult
     public string Source { get; set; } = "None";
     public string? ValidationOutput { get; set; }
     public string? Error { get; set; }
+    public List<string>? AttemptedPaths { get; set; }
 }
