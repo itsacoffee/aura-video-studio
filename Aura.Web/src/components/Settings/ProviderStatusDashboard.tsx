@@ -7,13 +7,16 @@ import {
   Button,
   Spinner,
   Badge,
+  Tooltip,
 } from '@fluentui/react-components';
 import {
   CheckmarkCircle24Filled,
   DismissCircle24Filled,
   ArrowClockwise24Regular,
+  Warning24Filled,
+  Info24Regular,
 } from '@fluentui/react-icons';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useProviderStore } from '../../state/providers';
 import type { ProviderStatus } from '../../state/providers';
 
@@ -59,30 +62,67 @@ const useStyles = makeStyles({
     alignItems: 'center',
     padding: tokens.spacingVerticalXXL,
   },
+  errorDetails: {
+    marginTop: tokens.spacingVerticalXS,
+    padding: tokens.spacingVerticalS,
+    backgroundColor: tokens.colorNeutralBackground2,
+    borderRadius: tokens.borderRadiusMedium,
+    fontSize: '12px',
+  },
+  howToFix: {
+    marginTop: tokens.spacingVerticalXXS,
+    paddingLeft: tokens.spacingHorizontalM,
+  },
+  retryButton: {
+    marginTop: tokens.spacingVerticalXS,
+  },
 });
 
 function ProviderStatusCard({ provider }: { provider: ProviderStatus }) {
   const styles = useStyles();
+  const { validateProvider } = useProviderStore();
+  const [isValidating, setIsValidating] = useState(false);
 
-  const statusIcon = provider.isConfigured ? (
+  const handleRetry = async () => {
+    setIsValidating(true);
+    try {
+      await validateProvider(provider.name);
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
+  const isConfiguredAndReachable = provider.isConfigured && (provider.reachable ?? true);
+  const hasError = !isConfiguredAndReachable || provider.errorCode;
+
+  const statusIcon = isConfiguredAndReachable ? (
     <CheckmarkCircle24Filled
       className={styles.icon}
       style={{ color: tokens.colorPaletteGreenForeground1 }}
     />
-  ) : (
-    <DismissCircle24Filled
+  ) : !provider.isConfigured ? (
+    <Info24Regular
       className={styles.icon}
       style={{ color: tokens.colorNeutralForeground3 }}
     />
+  ) : (
+    <Warning24Filled
+      className={styles.icon}
+      style={{ color: tokens.colorPaletteRedForeground1 }}
+    />
   );
 
-  const statusBadge = provider.isConfigured ? (
+  const statusBadge = isConfiguredAndReachable ? (
     <Badge appearance="filled" color="success">
-      Configured
+      Configured & Reachable
     </Badge>
-  ) : (
+  ) : !provider.isConfigured ? (
     <Badge appearance="outline" color="subtle">
       Not Configured
+    </Badge>
+  ) : (
+    <Badge appearance="filled" color="danger">
+      Error
     </Badge>
   );
 
@@ -96,21 +136,48 @@ function ProviderStatusCard({ provider }: { provider: ProviderStatus }) {
         {statusIcon}
         <Text size={200}>{provider.status}</Text>
       </div>
+      {provider.category && (
+        <Text size={100} style={{ marginTop: tokens.spacingVerticalXXS }}>
+          Category: {provider.category} | Tier: {provider.tier || 'Unknown'}
+        </Text>
+      )}
       {provider.lastValidated && (
         <Text size={100} style={{ marginTop: tokens.spacingVerticalXS }}>
           Last validated: {new Date(provider.lastValidated).toLocaleString()}
         </Text>
       )}
-      {provider.errorMessage && (
-        <Text
-          size={200}
-          style={{
-            color: tokens.colorPaletteRedForeground1,
-            marginTop: tokens.spacingVerticalXS,
-          }}
+      {hasError && provider.errorMessage && (
+        <div className={styles.errorDetails}>
+          <Text size={200} weight="semibold" style={{ color: tokens.colorPaletteRedForeground1 }}>
+            {provider.errorCode || 'Error'}
+          </Text>
+          <Text size={200} style={{ display: 'block', marginTop: tokens.spacingVerticalXXS }}>
+            {provider.errorMessage}
+          </Text>
+          {provider.howToFix && provider.howToFix.length > 0 && (
+            <div className={styles.howToFix}>
+              <Text size={100} weight="semibold">How to fix:</Text>
+              <ul style={{ margin: `${tokens.spacingVerticalXXS} 0`, paddingLeft: tokens.spacingHorizontalM }}>
+                {provider.howToFix.map((step, index) => (
+                  <li key={index}>
+                    <Text size={100}>{step}</Text>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+      {hasError && (
+        <Button
+          appearance="secondary"
+          size="small"
+          onClick={handleRetry}
+          disabled={isValidating}
+          className={styles.retryButton}
         >
-          {provider.errorMessage}
-        </Text>
+          {isValidating ? 'Retrying...' : 'Retry Validation'}
+        </Button>
       )}
     </Card>
   );
@@ -154,7 +221,7 @@ export function ProviderStatusDashboard() {
       </div>
       <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
         View the status of all configured providers. Status updates automatically every 30 seconds.
-        Green checkmarks indicate configured providers with valid API keys.
+        Click 'Retry Validation' on any provider to perform a live connectivity check.
       </Text>
       <div className={styles.grid}>
         {providerStatuses.map((provider) => (
