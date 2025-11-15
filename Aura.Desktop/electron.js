@@ -645,28 +645,38 @@ app.on('window-all-closed', () => {
   }
 });
 
+// Track if cleanup has been initiated to prevent multiple cleanup attempts
+let cleanupInitiated = false;
+
 app.on('before-quit', (event) => {
-  if (!isQuitting) {
+  // Only prevent quit once to perform cleanup
+  if (!cleanupInitiated) {
     event.preventDefault();
+    cleanupInitiated = true;
     isQuitting = true;
     
-    // Perform async cleanup
-    cleanup().then(() => {
-      app.quit();
-    }).catch((error) => {
-      console.error('Cleanup failed:', error);
-      app.quit();
-    });
-  }
-});
-
-app.on('will-quit', (event) => {
-  // Final cleanup if needed
-  if (backendService && backendService.isRunning()) {
-    event.preventDefault();
-    cleanup().finally(() => {
+    console.log('App quit requested, performing cleanup...');
+    
+    // Set a timeout to force quit if cleanup takes too long
+    // Backend service max timeout is 5 seconds (3s graceful + 2s force)
+    // Set app force quit to 8 seconds to allow backend proper cleanup time plus buffer
+    const forceQuitTimeout = setTimeout(() => {
+      console.warn('Cleanup timeout reached, forcing quit...');
       process.exit(0);
-    });
+    }, 8000);
+    
+    // Perform async cleanup
+    cleanup()
+      .then(() => {
+        console.log('Cleanup completed successfully');
+        clearTimeout(forceQuitTimeout);
+        app.quit();
+      })
+      .catch((error) => {
+        console.error('Cleanup failed:', error);
+        clearTimeout(forceQuitTimeout);
+        app.quit();
+      });
   }
 });
 
