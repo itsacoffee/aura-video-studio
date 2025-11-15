@@ -27,8 +27,9 @@ class BackendService {
     this.BACKEND_STARTUP_TIMEOUT = 60000; // 60 seconds
     this.HEALTH_CHECK_INTERVAL = 1000; // 1 second
     this.AUTO_RESTART_DELAY = 5000; // 5 seconds
-    this.GRACEFUL_SHUTDOWN_TIMEOUT = 10000; // 10 seconds
-    this.FORCE_KILL_TIMEOUT = 5000; // 5 seconds after graceful timeout
+    // Timeout configurations - reduced for faster shutdown
+    this.GRACEFUL_SHUTDOWN_TIMEOUT = 3000; // 3 seconds for graceful shutdown
+    this.FORCE_KILL_TIMEOUT = 2000; // 2 seconds after graceful timeout (total 5s max)
   }
 
   /**

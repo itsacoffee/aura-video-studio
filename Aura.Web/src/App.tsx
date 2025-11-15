@@ -196,6 +196,10 @@ function App() {
         setShouldShowOnboarding(!localStatus);
       } finally {
         setIsCheckingFirstRun(false);
+        // CRITICAL FIX: Set isInitializing to false after first-run check completes
+        // This prevents the app from getting stuck on InitializationScreen
+        // The InitializationScreen will be shown separately if explicitly needed
+        setIsInitializing(false);
       }
     }
 
