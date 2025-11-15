@@ -295,13 +295,33 @@ export function WorkspaceSetup({
           </div>
 
           <div className={styles.sliderContainer}>
-            <Slider
-              min={0}
-              max={10}
-              step={1}
-              value={autosaveMinutes}
-              onChange={(_, data) => handleAutosaveChange(data.value)}
-            />
+            <Field label="Minutes between autosaves">
+              <div
+                style={{ display: 'flex', gap: tokens.spacingHorizontalM, alignItems: 'center' }}
+              >
+                <Slider
+                  style={{ flex: 1 }}
+                  min={0}
+                  max={10}
+                  step={1}
+                  value={autosaveMinutes}
+                  onChange={(_, data) => handleAutosaveChange(data.value)}
+                />
+                <Input
+                  type="number"
+                  min={0}
+                  max={10}
+                  value={autosaveMinutes.toString()}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    if (!isNaN(val) && val >= 0 && val <= 10) {
+                      handleAutosaveChange(val);
+                    }
+                  }}
+                  style={{ width: '80px' }}
+                />
+              </div>
+            </Field>
             <div className={styles.sliderValue}>
               <Text size={200}>Disabled</Text>
               <Text weight="semibold">{autosaveText}</Text>

@@ -144,20 +144,44 @@ export function TopMenuBar({
                 <span className={styles.shortcut}>Ctrl+S</span>
               </div>
             </MenuItem>
-            <MenuItem>
+            <MenuItem
+              onClick={() => {
+                if (onSaveProject) {
+                  onSaveProject();
+                } else {
+                  window.dispatchEvent(new CustomEvent('app:saveProjectAs'));
+                }
+              }}
+            >
               <div className={styles.menuItemContent}>
                 <span>Save As...</span>
                 <span className={styles.shortcut}>Ctrl+Shift+S</span>
               </div>
             </MenuItem>
             <MenuDivider />
-            <MenuItem onClick={onImportMedia}>
+            <MenuItem
+              onClick={() => {
+                if (onImportMedia) {
+                  onImportMedia();
+                } else {
+                  navigate('/assets');
+                }
+              }}
+            >
               <div className={styles.menuItemContent}>
                 <span>Import Media...</span>
                 <span className={styles.shortcut}>Ctrl+I</span>
               </div>
             </MenuItem>
-            <MenuItem onClick={onExportVideo}>
+            <MenuItem
+              onClick={() => {
+                if (onExportVideo) {
+                  onExportVideo();
+                } else {
+                  navigate('/render');
+                }
+              }}
+            >
               <div className={styles.menuItemContent}>
                 <span>Export...</span>
                 <span className={styles.shortcut}>Ctrl+M</span>
@@ -288,6 +312,38 @@ export function TopMenuBar({
             <MenuDivider />
             <MenuItem onClick={() => setShowSaveWorkspaceDialog(true)}>Save Workspace...</MenuItem>
             <MenuItem onClick={handleResetWorkspace}>Reset Workspace</MenuItem>
+          </MenuList>
+        </MenuPopover>
+      </Menu>
+
+      {/* Tools Menu */}
+      <Menu open={openMenus.tools} onOpenChange={(_, data) => handleMenuToggle('tools', data.open)}>
+        <MenuTrigger>
+          <Button appearance="subtle" className={styles.menuButton}>
+            Tools
+          </Button>
+        </MenuTrigger>
+        <MenuPopover>
+          <MenuList>
+            <MenuItem onClick={() => navigate('/settings?tab=ffmpeg')}>
+              FFmpeg Configuration
+            </MenuItem>
+            <MenuItem onClick={() => navigate('/settings?tab=providers')}>
+              Provider Settings
+            </MenuItem>
+            <MenuDivider />
+            <MenuItem onClick={() => navigate('/settings?tab=performance')}>
+              Performance Settings
+            </MenuItem>
+            <MenuItem onClick={() => navigate('/settings?tab=advanced')}>
+              Advanced Settings
+            </MenuItem>
+            <MenuDivider />
+            <MenuItem onClick={() => window.dispatchEvent(new CustomEvent('app:clearCache'))}>
+              Clear Cache
+            </MenuItem>
+            <MenuItem onClick={() => navigate('/logs')}>View Logs</MenuItem>
+            <MenuItem onClick={() => navigate('/diagnostics')}>Run Diagnostics</MenuItem>
           </MenuList>
         </MenuPopover>
       </Menu>

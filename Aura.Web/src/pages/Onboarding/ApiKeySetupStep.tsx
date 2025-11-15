@@ -294,13 +294,13 @@ export function ApiKeySetupStep({
   const [rateLimit, setRateLimit] = useState<Record<string, number>>({});
 
   const handleValidate = (providerId: string) => {
-    // Check rate limiting
+    // Check rate limiting - reduced from 20s to 5s for better UX
     const now = Date.now();
     const lastAttempt = rateLimit[providerId] || 0;
     const timeSinceLastAttempt = now - lastAttempt;
 
-    if (timeSinceLastAttempt < 20000) {
-      // 20 seconds between attempts
+    if (timeSinceLastAttempt < 5000) {
+      // 5 seconds between attempts (reduced from 20)
       alert('Too many attempts. Please wait a moment before trying again.');
       return;
     }
