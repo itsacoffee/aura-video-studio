@@ -6,7 +6,7 @@ This guide provides Windows 11 specific instructions for setting up and running 
 
 ### Required Software
 
-1. **Node.js 18.x or later (LTS recommended)**
+1. **Node.js 20.x or later (LTS recommended)**
    - Download from: https://nodejs.org/
    - Verify installation:
      ```powershell
