@@ -10,6 +10,9 @@ import {
   ProgressBar,
   MessageBar,
   MessageBarBody,
+  MessageBarTitle,
+  Input,
+  Field,
 } from '@fluentui/react-components';
 import {
   CheckmarkCircle24Filled,
@@ -17,12 +20,14 @@ import {
   Warning24Regular,
   ArrowDownload24Regular,
   Info24Regular,
+  FolderOpen24Regular,
+  ArrowClockwise24Regular,
 } from '@fluentui/react-icons';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { FC } from 'react';
-import { API_BASE_URL } from '../../config/api';
 import { handleApiError } from '../../services/api/errorHandler';
 import type { UserFriendlyError } from '../../services/api/errorHandler';
+import { ffmpegClient, type FFmpegStatus } from '../../services/api/ffmpegClient';
 
 const useStyles = makeStyles({
   container: {
@@ -64,135 +69,177 @@ const useStyles = makeStyles({
     gap: tokens.spacingHorizontalS,
     alignItems: 'flex-start',
   },
+  manualPathCard: {
+    padding: tokens.spacingVerticalM,
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderRadius: tokens.borderRadiusMedium,
+  },
+  pathInputRow: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalS,
+    alignItems: 'flex-end',
+    marginTop: tokens.spacingVerticalS,
+  },
+  recoveryOptions: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalS,
+    marginTop: tokens.spacingVerticalM,
+  },
 });
 
-interface FFmpegStatus {
-  installed: boolean;
-  valid: boolean;
-  version?: string;
-  path?: string;
-  source: string;
-  error?: string;
-  errorCode?: string;
-  errorMessage?: string;
-  attemptedPaths?: string[];
-  versionMeetsRequirement: boolean;
-  minimumVersion: string;
-  hardwareAcceleration: {
-    nvencSupported: boolean;
-    amfSupported: boolean;
-    quickSyncSupported: boolean;
-    videoToolboxSupported: boolean;
-    availableEncoders: string[];
-  };
-}
-
 interface FFmpegSetupProps {
-  onStatusChange?: (installed: boolean) => void;
+  onStatusChange?: (installed: boolean, valid: boolean) => void;
+  onAutoAdvance?: () => void;
 }
 
-export const FFmpegSetup: FC<FFmpegSetupProps> = ({ onStatusChange }) => {
+export const FFmpegSetup: FC<FFmpegSetupProps> = ({ onStatusChange, onAutoAdvance }) => {
   const styles = useStyles();
   const [status, setStatus] = useState<FFmpegStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [installing, setInstalling] = useState(false);
   const [installProgress, setInstallProgress] = useState(0);
   const [error, setError] = useState<UserFriendlyError | null>(null);
+  const [_retryCount, setRetryCount] = useState(0);
+  const [showManualPath, setShowManualPath] = useState(false);
+  const [manualPath, setManualPath] = useState('');
+  const [validatingPath, setValidatingPath] = useState(false);
 
-  const checkStatus = async () => {
+  const checkStatus = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch(`${API_BASE_URL}/api/system/ffmpeg/status`);
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        let parsedError;
-        
-        try {
-          parsedError = JSON.parse(errorText);
-        } catch {
-          parsedError = { message: errorText };
-        }
+      const statusData = await ffmpegClient.getStatus();
+      setStatus(statusData);
 
-        const friendlyError = handleApiError({
-          isAxiosError: false,
-          response: { data: parsedError },
-        });
-        
-        setError(friendlyError);
-        onStatusChange?.(false);
-        return;
+      const isReady = statusData.installed && statusData.valid;
+      onStatusChange?.(statusData.installed, statusData.valid);
+
+      // Auto-advance if FFmpeg is ready
+      if (isReady && onAutoAdvance) {
+        console.info('[FFmpegSetup] FFmpeg is ready, auto-advancing...');
+        onAutoAdvance();
       }
-
-      const data = await response.json();
-      setStatus(data);
-      onStatusChange?.(data.installed && data.valid);
     } catch (err: unknown) {
       const friendlyError = handleApiError(err);
       setError(friendlyError);
-      onStatusChange?.(false);
+      onStatusChange?.(false, false);
     } finally {
       setLoading(false);
     }
-  };
+  }, [onStatusChange, onAutoAdvance]);
 
   useEffect(() => {
     checkStatus();
-    // Only run once on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [checkStatus]);
 
   const handleInstall = async () => {
     try {
       setInstalling(true);
       setInstallProgress(0);
+      setError(null);
 
-      const response = await fetch(`${API_BASE_URL}/api/ffmpeg/install`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ version: 'latest' }),
-      });
+      // Simulate progress during installation
+      const progressInterval = setInterval(() => {
+        setInstallProgress((prev) => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return prev;
+          }
+          return prev + 10;
+        });
+      }, 2000);
 
-      const result = await response.json();
+      const result = await ffmpegClient.install();
+      clearInterval(progressInterval);
 
       if (!result.success) {
-        console.error('Installation failed:', result);
-
-        const errorMessage =
-          result.errorMessage || result.message || result.detail || 'Installation failed';
-        const howToFixSteps = result.howToFix || [];
-
-        alert(
-          `FFmpeg installation failed:\n\n${errorMessage}\n\n${
-            howToFixSteps.length > 0
-              ? `How to fix:\n${howToFixSteps.map((step: string, i: number) => `${i + 1}. ${step}`).join('\n')}`
-              : ''
-          }`
-        );
-
-        setInstalling(false);
-        setInstallProgress(0);
-        return;
+        const errorMessage = result.message || 'Installation failed';
+        throw new Error(errorMessage);
       }
 
       setInstallProgress(100);
+      setRetryCount(0);
 
+      // Verify installation after short delay
       setTimeout(async () => {
         await checkStatus();
         setInstalling(false);
         setInstallProgress(0);
       }, 1000);
-    } catch (error: unknown) {
-      const errorObj = error instanceof Error ? error : new Error(String(error));
-      console.error('Failed to install FFmpeg:', errorObj.message);
-
-      alert(
-        `Network error during installation:\n\n${errorObj.message}\n\nPlease check your internet connection and try again.`
-      );
-
+    } catch (err: unknown) {
+      setRetryCount((prev) => prev + 1);
+      const friendlyError = handleApiError(err);
+      setError(friendlyError);
       setInstalling(false);
       setInstallProgress(0);
+    }
+  };
+
+  const handleRescan = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const result = await ffmpegClient.rescan();
+
+      if (result.success && result.installed && result.valid) {
+        await checkStatus();
+      } else {
+        setError({
+          title: 'FFmpeg Not Found',
+          message: result.message || 'No valid FFmpeg installation found on this system.',
+          howToFix: [
+            'Install FFmpeg using the button above',
+            'Or manually install FFmpeg and restart the wizard',
+          ],
+        });
+      }
+    } catch (err: unknown) {
+      const friendlyError = handleApiError(err);
+      setError(friendlyError);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUseExisting = async () => {
+    if (!manualPath.trim()) {
+      setError({
+        title: 'Invalid Path',
+        message: 'Please enter a valid path to the FFmpeg executable.',
+        howToFix: [],
+      });
+      return;
+    }
+
+    try {
+      setValidatingPath(true);
+      setError(null);
+
+      const result = await ffmpegClient.useExisting({ path: manualPath.trim() });
+
+      if (result.success && result.installed && result.valid) {
+        await checkStatus();
+        setShowManualPath(false);
+        setManualPath('');
+      } else {
+        setError({
+          title: 'Invalid FFmpeg',
+          message:
+            result.message || 'The specified path does not contain a valid FFmpeg installation.',
+          howToFix: result.howToFix || [
+            'Ensure the path points to the ffmpeg executable (ffmpeg.exe on Windows)',
+            'Verify FFmpeg version is 4.0 or higher',
+          ],
+        });
+      }
+    } catch (err: unknown) {
+      const friendlyError = handleApiError(err);
+      setError(friendlyError);
+    } finally {
+      setValidatingPath(false);
     }
   };
 
@@ -211,41 +258,84 @@ export const FFmpegSetup: FC<FFmpegSetupProps> = ({ onStatusChange }) => {
         <Card className={styles.statusCard}>
           <MessageBar intent="error">
             <MessageBarBody>
-              <Title3>{error.title}</Title3>
+              <MessageBarTitle>{error.title}</MessageBarTitle>
               <Text>{error.message}</Text>
-              {error.correlationId && (
-                <Text size={200}>Correlation ID: {error.correlationId}</Text>
-              )}
-              {error.actions && error.actions.length > 0 && (
+              {error.correlationId && <Text size={200}>Correlation ID: {error.correlationId}</Text>}
+              {error.howToFix && error.howToFix.length > 0 && (
                 <div style={{ marginTop: tokens.spacingVerticalM }}>
-                  <Text weight="semibold">Recommended Actions:</Text>
+                  <Text weight="semibold">How to fix:</Text>
                   <ul>
-                    {error.actions.map((action, index) => (
+                    {error.howToFix.map((step, index) => (
                       <li key={index}>
-                        <Text weight="semibold">{action.label}:</Text> {action.description}
+                        <Text>{step}</Text>
                       </li>
                     ))}
                   </ul>
                 </div>
               )}
-              <div className={styles.actionButtons}>
-                <Button appearance="primary" onClick={checkStatus}>
-                  Retry
-                </Button>
-                {error.learnMoreUrl && (
-                  <Button
-                    appearance="secondary"
-                    as="a"
-                    href={error.learnMoreUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Learn More
-                  </Button>
-                )}
-              </div>
             </MessageBarBody>
           </MessageBar>
+
+          <div className={styles.recoveryOptions}>
+            <Text weight="semibold">Recovery Options:</Text>
+            <div className={styles.actionButtons}>
+              <Button appearance="primary" onClick={checkStatus} icon={<ArrowClockwise24Regular />}>
+                Retry Check
+              </Button>
+              <Button appearance="secondary" onClick={handleRescan}>
+                Rescan System
+              </Button>
+              <Button appearance="secondary" onClick={() => setShowManualPath(true)}>
+                Use Existing Installation
+              </Button>
+            </div>
+          </div>
+
+          {showManualPath && (
+            <Card className={styles.manualPathCard}>
+              <Title3>Specify FFmpeg Path</Title3>
+              <Text size={200}>
+                Enter the full path to your FFmpeg executable (e.g., /usr/bin/ffmpeg or C:\Program
+                Files\ffmpeg\bin\ffmpeg.exe)
+              </Text>
+              <div className={styles.pathInputRow}>
+                <Field style={{ flex: 1 }}>
+                  <Input
+                    value={manualPath}
+                    onChange={(e) => setManualPath(e.target.value)}
+                    placeholder="Path to FFmpeg executable"
+                  />
+                </Field>
+                <Button
+                  icon={<FolderOpen24Regular />}
+                  onClick={() => {
+                    // Browse for file would go here in electron context
+                    alert('File browser not available in web context');
+                  }}
+                >
+                  Browse
+                </Button>
+              </div>
+              <div className={styles.actionButtons}>
+                <Button
+                  appearance="primary"
+                  onClick={handleUseExisting}
+                  disabled={validatingPath || !manualPath.trim()}
+                >
+                  {validatingPath ? 'Validating...' : 'Validate and Use'}
+                </Button>
+                <Button
+                  appearance="secondary"
+                  onClick={() => {
+                    setShowManualPath(false);
+                    setManualPath('');
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </Card>
+          )}
         </Card>
       </div>
     );
