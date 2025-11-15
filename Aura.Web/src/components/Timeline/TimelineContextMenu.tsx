@@ -26,16 +26,61 @@ import {
   TopSpeed24Regular,
 } from '@fluentui/react-icons';
 import React, { useState, useCallback, useEffect } from 'react';
+import '../../styles/video-editor-theme.css';
 
 const useStyles = makeStyles({
   menu: {
     minWidth: '220px',
+    backgroundColor: 'var(--editor-panel-bg)',
+    border: `1px solid var(--editor-panel-border)`,
+    borderRadius: 'var(--editor-radius-md)',
+    boxShadow: 'var(--editor-shadow-xl)',
+    padding: 'var(--editor-space-xs)',
+    animation: 'editorFadeIn var(--editor-transition-base) ease-out',
   },
   submenuTrigger: {
     '::after': {
       content: '""',
       marginLeft: 'auto',
     },
+  },
+  menuItem: {
+    padding: 'var(--editor-space-sm) var(--editor-space-md)',
+    borderRadius: 'var(--editor-radius-sm)',
+    color: 'var(--editor-text-primary)',
+    fontSize: 'var(--editor-font-size-sm)',
+    cursor: 'pointer',
+    transition: 'all var(--editor-transition-fast)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 'var(--editor-space-md)',
+    '&:hover': {
+      backgroundColor: 'var(--editor-panel-hover)',
+      transform: 'translateX(2px)',
+    },
+    '&:active': {
+      backgroundColor: 'var(--editor-panel-active)',
+    },
+  },
+  shortcut: {
+    marginLeft: 'auto',
+    opacity: 0.7,
+    fontSize: 'var(--editor-font-size-xs)',
+    color: 'var(--editor-text-secondary)',
+    fontFamily: 'monospace',
+  },
+  divider: {
+    height: '1px',
+    backgroundColor: 'var(--editor-panel-border)',
+    margin: 'var(--editor-space-xs) 0',
+  },
+  groupHeader: {
+    fontSize: 'var(--editor-font-size-xs)',
+    fontWeight: 'var(--editor-font-weight-semibold)',
+    color: 'var(--editor-text-secondary)',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+    padding: 'var(--editor-space-sm) var(--editor-space-md)',
   },
 });
 
@@ -104,56 +149,56 @@ export function TimelineContextMenu({
             {/* Basic Editing */}
             <MenuItem icon={<Cut24Regular />} onClick={() => handleAction('cut')}>
               Cut
-              <span style={{ marginLeft: 'auto', opacity: 0.7 }}>Ctrl+X</span>
+              <span className={styles.shortcut}>Ctrl+X</span>
             </MenuItem>
             <MenuItem icon={<Copy24Regular />} onClick={() => handleAction('copy')}>
               Copy
-              <span style={{ marginLeft: 'auto', opacity: 0.7 }}>Ctrl+C</span>
+              <span className={styles.shortcut}>Ctrl+C</span>
             </MenuItem>
             <MenuItem icon={<ClipboardPaste24Regular />} onClick={() => handleAction('paste')}>
               Paste
-              <span style={{ marginLeft: 'auto', opacity: 0.7 }}>Ctrl+V</span>
+              <span className={styles.shortcut}>Ctrl+V</span>
             </MenuItem>
             <MenuItem icon={<DocumentCopy24Regular />} onClick={() => handleAction('duplicate')}>
               Duplicate
-              <span style={{ marginLeft: 'auto', opacity: 0.7 }}>Ctrl+D</span>
+              <span className={styles.shortcut}>Ctrl+D</span>
             </MenuItem>
             <MenuItem icon={<Delete24Regular />} onClick={() => handleAction('delete')}>
               Delete
-              <span style={{ marginLeft: 'auto', opacity: 0.7 }}>Del</span>
+              <span className={styles.shortcut}>Del</span>
             </MenuItem>
 
-            <MenuDivider />
+            <MenuDivider className={styles.divider} />
 
             {/* Clip Controls */}
             {clipData && (
               <>
                 <MenuGroup>
-                  <MenuGroupHeader>Clip Controls</MenuGroupHeader>
+                  <MenuGroupHeader className={styles.groupHeader}>Clip Controls</MenuGroupHeader>
                   <MenuItem
                     icon={clipData.muted ? <SpeakerOff24Regular /> : <Speaker224Regular />}
                     onClick={() => handleAction('toggleMute')}
                   >
                     {clipData.muted ? 'Unmute' : 'Mute'}
-                    <span style={{ marginLeft: 'auto', opacity: 0.7 }}>M</span>
+                    <span className={styles.shortcut}>M</span>
                   </MenuItem>
                   <MenuItem
                     icon={clipData.hidden ? <EyeOff24Regular /> : <Eye24Regular />}
                     onClick={() => handleAction('toggleVisibility')}
                   >
                     {clipData.hidden ? 'Show' : 'Hide'}
-                    <span style={{ marginLeft: 'auto', opacity: 0.7 }}>H</span>
+                    <span className={styles.shortcut}>H</span>
                   </MenuItem>
                 </MenuGroup>
 
-                <MenuDivider />
+                <MenuDivider className={styles.divider} />
               </>
             )}
 
             {/* Split */}
             <MenuItem onClick={() => handleAction('split')}>
               Split at Playhead
-              <span style={{ marginLeft: 'auto', opacity: 0.7 }}>S</span>
+              <span className={styles.shortcut}>S</span>
             </MenuItem>
 
             {/* Speed & Effects Submenu */}
@@ -164,7 +209,7 @@ export function TimelineContextMenu({
                   <ChevronRight24Regular style={{ marginLeft: 'auto' }} />
                 </MenuItem>
               </MenuTrigger>
-              <MenuPopover>
+              <MenuPopover className={styles.menu}>
                 <MenuList>
                   <MenuItemRadio
                     name="speed"
@@ -220,7 +265,7 @@ export function TimelineContextMenu({
                   <ChevronRight24Regular style={{ marginLeft: 'auto' }} />
                 </MenuItem>
               </MenuTrigger>
-              <MenuPopover>
+              <MenuPopover className={styles.menu}>
                 <MenuList>
                   <MenuItem onClick={() => handleAction('applyEffect', 'fade-in')}>
                     Fade In
@@ -254,7 +299,7 @@ export function TimelineContextMenu({
                   <ChevronRight24Regular style={{ marginLeft: 'auto' }} />
                 </MenuItem>
               </MenuTrigger>
-              <MenuPopover>
+              <MenuPopover className={styles.menu}>
                 <MenuList>
                   <MenuItem onClick={() => handleAction('colorCorrection', 'brightness')}>
                     Adjust Brightness
@@ -269,7 +314,7 @@ export function TimelineContextMenu({
                     Color Temperature
                   </MenuItem>
                   <MenuItem onClick={() => handleAction('colorCorrection', 'tint')}>Tint</MenuItem>
-                  <MenuDivider />
+                  <MenuDivider className={styles.divider} />
                   <MenuItem onClick={() => handleAction('colorCorrection', 'auto')}>
                     Auto Color Correct
                   </MenuItem>
@@ -280,7 +325,7 @@ export function TimelineContextMenu({
               </MenuPopover>
             </Menu>
 
-            <MenuDivider />
+            <MenuDivider className={styles.divider} />
 
             {/* Transitions */}
             <Menu>
@@ -290,10 +335,10 @@ export function TimelineContextMenu({
                   <ChevronRight24Regular style={{ marginLeft: 'auto' }} />
                 </MenuItem>
               </MenuTrigger>
-              <MenuPopover>
+              <MenuPopover className={styles.menu}>
                 <MenuList>
                   <MenuGroup>
-                    <MenuGroupHeader>Before Clip</MenuGroupHeader>
+                    <MenuGroupHeader className={styles.groupHeader}>Before Clip</MenuGroupHeader>
                     <MenuItem
                       onClick={() =>
                         handleAction('addTransition', { type: 'crossfade', position: 'before' })
@@ -323,9 +368,9 @@ export function TimelineContextMenu({
                       Slide
                     </MenuItem>
                   </MenuGroup>
-                  <MenuDivider />
+                  <MenuDivider className={styles.divider} />
                   <MenuGroup>
-                    <MenuGroupHeader>After Clip</MenuGroupHeader>
+                    <MenuGroupHeader className={styles.groupHeader}>After Clip</MenuGroupHeader>
                     <MenuItem
                       onClick={() =>
                         handleAction('addTransition', { type: 'crossfade', position: 'after' })
@@ -359,12 +404,12 @@ export function TimelineContextMenu({
               </MenuPopover>
             </Menu>
 
-            <MenuDivider />
+            <MenuDivider className={styles.divider} />
 
             {/* Properties */}
             <MenuItem onClick={() => handleAction('properties')}>
               Properties
-              <span style={{ marginLeft: 'auto', opacity: 0.7 }}>Ctrl+I</span>
+              <span className={styles.shortcut}>Ctrl+I</span>
             </MenuItem>
           </MenuList>
         </MenuPopover>

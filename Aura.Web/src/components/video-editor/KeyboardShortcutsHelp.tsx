@@ -12,7 +12,6 @@ import {
   DialogTitle,
   DialogContent,
   makeStyles,
-  tokens,
   Text,
   Button,
   Field,
@@ -21,87 +20,125 @@ import {
 import { Dismiss24Regular } from '@fluentui/react-icons';
 import { useState, useMemo } from 'react';
 import { keyboardShortcutManager } from '../../services/keyboardShortcutManager';
+import '../../styles/video-editor-theme.css';
 
 const useStyles = makeStyles({
   surface: {
     maxWidth: '800px',
     width: '90vw',
     maxHeight: '80vh',
+    backgroundColor: 'var(--editor-panel-bg)',
+    border: `1px solid var(--editor-panel-border)`,
+    borderRadius: 'var(--editor-radius-lg)',
+    boxShadow: 'var(--editor-shadow-xl)',
+    animation: 'editorFadeIn var(--editor-transition-base) ease-out',
   },
   content: {
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalL,
-    paddingTop: tokens.spacingVerticalM,
+    gap: 'var(--editor-space-lg)',
+    paddingTop: 'var(--editor-space-md)',
   },
   searchField: {
-    marginBottom: tokens.spacingVerticalM,
+    marginBottom: 'var(--editor-space-md)',
   },
   categoriesContainer: {
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalL,
+    gap: 'var(--editor-space-lg)',
     overflowY: 'auto',
     maxHeight: '60vh',
   },
   category: {
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalS,
+    gap: 'var(--editor-space-sm)',
+    animation: 'editorSlideIn var(--editor-transition-base) ease-out',
   },
   categoryTitle: {
-    fontSize: tokens.fontSizeBase400,
-    fontWeight: tokens.fontWeightSemibold,
-    color: tokens.colorNeutralForeground1,
-    marginBottom: tokens.spacingVerticalXS,
+    fontSize: 'var(--editor-font-size-lg)',
+    fontWeight: 'var(--editor-font-weight-semibold)',
+    color: 'var(--editor-accent)',
+    marginBottom: 'var(--editor-space-xs)',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+    padding: 'var(--editor-space-sm) 0',
+    borderBottom: `2px solid var(--editor-panel-border)`,
   },
   shortcutsList: {
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalXS,
+    gap: 'var(--editor-space-xs)',
   },
   shortcutItem: {
     display: 'grid',
     gridTemplateColumns: '200px 1fr',
-    gap: tokens.spacingHorizontalL,
+    gap: 'var(--editor-space-lg)',
     alignItems: 'center',
-    paddingTop: tokens.spacingVerticalXS,
-    paddingBottom: tokens.spacingVerticalXS,
+    paddingTop: 'var(--editor-space-xs)',
+    paddingBottom: 'var(--editor-space-xs)',
+    paddingLeft: 'var(--editor-space-sm)',
+    paddingRight: 'var(--editor-space-sm)',
+    borderRadius: 'var(--editor-radius-sm)',
+    transition: 'all var(--editor-transition-fast)',
+    '&:hover': {
+      backgroundColor: 'var(--editor-panel-hover)',
+    },
   },
   shortcutKeys: {
     display: 'flex',
-    gap: tokens.spacingHorizontalXS,
+    gap: 'var(--editor-space-xs)',
     flexWrap: 'wrap',
   },
   key: {
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: `${tokens.spacingVerticalXXS} ${tokens.spacingHorizontalSNudge}`,
-    backgroundColor: tokens.colorNeutralBackground3,
-    border: `1px solid ${tokens.colorNeutralStroke2}`,
-    borderRadius: tokens.borderRadiusSmall,
-    fontSize: tokens.fontSizeBase200,
+    padding: 'var(--editor-space-xs) var(--editor-space-sm)',
+    backgroundColor: 'var(--editor-bg-elevated)',
+    border: `1px solid var(--editor-panel-border)`,
+    borderRadius: 'var(--editor-radius-sm)',
+    fontSize: 'var(--editor-font-size-sm)',
     fontFamily: 'monospace',
-    minWidth: '24px',
-    boxShadow: `0 1px 2px ${tokens.colorNeutralShadowAmbient}`,
+    fontWeight: 'var(--editor-font-weight-semibold)',
+    color: 'var(--editor-text-primary)',
+    minWidth: '28px',
+    boxShadow: 'var(--editor-shadow-sm)',
+    transition: 'all var(--editor-transition-fast)',
   },
   description: {
-    fontSize: tokens.fontSizeBase300,
-    color: tokens.colorNeutralForeground2,
+    fontSize: 'var(--editor-font-size-base)',
+    color: 'var(--editor-text-secondary)',
   },
   noResults: {
     textAlign: 'center',
-    padding: tokens.spacingVerticalXXL,
-    color: tokens.colorNeutralForeground3,
+    padding: 'var(--editor-space-2xl)',
+    color: 'var(--editor-text-tertiary)',
+    fontSize: 'var(--editor-font-size-base)',
   },
   header: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingBottom: 'var(--editor-space-md)',
+    borderBottom: `1px solid var(--editor-panel-border)`,
+  },
+  title: {
+    fontSize: 'var(--editor-font-size-xl)',
+    fontWeight: 'var(--editor-font-weight-bold)',
+    color: 'var(--editor-text-primary)',
   },
   closeButton: {
     minWidth: 'auto',
+    transition: 'all var(--editor-transition-fast)',
+    '&:hover': {
+      backgroundColor: 'var(--editor-panel-hover)',
+      color: 'var(--editor-accent)',
+      transform: 'scale(1.1)',
+    },
+    '&:active': {
+      transform: 'scale(0.95)',
+    },
   },
 });
 
@@ -150,7 +187,7 @@ export function KeyboardShortcutsHelp({ open, onClose }: KeyboardShortcutsHelpPr
       <DialogSurface className={styles.surface}>
         <DialogBody>
           <div className={styles.header}>
-            <DialogTitle>Keyboard Shortcuts</DialogTitle>
+            <DialogTitle className={styles.title}>Keyboard Shortcuts</DialogTitle>
             <Button
               appearance="subtle"
               icon={<Dismiss24Regular />}
