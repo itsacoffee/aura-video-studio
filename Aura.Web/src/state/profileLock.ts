@@ -3,12 +3,12 @@
  */
 
 import { create } from 'zustand';
+import * as profileLockApi from '../api/profileLockClient';
 import type {
   ProviderProfileLock,
   ProfileLockStatus,
   ProviderStatusInfo
 } from '../types/profileLock';
-import * as profileLockApi from '../api/profileLockClient';
 
 interface ProfileLockState {
   // Current active lock

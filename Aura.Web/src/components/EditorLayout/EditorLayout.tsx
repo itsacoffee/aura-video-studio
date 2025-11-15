@@ -1,10 +1,11 @@
-import { makeStyles, tokens } from '@fluentui/react-components';
+import { makeStyles } from '@fluentui/react-components';
 import React, { ReactNode, useState, useEffect, useCallback } from 'react';
 import { snapToBreakpoint } from '../../services/workspaceLayoutService';
 import { useWorkspaceLayoutStore } from '../../state/workspaceLayout';
 import { TopMenuBar } from '../Layout/TopMenuBar';
 import { MenuBar } from '../MenuBar/MenuBar';
 import { PanelHeader } from './PanelHeader';
+import '../../styles/video-editor-theme.css';
 
 // Constants
 const COLLAPSED_PANEL_WIDTH = 48;
@@ -15,7 +16,7 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     height: '100vh',
     overflow: 'hidden',
-    backgroundColor: 'var(--color-background)',
+    backgroundColor: 'var(--editor-bg-primary)',
   },
   fullscreenContainer: {
     position: 'fixed',
@@ -28,7 +29,7 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     height: '100vh',
     overflow: 'hidden',
-    backgroundColor: 'var(--color-background)',
+    backgroundColor: 'var(--editor-bg-primary)',
   },
   panelCollapsed: {
     width: `${COLLAPSED_PANEL_WIDTH}px !important`,
@@ -50,92 +51,126 @@ const useStyles = makeStyles({
     minHeight: '300px',
     display: 'flex',
     flexDirection: 'column',
-    borderBottom: `1px solid var(--panel-border, ${tokens.colorNeutralStroke1})`,
-    backgroundColor: 'var(--panel-bg, ${tokens.colorNeutralBackground3})',
+    borderBottom: `1px solid var(--editor-panel-border)`,
+    backgroundColor: 'var(--editor-bg-secondary)',
     overflow: 'hidden',
-    transition: 'flex var(--transition-panel)',
+    transition: 'flex var(--editor-transition-base)',
   },
   timelinePanel: {
     flex: 4,
     minHeight: '200px',
     display: 'flex',
     flexDirection: 'column',
-    backgroundColor: 'var(--panel-bg, ${tokens.colorNeutralBackground2})',
+    backgroundColor: 'var(--timeline-bg)',
     overflow: 'hidden',
-    transition: 'flex var(--transition-panel)',
+    transition: 'flex var(--editor-transition-base)',
   },
   propertiesPanel: {
     width: '320px',
     minWidth: '280px',
     maxWidth: '400px',
-    borderLeft: `1px solid var(--panel-border, ${tokens.colorNeutralStroke1})`,
-    backgroundColor: 'var(--panel-bg, ${tokens.colorNeutralBackground2})',
+    borderLeft: `1px solid var(--editor-panel-border)`,
+    backgroundColor: 'var(--editor-panel-bg)',
     overflow: 'auto',
     display: 'flex',
     flexDirection: 'column',
-    transition: 'width var(--transition-panel)',
+    transition: 'width var(--editor-transition-base)',
   },
   mediaLibraryPanel: {
     width: '280px',
     minWidth: '240px',
     maxWidth: '350px',
-    borderRight: `1px solid var(--panel-border, ${tokens.colorNeutralStroke1})`,
-    backgroundColor: 'var(--panel-bg, ${tokens.colorNeutralBackground2})',
+    borderRight: `1px solid var(--editor-panel-border)`,
+    backgroundColor: 'var(--editor-panel-bg)',
     overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column',
-    transition: 'width var(--transition-panel)',
+    transition: 'width var(--editor-transition-base)',
   },
   effectsLibraryPanel: {
     width: '280px',
     minWidth: '240px',
     maxWidth: '350px',
-    borderRight: `1px solid var(--panel-border, ${tokens.colorNeutralStroke1})`,
-    backgroundColor: 'var(--panel-bg, ${tokens.colorNeutralBackground2})',
+    borderRight: `1px solid var(--editor-panel-border)`,
+    backgroundColor: 'var(--editor-panel-bg)',
     overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column',
-    transition: 'width var(--transition-panel)',
+    transition: 'width var(--editor-transition-base)',
   },
   resizer: {
     width: '4px',
     cursor: 'ew-resize',
     backgroundColor: 'transparent',
     position: 'relative',
-    transition: 'background-color var(--transition-fast)',
-    '&:hover': {
-      backgroundColor: 'var(--color-primary)',
+    transition: 'background-color var(--editor-transition-fast)',
+    '&::after': {
+      content: '""',
+      position: 'absolute',
+      top: 0,
+      left: '50%',
+      transform: 'translateX(-50%)',
+      width: '2px',
+      height: '100%',
+      backgroundColor: 'var(--editor-panel-border)',
+      transition: 'all var(--editor-transition-fast)',
     },
-    '&:active': {
-      backgroundColor: 'var(--color-primary)',
+    '&:hover::after': {
+      backgroundColor: 'var(--editor-accent)',
+      boxShadow: '0 0 4px var(--editor-focus-ring)',
+      width: '3px',
+    },
+    '&:active::after': {
+      backgroundColor: 'var(--editor-accent)',
     },
     '&:focus': {
-      outline: `2px solid var(--color-primary)`,
+      outline: `2px solid var(--editor-accent)`,
       outlineOffset: '2px',
     },
   },
   resizerDragging: {
-    backgroundColor: 'var(--color-primary)',
+    '&::after': {
+      backgroundColor: 'var(--editor-accent)',
+      boxShadow: '0 0 6px var(--editor-focus-ring)',
+      width: '3px',
+    },
   },
   horizontalResizer: {
     height: '4px',
     cursor: 'ns-resize',
     backgroundColor: 'transparent',
     position: 'relative',
-    transition: 'background-color var(--transition-fast)',
-    '&:hover': {
-      backgroundColor: 'var(--color-primary)',
+    transition: 'background-color var(--editor-transition-fast)',
+    '&::after': {
+      content: '""',
+      position: 'absolute',
+      left: 0,
+      top: '50%',
+      transform: 'translateY(-50%)',
+      width: '100%',
+      height: '2px',
+      backgroundColor: 'var(--editor-panel-border)',
+      transition: 'all var(--editor-transition-fast)',
     },
-    '&:active': {
-      backgroundColor: 'var(--color-primary)',
+    '&:hover::after': {
+      backgroundColor: 'var(--editor-accent)',
+      boxShadow: '0 0 4px var(--editor-focus-ring)',
+      height: '3px',
+    },
+    '&:active::after': {
+      backgroundColor: 'var(--editor-accent)',
     },
     '&:focus': {
-      outline: `2px solid var(--color-primary)`,
+      outline: `2px solid var(--editor-accent)`,
       outlineOffset: '2px',
     },
   },
   horizontalResizerDragging: {
-    backgroundColor: 'var(--color-primary)',
+    '&::after': {
+      backgroundColor: 'var(--editor-accent)',
+      boxShadow: '0 0 6px var(--editor-focus-ring)',
+      height: '3px',
+    },
   },
 });
 

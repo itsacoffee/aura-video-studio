@@ -41,27 +41,28 @@ import { PlayheadIndicator } from '../Timeline/PlayheadIndicator';
 import { SnapGuides } from '../Timeline/SnapGuides';
 import { TimelineClip, TimelineClipData } from '../Timeline/TimelineClip';
 import { TimelineRuler } from '../Timeline/TimelineRuler';
+import '../../styles/video-editor-theme.css';
 
 const useStyles = makeStyles({
   container: {
     display: 'flex',
     flexDirection: 'column',
     height: '100%',
-    backgroundColor: tokens.colorNeutralBackground2,
+    backgroundColor: 'var(--timeline-bg)',
   },
   toolbar: {
     display: 'flex',
     alignItems: 'center',
-    gap: tokens.spacingHorizontalM,
-    padding: tokens.spacingVerticalM,
-    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
-    backgroundColor: tokens.colorNeutralBackground1,
+    gap: 'var(--editor-space-md)',
+    padding: 'var(--editor-space-md)',
+    borderBottom: `1px solid var(--editor-panel-border)`,
+    backgroundColor: 'var(--editor-panel-header-bg)',
     flexWrap: 'wrap',
   },
   toolbarGroup: {
     display: 'flex',
     alignItems: 'center',
-    gap: tokens.spacingHorizontalS,
+    gap: 'var(--editor-space-sm)',
   },
   timelineContainer: {
     flex: 1,
@@ -74,30 +75,34 @@ const useStyles = makeStyles({
   },
   track: {
     height: '60px',
-    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+    borderBottom: `1px solid var(--timeline-track-border)`,
     position: 'relative',
     display: 'flex',
+    backgroundColor: 'var(--timeline-track-bg)',
+    transition: 'background-color var(--editor-transition-fast)',
   },
   trackDragOver: {
-    backgroundColor: tokens.colorBrandBackground2,
+    backgroundColor: 'var(--editor-panel-hover)',
+    borderColor: 'var(--editor-accent)',
   },
   trackLabel: {
-    width: '100px',
-    padding: `${tokens.spacingVerticalXS} ${tokens.spacingVerticalS}`,
-    borderRight: `1px solid ${tokens.colorNeutralStroke1}`,
-    backgroundColor: tokens.colorNeutralBackground3,
-    fontWeight: tokens.fontWeightSemibold,
-    fontSize: tokens.fontSizeBase200,
+    width: '120px',
+    padding: 'var(--editor-space-sm)',
+    borderRight: `1px solid var(--editor-panel-border)`,
+    backgroundColor: 'var(--editor-panel-header-bg)',
+    fontWeight: 'var(--editor-font-weight-semibold)',
+    fontSize: 'var(--editor-font-size-sm)',
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalXXS,
+    gap: 'var(--editor-space-xs)',
     position: 'sticky',
     left: 0,
-    zIndex: 5,
+    zIndex: 'var(--editor-z-panel)',
   },
   trackLabelText: {
-    fontSize: tokens.fontSizeBase200,
-    fontWeight: tokens.fontWeightSemibold,
+    fontSize: 'var(--editor-font-size-sm)',
+    fontWeight: 'var(--editor-font-weight-semibold)',
+    color: 'var(--editor-text-primary)',
   },
   trackControls: {
     display: 'flex',

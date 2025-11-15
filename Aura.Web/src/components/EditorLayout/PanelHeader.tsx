@@ -1,29 +1,42 @@
-import { makeStyles, tokens, Button } from '@fluentui/react-components';
+import { makeStyles, Button } from '@fluentui/react-components';
 import {
   ChevronDown20Regular,
   ChevronUp20Regular,
   ChevronLeft20Regular,
   ChevronRight20Regular,
 } from '@fluentui/react-icons';
+import '../../styles/video-editor-theme.css';
 
 const useStyles = makeStyles({
   header: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
-    backgroundColor: tokens.colorNeutralBackground2,
-    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+    padding: 'var(--editor-space-sm) var(--editor-space-md)',
+    backgroundColor: 'var(--editor-panel-header-bg)',
+    borderBottom: `1px solid var(--editor-panel-border)`,
     minHeight: '36px',
+    transition: 'background-color var(--editor-transition-fast)',
+    '&:hover': {
+      backgroundColor: 'var(--editor-panel-hover)',
+    },
   },
   title: {
-    fontSize: tokens.fontSizeBase300,
-    fontWeight: tokens.fontWeightSemibold,
-    color: tokens.colorNeutralForeground1,
+    fontSize: 'var(--editor-font-size-sm)',
+    fontWeight: 'var(--editor-font-weight-semibold)',
+    color: 'var(--editor-text-primary)',
+    letterSpacing: '0.3px',
+    textTransform: 'uppercase',
   },
   collapseButton: {
     minWidth: '28px',
-    padding: tokens.spacingHorizontalXS,
+    padding: 'var(--editor-space-xs)',
+    color: 'var(--editor-text-secondary)',
+    transition: 'all var(--editor-transition-fast)',
+    '&:hover': {
+      color: 'var(--editor-text-primary)',
+      backgroundColor: 'var(--editor-panel-active)',
+    },
   },
 });
 

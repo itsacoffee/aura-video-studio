@@ -1,0 +1,588 @@
+/**
+ * Professional Video Editor Theme
+ * Inspired by Adobe Premiere Pro and CapCut
+ * Modern, dark-first NLE (Non-Linear Editor) aesthetics
+ */
+
+:root {
+  /* Professional NLE Color Palette - Dark Theme */
+  --editor-bg-primary: #1a1a1a;
+  --editor-bg-secondary: #252525;
+  --editor-bg-tertiary: #2d2d2d;
+  --editor-bg-elevated: #353535;
+  
+  /* Panel colors */
+  --editor-panel-bg: #1e1e1e;
+  --editor-panel-header-bg: #2a2a2a;
+  --editor-panel-border: #3a3a3a;
+  --editor-panel-hover: #2f2f2f;
+  --editor-panel-active: #3a3a3a;
+  
+  /* Timeline specific colors */
+  --timeline-bg: #1a1a1a;
+  --timeline-track-bg: #232323;
+  --timeline-track-border: #2d2d2d;
+  --timeline-ruler-bg: #252525;
+  --timeline-ruler-text: #999;
+  
+  /* Clip colors */
+  --clip-video-bg: #4a5568;
+  --clip-audio-bg: #2d7a8f;
+  --clip-image-bg: #6b46c1;
+  --clip-border: #ffffff20;
+  --clip-selected: #0ea5e9;
+  --clip-hover: #ffffff10;
+  
+  /* Playhead and scrubber */
+  --playhead-color: #f44;
+  --playhead-shadow: #ff444480;
+  --scrubber-bg: #333;
+  --scrubber-handle: #666;
+  
+  /* Text colors */
+  --editor-text-primary: #e8e8e8;
+  --editor-text-secondary: #a0a0a0;
+  --editor-text-tertiary: #707070;
+  --editor-text-disabled: #505050;
+  
+  /* Interactive elements */
+  --editor-accent: #0ea5e9;
+  --editor-accent-hover: #38bdf8;
+  --editor-accent-active: #0284c7;
+  --editor-focus-ring: #0ea5e980;
+  
+  /* Status colors */
+  --editor-success: #10b981;
+  --editor-warning: #f59e0b;
+  --editor-error: #ef4444;
+  --editor-info: #3b82f6;
+  
+  /* Shadows for depth */
+  --editor-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 40%);
+  --editor-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 50%), 0 2px 4px -1px rgb(0 0 0 / 40%);
+  --editor-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 60%), 0 4px 6px -2px rgb(0 0 0 / 50%);
+  --editor-shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 70%), 0 10px 10px -5px rgb(0 0 0 / 60%);
+  
+  /* Transitions */
+  --editor-transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --editor-transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --editor-transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* Border radius */
+  --editor-radius-sm: 2px;
+  --editor-radius-md: 4px;
+  --editor-radius-lg: 6px;
+  
+  /* Spacing scale */
+  --editor-space-xs: 4px;
+  --editor-space-sm: 8px;
+  --editor-space-md: 12px;
+  --editor-space-lg: 16px;
+  --editor-space-xl: 24px;
+  --editor-space-2xl: 32px;
+  
+  /* Typography */
+  --editor-font-size-xs: 11px;
+  --editor-font-size-sm: 12px;
+  --editor-font-size-base: 13px;
+  --editor-font-size-lg: 14px;
+  --editor-font-size-xl: 16px;
+  --editor-font-weight-normal: 400;
+  --editor-font-weight-medium: 500;
+  --editor-font-weight-semibold: 600;
+  --editor-font-weight-bold: 700;
+  
+  /* Z-index layers */
+  --editor-z-base: 1;
+  --editor-z-panel: 10;
+  --editor-z-toolbar: 20;
+  --editor-z-dropdown: 30;
+  --editor-z-modal: 40;
+  --editor-z-toast: 50;
+  --editor-z-playhead: 100;
+}
+
+/* Light theme overrides (optional, editor is primarily dark) */
+.light-editor-theme {
+  --editor-bg-primary: #f5f5f5;
+  --editor-bg-secondary: #fff;
+  --editor-bg-tertiary: #ececec;
+  --editor-bg-elevated: #f9f9f9;
+  --editor-panel-bg: #fff;
+  --editor-panel-header-bg: #f5f5f5;
+  --editor-panel-border: #e0e0e0;
+  --editor-panel-hover: #f0f0f0;
+  --editor-panel-active: #e8e8e8;
+  --timeline-bg: #fafafa;
+  --timeline-track-bg: #f5f5f5;
+  --timeline-track-border: #e0e0e0;
+  --timeline-ruler-bg: #ececec;
+  --timeline-ruler-text: #666;
+  --editor-text-primary: #1a1a1a;
+  --editor-text-secondary: #666;
+  --editor-text-tertiary: #999;
+  --editor-text-disabled: #ccc;
+  --editor-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 10%);
+  --editor-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 15%), 0 2px 4px -1px rgb(0 0 0 / 10%);
+  --editor-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 20%), 0 4px 6px -2px rgb(0 0 0 / 15%);
+  --editor-shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 25%), 0 10px 10px -5px rgb(0 0 0 / 20%);
+}
+
+/* Base editor container styling */
+.video-editor-container {
+  background-color: var(--editor-bg-primary);
+  color: var(--editor-text-primary);
+  font-size: var(--editor-font-size-base);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Panel styling */
+.editor-panel {
+  background-color: var(--editor-panel-bg);
+  border: 1px solid var(--editor-panel-border);
+  border-radius: var(--editor-radius-md);
+  overflow: hidden;
+}
+
+.editor-panel-header {
+  background-color: var(--editor-panel-header-bg);
+  border-bottom: 1px solid var(--editor-panel-border);
+  padding: var(--editor-space-sm) var(--editor-space-md);
+  font-size: var(--editor-font-size-sm);
+  font-weight: var(--editor-font-weight-semibold);
+  color: var(--editor-text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  user-select: none;
+}
+
+.editor-panel-content {
+  padding: var(--editor-space-md);
+  overflow: auto;
+}
+
+/* Timeline specific styling */
+.timeline-container {
+  background-color: var(--timeline-bg);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.timeline-toolbar {
+  background-color: var(--editor-panel-header-bg);
+  border-bottom: 1px solid var(--editor-panel-border);
+  padding: var(--editor-space-sm) var(--editor-space-md);
+  display: flex;
+  align-items: center;
+  gap: var(--editor-space-md);
+}
+
+.timeline-ruler {
+  background-color: var(--timeline-ruler-bg);
+  border-bottom: 1px solid var(--editor-panel-border);
+  height: 32px;
+  position: relative;
+  user-select: none;
+}
+
+.timeline-tracks {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+  background-color: var(--timeline-bg);
+}
+
+.timeline-track {
+  background-color: var(--timeline-track-bg);
+  border-bottom: 1px solid var(--timeline-track-border);
+  min-height: 48px;
+  position: relative;
+  display: flex;
+}
+
+.timeline-track-header {
+  background-color: var(--editor-panel-header-bg);
+  border-right: 1px solid var(--editor-panel-border);
+  width: 120px;
+  min-width: 120px;
+  display: flex;
+  align-items: center;
+  padding: var(--editor-space-sm);
+  gap: var(--editor-space-sm);
+  user-select: none;
+}
+
+.timeline-track-content {
+  flex: 1;
+  position: relative;
+  min-height: inherit;
+}
+
+/* Clip styling */
+.timeline-clip {
+  position: absolute;
+  height: 40px;
+  border-radius: var(--editor-radius-sm);
+  border: 1px solid var(--clip-border);
+  overflow: hidden;
+  cursor: move;
+  transition: all var(--editor-transition-fast);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--editor-space-sm);
+  font-size: var(--editor-font-size-sm);
+  font-weight: var(--editor-font-weight-medium);
+}
+
+.timeline-clip.video {
+  background: linear-gradient(135deg, var(--clip-video-bg) 0%, color-mix(in srgb, var(--clip-video-bg) 80%, black) 100%);
+}
+
+.timeline-clip.audio {
+  background: linear-gradient(135deg, var(--clip-audio-bg) 0%, color-mix(in srgb, var(--clip-audio-bg) 80%, black) 100%);
+}
+
+.timeline-clip.image {
+  background: linear-gradient(135deg, var(--clip-image-bg) 0%, color-mix(in srgb, var(--clip-image-bg) 80%, black) 100%);
+}
+
+.timeline-clip:hover {
+  border-color: var(--editor-accent);
+  box-shadow: 0 0 0 1px var(--editor-accent), var(--editor-shadow-md);
+  transform: translateY(-1px);
+}
+
+.timeline-clip.selected {
+  border: 2px solid var(--clip-selected);
+  box-shadow: 0 0 0 1px var(--clip-selected), var(--editor-shadow-lg);
+  z-index: var(--editor-z-panel);
+}
+
+.timeline-clip-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: white;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 50%);
+}
+
+/* Playhead styling */
+.timeline-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background-color: var(--playhead-color);
+  box-shadow: 0 0 8px var(--playhead-shadow);
+  z-index: var(--editor-z-playhead);
+  pointer-events: none;
+  transition: left var(--editor-transition-fast);
+}
+
+.timeline-playhead::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 8px solid var(--playhead-color);
+}
+
+.timeline-playhead-timecode {
+  position: absolute;
+  top: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--playhead-color);
+  color: white;
+  padding: 2px 6px;
+  border-radius: var(--editor-radius-sm);
+  font-size: var(--editor-font-size-xs);
+  font-weight: var(--editor-font-weight-semibold);
+  white-space: nowrap;
+  box-shadow: var(--editor-shadow-md);
+}
+
+/* Button styling */
+.editor-button {
+  background-color: var(--editor-panel-bg);
+  border: 1px solid var(--editor-panel-border);
+  border-radius: var(--editor-radius-sm);
+  padding: var(--editor-space-sm) var(--editor-space-md);
+  color: var(--editor-text-primary);
+  font-size: var(--editor-font-size-sm);
+  font-weight: var(--editor-font-weight-medium);
+  cursor: pointer;
+  transition: all var(--editor-transition-fast);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--editor-space-sm);
+}
+
+.editor-button:hover {
+  background-color: var(--editor-panel-hover);
+  border-color: var(--editor-accent);
+  box-shadow: var(--editor-shadow-sm);
+}
+
+.editor-button:active {
+  background-color: var(--editor-panel-active);
+  transform: translateY(1px);
+}
+
+.editor-button.primary {
+  background: linear-gradient(135deg, var(--editor-accent) 0%, color-mix(in srgb, var(--editor-accent) 80%, black) 100%);
+  border-color: var(--editor-accent);
+  color: white;
+}
+
+.editor-button.primary:hover {
+  background: linear-gradient(135deg, var(--editor-accent-hover) 0%, var(--editor-accent) 100%);
+  box-shadow: 0 0 0 2px var(--editor-focus-ring), var(--editor-shadow-md);
+}
+
+.editor-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Icon button styling */
+.editor-icon-button {
+  background-color: transparent;
+  border: none;
+  border-radius: var(--editor-radius-sm);
+  padding: var(--editor-space-sm);
+  color: var(--editor-text-secondary);
+  cursor: pointer;
+  transition: all var(--editor-transition-fast);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.editor-icon-button:hover {
+  background-color: var(--editor-panel-hover);
+  color: var(--editor-text-primary);
+}
+
+.editor-icon-button:active {
+  background-color: var(--editor-panel-active);
+}
+
+.editor-icon-button.active {
+  background-color: var(--editor-accent);
+  color: white;
+}
+
+/* Resizer styling */
+.editor-resizer {
+  background-color: transparent;
+  transition: background-color var(--editor-transition-fast);
+  position: relative;
+  z-index: var(--editor-z-panel);
+}
+
+.editor-resizer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 100%;
+  background-color: var(--editor-panel-border);
+  transition: background-color var(--editor-transition-fast);
+}
+
+.editor-resizer:hover::after,
+.editor-resizer.dragging::after {
+  background-color: var(--editor-accent);
+  box-shadow: 0 0 4px var(--editor-focus-ring);
+}
+
+.editor-resizer-horizontal::after {
+  width: 100%;
+  height: 2px;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+}
+
+/* Zoom controls */
+.timeline-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--editor-space-sm);
+  padding: var(--editor-space-sm);
+  background-color: var(--editor-panel-header-bg);
+  border-radius: var(--editor-radius-sm);
+}
+
+.timeline-zoom-slider {
+  width: 100px;
+  height: 4px;
+  background-color: var(--editor-panel-border);
+  border-radius: 2px;
+  position: relative;
+  cursor: pointer;
+}
+
+.timeline-zoom-slider-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--editor-accent) 0%, var(--editor-accent-hover) 100%);
+  border-radius: 2px;
+  transition: width var(--editor-transition-fast);
+}
+
+.timeline-zoom-slider-handle {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 12px;
+  height: 12px;
+  background-color: white;
+  border: 2px solid var(--editor-accent);
+  border-radius: 50%;
+  cursor: grab;
+  box-shadow: var(--editor-shadow-md);
+  transition: all var(--editor-transition-fast);
+}
+
+.timeline-zoom-slider-handle:hover {
+  transform: translate(-50%, -50%) scale(1.2);
+  box-shadow: 0 0 0 4px var(--editor-focus-ring), var(--editor-shadow-lg);
+}
+
+.timeline-zoom-slider-handle:active {
+  cursor: grabbing;
+}
+
+/* Context menu styling */
+.editor-context-menu {
+  background-color: var(--editor-panel-bg);
+  border: 1px solid var(--editor-panel-border);
+  border-radius: var(--editor-radius-md);
+  box-shadow: var(--editor-shadow-xl);
+  padding: var(--editor-space-xs);
+  min-width: 200px;
+  z-index: var(--editor-z-dropdown);
+}
+
+.editor-context-menu-item {
+  padding: var(--editor-space-sm) var(--editor-space-md);
+  border-radius: var(--editor-radius-sm);
+  color: var(--editor-text-primary);
+  font-size: var(--editor-font-size-sm);
+  cursor: pointer;
+  transition: all var(--editor-transition-fast);
+  display: flex;
+  align-items: center;
+  gap: var(--editor-space-md);
+}
+
+.editor-context-menu-item:hover {
+  background-color: var(--editor-panel-hover);
+}
+
+.editor-context-menu-item:active {
+  background-color: var(--editor-panel-active);
+}
+
+.editor-context-menu-divider {
+  height: 1px;
+  background-color: var(--editor-panel-border);
+  margin: var(--editor-space-xs) 0;
+}
+
+/* Scrollbar styling for editor */
+.video-editor-container ::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.video-editor-container ::-webkit-scrollbar-track {
+  background-color: var(--editor-bg-secondary);
+}
+
+.video-editor-container ::-webkit-scrollbar-thumb {
+  background-color: var(--editor-panel-border);
+  border-radius: 6px;
+  border: 2px solid var(--editor-bg-secondary);
+}
+
+.video-editor-container ::-webkit-scrollbar-thumb:hover {
+  background-color: var(--editor-text-tertiary);
+}
+
+.video-editor-container ::-webkit-scrollbar-corner {
+  background-color: var(--editor-bg-secondary);
+}
+
+/* Tooltip styling */
+.editor-tooltip {
+  background-color: var(--editor-bg-elevated);
+  border: 1px solid var(--editor-panel-border);
+  border-radius: var(--editor-radius-sm);
+  padding: var(--editor-space-sm) var(--editor-space-md);
+  color: var(--editor-text-primary);
+  font-size: var(--editor-font-size-xs);
+  box-shadow: var(--editor-shadow-lg);
+  z-index: var(--editor-z-toast);
+  max-width: 250px;
+}
+
+/* Animation classes */
+@keyframes editorFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes editorSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.editor-fade-in {
+  animation: editorFadeIn var(--editor-transition-base) ease-out;
+}
+
+.editor-slide-in {
+  animation: editorSlideIn var(--editor-transition-base) ease-out;
+}
+
+/* Focus visible styling */
+.video-editor-container *:focus-visible {
+  outline: 2px solid var(--editor-accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--editor-focus-ring);
+}
+
+/* Selection styling */
+.video-editor-container ::selection {
+  background-color: var(--editor-accent);
+  color: white;
+}
