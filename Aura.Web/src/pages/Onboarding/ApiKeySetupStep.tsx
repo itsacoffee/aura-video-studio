@@ -13,7 +13,8 @@ import {
   Divider,
 } from '@fluentui/react-components';
 import { useState } from 'react';
-import { ApiKeyInput } from '../../components/ApiKeyInput';
+import { EnhancedApiKeyInput } from '../../components/Onboarding/EnhancedApiKeyInput';
+import type { FieldValidationError } from '../../components/Onboarding/FieldValidationErrors';
 import { ProviderHelpPanel } from '../../components/ProviderHelpPanel';
 
 const useStyles = makeStyles({
@@ -82,6 +83,8 @@ export interface ApiKeySetupStepProps {
   apiKeys: Record<string, string>;
   validationStatus: Record<string, 'idle' | 'validating' | 'valid' | 'invalid'>;
   validationErrors: Record<string, string>;
+  fieldErrors?: Record<string, FieldValidationError[]>;
+  accountInfo?: Record<string, string>;
   onApiKeyChange: (provider: string, value: string) => void;
   onValidateApiKey: (provider: string) => void;
   onSkipValidation?: (provider: string) => void;
@@ -284,7 +287,9 @@ const providers: ProviderConfig[] = [
 export function ApiKeySetupStep({
   apiKeys,
   validationStatus,
-  validationErrors,
+  validationErrors: _validationErrors,
+  fieldErrors = {},
+  accountInfo = {},
   onApiKeyChange,
   onValidateApiKey,
   onSkipValidation,
@@ -391,13 +396,14 @@ export function ApiKeySetupStep({
                         <Title3 style={{ marginBottom: tokens.spacingVerticalS }}>
                           Enter API Key
                         </Title3>
-                        <ApiKeyInput
-                          provider={provider.name}
+                        <EnhancedApiKeyInput
+                          providerDisplayName={provider.name}
                           value={apiKeys[provider.id] || ''}
                           onChange={(value) => onApiKeyChange(provider.id, value)}
                           onValidate={() => handleValidate(provider.id)}
                           validationStatus={validationStatus[provider.id] || 'idle'}
-                          error={validationErrors[provider.id]}
+                          fieldErrors={fieldErrors[provider.id]}
+                          accountInfo={accountInfo[provider.id]}
                           onSkipValidation={
                             onSkipValidation ? () => onSkipValidation(provider.id) : undefined
                           }
