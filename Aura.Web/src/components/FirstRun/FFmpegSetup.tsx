@@ -187,11 +187,28 @@ export const FFmpegSetup: FC<FFmpegSetupProps> = ({ onStatusChange }) => {
         body: JSON.stringify({ version: 'latest' }),
       });
 
-      if (!response.ok) {
-        throw new Error('Installation failed');
+      const result = await response.json();
+
+      if (!result.success) {
+        console.error('Installation failed:', result);
+
+        const errorMessage =
+          result.errorMessage || result.message || result.detail || 'Installation failed';
+        const howToFixSteps = result.howToFix || [];
+
+        alert(
+          `FFmpeg installation failed:\n\n${errorMessage}\n\n${
+            howToFixSteps.length > 0
+              ? `How to fix:\n${howToFixSteps.map((step: string, i: number) => `${i + 1}. ${step}`).join('\n')}`
+              : ''
+          }`
+        );
+
+        setInstalling(false);
+        setInstallProgress(0);
+        return;
       }
 
-      await response.json();
       setInstallProgress(100);
 
       setTimeout(async () => {
@@ -202,6 +219,11 @@ export const FFmpegSetup: FC<FFmpegSetupProps> = ({ onStatusChange }) => {
     } catch (error: unknown) {
       const errorObj = error instanceof Error ? error : new Error(String(error));
       console.error('Failed to install FFmpeg:', errorObj.message);
+
+      alert(
+        `Network error during installation:\n\n${errorObj.message}\n\nPlease check your internet connection and try again.`
+      );
+
       setInstalling(false);
       setInstallProgress(0);
     }

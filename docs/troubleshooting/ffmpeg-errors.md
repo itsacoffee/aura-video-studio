@@ -12,15 +12,29 @@ This guide helps you troubleshoot FFmpeg-related errors in Aura Video Studio.
 
 ---
 
+## Error Codes Reference
+
+### Installation Error Codes
+
+- **E302**: FFmpeg not found on system
+- **E303**: FFmpeg validation failed or corrupted binary
+- **E311**: Download source not found (404)
+- **E312**: No download mirrors available
+- **E313**: General installation failure
+- **E320**: Download timeout
+- **E321**: Network error during download
+- **E322**: Downloaded file corrupted or checksum mismatch
+- **E323**: DNS resolution failed
+- **E324**: TLS/SSL connection failed
+- **E325**: Disk I/O error during installation
+
+---
+
 ## Installation Issues
 
-### FFmpeg Not Found
+### E302: FFmpeg Not Found
 
 **Error**: "FFmpeg is not installed or cannot be found on the system path"
-
-**Error Codes**:
-- **FFmpegNotFound**
-- **E302-FFMPEG_NOT_READY**
 
 **Symptoms**:
 - Cannot export videos
@@ -40,9 +54,6 @@ This guide helps you troubleshoot FFmpeg-related errors in Aura Video Studio.
 
 **Option 2: Install via Chocolatey**
 ```powershell
-# Install Chocolatey if not already installed
-# Run PowerShell as Administrator
-
 choco install ffmpeg -y
 ```
 
@@ -51,25 +62,24 @@ choco install ffmpeg -y
 2. Extract to `C:\ffmpeg`
 3. Add to PATH:
    ```powershell
-   # Run as Administrator
    setx /M PATH "%PATH%;C:\ffmpeg\bin"
    ```
 4. Restart terminal/Aura
 
+**Option 4: Use AURA_FFMPEG_PATH Environment Variable**
+```powershell
+setx AURA_FFMPEG_PATH "C:\path\to\ffmpeg.exe"
+```
+
 **Verify Installation**:
 ```powershell
 ffmpeg -version
-# Should display FFmpeg version info
 ```
 
 #### Mac
 
 **Option 1: Homebrew** (Recommended)
 ```bash
-# Install Homebrew if not already installed
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-# Install FFmpeg
 brew install ffmpeg
 ```
 
@@ -78,11 +88,15 @@ brew install ffmpeg
 sudo port install ffmpeg
 ```
 
+**Option 3: Use AURA_FFMPEG_PATH**
+```bash
+export AURA_FFMPEG_PATH="/usr/local/bin/ffmpeg"
+```
+
 **Verify Installation**:
 ```bash
 ffmpeg -version
 which ffmpeg
-# Should show: /usr/local/bin/ffmpeg or /opt/homebrew/bin/ffmpeg
 ```
 
 #### Linux
@@ -97,6 +111,233 @@ sudo apt install ffmpeg -y
 ```bash
 sudo dnf install ffmpeg -y
 ```
+
+**Option: Use AURA_FFMPEG_PATH**
+```bash
+export AURA_FFMPEG_PATH="/usr/bin/ffmpeg"
+```
+
+#### Docker
+
+Add FFmpeg to your Dockerfile:
+```dockerfile
+RUN apt-get update && apt-get install -y ffmpeg
+```
+
+Or set the environment variable:
+```dockerfile
+ENV AURA_FFMPEG_PATH=/usr/bin/ffmpeg
+```
+
+---
+
+### E303: FFmpeg Validation Failed
+
+**Error**: "FFmpeg binary is invalid or corrupted"
+
+**Symptoms**:
+- FFmpeg installed but fails to run
+- Version check returns errors
+- Binary is from wrong architecture
+
+**Solutions**:
+1. **Reinstall FFmpeg**:
+   - Use the Download Center to reinstall
+   - Or download manually from official source
+
+2. **Check System Architecture**:
+   - Ensure FFmpeg matches your OS (x64, ARM, etc.)
+   - Windows: Use x64 builds for 64-bit Windows
+   - Mac: Use appropriate build for Intel or Apple Silicon
+
+3. **Verify Binary Integrity**:
+   ```bash
+   ffmpeg -version
+   ```
+   Should complete in under 5 seconds without errors
+
+4. **Check File Permissions** (Linux/Mac):
+   ```bash
+   chmod +x /path/to/ffmpeg
+   ```
+
+---
+
+### E311: Download Source Not Found
+
+**Error**: "FFmpeg download source not found (404)"
+
+**Symptoms**:
+- Installation fails immediately
+- All download mirrors return 404
+- Error message mentions URL not found
+
+**Solutions**:
+1. **Try Again**: The mirror list may resolve to a working source on retry
+2. **Manual Download**: 
+   - Download from https://ffmpeg.org/download.html
+   - Use "Use Existing FFmpeg" option in Aura
+3. **Check Internet Connection**: Ensure you can access external websites
+4. **Firewall**: Verify firewall isn't blocking downloads
+
+---
+
+### E312: No Download Mirrors Available
+
+**Error**: "No download mirrors available for FFmpeg"
+
+**Symptoms**:
+- Installation cannot start
+- No download sources configured
+- Manifest configuration issue
+
+**Solutions**:
+1. **Update Application**: Ensure you have the latest version
+2. **Check Configuration**: Verify engine manifest is properly configured
+3. **Manual Installation**: Download FFmpeg manually and use "Use Existing FFmpeg"
+4. **Contact Support**: If issue persists after update
+
+---
+
+### E313: General Installation Failure
+
+**Error**: "Installation failed due to an unknown error"
+
+**Symptoms**:
+- Installation fails without specific error
+- Generic failure message
+- Logs don't indicate specific cause
+
+**Solutions**:
+1. **Check Disk Space**: Ensure at least 500MB free space
+2. **Restart Application**: Close and restart Aura Video Studio
+3. **Check Antivirus**: Temporarily disable antivirus during installation
+4. **Run as Administrator** (Windows): Right-click → Run as Administrator
+5. **Check Logs**: Review application logs for detailed error information
+6. **Manual Installation**: Download and install FFmpeg manually
+
+---
+
+### E320: Download Timeout
+
+**Error**: "Download timed out"
+
+**Symptoms**:
+- Installation hangs
+- Download never completes
+- Timeout error after extended wait
+
+**Solutions**:
+1. **Check Internet Speed**: Ensure stable connection with adequate speed
+2. **Use Wired Connection**: Switch from WiFi to ethernet if possible
+3. **Try Later**: Network conditions may improve
+4. **Increase Timeout**: Contact support if persistent
+5. **Manual Download**: Download FFmpeg directly and use "Use Existing FFmpeg"
+
+---
+
+### E321: Network Error
+
+**Error**: "Network error during download"
+
+**Symptoms**:
+- Connection drops during download
+- Intermittent network failures
+- DNS or routing issues
+
+**Solutions**:
+1. **Check Internet Connection**: Verify network stability
+2. **Disable VPN**: Try without VPN if using one
+3. **Check Firewall**: Ensure firewall allows outbound HTTPS connections
+4. **Try Different Network**: Use different WiFi or mobile hotspot
+5. **Check Proxy Settings**: Verify proxy configuration if applicable
+6. **Manual Download**: Download FFmpeg manually from official site
+
+---
+
+### E322: Downloaded File Corrupted
+
+**Error**: "Downloaded file is corrupted or checksum mismatch"
+
+**Symptoms**:
+- Download completes but validation fails
+- Checksum doesn't match expected value
+- Extracted files are incomplete
+
+**Solutions**:
+1. **Clear Cache**: Delete partial downloads and try again
+2. **Check Disk Space**: Ensure sufficient space for extraction
+3. **Disable Antivirus**: Temporarily disable during download
+4. **Try Different Mirror**: Installation will try alternate sources
+5. **Check Disk Health**: Run disk check utility (chkdsk on Windows)
+6. **Manual Download**: Download from official FFmpeg website
+
+---
+
+### E323: DNS Resolution Failed
+
+**Error**: "Unable to resolve download server hostname"
+
+**Symptoms**:
+- Cannot connect to download server
+- DNS lookup failures
+- "Host not found" errors
+
+**Solutions**:
+1. **Check Internet Connection**: Verify general internet access
+2. **Try Different DNS**:
+   - Windows: Use Google DNS (8.8.8.8, 8.8.4.4)
+   - Mac/Linux: Configure `/etc/resolv.conf`
+3. **Flush DNS Cache**:
+   - Windows: `ipconfig /flushdns`
+   - Mac: `sudo dscacheutil -flushcache`
+   - Linux: `sudo systemd-resolve --flush-caches`
+4. **Check Hosts File**: Ensure no blocking entries
+5. **Wait and Retry**: DNS propagation may be in progress
+
+---
+
+### E324: TLS/SSL Connection Failed
+
+**Error**: "Failed to establish secure connection"
+
+**Symptoms**:
+- SSL handshake failures
+- Certificate validation errors
+- TLS protocol mismatch
+
+**Solutions**:
+1. **Check System Time**: Ensure date/time are correct
+2. **Update Operating System**: Install latest security patches
+3. **Update Root Certificates**: 
+   - Windows: Run Windows Update
+   - Mac: Update via Software Update
+   - Linux: `sudo update-ca-certificates`
+4. **Check Firewall**: Verify HTTPS traffic is allowed
+5. **Disable SSL Inspection**: If using corporate firewall
+6. **Manual Download**: Download FFmpeg without HTTPS restrictions
+
+---
+
+### E325: Disk I/O Error
+
+**Error**: "Failed to write to disk during installation"
+
+**Symptoms**:
+- Cannot write files
+- Disk full errors
+- Permission denied errors
+
+**Solutions**:
+1. **Check Disk Space**: Free up at least 500MB
+2. **Check Permissions**: Ensure write access to installation directory
+3. **Run as Administrator** (Windows): Right-click → Run as Administrator
+4. **Check Disk Health**: Run disk check utility
+5. **Try Different Location**: Install to different drive
+6. **Close Other Applications**: Free up file handles
+7. **Reboot**: Restart computer and try again
+
+---
 
 **Arch Linux**:
 ```bash
