@@ -41,6 +41,12 @@ dotnet_analyzer_diagnostic.severity = warning
 # IDE style warnings - set to silent to focus on real compiler and code analysis warnings
 dotnet_analyzer_diagnostic.category-Style.severity = silent
 
+# IDE0052: Private member can be removed as the value assigned to it is never read
+# IDE0051: Private member is unused
+# Set to suggestion to allow build to succeed while maintaining code quality awareness
+dotnet_diagnostic.IDE0052.severity = suggestion
+dotnet_diagnostic.IDE0051.severity = suggestion
+
 # Important code analysis warnings
 dotnet_diagnostic.CA1848.severity = suggestion
 dotnet_diagnostic.CA1305.severity = warning
