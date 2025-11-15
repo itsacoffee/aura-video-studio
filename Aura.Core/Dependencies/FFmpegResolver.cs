@@ -47,15 +47,18 @@ public class FFmpegResolver
 
         _logger.LogInformation("Resolving FFmpeg path with precedence: Managed > Configured > PATH");
 
+        var attemptedPaths = new List<string>();
         FfmpegResolutionResult result;
 
         try
         {
             // 1. Check managed install first (highest priority)
             result = await CheckManagedInstallAsync(ct).ConfigureAwait(false);
+            attemptedPaths.AddRange(result.AttemptedPaths);
             if (result.Found && result.IsValid)
             {
                 _logger.LogInformation("Using managed FFmpeg install: {Path}", result.Path);
+                result.AttemptedPaths = attemptedPaths;
                 CacheResult(result);
                 return result;
             }
@@ -64,9 +67,11 @@ public class FFmpegResolver
             if (!string.IsNullOrEmpty(configuredPath))
             {
                 result = await CheckConfiguredPathAsync(configuredPath, ct).ConfigureAwait(false);
+                attemptedPaths.AddRange(result.AttemptedPaths);
                 if (result.Found && result.IsValid)
                 {
                     _logger.LogInformation("Using configured FFmpeg path: {Path}", result.Path);
+                    result.AttemptedPaths = attemptedPaths;
                     CacheResult(result);
                     return result;
                 }
@@ -74,9 +79,11 @@ public class FFmpegResolver
 
             // 3. Check PATH environment
             result = await CheckPathEnvironmentAsync(ct).ConfigureAwait(false);
+            attemptedPaths.AddRange(result.AttemptedPaths);
             if (result.Found && result.IsValid)
             {
                 _logger.LogInformation("Using FFmpeg from PATH");
+                result.AttemptedPaths = attemptedPaths;
                 CacheResult(result);
                 return result;
             }
@@ -87,7 +94,8 @@ public class FFmpegResolver
                 Found = false,
                 IsValid = false,
                 Source = "None",
-                Error = "FFmpeg not found in any location. Install managed FFmpeg or configure path in Settings."
+                Error = "FFmpeg not found in any location. Install managed FFmpeg or configure path in Settings.",
+                AttemptedPaths = attemptedPaths
             };
 
             CacheResult(result);
@@ -101,7 +109,8 @@ public class FFmpegResolver
                 Found = false,
                 IsValid = false,
                 Source = "None",
-                Error = $"Error during FFmpeg resolution: {ex.Message}"
+                Error = $"Error during FFmpeg resolution: {ex.Message}",
+                AttemptedPaths = attemptedPaths
             };
             return result;
         }
@@ -114,13 +123,16 @@ public class FFmpegResolver
     {
         _logger.LogDebug("Checking managed install root: {Root}", _managedInstallRoot);
 
+        var attemptedPaths = new List<string> { _managedInstallRoot };
+
         if (!Directory.Exists(_managedInstallRoot))
         {
             return new FfmpegResolutionResult
             {
                 Found = false,
                 Source = "Managed",
-                Error = "Managed install directory does not exist"
+                Error = "Managed install directory does not exist",
+                AttemptedPaths = attemptedPaths
             };
         }
 
@@ -132,7 +144,8 @@ public class FFmpegResolver
             {
                 Found = false,
                 Source = "Managed",
-                Error = "No managed FFmpeg versions installed"
+                Error = "No managed FFmpeg versions installed",
+                AttemptedPaths = attemptedPaths
             };
         }
 
@@ -143,6 +156,8 @@ public class FFmpegResolver
         foreach (var versionDir in versionDirs)
         {
             var manifestPath = Path.Combine(versionDir, "install.json");
+            attemptedPaths.Add(manifestPath);
+            
             if (!File.Exists(manifestPath))
             {
                 _logger.LogDebug("No manifest in {Dir}, skipping", versionDir);
@@ -159,6 +174,8 @@ public class FFmpegResolver
                     _logger.LogWarning("Invalid manifest in {Dir}: manifest is null or missing FFmpegPath", versionDir);
                     continue;
                 }
+
+                attemptedPaths.Add(manifest.FfmpegPath);
 
                 if (!File.Exists(manifest.FfmpegPath))
                 {
@@ -177,7 +194,8 @@ public class FFmpegResolver
                         Path = manifest.FfmpegPath,
                         Version = manifest.Version,
                         Source = "Managed",
-                        ValidationOutput = validation.output
+                        ValidationOutput = validation.output,
+                        AttemptedPaths = attemptedPaths
                     };
                 }
                 else
@@ -199,7 +217,8 @@ public class FFmpegResolver
         {
             Found = false,
             Source = "Managed",
-            Error = "No valid managed FFmpeg installations found"
+            Error = "No valid managed FFmpeg installations found",
+            AttemptedPaths = attemptedPaths
         };
     }
 
@@ -210,6 +229,7 @@ public class FFmpegResolver
     {
         _logger.LogDebug("Checking configured path: {Path}", configuredPath);
 
+        var attemptedPaths = new List<string> { configuredPath };
         string resolvedPath;
 
         // Handle the case where configuredPath is just "ffmpeg" (indicates PATH lookup previously worked)
@@ -228,6 +248,7 @@ public class FFmpegResolver
         {
             var exeName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "ffmpeg.exe" : "ffmpeg";
             var exePath = Path.Combine(configuredPath, exeName);
+            attemptedPaths.Add(exePath);
 
             if (File.Exists(exePath))
             {
@@ -236,6 +257,7 @@ public class FFmpegResolver
             else
             {
                 var binPath = Path.Combine(configuredPath, "bin", exeName);
+                attemptedPaths.Add(binPath);
                 if (File.Exists(binPath))
                 {
                     resolvedPath = binPath;
@@ -246,7 +268,8 @@ public class FFmpegResolver
                     {
                         Found = false,
                         Source = "Configured",
-                        Error = $"FFmpeg executable not found in configured directory: {configuredPath}"
+                        Error = $"FFmpeg executable not found in configured directory: {configuredPath}",
+                        AttemptedPaths = attemptedPaths
                     };
                 }
             }
@@ -257,7 +280,8 @@ public class FFmpegResolver
             {
                 Found = false,
                 Source = "Configured",
-                Error = $"Configured path does not exist: {configuredPath}"
+                Error = $"Configured path does not exist: {configuredPath}",
+                AttemptedPaths = attemptedPaths
             };
         }
 
@@ -271,7 +295,8 @@ public class FFmpegResolver
                 Path = resolvedPath,
                 Version = ExtractVersionString(validation.output),
                 Source = "Configured",
-                ValidationOutput = validation.output
+                ValidationOutput = validation.output,
+                AttemptedPaths = attemptedPaths
             };
         }
         else
@@ -282,7 +307,8 @@ public class FFmpegResolver
                 IsValid = false,
                 Path = resolvedPath,
                 Source = "Configured",
-                Error = $"FFmpeg validation failed: {validation.error}"
+                Error = $"FFmpeg validation failed: {validation.error}",
+                AttemptedPaths = attemptedPaths
             };
         }
     }
@@ -294,9 +320,11 @@ public class FFmpegResolver
     {
         _logger.LogDebug("Checking PATH environment and common directories for FFmpeg");
 
+        var attemptedPaths = new List<string>();
         var exeName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "ffmpeg.exe" : "ffmpeg";
 
         // First, try PATH
+        attemptedPaths.Add($"PATH/{exeName}");
         var validation = await ValidateFFmpegBinaryAsync(exeName, ct).ConfigureAwait(false);
         if (validation.success)
         {
@@ -307,7 +335,8 @@ public class FFmpegResolver
                 Path = exeName,
                 Version = ExtractVersionString(validation.output),
                 Source = "PATH",
-                ValidationOutput = validation.output
+                ValidationOutput = validation.output,
+                AttemptedPaths = attemptedPaths
             };
         }
 
@@ -336,6 +365,7 @@ public class FFmpegResolver
             // Check each common path
             foreach (var path in commonPaths.Distinct())
             {
+                attemptedPaths.Add(path);
                 if (!File.Exists(path))
                     continue;
 
@@ -351,7 +381,8 @@ public class FFmpegResolver
                         Path = path,
                         Version = ExtractVersionString(pathValidation.output),
                         Source = "Common Directory",
-                        ValidationOutput = pathValidation.output
+                        ValidationOutput = pathValidation.output,
+                        AttemptedPaths = attemptedPaths
                     };
                 }
             }
@@ -361,7 +392,8 @@ public class FFmpegResolver
         {
             Found = false,
             Source = "PATH",
-            Error = "FFmpeg not found on PATH or common installation directories"
+            Error = "FFmpeg not found on PATH or common installation directories",
+            AttemptedPaths = attemptedPaths
         };
     }
 
@@ -472,5 +504,5 @@ public class FfmpegResolutionResult
     public string Source { get; set; } = "None";
     public string? ValidationOutput { get; set; }
     public string? Error { get; set; }
-    public List<string>? AttemptedPaths { get; set; }
+    public List<string> AttemptedPaths { get; set; } = new();
 }

@@ -15,6 +15,9 @@ export interface FFmpegStatus {
   path: string | null;
   source: string;
   error: string | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+  attemptedPaths: string[];
   versionMeetsRequirement: boolean;
   minimumVersion: string;
   hardwareAcceleration: FFmpegHardwareAcceleration;
