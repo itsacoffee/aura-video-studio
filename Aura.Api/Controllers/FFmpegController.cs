@@ -90,7 +90,6 @@ public class FFmpegController : ControllerBase
 
             var version = request?.Version ?? "latest";
 
-            // Get mirrors from manifest
             var manifest = await _manifestLoader.LoadManifestAsync().ConfigureAwait(false);
             var ffmpegEngine = manifest.Engines.FirstOrDefault(e => e.Id == "ffmpeg");
 
@@ -99,28 +98,30 @@ public class FFmpegController : ControllerBase
                 return NotFound(new
                 {
                     type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E311",
-                    title = "FFmpeg Not Found",
+                    title = "FFmpeg Not Found in Manifest",
                     status = 404,
                     detail = "FFmpeg not found in engine manifest",
+                    howToFix = new[]
+                    {
+                        "Check that the engine manifest is properly configured",
+                        "Contact support if the issue persists"
+                    },
                     correlationId
                 });
             }
 
             var mirrors = new List<string>();
 
-            // Add primary URL
             if (ffmpegEngine.Urls.ContainsKey("windows"))
             {
                 mirrors.Add(ffmpegEngine.Urls["windows"]);
             }
 
-            // Add mirrors from manifest
             if (ffmpegEngine.Mirrors != null && ffmpegEngine.Mirrors.ContainsKey("windows"))
             {
                 mirrors.AddRange(ffmpegEngine.Mirrors["windows"]);
             }
 
-            // Fallback mirror
             mirrors.Add("https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip");
 
             if (mirrors.Count == 0)
@@ -128,14 +129,18 @@ public class FFmpegController : ControllerBase
                 return BadRequest(new
                 {
                     type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E312",
-                    title = "No Mirrors Available",
+                    title = "No Download Mirrors Available",
                     status = 400,
                     detail = "No download mirrors available for FFmpeg",
+                    howToFix = new[]
+                    {
+                        "Check your internet connection",
+                        "Download FFmpeg manually and use the 'Use Existing FFmpeg' option"
+                    },
                     correlationId
                 });
             }
 
-            // Start installation
             _logger.LogInformation("[{CorrelationId}] Installing FFmpeg from {Count} mirrors", correlationId, mirrors.Count);
 
             var installResult = await _installer.InstallFromMirrorsAsync(
@@ -147,26 +152,26 @@ public class FFmpegController : ControllerBase
 
             if (!installResult.Success)
             {
-                return StatusCode(500, new
+                var errorCode = ClassifyInstallationError(installResult.ErrorMessage);
+                var howToFix = GetInstallationHowToFix(errorCode);
+
+                _logger.LogWarning("[{CorrelationId}] FFmpeg installation failed: {Error}", 
+                    correlationId, installResult.ErrorMessage);
+
+                return Ok(new
                 {
                     success = false,
                     message = installResult.ErrorMessage ?? "Failed to install FFmpeg",
-                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E313",
-                    title = "Installation Failed",
-                    status = 500,
-                    detail = installResult.ErrorMessage ?? "Failed to install FFmpeg",
-                    howToFix = new[]
-                    {
-                        "Check your internet connection",
-                        "Verify firewall is not blocking the download",
-                        "Try using a VPN if downloads are restricted in your region",
-                        "Download FFmpeg manually and use the 'Use Existing FFmpeg' option"
-                    },
+                    type = $"https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/ffmpeg-errors.md#{errorCode}",
+                    title = "FFmpeg Installation Failed",
+                    status = 200,
+                    detail = GenerateUserFriendlyInstallError(errorCode, installResult.ErrorMessage),
+                    errorCode,
+                    howToFix,
                     correlationId
                 });
             }
 
-            // Invalidate resolver cache so new install is picked up
             _resolver.InvalidateCache();
 
             _logger.LogInformation("[{CorrelationId}] FFmpeg installed successfully: {Path}",
@@ -182,28 +187,193 @@ public class FFmpegController : ControllerBase
                 correlationId
             });
         }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("[{CorrelationId}] FFmpeg installation cancelled", correlationId);
+            
+            return Ok(new
+            {
+                success = false,
+                message = "Installation was cancelled",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E998",
+                title = "Installation Cancelled",
+                status = 200,
+                detail = "The installation was cancelled by the user or timed out",
+                errorCode = "E998",
+                howToFix = new[] { "Try the installation again if it was not intentionally cancelled" },
+                correlationId
+            });
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[{CorrelationId}] Error installing FFmpeg", correlationId);
 
-            return StatusCode(500, new
+            var errorMessage = ClassifyNetworkException(ex);
+
+            return Ok(new
             {
                 success = false,
-                message = $"Unexpected error during FFmpeg installation: {ex.Message}",
-                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E313",
-                title = "Installation Error",
-                status = 500,
-                detail = $"Unexpected error during FFmpeg installation: {ex.Message}",
-                howToFix = new[]
-                {
-                    "Check the error message for specific details",
-                    "Ensure you have sufficient disk space",
-                    "Try restarting the application",
-                    "Check antivirus software is not blocking the installer"
-                },
+                message = errorMessage.message,
+                type = $"https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/ffmpeg-errors.md#{errorMessage.code}",
+                title = errorMessage.title,
+                status = 200,
+                detail = errorMessage.detail,
+                errorCode = errorMessage.code,
+                howToFix = errorMessage.howToFix,
                 correlationId
             });
         }
+    }
+
+    private string ClassifyInstallationError(string? errorMessage)
+    {
+        if (string.IsNullOrEmpty(errorMessage))
+        {
+            return "E313";
+        }
+
+        if (errorMessage.Contains("404") || errorMessage.Contains("not found", StringComparison.OrdinalIgnoreCase))
+        {
+            return "E311";
+        }
+
+        if (errorMessage.Contains("timeout", StringComparison.OrdinalIgnoreCase))
+        {
+            return "E320";
+        }
+
+        if (errorMessage.Contains("network", StringComparison.OrdinalIgnoreCase) || 
+            errorMessage.Contains("connection", StringComparison.OrdinalIgnoreCase))
+        {
+            return "E321";
+        }
+
+        if (errorMessage.Contains("checksum", StringComparison.OrdinalIgnoreCase) || 
+            errorMessage.Contains("corrupt", StringComparison.OrdinalIgnoreCase))
+        {
+            return "E322";
+        }
+
+        if (errorMessage.Contains("validation", StringComparison.OrdinalIgnoreCase))
+        {
+            return "E303";
+        }
+
+        return "E313";
+    }
+
+    private string GenerateUserFriendlyInstallError(string errorCode, string? technicalMessage)
+    {
+        return errorCode switch
+        {
+            "E311" => "FFmpeg download source not found. The download URL may have changed.",
+            "E320" => "Download timed out. This may be due to slow network connection or large file size.",
+            "E321" => "Network error occurred during download. Check your internet connection.",
+            "E322" => "Downloaded file is corrupted. The download was incomplete or the file was tampered with.",
+            "E303" => "FFmpeg binary validation failed. The downloaded file may be incompatible with your system.",
+            _ => technicalMessage ?? "Installation failed due to an unknown error."
+        };
+    }
+
+    private string[] GetInstallationHowToFix(string errorCode)
+    {
+        return errorCode switch
+        {
+            "E311" => new[]
+            {
+                "Try the installation again - the mirror list may resolve to a working source",
+                "Download FFmpeg manually from https://ffmpeg.org",
+                "Use the 'Use Existing FFmpeg' option to point to a manual installation"
+            },
+            "E320" => new[]
+            {
+                "Check your internet connection speed",
+                "Try again later when network conditions improve",
+                "Use a wired connection instead of WiFi if possible",
+                "Download FFmpeg manually and use 'Use Existing FFmpeg'"
+            },
+            "E321" => new[]
+            {
+                "Check your internet connection",
+                "Verify firewall is not blocking the download",
+                "Try using a VPN if downloads are restricted in your region",
+                "Download FFmpeg manually and use the 'Use Existing FFmpeg' option"
+            },
+            "E322" => new[]
+            {
+                "Clear browser cache and try again",
+                "Check available disk space",
+                "Temporarily disable antivirus during download",
+                "Download FFmpeg manually from the official website"
+            },
+            "E303" => new[]
+            {
+                "Ensure you have the correct FFmpeg version for your OS",
+                "Check that your system architecture (x64/ARM) is supported",
+                "Download the correct FFmpeg build manually"
+            },
+            _ => new[]
+            {
+                "Check your internet connection",
+                "Ensure you have sufficient disk space",
+                "Try restarting the application",
+                "Check antivirus software is not blocking the installer"
+            }
+        };
+    }
+
+    private (string code, string message, string title, string detail, string[] howToFix) ClassifyNetworkException(Exception ex)
+    {
+        if (ex is HttpRequestException httpEx)
+        {
+            if (httpEx.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                return ("E311", "FFmpeg source not found", "Download Source Not Found", 
+                    "The FFmpeg download URL returned 404 Not Found", 
+                    GetInstallationHowToFix("E311"));
+            }
+
+            if (httpEx.StatusCode != null && (int)httpEx.StatusCode >= 500)
+            {
+                return ("E321", "Server error during download", "Server Error", 
+                    "The download server returned an error. This is a temporary issue.", 
+                    new[] { "Try again in a few minutes", "The download mirror may be temporarily unavailable" });
+            }
+
+            if (httpEx.InnerException?.Message.Contains("DNS", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                return ("E323", "DNS resolution failed", "DNS Error", 
+                    "Unable to resolve the download server hostname. Check your DNS settings.", 
+                    new[] { "Check your internet connection", "Try using a different DNS server (e.g., 8.8.8.8)", "Try again later" });
+            }
+
+            if (httpEx.InnerException?.Message.Contains("SSL", StringComparison.OrdinalIgnoreCase) == true ||
+                httpEx.InnerException?.Message.Contains("TLS", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                return ("E324", "Secure connection failed", "TLS/SSL Error", 
+                    "Failed to establish a secure connection to the download server.", 
+                    new[] { "Check your system date and time are correct", "Update your operating system", "Check firewall settings" });
+            }
+
+            return ("E321", "Network error during download", "Network Error", 
+                $"Network error: {httpEx.Message}", GetInstallationHowToFix("E321"));
+        }
+
+        if (ex is TaskCanceledException)
+        {
+            return ("E320", "Download timed out", "Timeout", 
+                "The download operation timed out.", GetInstallationHowToFix("E320"));
+        }
+
+        if (ex is IOException)
+        {
+            return ("E325", "Disk I/O error", "Disk Error", 
+                "Failed to write to disk during installation.", 
+                new[] { "Check available disk space", "Ensure the installation directory is writable", "Close other applications that might lock files" });
+        }
+
+        return ("E313", $"Installation error: {ex.Message}", "Installation Failed", 
+            ex.Message, GetInstallationHowToFix("E313"));
     }
 
     /// <summary>
