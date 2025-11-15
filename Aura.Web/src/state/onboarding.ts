@@ -1289,7 +1289,7 @@ export async function saveWizardProgressToBackend(
 ): Promise<boolean> {
   try {
     const { setupApi } = await import('../services/api/setupApi');
-    
+
     // Extract serializable state (exclude non-serializable fields)
     const serializableState = {
       step: state.step,
@@ -1299,8 +1299,8 @@ export async function saveWizardProgressToBackend(
       stepState: state.stepState,
       lastStep: state.step,
       apiKeys: state.apiKeys,
-      selectedProviders: state.selectedProviders,
-      installItems: state.installItems.map(item => ({
+      apiKeyValidationStatus: state.apiKeyValidationStatus,
+      installItems: state.installItems.map((item) => ({
         id: item.id,
         installed: item.installed,
         skipped: item.skipped,
@@ -1329,15 +1329,15 @@ export async function loadWizardProgressFromBackend(
 ): Promise<Partial<OnboardingState> | null> {
   try {
     const { setupApi } = await import('../services/api/setupApi');
-    
+
     const status = await setupApi.getWizardStatus(userId);
-    
+
     if (!status.canResume || !status.state) {
       return null;
     }
 
     console.info('[Wizard Persistence] Loaded progress from backend:', status);
-    
+
     return status.state as Partial<OnboardingState>;
   } catch (error) {
     console.error('[Wizard Persistence] Failed to load progress from backend:', error);
@@ -1354,14 +1354,14 @@ export async function completeWizardInBackend(
 ): Promise<boolean> {
   try {
     const { setupApi } = await import('../services/api/setupApi');
-    
+
     const result = await setupApi.completeWizard({
       finalStep: state.step,
       version: '1.0.0',
       selectedTier: state.selectedTier || undefined,
       finalState: {
         mode: state.mode,
-        providers: state.selectedProviders,
+        apiKeys: state.apiKeys,
       },
       correlationId: correlationId || `wizard-complete-${Date.now()}`,
     });
@@ -1383,7 +1383,7 @@ export async function resetWizardInBackend(
 ): Promise<boolean> {
   try {
     const { setupApi } = await import('../services/api/setupApi');
-    
+
     const result = await setupApi.resetWizard({
       preserveData,
       correlationId: correlationId || `wizard-reset-${Date.now()}`,
@@ -1410,7 +1410,7 @@ export function shouldTriggerAutoSave(actionType: OnboardingAction['type']): boo
     'API_KEY_VALID',
     'SET_WORKSPACE_PREFERENCES',
   ];
-  
+
   return autoSaveTriggers.includes(actionType);
 }
 
@@ -1423,12 +1423,12 @@ export function onboardingReducerWithAutoSave(
   enableAutoSave: boolean = true
 ): OnboardingState {
   const newState = onboardingReducer(state, action);
-  
+
   if (enableAutoSave && shouldTriggerAutoSave(action.type)) {
-    void saveWizardProgressToBackend(newState).catch(err => {
+    void saveWizardProgressToBackend(newState).catch((err) => {
       console.error('[Auto-save] Failed to save progress:', err);
     });
   }
-  
+
   return newState;
 }

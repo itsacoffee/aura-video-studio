@@ -176,3 +176,84 @@ export async function updateProviderPreferences(
 ): Promise<void> {
   return post<void>('/api/providers/preferences', preferences, config);
 }
+
+/**
+ * Enhanced provider validation request
+ */
+export interface EnhancedProviderValidationRequest {
+  provider: string;
+  configuration: Record<string, string | undefined | null>;
+  partialValidation?: boolean;
+  correlationId?: string;
+}
+
+/**
+ * Field-level validation error
+ */
+export interface FieldValidationError {
+  fieldName: string;
+  errorCode: string;
+  errorMessage: string;
+  suggestedFix?: string | null;
+}
+
+/**
+ * Enhanced provider validation response
+ */
+export interface EnhancedProviderValidationResponse {
+  isValid: boolean;
+  status: string;
+  provider: string;
+  fieldErrors?: FieldValidationError[] | null;
+  fieldValidationStatus?: Record<string, boolean> | null;
+  overallMessage?: string | null;
+  correlationId?: string | null;
+  details?: unknown;
+}
+
+/**
+ * Save partial configuration request
+ */
+export interface SavePartialConfigurationRequest {
+  provider: string;
+  partialConfiguration: Record<string, string | undefined | null>;
+  correlationId?: string;
+}
+
+/**
+ * Save partial configuration response
+ */
+export interface SavePartialConfigurationResponse {
+  success: boolean;
+  message: string;
+  savedFields?: string[];
+  correlationId?: string;
+}
+
+/**
+ * Validate provider configuration with field-level validation
+ */
+export async function validateProviderEnhanced(
+  request: EnhancedProviderValidationRequest,
+  config?: ExtendedAxiosRequestConfig
+): Promise<EnhancedProviderValidationResponse> {
+  return post<EnhancedProviderValidationResponse>(
+    '/api/providers/validate-enhanced',
+    request,
+    config
+  );
+}
+
+/**
+ * Save partial provider configuration
+ */
+export async function savePartialConfiguration(
+  request: SavePartialConfigurationRequest,
+  config?: ExtendedAxiosRequestConfig
+): Promise<SavePartialConfigurationResponse> {
+  return post<SavePartialConfigurationResponse>(
+    '/api/providers/save-partial-config',
+    request,
+    config
+  );
+}
