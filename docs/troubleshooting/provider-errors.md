@@ -12,6 +12,20 @@ This guide helps you troubleshoot errors related to AI provider services (OpenAI
 
 ---
 
+## Provider Validation Error Codes
+
+The following error codes are returned by the provider validation system when checking provider connectivity and configuration:
+
+- **ProviderNotConfigured**: Provider API key or configuration is missing
+- **ProviderKeyInvalid**: API key is present but invalid or expired
+- **ProviderNetworkError**: Cannot connect to provider (network/DNS/timeout issues)
+- **ProviderRateLimited**: Provider is reachable but rate limit exceeded
+- **ProviderServerError**: Provider service is experiencing server issues (5xx errors)
+- **ProviderNotSupported**: Provider is not supported for validation
+- **ValidationError**: Unexpected error occurred during validation
+
+---
+
 ## LLM Errors
 
 Language Model (LLM) provider errors occur when there are issues communicating with OpenAI, Anthropic, or other LLM services.
@@ -19,9 +33,14 @@ Language Model (LLM) provider errors occur when there are issues communicating w
 ### Common LLM Error Codes
 
 - **E100**: General LLM provider error
-- **E100-401**: LLM authentication failed
-- **E100-429**: LLM rate limit exceeded
-- **E100-500**: LLM service unavailable
+- **E100-401**: LLM authentication failed (see ProviderKeyInvalid)
+- **E100-429**: LLM rate limit exceeded (see ProviderRateLimited)
+- **E100-500**: LLM service unavailable (see ProviderServerError)
+- **ProviderNotConfigured**: No API key configured for LLM provider
+- **ProviderKeyInvalid**: LLM API key is invalid or expired
+- **ProviderNetworkError**: Cannot connect to LLM service
+- **ProviderRateLimited**: LLM rate limit exceeded
+- **ProviderServerError**: LLM service is experiencing issues
 
 ### Symptoms
 
@@ -384,3 +403,365 @@ If you continue to experience provider errors:
    - Provider being used
    - Steps to reproduce
    - Relevant log excerpts (with API keys removed)
+
+---
+
+## Detailed Error Code Reference
+
+### ProviderNotConfigured
+
+**What it means**: The provider requires configuration (typically an API key) but none has been provided.
+
+**Typical causes**:
+- API key not set in application settings
+- Environment variable not configured
+- Configuration was deleted or revoked
+
+**Steps to fix**:
+1. Go to **Settings → Providers** in the Aura UI
+2. Find the provider that shows "Not Configured"
+3. Click **Configure** or **Add API Key**
+4. Enter your API key from the provider's dashboard:
+   - **OpenAI**: https://platform.openai.com/api-keys
+   - **Anthropic**: https://console.anthropic.com/
+   - **Google Gemini**: https://makersuite.google.com/app/apikey
+   - **ElevenLabs**: https://elevenlabs.io/app/settings
+   - **PlayHT**: https://play.ht/app/api-access
+5. Click **Save** and then **Retry Validation**
+
+---
+
+### ProviderKeyInvalid
+
+**What it means**: An API key was provided, but the provider rejected it as invalid, expired, or lacking permissions.
+
+**Typical causes**:
+- API key was typed incorrectly
+- API key has been revoked or expired
+- API key doesn't have the required permissions
+- Wrong API key format (e.g., missing 'sk-' prefix for OpenAI)
+
+**Steps to fix**:
+1. **Verify the key format**:
+   - OpenAI keys start with `sk-`
+   - Anthropic keys start with `sk-ant-`
+   - Check provider documentation for correct format
+2. **Check for typos**:
+   - Copy the key directly from the provider dashboard
+   - Ensure no extra spaces or characters
+3. **Regenerate the key**:
+   - Go to your provider's dashboard
+   - Revoke the old key
+   - Generate a new API key
+   - Update it in Aura Settings → Providers
+4. **Verify permissions**:
+   - Some providers require specific permissions to be enabled
+   - Check that your account tier supports the features you're using
+5. **Test the key directly**:
+   ```bash
+   # For OpenAI:
+   curl https://api.openai.com/v1/models \
+     -H "Authorization: Bearer YOUR_KEY"
+   
+   # For Anthropic:
+   curl https://api.anthropic.com/v1/messages \
+     -H "x-api-key: YOUR_KEY" \
+     -H "anthropic-version: 2023-06-01" \
+     -H "content-type: application/json" \
+     -d '{"model":"claude-3-haiku-20240307","max_tokens":1,"messages":[{"role":"user","content":"Hi"}]}'
+   ```
+
+---
+
+### ProviderNetworkError
+
+**What it means**: Aura cannot establish a network connection to the provider's API endpoint.
+
+**Typical causes**:
+- No internet connection
+- Firewall blocking outbound connections
+- DNS resolution failure
+- Provider's endpoint is unreachable
+- Connection timeout (> 5 seconds)
+
+**Steps to fix**:
+1. **Check your internet connection**:
+   ```bash
+   # Test basic connectivity
+   ping 8.8.8.8
+   
+   # Test DNS resolution
+   nslookup api.openai.com
+   ```
+2. **Check firewall settings**:
+   - Ensure outbound HTTPS (port 443) is allowed
+   - Add provider domains to firewall allowlist if needed:
+     - `api.openai.com`
+     - `api.anthropic.com`
+     - `generativelanguage.googleapis.com`
+     - `api.elevenlabs.io`
+     - `api.play.ht`
+3. **Check proxy settings**:
+   - If behind a corporate proxy, configure proxy settings
+   - Some providers may require proxy configuration
+4. **Test connectivity manually**:
+   ```bash
+   curl -v https://api.openai.com/v1/models
+   ```
+5. **Try a different network**:
+   - Switch to a different WiFi network or use mobile hotspot
+   - Some networks block AI provider endpoints
+6. **Check DNS settings**:
+   - Try using public DNS servers (8.8.8.8, 1.1.1.1)
+   - Clear DNS cache if needed
+
+---
+
+### ProviderRateLimited
+
+**What it means**: The provider is reachable and your API key is valid, but you've exceeded your rate limits or quota.
+
+**Typical causes**:
+- Made too many requests in a short time period
+- Exceeded monthly token quota
+- Account tier has low rate limits
+- Multiple Aura instances using the same API key
+
+**Steps to fix**:
+1. **Wait before retrying**:
+   - Rate limits typically reset after 1 minute to 1 hour
+   - Check the provider's documentation for specific reset times
+2. **Check your usage dashboard**:
+   - **OpenAI**: https://platform.openai.com/usage
+   - **Anthropic**: https://console.anthropic.com/
+   - **ElevenLabs**: https://elevenlabs.io/app/usage
+3. **Upgrade your account tier**:
+   - Free tiers have very low rate limits
+   - Paid accounts typically have much higher limits
+4. **Reduce request frequency**:
+   - Avoid rapid-fire validation checks
+   - Use provider fallback chains instead of retrying same provider
+5. **Use multiple API keys**:
+   - Configure fallback providers
+   - Rotate between multiple accounts if allowed by provider terms
+
+**Rate Limit Examples**:
+- OpenAI Free: 3 requests/minute
+- OpenAI Tier 1: 500 requests/day
+- ElevenLabs Free: 10,000 characters/month
+- Anthropic: Varies by account tier
+
+---
+
+### ProviderServerError
+
+**What it means**: The provider's service is experiencing server-side issues (HTTP 500-599 errors).
+
+**Typical causes**:
+- Provider is experiencing an outage
+- Temporary server maintenance
+- Overloaded provider infrastructure
+- Internal provider bug or issue
+
+**Steps to fix**:
+1. **Check provider status pages**:
+   - **OpenAI**: https://status.openai.com/
+   - **Anthropic**: https://status.anthropic.com/
+   - **ElevenLabs**: Check their Twitter/status page
+2. **Wait and retry later**:
+   - Server errors are usually temporary
+   - Retry after 5-15 minutes
+3. **Use fallback providers**:
+   - Configure provider fallback chains
+   - Switch to alternative provider temporarily:
+     - OpenAI ↔ Anthropic ↔ Google Gemini
+     - ElevenLabs ↔ PlayHT ↔ Windows SAPI
+4. **Check community forums**:
+   - Provider forums may have real-time outage information
+   - Other users may report similar issues
+5. **Contact provider support**:
+   - If issue persists for > 1 hour, contact provider support
+   - Provide error details and correlation ID
+
+---
+
+## Provider-Specific Configuration
+
+### OpenAI
+
+**Required Configuration**:
+- API Key (format: `sk-...`)
+
+**Optional Configuration**:
+- Base URL (default: `https://api.openai.com/v1`)
+- Organization ID (for organization accounts)
+- Project ID (for project isolation)
+
+**Testing**:
+```bash
+curl https://api.openai.com/v1/models \
+  -H "Authorization: Bearer YOUR_KEY"
+```
+
+**Common Issues**:
+- Key format must start with `sk-`
+- Ensure key hasn't been revoked
+- Check rate limits on free tier
+
+---
+
+### Anthropic Claude
+
+**Required Configuration**:
+- API Key (format: `sk-ant-...`)
+
+**Testing**:
+```bash
+curl https://api.anthropic.com/v1/messages \
+  -H "x-api-key: YOUR_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "content-type: application/json" \
+  -d '{"model":"claude-3-haiku-20240307","max_tokens":1,"messages":[{"role":"user","content":"Hi"}]}'
+```
+
+---
+
+### Google Gemini
+
+**Required Configuration**:
+- API Key
+
+**Testing**:
+```bash
+curl "https://generativelanguage.googleapis.com/v1beta/models?key=YOUR_KEY"
+```
+
+---
+
+### ElevenLabs
+
+**Required Configuration**:
+- API Key
+
+**Testing**:
+```bash
+curl https://api.elevenlabs.io/v1/voices \
+  -H "xi-api-key: YOUR_KEY"
+```
+
+---
+
+### PlayHT
+
+**Required Configuration**:
+- API Key
+- User ID
+
+**Testing**:
+```bash
+curl https://api.play.ht/api/v2/voices \
+  -H "Authorization: YOUR_KEY" \
+  -H "X-User-ID: YOUR_USER_ID"
+```
+
+---
+
+### Ollama (Local)
+
+**Required Configuration**:
+- None (uses localhost by default)
+
+**Optional Configuration**:
+- Base URL (default: `http://localhost:11434`)
+
+**Testing**:
+```bash
+curl http://localhost:11434/api/tags
+```
+
+**Common Issues**:
+- Ensure Ollama service is running: `ollama serve`
+- Check that models are downloaded: `ollama list`
+- Verify port 11434 is not blocked
+
+---
+
+### Stable Diffusion WebUI (Local)
+
+**Required Configuration**:
+- None (uses localhost by default)
+
+**Optional Configuration**:
+- Base URL (default: `http://localhost:7860`)
+
+**Testing**:
+```bash
+curl http://localhost:7860/sdapi/v1/sd-models
+```
+
+**Common Issues**:
+- Ensure WebUI is started with `--api` flag
+- Check that port 7860 is not in use by another application
+- Verify models are loaded in WebUI
+
+---
+
+## Using the Provider Status Dashboard
+
+The Provider Status Dashboard in Aura provides real-time validation of all configured providers:
+
+1. **Navigate to Settings → Providers → Status Dashboard**
+2. **View provider cards** showing:
+   - Configuration status (Configured / Not Configured)
+   - Reachability status (Reachable / Not Reachable)
+   - Error codes and messages
+   - How-to-fix guidance
+3. **Retry validation** for any provider by clicking **Retry Validation**
+4. **Auto-refresh** occurs every 30 seconds
+5. **Manual refresh** available with the Refresh button
+
+**Status Indicators**:
+- 🟢 **Green checkmark**: Provider configured and reachable
+- ⚠️ **Yellow warning**: Provider configured but not reachable
+- ℹ️ **Gray info**: Provider not configured
+
+---
+
+## Troubleshooting Workflow
+
+Follow this workflow when encountering provider errors:
+
+```
+1. Check Provider Status Dashboard
+   ↓
+2. Is provider configured?
+   No → Go to Settings → Providers → Add API Key
+   Yes → Continue
+   ↓
+3. Click "Retry Validation"
+   ↓
+4. Check error code:
+   - ProviderNotConfigured → Configure API key
+   - ProviderKeyInvalid → Regenerate and update key
+   - ProviderNetworkError → Check firewall/DNS/connectivity
+   - ProviderRateLimited → Wait or upgrade tier
+   - ProviderServerError → Check provider status page
+   ↓
+5. Follow "How to Fix" guidance in error details
+   ↓
+6. If issue persists:
+   - Check provider status page
+   - Test API key with curl
+   - Contact provider support
+   - Use fallback provider
+```
+
+---
+
+## Additional Resources
+
+- [FFmpeg Errors](./ffmpeg-errors.md) - FFmpeg-specific error codes
+- [API Errors](../api/errors.md) - Complete API error taxonomy
+- [Provider Configuration Guide](../PROVIDER_CONFIGURATION_GUIDE.md) - Detailed provider setup
+- [Offline Mode](../OFFLINE_MODE_IMPROVEMENTS.md) - Using Aura without internet
+

@@ -137,3 +137,34 @@ public record SavePartialConfigurationRequest(
     string Provider,
     Dictionary<string, string?> PartialConfiguration,
     string? CorrelationId = null);
+
+/// <summary>
+/// Detailed provider status with connection validation
+/// </summary>
+public record ProviderConnectionStatusDto(
+    string Name,
+    bool Configured,
+    bool Reachable,
+    string? ErrorCode,
+    string? ErrorMessage,
+    List<string> HowToFix,
+    DateTime? LastValidated,
+    string Category,
+    string Tier);
+
+/// <summary>
+/// Response for provider connection validation
+/// </summary>
+public record ValidateProviderConnectionResponse(
+    ProviderConnectionStatusDto Status,
+    bool Success,
+    string Message);
+
+/// <summary>
+/// List of all provider connection statuses
+/// </summary>
+public record AllProvidersStatusResponse(
+    List<ProviderConnectionStatusDto> Providers,
+    DateTime LastUpdated,
+    int ConfiguredCount,
+    int ReachableCount);

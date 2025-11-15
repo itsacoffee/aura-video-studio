@@ -41,6 +41,230 @@ Examples:
 
 ---
 
+### Provider Validation Errors
+
+These error codes are returned by the provider validation system (`/api/providers/{name}/validate-detailed` endpoint) when checking provider connectivity and configuration.
+
+#### ProviderNotConfigured
+
+**Message:** Provider is not configured. API key or required configuration is missing.
+
+**HTTP Status:** 200 (returned in validation response, not as HTTP error)
+
+**Typical Causes:**
+- API key not set in application settings
+- Environment variable for provider not configured
+- Configuration was deleted or cleared
+
+**Remediation:**
+1. Go to Settings → Providers in the UI
+2. Find the provider showing "Not Configured"
+3. Click "Configure" or "Add API Key"
+4. Enter your API key from the provider's dashboard
+5. Save and click "Retry Validation"
+
+**Response Example:**
+```json
+{
+  "name": "OpenAI",
+  "configured": false,
+  "reachable": false,
+  "errorCode": "ProviderNotConfigured",
+  "errorMessage": "OpenAI API key is not configured",
+  "howToFix": [
+    "Go to Settings → Providers",
+    "Add your OpenAI API key",
+    "Get an API key from https://platform.openai.com/api-keys"
+  ],
+  "category": "LLM",
+  "tier": "Premium"
+}
+```
+
+---
+
+#### ProviderKeyInvalid
+
+**Message:** Provider API key is invalid or expired.
+
+**HTTP Status:** 200 (validation failure)
+
+**Typical Causes:**
+- API key contains typos
+- API key has been revoked by provider
+- API key has expired
+- Wrong key format (e.g., missing 'sk-' prefix for OpenAI)
+- Account lacks required permissions
+
+**Remediation:**
+1. Check API key format (OpenAI: `sk-...`, Anthropic: `sk-ant-...`)
+2. Copy key directly from provider dashboard to avoid typos
+3. Regenerate API key if it may have been compromised
+4. Verify account has required permissions/tier
+5. Test key manually with curl (see examples in [provider-errors.md](../troubleshooting/provider-errors.md))
+
+**Response Example:**
+```json
+{
+  "name": "OpenAI",
+  "configured": true,
+  "reachable": false,
+  "errorCode": "ProviderKeyInvalid",
+  "errorMessage": "OpenAI API key is invalid or expired",
+  "howToFix": [
+    "Check your API key for typos",
+    "Verify the key is still valid at https://platform.openai.com/api-keys",
+    "Generate a new API key if needed"
+  ]
+}
+```
+
+---
+
+#### ProviderNetworkError
+
+**Message:** Cannot connect to provider. Network error, DNS failure, or connection timeout.
+
+**HTTP Status:** 200 (validation failure)
+
+**Typical Causes:**
+- No internet connection
+- Firewall blocking outbound HTTPS connections
+- DNS resolution failure
+- Provider endpoint unreachable
+- Connection timeout (>5 seconds)
+- Proxy configuration issues
+
+**Remediation:**
+1. Check internet connectivity: `ping 8.8.8.8`
+2. Test DNS: `nslookup api.openai.com`
+3. Check firewall allows outbound HTTPS (port 443)
+4. Test provider endpoint manually: `curl -v https://api.openai.com/v1/models`
+5. Try different network (mobile hotspot, different WiFi)
+6. Check proxy settings if behind corporate firewall
+7. Verify DNS servers are working (try 8.8.8.8, 1.1.1.1)
+
+**Response Example:**
+```json
+{
+  "name": "OpenAI",
+  "configured": true,
+  "reachable": false,
+  "errorCode": "ProviderNetworkError",
+  "errorMessage": "Connection to OpenAI timed out",
+  "howToFix": [
+    "Check your internet connection",
+    "Verify firewall settings",
+    "Try again later"
+  ]
+}
+```
+
+---
+
+#### ProviderRateLimited
+
+**Message:** Provider rate limit exceeded. Too many requests in given time period.
+
+**HTTP Status:** 200 (provider is reachable but limiting requests)
+
+**Typical Causes:**
+- Exceeded requests per minute/hour limit
+- Exceeded monthly token quota
+- Account tier has low rate limits
+- Multiple Aura instances using same API key
+- Validation check triggered while generation in progress
+
+**Remediation:**
+1. Wait before retrying (typically 1 minute to 1 hour)
+2. Check usage dashboard:
+   - OpenAI: https://platform.openai.com/usage
+   - Anthropic: https://console.anthropic.com/
+   - ElevenLabs: https://elevenlabs.io/app/usage
+3. Upgrade account tier for higher limits
+4. Configure provider fallback chains
+5. Avoid rapid validation retries
+
+**Rate Limit Examples:**
+- OpenAI Free: 3 requests/min
+- OpenAI Tier 1: 500 requests/day
+- ElevenLabs Free: 10,000 characters/month
+
+**Response Example:**
+```json
+{
+  "name": "OpenAI",
+  "configured": true,
+  "reachable": true,
+  "errorCode": "ProviderRateLimited",
+  "errorMessage": "OpenAI rate limit exceeded",
+  "howToFix": [
+    "Wait a few minutes before trying again",
+    "Check your OpenAI usage dashboard",
+    "Consider upgrading your OpenAI plan for higher limits"
+  ]
+}
+```
+
+---
+
+#### ProviderServerError
+
+**Message:** Provider service is experiencing server-side issues (HTTP 5xx).
+
+**HTTP Status:** 200 (validation failure)
+
+**Typical Causes:**
+- Provider experiencing outage or maintenance
+- Temporary server overload
+- Internal provider bug
+- Regional service degradation
+
+**Remediation:**
+1. Check provider status pages:
+   - OpenAI: https://status.openai.com/
+   - Anthropic: https://status.anthropic.com/
+2. Wait 5-15 minutes and retry
+3. Use fallback provider temporarily
+4. Check community forums for outage reports
+5. Contact provider support if issue persists >1 hour
+
+**Response Example:**
+```json
+{
+  "name": "OpenAI",
+  "configured": true,
+  "reachable": false,
+  "errorCode": "ProviderServerError",
+  "errorMessage": "OpenAI service is experiencing issues",
+  "howToFix": [
+    "Check OpenAI status at https://status.openai.com",
+    "Try again in a few minutes",
+    "Use a fallback provider temporarily"
+  ]
+}
+```
+
+---
+
+#### ValidationError
+
+**Message:** An unexpected error occurred during provider validation.
+
+**HTTP Status:** 200
+
+**Typical Causes:**
+- Unexpected exception in validation logic
+- Malformed provider response
+- Internal service error
+
+**Remediation:**
+1. Check application logs for details
+2. Try again later
+3. If issue persists, report bug with correlation ID
+
+---
+
 ### RequiresNvidiaGPU
 
 **Message:** This operation requires an NVIDIA GPU with CUDA support.

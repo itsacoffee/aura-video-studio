@@ -206,9 +206,14 @@ export interface ProviderStatus {
   name: string;
   isConfigured: boolean;
   isAvailable: boolean;
+  reachable?: boolean;
   status: string;
   lastValidated?: string;
   errorMessage?: string;
+  errorCode?: string;
+  howToFix?: string[];
+  category?: string;
+  tier?: string;
 }
 
 // Provider store state
@@ -222,6 +227,7 @@ interface ProviderStoreState {
   setIsLoadingStatuses: (isLoading: boolean) => void;
   updateProviderStatus: (name: string, status: Partial<ProviderStatus>) => void;
   refreshProviderStatuses: () => Promise<void>;
+  validateProvider: (name: string) => Promise<void>;
 }
 
 // Provider store using Zustand
@@ -261,6 +267,53 @@ export const useProviderStore = create<ProviderStoreState>((set) => ({
       const errorObj = error instanceof Error ? error : new Error(String(error));
       console.error('Error fetching provider statuses:', errorObj);
       set({ isLoadingStatuses: false });
+    }
+  },
+
+  validateProvider: async (name: string) => {
+    try {
+      const response = await fetch(`/api/providers/${encodeURIComponent(name)}/validate-detailed`, {
+        method: 'POST',
+      });
+      
+      if (response.ok) {
+        const result = (await response.json()) as {
+          name: string;
+          configured: boolean;
+          reachable: boolean;
+          errorCode?: string;
+          errorMessage?: string;
+          howToFix?: string[];
+          lastValidated?: string;
+          category?: string;
+          tier?: string;
+        };
+        
+        set((state) => ({
+          providerStatuses: state.providerStatuses.map((p) =>
+            p.name === name
+              ? {
+                  ...p,
+                  isConfigured: result.configured,
+                  reachable: result.reachable,
+                  isAvailable: result.configured && result.reachable,
+                  status: result.reachable ? 'Available' : (result.errorMessage || 'Not Available'),
+                  errorCode: result.errorCode,
+                  errorMessage: result.errorMessage,
+                  howToFix: result.howToFix,
+                  lastValidated: result.lastValidated,
+                  category: result.category,
+                  tier: result.tier,
+                }
+              : p
+          ),
+        }));
+      } else {
+        console.error(`Failed to validate provider ${name}:`, response.statusText);
+      }
+    } catch (error: unknown) {
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      console.error(`Error validating provider ${name}:`, errorObj);
     }
   },
 }));

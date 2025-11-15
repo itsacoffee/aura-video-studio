@@ -18,19 +18,24 @@ public class ProviderStatusService
     private readonly ILogger<ProviderStatusService> _logger;
     private readonly OfflineProviderAvailabilityService _offlineAvailability;
     private readonly ProviderHealthMonitoringService _healthMonitoring;
+    private readonly ProviderConnectionValidationService _validationService;
     private readonly ConcurrentDictionary<string, ProviderStatus> _statusCache;
+    private readonly ConcurrentDictionary<string, ProviderConnectionValidationResult> _validationCache;
     private DateTime _lastUpdate;
     private readonly TimeSpan _cacheExpiration = TimeSpan.FromSeconds(30);
 
     public ProviderStatusService(
         ILogger<ProviderStatusService> logger,
         OfflineProviderAvailabilityService offlineAvailability,
-        ProviderHealthMonitoringService healthMonitoring)
+        ProviderHealthMonitoringService healthMonitoring,
+        ProviderConnectionValidationService validationService)
     {
         _logger = logger;
         _offlineAvailability = offlineAvailability;
         _healthMonitoring = healthMonitoring;
+        _validationService = validationService;
         _statusCache = new ConcurrentDictionary<string, ProviderStatus>();
+        _validationCache = new ConcurrentDictionary<string, ProviderConnectionValidationResult>();
         _lastUpdate = DateTime.MinValue;
     }
 
@@ -102,6 +107,90 @@ public class ProviderStatusService
     {
         var status = await GetAllProviderStatusAsync(ct).ConfigureAwait(false);
         return status.DegradedFeatures;
+    }
+
+    /// <summary>
+    /// Validate a specific provider and return detailed status
+    /// </summary>
+    public async Task<ProviderStatusWithValidation> ValidateProviderAsync(string providerName, CancellationToken ct = default)
+    {
+        _logger.LogInformation("Validating provider: {ProviderName}", providerName);
+
+        try
+        {
+            var validationResult = await _validationService.ValidateProviderAsync(providerName, ct).ConfigureAwait(false);
+
+            // Cache the result
+            _validationCache.AddOrUpdate(providerName, validationResult, (_, _) => validationResult);
+
+            // Update the status cache if it exists
+            if (_statusCache.TryGetValue(providerName, out var existingStatus))
+            {
+                var updatedStatus = new ProviderStatus
+                {
+                    Name = existingStatus.Name,
+                    Category = existingStatus.Category,
+                    IsAvailable = validationResult.Configured && validationResult.Reachable,
+                    IsOnline = validationResult.Reachable,
+                    Tier = existingStatus.Tier,
+                    Features = existingStatus.Features,
+                    Message = validationResult.ErrorMessage ?? (validationResult.Reachable ? "Available" : "Not available")
+                };
+                _statusCache.TryUpdate(providerName, updatedStatus, existingStatus);
+            }
+
+            return new ProviderStatusWithValidation
+            {
+                Name = providerName,
+                Configured = validationResult.Configured,
+                Reachable = validationResult.Reachable,
+                ErrorCode = validationResult.ErrorCode,
+                ErrorMessage = validationResult.ErrorMessage,
+                HowToFix = validationResult.HowToFix,
+                LastValidated = DateTime.UtcNow,
+                Category = GetProviderCategory(providerName),
+                Tier = GetProviderTier(providerName)
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error validating provider {ProviderName}", providerName);
+            return new ProviderStatusWithValidation
+            {
+                Name = providerName,
+                Configured = false,
+                Reachable = false,
+                ErrorCode = "ValidationError",
+                ErrorMessage = "An error occurred during validation",
+                HowToFix = new List<string> { "Check the application logs for details", "Try again later" },
+                LastValidated = DateTime.UtcNow,
+                Category = GetProviderCategory(providerName),
+                Tier = GetProviderTier(providerName)
+            };
+        }
+    }
+
+    private string GetProviderCategory(string providerName)
+    {
+        return providerName switch
+        {
+            "OpenAI" or "Anthropic" or "Gemini" or "AzureOpenAI" or "Ollama" or "RuleBased" => "LLM",
+            "ElevenLabs" or "PlayHT" or "Piper" or "Mimic3" or "WindowsTTS" => "TTS",
+            "StableDiffusion" or "PlaceholderImages" => "Images",
+            "StockMusic" => "Music",
+            _ => "Unknown"
+        };
+    }
+
+    private string GetProviderTier(string providerName)
+    {
+        return providerName switch
+        {
+            "OpenAI" or "Anthropic" or "AzureOpenAI" or "ElevenLabs" or "PlayHT" => "Premium",
+            "Gemini" or "Piper" or "Mimic3" or "WindowsTTS" or "StableDiffusion" => "Free",
+            "Ollama" or "RuleBased" or "PlaceholderImages" or "StockMusic" => "Free",
+            _ => "Unknown"
+        };
     }
 
     private void AddLlmProviderStatus()
@@ -367,4 +456,20 @@ public class SystemProviderStatus
     public List<string> DegradedFeatures { get; set; } = new();
     public DateTime LastUpdated { get; set; }
     public string Message { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Provider status with detailed validation information
+/// </summary>
+public class ProviderStatusWithValidation
+{
+    public string Name { get; set; } = string.Empty;
+    public bool Configured { get; set; }
+    public bool Reachable { get; set; }
+    public string? ErrorCode { get; set; }
+    public string? ErrorMessage { get; set; }
+    public List<string> HowToFix { get; set; } = new();
+    public DateTime? LastValidated { get; set; }
+    public string Category { get; set; } = string.Empty;
+    public string Tier { get; set; } = string.Empty;
 }

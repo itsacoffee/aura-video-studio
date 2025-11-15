@@ -1399,6 +1399,64 @@ public class ProvidersController : ControllerBase
             });
         }
     }
+    /// <summary>
+    /// Validate a specific provider with detailed error information
+    /// </summary>
+    [HttpPost("{name}/validate-detailed")]
+    public async Task<IActionResult> ValidateProviderDetailed(
+        string name,
+        CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        try
+        {
+            Log.Information("[{CorrelationId}] Validating provider: {Name}", correlationId, name);
+
+            var statusService = HttpContext.RequestServices.GetService(typeof(ProviderStatusService)) 
+                as ProviderStatusService;
+
+            if (statusService == null)
+            {
+                return Problem(
+                    title: "Service Unavailable",
+                    detail: "Provider status service is not available",
+                    statusCode: 503);
+            }
+
+            var result = await statusService.ValidateProviderAsync(name, cancellationToken).ConfigureAwait(false);
+
+            var response = new
+            {
+                name = result.Name,
+                configured = result.Configured,
+                reachable = result.Reachable,
+                errorCode = result.ErrorCode,
+                errorMessage = result.ErrorMessage,
+                howToFix = result.HowToFix,
+                lastValidated = result.LastValidated,
+                category = result.Category,
+                tier = result.Tier,
+                success = result.Configured && result.Reachable,
+                message = result.Reachable 
+                    ? $"{name} is configured and reachable" 
+                    : result.ErrorMessage ?? $"{name} validation failed",
+                correlationId
+            };
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[{CorrelationId}] Error validating provider {Name}", correlationId, name);
+            return Problem(
+                title: "Provider Validation Error",
+                detail: $"Failed to validate provider: {name}",
+                statusCode: 500,
+                type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/api/errors.md#provider-validation-error",
+                instance: correlationId);
+        }
+    }
 }
 
 /// <summary>
