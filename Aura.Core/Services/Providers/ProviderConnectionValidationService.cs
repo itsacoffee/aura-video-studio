@@ -30,7 +30,7 @@ public class ProviderConnectionValidationService
     /// <summary>
     /// Validate a provider's configuration and connectivity
     /// </summary>
-    public async Task<ProviderValidationResult> ValidateProviderAsync(
+    public async Task<ProviderConnectionValidationResult> ValidateProviderAsync(
         string providerName,
         CancellationToken ct = default)
     {
@@ -52,7 +52,7 @@ public class ProviderConnectionValidationService
                 "WindowsTTS" => ValidateWindowsTTS(),
                 "RuleBased" => ValidateRuleBased(),
                 "StableDiffusion" => await ValidateStableDiffusionAsync(ct).ConfigureAwait(false),
-                _ => new ProviderValidationResult
+                _ => new ProviderConnectionValidationResult
                 {
                     Configured = false,
                     Reachable = false,
@@ -65,7 +65,7 @@ public class ProviderConnectionValidationService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error validating provider {ProviderName}", providerName);
-            return new ProviderValidationResult
+            return new ProviderConnectionValidationResult
             {
                 Configured = false,
                 Reachable = false,
@@ -76,13 +76,13 @@ public class ProviderConnectionValidationService
         }
     }
 
-    private async Task<ProviderValidationResult> ValidateOpenAIAsync(CancellationToken ct)
+    private async Task<ProviderConnectionValidationResult> ValidateOpenAIAsync(CancellationToken ct)
     {
         var apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
 
         if (string.IsNullOrEmpty(apiKey))
         {
-            return new ProviderValidationResult
+            return new ProviderConnectionValidationResult
             {
                 Configured = false,
                 Reachable = false,
@@ -110,7 +110,7 @@ public class ProviderConnectionValidationService
             if (response.StatusCode == HttpStatusCode.Unauthorized || 
                 response.StatusCode == HttpStatusCode.Forbidden)
             {
-                return new ProviderValidationResult
+                return new ProviderConnectionValidationResult
                 {
                     Configured = true,
                     Reachable = false,
@@ -127,7 +127,7 @@ public class ProviderConnectionValidationService
 
             if (response.StatusCode == (HttpStatusCode)429)
             {
-                return new ProviderValidationResult
+                return new ProviderConnectionValidationResult
                 {
                     Configured = true,
                     Reachable = true,
@@ -144,7 +144,7 @@ public class ProviderConnectionValidationService
 
             if ((int)response.StatusCode >= 500)
             {
-                return new ProviderValidationResult
+                return new ProviderConnectionValidationResult
                 {
                     Configured = true,
                     Reachable = false,
@@ -161,7 +161,7 @@ public class ProviderConnectionValidationService
 
             if (response.IsSuccessStatusCode)
             {
-                return new ProviderValidationResult
+                return new ProviderConnectionValidationResult
                 {
                     Configured = true,
                     Reachable = true,
@@ -171,7 +171,7 @@ public class ProviderConnectionValidationService
                 };
             }
 
-            return new ProviderValidationResult
+            return new ProviderConnectionValidationResult
             {
                 Configured = true,
                 Reachable = false,
@@ -182,7 +182,7 @@ public class ProviderConnectionValidationService
         }
         catch (TaskCanceledException)
         {
-            return new ProviderValidationResult
+            return new ProviderConnectionValidationResult
             {
                 Configured = true,
                 Reachable = false,
@@ -198,7 +198,7 @@ public class ProviderConnectionValidationService
         }
         catch (HttpRequestException ex)
         {
-            return new ProviderValidationResult
+            return new ProviderConnectionValidationResult
             {
                 Configured = true,
                 Reachable = false,
@@ -214,13 +214,13 @@ public class ProviderConnectionValidationService
         }
     }
 
-    private async Task<ProviderValidationResult> ValidateAnthropicAsync(CancellationToken ct)
+    private async Task<ProviderConnectionValidationResult> ValidateAnthropicAsync(CancellationToken ct)
     {
         var apiKey = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY");
 
         if (string.IsNullOrEmpty(apiKey))
         {
-            return new ProviderValidationResult
+            return new ProviderConnectionValidationResult
             {
                 Configured = false,
                 Reachable = false,
@@ -256,7 +256,7 @@ public class ProviderConnectionValidationService
             if (response.StatusCode == HttpStatusCode.Unauthorized || 
                 response.StatusCode == HttpStatusCode.Forbidden)
             {
-                return new ProviderValidationResult
+                return new ProviderConnectionValidationResult
                 {
                     Configured = true,
                     Reachable = false,
@@ -273,7 +273,7 @@ public class ProviderConnectionValidationService
 
             if (response.StatusCode == (HttpStatusCode)429)
             {
-                return new ProviderValidationResult
+                return new ProviderConnectionValidationResult
                 {
                     Configured = true,
                     Reachable = true,
@@ -289,7 +289,7 @@ public class ProviderConnectionValidationService
 
             if ((int)response.StatusCode >= 500)
             {
-                return new ProviderValidationResult
+                return new ProviderConnectionValidationResult
                 {
                     Configured = true,
                     Reachable = false,
@@ -305,7 +305,7 @@ public class ProviderConnectionValidationService
 
             if (response.IsSuccessStatusCode)
             {
-                return new ProviderValidationResult
+                return new ProviderConnectionValidationResult
                 {
                     Configured = true,
                     Reachable = true,
@@ -315,7 +315,7 @@ public class ProviderConnectionValidationService
                 };
             }
 
-            return new ProviderValidationResult
+            return new ProviderConnectionValidationResult
             {
                 Configured = true,
                 Reachable = false,
@@ -326,7 +326,7 @@ public class ProviderConnectionValidationService
         }
         catch (TaskCanceledException)
         {
-            return new ProviderValidationResult
+            return new ProviderConnectionValidationResult
             {
                 Configured = true,
                 Reachable = false,
@@ -337,7 +337,7 @@ public class ProviderConnectionValidationService
         }
         catch (HttpRequestException)
         {
-            return new ProviderValidationResult
+            return new ProviderConnectionValidationResult
             {
                 Configured = true,
                 Reachable = false,
@@ -348,13 +348,13 @@ public class ProviderConnectionValidationService
         }
     }
 
-    private async Task<ProviderValidationResult> ValidateGeminiAsync(CancellationToken ct)
+    private async Task<ProviderConnectionValidationResult> ValidateGeminiAsync(CancellationToken ct)
     {
         var apiKey = Environment.GetEnvironmentVariable("GEMINI_API_KEY");
 
         if (string.IsNullOrEmpty(apiKey))
         {
-            return new ProviderValidationResult
+            return new ProviderConnectionValidationResult
             {
                 Configured = false,
                 Reachable = false,
@@ -382,7 +382,7 @@ public class ProviderConnectionValidationService
                 response.StatusCode == HttpStatusCode.Forbidden ||
                 response.StatusCode == HttpStatusCode.BadRequest)
             {
-                return new ProviderValidationResult
+                return new ProviderConnectionValidationResult
                 {
                     Configured = true,
                     Reachable = false,
@@ -399,7 +399,7 @@ public class ProviderConnectionValidationService
 
             if (response.StatusCode == (HttpStatusCode)429)
             {
-                return new ProviderValidationResult
+                return new ProviderConnectionValidationResult
                 {
                     Configured = true,
                     Reachable = true,
@@ -411,7 +411,7 @@ public class ProviderConnectionValidationService
 
             if ((int)response.StatusCode >= 500)
             {
-                return new ProviderValidationResult
+                return new ProviderConnectionValidationResult
                 {
                     Configured = true,
                     Reachable = false,
@@ -423,7 +423,7 @@ public class ProviderConnectionValidationService
 
             if (response.IsSuccessStatusCode)
             {
-                return new ProviderValidationResult
+                return new ProviderConnectionValidationResult
                 {
                     Configured = true,
                     Reachable = true,
@@ -433,7 +433,7 @@ public class ProviderConnectionValidationService
                 };
             }
 
-            return new ProviderValidationResult
+            return new ProviderConnectionValidationResult
             {
                 Configured = true,
                 Reachable = false,
@@ -444,7 +444,7 @@ public class ProviderConnectionValidationService
         }
         catch (TaskCanceledException)
         {
-            return new ProviderValidationResult
+            return new ProviderConnectionValidationResult
             {
                 Configured = true,
                 Reachable = false,
@@ -455,7 +455,7 @@ public class ProviderConnectionValidationService
         }
         catch (HttpRequestException)
         {
-            return new ProviderValidationResult
+            return new ProviderConnectionValidationResult
             {
                 Configured = true,
                 Reachable = false,
@@ -466,14 +466,14 @@ public class ProviderConnectionValidationService
         }
     }
 
-    private async Task<ProviderValidationResult> ValidateAzureOpenAIAsync(CancellationToken ct)
+    private async Task<ProviderConnectionValidationResult> ValidateAzureOpenAIAsync(CancellationToken ct)
     {
         var apiKey = Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY");
         var endpoint = Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT");
 
         if (string.IsNullOrEmpty(apiKey) || string.IsNullOrEmpty(endpoint))
         {
-            return new ProviderValidationResult
+            return new ProviderConnectionValidationResult
             {
                 Configured = false,
                 Reachable = false,
@@ -501,7 +501,7 @@ public class ProviderConnectionValidationService
 
             return response.StatusCode switch
             {
-                HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => new ProviderValidationResult
+                HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => new ProviderConnectionValidationResult
                 {
                     Configured = true,
                     Reachable = false,
@@ -513,7 +513,7 @@ public class ProviderConnectionValidationService
                         "Check that the endpoint URL is correct"
                     }
                 },
-                (HttpStatusCode)429 => new ProviderValidationResult
+                (HttpStatusCode)429 => new ProviderConnectionValidationResult
                 {
                     Configured = true,
                     Reachable = true,
@@ -521,7 +521,7 @@ public class ProviderConnectionValidationService
                     ErrorMessage = "Azure OpenAI rate limit exceeded",
                     HowToFix = new List<string> { "Wait before trying again" }
                 },
-                _ when (int)response.StatusCode >= 500 => new ProviderValidationResult
+                _ when (int)response.StatusCode >= 500 => new ProviderConnectionValidationResult
                 {
                     Configured = true,
                     Reachable = false,
@@ -529,7 +529,7 @@ public class ProviderConnectionValidationService
                     ErrorMessage = "Azure OpenAI service is experiencing issues",
                     HowToFix = new List<string> { "Check Azure status", "Try again later" }
                 },
-                _ when response.IsSuccessStatusCode => new ProviderValidationResult
+                _ when response.IsSuccessStatusCode => new ProviderConnectionValidationResult
                 {
                     Configured = true,
                     Reachable = true,
@@ -537,7 +537,7 @@ public class ProviderConnectionValidationService
                     ErrorMessage = null,
                     HowToFix = new List<string>()
                 },
-                _ => new ProviderValidationResult
+                _ => new ProviderConnectionValidationResult
                 {
                     Configured = true,
                     Reachable = false,
@@ -549,7 +549,7 @@ public class ProviderConnectionValidationService
         }
         catch (TaskCanceledException)
         {
-            return new ProviderValidationResult
+            return new ProviderConnectionValidationResult
             {
                 Configured = true,
                 Reachable = false,
@@ -560,7 +560,7 @@ public class ProviderConnectionValidationService
         }
         catch (HttpRequestException)
         {
-            return new ProviderValidationResult
+            return new ProviderConnectionValidationResult
             {
                 Configured = true,
                 Reachable = false,
@@ -571,13 +571,13 @@ public class ProviderConnectionValidationService
         }
     }
 
-    private async Task<ProviderValidationResult> ValidateElevenLabsAsync(CancellationToken ct)
+    private async Task<ProviderConnectionValidationResult> ValidateElevenLabsAsync(CancellationToken ct)
     {
         var apiKey = Environment.GetEnvironmentVariable("ELEVENLABS_API_KEY");
 
         if (string.IsNullOrEmpty(apiKey))
         {
-            return new ProviderValidationResult
+            return new ProviderConnectionValidationResult
             {
                 Configured = false,
                 Reachable = false,
@@ -614,14 +614,14 @@ public class ProviderConnectionValidationService
         }
     }
 
-    private async Task<ProviderValidationResult> ValidatePlayHTAsync(CancellationToken ct)
+    private async Task<ProviderConnectionValidationResult> ValidatePlayHTAsync(CancellationToken ct)
     {
         var apiKey = Environment.GetEnvironmentVariable("PLAYHT_API_KEY");
         var userId = Environment.GetEnvironmentVariable("PLAYHT_USER_ID");
 
         if (string.IsNullOrEmpty(apiKey) || string.IsNullOrEmpty(userId))
         {
-            return new ProviderValidationResult
+            return new ProviderConnectionValidationResult
             {
                 Configured = false,
                 Reachable = false,
@@ -659,7 +659,7 @@ public class ProviderConnectionValidationService
         }
     }
 
-    private async Task<ProviderValidationResult> ValidateOllamaAsync(CancellationToken ct)
+    private async Task<ProviderConnectionValidationResult> ValidateOllamaAsync(CancellationToken ct)
     {
         var ollamaUrl = Environment.GetEnvironmentVariable("OLLAMA_BASE_URL") ?? "http://localhost:11434";
 
@@ -672,7 +672,7 @@ public class ProviderConnectionValidationService
 
             if (response.IsSuccessStatusCode)
             {
-                return new ProviderValidationResult
+                return new ProviderConnectionValidationResult
                 {
                     Configured = true,
                     Reachable = true,
@@ -682,7 +682,7 @@ public class ProviderConnectionValidationService
                 };
             }
 
-            return new ProviderValidationResult
+            return new ProviderConnectionValidationResult
             {
                 Configured = true,
                 Reachable = false,
@@ -698,7 +698,7 @@ public class ProviderConnectionValidationService
         }
         catch (HttpRequestException)
         {
-            return new ProviderValidationResult
+            return new ProviderConnectionValidationResult
             {
                 Configured = true,
                 Reachable = false,
@@ -714,7 +714,7 @@ public class ProviderConnectionValidationService
         }
         catch (TaskCanceledException)
         {
-            return new ProviderValidationResult
+            return new ProviderConnectionValidationResult
             {
                 Configured = true,
                 Reachable = false,
@@ -725,7 +725,7 @@ public class ProviderConnectionValidationService
         }
     }
 
-    private async Task<ProviderValidationResult> ValidateStableDiffusionAsync(CancellationToken ct)
+    private async Task<ProviderConnectionValidationResult> ValidateStableDiffusionAsync(CancellationToken ct)
     {
         var sdUrl = Environment.GetEnvironmentVariable("STABLE_DIFFUSION_URL") ?? "http://localhost:7860";
 
@@ -738,7 +738,7 @@ public class ProviderConnectionValidationService
 
             if (response.IsSuccessStatusCode)
             {
-                return new ProviderValidationResult
+                return new ProviderConnectionValidationResult
                 {
                     Configured = true,
                     Reachable = true,
@@ -748,7 +748,7 @@ public class ProviderConnectionValidationService
                 };
             }
 
-            return new ProviderValidationResult
+            return new ProviderConnectionValidationResult
             {
                 Configured = true,
                 Reachable = false,
@@ -759,7 +759,7 @@ public class ProviderConnectionValidationService
         }
         catch (HttpRequestException)
         {
-            return new ProviderValidationResult
+            return new ProviderConnectionValidationResult
             {
                 Configured = true,
                 Reachable = false,
@@ -779,11 +779,11 @@ public class ProviderConnectionValidationService
         }
     }
 
-    private ProviderValidationResult ValidatePiper()
+    private ProviderConnectionValidationResult ValidatePiper()
     {
         // For local TTS providers, we check if the binary exists
         // This is a simplified check - in production, you'd check actual installation
-        return new ProviderValidationResult
+        return new ProviderConnectionValidationResult
         {
             Configured = true,
             Reachable = true,
@@ -793,9 +793,9 @@ public class ProviderConnectionValidationService
         };
     }
 
-    private ProviderValidationResult ValidateMimic3()
+    private ProviderConnectionValidationResult ValidateMimic3()
     {
-        return new ProviderValidationResult
+        return new ProviderConnectionValidationResult
         {
             Configured = true,
             Reachable = true,
@@ -805,11 +805,11 @@ public class ProviderConnectionValidationService
         };
     }
 
-    private ProviderValidationResult ValidateWindowsTTS()
+    private ProviderConnectionValidationResult ValidateWindowsTTS()
     {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            return new ProviderValidationResult
+            return new ProviderConnectionValidationResult
             {
                 Configured = true,
                 Reachable = true,
@@ -819,7 +819,7 @@ public class ProviderConnectionValidationService
             };
         }
 
-        return new ProviderValidationResult
+        return new ProviderConnectionValidationResult
         {
             Configured = false,
             Reachable = false,
@@ -829,10 +829,10 @@ public class ProviderConnectionValidationService
         };
     }
 
-    private ProviderValidationResult ValidateRuleBased()
+    private ProviderConnectionValidationResult ValidateRuleBased()
     {
         // Rule-based LLM is always available
-        return new ProviderValidationResult
+        return new ProviderConnectionValidationResult
         {
             Configured = true,
             Reachable = true,
@@ -842,14 +842,14 @@ public class ProviderConnectionValidationService
         };
     }
 
-    private ProviderValidationResult HandleStandardHttpResponse(
+    private ProviderConnectionValidationResult HandleStandardHttpResponse(
         HttpResponseMessage response, 
         string providerName, 
         string providerUrl)
     {
         return response.StatusCode switch
         {
-            HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => new ProviderValidationResult
+            HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => new ProviderConnectionValidationResult
             {
                 Configured = true,
                 Reachable = false,
@@ -862,7 +862,7 @@ public class ProviderConnectionValidationService
                     "Generate a new API key if needed"
                 }
             },
-            (HttpStatusCode)429 => new ProviderValidationResult
+            (HttpStatusCode)429 => new ProviderConnectionValidationResult
             {
                 Configured = true,
                 Reachable = true,
@@ -870,7 +870,7 @@ public class ProviderConnectionValidationService
                 ErrorMessage = $"{providerName} rate limit exceeded",
                 HowToFix = new List<string> { "Wait before trying again", "Check your usage limits" }
             },
-            _ when (int)response.StatusCode >= 500 => new ProviderValidationResult
+            _ when (int)response.StatusCode >= 500 => new ProviderConnectionValidationResult
             {
                 Configured = true,
                 Reachable = false,
@@ -878,7 +878,7 @@ public class ProviderConnectionValidationService
                 ErrorMessage = $"{providerName} service is experiencing issues",
                 HowToFix = new List<string> { $"Check {providerName} status page", "Try again later" }
             },
-            _ when response.IsSuccessStatusCode => new ProviderValidationResult
+            _ when response.IsSuccessStatusCode => new ProviderConnectionValidationResult
             {
                 Configured = true,
                 Reachable = true,
@@ -886,7 +886,7 @@ public class ProviderConnectionValidationService
                 ErrorMessage = null,
                 HowToFix = new List<string>()
             },
-            _ => new ProviderValidationResult
+            _ => new ProviderConnectionValidationResult
             {
                 Configured = true,
                 Reachable = false,
@@ -897,9 +897,9 @@ public class ProviderConnectionValidationService
         };
     }
 
-    private ProviderValidationResult NetworkTimeoutResult(string providerName)
+    private ProviderConnectionValidationResult NetworkTimeoutResult(string providerName)
     {
-        return new ProviderValidationResult
+        return new ProviderConnectionValidationResult
         {
             Configured = true,
             Reachable = false,
@@ -909,9 +909,9 @@ public class ProviderConnectionValidationService
         };
     }
 
-    private ProviderValidationResult NetworkErrorResult(string providerName)
+    private ProviderConnectionValidationResult NetworkErrorResult(string providerName)
     {
-        return new ProviderValidationResult
+        return new ProviderConnectionValidationResult
         {
             Configured = true,
             Reachable = false,
@@ -925,7 +925,7 @@ public class ProviderConnectionValidationService
 /// <summary>
 /// Result of provider validation
 /// </summary>
-public class ProviderValidationResult
+public class ProviderConnectionValidationResult
 {
     public bool Configured { get; init; }
     public bool Reachable { get; init; }

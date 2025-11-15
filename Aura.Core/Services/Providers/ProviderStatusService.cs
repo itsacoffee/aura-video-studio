@@ -20,7 +20,7 @@ public class ProviderStatusService
     private readonly ProviderHealthMonitoringService _healthMonitoring;
     private readonly ProviderConnectionValidationService _validationService;
     private readonly ConcurrentDictionary<string, ProviderStatus> _statusCache;
-    private readonly ConcurrentDictionary<string, ProviderValidationResult> _validationCache;
+    private readonly ConcurrentDictionary<string, ProviderConnectionValidationResult> _validationCache;
     private DateTime _lastUpdate;
     private readonly TimeSpan _cacheExpiration = TimeSpan.FromSeconds(30);
 
@@ -35,7 +35,7 @@ public class ProviderStatusService
         _healthMonitoring = healthMonitoring;
         _validationService = validationService;
         _statusCache = new ConcurrentDictionary<string, ProviderStatus>();
-        _validationCache = new ConcurrentDictionary<string, ProviderValidationResult>();
+        _validationCache = new ConcurrentDictionary<string, ProviderConnectionValidationResult>();
         _lastUpdate = DateTime.MinValue;
     }
 
@@ -126,10 +126,14 @@ public class ProviderStatusService
             // Update the status cache if it exists
             if (_statusCache.TryGetValue(providerName, out var existingStatus))
             {
-                var updatedStatus = existingStatus with
+                var updatedStatus = new ProviderStatus
                 {
+                    Name = existingStatus.Name,
+                    Category = existingStatus.Category,
                     IsAvailable = validationResult.Configured && validationResult.Reachable,
                     IsOnline = validationResult.Reachable,
+                    Tier = existingStatus.Tier,
+                    Features = existingStatus.Features,
                     Message = validationResult.ErrorMessage ?? (validationResult.Reachable ? "Available" : "Not available")
                 };
                 _statusCache.TryUpdate(providerName, updatedStatus, existingStatus);
