@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Net.Http;
 using Aura.Core.Downloads;
 using Microsoft.Extensions.Logging;
 
@@ -162,19 +163,42 @@ public class FfmpegInstaller
             
             progress?.Report(new HttpDownloadProgress(0, 0, 0, 0, "Downloading FFmpeg..."));
             
-            bool downloadSuccess = await _downloader.DownloadFileAsync(
-                mirrors,
-                archivePath,
-                expectedSha256,
-                progress,
-                ct).ConfigureAwait(false);
-            
-            if (!downloadSuccess)
+            try
             {
+                bool downloadSuccess = await _downloader.DownloadFileAsync(
+                    mirrors,
+                    archivePath,
+                    expectedSha256,
+                    progress,
+                    ct).ConfigureAwait(false);
+                
+                if (!downloadSuccess)
+                {
+                    return new FfmpegInstallResult
+                    {
+                        Success = false,
+                        ErrorMessage = "Failed to download FFmpeg from any mirror",
+                        SourceType = InstallSourceType.Network
+                    };
+                }
+            }
+            catch (DownloadException dex)
+            {
+                _logger.LogError(dex, "Download failed with error code: {ErrorCode}", dex.ErrorCode);
                 return new FfmpegInstallResult
                 {
                     Success = false,
-                    ErrorMessage = "Failed to download FFmpeg from any mirror",
+                    ErrorMessage = $"Download failed: {dex.Message} (Error: {dex.ErrorCode})",
+                    SourceType = InstallSourceType.Network
+                };
+            }
+            catch (HttpRequestException hex)
+            {
+                _logger.LogError(hex, "HTTP request failed during download");
+                return new FfmpegInstallResult
+                {
+                    Success = false,
+                    ErrorMessage = $"Network error during download: {hex.Message}",
                     SourceType = InstallSourceType.Network
                 };
             }
@@ -188,6 +212,26 @@ public class FfmpegInstaller
                 expectedSha256,
                 progress,
                 ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            _logger.LogInformation("Installation cancelled by user");
+            return new FfmpegInstallResult
+            {
+                Success = false,
+                ErrorMessage = "Installation cancelled by user",
+                SourceType = InstallSourceType.Network
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error during FFmpeg installation");
+            return new FfmpegInstallResult
+            {
+                Success = false,
+                ErrorMessage = $"Installation failed: {ex.Message}",
+                SourceType = InstallSourceType.Network
+            };
         }
         finally
         {
