@@ -21,7 +21,10 @@ import {
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../../components/Notifications/Toasts';
+import { AutoSaveIndicator } from '../../components/Onboarding/AutoSaveIndicator';
+import type { AutoSaveStatus } from '../../components/Onboarding/AutoSaveIndicator';
 import { FFmpegDependencyCard } from '../../components/Onboarding/FFmpegDependencyCard';
+import { ResumeWizardDialog } from '../../components/Onboarding/ResumeWizardDialog';
 import { WelcomeScreen } from '../../components/Onboarding/WelcomeScreen';
 import type { WorkspacePreferences } from '../../components/Onboarding/WorkspaceSetup';
 import { WorkspaceSetup } from '../../components/Onboarding/WorkspaceSetup';
@@ -32,6 +35,7 @@ import { PersistentCircuitBreaker } from '../../services/api/circuitBreakerPersi
 import type { FFmpegStatus } from '../../services/api/ffmpegClient';
 import { ffmpegClient } from '../../services/api/ffmpegClient';
 import { setupApi } from '../../services/api/setupApi';
+import type { WizardStatusResponse } from '../../services/api/setupApi';
 import { markFirstRunCompleted } from '../../services/firstRunService';
 import {
   onboardingReducer,
@@ -40,6 +44,9 @@ import {
   saveWizardStateToStorage,
   loadWizardStateFromStorage,
   clearWizardStateFromStorage,
+  loadWizardProgressFromBackend,
+  saveWizardProgressToBackend,
+  completeWizardInBackend,
 } from '../../state/onboarding';
 import { pickFolder } from '../../utils/pathUtils';
 import { ApiKeySetupStep } from './ApiKeySetupStep';
@@ -152,6 +159,16 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
   const navigate = useNavigate();
   const [state, dispatch] = useReducer(onboardingReducer, initialOnboardingState);
   const [stepStartTime, setStepStartTime] = useState<number>(0);
+
+  // Auto-save state
+  const [autoSaveStatus, setAutoSaveStatus] = useState<AutoSaveStatus>('idle');
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [autoSaveError, setAutoSaveError] = useState<string | null>(null);
+
+  // Resume dialog state
+  const [showResumeDialog, setShowResumeDialog] = useState(false);
+  const [wizardStatus, setWizardStatus] = useState<WizardStatusResponse | null>(null);
+
   const wizardStartTimeRef = useRef<number>(0);
 
   // FFmpeg status state
@@ -212,19 +229,33 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
     resetCircuitBreaker();
     console.info('[FirstRunWizard] Circuit breaker state cleared on mount');
 
-    // Check for saved progress
-    const savedState = loadWizardStateFromStorage();
-    if (savedState) {
-      // Ask user if they want to resume
-      const resume = window.confirm(
-        'You have incomplete setup. Would you like to resume where you left off?'
-      );
-      if (resume && savedState) {
-        dispatch({ type: 'LOAD_FROM_STORAGE', payload: savedState });
-      } else {
-        clearWizardStateFromStorage();
+    // Check for saved progress from backend
+    const checkSavedProgress = async () => {
+      try {
+        const status = await setupApi.getWizardStatus();
+        if (status.canResume) {
+          setWizardStatus(status);
+          setShowResumeDialog(true);
+        }
+      } catch (error) {
+        console.warn('[FirstRunWizard] Failed to check saved wizard status:', error);
+
+        // Fallback to localStorage
+        const savedState = loadWizardStateFromStorage();
+        if (savedState) {
+          const resume = window.confirm(
+            'You have incomplete setup. Would you like to resume where you left off?'
+          );
+          if (resume && savedState) {
+            dispatch({ type: 'LOAD_FROM_STORAGE', payload: savedState });
+          } else {
+            clearWizardStateFromStorage();
+          }
+        }
       }
-    }
+    };
+
+    void checkSavedProgress();
   }, []);
 
   // Track step changes
@@ -250,6 +281,30 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
   useEffect(() => {
     if (state.step > 0 && state.step < totalSteps - 1) {
       saveWizardStateToStorage(state);
+
+      // Auto-save to backend
+      const autoSave = async () => {
+        setAutoSaveStatus('saving');
+        setAutoSaveError(null);
+
+        try {
+          const success = await saveWizardProgressToBackend(state);
+          if (success) {
+            setAutoSaveStatus('saved');
+            setLastSaved(new Date());
+            setTimeout(() => setAutoSaveStatus('idle'), 3000);
+          } else {
+            setAutoSaveStatus('error');
+            setAutoSaveError('Failed to save progress');
+          }
+        } catch (error) {
+          console.error('[Auto-save] Failed:', error);
+          setAutoSaveStatus('error');
+          setAutoSaveError(error instanceof Error ? error.message : 'Unknown error');
+        }
+      };
+
+      void autoSave();
     }
   }, [state, totalSteps]);
 
@@ -261,6 +316,37 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
     const hasOfflineMode = state.selectedTier === 'free' && state.mode === 'free';
     setHasAtLeastOneProvider(validProviders.length > 0 || hasOfflineMode);
   }, [state.apiKeyValidationStatus, state.selectedTier, state.mode]);
+
+  // Resume wizard handlers
+  const handleResumeWizard = useCallback(async () => {
+    try {
+      const savedState = await loadWizardProgressFromBackend();
+      if (savedState) {
+        dispatch({ type: 'LOAD_FROM_STORAGE', payload: savedState });
+        setShowResumeDialog(false);
+        showSuccessToast({
+          title: 'Setup Resumed',
+          message: 'Your previous setup progress has been restored.',
+        });
+      }
+    } catch (error) {
+      console.error('[Resume] Failed to load saved state:', error);
+      showFailureToast({
+        title: 'Resume Failed',
+        message: 'Failed to resume saved progress. Starting fresh.',
+      });
+      setShowResumeDialog(false);
+    }
+  }, [showSuccessToast, showFailureToast]);
+
+  const handleStartFresh = useCallback(() => {
+    clearWizardStateFromStorage();
+    setShowResumeDialog(false);
+    showSuccessToast({
+      title: 'Starting Fresh',
+      message: 'Previous setup progress cleared.',
+    });
+  }, [showSuccessToast]);
 
   // Navigation protection: Prevent leaving page during setup
   useEffect(() => {
@@ -387,6 +473,9 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
         });
         return;
       }
+
+      // Mark wizard as complete in backend
+      await completeWizardInBackend(state);
 
       // Clear wizard state and mark local completion
       clearWizardStateFromStorage();
@@ -1192,6 +1281,13 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
         />
       </div>
 
+      <ResumeWizardDialog
+        open={showResumeDialog}
+        wizardStatus={wizardStatus}
+        onResume={handleResumeWizard}
+        onStartFresh={handleStartFresh}
+      />
+
       <div className={styles.content}>
         <div className={styles.stepContent} key={state.step}>
           {renderStepContent()}
@@ -1200,7 +1296,20 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
       {state.step < totalSteps - 1 && (
         <div className={styles.footer}>
-          <div style={{ flex: 1 }} />
+          <div
+            style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              gap: tokens.spacingHorizontalM,
+            }}
+          >
+            <AutoSaveIndicator
+              status={autoSaveStatus}
+              lastSaved={lastSaved}
+              error={autoSaveError}
+            />
+          </div>
 
           <div style={{ display: 'flex', gap: tokens.spacingHorizontalM }}>
             {state.step > 0 && (
