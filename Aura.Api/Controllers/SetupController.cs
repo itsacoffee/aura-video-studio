@@ -561,6 +561,250 @@ public class SetupController : ControllerBase
     }
 
     /// <summary>
+    /// Save wizard progress (for resume on interruption)
+    /// </summary>
+    [HttpPost("wizard/save-progress")]
+    public async Task<IActionResult> SaveWizardProgress(
+        [FromBody] WizardProgressRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            _logger.LogInformation("Saving wizard progress for user: {UserId}, Step: {Step}, CorrelationId: {CorrelationId}",
+                request.UserId ?? "default", request.CurrentStep, request.CorrelationId);
+
+            var userId = request.UserId ?? "default";
+            var userSetup = await _dbContext.UserSetups
+                .FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken).ConfigureAwait(false);
+
+            if (userSetup == null)
+            {
+                userSetup = new UserSetupEntity
+                {
+                    UserId = userId,
+                    LastStep = request.CurrentStep,
+                    UpdatedAt = DateTime.UtcNow,
+                    WizardState = System.Text.Json.JsonSerializer.Serialize(request.State)
+                };
+                _dbContext.UserSetups.Add(userSetup);
+            }
+            else
+            {
+                userSetup.LastStep = request.CurrentStep;
+                userSetup.UpdatedAt = DateTime.UtcNow;
+                userSetup.WizardState = System.Text.Json.JsonSerializer.Serialize(request.State);
+            }
+
+            await _dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+            return Ok(new
+            {
+                success = true,
+                message = "Wizard progress saved successfully",
+                correlationId = request.CorrelationId
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save wizard progress, CorrelationId: {CorrelationId}",
+                request.CorrelationId);
+            return StatusCode(500, new
+            {
+                success = false,
+                error = "Failed to save wizard progress",
+                detail = ex.Message,
+                correlationId = request.CorrelationId
+            });
+        }
+    }
+
+    /// <summary>
+    /// Get wizard status and saved progress
+    /// </summary>
+    [HttpGet("wizard/status")]
+    public async Task<IActionResult> GetWizardStatus(
+        [FromQuery] string? userId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var effectiveUserId = userId ?? "default";
+            var userSetup = await _dbContext.UserSetups
+                .FirstOrDefaultAsync(u => u.UserId == effectiveUserId, cancellationToken).ConfigureAwait(false);
+
+            if (userSetup == null)
+            {
+                return Ok(new
+                {
+                    completed = false,
+                    currentStep = 0,
+                    state = (object?)null,
+                    canResume = false,
+                    lastUpdated = (DateTime?)null
+                });
+            }
+
+            object? parsedState = null;
+            if (!string.IsNullOrEmpty(userSetup.WizardState))
+            {
+                try
+                {
+                    parsedState = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(userSetup.WizardState);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse wizard state for user: {UserId}", effectiveUserId);
+                }
+            }
+
+            return Ok(new
+            {
+                completed = userSetup.Completed,
+                currentStep = userSetup.LastStep,
+                state = parsedState,
+                canResume = !userSetup.Completed && userSetup.LastStep > 0,
+                lastUpdated = userSetup.UpdatedAt,
+                completedAt = userSetup.CompletedAt,
+                version = userSetup.Version
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get wizard status for user: {UserId}", userId);
+            return StatusCode(500, new
+            {
+                error = "Failed to retrieve wizard status",
+                detail = ex.Message
+            });
+        }
+    }
+
+    /// <summary>
+    /// Mark wizard as complete
+    /// </summary>
+    [HttpPost("wizard/complete")]
+    public async Task<IActionResult> CompleteWizard(
+        [FromBody] WizardCompleteRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            _logger.LogInformation("Completing wizard for user: {UserId}, CorrelationId: {CorrelationId}",
+                request.UserId ?? "default", request.CorrelationId);
+
+            var userId = request.UserId ?? "default";
+            var userSetup = await _dbContext.UserSetups
+                .FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken).ConfigureAwait(false);
+
+            if (userSetup == null)
+            {
+                userSetup = new UserSetupEntity
+                {
+                    UserId = userId,
+                    Completed = true,
+                    CompletedAt = DateTime.UtcNow,
+                    Version = request.Version ?? "1.0.0",
+                    LastStep = request.FinalStep,
+                    UpdatedAt = DateTime.UtcNow,
+                    SelectedTier = request.SelectedTier,
+                    WizardState = System.Text.Json.JsonSerializer.Serialize(request.FinalState ?? new())
+                };
+                _dbContext.UserSetups.Add(userSetup);
+            }
+            else
+            {
+                userSetup.Completed = true;
+                userSetup.CompletedAt = DateTime.UtcNow;
+                userSetup.Version = request.Version ?? "1.0.0";
+                userSetup.LastStep = request.FinalStep;
+                userSetup.UpdatedAt = DateTime.UtcNow;
+                userSetup.SelectedTier = request.SelectedTier;
+                userSetup.WizardState = System.Text.Json.JsonSerializer.Serialize(request.FinalState ?? new());
+            }
+
+            await _dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+            _logger.LogInformation("Wizard completed successfully for user: {UserId}", userId);
+
+            return Ok(new
+            {
+                success = true,
+                message = "Wizard completed successfully",
+                correlationId = request.CorrelationId
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to complete wizard, CorrelationId: {CorrelationId}",
+                request.CorrelationId);
+            return StatusCode(500, new
+            {
+                success = false,
+                error = "Failed to complete wizard",
+                detail = ex.Message,
+                correlationId = request.CorrelationId
+            });
+        }
+    }
+
+    /// <summary>
+    /// Reset wizard state (for testing or re-running wizard)
+    /// </summary>
+    [HttpPost("wizard/reset")]
+    public async Task<IActionResult> ResetWizard(
+        [FromBody] WizardResetRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            _logger.LogWarning("Resetting wizard for user: {UserId}, CorrelationId: {CorrelationId}",
+                request.UserId ?? "default", request.CorrelationId);
+
+            var userId = request.UserId ?? "default";
+            var userSetup = await _dbContext.UserSetups
+                .FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken).ConfigureAwait(false);
+
+            if (userSetup != null)
+            {
+                if (request.PreserveData)
+                {
+                    userSetup.Completed = false;
+                    userSetup.CompletedAt = null;
+                    userSetup.LastStep = 0;
+                    userSetup.UpdatedAt = DateTime.UtcNow;
+                }
+                else
+                {
+                    _dbContext.UserSetups.Remove(userSetup);
+                }
+
+                await _dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            _logger.LogInformation("Wizard reset successfully for user: {UserId}", userId);
+
+            return Ok(new
+            {
+                success = true,
+                message = "Wizard reset successfully",
+                correlationId = request.CorrelationId
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to reset wizard, CorrelationId: {CorrelationId}",
+                request.CorrelationId);
+            return StatusCode(500, new
+            {
+                success = false,
+                error = "Failed to reset wizard",
+                detail = ex.Message,
+                correlationId = request.CorrelationId
+            });
+        }
+    }
+
+    /// <summary>
     /// Request models for setup endpoints
     /// </summary>
     public class SetupCompleteRequest
@@ -572,5 +816,30 @@ public class SetupController : ControllerBase
     public class DirectoryCheckRequest
     {
         public required string Path { get; set; }
+    }
+
+    public class WizardProgressRequest
+    {
+        public string? UserId { get; set; }
+        public int CurrentStep { get; set; }
+        public Dictionary<string, object> State { get; set; } = new();
+        public string? CorrelationId { get; set; }
+    }
+
+    public class WizardCompleteRequest
+    {
+        public string? UserId { get; set; }
+        public int FinalStep { get; set; }
+        public string? Version { get; set; }
+        public string? SelectedTier { get; set; }
+        public Dictionary<string, object>? FinalState { get; set; }
+        public string? CorrelationId { get; set; }
+    }
+
+    public class WizardResetRequest
+    {
+        public string? UserId { get; set; }
+        public bool PreserveData { get; set; } = false;
+        public string? CorrelationId { get; set; }
     }
 }

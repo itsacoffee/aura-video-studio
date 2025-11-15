@@ -1275,3 +1275,120 @@ export function clearWizardStateFromStorage(): void {
     console.error('Failed to clear wizard state:', error);
   }
 }
+
+/**
+ * Save wizard progress to backend (with automatic retry)
+ */
+export async function saveWizardProgressToBackend(
+  state: OnboardingState,
+  correlationId?: string
+): Promise<boolean> {
+  try {
+    const { setupApi } = await import('../services/api/setupApi');
+    
+    // Extract serializable state (exclude non-serializable fields)
+    const serializableState = {
+      step: state.step,
+      mode: state.mode,
+      selectedTier: state.selectedTier,
+      status: state.status,
+      stepState: state.stepState,
+      lastStep: state.step,
+      apiKeys: state.apiKeys,
+      selectedProviders: state.selectedProviders,
+      installItems: state.installItems.map(item => ({
+        id: item.id,
+        installed: item.installed,
+        skipped: item.skipped,
+      })),
+    };
+
+    const result = await setupApi.saveWizardProgress({
+      currentStep: state.step,
+      state: serializableState,
+      correlationId: correlationId || `wizard-save-${Date.now()}`,
+    });
+
+    console.info('[Wizard Persistence] Progress saved to backend:', result);
+    return result.success;
+  } catch (error) {
+    console.error('[Wizard Persistence] Failed to save progress to backend:', error);
+    return false;
+  }
+}
+
+/**
+ * Load wizard progress from backend
+ */
+export async function loadWizardProgressFromBackend(
+  userId?: string
+): Promise<Partial<OnboardingState> | null> {
+  try {
+    const { setupApi } = await import('../services/api/setupApi');
+    
+    const status = await setupApi.getWizardStatus(userId);
+    
+    if (!status.canResume || !status.state) {
+      return null;
+    }
+
+    console.info('[Wizard Persistence] Loaded progress from backend:', status);
+    
+    return status.state as Partial<OnboardingState>;
+  } catch (error) {
+    console.error('[Wizard Persistence] Failed to load progress from backend:', error);
+    return null;
+  }
+}
+
+/**
+ * Mark wizard as complete in backend
+ */
+export async function completeWizardInBackend(
+  state: OnboardingState,
+  correlationId?: string
+): Promise<boolean> {
+  try {
+    const { setupApi } = await import('../services/api/setupApi');
+    
+    const result = await setupApi.completeWizard({
+      finalStep: state.step,
+      version: '1.0.0',
+      selectedTier: state.selectedTier || undefined,
+      finalState: {
+        mode: state.mode,
+        providers: state.selectedProviders,
+      },
+      correlationId: correlationId || `wizard-complete-${Date.now()}`,
+    });
+
+    console.info('[Wizard Persistence] Wizard completed in backend:', result);
+    return result.success;
+  } catch (error) {
+    console.error('[Wizard Persistence] Failed to complete wizard in backend:', error);
+    return false;
+  }
+}
+
+/**
+ * Reset wizard state in backend
+ */
+export async function resetWizardInBackend(
+  preserveData: boolean = false,
+  correlationId?: string
+): Promise<boolean> {
+  try {
+    const { setupApi } = await import('../services/api/setupApi');
+    
+    const result = await setupApi.resetWizard({
+      preserveData,
+      correlationId: correlationId || `wizard-reset-${Date.now()}`,
+    });
+
+    console.info('[Wizard Persistence] Wizard reset in backend:', result);
+    return result.success;
+  } catch (error) {
+    console.error('[Wizard Persistence] Failed to reset wizard in backend:', error);
+    return false;
+  }
+}

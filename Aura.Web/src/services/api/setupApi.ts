@@ -43,6 +43,50 @@ export interface DirectoryCheckResponse {
 }
 
 /**
+ * Wizard progress save request
+ */
+export interface WizardProgressRequest {
+  userId?: string;
+  currentStep: number;
+  state: Record<string, unknown>;
+  correlationId?: string;
+}
+
+/**
+ * Wizard status response
+ */
+export interface WizardStatusResponse {
+  completed: boolean;
+  currentStep: number;
+  state: Record<string, unknown> | null;
+  canResume: boolean;
+  lastUpdated: string | null;
+  completedAt?: string | null;
+  version?: string | null;
+}
+
+/**
+ * Wizard complete request
+ */
+export interface WizardCompleteRequest {
+  userId?: string;
+  finalStep: number;
+  version?: string;
+  selectedTier?: string;
+  finalState?: Record<string, unknown>;
+  correlationId?: string;
+}
+
+/**
+ * Wizard reset request
+ */
+export interface WizardResetRequest {
+  userId?: string;
+  preserveData?: boolean;
+  correlationId?: string;
+}
+
+/**
  * API client for system setup operations
  * All setup API calls skip the circuit breaker to prevent false "service unavailable" errors
  */
@@ -95,6 +139,63 @@ export const setupApi = {
     };
     const response = await apiClient.post<DirectoryCheckResponse>(
       '/api/setup/check-directory',
+      request,
+      config
+    );
+    return response.data;
+  },
+
+  /**
+   * Save wizard progress for resume capability
+   */
+  async saveWizardProgress(request: WizardProgressRequest): Promise<{ success: boolean; message: string; correlationId?: string }> {
+    const config: ExtendedAxiosRequestConfig = {
+      _skipCircuitBreaker: true,
+    };
+    const response = await apiClient.post<{ success: boolean; message: string; correlationId?: string }>(
+      '/api/setup/wizard/save-progress',
+      request,
+      config
+    );
+    return response.data;
+  },
+
+  /**
+   * Get wizard status and saved progress
+   */
+  async getWizardStatus(userId?: string): Promise<WizardStatusResponse> {
+    const config: ExtendedAxiosRequestConfig = {
+      _skipCircuitBreaker: true,
+      params: userId ? { userId } : undefined,
+    };
+    const response = await apiClient.get<WizardStatusResponse>('/api/setup/wizard/status', config);
+    return response.data;
+  },
+
+  /**
+   * Mark wizard as complete
+   */
+  async completeWizard(request: WizardCompleteRequest): Promise<{ success: boolean; message: string; correlationId?: string }> {
+    const config: ExtendedAxiosRequestConfig = {
+      _skipCircuitBreaker: true,
+    };
+    const response = await apiClient.post<{ success: boolean; message: string; correlationId?: string }>(
+      '/api/setup/wizard/complete',
+      request,
+      config
+    );
+    return response.data;
+  },
+
+  /**
+   * Reset wizard state (for testing or re-running)
+   */
+  async resetWizard(request: WizardResetRequest): Promise<{ success: boolean; message: string; correlationId?: string }> {
+    const config: ExtendedAxiosRequestConfig = {
+      _skipCircuitBreaker: true,
+    };
+    const response = await apiClient.post<{ success: boolean; message: string; correlationId?: string }>(
+      '/api/setup/wizard/reset',
       request,
       config
     );
