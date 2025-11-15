@@ -1457,6 +1457,154 @@ public class ProvidersController : ControllerBase
                 instance: correlationId);
         }
     }
+
+    /// <summary>
+    /// Ping a specific provider to test connectivity and API key
+    /// </summary>
+    [HttpPost("{name}/ping")]
+    public async Task<IActionResult> PingProvider(
+        string name,
+        CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        try
+        {
+            Log.Information("[{CorrelationId}] POST /api/providers/{Name}/ping", correlationId, name);
+
+            var pingService = HttpContext.RequestServices.GetService(typeof(Aura.Core.Services.Providers.ProviderPingService)) 
+                as Aura.Core.Services.Providers.ProviderPingService;
+
+            if (pingService == null)
+            {
+                return Problem(
+                    title: "Service Unavailable",
+                    detail: "Provider ping service is not available",
+                    statusCode: 503);
+            }
+
+            Aura.Core.Services.Providers.CoreProviderPingResult result;
+
+            switch (name.ToLowerInvariant())
+            {
+                case "openai":
+                    var openaiKey = await _secureStorageService.GetApiKeyAsync("OpenAI").ConfigureAwait(false);
+                    result = await pingService.PingOpenAIAsync(openaiKey, null, cancellationToken).ConfigureAwait(false);
+                    break;
+
+                case "anthropic":
+                    var anthropicKey = await _secureStorageService.GetApiKeyAsync("Anthropic").ConfigureAwait(false);
+                    result = await pingService.PingAnthropicAsync(anthropicKey, null, cancellationToken).ConfigureAwait(false);
+                    break;
+
+                default:
+                    return BadRequest(new
+                    {
+                        attempted = false,
+                        success = false,
+                        errorCode = "ProviderNotSupported",
+                        message = $"Provider '{name}' does not support ping operation yet.",
+                        correlationId
+                    });
+            }
+
+            var response = new ProviderPingResult(
+                Attempted: result.Attempted,
+                Success: result.Success,
+                ErrorCode: result.ErrorCode,
+                Message: result.Message,
+                HttpStatus: result.HttpStatus,
+                Endpoint: result.Endpoint,
+                ResponseTimeMs: result.ResponseTimeMs,
+                CorrelationId: correlationId);
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[{CorrelationId}] Error pinging provider {Name}", correlationId, name);
+            return Problem(
+                title: "Provider Ping Error",
+                detail: $"Failed to ping provider: {name}",
+                statusCode: 500,
+                type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/api/errors.md#provider-ping-error",
+                instance: correlationId);
+        }
+    }
+
+    /// <summary>
+    /// Ping all configured providers to test connectivity
+    /// </summary>
+    [HttpGet("ping-all")]
+    public async Task<IActionResult> PingAllProviders(CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        try
+        {
+            Log.Information("[{CorrelationId}] GET /api/providers/ping-all", correlationId);
+
+            var pingService = HttpContext.RequestServices.GetService(typeof(Aura.Core.Services.Providers.ProviderPingService)) 
+                as Aura.Core.Services.Providers.ProviderPingService;
+
+            if (pingService == null)
+            {
+                return Problem(
+                    title: "Service Unavailable",
+                    detail: "Provider ping service is not available",
+                    statusCode: 503);
+            }
+
+            var results = new System.Collections.Generic.Dictionary<string, ProviderPingResult>();
+
+            var openaiKey = await _secureStorageService.GetApiKeyAsync("OpenAI").ConfigureAwait(false);
+            if (!string.IsNullOrWhiteSpace(openaiKey))
+            {
+                var openaiResult = await pingService.PingOpenAIAsync(openaiKey, null, cancellationToken).ConfigureAwait(false);
+                results["OpenAI"] = new ProviderPingResult(
+                    openaiResult.Attempted,
+                    openaiResult.Success,
+                    openaiResult.ErrorCode,
+                    openaiResult.Message,
+                    openaiResult.HttpStatus,
+                    openaiResult.Endpoint,
+                    openaiResult.ResponseTimeMs,
+                    correlationId);
+            }
+
+            var anthropicKey = await _secureStorageService.GetApiKeyAsync("Anthropic").ConfigureAwait(false);
+            if (!string.IsNullOrWhiteSpace(anthropicKey))
+            {
+                var anthropicResult = await pingService.PingAnthropicAsync(anthropicKey, null, cancellationToken).ConfigureAwait(false);
+                results["Anthropic"] = new ProviderPingResult(
+                    anthropicResult.Attempted,
+                    anthropicResult.Success,
+                    anthropicResult.ErrorCode,
+                    anthropicResult.Message,
+                    anthropicResult.HttpStatus,
+                    anthropicResult.Endpoint,
+                    anthropicResult.ResponseTimeMs,
+                    correlationId);
+            }
+
+            var response = new ProviderPingAllResponse(
+                Results: results,
+                Timestamp: DateTime.UtcNow,
+                CorrelationId: correlationId);
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[{CorrelationId}] Error pinging all providers", correlationId);
+            return Problem(
+                title: "Provider Ping Error",
+                detail: "Failed to ping providers",
+                statusCode: 500,
+                type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/api/errors.md#provider-ping-error",
+                instance: correlationId);
+        }
+    }
 }
 
 /// <summary>
