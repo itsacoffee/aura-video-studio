@@ -1,23 +1,17 @@
 import {
   Home24Regular,
-  VideoClip24Regular,
   Settings24Regular,
   Play24Regular,
-  Document24Regular,
   CloudArrowDown24Regular,
   DocumentBulletList24Regular,
   Folder24Regular,
   TaskListSquareLtr24Regular,
   HeartPulse24Regular,
-  Image24Regular,
   Lightbulb24Regular,
-  DataTrending24Regular,
   ChannelShare24Regular,
   ChartMultiple24Regular,
   CalendarLtr24Regular,
   FlashFlow24Regular,
-  VideoClipMultiple24Regular,
-  AppGeneric24Regular,
   Wand24Regular,
   Eye24Regular,
   Database24Regular,
@@ -30,6 +24,11 @@ import {
   SlideSettings24Regular,
   DocumentSearch24Regular,
   Stethoscope24Regular,
+  DataUsage24Regular as Dashboard24Regular,
+  Add24Regular,
+  Grid24Regular,
+  ImageMultiple24Regular,
+  Video24Regular,
 } from '@fluentui/react-icons';
 
 export interface NavItem {
@@ -42,9 +41,9 @@ export interface NavItem {
 
 export const navItems: NavItem[] = [
   { key: 'home', name: 'Welcome', icon: Home24Regular, path: '/' },
-  { key: 'dashboard', name: 'Dashboard', icon: Document24Regular, path: '/dashboard' },
+  { key: 'dashboard', name: 'Dashboard', icon: Dashboard24Regular, path: '/dashboard' },
   { key: 'ideation', name: 'Ideation', icon: Lightbulb24Regular, path: '/ideation' },
-  { key: 'trending', name: 'Trending Topics', icon: DataTrending24Regular, path: '/trending' },
+  { key: 'trending', name: 'Trending Topics', icon: ChartMultiple24Regular, path: '/trending' },
   {
     key: 'content-planning',
     name: 'Content Planning',
@@ -57,11 +56,11 @@ export const navItems: NavItem[] = [
     icon: DataUsage24Regular,
     path: '/usage-analytics',
   },
-  { key: 'create', name: 'Create', icon: VideoClip24Regular, path: '/create' },
-  { key: 'templates', name: 'Templates', icon: AppGeneric24Regular, path: '/templates' },
+  { key: 'create', name: 'Create', icon: Add24Regular, path: '/create' },
+  { key: 'templates', name: 'Templates', icon: Grid24Regular, path: '/templates' },
   { key: 'projects', name: 'Projects', icon: Folder24Regular, path: '/projects' },
-  { key: 'assets', name: 'Asset Library', icon: Image24Regular, path: '/assets' },
-  { key: 'editor', name: 'Video Editor', icon: VideoClipMultiple24Regular, path: '/editor' },
+  { key: 'assets', name: 'Asset Library', icon: ImageMultiple24Regular, path: '/assets' },
+  { key: 'editor', name: 'Video Editor', icon: Video24Regular, path: '/editor' },
   {
     key: 'pacing',
     name: 'Pacing Analyzer',

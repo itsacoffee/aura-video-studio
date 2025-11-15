@@ -3,7 +3,6 @@ import {
   tokens,
   Title1,
   Title2,
-  Title3,
   Text,
   Button,
   Card,
@@ -11,13 +10,22 @@ import {
   Spinner,
   Badge,
   Tooltip,
+  MessageBar,
+  MessageBarBody,
+  MessageBarTitle,
 } from '@fluentui/react-components';
-import { Play24Regular, Settings24Regular, Rocket24Regular, Lightbulb24Regular } from '@fluentui/react-icons';
+import {
+  Play24Regular,
+  Settings24Regular,
+  Rocket24Regular,
+  Lightbulb24Regular,
+  Checkmark24Regular,
+  Warning24Regular,
+} from '@fluentui/react-icons';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ConfigurationModal } from '../components/ConfigurationModal';
 import { ConfigurationStatusCard } from '../components/ConfigurationStatusCard';
-import { FirstRunDiagnostics } from '../components/FirstRunDiagnostics';
 import { SystemCheckCard } from '../components/SystemCheckCard';
 import { TooltipContent, TooltipWithLink } from '../components/Tooltips';
 import { apiUrl } from '../config/api';
@@ -142,64 +150,31 @@ const useStyles = makeStyles({
     gap: tokens.spacingVerticalS,
   },
   setupBanner: {
-    padding: tokens.spacingVerticalXXL,
     marginBottom: tokens.spacingVerticalXXL,
-    borderRadius: tokens.borderRadiusLarge,
-    background: `linear-gradient(135deg, ${tokens.colorPaletteRedBackground1} 0%, ${tokens.colorPaletteDarkOrangeBackground1} 100%)`,
-    border: `3px solid ${tokens.colorPaletteRedBorder2}`,
-    textAlign: 'center',
-    animation: 'pulseGlow 2s ease-in-out infinite',
   },
-  '@keyframes pulseGlow': {
-    '0%, 100%': {
-      boxShadow: `0 0 20px ${tokens.colorPaletteRedBorder1}`,
-    },
-    '50%': {
-      boxShadow: `0 0 40px ${tokens.colorPaletteRedBorder2}`,
-    },
+  setupMessageBar: {
+    marginBottom: tokens.spacingVerticalXXL,
   },
-  setupBannerTitle: {
-    fontSize: '32px',
-    fontWeight: tokens.fontWeightBold,
+  setupBannerActions: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalM,
+    marginTop: tokens.spacingVerticalM,
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+  },
+  setupBannerList: {
+    marginTop: tokens.spacingVerticalM,
     marginBottom: tokens.spacingVerticalM,
-    color: tokens.colorPaletteRedForeground1,
-  },
-  setupBannerText: {
-    fontSize: '18px',
-    marginBottom: tokens.spacingVerticalXL,
-    maxWidth: '700px',
+    paddingLeft: tokens.spacingHorizontalXL,
+    textAlign: 'left',
+    maxWidth: '600px',
     margin: '0 auto',
-    lineHeight: '1.6',
-  },
-  quickSetupButton: {
-    fontSize: '20px',
-    padding: '20px 48px',
-    height: 'auto',
-    minHeight: '64px',
-    fontWeight: tokens.fontWeightBold,
-    animation: 'buttonPulse 2s ease-in-out infinite',
-  },
-  '@keyframes buttonPulse': {
-    '0%, 100%': {
-      transform: 'scale(1)',
-    },
-    '50%': {
-      transform: 'scale(1.05)',
-    },
   },
   readyBanner: {
-    padding: tokens.spacingVerticalXL,
     marginBottom: tokens.spacingVerticalXXL,
-    borderRadius: tokens.borderRadiusLarge,
-    background: `linear-gradient(135deg, ${tokens.colorPaletteGreenBackground1} 0%, ${tokens.colorPaletteBlueBorderActive} 100%)`,
-    border: `2px solid ${tokens.colorPaletteGreenBorder1}`,
-    textAlign: 'center',
   },
-  readyBannerTitle: {
-    fontSize: '28px',
-    fontWeight: tokens.fontWeightBold,
-    marginBottom: tokens.spacingVerticalS,
-    color: tokens.colorPaletteGreenForeground1,
+  readyMessageBar: {
+    marginBottom: tokens.spacingVerticalXXL,
   },
   disabledButtonTooltip: {
     padding: tokens.spacingVerticalM,
@@ -226,14 +201,15 @@ interface HealthStatus {
   timestamp: string;
 }
 
+// eslint-disable-next-line sonarjs/cognitive-complexity
 export function WelcomePage() {
   const styles = useStyles();
   const navigate = useNavigate();
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [capabilities, setCapabilities] = useState<HardwareCapabilities | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isFirstRun, setIsFirstRun] = useState(false);
-  const [checkingFirstRun, setCheckingFirstRun] = useState(true);
+  const [_isFirstRun, setIsFirstRun] = useState(false);
+  const [_checkingFirstRun, setCheckingFirstRun] = useState(true);
   const [configStatus, setConfigStatus] = useState<ConfigurationStatus | null>(null);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [loadingConfig, setLoadingConfig] = useState(true);
@@ -350,43 +326,42 @@ export function WelcomePage() {
       {/* Setup Required Banner - Show if not configured */}
       {needsSetup && (
         <div className={styles.setupBanner}>
-          <div className={styles.setupBannerTitle}>
-            ⚠️ SETUP REQUIRED ⚠️
-          </div>
-          <Text className={styles.setupBannerText}>
-            <strong>Configuration is incomplete.</strong> You must complete the setup wizard before you can create videos.
-            <br />
-            <br />
-            ✓ Configure AI providers for script generation
-            <br />
-            ✓ Install FFmpeg for video rendering
-            <br />
-            ✓ Set up your workspace for saving projects
-            <br />
-            <br />
-            This quick 3-5 minute setup will get you ready to create amazing videos!
-          </Text>
-          <Button
-            appearance="primary"
-            size="large"
-            className={styles.quickSetupButton}
-            icon={<Rocket24Regular />}
-            onClick={handleOpenConfigModal}
-          >
-            🚀 Quick Setup - Start Now
-          </Button>
+          <MessageBar intent="warning" icon={<Warning24Regular />}>
+            <MessageBarBody>
+              <MessageBarTitle>Setup Required</MessageBarTitle>
+              <Text>
+                Complete the quick setup wizard to start creating videos. This will configure AI
+                providers, install FFmpeg, and set up your workspace.
+              </Text>
+              <ul className={styles.setupBannerList}>
+                <li>Configure AI providers for script generation</li>
+                <li>Install FFmpeg for video rendering</li>
+                <li>Set up your workspace for saving projects</li>
+              </ul>
+              <div className={styles.setupBannerActions}>
+                <Button
+                  appearance="primary"
+                  size="large"
+                  icon={<Rocket24Regular />}
+                  onClick={handleOpenConfigModal}
+                >
+                  Start Quick Setup
+                </Button>
+              </div>
+            </MessageBarBody>
+          </MessageBar>
         </div>
       )}
 
       {/* Ready Banner - Show if configured */}
       {isSystemReady && (
         <div className={styles.readyBanner}>
-          <div className={styles.readyBannerTitle}>
-            ✅ System Ready!
-          </div>
-          <Text style={{ fontSize: '16px', marginTop: tokens.spacingVerticalS }}>
-            Your system is configured and ready to create videos. All checks passed!
-          </Text>
+          <MessageBar intent="success" icon={<Checkmark24Regular />}>
+            <MessageBarBody>
+              <MessageBarTitle>System Ready!</MessageBarTitle>
+              <Text>Your system is configured and ready to create videos. All checks passed!</Text>
+            </MessageBarBody>
+          </MessageBar>
         </div>
       )}
 
@@ -413,23 +388,21 @@ export function WelcomePage() {
             <Tooltip
               content={
                 <div className={styles.disabledButtonTooltip}>
-                  <Text weight="semibold" style={{ display: 'block', marginBottom: tokens.spacingVerticalS }}>
+                  <Text
+                    weight="semibold"
+                    style={{ display: 'block', marginBottom: tokens.spacingVerticalS }}
+                  >
                     Setup Required
                   </Text>
                   <Text>
-                    You must complete the configuration wizard before creating videos. 
-                    Click &quot;Quick Setup&quot; above to get started.
+                    You must complete the configuration wizard before creating videos. Click
+                    &quot;Quick Setup&quot; above to get started.
                   </Text>
                 </div>
               }
               relationship="description"
             >
-              <Button
-                appearance="primary"
-                size="large"
-                icon={<Play24Regular />}
-                disabled={true}
-              >
+              <Button appearance="primary" size="large" icon={<Play24Regular />} disabled={true}>
                 Create Video
               </Button>
             </Tooltip>
@@ -456,13 +429,13 @@ export function WelcomePage() {
               Settings
             </Button>
           </Tooltip>
-          <Button 
-            size="large" 
-            icon={<Lightbulb24Regular />} 
+          <Button
+            size="large"
+            icon={<Lightbulb24Regular />}
             onClick={handleOpenConfigModal}
-            appearance={needsSetup ? "primary" : "secondary"}
+            appearance={needsSetup ? 'primary' : 'secondary'}
           >
-            {needsSetup ? "Setup Wizard" : "Reconfigure"}
+            {needsSetup ? 'Setup Wizard' : 'Reconfigure'}
           </Button>
         </div>
       </div>

@@ -27,9 +27,9 @@ class BackendService {
     this.BACKEND_STARTUP_TIMEOUT = 60000; // 60 seconds
     this.HEALTH_CHECK_INTERVAL = 1000; // 1 second
     this.AUTO_RESTART_DELAY = 5000; // 5 seconds
-    // Timeout configurations - reduced for faster shutdown
-    this.GRACEFUL_SHUTDOWN_TIMEOUT = 3000; // 3 seconds for graceful shutdown
-    this.FORCE_KILL_TIMEOUT = 2000; // 2 seconds after graceful timeout (total 5s max)
+    // Timeout configurations - aggressive for faster shutdown
+    this.GRACEFUL_SHUTDOWN_TIMEOUT = 2000; // 2 seconds for graceful shutdown (reduced from 3s)
+    this.FORCE_KILL_TIMEOUT = 1000; // 1 second after graceful timeout (total 3s max, reduced from 5s)
   }
 
   /**
@@ -207,7 +207,7 @@ class BackendService {
       
       console.log('Requesting graceful shutdown via API...');
       await axios.post(`http://localhost:${this.port}/api/system/shutdown`, {}, {
-        timeout: 2000
+        timeout: 1000  // Reduced from 2000ms for faster response
       });
       return true;
     } catch (error) {

@@ -658,12 +658,12 @@ app.on('before-quit', (event) => {
     console.log('App quit requested, performing cleanup...');
     
     // Set a timeout to force quit if cleanup takes too long
-    // Backend service max timeout is 5 seconds (3s graceful + 2s force)
-    // Set app force quit to 8 seconds to allow backend proper cleanup time plus buffer
+    // Backend service max timeout is 3 seconds (2s graceful + 1s force)
+    // Set app force quit to 5 seconds to allow backend proper cleanup time plus buffer
     const forceQuitTimeout = setTimeout(() => {
       console.warn('Cleanup timeout reached, forcing quit...');
       process.exit(0);
-    }, 8000);
+    }, 5000);
     
     // Perform async cleanup
     cleanup()

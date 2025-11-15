@@ -24,8 +24,8 @@ public class ShutdownOrchestrator
     private bool _shutdownInitiated;
     private readonly object _shutdownLock = new();
 
-    private const int GracefulTimeoutSeconds = 5;
-    private const int ComponentTimeoutSeconds = 3;
+    private const int GracefulTimeoutSeconds = 3;  // Reduced from 5 for faster shutdown
+    private const int ComponentTimeoutSeconds = 2;  // Reduced from 3 for faster shutdown
 
     public ShutdownOrchestrator(
         ILogger<ShutdownOrchestrator> logger,
