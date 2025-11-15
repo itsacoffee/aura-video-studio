@@ -1,4 +1,4 @@
-import apiClient, { resetCircuitBreaker } from './apiClient';
+import apiClient, { resetCircuitBreaker, type ExtendedAxiosRequestConfig } from './apiClient';
 
 export interface FFmpegHardwareAcceleration {
   nvencSupported: boolean;
@@ -64,13 +64,17 @@ export interface UseExistingFFmpegResponse {
 
 /**
  * API client for FFmpeg status and installation
+ * All FFmpeg API calls skip the circuit breaker to prevent false "service unavailable" errors during setup
  */
 export const ffmpegClient = {
   /**
    * Get comprehensive FFmpeg status
    */
   async getStatus(): Promise<FFmpegStatus> {
-    const response = await apiClient.get<FFmpegStatus>('/api/system/ffmpeg/status');
+    const config: ExtendedAxiosRequestConfig = {
+      _skipCircuitBreaker: true,
+    };
+    const response = await apiClient.get<FFmpegStatus>('/api/system/ffmpeg/status', config);
 
     // Reset circuit breaker on successful FFmpeg status check
     if (response.data.installed && response.data.valid) {
@@ -84,7 +88,14 @@ export const ffmpegClient = {
    * Install managed FFmpeg
    */
   async install(request?: FFmpegInstallRequest): Promise<FFmpegInstallResponse> {
-    const response = await apiClient.post<FFmpegInstallResponse>('/api/ffmpeg/install', request);
+    const config: ExtendedAxiosRequestConfig = {
+      _skipCircuitBreaker: true,
+    };
+    const response = await apiClient.post<FFmpegInstallResponse>(
+      '/api/ffmpeg/install',
+      request,
+      config
+    );
 
     // Reset circuit breaker on successful installation
     if (response.data.success) {
@@ -98,7 +109,14 @@ export const ffmpegClient = {
    * Rescan system for FFmpeg installations
    */
   async rescan(): Promise<FFmpegRescanResponse> {
-    const response = await apiClient.post<FFmpegRescanResponse>('/api/ffmpeg/rescan');
+    const config: ExtendedAxiosRequestConfig = {
+      _skipCircuitBreaker: true,
+    };
+    const response = await apiClient.post<FFmpegRescanResponse>(
+      '/api/ffmpeg/rescan',
+      undefined,
+      config
+    );
 
     // Reset circuit breaker on successful rescan that finds valid FFmpeg
     if (response.data.success && response.data.installed && response.data.valid) {
@@ -112,9 +130,13 @@ export const ffmpegClient = {
    * Validate and use an existing FFmpeg installation
    */
   async useExisting(request: UseExistingFFmpegRequest): Promise<UseExistingFFmpegResponse> {
+    const config: ExtendedAxiosRequestConfig = {
+      _skipCircuitBreaker: true,
+    };
     const response = await apiClient.post<UseExistingFFmpegResponse>(
       '/api/ffmpeg/use-existing',
-      request
+      request,
+      config
     );
 
     // Reset circuit breaker on successful validation

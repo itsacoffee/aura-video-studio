@@ -14,6 +14,8 @@ import { AccessibilityProvider } from './contexts/AccessibilityContext';
 import { useGlobalUndoShortcuts } from './hooks/useGlobalUndoShortcuts';
 import { useWindowsNativeUI } from './hooks/useWindowsNativeUI';
 import { FirstRunWizard } from './pages/Onboarding/FirstRunWizard';
+import { resetCircuitBreaker } from './services/api/apiClient';
+import { PersistentCircuitBreaker } from './services/api/circuitBreakerPersistence';
 import { setupApi } from './services/api/setupApi';
 import { crashRecoveryService } from './services/crashRecoveryService';
 import { registerCustomEventHandlers } from './services/customEventHandlers';
@@ -135,6 +137,12 @@ function App() {
   useEffect(() => {
     async function checkFirstRun() {
       try {
+        // CRITICAL: Clear circuit breaker state BEFORE checking first run
+        // This prevents false "service unavailable" errors from stale circuit breaker state
+        PersistentCircuitBreaker.clearState();
+        resetCircuitBreaker();
+        console.info('[App] Circuit breaker state cleared before first-run check');
+
         // Migrate legacy first-run flag if needed
         migrateLegacyFirstRunStatus();
 
@@ -519,8 +527,12 @@ function App() {
             <MemoryRouter initialEntries={['/']}>
               <FirstRunWizard
                 onComplete={async () => {
-                  setShouldShowOnboarding(false);
+                  console.info('[App] FirstRunWizard onComplete called');
+                  // Mark first run as completed
                   await markFirstRunCompleted();
+                  // Update state to hide onboarding and show main app
+                  setShouldShowOnboarding(false);
+                  console.info('[App] Transitioning to main app');
                 }}
               />
             </MemoryRouter>

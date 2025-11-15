@@ -1,4 +1,4 @@
-import apiClient from './apiClient';
+import apiClient, { type ExtendedAxiosRequestConfig } from './apiClient';
 
 /**
  * System setup status response
@@ -44,13 +44,17 @@ export interface DirectoryCheckResponse {
 
 /**
  * API client for system setup operations
+ * All setup API calls skip the circuit breaker to prevent false "service unavailable" errors
  */
 export const setupApi = {
   /**
    * Get current system setup status
    */
   async getSystemStatus(): Promise<SystemSetupStatus> {
-    const response = await apiClient.get<SystemSetupStatus>('/api/setup/system-status');
+    const config: ExtendedAxiosRequestConfig = {
+      _skipCircuitBreaker: true,
+    };
+    const response = await apiClient.get<SystemSetupStatus>('/api/setup/system-status', config);
     return response.data;
   },
 
@@ -60,9 +64,13 @@ export const setupApi = {
   async completeSetup(
     request: SetupCompleteRequest
   ): Promise<{ success: boolean; errors?: string[] }> {
+    const config: ExtendedAxiosRequestConfig = {
+      _skipCircuitBreaker: true,
+    };
     const response = await apiClient.post<{ success: boolean; errors?: string[] }>(
       '/api/setup/complete',
-      request
+      request,
+      config
     );
     return response.data;
   },
@@ -71,7 +79,10 @@ export const setupApi = {
    * Check FFmpeg installation status
    */
   async checkFFmpeg(): Promise<FFmpegCheckResponse> {
-    const response = await apiClient.get<FFmpegCheckResponse>('/api/setup/check-ffmpeg');
+    const config: ExtendedAxiosRequestConfig = {
+      _skipCircuitBreaker: true,
+    };
+    const response = await apiClient.get<FFmpegCheckResponse>('/api/setup/check-ffmpeg', config);
     return response.data;
   },
 
@@ -79,9 +90,13 @@ export const setupApi = {
    * Check if directory is valid and writable
    */
   async checkDirectory(request: DirectoryCheckRequest): Promise<DirectoryCheckResponse> {
+    const config: ExtendedAxiosRequestConfig = {
+      _skipCircuitBreaker: true,
+    };
     const response = await apiClient.post<DirectoryCheckResponse>(
       '/api/setup/check-directory',
-      request
+      request,
+      config
     );
     return response.data;
   },
