@@ -49,21 +49,21 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     height: '100%',
-    padding: tokens.spacingVerticalXXL,
+    padding: `${tokens.spacingVerticalL} ${tokens.spacingHorizontalXL}`,
     maxWidth: '900px',
     margin: '0 auto',
   },
   header: {
     textAlign: 'center',
-    marginBottom: tokens.spacingVerticalXXL,
+    marginBottom: tokens.spacingVerticalL,
   },
   content: {
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalL,
+    gap: tokens.spacingVerticalM,
     overflow: 'auto',
-    paddingBottom: tokens.spacingVerticalL,
+    paddingBottom: tokens.spacingVerticalM,
     position: 'relative',
   },
   stepContent: {
@@ -83,46 +83,46 @@ const useStyles = makeStyles({
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: tokens.spacingVerticalXXL,
-    paddingTop: tokens.spacingVerticalL,
+    marginTop: tokens.spacingVerticalL,
+    paddingTop: tokens.spacingVerticalM,
     borderTop: `1px solid ${tokens.colorNeutralStroke1}`,
   },
   hardwareInfo: {
     display: 'flex',
     flexDirection: 'column' as const,
-    gap: tokens.spacingVerticalM,
+    gap: tokens.spacingVerticalS,
   },
   installList: {
     display: 'flex',
     flexDirection: 'column' as const,
-    gap: tokens.spacingVerticalS,
+    gap: tokens.spacingVerticalXS,
   },
   validationItem: {
     display: 'flex',
     alignItems: 'center',
     gap: tokens.spacingHorizontalM,
-    padding: tokens.spacingVerticalM,
+    padding: tokens.spacingVerticalS,
   },
   errorCard: {
-    padding: tokens.spacingVerticalL,
+    padding: tokens.spacingVerticalM,
     backgroundColor: tokens.colorPaletteRedBackground1,
   },
   fixActionsContainer: {
     display: 'flex',
     flexDirection: 'column' as const,
-    gap: tokens.spacingVerticalM,
-    marginTop: tokens.spacingVerticalL,
+    gap: tokens.spacingVerticalS,
+    marginTop: tokens.spacingVerticalM,
   },
   manualAttachCard: {
     display: 'flex',
     flexDirection: 'column' as const,
-    gap: tokens.spacingVerticalM,
-    padding: tokens.spacingVerticalL,
+    gap: tokens.spacingVerticalS,
+    padding: tokens.spacingVerticalM,
   },
   manualHeader: {
     display: 'flex',
     flexDirection: 'column' as const,
-    gap: tokens.spacingVerticalXS,
+    gap: tokens.spacingVerticalXXS,
   },
   pathInputRow: {
     display: 'flex',
@@ -139,7 +139,7 @@ const useStyles = makeStyles({
   statusSummary: {
     display: 'flex',
     flexDirection: 'column' as const,
-    gap: tokens.spacingVerticalXS,
+    gap: tokens.spacingVerticalXXS,
   },
 });
 
@@ -692,23 +692,23 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
   // New simplified step renderers for mandatory setup
 
   const renderStep1FFmpeg = () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL }}>
-      <div style={{ textAlign: 'center', marginBottom: tokens.spacingVerticalL }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
+      <div style={{ textAlign: 'center', marginBottom: tokens.spacingVerticalM }}>
         <Title2>FFmpeg Installation</Title2>
-        <Text style={{ display: 'block', marginTop: tokens.spacingVerticalM }}>
+        <Text style={{ display: 'block', marginTop: tokens.spacingVerticalS }}>
           FFmpeg is required for video generation. We&apos;ll help you install it automatically.
         </Text>
         <Card
           style={{
-            marginTop: tokens.spacingVerticalL,
-            padding: tokens.spacingVerticalM,
+            marginTop: tokens.spacingVerticalM,
+            padding: tokens.spacingVerticalS,
             backgroundColor: tokens.colorNeutralBackground3,
           }}
         >
           <Text size={300}>
             <strong>Why is this required?</strong>
           </Text>
-          <Text style={{ display: 'block', marginTop: tokens.spacingVerticalS }}>
+          <Text style={{ display: 'block', marginTop: tokens.spacingVerticalXS }}>
             FFmpeg is the industry-standard tool for video processing. Aura uses it to render your
             videos, add transitions, apply effects, and export in various formats. Without FFmpeg,
             video generation cannot proceed.
@@ -727,7 +727,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
       {!ffmpegReady && (
         <Card
           style={{
-            padding: tokens.spacingVerticalL,
+            padding: tokens.spacingVerticalM,
             backgroundColor: tokens.colorPaletteYellowBackground1,
             borderLeft: `4px solid ${tokens.colorPaletteYellowBorder1}`,
           }}
@@ -738,13 +738,13 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
           >
             <Warning24Regular /> Want to install FFmpeg manually?
           </Text>
-          <Text style={{ display: 'block', marginTop: tokens.spacingVerticalS }}>
+          <Text style={{ display: 'block', marginTop: tokens.spacingVerticalXS }}>
             If you prefer to install FFmpeg yourself or already have it installed, you can skip this
             step. However, video generation will not work until FFmpeg is properly installed.
           </Text>
           <div
             style={{
-              marginTop: tokens.spacingVerticalM,
+              marginTop: tokens.spacingVerticalS,
               display: 'flex',
               gap: tokens.spacingHorizontalS,
             }}
@@ -777,24 +777,24 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
   // Step 2: FFmpeg Installation Check with Download Button
   const renderStep2FFmpeg = () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL }}>
-      <div style={{ textAlign: 'center', marginBottom: tokens.spacingVerticalL }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
+      <div style={{ textAlign: 'center', marginBottom: tokens.spacingVerticalM }}>
         <Title2>FFmpeg Setup</Title2>
-        <Text style={{ display: 'block', marginTop: tokens.spacingVerticalM }}>
+        <Text style={{ display: 'block', marginTop: tokens.spacingVerticalS }}>
           FFmpeg powers Aura&apos;s rendering pipeline. Install the managed build or point Aura to
           an existing installation.
         </Text>
         <Card
           style={{
-            marginTop: tokens.spacingVerticalL,
-            padding: tokens.spacingVerticalM,
+            marginTop: tokens.spacingVerticalM,
+            padding: tokens.spacingVerticalS,
             backgroundColor: tokens.colorNeutralBackground3,
           }}
         >
           <Text size={300}>
             <strong>Why is this required?</strong>
           </Text>
-          <Text style={{ display: 'block', marginTop: tokens.spacingVerticalS }}>
+          <Text style={{ display: 'block', marginTop: tokens.spacingVerticalXS }}>
             FFmpeg is the industry-standard tool for video processing. Aura uses it to render your
             videos, add transitions, apply effects, and export in various formats. Without FFmpeg,
             video generation cannot proceed.
@@ -888,7 +888,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
       {!ffmpegReady && (
         <Card
           style={{
-            padding: tokens.spacingVerticalL,
+            padding: tokens.spacingVerticalM,
             backgroundColor: tokens.colorPaletteYellowBackground1,
             borderLeft: `4px solid ${tokens.colorPaletteYellowBorder1}`,
           }}
@@ -899,7 +899,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
           >
             <Warning24Regular /> FFmpeg is required before you can render videos
           </Text>
-          <Text style={{ display: 'block', marginTop: tokens.spacingVerticalS }}>
+          <Text style={{ display: 'block', marginTop: tokens.spacingVerticalXS }}>
             Install the managed build or validate the path to an existing installation to continue.
             You can always re-run this step later from Settings.
           </Text>
@@ -910,23 +910,23 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
   // Step 3: Provider Configuration (At least one required)
   const renderStep3Providers = () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL }}>
-      <div style={{ textAlign: 'center', marginBottom: tokens.spacingVerticalL }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
+      <div style={{ textAlign: 'center', marginBottom: tokens.spacingVerticalM }}>
         <Title2>Provider Configuration</Title2>
-        <Text style={{ display: 'block', marginTop: tokens.spacingVerticalM }}>
+        <Text style={{ display: 'block', marginTop: tokens.spacingVerticalS }}>
           Configure at least ONE LLM provider to generate video scripts, or use offline mode.
         </Text>
         <Card
           style={{
-            marginTop: tokens.spacingVerticalL,
-            padding: tokens.spacingVerticalM,
+            marginTop: tokens.spacingVerticalM,
+            padding: tokens.spacingVerticalS,
             backgroundColor: tokens.colorNeutralBackground3,
           }}
         >
           <Text size={300}>
             <strong>Why is this required?</strong>
           </Text>
-          <Text style={{ display: 'block', marginTop: tokens.spacingVerticalS }}>
+          <Text style={{ display: 'block', marginTop: tokens.spacingVerticalXS }}>
             LLM providers power the AI script generation. You need at least one configured to create
             video scripts automatically. Premium providers (OpenAI, Anthropic) offer higher quality,
             while offline mode provides basic functionality without API keys.
@@ -955,7 +955,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
       {!hasAtLeastOneProvider && (
         <Card
           style={{
-            padding: tokens.spacingVerticalM,
+            padding: tokens.spacingVerticalS,
             backgroundColor: tokens.colorPaletteRedBackground1,
           }}
         >
@@ -965,7 +965,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
           >
             <Warning24Regular /> At least one provider is required
           </Text>
-          <Text style={{ display: 'block', marginTop: tokens.spacingVerticalS }}>
+          <Text style={{ display: 'block', marginTop: tokens.spacingVerticalXS }}>
             Configure at least one API key and validate it, or click &quot;Skip All&quot; to use
             offline mode.
           </Text>
@@ -976,23 +976,23 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
   // Step 3: Workspace Setup (Required)
   const renderStep3Workspace = () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL }}>
-      <div style={{ textAlign: 'center', marginBottom: tokens.spacingVerticalL }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
+      <div style={{ textAlign: 'center', marginBottom: tokens.spacingVerticalM }}>
         <Title2>Workspace Setup</Title2>
-        <Text style={{ display: 'block', marginTop: tokens.spacingVerticalM }}>
+        <Text style={{ display: 'block', marginTop: tokens.spacingVerticalS }}>
           Configure where Aura will save your videos and cache files.
         </Text>
         <Card
           style={{
-            marginTop: tokens.spacingVerticalL,
-            padding: tokens.spacingVerticalM,
+            marginTop: tokens.spacingVerticalM,
+            padding: tokens.spacingVerticalS,
             backgroundColor: tokens.colorNeutralBackground3,
           }}
         >
           <Text size={300}>
             <strong>Why is this required?</strong>
           </Text>
-          <Text style={{ display: 'block', marginTop: tokens.spacingVerticalS }}>
+          <Text style={{ display: 'block', marginTop: tokens.spacingVerticalXS }}>
             Aura needs to know where to save your generated videos and temporary files. We&apos;ve
             pre-filled sensible defaults for your operating system, but you can customize these
             locations.
@@ -1019,12 +1019,12 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
         style={{
           display: 'flex',
           flexDirection: 'column',
-          gap: tokens.spacingVerticalL,
+          gap: tokens.spacingVerticalM,
           textAlign: 'center',
         }}
       >
-        <div style={{ padding: tokens.spacingVerticalXXL }}>
-          <div style={{ fontSize: '64px', marginBottom: tokens.spacingVerticalL }}>
+        <div style={{ padding: tokens.spacingVerticalL }}>
+          <div style={{ fontSize: '64px', marginBottom: tokens.spacingVerticalM }}>
             <Checkmark24Regular
               style={{ width: '64px', height: '64px', color: tokens.colorPaletteGreenForeground1 }}
             />
@@ -1033,8 +1033,8 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
           <Text
             style={{
               display: 'block',
-              marginTop: tokens.spacingVerticalM,
-              marginBottom: tokens.spacingVerticalXL,
+              marginTop: tokens.spacingVerticalS,
+              marginBottom: tokens.spacingVerticalL,
             }}
           >
             You&apos;re all set! Here&apos;s what we configured:
@@ -1042,13 +1042,13 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
           <Card
             style={{
-              padding: tokens.spacingVerticalL,
+              padding: tokens.spacingVerticalM,
               textAlign: 'left',
               maxWidth: '600px',
               margin: '0 auto',
             }}
           >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalS }}>
               <div
                 style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM }}
               >
@@ -1096,10 +1096,10 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
           <div
             style={{
-              marginTop: tokens.spacingVerticalXXL,
+              marginTop: tokens.spacingVerticalL,
               display: 'flex',
               flexDirection: 'column',
-              gap: tokens.spacingHorizontalM,
+              gap: tokens.spacingHorizontalS,
               alignItems: 'center',
             }}
           >
@@ -1171,14 +1171,14 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
     >
       <div
         className={styles.header}
-        style={{ textAlign: 'center', paddingTop: tokens.spacingVerticalXXL }}
+        style={{ textAlign: 'center', paddingTop: tokens.spacingVerticalL }}
       >
         <Title2>Welcome to Aura Video Studio - Let&apos;s get you set up!</Title2>
         <Text
           style={{
             display: 'block',
-            marginTop: tokens.spacingVerticalS,
-            marginBottom: tokens.spacingVerticalL,
+            marginTop: tokens.spacingVerticalXS,
+            marginBottom: tokens.spacingVerticalM,
           }}
         >
           Step {state.step + 1} of {totalSteps} - Required Setup
