@@ -2,30 +2,64 @@
  * Timeline zoom controls component
  */
 
-import { makeStyles, tokens, Button, Slider, Label } from '@fluentui/react-components';
+import { makeStyles, Button, Slider, Label } from '@fluentui/react-components';
 import { ZoomIn24Regular, ZoomOut24Regular, ZoomFit24Regular } from '@fluentui/react-icons';
+import '../../../styles/video-editor-theme.css';
 
 const useStyles = makeStyles({
   container: {
     display: 'flex',
     alignItems: 'center',
-    gap: tokens.spacingHorizontalM,
-    padding: tokens.spacingVerticalS,
-    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
-    backgroundColor: tokens.colorNeutralBackground2,
+    gap: 'var(--editor-space-md)',
+    padding: 'var(--editor-space-sm)',
+    borderBottom: `1px solid var(--editor-panel-border)`,
+    backgroundColor: 'var(--editor-panel-header-bg)',
+    transition: 'background-color var(--editor-transition-fast)',
   },
   zoomSlider: {
     width: '200px',
   },
   zoomLevel: {
-    fontSize: tokens.fontSizeBase200,
-    color: tokens.colorNeutralForeground3,
+    fontSize: 'var(--editor-font-size-sm)',
+    fontWeight: 'var(--editor-font-weight-semibold)',
+    color: 'var(--editor-text-primary)',
     minWidth: '60px',
     textAlign: 'center',
+    padding: 'var(--editor-space-xs) var(--editor-space-sm)',
+    backgroundColor: 'var(--editor-panel-active)',
+    borderRadius: 'var(--editor-radius-sm)',
+    border: `1px solid var(--editor-panel-border)`,
+    transition: 'all var(--editor-transition-fast)',
   },
   presetButtons: {
     display: 'flex',
-    gap: tokens.spacingHorizontalXS,
+    gap: 'var(--editor-space-xs)',
+  },
+  button: {
+    transition: 'all var(--editor-transition-fast)',
+    '&:hover:not(:disabled)': {
+      backgroundColor: 'var(--editor-panel-hover)',
+      color: 'var(--editor-accent)',
+    },
+    '&:active:not(:disabled)': {
+      backgroundColor: 'var(--editor-panel-active)',
+      transform: 'scale(0.98)',
+    },
+    '&:disabled': {
+      opacity: 0.4,
+      cursor: 'not-allowed',
+    },
+  },
+  presetButton: {
+    transition: 'all var(--editor-transition-fast)',
+    '&:hover': {
+      backgroundColor: 'var(--editor-panel-hover)',
+      transform: 'translateY(-1px)',
+      boxShadow: 'var(--editor-shadow-sm)',
+    },
+    '&:active': {
+      transform: 'translateY(0)',
+    },
   },
 });
 
@@ -104,6 +138,7 @@ export function TimelineZoomControls({
         onClick={handleZoomOut}
         disabled={zoom <= minZoom}
         title="Zoom out (-)"
+        className={styles.button}
       />
 
       <div className={styles.zoomSlider}>
@@ -122,6 +157,7 @@ export function TimelineZoomControls({
         onClick={handleZoomIn}
         disabled={zoom >= maxZoom}
         title="Zoom in (+)"
+        className={styles.button}
       />
 
       <div className={styles.zoomLevel}>{formatZoomLevel(zoom)}</div>
@@ -133,6 +169,7 @@ export function TimelineZoomControls({
           icon={<ZoomFit24Regular />}
           onClick={() => handlePresetZoom('fit')}
           title="Fit all"
+          className={styles.presetButton}
         >
           Fit All
         </Button>
@@ -141,6 +178,7 @@ export function TimelineZoomControls({
           appearance="subtle"
           onClick={() => handlePresetZoom('1s')}
           title="Zoom to 1 second"
+          className={styles.presetButton}
         >
           1 Sec
         </Button>
@@ -149,6 +187,7 @@ export function TimelineZoomControls({
           appearance="subtle"
           onClick={() => handlePresetZoom('10f')}
           title="Zoom to 10 frames"
+          className={styles.presetButton}
         >
           10 Frames
         </Button>
