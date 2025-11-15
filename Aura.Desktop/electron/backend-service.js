@@ -10,10 +10,11 @@ const net = require('net');
 const axios = require('axios');
 
 class BackendService {
-  constructor(app, isDev) {
+  constructor(app, isDev, processManager = null) {
     this.app = app;
     this.isDev = isDev;
     this.process = null;
+    this.processManager = processManager; // Optional: centralized process tracking
     this.port = null;
     this.isQuitting = false;
     this.isRestarting = false;
@@ -87,6 +88,15 @@ class BackendService {
       
       // Store PID for Windows process tree termination
       this.pid = this.process.pid;
+      
+      // Register with ProcessManager if available
+      if (this.processManager) {
+        this.processManager.register('Aura.Api Backend', this.process, {
+          port: this.port,
+          isDev: this.isDev,
+          backendPath
+        });
+      }
 
       // Setup process handlers
       this._setupProcessHandlers();

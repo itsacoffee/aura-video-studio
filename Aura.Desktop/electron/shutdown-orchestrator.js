@@ -29,10 +29,11 @@ class ShutdownOrchestrator {
   /**
    * Set component references
    */
-  setComponents({ backendService, windowManager, trayManager }) {
+  setComponents({ backendService, windowManager, trayManager, processManager }) {
     this.backendService = backendService;
     this.windowManager = windowManager;
     this.trayManager = trayManager;
+    this.processManager = processManager;
   }
 
   /**
@@ -128,19 +129,23 @@ class ShutdownOrchestrator {
 
       // Step 2: Close windows gracefully
       const windowStep = await this.closeWindows();
-      this.logger.info(`Step 1/4 Complete: ${windowStep}`);
+      this.logger.info(`Step 1/5 Complete: ${windowStep}`);
 
       // Step 3: Signal backend to shutdown
       const backendSignalStep = await this.signalBackendShutdown();
-      this.logger.info(`Step 2/4 Complete: ${backendSignalStep}`);
+      this.logger.info(`Step 2/5 Complete: ${backendSignalStep}`);
 
       // Step 4: Stop backend service
       const backendStep = await this.stopBackend(force);
-      this.logger.info(`Step 3/4 Complete: ${backendStep}`);
+      this.logger.info(`Step 3/5 Complete: ${backendStep}`);
 
-      // Step 5: Cleanup resources
+      // Step 5: Terminate all tracked child processes
+      const processStep = await this.terminateAllProcesses(force);
+      this.logger.info(`Step 4/5 Complete: ${processStep}`);
+
+      // Step 6: Cleanup resources
       const cleanupStep = await this.cleanup();
-      this.logger.info(`Step 4/4 Complete: ${cleanupStep}`);
+      this.logger.info(`Step 5/5 Complete: ${cleanupStep}`);
 
       const elapsed = Date.now() - this.shutdownStartTime;
       this.logger.info('='.repeat(60));
@@ -270,6 +275,37 @@ class ShutdownOrchestrator {
       }
       this.logger.error('Error stopping backend:', error);
       return `Backend stop error: ${error.message}`;
+    }
+  }
+
+  /**
+   * Terminate all tracked child processes
+   */
+  async terminateAllProcesses(force = false) {
+    if (!this.processManager) {
+      return 'No process manager available';
+    }
+
+    const processCount = this.processManager.getProcessCount();
+    
+    if (processCount === 0) {
+      return 'No child processes to terminate';
+    }
+
+    this.logger.info(`Terminating ${processCount} tracked child process(es)...`);
+
+    try {
+      const timeout = force ? this.FORCE_KILL_TIMEOUT_MS : this.COMPONENT_TIMEOUT_MS;
+      const results = await this.processManager.terminateAll(timeout);
+
+      if (results.success) {
+        return `Terminated ${results.terminated} process(es)`;
+      } else {
+        return `Terminated ${results.terminated} process(es), ${results.failed} failed`;
+      }
+    } catch (error) {
+      this.logger.error('Error terminating processes:', error);
+      return `Process termination error: ${error.message}`;
     }
   }
 

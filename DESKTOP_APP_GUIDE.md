@@ -48,13 +48,19 @@ Aura.Desktop/
 
 ### Process Model
 
+> **📘 Complete Documentation**: See [PROCESS_MODEL.md](./PROCESS_MODEL.md) for comprehensive process architecture, shutdown behavior, and troubleshooting guide.
+
+**Quick Overview**:
+
 1. **Main Process** (`electron/main.js`)
+   - Root process: spawns and manages all child processes
    - Spawns the ASP.NET Core backend on a random port
    - Creates the main window via WindowManager
    - Manages system tray via TrayManager
+   - Tracks child processes via ProcessManager
+   - Orchestrates graceful shutdown via ShutdownOrchestrator
    - Handles auto-updates
    - Manages IPC communication via IPC handlers
-   - Orchestrates all Electron modules
 
 2. **Renderer Process** (React frontend)
    - Runs in a sandboxed web page (Electron window)
@@ -62,11 +68,25 @@ Aura.Desktop/
    - Connects to the embedded backend via HTTP
    - Loaded from bundled frontend files
 
-3. **Backend Process** (ASP.NET Core)
+3. **Backend Process** (ASP.NET Core child)
    - Spawned as a child process by main process
    - Runs on `http://localhost:<random-port>`
    - Provides REST API and Server-Sent Events (SSE)
+   - May spawn worker processes (FFmpeg, etc.)
    - Fully embedded in the Electron app
+
+4. **Worker Processes** (FFmpeg, etc.)
+   - Spawned by backend for rendering tasks
+   - Tracked and managed by ProcessManager
+   - Cleaned up on app shutdown
+
+**Shutdown Behavior**:
+- **Default**: Closing window exits app completely (all processes terminated)
+- **Optional**: Enable "Minimize to Tray" in settings to keep app running in background
+- **Graceful**: Active render jobs prompt user before exit
+- **Timeout**: Force-kill after 10 seconds if graceful shutdown fails
+
+See [PROCESS_MODEL.md](./PROCESS_MODEL.md) for detailed shutdown sequence, troubleshooting, and diagnostics.
 
 ### Security Model
 
