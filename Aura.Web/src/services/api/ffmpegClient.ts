@@ -31,10 +31,13 @@ export interface FFmpegInstallRequest {
 export interface FFmpegInstallResponse {
   success: boolean;
   message: string;
+  title?: string;
+  detail?: string;
   version?: string;
   path?: string;
-  correlationId: string;
+  errorCode?: string;
   howToFix?: string[];
+  correlationId: string;
 }
 
 export interface FFmpegRescanResponse {

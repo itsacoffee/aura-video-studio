@@ -155,8 +155,25 @@ export const FFmpegSetup: FC<FFmpegSetupProps> = ({ onStatusChange, onAutoAdvanc
       clearInterval(progressInterval);
 
       if (!result.success) {
-        const errorMessage = result.message || 'Installation failed';
-        throw new Error(errorMessage);
+        // Handle structured error from backend
+        const errorMessage = result.message || result.detail || 'Installation failed';
+        const err: UserFriendlyError = {
+          title: result.title || 'Installation Failed',
+          message: errorMessage,
+          errorCode: result.errorCode,
+          correlationId: result.correlationId,
+          howToFix: result.howToFix,
+          actions: result.howToFix
+            ? result.howToFix.map((step, index) => ({
+                label: `Step ${index + 1}`,
+                description: step,
+              }))
+            : [],
+        };
+        setError(err);
+        setInstalling(false);
+        setInstallProgress(0);
+        return;
       }
 
       setInstallProgress(100);
