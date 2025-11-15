@@ -174,7 +174,7 @@ public class ConfigurationController : ControllerBase
     /// Export complete configuration as JSON
     /// </summary>
     [HttpGet("export")]
-    public async Task<IActionResult> ExportConfiguration(CancellationToken ct)
+    public Task<IActionResult> ExportConfiguration(CancellationToken ct)
     {
         try
         {
@@ -202,12 +202,12 @@ public class ConfigurationController : ControllerBase
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase
             });
 
-            return File(System.Text.Encoding.UTF8.GetBytes(json), "application/json", $"aura-config-{DateTime.UtcNow:yyyy-MM-dd}.json");
+            return Task.FromResult<IActionResult>(File(System.Text.Encoding.UTF8.GetBytes(json), "application/json", $"aura-config-{DateTime.UtcNow:yyyy-MM-dd}.json"));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error exporting configuration");
-            return StatusCode(500, new { error = "Failed to export configuration" });
+            return Task.FromResult<IActionResult>(StatusCode(500, new { error = "Failed to export configuration" }));
         }
     }
 
@@ -215,7 +215,7 @@ public class ConfigurationController : ControllerBase
     /// Import and validate configuration from JSON
     /// </summary>
     [HttpPost("import")]
-    public async Task<IActionResult> ImportConfiguration([FromBody] JsonElement configData, CancellationToken ct)
+    public Task<IActionResult> ImportConfiguration([FromBody] JsonElement configData, CancellationToken ct)
     {
         try
         {
@@ -223,13 +223,13 @@ public class ConfigurationController : ControllerBase
 
             if (!configData.TryGetProperty("version", out var versionElement))
             {
-                return BadRequest(new { error = "Invalid configuration file: missing version" });
+                return Task.FromResult<IActionResult>(BadRequest(new { error = "Invalid configuration file: missing version" }));
             }
 
             var version = versionElement.GetString();
             if (version != "1.0.0")
             {
-                return BadRequest(new { error = $"Unsupported configuration version: {version}" });
+                return Task.FromResult<IActionResult>(BadRequest(new { error = $"Unsupported configuration version: {version}" }));
             }
 
             var warnings = new List<string>();
@@ -241,18 +241,18 @@ public class ConfigurationController : ControllerBase
                 warnings.Add("Configuration import is read-only in this version. Settings must be applied manually.");
             }
 
-            return Ok(new
+            return Task.FromResult<IActionResult>(Ok(new
             {
                 success = true,
                 imported,
                 warnings,
                 message = "Configuration validated successfully. Manual application required."
-            });
+            }));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error importing configuration");
-            return StatusCode(500, new { error = $"Failed to import configuration: {ex.Message}" });
+            return Task.FromResult<IActionResult>(StatusCode(500, new { error = $"Failed to import configuration: {ex.Message}" }));
         }
     }
 

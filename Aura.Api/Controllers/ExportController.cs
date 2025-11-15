@@ -310,18 +310,18 @@ public class ExportController : ControllerBase
     /// <param name="jobId">Job ID</param>
     /// <returns>Success status</returns>
     [HttpPost("pause/{jobId}")]
-    public async Task<IActionResult> PauseJob(string jobId)
+    public Task<IActionResult> PauseJob(string jobId)
     {
         try
         {
             // Pause functionality requires job state management
             _logger.LogInformation("Pause requested for job {JobId}", jobId);
-            return Ok(new { message = "Pause functionality not yet implemented" });
+            return Task.FromResult<IActionResult>(Ok(new { message = "Pause functionality not yet implemented" }));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to pause job {JobId}", jobId);
-            return StatusCode(500, new { error = "Failed to pause job", details = ex.Message });
+            return Task.FromResult<IActionResult>(StatusCode(500, new { error = "Failed to pause job", details = ex.Message }));
         }
     }
 
@@ -331,18 +331,18 @@ public class ExportController : ControllerBase
     /// <param name="jobId">Job ID</param>
     /// <returns>Success status</returns>
     [HttpPost("resume/{jobId}")]
-    public async Task<IActionResult> ResumeJob(string jobId)
+    public Task<IActionResult> ResumeJob(string jobId)
     {
         try
         {
             // Resume functionality requires job state management
             _logger.LogInformation("Resume requested for job {JobId}", jobId);
-            return Ok(new { message = "Resume functionality not yet implemented" });
+            return Task.FromResult<IActionResult>(Ok(new { message = "Resume functionality not yet implemented" }));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to resume job {JobId}", jobId);
-            return StatusCode(500, new { error = "Failed to resume job", details = ex.Message });
+            return Task.FromResult<IActionResult>(StatusCode(500, new { error = "Failed to resume job", details = ex.Message }));
         }
     }
 
@@ -392,7 +392,7 @@ public class ExportController : ControllerBase
     /// <param name="request">Preflight request parameters</param>
     /// <returns>Preflight validation result</returns>
     [HttpPost("preflight")]
-    public async Task<IActionResult> RunPreflight([FromBody] ExportPreflightRequest request)
+    public Task<IActionResult> RunPreflight([FromBody] ExportPreflightRequest request)
     {
         try
         {
@@ -401,7 +401,7 @@ public class ExportController : ControllerBase
             var preset = ExportPresets.GetPresetByName(request.PresetName);
             if (preset == null)
             {
-                return BadRequest(new { error = $"Unknown preset: {request.PresetName}" });
+                return Task.FromResult<IActionResult>(BadRequest(new { error = $"Unknown preset: {request.PresetName}" }));
             }
 
             var outputDirectory = string.IsNullOrEmpty(request.OutputDirectory)
@@ -425,12 +425,12 @@ public class ExportController : ControllerBase
                 }
             };
 
-            return Ok(result);
+            return Task.FromResult<IActionResult>(Ok(result));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to run preflight validation");
-            return StatusCode(500, new { error = "Failed to run preflight validation", details = ex.Message });
+            return Task.FromResult<IActionResult>(StatusCode(500, new { error = "Failed to run preflight validation", details = ex.Message }));
         }
     }
 

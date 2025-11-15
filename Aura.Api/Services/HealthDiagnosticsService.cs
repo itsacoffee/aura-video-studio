@@ -121,7 +121,7 @@ public class HealthDiagnosticsService
             Timestamp: DateTimeOffset.UtcNow);
     }
 
-    private async Task<HealthCheckDetail> CheckConfigurationAsync(CancellationToken ct)
+    private Task<HealthCheckDetail> CheckConfigurationAsync(CancellationToken ct)
     {
         try
         {
@@ -129,7 +129,7 @@ public class HealthDiagnosticsService
             
             if (!hasMinimalConfig)
             {
-                return new HealthCheckDetail(
+                return Task.FromResult(new HealthCheckDetail(
                     Id: "config_present",
                     Name: "Configuration",
                     Category: HealthCheckCategory.Configuration,
@@ -150,10 +150,10 @@ public class HealthDiagnosticsService
                             NavigateTo: "/settings",
                             ExternalUrl: null,
                             Parameters: null)
-                    });
+                    }));
             }
 
-            return new HealthCheckDetail(
+            return Task.FromResult(new HealthCheckDetail(
                 Id: "config_present",
                 Name: "Configuration",
                 Category: HealthCheckCategory.Configuration,
@@ -165,16 +165,16 @@ public class HealthDiagnosticsService
                     ["path"] = _providerSettings.GetAuraDataDirectory()
                 },
                 RemediationHint: null,
-                RemediationActions: null);
+                RemediationActions: null));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error checking configuration");
-            return CreateErrorCheck("config_present", "Configuration", HealthCheckCategory.Configuration, true, ex);
+            return Task.FromResult(CreateErrorCheck("config_present", "Configuration", HealthCheckCategory.Configuration, true, ex));
         }
     }
 
-    private async Task<HealthCheckDetail> CheckDiskSpaceAsync(CancellationToken ct)
+    private Task<HealthCheckDetail> CheckDiskSpaceAsync(CancellationToken ct)
     {
         try
         {
@@ -193,7 +193,7 @@ public class HealthDiagnosticsService
 
             if (freeSpaceGB < 1.0)
             {
-                return new HealthCheckDetail(
+                return Task.FromResult(new HealthCheckDetail(
                     Id: "disk_space",
                     Name: "Disk Space",
                     Category: HealthCheckCategory.System,
@@ -211,12 +211,12 @@ public class HealthDiagnosticsService
                             NavigateTo: null,
                             ExternalUrl: "https://support.microsoft.com/windows/disk-cleanup",
                             Parameters: null)
-                    });
+                    }));
             }
 
             if (freeSpaceGB < 5.0)
             {
-                return new HealthCheckDetail(
+                return Task.FromResult(new HealthCheckDetail(
                     Id: "disk_space",
                     Name: "Disk Space",
                     Category: HealthCheckCategory.System,
@@ -225,10 +225,10 @@ public class HealthDiagnosticsService
                     Message: $"Low: {freeSpaceGB:F2} GB free. Recommend at least 5 GB.",
                     Data: data,
                     RemediationHint: "Consider freeing up disk space for optimal performance.",
-                    RemediationActions: null);
+                    RemediationActions: null));
             }
 
-            return new HealthCheckDetail(
+            return Task.FromResult(new HealthCheckDetail(
                 Id: "disk_space",
                 Name: "Disk Space",
                 Category: HealthCheckCategory.System,
@@ -237,12 +237,12 @@ public class HealthDiagnosticsService
                 Message: $"Sufficient: {freeSpaceGB:F2} GB free",
                 Data: data,
                 RemediationHint: null,
-                RemediationActions: null);
+                RemediationActions: null));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error checking disk space");
-            return CreateErrorCheck("disk_space", "Disk Space", HealthCheckCategory.System, true, ex);
+            return Task.FromResult(CreateErrorCheck("disk_space", "Disk Space", HealthCheckCategory.System, true, ex));
         }
     }
 
@@ -485,14 +485,14 @@ public class HealthDiagnosticsService
         }
     }
 
-    private async Task<HealthCheckDetail> CheckAnthropicAsync(CancellationToken ct)
+    private Task<HealthCheckDetail> CheckAnthropicAsync(CancellationToken ct)
     {
         try
         {
             var apiKey = _keyStore.GetKey("Anthropic");
             if (string.IsNullOrEmpty(apiKey))
             {
-                return new HealthCheckDetail(
+                return Task.FromResult(new HealthCheckDetail(
                     Id: "llm_anthropic",
                     Name: "Anthropic (Claude)",
                     Category: HealthCheckCategory.LLM,
@@ -517,10 +517,10 @@ public class HealthDiagnosticsService
                             NavigateTo: null,
                             ExternalUrl: "https://console.anthropic.com",
                             Parameters: null)
-                    });
+                    }));
             }
 
-            return new HealthCheckDetail(
+            return Task.FromResult(new HealthCheckDetail(
                 Id: "llm_anthropic",
                 Name: "Anthropic (Claude)",
                 Category: HealthCheckCategory.LLM,
@@ -529,23 +529,23 @@ public class HealthDiagnosticsService
                 Message: "API key configured",
                 Data: new Dictionary<string, object> { ["configured"] = true },
                 RemediationHint: null,
-                RemediationActions: null);
+                RemediationActions: null));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error checking Anthropic");
-            return CreateErrorCheck("llm_anthropic", "Anthropic (Claude)", HealthCheckCategory.LLM, false, ex);
+            return Task.FromResult(CreateErrorCheck("llm_anthropic", "Anthropic (Claude)", HealthCheckCategory.LLM, false, ex));
         }
     }
 
-    private async Task<HealthCheckDetail> CheckGeminiAsync(CancellationToken ct)
+    private Task<HealthCheckDetail> CheckGeminiAsync(CancellationToken ct)
     {
         try
         {
             var apiKey = _keyStore.GetKey("Gemini");
             if (string.IsNullOrEmpty(apiKey))
             {
-                return new HealthCheckDetail(
+                return Task.FromResult(new HealthCheckDetail(
                     Id: "llm_gemini",
                     Name: "Google Gemini",
                     Category: HealthCheckCategory.LLM,
@@ -570,10 +570,10 @@ public class HealthDiagnosticsService
                             NavigateTo: null,
                             ExternalUrl: "https://makersuite.google.com/app/apikey",
                             Parameters: null)
-                    });
+                    }));
             }
 
-            return new HealthCheckDetail(
+            return Task.FromResult(new HealthCheckDetail(
                 Id: "llm_gemini",
                 Name: "Google Gemini",
                 Category: HealthCheckCategory.LLM,
@@ -582,12 +582,12 @@ public class HealthDiagnosticsService
                 Message: "API key configured",
                 Data: new Dictionary<string, object> { ["configured"] = true },
                 RemediationHint: null,
-                RemediationActions: null);
+                RemediationActions: null));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error checking Gemini");
-            return CreateErrorCheck("llm_gemini", "Google Gemini", HealthCheckCategory.LLM, false, ex);
+            return Task.FromResult(CreateErrorCheck("llm_gemini", "Google Gemini", HealthCheckCategory.LLM, false, ex));
         }
     }
 
@@ -813,14 +813,14 @@ public class HealthDiagnosticsService
         }
     }
 
-    private async Task<HealthCheckDetail> CheckPlayHTAsync(CancellationToken ct)
+    private Task<HealthCheckDetail> CheckPlayHTAsync(CancellationToken ct)
     {
         try
         {
             var apiKey = _keyStore.GetKey("PlayHT");
             if (string.IsNullOrEmpty(apiKey))
             {
-                return new HealthCheckDetail(
+                return Task.FromResult(new HealthCheckDetail(
                     Id: "tts_playht",
                     Name: "PlayHT (Premium TTS)",
                     Category: HealthCheckCategory.TTS,
@@ -845,10 +845,10 @@ public class HealthDiagnosticsService
                             NavigateTo: null,
                             ExternalUrl: "https://play.ht",
                             Parameters: null)
-                    });
+                    }));
             }
 
-            return new HealthCheckDetail(
+            return Task.FromResult(new HealthCheckDetail(
                 Id: "tts_playht",
                 Name: "PlayHT (Premium TTS)",
                 Category: HealthCheckCategory.TTS,
@@ -857,12 +857,12 @@ public class HealthDiagnosticsService
                 Message: "API key configured",
                 Data: new Dictionary<string, object> { ["configured"] = true },
                 RemediationHint: null,
-                RemediationActions: null);
+                RemediationActions: null));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error checking PlayHT");
-            return CreateErrorCheck("tts_playht", "PlayHT", HealthCheckCategory.TTS, false, ex);
+            return Task.FromResult(CreateErrorCheck("tts_playht", "PlayHT", HealthCheckCategory.TTS, false, ex));
         }
     }
 
@@ -1098,14 +1098,14 @@ public class HealthDiagnosticsService
         }
     }
 
-    private async Task<HealthCheckDetail> CheckReplicateAsync(CancellationToken ct)
+    private Task<HealthCheckDetail> CheckReplicateAsync(CancellationToken ct)
     {
         try
         {
             var apiKey = _keyStore.GetKey("Replicate");
             if (string.IsNullOrEmpty(apiKey))
             {
-                return new HealthCheckDetail(
+                return Task.FromResult(new HealthCheckDetail(
                     Id: "image_replicate",
                     Name: "Replicate (Cloud AI)",
                     Category: HealthCheckCategory.Image,
@@ -1130,10 +1130,10 @@ public class HealthDiagnosticsService
                             NavigateTo: null,
                             ExternalUrl: "https://replicate.com",
                             Parameters: null)
-                    });
+                    }));
             }
 
-            return new HealthCheckDetail(
+            return Task.FromResult(new HealthCheckDetail(
                 Id: "image_replicate",
                 Name: "Replicate (Cloud AI)",
                 Category: HealthCheckCategory.Image,
@@ -1142,12 +1142,12 @@ public class HealthDiagnosticsService
                 Message: "API key configured",
                 Data: new Dictionary<string, object> { ["configured"] = true },
                 RemediationHint: null,
-                RemediationActions: null);
+                RemediationActions: null));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error checking Replicate");
-            return CreateErrorCheck("image_replicate", "Replicate", HealthCheckCategory.Image, false, ex);
+            return Task.FromResult(CreateErrorCheck("image_replicate", "Replicate", HealthCheckCategory.Image, false, ex));
         }
     }
 

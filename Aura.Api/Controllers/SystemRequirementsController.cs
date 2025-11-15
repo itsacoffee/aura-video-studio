@@ -560,7 +560,7 @@ public class SystemRequirementsController : ControllerBase
 
     // Helper methods for detailed requirements endpoint
 
-    private async Task<dynamic> GetDiskSpaceInfo()
+    private Task<dynamic> GetDiskSpaceInfo()
     {
         var appPath = AppDomain.CurrentDomain.BaseDirectory;
         var drive = new DriveInfo(Path.GetPathRoot(appPath) ?? "C:\\");
@@ -582,17 +582,17 @@ public class SystemRequirementsController : ControllerBase
             warnings.Add("Less than 50GB available. Consider freeing up space for larger projects.");
         }
 
-        return new
+        return Task.FromResult<dynamic>(new
         {
             available = Math.Round(availableGB, 2),
             total = Math.Round(totalGB, 2),
             percentage = Math.Round((availableGB / totalGB) * 100, 2),
             status,
             warnings
-        };
+        });
     }
 
-    private async Task<dynamic> GetGPUInformation()
+    private Task<dynamic> GetGPUInformation()
     {
         var result = GetGPUInfo();
         if (result is OkObjectResult okResult && okResult.Value != null)
@@ -606,7 +606,7 @@ public class SystemRequirementsController : ControllerBase
                 recommendations.Add("No dedicated GPU detected. Video encoding will use CPU (slower).");
             }
 
-            return new
+            return Task.FromResult<dynamic>(new
             {
                 detected = gpuData.detected,
                 vendor = gpuData.vendor,
@@ -620,10 +620,10 @@ public class SystemRequirementsController : ControllerBase
                 },
                 status,
                 recommendations
-            };
+            });
         }
 
-        return new
+        return Task.FromResult<dynamic>(new
         {
             detected = false,
             vendor = "Unknown",
@@ -637,10 +637,10 @@ public class SystemRequirementsController : ControllerBase
             },
             status = "warning",
             recommendations = new[] { "Could not detect GPU information" }
-        };
+        });
     }
 
-    private async Task<dynamic> GetMemoryInformation()
+    private Task<dynamic> GetMemoryInformation()
     {
         var result = GetMemoryInfo();
         if (result is OkObjectResult okResult && okResult.Value != null)
@@ -663,24 +663,24 @@ public class SystemRequirementsController : ControllerBase
                 warnings.Add("Less than 8GB RAM detected. 8GB+ recommended.");
             }
 
-            return new
+            return Task.FromResult<dynamic>(new
             {
                 total = totalGB,
                 available = availableGB,
                 percentage = (double)memData.percentageAvailable,
                 status,
                 warnings
-            };
+            });
         }
 
-        return new
+        return Task.FromResult<dynamic>(new
         {
             total = 0.0,
             available = 0.0,
             percentage = 0.0,
             status = "warning",
             warnings = new[] { "Could not determine system memory" }
-        };
+        });
     }
 
     private dynamic GetOSInformation()
