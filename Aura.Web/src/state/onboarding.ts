@@ -223,6 +223,7 @@ export type OnboardingAction =
   | { type: 'SET_MANUAL_HARDWARE'; payload: { vram?: number; hasGpu: boolean } }
   | { type: 'SKIP_HARDWARE_DETECTION' }
   | { type: 'LOAD_FROM_STORAGE'; payload: Partial<OnboardingState> }
+  | { type: 'SAVE_TO_BACKEND_TRIGGERED' }
   | {
       type: 'LOG_STATE_TRANSITION';
       payload: { from: string; to: string; action: string; correlationId: string };
@@ -261,7 +262,7 @@ export function onboardingReducer(
 ): OnboardingState {
   switch (action.type) {
     case 'SET_STEP':
-      return { ...state, step: action.payload };
+      return logStateTransition(state, 'SET_STEP', { step: action.payload });
 
     case 'SET_MODE':
       return { ...state, mode: action.payload };
@@ -274,6 +275,9 @@ export function onboardingReducer(
 
     case 'SET_STEP_STATE':
       return logStateTransition(state, 'SET_STEP_STATE', { stepState: action.payload });
+
+    case 'SAVE_TO_BACKEND_TRIGGERED':
+      return state;
 
     case 'SET_ERROR':
       console.error('[Wizard Error]', {
@@ -1274,4 +1278,157 @@ export function clearWizardStateFromStorage(): void {
   } catch (error) {
     console.error('Failed to clear wizard state:', error);
   }
+}
+
+/**
+ * Save wizard progress to backend (with automatic retry)
+ */
+export async function saveWizardProgressToBackend(
+  state: OnboardingState,
+  correlationId?: string
+): Promise<boolean> {
+  try {
+    const { setupApi } = await import('../services/api/setupApi');
+    
+    // Extract serializable state (exclude non-serializable fields)
+    const serializableState = {
+      step: state.step,
+      mode: state.mode,
+      selectedTier: state.selectedTier,
+      status: state.status,
+      stepState: state.stepState,
+      lastStep: state.step,
+      apiKeys: state.apiKeys,
+      selectedProviders: state.selectedProviders,
+      installItems: state.installItems.map(item => ({
+        id: item.id,
+        installed: item.installed,
+        skipped: item.skipped,
+      })),
+    };
+
+    const result = await setupApi.saveWizardProgress({
+      currentStep: state.step,
+      state: serializableState,
+      correlationId: correlationId || `wizard-save-${Date.now()}`,
+    });
+
+    console.info('[Wizard Persistence] Progress saved to backend:', result);
+    return result.success;
+  } catch (error) {
+    console.error('[Wizard Persistence] Failed to save progress to backend:', error);
+    return false;
+  }
+}
+
+/**
+ * Load wizard progress from backend
+ */
+export async function loadWizardProgressFromBackend(
+  userId?: string
+): Promise<Partial<OnboardingState> | null> {
+  try {
+    const { setupApi } = await import('../services/api/setupApi');
+    
+    const status = await setupApi.getWizardStatus(userId);
+    
+    if (!status.canResume || !status.state) {
+      return null;
+    }
+
+    console.info('[Wizard Persistence] Loaded progress from backend:', status);
+    
+    return status.state as Partial<OnboardingState>;
+  } catch (error) {
+    console.error('[Wizard Persistence] Failed to load progress from backend:', error);
+    return null;
+  }
+}
+
+/**
+ * Mark wizard as complete in backend
+ */
+export async function completeWizardInBackend(
+  state: OnboardingState,
+  correlationId?: string
+): Promise<boolean> {
+  try {
+    const { setupApi } = await import('../services/api/setupApi');
+    
+    const result = await setupApi.completeWizard({
+      finalStep: state.step,
+      version: '1.0.0',
+      selectedTier: state.selectedTier || undefined,
+      finalState: {
+        mode: state.mode,
+        providers: state.selectedProviders,
+      },
+      correlationId: correlationId || `wizard-complete-${Date.now()}`,
+    });
+
+    console.info('[Wizard Persistence] Wizard completed in backend:', result);
+    return result.success;
+  } catch (error) {
+    console.error('[Wizard Persistence] Failed to complete wizard in backend:', error);
+    return false;
+  }
+}
+
+/**
+ * Reset wizard state in backend
+ */
+export async function resetWizardInBackend(
+  preserveData: boolean = false,
+  correlationId?: string
+): Promise<boolean> {
+  try {
+    const { setupApi } = await import('../services/api/setupApi');
+    
+    const result = await setupApi.resetWizard({
+      preserveData,
+      correlationId: correlationId || `wizard-reset-${Date.now()}`,
+    });
+
+    console.info('[Wizard Persistence] Wizard reset in backend:', result);
+    return result.success;
+  } catch (error) {
+    console.error('[Wizard Persistence] Failed to reset wizard in backend:', error);
+    return false;
+  }
+}
+
+/**
+ * Middleware function to trigger auto-save after significant state changes
+ * Returns the action types that should trigger an auto-save
+ */
+export function shouldTriggerAutoSave(actionType: OnboardingAction['type']): boolean {
+  const autoSaveTriggers: OnboardingAction['type'][] = [
+    'SET_STEP',
+    'SET_TIER',
+    'INSTALL_COMPLETE',
+    'SKIP_INSTALL',
+    'API_KEY_VALID',
+    'SET_WORKSPACE_PREFERENCES',
+  ];
+  
+  return autoSaveTriggers.includes(actionType);
+}
+
+/**
+ * Enhanced reducer wrapper that triggers auto-save for significant changes
+ */
+export function onboardingReducerWithAutoSave(
+  state: OnboardingState,
+  action: OnboardingAction,
+  enableAutoSave: boolean = true
+): OnboardingState {
+  const newState = onboardingReducer(state, action);
+  
+  if (enableAutoSave && shouldTriggerAutoSave(action.type)) {
+    void saveWizardProgressToBackend(newState).catch(err => {
+      console.error('[Auto-save] Failed to save progress:', err);
+    });
+  }
+  
+  return newState;
 }

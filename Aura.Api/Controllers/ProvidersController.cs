@@ -1169,6 +1169,236 @@ public class ProvidersController : ControllerBase
         }
         return $"{len:0.##} {sizes[order]}";
     }
+
+    /// <summary>
+    /// Enhanced provider validation with field-level validation
+    /// </summary>
+    [HttpPost("validate-enhanced")]
+    public async Task<IActionResult> ValidateProviderEnhanced(
+        [FromBody] EnhancedProviderValidationRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var correlationId = request.CorrelationId ?? Guid.NewGuid().ToString();
+            Log.Information("Enhanced provider validation for {Provider}, CorrelationId: {CorrelationId}",
+                request.Provider, correlationId);
+
+            var fieldErrors = new List<FieldValidationError>();
+            var fieldValidationStatus = new Dictionary<string, bool>();
+
+            switch (request.Provider.ToLowerInvariant())
+            {
+                case "openai":
+                    ValidateOpenAIConfiguration(request.Configuration, fieldErrors, fieldValidationStatus);
+                    break;
+                case "elevenlabs":
+                    ValidateElevenLabsConfiguration(request.Configuration, fieldErrors, fieldValidationStatus);
+                    break;
+                case "playht":
+                    ValidatePlayHTConfiguration(request.Configuration, fieldErrors, fieldValidationStatus);
+                    break;
+                default:
+                    return BadRequest(new EnhancedProviderValidationResponse(
+                        false,
+                        "Invalid",
+                        request.Provider,
+                        new List<FieldValidationError> {
+                            new("Provider", "UNKNOWN_PROVIDER", $"Provider '{request.Provider}' is not supported")
+                        },
+                        null,
+                        $"Provider '{request.Provider}' is not supported",
+                        correlationId
+                    ));
+            }
+
+            var isValid = fieldErrors.Count == 0;
+            var status = isValid ? "Valid" : "Invalid";
+
+            // If partial validation and at least one field is valid, return partial success
+            if (request.PartialValidation && fieldValidationStatus.Values.Any(v => v))
+            {
+                status = "PartiallyValid";
+            }
+
+            return Ok(new EnhancedProviderValidationResponse(
+                isValid,
+                status,
+                request.Provider,
+                fieldErrors.Count > 0 ? fieldErrors : null,
+                fieldValidationStatus,
+                isValid ? "All fields validated successfully" : $"{fieldErrors.Count} field(s) have validation errors",
+                correlationId
+            ));
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Enhanced provider validation failed for {Provider}, CorrelationId: {CorrelationId}",
+                request.Provider, request.CorrelationId);
+            return StatusCode(500, new EnhancedProviderValidationResponse(
+                false,
+                "Error",
+                request.Provider,
+                new List<FieldValidationError> {
+                    new("Internal", "VALIDATION_ERROR", ex.Message)
+                },
+                null,
+                "Internal validation error",
+                request.CorrelationId
+            ));
+        }
+    }
+
+    private void ValidateOpenAIConfiguration(
+        Dictionary<string, string?> config,
+        List<FieldValidationError> errors,
+        Dictionary<string, bool> status)
+    {
+        // Validate API Key
+        if (!config.TryGetValue("ApiKey", out var apiKey) || string.IsNullOrWhiteSpace(apiKey))
+        {
+            errors.Add(new FieldValidationError(
+                "ApiKey",
+                "REQUIRED",
+                "API Key is required",
+                "Obtain an API key from https://platform.openai.com/api-keys"
+            ));
+            status["ApiKey"] = false;
+        }
+        else if (!apiKey.StartsWith("sk-", StringComparison.Ordinal))
+        {
+            errors.Add(new FieldValidationError(
+                "ApiKey",
+                "INVALID_FORMAT",
+                "OpenAI API keys must start with 'sk-'",
+                "Check your API key format"
+            ));
+            status["ApiKey"] = false;
+        }
+        else
+        {
+            status["ApiKey"] = true;
+        }
+
+        // Validate Base URL if provided
+        if (config.TryGetValue("BaseUrl", out var baseUrl) && !string.IsNullOrWhiteSpace(baseUrl))
+        {
+            if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out _))
+            {
+                errors.Add(new FieldValidationError(
+                    "BaseUrl",
+                    "INVALID_URL",
+                    "Base URL must be a valid URL",
+                    "Use format: https://api.openai.com/v1"
+                ));
+                status["BaseUrl"] = false;
+            }
+            else
+            {
+                status["BaseUrl"] = true;
+            }
+        }
+    }
+
+    private void ValidateElevenLabsConfiguration(
+        Dictionary<string, string?> config,
+        List<FieldValidationError> errors,
+        Dictionary<string, bool> status)
+    {
+        if (!config.TryGetValue("ApiKey", out var apiKey) || string.IsNullOrWhiteSpace(apiKey))
+        {
+            errors.Add(new FieldValidationError(
+                "ApiKey",
+                "REQUIRED",
+                "API Key is required",
+                "Obtain an API key from https://elevenlabs.io/app/settings"
+            ));
+            status["ApiKey"] = false;
+        }
+        else
+        {
+            status["ApiKey"] = true;
+        }
+    }
+
+    private void ValidatePlayHTConfiguration(
+        Dictionary<string, string?> config,
+        List<FieldValidationError> errors,
+        Dictionary<string, bool> status)
+    {
+        if (!config.TryGetValue("ApiKey", out var apiKey) || string.IsNullOrWhiteSpace(apiKey))
+        {
+            errors.Add(new FieldValidationError(
+                "ApiKey",
+                "REQUIRED",
+                "API Key is required",
+                "Obtain an API key from https://play.ht/app/api-access"
+            ));
+            status["ApiKey"] = false;
+        }
+        else if (!config.TryGetValue("UserId", out var userId) || string.IsNullOrWhiteSpace(userId))
+        {
+            errors.Add(new FieldValidationError(
+                "UserId",
+                "REQUIRED",
+                "User ID is required for PlayHT",
+                "Find your User ID in the PlayHT API settings"
+            ));
+            status["UserId"] = false;
+        }
+        else
+        {
+            status["ApiKey"] = true;
+            status["UserId"] = true;
+        }
+    }
+
+    /// <summary>
+    /// Save partial provider configuration
+    /// </summary>
+    [HttpPost("save-partial-config")]
+    public async Task<IActionResult> SavePartialConfiguration(
+        [FromBody] SavePartialConfigurationRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var correlationId = request.CorrelationId ?? Guid.NewGuid().ToString();
+            Log.Information("Saving partial configuration for {Provider}, CorrelationId: {CorrelationId}",
+                request.Provider, correlationId);
+
+            foreach (var kvp in request.PartialConfiguration)
+            {
+                if (!string.IsNullOrWhiteSpace(kvp.Value))
+                {
+                    var keyName = $"{request.Provider}_{kvp.Key}";
+                    await _secureStorageService.SaveApiKeyAsync(keyName, kvp.Value)
+                        .ConfigureAwait(false);
+                }
+            }
+
+            return Ok(new
+            {
+                success = true,
+                message = "Partial configuration saved successfully",
+                savedFields = request.PartialConfiguration.Keys.Where(k =>
+                    !string.IsNullOrWhiteSpace(request.PartialConfiguration[k])).ToList(),
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to save partial configuration for {Provider}, CorrelationId: {CorrelationId}",
+                request.Provider, request.CorrelationId);
+            return StatusCode(500, new
+            {
+                success = false,
+                error = "Failed to save partial configuration",
+                detail = ex.Message,
+                correlationId = request.CorrelationId
+            });
+        }
+    }
 }
 
 /// <summary>
