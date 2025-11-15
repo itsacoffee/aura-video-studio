@@ -1383,6 +1383,9 @@ builder.Services.AddSingleton<Aura.Core.Services.Diagnostics.FailureAnalysisServ
 builder.Services.AddSingleton<Aura.Core.Services.Diagnostics.CrashReportService>();
 builder.Services.AddSingleton<Aura.Core.Services.Diagnostics.SystemDiagnosticsService>();
 
+// Register error handling services
+builder.Services.AddSingleton<Aura.Core.Errors.ErrorMappingService>();
+
 // Register resilience services for error recovery and monitoring
 builder.Services.AddResilienceServices(builder.Configuration);
 

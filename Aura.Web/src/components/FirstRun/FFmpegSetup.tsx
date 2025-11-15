@@ -8,6 +8,8 @@ import {
   Spinner,
   Badge,
   ProgressBar,
+  MessageBar,
+  MessageBarBody,
 } from '@fluentui/react-components';
 import {
   CheckmarkCircle24Filled,
@@ -19,6 +21,8 @@ import {
 import { useState, useEffect } from 'react';
 import type { FC } from 'react';
 import { API_BASE_URL } from '../../config/api';
+import { handleApiError } from '../../services/api/errorHandler';
+import type { UserFriendlyError } from '../../services/api/errorHandler';
 
 const useStyles = makeStyles({
   container: {
@@ -93,46 +97,30 @@ export const FFmpegSetup: FC<FFmpegSetupProps> = ({ onStatusChange }) => {
   const [loading, setLoading] = useState(true);
   const [installing, setInstalling] = useState(false);
   const [installProgress, setInstallProgress] = useState(0);
+  const [error, setError] = useState<UserFriendlyError | null>(null);
 
   const checkStatus = async () => {
     try {
       setLoading(true);
+      setError(null);
       const response = await fetch(`${API_BASE_URL}/api/system/ffmpeg/status`);
 
       if (!response.ok) {
         const errorText = await response.text();
-        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-
+        let parsedError;
+        
         try {
-          const errorData = JSON.parse(errorText);
-          errorMessage =
-            errorData.errorMessage || errorData.message || errorData.error || errorMessage;
+          parsedError = JSON.parse(errorText);
         } catch {
-          errorMessage = errorText || errorMessage;
+          parsedError = { message: errorText };
         }
 
-        console.error('FFmpeg status check failed:', errorMessage);
-
-        setStatus({
-          installed: false,
-          valid: false,
-          version: undefined,
-          path: undefined,
-          source: 'None',
-          error: `Unable to check FFmpeg status: ${errorMessage}`,
-          errorCode: undefined,
-          errorMessage: `Unable to check FFmpeg status: ${errorMessage}`,
-          attemptedPaths: undefined,
-          versionMeetsRequirement: false,
-          minimumVersion: '4.0',
-          hardwareAcceleration: {
-            nvencSupported: false,
-            amfSupported: false,
-            quickSyncSupported: false,
-            videoToolboxSupported: false,
-            availableEncoders: [],
-          },
+        const friendlyError = handleApiError({
+          isAxiosError: false,
+          response: { data: parsedError },
         });
+        
+        setError(friendlyError);
         onStatusChange?.(false);
         return;
       }
@@ -140,30 +128,9 @@ export const FFmpegSetup: FC<FFmpegSetupProps> = ({ onStatusChange }) => {
       const data = await response.json();
       setStatus(data);
       onStatusChange?.(data.installed && data.valid);
-    } catch (error: unknown) {
-      const errorObj = error instanceof Error ? error : new Error(String(error));
-      console.error('Failed to check FFmpeg status:', errorObj.message);
-
-      setStatus({
-        installed: false,
-        valid: false,
-        version: undefined,
-        path: undefined,
-        source: 'None',
-        error: `Network error: ${errorObj.message}`,
-        errorCode: undefined,
-        errorMessage: `Network error: ${errorObj.message}`,
-        attemptedPaths: undefined,
-        versionMeetsRequirement: false,
-        minimumVersion: '4.0',
-        hardwareAcceleration: {
-          nvencSupported: false,
-          amfSupported: false,
-          quickSyncSupported: false,
-          videoToolboxSupported: false,
-          availableEncoders: [],
-        },
-      });
+    } catch (err: unknown) {
+      const friendlyError = handleApiError(err);
+      setError(friendlyError);
       onStatusChange?.(false);
     } finally {
       setLoading(false);
@@ -233,6 +200,53 @@ export const FFmpegSetup: FC<FFmpegSetupProps> = ({ onStatusChange }) => {
     return (
       <div className={styles.container}>
         <Spinner label="Checking FFmpeg status..." />
+      </div>
+    );
+  }
+
+  // Show error if we have one and no status
+  if (error && !status) {
+    return (
+      <div className={styles.container}>
+        <Card className={styles.statusCard}>
+          <MessageBar intent="error">
+            <MessageBarBody>
+              <Title3>{error.title}</Title3>
+              <Text>{error.message}</Text>
+              {error.correlationId && (
+                <Text size={200}>Correlation ID: {error.correlationId}</Text>
+              )}
+              {error.actions && error.actions.length > 0 && (
+                <div style={{ marginTop: tokens.spacingVerticalM }}>
+                  <Text weight="semibold">Recommended Actions:</Text>
+                  <ul>
+                    {error.actions.map((action, index) => (
+                      <li key={index}>
+                        <Text weight="semibold">{action.label}:</Text> {action.description}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <div className={styles.actionButtons}>
+                <Button appearance="primary" onClick={checkStatus}>
+                  Retry
+                </Button>
+                {error.learnMoreUrl && (
+                  <Button
+                    appearance="secondary"
+                    as="a"
+                    href={error.learnMoreUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Learn More
+                  </Button>
+                )}
+              </div>
+            </MessageBarBody>
+          </MessageBar>
+        </Card>
       </div>
     );
   }
