@@ -18,6 +18,9 @@ public record FFmpegStatusInfo
     public string? Path { get; init; }
     public string Source { get; init; } = "None";
     public string? Error { get; init; }
+    public string? ErrorCode { get; init; }
+    public string? ErrorMessage { get; init; }
+    public string[]? AttemptedPaths { get; init; }
     public bool VersionMeetsRequirement { get; init; }
     public string? MinimumVersion { get; init; }
     public HardwareAcceleration HardwareAcceleration { get; init; } = new();
@@ -70,53 +73,116 @@ public class FFmpegStatusService : IFFmpegStatusService
     {
         _logger.LogInformation("Getting comprehensive FFmpeg status");
 
-        var resolution = await _resolver.ResolveAsync(null, forceRefresh: true, cancellationToken).ConfigureAwait(false);
-        
-        var hardwareAccel = new HardwareAcceleration();
-        
-        if (resolution.Found && resolution.IsValid && !string.IsNullOrEmpty(resolution.Path))
+        try
         {
-            try
+            var resolution = await _resolver.ResolveAsync(null, forceRefresh: true, cancellationToken).ConfigureAwait(false);
+            
+            var hardwareAccel = new HardwareAcceleration();
+            
+            if (resolution.Found && resolution.IsValid && !string.IsNullOrEmpty(resolution.Path))
             {
-                var hardwareLogger = _loggerFactory.CreateLogger<HardwareEncoder>();
-                var hardwareEncoder = new HardwareEncoder(hardwareLogger, resolution.Path);
-                
-                var capabilities = await hardwareEncoder.DetectHardwareCapabilitiesAsync().ConfigureAwait(false);
-                hardwareAccel = new HardwareAcceleration
+                try
                 {
-                    NvencSupported = capabilities.HasNVENC,
-                    AmfSupported = capabilities.HasAMF,
-                    QuickSyncSupported = capabilities.HasQSV,
-                    VideoToolboxSupported = capabilities.HasVideoToolbox,
-                    AvailableEncoders = capabilities.AvailableEncoders.ToArray()
-                };
+                    var hardwareLogger = _loggerFactory.CreateLogger<HardwareEncoder>();
+                    var hardwareEncoder = new HardwareEncoder(hardwareLogger, resolution.Path);
+                    
+                    var capabilities = await hardwareEncoder.DetectHardwareCapabilitiesAsync().ConfigureAwait(false);
+                    hardwareAccel = new HardwareAcceleration
+                    {
+                        NvencSupported = capabilities.HasNVENC,
+                        AmfSupported = capabilities.HasAMF,
+                        QuickSyncSupported = capabilities.HasQSV,
+                        VideoToolboxSupported = capabilities.HasVideoToolbox,
+                        AvailableEncoders = capabilities.AvailableEncoders.ToArray()
+                    };
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to detect hardware acceleration capabilities");
+                }
             }
-            catch (Exception ex)
+
+            var versionMeets = CheckVersionRequirement(resolution.Version);
+
+            var status = new FFmpegStatusInfo
             {
-                _logger.LogWarning(ex, "Failed to detect hardware acceleration capabilities");
-            }
+                Installed = resolution.Found && resolution.IsValid,
+                Valid = resolution.IsValid,
+                Version = resolution.Version,
+                Path = resolution.Path,
+                Source = resolution.Source,
+                Error = resolution.Error,
+                ErrorCode = DetermineErrorCode(resolution),
+                ErrorMessage = GenerateUserFriendlyErrorMessage(resolution),
+                AttemptedPaths = resolution.AttemptedPaths?.ToArray(),
+                VersionMeetsRequirement = versionMeets,
+                MinimumVersion = MinimumRequiredVersion,
+                HardwareAcceleration = hardwareAccel
+            };
+
+            _logger.LogInformation(
+                "FFmpeg status: Installed={Installed}, Version={Version}, HW Accel: NVENC={NVENC}, AMF={AMF}, QSV={QSV}",
+                status.Installed, status.Version, hardwareAccel.NvencSupported, hardwareAccel.AmfSupported, hardwareAccel.QuickSyncSupported);
+
+            return status;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting FFmpeg status");
+            
+            return new FFmpegStatusInfo
+            {
+                Installed = false,
+                Valid = false,
+                Source = "None",
+                Error = $"Failed to check FFmpeg status: {ex.Message}",
+                ErrorCode = "E302",
+                ErrorMessage = "Unable to check FFmpeg installation status. Please try again.",
+                VersionMeetsRequirement = false,
+                MinimumVersion = MinimumRequiredVersion,
+                HardwareAcceleration = new HardwareAcceleration()
+            };
+        }
+    }
+
+    private string? DetermineErrorCode(FfmpegResolutionResult resolution)
+    {
+        if (resolution.Found && resolution.IsValid)
+        {
+            return null;
         }
 
-        var versionMeets = CheckVersionRequirement(resolution.Version);
-
-        var status = new FFmpegStatusInfo
+        if (!resolution.Found)
         {
-            Installed = resolution.Found && resolution.IsValid,
-            Valid = resolution.IsValid,
-            Version = resolution.Version,
-            Path = resolution.Path,
-            Source = resolution.Source,
-            Error = resolution.Error,
-            VersionMeetsRequirement = versionMeets,
-            MinimumVersion = MinimumRequiredVersion,
-            HardwareAcceleration = hardwareAccel
-        };
+            return "E302";
+        }
 
-        _logger.LogInformation(
-            "FFmpeg status: Installed={Installed}, Version={Version}, HW Accel: NVENC={NVENC}, AMF={AMF}, QSV={QSV}",
-            status.Installed, status.Version, hardwareAccel.NvencSupported, hardwareAccel.AmfSupported, hardwareAccel.QuickSyncSupported);
+        if (!resolution.IsValid)
+        {
+            return "E303";
+        }
 
-        return status;
+        return null;
+    }
+
+    private string? GenerateUserFriendlyErrorMessage(FfmpegResolutionResult resolution)
+    {
+        if (resolution.Found && resolution.IsValid)
+        {
+            return null;
+        }
+
+        if (!resolution.Found)
+        {
+            return "FFmpeg is not installed. Install it via the Download Center or ensure it's on your system PATH.";
+        }
+
+        if (!resolution.IsValid)
+        {
+            return "FFmpeg binary is invalid or corrupted. Please reinstall via the Download Center.";
+        }
+
+        return resolution.Error;
     }
 
     private bool CheckVersionRequirement(string? versionString)

@@ -265,7 +265,24 @@ public class FfmpegLocator : IFfmpegLocator
         var candidates = new List<string>();
         var exeName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "ffmpeg.exe" : "ffmpeg";
 
-        // 0. Check environment variables from Electron (highest priority for bundled apps)
+        // 0. Check AURA_FFMPEG_PATH environment variable (highest priority for explicit config)
+        var auraFfmpegPath = Environment.GetEnvironmentVariable("AURA_FFMPEG_PATH");
+        if (!string.IsNullOrEmpty(auraFfmpegPath))
+        {
+            if (File.Exists(auraFfmpegPath))
+            {
+                candidates.Add(auraFfmpegPath);
+                _logger.LogDebug("Added AURA_FFMPEG_PATH from environment: {Path}", auraFfmpegPath);
+            }
+            else if (Directory.Exists(auraFfmpegPath))
+            {
+                var auraExe = Path.Combine(auraFfmpegPath, exeName);
+                candidates.Add(auraExe);
+                _logger.LogDebug("Added AURA_FFMPEG_PATH directory from environment: {Path}", auraExe);
+            }
+        }
+
+        // 1. Check environment variables from Electron (for bundled apps)
         var electronFfmpegPath = Environment.GetEnvironmentVariable("FFMPEG_PATH");
         var electronBinariesPath = Environment.GetEnvironmentVariable("FFMPEG_BINARIES_PATH");
         
@@ -283,13 +300,13 @@ public class FfmpegLocator : IFfmpegLocator
             _logger.LogDebug("Added Electron binaries path from environment: {Path}", electronBinExe);
         }
 
-        // 1. Configured path from registry/install.json (if provided)
+        // 2. Configured path from registry/install.json (if provided)
         if (!string.IsNullOrEmpty(configuredPath))
         {
             candidates.Add(configuredPath);
         }
 
-        // 2. App-specific paths - dependencies folder (user manual copy location)
+        // 3. App-specific paths - dependencies folder (user manual copy location)
         var depsBin = Path.Combine(_dependenciesDirectory, "bin", exeName);
         candidates.Add(depsBin);
         
@@ -297,7 +314,7 @@ public class FfmpegLocator : IFfmpegLocator
         var depsRoot = Path.Combine(_dependenciesDirectory, exeName);
         candidates.Add(depsRoot);
 
-        // 3. Tools directory - managed installations
+        // 4. Tools directory - managed installations
         var toolsFFmpegDir = Path.Combine(_toolsDirectory, "ffmpeg");
         if (Directory.Exists(toolsFFmpegDir))
         {
@@ -322,7 +339,7 @@ public class FfmpegLocator : IFfmpegLocator
         var toolsDirectExe = Path.Combine(_toolsDirectory, "ffmpeg", exeName);
         candidates.Add(toolsDirectExe);
 
-        // 4. Windows-specific: Check Windows Registry for FFmpeg installations
+        // 5. Windows-specific: Check Windows Registry for FFmpeg installations
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
             var registryPaths = CheckWindowsRegistry();
@@ -403,10 +420,31 @@ public class FfmpegLocator : IFfmpegLocator
                 return (false, null, "Failed to start process");
             }
 
-            await process.WaitForExitAsync(ct).ConfigureAwait(false);
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
 
-            var stdout = await process.StandardOutput.ReadToEndAsync(ct).ConfigureAwait(false);
-            var stderr = await process.StandardError.ReadToEndAsync(ct).ConfigureAwait(false);
+            try
+            {
+                await process.WaitForExitAsync(linkedCts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                try
+                {
+                    process.Kill(entireProcessTree: true);
+                }
+                catch
+                {
+                    // Ignore errors when killing process
+                }
+                
+                return (false, null, timeoutCts.IsCancellationRequested 
+                    ? "FFmpeg validation timed out after 5 seconds" 
+                    : "Operation was cancelled");
+            }
+
+            var stdout = await process.StandardOutput.ReadToEndAsync(linkedCts.Token).ConfigureAwait(false);
+            var stderr = await process.StandardError.ReadToEndAsync(linkedCts.Token).ConfigureAwait(false);
 
             if (process.ExitCode != 0)
             {
