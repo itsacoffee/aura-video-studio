@@ -15,6 +15,9 @@ export interface FFmpegStatus {
   path: string | null;
   source: string;
   error: string | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+  attemptedPaths: string[];
   versionMeetsRequirement: boolean;
   minimumVersion: string;
   hardwareAcceleration: FFmpegHardwareAcceleration;
@@ -28,10 +31,13 @@ export interface FFmpegInstallRequest {
 export interface FFmpegInstallResponse {
   success: boolean;
   message: string;
+  title?: string;
+  detail?: string;
   version?: string;
   path?: string;
-  correlationId: string;
+  errorCode?: string;
   howToFix?: string[];
+  correlationId: string;
 }
 
 export interface FFmpegRescanResponse {

@@ -29,6 +29,7 @@ export interface UserFriendlyError {
   errorCode?: string;
   correlationId?: string;
   actions: ErrorAction[];
+  howToFix?: string[];
   technicalDetails?: string;
   learnMoreUrl?: string;
 }
@@ -273,6 +274,145 @@ const ERROR_CODE_MAPPINGS: Record<string, UserFriendlyError> = {
     learnMoreUrl:
       'https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/provider-errors.md#rate-limits',
   },
+
+  // FFmpeg Errors
+  E302: {
+    title: 'FFmpeg Not Found',
+    message: 'FFmpeg is not installed or cannot be found on your system.',
+    errorCode: 'E302',
+    actions: [
+      {
+        label: 'Install FFmpeg',
+        description: 'Click the Install FFmpeg button to download and install automatically',
+      },
+      {
+        label: 'Add to PATH',
+        description: 'If manually installed, add FFmpeg to your system PATH',
+      },
+    ],
+    learnMoreUrl:
+      'https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/ffmpeg-errors.md#e302',
+  },
+
+  E303: {
+    title: 'Invalid FFmpeg Installation',
+    message: 'FFmpeg was found but is invalid or corrupted.',
+    errorCode: 'E303',
+    actions: [
+      {
+        label: 'Reinstall FFmpeg',
+        description: 'Remove the current installation and install again',
+      },
+      {
+        label: 'Check Version',
+        description: 'Ensure FFmpeg version is 4.0 or higher',
+      },
+    ],
+    learnMoreUrl:
+      'https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/ffmpeg-errors.md#e303',
+  },
+
+  E320: {
+    title: 'FFmpeg Download Timeout',
+    message: 'Download timed out. This may be due to slow network connection or large file size.',
+    errorCode: 'E320',
+    actions: [
+      {
+        label: 'Check Internet Speed',
+        description: 'Verify your internet connection is stable',
+      },
+      {
+        label: 'Retry Later',
+        description: 'Try again when network conditions improve',
+      },
+      {
+        label: 'Manual Install',
+        description: 'Download FFmpeg manually from ffmpeg.org',
+      },
+    ],
+    learnMoreUrl:
+      'https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/ffmpeg-errors.md#e320',
+  },
+
+  E321: {
+    title: 'FFmpeg Network Error',
+    message: 'Network error occurred during FFmpeg download.',
+    errorCode: 'E321',
+    actions: [
+      {
+        label: 'Check Connection',
+        description: 'Verify your internet connection',
+      },
+      {
+        label: 'Check Firewall',
+        description: 'Ensure firewall is not blocking downloads',
+      },
+      {
+        label: 'Manual Install',
+        description: 'Download FFmpeg manually and use "Use Existing FFmpeg"',
+      },
+    ],
+    learnMoreUrl:
+      'https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/ffmpeg-errors.md#e321',
+  },
+
+  E322: {
+    title: 'FFmpeg File Corrupted',
+    message: 'Downloaded file is corrupted or incomplete.',
+    errorCode: 'E322',
+    actions: [
+      {
+        label: 'Clear Cache',
+        description: 'Clear browser cache and try again',
+      },
+      {
+        label: 'Check Disk Space',
+        description: 'Ensure sufficient disk space is available',
+      },
+      {
+        label: 'Disable Antivirus',
+        description: 'Temporarily disable antivirus during download',
+      },
+    ],
+    learnMoreUrl:
+      'https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/ffmpeg-errors.md#e322',
+  },
+
+  E323: {
+    title: 'DNS Resolution Failed',
+    message: 'Unable to resolve the FFmpeg download server hostname.',
+    errorCode: 'E323',
+    actions: [
+      {
+        label: 'Check DNS Settings',
+        description: 'Try using Google DNS (8.8.8.8) or Cloudflare DNS (1.1.1.1)',
+      },
+      {
+        label: 'Check Internet',
+        description: 'Verify you are connected to the internet',
+      },
+    ],
+    learnMoreUrl:
+      'https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/ffmpeg-errors.md#e323',
+  },
+
+  E324: {
+    title: 'Secure Connection Failed',
+    message: 'Failed to establish a secure connection to the download server.',
+    errorCode: 'E324',
+    actions: [
+      {
+        label: 'Check System Time',
+        description: 'Ensure your system date and time are correct',
+      },
+      {
+        label: 'Update OS',
+        description: 'Update your operating system security certificates',
+      },
+    ],
+    learnMoreUrl:
+      'https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/ffmpeg-errors.md#e324',
+  },
 };
 
 /**
@@ -287,6 +427,7 @@ function getErrorCategory(errorCode?: string): ErrorCategory {
   if (errorCode.startsWith('CFG')) return ErrorCategory.Configuration;
   if (errorCode.startsWith('E100') || errorCode.startsWith('E200') || errorCode.startsWith('E400'))
     return ErrorCategory.Provider;
+  if (errorCode.startsWith('E3')) return ErrorCategory.Configuration; // FFmpeg errors
 
   return ErrorCategory.Unknown;
 }
@@ -322,6 +463,7 @@ export function handleApiError(error: unknown): UserFriendlyError {
         message: backendError.detail || 'An error occurred',
         errorCode: backendError.errorCode,
         correlationId: backendError.correlationId,
+        howToFix: backendError.howToFix,
         actions: backendError.howToFix
           ? backendError.howToFix.map((step, index) => ({
               label: `Step ${index + 1}`,

@@ -20,7 +20,7 @@ public record FFmpegStatusInfo
     public string? Error { get; init; }
     public string? ErrorCode { get; init; }
     public string? ErrorMessage { get; init; }
-    public string[]? AttemptedPaths { get; init; }
+    public string[] AttemptedPaths { get; init; } = Array.Empty<string>();
     public bool VersionMeetsRequirement { get; init; }
     public string? MinimumVersion { get; init; }
     public HardwareAcceleration HardwareAcceleration { get; init; } = new();
@@ -114,7 +114,7 @@ public class FFmpegStatusService : IFFmpegStatusService
                 Error = resolution.Error,
                 ErrorCode = DetermineErrorCode(resolution),
                 ErrorMessage = GenerateUserFriendlyErrorMessage(resolution),
-                AttemptedPaths = resolution.AttemptedPaths?.ToArray(),
+                AttemptedPaths = resolution.AttemptedPaths.ToArray(),
                 VersionMeetsRequirement = versionMeets,
                 MinimumVersion = MinimumRequiredVersion,
                 HardwareAcceleration = hardwareAccel
@@ -138,6 +138,7 @@ public class FFmpegStatusService : IFFmpegStatusService
                 Error = $"Failed to check FFmpeg status: {ex.Message}",
                 ErrorCode = "E302",
                 ErrorMessage = "Unable to check FFmpeg installation status. Please try again.",
+                AttemptedPaths = Array.Empty<string>(),
                 VersionMeetsRequirement = false,
                 MinimumVersion = MinimumRequiredVersion,
                 HardwareAcceleration = new HardwareAcceleration()
