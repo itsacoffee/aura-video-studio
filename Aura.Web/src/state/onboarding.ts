@@ -10,7 +10,13 @@ const MIN_VRAM_FOR_STABLE_DIFFUSION = 6; // GB - Minimum VRAM for SD 1.5
 
 /**
  * Wizard validation status - deterministic state machine
- * Idle → Validating → Valid/Invalid → Installing → Installed → Ready
+ * Enhanced with explicit error states and recovery options
+ *
+ * State transitions:
+ * NotStarted → CheckingEnvironment → FFmpegCheck → FFmpegInstallInProgress →
+ * FFmpegInstalled → ProviderConfig → ValidationInProgress → Completed
+ *
+ * Error states can be entered from any state and include recovery metadata
  */
 export type WizardStatus =
   | 'idle' // Initial state, waiting for user to click Validate
@@ -20,6 +26,45 @@ export type WizardStatus =
   | 'installing' // Installing dependencies/engines
   | 'installed' // Installation complete
   | 'ready'; // All set, wizard complete
+
+/**
+ * Enhanced wizard step states for explicit flow control
+ */
+export type WizardStepState =
+  | 'NotStarted'
+  | 'CheckingEnvironment'
+  | 'FFmpegCheck'
+  | 'FFmpegInstallInProgress'
+  | 'FFmpegInstalled'
+  | 'ProviderConfig'
+  | 'ValidationInProgress'
+  | 'Completed'
+  | 'Error';
+
+/**
+ * Error category for targeted recovery actions
+ */
+export type ErrorCategory =
+  | 'Network'
+  | 'Validation'
+  | 'Permission'
+  | 'DiskSpace'
+  | 'Internal'
+  | 'Configuration';
+
+/**
+ * Enhanced error metadata for recovery
+ */
+export interface WizardError {
+  code: string;
+  message: string;
+  category: ErrorCategory;
+  canRetry: boolean;
+  recoveryActions: string[];
+  correlationId: string;
+  timestamp: Date;
+  affectedComponent?: string;
+}
 
 export type WizardMode = 'free' | 'local' | 'pro';
 export type TierSelection = 'free' | 'pro' | null;
@@ -36,8 +81,10 @@ export interface OnboardingState {
   mode: WizardMode;
   selectedTier: TierSelection;
   status: WizardStatus;
+  stepState: WizardStepState;
   lastValidation: WizardValidation | null;
   errors: string[];
+  currentError: WizardError | null;
   isDetectingHardware: boolean;
   isScanningDependencies: boolean;
   hardware: {
@@ -55,6 +102,9 @@ export interface OnboardingState {
     installed: boolean;
     installing: boolean;
     skipped: boolean;
+    error?: string;
+    lastAttemptTimestamp?: number;
+    retryCount?: number;
   }>;
   apiKeys: Record<string, string>;
   apiKeyValidationStatus: Record<string, 'idle' | 'validating' | 'valid' | 'invalid'>;
@@ -68,6 +118,13 @@ export interface OnboardingState {
   selectedTemplate: string | null;
   showTutorial: boolean;
   tutorialCompleted: boolean;
+  stateTransitionLog: Array<{
+    from: string;
+    to: string;
+    timestamp: Date;
+    correlationId: string;
+    action: string;
+  }>;
 }
 
 export const initialOnboardingState: OnboardingState = {
@@ -75,8 +132,10 @@ export const initialOnboardingState: OnboardingState = {
   mode: 'free',
   selectedTier: null,
   status: 'idle',
+  stepState: 'NotStarted',
   lastValidation: null,
   errors: [],
+  currentError: null,
   isDetectingHardware: false,
   isScanningDependencies: false,
   hardware: null,
@@ -126,6 +185,7 @@ export const initialOnboardingState: OnboardingState = {
   selectedTemplate: null,
   showTutorial: false,
   tutorialCompleted: false,
+  stateTransitionLog: [],
 };
 
 // Action types
@@ -134,6 +194,9 @@ export type OnboardingAction =
   | { type: 'SET_MODE'; payload: WizardMode }
   | { type: 'SET_TIER'; payload: TierSelection }
   | { type: 'SET_STATUS'; payload: WizardStatus }
+  | { type: 'SET_STEP_STATE'; payload: WizardStepState }
+  | { type: 'SET_ERROR'; payload: WizardError }
+  | { type: 'CLEAR_ERROR' }
   | { type: 'START_VALIDATION' }
   | { type: 'VALIDATION_SUCCESS'; payload: { report: PreflightReport; correlationId: string } }
   | { type: 'VALIDATION_FAILED'; payload: { report: PreflightReport; correlationId: string } }
@@ -144,7 +207,7 @@ export type OnboardingAction =
   | { type: 'DEPENDENCY_SCAN_COMPLETE' }
   | { type: 'START_INSTALL'; payload: string }
   | { type: 'INSTALL_COMPLETE'; payload: string }
-  | { type: 'INSTALL_FAILED'; payload: { itemId: string; error: string } }
+  | { type: 'INSTALL_FAILED'; payload: { itemId: string; error: string; canRetry?: boolean } }
   | { type: 'SKIP_INSTALL'; payload: string }
   | { type: 'MARK_READY' }
   | { type: 'RESET_VALIDATION' }
@@ -159,7 +222,37 @@ export type OnboardingAction =
   | { type: 'COMPLETE_TUTORIAL' }
   | { type: 'SET_MANUAL_HARDWARE'; payload: { vram?: number; hasGpu: boolean } }
   | { type: 'SKIP_HARDWARE_DETECTION' }
-  | { type: 'LOAD_FROM_STORAGE'; payload: Partial<OnboardingState> };
+  | { type: 'LOAD_FROM_STORAGE'; payload: Partial<OnboardingState> }
+  | {
+      type: 'LOG_STATE_TRANSITION';
+      payload: { from: string; to: string; action: string; correlationId: string };
+    };
+
+/**
+ * Helper function to log state transitions with correlation ID
+ */
+function logStateTransition(
+  state: OnboardingState,
+  action: string,
+  newState: Partial<OnboardingState>,
+  correlationId?: string
+): OnboardingState {
+  const transitionEntry = {
+    from: `Step${state.step}-${state.stepState}`,
+    to: `Step${newState.step ?? state.step}-${newState.stepState ?? state.stepState}`,
+    timestamp: new Date(),
+    correlationId: correlationId || `transition-${Date.now()}`,
+    action,
+  };
+
+  console.info('[Wizard State Transition]', transitionEntry);
+
+  return {
+    ...state,
+    ...newState,
+    stateTransitionLog: [...state.stateTransitionLog, transitionEntry],
+  };
+}
 
 // Reducer
 export function onboardingReducer(
@@ -177,7 +270,33 @@ export function onboardingReducer(
       return { ...state, selectedTier: action.payload };
 
     case 'SET_STATUS':
-      return { ...state, status: action.payload };
+      return logStateTransition(state, 'SET_STATUS', { status: action.payload });
+
+    case 'SET_STEP_STATE':
+      return logStateTransition(state, 'SET_STEP_STATE', { stepState: action.payload });
+
+    case 'SET_ERROR':
+      console.error('[Wizard Error]', {
+        code: action.payload.code,
+        message: action.payload.message,
+        category: action.payload.category,
+        correlationId: action.payload.correlationId,
+      });
+      return logStateTransition(
+        state,
+        'SET_ERROR',
+        {
+          currentError: action.payload,
+          stepState: 'Error',
+          errors: [...state.errors, action.payload.message],
+        },
+        action.payload.correlationId
+      );
+
+    case 'CLEAR_ERROR':
+      return logStateTransition(state, 'CLEAR_ERROR', {
+        currentError: null,
+      });
 
     case 'START_VALIDATION':
       return {
@@ -273,18 +392,55 @@ export function onboardingReducer(
         ),
       };
 
-    case 'INSTALL_FAILED':
-      return {
-        ...state,
-        status: 'idle',
-        installItems: state.installItems.map((item) =>
-          item.id === action.payload.itemId ? { ...item, installing: false } : item
-        ),
-        errors: [
-          ...state.errors,
-          `Failed to install ${action.payload.itemId}: ${action.payload.error}`,
-        ],
-      };
+    case 'INSTALL_FAILED': {
+      const targetItem = state.installItems.find((item) => item.id === action.payload.itemId);
+      const retryCount = (targetItem?.retryCount || 0) + 1;
+
+      return logStateTransition(
+        state,
+        'INSTALL_FAILED',
+        {
+          status: 'idle',
+          installItems: state.installItems.map((item) =>
+            item.id === action.payload.itemId
+              ? {
+                  ...item,
+                  installing: false,
+                  error: action.payload.error,
+                  lastAttemptTimestamp: Date.now(),
+                  retryCount,
+                }
+              : item
+          ),
+          errors: [
+            ...state.errors,
+            `Failed to install ${action.payload.itemId}: ${action.payload.error}`,
+          ],
+          currentError: {
+            code: `INSTALL_FAILED_${action.payload.itemId.toUpperCase()}`,
+            message: action.payload.error,
+            category: action.payload.error.toLowerCase().includes('network')
+              ? 'Network'
+              : action.payload.error.toLowerCase().includes('permission')
+                ? 'Permission'
+                : action.payload.error.toLowerCase().includes('disk') ||
+                    action.payload.error.toLowerCase().includes('space')
+                  ? 'DiskSpace'
+                  : 'Internal',
+            canRetry: action.payload.canRetry ?? true,
+            recoveryActions: [
+              'Retry installation',
+              'Use existing installation',
+              'Skip for now and configure later',
+            ],
+            correlationId: `install-fail-${Date.now()}`,
+            timestamp: new Date(),
+            affectedComponent: action.payload.itemId,
+          },
+        },
+        `install-fail-${Date.now()}`
+      );
+    }
 
     case 'SKIP_INSTALL':
       return {
@@ -432,6 +588,18 @@ export function onboardingReducer(
         ...action.payload,
       };
 
+    case 'LOG_STATE_TRANSITION':
+      return {
+        ...state,
+        stateTransitionLog: [
+          ...state.stateTransitionLog,
+          {
+            ...action.payload,
+            timestamp: new Date(),
+          },
+        ],
+      };
+
     default:
       return state;
   }
@@ -541,74 +709,169 @@ export async function detectHardwareThunk(
   }
 }
 
-export async function installItemThunk(
-  itemId: string,
-  dispatch: React.Dispatch<OnboardingAction>
-): Promise<void> {
-  dispatch({ type: 'START_INSTALL', payload: itemId });
+/**
+ * Helper to get install configuration for an item
+ */
+function getInstallConfig(itemId: string): {
+  apiEndpoint: string;
+  statusEndpoint: string;
+  requestBody?: { mode: string };
+} | null {
+  switch (itemId) {
+    case 'ffmpeg':
+      return {
+        apiEndpoint: apiUrl('/api/downloads/ffmpeg/install'),
+        statusEndpoint: apiUrl('/api/system/ffmpeg/status'),
+        requestBody: { mode: 'managed' },
+      };
+    case 'ollama':
+    case 'stable-diffusion':
+      // Installation not yet implemented via API - use Download Center
+      return null;
+    default:
+      throw new Error(`Unknown item: ${itemId}`);
+  }
+}
+
+/**
+ * Helper to categorize errors and determine if retry is possible
+ */
+function categorizeInstallError(
+  error: unknown,
+  retryAttempt: number,
+  maxRetries: number
+): {
+  message: string;
+  isNetworkError: boolean;
+  canRetry: boolean;
+} {
+  const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+  const isNetworkError =
+    errorMessage.toLowerCase().includes('network') ||
+    errorMessage.toLowerCase().includes('fetch') ||
+    errorMessage.toLowerCase().includes('timeout') ||
+    errorMessage.toLowerCase().includes('connection');
+
+  return {
+    message: errorMessage,
+    isNetworkError,
+    canRetry: isNetworkError && retryAttempt < maxRetries,
+  };
+}
+
+/**
+ * Helper to verify installation status
+ */
+async function verifyInstallation(itemId: string, statusEndpoint: string): Promise<void> {
+  const statusResponse = await fetch(statusEndpoint);
+  if (!statusResponse.ok) {
+    return; // Don't fail on status check failure
+  }
+
+  const statusData = await statusResponse.json();
+
+  // For FFmpeg, check if it's actually installed and valid
+  if (itemId === 'ffmpeg' && (!statusData.installed || !statusData.valid)) {
+    throw new Error(
+      'FFmpeg installation completed but validation failed. The installation may be incomplete.'
+    );
+  }
+}
+
+/**
+ * Helper to execute installation with timeout
+ */
+async function executeInstallation(
+  apiEndpoint: string,
+  requestBody: { mode: string } | undefined
+): Promise<{ success: boolean; error?: string }> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
 
   try {
-    // Map itemId to API endpoint
-    let apiEndpoint: string;
-    let statusEndpoint: string;
-    let requestBody: { mode: string } | undefined;
-
-    switch (itemId) {
-      case 'ffmpeg':
-        apiEndpoint = apiUrl('/api/downloads/ffmpeg/install');
-        statusEndpoint = apiUrl('/api/downloads/ffmpeg/status');
-        requestBody = { mode: 'managed' };
-        break;
-      case 'ollama':
-      case 'stable-diffusion':
-        // For other engines, we'll use the attach or skip for now
-        // These could be implemented in the future with proper download endpoints
-        // Installation not yet implemented via API - use Download Center
-        dispatch({ type: 'INSTALL_COMPLETE', payload: itemId });
-        return;
-      default:
-        throw new Error(`Unknown item: ${itemId}`);
-    }
-
-    // Call the actual download API
     const response = await fetch(apiEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(requestBody),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: response.statusText }));
-      throw new Error(errorData.error || `Installation failed with status ${response.status}`);
+      const errorMessage = errorData.error || `Installation failed with status ${response.status}`;
+      return { success: false, error: errorMessage };
     }
 
-    const result = await response.json();
+    return await response.json();
+  } catch (fetchError) {
+    clearTimeout(timeoutId);
 
+    if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+      throw new Error(
+        'Installation timed out. Please check your internet connection and try again.'
+      );
+    }
+
+    throw fetchError;
+  }
+}
+
+export async function installItemThunk(
+  itemId: string,
+  dispatch: React.Dispatch<OnboardingAction>,
+  retryAttempt = 0
+): Promise<void> {
+  const maxRetries = 3;
+  const retryDelay = Math.min(1000 * Math.pow(2, retryAttempt), 10000);
+
+  dispatch({ type: 'START_INSTALL', payload: itemId });
+
+  try {
+    const config = getInstallConfig(itemId);
+
+    // Handle items that don't support installation yet
+    if (!config) {
+      dispatch({ type: 'INSTALL_COMPLETE', payload: itemId });
+      return;
+    }
+
+    // Execute installation
+    const result = await executeInstallation(config.apiEndpoint, config.requestBody);
+
+    // Handle installation failure with retry
     if (!result.success) {
+      const canRetry = retryAttempt < maxRetries;
+      if (canRetry) {
+        console.warn(
+          `Installation attempt ${retryAttempt + 1} failed, retrying in ${retryDelay}ms...`
+        );
+        await new Promise((resolve) => setTimeout(resolve, retryDelay));
+        return installItemThunk(itemId, dispatch, retryAttempt + 1);
+      }
       throw new Error(result.error || 'Installation failed');
     }
 
-    // After successful installation, verify status
+    // Verify installation
     try {
-      const statusResponse = await fetch(statusEndpoint);
-      if (statusResponse.ok) {
-        const statusData = await statusResponse.json();
-        // Installation verified successfully
-        void statusData; // Acknowledge the data was received
-      }
+      await verifyInstallation(itemId, config.statusEndpoint);
     } catch (statusError) {
       console.warn(`Failed to verify ${itemId} status after installation:`, statusError);
-      // Don't fail the installation for this, just log it
     }
 
     dispatch({ type: 'INSTALL_COMPLETE', payload: itemId });
   } catch (error) {
     console.error(`Installation of ${itemId} failed:`, error);
+
+    const { message, canRetry } = categorizeInstallError(error, retryAttempt, maxRetries);
+
     dispatch({
       type: 'INSTALL_FAILED',
       payload: {
         itemId,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: message,
+        canRetry,
       },
     });
   }
