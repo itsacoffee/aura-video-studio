@@ -5,9 +5,9 @@
  */
 
 import { useEffect, useCallback, useRef } from 'react';
-import { useSSEConnection } from './useSSEConnection';
 import { useProgressStore, getReconnectDelay } from '../stores/progressStore';
 import type { ProgressEventDto, HeartbeatEventDto } from '../types/api-v1';
+import { useSSEConnection } from './useSSEConnection';
 
 export interface UseJobProgressOptions {
   jobId: string;
