@@ -246,6 +246,136 @@ export const APP_ERROR_MESSAGES: Record<string, ErrorMessage> = {
     severity: 'warning',
   },
 
+  // FFmpeg Installation Errors (PR 336)
+  E310: {
+    title: 'FFmpeg Status Error',
+    message: 'Failed to retrieve FFmpeg status.',
+    actions: ['Check FFmpeg installation', 'Try rescanning for FFmpeg', 'Install FFmpeg'],
+    severity: 'error',
+  },
+  E311: {
+    title: 'FFmpeg Not Found',
+    message: 'FFmpeg download source not found or file not available.',
+    actions: [
+      'Try the installation again',
+      'Download FFmpeg manually from https://ffmpeg.org',
+      'Use the "Use Existing FFmpeg" option',
+    ],
+    severity: 'error',
+  },
+  E312: {
+    title: 'No Download Mirrors Available',
+    message: 'No download mirrors available for FFmpeg installation.',
+    actions: [
+      'Check your internet connection',
+      'Download FFmpeg manually and use "Use Existing FFmpeg" option',
+    ],
+    severity: 'error',
+  },
+  E313: {
+    title: 'FFmpeg Installation Failed',
+    message: 'FFmpeg installation failed due to an unknown error.',
+    actions: [
+      'Check your internet connection',
+      'Ensure you have sufficient disk space',
+      'Try restarting the application',
+      'Check antivirus software is not blocking the installer',
+    ],
+    severity: 'error',
+  },
+  E314: {
+    title: 'FFmpeg Rescan Error',
+    message: 'Failed to rescan for FFmpeg installations.',
+    actions: ['Try again', 'Check file system permissions', 'Contact support if this persists'],
+    severity: 'error',
+  },
+  E315: {
+    title: 'Invalid FFmpeg Path',
+    message: 'The FFmpeg path provided is invalid or empty.',
+    actions: ['Provide a valid path to ffmpeg.exe', 'Browse to select the correct file'],
+    severity: 'error',
+  },
+  E316: {
+    title: 'Invalid FFmpeg Installation',
+    message: 'The specified path does not contain a valid FFmpeg executable.',
+    actions: [
+      'Ensure the path points to ffmpeg.exe',
+      'Verify FFmpeg is properly installed',
+      'Try running "ffmpeg -version" manually to test',
+      'Download a fresh copy of FFmpeg if needed',
+    ],
+    severity: 'error',
+  },
+  E317: {
+    title: 'FFmpeg Validation Error',
+    message: 'Unexpected error occurred while validating FFmpeg.',
+    actions: ['Try again', 'Check file permissions', 'Contact support if this persists'],
+    severity: 'error',
+  },
+  E320: {
+    title: 'Download Timeout',
+    message: 'FFmpeg download timed out.',
+    actions: [
+      'Check your internet connection speed',
+      'Try again later when network conditions improve',
+      'Use a wired connection instead of WiFi',
+      'Download FFmpeg manually and use "Use Existing FFmpeg"',
+    ],
+    severity: 'warning',
+  },
+  E321: {
+    title: 'Network Error During Download',
+    message: 'Network error occurred during FFmpeg download.',
+    actions: [
+      'Check your internet connection',
+      'Verify firewall is not blocking the download',
+      'Try using a VPN if downloads are restricted',
+      'Download FFmpeg manually and use "Use Existing FFmpeg" option',
+    ],
+    severity: 'error',
+  },
+  E322: {
+    title: 'Corrupted Download',
+    message: 'Downloaded FFmpeg file is corrupted or incomplete.',
+    actions: [
+      'Clear browser cache and try again',
+      'Check available disk space',
+      'Temporarily disable antivirus during download',
+      'Download FFmpeg manually from the official website',
+    ],
+    severity: 'error',
+  },
+  E323: {
+    title: 'DNS Resolution Failed',
+    message: 'Unable to resolve the download server hostname.',
+    actions: [
+      'Check your internet connection',
+      'Try using a different DNS server (e.g., 8.8.8.8)',
+      'Try again later',
+    ],
+    severity: 'error',
+  },
+  E324: {
+    title: 'TLS/SSL Error',
+    message: 'Failed to establish a secure connection to the download server.',
+    actions: [
+      'Check your system date and time are correct',
+      'Update your operating system',
+      'Check firewall settings',
+    ],
+    severity: 'error',
+  },
+  E325: {
+    title: 'Disk I/O Error',
+    message: 'Failed to write to disk during FFmpeg installation.',
+    actions: [
+      'Check available disk space',
+      'Ensure the installation directory is writable',
+      'Close other applications that might lock files',
+    ],
+    severity: 'error',
+  },
+
   // Generic Fallback
   UNKNOWN_ERROR: {
     title: 'Unknown Error',
