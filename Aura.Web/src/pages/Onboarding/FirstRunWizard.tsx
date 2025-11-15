@@ -152,7 +152,6 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
   const navigate = useNavigate();
   const [state, dispatch] = useReducer(onboardingReducer, initialOnboardingState);
   const [stepStartTime, setStepStartTime] = useState<number>(0);
-  const [wizardStartTime] = useState<number>(0);
   const wizardStartTimeRef = useRef<number>(0);
 
   // FFmpeg status state
@@ -365,16 +364,26 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
   const completeOnboarding = async () => {
     try {
+      console.info('[FirstRunWizard] Starting onboarding completion', {
+        ffmpegPath,
+        workspaceLocation: state.workspacePreferences?.defaultSaveLocation,
+      });
+
       // Call backend API to complete setup and persist to database
       const setupResult = await setupApi.completeSetup({
         ffmpegPath: ffmpegPath,
         outputDirectory: state.workspacePreferences?.defaultSaveLocation,
       });
 
+      console.info('[FirstRunWizard] Setup API response:', setupResult);
+
       if (!setupResult.success) {
+        const errorMessage =
+          setupResult.errors?.join(', ') || 'Please ensure all requirements are met.';
+        console.error('[FirstRunWizard] Setup validation failed:', errorMessage);
         showFailureToast({
           title: 'Setup Validation Failed',
-          message: setupResult.errors?.join(', ') || 'Please ensure all requirements are met.',
+          message: errorMessage,
         });
         return;
       }
@@ -382,6 +391,8 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
       // Clear wizard state and mark local completion
       clearWizardStateFromStorage();
       await markFirstRunCompleted();
+
+      console.info('[FirstRunWizard] First run marked as completed');
 
       // Track completion
       const totalTime = (Date.now() - wizardStartTimeRef.current) / 1000;
@@ -402,6 +413,8 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
         message: "Welcome to Aura Video Studio! Let's create your first video.",
       });
 
+      console.info('[FirstRunWizard] Navigating to completion destination');
+
       // Call the onComplete callback if provided
       if (onComplete) {
         await onComplete();
@@ -409,11 +422,12 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
         // Fallback to navigation
         navigate('/');
       }
-    } catch (error) {
-      console.error('Error completing setup:', error);
+    } catch (error: unknown) {
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      console.error('[FirstRunWizard] Error completing setup:', errorObj);
       showFailureToast({
         title: 'Setup Error',
-        message: 'Failed to complete setup. Please try again.',
+        message: `Failed to complete setup: ${errorObj.message}. Please try again or skip to the main app.`,
       });
     }
   };
@@ -1084,12 +1098,31 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
             style={{
               marginTop: tokens.spacingVerticalXXL,
               display: 'flex',
-              gap: tokens.spacingHorizontalL,
-              justifyContent: 'center',
+              flexDirection: 'column',
+              gap: tokens.spacingHorizontalM,
+              alignItems: 'center',
             }}
           >
             <Button appearance="primary" size="large" onClick={completeOnboarding}>
               Start Creating Videos
+            </Button>
+            <Button
+              appearance="secondary"
+              size="medium"
+              onClick={() => {
+                // Mark as completed and go to main app
+                clearWizardStateFromStorage();
+                markFirstRunCompleted()
+                  .then(() => {
+                    navigate('/');
+                  })
+                  .catch((err) => {
+                    console.error('Failed to mark first run completed:', err);
+                    navigate('/');
+                  });
+              }}
+            >
+              Go to Main App
             </Button>
           </div>
         </div>

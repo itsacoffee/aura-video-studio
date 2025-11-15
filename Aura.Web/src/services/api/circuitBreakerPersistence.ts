@@ -28,7 +28,7 @@ interface CircuitBreakerStateRecord {
  */
 export class PersistentCircuitBreaker {
   static readonly STORAGE_KEY = 'aura_circuit_breaker_state';
-  private static readonly STALE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
+  private static readonly STALE_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutes (reduced from 5 for faster recovery)
 
   /**
    * Save circuit breaker state to localStorage

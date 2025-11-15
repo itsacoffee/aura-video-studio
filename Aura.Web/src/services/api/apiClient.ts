@@ -56,7 +56,7 @@ class CircuitBreaker {
   constructor(endpoint: string, config: Partial<CircuitBreakerConfig> = {}) {
     this.endpoint = endpoint;
     this.config = {
-      failureThreshold: config.failureThreshold || 5,
+      failureThreshold: config.failureThreshold || 10, // Increased from 5 to 10 for less sensitivity
       successThreshold: config.successThreshold || 2,
       timeout: config.timeout || 60000, // 1 minute
     };
