@@ -411,7 +411,7 @@ public class HealthCheckService
     /// <summary>
     /// Check TTS provider availability
     /// </summary>
-    private async Task<SubCheckResult> CheckTtsProvidersAsync(CancellationToken ct)
+    private Task<SubCheckResult> CheckTtsProvidersAsync(CancellationToken ct)
     {
         try
         {
@@ -419,7 +419,7 @@ public class HealthCheckService
             
             if (availableProviders.Count == 0)
             {
-                return new SubCheckResult(
+                return Task.FromResult(new SubCheckResult(
                     "TtsProviders",
                     HealthStatus.Degraded,
                     "No TTS providers available",
@@ -428,11 +428,11 @@ public class HealthCheckService
                         ["availableProviders"] = Array.Empty<string>(),
                         ["count"] = 0
                     }
-                );
+                ));
             }
 
             var providerNames = availableProviders.Keys.ToList();
-            return new SubCheckResult(
+            return Task.FromResult(new SubCheckResult(
                 "TtsProviders",
                 HealthStatus.Healthy,
                 $"{providerNames.Count} TTS provider(s) available: {string.Join(", ", providerNames)}",
@@ -441,16 +441,16 @@ public class HealthCheckService
                     ["availableProviders"] = providerNames.ToArray(),
                     ["count"] = providerNames.Count
                 }
-            );
+            ));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error checking TTS providers");
-            return new SubCheckResult(
+            return Task.FromResult(new SubCheckResult(
                 "TtsProviders",
                 HealthStatus.Degraded,
                 $"Unable to check TTS providers: {ex.Message}"
-            );
+            ));
         }
     }
 }

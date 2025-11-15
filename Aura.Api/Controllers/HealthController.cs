@@ -63,7 +63,7 @@ public class HealthController : ControllerBase
     /// Trigger immediate health check for a specific provider
     /// </summary>
     [HttpPost("providers/{name}/check")]
-    public async Task<ActionResult<ProviderHealthCheckDto>> CheckProvider(
+    public Task<ActionResult<ProviderHealthCheckDto>> CheckProvider(
         string name,
         CancellationToken ct)
     {
@@ -72,11 +72,11 @@ public class HealthController : ControllerBase
         var metrics = _healthMonitor.GetProviderHealth(name);
         if (metrics == null)
         {
-            return NotFound(new { error = $"Provider '{name}' not found" });
+            return Task.FromResult<ActionResult<ProviderHealthCheckDto>>(NotFound(new { error = $"Provider '{name}' not found" }));
         }
 
         _logger.LogInformation("Manual health check requested for provider: {ProviderName}", name);
-        return Ok(ToDto(metrics));
+        return Task.FromResult<ActionResult<ProviderHealthCheckDto>>(Ok(ToDto(metrics)));
     }
 
     /// <summary>

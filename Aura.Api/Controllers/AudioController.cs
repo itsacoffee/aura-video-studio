@@ -316,7 +316,7 @@ public class AudioController : ControllerBase
     /// Analyze script for audio requirements
     /// </summary>
     [HttpPost("analyze-script")]
-    public async Task<IActionResult> AnalyzeScript(
+    public Task<IActionResult> AnalyzeScript(
         [FromBody] AnalyzeScriptRequest request,
         CancellationToken ct)
     {
@@ -324,7 +324,7 @@ public class AudioController : ControllerBase
         {
             if (string.IsNullOrWhiteSpace(request.Script))
             {
-                return BadRequest(new { success = false, error = "Script is required" });
+                return Task.FromResult<IActionResult>(BadRequest(new { success = false, error = "Script is required" }));
             }
 
             _logger.LogInformation("Analyzing script for audio requirements");
@@ -340,12 +340,12 @@ public class AudioController : ControllerBase
                 EstimatedDuration: TimeSpan.FromMinutes(2)
             );
 
-            return Ok(new { success = true, analysis });
+            return Task.FromResult<IActionResult>(Ok(new { success = true, analysis }));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error analyzing script");
-            return StatusCode(500, new { success = false, error = ex.Message });
+            return Task.FromResult<IActionResult>(StatusCode(500, new { success = false, error = ex.Message }));
         }
     }
 

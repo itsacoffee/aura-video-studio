@@ -213,7 +213,7 @@ public class PacingController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<PacingAnalysisResponse>> ReanalyzePacing(
+    public Task<ActionResult<PacingAnalysisResponse>> ReanalyzePacing(
         string analysisId,
         [FromBody] ReanalyzeRequest request,
         CancellationToken ct)
@@ -229,20 +229,20 @@ public class PacingController : ControllerBase
             var originalAnalysis = _cacheService.Get(analysisId);
             if (originalAnalysis == null)
             {
-                return Problem(
+                return Task.FromResult<ActionResult<PacingAnalysisResponse>>(Problem(
                     detail: $"Analysis with ID '{analysisId}' not found or has expired",
                     statusCode: StatusCodes.Status404NotFound,
                     title: "Analysis Not Found"
-                );
+                ));
             }
 
             if (!IsValidPlatform(request.TargetPlatform))
             {
-                return Problem(
+                return Task.FromResult<ActionResult<PacingAnalysisResponse>>(Problem(
                     detail: "Target platform must be one of: YouTube, TikTok, Instagram Reels, YouTube Shorts, Facebook",
                     statusCode: StatusCodes.Status400BadRequest,
                     title: "Invalid Request"
-                );
+                ));
             }
 
             // For reanalysis, we'd need to store the original request data
@@ -272,18 +272,18 @@ public class PacingController : ControllerBase
             _logger.LogInformation("Reanalysis completed. CorrelationId: {CorrelationId}, NewAnalysisId: {AnalysisId}",
                 correlationId, newAnalysisId);
 
-            return Ok(response);
+            return Task.FromResult<ActionResult<PacingAnalysisResponse>>(Ok(response));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during reanalysis. CorrelationId: {CorrelationId}, AnalysisId: {AnalysisId}",
                 correlationId, analysisId);
 
-            return Problem(
+            return Task.FromResult<ActionResult<PacingAnalysisResponse>>(Problem(
                 detail: $"An error occurred during reanalysis. CorrelationId: {correlationId}",
                 statusCode: StatusCodes.Status500InternalServerError,
                 title: "Internal Server Error"
-            );
+            ));
         }
     }
 

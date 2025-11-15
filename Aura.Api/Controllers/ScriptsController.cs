@@ -477,7 +477,7 @@ public class ScriptsController : ControllerBase
     /// List available LLM providers and their status
     /// </summary>
     [HttpGet("providers")]
-    public async Task<IActionResult> ListProviders(CancellationToken ct)
+    public Task<IActionResult> ListProviders(CancellationToken ct)
     {
         var correlationId = HttpContext.TraceIdentifier;
         
@@ -535,7 +535,7 @@ public class ScriptsController : ControllerBase
             }
         };
 
-        return Ok(new { providers, correlationId });
+        return Task.FromResult<IActionResult>(Ok(new { providers, correlationId }));
     }
 
     private Script ParseScriptFromText(string scriptText, PlanSpec planSpec, string provider)
@@ -764,7 +764,7 @@ public class ScriptsController : ControllerBase
     /// Enhance/improve a script
     /// </summary>
     [HttpPost("{id}/enhance")]
-    public async Task<IActionResult> EnhanceScript(
+    public Task<IActionResult> EnhanceScript(
         string id,
         [FromBody] ScriptEnhancementRequest request,
         CancellationToken ct)
@@ -773,14 +773,14 @@ public class ScriptsController : ControllerBase
         
         if (!_scriptStore.TryGetValue(id, out var script))
         {
-            return NotFound(new ProblemDetails
+            return Task.FromResult<IActionResult>(NotFound(new ProblemDetails
             {
                 Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                 Title = "Script Not Found",
                 Status = 404,
                 Detail = $"Script with ID '{id}' was not found",
                 Extensions = { ["correlationId"] = correlationId }
-            });
+            }));
         }
 
         _logger.LogInformation(
@@ -828,20 +828,20 @@ public class ScriptsController : ControllerBase
                 correlationId, id);
 
             var response = MapScriptToResponse(id, enhancedScript);
-            return Ok(response);
+            return Task.FromResult<IActionResult>(Ok(response));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[{CorrelationId}] Error enhancing script", correlationId);
             
-            return StatusCode(500, new ProblemDetails
+            return Task.FromResult<IActionResult>(StatusCode(500, new ProblemDetails
             {
                 Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 Title = "Internal Server Error",
                 Status = 500,
                 Detail = "An error occurred while enhancing the script",
                 Extensions = { ["correlationId"] = correlationId }
-            });
+            }));
         }
     }
 

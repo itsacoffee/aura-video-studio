@@ -138,7 +138,7 @@ public class TemplatesController : ControllerBase
     /// Create a new project from a template
     /// </summary>
     [HttpPost("create-project")]
-    public async Task<IActionResult> CreateProjectFromTemplate(
+    public Task<IActionResult> CreateProjectFromTemplate(
         [FromBody] CreateProjectFromTemplateRequest request,
         CancellationToken ct)
     {
@@ -146,13 +146,13 @@ public class TemplatesController : ControllerBase
         {
             if (string.IsNullOrEmpty(request.TemplateId))
             {
-                return BadRequest(new { error = "TemplateId is required" });
+                return Task.FromResult<IActionResult>(BadRequest(new { error = "TemplateId is required" }));
             }
 
             var template = GetAllTemplates().FirstOrDefault(t => t.Id == request.TemplateId);
             if (template == null)
             {
-                return NotFound(new { error = "Template not found" });
+                return Task.FromResult<IActionResult>(NotFound(new { error = "Template not found" }));
             }
 
             // Generate a project ID
@@ -163,19 +163,19 @@ public class TemplatesController : ControllerBase
 
             // In a real implementation, this would create the project in the database
             // For now, just return success with the generated ID
-            return Ok(new
+            return Task.FromResult<IActionResult>(Ok(new
             {
                 success = true,
                 projectId,
                 projectName,
                 templateId = request.TemplateId,
                 message = "Project created successfully from template"
-            });
+            }));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating project from template");
-            return StatusCode(500, new { error = "Failed to create project from template" });
+            return Task.FromResult<IActionResult>(StatusCode(500, new { error = "Failed to create project from template" }));
         }
     }
 
