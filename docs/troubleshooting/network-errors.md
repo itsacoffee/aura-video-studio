@@ -4,6 +4,8 @@ This guide helps you troubleshoot network connectivity and communication errors 
 
 ## Quick Navigation
 
+- [Using Network Diagnostics](#using-network-diagnostics)
+- [Error Codes Reference](#error-codes-reference)
 - [Provider API Connectivity](#provider-api-connectivity)
 - [Network Timeouts](#network-timeouts)
 - [Firewall and Proxy Issues](#firewall-and-proxy-issues)
@@ -12,23 +14,82 @@ This guide helps you troubleshoot network connectivity and communication errors 
 
 ---
 
-## Provider API Connectivity
+## Using Network Diagnostics
 
-### Cannot Connect to Provider
+Aura Video Studio includes a built-in diagnostics tool to help identify and resolve network issues.
 
-**Error**: "Unable to connect to provider" or "Connection refused"
+### Accessing Diagnostics
 
-**Error Code**: **TransientNetworkFailure**
+1. **From Settings:**
+   - Navigate to Settings → Help & Support → Network Diagnostics
+   
+2. **From First Run Wizard:**
+   - If a network error occurs during setup, click "Run Diagnostics" button
 
-**Common Provider Endpoints**:
-- OpenAI: `https://api.openai.com`
-- Anthropic: `https://api.anthropic.com`
-- ElevenLabs: `https://api.elevenlabs.io`
-- Stability AI: `https://api.stability.ai`
+3. **From API:**
+   - Call `GET /api/system/network/diagnostics` to get diagnostic information programmatically
 
-### Solutions
+### What Diagnostics Check
 
-#### 1. Check Internet Connection
+- **Backend Service:** Verifies the backend API is running and accessible
+- **FFmpeg:** Checks if FFmpeg is installed and working properly
+- **Configuration:** Validates CORS and base URL settings
+- **Network:** Checks network configuration and connectivity
+- **Providers:** Tests connectivity to external provider services (OpenAI, Anthropic, etc.)
+
+### Diagnostics Output
+
+The diagnostics tool provides:
+- ✅ **Success indicators** for working components
+- ❌ **Error indicators** for failing components
+- **Specific error codes** with links to troubleshooting guides
+- **Recommended actions** for each issue detected
+- **Copy to clipboard** button to share diagnostics with support
+
+---
+
+## Error Codes Reference
+
+### NET001 - Backend Unreachable
+
+**Error:** "Cannot reach backend service on <url>"
+
+**Typical Causes:**
+- Backend service is not running
+- Port is incorrect or blocked by firewall
+- Electron backend process failed to start
+- Base URL is misconfigured
+
+**Solutions:**
+1. Verify the backend service is running
+   - Check Task Manager (Windows) or Activity Monitor (macOS) for `Aura.Api` process
+   - Look for console errors in Electron main process logs
+   
+2. Check the port configuration
+   - Default port: `http://localhost:5005`
+   - Verify `VITE_API_BASE_URL` in `.env.local` matches backend port
+   
+3. Check firewall settings
+   - Windows: Allow `Aura.Api.exe` through Windows Firewall
+   - macOS: Check System Preferences → Security & Privacy → Firewall
+   
+4. If using Electron
+   - Check logs in `%APPDATA%\aura-video-studio\logs` (Windows) or `~/Library/Application Support/aura-video-studio/logs` (macOS)
+   - Look for backend startup errors
+   
+5. Restart the application completely
+
+---
+
+### NET002 - DNS Resolution Failed
+
+**Error:** "Cannot resolve hostname - DNS lookup failed"
+
+**Typical Causes:**
+- No internet connection
+- DNS server is not responding
+- Hostname is incorrect or does not exist
+- Corporate DNS restrictions
 
 **Test basic connectivity**:
 ```bash
@@ -86,19 +147,168 @@ If provider is blocked or unavailable on your network:
 
 ---
 
-## Network Timeouts
+**Solutions:**
+1. **Test DNS resolution:**
+   ```bash
+   # Test DNS lookup
+   nslookup api.openai.com
+   ```
+   
+2. **Use alternative DNS servers:**
+   - Google DNS: `8.8.8.8` and `8.8.4.4`
+   - Cloudflare DNS: `1.1.1.1` and `1.0.0.1`
+   
+   **Windows:**
+   ```powershell
+   # Set DNS via PowerShell (requires admin)
+   Set-DnsClientServerAddress -InterfaceAlias "Ethernet" -ServerAddresses ("8.8.8.8","8.8.4.4")
+   ```
+   
+   **macOS/Linux:**
+   ```bash
+   # Edit /etc/resolv.conf (requires sudo)
+   sudo nano /etc/resolv.conf
+   # Add:
+   nameserver 8.8.8.8
+   nameserver 1.1.1.1
+   ```
 
-### Request Timeout Errors
+3. **Flush DNS cache:**
+   - Windows: `ipconfig /flushdns`
+   - macOS: `sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder`
+   - Linux: `sudo systemd-resolve --flush-caches`
 
-**Error**: "Request timed out" or "Operation timeout"
+4. **Check hosts file for overrides:**
+   - Windows: `C:\Windows\System32\drivers\etc\hosts`
+   - macOS/Linux: `/etc/hosts`
 
-**Causes**:
+---
+
+### NET003 - TLS Handshake Failed
+
+**Error:** "Failed to establish secure connection - SSL/TLS error"
+
+**Typical Causes:**
+- Expired or invalid SSL certificates
+- Outdated security certificates on system
+- Corporate SSL inspection interfering
+- Incorrect system date/time
+- TLS version mismatch
+
+**Solutions:**
+1. **Update system certificates:**
+   - Windows: Run Windows Update
+   - macOS: Run `softwareupdate -l` and install available updates
+   - Linux: `sudo apt update && sudo apt install ca-certificates` (Ubuntu/Debian)
+
+2. **Verify system date and time:**
+   - Incorrect system time causes certificate validation failures
+   - Sync with internet time servers
+
+3. **Corporate SSL inspection:**
+   - If on corporate network, install company SSL certificates
+   - Contact IT department for certificate installation instructions
+
+4. **Check TLS version support:**
+   - Aura Video Studio requires TLS 1.2 or higher
+   - Update .NET runtime if using older version
+
+---
+
+### NET004 - Network Timeout
+
+**Error:** "Request timed out - server did not respond within <X> seconds"
+
+**Typical Causes:**
 - Slow internet connection
-- Large requests (long prompts, high-res images)
-- Provider overload
+- Service is overloaded or experiencing issues
+- Large request/response size
+- VPN or proxy adding latency
 - Network congestion
 
-### Solutions
+**Solutions:**
+1. **Check internet speed:**
+   ```bash
+   # Test download speed
+   curl -o /dev/null -w '%{speed_download}' https://proof.ovh.net/files/10Mb.dat
+   ```
+   
+2. **Increase timeout settings:**
+   - Navigate to Settings → Advanced → Network
+   - Increase timeout values (default: 30 seconds)
+   - Recommended: 60-120 seconds for slow connections
+
+3. **Try wired connection:**
+   - WiFi can be unreliable for large transfers
+   - Use Ethernet cable for better stability
+
+4. **Check VPN/Proxy:**
+   - Temporarily disable VPN to test
+   - Configure proxy timeout settings if applicable
+
+5. **Retry during off-peak hours:**
+   - Services may be less loaded at different times
+
+---
+
+### NET006 - CORS Misconfigured
+
+**Error:** "Cross-origin request blocked - origin not allowed by CORS policy"
+
+**Typical Causes:**
+- Frontend and backend are on different origins
+- AllowedOrigins not configured in backend
+- Incorrect API_BASE_URL in frontend
+- Development vs production configuration mismatch
+
+**Solutions:**
+1. **Check CORS configuration in backend:**
+   ```json
+   // appsettings.json or appsettings.Development.json
+   {
+     "Cors": {
+       "AllowedOrigins": [
+         "http://localhost:5173",  // Vite dev server
+         "http://localhost:3000",  // Alternative port
+         "app://."                 // Electron custom protocol
+       ]
+     }
+   }
+   ```
+
+2. **Verify frontend API base URL:**
+   ```
+   // .env.local or .env.development
+   VITE_API_BASE_URL=http://localhost:5005
+   ```
+
+3. **Match origins exactly:**
+   - Include protocol (http:// or https://)
+   - Include port number if not default
+   - No trailing slashes
+
+4. **Restart both frontend and backend:**
+   - Configuration changes require restart
+   - Clear browser cache if issue persists
+
+5. **Check browser console for details:**
+   - Exact origin being blocked will be shown
+   - Look for "Access-Control-Allow-Origin" header issues
+
+---
+
+### NET007 - Provider Unavailable
+
+**Error:** "Provider <name> is unavailable - cannot reach service at <endpoint>"
+
+**Typical Causes:**
+- Provider service is down or experiencing outage
+- API key is invalid or revoked
+- Provider blocked in your region
+- Rate limiting or quota exceeded
+- Network blocks provider endpoints
+
+**Solutions:**
 
 #### 1. Increase Timeout Values
 
