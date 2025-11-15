@@ -22,7 +22,7 @@ class AppConfig {
         autoUpdate: true,
         telemetry: false,
         crashReporting: false,
-        minimizeToTray: true,
+        minimizeToTray: false, // Default to false - user must explicitly enable background mode
         startMinimized: false,
         hardwareAcceleration: true,
         crashCount: 0,

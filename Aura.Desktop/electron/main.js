@@ -27,6 +27,7 @@ const TrayManager = require('./tray-manager');
 const MenuBuilder = require('./menu-builder');
 const WindowsSetupWizard = require('./windows-setup-wizard');
 const ShutdownOrchestrator = require('./shutdown-orchestrator');
+const ProcessManager = require('./process-manager');
 
 // ========================================
 // Global State
@@ -43,6 +44,7 @@ let menuBuilder = null;
 let protocolHandler = null;
 let windowsSetupWizard = null;
 let shutdownOrchestrator = null;
+let processManager = null;
 
 let ipcHandlers = {
   config: null,
@@ -645,6 +647,10 @@ async function startApplication() {
     });
     console.log('✓ Startup logger initialized');
 
+    // Step 3.5: Initialize ProcessManager for centralized process tracking
+    processManager = new ProcessManager(startupLogger);
+    console.log('✓ Process manager initialized');
+
     // Step 4: Setup error handling
     setupErrorHandling();
     console.log('✓ Error handling configured');
@@ -757,7 +763,7 @@ async function startApplication() {
     }
 
     // Step 10: Start backend service
-    const backendResult = await SafeInit.initializeBackendService(app, IS_DEV, initializationTracker, startupLogger, earlyCrashLogger);
+    const backendResult = await SafeInit.initializeBackendService(app, IS_DEV, initializationTracker, startupLogger, earlyCrashLogger, processManager);
     
     if (!backendResult.success) {
       // Critical failure - show detailed error and exit
@@ -826,17 +832,18 @@ async function startApplication() {
 
       // Handle window close event
       mainWindow.on('close', (event) => {
+        const minimizeToTray = appConfig.get('minimizeToTray', false); // Default to false
         const prevented = windowManager.handleWindowClose(
           event,
           isQuitting,
-          appConfig.get('minimizeToTray', true)
+          minimizeToTray
         );
         
         if (prevented && !isQuitting) {
           if (trayManager && process.platform === 'win32') {
             trayManager.showNotification(
               APP_NAME,
-              'Application is still running in the system tray'
+              'Application is minimized to the system tray. Click the tray icon to restore, or right-click to quit.'
             );
           }
         }
@@ -908,7 +915,8 @@ async function startApplication() {
       shutdownOrchestrator.setComponents({
         backendService,
         windowManager,
-        trayManager
+        trayManager,
+        processManager
       });
       console.log('✓ Shutdown orchestrator initialized');
     } catch (error) {
