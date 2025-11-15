@@ -17,7 +17,9 @@ import {
   PopoverSurface,
 } from '@fluentui/react-components';
 import { Info24Regular } from '@fluentui/react-icons';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { setupApi } from '../../services/api/setupApi';
 import { resetFirstRunStatus } from '../../services/firstRunService';
 import type { GeneralSettings, ThemeMode, StartupBehavior } from '../../types/settings';
 
@@ -53,6 +55,7 @@ export function GeneralSettingsTab({
 }: GeneralSettingsTabProps) {
   const styles = useStyles();
   const navigate = useNavigate();
+  const [isResetting, setIsResetting] = useState(false);
 
   const updateSetting = <K extends keyof GeneralSettings>(key: K, value: GeneralSettings[K]) => {
     onChange({ ...settings, [key]: value });
@@ -70,6 +73,34 @@ export function GeneralSettingsTab({
       } catch (error) {
         console.error('Failed to reset wizard:', error);
         alert('Failed to reset wizard. Please try again.');
+      }
+    }
+  };
+
+  const handleResetWizardProgress = async () => {
+    if (
+      window.confirm(
+        'This will clear your saved wizard progress and settings. Your configured API keys and providers will remain. Continue?'
+      )
+    ) {
+      setIsResetting(true);
+      try {
+        const response = await setupApi.resetWizard({
+          preserveData: true,
+        });
+
+        if (response.success) {
+          alert('Wizard progress has been reset successfully.');
+          console.info('Wizard reset successful:', response.message);
+        } else {
+          throw new Error(response.message || 'Reset failed');
+        }
+      } catch (error) {
+        console.error('Failed to reset wizard progress:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        alert(`Failed to reset wizard progress: ${errorMessage}. Please try again.`);
+      } finally {
+        setIsResetting(false);
       }
     }
   };
@@ -253,9 +284,29 @@ export function GeneralSettingsTab({
             Re-run the first-run setup wizard to reconfigure providers, dependencies, and
             preferences.
           </Text>
-          <Button appearance="secondary" onClick={handleRerunWizard}>
-            Re-run Setup Wizard
-          </Button>
+          <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, flexWrap: 'wrap' }}>
+            <Button appearance="secondary" onClick={handleRerunWizard}>
+              Re-run Setup Wizard
+            </Button>
+            <Button
+              appearance="secondary"
+              onClick={handleResetWizardProgress}
+              disabled={isResetting}
+            >
+              {isResetting ? 'Resetting...' : 'Reset Wizard Progress'}
+            </Button>
+          </div>
+          <Text
+            size={100}
+            style={{
+              marginTop: tokens.spacingVerticalS,
+              display: 'block',
+              color: tokens.colorNeutralForeground3,
+            }}
+          >
+            Note: Reset Wizard Progress clears saved progress but preserves your configured
+            settings.
+          </Text>
         </div>
       </div>
     </Card>
