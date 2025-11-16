@@ -144,7 +144,7 @@ describe('ffmpegClient', () => {
       const mockResponse = {
         success: false,
         message: 'Download timed out',
-        errorCode: 'E320',
+        errorCode: 'E348',
         title: 'Download Timeout',
         detail: 'FFmpeg download timed out due to slow network',
         howToFix: [
@@ -152,7 +152,7 @@ describe('ffmpegClient', () => {
           'Try again later when network conditions improve',
           'Download FFmpeg manually',
         ],
-        type: 'https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/ffmpeg-errors.md#e320',
+        type: 'https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/ffmpeg-errors.md#e348',
         correlationId: 'pqr-678',
       };
 
@@ -161,7 +161,7 @@ describe('ffmpegClient', () => {
       const result = await ffmpegClient.install();
 
       expect(result.success).toBe(false);
-      expect(result.errorCode).toBe('E320');
+      expect(result.errorCode).toBe('E348');
       expect(result.howToFix).toBeDefined();
       expect(result.howToFix?.length).toBeGreaterThan(0);
     });

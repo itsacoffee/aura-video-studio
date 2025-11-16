@@ -234,8 +234,7 @@ const ERROR_CODE_MAPPINGS: Record<string, UserFriendlyError> = {
         link: '/settings/providers',
       },
     ],
-    learnMoreUrl:
-      'https://github.com/Coffee285/aura-video-studio/blob/main/docs/setup/api-keys.md',
+    learnMoreUrl: 'https://github.com/Coffee285/aura-video-studio/blob/main/docs/setup/api-keys.md',
   },
 
   AUTH002_ApiKeyInvalid: {
@@ -253,8 +252,7 @@ const ERROR_CODE_MAPPINGS: Record<string, UserFriendlyError> = {
         description: 'Ensure the API key is in the correct format',
       },
     ],
-    learnMoreUrl:
-      'https://github.com/Coffee285/aura-video-studio/blob/main/docs/setup/api-keys.md',
+    learnMoreUrl: 'https://github.com/Coffee285/aura-video-studio/blob/main/docs/setup/api-keys.md',
   },
 
   AUTH006_RateLimitExceeded: {
@@ -312,10 +310,10 @@ const ERROR_CODE_MAPPINGS: Record<string, UserFriendlyError> = {
       'https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/ffmpeg-errors.md#e303',
   },
 
-  E320: {
+  E348: {
     title: 'FFmpeg Download Timeout',
     message: 'Download timed out. This may be due to slow network connection or large file size.',
-    errorCode: 'E320',
+    errorCode: 'E348',
     actions: [
       {
         label: 'Check Internet Speed',
@@ -331,13 +329,13 @@ const ERROR_CODE_MAPPINGS: Record<string, UserFriendlyError> = {
       },
     ],
     learnMoreUrl:
-      'https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/ffmpeg-errors.md#e320',
+      'https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/ffmpeg-errors.md#e348',
   },
 
-  E321: {
+  E349: {
     title: 'FFmpeg Network Error',
     message: 'Network error occurred during FFmpeg download.',
-    errorCode: 'E321',
+    errorCode: 'E349',
     actions: [
       {
         label: 'Check Connection',
@@ -353,13 +351,13 @@ const ERROR_CODE_MAPPINGS: Record<string, UserFriendlyError> = {
       },
     ],
     learnMoreUrl:
-      'https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/ffmpeg-errors.md#e321',
+      'https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/ffmpeg-errors.md#e349',
   },
 
-  E322: {
+  E350: {
     title: 'FFmpeg File Corrupted',
     message: 'Downloaded file is corrupted or incomplete.',
-    errorCode: 'E322',
+    errorCode: 'E350',
     actions: [
       {
         label: 'Clear Cache',
@@ -375,13 +373,13 @@ const ERROR_CODE_MAPPINGS: Record<string, UserFriendlyError> = {
       },
     ],
     learnMoreUrl:
-      'https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/ffmpeg-errors.md#e322',
+      'https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/ffmpeg-errors.md#e350',
   },
 
-  E323: {
+  E351: {
     title: 'DNS Resolution Failed',
     message: 'Unable to resolve the FFmpeg download server hostname.',
-    errorCode: 'E323',
+    errorCode: 'E351',
     actions: [
       {
         label: 'Check DNS Settings',
@@ -393,13 +391,13 @@ const ERROR_CODE_MAPPINGS: Record<string, UserFriendlyError> = {
       },
     ],
     learnMoreUrl:
-      'https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/ffmpeg-errors.md#e323',
+      'https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/ffmpeg-errors.md#e351',
   },
 
-  E324: {
+  E352: {
     title: 'Secure Connection Failed',
     message: 'Failed to establish a secure connection to the download server.',
-    errorCode: 'E324',
+    errorCode: 'E352',
     actions: [
       {
         label: 'Check System Time',
@@ -411,7 +409,7 @@ const ERROR_CODE_MAPPINGS: Record<string, UserFriendlyError> = {
       },
     ],
     learnMoreUrl:
-      'https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/ffmpeg-errors.md#e324',
+      'https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/ffmpeg-errors.md#e352',
   },
 };
 
