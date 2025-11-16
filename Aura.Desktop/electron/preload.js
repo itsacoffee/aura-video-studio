@@ -9,7 +9,6 @@
 const { contextBridge, ipcRenderer } = require("electron");
 const {
   MENU_EVENT_CHANNELS,
-  isValidMenuEventChannel,
 } = require("./menu-event-types");
 const { createValidatedMenuAPI } = require("./menu-command-handler");
 
