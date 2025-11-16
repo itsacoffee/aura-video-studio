@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Core.Models;
 using Aura.Core.Models.OpenAI;
 using Aura.Core.Providers;
 using Microsoft.Extensions.Caching.Memory;

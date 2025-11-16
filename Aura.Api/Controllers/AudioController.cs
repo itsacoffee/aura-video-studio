@@ -966,7 +966,7 @@ public class AudioController : ControllerBase
             // Create audio generator function if OpenAI is requested
             Func<string, Aura.Core.Models.OpenAI.AudioConfig, CancellationToken, Task<AudioGenerationResult>>? audioGenerator = null;
             
-            if (request.UseOpenAI && !string.IsNullOrWhiteSpace(request.OpenAIApiKey))
+            if (request.UseOpenAI == true && !string.IsNullOrWhiteSpace(request.OpenAIApiKey))
             {
                 var httpClient = new HttpClient();
                 var openAiLogger = loggerFactory?.CreateLogger<Aura.Providers.Llm.OpenAiLlmProvider>();
