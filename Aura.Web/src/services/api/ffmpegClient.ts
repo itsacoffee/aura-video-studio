@@ -8,9 +8,19 @@ export interface FFmpegHardwareAcceleration {
   availableEncoders: string[];
 }
 
+export type FFmpegMode = 'none' | 'system' | 'local' | 'custom';
+
+export type FFmpegValidationResult =
+  | 'ok'
+  | 'not-found'
+  | 'invalid-binary'
+  | 'execution-error'
+  | 'network-error'
+  | 'unknown';
+
 /**
  * FFmpeg status response from /api/ffmpeg/status endpoint
- * Simplified format from PR 336 improvements
+ * Enhanced with mode and validation tracking (PR 1)
  */
 export interface FFmpegStatus {
   installed: boolean;
@@ -18,7 +28,10 @@ export interface FFmpegStatus {
   version: string | null;
   path: string | null;
   source: string;
+  mode: FFmpegMode;
   error: string | null;
+  lastValidatedAt: string | null;
+  lastValidationResult: FFmpegValidationResult;
   correlationId: string;
 }
 
@@ -51,9 +64,28 @@ export interface FFmpegInstallResponse {
   version?: string;
   path?: string;
   installedAt?: string;
+  mode?: FFmpegMode;
   errorCode?: string;
   howToFix?: string[];
   type?: string;
+  correlationId: string;
+}
+
+/**
+ * FFmpeg detection response from /api/ffmpeg/detect endpoint (PR 1)
+ */
+export interface FFmpegDetectResponse {
+  success: boolean;
+  installed: boolean;
+  valid: boolean;
+  version: string | null;
+  path: string | null;
+  source: string;
+  mode: FFmpegMode;
+  message: string;
+  attemptedPaths?: string[];
+  detail?: string;
+  howToFix?: string[];
   correlationId: string;
 }
 
@@ -92,9 +124,36 @@ export interface UseExistingFFmpegResponse {
 }
 
 /**
+ * Request for setting custom FFmpeg path (PR 1)
+ */
+export interface SetPathRequest {
+  path: string;
+}
+
+/**
+ * Response from set-path endpoint (PR 1)
+ */
+export interface SetPathResponse {
+  success: boolean;
+  message: string;
+  installed: boolean;
+  valid: boolean;
+  path: string | null;
+  version: string | null;
+  source: string;
+  mode: FFmpegMode;
+  title?: string;
+  detail?: string;
+  errorCode?: string;
+  howToFix?: string[];
+  attemptedPaths?: string[];
+  correlationId: string;
+}
+
+/**
  * API client for FFmpeg status and installation
  * All FFmpeg API calls skip the circuit breaker to prevent false "service unavailable" errors during setup
- * PR 336 improvements: Enhanced with detailed error codes, correlation IDs, and how-to-fix suggestions
+ * PR 1: Enhanced with mode tracking, detection, and custom path configuration
  */
 export const ffmpegClient = {
   /**
@@ -151,6 +210,48 @@ export const ffmpegClient = {
 
     // Reset circuit breaker on successful installation
     if (response.data.success) {
+      resetCircuitBreaker();
+    }
+
+    return response.data;
+  },
+
+  /**
+   * Force re-detection and validation of FFmpeg (PR 1)
+   */
+  async detect(): Promise<FFmpegDetectResponse> {
+    const config: ExtendedAxiosRequestConfig = {
+      _skipCircuitBreaker: true,
+    };
+    const response = await apiClient.post<FFmpegDetectResponse>(
+      '/api/ffmpeg/detect',
+      undefined,
+      config
+    );
+
+    // Reset circuit breaker on successful detection
+    if (response.data.success && response.data.installed && response.data.valid) {
+      resetCircuitBreaker();
+    }
+
+    return response.data;
+  },
+
+  /**
+   * Set and validate custom FFmpeg path (PR 1)
+   */
+  async setPath(request: SetPathRequest): Promise<SetPathResponse> {
+    const config: ExtendedAxiosRequestConfig = {
+      _skipCircuitBreaker: true,
+    };
+    const response = await apiClient.post<SetPathResponse>(
+      '/api/ffmpeg/set-path',
+      request,
+      config
+    );
+
+    // Reset circuit breaker on successful validation
+    if (response.data.success && response.data.installed && response.data.valid) {
       resetCircuitBreaker();
     }
 
