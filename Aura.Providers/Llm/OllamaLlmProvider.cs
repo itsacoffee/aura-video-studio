@@ -1483,6 +1483,216 @@ Return ONLY the transition text, no explanations or additional commentary:";
             }
         }
     }
+
+    /// <summary>
+    /// Generate script with tool calling support for enhanced content with research and fact-checking
+    /// </summary>
+    public async Task<ToolCallingResult> GenerateWithToolsAsync(
+        Brief brief,
+        PlanSpec spec,
+        List<Core.AI.Tools.IToolExecutor> tools,
+        int maxToolIterations = 5,
+        CancellationToken ct = default)
+    {
+        _logger.LogInformation("Starting tool-enabled generation for topic: {Topic} with {ToolCount} tools",
+            brief.Topic, tools.Count);
+
+        var startTime = DateTime.UtcNow;
+        var conversationHistory = new List<OllamaMessageWithToolCalls>();
+        var toolExecutionLog = new List<ToolExecutionEntry>();
+        var totalToolCalls = 0;
+
+        try
+        {
+            string systemPrompt = EnhancedPromptTemplates.GetSystemPromptForScriptGeneration();
+            string userPrompt = _promptCustomizationService.BuildCustomizedPrompt(brief, spec, brief.PromptModifiers);
+            
+            if (PromptEnhancementCallback != null)
+            {
+                userPrompt = await PromptEnhancementCallback(userPrompt, brief, spec).ConfigureAwait(false);
+            }
+
+            conversationHistory.Add(new OllamaMessageWithToolCalls
+            {
+                Role = "user",
+                Content = $"{systemPrompt}\n\n{userPrompt}"
+            });
+
+            for (int iteration = 0; iteration < maxToolIterations; iteration++)
+            {
+                _logger.LogInformation("Tool iteration {Iteration}/{MaxIterations}", iteration + 1, maxToolIterations);
+
+                var toolDefinitions = tools.Select(t => t.GetToolDefinition()).ToList();
+                
+                var requestBody = new
+                {
+                    model = _model,
+                    messages = conversationHistory.Select(m => new
+                    {
+                        role = m.Role,
+                        content = m.Content ?? string.Empty
+                    }).ToList(),
+                    tools = toolDefinitions,
+                    stream = false,
+                    options = new
+                    {
+                        temperature = 0.7,
+                        top_p = 0.9,
+                        num_predict = 2048
+                    }
+                };
+
+                var json = JsonSerializer.Serialize(requestBody);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                cts.CancelAfter(_timeout);
+
+                var response = await _httpClient.PostAsync($"{_baseUrl}/api/chat", content, cts.Token).ConfigureAwait(false);
+                response.EnsureSuccessStatusCode();
+
+                var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                var responseDoc = JsonDocument.Parse(responseJson);
+
+                if (!responseDoc.RootElement.TryGetProperty("message", out var messageElement))
+                {
+                    throw new InvalidOperationException("Response does not contain 'message' property");
+                }
+
+                var assistantMessage = JsonSerializer.Deserialize<OllamaMessageWithToolCalls>(
+                    messageElement.GetRawText(),
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                if (assistantMessage == null)
+                {
+                    throw new InvalidOperationException("Failed to deserialize assistant message");
+                }
+
+                conversationHistory.Add(assistantMessage);
+
+                if (assistantMessage.ToolCalls == null || assistantMessage.ToolCalls.Count == 0)
+                {
+                    _logger.LogInformation("No tool calls requested. Generation complete.");
+                    
+                    var finalScript = assistantMessage.Content ?? string.Empty;
+                    var duration = DateTime.UtcNow - startTime;
+                    
+                    PerformanceTrackingCallback?.Invoke(85.0, duration, true);
+
+                    return new ToolCallingResult
+                    {
+                        Success = true,
+                        GeneratedScript = finalScript,
+                        ToolExecutionLog = toolExecutionLog,
+                        TotalToolCalls = totalToolCalls,
+                        TotalIterations = iteration + 1,
+                        GenerationTime = duration
+                    };
+                }
+
+                _logger.LogInformation("Processing {Count} tool call(s)", assistantMessage.ToolCalls.Count);
+                totalToolCalls += assistantMessage.ToolCalls.Count;
+
+                foreach (var toolCall in assistantMessage.ToolCalls)
+                {
+                    var tool = tools.FirstOrDefault(t => t.Name == toolCall.Function.Name);
+                    
+                    if (tool == null)
+                    {
+                        _logger.LogWarning("Unknown tool requested: {ToolName}", toolCall.Function.Name);
+                        continue;
+                    }
+
+                    _logger.LogInformation("Executing tool: {ToolName} with args: {Arguments}",
+                        toolCall.Function.Name, toolCall.Function.Arguments);
+
+                    var executionStart = DateTime.UtcNow;
+                    var toolResult = await tool.ExecuteAsync(toolCall.Function.Arguments, ct).ConfigureAwait(false);
+                    var executionDuration = DateTime.UtcNow - executionStart;
+
+                    toolExecutionLog.Add(new ToolExecutionEntry
+                    {
+                        ToolName = tool.Name,
+                        Arguments = toolCall.Function.Arguments,
+                        Result = toolResult,
+                        ExecutionTime = executionDuration,
+                        Timestamp = DateTime.UtcNow
+                    });
+
+                    _logger.LogInformation("Tool {ToolName} executed in {Duration}ms",
+                        tool.Name, executionDuration.TotalMilliseconds);
+
+                    conversationHistory.Add(new OllamaMessageWithToolCalls
+                    {
+                        Role = "tool",
+                        Content = $"Tool: {tool.Name}\nResult: {toolResult}"
+                    });
+                }
+            }
+
+            _logger.LogWarning("Reached maximum tool iterations ({MaxIterations}) without completion",
+                maxToolIterations);
+
+            var lastMessage = conversationHistory.LastOrDefault(m => m.Role == "assistant");
+            var scriptContent = lastMessage?.Content ?? "Generation incomplete after maximum iterations";
+
+            return new ToolCallingResult
+            {
+                Success = false,
+                GeneratedScript = scriptContent,
+                ToolExecutionLog = toolExecutionLog,
+                TotalToolCalls = totalToolCalls,
+                TotalIterations = maxToolIterations,
+                GenerationTime = DateTime.UtcNow - startTime,
+                ErrorMessage = "Maximum tool calling iterations reached"
+            };
+        }
+        catch (TaskCanceledException ex)
+        {
+            var duration = DateTime.UtcNow - startTime;
+            PerformanceTrackingCallback?.Invoke(0, duration, false);
+            _logger.LogError(ex, "Tool-enabled generation timed out");
+            
+            return new ToolCallingResult
+            {
+                Success = false,
+                ErrorMessage = "Generation timed out",
+                ToolExecutionLog = toolExecutionLog,
+                TotalToolCalls = totalToolCalls,
+                GenerationTime = duration
+            };
+        }
+        catch (HttpRequestException ex)
+        {
+            var duration = DateTime.UtcNow - startTime;
+            PerformanceTrackingCallback?.Invoke(0, duration, false);
+            _logger.LogError(ex, "Failed to connect to Ollama for tool-enabled generation");
+            
+            return new ToolCallingResult
+            {
+                Success = false,
+                ErrorMessage = $"Cannot connect to Ollama at {_baseUrl}",
+                ToolExecutionLog = toolExecutionLog,
+                TotalToolCalls = totalToolCalls,
+                GenerationTime = duration
+            };
+        }
+        catch (Exception ex)
+        {
+            var duration = DateTime.UtcNow - startTime;
+            PerformanceTrackingCallback?.Invoke(0, duration, false);
+            _logger.LogError(ex, "Error during tool-enabled generation");
+            
+            return new ToolCallingResult
+            {
+                Success = false,
+                ErrorMessage = ex.Message,
+                ToolExecutionLog = toolExecutionLog,
+                TotalToolCalls = totalToolCalls,
+                GenerationTime = duration
+            };
+        }
+    }
 }
 
 /// <summary>
@@ -1493,4 +1703,30 @@ public class OllamaModelInfo
     public string Name { get; set; } = string.Empty;
     public long Size { get; set; }
     public DateTime? Modified { get; set; }
+}
+
+/// <summary>
+/// Result of tool-enabled script generation
+/// </summary>
+public class ToolCallingResult
+{
+    public bool Success { get; set; }
+    public string GeneratedScript { get; set; } = string.Empty;
+    public string? ErrorMessage { get; set; }
+    public List<ToolExecutionEntry> ToolExecutionLog { get; set; } = new();
+    public int TotalToolCalls { get; set; }
+    public int TotalIterations { get; set; }
+    public TimeSpan GenerationTime { get; set; }
+}
+
+/// <summary>
+/// Log entry for a single tool execution
+/// </summary>
+public class ToolExecutionEntry
+{
+    public string ToolName { get; set; } = string.Empty;
+    public string Arguments { get; set; } = string.Empty;
+    public string Result { get; set; } = string.Empty;
+    public TimeSpan ExecutionTime { get; set; }
+    public DateTime Timestamp { get; set; }
 }

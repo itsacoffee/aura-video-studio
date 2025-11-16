@@ -1480,4 +1480,140 @@ public class ScriptsController : ControllerBase
             await Response.Body.FlushAsync(ct).ConfigureAwait(false);
         }
     }
+
+    /// <summary>
+    /// Generate script with tool calling enabled (research and fact-checking)
+    /// </summary>
+    [HttpPost("generate-with-tools")]
+    public async Task<IActionResult> GenerateScriptWithTools(
+        [FromBody] GenerateScriptRequest request,
+        CancellationToken ct)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        try
+        {
+            _logger.LogInformation(
+                "[{CorrelationId}] POST /api/scripts/generate-with-tools - Topic: {Topic}, EnableTools: true",
+                correlationId, request.Topic);
+
+            var brief = new Brief(
+                Topic: request.Topic,
+                Audience: request.Audience,
+                Goal: request.Goal,
+                Tone: request.Tone,
+                Language: request.Language,
+                Aspect: ParseAspect(request.Aspect));
+
+            var planSpec = new PlanSpec(
+                TargetDuration: TimeSpan.FromSeconds(request.TargetDurationSeconds),
+                Pacing: ParsePacing(request.Pacing),
+                Density: ParseDensity(request.Density),
+                Style: request.Style);
+
+            var loggerFactory = LoggerFactory.Create(builder => 
+                builder.SetMinimumLevel(LogLevel.Information));
+            
+            var researchLogger = loggerFactory.CreateLogger<Core.AI.Tools.ScriptResearchTool>();
+            var factCheckLogger = loggerFactory.CreateLogger<Core.AI.Tools.FactCheckTool>();
+
+            var tools = new List<Core.AI.Tools.IToolExecutor>
+            {
+                new Core.AI.Tools.ScriptResearchTool(researchLogger),
+                new Core.AI.Tools.FactCheckTool(factCheckLogger)
+            };
+
+            var ollamaProvider = new OllamaLlmProvider(
+                _logger as ILogger<OllamaLlmProvider> ?? throw new InvalidOperationException("Logger not available"),
+                new System.Net.Http.HttpClient(),
+                baseUrl: "http://127.0.0.1:11434",
+                model: request.Model ?? "llama3.2"
+            );
+
+            _logger.LogInformation(
+                "[{CorrelationId}] Starting tool-enabled generation with {ToolCount} tools",
+                correlationId, tools.Count);
+
+            var result = await ollamaProvider.GenerateWithToolsAsync(
+                brief, planSpec, tools, maxToolIterations: 5, ct).ConfigureAwait(false);
+
+            if (!result.Success || string.IsNullOrWhiteSpace(result.GeneratedScript))
+            {
+                _logger.LogWarning(
+                    "[{CorrelationId}] Tool-enabled generation failed: {ErrorMessage}",
+                    correlationId, result.ErrorMessage);
+
+                return StatusCode(500, new ProblemDetails
+                {
+                    Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E300",
+                    Title = "Script Generation Failed",
+                    Status = 500,
+                    Detail = result.ErrorMessage ?? "Failed to generate script with tools",
+                    Extensions =
+                    {
+                        ["correlationId"] = correlationId,
+                        ["toolCalls"] = result.TotalToolCalls,
+                        ["iterations"] = result.TotalIterations
+                    }
+                });
+            }
+
+            var scriptId = Guid.NewGuid().ToString();
+            var script = ParseScriptFromText(result.GeneratedScript, planSpec, "Ollama-Tools");
+            
+            script = script with { CorrelationId = correlationId };
+            
+            script = _scriptProcessor.ValidateSceneTiming(script, planSpec.TargetDuration);
+            script = _scriptProcessor.OptimizeNarrationFlow(script);
+            script = _scriptProcessor.ApplyTransitions(script, planSpec.Style);
+
+            _scriptStore[scriptId] = script;
+
+            _logger.LogInformation(
+                "[{CorrelationId}] Script generated with tools. ID: {ScriptId}, ToolCalls: {ToolCalls}, Iterations: {Iterations}",
+                correlationId, scriptId, result.TotalToolCalls, result.TotalIterations);
+
+            var response = MapScriptToResponse(scriptId, script);
+            
+            var enhancedResponse = new
+            {
+                response.ScriptId,
+                response.Title,
+                response.Scenes,
+                response.TotalDurationSeconds,
+                response.Metadata,
+                response.CorrelationId,
+                ToolUsage = new
+                {
+                    Enabled = true,
+                    TotalToolCalls = result.TotalToolCalls,
+                    TotalIterations = result.TotalIterations,
+                    GenerationTimeSeconds = result.GenerationTime.TotalSeconds,
+                    ToolExecutions = result.ToolExecutionLog.Select(entry => new
+                    {
+                        entry.ToolName,
+                        entry.Arguments,
+                        ResultLength = entry.Result.Length,
+                        ExecutionTimeMs = entry.ExecutionTime.TotalMilliseconds,
+                        entry.Timestamp
+                    }).ToList()
+                }
+            };
+
+            return Ok(enhancedResponse);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Error generating script with tools", correlationId);
+            
+            return StatusCode(500, new ProblemDetails
+            {
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
+                Title = "Internal Server Error",
+                Status = 500,
+                Detail = "An error occurred while generating the script with tools",
+                Extensions = { ["correlationId"] = correlationId }
+            });
+        }
+    }
 }
