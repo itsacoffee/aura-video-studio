@@ -2584,3 +2584,9 @@ public record ProviderCancellationStatusDto(
     string Status,
     string? Warning = null);
 
+/// <summary>
+/// Request to pull an Ollama model
+/// </summary>
+public record PullOllamaModelRequest(
+    string ModelName);
+

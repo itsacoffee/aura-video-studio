@@ -136,80 +136,91 @@ public class OllamaDetectionService : IHostedService, IDisposable
     }
 
     /// <summary>
-    /// Checks if Ollama service is running and accessible
+    /// Checks if Ollama service is running and accessible using multiple endpoint checks
     /// </summary>
     public async Task<OllamaStatus> DetectOllamaAsync(CancellationToken ct = default)
     {
-        try
+        var endpoints = GetDetectionEndpoints();
+        
+        foreach (var endpoint in endpoints)
         {
-            _logger.LogInformation("Checking Ollama availability at {BaseUrl}", _baseUrl);
-
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            cts.CancelAfter(TimeSpan.FromSeconds(5));
-
-            var response = await _httpClient.GetAsync($"{_baseUrl}/api/version", cts.Token).ConfigureAwait(false);
-            
-            if (response.IsSuccessStatusCode)
+            try
             {
-                var content = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-                var versionDoc = JsonDocument.Parse(content);
-                var version = versionDoc.RootElement.TryGetProperty("version", out var versionProp)
-                    ? versionProp.GetString() ?? "unknown"
-                    : "unknown";
+                _logger.LogInformation("Checking Ollama availability at {Endpoint}", endpoint);
 
-                _logger.LogInformation("Ollama is running at {BaseUrl}, version: {Version}", _baseUrl, version);
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                cts.CancelAfter(TimeSpan.FromSeconds(5));
+
+                var response = await _httpClient.GetAsync($"{endpoint}/api/version", cts.Token).ConfigureAwait(false);
                 
-                return new OllamaStatus(
-                    IsRunning: true,
-                    IsInstalled: true,
-                    Version: version,
-                    BaseUrl: _baseUrl,
-                    ErrorMessage: null
-                );
-            }
+                if (response.IsSuccessStatusCode)
+                {
+                    var content = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                    var versionDoc = JsonDocument.Parse(content);
+                    var version = versionDoc.RootElement.TryGetProperty("version", out var versionProp)
+                        ? versionProp.GetString() ?? "unknown"
+                        : "unknown";
 
-            _logger.LogWarning("Ollama service responded but with status code {StatusCode}", response.StatusCode);
-            return new OllamaStatus(
-                IsRunning: false,
-                IsInstalled: true,
-                Version: null,
-                BaseUrl: _baseUrl,
-                ErrorMessage: $"Ollama responded with status code {response.StatusCode}"
-            );
+                    _logger.LogInformation("Ollama is running at {Endpoint}, version: {Version}", endpoint, version);
+                    
+                    return new OllamaStatus(
+                        IsRunning: true,
+                        IsInstalled: true,
+                        Version: version,
+                        BaseUrl: endpoint,
+                        ErrorMessage: null
+                    );
+                }
+
+                _logger.LogWarning("Ollama service at {Endpoint} responded but with status code {StatusCode}", endpoint, response.StatusCode);
+            }
+            catch (TaskCanceledException)
+            {
+                _logger.LogDebug("Ollama service not responding at {Endpoint} (timeout)", endpoint);
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogDebug(ex, "Cannot connect to Ollama at {Endpoint}", endpoint);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Error detecting Ollama at {Endpoint}", endpoint);
+            }
         }
-        catch (TaskCanceledException)
+
+        _logger.LogWarning("Ollama service not detected at any endpoint");
+        return new OllamaStatus(
+            IsRunning: false,
+            IsInstalled: false,
+            Version: null,
+            BaseUrl: _baseUrl,
+            ErrorMessage: "Ollama service not running. Please start Ollama with 'ollama serve' or install from https://ollama.com"
+        );
+    }
+
+    /// <summary>
+    /// Get list of endpoints to check for Ollama detection
+    /// </summary>
+    private List<string> GetDetectionEndpoints()
+    {
+        var endpoints = new List<string>();
+        
+        if (!string.IsNullOrEmpty(_baseUrl))
         {
-            _logger.LogWarning("Ollama service not responding at {BaseUrl} (timeout)", _baseUrl);
-            return new OllamaStatus(
-                IsRunning: false,
-                IsInstalled: false,
-                Version: null,
-                BaseUrl: _baseUrl,
-                ErrorMessage: "Ollama service not responding (timeout)"
-            );
+            endpoints.Add(_baseUrl);
         }
-        catch (HttpRequestException ex)
+        
+        if (!endpoints.Contains("http://localhost:11434"))
         {
-            _logger.LogWarning(ex, "Cannot connect to Ollama at {BaseUrl}", _baseUrl);
-            return new OllamaStatus(
-                IsRunning: false,
-                IsInstalled: false,
-                Version: null,
-                BaseUrl: _baseUrl,
-                ErrorMessage: $"Cannot connect to Ollama: {ex.Message}"
-            );
+            endpoints.Add("http://localhost:11434");
         }
-        catch (Exception ex)
+        
+        if (!endpoints.Contains("http://127.0.0.1:11434"))
         {
-            _logger.LogError(ex, "Error detecting Ollama at {BaseUrl}", _baseUrl);
-            return new OllamaStatus(
-                IsRunning: false,
-                IsInstalled: false,
-                Version: null,
-                BaseUrl: _baseUrl,
-                ErrorMessage: $"Error detecting Ollama: {ex.Message}"
-            );
+            endpoints.Add("http://127.0.0.1:11434");
         }
+        
+        return endpoints;
     }
 
     /// <summary>
