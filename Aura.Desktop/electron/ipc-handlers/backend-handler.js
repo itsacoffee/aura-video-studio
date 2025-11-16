@@ -7,11 +7,13 @@ const { ipcMain } = require('electron');
 const axios = require('axios');
 
 class BackendHandler {
-  constructor(backendUrl, backendService = null) {
+  constructor(backendUrl, backendService = null, healthEndpoint = '/api/health') {
     this.backendUrl = backendUrl;
     this.backendService = backendService;
     this.healthCheckInterval = null;
     this.lastHealthStatus = 'unknown';
+    this.healthEndpoint = healthEndpoint || '/api/health';
+    this.livenessEndpoint = '/health/live';
   }
 
   /**
@@ -40,7 +42,7 @@ class BackendHandler {
     // Health check
     ipcMain.handle('backend:health', async () => {
       try {
-        const response = await axios.get(`${this.backendUrl}/health`, {
+        const response = await axios.get(this._buildUrl(this.healthEndpoint), {
           timeout: 5000
         });
         
@@ -62,7 +64,7 @@ class BackendHandler {
     ipcMain.handle('backend:ping', async () => {
       try {
         const startTime = Date.now();
-        await axios.get(`${this.backendUrl}/health/live`, {
+        await axios.get(this._buildUrl(this.livenessEndpoint), {
           timeout: 2000
         });
         const responseTime = Date.now() - startTime;
@@ -234,7 +236,7 @@ class BackendHandler {
 
     this.healthCheckInterval = setInterval(async () => {
       try {
-        const response = await axios.get(`${this.backendUrl}/health`, {
+        const response = await axios.get(this._buildUrl(this.healthEndpoint), {
           timeout: 5000
         });
         
@@ -279,6 +281,23 @@ class BackendHandler {
     if (window && !window.isDestroyed()) {
       window.webContents.send('backend:providerUpdate', providerStatus);
     }
+  }
+
+  _buildUrl(pathname = '') {
+    if (!this.backendUrl) {
+      return pathname;
+    }
+
+    if (!pathname) {
+      return this.backendUrl;
+    }
+
+    if (pathname.startsWith('http://') || pathname.startsWith('https://')) {
+      return pathname;
+    }
+
+    const normalized = pathname.startsWith('/') ? pathname : `/${pathname}`;
+    return `${this.backendUrl}${normalized}`;
   }
 }
 

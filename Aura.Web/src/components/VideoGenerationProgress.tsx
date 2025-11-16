@@ -32,6 +32,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type { FC } from 'react';
 import { useSSEConnection } from '@/hooks/useSSEConnection';
 import { loggingService } from '@/services/loggingService';
+import { apiUrl } from '@/config/api';
 
 const useStyles = makeStyles({
   container: {
@@ -337,8 +338,7 @@ export const VideoGenerationProgress: FC<VideoGenerationProgressProps> = ({
     setIsCancelling(true);
 
     try {
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5005';
-      const response = await fetch(`${baseUrl}/api/jobs/${jobId}/cancel`, {
+      const response = await fetch(apiUrl(`/api/jobs/${jobId}/cancel`), {
         method: 'POST',
       });
 

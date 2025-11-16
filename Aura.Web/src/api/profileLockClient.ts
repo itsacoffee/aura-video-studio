@@ -3,6 +3,7 @@
  */
 
 import axios from 'axios';
+import { env } from '@/config/env';
 import type {
   SetProfileLockRequest,
   UnlockProfileLockRequest,
@@ -13,7 +14,7 @@ import type {
   ProviderProfileLock
 } from '../types/profileLock';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5005';
+const API_BASE_URL = env.apiBaseUrl;
 
 /**
  * Get the current profile lock status for a job

@@ -24,7 +24,7 @@ import {
 } from '@fluentui/react-icons';
 import { useState, useEffect, useCallback } from 'react';
 import type { FC } from 'react';
-import { API_BASE_URL } from '../../config/api';
+import { apiUrl } from '../../config/api';
 import { loggingService } from '../loggingService';
 
 const useStyles = makeStyles({
@@ -135,7 +135,7 @@ export const NetworkDiagnostics: FC = () => {
 
       loggingService.info('Running network diagnostics', 'NetworkDiagnostics');
 
-      const response = await fetch(`${API_BASE_URL}/api/system/network/diagnostics`);
+      const response = await fetch(apiUrl('/api/system/network/diagnostics'));
 
       if (!response.ok) {
         throw new Error(`Diagnostics request failed: ${response.status} ${response.statusText}`);

@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using Aura.Core.Services.Health;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Hosting;
+using System.Runtime.InteropServices;
 
 namespace Aura.Api.Controllers;
 
@@ -20,17 +22,41 @@ public class HealthController : ControllerBase
     private readonly ProviderHealthService _healthService;
     private readonly SystemHealthChecker _systemHealthChecker;
     private readonly ILogger<HealthController> _logger;
+    private readonly IHostEnvironment _hostEnvironment;
 
     public HealthController(
         ProviderHealthMonitor healthMonitor,
         ProviderHealthService healthService,
         SystemHealthChecker systemHealthChecker,
-        ILogger<HealthController> logger)
+        ILogger<HealthController> logger,
+        IHostEnvironment hostEnvironment)
     {
         _healthMonitor = healthMonitor;
         _healthService = healthService;
         _systemHealthChecker = systemHealthChecker;
         _logger = logger;
+        _hostEnvironment = hostEnvironment;
+    }
+
+    /// <summary>
+    /// Get overall API health summary
+    /// </summary>
+    [HttpGet]
+    public ActionResult<ApiHealthResponse> Get()
+    {
+        var response = new ApiHealthResponse
+        {
+            Status = "Healthy",
+            Version = typeof(Program).Assembly.GetName().Version?.ToString() ?? "unknown",
+            Environment = _hostEnvironment.EnvironmentName,
+            MachineName = Environment.MachineName,
+            OsPlatform = Environment.OSVersion.Platform.ToString(),
+            OsVersion = Environment.OSVersion.VersionString,
+            Architecture = RuntimeInformation.OSArchitecture.ToString(),
+            Timestamp = DateTime.UtcNow
+        };
+
+        return Ok(response);
     }
 
     /// <summary>
@@ -363,6 +389,21 @@ public class ProviderTypeHealthDto
     public bool IsHealthy { get; set; }
     public int HealthyCount { get; set; }
     public int TotalCount { get; set; }
+}
+
+/// <summary>
+/// API health response for Electron/Electron preload checks
+/// </summary>
+public class ApiHealthResponse
+{
+    public string Status { get; set; } = "Healthy";
+    public string? Version { get; set; }
+    public string? Environment { get; set; }
+    public string? MachineName { get; set; }
+    public string? OsPlatform { get; set; }
+    public string? OsVersion { get; set; }
+    public string? Architecture { get; set; }
+    public DateTime Timestamp { get; set; }
 }
 
 /// <summary>

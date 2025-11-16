@@ -11,6 +11,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { z } from 'zod';
+import { apiUrl } from '@/config/api';
 import { loggingService } from '@/services/loggingService';
 import { toError } from '@/utils/errorUtils';
 
@@ -278,7 +279,11 @@ export function useSse<T = unknown>(options: UseSseOptions<T>): UseSseReturn<T> 
 
       // Note: EventSource doesn't support custom headers in browser
       // For authenticated requests, use cookies or include token in URL
-      const eventSource = new EventSource(finalUrl);
+      const resolvedUrl =
+        finalUrl.startsWith('http://') || finalUrl.startsWith('https://')
+          ? finalUrl
+          : apiUrl(finalUrl);
+      const eventSource = new EventSource(resolvedUrl);
       eventSourceRef.current = eventSource;
 
       eventSource.onopen = () => {

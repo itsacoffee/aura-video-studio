@@ -27,13 +27,24 @@ const trimValue = (value: unknown): string | undefined => {
   return trimmed.length > 0 ? trimmed : undefined;
 };
 
+const getBridgeBackendUrl = (): string | undefined => {
+  if (typeof window === 'undefined') {
+    return undefined;
+  }
+
+  const bridgeUrl = window.desktopBridge?.getBackendBaseUrl?.();
+  return bridgeUrl ? trimValue(bridgeUrl) : undefined;
+};
+
 /**
  * Check if running in Electron environment
  */
 export function isElectronEnvironment(): boolean {
   return (
     typeof window !== 'undefined' &&
-    (window.AURA_IS_ELECTRON === true || window.electron !== undefined)
+    (window.desktopBridge !== undefined ||
+      window.AURA_IS_ELECTRON === true ||
+      window.electron !== undefined)
   );
 }
 
@@ -46,7 +57,25 @@ export async function getElectronBackendUrl(): Promise<string | null> {
     return null;
   }
 
-  // Check for synchronous global variable first (faster)
+  const bridgeUrl = getBridgeBackendUrl();
+  if (bridgeUrl) {
+    return bridgeUrl;
+  }
+
+  if (window.desktopBridge?.getDiagnosticInfo) {
+    try {
+      const diagnostics = await window.desktopBridge.getDiagnosticInfo();
+      const diagnosticUrl = diagnostics?.backend?.baseUrl;
+      const trimmedDiagnosticUrl = trimValue(diagnosticUrl);
+      if (trimmedDiagnosticUrl) {
+        return trimmedDiagnosticUrl;
+      }
+    } catch (error) {
+      console.warn('[apiBaseUrl] Failed to read diagnostics from desktop bridge:', error);
+    }
+  }
+
+  // Legacy fallback: window global
   if (window.AURA_BACKEND_URL) {
     const trimmed = trimValue(window.AURA_BACKEND_URL);
     if (trimmed) {
@@ -77,7 +106,20 @@ export async function getElectronBackendUrl(): Promise<string | null> {
 export function resolveApiBaseUrl(): ApiBaseUrlResolution {
   const isElectron = isElectronEnvironment();
 
-  // Priority 1: Electron global variable (synchronous, fastest)
+  // Priority 1: Desktop bridge contract (Electron)
+  if (isElectron) {
+    const bridgeUrl = getBridgeBackendUrl();
+    if (bridgeUrl) {
+      return {
+        value: bridgeUrl,
+        raw: bridgeUrl,
+        source: 'electron',
+        isElectron: true,
+      };
+    }
+  }
+
+  // Priority 2: Legacy Electron globals
   if (isElectron && window.AURA_BACKEND_URL) {
     const trimmed = trimValue(window.AURA_BACKEND_URL);
     if (trimmed) {
@@ -90,7 +132,7 @@ export function resolveApiBaseUrl(): ApiBaseUrlResolution {
     }
   }
 
-  // Priority 2: Environment variable (build-time configuration)
+  // Priority 3: Environment variable (build-time configuration)
   const rawEnvValue = trimValue(import.meta.env.VITE_API_BASE_URL);
   if (rawEnvValue) {
     return {
@@ -101,7 +143,7 @@ export function resolveApiBaseUrl(): ApiBaseUrlResolution {
     };
   }
 
-  // Priority 3: Current origin (when served from backend)
+  // Priority 4: Current origin (when served from backend)
   if (typeof window !== 'undefined' && window.location?.origin) {
     return {
       value: window.location.origin,
@@ -111,7 +153,7 @@ export function resolveApiBaseUrl(): ApiBaseUrlResolution {
     };
   }
 
-  // Priority 4: Development fallback
+  // Priority 5: Development fallback
   return {
     value: DEFAULT_DEV_API_BASE_URL,
     raw: DEFAULT_DEV_API_BASE_URL,

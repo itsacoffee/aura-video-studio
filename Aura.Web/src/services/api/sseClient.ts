@@ -12,6 +12,7 @@
 import { sseConnectionManager } from './sseConnectionManager';
 import { loggingService } from '@/services/loggingService';
 import { toError } from '@/utils/errorUtils';
+import { env } from '@/config/env';
 
 export interface SSEConnectionOptions {
   url: string;
@@ -357,7 +358,7 @@ export function createGenerationProgressSSE(
   onError?: (error: Error) => void,
   onComplete?: () => void
 ): SSEClient {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5005';
+  const baseUrl = env.apiBaseUrl;
   const url = `${baseUrl}/api/generation/progress/${jobId}`;
 
   return new SSEClient({
@@ -472,7 +473,7 @@ export class SseClient {
       return;
     }
 
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5005';
+    const baseUrl = env.apiBaseUrl;
     const url = `${baseUrl}/api/jobs/${this.jobId}/events`;
 
     loggingService.info('Connecting to SSE', 'SseClient', 'connect', { url, jobId: this.jobId });
