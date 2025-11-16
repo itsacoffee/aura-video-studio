@@ -211,32 +211,27 @@ export const useRenderStore = create<RenderState>((set, get) => ({
 
     try {
       // Send render request to API
-      const response = await fetch('/api/jobs', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          settings: nextItem.settings,
-        }),
+      // Import at runtime to avoid circular dependencies
+      const { default: apiClient } = await import('../services/api/apiClient');
+      
+      const response = await apiClient.post<{ jobId: string }>('/api/jobs', {
+        settings: nextItem.settings,
       });
 
-      if (!response.ok) {
-        throw new Error(`Render request failed: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      const jobId = data.jobId;
+      const jobId = response.data.jobId;
 
       // Poll for progress
       const pollInterval = setInterval(async () => {
         try {
-          const progressResponse = await fetch(`/api/jobs/${jobId}`);
-          if (!progressResponse.ok) {
-            throw new Error('Failed to get progress');
-          }
-
-          const progressData = await progressResponse.json();
+          const progressResponse = await apiClient.get<{
+            status: string;
+            progress: number;
+            estimatedTimeRemaining?: number;
+            outputPath?: string;
+            error?: string;
+          }>(`/api/jobs/${jobId}`);
+          
+          const progressData = progressResponse.data;
 
           updateQueueItem(nextItem.id, {
             progress: progressData.progress,
@@ -275,24 +270,35 @@ export const useRenderStore = create<RenderState>((set, get) => ({
               setTimeout(() => get().processQueue(), 100);
             }
           }
-        } catch (error) {
+        } catch (error: unknown) {
           console.error('Error polling render progress:', error);
+          // Import error classifier
+          const { classifyError } = await import('../utils/errorClassification');
+          const classified = classifyError(error);
+          console.error('Classified polling error:', classified.title, classified.message);
         }
       }, 2000); // Poll every 2 seconds
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error starting render:', error);
+      
+      // Import error classifier
+      const { classifyError } = await import('../utils/errorClassification');
+      const classified = classifyError(error);
+      
+      const errorMessage = `${classified.title}: ${classified.message}`;
 
-      // Retry once
-      if (nextItem.retryCount < 1) {
+      // Retry once for retryable errors
+      if (nextItem.retryCount < 1 && classified.isRetryable) {
         updateQueueItem(nextItem.id, {
           status: 'queued',
           retryCount: nextItem.retryCount + 1,
+          error: `${errorMessage} (will retry)`,
         });
         setTimeout(() => get().processQueue(), 1000);
       } else {
         updateQueueItem(nextItem.id, {
           status: 'failed',
-          error: error instanceof Error ? error.message : 'Unknown error',
+          error: errorMessage,
           completedAt: new Date(),
         });
 

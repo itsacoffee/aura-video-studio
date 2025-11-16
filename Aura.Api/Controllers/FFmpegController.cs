@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Core.Configuration;
 using Aura.Core.Dependencies;
 using Aura.Core.Downloads;
 using Aura.Core.Runtime;
@@ -20,21 +21,25 @@ public class FFmpegController : ControllerBase
     private readonly FFmpegResolver _resolver;
     private readonly FfmpegInstaller _installer;
     private readonly EngineManifestLoader _manifestLoader;
+    private readonly FFmpegConfigurationStore _configStore;
 
     public FFmpegController(
         ILogger<FFmpegController> logger,
         FFmpegResolver resolver,
         FfmpegInstaller installer,
-        EngineManifestLoader manifestLoader)
+        EngineManifestLoader manifestLoader,
+        FFmpegConfigurationStore configStore)
     {
         _logger = logger;
         _resolver = resolver;
         _installer = installer;
         _manifestLoader = manifestLoader;
+        _configStore = configStore;
     }
 
     /// <summary>
     /// Get current FFmpeg status including installation and version info
+    /// Enhanced with mode and validation details
     /// </summary>
     [HttpGet("status")]
     public async Task<IActionResult> GetStatus(CancellationToken ct)
@@ -45,7 +50,20 @@ public class FFmpegController : ControllerBase
         {
             _logger.LogInformation("[{CorrelationId}] GET /api/ffmpeg/status", correlationId);
 
-            var result = await _resolver.ResolveAsync(null, forceRefresh: true, ct).ConfigureAwait(false);
+            // Load persisted configuration
+            var config = await _configStore.LoadAsync(ct).ConfigureAwait(false);
+            
+            // Resolve current FFmpeg (re-validate if stale or not set)
+            var result = await _resolver.ResolveAsync(config?.Path, forceRefresh: config?.IsValidationStale ?? true, ct).ConfigureAwait(false);
+            
+            // Determine mode based on source
+            var mode = DetermineMode(result.Source, config?.Mode ?? FFmpegMode.None);
+            
+            // Update configuration if resolution succeeded
+            if (result.Found && result.IsValid)
+            {
+                await _resolver.PersistConfigurationAsync(result, mode, ct).ConfigureAwait(false);
+            }
 
             return Ok(new
             {
@@ -53,8 +71,11 @@ public class FFmpegController : ControllerBase
                 version = result.Version,
                 path = result.Path,
                 source = result.Source,
+                mode = mode.ToString().ToLowerInvariant(),
                 valid = result.IsValid,
                 error = result.Error,
+                lastValidatedAt = config?.LastValidatedAt,
+                lastValidationResult = config?.LastValidationResult.ToString().ToLowerInvariant() ?? "unknown",
                 correlationId
             });
         }
@@ -65,9 +86,203 @@ public class FFmpegController : ControllerBase
             return StatusCode(500, new
             {
                 type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E340",
-                title = "FFmpeg Status Error",
+                title = "FFmpeg Status Check Failed",
                 status = 500,
                 detail = $"Failed to get FFmpeg status: {ex.Message}",
+                errorCode = "E340",
+                correlationId
+            });
+        }
+    }
+    
+    /// <summary>
+    /// Force re-detection and validation of FFmpeg
+    /// </summary>
+    [HttpPost("detect")]
+    public async Task<IActionResult> Detect(CancellationToken ct)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+
+        try
+        {
+            _logger.LogInformation("[{CorrelationId}] POST /api/ffmpeg/detect", correlationId);
+
+            // Invalidate cache to force fresh detection
+            _resolver.InvalidateCache();
+            
+            // Perform resolution without configured path (fresh detection)
+            var result = await _resolver.ResolveAsync(null, forceRefresh: true, ct).ConfigureAwait(false);
+            
+            // Determine mode
+            var mode = DetermineMode(result.Source, FFmpegMode.None);
+            
+            // Persist result
+            await _resolver.PersistConfigurationAsync(result, mode, ct).ConfigureAwait(false);
+
+            if (result.Found && result.IsValid)
+            {
+                _logger.LogInformation(
+                    "[{CorrelationId}] FFmpeg detected: {Path} (Mode: {Mode})",
+                    correlationId,
+                    result.Path,
+                    mode
+                );
+                
+                return Ok(new
+                {
+                    success = true,
+                    installed = true,
+                    valid = true,
+                    version = result.Version,
+                    path = result.Path,
+                    source = result.Source,
+                    mode = mode.ToString().ToLowerInvariant(),
+                    message = $"FFmpeg detected at {result.Path}",
+                    correlationId
+                });
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "[{CorrelationId}] FFmpeg not detected: {Error}",
+                    correlationId,
+                    result.Error
+                );
+                
+                return Ok(new
+                {
+                    success = false,
+                    installed = false,
+                    valid = false,
+                    mode = "none",
+                    message = result.Error ?? "FFmpeg not found on this system",
+                    attemptedPaths = result.AttemptedPaths,
+                    detail = "FFmpeg was not found. You can install it automatically or specify a custom path.",
+                    howToFix = new[]
+                    {
+                        "Click 'Install FFmpeg' to download and install automatically",
+                        "Or manually install FFmpeg and use 'Re-scan' to detect it",
+                        "Or use 'Browse for FFmpeg' to specify a custom installation path"
+                    },
+                    correlationId
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Error detecting FFmpeg", correlationId);
+
+            return StatusCode(500, new
+            {
+                success = false,
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E344",
+                title = "Detection Error",
+                status = 500,
+                detail = $"Failed to detect FFmpeg: {ex.Message}",
+                errorCode = "E344",
+                correlationId
+            });
+        }
+    }
+    
+    /// <summary>
+    /// Set and validate a custom FFmpeg path
+    /// </summary>
+    [HttpPost("set-path")]
+    public async Task<IActionResult> SetPath(
+        [FromBody] SetPathRequest request,
+        CancellationToken ct)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+
+        try
+        {
+            _logger.LogInformation(
+                "[{CorrelationId}] POST /api/ffmpeg/set-path - Path: {Path}",
+                correlationId,
+                request.Path
+            );
+
+            if (string.IsNullOrWhiteSpace(request.Path))
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E345",
+                    title = "Invalid Path",
+                    status = 400,
+                    detail = "FFmpeg path is required",
+                    errorCode = "E345",
+                    correlationId
+                });
+            }
+
+            // Validate the custom path
+            var result = await _resolver.ResolveAsync(request.Path, forceRefresh: true, ct).ConfigureAwait(false);
+
+            if (!result.Found || !result.IsValid)
+            {
+                _logger.LogWarning(
+                    "[{CorrelationId}] Invalid custom FFmpeg path: {Path} - {Error}",
+                    correlationId,
+                    request.Path,
+                    result.Error
+                );
+                
+                return BadRequest(new
+                {
+                    success = false,
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E346",
+                    title = "Invalid FFmpeg Path",
+                    status = 400,
+                    detail = result.Error ?? "The specified path does not contain a valid FFmpeg executable",
+                    errorCode = "E346",
+                    howToFix = new[]
+                    {
+                        "Ensure the path points to ffmpeg.exe (Windows) or ffmpeg (Unix)",
+                        "Verify FFmpeg is properly installed and not corrupted",
+                        "Try running 'ffmpeg -version' manually to test the executable",
+                        "Download a fresh copy of FFmpeg if the binary is damaged"
+                    },
+                    attemptedPaths = result.AttemptedPaths,
+                    correlationId
+                });
+            }
+
+            // Persist custom configuration
+            await _resolver.PersistConfigurationAsync(result, FFmpegMode.Custom, ct).ConfigureAwait(false);
+
+            _logger.LogInformation(
+                "[{CorrelationId}] Custom FFmpeg path validated and saved: {Path}",
+                correlationId,
+                result.Path
+            );
+
+            return Ok(new
+            {
+                success = true,
+                message = $"FFmpeg validated successfully at {result.Path}",
+                installed = true,
+                valid = true,
+                path = result.Path,
+                version = result.Version,
+                source = "Configured",
+                mode = "custom",
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Error setting custom FFmpeg path", correlationId);
+
+            return StatusCode(500, new
+            {
+                success = false,
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E347",
+                title = "Path Validation Error",
+                status = 500,
+                detail = $"Unexpected error validating FFmpeg: {ex.Message}",
+                errorCode = "E347",
                 correlationId
             });
         }
@@ -173,6 +388,23 @@ public class FFmpegController : ControllerBase
             }
 
             _resolver.InvalidateCache();
+            
+            // Persist configuration after successful install
+            if (installResult.FfmpegPath != null)
+            {
+                var persistResult = new FfmpegResolutionResult
+                {
+                    Found = true,
+                    IsValid = true,
+                    Path = installResult.FfmpegPath,
+                    Version = installResult.ValidationOutput ?? version,
+                    Source = "Managed",
+                    ValidationOutput = installResult.ValidationOutput,
+                    AttemptedPaths = new List<string> { installResult.FfmpegPath }
+                };
+                
+                await _resolver.PersistConfigurationAsync(persistResult, FFmpegMode.Local, ct).ConfigureAwait(false);
+            }
 
             _logger.LogInformation("[{CorrelationId}] FFmpeg installed successfully: {Path}",
                 correlationId, installResult.FfmpegPath);
@@ -184,6 +416,7 @@ public class FFmpegController : ControllerBase
                 path = installResult.FfmpegPath,
                 version = installResult.ValidationOutput,
                 installedAt = installResult.InstalledAt,
+                mode = "local",
                 correlationId
             });
         }
@@ -506,6 +739,22 @@ public class FFmpegController : ControllerBase
             });
         }
     }
+    
+    /// <summary>
+    /// Helper method to determine FFmpeg mode from source
+    /// </summary>
+    private static FFmpegMode DetermineMode(string source, FFmpegMode fallback)
+    {
+        return source switch
+        {
+            "Managed" => FFmpegMode.Local,
+            "Configured" => FFmpegMode.Custom,
+            "PATH" => FFmpegMode.System,
+            "Common Directory" => FFmpegMode.System,
+            "None" => FFmpegMode.None,
+            _ => fallback
+        };
+    }
 }
 
 /// <summary>
@@ -517,6 +766,14 @@ public record FFmpegInstallRequest(string? Version);
 /// Request model for using existing FFmpeg installation
 /// </summary>
 public record UseExistingFFmpegRequest
+{
+    public string Path { get; init; } = "";
+}
+
+/// <summary>
+/// Request model for setting custom FFmpeg path
+/// </summary>
+public record SetPathRequest
 {
     public string Path { get; init; } = "";
 }

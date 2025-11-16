@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Core.Configuration;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
@@ -17,14 +19,19 @@ public class FFmpegResolver
 {
     private readonly ILogger<FFmpegResolver> _logger;
     private readonly IMemoryCache _cache;
+    private readonly FFmpegConfigurationStore? _configStore;
     private readonly string _managedInstallRoot;
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
     private static readonly string CacheKey = "ffmpeg-resolution-result";
 
-    public FFmpegResolver(ILogger<FFmpegResolver> logger, IMemoryCache cache)
+    public FFmpegResolver(
+        ILogger<FFmpegResolver> logger,
+        IMemoryCache cache,
+        FFmpegConfigurationStore? configStore = null)
     {
         _logger = logger;
         _cache = cache;
+        _configStore = configStore;
 
         var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         _managedInstallRoot = Path.Combine(localAppData, "AuraVideoStudio", "ffmpeg");
@@ -489,6 +496,57 @@ public class FFmpegResolver
     {
         _cache.Remove(CacheKey);
         _logger.LogInformation("FFmpeg resolution cache invalidated");
+    }
+    
+    /// <summary>
+    /// Persist resolution result to configuration store
+    /// </summary>
+    public async Task PersistConfigurationAsync(
+        FfmpegResolutionResult result,
+        FFmpegMode mode,
+        CancellationToken ct = default)
+    {
+        if (_configStore == null)
+        {
+            _logger.LogWarning("Configuration store not available, cannot persist");
+            return;
+        }
+        
+        var config = new FFmpegConfiguration
+        {
+            Mode = mode,
+            Path = result.Path,
+            Version = result.Version,
+            LastValidatedAt = result.IsValid ? DateTime.UtcNow : null,
+            LastValidationResult = result.IsValid
+                ? FFmpegValidationResult.Ok
+                : string.IsNullOrEmpty(result.Path)
+                    ? FFmpegValidationResult.NotFound
+                    : FFmpegValidationResult.InvalidBinary,
+            LastValidationError = result.Error,
+            Source = result.Source,
+            ValidationOutput = result.ValidationOutput
+        };
+        
+        await _configStore.SaveAsync(config, ct).ConfigureAwait(false);
+        _logger.LogInformation(
+            "Persisted FFmpeg configuration: Mode={Mode}, Path={Path}",
+            mode,
+            result.Path ?? "null"
+        );
+    }
+    
+    /// <summary>
+    /// Load persisted configuration
+    /// </summary>
+    public async Task<FFmpegConfiguration?> LoadConfigurationAsync(CancellationToken ct = default)
+    {
+        if (_configStore == null)
+        {
+            return null;
+        }
+        
+        return await _configStore.LoadAsync(ct).ConfigureAwait(false);
     }
 }
 
