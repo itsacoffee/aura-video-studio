@@ -1138,63 +1138,87 @@ app.on('activate', () => {
 app.on('window-all-closed', () => {
   // On macOS, apps stay active until user quits explicitly
   if (process.platform !== 'darwin') {
+    console.log('All windows closed, initiating shutdown...');
     isQuitting = true;
     
-    if (shutdownOrchestrator) {
-      shutdownOrchestrator.initiateShutdown({ skipChecks: true })
-        .then(() => app.exit(0))
-        .catch((error) => {
-          console.error('Shutdown error:', error);
-          app.exit(1);
-        });
-    } else {
+    // Don't call app.quit() here - it will trigger before-quit
+    // Instead, let before-quit handle the actual shutdown
+    if (!isCleaningUp) {
       app.quit();
     }
   }
 });
 
-// Before quit
+// Before quit - single point of shutdown coordination
 app.on('before-quit', async (event) => {
-  console.log('Application is quitting...');
+  console.log('before-quit event triggered, isCleaningUp:', isCleaningUp);
   
+  // If we're already cleaning up, let it proceed
   if (isCleaningUp) {
     return;
   }
   
+  // First time through - prevent quit and run cleanup
+  event.preventDefault();
   isQuitting = true;
   isCleaningUp = true;
-  event.preventDefault();
+  
+  console.log('Starting shutdown sequence with 5 second hard timeout...');
   
   try {
-    if (shutdownOrchestrator) {
-      const result = await Promise.race([
-        shutdownOrchestrator.initiateShutdown(),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Shutdown timeout')), 10000)
-        )
-      ]);
-      
-      if (!result.success && result.reason !== 'user-cancelled') {
-        console.warn('Shutdown completed with issues:', result);
-      } else if (result.reason === 'user-cancelled') {
-        console.log('Shutdown cancelled by user');
-        isQuitting = false;
-        isCleaningUp = false;
-        return;
-      }
-    } else {
-      await Promise.race([
-        cleanup(),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Cleanup timeout')), 30000)
-        )
-      ]);
+    // Absolute maximum timeout: 5 seconds
+    const HARD_TIMEOUT_MS = 5000;
+    
+    const shutdownPromise = shutdownOrchestrator 
+      ? shutdownOrchestrator.initiateShutdown({ skipChecks: true })
+      : cleanup();
+    
+    const result = await Promise.race([
+      shutdownPromise,
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Shutdown hard timeout exceeded')), HARD_TIMEOUT_MS)
+      )
+    ]);
+    
+    if (result && !result.success && result.reason !== 'user-cancelled') {
+      console.warn('Shutdown completed with issues:', result);
+    } else if (result && result.reason === 'user-cancelled') {
+      console.log('Shutdown cancelled by user');
+      isQuitting = false;
+      isCleaningUp = false;
+      return;
     }
+    
+    console.log('Shutdown sequence completed successfully');
   } catch (error) {
-    console.error('Shutdown error or timeout:', error);
+    console.error('Shutdown error or timeout:', error.message);
+    
+    // Force kill backend and all child processes as failsafe
+    if (backendService && backendService.pid) {
+      console.error('Attempting force kill of backend process tree...');
+      try {
+        if (process.platform === 'win32') {
+          const { exec } = require('child_process');
+          exec(`taskkill /F /T /PID ${backendService.pid}`, (err) => {
+            if (err) console.error('Force kill failed:', err.message);
+          });
+        } else {
+          try {
+            process.kill(-backendService.pid, 'SIGKILL');
+          } catch (e) {
+            console.error('Force kill failed:', e.message);
+          }
+        }
+      } catch (e) {
+        console.error('Error during force kill:', e.message);
+      }
+    }
   } finally {
+    // Always exit after cleanup attempt
     if (isQuitting) {
-      app.exit(0);
+      console.log('Exiting application...');
+      // Use process.exit for immediate termination
+      process.exit(0);
     }
   }
 });

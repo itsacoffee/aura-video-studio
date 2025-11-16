@@ -121,7 +121,7 @@ test('before-quit handler uses ShutdownOrchestrator', () => {
   }
 });
 
-// Test 7: Verify window-all-closed handler uses ShutdownOrchestrator
+// Test 7: Verify window-all-closed handler properly triggers quit
 test('window-all-closed handler uses ShutdownOrchestrator', () => {
   const mainJs = fs.readFileSync(
     path.join(__dirname, '../electron/main.js'),
@@ -138,8 +138,10 @@ test('window-all-closed handler uses ShutdownOrchestrator', () => {
   }
   
   const handlerCode = handlerMatch[0];
-  if (!handlerCode.includes('shutdownOrchestrator')) {
-    throw new Error('window-all-closed handler does not reference shutdownOrchestrator');
+  // Updated: window-all-closed now calls app.quit() which triggers before-quit
+  // This is the correct approach to avoid competing shutdown handlers
+  if (!handlerCode.includes('app.quit()') && !handlerCode.includes('shutdownOrchestrator')) {
+    throw new Error('window-all-closed handler must call app.quit() or shutdownOrchestrator');
   }
 });
 

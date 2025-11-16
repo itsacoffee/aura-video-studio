@@ -1588,6 +1588,9 @@ builder.Services.AddSingleton<Aura.Api.Services.SseService>();
 builder.Services.AddSingleton<Aura.Api.Services.ProgressService>();
 builder.Services.AddSingleton<Aura.Api.Services.ShutdownOrchestrator>();
 
+// Register FFmpeg ProcessManager for tracking FFmpeg processes during shutdown
+builder.Services.AddSingleton<Aura.Core.Services.FFmpeg.IProcessManager, Aura.Core.Services.FFmpeg.ProcessManager>();
+
 // Register Audio/Caption services
 builder.Services.AddSingleton<Aura.Core.Audio.AudioProcessor>();
 builder.Services.AddSingleton<Aura.Core.Audio.DspChain>();

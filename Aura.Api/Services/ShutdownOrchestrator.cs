@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Core.Services.FFmpeg;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -19,20 +20,32 @@ public class ShutdownOrchestrator
 {
     private readonly ILogger<ShutdownOrchestrator> _logger;
     private readonly IHostApplicationLifetime _lifetime;
+    private readonly IProcessManager? _ffmpegProcessManager;
     private readonly ConcurrentBag<int> _childProcessIds = new();
     private readonly ConcurrentDictionary<string, HttpResponse> _activeConnections = new();
     private bool _shutdownInitiated;
     private readonly object _shutdownLock = new();
 
-    private const int GracefulTimeoutSeconds = 3;  // Reduced from 5 for faster shutdown
-    private const int ComponentTimeoutSeconds = 2;  // Reduced from 3 for faster shutdown
+    private const int GracefulTimeoutSeconds = 2;  // Reduced from 3 for faster shutdown
+    private const int ComponentTimeoutSeconds = 1;  // Reduced from 2 for faster shutdown
 
     public ShutdownOrchestrator(
         ILogger<ShutdownOrchestrator> logger,
-        IHostApplicationLifetime lifetime)
+        IHostApplicationLifetime lifetime,
+        IProcessManager? ffmpegProcessManager = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _lifetime = lifetime ?? throw new ArgumentNullException(nameof(lifetime));
+        _ffmpegProcessManager = ffmpegProcessManager;
+        
+        if (_ffmpegProcessManager != null)
+        {
+            _logger.LogInformation("ShutdownOrchestrator initialized with FFmpeg ProcessManager");
+        }
+        else
+        {
+            _logger.LogWarning("ShutdownOrchestrator initialized WITHOUT FFmpeg ProcessManager - FFmpeg processes may not be tracked");
+        }
     }
 
     /// <summary>
@@ -98,22 +111,27 @@ public class ShutdownOrchestrator
 
         try
         {
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(force ? 2 : GracefulTimeoutSeconds));
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(force ? 1 : GracefulTimeoutSeconds));
 
             // Step 1: Notify active SSE connections
             var sseStep = await NotifySseConnectionsAsync(cts.Token).ConfigureAwait(false);
             stepResults.Add($"SSE Notification: {sseStep}");
-            _logger.LogInformation("Step 1/3 Complete: {Result}", sseStep);
+            _logger.LogInformation("Step 1/4 Complete: {Result}", sseStep);
 
             // Step 2: Close SSE connections gracefully
             var closeStep = await CloseSseConnectionsAsync(cts.Token).ConfigureAwait(false);
             stepResults.Add($"SSE Closure: {closeStep}");
-            _logger.LogInformation("Step 2/3 Complete: {Result}", closeStep);
+            _logger.LogInformation("Step 2/4 Complete: {Result}", closeStep);
 
-            // Step 3: Terminate child processes
+            // Step 3: Terminate FFmpeg processes
+            var ffmpegStep = await TerminateFFmpegProcessesAsync(force, cts.Token).ConfigureAwait(false);
+            stepResults.Add($"FFmpeg Termination: {ffmpegStep}");
+            _logger.LogInformation("Step 3/4 Complete: {Result}", ffmpegStep);
+
+            // Step 4: Terminate other child processes
             var processStep = await TerminateChildProcessesAsync(force, cts.Token).ConfigureAwait(false);
             stepResults.Add($"Process Termination: {processStep}");
-            _logger.LogInformation("Step 3/3 Complete: {Result}", processStep);
+            _logger.LogInformation("Step 4/4 Complete: {Result}", processStep);
 
             result.Message = string.Join("; ", stepResults);
             _logger.LogInformation("=================================================================");
@@ -123,7 +141,7 @@ public class ShutdownOrchestrator
             // Signal application to stop
             if (!force)
             {
-                await Task.Delay(500, CancellationToken.None).ConfigureAwait(false);
+                await Task.Delay(200, CancellationToken.None).ConfigureAwait(false);
             }
             _lifetime.StopApplication();
         }
@@ -191,10 +209,37 @@ public class ShutdownOrchestrator
 
         _logger.LogInformation("Closing {Count} SSE connections", connectionCount);
 
-        await Task.Delay(500, ct).ConfigureAwait(false);
+        await Task.Delay(200, ct).ConfigureAwait(false);
 
         _activeConnections.Clear();
         return $"Closed {connectionCount} connections";
+    }
+
+    private async Task<string> TerminateFFmpegProcessesAsync(bool force, CancellationToken ct)
+    {
+        if (_ffmpegProcessManager == null)
+        {
+            return "No FFmpeg ProcessManager available";
+        }
+
+        var processCount = _ffmpegProcessManager.GetProcessCount();
+        if (processCount == 0)
+        {
+            return "No FFmpeg processes";
+        }
+
+        _logger.LogInformation("Terminating {Count} FFmpeg processes (Force: {Force})", processCount, force);
+
+        try
+        {
+            await _ffmpegProcessManager.KillAllProcessesAsync(ct).ConfigureAwait(false);
+            return $"Terminated {processCount} FFmpeg process(es)";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error terminating FFmpeg processes");
+            return $"FFmpeg termination error: {ex.Message}";
+        }
     }
 
     private async Task<string> TerminateChildProcessesAsync(bool force, CancellationToken ct)
