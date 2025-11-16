@@ -10,6 +10,7 @@ using Aura.Core.AI;
 using Aura.Core.AI.SchemaBuilders;
 using Aura.Core.Models;
 using Aura.Core.Models.Narrative;
+using Aura.Core.Models.OpenAI;
 using Aura.Core.Models.Visual;
 using Aura.Core.Providers;
 using Aura.Core.Services.AI;
@@ -1426,6 +1427,214 @@ Return ONLY the transition text, no explanations or additional commentary:";
     }
 
     /// <summary>
+    /// Generate audio narration using OpenAI's audio capabilities.
+    /// Supports GPT-4o and GPT-4o-audio-preview models with audio output.
+    /// </summary>
+    /// <param name="text">Text to convert to speech</param>
+    /// <param name="audioConfig">Audio configuration (voice, format, modalities)</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>Base64-encoded audio data and transcript</returns>
+    public async Task<AudioResponse> GenerateWithAudioAsync(
+        string text,
+        AudioConfig audioConfig,
+        CancellationToken ct = default)
+    {
+        _logger.LogInformation("Generating audio with OpenAI (model: {Model}, voice: {Voice})", _model, audioConfig.Voice);
+
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            throw new ArgumentException("Text cannot be empty", nameof(text));
+        }
+
+        // Validate model supports audio
+        if (!_model.Contains("gpt-4o", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"Model {_model} does not support audio output. Use gpt-4o or gpt-4o-audio-preview.");
+        }
+
+        var startTime = DateTime.UtcNow;
+        Exception? lastException = null;
+
+        for (int attempt = 0; attempt <= _maxRetries; attempt++)
+        {
+            try
+            {
+                if (attempt > 0)
+                {
+                    var backoffDelay = TimeSpan.FromSeconds(Math.Pow(2, attempt));
+                    _logger.LogInformation("Retry attempt {Attempt}/{MaxRetries} after {Delay}s delay",
+                        attempt, _maxRetries, backoffDelay.TotalSeconds);
+                    await Task.Delay(backoffDelay, ct).ConfigureAwait(false);
+                }
+
+                // Build request with audio configuration
+                var requestBody = new
+                {
+                    model = _model,
+                    modalities = audioConfig.Modalities,
+                    audio = new { voice = audioConfig.Voice.ToString().ToLowerInvariant(), format = audioConfig.Format.ToString().ToLowerInvariant() },
+                    messages = new[]
+                    {
+                        new
+                        {
+                            role = "user",
+                            content = text
+                        }
+                    }
+                };
+
+                _httpClient.DefaultRequestHeaders.Clear();
+                _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
+
+                var json = JsonSerializer.Serialize(requestBody);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                cts.CancelAfter(_timeout);
+
+                var response = await _httpClient.PostAsync(
+                    "https://api.openai.com/v1/chat/completions",
+                    content,
+                    cts.Token).ConfigureAwait(false);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                    
+                    if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                    {
+                        throw new InvalidOperationException(
+                            "OpenAI API key is invalid or has been revoked. Please check your API key in Settings → Providers → OpenAI");
+                    }
+                    else if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                    {
+                        _logger.LogWarning("OpenAI rate limit exceeded (attempt {Attempt}/{MaxRetries})", 
+                            attempt + 1, _maxRetries + 1);
+                        if (attempt >= _maxRetries)
+                        {
+                            throw new InvalidOperationException(
+                                "OpenAI rate limit exceeded. Please wait a moment and try again, or upgrade your OpenAI plan.");
+                        }
+                        lastException = new Exception($"Rate limit exceeded: {errorContent}");
+                        continue;
+                    }
+                    else if ((int)response.StatusCode >= 500)
+                    {
+                        _logger.LogWarning("OpenAI server error (attempt {Attempt}/{MaxRetries}): {StatusCode}",
+                            attempt + 1, _maxRetries + 1, response.StatusCode);
+                        if (attempt >= _maxRetries)
+                        {
+                            throw new InvalidOperationException(
+                                $"OpenAI service is experiencing issues (HTTP {response.StatusCode}). Please try again later.");
+                        }
+                        lastException = new Exception($"Server error: {errorContent}");
+                        continue;
+                    }
+
+                    response.EnsureSuccessStatusCode();
+                }
+
+                var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                var responseDoc = JsonDocument.Parse(responseJson);
+
+                if (responseDoc.RootElement.TryGetProperty("choices", out var choices) &&
+                    choices.GetArrayLength() > 0)
+                {
+                    var firstChoice = choices[0];
+                    if (firstChoice.TryGetProperty("message", out var message))
+                    {
+                        string? transcript = null;
+                        string? audioData = null;
+
+                        // Extract text transcript
+                        if (message.TryGetProperty("content", out var contentProp) &&
+                            contentProp.ValueKind == JsonValueKind.String)
+                        {
+                            transcript = contentProp.GetString();
+                        }
+
+                        // Extract audio data
+                        if (message.TryGetProperty("audio", out var audioProp))
+                        {
+                            if (audioProp.TryGetProperty("data", out var dataProp))
+                            {
+                                audioData = dataProp.GetString();
+                            }
+
+                            // Use audio transcript if text content not provided
+                            if (string.IsNullOrEmpty(transcript) &&
+                                audioProp.TryGetProperty("transcript", out var audioTranscript))
+                            {
+                                transcript = audioTranscript.GetString();
+                            }
+                        }
+
+                        if (string.IsNullOrWhiteSpace(audioData))
+                        {
+                            throw new InvalidOperationException("OpenAI did not return audio data in response");
+                        }
+
+                        var duration = DateTime.UtcNow - startTime;
+                        _logger.LogInformation("Audio generated successfully in {Duration}s", duration.TotalSeconds);
+
+                        return new AudioResponse
+                        {
+                            AudioData = audioData,
+                            Transcript = transcript ?? text,
+                            Format = audioConfig.Format.ToString().ToLowerInvariant(),
+                            Voice = audioConfig.Voice.ToString().ToLowerInvariant()
+                        };
+                    }
+                }
+
+                _logger.LogWarning("OpenAI response did not contain expected audio structure");
+                throw new InvalidOperationException("Invalid response structure from OpenAI API");
+            }
+            catch (TaskCanceledException ex)
+            {
+                lastException = ex;
+                _logger.LogWarning(ex, "OpenAI audio request timed out (attempt {Attempt}/{MaxRetries})",
+                    attempt + 1, _maxRetries + 1);
+                if (attempt >= _maxRetries)
+                {
+                    throw new InvalidOperationException(
+                        $"OpenAI audio request timed out after {_timeout.TotalSeconds}s. Please check your internet connection or try again later.", ex);
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                lastException = ex;
+                _logger.LogWarning(ex, "Failed to connect to OpenAI API (attempt {Attempt}/{MaxRetries})",
+                    attempt + 1, _maxRetries + 1);
+                if (attempt >= _maxRetries)
+                {
+                    throw new InvalidOperationException(
+                        "Cannot connect to OpenAI API. Please check your internet connection and try again.", ex);
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                throw;
+            }
+            catch (Exception ex) when (attempt < _maxRetries)
+            {
+                lastException = ex;
+                _logger.LogWarning(ex, "Error generating audio with OpenAI (attempt {Attempt}/{MaxRetries})",
+                    attempt + 1, _maxRetries + 1);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating audio with OpenAI after all retries");
+                throw;
+            }
+        }
+
+        throw new InvalidOperationException(
+            $"Failed to generate audio with OpenAI after {_maxRetries + 1} attempts. Please try again later.", lastException);
+    }
+
+    /// <summary>
     /// Validate the OpenAI API key by calling the models endpoint
     /// Returns validation result with error details
     /// </summary>
@@ -1536,4 +1745,30 @@ public class ValidationResult
     public bool IsValid { get; set; }
     public string Message { get; set; } = string.Empty;
     public List<ModelInfo> AvailableModels { get; set; } = new();
+}
+
+/// <summary>
+/// Response from audio generation API
+/// </summary>
+public class AudioResponse
+{
+    /// <summary>
+    /// Base64-encoded audio data
+    /// </summary>
+    public string AudioData { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Transcript of the generated audio
+    /// </summary>
+    public string Transcript { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Audio format (wav, mp3, etc.)
+    /// </summary>
+    public string Format { get; set; } = "wav";
+
+    /// <summary>
+    /// Voice used for generation
+    /// </summary>
+    public string Voice { get; set; } = "alloy";
 }
