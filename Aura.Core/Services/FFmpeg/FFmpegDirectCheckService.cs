@@ -48,11 +48,20 @@ public class FFmpegDirectCheckService
     private const int TimeoutSeconds = 3;
     private readonly string _managedInstallRoot;
 
-    public FFmpegDirectCheckService(ILogger<FFmpegDirectCheckService> logger)
+    public FFmpegDirectCheckService(
+        ILogger<FFmpegDirectCheckService> logger,
+        string? managedInstallRoot = null)
     {
         _logger = logger;
-        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        _managedInstallRoot = Path.Combine(localAppData, "AuraVideoStudio", "ffmpeg");
+        if (!string.IsNullOrWhiteSpace(managedInstallRoot))
+        {
+            _managedInstallRoot = managedInstallRoot!;
+        }
+        else
+        {
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            _managedInstallRoot = Path.Combine(localAppData, "AuraVideoStudio", "ffmpeg");
+        }
     }
 
     /// <summary>

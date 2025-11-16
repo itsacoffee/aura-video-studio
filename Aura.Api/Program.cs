@@ -6,6 +6,8 @@ using Aura.Api.Serialization;
 using Aura.Api.Startup;
 using Aura.Api.Validation;
 using Aura.Api.Validators;
+using Aura.Core.Configuration;
+using Aura.Core.Data;
 using Aura.Core.Hardware;
 using Aura.Core.Logging;
 using Aura.Core.Models;
@@ -56,6 +58,14 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
     WebRootPath = Path.Combine(AppContext.BaseDirectory, "wwwroot")
 });
 
+// Centralize runtime path resolution so every layer (ASP.NET host, Electron shell, CLI) behaves consistently.
+var defaultUserDataRoot = Path.Combine(
+    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+    "Aura");
+var auraDataRoot = AuraEnvironmentPaths.ResolveDataRoot(defaultUserDataRoot);
+var auraTempRoot = AuraEnvironmentPaths.ResolveTempPath(Path.Combine(auraDataRoot, "Temp"));
+var logsBasePath = AuraEnvironmentPaths.ResolveLogsPath(Path.Combine(auraDataRoot, "logs"));
+
 // Configure JSON options to handle string enum conversion for minimal APIs
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
@@ -63,22 +73,8 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     EnumJsonConverters.AddToOptions(options.SerializerOptions);
 });
 
-// Configure Serilog with structured logging and separate log files
-// Use AURA_LOGS_PATH if set (by Electron or container), otherwise use relative logs/ directory
-var logsBasePath = Environment.GetEnvironmentVariable("AURA_LOGS_PATH") ?? "logs";
-
-// Ensure logs directory exists before Serilog tries to write to it
-try
-{
-    Directory.CreateDirectory(logsBasePath);
-}
-catch (Exception ex)
-{
-    Console.WriteLine($"Warning: Could not create logs directory at {logsBasePath}: {ex.Message}");
-    Console.WriteLine("Falling back to current directory for logs");
-    logsBasePath = "."; // Fallback to current directory if we can't create logs directory
-}
-
+Console.WriteLine($"Aura data root: {auraDataRoot}");
+Console.WriteLine($"Temp directory: {auraTempRoot}");
 Console.WriteLine($"Logs will be written to: {Path.GetFullPath(logsBasePath)}");
 
 var outputTemplate = "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz}] [{Level:u3}] [{CorrelationId}] [{TraceId}] [{SpanId}] {Message:lj} {Properties:j}{NewLine}{Exception}";
@@ -267,14 +263,24 @@ if (usePostgreSQL)
 }
 else
 {
-    var dbPath = builder.Configuration.GetValue<string>("Database:SQLitePath")
-        ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "aura.db");
+    var sqliteFileName = builder.Configuration.GetValue<string>("Database:SQLiteFileName") ?? "aura.db";
+    var configuredSqlitePath = builder.Configuration.GetValue<string>("Database:SQLitePath");
+    var envSqlitePath = Environment.GetEnvironmentVariable("AURA_DATABASE_PATH");
+    var sqlitePath = !string.IsNullOrWhiteSpace(configuredSqlitePath)
+        ? configuredSqlitePath
+        : !string.IsNullOrWhiteSpace(envSqlitePath)
+            ? envSqlitePath
+            : Path.Combine(auraDataRoot, sqliteFileName);
+    sqlitePath = Path.GetFullPath(sqlitePath);
+    Directory.CreateDirectory(Path.GetDirectoryName(sqlitePath)!);
+
+    builder.Services.Configure<DatabasePathOptions>(options => options.SqlitePath = sqlitePath);
 
     var walEnabled = dbPerfOptions.SqliteEnableWAL;
     var cacheSize = -dbPerfOptions.SqliteCacheSizeKB;
     var pageSize = dbPerfOptions.SqlitePageSize;
 
-    connectionString = $"Data Source={dbPath};Mode=ReadWriteCreate;Cache=Shared;" +
+    connectionString = $"Data Source={sqlitePath};Mode=ReadWriteCreate;Cache=Shared;" +
         $"Journal Mode={(walEnabled ? "WAL" : "DELETE")};" +  // Write-Ahead Logging for better concurrency
         "Synchronous=NORMAL;" +            // Faster writes with good reliability
         $"Page Size={pageSize};" +         // Optimal page size for modern systems
@@ -284,7 +290,7 @@ else
         "Foreign Keys=True;";              // Enforce FK constraints
 
     Log.Information("Using SQLite database at {Path} (WAL: {WAL}, Cache: {CacheKB}KB)",
-        dbPath, walEnabled, dbPerfOptions.SqliteCacheSizeKB);
+        sqlitePath, walEnabled, dbPerfOptions.SqliteCacheSizeKB);
 }
 
 // Helper method to configure DbContext options
@@ -617,9 +623,8 @@ builder.Services.AddHostedService<Aura.Api.HostedServices.LlmPrewarmService>();
 builder.Services.AddSingleton<Aura.Core.Services.Conversation.ContextPersistence>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Conversation.ContextPersistence>>();
-    var baseDirectory = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "Aura");
+    var baseDirectory = Path.Combine(auraDataRoot, "context");
+    Directory.CreateDirectory(baseDirectory);
     return new Aura.Core.Services.Conversation.ContextPersistence(logger, baseDirectory);
 });
 builder.Services.AddSingleton<Aura.Core.Services.Conversation.ConversationContextManager>();
@@ -1132,7 +1137,8 @@ builder.Services.AddSingleton<Aura.Core.Services.Analytics.ViewerRetentionPredic
 builder.Services.AddSingleton<Aura.Core.Services.PerformanceAnalytics.AnalyticsPersistence>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.PerformanceAnalytics.AnalyticsPersistence>>();
-    var baseDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura");
+    var baseDirectory = Path.Combine(auraDataRoot, "analytics");
+    Directory.CreateDirectory(baseDirectory);
     return new Aura.Core.Services.PerformanceAnalytics.AnalyticsPersistence(logger, baseDirectory);
 });
 builder.Services.AddSingleton<Aura.Core.Services.PerformanceAnalytics.AnalyticsImporter>();
@@ -1688,8 +1694,8 @@ builder.Services.AddHostedService<Aura.Api.HostedServices.CleanupHostedService>(
 builder.Services.AddSingleton<Aura.Core.Telemetry.RunTelemetryCollector>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<Aura.Core.Telemetry.RunTelemetryCollector>>();
-    var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-    var artifactsPath = Path.Combine(localAppData, "Aura", "jobs");
+    var artifactsPath = Path.Combine(auraDataRoot, "jobs");
+    Directory.CreateDirectory(artifactsPath);
     return new Aura.Core.Telemetry.RunTelemetryCollector(logger, artifactsPath);
 });
 builder.Services.AddSingleton<Aura.Core.Telemetry.TelemetryIntegration>();
@@ -3613,7 +3619,7 @@ apiGroup.MapPost("/settings/save", ([FromBody] Dictionary<string, object> settin
 {
     try
     {
-        var settingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "settings.json");
+        var settingsPath = Path.Combine(auraDataRoot, "settings.json");
         Directory.CreateDirectory(Path.GetDirectoryName(settingsPath)!);
         File.WriteAllText(settingsPath, JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true }));
         return Results.Ok(new { success = true });
@@ -3632,7 +3638,7 @@ apiGroup.MapGet("/settings/load", () =>
 {
     try
     {
-        var settingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "settings.json");
+        var settingsPath = Path.Combine(auraDataRoot, "settings.json");
         if (File.Exists(settingsPath))
         {
             var json = File.ReadAllText(settingsPath);
@@ -3913,7 +3919,7 @@ apiGroup.MapPost("/profiles/apply", ([FromBody] ApplyProfileRequest request) =>
     try
     {
         // Store profile selection in settings
-        var settingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "settings.json");
+        var settingsPath = Path.Combine(auraDataRoot, "settings.json");
         Directory.CreateDirectory(Path.GetDirectoryName(settingsPath)!);
 
         var settings = new Dictionary<string, object> { ["profile"] = request.ProfileName };
@@ -3940,7 +3946,7 @@ apiGroup.MapPost("/providers/paths/save", ([FromBody] ProviderPathsRequest reque
 {
     try
     {
-        var pathsConfigPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "provider-paths.json");
+        var pathsConfigPath = Path.Combine(auraDataRoot, "provider-paths.json");
         Directory.CreateDirectory(Path.GetDirectoryName(pathsConfigPath)!);
 
         var paths = new Dictionary<string, object>
@@ -3969,7 +3975,7 @@ apiGroup.MapGet("/providers/paths/load", () =>
 {
     try
     {
-        var pathsConfigPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "provider-paths.json");
+        var pathsConfigPath = Path.Combine(auraDataRoot, "provider-paths.json");
         if (File.Exists(pathsConfigPath))
         {
             var json = File.ReadAllText(pathsConfigPath);
@@ -4150,7 +4156,7 @@ apiGroup.MapPost("/assets/search", async ([FromBody] AssetSearchRequest request,
                 break;
 
             case "local":
-                var localDirectory = request.LocalDirectory ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "Assets");
+            var localDirectory = request.LocalDirectory ?? Path.Combine(auraDataRoot, "Assets");
                 var localProvider = new Aura.Providers.Images.LocalStockProvider(
                     LoggerFactory.Create(b => b.AddConsole()).CreateLogger<Aura.Providers.Images.LocalStockProvider>(),
                     localDirectory);

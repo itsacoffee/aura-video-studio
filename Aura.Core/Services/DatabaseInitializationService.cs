@@ -6,6 +6,7 @@ using Aura.Core.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Aura.Core.Services;
 
@@ -20,11 +21,23 @@ public class DatabaseInitializationService
 
     public DatabaseInitializationService(
         IServiceScopeFactory scopeFactory,
-        ILogger<DatabaseInitializationService> logger)
+        ILogger<DatabaseInitializationService> logger,
+        IOptions<DatabasePathOptions>? pathOptions = null)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
-        _databasePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "aura.db");
+        _databasePath = ResolveDatabasePath(pathOptions?.Value?.SqlitePath);
+    }
+
+    private static string ResolveDatabasePath(string? configuredPath)
+    {
+        if (!string.IsNullOrWhiteSpace(configuredPath))
+        {
+            return Path.GetFullPath(configuredPath);
+        }
+
+        var defaultPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "aura.db");
+        return Path.GetFullPath(defaultPath);
     }
 
     /// <summary>

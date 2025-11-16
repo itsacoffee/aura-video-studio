@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Aura.Core.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.Services;
@@ -18,9 +19,9 @@ public class CleanupService
     public CleanupService(ILogger<CleanupService> logger)
     {
         _logger = logger;
-        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        _tempBasePath = Path.Combine(localAppData, "Aura", "temp");
-        _proxyBasePath = Path.Combine(localAppData, "Aura", "proxy");
+        var dataRoot = AuraEnvironmentPaths.ResolveDataRoot(null);
+        _tempBasePath = Path.Combine(dataRoot, "temp");
+        _proxyBasePath = Path.Combine(dataRoot, "proxy");
         
         // Ensure directories exist
         Directory.CreateDirectory(_tempBasePath);

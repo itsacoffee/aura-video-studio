@@ -94,7 +94,7 @@ export interface FFmpegRescanResponse {
   installed: boolean;
   version: string | null;
   path: string | null;
-  source: string;
+  source: string | null;
   valid: boolean;
   error: string | null;
   message: string;
@@ -117,10 +117,36 @@ export interface UseExistingFFmpegResponse {
   path: string | null;
   version: string | null;
   source: string;
+  mode?: FFmpegMode;
   title?: string;
   detail?: string;
   correlationId: string;
   howToFix?: string[];
+}
+
+export interface FFmpegDirectCheckCandidate {
+  label: string;
+  path: string | null;
+  exists: boolean;
+  executionAttempted: boolean;
+  exitCode: number | null;
+  timedOut: boolean;
+  rawVersionOutput: string | null;
+  versionParsed: string | null;
+  valid: boolean;
+  error: string | null;
+}
+
+export interface FFmpegDirectCheckResponse {
+  candidates: FFmpegDirectCheckCandidate[];
+  overall: {
+    installed: boolean;
+    valid: boolean;
+    source: string | null;
+    chosenPath: string | null;
+    version: string | null;
+  };
+  correlationId: string;
 }
 
 /**
@@ -297,6 +323,20 @@ export const ffmpegClient = {
       resetCircuitBreaker();
     }
 
+    return response.data;
+  },
+
+  /**
+   * Perform detailed diagnostics across all FFmpeg candidates
+   */
+  async directCheck(): Promise<FFmpegDirectCheckResponse> {
+    const config: ExtendedAxiosRequestConfig = {
+      _skipCircuitBreaker: true,
+    };
+    const response = await apiClient.get<FFmpegDirectCheckResponse>(
+      '/api/debug/ffmpeg/direct-check',
+      config
+    );
     return response.data;
   },
 };

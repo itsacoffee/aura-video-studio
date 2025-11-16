@@ -7,6 +7,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Core.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -36,9 +37,16 @@ public class LocalStorageService : IStorageService
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-        var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        _storageRoot = configuration["Storage:LocalPath"] 
-            ?? Path.Combine(userProfile, "AuraVideoStudio", "MediaLibrary");
+        var configuredRoot = configuration["Storage:LocalPath"];
+        if (!string.IsNullOrWhiteSpace(configuredRoot))
+        {
+            _storageRoot = AuraEnvironmentPaths.EnsureDirectory(configuredRoot);
+        }
+        else
+        {
+            var dataRoot = AuraEnvironmentPaths.ResolveDataRoot(null);
+            _storageRoot = AuraEnvironmentPaths.EnsureDirectory(Path.Combine(dataRoot, "MediaLibrary"));
+        }
         
         _mediaPath = Path.Combine(_storageRoot, "Media");
         _thumbnailPath = Path.Combine(_storageRoot, "Thumbnails");

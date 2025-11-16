@@ -1,12 +1,42 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiUrl } from '@/config/api';
 import { loggingService } from '@/services/loggingService';
+import type { DesktopBridgeDiagnostics } from '@/types/ambient/window';
 
 export type BackendHealthStatus = 'online' | 'offline';
 
+interface DatabaseMigrationStatus {
+  current?: string | null;
+  latest?: string | null;
+  pending?: number;
+  isUpToDate?: boolean;
+}
+
+interface DatabaseHealthSnapshot {
+  connected?: boolean;
+  provider?: string;
+  dataSource?: string | null;
+  responseTimeMs?: number | null;
+  error?: string | null;
+  migration?: DatabaseMigrationStatus;
+}
+
+interface ApiHealthResponse {
+  status: string;
+  version?: string;
+  environment?: string;
+  machineName?: string;
+  osPlatform?: string;
+  osVersion?: string;
+  architecture?: string;
+  timestamp: string;
+  database?: DatabaseHealthSnapshot;
+}
+
 export interface BackendHealthSnapshot {
   status: BackendHealthStatus;
-  diagnostics: Record<string, unknown> | null;
+  diagnostics: ApiHealthResponse | null;
+  bridge: DesktopBridgeDiagnostics | null;
   error?: string | null;
   lastChecked: Date | null;
 }
@@ -15,6 +45,7 @@ export function useBackendHealth(pollIntervalMs = 15000) {
   const [snapshot, setSnapshot] = useState<BackendHealthSnapshot>({
     status: 'offline',
     diagnostics: null,
+    bridge: typeof window !== 'undefined' ? window.desktopBridge?.getCachedDiagnostics?.() ?? null : null,
     error: null,
     lastChecked: null
   });
@@ -34,10 +65,14 @@ export function useBackendHealth(pollIntervalMs = 15000) {
         throw new Error(`HTTP ${response.status}`);
       }
 
-      const diagnostics = await response.json();
+      const diagnostics = (await response.json()) as ApiHealthResponse;
+      const desktopDiagnostics =
+        typeof window !== 'undefined' ? window.desktopBridge?.getCachedDiagnostics?.() ?? null : null;
+
       setSnapshot({
         status: 'online',
         diagnostics,
+        bridge: desktopDiagnostics,
         error: null,
         lastChecked: new Date()
       });
@@ -50,6 +85,7 @@ export function useBackendHealth(pollIntervalMs = 15000) {
       setSnapshot((prev) => ({
         status: 'offline',
         diagnostics: prev.diagnostics,
+        bridge: prev.bridge,
         error: err.message,
         lastChecked: new Date()
       }));

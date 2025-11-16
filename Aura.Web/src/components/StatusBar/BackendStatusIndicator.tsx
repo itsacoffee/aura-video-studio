@@ -6,6 +6,7 @@ import {
   ArrowClockwise16Regular,
 } from '@fluentui/react-icons';
 import { useMemo } from 'react';
+import { env } from '@/config/env';
 import { useBackendHealth } from '@/hooks/useBackendHealth';
 
 const useStyles = makeStyles({
@@ -50,22 +51,49 @@ const statusCopy = {
 
 export function BackendStatusIndicator() {
   const styles = useStyles();
-  const { status, diagnostics, error, lastChecked, refresh } = useBackendHealth();
+  const { status, diagnostics, bridge, error, lastChecked, refresh } = useBackendHealth();
   const statusKey = status ?? 'unknown';
   const copy = statusCopy[statusKey] ?? statusCopy.unknown;
   const Icon = copy.icon;
+  const resolvedBaseUrl = bridge?.backend?.baseUrl ?? env.apiBaseUrl;
+  const databaseInfo = diagnostics?.database;
+  const migrationInfo = diagnostics?.database?.migration;
+  const serverTimestamp = diagnostics ? new Date(diagnostics.timestamp) : null;
 
   const tooltip = useMemo(() => {
     return (
       <div className={styles.tooltipContent}>
         <span className={styles.label}>{copy.label}</span>
-        {diagnostics?.backend?.baseUrl && (
-          <span className={styles.meta}>Base URL: {diagnostics.backend.baseUrl}</span>
+        {resolvedBaseUrl && <span className={styles.meta}>API Base: {resolvedBaseUrl}</span>}
+        {bridge?.backend?.baseUrl && (
+          <span className={styles.meta}>Desktop Bridge: {bridge.backend.baseUrl}</span>
         )}
-        {diagnostics?.environment?.mode && (
+        {diagnostics?.environment && (
+          <span className={styles.meta}>Server Environment: {diagnostics.environment}</span>
+        )}
+        {diagnostics?.version && (
+          <span className={styles.meta}>API Version: v{diagnostics.version}</span>
+        )}
+        {databaseInfo && (
           <span className={styles.meta}>
-            Environment: {diagnostics.environment.mode}{' '}
-            {diagnostics.environment.version ? `(${diagnostics.environment.version})` : ''}
+            Database: {databaseInfo.provider ?? 'SQLite'} •{' '}
+            {databaseInfo.connected ? 'Connected' : 'Unavailable'}
+            {migrationInfo && (
+              <>
+                {' '}
+                · Migration {migrationInfo.current ?? 'n/a'}
+                {typeof migrationInfo.pending === 'number' && migrationInfo.pending > 0
+                  ? ` (${migrationInfo.pending} pending)`
+                  : migrationInfo.isUpToDate
+                    ? ' (up-to-date)'
+                    : null}
+              </>
+            )}
+          </span>
+        )}
+        {serverTimestamp && (
+          <span className={styles.meta}>
+            Server Time: {serverTimestamp.toLocaleString(undefined, { hour12: false })}
           </span>
         )}
         {lastChecked && (
@@ -76,7 +104,20 @@ export function BackendStatusIndicator() {
         {error && <span className={styles.meta}>Last error: {error}</span>}
       </div>
     );
-  }, [copy.label, diagnostics, error, lastChecked, styles.label, styles.meta, styles.tooltipContent]);
+  }, [
+    bridge,
+    copy.label,
+    databaseInfo,
+    diagnostics,
+    error,
+    lastChecked,
+    migrationInfo,
+    resolvedBaseUrl,
+    serverTimestamp,
+    styles.label,
+    styles.meta,
+    styles.tooltipContent,
+  ]);
 
   return (
     <Tooltip content={tooltip} relationship="label">

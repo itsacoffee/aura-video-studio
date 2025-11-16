@@ -99,10 +99,7 @@ public class KeyStore : IKeyStore
     {
         try
         {
-            var settingsPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "Aura",
-                "settings.json");
+            var settingsPath = Path.Combine(AuraEnvironmentPaths.ResolveDataRoot(null), "settings.json");
 
             if (!File.Exists(settingsPath))
             {

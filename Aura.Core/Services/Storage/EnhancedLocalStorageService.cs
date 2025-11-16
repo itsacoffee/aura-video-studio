@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Core.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Aura.Core.Models.Storage;
@@ -74,13 +75,13 @@ public class EnhancedLocalStorageService : IEnhancedLocalStorageService
         configuration.GetSection("Storage:Local").Bind(_config);
         
         // Set default storage root if not configured
-        if (string.IsNullOrEmpty(_config.StorageRoot))
+        if (string.IsNullOrWhiteSpace(_config.StorageRoot))
         {
-            var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            _config.StorageRoot = Path.Combine(userProfile, "AuraVideoStudio");
+            var dataRoot = AuraEnvironmentPaths.ResolveDataRoot(null);
+            _config.StorageRoot = Path.Combine(dataRoot, "Workspace");
         }
         
-        _storageRoot = _config.StorageRoot;
+        _storageRoot = AuraEnvironmentPaths.EnsureDirectory(_config.StorageRoot);
         _cacheIndexPath = Path.Combine(_storageRoot, WorkspaceFolders.Cache, "index.json");
         
         // Initialize workspace structure

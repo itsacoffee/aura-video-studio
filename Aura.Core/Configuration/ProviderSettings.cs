@@ -23,13 +23,18 @@ public class ProviderSettings
     {
         _logger = logger;
         
-        // Determine portable root from assembly location
-        var assemblyLocation = Assembly.GetExecutingAssembly().Location;
-        var assemblyDir = Path.GetDirectoryName(assemblyLocation);
-        
-        // For published apps, we're in the root. For dev, we're in bin/Debug/net8.0
-        // Go up until we find a reasonable root (has Aura.Api.dll or is parent of bin folder)
-        _portableRoot = DeterminePortableRoot(assemblyDir ?? Directory.GetCurrentDirectory());
+        var envDataRoot = AuraEnvironmentPaths.TryGetDataRootFromEnvironment();
+        if (!string.IsNullOrWhiteSpace(envDataRoot))
+        {
+            _portableRoot = AuraEnvironmentPaths.EnsureDirectory(envDataRoot);
+        }
+        else
+        {
+            // Determine portable root from assembly location
+            var assemblyLocation = Assembly.GetExecutingAssembly().Location;
+            var assemblyDir = Path.GetDirectoryName(assemblyLocation);
+            _portableRoot = AuraEnvironmentPaths.EnsureDirectory(DeterminePortableRoot(assemblyDir ?? Directory.GetCurrentDirectory()));
+        }
         
         // Store settings in AuraData subfolder
         var auraDataDir = Path.Combine(_portableRoot, "AuraData");

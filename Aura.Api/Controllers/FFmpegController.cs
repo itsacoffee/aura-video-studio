@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Api.Models.ApiModels.V1;
 using Aura.Core.Configuration;
 using Aura.Core.Dependencies;
 using Aura.Core.Downloads;
@@ -65,19 +66,27 @@ public class FFmpegController : ControllerBase
                 await _resolver.PersistConfigurationAsync(result, mode, ct).ConfigureAwait(false);
             }
 
-            return Ok(new
+            string? lastValidationResult = null;
+            if (config != null)
             {
-                installed = result.Found && result.IsValid,
-                version = result.Version,
-                path = result.Path,
-                source = result.Source,
-                mode = mode.ToString().ToLowerInvariant(),
-                valid = result.IsValid,
-                error = result.Error,
-                lastValidatedAt = config?.LastValidatedAt,
-                lastValidationResult = config?.LastValidationResult.ToString().ToLowerInvariant() ?? "unknown",
-                correlationId
-            });
+                lastValidationResult = config.LastValidationResult.ToString().ToLowerInvariant();
+            }
+
+            var response = new FFmpegStatusResponse(
+                Installed: result.Found && result.IsValid,
+                Valid: result.IsValid,
+                Source: result.Source,
+                Version: result.Version,
+                Path: result.Path,
+                Mode: mode.ToString().ToLowerInvariant(),
+                Error: result.Error,
+                ErrorCode: null,
+                ErrorMessage: result.Error,
+                LastValidatedAt: config?.LastValidatedAt,
+                LastValidationResult: lastValidationResult,
+                CorrelationId: correlationId);
+
+            return Ok(response);
         }
         catch (Exception ex)
         {
@@ -128,45 +137,49 @@ public class FFmpegController : ControllerBase
                     mode
                 );
                 
-                return Ok(new
-                {
-                    success = true,
-                    installed = true,
-                    valid = true,
-                    version = result.Version,
-                    path = result.Path,
-                    source = result.Source,
-                    mode = mode.ToString().ToLowerInvariant(),
-                    message = $"FFmpeg detected at {result.Path}",
-                    correlationId
-                });
+                var successResponse = new FFmpegDetectResponse(
+                    Success: true,
+                    Installed: true,
+                    Valid: true,
+                    Version: result.Version,
+                    Path: result.Path,
+                    Source: result.Source,
+                    Mode: mode.ToString().ToLowerInvariant(),
+                    Message: $"FFmpeg detected at {result.Path}",
+                    AttemptedPaths: result.AttemptedPaths,
+                    Detail: null,
+                    HowToFix: null,
+                    CorrelationId: correlationId);
+
+                return Ok(successResponse);
             }
-            else
-            {
-                _logger.LogWarning(
-                    "[{CorrelationId}] FFmpeg not detected: {Error}",
-                    correlationId,
-                    result.Error
-                );
-                
-                return Ok(new
+
+            _logger.LogWarning(
+                "[{CorrelationId}] FFmpeg not detected: {Error}",
+                correlationId,
+                result.Error
+            );
+            
+            var failureResponse = new FFmpegDetectResponse(
+                Success: false,
+                Installed: false,
+                Valid: false,
+                Version: null,
+                Path: null,
+                Source: result.Source,
+                Mode: "none",
+                Message: result.Error ?? "FFmpeg not found on this system",
+                AttemptedPaths: result.AttemptedPaths,
+                Detail: "FFmpeg was not found. You can install it automatically or specify a custom path.",
+                HowToFix: new[]
                 {
-                    success = false,
-                    installed = false,
-                    valid = false,
-                    mode = "none",
-                    message = result.Error ?? "FFmpeg not found on this system",
-                    attemptedPaths = result.AttemptedPaths,
-                    detail = "FFmpeg was not found. You can install it automatically or specify a custom path.",
-                    howToFix = new[]
-                    {
-                        "Click 'Install FFmpeg' to download and install automatically",
-                        "Or manually install FFmpeg and use 'Re-scan' to detect it",
-                        "Or use 'Browse for FFmpeg' to specify a custom installation path"
-                    },
-                    correlationId
-                });
-            }
+                    "Click 'Install FFmpeg' to download and install automatically",
+                    "Or manually install FFmpeg and use 'Re-scan' to detect it",
+                    "Or use 'Browse for FFmpeg' to specify a custom installation path"
+                },
+                CorrelationId: correlationId);
+
+            return Ok(failureResponse);
         }
         catch (Exception ex)
         {
@@ -205,16 +218,21 @@ public class FFmpegController : ControllerBase
 
             if (string.IsNullOrWhiteSpace(request.Path))
             {
-                return BadRequest(new
-                {
-                    success = false,
-                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E345",
-                    title = "Invalid Path",
-                    status = 400,
-                    detail = "FFmpeg path is required",
-                    errorCode = "E345",
-                    correlationId
-                });
+                var errorResponse = new FFmpegPathValidationResponse(
+                    Success: false,
+                    Message: "FFmpeg path is required",
+                    Installed: false,
+                    Valid: false,
+                    Path: null,
+                    Version: null,
+                    Source: "None",
+                    Mode: "none",
+                    CorrelationId: correlationId,
+                    Title: "Invalid Path",
+                    Detail: "FFmpeg path is required",
+                    ErrorCode: "E345");
+
+                return BadRequest(errorResponse);
             }
 
             // Validate the custom path
@@ -229,24 +247,29 @@ public class FFmpegController : ControllerBase
                     result.Error
                 );
                 
-                return BadRequest(new
-                {
-                    success = false,
-                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E346",
-                    title = "Invalid FFmpeg Path",
-                    status = 400,
-                    detail = result.Error ?? "The specified path does not contain a valid FFmpeg executable",
-                    errorCode = "E346",
-                    howToFix = new[]
+                var invalidResponse = new FFmpegPathValidationResponse(
+                    Success: false,
+                    Message: result.Error ?? "The specified path does not contain a valid FFmpeg executable",
+                    Installed: false,
+                    Valid: false,
+                    Path: result.Path,
+                    Version: result.Version,
+                    Source: "Configured",
+                    Mode: "custom",
+                    CorrelationId: correlationId,
+                    Title: "Invalid FFmpeg Path",
+                    Detail: result.Error ?? "The specified path does not contain a valid FFmpeg executable",
+                    ErrorCode: "E346",
+                    HowToFix: new[]
                     {
                         "Ensure the path points to ffmpeg.exe (Windows) or ffmpeg (Unix)",
                         "Verify FFmpeg is properly installed and not corrupted",
                         "Try running 'ffmpeg -version' manually to test the executable",
                         "Download a fresh copy of FFmpeg if the binary is damaged"
                     },
-                    attemptedPaths = result.AttemptedPaths,
-                    correlationId
-                });
+                    AttemptedPaths: result.AttemptedPaths);
+
+                return BadRequest(invalidResponse);
             }
 
             // Persist custom configuration
@@ -258,18 +281,18 @@ public class FFmpegController : ControllerBase
                 result.Path
             );
 
-            return Ok(new
-            {
-                success = true,
-                message = $"FFmpeg validated successfully at {result.Path}",
-                installed = true,
-                valid = true,
-                path = result.Path,
-                version = result.Version,
-                source = "Configured",
-                mode = "custom",
-                correlationId
-            });
+            var successResponse = new FFmpegPathValidationResponse(
+                Success: true,
+                Message: $"FFmpeg validated successfully at {result.Path}",
+                Installed: true,
+                Valid: true,
+                Path: result.Path,
+                Version: result.Version,
+                Source: "Configured",
+                Mode: "custom",
+                CorrelationId: correlationId);
+
+            return Ok(successResponse);
         }
         catch (Exception ex)
         {
@@ -310,19 +333,21 @@ public class FFmpegController : ControllerBase
 
             if (ffmpegEngine == null)
             {
-                return NotFound(new
-                {
-                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E341",
-                    title = "FFmpeg Not Found in Manifest",
-                    status = 404,
-                    detail = "FFmpeg not found in engine manifest",
-                    howToFix = new[]
+                var notFoundResponse = new FFmpegInstallErrorResponse(
+                    Success: false,
+                    Message: "FFmpeg not found in engine manifest",
+                    Title: "FFmpeg Not Found in Manifest",
+                    Detail: "FFmpeg not found in engine manifest",
+                    ErrorCode: "E341",
+                    Type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E341",
+                    HowToFix: new[]
                     {
                         "Check that the engine manifest is properly configured",
                         "Contact support if the issue persists"
                     },
-                    correlationId
-                });
+                    CorrelationId: correlationId);
+
+                return NotFound(notFoundResponse);
             }
 
             var mirrors = new List<string>();
@@ -341,19 +366,21 @@ public class FFmpegController : ControllerBase
 
             if (mirrors.Count == 0)
             {
-                return BadRequest(new
-                {
-                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E342",
-                    title = "No Download Mirrors Available",
-                    status = 400,
-                    detail = "No download mirrors available for FFmpeg",
-                    howToFix = new[]
+                var mirrorsResponse = new FFmpegInstallErrorResponse(
+                    Success: false,
+                    Message: "No download mirrors available for FFmpeg",
+                    Title: "No Download Mirrors Available",
+                    Detail: "No download mirrors available for FFmpeg",
+                    ErrorCode: "E342",
+                    Type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E342",
+                    HowToFix: new[]
                     {
                         "Check your internet connection",
                         "Download FFmpeg manually and use the 'Use Existing FFmpeg' option"
                     },
-                    correlationId
-                });
+                    CorrelationId: correlationId);
+
+                return BadRequest(mirrorsResponse);
             }
 
             _logger.LogInformation("[{CorrelationId}] Installing FFmpeg from {Count} mirrors", correlationId, mirrors.Count);
@@ -373,18 +400,17 @@ public class FFmpegController : ControllerBase
                 _logger.LogWarning("[{CorrelationId}] FFmpeg installation failed: {Error}", 
                     correlationId, installResult.ErrorMessage);
 
-                return Ok(new
-                {
-                    success = false,
-                    message = installResult.ErrorMessage ?? "Failed to install FFmpeg",
-                    type = $"https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/ffmpeg-errors.md#{errorCode}",
-                    title = "FFmpeg Installation Failed",
-                    status = 200,
-                    detail = GenerateUserFriendlyInstallError(errorCode, installResult.ErrorMessage),
-                    errorCode,
-                    howToFix,
-                    correlationId
-                });
+                var installErrorResponse = new FFmpegInstallErrorResponse(
+                    Success: false,
+                    Message: installResult.ErrorMessage ?? "Failed to install FFmpeg",
+                    Title: "FFmpeg Installation Failed",
+                    Detail: GenerateUserFriendlyInstallError(errorCode, installResult.ErrorMessage),
+                    ErrorCode: errorCode,
+                    Type: $"https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/ffmpeg-errors.md#{errorCode}",
+                    HowToFix: howToFix,
+                    CorrelationId: correlationId);
+
+                return Ok(installErrorResponse);
             }
 
             _resolver.InvalidateCache();
@@ -409,33 +435,32 @@ public class FFmpegController : ControllerBase
             _logger.LogInformation("[{CorrelationId}] FFmpeg installed successfully: {Path}",
                 correlationId, installResult.FfmpegPath);
 
-            return Ok(new
-            {
-                success = true,
-                message = "FFmpeg installed successfully",
-                path = installResult.FfmpegPath,
-                version = installResult.ValidationOutput,
-                installedAt = installResult.InstalledAt,
-                mode = "local",
-                correlationId
-            });
+            var successResponse = new FFmpegInstallSuccessResponse(
+                Success: true,
+                Message: "FFmpeg installed successfully",
+                Path: installResult.FfmpegPath ?? string.Empty,
+                Version: installResult.ValidationOutput,
+                InstalledAt: installResult.InstalledAt,
+                Mode: "local",
+                CorrelationId: correlationId);
+
+            return Ok(successResponse);
         }
         catch (OperationCanceledException)
         {
             _logger.LogInformation("[{CorrelationId}] FFmpeg installation cancelled", correlationId);
             
-            return Ok(new
-            {
-                success = false,
-                message = "Installation was cancelled",
-                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E998",
-                title = "Installation Cancelled",
-                status = 200,
-                detail = "The installation was cancelled by the user or timed out",
-                errorCode = "E998",
-                howToFix = new[] { "Try the installation again if it was not intentionally cancelled" },
-                correlationId
-            });
+            var cancelledResponse = new FFmpegInstallErrorResponse(
+                Success: false,
+                Message: "Installation was cancelled",
+                Title: "Installation Cancelled",
+                Detail: "The installation was cancelled by the user or timed out",
+                ErrorCode: "E998",
+                Type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E998",
+                HowToFix: new[] { "Try the installation again if it was not intentionally cancelled" },
+                CorrelationId: correlationId);
+
+            return Ok(cancelledResponse);
         }
         catch (Exception ex)
         {
@@ -443,18 +468,17 @@ public class FFmpegController : ControllerBase
 
             var errorMessage = ClassifyNetworkException(ex);
 
-            return Ok(new
-            {
-                success = false,
-                message = errorMessage.message,
-                type = $"https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/ffmpeg-errors.md#{errorMessage.code}",
-                title = errorMessage.title,
-                status = 200,
-                detail = errorMessage.detail,
-                errorCode = errorMessage.code,
-                howToFix = errorMessage.howToFix,
-                correlationId
-            });
+            var unexpectedResponse = new FFmpegInstallErrorResponse(
+                Success: false,
+                Message: errorMessage.message,
+                Title: errorMessage.title,
+                Detail: errorMessage.detail,
+                ErrorCode: errorMessage.code,
+                Type: $"https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/ffmpeg-errors.md#{errorMessage.code}",
+                HowToFix: errorMessage.howToFix,
+                CorrelationId: correlationId);
+
+            return Ok(unexpectedResponse);
         }
     }
 
@@ -627,20 +651,20 @@ public class FFmpegController : ControllerBase
             // Perform resolution
             var result = await _resolver.ResolveAsync(null, forceRefresh: true, ct).ConfigureAwait(false);
 
-            return Ok(new
-            {
-                success = result.Found && result.IsValid,
-                installed = result.Found && result.IsValid,
-                version = result.Version,
-                path = result.Path,
-                source = result.Source,
-                valid = result.IsValid,
-                error = result.Error,
-                message = result.Found && result.IsValid 
-                    ? $"FFmpeg found at {result.Path}" 
+            var response = new FFmpegRescanResponse(
+                Success: result.Found && result.IsValid,
+                Installed: result.Found && result.IsValid,
+                Version: result.Version,
+                Path: result.Path,
+                Source: result.Source,
+                Valid: result.IsValid,
+                Error: result.Error,
+                Message: result.Found && result.IsValid
+                    ? $"FFmpeg found at {result.Path}"
                     : "FFmpeg not found or invalid",
-                correlationId
-            });
+                CorrelationId: correlationId);
+
+            return Ok(response);
         }
         catch (Exception ex)
         {
@@ -675,15 +699,21 @@ public class FFmpegController : ControllerBase
 
             if (string.IsNullOrWhiteSpace(request.Path))
             {
-                return BadRequest(new
-                {
-                    success = false,
-                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E345",
-                    title = "Invalid Path",
-                    status = 400,
-                    detail = "FFmpeg path is required",
-                    correlationId
-                });
+                var errorResponse = new FFmpegPathValidationResponse(
+                    Success: false,
+                    Message: "FFmpeg path is required",
+                    Installed: false,
+                    Valid: false,
+                    Path: null,
+                    Version: null,
+                    Source: "None",
+                    Mode: "none",
+                    CorrelationId: correlationId,
+                    Title: "Invalid Path",
+                    Detail: "FFmpeg path is required",
+                    ErrorCode: "E345");
+
+                return BadRequest(errorResponse);
             }
 
             // Resolve the path (handles directory vs file, bin subdirectory, etc.)
@@ -691,38 +721,46 @@ public class FFmpegController : ControllerBase
 
             if (!result.Found || !result.IsValid)
             {
-                return BadRequest(new
-                {
-                    success = false,
-                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E346",
-                    title = "Invalid FFmpeg",
-                    status = 400,
-                    detail = result.Error ?? "The specified path does not contain a valid FFmpeg executable",
-                    howToFix = new[]
+                var invalidResponse = new FFmpegPathValidationResponse(
+                    Success: false,
+                    Message: result.Error ?? "The specified path does not contain a valid FFmpeg executable",
+                    Installed: false,
+                    Valid: false,
+                    Path: result.Path,
+                    Version: result.Version,
+                    Source: "Configured",
+                    Mode: "custom",
+                    CorrelationId: correlationId,
+                    Title: "Invalid FFmpeg",
+                    Detail: result.Error ?? "The specified path does not contain a valid FFmpeg executable",
+                    ErrorCode: "E346",
+                    HowToFix: new[]
                     {
                         "Ensure the path points to ffmpeg.exe (or ffmpeg on Unix)",
                         "Verify FFmpeg is properly installed and not corrupted",
                         "Try running 'ffmpeg -version' manually to test",
                         "Download a fresh copy of FFmpeg if needed"
                     },
-                    correlationId
-                });
+                    AttemptedPaths: result.AttemptedPaths);
+
+                return BadRequest(invalidResponse);
             }
 
             _logger.LogInformation("[{CorrelationId}] FFmpeg validated at: {Path}",
                 correlationId, result.Path);
 
-            return Ok(new
-            {
-                success = true,
-                message = $"FFmpeg validated successfully at {result.Path}",
-                installed = true,
-                valid = true,
-                path = result.Path,
-                version = result.Version,
-                source = "Configured",
-                correlationId
-            });
+            var successResponse = new FFmpegPathValidationResponse(
+                Success: true,
+                Message: $"FFmpeg validated successfully at {result.Path}",
+                Installed: true,
+                Valid: true,
+                Path: result.Path,
+                Version: result.Version,
+                Source: "Configured",
+                Mode: "custom",
+                CorrelationId: correlationId);
+
+            return Ok(successResponse);
         }
         catch (Exception ex)
         {

@@ -32,6 +32,7 @@ This PR updates the FFmpeg card in Settings/Downloads to use the comprehensive `
 - Changed install button text to "Install Managed FFmpeg" (line 356)
 - Display Version, Path, and Source fields when FFmpeg is detected (lines 320-367)
 - Improved error handling to parse HTTP error responses (lines 101-115)
+- Added Technical Details expander that calls `/api/debug/ffmpeg/direct-check` for per-candidate diagnostics (PR-003 follow-up)
 - **Impact**: Card never shows "Installed" unless FFmpeg is truly ready (installed=true, valid=true, version!=null, versionMeetsRequirement=true)
 
 **File: `Aura.Web/src/components/FirstRun/FFmpegSetup.tsx`**

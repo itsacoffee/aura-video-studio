@@ -1,10 +1,15 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Core.Data;
 using Aura.Core.Services.Health;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Hosting;
 using System.Runtime.InteropServices;
@@ -23,26 +28,29 @@ public class HealthController : ControllerBase
     private readonly SystemHealthChecker _systemHealthChecker;
     private readonly ILogger<HealthController> _logger;
     private readonly IHostEnvironment _hostEnvironment;
+    private readonly IDbContextFactory<AuraDbContext> _dbContextFactory;
 
     public HealthController(
         ProviderHealthMonitor healthMonitor,
         ProviderHealthService healthService,
         SystemHealthChecker systemHealthChecker,
         ILogger<HealthController> logger,
-        IHostEnvironment hostEnvironment)
+        IHostEnvironment hostEnvironment,
+        IDbContextFactory<AuraDbContext> dbContextFactory)
     {
         _healthMonitor = healthMonitor;
         _healthService = healthService;
         _systemHealthChecker = systemHealthChecker;
         _logger = logger;
         _hostEnvironment = hostEnvironment;
+        _dbContextFactory = dbContextFactory;
     }
 
     /// <summary>
     /// Get overall API health summary
     /// </summary>
     [HttpGet]
-    public ActionResult<ApiHealthResponse> Get()
+    public async Task<ActionResult<ApiHealthResponse>> Get(CancellationToken ct)
     {
         var response = new ApiHealthResponse
         {
@@ -55,6 +63,8 @@ public class HealthController : ControllerBase
             Architecture = RuntimeInformation.OSArchitecture.ToString(),
             Timestamp = DateTime.UtcNow
         };
+
+        response.Database = await BuildDatabaseHealthAsync(ct).ConfigureAwait(false);
 
         return Ok(response);
     }
@@ -195,6 +205,63 @@ public class HealthController : ControllerBase
         }
 
         return result;
+    }
+
+    private async Task<DatabaseHealthSnapshot> BuildDatabaseHealthAsync(CancellationToken ct)
+    {
+        var snapshot = new DatabaseHealthSnapshot
+        {
+            Provider = "Unknown",
+            Migration = new DatabaseMigrationStatus()
+        };
+
+        try
+        {
+            await using var context = await _dbContextFactory.CreateDbContextAsync(ct).ConfigureAwait(false);
+            snapshot.Provider = context.Database.ProviderName ?? "Unknown";
+
+            var stopwatch = Stopwatch.StartNew();
+            snapshot.Connected = await context.Database.CanConnectAsync(ct).ConfigureAwait(false);
+            stopwatch.Stop();
+            snapshot.ResponseTimeMs = stopwatch.Elapsed.TotalMilliseconds;
+
+            if (!snapshot.Connected)
+            {
+                snapshot.Error = "Unable to connect to database";
+                return snapshot;
+            }
+
+            var migrationsAssembly = context.Database.GetService<IMigrationsAssembly>();
+            var historyRepository = context.Database.GetService<IHistoryRepository>();
+
+            var appliedMigrations = historyRepository
+                .GetAppliedMigrations()
+                .Select(m => m.MigrationId)
+                .ToList();
+
+            var allMigrations = migrationsAssembly.Migrations.Keys.OrderBy(m => m).ToList();
+            var pendingMigrations = allMigrations
+                .Except(appliedMigrations, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            snapshot.Migration = new DatabaseMigrationStatus
+            {
+                Current = appliedMigrations.LastOrDefault(),
+                Latest = allMigrations.LastOrDefault(),
+                Pending = pendingMigrations.Count,
+                IsUpToDate = pendingMigrations.Count == 0
+            };
+
+            snapshot.DataSource = context.Database.GetDbConnection().DataSource;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Database health check failed");
+            snapshot.Connected = false;
+            snapshot.Error = ex.Message;
+        }
+
+        return snapshot;
     }
 
     private bool IsLlmProvider(string name) =>
@@ -404,6 +471,28 @@ public class ApiHealthResponse
     public string? OsVersion { get; set; }
     public string? Architecture { get; set; }
     public DateTime Timestamp { get; set; }
+    public DatabaseHealthSnapshot? Database { get; set; }
+}
+
+/// <summary>
+/// Represents current database connectivity and migration status.
+/// </summary>
+public class DatabaseHealthSnapshot
+{
+    public bool Connected { get; set; }
+    public string Provider { get; set; } = "Unknown";
+    public string? DataSource { get; set; }
+    public double? ResponseTimeMs { get; set; }
+    public string? Error { get; set; }
+    public DatabaseMigrationStatus Migration { get; set; } = new();
+}
+
+public class DatabaseMigrationStatus
+{
+    public string? Current { get; set; }
+    public string? Latest { get; set; }
+    public int Pending { get; set; }
+    public bool IsUpToDate { get; set; }
 }
 
 /// <summary>
