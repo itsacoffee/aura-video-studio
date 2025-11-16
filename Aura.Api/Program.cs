@@ -566,6 +566,9 @@ builder.Services.AddSingleton<Aura.Core.Orchestrator.ScriptOrchestrator>(sp =>
     return new Aura.Core.Orchestrator.ScriptOrchestrator(logger, loggerFactory, mixer, providers);
 });
 
+// Register streaming orchestrator for SSE support
+builder.Services.AddSingleton<Aura.Core.Services.StreamingOrchestrator>();
+
 // Keep backward compatibility - secure key store
 builder.Services.AddSingleton<Aura.Core.Configuration.IKeyStore, Aura.Core.Configuration.KeyStore>();
 
