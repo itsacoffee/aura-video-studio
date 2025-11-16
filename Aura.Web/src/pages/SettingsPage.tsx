@@ -55,6 +55,7 @@ import { HardwareConfigurationTab } from '../components/Settings/HardwareConfigu
 import { KeyboardShortcutsTab } from '../components/Settings/KeyboardShortcutsTab';
 import { LocalEngines } from '../components/Settings/LocalEngines';
 import { LoggingSettingsTab } from '../components/Settings/LoggingSettingsTab';
+import { NetworkConnectivityTest } from '../components/Settings/NetworkConnectivityTest';
 import { OutputSettingsTab } from '../components/Settings/OutputSettingsTab';
 import { PerformanceSettingsTab } from '../components/Settings/PerformanceSettingsTab';
 import { ProviderConfigurationPanel } from '../components/Settings/ProviderConfigurationPanel';
@@ -1529,6 +1530,14 @@ export function SettingsPage() {
                   </div>
                 )}
               </div>
+            </Card>
+
+            <Card className={styles.section} style={{ marginTop: tokens.spacingVerticalL }}>
+              <Title2>Troubleshooting</Title2>
+              <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
+                Network diagnostics to help troubleshoot connectivity issues with APIs and services
+              </Text>
+              <NetworkConnectivityTest />
             </Card>
           </>
         )}
