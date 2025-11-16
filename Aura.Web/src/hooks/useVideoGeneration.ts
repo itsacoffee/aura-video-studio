@@ -3,13 +3,14 @@
  * Handles complete video generation lifecycle with SSE updates
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
-  generateVideo,
   cancelVideoGeneration,
+  generateVideo,
   type VideoGenerationRequest,
   type VideoStatus,
 } from '../services/api/videoApi';
+import type { ProgressEventDto } from '../types/api-v1';
 import { useApiError } from './useApiError';
 import { useSSEConnection } from './useSSEConnection';
 
@@ -60,15 +61,19 @@ export function useVideoGeneration(
         }
 
         case 'step-progress': {
-          const progressData = data as {
-            step: string;
-            phase: string;
-            progressPct: number;
-            message: string;
-          };
-          setProgress(progressData.progressPct);
+          const progressData = data as ProgressEventDto & { progressPct?: number };
+          const nextPercent =
+            typeof progressData.percent === 'number'
+              ? progressData.percent
+              : typeof progressData.progressPct === 'number'
+                ? progressData.progressPct
+                : progress;
+          setProgress(nextPercent);
           if (options.onProgress) {
-            options.onProgress(progressData.progressPct, progressData.message);
+            options.onProgress(
+              nextPercent,
+              progressData.message ?? progressData.substageDetail ?? undefined
+            );
           }
           break;
         }

@@ -1,33 +1,24 @@
-using Xunit;
-using Moq;
-using Microsoft.Extensions.Logging;
-using Aura.Core.Configuration;
 using Aura.Core.Services.Providers.Stickiness;
-using System.IO;
+using Aura.Tests.TestUtilities;
+using Microsoft.Extensions.Logging;
+using Moq;
 using System.Threading;
 using System.Threading.Tasks;
+using Xunit;
 
 namespace Aura.Tests.Providers.Stickiness;
 
 public class ProviderProfileLockServiceTests : IDisposable
 {
     private readonly Mock<ILogger<ProviderProfileLockService>> _loggerMock;
-    private readonly Mock<ProviderSettings> _providerSettingsMock;
+    private readonly ProviderSettingsTestContext _settingsContext;
     private readonly ProviderProfileLockService _service;
-    private readonly string _testDataDir;
 
     public ProviderProfileLockServiceTests()
     {
         _loggerMock = new Mock<ILogger<ProviderProfileLockService>>();
-        
-        _testDataDir = Path.Combine(Path.GetTempPath(), $"aura-test-{Guid.NewGuid()}");
-        Directory.CreateDirectory(_testDataDir);
-        
-        var loggerForSettings = new Mock<ILogger<ProviderSettings>>();
-        _providerSettingsMock = new Mock<ProviderSettings>(loggerForSettings.Object);
-        _providerSettingsMock.Setup(s => s.GetAuraDataDirectory()).Returns(_testDataDir);
-        
-        _service = new ProviderProfileLockService(_loggerMock.Object, _providerSettingsMock.Object);
+        _settingsContext = new ProviderSettingsTestContext();
+        _service = new ProviderProfileLockService(_loggerMock.Object, _settingsContext.Settings);
     }
 
     [Fact]
@@ -62,7 +53,7 @@ public class ProviderProfileLockServiceTests : IDisposable
     {
         // Arrange
         var jobId = "test-job-123";
-        
+
         await _service.SetProfileLockAsync(
             jobId,
             "OpenAI",
@@ -70,7 +61,7 @@ public class ProviderProfileLockServiceTests : IDisposable
             isEnabled: true,
             isSessionLevel: false,
             ct: CancellationToken.None);
-        
+
         await _service.SetProfileLockAsync(
             jobId,
             "Ollama",
@@ -291,8 +282,8 @@ public class ProviderProfileLockServiceTests : IDisposable
             offlineModeEnabled: true,
             isSessionLevel: true);
 
-        // Simulate service restart by creating new instance
-        var newService = new ProviderProfileLockService(_loggerMock.Object, _providerSettingsMock.Object);
+        // Simulate service restart by creating new instance sharing same settings
+        var newService = new ProviderProfileLockService(_loggerMock.Object, _settingsContext.Settings);
 
         // Act
         var lock_ = newService.GetProfileLock(jobId);
@@ -306,16 +297,6 @@ public class ProviderProfileLockServiceTests : IDisposable
 
     public void Dispose()
     {
-        try
-        {
-            if (Directory.Exists(_testDataDir))
-            {
-                Directory.Delete(_testDataDir, recursive: true);
-            }
-        }
-        catch
-        {
-            // Cleanup is best effort
-        }
+        _settingsContext.Dispose();
     }
 }

@@ -18,6 +18,7 @@ describe('ApiClient', () => {
   });
 
   it('should create HTTP transport in web environment', () => {
+    (global.window as typeof window & { aura?: unknown }).aura = undefined;
     (global.window as typeof window & { electron?: unknown }).electron = undefined;
     const client = new ApiClient('http://localhost:5005');
     expect(client.getTransportName()).toBe('HTTP');
@@ -26,13 +27,15 @@ describe('ApiClient', () => {
   });
 
   it('should create IPC transport in Electron environment', () => {
-    const mockElectron = {
+    const mockAura = {
       backend: {
-        getUrl: vi.fn().mockResolvedValue('http://localhost:5005'),
+        getBaseUrl: vi.fn().mockResolvedValue('http://localhost:5005'),
       },
     };
+    (global.window as typeof window & { aura?: typeof window.aura }).aura =
+      mockAura as typeof window.aura;
     (global.window as typeof window & { electron?: typeof window.electron }).electron =
-      mockElectron as typeof window.electron;
+      mockAura as unknown as typeof window.electron;
 
     const client = new ApiClient('http://localhost:5005');
     expect(client.getTransportName()).toBe('IPC');
@@ -44,6 +47,7 @@ describe('ApiClient', () => {
     let client: ApiClient;
 
     beforeEach(() => {
+      (global.window as typeof window & { aura?: unknown }).aura = undefined;
       (global.window as typeof window & { electron?: unknown }).electron = undefined;
       client = new ApiClient('http://localhost:5005');
     });
@@ -85,13 +89,15 @@ describe('ApiClient', () => {
     let client: ApiClient;
 
     beforeEach(() => {
-      const mockElectron = {
+      const mockAura = {
         backend: {
-          getUrl: vi.fn().mockResolvedValue('http://localhost:5005'),
+          getBaseUrl: vi.fn().mockResolvedValue('http://localhost:5005'),
         },
       };
+      (global.window as typeof window & { aura?: typeof window.aura }).aura =
+        mockAura as typeof window.aura;
       (global.window as typeof window & { electron?: typeof window.electron }).electron =
-        mockElectron as typeof window.electron;
+        mockAura as unknown as typeof window.electron;
 
       client = new ApiClient('http://localhost:5005');
     });

@@ -17,9 +17,9 @@ import {
 } from '@fluentui/react-components';
 import {
   CheckmarkCircle20Filled,
-  Warning20Filled,
-  DismissCircle20Filled,
   ChevronDown20Regular,
+  DismissCircle20Filled,
+  Warning20Filled,
 } from '@fluentui/react-icons';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -141,6 +141,14 @@ export function SystemStatusIndicator() {
     navigate('/health/providers');
   };
 
+  const handleOpenSetup = () => {
+    navigate('/setup');
+  };
+
+  const handleOpenSettings = () => {
+    navigate('/settings');
+  };
+
   const handleRefresh = () => {
     setIsLoading(true);
     fetchHealth();
@@ -172,6 +180,8 @@ export function SystemStatusIndicator() {
         <MenuList>
           <MenuItem onClick={handleViewDetails}>View System Health</MenuItem>
           <MenuItem onClick={handleViewProviders}>View Provider Status</MenuItem>
+          <MenuItem onClick={handleOpenSetup}>Open Setup Wizard (FFmpeg & API Keys)</MenuItem>
+          <MenuItem onClick={handleOpenSettings}>Open Settings</MenuItem>
           <MenuItem onClick={handleRefresh}>Refresh Status</MenuItem>
         </MenuList>
       </MenuPopover>

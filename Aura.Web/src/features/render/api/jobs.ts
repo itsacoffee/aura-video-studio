@@ -63,6 +63,9 @@ export type JobEventType =
   | 'job-status'
   | 'job-completed'
   | 'job-failed'
+  | 'job-cancelled'
+  | 'job-log'
+  | 'warning'
   | 'error';
 
 export interface JobEvent {
@@ -120,6 +123,9 @@ export function subscribeToJobEvents(
     'job-status',
     'job-completed',
     'job-failed',
+    'job-cancelled',
+    'job-log',
+    'warning',
     'error',
   ];
 

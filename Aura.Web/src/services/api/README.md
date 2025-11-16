@@ -60,7 +60,7 @@ The enhanced API client provides comprehensive error handling, automatic retry l
 
 The API client automatically detects the appropriate backend URL using a priority-based fallback chain:
 
-1. **Electron Desktop App**: `window.electron.backend.getUrl()` or `window.AURA_BACKEND_URL`
+1. **Electron Desktop App**: `window.aura.backend.getBaseUrl()` or `window.AURA_BACKEND_URL`
 2. **Environment Variable**: `VITE_API_BASE_URL` from `.env` files
 3. **Current Origin**: `window.location.origin` (when UI served from backend)
 4. **Development Fallback**: `http://127.0.0.1:5005`
@@ -100,7 +100,7 @@ window.AURA_BACKEND_URL = 'http://localhost:5005';
 window.AURA_IS_ELECTRON = true;
 
 // Or via async API
-window.electron = {
+window.aura = {
   backend: {
     getUrl: async () => 'http://localhost:5005',
   },

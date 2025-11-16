@@ -23,32 +23,33 @@ describe('TransportFactory', () => {
     global.window = originalWindow;
   });
 
-  it('should detect web environment when window.electron is not present', () => {
-    (global.window as typeof window & { electron?: unknown }).electron = undefined;
+  it('should detect web environment when window.aura is not present', () => {
+    (global.window as typeof window & { aura?: unknown }).aura = undefined;
     expect(TransportFactory.isElectron()).toBe(false);
     expect(TransportFactory.getEnvironment()).toBe('web');
   });
 
-  it('should detect Electron environment when window.electron is present', () => {
-    (global.window as typeof window & { electron?: unknown }).electron = {};
+  it('should detect Electron environment when window.aura is present', () => {
+    (global.window as typeof window & { aura?: unknown }).aura = {};
     expect(TransportFactory.isElectron()).toBe(true);
     expect(TransportFactory.getEnvironment()).toBe('electron');
   });
 
   it('should create HTTP transport in web environment', () => {
-    (global.window as typeof window & { electron?: unknown }).electron = undefined;
+    (global.window as typeof window & { aura?: unknown }).aura = undefined;
     const transport = TransportFactory.create('http://localhost:5005');
     expect(transport).toBeInstanceOf(HttpTransport);
     expect(transport.getName()).toBe('HTTP');
   });
 
   it('should create IPC transport in Electron environment', () => {
-    const mockElectron = {
+    const mockAura = {
       backend: {
-        getUrl: vi.fn().mockResolvedValue('http://localhost:5005'),
+        getBaseUrl: vi.fn().mockResolvedValue('http://localhost:5005'),
       },
-    };
-    (global.window as typeof window & { electron?: unknown }).electron = mockElectron;
+    } as typeof window.aura;
+    (global.window as typeof window & { aura?: unknown }).aura = mockAura;
+    (global.window as typeof window & { electron?: unknown }).electron = mockAura as unknown as typeof window.electron;
 
     const transport = TransportFactory.create('http://localhost:5005');
     expect(transport).toBeInstanceOf(IpcTransport);
@@ -164,30 +165,33 @@ describe('HttpTransport', () => {
 
 describe('IpcTransport', () => {
   let transport: IpcTransport;
-  let mockElectron: typeof window.electron;
+  let mockAura: typeof window.aura;
 
   beforeEach(() => {
-    mockElectron = {
+    mockAura = {
       backend: {
-        getUrl: vi.fn().mockResolvedValue('http://localhost:5005'),
+        getBaseUrl: vi.fn().mockResolvedValue('http://localhost:5005'),
       },
-    } as typeof window.electron;
+    } as typeof window.aura;
 
+    (global.window as typeof window & { aura?: typeof window.aura }).aura = mockAura;
     (global.window as typeof window & { electron?: typeof window.electron }).electron =
-      mockElectron;
+      mockAura as unknown as typeof window.electron;
     transport = new IpcTransport();
   });
 
   afterEach(() => {
+    (global.window as typeof window & { aura?: unknown }).aura = undefined;
     (global.window as typeof window & { electron?: unknown }).electron = undefined;
   });
 
-  it('should throw error if window.electron is not available', () => {
+  it('should throw error if Aura bridge is not available', () => {
+    (global.window as typeof window & { aura?: unknown }).aura = undefined;
     (global.window as typeof window & { electron?: unknown }).electron = undefined;
     expect(() => new IpcTransport()).toThrow('IPC Transport requires Electron environment');
   });
 
-  it('should be available when window.electron exists', () => {
+  it('should be available when window.aura exists', () => {
     expect(transport.isAvailable()).toBe(true);
   });
 

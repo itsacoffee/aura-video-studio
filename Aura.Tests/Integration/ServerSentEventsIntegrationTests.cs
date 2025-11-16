@@ -37,8 +37,8 @@ public class ServerSentEventsIntegrationTests
             Status = JobStatus.Running,
             Stage = "Script",
             Percent = 0,
-            
-            
+
+
         };
 
         // Act - Simulate progress updates
@@ -46,7 +46,7 @@ public class ServerSentEventsIntegrationTests
 
         // Assert - Progress events were emitted
         Assert.NotEmpty(progressEvents);
-        
+
         // Should have progress events from multiple stages
         var stages = progressEvents.Select(e => e.Stage).Distinct().ToList();
         Assert.Contains("Script", stages);
@@ -88,7 +88,7 @@ public class ServerSentEventsIntegrationTests
             Status = JobStatus.Running,
             Stage = "Script",
             Percent = 0,
-            
+
             CorrelationId = correlationId
         };
 
@@ -128,7 +128,7 @@ public class ServerSentEventsIntegrationTests
 
         // Assert - Error event was emitted
         Assert.NotEmpty(progressEvents);
-        
+
         var errorEvent = progressEvents.FirstOrDefault(e => e.Status == JobStatus.Failed);
         Assert.NotNull(errorEvent);
         Assert.Equal("TTS", errorEvent.Stage);
@@ -187,11 +187,11 @@ public class ServerSentEventsIntegrationTests
         // Arrange
         var progressEvents = new List<JobProgressEventArgs>();
         var streamClosed = false;
-        
+
         var progressHandler = new Progress<JobProgressEventArgs>(e =>
         {
             progressEvents.Add(e);
-            
+
             // Check if this is completion event
             if (e.Status == JobStatus.Done && e.Percent == 100)
             {
@@ -234,8 +234,8 @@ public class ServerSentEventsIntegrationTests
             Status = JobStatus.Running,
             Stage = "Script",
             Percent = 0,
-            
-            
+
+
         };
 
         // Act
@@ -265,7 +265,7 @@ public class ServerSentEventsIntegrationTests
         IProgress<JobProgressEventArgs> progress)
     {
         var stages = new[] { "Script", "TTS", "Visuals", "Render", "Done" };
-        var percentages = new[] { 0, 15, 35, 65, 85, 100 };
+        var percentages = new[] { 0, 25, 50, 75, 100 };
 
         for (int i = 0; i < stages.Length; i++)
         {

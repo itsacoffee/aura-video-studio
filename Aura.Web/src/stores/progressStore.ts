@@ -5,35 +5,35 @@
  */
 
 import { create } from 'zustand';
-import type { ProgressEventDto, HeartbeatEventDto, ProviderCancellationStatusDto } from '../types/api-v1';
+import type { ProgressEventDto, ProviderCancellationStatusDto } from '../types/api-v1';
 
 export interface ProgressState {
   // Progress tracking
   jobProgress: Map<string, JobProgressState>;
-  
+
   // SSE connection state
   connections: Map<string, SSEConnectionInfo>;
-  
+
   // Circuit breaker state
   circuitBreaker: CircuitBreakerState;
-  
+
   // Actions
   updateProgress: (jobId: string, progress: ProgressEventDto) => void;
   setJobStatus: (jobId: string, status: JobStatus) => void;
   addWarning: (jobId: string, warning: string) => void;
   clearProgress: (jobId: string) => void;
-  
+
   // SSE connection management
   registerConnection: (jobId: string, connectionInfo: SSEConnectionInfo) => void;
   updateConnectionStatus: (jobId: string, status: ConnectionStatus) => void;
   incrementReconnectAttempt: (jobId: string) => void;
   resetConnection: (jobId: string) => void;
-  
+
   // Circuit breaker
   recordSuccess: () => void;
   recordFailure: () => void;
   getCircuitState: () => CircuitState;
-  
+
   // Computed
   getProgress: (jobId: string) => JobProgressState | undefined;
   isConnected: (jobId: string) => boolean;
@@ -45,12 +45,15 @@ export interface JobProgressState {
   stage: string;
   percent: number;
   etaSeconds: number | null;
+  elapsedSeconds: number | null;
+  estimatedRemainingSeconds: number | null;
   message: string;
   warnings: string[];
   correlationId: string | null;
   substageDetail: string | null;
   currentItem: number | null;
   totalItems: number | null;
+  phase: string | null;
   status: JobStatus;
   lastUpdated: Date;
   cancellationInfo?: CancellationInfo;
@@ -107,23 +110,34 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
     set((state) => {
       const newProgress = new Map(state.jobProgress);
       const existing = newProgress.get(jobId);
-      
+
+      const percent =
+        typeof (progress as any).Percent === 'number'
+          ? (progress as any).Percent
+          : progress.percent;
+      const etaSeconds =
+        progress.estimatedRemainingSeconds ?? progress.etaSeconds ?? existing?.etaSeconds ?? null;
+
       newProgress.set(jobId, {
-        jobId: progress.JobId,
-        stage: progress.Stage,
-        percent: progress.Percent,
-        etaSeconds: progress.EtaSeconds ?? null,
-        message: progress.Message,
-        warnings: progress.Warnings || existing?.warnings || [],
-        correlationId: progress.CorrelationId ?? null,
-        substageDetail: progress.SubstageDetail ?? null,
-        currentItem: progress.CurrentItem ?? null,
-        totalItems: progress.TotalItems ?? null,
+        jobId: progress.jobId ?? jobId,
+        stage: progress.stage,
+        percent,
+        etaSeconds,
+        elapsedSeconds: progress.elapsedSeconds ?? existing?.elapsedSeconds ?? null,
+        estimatedRemainingSeconds:
+          progress.estimatedRemainingSeconds ?? existing?.estimatedRemainingSeconds ?? etaSeconds,
+        message: progress.message,
+        warnings: progress.warnings?.length ? progress.warnings : existing?.warnings || [],
+        correlationId: progress.correlationId ?? null,
+        substageDetail: progress.substageDetail ?? null,
+        currentItem: progress.currentItem ?? null,
+        totalItems: progress.totalItems ?? null,
+        phase: progress.phase ?? existing?.phase ?? null,
         status: existing?.status || 'running',
-        lastUpdated: new Date(progress.Timestamp || new Date()),
+        lastUpdated: new Date(progress.timestamp || new Date()),
         cancellationInfo: existing?.cancellationInfo,
       });
-      
+
       return { jobProgress: newProgress };
     });
   },
@@ -133,7 +147,7 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
     set((state) => {
       const newProgress = new Map(state.jobProgress);
       const existing = newProgress.get(jobId);
-      
+
       if (existing) {
         newProgress.set(jobId, {
           ...existing,
@@ -141,7 +155,7 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
           lastUpdated: new Date(),
         });
       }
-      
+
       return { jobProgress: newProgress };
     });
   },
@@ -151,7 +165,7 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
     set((state) => {
       const newProgress = new Map(state.jobProgress);
       const existing = newProgress.get(jobId);
-      
+
       if (existing) {
         newProgress.set(jobId, {
           ...existing,
@@ -159,7 +173,7 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
           lastUpdated: new Date(),
         });
       }
-      
+
       return { jobProgress: newProgress };
     });
   },
@@ -169,10 +183,10 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
     set((state) => {
       const newProgress = new Map(state.jobProgress);
       newProgress.delete(jobId);
-      
+
       const newConnections = new Map(state.connections);
       newConnections.delete(jobId);
-      
+
       return { jobProgress: newProgress, connections: newConnections };
     });
   },
@@ -191,7 +205,7 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
     set((state) => {
       const newConnections = new Map(state.connections);
       const existing = newConnections.get(jobId);
-      
+
       if (existing) {
         newConnections.set(jobId, {
           ...existing,
@@ -200,7 +214,7 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
           lastHeartbeat: status === 'connected' ? new Date() : existing.lastHeartbeat,
         });
       }
-      
+
       return { connections: newConnections };
     });
   },
@@ -210,7 +224,7 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
     set((state) => {
       const newConnections = new Map(state.connections);
       const existing = newConnections.get(jobId);
-      
+
       if (existing) {
         newConnections.set(jobId, {
           ...existing,
@@ -218,7 +232,7 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
           lastReconnectTime: new Date(),
         });
       }
-      
+
       return { connections: newConnections };
     });
   },
@@ -228,7 +242,7 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
     set((state) => {
       const newConnections = new Map(state.connections);
       const existing = newConnections.get(jobId);
-      
+
       if (existing) {
         newConnections.set(jobId, {
           ...existing,
@@ -238,7 +252,7 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
           connected: false,
         });
       }
-      
+
       return { connections: newConnections };
     });
   },
@@ -261,7 +275,7 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
     set((state) => {
       const newFailureCount = state.circuitBreaker.failureCount + 1;
       const now = new Date();
-      
+
       if (newFailureCount >= CIRCUIT_BREAKER_THRESHOLD) {
         return {
           circuitBreaker: {
@@ -273,7 +287,7 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
           },
         };
       }
-      
+
       return {
         circuitBreaker: {
           ...state.circuitBreaker,
@@ -287,7 +301,7 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
   // Get circuit breaker state
   getCircuitState: () => {
     const { circuitBreaker } = get();
-    
+
     if (circuitBreaker.state === 'open') {
       const now = new Date();
       if (circuitBreaker.nextAttemptTime && now >= circuitBreaker.nextAttemptTime) {
@@ -300,7 +314,7 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
         return 'half-open';
       }
     }
-    
+
     return circuitBreaker.state;
   },
 
@@ -319,20 +333,20 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
   shouldAttemptReconnect: (jobId) => {
     const connection = get().connections.get(jobId);
     if (!connection) return true;
-    
+
     const circuitState = get().getCircuitState();
     if (circuitState === 'open') return false;
-    
+
     if (connection.reconnectAttempts >= connection.maxReconnectAttempts) {
       return false;
     }
-    
+
     if (connection.lastReconnectTime) {
       const timeSinceLastAttempt = Date.now() - connection.lastReconnectTime.getTime();
       const backoffDelay = INITIAL_RECONNECT_DELAY * Math.pow(2, connection.reconnectAttempts);
       return timeSinceLastAttempt >= backoffDelay;
     }
-    
+
     return true;
   },
 }));

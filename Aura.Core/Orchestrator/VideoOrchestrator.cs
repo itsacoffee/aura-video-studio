@@ -13,6 +13,7 @@ using Aura.Core.Services.Audio;
 using Aura.Core.Services.Generation;
 using Aura.Core.Services.Orchestration;
 using Aura.Core.Services.PacingServices;
+using Aura.Core.Models.Timeline;
 using Aura.Core.Validation;
 using Microsoft.Extensions.Logging;
 
@@ -87,7 +88,7 @@ public class VideoOrchestrator
         ArgumentNullException.ThrowIfNull(timelineBuilder);
         ArgumentNullException.ThrowIfNull(providerSettings);
         ArgumentNullException.ThrowIfNull(telemetryCollector);
-        
+
         _logger = logger;
         _llmProvider = llmProvider;
         _ttsProvider = ttsProvider;
@@ -113,9 +114,10 @@ public class VideoOrchestrator
     }
 
     /// <summary>
-    /// Generates a complete video from the provided brief and specifications using smart orchestration.
+    /// Generates a complete video from the provided brief and specifications using smart orchestration
+    /// and returns the detailed generation result (including timelines and narration metadata).
     /// </summary>
-    public async Task<string> GenerateVideoAsync(
+    public async Task<VideoGenerationResult> GenerateVideoResultAsync(
         Brief brief,
         PlanSpec planSpec,
         VoiceSpec voiceSpec,
@@ -125,48 +127,25 @@ public class VideoOrchestrator
         CancellationToken ct = default,
         string? jobId = null,
         string? correlationId = null,
-        bool isQuickDemo = false)
-    {
-        // Call overload without detailed progress for backward compatibility
-        return await GenerateVideoAsync(
-            brief, planSpec, voiceSpec, renderSpec, systemProfile,
-            progress, null, ct, jobId, correlationId, isQuickDemo
-        ).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// Generates a complete video from the provided brief and specifications using smart orchestration.
-    /// Includes detailed progress reporting via GenerationProgress.
-    /// </summary>
-    public async Task<string> GenerateVideoAsync(
-        Brief brief,
-        PlanSpec planSpec,
-        VoiceSpec voiceSpec,
-        RenderSpec renderSpec,
-        SystemProfile systemProfile,
-        IProgress<string>? progress = null,
-        IProgress<GenerationProgress>? detailedProgress = null,
-        CancellationToken ct = default,
-        string? jobId = null,
-        string? correlationId = null,
-        bool isQuickDemo = false)
+        bool isQuickDemo = false,
+        IProgress<GenerationProgress>? detailedProgress = null)
     {
         ArgumentNullException.ThrowIfNull(brief);
         ArgumentNullException.ThrowIfNull(planSpec);
         ArgumentNullException.ThrowIfNull(voiceSpec);
         ArgumentNullException.ThrowIfNull(renderSpec);
         ArgumentNullException.ThrowIfNull(systemProfile);
-        
+
         var startTime = DateTime.UtcNow;
         var providerFailures = new List<ProviderException>();
-        
+
         try
         {
             // Pre-generation validation
             var validationMsg = "Validating system readiness...";
             progress?.Report(validationMsg);
             detailedProgress?.Report(ProgressBuilder.CreateBriefProgress(0, validationMsg, correlationId));
-            
+
             var validationResult = await _preGenerationValidator.ValidateSystemReadyAsync(brief, planSpec, ct).ConfigureAwait(false);
             if (!validationResult.IsValid)
             {
@@ -175,30 +154,31 @@ public class VideoOrchestrator
                 throw new ValidationException("System validation failed", validationResult.Issues);
             }
             _logger.LogInformation("Pre-generation validation passed");
-            
+
             detailedProgress?.Report(ProgressBuilder.CreateBriefProgress(50, "System validation passed", correlationId));
 
             var pipelineMsg = "Starting smart video generation pipeline...";
             progress?.Report(pipelineMsg);
             detailedProgress?.Report(ProgressBuilder.CreateBriefProgress(100, pipelineMsg, correlationId));
-            
+
             _logger.LogInformation("Using smart orchestration for topic: {Topic}, IsQuickDemo: {IsQuickDemo}", brief.Topic, isQuickDemo);
 
             // Create task executor that maps generation tasks to providers
-            var taskExecutor = CreateTaskExecutor(brief, planSpec, voiceSpec, renderSpec, ct, isQuickDemo);
+            var executorContext = CreateTaskExecutor(brief, planSpec, voiceSpec, renderSpec, ct, isQuickDemo);
+            var taskExecutor = executorContext.Executor;
 
             // Map progress events from orchestration to both string and detailed progress
             var orchestrationProgress = new Progress<OrchestrationProgress>(p =>
             {
                 progress?.Report($"{p.CurrentStage}: {p.ProgressPercentage:F1}%");
-                
+
                 // Map to detailed progress with stage-specific information
                 if (detailedProgress != null)
                 {
                     var genProgress = MapOrchestrationProgressToDetailed(
-                        p, 
-                        p.CompletedTasks, 
-                        p.TotalTasks, 
+                        p,
+                        p.CompletedTasks,
+                        p.TotalTasks,
                         correlationId);
                     detailedProgress.Report(genProgress);
                 }
@@ -213,14 +193,14 @@ public class VideoOrchestrator
             {
                 var elapsedTime = DateTime.UtcNow - startTime;
                 var reasons = string.Join("; ", result.FailureReasons);
-                
+
                 _logger.LogError(
                     "Pipeline failed after {ElapsedSeconds}s: {FailedTasks}/{TotalTasks} tasks failed. Reasons: {Reasons}",
                     elapsedTime.TotalSeconds,
                     result.FailedTasks,
                     result.TotalTasks,
                     reasons);
-                
+
                 throw new PipelineException(
                     "Generation",
                     $"Generation failed: {result.FailedTasks}/{result.TotalTasks} tasks failed. Reasons: {reasons}",
@@ -241,9 +221,21 @@ public class VideoOrchestrator
                 ?? throw new InvalidOperationException("Composition result is not a valid path");
 
             _logger.LogInformation("Smart orchestration completed. Video at: {Path}", outputPath);
-            progress?.Report("Video generation complete!");
 
-            return outputPath;
+            var providerTimeline = executorContext.Timeline;
+            if (providerTimeline == null)
+            {
+                _logger.LogWarning("Video orchestration completed without a captured timeline for job {JobId}", jobId ?? "unknown");
+            }
+
+            var editableTimeline = providerTimeline != null ? ConvertToEditableTimeline(providerTimeline) : null;
+            return new VideoGenerationResult(
+                outputPath,
+                providerTimeline,
+                editableTimeline,
+                executorContext.NarrationPath,
+                providerTimeline?.SubtitlesPath,
+                correlationId);
         }
         catch (ValidationException)
         {
@@ -255,14 +247,14 @@ public class VideoOrchestrator
             // Track provider failures and re-throw as pipeline exception
             providerFailures.Add(providerEx);
             var elapsedTime = DateTime.UtcNow - startTime;
-            
+
             _logger.LogError(
                 providerEx,
                 "Provider {ProviderName} ({ProviderType}) failed with error code {ErrorCode}",
                 providerEx.ProviderName,
                 providerEx.Type,
                 providerEx.SpecificErrorCode);
-            
+
             throw new PipelineException(
                 "Provider",
                 $"Provider {providerEx.ProviderName} failed: {providerEx.Message}",
@@ -280,7 +272,7 @@ public class VideoOrchestrator
         {
             var elapsedTime = DateTime.UtcNow - startTime;
             _logger.LogError(ex, "Error during smart video generation after {ElapsedSeconds}s", elapsedTime.TotalSeconds);
-            
+
             throw new PipelineException(
                 "Unknown",
                 $"Unexpected error during video generation: {ex.Message}",
@@ -297,9 +289,41 @@ public class VideoOrchestrator
     }
 
     /// <summary>
-    /// Generates a complete video from the provided brief and specifications.
+    /// Generates a complete video using smart orchestration and returns only the output path
+    /// (legacy compatibility wrapper).
     /// </summary>
     public async Task<string> GenerateVideoAsync(
+        Brief brief,
+        PlanSpec planSpec,
+        VoiceSpec voiceSpec,
+        RenderSpec renderSpec,
+        SystemProfile systemProfile,
+        IProgress<string>? progress = null,
+        CancellationToken ct = default,
+        string? jobId = null,
+        string? correlationId = null,
+        bool isQuickDemo = false)
+    {
+        var result = await GenerateVideoResultAsync(
+            brief,
+            planSpec,
+            voiceSpec,
+            renderSpec,
+            systemProfile,
+            progress,
+            ct,
+            jobId,
+            correlationId,
+            isQuickDemo).ConfigureAwait(false);
+
+        return result.OutputPath;
+    }
+
+    /// <summary>
+    /// Generates a complete video from the provided brief and specifications (legacy pipeline)
+    /// and returns the detailed generation result.
+    /// </summary>
+    public async Task<VideoGenerationResult> GenerateVideoResultAsync(
         Brief brief,
         PlanSpec planSpec,
         VoiceSpec voiceSpec,
@@ -314,7 +338,7 @@ public class VideoOrchestrator
         ArgumentNullException.ThrowIfNull(planSpec);
         ArgumentNullException.ThrowIfNull(voiceSpec);
         ArgumentNullException.ThrowIfNull(renderSpec);
-        
+
         try
         {
             // Pre-generation validation
@@ -336,7 +360,7 @@ public class VideoOrchestrator
             }
 
             progress?.Report("Starting video generation pipeline...");
-            
+
             // Stage 0: Brief processing (capture initial brief validation)
             if (jobId != null && correlationId != null)
             {
@@ -353,51 +377,51 @@ public class VideoOrchestrator
             // Stage 1: Script generation with fallback for Quick Demo
             progress?.Report("Stage 1/5: Generating script...");
             _logger.LogInformation("Generating script for topic: {Topic}, IsQuickDemo: {IsQuickDemo}", brief.Topic, isQuickDemo);
-            
-            var scriptBuilder = jobId != null && correlationId != null 
+
+            var scriptBuilder = jobId != null && correlationId != null
                 ? Telemetry.TelemetryBuilder.Start(jobId, correlationId, Telemetry.RunStage.Script)
                 : null;
-            
+
             Brief enhancedBrief = brief;
             Models.RAG.RagContext? ragContext = null;
-            
+
             if (_ragScriptEnhancer != null && brief.RagConfiguration?.Enabled == true)
             {
                 _logger.LogInformation("RAG is enabled, enhancing brief with retrieved context");
                 progress?.Report("Retrieving relevant documents from RAG index...");
-                
+
                 var (enhanced, context) = await _ragScriptEnhancer.EnhanceBriefWithRagAsync(brief, ct).ConfigureAwait(false);
                 enhancedBrief = enhanced;
                 ragContext = context;
-                
+
                 if (ragContext != null && ragContext.Chunks.Count > 0)
                 {
-                    _logger.LogInformation("RAG context retrieved: {ChunkCount} chunks, {TokenCount} tokens", 
+                    _logger.LogInformation("RAG context retrieved: {ChunkCount} chunks, {TokenCount} tokens",
                         ragContext.Chunks.Count, ragContext.TotalTokens);
                 }
             }
-            
+
             string script;
             bool usedFallback = false;
-            
+
             try
             {
                 script = await _retryWrapper.ExecuteWithRetryAsync(
                     async (ctRetry) =>
                     {
                         var generatedScript = await _llmProvider.DraftScriptAsync(enhancedBrief, planSpec, ctRetry).ConfigureAwait(false);
-                        
+
                         // Validate script structure and content
                         var structuralValidation = _scriptValidator.Validate(generatedScript, planSpec);
                         var contentValidation = _llmValidator.ValidateScriptContent(generatedScript, planSpec);
-                        
+
                         if (!structuralValidation.IsValid || !contentValidation.IsValid)
                         {
                             var allIssues = structuralValidation.Issues.Concat(contentValidation.Issues).ToList();
                             _logger.LogWarning("Script validation failed: {Issues}", string.Join(", ", allIssues));
                             throw new ValidationException("Script quality validation failed", allIssues);
                         }
-                        
+
                         return generatedScript;
                     },
                     "Script Generation",
@@ -410,29 +434,29 @@ public class VideoOrchestrator
                 // For Quick Demo, use safe fallback script instead of failing
                 _logger.LogWarning("Script validation failed for Quick Demo: {Message}. Using safe fallback script.", vex.Message);
                 progress?.Report("Using safe fallback script...");
-                
+
                 script = GenerateSafeFallbackScript(brief.Topic ?? "Welcome to Aura Video Studio", planSpec.TargetDuration);
                 usedFallback = true;
-                
+
                 _logger.LogInformation("Safe fallback script generated: {Length} characters", script.Length);
             }
-            
+
             if (_ragScriptEnhancer != null && brief.RagConfiguration?.TightenClaims == true && ragContext != null && !usedFallback)
             {
                 _logger.LogInformation("Performing 'tighten claims' validation pass");
                 var (enhancedScript, warnings) = await _ragScriptEnhancer.TightenClaimsAsync(script, ragContext, ct).ConfigureAwait(false);
-                
+
                 foreach (var warning in warnings)
                 {
                     _logger.LogWarning("RAG claim validation: {Warning}", warning);
                 }
-                
+
                 script = enhancedScript;
             }
-            
-            _logger.LogInformation("Script generated and validated: {Length} characters, UsedFallback: {UsedFallback}", 
+
+            _logger.LogInformation("Script generated and validated: {Length} characters, UsedFallback: {UsedFallback}",
                 script.Length, usedFallback);
-            
+
             // Record script generation telemetry
             if (scriptBuilder != null)
             {
@@ -450,7 +474,7 @@ public class VideoOrchestrator
             progress?.Report("Stage 2/5: Parsing scenes...");
             var scenes = ParseScriptIntoScenes(script, planSpec.TargetDuration);
             _logger.LogInformation("Parsed {SceneCount} scenes", scenes.Count);
-            
+
             // Record plan/scene parsing telemetry
             if (jobId != null && correlationId != null)
             {
@@ -464,8 +488,8 @@ public class VideoOrchestrator
             }
 
             // Optional: Apply pacing optimization if enabled
-            if (_providerSettings.GetEnablePacingOptimization() && 
-                _pacingOptimizer != null && 
+            if (_providerSettings.GetEnablePacingOptimization() &&
+                _pacingOptimizer != null &&
                 _pacingApplicationService != null &&
                 _providerSettings.GetAutoApplyPacingSuggestions())
             {
@@ -477,7 +501,7 @@ public class VideoOrchestrator
                     var startTime = DateTime.UtcNow;
                     var pacingResult = await _pacingOptimizer.OptimizePacingAsync(
                         scenes, brief, _llmProvider, true, PacingProfile.BalancedDocumentary, ct).ConfigureAwait(false);
-                    
+
                     var elapsed = (DateTime.UtcNow - startTime).TotalSeconds;
                     _logger.LogInformation(
                         "Pacing analysis completed in {Elapsed:F2}s. Confidence: {Confidence:F1}%, Retention: {Retention:F1}%",
@@ -496,7 +520,7 @@ public class VideoOrchestrator
                         // Apply pacing suggestions
                         scenes = _timelineBuilder.ApplyPacingSuggestions(
                             scenes, pacingResult, optimizationLevel, minConfidence).ToList();
-                        
+
                         _logger.LogInformation(
                             "Applied pacing suggestions. New total duration: {Duration}",
                             TimeSpan.FromSeconds(scenes.Sum(s => s.Duration.TotalSeconds)));
@@ -527,12 +551,12 @@ public class VideoOrchestrator
 
             // Stage 3: Generate narration
             progress?.Report("Stage 3/5: Generating narration...");
-            var ttsBuilder = jobId != null && correlationId != null 
+            var ttsBuilder = jobId != null && correlationId != null
                 ? Telemetry.TelemetryBuilder.Start(jobId, correlationId, Telemetry.RunStage.Tts)
                 : null;
-            
+
             var scriptLines = ConvertScenesToScriptLines(scenes);
-            
+
             // Optimize narration for TTS if service is available
             if (_narrationOptimizationService != null)
             {
@@ -574,31 +598,31 @@ public class VideoOrchestrator
             {
                 _logger.LogDebug("Narration optimization service not available");
             }
-            
+
             string narrationPath = await _retryWrapper.ExecuteWithRetryAsync(
                 async (ctRetry) =>
                 {
                     var audioPath = await _ttsProvider.SynthesizeAsync(scriptLines, voiceSpec, ctRetry).ConfigureAwait(false);
-                    
+
                     // Validate audio output
                     var minDuration = TimeSpan.FromSeconds(Math.Max(5, planSpec.TargetDuration.TotalSeconds * 0.3));
                     var audioValidation = _ttsValidator.ValidateAudioFile(audioPath, minDuration);
-                    
+
                     if (!audioValidation.IsValid)
                     {
                         _logger.LogWarning("Audio validation failed: {Issues}", string.Join(", ", audioValidation.Issues));
                         throw new ValidationException("Audio quality validation failed", audioValidation.Issues);
                     }
-                    
+
                     _cleanupManager.RegisterTempFile(audioPath);
                     return audioPath;
                 },
                 "Audio Generation",
                 ct
             ).ConfigureAwait(false);
-            
+
             _logger.LogInformation("Narration generated and validated at: {Path}", narrationPath);
-            
+
             // Record TTS telemetry
             if (ttsBuilder != null)
             {
@@ -625,10 +649,10 @@ public class VideoOrchestrator
 
             // Stage 5: Render video
             progress?.Report("Stage 5/5: Rendering video...");
-            var renderBuilder = jobId != null && correlationId != null 
+            var renderBuilder = jobId != null && correlationId != null
                 ? Telemetry.TelemetryBuilder.Start(jobId, correlationId, Telemetry.RunStage.Render)
                 : null;
-            
+
             var renderProgress = new Progress<RenderProgress>(p =>
             {
                 progress?.Report($"Rendering: {p.Percentage:F1}% - {p.CurrentStage}");
@@ -636,7 +660,7 @@ public class VideoOrchestrator
 
             string outputPath = await _videoComposer.RenderAsync(timeline, renderSpec, renderProgress, ct).ConfigureAwait(false);
             _logger.LogInformation("Video rendered to: {Path}", outputPath);
-            
+
             // Record render telemetry
             if (renderBuilder != null)
             {
@@ -650,7 +674,7 @@ public class VideoOrchestrator
                     .Build();
                 _telemetryCollector.Record(renderTelemetry);
             }
-            
+
             // Stage 6: Post-processing completion
             if (jobId != null && correlationId != null)
             {
@@ -663,7 +687,7 @@ public class VideoOrchestrator
             }
 
             progress?.Report("Video generation complete!");
-            return outputPath;
+            return new VideoGenerationResult(outputPath, timeline, ConvertToEditableTimeline(timeline), narrationPath, timeline.SubtitlesPath, correlationId);
         }
         catch (ValidationException vex)
         {
@@ -704,7 +728,7 @@ public class VideoOrchestrator
     /// Generates a complete video using the intelligent pipeline orchestration engine.
     /// Uses dependency-aware service ordering, parallel execution, and smart caching.
     /// </summary>
-    private async Task<string> GenerateVideoWithPipelineAsync(
+    private async Task<VideoGenerationResult> GenerateVideoWithPipelineAsync(
         Brief brief,
         PlanSpec planSpec,
         VoiceSpec voiceSpec,
@@ -773,7 +797,7 @@ public class VideoOrchestrator
             _logger.LogWarning("Pipeline completed with warnings: {Warnings}", string.Join("; ", result.Warnings));
         }
 
-        string script = pipelineContext.GeneratedScript 
+        string script = pipelineContext.GeneratedScript
             ?? throw new InvalidOperationException("Pipeline did not generate script");
 
         progress?.Report("Stage 3/5: Generating narration...");
@@ -784,23 +808,23 @@ public class VideoOrchestrator
             async (ctRetry) =>
             {
                 var audioPath = await _ttsProvider.SynthesizeAsync(scriptLines, voiceSpec, ctRetry).ConfigureAwait(false);
-                
+
                 var minDuration = TimeSpan.FromSeconds(Math.Max(5, planSpec.TargetDuration.TotalSeconds * 0.3));
                 var audioValidation = _ttsValidator.ValidateAudioFile(audioPath, minDuration);
-                
+
                 if (!audioValidation.IsValid)
                 {
                     _logger.LogWarning("Audio validation failed: {Issues}", string.Join(", ", audioValidation.Issues));
                     throw new ValidationException("Audio quality validation failed", audioValidation.Issues);
                 }
-                
+
                 _cleanupManager.RegisterTempFile(audioPath);
                 return audioPath;
             },
             "Audio Generation",
             ct
         ).ConfigureAwait(false);
-        
+
         _logger.LogInformation("Narration generated at: {Path}", narrationPath);
 
         progress?.Report("Stage 4/5: Building timeline...");
@@ -822,7 +846,36 @@ public class VideoOrchestrator
         _logger.LogInformation("Video rendered to: {Path}", outputPath);
 
         progress?.Report("Video generation complete!");
-        return outputPath;
+        return new VideoGenerationResult(outputPath, timeline, ConvertToEditableTimeline(timeline), narrationPath, timeline.SubtitlesPath, null);
+    }
+
+    /// <summary>
+    /// Generates a video using the legacy pipeline and returns only the output path
+    /// (legacy compatibility wrapper).
+    /// </summary>
+    public async Task<string> GenerateVideoAsync(
+        Brief brief,
+        PlanSpec planSpec,
+        VoiceSpec voiceSpec,
+        RenderSpec renderSpec,
+        IProgress<string>? progress = null,
+        CancellationToken ct = default,
+        string? jobId = null,
+        string? correlationId = null,
+        bool isQuickDemo = false)
+    {
+        var result = await GenerateVideoResultAsync(
+            brief,
+            planSpec,
+            voiceSpec,
+            renderSpec,
+            progress,
+            ct,
+            jobId,
+            correlationId,
+            isQuickDemo).ConfigureAwait(false);
+
+        return result.OutputPath;
     }
 
     /// <summary>
@@ -907,6 +960,56 @@ public class VideoOrchestrator
         return scriptLines;
     }
 
+    private static EditableTimeline ConvertToEditableTimeline(Providers.Timeline timeline)
+    {
+        var editable = new EditableTimeline
+        {
+            BackgroundMusicPath = string.IsNullOrWhiteSpace(timeline.MusicPath) ? null : timeline.MusicPath,
+            Subtitles = string.IsNullOrWhiteSpace(timeline.SubtitlesPath)
+                ? new SubtitleTrack()
+                : new SubtitleTrack(
+                    Enabled: true,
+                    FilePath: timeline.SubtitlesPath)
+        };
+
+        foreach (var scene in timeline.Scenes)
+        {
+            var assets = timeline.SceneAssets.TryGetValue(scene.Index, out var sceneAssets) && sceneAssets != null
+                ? sceneAssets.Select((asset, assetIndex) => ConvertAsset(asset, scene, assetIndex)).ToList()
+                : new List<TimelineAsset>();
+
+            editable.Scenes.Add(new TimelineScene(
+                Index: scene.Index,
+                Heading: string.IsNullOrWhiteSpace(scene.Heading) ? $"Scene {scene.Index + 1}" : scene.Heading,
+                Script: scene.Script,
+                Start: scene.Start,
+                Duration: scene.Duration,
+                NarrationAudioPath: timeline.NarrationPath,
+                VisualAssets: assets));
+        }
+
+        return editable;
+    }
+
+    private static TimelineAsset ConvertAsset(Asset asset, Scene scene, int order)
+    {
+        var type = asset.Kind?.ToLowerInvariant() switch
+        {
+            "video" => AssetType.Video,
+            "audio" => AssetType.Audio,
+            _ => AssetType.Image
+        };
+
+        return new TimelineAsset(
+            Id: $"{scene.Index}_{order}_{type}",
+            Type: type,
+            FilePath: asset.PathOrUrl,
+            Start: scene.Start,
+            Duration: scene.Duration,
+            Position: new Position(0, 0, 100, 100),
+            ZIndex: order);
+    }
+
     /// <summary>
     /// Counts the number of words in a text string.
     /// </summary>
@@ -921,7 +1024,7 @@ public class VideoOrchestrator
     /// <summary>
     /// Creates a task executor function that maps generation tasks to the appropriate providers.
     /// </summary>
-    private Func<GenerationNode, CancellationToken, Task<object>> CreateTaskExecutor(
+    private TaskExecutorState CreateTaskExecutor(
         Brief brief,
         PlanSpec planSpec,
         VoiceSpec voiceSpec,
@@ -929,13 +1032,14 @@ public class VideoOrchestrator
         CancellationToken outerCt,
         bool isQuickDemo = false)
     {
+        var state = new TaskExecutorState();
         // Shared state for task results
         string? generatedScript = null;
         List<Scene>? parsedScenes = null;
         string? narrationPath = null;
         Dictionary<int, IReadOnlyList<Asset>> sceneAssets = new();
 
-        return async (node, ct) =>
+        state.Executor = async (node, ct) =>
         {
             _logger.LogDebug("Executing task: {TaskId} ({TaskType})", node.TaskId, node.TaskType);
 
@@ -944,25 +1048,25 @@ public class VideoOrchestrator
                 case GenerationTaskType.ScriptGeneration:
                     // Generate script using LLM with retry logic and fallback for Quick Demo
                     // bool usedFallback = false; // Currently unused - reserved for fallback tracking
-                    
+
                     try
                     {
                         generatedScript = await _retryWrapper.ExecuteWithRetryAsync(
                             async (ctRetry) =>
                             {
                                 var script = await _llmProvider.DraftScriptAsync(brief, planSpec, ctRetry).ConfigureAwait(false);
-                                
+
                                 // Validate script structure and content
                                 var structuralValidation = _scriptValidator.Validate(script, planSpec);
                                 var contentValidation = _llmValidator.ValidateScriptContent(script, planSpec);
-                                
+
                                 if (!structuralValidation.IsValid || !contentValidation.IsValid)
                                 {
                                     var allIssues = structuralValidation.Issues.Concat(contentValidation.Issues).ToList();
                                     _logger.LogWarning("Script validation failed: {Issues}", string.Join(", ", allIssues));
                                     throw new ValidationException("Script quality validation failed", allIssues);
                                 }
-                                
+
                                 return script;
                             },
                             "Script Generation",
@@ -974,33 +1078,33 @@ public class VideoOrchestrator
                     {
                         // For Quick Demo, use safe fallback script instead of failing
                         _logger.LogWarning("Script validation failed for Quick Demo: {Message}. Using safe fallback script.", vex.Message);
-                        
+
                         generatedScript = GenerateSafeFallbackScript(brief.Topic ?? "Welcome to Aura Video Studio", planSpec.TargetDuration);
                         // usedFallback = true; // Fallback tracking currently unused
-                        
+
                         _logger.LogInformation("Safe fallback script generated: {Length} characters", generatedScript.Length);
                     }
-                    
+
                     _logger.LogInformation("Script generated and validated: {Length} characters", generatedScript.Length);
-                    
+
                     // Parse scenes immediately for downstream tasks
                     parsedScenes = ParseScriptIntoScenes(generatedScript, planSpec.TargetDuration);
                     _logger.LogInformation("Parsed {SceneCount} scenes", parsedScenes.Count);
-                    
+
                     // Optional: Apply pacing optimization if enabled
-                    if (_providerSettings.GetEnablePacingOptimization() && 
-                        _pacingOptimizer != null && 
+                    if (_providerSettings.GetEnablePacingOptimization() &&
+                        _pacingOptimizer != null &&
                         _pacingApplicationService != null &&
                         _providerSettings.GetAutoApplyPacingSuggestions())
                     {
                         try
                         {
                             _logger.LogInformation("Pacing optimization enabled, analyzing scenes");
-                            
+
                             var startTime = DateTime.UtcNow;
                             var pacingResult = await _pacingOptimizer.OptimizePacingAsync(
                                 parsedScenes, brief, _llmProvider, true, PacingProfile.BalancedDocumentary, ct).ConfigureAwait(false);
-                            
+
                             var elapsed = (DateTime.UtcNow - startTime).TotalSeconds;
                             _logger.LogInformation(
                                 "Pacing analysis completed in {Elapsed:F2}s. Confidence: {Confidence:F1}%",
@@ -1018,7 +1122,7 @@ public class VideoOrchestrator
                             {
                                 parsedScenes = _timelineBuilder.ApplyPacingSuggestions(
                                     parsedScenes, pacingResult, optimizationLevel, minConfidence).ToList();
-                                
+
                                 _logger.LogInformation(
                                     "Applied pacing suggestions. New total duration: {Duration}",
                                     TimeSpan.FromSeconds(parsedScenes.Sum(s => s.Duration.TotalSeconds)));
@@ -1029,7 +1133,7 @@ public class VideoOrchestrator
                             _logger.LogWarning(ex, "Pacing optimization failed, continuing with original timings");
                         }
                     }
-                    
+
                     return generatedScript;
 
                 case GenerationTaskType.AudioGeneration:
@@ -1040,33 +1144,34 @@ public class VideoOrchestrator
                     }
 
                     var scriptLines = ConvertScenesToScriptLines(parsedScenes);
-                    
+
                     // Generate audio with retry logic and validation
                     narrationPath = await _retryWrapper.ExecuteWithRetryAsync(
                         async (ctRetry) =>
                         {
                             var audioPath = await _ttsProvider.SynthesizeAsync(scriptLines, voiceSpec, ctRetry).ConfigureAwait(false);
-                            
+
                             // Validate audio output
                             var minDuration = TimeSpan.FromSeconds(Math.Max(5, planSpec.TargetDuration.TotalSeconds * 0.3));
                             var audioValidation = _ttsValidator.ValidateAudioFile(audioPath, minDuration);
-                            
+
                             if (!audioValidation.IsValid)
                             {
                                 _logger.LogWarning("Audio validation failed: {Issues}", string.Join(", ", audioValidation.Issues));
                                 throw new ValidationException("Audio quality validation failed", audioValidation.Issues);
                             }
-                            
+
                             // Register for cleanup (will be promoted to artifact later)
                             _cleanupManager.RegisterTempFile(audioPath);
-                            
-                            return audioPath;
+
+                        return audioPath;
                         },
                         "Audio Generation",
                         ct
                     ).ConfigureAwait(false);
-                    
+
                     _logger.LogInformation("Narration generated and validated at: {Path}", narrationPath);
+                    state.NarrationPath = narrationPath;
                     return narrationPath;
 
                 case GenerationTaskType.ImageGeneration:
@@ -1092,21 +1197,21 @@ public class VideoOrchestrator
 
                     var scene = parsedScenes[sceneIndex];
                     var visualSpec = new VisualSpec(planSpec.Style, brief.Aspect, Array.Empty<string>());
-                    
+
                     // Generate images with retry logic and validation
                     var assets = await _retryWrapper.ExecuteWithRetryAsync(
                         async (ctRetry) =>
                         {
                             var generatedAssets = await _imageProvider.FetchOrGenerateAsync(scene, visualSpec, ctRetry).ConfigureAwait(false);
-                            
+
                             // Validate image assets
                             var imageValidation = _imageValidator.ValidateImageAssets(generatedAssets, expectedMinCount: 1);
-                            
+
                             if (!imageValidation.IsValid)
                             {
-                                _logger.LogWarning("Image validation failed for scene {SceneIndex}: {Issues}", 
+                                _logger.LogWarning("Image validation failed for scene {SceneIndex}: {Issues}",
                                     sceneIndex, string.Join(", ", imageValidation.Issues));
-                                
+
                                 // For image generation, we can be more lenient and return empty if validation fails
                                 // This prevents the entire pipeline from failing due to missing stock images
                                 if (generatedAssets.Count == 0)
@@ -1115,7 +1220,7 @@ public class VideoOrchestrator
                                     return Array.Empty<Asset>();
                                 }
                             }
-                            
+
                             // Register image files for cleanup (skip URLs)
                             foreach (var asset in generatedAssets)
                             {
@@ -1126,13 +1231,13 @@ public class VideoOrchestrator
                                     _cleanupManager.RegisterTempFile(asset.PathOrUrl);
                                 }
                             }
-                            
+
                             return generatedAssets;
                         },
                         $"Image Generation (Scene {sceneIndex})",
                         ct
                     ).ConfigureAwait(false);
-                    
+
                     sceneAssets[sceneIndex] = assets;
                     _logger.LogDebug("Generated and validated {Count} assets for scene {Index}", assets.Count, sceneIndex);
                     return assets;
@@ -1151,6 +1256,7 @@ public class VideoOrchestrator
                         MusicPath: string.Empty,
                         SubtitlesPath: null
                     );
+                    state.Timeline = timeline;
 
                     var renderProgress = new Progress<RenderProgress>(p =>
                     {
@@ -1165,17 +1271,26 @@ public class VideoOrchestrator
                     throw new NotSupportedException($"Task type {node.TaskType} not supported");
             }
         };
+
+        return state;
     }
-    
+
+    private sealed class TaskExecutorState
+    {
+        public Func<GenerationNode, CancellationToken, Task<object>> Executor { get; set; } = default!;
+        public Providers.Timeline? Timeline { get; set; }
+        public string? NarrationPath { get; set; }
+    }
+
     /// <summary>
     /// Generates a minimal, safe fallback script for Quick Demo when LLM generation fails.
     /// Creates 2-3 short scenes with simple narration that doesn't rely on image providers.
     /// </summary>
     private string GenerateSafeFallbackScript(string topic, TimeSpan targetDuration)
     {
-        _logger.LogInformation("Generating safe fallback script for topic: {Topic}, duration: {Duration}s", 
+        _logger.LogInformation("Generating safe fallback script for topic: {Topic}, duration: {Duration}s",
             topic, targetDuration.TotalSeconds);
-        
+
         // Sanitize topic to prevent script injection - remove any markdown/special characters
         var safeTopic = System.Text.RegularExpressions.Regex.Replace(topic, @"[#*_\[\]<>]", "");
         safeTopic = safeTopic.Trim();
@@ -1183,7 +1298,7 @@ public class VideoOrchestrator
         {
             safeTopic = "Aura Video Studio";
         }
-        
+
         // Create a simple 2-scene script that's always valid
         var script = $@"## Introduction
 
@@ -1192,7 +1307,7 @@ Welcome to {safeTopic}. This is a demonstration video created with Aura Video St
 ## Overview
 
 Aura Video Studio helps you create professional videos quickly and easily. Thank you for trying our Quick Demo feature.";
-        
+
         return script;
     }
 
@@ -1215,10 +1330,10 @@ Aura Video Studio helps you create professional videos quickly and easily. Thank
             var s when s.Contains("post") => "PostProcess",
             _ => "Processing"
         };
-        
+
         // Calculate stage-specific percent
         var stagePercent = orchestrationProgress.ProgressPercentage;
-        
+
         return new GenerationProgress
         {
             Stage = stage,

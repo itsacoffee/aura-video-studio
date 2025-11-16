@@ -93,12 +93,12 @@ export function PostExportActions({
 
   const handleOpenInExplorer = () => {
     // Open file location in system file explorer
-    window.electron?.openPath(outputPath.substring(0, outputPath.lastIndexOf('\\')));
+    window.aura?.shell?.openPath?.(outputPath.substring(0, outputPath.lastIndexOf('\\')));
   };
 
   const handlePlayVideo = () => {
     // Open video in default video player
-    window.electron?.openExternal(outputPath);
+    window.aura?.shell?.openExternal?.(outputPath);
   };
 
   const handleCopyPath = async () => {

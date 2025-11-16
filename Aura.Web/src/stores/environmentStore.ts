@@ -1,0 +1,50 @@
+import { create } from 'zustand';
+
+interface EnvironmentState {
+  isElectron: boolean;
+  platform: string | null;
+  arch: string | null;
+  mode: string;
+  version: string | null;
+  backendUrl: string | null;
+  paths: Record<string, unknown> | null;
+  hydrate: () => Promise<void>;
+}
+
+const defaultPlatform =
+  typeof navigator !== 'undefined' ? navigator.platform : null;
+
+export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
+  isElectron: typeof window !== 'undefined' && !!window.aura,
+  platform: defaultPlatform,
+  arch: null,
+  mode: import.meta.env.MODE,
+  version: import.meta.env.VITE_APP_VERSION || null,
+  backendUrl: null,
+  paths: null,
+  hydrate: async () => {
+    if (typeof window === 'undefined' || !window.aura?.runtime) {
+      return;
+    }
+
+    try {
+      const diagnostics = await window.aura.runtime.getDiagnostics();
+      if (diagnostics) {
+        set({
+          isElectron: true,
+          backendUrl: (diagnostics.backend?.baseUrl as string | undefined) ?? null,
+          paths: diagnostics.paths ?? null,
+          mode: (diagnostics.environment?.mode as string | undefined) ?? get().mode,
+          version:
+            (diagnostics.environment?.version as string | undefined) ?? get().version,
+          platform:
+            ((diagnostics.os?.platform as string | undefined) ?? defaultPlatform),
+          arch: (diagnostics.os?.arch as string | undefined) ?? null,
+        });
+      }
+    } catch (error) {
+      console.warn('[environmentStore] Failed to hydrate diagnostics:', error);
+    }
+  },
+}));
+

@@ -435,7 +435,7 @@ builder.Services.AddSingleton<Aura.Core.Services.IKeyValidationService, Aura.Cor
 builder.Services.AddScoped<Aura.Core.Configuration.SettingsExportImportService>();
 
 // Register settings service
-builder.Services.AddSingleton<Aura.Core.Services.Settings.ISettingsService, Aura.Core.Services.Settings.SettingsService>();
+builder.Services.AddScoped<Aura.Core.Services.Settings.ISettingsService, Aura.Core.Services.Settings.SettingsService>();
 
 // Register media library services
 builder.Services.AddMediaServices(builder.Configuration);
@@ -1005,6 +1005,7 @@ builder.Services.AddSingleton(sp =>
 builder.Services.AddSingleton<Aura.Core.Services.Performance.LatencyTelemetry>();
 builder.Services.AddSingleton<Aura.Core.Services.Performance.LatencyManagementService>();
 builder.Services.AddSingleton<Aura.Core.Services.Performance.LlmOperationContext>();
+builder.Services.AddSingleton<Aura.Core.Services.Timeline.TimelineSerializationService>();
 
 builder.Services.AddSingleton<Aura.Core.Services.ProviderRetryWrapper>();
 builder.Services.AddSingleton<Aura.Core.Services.ResourceCleanupManager>();
@@ -3625,7 +3626,7 @@ apiGroup.MapPost("/settings/save", ([FromBody] Dictionary<string, object> settin
         var settingsPath = Path.Combine(auraDataRoot, "settings.json");
         Directory.CreateDirectory(Path.GetDirectoryName(settingsPath)!);
         File.WriteAllText(settingsPath, JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true }));
-        return Results.Ok(new { success = true });
+        return Results.Ok(new { success = true, message = "Settings saved" });
     }
     catch (Exception ex)
     {
@@ -4014,16 +4015,32 @@ apiGroup.MapGet("/settings/portable", () =>
         var portableRoot = providerSettings.GetPortableRootPath();
         var toolsDirectory = providerSettings.GetToolsDirectory();
         var auraDataDirectory = providerSettings.GetAuraDataDirectory();
+        var logsDirectory = providerSettings.GetLogsDirectory();
+        var projectsDirectory = providerSettings.GetProjectsDirectory();
+        var downloadsDirectory = providerSettings.GetDownloadsDirectory();
+
+        var baseDirectory = AppContext.BaseDirectory;
+        var portableMarkerPath = Path.Combine(baseDirectory, ".portable");
+        var isPortable = File.Exists(portableMarkerPath) || portableRoot.Equals(baseDirectory, StringComparison.OrdinalIgnoreCase);
+        var legacyDataDirectory = isPortable
+            ? Path.Combine(baseDirectory, "AuraData")
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura");
 
         return Results.Ok(new
         {
-            portableModeEnabled = true, // Always true in portable-only mode
+            // Legacy properties (expected by existing clients/tests)
+            isPortable,
+            baseDirectory,
+            dataDirectory = legacyDataDirectory,
+
+            // Extended metadata for the new UI
+            portableModeEnabled = isPortable,
             portableRootPath = portableRoot,
-            toolsDirectory = toolsDirectory,
-            auraDataDirectory = auraDataDirectory,
-            logsDirectory = providerSettings.GetLogsDirectory(),
-            projectsDirectory = providerSettings.GetProjectsDirectory(),
-            downloadsDirectory = providerSettings.GetDownloadsDirectory()
+            toolsDirectory,
+            auraDataDirectory,
+            logsDirectory,
+            projectsDirectory,
+            downloadsDirectory
         });
     }
     catch (Exception ex)

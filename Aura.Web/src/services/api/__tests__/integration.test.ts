@@ -37,8 +37,10 @@ describe('Hybrid API Layer Integration', () => {
           getUrl: vi.fn().mockResolvedValue('http://localhost:5005'),
         },
       };
+      (global.window as typeof window & { aura?: typeof window.aura }).aura =
+        mockElectron as typeof window.aura;
       (global.window as typeof window & { electron?: typeof window.electron }).electron =
-        mockElectron as typeof window.electron;
+        mockElectron as unknown as typeof window.electron;
 
       expect(TransportFactory.isElectron()).toBe(true);
       expect(TransportFactory.getEnvironment()).toBe('electron');
@@ -80,8 +82,10 @@ describe('Hybrid API Layer Integration', () => {
           getUrl: vi.fn().mockResolvedValue('http://localhost:5005'),
         },
       };
+      (global.window as typeof window & { aura?: typeof window.aura }).aura =
+        mockElectron as typeof window.aura;
       (global.window as typeof window & { electron?: typeof window.electron }).electron =
-        mockElectron as typeof window.electron;
+        mockElectron as unknown as typeof window.electron;
 
       const electronClient = new ApiClient('http://localhost:5005');
 
@@ -193,8 +197,10 @@ describe('Hybrid API Layer Integration', () => {
           getUrl: vi.fn().mockResolvedValue('http://localhost:5005'),
         },
       };
+      (global.window as typeof window & { aura?: typeof window.aura }).aura =
+        mockElectron as typeof window.aura;
       (global.window as typeof window & { electron?: typeof window.electron }).electron =
-        mockElectron as typeof window.electron;
+        mockElectron as unknown as typeof window.electron;
 
       const ipcClient = new ApiClient('http://localhost:5005');
       const ipcUnsubscribe = ipcClient.subscribe('/api/events', {

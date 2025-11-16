@@ -28,11 +28,12 @@ export function useElectronMenuEvents() {
 
   useEffect(() => {
     // Only run in Electron environment
-    if (!window.electron?.menu) {
+    const menuApi = window.aura?.menu ?? window.electron?.menu;
+    if (!menuApi) {
       return;
     }
 
-    const menu: MenuAPI = window.electron.menu;
+    const menu: MenuAPI = menuApi;
     const unsubscribers: Array<() => void> = [];
 
     try {

@@ -14,10 +14,10 @@ public enum CircuitBreakerState
 {
     /// <summary>Circuit is closed, requests are allowed through</summary>
     Closed,
-    
+
     /// <summary>Circuit is open, requests are blocked</summary>
     Open,
-    
+
     /// <summary>Circuit is half-open, testing if provider has recovered</summary>
     HalfOpen
 }
@@ -30,7 +30,7 @@ public class CircuitBreaker
     private readonly string _providerName;
     private readonly CircuitBreakerSettings _settings;
     private readonly ILogger _logger;
-    
+
     private CircuitBreakerState _state = CircuitBreakerState.Closed;
     private DateTime _openedAt = DateTime.MinValue;
     private int _consecutiveFailures;
@@ -92,7 +92,7 @@ public class CircuitBreaker
         {
             _recentAttempts.Enqueue((DateTime.UtcNow, true));
             CleanOldAttempts();
-            
+
             _consecutiveFailures = 0;
 
             if (_state == CircuitBreakerState.HalfOpen)
@@ -120,7 +120,7 @@ public class CircuitBreaker
         {
             _recentAttempts.Enqueue((DateTime.UtcNow, false));
             CleanOldAttempts();
-            
+
             _consecutiveFailures++;
 
             _logger.LogWarning(
@@ -193,7 +193,12 @@ public class CircuitBreaker
         if (_consecutiveFailures >= _settings.FailureThreshold)
             return true;
 
-        var failureRate = GetFailureRate();
+        var (failureRate, totalAttempts) = GetFailureStats();
+        var minSamples = Math.Max(_settings.FailureThreshold, 5);
+
+        if (totalAttempts < minSamples)
+            return false;
+
         return failureRate >= _settings.FailureRateThreshold;
     }
 
@@ -202,10 +207,16 @@ public class CircuitBreaker
     /// </summary>
     public double GetFailureRate()
     {
+        var (rate, _) = GetFailureStats();
+        return rate;
+    }
+
+    private (double Rate, int Count) GetFailureStats()
+    {
         CleanOldAttempts();
 
         if (_recentAttempts.IsEmpty)
-            return 0.0;
+            return (0.0, 0);
 
         var failures = 0;
         var total = 0;
@@ -217,7 +228,8 @@ public class CircuitBreaker
                 failures++;
         }
 
-        return total > 0 ? (double)failures / total : 0.0;
+        var rate = total > 0 ? (double)failures / total : 0.0;
+        return (rate, total);
     }
 
     /// <summary>
@@ -253,7 +265,7 @@ public class CircuitBreaker
             _state = CircuitBreakerState.Closed;
             _openedAt = DateTime.MinValue;
             _consecutiveFailures = 0;
-            
+
             while (_recentAttempts.TryDequeue(out _)) { }
         }
         finally

@@ -3,138 +3,220 @@
  * These types should be imported in the React frontend for type safety
  */
 
-export interface ElectronAPI {
-  // Configuration
-  config: {
-    get<T = any>(key: string, defaultValue?: T): Promise<T>;
-    set(key: string, value: any): Promise<{ success: boolean }>;
-    getAll(): Promise<Record<string, any>>;
-    reset(): Promise<{ success: boolean }>;
-    getSecure(key: string): Promise<any>;
-    setSecure(key: string, value: any): Promise<{ success: boolean }>;
-    deleteSecure(key: string): Promise<{ success: boolean }>;
-    addRecentProject(path: string, name: string): Promise<RecentProject[]>;
-    getRecentProjects(): Promise<RecentProject[]>;
-    clearRecentProjects(): Promise<{ success: boolean }>;
-    removeRecentProject(path: string): Promise<RecentProject[]>;
-  };
+export interface AuraEnvInfo {
+  isElectron: boolean;
+  isDev: boolean;
+  mode: string;
+  version: string;
+  isPackaged: boolean;
+}
 
-  // Dialogs
-  dialog: {
-    openFolder(): Promise<string | null>;
-    openFile(options?: DialogOptions): Promise<string | null>;
-    openMultipleFiles(options?: DialogOptions): Promise<string[]>;
-    saveFile(options?: SaveDialogOptions): Promise<string | null>;
-    showMessage(options: MessageBoxOptions): Promise<number>;
-    showError(title: string, message: string): Promise<boolean>;
-  };
-
-  // Shell operations
-  shell: {
-    openExternal(url: string): Promise<{ success: boolean }>;
-    openPath(path: string): Promise<{ success: boolean }>;
-    showItemInFolder(path: string): Promise<{ success: boolean }>;
-    trashItem(path: string): Promise<{ success: boolean }>;
-  };
-
-  // App information
-  app: {
-    getVersion(): Promise<string>;
-    getName(): Promise<string>;
-    getPaths(): Promise<AppPaths>;
-    getLocale(): Promise<string>;
-    isPackaged(): Promise<boolean>;
-    restart(): Promise<void>;
-    quit(): Promise<void>;
-  };
-
-  // Window operations
-  window: {
-    minimize(): Promise<{ success: boolean }>;
-    maximize(): Promise<{ success: boolean; isMaximized: boolean }>;
-    close(): Promise<{ success: boolean }>;
-    hide(): Promise<{ success: boolean }>;
-    show(): Promise<{ success: boolean }>;
-  };
-
-  // Video generation
-  video: {
-    generate: {
-      start(config: VideoGenerationConfig): Promise<VideoGeneration>;
-      pause(generationId: string): Promise<any>;
-      resume(generationId: string): Promise<any>;
-      cancel(generationId: string): Promise<any>;
-      status(generationId: string): Promise<VideoGenerationStatus>;
-      list(): Promise<VideoGeneration[]>;
-    };
-    onProgress(callback: (data: VideoProgressData) => void): () => void;
-    onError(callback: (data: VideoErrorData) => void): () => void;
-    onComplete(callback: (data: VideoCompleteData) => void): () => void;
-  };
-
-  // Backend service
-  backend: {
-    getUrl(): Promise<string>;
-    health(): Promise<HealthStatus>;
-    ping(): Promise<PingResult>;
-    info(): Promise<BackendInfo>;
-    version(): Promise<VersionInfo>;
-    providerStatus(): Promise<ProviderStatus>;
-    ffmpegStatus(): Promise<FFmpegStatus>;
-    onHealthUpdate(callback: (status: HealthStatus) => void): () => void;
-    onProviderUpdate(callback: (status: ProviderStatus) => void): () => void;
-  };
-
-  // Updates
-  updates: {
-    check(): Promise<UpdateCheckResult>;
-  };
-
-  // Protocol
-  protocol: {
-    onNavigate(callback: (data: ProtocolNavigateData) => void): () => void;
-  };
-
-  // Menu actions
-  menu: {
-    onNewProject(callback: () => void): () => void;
-    onOpenProject(callback: () => void): () => void;
-    onOpenRecentProject(callback: (data: { path: string }) => void): () => void;
-    onSaveProject(callback: () => void): () => void;
-    onSaveProjectAs(callback: () => void): () => void;
-    onImportVideo(callback: () => void): () => void;
-    onImportAudio(callback: () => void): () => void;
-    onImportImages(callback: () => void): () => void;
-    onImportDocument(callback: () => void): () => void;
-    onExportVideo(callback: () => void): () => void;
-    onExportTimeline(callback: () => void): () => void;
-    onFind(callback: () => void): () => void;
-    onOpenPreferences(callback: () => void): () => void;
-    onOpenProviderSettings(callback: () => void): () => void;
-    onOpenFFmpegConfig(callback: () => void): () => void;
-    onClearCache(callback: () => void): () => void;
-    onViewLogs(callback: () => void): () => void;
-    onRunDiagnostics(callback: () => void): () => void;
-    onOpenGettingStarted(callback: () => void): () => void;
-    onShowKeyboardShortcuts(callback: () => void): () => void;
-    onCheckForUpdates(callback: () => void): () => void;
-  };
-
-  // Platform info
-  platform: {
-    isElectron: true;
-    os: string;
-    arch: string;
-    isWindows: boolean;
-    isMac: boolean;
-    isLinux: boolean;
-    versions: {
-      node: string;
-      chrome: string;
-      electron: string;
-    };
+export interface AuraPlatformInfo {
+  os: string;
+  arch: string;
+  release: string;
+  isWindows: boolean;
+  isMac: boolean;
+  isLinux: boolean;
+  versions: {
+    node: string;
+    chrome: string;
+    electron: string;
   };
 }
+
+export interface SafeModeStatus {
+  enabled: boolean;
+  crashCount: number;
+  disabledFeatures: string[];
+}
+
+export interface AuraRuntimeDiagnostics {
+  backend?: Record<string, unknown> | null;
+  environment?: Record<string, unknown> | null;
+  os?: Record<string, unknown> | null;
+  paths?: Record<string, unknown> | null;
+  [key: string]: unknown;
+}
+
+export interface AuraRuntimeAPI {
+  getDiagnostics(): Promise<AuraRuntimeDiagnostics | null>;
+  refresh(): Promise<AuraRuntimeDiagnostics | null>;
+  getCachedDiagnostics(): AuraRuntimeDiagnostics | null;
+  onBackendHealthUpdate(callback: (status: HealthStatus) => void): () => void;
+  onBackendProviderUpdate(callback: (status: ProviderStatus) => void): () => void;
+}
+
+export interface AuraBackendAPI {
+  getBaseUrl(): Promise<string | null>;
+  getUrl(): Promise<string | null>;
+  health(): Promise<HealthStatus>;
+  ping(): Promise<PingResult>;
+  info(): Promise<BackendInfo>;
+  version(): Promise<VersionInfo>;
+  providerStatus(): Promise<ProviderStatus>;
+  ffmpegStatus(): Promise<FFmpegStatus>;
+  restart(): Promise<unknown>;
+  stop(): Promise<unknown>;
+  status(): Promise<{
+    running: boolean;
+    port: number | null;
+    url: string | null;
+  }>;
+  checkFirewall(): Promise<Record<string, unknown>>;
+  getFirewallRule(): Promise<Record<string, unknown>>;
+  getFirewallCommand(): Promise<string>;
+  onHealthUpdate(callback: (status: HealthStatus) => void): () => void;
+  onProviderUpdate(callback: (status: ProviderStatus) => void): () => void;
+}
+
+export interface AuraFFmpegAPI {
+  checkStatus(): Promise<FFmpegStatus>;
+  install(options?: Record<string, unknown>): Promise<unknown>;
+  getProgress(): Promise<Record<string, unknown>>;
+  openDirectory(): Promise<{ success: boolean }>;
+}
+
+export interface AuraDialogsAPI {
+  openFolder(): Promise<string | null>;
+  openFile(options?: DialogOptions): Promise<string | null>;
+  openMultipleFiles(options?: DialogOptions): Promise<string[]>;
+  saveFile(options?: SaveDialogOptions): Promise<string | null>;
+  showMessage(options: MessageBoxOptions): Promise<number>;
+  showError(title: string, message: string): Promise<boolean>;
+}
+
+export interface AuraShellAPI {
+  openExternal(url: string): Promise<{ success: boolean }>;
+  openPath(path: string): Promise<{ success: boolean }>;
+  showItemInFolder(path: string): Promise<{ success: boolean }>;
+  trashItem(path: string): Promise<{ success: boolean }>;
+}
+
+export interface AuraAppAPI {
+  getVersion(): Promise<string>;
+  getName(): Promise<string>;
+  getPaths(): Promise<AppPaths>;
+  getLocale(): Promise<string>;
+  isPackaged(): Promise<boolean>;
+  restart(): Promise<void>;
+  quit(): Promise<void>;
+}
+
+export interface AuraWindowAPI {
+  minimize(): Promise<{ success: boolean }>;
+  maximize(): Promise<{ success: boolean; isMaximized: boolean }>;
+  close(): Promise<{ success: boolean }>;
+  hide(): Promise<{ success: boolean }>;
+  show(): Promise<{ success: boolean }>;
+}
+
+export interface AuraVideoAPI {
+  generate: {
+    start(config: VideoGenerationConfig): Promise<VideoGeneration>;
+    pause(generationId: string): Promise<unknown>;
+    resume(generationId: string): Promise<unknown>;
+    cancel(generationId: string): Promise<unknown>;
+    status(generationId: string): Promise<VideoGenerationStatus>;
+    list(): Promise<VideoGeneration[]>;
+  };
+  onProgress(callback: (data: VideoProgressData) => void): () => void;
+  onError(callback: (data: VideoErrorData) => void): () => void;
+  onComplete(callback: (data: VideoCompleteData) => void): () => void;
+}
+
+export interface AuraConfigAPI {
+  get<T = unknown>(key: string, defaultValue?: T): Promise<T>;
+  set(key: string, value: unknown): Promise<{ success: boolean }>;
+  getAll(): Promise<Record<string, unknown>>;
+  reset(): Promise<{ success: boolean }>;
+  getSecure<T = unknown>(key: string): Promise<T>;
+  setSecure(key: string, value: unknown): Promise<{ success: boolean }>;
+  deleteSecure(key: string): Promise<{ success: boolean }>;
+  addRecentProject(path: string, name: string): Promise<RecentProject[]>;
+  getRecentProjects(): Promise<RecentProject[]>;
+  clearRecentProjects(): Promise<{ success: boolean }>;
+  removeRecentProject(path: string): Promise<RecentProject[]>;
+  isSafeMode(): Promise<boolean>;
+  getCrashCount(): Promise<number>;
+  resetCrashCount(): Promise<{ success: boolean }>;
+  deleteAndRestart(): Promise<unknown>;
+  getConfigPath(): Promise<string>;
+}
+
+export interface AuraDiagnosticsAPI {
+  runAll(): Promise<unknown>;
+  checkFFmpeg(): Promise<unknown>;
+  fixFFmpeg(): Promise<unknown>;
+  checkAPI(): Promise<unknown>;
+  fixAPI(): Promise<unknown>;
+  checkProviders(): Promise<unknown>;
+  fixProviders(): Promise<unknown>;
+  checkDiskSpace(): Promise<unknown>;
+  checkConfig(): Promise<unknown>;
+}
+
+export interface AuraUpdatesAPI {
+  check(): Promise<UpdateCheckResult>;
+}
+
+export interface AuraProtocolAPI {
+  onNavigate(callback: (data: ProtocolNavigateData) => void): () => void;
+}
+
+export interface AuraStartupLogsAPI {
+  getLatest(): Promise<unknown>;
+  getSummary(): Promise<unknown>;
+  getLogContent(): Promise<unknown>;
+  list(): Promise<unknown>;
+  readFile(filePath: string): Promise<unknown>;
+  openDirectory(): Promise<unknown>;
+}
+
+export interface AuraSystemAPI {
+  getEnvironmentInfo(): Promise<{
+    environment: Record<string, unknown> | null;
+    os: Record<string, unknown> | null;
+    paths: Record<string, unknown> | null;
+    platform: AuraPlatformInfo;
+  }>;
+  getPaths(): Promise<AppPaths>;
+}
+
+export interface AuraAPI {
+  env: AuraEnvInfo;
+  platform: AuraPlatformInfo;
+  runtime: AuraRuntimeAPI;
+  backend: AuraBackendAPI;
+  ffmpeg: AuraFFmpegAPI;
+  dialogs: AuraDialogsAPI;
+  shell: AuraShellAPI;
+  app: AuraAppAPI;
+  window: AuraWindowAPI;
+  video: AuraVideoAPI;
+  config: AuraConfigAPI;
+  diagnostics: AuraDiagnosticsAPI;
+  updates: AuraUpdatesAPI;
+  protocol: AuraProtocolAPI;
+  menu?: MenuAPI;
+  startupLogs: AuraStartupLogsAPI;
+  safeMode: {
+    onStatus(callback: (status: SafeModeStatus) => void): () => void;
+  };
+  system: AuraSystemAPI;
+  events: {
+    on<T = unknown>(channel: string, callback: (data: T) => void): () => void;
+    once<T = unknown>(channel: string, callback: (data: T) => void): void;
+  };
+  invoke?<T = unknown>(channel: string, ...args: unknown[]): Promise<T>;
+  on?<T = unknown>(channel: string, callback: (data: T) => void): () => void;
+  once?<T = unknown>(channel: string, callback: (data: T) => void): void;
+  selectFolder?(): Promise<string | null>;
+  openPath?(path: string): Promise<{ success: boolean }>;
+  openExternal?(url: string): Promise<{ success: boolean }>;
+}
+
+export type ElectronAPI = AuraAPI;
 
 // Supporting Types
 
@@ -253,7 +335,8 @@ export interface ProtocolNavigateData {
 // Global type augmentation for window object
 declare global {
   interface Window {
-    electron: ElectronAPI;
+    aura?: AuraAPI;
+    electron: AuraAPI;
     AURA_BACKEND_URL?: string;
     AURA_IS_ELECTRON?: boolean;
     AURA_IS_DEV?: boolean;

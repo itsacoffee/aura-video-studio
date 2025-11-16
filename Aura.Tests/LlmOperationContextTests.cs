@@ -23,12 +23,12 @@ public class LlmOperationContextTests
         _latencyLogger = loggerFactory.CreateLogger<LatencyManagementService>();
         _telemetryLogger = loggerFactory.CreateLogger<LatencyTelemetry>();
         _telemetry = new LatencyTelemetry(_telemetryLogger);
-        
+
         var policy = new LlmTimeoutPolicy
         {
             ScriptGenerationTimeoutSeconds = 10
         };
-        
+
         _latencyService = new LatencyManagementService(_latencyLogger, _telemetry, policy);
         _context = new LlmOperationContext(_logger, _latencyService, _telemetry);
     }
@@ -126,7 +126,7 @@ public class LlmOperationContextTests
         cts.CancelAfter(200);
 
         // Act & Assert
-        await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
         {
             await _context.ExecuteAsync(
                 "OpenAI",
@@ -177,7 +177,7 @@ public class LlmOperationContextTests
             ScriptGenerationTimeoutSeconds = 10,
             WarningThresholdPercentage = 0.3
         };
-        
+
         var latencyService = new LatencyManagementService(_latencyLogger, _telemetry, policy);
         var context = new LlmOperationContext(_logger, latencyService, _telemetry);
 

@@ -3,7 +3,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+using Aura.Core.Configuration;
 using Aura.Core.Models;
+using Aura.Core.Models.Timeline;
+using Aura.Core.Services.Timeline;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.Artifacts;
@@ -16,12 +21,17 @@ public class ArtifactManager
 {
     private readonly ILogger<ArtifactManager> _logger;
     private readonly string _baseJobsPath;
+    private readonly TimelineSerializationService _timelineSerializer;
 
-    public ArtifactManager(ILogger<ArtifactManager> logger)
+    public ArtifactManager(
+        ILogger<ArtifactManager> logger,
+        TimelineSerializationService timelineSerializer)
     {
-        _logger = logger;
-        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        _baseJobsPath = Path.Combine(localAppData, "Aura", "jobs");
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _timelineSerializer = timelineSerializer ?? throw new ArgumentNullException(nameof(timelineSerializer));
+
+        var dataRoot = AuraEnvironmentPaths.ResolveDataRoot(null);
+        _baseJobsPath = Path.Combine(dataRoot, "jobs");
         
         // Ensure jobs directory exists
         Directory.CreateDirectory(_baseJobsPath);
@@ -36,6 +46,67 @@ public class ArtifactManager
         var path = Path.Combine(_baseJobsPath, jobId);
         Directory.CreateDirectory(path);
         return path;
+    }
+
+    /// <summary>
+    /// Persist an editable timeline for the specified job.
+    /// </summary>
+    public async Task SaveTimelineAsync(
+        string jobId,
+        EditableTimeline timeline,
+        CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(jobId);
+        ArgumentNullException.ThrowIfNull(timeline);
+
+        try
+        {
+            var jobDir = GetJobDirectory(jobId);
+            var timelinePath = Path.Combine(jobDir, "timeline.json");
+            var json = _timelineSerializer.Serialize(timeline);
+            await File.WriteAllTextAsync(timelinePath, json, ct).ConfigureAwait(false);
+            _logger.LogDebug("Saved timeline for job {JobId} to {Path}", jobId, timelinePath);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to save timeline for job {JobId}", jobId);
+        }
+    }
+
+    /// <summary>
+    /// Load an editable timeline for the specified job if it exists.
+    /// </summary>
+    public async Task<EditableTimeline?> LoadTimelineAsync(
+        string jobId,
+        CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(jobId);
+
+        try
+        {
+            var jobDir = GetJobDirectory(jobId);
+            var timelinePath = Path.Combine(jobDir, "timeline.json");
+            if (!File.Exists(timelinePath))
+            {
+                return null;
+            }
+
+            var json = await File.ReadAllTextAsync(timelinePath, ct).ConfigureAwait(false);
+            return _timelineSerializer.Deserialize(json);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load timeline for job {JobId}", jobId);
+            return null;
+        }
     }
 
     /// <summary>

@@ -1850,6 +1850,10 @@ export interface ProgressEventDto {
   substageDetail?: string | null;
   currentItem?: number | null;
   totalItems?: number | null;
+  timestamp?: string | null;
+  phase?: string | null;
+  elapsedSeconds?: number | null;
+  estimatedRemainingSeconds?: number | null;
 }
 
 /**

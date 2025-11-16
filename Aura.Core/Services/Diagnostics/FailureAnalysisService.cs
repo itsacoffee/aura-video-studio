@@ -43,22 +43,22 @@ public class FailureAnalysisService
         // Load telemetry for enhanced analysis
         RunTelemetryCollection? telemetry = null;
         TelemetryAnomalies? anomalies = null;
-        
+
         if (_telemetryCollector != null)
         {
             telemetry = _telemetryCollector.LoadTelemetry(job.Id);
             if (telemetry != null)
             {
                 anomalies = TelemetryAnomalyDetector.DetectAnomalies(telemetry);
-                _logger.LogInformation("Telemetry loaded for job {JobId}: {RecordCount} records, {AnomalyCount} anomalies detected", 
-                    job.Id, telemetry.Records.Count, 
+                _logger.LogInformation("Telemetry loaded for job {JobId}: {RecordCount} records, {AnomalyCount} anomalies detected",
+                    job.Id, telemetry.Records.Count,
                     anomalies.CostAnomalies.Count + anomalies.LatencyAnomalies.Count + anomalies.ProviderIssues.Count);
             }
         }
 
         // Analyze error patterns (now with telemetry context)
         var rootCauses = AnalyzeErrorPatterns(job, logs, telemetry, anomalies);
-        
+
         // Sort by confidence
         rootCauses = rootCauses.OrderByDescending(rc => rc.Confidence).ToList();
 
@@ -103,8 +103,8 @@ public class FailureAnalysisService
     /// Enhanced with telemetry-based insights
     /// </summary>
     private List<RootCause> AnalyzeErrorPatterns(
-        Job job, 
-        List<LogEntry>? logs, 
+        Job job,
+        List<LogEntry>? logs,
         RunTelemetryCollection? telemetry = null,
         TelemetryAnomalies? anomalies = null)
     {
@@ -255,7 +255,7 @@ public class FailureAnalysisService
         }
 
         // Check for budget errors
-        if (ContainsPattern(errorMessage, new[] { "budget", "quota", "limit exceeded", "insufficient funds" }))
+        if (ContainsPattern(errorMessage, new[] { "budget", "spend limit", "billing", "insufficient funds", "payment required" }))
         {
             rootCauses.Add(new RootCause
             {
@@ -301,7 +301,7 @@ public class FailureAnalysisService
     /// Enhanced with telemetry-based insights
     /// </summary>
     private List<RecommendedAction> GenerateRecommendations(
-        RootCause primaryCause, 
+        RootCause primaryCause,
         List<RootCause> secondaryCauses,
         Job job,
         RunTelemetryCollection? telemetry = null,
@@ -657,17 +657,17 @@ public class FailureAnalysisService
         if (anomalies?.HasAnyAnomalies == true)
         {
             var insights = new List<string>();
-            
+
             if (anomalies.CostAnomalies.Count > 0)
             {
                 insights.Add($"{anomalies.CostAnomalies.Count} cost {(anomalies.CostAnomalies.Count == 1 ? "anomaly" : "anomalies")} detected");
             }
-            
+
             if (anomalies.LatencyAnomalies.Count > 0)
             {
                 insights.Add($"{anomalies.LatencyAnomalies.Count} latency issue(s) found");
             }
-            
+
             if (anomalies.ProviderIssues.Count > 0)
             {
                 insights.Add($"{anomalies.ProviderIssues.Count} provider issue(s) identified");
@@ -773,7 +773,7 @@ public class FailureAnalysisService
     private string? ExtractProvider(string errorMessage)
     {
         var providers = new[] { "OpenAI", "Anthropic", "Gemini", "ElevenLabs", "PlayHT", "Stable Diffusion" };
-        
+
         foreach (var provider in providers)
         {
             if (errorMessage.Contains(provider, StringComparison.OrdinalIgnoreCase))

@@ -15,6 +15,7 @@ class WindowManager {
     this.isDev = isDev;
     this.mainWindow = null;
     this.splashWindow = null;
+    this.allowedWebOrigins = new Set();
 
     // Window state persistence
     this.windowStateStore = new Store({
@@ -179,6 +180,7 @@ class WindowManager {
       frame: true,
       autoHideMenuBar: false,
     });
+    this.allowedWebOrigins = new Set();
 
     // Restore maximized state
     if (savedState.isMaximized) {
@@ -231,11 +233,11 @@ class WindowManager {
 
     // Handle navigation - prevent navigation away from app
     this.mainWindow.webContents.on("will-navigate", (event, url) => {
-      // Allow navigation within the app
-      if (!url.startsWith("file://") && !url.startsWith("http://localhost")) {
-        event.preventDefault();
-        console.warn("[WindowManager] Navigation blocked:", url);
+      if (this._isAllowedNavigation(url)) {
+        return;
       }
+      event.preventDefault();
+      console.warn("[WindowManager] Navigation blocked:", url);
     });
 
     // Prevent new window creation
@@ -614,18 +616,13 @@ class WindowManager {
       "[WindowManager] Load attempt #" + this.loadingState.loadAttempts
     );
 
-    // Get frontend paths to try
-    const paths = this._getFrontendPaths();
-    const primaryPath = paths[0];
-
-    console.log("[WindowManager] Loading frontend from:", primaryPath);
-    console.log(
-      "[WindowManager] Frontend path exists:",
-      fs.existsSync(primaryPath)
-    );
-    console.log("[WindowManager] Fallback paths available:", paths.length - 1);
+    const targets = this._getFrontendTargets();
+    if (targets.length === 0) {
+      throw new Error("No frontend targets available");
+    }
 
     // Set timeout for load (30 seconds)
+    const firstTarget = targets[0];
     this.loadingState.loadTimeout = setTimeout(() => {
       if (!this.loadingState.didFinishLoad) {
         console.error("[WindowManager] ✗ Page load timeout (30 seconds)");
@@ -654,7 +651,11 @@ class WindowManager {
           })
           .then((result) => {
             if (result.response === 0) {
-              this._loadErrorPage(-7, "Load timeout (30 seconds)", primaryPath);
+              this._loadErrorPage(
+                -7,
+                "Load timeout (30 seconds)",
+                this._describeTarget(firstTarget)
+              );
             } else {
               this.app.quit();
             }
@@ -662,27 +663,42 @@ class WindowManager {
       }
     }, 30000);
 
-    // Try loading from primary path
-    this.mainWindow
-      .loadFile(primaryPath)
-      .then(() => {
-        console.log("[WindowManager] ✓ Frontend file load initiated");
+    this._loadTargetsSequentially(targets);
+  }
 
-        // Verify the URL that was loaded
+  _loadTargetsSequentially(targets) {
+    const [currentTarget, ...rest] = targets;
+    if (!currentTarget) {
+      console.error("[WindowManager] All load attempts failed");
+      this._loadErrorPage(-1, "All load targets failed", "multiple targets");
+      return;
+    }
+
+    console.log(
+      "[WindowManager] Loading frontend from:",
+      this._describeTarget(currentTarget)
+    );
+    if (currentTarget.type === "file") {
+      console.log(
+        "[WindowManager] Frontend path exists:",
+        fs.existsSync(currentTarget.value)
+      );
+    }
+
+    this._loadRendererTarget(currentTarget)
+      .then(() => {
+        console.log("[WindowManager] ✓ Renderer load initiated");
         const loadedURL = this.mainWindow.webContents.getURL();
         console.log("[WindowManager] Loaded URL:", loadedURL);
         console.log(
           "[WindowManager] URL protocol:",
           new URL(loadedURL).protocol
         );
-
-        // Inject global error handler early
         console.log("[WindowManager] Injecting global error handler...");
         return this.mainWindow.webContents.executeJavaScript(`
           (function() {
             console.log('[Injected] Installing global error handler...');
 
-            // Capture uncaught errors
             window.addEventListener('error', function(event) {
               console.error('[Global Error Handler] Uncaught error:', {
                 message: event.message,
@@ -697,7 +713,6 @@ class WindowManager {
               });
             }, true);
 
-            // Capture unhandled promise rejections
             window.addEventListener('unhandledrejection', function(event) {
               console.error('[Global Error Handler] Unhandled promise rejection:', {
                 reason: event.reason,
@@ -713,37 +728,101 @@ class WindowManager {
         console.log("[WindowManager] ✓ Error handler injected");
       })
       .catch((error) => {
-        console.error("[WindowManager] ✗ Failed to load frontend:", error);
-        console.error("[WindowManager] Error stack:", error.stack);
-
-        // Try fallback paths
-        this._tryFallbackPaths(paths.slice(1));
+        console.error(
+          `[WindowManager] ✗ Failed to load target ${this._describeTarget(
+            currentTarget
+          )}:`,
+          error
+        );
+        if (rest.length === 0) {
+          this._loadErrorPage(
+            -1,
+            "All load targets failed",
+            this._describeTarget(currentTarget)
+          );
+        } else {
+          this._loadTargetsSequentially(rest);
+        }
       });
   }
 
-  /**
-   * Try loading from fallback paths
-   */
-  _tryFallbackPaths(fallbackPaths) {
-    if (fallbackPaths.length === 0) {
-      console.error("[WindowManager] All load attempts failed");
-      this._loadErrorPage(-1, "All load paths failed", "multiple paths");
-      return;
+  _loadRendererTarget(target) {
+    if (target.type === "url") {
+      this._registerAllowedOrigin(target.value);
+      return this.mainWindow.loadURL(target.value);
     }
 
-    const nextPath = fallbackPaths[0];
-    console.log("[WindowManager] Trying fallback path:", nextPath);
-    console.log("[WindowManager] Path exists:", fs.existsSync(nextPath));
+    return this.mainWindow.loadFile(target.value);
+  }
 
-    this.mainWindow
-      .loadFile(nextPath)
-      .then(() => {
-        console.log("[WindowManager] ✓ Fallback path loaded successfully");
-      })
-      .catch((error) => {
-        console.error("[WindowManager] ✗ Fallback path failed:", error);
-        this._tryFallbackPaths(fallbackPaths.slice(1));
+  _getFrontendTargets() {
+    const targets = [];
+
+    if (this.isDev) {
+      const devServers = this._getDevServerTargets();
+      devServers.forEach((url) => {
+        targets.push({ type: "url", value: url });
       });
+    }
+
+    const filePaths = this._getFrontendPaths();
+    filePaths.forEach((filePath) => {
+      targets.push({ type: "file", value: filePath });
+    });
+
+    return targets;
+  }
+
+  _getDevServerTargets() {
+    const targets = new Set();
+    const explicitUrl =
+      process.env.AURA_VITE_DEV_SERVER_URL || process.env.VITE_DEV_SERVER_URL;
+    if (explicitUrl) {
+      const normalized = this._normalizeDevServerUrl(explicitUrl);
+      if (normalized) {
+        targets.add(normalized);
+      }
+    }
+
+    const defaultPorts = new Set(["5173"]);
+    if (process.env.AURA_VITE_DEV_SERVER_PORT) {
+      defaultPorts.add(String(process.env.AURA_VITE_DEV_SERVER_PORT));
+    }
+
+    defaultPorts.forEach((port) => {
+      targets.add(`http://127.0.0.1:${port}`);
+      targets.add(`http://localhost:${port}`);
+    });
+
+    return Array.from(targets);
+  }
+
+  _normalizeDevServerUrl(value) {
+    if (!value) {
+      return null;
+    }
+    let normalized = value.trim();
+    if (!normalized) {
+      return null;
+    }
+    if (!/^https?:\/\//i.test(normalized)) {
+      normalized = `http://${normalized}`;
+    }
+    try {
+      const parsed = new URL(normalized);
+      parsed.hash = "";
+      if (!parsed.pathname || parsed.pathname === "/") {
+        parsed.pathname = "/";
+      }
+      return parsed.toString().replace(/\/$/, "");
+    } catch (error) {
+      console.warn(
+        "[WindowManager] Invalid dev server URL configured:",
+        value,
+        error.message
+      );
+      return null;
+    }
   }
 
   /**
@@ -772,6 +851,53 @@ class WindowManager {
     }
 
     return paths;
+  }
+
+  _describeTarget(target) {
+    if (!target) {
+      return "unknown target";
+    }
+    if (target.type === "url") {
+      return `dev server (${target.value})`;
+    }
+    return target.value;
+  }
+
+  _registerAllowedOrigin(targetUrl) {
+    if (!targetUrl) {
+      return;
+    }
+    try {
+      const parsed = new URL(targetUrl);
+      if (!this.allowedWebOrigins) {
+        this.allowedWebOrigins = new Set();
+      }
+      this.allowedWebOrigins.add(parsed.origin);
+    } catch (error) {
+      console.warn(
+        "[WindowManager] Unable to register allowed origin:",
+        targetUrl,
+        error.message
+      );
+    }
+  }
+
+  _isAllowedNavigation(url) {
+    if (!url) {
+      return false;
+    }
+    if (url.startsWith("file://")) {
+      return true;
+    }
+    if (!this.allowedWebOrigins || this.allowedWebOrigins.size === 0) {
+      return false;
+    }
+    for (const origin of this.allowedWebOrigins) {
+      if (origin && url.startsWith(origin)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**

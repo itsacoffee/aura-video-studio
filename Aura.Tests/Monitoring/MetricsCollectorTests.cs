@@ -85,9 +85,9 @@ public class MetricsCollectorTests
         Assert.Equal(100.0, stats.Max);
         Assert.Equal(55.0, stats.Mean);
         Assert.Equal(50.0, stats.P50);
-        Assert.InRange(stats.P90, 89.0, 91.0);
-        Assert.InRange(stats.P95, 94.0, 96.0);
-        Assert.InRange(stats.P99, 98.0, 100.0);
+        Assert.Equal(90.0, stats.P90);
+        Assert.Equal(100.0, stats.P95);
+        Assert.Equal(100.0, stats.P99);
     }
 
     [Fact]

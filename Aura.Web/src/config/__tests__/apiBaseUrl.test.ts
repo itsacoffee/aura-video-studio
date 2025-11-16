@@ -22,6 +22,8 @@ describe('apiBaseUrl', () => {
       location: { origin: 'http://localhost:3000' },
     } as unknown as Window & typeof globalThis;
     delete (global.window as Window).desktopBridge;
+    delete (global.window as Window).aura;
+    delete (global.window as Window).electron;
 
     // Clear all environment variable stubs
     vi.unstubAllEnvs();
@@ -44,12 +46,8 @@ describe('apiBaseUrl', () => {
       expect(isElectronEnvironment()).toBe(true);
     });
 
-    it('should return true when electron object exists', () => {
-      (global.window as Window).electron = {
-        selectFolder: vi.fn(),
-        openPath: vi.fn(),
-        openExternal: vi.fn(),
-      };
+    it('should return true when aura bridge exists', () => {
+      (global.window as Window).aura = {} as typeof window.aura;
       expect(isElectronEnvironment()).toBe(true);
     });
 
@@ -91,6 +89,18 @@ describe('apiBaseUrl', () => {
       expect(result).toBeNull();
     });
 
+    it('should return URL from aura runtime when available', async () => {
+      (global.window as Window).aura = {
+        runtime: {
+          getCachedDiagnostics: vi.fn().mockReturnValue({
+            backend: { baseUrl: 'http://aura-runtime:5005' },
+          }),
+        },
+      } as unknown as typeof window.aura;
+      const result = await getElectronBackendUrl();
+      expect(result).toBe('http://aura-runtime:5005');
+    });
+
     it('should return URL from desktop bridge when available', async () => {
       (global.window as Window).desktopBridge = {
         getBackendBaseUrl: vi.fn().mockReturnValue('http://bridge:5005'),
@@ -110,39 +120,33 @@ describe('apiBaseUrl', () => {
       expect(result).toBe('http://diagnostics:5005');
     });
 
-    it('should call electron.backend.getUrl() when available', async () => {
-      const mockGetUrl = vi.fn().mockResolvedValue('http://electron-backend:5005');
-      (global.window as Window).electron = {
-        selectFolder: vi.fn(),
-        openPath: vi.fn(),
-        openExternal: vi.fn(),
+    it('should call aura.backend.getBaseUrl() when available', async () => {
+      const mockGetBaseUrl = vi.fn().mockResolvedValue('http://electron-backend:5005');
+      (global.window as Window).aura = {
         backend: {
-          getUrl: mockGetUrl,
+          getBaseUrl: mockGetBaseUrl,
         },
-      };
+      } as unknown as typeof window.aura;
 
       const result = await getElectronBackendUrl();
-      expect(mockGetUrl).toHaveBeenCalled();
+      expect(mockGetBaseUrl).toHaveBeenCalled();
       expect(result).toBe('http://electron-backend:5005');
     });
 
-    it('should handle errors from electron.backend.getUrl()', async () => {
-      const mockGetUrl = vi.fn().mockRejectedValue(new Error('Backend not ready'));
-      (global.window as Window).electron = {
-        selectFolder: vi.fn(),
-        openPath: vi.fn(),
-        openExternal: vi.fn(),
+    it('should handle errors from aura.backend.getBaseUrl()', async () => {
+      const mockGetBaseUrl = vi.fn().mockRejectedValue(new Error('Backend not ready'));
+      (global.window as Window).aura = {
         backend: {
-          getUrl: mockGetUrl,
+          getBaseUrl: mockGetBaseUrl,
         },
-      };
+      } as unknown as typeof window.aura;
 
       const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const result = await getElectronBackendUrl();
 
-      expect(mockGetUrl).toHaveBeenCalled();
+      expect(mockGetBaseUrl).toHaveBeenCalled();
       expect(consoleWarnSpy).toHaveBeenCalledWith(
-        'Failed to get backend URL from Electron API:',
+        'Failed to get backend URL from Aura API:',
         expect.any(Error)
       );
       expect(result).toBeNull();

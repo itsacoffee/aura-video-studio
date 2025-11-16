@@ -10,6 +10,7 @@ using Aura.Core.Dependencies;
 using Aura.Core.Models;
 using Aura.Core.Models.Visual;
 using Aura.Core.Orchestrator;
+using Aura.Core.Services.Timeline;
 using Aura.Tests.TestSupport;
 using Microsoft.Extensions.Logging;
 using Xunit;
@@ -33,8 +34,7 @@ public class VideoGenerationPipelineTests
     public async Task JobRunner_CreateAndStartJob_CreatesJobWithCorrectStatus()
     {
         // Arrange
-        var artifactManager = new ArtifactManager(
-            _loggerFactory.CreateLogger<ArtifactManager>());
+        var artifactManager = CreateArtifactManager();
         var orchestrator = CreateMockOrchestrator();
         var hardwareDetector = new MockHardwareDetector();
         var telemetryCollector = new Core.Telemetry.RunTelemetryCollector(
@@ -113,8 +113,7 @@ public class VideoGenerationPipelineTests
     public async Task JobRunner_CancelJob_UpdatesJobStatus()
     {
         // Arrange
-        var artifactManager = new ArtifactManager(
-            _loggerFactory.CreateLogger<ArtifactManager>());
+        var artifactManager = CreateArtifactManager();
         var orchestrator = CreateSlowMockOrchestrator();
         var hardwareDetector = new MockHardwareDetector();
         var telemetryCollector = new Core.Telemetry.RunTelemetryCollector(
@@ -161,8 +160,7 @@ public class VideoGenerationPipelineTests
     public void ArtifactManager_CreateArtifact_ReturnsValidArtifact()
     {
         // Arrange
-        var artifactManager = new ArtifactManager(
-            _loggerFactory.CreateLogger<ArtifactManager>());
+        var artifactManager = CreateArtifactManager();
 
         var jobId = Guid.NewGuid().ToString();
         var testFilePath = System.IO.Path.GetTempFileName();
@@ -200,8 +198,7 @@ public class VideoGenerationPipelineTests
     public void ArtifactManager_SaveAndLoadJob_PreservesJobData()
     {
         // Arrange
-        var artifactManager = new ArtifactManager(
-            _loggerFactory.CreateLogger<ArtifactManager>());
+        var artifactManager = CreateArtifactManager();
 
         var job = new Job
         {
@@ -514,5 +511,15 @@ public class VideoGenerationPipelineTests
         {
             return Task.CompletedTask;
         }
+    }
+
+    private ArtifactManager CreateArtifactManager()
+    {
+        var timelineSerializer = new TimelineSerializationService(
+            _loggerFactory.CreateLogger<TimelineSerializationService>());
+
+        return new ArtifactManager(
+            _loggerFactory.CreateLogger<ArtifactManager>(),
+            timelineSerializer);
     }
 }

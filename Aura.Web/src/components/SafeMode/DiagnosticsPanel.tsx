@@ -48,17 +48,26 @@ export const DiagnosticsPanel: FC = () => {
   const [fixingCheck, setFixingCheck] = useState<string | null>(null);
 
   const runDiagnostics = async () => {
-    if (!window.electron) {
+    const auraDiagnostics = window.aura?.diagnostics;
+    const legacyInvoke = window.electron?.invoke;
+
+    if (!auraDiagnostics && !legacyInvoke) {
       return;
     }
 
     setLoading(true);
     try {
-      const diagnostics = (await window.electron.invoke('diagnostics:runAll')) as {
-        success: boolean;
-        results: DiagnosticsResults;
-      };
-      if (diagnostics.success) {
+      let diagnostics: { success: boolean; results: DiagnosticsResults } | undefined;
+      if (auraDiagnostics?.runAll) {
+        diagnostics = (await auraDiagnostics.runAll()) as { success: boolean; results: DiagnosticsResults };
+      } else if (legacyInvoke) {
+        diagnostics = (await legacyInvoke('diagnostics:runAll')) as {
+          success: boolean;
+          results: DiagnosticsResults;
+        };
+      }
+
+      if (diagnostics?.success) {
         setResults(diagnostics.results);
       }
     } catch (error: unknown) {
@@ -73,27 +82,49 @@ export const DiagnosticsPanel: FC = () => {
   }, []);
 
   const handleFix = async (checkName: string) => {
-    if (!window.electron) {
+    const auraDiagnostics = window.aura?.diagnostics;
+    const legacyInvoke = window.electron?.invoke;
+
+    if (!auraDiagnostics && !legacyInvoke) {
       return;
     }
 
+    const auraFixers: Record<
+      string,
+      (() => Promise<{ success: boolean; message: string; requiresRestart?: boolean }>) | undefined
+    > = {
+      ffmpeg: auraDiagnostics?.fixFFmpeg,
+      api: auraDiagnostics?.fixAPI,
+      providers: auraDiagnostics?.fixProviders,
+    };
+
+    const fallbackChannel = `diagnostics:fix${checkName.charAt(0).toUpperCase() + checkName.slice(1)}`;
+
     setFixingCheck(checkName);
     try {
-      const fixMethod = `diagnostics:fix${checkName.charAt(0).toUpperCase() + checkName.slice(1)}`;
-      const result = (await window.electron.invoke(fixMethod)) as {
-        success: boolean;
-        message: string;
-        requiresRestart?: boolean;
-      };
+      let result:
+        | { success: boolean; message: string; requiresRestart?: boolean }
+        | undefined;
 
-      if (result.success) {
+      const fixer = auraFixers[checkName];
+      if (fixer) {
+        result = await fixer();
+      } else if (legacyInvoke) {
+        result = (await legacyInvoke(fallbackChannel)) as {
+          success: boolean;
+          message: string;
+          requiresRestart?: boolean;
+        };
+      }
+
+      if (result?.success) {
         if (result.requiresRestart) {
           alert(`${result.message}\n\nPlease restart the application.`);
         } else {
           alert(result.message);
           await runDiagnostics();
         }
-      } else {
+      } else if (result) {
         alert(`Fix failed: ${result.message}`);
       }
     } catch (error: unknown) {

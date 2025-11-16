@@ -83,11 +83,11 @@ public sealed class StallDetector
                 if (heartbeatStrategy.SupportsHeartbeat)
                 {
                     var progress = await heartbeatStrategy.CheckHeartbeatAsync(ct).ConfigureAwait(false);
-                    
+
                     if (progress != null)
                     {
                         providerState.RecordHeartbeat(progress);
-                        
+
                         _logger.LogDebug(
                             "[{CorrelationId}] PROVIDER_HEARTBEAT {Provider} - {Progress}",
                             providerState.CorrelationId,
@@ -136,7 +136,7 @@ public sealed class StallDetector
         var previousCategory = state.CurrentCategory;
 
         LatencyCategory newCategory;
-        
+
         if (elapsed.TotalMilliseconds < 30000)
         {
             newCategory = LatencyCategory.Normal;
@@ -150,7 +150,8 @@ public sealed class StallDetector
             newCategory = LatencyCategory.DeepWait;
         }
 
-        if (state.IsStallSuspected(strategy.StallThreshold))
+        var stallDetected = state.IsStallSuspected(strategy.StallThreshold);
+        if (stallDetected)
         {
             newCategory = LatencyCategory.StallSuspected;
         }
@@ -158,7 +159,7 @@ public sealed class StallDetector
         if (previousCategory != newCategory)
         {
             state.UpdateCategory(newCategory);
-            
+
             _logger.LogInformation(
                 "[{CorrelationId}] PROVIDER_LATENCY_CATEGORY_CHANGE {Provider}: {From} → {To} (elapsed: {Elapsed}ms)",
                 state.CorrelationId,
@@ -167,6 +168,11 @@ public sealed class StallDetector
                 newCategory,
                 elapsed.TotalMilliseconds);
         }
+
+        if (stallDetected && previousCategory != LatencyCategory.StallSuspected)
+        {
+            HandleStallSuspicion(state);
+        }
     }
 
     /// <summary>
@@ -174,13 +180,6 @@ public sealed class StallDetector
     /// </summary>
     private void HandleStallSuspicion(ProviderState state)
     {
-        if (state.CurrentCategory == LatencyCategory.StallSuspected)
-        {
-            return;
-        }
-
-        state.UpdateCategory(LatencyCategory.StallSuspected);
-
         var timeSinceHeartbeat = state.TimeSinceLastHeartbeat ?? state.ElapsedTime;
 
         _logger.LogWarning(

@@ -3,7 +3,7 @@
  * Manages EventSource (Server-Sent Events) connections with automatic reconnection
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { env } from '../config/env';
 
 export interface SSEMessage {
@@ -95,6 +95,7 @@ export function useSSEConnection(options: UseSSEConnectionOptions = {}): UseSSEC
           'warning',
           'error',
           'heartbeat', // New: 5-second heartbeat event
+          'job-log',
         ];
 
         eventTypes.forEach((eventType) => {

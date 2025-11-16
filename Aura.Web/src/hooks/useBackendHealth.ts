@@ -42,10 +42,17 @@ export interface BackendHealthSnapshot {
 }
 
 export function useBackendHealth(pollIntervalMs = 15000) {
+  const getCachedDiagnostics = () =>
+    typeof window !== 'undefined'
+      ? window.aura?.runtime?.getCachedDiagnostics?.() ??
+        window.desktopBridge?.getCachedDiagnostics?.() ??
+        null
+      : null;
+
   const [snapshot, setSnapshot] = useState<BackendHealthSnapshot>({
     status: 'offline',
     diagnostics: null,
-    bridge: typeof window !== 'undefined' ? window.desktopBridge?.getCachedDiagnostics?.() ?? null : null,
+    bridge: getCachedDiagnostics(),
     error: null,
     lastChecked: null
   });
@@ -66,8 +73,7 @@ export function useBackendHealth(pollIntervalMs = 15000) {
       }
 
       const diagnostics = (await response.json()) as ApiHealthResponse;
-      const desktopDiagnostics =
-        typeof window !== 'undefined' ? window.desktopBridge?.getCachedDiagnostics?.() ?? null : null;
+      const desktopDiagnostics = getCachedDiagnostics();
 
       setSnapshot({
         status: 'online',

@@ -68,11 +68,14 @@ console.info('[Main] User Agent:', navigator.userAgent);
 
 // Check for Electron environment
 console.info('[Main] Checking Electron environment...');
-const desktopDiagnostics = window.desktopBridge?.getCachedDiagnostics?.() ?? null;
-console.info('[Main] window.electron exists:', typeof (window as Window).electron !== 'undefined');
+const desktopDiagnostics =
+  window.aura?.runtime?.getCachedDiagnostics?.() ??
+  window.desktopBridge?.getCachedDiagnostics?.() ??
+  null;
+console.info('[Main] window.aura exists:', typeof (window as Window).aura !== 'undefined');
 console.info('[Main] desktop bridge available:', !!window.desktopBridge);
-console.info('[Main] desktop bridge backend URL:', desktopDiagnostics?.backend?.baseUrl);
-console.info('[Main] desktop bridge environment:', desktopDiagnostics?.environment);
+console.info('[Main] aura backend URL:', desktopDiagnostics?.backend?.baseUrl);
+console.info('[Main] aura environment:', desktopDiagnostics?.environment);
 console.info('[Main] Legacy AURA_BACKEND_URL:', window.AURA_BACKEND_URL);
 
 // Normalize relative /api requests so they work in Electron's file:// origin

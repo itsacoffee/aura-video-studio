@@ -626,8 +626,15 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
     try {
       let selectedPath: string | null = null;
 
-      if (window.electron?.selectFolder) {
-        selectedPath = await window.electron.selectFolder();
+      const isWindows = navigator.userAgent.toLowerCase().includes('windows');
+      const ffmpegFilters = isWindows
+        ? [{ name: 'FFmpeg executable', extensions: ['exe'] }]
+        : [{ name: 'FFmpeg executable', extensions: ['*'] }];
+      if (window.aura?.dialogs?.openFile) {
+        selectedPath = await window.aura.dialogs.openFile({
+          title: 'Select FFmpeg Executable',
+          filters: ffmpegFilters,
+        });
       }
 
       if (!selectedPath) {
