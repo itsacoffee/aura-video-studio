@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.AI;
+using Aura.Core.AI.SchemaBuilders;
 using Aura.Core.Models;
 using Aura.Core.Models.Narrative;
 using Aura.Core.Models.Visual;
@@ -272,6 +273,193 @@ public class OpenAiLlmProvider : ILlmProvider
         PerformanceTrackingCallback?.Invoke(0, finalDuration, false);
         throw new InvalidOperationException(
             $"Failed to generate script with OpenAI after {_maxRetries + 1} attempts. Please try again later.", lastException);
+    }
+
+    /// <summary>
+    /// Generates a script using OpenAI structured outputs with JSON schema validation
+    /// Ensures reliable JSON structure by enforcing schema at the API level
+    /// </summary>
+    public async Task<string> GenerateScriptWithSchemaAsync(Brief brief, PlanSpec spec, CancellationToken ct)
+    {
+        _logger.LogInformation("Generating high-quality script with OpenAI structured outputs (model: {Model}) for topic: {Topic}", _model, brief.Topic);
+
+        var startTime = DateTime.UtcNow;
+        Exception? lastException = null;
+        
+        for (int attempt = 0; attempt <= _maxRetries; attempt++)
+        {
+            try
+            {
+                if (attempt > 0)
+                {
+                    var backoffDelay = TimeSpan.FromSeconds(Math.Pow(2, attempt));
+                    _logger.LogInformation("Retry attempt {Attempt}/{MaxRetries} after {Delay}s delay", 
+                        attempt, _maxRetries, backoffDelay.TotalSeconds);
+                    await Task.Delay(backoffDelay, ct).ConfigureAwait(false);
+                }
+
+                // Build enhanced prompts for quality content with user customizations
+                string systemPrompt = EnhancedPromptTemplates.GetSystemPromptForScriptGeneration();
+                string userPrompt = _promptCustomizationService.BuildCustomizedPrompt(brief, spec, brief.PromptModifiers);
+
+                // Apply enhancement callback if configured
+                if (PromptEnhancementCallback != null)
+                {
+                    userPrompt = await PromptEnhancementCallback(userPrompt, brief, spec).ConfigureAwait(false);
+                }
+
+                // Get the script schema for structured output
+                var responseFormat = ScriptSchemaBuilder.GetScriptSchema();
+
+                // Call OpenAI API with structured output
+                var requestBody = new
+                {
+                    model = _model,
+                    messages = new[]
+                    {
+                        new { role = "system", content = systemPrompt },
+                        new { role = "user", content = userPrompt }
+                    },
+                    temperature = 0.7,
+                    max_tokens = 2048,
+                    response_format = responseFormat
+                };
+
+                _httpClient.DefaultRequestHeaders.Clear();
+                _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
+
+                var json = JsonSerializer.Serialize(requestBody, new JsonSerializerOptions 
+                { 
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+                });
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                cts.CancelAfter(_timeout);
+
+                var response = await _httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content, cts.Token).ConfigureAwait(false);
+                
+                // Handle specific HTTP error codes
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                    if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                    {
+                        throw new InvalidOperationException(
+                            "OpenAI API key is invalid or has been revoked. Please check your API key in Settings → Providers → OpenAI");
+                    }
+                    else if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                    {
+                        _logger.LogWarning("OpenAI rate limit exceeded (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
+                        if (attempt >= _maxRetries)
+                        {
+                            throw new InvalidOperationException(
+                                "OpenAI rate limit exceeded. Please wait a moment and try again, or upgrade your OpenAI plan.");
+                        }
+                        lastException = new Exception($"Rate limit exceeded: {errorContent}");
+                        continue; // Retry
+                    }
+                    else if ((int)response.StatusCode >= 500)
+                    {
+                        _logger.LogWarning("OpenAI server error (attempt {Attempt}/{MaxRetries}): {StatusCode}", 
+                            attempt + 1, _maxRetries + 1, response.StatusCode);
+                        if (attempt >= _maxRetries)
+                        {
+                            throw new InvalidOperationException(
+                                $"OpenAI service is experiencing issues (HTTP {response.StatusCode}). Please try again later.");
+                        }
+                        lastException = new Exception($"Server error: {errorContent}");
+                        continue; // Retry
+                    }
+                    
+                    response.EnsureSuccessStatusCode();
+                }
+
+                var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                var responseDoc = JsonDocument.Parse(responseJson);
+
+                if (responseDoc.RootElement.TryGetProperty("choices", out var choices) &&
+                    choices.GetArrayLength() > 0)
+                {
+                    var firstChoice = choices[0];
+                    if (firstChoice.TryGetProperty("message", out var message) &&
+                        message.TryGetProperty("content", out var contentProp))
+                    {
+                        string script = contentProp.GetString() ?? string.Empty;
+                        
+                        if (string.IsNullOrWhiteSpace(script))
+                        {
+                            throw new InvalidOperationException("OpenAI returned an empty response");
+                        }
+                        
+                        var duration = DateTime.UtcNow - startTime;
+                        
+                        _logger.LogInformation("Script generated successfully with structured output ({Length} characters) in {Duration}s", 
+                            script.Length, duration.TotalSeconds);
+                        
+                        // Track performance if callback configured
+                        PerformanceTrackingCallback?.Invoke(80.0, duration, true);
+                        
+                        return script;
+                    }
+                }
+
+                _logger.LogWarning("OpenAI response did not contain expected structure");
+                var failureDuration = DateTime.UtcNow - startTime;
+                PerformanceTrackingCallback?.Invoke(0, failureDuration, false);
+                throw new InvalidOperationException("Invalid response structure from OpenAI API");
+            }
+            catch (TaskCanceledException ex)
+            {
+                lastException = ex;
+                _logger.LogWarning(ex, "OpenAI request timed out (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
+                if (attempt >= _maxRetries)
+                {
+                    var duration = DateTime.UtcNow - startTime;
+                    PerformanceTrackingCallback?.Invoke(0, duration, false);
+                    throw new InvalidOperationException(
+                        $"OpenAI request timed out after {_timeout.TotalSeconds}s. Please check your internet connection or try again later.", ex);
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                lastException = ex;
+                _logger.LogWarning(ex, "Failed to connect to OpenAI API (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
+                if (attempt >= _maxRetries)
+                {
+                    var duration = DateTime.UtcNow - startTime;
+                    PerformanceTrackingCallback?.Invoke(0, duration, false);
+                    throw new InvalidOperationException(
+                        "Cannot connect to OpenAI API. Please check your internet connection and try again.", ex);
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                // Don't retry on validation errors or known issues
+                var duration = DateTime.UtcNow - startTime;
+                PerformanceTrackingCallback?.Invoke(0, duration, false);
+                throw;
+            }
+            catch (Exception ex) when (attempt < _maxRetries)
+            {
+                lastException = ex;
+                _logger.LogWarning(ex, "Error generating script with OpenAI structured output (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
+            }
+            catch (Exception ex)
+            {
+                var duration = DateTime.UtcNow - startTime;
+                PerformanceTrackingCallback?.Invoke(0, duration, false);
+                _logger.LogError(ex, "Error generating script with OpenAI structured output after all retries");
+                throw;
+            }
+        }
+
+        // Should not reach here, but just in case
+        var finalDuration = DateTime.UtcNow - startTime;
+        PerformanceTrackingCallback?.Invoke(0, finalDuration, false);
+        throw new InvalidOperationException(
+            $"Failed to generate script with OpenAI structured output after {_maxRetries + 1} attempts. Please try again later.", lastException);
     }
 
     public async Task<string> CompleteAsync(string prompt, CancellationToken ct)
