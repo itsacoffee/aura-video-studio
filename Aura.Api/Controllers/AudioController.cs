@@ -900,6 +900,152 @@ public class AudioController : ControllerBase
             });
         }
     }
+
+    /// <summary>
+    /// Generate audio narration using OpenAI GPT-4o or fallback TTS providers
+    /// </summary>
+    [HttpPost("generate-narration")]
+    public async Task<IActionResult> GenerateNarration(
+        [FromBody] GenerateNarrationRequest request,
+        CancellationToken ct)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.Text))
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    error = "Text is required",
+                    correlationId
+                });
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Voice))
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    error = "Voice is required",
+                    correlationId
+                });
+            }
+
+            _logger.LogInformation(
+                "[{CorrelationId}] Generating narration for {Length} characters with voice {Voice}",
+                correlationId, request.Text.Length, request.Voice);
+
+            // Create narration service
+            var cache = HttpContext.RequestServices.GetService<Microsoft.Extensions.Caching.Memory.IMemoryCache>();
+            if (cache == null)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    error = "Memory cache not available",
+                    correlationId
+                });
+            }
+
+            var loggerFactory = HttpContext.RequestServices.GetService<ILoggerFactory>();
+            var narrationLogger = loggerFactory?.CreateLogger<AudioNarrationService>();
+            if (narrationLogger == null)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    error = "Logger not available",
+                    correlationId
+                });
+            }
+
+            var narrationService = new AudioNarrationService(narrationLogger, cache, _ttsProviderFactory);
+
+            // Create audio generator function if OpenAI is requested
+            Func<string, Aura.Core.Models.OpenAI.AudioConfig, CancellationToken, Task<AudioGenerationResult>>? audioGenerator = null;
+            
+            if (request.UseOpenAI && !string.IsNullOrWhiteSpace(request.OpenAIApiKey))
+            {
+                var httpClient = new HttpClient();
+                var openAiLogger = loggerFactory?.CreateLogger<Aura.Providers.Llm.OpenAiLlmProvider>();
+                
+                if (openAiLogger != null)
+                {
+                    var openAiProvider = new Aura.Providers.Llm.OpenAiLlmProvider(
+                        openAiLogger,
+                        httpClient,
+                        request.OpenAIApiKey,
+                        request.Model ?? "gpt-4o"
+                    );
+
+                    // Wrap OpenAI provider in audio generator function
+                    audioGenerator = async (text, config, cancelToken) =>
+                    {
+                        var response = await openAiProvider.GenerateWithAudioAsync(text, config, cancelToken);
+                        return new AudioGenerationResult
+                        {
+                            AudioData = response.AudioData,
+                            Transcript = response.Transcript,
+                            Format = response.Format,
+                            Voice = response.Voice
+                        };
+                    };
+                }
+            }
+
+            var result = await narrationService.GenerateNarrationAsync(
+                request.Text,
+                request.Voice,
+                audioGenerator,
+                request.UseCache ?? true,
+                ct
+            ).ConfigureAwait(false);
+
+            _logger.LogInformation(
+                "[{CorrelationId}] Narration generated successfully using {Provider}, duration: {Duration}s",
+                correlationId, result.Provider, result.DurationSeconds);
+
+            // Check if streaming is requested
+            if (request.Stream && System.IO.File.Exists(result.AudioPath))
+            {
+                var audioBytes = await System.IO.File.ReadAllBytesAsync(result.AudioPath, ct);
+                var contentType = result.Format.ToLowerInvariant() switch
+                {
+                    "wav" => "audio/wav",
+                    "mp3" => "audio/mpeg",
+                    "opus" => "audio/opus",
+                    _ => "application/octet-stream"
+                };
+
+                return File(audioBytes, contentType, $"narration.{result.Format}");
+            }
+
+            // Return metadata
+            return Ok(new
+            {
+                success = true,
+                audioPath = result.AudioPath,
+                transcript = result.Transcript,
+                voice = result.Voice,
+                format = result.Format,
+                provider = result.Provider,
+                durationSeconds = result.DurationSeconds,
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Error generating narration", correlationId);
+            return StatusCode(500, new
+            {
+                success = false,
+                error = ex.Message,
+                correlationId
+            });
+        }
+    }
 }
 
 // Request DTOs for Audio Controller
@@ -955,3 +1101,12 @@ public record RegenerateAudioRequest(
     double? Rate = null,
     double? Pitch = null,
     string? PauseStyle = null);
+
+public record GenerateNarrationRequest(
+    string Text,
+    string Voice,
+    bool? UseOpenAI = false,
+    string? OpenAIApiKey = null,
+    string? Model = null,
+    bool? UseCache = true,
+    bool Stream = false);
