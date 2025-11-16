@@ -21,17 +21,59 @@ public static class ProviderServicesExtensions
     /// </summary>
     public static IServiceCollection AddProviderServices(this IServiceCollection services)
     {
-        // HTTP client for provider communication
+        // HTTP client for provider communication with proper configuration
+        // Named client for API validations with retry policies and proper timeout
+        services.AddHttpClient("ProviderValidation", client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(120);
+            client.DefaultRequestHeaders.Add("User-Agent", "AuraVideoStudio/1.0");
+            client.DefaultRequestHeaders.Add("Accept", "application/json");
+        })
+        .ConfigurePrimaryHttpMessageHandler(() =>
+        {
+            var handler = new HttpClientHandler
+            {
+                // Disable automatic proxy detection to avoid network issues
+                UseProxy = false,
+                // Use system default credentials if needed
+                UseDefaultCredentials = false,
+                // Enable automatic decompression
+                AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate,
+                // Configure SSL/TLS settings
+                SslProtocols = System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13,
+                // Allow redirects
+                AllowAutoRedirect = true,
+                MaxAutomaticRedirections = 5
+            };
+            return handler;
+        })
+        .AddStandardResilienceHandler(options =>
+        {
+            // Configure retry policy
+            options.Retry.MaxRetryAttempts = 2;
+            options.Retry.Delay = TimeSpan.FromSeconds(1);
+            options.Retry.BackoffType = Polly.DelayBackoffType.Exponential;
+            
+            // Configure circuit breaker
+            options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(30);
+            options.CircuitBreaker.MinimumThroughput = 5;
+            options.CircuitBreaker.BreakDuration = TimeSpan.FromSeconds(30);
+            
+            // Configure timeout
+            options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(90);
+        });
+
+        // Default HTTP client for other uses
         services.AddHttpClient();
 
-        // OpenAI key validation service with extended timeout and proxy support
+        // OpenAI key validation service using IHttpClientFactory
         services.AddSingleton<OpenAIKeyValidationService>(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<OpenAIKeyValidationService>>();
             var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
             
-            var httpClient = httpClientFactory.CreateClient();
-            httpClient.Timeout = TimeSpan.FromSeconds(120);
+            // Use the named client with resilience policies
+            var httpClient = httpClientFactory.CreateClient("ProviderValidation");
             
             return new OpenAIKeyValidationService(logger, httpClient);
         });

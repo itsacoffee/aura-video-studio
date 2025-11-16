@@ -1645,6 +1645,7 @@ export interface ValidationDetails {
   httpStatusCode?: number;
   errorType?: string;
   responseTimeMs?: number;
+  diagnosticInfo?: string;
 }
 
 // VERSION INFO

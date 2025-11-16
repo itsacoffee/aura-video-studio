@@ -43,6 +43,8 @@ public class DiagnosticsController : ControllerBase
     private readonly ModelCatalog? _modelCatalog;
     private readonly DiagnosticBundleService? _bundleService;
     private readonly FailureAnalysisService? _failureAnalysisService;
+    private readonly IHttpClientFactory? _httpClientFactory;
+    private readonly Aura.Core.Services.Providers.OpenAIKeyValidationService? _openAIValidation;
 
     public DiagnosticsController(
         ILogger<DiagnosticsController> logger,
@@ -60,7 +62,9 @@ public class DiagnosticsController : ControllerBase
         DiagnosticReportGenerator? reportGenerator = null,
         ModelCatalog? modelCatalog = null,
         DiagnosticBundleService? bundleService = null,
-        FailureAnalysisService? failureAnalysisService = null)
+        FailureAnalysisService? failureAnalysisService = null,
+        IHttpClientFactory? httpClientFactory = null,
+        Aura.Core.Services.Providers.OpenAIKeyValidationService? openAIValidation = null)
     {
         _logger = logger;
         _healthService = healthService;
@@ -78,6 +82,8 @@ public class DiagnosticsController : ControllerBase
         _modelCatalog = modelCatalog;
         _bundleService = bundleService;
         _failureAnalysisService = failureAnalysisService;
+        _httpClientFactory = httpClientFactory;
+        _openAIValidation = openAIValidation;
     }
 
     /// <summary>
@@ -997,6 +1003,247 @@ public class DiagnosticsController : ControllerBase
                 error = ex.Message
             });
         }
+    }
+
+    /// <summary>
+    /// Test network connectivity to external APIs (OpenAI, Pexels, general internet)
+    /// </summary>
+    [HttpGet("network-test")]
+    public async Task<IActionResult> TestNetworkConnectivity(CancellationToken ct = default)
+    {
+        _logger.LogInformation("Network connectivity test requested");
+
+        var results = new Dictionary<string, object>();
+        var startTime = DateTime.UtcNow;
+
+        if (_httpClientFactory == null)
+        {
+            return Ok(new
+            {
+                success = false,
+                error = "HttpClientFactory not configured",
+                timestamp = DateTime.UtcNow
+            });
+        }
+
+        // Test 1: General Internet Connectivity (Google)
+        var googleResult = await TestEndpoint(
+            "Google",
+            "https://www.google.com",
+            HttpMethod.Head,
+            null,
+            ct
+        ).ConfigureAwait(false);
+        results["google"] = googleResult;
+
+        // Test 2: OpenAI API Connectivity
+        var openAIResult = await TestEndpoint(
+            "OpenAI",
+            "https://api.openai.com/v1/models",
+            HttpMethod.Get,
+            null,
+            ct
+        ).ConfigureAwait(false);
+        results["openai"] = openAIResult;
+
+        // Test 3: Pexels API Connectivity
+        var pexelsResult = await TestEndpoint(
+            "Pexels",
+            "https://api.pexels.com/v1/curated",
+            HttpMethod.Get,
+            new Dictionary<string, string> { { "Authorization", "test" } },
+            ct
+        ).ConfigureAwait(false);
+        results["pexels"] = pexelsResult;
+
+        // Test 4: DNS Resolution Test
+        var dnsResult = await TestDnsResolution("api.openai.com", ct).ConfigureAwait(false);
+        results["dns"] = dnsResult;
+
+        var totalElapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
+        var allSuccess = results.Values.All(r => ((dynamic)r).success);
+
+        return Ok(new
+        {
+            success = allSuccess,
+            overallStatus = allSuccess ? "AllTestsPassed" : "SomeTestsFailed",
+            timestamp = DateTime.UtcNow,
+            totalElapsedMs = totalElapsed,
+            tests = results,
+            diagnostics = new
+            {
+                httpClientFactoryConfigured = _httpClientFactory != null,
+                openAIValidationConfigured = _openAIValidation != null,
+                proxyDetectionDisabled = true,
+                resiliencePoliciesEnabled = true
+            }
+        });
+    }
+
+    private async Task<object> TestEndpoint(
+        string name,
+        string url,
+        HttpMethod method,
+        Dictionary<string, string>? headers,
+        CancellationToken ct)
+    {
+        var startTime = DateTime.UtcNow;
+        
+        try
+        {
+            var client = _httpClientFactory!.CreateClient("ProviderValidation");
+            var request = new HttpRequestMessage(method, url);
+            
+            if (headers != null)
+            {
+                foreach (var header in headers)
+                {
+                    request.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                }
+            }
+
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(10));
+
+            var response = await client.SendAsync(request, cts.Token).ConfigureAwait(false);
+            var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
+
+            return new
+            {
+                name = name,
+                success = true,
+                statusCode = (int)response.StatusCode,
+                statusText = response.StatusCode.ToString(),
+                elapsedMs = elapsed,
+                reachable = true,
+                errorType = (string?)null,
+                errorMessage = (string?)null
+            };
+        }
+        catch (TaskCanceledException ex)
+        {
+            var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
+            _logger.LogWarning(ex, "Network test timeout for {Name}", name);
+            
+            return new
+            {
+                name = name,
+                success = false,
+                statusCode = (int?)null,
+                statusText = (string?)null,
+                elapsedMs = elapsed,
+                reachable = false,
+                errorType = "Timeout",
+                errorMessage = $"Request timed out after {elapsed:F0}ms"
+            };
+        }
+        catch (HttpRequestException ex)
+        {
+            var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
+            _logger.LogWarning(ex, "Network test failed for {Name}", name);
+            
+            var errorType = CategorizeHttpException(ex);
+            
+            return new
+            {
+                name = name,
+                success = false,
+                statusCode = (int?)null,
+                statusText = (string?)null,
+                elapsedMs = elapsed,
+                reachable = false,
+                errorType = errorType,
+                errorMessage = ex.Message
+            };
+        }
+        catch (Exception ex)
+        {
+            var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
+            _logger.LogError(ex, "Unexpected error during network test for {Name}", name);
+            
+            return new
+            {
+                name = name,
+                success = false,
+                statusCode = (int?)null,
+                statusText = (string?)null,
+                elapsedMs = elapsed,
+                reachable = false,
+                errorType = "UnexpectedError",
+                errorMessage = ex.Message
+            };
+        }
+    }
+
+    private async Task<object> TestDnsResolution(string hostname, CancellationToken ct)
+    {
+        var startTime = DateTime.UtcNow;
+        
+        try
+        {
+            var addresses = await System.Net.Dns.GetHostAddressesAsync(hostname, ct).ConfigureAwait(false);
+            var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
+            
+            return new
+            {
+                hostname = hostname,
+                success = true,
+                resolved = true,
+                addressCount = addresses.Length,
+                addresses = addresses.Take(3).Select(a => a.ToString()).ToArray(),
+                elapsedMs = elapsed,
+                errorMessage = (string?)null
+            };
+        }
+        catch (Exception ex)
+        {
+            var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
+            _logger.LogWarning(ex, "DNS resolution failed for {Hostname}", hostname);
+            
+            return new
+            {
+                hostname = hostname,
+                success = false,
+                resolved = false,
+                addressCount = 0,
+                addresses = Array.Empty<string>(),
+                elapsedMs = elapsed,
+                errorMessage = ex.Message
+            };
+        }
+    }
+
+    private static string CategorizeHttpException(HttpRequestException ex)
+    {
+        var message = ex.Message.ToLowerInvariant();
+        var innerMessage = ex.InnerException?.Message?.ToLowerInvariant() ?? string.Empty;
+        
+        if (message.Contains("ssl") || message.Contains("tls") || innerMessage.Contains("ssl") || innerMessage.Contains("tls"))
+        {
+            return "TLS/SSL Error";
+        }
+        if (message.Contains("dns") || message.Contains("nodename") || innerMessage.Contains("dns"))
+        {
+            return "DNS Resolution Error";
+        }
+        if (message.Contains("proxy") || innerMessage.Contains("proxy"))
+        {
+            return "Proxy Error";
+        }
+        if (message.Contains("timeout") || innerMessage.Contains("timeout"))
+        {
+            return "Connection Timeout";
+        }
+        if (message.Contains("refused") || innerMessage.Contains("refused"))
+        {
+            return "Connection Refused";
+        }
+        if (message.Contains("unreachable") || innerMessage.Contains("unreachable"))
+        {
+            return "Network Unreachable";
+        }
+        
+        return "Network Error";
     }
 
     /// <summary>
