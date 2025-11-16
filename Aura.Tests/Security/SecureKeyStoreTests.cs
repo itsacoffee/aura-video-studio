@@ -8,6 +8,7 @@ using Aura.Core.Models;
 using Aura.Core.Security;
 using Aura.Core.Services;
 using Aura.Core.Services.Providers.Stickiness;
+using Aura.Tests.TestUtilities;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -19,40 +20,28 @@ public class SecureKeyStoreTests : IDisposable
 {
     private readonly Mock<ILogger<SecureKeyStore>> _mockLogger;
     private readonly Mock<ISecureStorageService> _mockSecureStorage;
-    private readonly Mock<ProviderSettings> _mockProviderSettings;
-    private readonly string _testDataDir;
+    private readonly ProviderSettingsTestContext _settingsContext;
+    private readonly ProviderSettings _providerSettings;
+    private readonly string _dataDirectory;
     private readonly SecureKeyStore _service;
 
     public SecureKeyStoreTests()
     {
         _mockLogger = new Mock<ILogger<SecureKeyStore>>();
         _mockSecureStorage = new Mock<ISecureStorageService>();
-        _mockProviderSettings = new Mock<ProviderSettings>();
-
-        _testDataDir = Path.Combine(Path.GetTempPath(), "AuraKeyStoreTests_" + Guid.NewGuid().ToString());
-        Directory.CreateDirectory(_testDataDir);
-
-        _mockProviderSettings.Setup(x => x.GetAuraDataDirectory()).Returns(_testDataDir);
+        _settingsContext = new ProviderSettingsTestContext();
+        _providerSettings = _settingsContext.Settings;
+        _dataDirectory = _providerSettings.GetAuraDataDirectory();
 
         _service = new SecureKeyStore(
             _mockLogger.Object,
             _mockSecureStorage.Object,
-            _mockProviderSettings.Object);
+            _providerSettings);
     }
 
     public void Dispose()
     {
-        try
-        {
-            if (Directory.Exists(_testDataDir))
-            {
-                Directory.Delete(_testDataDir, true);
-            }
-        }
-        catch
-        {
-            // Ignore cleanup errors
-        }
+        _settingsContext.Dispose();
 
         GC.SuppressFinalize(this);
     }
@@ -107,7 +96,7 @@ public class SecureKeyStoreTests : IDisposable
         await _service.SaveAtomicAsync(apiKeys, "openai", profileLock, CancellationToken.None);
 
         // Assert - keystore file should exist
-        var keystorePath = Path.Combine(_testDataDir, "secure-keystore.dat");
+        var keystorePath = Path.Combine(_dataDirectory, "secure-keystore.dat");
         Assert.True(File.Exists(keystorePath));
     }
 
@@ -116,7 +105,7 @@ public class SecureKeyStoreTests : IDisposable
     {
         // Arrange
         var apiKeys = new Dictionary<string, string> { ["openai"] = "sk-test" };
-        
+
         _mockSecureStorage
             .Setup(x => x.SaveApiKeyAsync(It.IsAny<string>(), It.IsAny<string>()))
             .Returns(Task.CompletedTask);
@@ -136,9 +125,9 @@ public class SecureKeyStoreTests : IDisposable
     public async Task LoadAtomicAsync_CorruptedData_ReturnsNull()
     {
         // Arrange - create corrupted keystore file
-        var keystorePath = Path.Combine(_testDataDir, "secure-keystore.dat");
-        var integrityPath = Path.Combine(_testDataDir, "secure-keystore.integrity");
-        
+        var keystorePath = Path.Combine(_dataDirectory, "secure-keystore.dat");
+        var integrityPath = Path.Combine(_dataDirectory, "secure-keystore.integrity");
+
         await File.WriteAllBytesAsync(keystorePath, new byte[] { 0x00, 0x01, 0x02 });
         await File.WriteAllTextAsync(integrityPath, "invalid-hash");
 
@@ -154,7 +143,7 @@ public class SecureKeyStoreTests : IDisposable
     {
         // Arrange
         var apiKeys = new Dictionary<string, string> { ["openai"] = "sk-test" };
-        
+
         _mockSecureStorage
             .Setup(x => x.SaveApiKeyAsync(It.IsAny<string>(), It.IsAny<string>()))
             .Returns(Task.CompletedTask);
@@ -163,9 +152,9 @@ public class SecureKeyStoreTests : IDisposable
         await _service.SaveAtomicAsync(apiKeys, null, null, CancellationToken.None);
 
         // Assert
-        var integrityPath = Path.Combine(_testDataDir, "secure-keystore.integrity");
+        var integrityPath = Path.Combine(_dataDirectory, "secure-keystore.integrity");
         Assert.True(File.Exists(integrityPath));
-        
+
         var integrityHash = await File.ReadAllTextAsync(integrityPath);
         Assert.False(string.IsNullOrWhiteSpace(integrityHash));
     }

@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Aura.Core.Artifacts;
 using Aura.Core.Models;
+using Aura.Core.Services.Timeline;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -13,7 +14,7 @@ public class JobRunnerTests
     public void ArtifactManager_Should_CreateJobDirectory()
     {
         // Arrange
-        var manager = new ArtifactManager(NullLogger<ArtifactManager>.Instance);
+        var manager = CreateArtifactManager();
         var jobId = Guid.NewGuid().ToString();
 
         // Act
@@ -28,7 +29,7 @@ public class JobRunnerTests
     public void ArtifactManager_Should_SaveAndLoadJob()
     {
         // Arrange
-        var manager = new ArtifactManager(NullLogger<ArtifactManager>.Instance);
+        var manager = CreateArtifactManager();
         var job = new Job
         {
             Id = Guid.NewGuid().ToString(),
@@ -53,7 +54,7 @@ public class JobRunnerTests
     public void ArtifactManager_Should_ListJobs()
     {
         // Arrange
-        var manager = new ArtifactManager(NullLogger<ArtifactManager>.Instance);
+        var manager = CreateArtifactManager();
         var job1 = new Job { Id = Guid.NewGuid().ToString(), Stage = "Script" };
         var job2 = new Job { Id = Guid.NewGuid().ToString(), Stage = "Render" };
 
@@ -73,7 +74,7 @@ public class JobRunnerTests
     public void ArtifactManager_Should_CreateArtifact()
     {
         // Arrange
-        var manager = new ArtifactManager(NullLogger<ArtifactManager>.Instance);
+        var manager = CreateArtifactManager();
         var jobId = Guid.NewGuid().ToString();
         var testPath = "/tmp/test.mp4";
 
@@ -91,7 +92,7 @@ public class JobRunnerTests
     public void ArtifactManager_Should_UseStandardPath()
     {
         // Arrange
-        var manager = new ArtifactManager(NullLogger<ArtifactManager>.Instance);
+        var manager = CreateArtifactManager();
         var jobId = Guid.NewGuid().ToString();
 
         // Act
@@ -109,7 +110,7 @@ public class JobRunnerTests
     public void ArtifactManager_Should_CreateDirectoryIfMissing()
     {
         // Arrange
-        var manager = new ArtifactManager(NullLogger<ArtifactManager>.Instance);
+        var manager = CreateArtifactManager();
         var jobId = Guid.NewGuid().ToString();
 
         // Act
@@ -119,5 +120,11 @@ public class JobRunnerTests
         // Assert
         Assert.Equal(jobDir1, jobDir2);
         Assert.True(System.IO.Directory.Exists(jobDir1));
+    }
+
+    private static ArtifactManager CreateArtifactManager()
+    {
+        var timelineSerializer = new TimelineSerializationService(NullLogger<TimelineSerializationService>.Instance);
+        return new ArtifactManager(NullLogger<ArtifactManager>.Instance, timelineSerializer);
     }
 }

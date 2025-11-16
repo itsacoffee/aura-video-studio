@@ -56,25 +56,13 @@ public class EditorController : ControllerBase
                 return NotFound(new { error = "Job not found" });
             }
 
-            // Check if timeline already exists
-            var timelinePath = Path.Combine(_artifactManager.GetJobDirectory(jobId), "timeline.json");
-            
-            EditableTimeline timeline;
-            
-            if (System.IO.File.Exists(timelinePath))
+            // Attempt to load existing timeline, otherwise create a new one from artifacts
+            var timeline = await _artifactManager.LoadTimelineAsync(jobId, HttpContext.RequestAborted).ConfigureAwait(false);
+
+            if (timeline == null)
             {
-                // Load existing timeline
-                var json = await System.IO.File.ReadAllTextAsync(timelinePath).ConfigureAwait(false);
-                timeline = JsonSerializer.Deserialize<EditableTimeline>(json) ?? new EditableTimeline();
-            }
-            else
-            {
-                // Create timeline from job artifacts
                 timeline = await CreateTimelineFromJobAsync(job).ConfigureAwait(false);
-                
-                // Save the initial timeline
-                var json = JsonSerializer.Serialize(timeline, new JsonSerializerOptions { WriteIndented = true });
-                await System.IO.File.WriteAllTextAsync(timelinePath, json).ConfigureAwait(false);
+                await _artifactManager.SaveTimelineAsync(jobId, timeline, HttpContext.RequestAborted).ConfigureAwait(false);
             }
 
             return Ok(timeline);
@@ -102,10 +90,7 @@ public class EditorController : ControllerBase
                 return BadRequest(new { error = validationError });
             }
 
-            // Save timeline to job directory
-            var timelinePath = Path.Combine(_artifactManager.GetJobDirectory(jobId), "timeline.json");
-            var json = JsonSerializer.Serialize(timeline, new JsonSerializerOptions { WriteIndented = true });
-            await System.IO.File.WriteAllTextAsync(timelinePath, json).ConfigureAwait(false);
+            await _artifactManager.SaveTimelineAsync(jobId, timeline, HttpContext.RequestAborted).ConfigureAwait(false);
 
             _logger.LogInformation("Timeline saved successfully for job {JobId}", jobId);
             return Ok(new { success = true, message = "Timeline saved successfully" });
@@ -133,19 +118,11 @@ public class EditorController : ControllerBase
                 return NotFound(new { error = "Job not found" });
             }
 
-            // Load timeline
-            var timelinePath = Path.Combine(_artifactManager.GetJobDirectory(jobId), "timeline.json");
-            if (!System.IO.File.Exists(timelinePath))
-            {
-                return BadRequest(new { error = "Timeline not found. Please save the timeline first." });
-            }
-
-            var json = await System.IO.File.ReadAllTextAsync(timelinePath, cancellationToken).ConfigureAwait(false);
-            var timeline = JsonSerializer.Deserialize<EditableTimeline>(json);
+            var timeline = await _artifactManager.LoadTimelineAsync(jobId, cancellationToken).ConfigureAwait(false);
             
             if (timeline == null || timeline.Scenes.Count == 0)
             {
-                return BadRequest(new { error = "Timeline is empty" });
+                return BadRequest(new { error = "Timeline not found or empty. Please save the timeline first." });
             }
 
             // Use render spec from job or create default
@@ -203,19 +180,11 @@ public class EditorController : ControllerBase
                 return NotFound(new { error = "Job not found" });
             }
 
-            // Load timeline
-            var timelinePath = Path.Combine(_artifactManager.GetJobDirectory(jobId), "timeline.json");
-            if (!System.IO.File.Exists(timelinePath))
-            {
-                return BadRequest(new { error = "Timeline not found. Please save the timeline first." });
-            }
-
-            var json = await System.IO.File.ReadAllTextAsync(timelinePath, cancellationToken).ConfigureAwait(false);
-            var timeline = JsonSerializer.Deserialize<EditableTimeline>(json);
+            var timeline = await _artifactManager.LoadTimelineAsync(jobId, cancellationToken).ConfigureAwait(false);
             
             if (timeline == null || timeline.Scenes.Count == 0)
             {
-                return BadRequest(new { error = "Timeline is empty" });
+                return BadRequest(new { error = "Timeline not found or empty. Please save the timeline first." });
             }
 
             var renderSpec = job.RenderSpec ?? new RenderSpec(

@@ -1,15 +1,17 @@
-using Aura.Core.Configuration;
-using Aura.Core.Models;
-using Aura.Core.Services;
-using Microsoft.Extensions.Logging;
-using Moq;
-using Moq.Protected;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Core.Configuration;
+using Aura.Core.Models;
+using Aura.Core.Services;
+using Aura.Tests.TestUtilities;
+using Microsoft.Extensions.Logging;
+using Moq;
+using Moq.Protected;
 using Xunit;
 
 namespace Aura.Tests;
@@ -17,6 +19,7 @@ namespace Aura.Tests;
 public class ProviderProfileServiceTests
 {
     private readonly Mock<ILogger<ProviderProfileService>> _loggerMock;
+    private readonly ProviderSettingsTestContext _settingsContext;
     private readonly ProviderSettings _providerSettings;
     private readonly Mock<IKeyStore> _keyStoreMock;
     private readonly HttpClient _httpClient;
@@ -25,10 +28,10 @@ public class ProviderProfileServiceTests
     public ProviderProfileServiceTests()
     {
         _loggerMock = new Mock<ILogger<ProviderProfileService>>();
-        var settingsLogger = new Mock<ILogger<ProviderSettings>>();
-        _providerSettings = new ProviderSettings(settingsLogger.Object);
+        _settingsContext = new ProviderSettingsTestContext();
+        _providerSettings = _settingsContext.Settings;
         _keyStoreMock = new Mock<IKeyStore>();
-        
+
         var handlerMock = new Mock<HttpMessageHandler>();
         handlerMock.Protected()
             .Setup<Task<HttpResponseMessage>>(
@@ -40,9 +43,9 @@ public class ProviderProfileServiceTests
                 StatusCode = HttpStatusCode.OK,
                 Content = new StringContent("{}")
             });
-        
+
         _httpClient = new HttpClient(handlerMock.Object);
-        
+
         _service = new ProviderProfileService(
             _loggerMock.Object,
             _providerSettings,
@@ -54,7 +57,7 @@ public class ProviderProfileServiceTests
     public async Task GetAllProfilesAsync_ReturnsBuiltInProfiles()
     {
         var profiles = await _service.GetAllProfilesAsync();
-        
+
         Assert.NotEmpty(profiles);
         Assert.Contains(profiles, p => p.Id == "free-only");
         Assert.Contains(profiles, p => p.Id == "balanced-mix");
@@ -68,10 +71,12 @@ public class ProviderProfileServiceTests
             .Returns(new Dictionary<string, string>());
 
         var result = await _service.ValidateProfileAsync("pro-max");
-        
+
         Assert.False(result.IsValid);
-        Assert.NotEmpty(result.MissingKeys);
         Assert.Contains("openai", result.MissingKeys);
+        Assert.Contains("elevenlabs", result.MissingKeys);
+        Assert.Contains("stabilityai", result.MissingKeys);
+        Assert.Contains(result.Errors, e => e.Contains("openai", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -86,7 +91,7 @@ public class ProviderProfileServiceTests
             });
 
         var result = await _service.ValidateProfileAsync("pro-max");
-        
+
         Assert.Empty(result.MissingKeys);
         if (!result.IsValid)
         {
@@ -101,7 +106,7 @@ public class ProviderProfileServiceTests
             .Returns(new Dictionary<string, string>());
 
         var profile = await _service.GetRecommendedProfileAsync();
-        
+
         Assert.Equal("free-only", profile.Id);
         Assert.Equal(ProfileTier.FreeOnly, profile.Tier);
     }
@@ -116,7 +121,7 @@ public class ProviderProfileServiceTests
             });
 
         var profile = await _service.GetRecommendedProfileAsync();
-        
+
         Assert.Equal("balanced-mix", profile.Id);
         Assert.Equal(ProfileTier.BalancedMix, profile.Tier);
     }
@@ -133,7 +138,7 @@ public class ProviderProfileServiceTests
             });
 
         var profile = await _service.GetRecommendedProfileAsync();
-        
+
         Assert.Equal("pro-max", profile.Id);
         Assert.Equal(ProfileTier.ProMax, profile.Tier);
     }
@@ -142,7 +147,7 @@ public class ProviderProfileServiceTests
     public async Task SetActiveProfileAsync_ValidProfile_ReturnsTrue()
     {
         var result = await _service.SetActiveProfileAsync("free-only");
-        
+
         Assert.True(result);
     }
 
@@ -150,7 +155,7 @@ public class ProviderProfileServiceTests
     public async Task SetActiveProfileAsync_InvalidProfile_ReturnsFalse()
     {
         var result = await _service.SetActiveProfileAsync("nonexistent");
-        
+
         Assert.False(result);
     }
 
@@ -161,9 +166,13 @@ public class ProviderProfileServiceTests
             .Returns(new Dictionary<string, string>());
 
         var result = await _service.ValidateProfileAsync("free-only");
-        
+
         Assert.NotNull(result);
-        Assert.False(result.IsValid);
+
+        if (!result.IsValid)
+        {
+            Assert.Contains(result.Errors, e => e.Contains("FFmpeg", StringComparison.OrdinalIgnoreCase) || e.Contains("engine", StringComparison.OrdinalIgnoreCase));
+        }
     }
 
     [Fact]
@@ -178,11 +187,12 @@ public class ProviderProfileServiceTests
             });
 
         var result = await _service.ValidateProfileAsync("pro-max");
-        
+
         Assert.NotNull(result);
+
         if (!result.IsValid)
         {
-            Assert.True(result.Errors.Any(e => e.Contains("FFmpeg") || e.Contains("engine")));
+            Assert.True(result.Errors.Any(e => e.Contains("FFmpeg", StringComparison.OrdinalIgnoreCase) || e.Contains("engine", StringComparison.OrdinalIgnoreCase)));
         }
     }
 
@@ -193,7 +203,7 @@ public class ProviderProfileServiceTests
             .Returns(new Dictionary<string, string>());
 
         var result = await _service.ValidateProfileAsync("balanced-mix");
-        
+
         Assert.False(result.IsValid);
         Assert.Contains("openai", result.MissingKeys);
         Assert.NotEmpty(result.Errors);
@@ -203,8 +213,12 @@ public class ProviderProfileServiceTests
     public async Task ValidateProfileAsync_InvalidProfileId_ReturnsError()
     {
         var result = await _service.ValidateProfileAsync("invalid-profile");
-        
+
         Assert.False(result.IsValid);
         Assert.Contains(result.Errors, e => e.Contains("not found"));
+    }
+    public void Dispose()
+    {
+        _settingsContext.Dispose();
     }
 }

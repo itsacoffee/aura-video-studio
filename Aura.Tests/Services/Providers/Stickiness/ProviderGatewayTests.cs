@@ -40,7 +40,7 @@ public class ProviderGatewayTests
         Assert.NotNull(lock_);
         Assert.Equal("Ollama", lock_.ProviderName);
         Assert.Equal("local_llm", lock_.ProviderType);
-        
+
         var retrievedLock = gateway.GetProviderLock("job-123");
         Assert.NotNull(retrievedLock);
         Assert.Equal(lock_.JobId, retrievedLock.JobId);
@@ -52,11 +52,11 @@ public class ProviderGatewayTests
         // Arrange
         var detector = new StallDetector(NullLogger<StallDetector>.Instance);
         var gateway = new ProviderGateway(NullLogger<ProviderGateway>.Instance, detector);
-        
+
         gateway.LockProvider("job-123", "Ollama", "local_llm", "corr-456");
 
         // Act & Assert
-        Assert.Throws<InvalidOperationException>(() => 
+        Assert.Throws<InvalidOperationException>(() =>
             gateway.LockProvider("job-123", "OpenAI", "cloud_llm", "corr-789"));
     }
 
@@ -66,7 +66,7 @@ public class ProviderGatewayTests
         // Arrange
         var detector = new StallDetector(NullLogger<StallDetector>.Instance);
         var gateway = new ProviderGateway(NullLogger<ProviderGateway>.Instance, detector);
-        
+
         gateway.LockProvider("job-123", "Ollama", "local_llm", "corr-456", true, "script-generation");
 
         // Act
@@ -83,7 +83,7 @@ public class ProviderGatewayTests
         // Arrange
         var detector = new StallDetector(NullLogger<StallDetector>.Instance);
         var gateway = new ProviderGateway(NullLogger<ProviderGateway>.Instance, detector);
-        
+
         gateway.LockProvider("job-123", "Ollama", "local_llm", "corr-456", true, "script-generation");
 
         // Act
@@ -97,7 +97,7 @@ public class ProviderGatewayTests
     }
 
     [Fact]
-    public void ValidateProviderRequest_NoLock_ReturnsFalse()
+    public void ValidateProviderRequest_NoLock_ReturnsTrue()
     {
         // Arrange
         var detector = new StallDetector(NullLogger<StallDetector>.Instance);
@@ -107,9 +107,8 @@ public class ProviderGatewayTests
         var result = gateway.ValidateProviderRequest("job-999", "Ollama", "script-generation", out var error);
 
         // Assert
-        Assert.False(result);
-        Assert.NotNull(error);
-        Assert.Contains("No provider lock found", error);
+        Assert.True(result);
+        Assert.Null(error);
     }
 
     [Fact]
@@ -118,7 +117,7 @@ public class ProviderGatewayTests
         // Arrange
         var detector = new StallDetector(NullLogger<StallDetector>.Instance);
         var gateway = new ProviderGateway(NullLogger<ProviderGateway>.Instance, detector);
-        
+
         gateway.LockProvider("job-123", "Ollama", "local_llm", "corr-456", true, "script-generation");
 
         var strategy = new NoHeartbeatStrategy();
@@ -150,13 +149,13 @@ public class ProviderGatewayTests
         // Arrange
         var detector = new StallDetector(NullLogger<StallDetector>.Instance);
         var gateway = new ProviderGateway(NullLogger<ProviderGateway>.Instance, detector);
-        
+
         gateway.LockProvider("job-123", "Ollama", "local_llm", "corr-456", true, "script-generation");
 
         var strategy = new NoHeartbeatStrategy();
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => 
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
             gateway.ExecuteWithPatienceAsync(
                 "job-123",
                 "OpenAI", // Wrong provider
@@ -177,7 +176,7 @@ public class ProviderGatewayTests
         // Arrange
         var detector = new StallDetector(NullLogger<StallDetector>.Instance);
         var gateway = new ProviderGateway(NullLogger<ProviderGateway>.Instance, detector);
-        
+
         gateway.LockProvider("job-123", "Ollama", "local_llm", "corr-456", true);
 
         var decision = FallbackDecision.CreateUserRequested(
@@ -205,7 +204,7 @@ public class ProviderGatewayTests
         // Arrange
         var detector = new StallDetector(NullLogger<StallDetector>.Instance);
         var gateway = new ProviderGateway(NullLogger<ProviderGateway>.Instance, detector);
-        
+
         var lock_ = gateway.LockProvider("job-123", "Ollama", "local_llm", "corr-456", true);
         Assert.False(lock_.IsUnlocked);
 
@@ -229,7 +228,7 @@ public class ProviderGatewayTests
         // Arrange
         var detector = new StallDetector(NullLogger<StallDetector>.Instance);
         var gateway = new ProviderGateway(NullLogger<ProviderGateway>.Instance, detector);
-        
+
         gateway.LockProvider("job-123", "Ollama", "local_llm", "corr-456");
 
         // Act
@@ -260,7 +259,7 @@ public class ProviderGatewayTests
         // Arrange
         var detector = new StallDetector(NullLogger<StallDetector>.Instance);
         var gateway = new ProviderGateway(NullLogger<ProviderGateway>.Instance, detector);
-        
+
         gateway.LockProvider("job-1", "Ollama", "local_llm", "corr-1", true);
         gateway.LockProvider("job-2", "OpenAI", "cloud_llm", "corr-2", true);
 

@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "vite --open",
+    "dev:desktop": "vite --host 127.0.0.1 --port 5173 --strictPort --clearScreen false",
     "build": "npm run build:prod",
     "build:dev": "vite build --mode development",
     "build:prod": "vite build --mode production",

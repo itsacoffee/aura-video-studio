@@ -56,6 +56,18 @@ export function getDefaultCacheLocation(): string {
  * Uses different methods based on the environment (browser, Electron, etc.)
  */
 export async function pickFolder(): Promise<string | null> {
+  // Prefer native Electron dialog when available
+  if (window.aura?.dialogs?.openFolder) {
+    try {
+      const selected = await window.aura.dialogs.openFolder();
+      if (selected) {
+        return selected;
+      }
+    } catch (error) {
+      console.warn('[pathUtils] Aura folder picker failed:', error);
+    }
+  }
+
   // Try modern File System Access API (Chrome/Edge 86+)
   if ('showDirectoryPicker' in window) {
     try {
@@ -78,15 +90,6 @@ export async function pickFolder(): Promise<string | null> {
       }
       // Fallthrough to next method
       console.warn('showDirectoryPicker failed:', error);
-    }
-  }
-
-  // Try Electron IPC if available
-  if (window.electron?.selectFolder) {
-    try {
-      return await window.electron.selectFolder();
-    } catch (error: unknown) {
-      console.warn('Electron folder picker failed:', error);
     }
   }
 

@@ -61,6 +61,7 @@ declare global {
      * Electron API exposed through preload script
      * Available only when running in Electron desktop app
      */
+    aura?: ElectronAPI;
     electron?: ElectronAPI;
 
     /**

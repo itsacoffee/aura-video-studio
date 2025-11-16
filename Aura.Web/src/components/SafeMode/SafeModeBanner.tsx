@@ -30,45 +30,45 @@ export const SafeModeBanner: FC<SafeModeBannerProps> = ({ onOpenDiagnostics }) =
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    // Check if running in Electron
-    if (window.electron) {
-      // Listen for safe mode status from main process
-      const unsubscribe = window.electron.on('app:safeMode', (status: SafeModeStatus) => {
+    const aura = window.aura ?? window.electron;
+    if (!aura) {
+      return;
+    }
+
+    let unsubscribe: (() => void) | undefined;
+    if (aura.safeMode?.onStatus) {
+      unsubscribe = aura.safeMode.onStatus((status: SafeModeStatus) => {
         setSafeModeStatus(status);
       });
-
-      // Also check current safe mode status
-      window.electron
-        .invoke('config:isSafeMode')
-        .then((isSafeMode: boolean) => {
-          if (isSafeMode) {
-            Promise.all([window.electron.invoke('config:getCrashCount')])
-              .then(([crashCount]) => {
-                setSafeModeStatus({
-                  enabled: true,
-                  crashCount: crashCount as number,
-                  disabledFeatures: [
-                    'System tray (minimize to tray disabled)',
-                    'Auto-updater (manual updates only)',
-                    'Protocol handling (deep linking disabled)',
-                  ],
-                });
-              })
-              .catch((error: unknown) => {
-                console.error('Failed to get safe mode status:', error);
-              });
-          }
-        })
-        .catch((error: unknown) => {
-          console.error('Failed to check safe mode:', error);
-        });
-
-      return () => {
-        if (unsubscribe) {
-          unsubscribe();
-        }
-      };
     }
+
+    aura.config
+      ?.isSafeMode?.()
+      .then((isSafeMode: boolean) => {
+        if (isSafeMode) {
+          return aura.config?.getCrashCount?.().then((crashCount) => {
+            setSafeModeStatus({
+              enabled: true,
+              crashCount: typeof crashCount === 'number' ? crashCount : 0,
+              disabledFeatures: [
+                'System tray (minimize to tray disabled)',
+                'Auto-updater (manual updates only)',
+                'Protocol handling (deep linking disabled)',
+              ],
+            });
+          });
+        }
+        return undefined;
+      })
+      .catch((error: unknown) => {
+        console.error('Failed to check safe mode:', error);
+      });
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, []);
 
   if (!safeModeStatus?.enabled || dismissed) {

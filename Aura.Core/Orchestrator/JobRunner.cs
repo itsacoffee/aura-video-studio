@@ -58,7 +58,7 @@ public class JobRunner
         ArgumentNullException.ThrowIfNull(orchestrator);
         ArgumentNullException.ThrowIfNull(hardwareDetector);
         ArgumentNullException.ThrowIfNull(telemetryCollector);
-        
+
         _logger = logger;
         _artifactManager = artifactManager;
         _orchestrator = orchestrator;
@@ -90,11 +90,11 @@ public class JobRunner
         ArgumentNullException.ThrowIfNull(planSpec);
         ArgumentNullException.ThrowIfNull(voiceSpec);
         ArgumentNullException.ThrowIfNull(renderSpec);
-        
+
         var jobId = Guid.NewGuid().ToString();
-        _logger.LogInformation("Creating new job with ID: {JobId}, Topic: {Topic}, IsQuickDemo: {IsQuickDemo}", 
+        _logger.LogInformation("Creating new job with ID: {JobId}, Topic: {Topic}, IsQuickDemo: {IsQuickDemo}",
             jobId, brief.Topic, isQuickDemo);
-        
+
         var nowUtc = DateTime.UtcNow;
         var job = new Job
         {
@@ -113,7 +113,7 @@ public class JobRunner
 
         _activeJobs[job.Id] = job;
         _artifactManager.SaveJob(job);
-        
+
         _logger.LogInformation("Job {JobId} saved to active jobs and artifact storage", jobId);
 
         // Create a linked cancellation token source that responds to both the provided token and manual cancellation
@@ -121,7 +121,7 @@ public class JobRunner
         _jobCancellationTokens[job.Id] = linkedCts;
 
         _logger.LogInformation("Starting background execution for job {JobId}", jobId);
-        
+
         // Start execution in background
         _ = Task.Run(async () => await ExecuteJobAsync(job.Id, linkedCts.Token).ConfigureAwait(false), linkedCts.Token);
 
@@ -157,7 +157,7 @@ public class JobRunner
     public bool CancelJob(string jobId)
     {
         _logger.LogInformation("Cancellation requested for job {JobId}", jobId);
-        
+
         // Check if job is active and has a cancellation token
         if (_jobCancellationTokens.TryGetValue(jobId, out var cts))
         {
@@ -173,7 +173,7 @@ public class JobRunner
                 return false;
             }
         }
-        
+
         // Job not found or not active
         var job = GetJob(jobId);
         if (job == null)
@@ -181,14 +181,14 @@ public class JobRunner
             _logger.LogWarning("Cannot cancel job {JobId}: job not found", jobId);
             return false;
         }
-        
+
         // Job exists but is not running
         if (job.Status != JobStatus.Running && job.Status != JobStatus.Queued)
         {
             _logger.LogWarning("Cannot cancel job {JobId}: job is in status {Status}", jobId, job.Status);
             return false;
         }
-        
+
         _logger.LogWarning("Job {JobId} is marked as active but has no cancellation token", jobId);
         return false;
     }
@@ -207,7 +207,7 @@ public class JobRunner
 
         if (job.Status != JobStatus.Failed)
         {
-            _logger.LogWarning("Cannot retry job {JobId}: job has not failed (status: {Status})", 
+            _logger.LogWarning("Cannot retry job {JobId}: job has not failed (status: {Status})",
                 jobId, job.Status);
             return false;
         }
@@ -215,7 +215,7 @@ public class JobRunner
         // Check if retry is allowed
         if (_jobQueueService != null && !_jobQueueService.CanRetryJob(jobId))
         {
-            _logger.LogWarning("Cannot retry job {JobId}: max retry count reached or backoff not elapsed", 
+            _logger.LogWarning("Cannot retry job {JobId}: max retry count reached or backoff not elapsed",
                 jobId);
             return false;
         }
@@ -263,17 +263,17 @@ public class JobRunner
             }
 
             _logger.LogInformation("Starting job {JobId}", jobId);
-            
+
             // Start memory monitoring for this job
             _memoryMonitor?.StartMonitoring(jobId);
-            
+
             // Start telemetry collection for this job
             _telemetryCollector.StartCollection(jobId, job.CorrelationId ?? Guid.NewGuid().ToString());
             _logger.LogInformation("Started telemetry collection for job {JobId}", jobId);
-            
+
             // Create project state for checkpointing if checkpoint manager is available
             Guid? projectId = null;
-            if (_checkpointManager != null && job.Brief != null && job.PlanSpec != null && 
+            if (_checkpointManager != null && job.Brief != null && job.PlanSpec != null &&
                 job.VoiceSpec != null && job.RenderSpec != null)
             {
                 try
@@ -286,7 +286,7 @@ public class JobRunner
                         job.VoiceSpec,
                         job.RenderSpec,
                         ct).ConfigureAwait(false);
-                    
+
                     _jobProjectIds[jobId] = projectId.Value;
                     _logger.LogInformation("Created project state {ProjectId} for job {JobId}", projectId, jobId);
                 }
@@ -295,11 +295,11 @@ public class JobRunner
                     _logger.LogWarning(ex, "Failed to create project state for job {JobId}, continuing without checkpoints", jobId);
                 }
             }
-            
+
             // Update to running status with initialization message
-            job = UpdateJob(job, 
-                status: JobStatus.Running, 
-                percent: 0, 
+            job = UpdateJob(job,
+                status: JobStatus.Running,
+                percent: 0,
                 stage: "Initialization",
                 progressMessage: "Initializing job execution",
                 startedUtc: DateTime.UtcNow);
@@ -307,32 +307,32 @@ public class JobRunner
             // Detect system profile for orchestration
             _logger.LogInformation("[Job {JobId}] Detecting system hardware...", jobId);
             var systemProfile = await _hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
-            _logger.LogInformation("[Job {JobId}] System Profile - Tier: {Tier}, CPU: {Cores} cores, RAM: {Ram}GB, GPU: {Gpu}", 
-                jobId, systemProfile.Tier, systemProfile.LogicalCores, systemProfile.RamGB, 
+            _logger.LogInformation("[Job {JobId}] System Profile - Tier: {Tier}, CPU: {Cores} cores, RAM: {Ram}GB, GPU: {Gpu}",
+                jobId, systemProfile.Tier, systemProfile.LogicalCores, systemProfile.RamGB,
                 systemProfile.Gpu?.Model ?? "None");
 
             // Create progress reporter with detailed stage tracking and ETA estimation
             var progress = new Progress<string>(message =>
             {
                 _logger.LogInformation("[Job {JobId}] {Message}", jobId, message);
-                
+
                 // Determine stage and progress from message
                 var (stage, percent, progressMsg) = ParseProgressMessage(message, job.Stage, job.Percent);
-                
+
                 // Record progress for ETA calculation
                 _progressEstimator.RecordProgress(jobId, percent, DateTime.UtcNow);
-                
+
                 // Update peak memory tracking
                 _memoryMonitor?.UpdatePeakMemory(jobId);
-                
+
                 // Check for memory pressure and force collection if needed
                 _memoryMonitor?.ForceCollectionIfNeeded();
-                
+
                 // Calculate ETA and elapsed time
                 var eta = _progressEstimator.EstimateTimeRemaining(jobId, percent);
                 var elapsed = _progressEstimator.CalculateElapsedTime(jobId);
-                
-                job = UpdateJob(job, 
+
+                job = UpdateJob(job,
                     stage: stage,
                     percent: percent,
                     logs: new List<string>(job.Logs) { $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] {message}" },
@@ -343,15 +343,15 @@ public class JobRunner
             // Create detailed progress reporter
             var detailedProgress = new Progress<GenerationProgress>(generationProgress =>
             {
-                _logger.LogInformation("[Job {JobId}] Stage: {Stage}, Overall: {Overall}%, {Message}", 
+                _logger.LogInformation("[Job {JobId}] Stage: {Stage}, Overall: {Overall}%, {Message}",
                     jobId, generationProgress.Stage, generationProgress.OverallPercent, generationProgress.Message);
-                
+
                 // Update job with detailed progress
                 job = UpdateJobWithProgress(job, generationProgress);
-                
+
                 // Raise event for SSE streaming
-                JobProgress?.Invoke(this, new JobProgressEventArgs 
-                { 
+                JobProgress?.Invoke(this, new JobProgressEventArgs
+                {
                     JobId = jobId,
                     Stage = generationProgress.Stage,
                     Progress = (int)Math.Round(generationProgress.OverallPercent),
@@ -362,23 +362,28 @@ public class JobRunner
             });
 
             // Execute orchestrator with system profile and detailed progress
-            var outputPath = await _orchestrator.GenerateVideoAsync(
+            var generationResult = await _orchestrator.GenerateVideoResultAsync(
                 job.Brief!,
                 job.PlanSpec!,
                 job.VoiceSpec!,
                 job.RenderSpec!,
                 systemProfile,
                 progress,
-                detailedProgress,
                 ct,
                 jobId,
                 job.CorrelationId,
-                job.IsQuickDemo
+                job.IsQuickDemo,
+                detailedProgress
             ).ConfigureAwait(false);
 
             // Add final artifact
-            var artifact = _artifactManager.CreateArtifact(jobId, "video.mp4", outputPath, "video/mp4");
+            var artifact = _artifactManager.CreateArtifact(jobId, "video.mp4", generationResult.OutputPath, "video/mp4");
             var artifacts = new List<JobArtifact>(job.Artifacts) { artifact };
+
+            if (generationResult.EditableTimeline != null)
+            {
+                await _artifactManager.SaveTimelineAsync(jobId, generationResult.EditableTimeline, ct).ConfigureAwait(false);
+            }
 
             // Mark project as completed if checkpoint manager is available
             if (_checkpointManager != null && _jobProjectIds.TryGetValue(jobId, out var completedProjectId))
@@ -399,34 +404,34 @@ public class JobRunner
             {
                 _logger.LogInformation("Telemetry data persisted to {Path}", telemetryPath);
             }
-            
+
             // Stop memory monitoring and log statistics
             if (_memoryMonitor != null)
             {
                 var memStats = _memoryMonitor.StopMonitoring(jobId);
                 _logger.LogInformation(
                     "Job {JobId} memory usage: Start={StartMb:F1}MB, Peak={PeakMb:F1}MB, End={EndMb:F1}MB, Delta={DeltaMb:+0.0;-0.0}MB, GC(G0={G0},G1={G1},G2={G2})",
-                    jobId, memStats.StartMemoryMb, memStats.PeakMemoryMb, memStats.EndMemoryMb, 
+                    jobId, memStats.StartMemoryMb, memStats.PeakMemoryMb, memStats.EndMemoryMb,
                     memStats.MemoryDeltaMb, memStats.Gen0Collections, memStats.Gen1Collections, memStats.Gen2Collections);
             }
-            
+
             // Clear progress estimation history
             _progressEstimator.ClearHistory(jobId);
-            
+
             // Clear retry state if job queue service is available
             _jobQueueService?.ClearRetryState(jobId);
 
             // Mark as done with output path
-            job = UpdateJob(job, 
-                status: JobStatus.Done, 
-                percent: 100, 
+            job = UpdateJob(job,
+                status: JobStatus.Done,
+                percent: 100,
                 stage: "Complete",
                 artifacts: artifacts,
-                outputPath: outputPath,
+                outputPath: generationResult.OutputPath,
                 finishedAt: DateTime.UtcNow,
                 completedUtc: DateTime.UtcNow);
 
-            _logger.LogInformation("Job {JobId} completed successfully. Output: {OutputPath}", jobId, outputPath);
+            _logger.LogInformation("Job {JobId} completed successfully. Output: {OutputPath}", jobId, generationResult.OutputPath);
         }
         catch (OperationCanceledException)
         {
@@ -434,9 +439,9 @@ public class JobRunner
             var job = GetJob(jobId);
             if (job != null)
             {
-                _logger.LogInformation("Beginning cleanup for cancelled job {JobId} (Stage: {Stage}, Percent: {Percent}%)", 
+                _logger.LogInformation("Beginning cleanup for cancelled job {JobId} (Stage: {Stage}, Percent: {Percent}%)",
                     jobId, job.Stage, job.Percent);
-                
+
                 // Clean up temporary files and proxies
                 if (_cleanupService != null)
                 {
@@ -448,7 +453,7 @@ public class JobRunner
                 {
                     _logger.LogWarning("CleanupService not available, temporary files may remain for job {JobId}", jobId);
                 }
-                
+
                 // Mark project as cancelled if checkpoint manager is available
                 if (_checkpointManager != null && _jobProjectIds.TryGetValue(jobId, out var cancelledProjectId))
                 {
@@ -462,31 +467,31 @@ public class JobRunner
                         _logger.LogWarning(ex, "Failed to mark project {ProjectId} as cancelled", cancelledProjectId);
                     }
                 }
-                
+
                 // End telemetry collection for cancelled job
                 var telemetryPath = _telemetryCollector.EndCollection();
                 if (telemetryPath != null)
                 {
                     _logger.LogInformation("Telemetry data persisted for cancelled job {JobId} to {Path}", jobId, telemetryPath);
                 }
-                
+
                 // Stop memory monitoring and log statistics
                 _memoryMonitor?.StopMonitoring(jobId);
-                
+
                 // Clear progress estimation history
                 _progressEstimator.ClearHistory(jobId);
-                
+
                 // Add cancellation message to logs so it's visible in UI
                 var cancelLog = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] Job was cancelled by user - cleanup completed";
                 var updatedLogs = new List<string>(job.Logs) { cancelLog };
-                
-                UpdateJob(job, 
-                    status: JobStatus.Canceled, 
+
+                UpdateJob(job,
+                    status: JobStatus.Canceled,
                     errorMessage: "Job was cancelled by user",
                     logs: updatedLogs,
                     finishedAt: DateTime.UtcNow,
                     canceledUtc: DateTime.UtcNow);
-                
+
                 _logger.LogInformation("Job {JobId} marked as Canceled with cleanup complete", jobId);
             }
         }
@@ -508,7 +513,7 @@ public class JobRunner
                         _logger.LogWarning(ex, "Failed to mark project {ProjectId} as failed", failedProjectId);
                     }
                 }
-                
+
                 var failureDetails = new JobFailure
                 {
                     Stage = job.Stage,
@@ -524,24 +529,24 @@ public class JobRunner
                         "Verify system resources are sufficient"
                     }
                 };
-                
+
                 // End telemetry collection for failed validation
                 var telemetryPath = _telemetryCollector.EndCollection();
                 if (telemetryPath != null)
                 {
                     _logger.LogInformation("Telemetry data persisted for failed job {JobId} to {Path}", jobId, telemetryPath);
                 }
-                
+
                 // Stop memory monitoring
                 _memoryMonitor?.StopMonitoring(jobId);
-                
+
                 // Clear progress estimation history
                 _progressEstimator.ClearHistory(jobId);
-                
+
                 // Add detailed validation errors to logs
                 var errorLog = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] VALIDATION ERROR: {vex.Message}";
                 var updatedLogs = new List<string>(job.Logs) { errorLog };
-                
+
                 if (vex.Issues.Count != 0)
                 {
                     foreach (var issue in vex.Issues)
@@ -549,20 +554,20 @@ public class JobRunner
                         updatedLogs.Add($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}]   - {issue}");
                     }
                 }
-                
-                UpdateJob(job, 
-                    status: JobStatus.Failed, 
-                    errorMessage: vex.Message, 
+
+                UpdateJob(job,
+                    status: JobStatus.Failed,
+                    errorMessage: vex.Message,
                     failureDetails: failureDetails,
                     logs: updatedLogs,
                     finishedAt: DateTime.UtcNow);
-                
+
                 _artifactManager.SaveJob(job);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Job {JobId} failed: {Message}\nStack Trace: {StackTrace}", 
+            _logger.LogError(ex, "Job {JobId} failed: {Message}\nStack Trace: {StackTrace}",
                 jobId, ex.Message, ex.StackTrace);
             var job = GetJob(jobId);
             if (job != null)
@@ -579,46 +584,46 @@ public class JobRunner
                         _logger.LogWarning(checkpointEx, "Failed to mark project {ProjectId} as failed", failedProjectId);
                     }
                 }
-                
+
                 // End telemetry collection for failed job
                 var telemetryPath = _telemetryCollector.EndCollection();
                 if (telemetryPath != null)
                 {
                     _logger.LogInformation("Telemetry data persisted for failed job {JobId} to {Path}", jobId, telemetryPath);
                 }
-                
+
                 // Stop memory monitoring
                 _memoryMonitor?.StopMonitoring(jobId);
-                
+
                 // Clear progress estimation history
                 _progressEstimator.ClearHistory(jobId);
-                
+
                 var failureDetails = CreateFailureDetails(job, ex);
-                
+
                 // Add error to logs so it's visible in UI
                 var errorLog = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] ERROR: {GetFriendlyErrorMessage(ex)}";
                 var updatedLogs = new List<string>(job.Logs) { errorLog };
-                
+
                 // Add inner exception details if available
                 if (ex.InnerException != null)
                 {
                     updatedLogs.Add($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] Inner Exception: {ex.InnerException.Message}");
                 }
-                
+
                 // Add stack trace for debugging (truncated)
                 var stackLines = ex.StackTrace?.Split('\n').Take(5) ?? Array.Empty<string>();
                 foreach (var line in stackLines)
                 {
                     updatedLogs.Add($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}]   {line.Trim()}");
                 }
-                
-                UpdateJob(job, 
-                    status: JobStatus.Failed, 
-                    errorMessage: GetFriendlyErrorMessage(ex), 
+
+                UpdateJob(job,
+                    status: JobStatus.Failed,
+                    errorMessage: GetFriendlyErrorMessage(ex),
                     failureDetails: failureDetails,
                     logs: updatedLogs,
                     finishedAt: DateTime.UtcNow);
-                
+
                 // Save job state to artifact manager
                 _artifactManager.SaveJob(job);
             }
@@ -626,7 +631,7 @@ public class JobRunner
         finally
         {
             _activeJobs.Remove(jobId);
-            
+
             // Clean up cancellation token
             if (_jobCancellationTokens.TryGetValue(jobId, out var cts))
             {
@@ -645,19 +650,19 @@ public class JobRunner
     {
         // Add to progress history
         var updatedHistory = new List<GenerationProgress>(job.ProgressHistory) { generationProgress };
-        
+
         // Calculate percent from overall progress
         var percent = (int)Math.Round(generationProgress.OverallPercent);
-        
+
         // Build log message from progress
-        var logMessage = generationProgress.SubstageDetail != null 
+        var logMessage = generationProgress.SubstageDetail != null
             ? $"{generationProgress.Message} - {generationProgress.SubstageDetail}"
             : generationProgress.Message;
-        var logs = new List<string>(job.Logs) 
-        { 
-            $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] {logMessage}" 
+        var logs = new List<string>(job.Logs)
+        {
+            $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] {logMessage}"
         };
-        
+
         // Update using existing method
         var updatedJob = UpdateJob(
             job,
@@ -667,18 +672,18 @@ public class JobRunner
             progressMessage: generationProgress.Message,
             eta: generationProgress.EstimatedTimeRemaining
         );
-        
+
         // Add progress history and current progress
         var finalJob = updatedJob with
         {
             ProgressHistory = updatedHistory,
             CurrentProgress = generationProgress
         };
-        
+
         // Update active jobs and persist
         _activeJobs[finalJob.Id] = finalJob;
         _artifactManager.SaveJob(finalJob);
-        
+
         return finalJob;
     }
 
@@ -710,7 +715,7 @@ public class JobRunner
                 job.Id, job.Status, newStatus);
             newStatus = job.Status; // Keep old status
         }
-        
+
         // Enforce monotonic progress (never decrease)
         var newPercent = percent ?? job.Percent;
         if (newPercent < job.Percent)
@@ -719,14 +724,14 @@ public class JobRunner
                 job.Id, job.Percent, newPercent);
             newPercent = job.Percent;
         }
-        
+
         // Ensure EndedUtc is set for terminal states
         DateTime? endedUtc = job.EndedUtc;
         if (IsTerminalStatus(newStatus) && endedUtc == null)
         {
             endedUtc = completedUtc ?? canceledUtc ?? DateTime.UtcNow;
         }
-        
+
         var updated = job with
         {
             Stage = stage ?? job.Stage,
@@ -749,7 +754,7 @@ public class JobRunner
         _artifactManager.SaveJob(updated);
 
         // Log job state changes for debugging
-        _logger.LogInformation("[Job {JobId}] Updated: Status={Status}, Stage={Stage}, Percent={Percent}%", 
+        _logger.LogInformation("[Job {JobId}] Updated: Status={Status}, Stage={Stage}, Percent={Percent}%",
             updated.Id, updated.Status, updated.Stage, updated.Percent);
 
         // Raise progress event with detailed information
@@ -762,12 +767,12 @@ public class JobRunner
             correlationId: updated.CorrelationId ?? string.Empty,
             eta: updated.Eta
         );
-        
+
         JobProgress?.Invoke(this, eventArgs);
 
         return updated;
     }
-    
+
     /// <summary>
     /// Checks if a status is terminal (no further transitions allowed)
     /// </summary>
@@ -862,7 +867,7 @@ public class JobRunner
             var maxBytes = 16 * 1024; // 16KB
 
             using var fileStream = new FileStream(logPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-            
+
             if (fileInfo.Length <= maxBytes)
             {
                 // Read entire file if smaller than max
@@ -903,13 +908,13 @@ public class JobRunner
     {
         // Extract the first line of the exception message for a cleaner display
         var message = ex.Message.Split('\n')[0];
-        
+
         // Try to extract a user-friendly portion
         if (message.Contains("FFmpeg render failed"))
         {
             return "Render failed due to FFmpeg error";
         }
-        
+
         return message.Length > 200 ? string.Concat(message.AsSpan(0, 197), "...") : message;
     }
 
@@ -944,7 +949,7 @@ public class JobRunner
             formattedMessage = "Parsing script into scenes";
         }
         else if (message.Contains("Stage 3/5", StringComparison.OrdinalIgnoreCase) ||
-                 message.Contains("Generating narration", StringComparison.OrdinalIgnoreCase) || 
+                 message.Contains("Generating narration", StringComparison.OrdinalIgnoreCase) ||
                  message.Contains("voice", StringComparison.OrdinalIgnoreCase))
         {
             stage = "Voice";

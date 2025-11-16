@@ -11,6 +11,21 @@ import { loggingService as logger } from '../services/loggingService';
  * Uses backend API to handle platform-specific file opening
  */
 export async function openFile(filePath: string): Promise<boolean> {
+  if (window.aura?.shell?.openPath) {
+    try {
+      await window.aura.shell.openPath(filePath);
+      logger.debug('File opened via Aura shell', 'fileSystemUtils', 'openFile', { filePath });
+      return true;
+    } catch (error) {
+      logger.warn(
+        'Aura shell openFile failed, falling back to API',
+        error instanceof Error ? error : new Error(String(error)),
+        'fileSystemUtils',
+        'openFile'
+      );
+    }
+  }
+
   try {
     const response = await fetch(apiUrl('/api/v1/files/open-file'), {
       method: 'POST',
@@ -49,6 +64,21 @@ export async function openFile(filePath: string): Promise<boolean> {
  * Uses backend API to handle platform-specific folder opening
  */
 export async function openFolder(filePath: string): Promise<boolean> {
+  if (window.aura?.shell?.openPath) {
+    try {
+      await window.aura.shell.openPath(filePath);
+      logger.debug('Folder opened via Aura shell', 'fileSystemUtils', 'openFolder', { filePath });
+      return true;
+    } catch (error) {
+      logger.warn(
+        'Aura shell openFolder failed, falling back to API',
+        error instanceof Error ? error : new Error(String(error)),
+        'fileSystemUtils',
+        'openFolder'
+      );
+    }
+  }
+
   try {
     const response = await fetch(apiUrl('/api/v1/files/open-folder'), {
       method: 'POST',

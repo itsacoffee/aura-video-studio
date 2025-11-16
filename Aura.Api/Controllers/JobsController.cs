@@ -23,7 +23,7 @@ public class JobsController : ControllerBase
     private readonly CancellationOrchestrator? _cancellationOrchestrator;
 
     public JobsController(
-        JobRunner jobRunner, 
+        JobRunner jobRunner,
         ArtifactManager artifactManager,
         ProgressAggregatorService? progressAggregator = null,
         CancellationOrchestrator? cancellationOrchestrator = null)
@@ -47,13 +47,13 @@ public class JobsController : ControllerBase
             // Input validation with correlation ID
             var correlationId = HttpContext.TraceIdentifier;
             Log.Information("[{CorrelationId}] POST /api/jobs endpoint called", correlationId);
-            
+
             ArgumentNullException.ThrowIfNull(request, nameof(request));
             ArgumentNullException.ThrowIfNull(request.Brief, nameof(request.Brief));
             ArgumentNullException.ThrowIfNull(request.PlanSpec, nameof(request.PlanSpec));
             ArgumentNullException.ThrowIfNull(request.VoiceSpec, nameof(request.VoiceSpec));
             ArgumentNullException.ThrowIfNull(request.RenderSpec, nameof(request.RenderSpec));
-            
+
             // Validate Brief has non-empty Topic
             if (string.IsNullOrWhiteSpace(request.Brief.Topic))
             {
@@ -69,11 +69,11 @@ public class JobsController : ControllerBase
                     guidance = "Please provide a valid video topic (e.g., 'Cooking pasta', 'Space exploration')"
                 });
             }
-            
+
             // Validate PlanSpec has positive TargetDuration
             if (request.PlanSpec.TargetDuration <= TimeSpan.Zero)
             {
-                Log.Warning("[{CorrelationId}] Job creation rejected: Invalid TargetDuration {Duration}", 
+                Log.Warning("[{CorrelationId}] Job creation rejected: Invalid TargetDuration {Duration}",
                     correlationId, request.PlanSpec.TargetDuration);
                 return BadRequest(new
                 {
@@ -86,7 +86,7 @@ public class JobsController : ControllerBase
                     guidance = "Specify a target duration between 5 seconds and 10 minutes"
                 });
             }
-            
+
             Log.Information("[{CorrelationId}] Creating new job for topic: {Topic}", correlationId, request.Brief.Topic);
 
             RagConfiguration? ragConfig = null;
@@ -138,9 +138,9 @@ public class JobsController : ControllerBase
             );
 
             var job = await _jobRunner.CreateAndStartJobAsync(
-                brief, 
-                planSpec, 
-                voiceSpec, 
+                brief,
+                planSpec,
+                voiceSpec,
                 renderSpec,
                 correlationId,
                 isQuickDemo: false,
@@ -148,14 +148,14 @@ public class JobsController : ControllerBase
             ).ConfigureAwait(false);
 
             Log.Information("[{CorrelationId}] Job created successfully with ID: {JobId}, Status: {Status}", correlationId, job.Id, job.Status);
-            
+
             return Ok(new { jobId = job.Id, status = job.Status, stage = job.Stage, correlationId });
         }
         catch (Exception ex)
         {
             var correlationId = HttpContext.TraceIdentifier;
             Log.Error(ex, "[{CorrelationId}] Error creating job", correlationId);
-            
+
             // Return structured ProblemDetails with correlation ID
             return StatusCode(500, new
             {
@@ -178,15 +178,15 @@ public class JobsController : ControllerBase
         try
         {
             var correlationId = HttpContext.TraceIdentifier;
-            
+
             var job = _jobRunner.GetJob(jobId);
             if (job == null)
             {
                 Log.Warning("[{CorrelationId}] Job not found: {JobId}", correlationId, jobId);
-                return NotFound(new 
-                { 
+                return NotFound(new
+                {
                     type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
-                    title = "Job Not Found", 
+                    title = "Job Not Found",
                     status = 404,
                     detail = $"Job {jobId} not found",
                     correlationId
@@ -199,7 +199,7 @@ public class JobsController : ControllerBase
         {
             var correlationId = HttpContext.TraceIdentifier;
             Log.Error(ex, "[{CorrelationId}] Error retrieving job {JobId}", correlationId, jobId);
-            
+
             return StatusCode(500, new
             {
                 type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
@@ -220,7 +220,7 @@ public class JobsController : ControllerBase
         try
         {
             var correlationId = HttpContext.TraceIdentifier;
-            
+
             var jobs = _jobRunner.ListJobs(limit);
             return Ok(new { jobs = jobs, count = jobs.Count, correlationId });
         }
@@ -228,7 +228,7 @@ public class JobsController : ControllerBase
         {
             var correlationId = HttpContext.TraceIdentifier;
             Log.Error(ex, "[{CorrelationId}] Error listing jobs", correlationId);
-            
+
             return StatusCode(500, new
             {
                 type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
@@ -249,15 +249,15 @@ public class JobsController : ControllerBase
         try
         {
             var correlationId = HttpContext.TraceIdentifier;
-            
+
             var job = _jobRunner.GetJob(jobId);
             if (job == null)
             {
                 Log.Warning("[{CorrelationId}] Job not found: {JobId}", correlationId, jobId);
-                return NotFound(new 
-                { 
+                return NotFound(new
+                {
                     type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
-                    title = "Job Not Found", 
+                    title = "Job Not Found",
                     status = 404,
                     detail = $"Job {jobId} not found",
                     correlationId
@@ -295,7 +295,7 @@ public class JobsController : ControllerBase
         {
             var correlationId = HttpContext.TraceIdentifier;
             Log.Error(ex, "[{CorrelationId}] Error retrieving failure details for job {JobId}", correlationId, jobId);
-            
+
             return StatusCode(500, new
             {
                 type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
@@ -317,7 +317,7 @@ public class JobsController : ControllerBase
         try
         {
             var correlationId = HttpContext.TraceIdentifier;
-            
+
             // Get jobs from storage - does not trigger provider resolution
             var jobs = _jobRunner.ListJobs(50); // Get more jobs to find ones with artifacts
             var artifacts = jobs
@@ -340,7 +340,7 @@ public class JobsController : ControllerBase
         {
             var correlationId = HttpContext.TraceIdentifier;
             Log.Error(ex, "[{CorrelationId}] Error getting recent artifacts", correlationId);
-            
+
             // Return best-effort empty list rather than throwing
             // This ensures the endpoint never crashes the API
             return Ok(new
@@ -353,7 +353,7 @@ public class JobsController : ControllerBase
             });
         }
     }
-    
+
     /// <summary>
     /// Retry a failed job with exponential backoff
     /// </summary>
@@ -366,9 +366,9 @@ public class JobsController : ControllerBase
         try
         {
             var correlationId = HttpContext.TraceIdentifier;
-            Log.Information("[{CorrelationId}] Retry request for job {JobId} with strategy {Strategy}", 
+            Log.Information("[{CorrelationId}] Retry request for job {JobId} with strategy {Strategy}",
                 correlationId, jobId, strategy ?? "default");
-            
+
             // Get the job
             var job = _jobRunner.GetJob(jobId);
             if (job == null)
@@ -382,7 +382,7 @@ public class JobsController : ControllerBase
                     correlationId
                 });
             }
-            
+
             // Verify job has failed
             if (job.Status != JobStatus.Failed)
             {
@@ -396,13 +396,13 @@ public class JobsController : ControllerBase
                     correlationId
                 });
             }
-            
+
             // Attempt to retry the job
             var retried = await _jobRunner.RetryJobAsync(jobId, ct).ConfigureAwait(false);
-            
+
             if (retried)
             {
-                Log.Information("[{CorrelationId}] Successfully initiated retry for job {JobId}", 
+                Log.Information("[{CorrelationId}] Successfully initiated retry for job {JobId}",
                     correlationId, jobId);
                 return Accepted(new
                 {
@@ -414,7 +414,7 @@ public class JobsController : ControllerBase
             }
             else
             {
-                Log.Warning("[{CorrelationId}] Failed to retry job {JobId} - max retries reached or backoff active", 
+                Log.Warning("[{CorrelationId}] Failed to retry job {JobId} - max retries reached or backoff active",
                     correlationId, jobId);
                 return BadRequest(new
                 {
@@ -437,7 +437,7 @@ public class JobsController : ControllerBase
         {
             var correlationId = HttpContext.TraceIdentifier;
             Log.Error(ex, "[{CorrelationId}] Error retrying job {JobId}", correlationId, jobId);
-            
+
             return StatusCode(500, new
             {
                 type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
@@ -448,7 +448,7 @@ public class JobsController : ControllerBase
             });
         }
     }
-    
+
     /// <summary>
     /// Stream Server-Sent Events for job progress updates
     /// Supports reconnection via Last-Event-ID header or query parameter
@@ -457,21 +457,21 @@ public class JobsController : ControllerBase
     public async Task GetJobEvents(string jobId, [FromQuery] string? lastEventId = null, CancellationToken ct = default)
     {
         var correlationId = HttpContext.TraceIdentifier;
-        
+
         // Check for Last-Event-ID header or query parameter for reconnection support
         // Query parameter is used as fallback since EventSource doesn't support custom headers
         var reconnectEventId = lastEventId ?? Request.Headers["Last-Event-ID"].FirstOrDefault();
         var isReconnect = !string.IsNullOrEmpty(reconnectEventId);
-        
-        Log.Information("[{CorrelationId}] SSE stream requested for job {JobId}, reconnect={IsReconnect}, lastEventId={LastEventId}", 
+
+        Log.Information("[{CorrelationId}] SSE stream requested for job {JobId}, reconnect={IsReconnect}, lastEventId={LastEventId}",
             correlationId, jobId, isReconnect, reconnectEventId ?? "none");
-        
+
         // Set headers for SSE
         Response.Headers.Add("Content-Type", "text/event-stream");
         Response.Headers.Add("Cache-Control", "no-cache");
         Response.Headers.Add("Connection", "keep-alive");
         Response.Headers.Add("X-Accel-Buffering", "no"); // Disable nginx buffering
-        
+
         try
         {
             var job = _jobRunner.GetJob(jobId);
@@ -480,16 +480,16 @@ public class JobsController : ControllerBase
                 await SendSseEventWithId("error", new { message = "Job not found", jobId, correlationId }, GenerateEventId()).ConfigureAwait(false);
                 return;
             }
-            
+
             // Send initial job status with artifacts
-            await SendSseEventWithId("job-status", new { 
-                status = job.Status.ToString(), 
+            await SendSseEventWithId("job-status", new {
+                status = job.Status.ToString(),
                 stage = job.Stage,
                 percent = job.Percent,
                 correlationId,
                 isReconnect
             }, GenerateEventId()).ConfigureAwait(false);
-            
+
             // Track last sent values and last ping time
             var lastStatus = job.Status;
             var lastStage = job.Stage;
@@ -500,14 +500,14 @@ public class JobsController : ControllerBase
             var pingIntervalSeconds = 5; // 5-second heartbeat as per requirements
             var pollIntervalMs = 500; // Poll every 500ms for responsiveness
             var eventIdCounter = 0;
-            
+
             while (!ct.IsCancellationRequested && job.Status != JobStatus.Done && job.Status != JobStatus.Failed && job.Status != JobStatus.Canceled)
             {
                 await Task.Delay(pollIntervalMs, ct).ConfigureAwait(false);
-                
+
                 job = _jobRunner.GetJob(jobId);
                 if (job == null) break;
-                
+
                 // Send keep-alive heartbeat every 5 seconds with structured data
                 if ((DateTime.UtcNow - lastPingTime).TotalSeconds >= pingIntervalSeconds)
                 {
@@ -518,92 +518,119 @@ public class JobsController : ControllerBase
                     await SendSseEventWithId("heartbeat", heartbeat, GenerateEventId(++eventIdCounter)).ConfigureAwait(false);
                     lastPingTime = DateTime.UtcNow;
                 }
-                
+
                 // Send status change events
                 if (job.Status != lastStatus)
                 {
-                    await SendSseEventWithId("job-status", new { 
-                        status = job.Status.ToString(), 
+                    await SendSseEventWithId("job-status", new {
+                        status = job.Status.ToString(),
                         stage = job.Stage,
                         percent = job.Percent,
-                        correlationId 
+                        correlationId
                     }, GenerateEventId(++eventIdCounter)).ConfigureAwait(false);
                     lastStatus = job.Status;
                 }
-                
+
                 // Send stage change events (phase transitions)
                 if (job.Stage != lastStage)
                 {
-                    await SendSseEventWithId("step-status", new { 
-                        step = job.Stage, 
+                    var normalizedPhase = NormalizePhase(MapStageToPhase(job.Stage));
+                    await SendSseEventWithId("step-status", new {
+                        step = job.Stage,
                         status = "started",
-                        phase = MapStageToPhase(job.Stage),
-                        correlationId 
+                        phase = normalizedPhase,
+                        correlationId
                     }, GenerateEventId(++eventIdCounter)).ConfigureAwait(false);
                     lastStage = job.Stage;
                 }
-                
+
                 // Send progress updates with unified ProgressEventDto
                 if (job.Percent != lastPercent)
                 {
                     var latestLog = job.Logs.LastOrDefault() ?? "";
-                    
+
                     // Get aggregated progress if available
                     var aggregatedProgress = _progressAggregator?.GetProgress(jobId);
-                    
+
+                    var normalizedPhase = NormalizePhase(MapStageToPhase(job.Stage));
+                    double? elapsedSeconds = null;
+                    if (job.StartedUtc.HasValue)
+                    {
+                        elapsedSeconds = Math.Max(0, (DateTime.UtcNow - job.StartedUtc.Value).TotalSeconds);
+                    }
+                    else if (job.StartedAt != default)
+                    {
+                        elapsedSeconds = Math.Max(0, (DateTime.UtcNow - job.StartedAt).TotalSeconds);
+                    }
+
+                    var etaSpan = aggregatedProgress?.Eta ?? job.Eta;
+
                     var progressEvent = new ProgressEventDto(
                         JobId: jobId,
                         Stage: job.Stage,
                         Percent: job.Percent,
-                        EtaSeconds: aggregatedProgress?.Eta.HasValue == true 
-                            ? (int)aggregatedProgress.Eta.Value.TotalSeconds 
-                            : job.Eta.HasValue ? (int)job.Eta.Value.TotalSeconds : null,
+                        EtaSeconds: etaSpan.HasValue ? (int)etaSpan.Value.TotalSeconds : null,
                         Message: aggregatedProgress?.Message ?? latestLog,
                         Warnings: aggregatedProgress?.Warnings ?? new List<string>(),
                         CorrelationId: correlationId,
                         SubstageDetail: aggregatedProgress?.SubstageDetail ?? job.CurrentProgress?.SubstageDetail,
                         CurrentItem: aggregatedProgress?.CurrentItem ?? job.CurrentProgress?.CurrentItem,
                         TotalItems: aggregatedProgress?.TotalItems ?? job.CurrentProgress?.TotalItems,
-                        Timestamp: DateTime.UtcNow
+                        Timestamp: DateTime.UtcNow,
+                        Phase: normalizedPhase,
+                        ElapsedSeconds: elapsedSeconds,
+                        EstimatedRemainingSeconds: etaSpan?.TotalSeconds
                     );
-                    
+
                     await SendSseEventWithId("step-progress", progressEvent, GenerateEventId(++eventIdCounter)).ConfigureAwait(false);
                     lastPercent = job.Percent;
                     lastProgressMessage = latestLog;
                 }
-                
-                // Check for warnings or errors in new log entries only
+
+                // Emit log entries incrementally for UI console
                 if (job.Logs.Count > lastLogCount)
                 {
-                    // Only check new log entries since last check
                     for (int i = lastLogCount; i < job.Logs.Count; i++)
                     {
                         var logEntry = job.Logs[i];
-                        if (logEntry.Contains("warning", StringComparison.OrdinalIgnoreCase) || 
-                            logEntry.Contains("error", StringComparison.OrdinalIgnoreCase))
+                        var severity = DetermineLogSeverity(logEntry);
+
+                        var logEvent = new JobLogEventDto(
+                            JobId: jobId,
+                            Message: logEntry,
+                            Stage: job.Stage,
+                            Severity: severity,
+                            Timestamp: DateTime.UtcNow,
+                            CorrelationId: correlationId);
+
+                        await SendSseEventWithId("job-log", logEvent, GenerateEventId(++eventIdCounter)).ConfigureAwait(false);
+
+                        if (severity == "warning")
                         {
-                            await SendSseEventWithId("warning", new {
+                            await SendSseEventWithId("warning", new
+                            {
                                 message = logEntry,
                                 step = job.Stage,
                                 correlationId
                             }, GenerateEventId(++eventIdCounter)).ConfigureAwait(false);
                         }
                     }
+
                     lastLogCount = job.Logs.Count;
                 }
-                
+
                 await Response.Body.FlushAsync(ct).ConfigureAwait(false);
             }
-            
+
             // Send final event
             if (job?.Status == JobStatus.Done || job?.Status == JobStatus.Succeeded)
             {
                 var videoArtifact = job.Artifacts.FirstOrDefault(a => a.Type == "video" || a.Type == "video/mp4");
                 var subtitleArtifact = job.Artifacts.FirstOrDefault(a => a.Type == "subtitle" || a.Type == "text/srt");
-                
-                await SendSseEventWithId("job-completed", new 
-                { 
-                    status = "Succeeded", 
+
+                await SendSseEventWithId("job-completed", new
+                {
+                    status = "Succeeded",
                     jobId = job.Id,
                     artifacts = job.Artifacts.Select(a => new {
                         name = a.Name,
@@ -611,40 +638,40 @@ public class JobsController : ControllerBase
                         type = a.Type,
                         sizeBytes = a.SizeBytes
                     }).ToArray(),
-                    output = new { 
+                    output = new {
                         videoPath = videoArtifact?.Path ?? "",
                         subtitlePath = subtitleArtifact?.Path ?? "",
                         sizeBytes = videoArtifact?.SizeBytes ?? 0
                     },
-                    correlationId 
+                    correlationId
                 }, GenerateEventId(++eventIdCounter)).ConfigureAwait(false);
             }
             else if (job?.Status == JobStatus.Failed)
             {
-                var errors = job.Errors.Any() 
-                    ? job.Errors.ToArray() 
+                var errors = job.Errors.Any()
+                    ? job.Errors.ToArray()
                     : new[] { new JobStepError { Code = "UnknownError", Message = job.ErrorMessage ?? "Job failed", Remediation = "Check logs for details" } };
-                    
-                await SendSseEventWithId("job-failed", new 
-                { 
+
+                await SendSseEventWithId("job-failed", new
+                {
                     status = "Failed",
                     jobId = job.Id,
                     stage = job.Stage,
                     errors,
                     errorMessage = job.ErrorMessage,
                     logs = job.Logs.TakeLast(10).ToArray(),
-                    correlationId 
+                    correlationId
                 }, GenerateEventId(++eventIdCounter)).ConfigureAwait(false);
             }
             else if (job?.Status == JobStatus.Canceled)
             {
-                await SendSseEventWithId("job-cancelled", new 
-                { 
+                await SendSseEventWithId("job-cancelled", new
+                {
                     status = "Cancelled",
                     jobId = job.Id,
                     stage = job.Stage,
                     message = "Job was cancelled by user",
-                    correlationId 
+                    correlationId
                 }, GenerateEventId(++eventIdCounter)).ConfigureAwait(false);
             }
         }
@@ -659,7 +686,7 @@ public class JobsController : ControllerBase
             await SendSseEvent("error", new { message = ex.Message, correlationId }).ConfigureAwait(false);
         }
     }
-    
+
     /// <summary>
     /// Cancel a running job with orchestrated provider cancellation
     /// </summary>
@@ -670,7 +697,7 @@ public class JobsController : ControllerBase
         {
             var correlationId = HttpContext.TraceIdentifier;
             Log.Information("[{CorrelationId}] Cancel request for job {JobId}", correlationId, jobId);
-            
+
             var job = _jobRunner.GetJob(jobId);
             if (job == null)
             {
@@ -697,10 +724,10 @@ public class JobsController : ControllerBase
                     correlationId
                 });
             }
-            
+
             // Attempt to cancel the job with orchestration
             bool cancelled = _jobRunner.CancelJob(jobId);
-            
+
             // If cancellation orchestrator is available, use it for detailed provider cancellation
             CancellationResult? orchestratorResult = null;
             if (_cancellationOrchestrator != null && cancelled)
@@ -708,7 +735,7 @@ public class JobsController : ControllerBase
                 try
                 {
                     orchestratorResult = await _cancellationOrchestrator.CancelJobAsync(jobId, ct).ConfigureAwait(false);
-                    
+
                     // Convert to DTOs for API response
                     var providerStatuses = orchestratorResult.ProviderStatuses
                         .Select(ps => new ProviderCancellationStatusDto(
@@ -722,8 +749,8 @@ public class JobsController : ControllerBase
 
                     Log.Information(
                         "[{CorrelationId}] Job {JobId} cancellation orchestrated: {SuccessCount}/{TotalCount} providers",
-                        correlationId, jobId, 
-                        providerStatuses.Count(s => s.Status == "Cancelled"), 
+                        correlationId, jobId,
+                        providerStatuses.Count(s => s.Status == "Cancelled"),
                         providerStatuses.Count);
 
                     return Accepted(new
@@ -743,7 +770,7 @@ public class JobsController : ControllerBase
                         correlationId, jobId);
                 }
             }
-            
+
             if (cancelled)
             {
                 Log.Information("[{CorrelationId}] Successfully cancelled job {JobId}, cleanup will be performed", correlationId, jobId);
@@ -774,7 +801,7 @@ public class JobsController : ControllerBase
         {
             var correlationId = HttpContext.TraceIdentifier;
             Log.Error(ex, "[{CorrelationId}] Error canceling job {JobId}", correlationId, jobId);
-            
+
             return StatusCode(500, new
             {
                 type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
@@ -785,7 +812,7 @@ public class JobsController : ControllerBase
             });
         }
     }
-    
+
     private async Task SendSseEvent(string eventType, object data)
     {
         var json = JsonSerializer.Serialize(data);
@@ -830,6 +857,32 @@ public class JobsController : ControllerBase
         };
     }
 
+    private static string NormalizePhase(string phase)
+    {
+        return phase switch
+        {
+            "processing" => "plan",
+            "complete" => "render",
+            _ => phase
+        };
+    }
+
+    private static string DetermineLogSeverity(string logEntry)
+    {
+        if (logEntry.Contains("error", StringComparison.OrdinalIgnoreCase))
+        {
+            return "error";
+        }
+
+        if (logEntry.Contains("warning", StringComparison.OrdinalIgnoreCase) ||
+            logEntry.Contains("warn", StringComparison.OrdinalIgnoreCase))
+        {
+            return "warning";
+        }
+
+        return "info";
+    }
+
     /// <summary>
     /// Get job progress information for status bar updates
     /// </summary>
@@ -839,15 +892,15 @@ public class JobsController : ControllerBase
         try
         {
             var correlationId = HttpContext.TraceIdentifier;
-            
+
             var job = _jobRunner.GetJob(jobId);
             if (job == null)
             {
                 Log.Warning("[{CorrelationId}] Job not found: {JobId}", correlationId, jobId);
-                return NotFound(new 
-                { 
+                return NotFound(new
+                {
                     type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
-                    title = "Job Not Found", 
+                    title = "Job Not Found",
                     status = 404,
                     detail = $"Job {jobId} not found",
                     correlationId
@@ -878,7 +931,7 @@ public class JobsController : ControllerBase
         {
             var correlationId = HttpContext.TraceIdentifier;
             Log.Error(ex, "[{CorrelationId}] Error retrieving job progress {JobId}", correlationId, jobId);
-            
+
             return StatusCode(500, new
             {
                 type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",

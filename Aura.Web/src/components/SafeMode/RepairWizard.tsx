@@ -85,12 +85,17 @@ export const RepairWizard: FC<RepairWizardProps> = ({ open, onClose }) => {
   };
 
   const processStep = async (step: RepairStep, index: number) => {
+    const auraInvoke = window.aura?.invoke ?? window.electron?.invoke;
+    if (!auraInvoke) {
+      return;
+    }
+
     setCurrentStep(index);
     updateStepStatus(step.id, 'running');
 
     try {
       const checkMethod = `diagnostics:check${step.id.charAt(0).toUpperCase() + step.id.slice(1)}`;
-      const result = (await window.electron!.invoke(checkMethod)) as {
+      const result = (await auraInvoke(checkMethod)) as {
         status: string;
         message: string;
         canFix: boolean;
@@ -101,7 +106,7 @@ export const RepairWizard: FC<RepairWizardProps> = ({ open, onClose }) => {
       } else if (result.status === 'warning' && result.canFix) {
         const fixMethod = `diagnostics:fix${step.id.charAt(0).toUpperCase() + step.id.slice(1)}`;
         try {
-          await window.electron!.invoke(fixMethod);
+          await auraInvoke(fixMethod);
           updateStepStatus(step.id, 'success');
         } catch (fixError: unknown) {
           updateStepStatus(
@@ -123,10 +128,6 @@ export const RepairWizard: FC<RepairWizardProps> = ({ open, onClose }) => {
   };
 
   const runRepair = async () => {
-    if (!window.electron) {
-      return;
-    }
-
     setIsRepairing(true);
 
     for (let i = 0; i < steps.length; i++) {
@@ -138,7 +139,9 @@ export const RepairWizard: FC<RepairWizardProps> = ({ open, onClose }) => {
   };
 
   const handleResetConfig = async () => {
-    if (!window.electron) {
+    const auraInvoke = window.aura?.invoke ?? window.electron?.invoke;
+    const auraConfig = window.aura?.config;
+    if (!auraConfig?.deleteAndRestart && !auraInvoke) {
       return;
     }
 
@@ -149,7 +152,11 @@ export const RepairWizard: FC<RepairWizardProps> = ({ open, onClose }) => {
 
     if (confirmed) {
       try {
-        await window.electron.invoke('config:deleteAndRestart');
+        if (auraConfig?.deleteAndRestart) {
+          await auraConfig.deleteAndRestart();
+        } else if (auraInvoke) {
+          await auraInvoke('config:deleteAndRestart');
+        }
       } catch (error: unknown) {
         alert(
           `Failed to reset configuration: ${error instanceof Error ? error.message : String(error)}`

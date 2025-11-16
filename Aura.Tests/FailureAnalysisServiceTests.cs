@@ -43,7 +43,7 @@ public class FailureAnalysisServiceTests
         Assert.Equal("test-job-1", analysis.JobId);
         Assert.Equal(RootCauseType.RateLimit, analysis.PrimaryRootCause.Type);
         Assert.True(analysis.PrimaryRootCause.Confidence >= 85);
-        Assert.Contains("Rate limit", analysis.PrimaryRootCause.Description);
+        Assert.Contains("rate limit", analysis.PrimaryRootCause.Description, StringComparison.OrdinalIgnoreCase);
         Assert.NotEmpty(analysis.RecommendedActions);
     }
 
@@ -68,9 +68,9 @@ public class FailureAnalysisServiceTests
         Assert.Equal(RootCauseType.InvalidApiKey, analysis.PrimaryRootCause.Type);
         Assert.True(analysis.PrimaryRootCause.Confidence >= 90);
         Assert.NotEmpty(analysis.RecommendedActions);
-        
+
         // Should recommend updating API key
-        Assert.Contains(analysis.RecommendedActions, 
+        Assert.Contains(analysis.RecommendedActions,
             action => action.Type == ActionType.ApiKey && action.Title.Contains("Update"));
     }
 
@@ -96,9 +96,9 @@ public class FailureAnalysisServiceTests
         Assert.True(analysis.PrimaryRootCause.Confidence >= 95);
         Assert.Equal("ElevenLabs", analysis.PrimaryRootCause.Provider);
         Assert.NotEmpty(analysis.RecommendedActions);
-        
+
         // Should recommend adding API key
-        Assert.Contains(analysis.RecommendedActions, 
+        Assert.Contains(analysis.RecommendedActions,
             action => action.Type == ActionType.ApiKey && action.Title.Contains("Add"));
     }
 
@@ -123,9 +123,9 @@ public class FailureAnalysisServiceTests
         Assert.Equal(RootCauseType.FFmpegNotFound, analysis.PrimaryRootCause.Type);
         Assert.True(analysis.PrimaryRootCause.Confidence >= 90);
         Assert.NotEmpty(analysis.RecommendedActions);
-        
+
         // Should recommend installation
-        Assert.Contains(analysis.RecommendedActions, 
+        Assert.Contains(analysis.RecommendedActions,
             action => action.Type == ActionType.Installation);
     }
 
@@ -150,9 +150,9 @@ public class FailureAnalysisServiceTests
         Assert.Equal(RootCauseType.NetworkError, analysis.PrimaryRootCause.Type);
         Assert.True(analysis.PrimaryRootCause.Confidence >= 80);
         Assert.NotEmpty(analysis.RecommendedActions);
-        
+
         // Should recommend network checks
-        Assert.Contains(analysis.RecommendedActions, 
+        Assert.Contains(analysis.RecommendedActions,
             action => action.Type == ActionType.Network);
     }
 
@@ -222,11 +222,11 @@ public class FailureAnalysisServiceTests
 
         // Assert
         Assert.NotEmpty(analysis.RecommendedActions);
-        
+
         // Verify recommendations are sorted by priority
         for (int i = 0; i < analysis.RecommendedActions.Count - 1; i++)
         {
-            Assert.True(analysis.RecommendedActions[i].Priority <= 
+            Assert.True(analysis.RecommendedActions[i].Priority <=
                        analysis.RecommendedActions[i + 1].Priority);
         }
     }
@@ -249,7 +249,7 @@ public class FailureAnalysisServiceTests
 
         // Assert
         Assert.NotEmpty(analysis.RecommendedActions);
-        Assert.Contains(analysis.RecommendedActions, 
+        Assert.Contains(analysis.RecommendedActions,
             action => action.EstimatedMinutes.HasValue && action.EstimatedMinutes.Value > 0);
     }
 
@@ -293,11 +293,11 @@ public class FailureAnalysisServiceTests
 
         // Assert
         Assert.NotNull(analysis);
-        
+
         // Should identify either rate limit or network (or both)
         var allCauses = new[] { analysis.PrimaryRootCause }
             .Concat(analysis.SecondaryRootCauses);
-        Assert.Contains(allCauses, cause => 
+        Assert.Contains(allCauses, cause =>
             cause.Type == RootCauseType.RateLimit || cause.Type == RootCauseType.NetworkError);
     }
 }

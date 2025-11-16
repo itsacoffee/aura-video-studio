@@ -32,8 +32,11 @@ const getBridgeBackendUrl = (): string | undefined => {
     return undefined;
   }
 
-  const bridgeUrl = window.desktopBridge?.getBackendBaseUrl?.();
-  return bridgeUrl ? trimValue(bridgeUrl) : undefined;
+  const auraUrl =
+    window.aura?.runtime?.getCachedDiagnostics?.()?.backend?.baseUrl ??
+    window.desktopBridge?.getBackendBaseUrl?.();
+
+  return auraUrl ? trimValue(auraUrl) : undefined;
 };
 
 /**
@@ -42,7 +45,8 @@ const getBridgeBackendUrl = (): string | undefined => {
 export function isElectronEnvironment(): boolean {
   return (
     typeof window !== 'undefined' &&
-    (window.desktopBridge !== undefined ||
+    (window.aura !== undefined ||
+      window.desktopBridge !== undefined ||
       window.AURA_IS_ELECTRON === true ||
       window.electron !== undefined)
   );
@@ -62,7 +66,18 @@ export async function getElectronBackendUrl(): Promise<string | null> {
     return bridgeUrl;
   }
 
-  if (window.desktopBridge?.getDiagnosticInfo) {
+  if (window.aura?.runtime?.getDiagnostics) {
+    try {
+      const diagnostics = await window.aura.runtime.getDiagnostics();
+      const diagnosticUrl = diagnostics?.backend?.baseUrl;
+      const trimmedDiagnosticUrl = trimValue(diagnosticUrl);
+      if (trimmedDiagnosticUrl) {
+        return trimmedDiagnosticUrl;
+      }
+    } catch (error) {
+      console.warn('[apiBaseUrl] Failed to read diagnostics from aura runtime:', error);
+    }
+  } else if (window.desktopBridge?.getDiagnosticInfo) {
     try {
       const diagnostics = await window.desktopBridge.getDiagnosticInfo();
       const diagnosticUrl = diagnostics?.backend?.baseUrl;
@@ -84,6 +99,18 @@ export async function getElectronBackendUrl(): Promise<string | null> {
   }
 
   // Try async Electron API if available
+  if (window.aura?.backend?.getBaseUrl) {
+    try {
+      const url = await window.aura.backend.getBaseUrl();
+      const trimmed = trimValue(url ?? undefined);
+      if (trimmed) {
+        return trimmed;
+      }
+    } catch (error) {
+      console.warn('Failed to get backend URL from Aura API:', error);
+    }
+  }
+
   if (window.electron?.backend?.getUrl) {
     try {
       const url = await window.electron.backend.getUrl();

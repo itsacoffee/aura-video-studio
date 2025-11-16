@@ -42,7 +42,7 @@ public class VideoGenerationJobService
     {
         var jobId = Guid.NewGuid().ToString("N");
         var correlationId = Guid.NewGuid().ToString("N");
-        
+
         var job = new VideoGenerationJob
         {
             JobId = jobId,
@@ -55,9 +55,9 @@ public class VideoGenerationJobService
             Status = JobStatus.Pending,
             CreatedAt = DateTime.UtcNow
         };
-        
+
         _jobs[jobId] = job;
-        
+
         _logger.LogInformation("Created video generation job: {JobId}", jobId);
         return jobId;
     }
@@ -72,19 +72,19 @@ public class VideoGenerationJobService
             _logger.LogError("Job not found: {JobId}", jobId);
             throw new InvalidOperationException($"Job not found: {jobId}");
         }
-        
+
         _logger.LogInformation("Starting video generation job: {JobId}", jobId);
-        
+
         job.Status = JobStatus.Running;
         job.StartedAt = DateTime.UtcNow;
-        
+
         try
         {
             var progress = new Progress<string>(message =>
             {
                 UpdateJobProgress(jobId, "Generation", 50, message);
             });
-            
+
             var outputPath = await _orchestrator.GenerateVideoAsync(
                 job.Brief,
                 job.PlanSpec,
@@ -96,11 +96,11 @@ public class VideoGenerationJobService
                 jobId,
                 job.CorrelationId
             ).ConfigureAwait(false);
-            
+
             job.Status = JobStatus.Completed;
             job.CompletedAt = DateTime.UtcNow;
             job.OutputPath = outputPath;
-            
+
             _logger.LogInformation("Video generation job completed: {JobId}, Output: {OutputPath}", jobId, outputPath);
         }
         catch (OperationCanceledException)
@@ -116,17 +116,17 @@ public class VideoGenerationJobService
             job.CompletedAt = DateTime.UtcNow;
             job.ErrorMessage = ex.Message;
             job.RetryCount++;
-            
-            _logger.LogError(ex, "Video generation job failed: {JobId}, Attempt: {RetryCount}/{MaxRetries}", 
+
+            _logger.LogError(ex, "Video generation job failed: {JobId}, Attempt: {RetryCount}/{MaxRetries}",
                 jobId, job.RetryCount, job.MaxRetries);
-            
+
             if (job.RetryCount < job.MaxRetries)
             {
                 job.Status = JobStatus.Retrying;
                 _logger.LogInformation("Job will be retried: {JobId}", jobId);
                 throw; // Let Hangfire handle retry
             }
-            
+
             throw;
         }
     }
@@ -149,16 +149,16 @@ public class VideoGenerationJobService
             _logger.LogWarning("Cannot cancel job - not found: {JobId}", jobId);
             return false;
         }
-        
+
         if (job.Status != JobStatus.Running && job.Status != JobStatus.Pending)
         {
             _logger.LogWarning("Cannot cancel job - status is {Status}: {JobId}", job.Status, jobId);
             return false;
         }
-        
+
         job.Status = JobStatus.Cancelled;
         job.CompletedAt = DateTime.UtcNow;
-        
+
         _logger.LogInformation("Job cancelled: {JobId}", jobId);
         return true;
     }
@@ -169,12 +169,12 @@ public class VideoGenerationJobService
     public List<VideoGenerationJob> GetJobs(Models.Jobs.JobStatus? statusFilter = null, int maxResults = 100)
     {
         var query = _jobs.Values.AsEnumerable();
-        
+
         if (statusFilter.HasValue)
         {
             query = query.Where(j => j.Status == statusFilter.Value);
         }
-        
+
         return query
             .OrderByDescending(j => j.CreatedAt)
             .Take(maxResults)
@@ -188,24 +188,24 @@ public class VideoGenerationJobService
     {
         var cutoffTime = DateTime.UtcNow - olderThan;
         var jobsToRemove = _jobs
-            .Where(kv => kv.Value.CompletedAt.HasValue && 
+            .Where(kv => kv.Value.CompletedAt.HasValue &&
                         kv.Value.CompletedAt.Value < cutoffTime &&
-                        (kv.Value.Status == JobStatus.Completed || 
+                        (kv.Value.Status == JobStatus.Completed ||
                          kv.Value.Status == JobStatus.Failed ||
                          kv.Value.Status == JobStatus.Cancelled))
             .Select(kv => kv.Key)
             .ToList();
-        
+
         foreach (var jobId in jobsToRemove)
         {
             _jobs.TryRemove(jobId, out _);
         }
-        
+
         if (jobsToRemove.Count > 0)
         {
             _logger.LogInformation("Cleaned up {Count} old jobs", jobsToRemove.Count);
         }
-        
+
         return jobsToRemove.Count;
     }
 
@@ -220,7 +220,7 @@ public class VideoGenerationJobService
                 PercentComplete = percent,
                 Message = message
             });
-            
+
             // Keep only last 50 progress updates to avoid memory bloat
             if (job.ProgressUpdates.Count > 50)
             {

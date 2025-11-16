@@ -31,7 +31,8 @@ export function useMenuCommandSystem() {
 
   useEffect(() => {
     // Only run in Electron environment
-    if (!window.electron?.menu) {
+    const menuApi = window.aura?.menu ?? window.electron?.menu;
+    if (!menuApi) {
       loggingService.info('Not in Electron environment, skipping menu command setup');
       return;
     }
@@ -47,7 +48,7 @@ export function useMenuCommandSystem() {
       });
     });
 
-    const menu = window.electron.menu;
+    const menu = menuApi;
     const unsubscribers: Array<() => void> = [];
 
     // Register handlers for all menu commands

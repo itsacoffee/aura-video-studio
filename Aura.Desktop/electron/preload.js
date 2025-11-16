@@ -7,6 +7,7 @@
  */
 
 const { contextBridge, ipcRenderer } = require("electron");
+const os = require("os");
 const {
   MENU_EVENT_CHANNELS,
 } = require("./menu-event-types");
@@ -296,6 +297,12 @@ const desktopBridge = {
 
 contextBridge.exposeInMainWorld("desktopBridge", desktopBridge);
 
+const auraBridge = createAuraBridge();
+
+contextBridge.exposeInMainWorld("aura", auraBridge);
+// Legacy alias for compatibility with existing renderer code
+contextBridge.exposeInMainWorld("electron", auraBridge);
+
 try {
   if (typeof window !== "undefined") {
     Object.defineProperty(window, "AURA_IS_ELECTRON", {
@@ -304,17 +311,20 @@ try {
     });
 
     Object.defineProperty(window, "AURA_BACKEND_URL", {
-      get: () => desktopBridge.getBackendBaseUrl(),
+      get: () => runtimeBootstrap?.backend?.baseUrl || null,
       configurable: true,
     });
 
     Object.defineProperty(window, "AURA_IS_DEV", {
-      get: () => desktopBridge.getAppEnvironment() === "development",
+      get: () =>
+        auraBridge.env.mode
+          ? auraBridge.env.mode === "development"
+          : auraBridge.env.isDev,
       configurable: true,
     });
 
     Object.defineProperty(window, "AURA_VERSION", {
-      value: runtimeBootstrap?.environment?.version || "unknown",
+      get: () => runtimeBootstrap?.environment?.version || "unknown",
       configurable: true,
     });
   }
@@ -322,86 +332,44 @@ try {
   console.warn("[Preload] Failed to expose legacy Aura globals", legacyError);
 }
 
-// Expose safe API to renderer process
-contextBridge.exposeInMainWorld("electron", {
-  // Configuration management
-  config: {
-    get: (key, defaultValue) => safeInvoke("config:get", key, defaultValue),
-    set: (key, value) => safeInvoke("config:set", key, value),
-    getAll: () => safeInvoke("config:getAll"),
-    reset: () => safeInvoke("config:reset"),
-    getSecure: (key) => safeInvoke("config:getSecure", key),
-    setSecure: (key, value) => safeInvoke("config:setSecure", key, value),
-    deleteSecure: (key) => safeInvoke("config:deleteSecure", key),
-    addRecentProject: (path, name) =>
-      safeInvoke("config:addRecentProject", path, name),
-    getRecentProjects: () => safeInvoke("config:getRecentProjects"),
-    clearRecentProjects: () => safeInvoke("config:clearRecentProjects"),
-    removeRecentProject: (path) =>
-      safeInvoke("config:removeRecentProject", path),
-  },
+function createAuraBridge() {
+  const isDevRuntime =
+    !process.env.NODE_ENV || process.env.NODE_ENV === "development";
 
-  // File/folder dialogs
-  dialog: {
-    openFolder: () => safeInvoke("dialog:openFolder"),
-    openFile: (options) => safeInvoke("dialog:openFile", options),
-    openMultipleFiles: (options) =>
-      safeInvoke("dialog:openMultipleFiles", options),
-    saveFile: (options) => safeInvoke("dialog:saveFile", options),
-    showMessage: (options) => safeInvoke("dialog:showMessage", options),
-    showError: (title, message) =>
-      safeInvoke("dialog:showError", title, message),
-  },
+  const refreshDiagnostics = async () => {
+    try {
+      runtimeBootstrap = await safeInvoke("runtime:getDiagnostics");
+    } catch (error) {
+      console.error("[Preload] Failed to refresh runtime diagnostics:", error);
+    }
+    return runtimeBootstrap;
+  };
 
-  // Shell operations
-  shell: {
-    openExternal: (url) => safeInvoke("shell:openExternal", url),
-    openPath: (path) => safeInvoke("shell:openPath", path),
-    showItemInFolder: (path) => safeInvoke("shell:showItemInFolder", path),
-    trashItem: (path) => safeInvoke("shell:trashItem", path),
-  },
-
-  // App information
-  app: {
-    getVersion: () => safeInvoke("app:getVersion"),
-    getName: () => safeInvoke("app:getName"),
-    getPaths: () => safeInvoke("app:getPaths"),
-    getLocale: () => safeInvoke("app:getLocale"),
-    isPackaged: () => safeInvoke("app:isPackaged"),
-    restart: () => safeInvoke("app:restart"),
-    quit: () => safeInvoke("app:quit"),
-  },
-
-  // Window operations
-  window: {
-    minimize: () => safeInvoke("window:minimize"),
-    maximize: () => safeInvoke("window:maximize"),
-    close: () => safeInvoke("window:close"),
-    hide: () => safeInvoke("window:hide"),
-    show: () => safeInvoke("window:show"),
-  },
-
-  // Video generation
-  video: {
-    generate: {
-      start: (config) => safeInvoke("video:generate:start", config),
-      pause: (generationId) => safeInvoke("video:generate:pause", generationId),
-      resume: (generationId) =>
-        safeInvoke("video:generate:resume", generationId),
-      cancel: (generationId) =>
-        safeInvoke("video:generate:cancel", generationId),
-      status: (generationId) =>
-        safeInvoke("video:generate:status", generationId),
-      list: () => safeInvoke("video:generate:list"),
+  const backendApi = {
+    async getBaseUrl() {
+      if (runtimeBootstrap?.backend?.baseUrl) {
+        return runtimeBootstrap.backend.baseUrl;
+      }
+      try {
+        const url = await safeInvoke("backend:getUrl");
+        if (url) {
+          runtimeBootstrap = {
+            ...(runtimeBootstrap || {}),
+            backend: {
+              ...(runtimeBootstrap?.backend || {}),
+              baseUrl: url,
+            },
+          };
+        }
+        return url;
+      } catch (error) {
+        console.error("[Preload] Failed to resolve backend URL:", error);
+        return null;
+      }
     },
-    onProgress: (callback) => safeOn("video:progress", callback),
-    onError: (callback) => safeOn("video:error", callback),
-    onComplete: (callback) => safeOn("video:complete", callback),
-  },
-
-  // Backend service
-  backend: {
-    getUrl: () => safeInvoke("backend:getUrl"),
+    getUrl() {
+      return backendApi.getBaseUrl();
+    },
     health: () => safeInvoke("backend:health"),
     ping: () => safeInvoke("backend:ping"),
     info: () => safeInvoke("backend:info"),
@@ -416,46 +384,203 @@ contextBridge.exposeInMainWorld("electron", {
     getFirewallCommand: () => safeInvoke("backend:getFirewallCommand"),
     onHealthUpdate: (callback) => safeOn("backend:healthUpdate", callback),
     onProviderUpdate: (callback) => safeOn("backend:providerUpdate", callback),
-  },
+  };
 
-  // Startup logs
-  startupLogs: {
+  const ffmpegApi = {
+    checkStatus: () => safeInvoke("ffmpeg:checkStatus"),
+    install: (options) => safeInvoke("ffmpeg:install", options),
+    getProgress: () => safeInvoke("ffmpeg:getProgress"),
+    openDirectory: () => safeInvoke("ffmpeg:openDirectory"),
+  };
+
+  const dialogsApi = {
+    openFolder: () => safeInvoke("dialog:openFolder"),
+    openFile: (options) => safeInvoke("dialog:openFile", options),
+    openMultipleFiles: (options) =>
+      safeInvoke("dialog:openMultipleFiles", options),
+    saveFile: (options) => safeInvoke("dialog:saveFile", options),
+    showMessage: (options) => safeInvoke("dialog:showMessage", options),
+    showError: (title, message) => safeInvoke("dialog:showError", title, message),
+  };
+
+  const shellApi = {
+    openExternal: (url) => safeInvoke("shell:openExternal", url),
+    openPath: (path) => safeInvoke("shell:openPath", path),
+    showItemInFolder: (path) => safeInvoke("shell:showItemInFolder", path),
+    trashItem: (path) => safeInvoke("shell:trashItem", path),
+  };
+
+  const appApi = {
+    getVersion: () => safeInvoke("app:getVersion"),
+    getName: () => safeInvoke("app:getName"),
+    getPaths: () => safeInvoke("app:getPaths"),
+    getLocale: () => safeInvoke("app:getLocale"),
+    isPackaged: () => safeInvoke("app:isPackaged"),
+    restart: () => safeInvoke("app:restart"),
+    quit: () => safeInvoke("app:quit"),
+  };
+
+  const windowApi = {
+    minimize: () => safeInvoke("window:minimize"),
+    maximize: () => safeInvoke("window:maximize"),
+    close: () => safeInvoke("window:close"),
+    hide: () => safeInvoke("window:hide"),
+    show: () => safeInvoke("window:show"),
+  };
+
+  const videoApi = {
+    generate: {
+      start: (config) => safeInvoke("video:generate:start", config),
+      pause: (generationId) => safeInvoke("video:generate:pause", generationId),
+      resume: (generationId) =>
+        safeInvoke("video:generate:resume", generationId),
+      cancel: (generationId) =>
+        safeInvoke("video:generate:cancel", generationId),
+      status: (generationId) =>
+        safeInvoke("video:generate:status", generationId),
+      list: () => safeInvoke("video:generate:list"),
+    },
+    onProgress: (callback) => safeOn("video:progress", callback),
+    onError: (callback) => safeOn("video:error", callback),
+    onComplete: (callback) => safeOn("video:complete", callback),
+  };
+
+  const configApi = {
+    get: (key, defaultValue) => safeInvoke("config:get", key, defaultValue),
+    set: (key, value) => safeInvoke("config:set", key, value),
+    getAll: () => safeInvoke("config:getAll"),
+    reset: () => safeInvoke("config:reset"),
+    getSecure: (key) => safeInvoke("config:getSecure", key),
+    setSecure: (key, value) => safeInvoke("config:setSecure", key, value),
+    deleteSecure: (key) => safeInvoke("config:deleteSecure", key),
+    addRecentProject: (path, name) =>
+      safeInvoke("config:addRecentProject", path, name),
+    getRecentProjects: () => safeInvoke("config:getRecentProjects"),
+    clearRecentProjects: () => safeInvoke("config:clearRecentProjects"),
+    removeRecentProject: (path) =>
+      safeInvoke("config:removeRecentProject", path),
+    isSafeMode: () => safeInvoke("config:isSafeMode"),
+    getCrashCount: () => safeInvoke("config:getCrashCount"),
+    resetCrashCount: () => safeInvoke("config:resetCrashCount"),
+    deleteAndRestart: () => safeInvoke("config:deleteAndRestart"),
+    getConfigPath: () => safeInvoke("config:getConfigPath"),
+  };
+
+  const diagnosticsApi = {
+    runAll: () => safeInvoke("diagnostics:runAll"),
+    checkFFmpeg: () => safeInvoke("diagnostics:checkFFmpeg"),
+    fixFFmpeg: () => safeInvoke("diagnostics:fixFFmpeg"),
+    checkAPI: () => safeInvoke("diagnostics:checkAPI"),
+    fixAPI: () => safeInvoke("diagnostics:fixAPI"),
+    checkProviders: () => safeInvoke("diagnostics:checkProviders"),
+    fixProviders: () => safeInvoke("diagnostics:fixProviders"),
+    checkDiskSpace: () => safeInvoke("diagnostics:checkDiskSpace"),
+    checkConfig: () => safeInvoke("diagnostics:checkConfig"),
+  };
+
+  const startupLogsApi = {
     getLatest: () => safeInvoke("startup-logs:get-latest"),
     getSummary: () => safeInvoke("startup-logs:get-summary"),
     getLogContent: () => safeInvoke("startup-logs:get-log-content"),
     list: () => safeInvoke("startup-logs:list"),
     readFile: (filePath) => safeInvoke("startup-logs:read-file", filePath),
     openDirectory: () => safeInvoke("startup-logs:open-directory"),
-  },
+  };
 
-  // Update management
-  updates: {
+  const updatesApi = {
     check: () => safeInvoke("updates:check"),
-  },
+  };
 
-  // Protocol handling
-  protocol: {
+  const protocolApi = {
     onNavigate: (callback) => safeOn("protocol:navigate", callback),
-  },
+  };
 
-  // Menu actions - now with validated command handling
-  menu: createValidatedMenuAPI(ipcRenderer),
+  const runtimeApi = {
+    getDiagnostics: () => refreshDiagnostics(),
+    refresh: () => refreshDiagnostics(),
+    getCachedDiagnostics: () => runtimeBootstrap,
+    onBackendHealthUpdate: (callback) =>
+      safeOn("backend:healthUpdate", callback),
+    onBackendProviderUpdate: (callback) =>
+      safeOn("backend:providerUpdate", callback),
+  };
 
-  // Platform detection
-  platform: {
-    isElectron: true,
-    os: process.platform,
-    arch: process.arch,
-    isWindows: process.platform === "win32",
-    isMac: process.platform === "darwin",
-    isLinux: process.platform === "linux",
-    versions: {
-      node: process.versions.node,
-      chrome: process.versions.chrome,
-      electron: process.versions.electron,
+  const systemApi = {
+    getEnvironmentInfo: async () => {
+      const diagnostics = runtimeBootstrap ?? (await refreshDiagnostics());
+      return {
+        environment: diagnostics?.environment ?? null,
+        os: diagnostics?.os ?? null,
+        paths: diagnostics?.paths ?? null,
+        platform: {
+          os: process.platform,
+          arch: process.arch,
+          release: os.release(),
+          versions: { ...process.versions },
+        },
+      };
     },
-  },
-});
+    getPaths: () => safeInvoke("app:getPaths"),
+  };
+
+  const aura = {
+    env: {
+      isElectron: true,
+      isDev: isDevRuntime,
+      mode:
+        runtimeBootstrap?.environment?.mode ||
+        process.env.NODE_ENV ||
+        "production",
+      version: runtimeBootstrap?.environment?.version || "unknown",
+      isPackaged: runtimeBootstrap?.environment?.isPackaged ?? false,
+    },
+    platform: {
+      os: process.platform,
+      arch: process.arch,
+      release: os.release(),
+      isWindows: process.platform === "win32",
+      isMac: process.platform === "darwin",
+      isLinux: process.platform === "linux",
+      versions: {
+        node: process.versions.node,
+        chrome: process.versions.chrome,
+        electron: process.versions.electron,
+      },
+    },
+    runtime: runtimeApi,
+    backend: backendApi,
+    ffmpeg: ffmpegApi,
+    dialogs: dialogsApi,
+    shell: shellApi,
+    app: appApi,
+    window: windowApi,
+    video: videoApi,
+    config: configApi,
+    diagnostics: diagnosticsApi,
+    updates: updatesApi,
+    protocol: protocolApi,
+    menu: createValidatedMenuAPI(ipcRenderer),
+    startupLogs: startupLogsApi,
+    safeMode: {
+      onStatus: (callback) => safeOn("app:safeMode", callback),
+    },
+    system: systemApi,
+    events: {
+      on: (channel, callback) => safeOn(channel, callback),
+      once: (channel, callback) => safeOnce(channel, callback),
+    },
+  };
+
+  // Legacy compatibility helpers
+  aura.invoke = (channel, ...args) => safeInvoke(channel, ...args);
+  aura.on = (channel, callback) => safeOn(channel, callback);
+  aura.once = (channel, callback) => safeOnce(channel, callback);
+  aura.selectFolder = () => aura.dialogs.openFolder();
+  aura.openPath = (path) => aura.shell.openPath(path);
+  aura.openExternal = (url) => aura.shell.openExternal(url);
+
+  return aura;
+}
 
 // Log preload script initialization
 console.log("Enhanced preload script loaded");

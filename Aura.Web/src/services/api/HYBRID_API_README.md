@@ -25,7 +25,7 @@ The hybrid API communication layer provides a unified interface for making API c
 └────────┬────────┘  └──────┬──────────┘
          │                   │
 ┌────────▼────────┐  ┌──────▼──────────┐
-│  Axios Client   │  │  window.electron│
+│  Axios Client   │  │  window.aura│
 │  (REST API)     │  │  (IPC Bridge)   │
 └─────────────────┘  └─────────────────┘
 ```
@@ -59,7 +59,7 @@ Uses Axios for traditional HTTP communication:
 Uses Electron's IPC bridge for secure communication:
 
 - Used in Electron desktop application
-- Communicates via `window.electron` API
+- Communicates via `window.aura` API
 - Backend URL managed by Electron
 - Same interface as HTTP transport
 - Automatic fallback to HTTP for SSE
@@ -80,7 +80,7 @@ Provides a convenient wrapper around the transport layer:
 Automatically selects the correct transport:
 
 ```typescript
-if (window.electron exists) {
+if (window.aura exists) {
   return new IpcTransport();
 } else {
   return new HttpTransport(baseURL);
@@ -283,25 +283,25 @@ import { TransportFactory } from './transport';
 
 describe('TransportFactory', () => {
   it('should detect web environment', () => {
-    window.electron = undefined;
+    window.aura = undefined;
     expect(TransportFactory.isElectron()).toBe(false);
   });
 
   it('should detect Electron environment', () => {
-    window.electron = {
+    window.aura = {
       /* mock */
     };
     expect(TransportFactory.isElectron()).toBe(true);
   });
 
   it('should create HTTP transport in web', () => {
-    window.electron = undefined;
+    window.aura = undefined;
     const transport = TransportFactory.create('http://localhost:5005');
     expect(transport.getName()).toBe('HTTP');
   });
 
   it('should create IPC transport in Electron', () => {
-    window.electron = { backend: { getUrl: vi.fn() } };
+    window.aura = { backend: { getBaseUrl: vi.fn() } };
     const transport = TransportFactory.create('http://localhost:5005');
     expect(transport.getName()).toBe('IPC');
   });
@@ -328,7 +328,7 @@ Test your services in both environments:
 
 **Cause:** EventSource not properly initialized
 
-**Solution:** Ensure backend URL is correctly retrieved via `window.electron.backend.getUrl()`
+**Solution:** Ensure backend URL is correctly retrieved via `window.aura.backend.getBaseUrl()`
 
 ### Issue: File uploads failing
 

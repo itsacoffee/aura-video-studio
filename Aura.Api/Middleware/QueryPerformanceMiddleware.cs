@@ -34,6 +34,13 @@ public class QueryPerformanceMiddleware
         var path = context.Request.Path;
         var method = context.Request.Method;
 
+        context.Response.OnStarting(state =>
+        {
+            var (httpContext, sw) = ((HttpContext Context, Stopwatch Stopwatch))state;
+            httpContext.Response.Headers["X-Response-Time-Ms"] = sw.ElapsedMilliseconds.ToString();
+            return Task.CompletedTask;
+        }, (context, stopwatch));
+
         try
         {
             await _next(context).ConfigureAwait(false);
@@ -42,9 +49,6 @@ public class QueryPerformanceMiddleware
         {
             stopwatch.Stop();
             var elapsedMs = stopwatch.ElapsedMilliseconds;
-
-            // Add performance timing header
-            context.Response.Headers["X-Response-Time-Ms"] = elapsedMs.ToString();
 
             // Log slow requests
             if (elapsedMs >= _verySlowRequestThresholdMs)

@@ -1,13 +1,13 @@
-import { FluentProvider, webLightTheme, webDarkTheme, Spinner } from '@fluentui/react-components';
+import { FluentProvider, Spinner, webDarkTheme, webLightTheme } from '@fluentui/react-components';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { useState, useEffect, createContext, useContext } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { queryClient } from './api/queryClient';
 import { AppRouterContent } from './components/AppRouterContent';
 import { CrashRecoveryScreen } from './components/ErrorBoundary';
-import { InitializationScreen, StartupErrorScreen } from './components/Initialization';
 import type { InitializationError } from './components/Initialization';
+import { InitializationScreen, StartupErrorScreen } from './components/Initialization';
 import { env } from './config/env';
 import { ROUTE_METADATA_ENHANCED } from './config/routesWithGuards';
 import { AccessibilityProvider } from './contexts/AccessibilityContext';
@@ -22,8 +22,8 @@ import { registerCustomEventHandlers } from './services/customEventHandlers';
 import { errorReportingService } from './services/errorReportingService';
 import {
   hasCompletedFirstRun,
-  migrateLegacyFirstRunStatus,
   markFirstRunCompleted,
+  migrateLegacyFirstRunStatus,
 } from './services/firstRunService';
 import { healthMonitorService } from './services/healthMonitorService';
 import { keyboardShortcutManager } from './services/keyboardShortcutManager';
@@ -33,6 +33,7 @@ import { initializeRouteRegistry } from './services/routeRegistry';
 import { migrateSettingsIfNeeded } from './services/settingsValidationService';
 import { ActivityProvider } from './state/activityContext';
 import { useJobState } from './state/jobState';
+import { useEnvironmentStore } from './stores/environmentStore';
 import { getAuraTheme } from './themes/auraTheme';
 
 interface ThemeContextType {
@@ -52,6 +53,13 @@ export const useTheme = () => useContext(ThemeContext);
 function App() {
   // Initialize Windows native UI integration
   const windowsUI = useWindowsNativeUI();
+  const hydrateEnvironment = useEnvironmentStore((state) => state.hydrate);
+
+  useEffect(() => {
+    hydrateEnvironment().catch((error) =>
+      console.warn('[App] Failed to hydrate environment diagnostics:', error)
+    );
+  }, [hydrateEnvironment]);
 
   // Initialize dark mode - default to dark on first run, then use localStorage
   const [isDarkMode, setIsDarkMode] = useState(() => {

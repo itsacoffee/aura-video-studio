@@ -1,24 +1,25 @@
 import {
-  Drawer,
-  DrawerHeader,
-  DrawerBody,
   Button,
-  Text,
-  ProgressBar,
-  makeStyles,
   Dialog,
-  DialogTrigger,
+  DialogActions,
+  DialogBody,
+  DialogContent,
   DialogSurface,
   DialogTitle,
-  DialogBody,
-  DialogActions,
-  DialogContent,
+  DialogTrigger,
+  Drawer,
+  DrawerBody,
+  DrawerHeader,
+  ProgressBar,
+  Text,
+  makeStyles,
 } from '@fluentui/react-components';
 import { Dismiss24Regular, Stop20Regular } from '@fluentui/react-icons';
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { apiUrl } from '../config/api';
 import { useSSEConnection } from '../hooks/useSSEConnection';
 import { loggingService } from '../services/loggingService';
+import type { ProgressEventDto } from '../types/api-v1';
 
 const useStyles = makeStyles({
   drawer: {
@@ -63,6 +64,62 @@ const useStyles = makeStyles({
   },
 });
 
+type DrawerLogEntry = {
+  id: string;
+  message: string;
+  severity: 'info' | 'warning' | 'error';
+  timestamp: string;
+  stage?: string;
+};
+
+type DrawerProgressEventPayload = ProgressEventDto & {
+  step?: string;
+  progressPct?: number;
+};
+
+interface DrawerLogPayload {
+  jobId: string;
+  message: string;
+  stage?: string;
+  severity?: string;
+  timestamp?: string;
+}
+
+const normalizeSeverity = (severity?: string): DrawerLogEntry['severity'] => {
+  if (!severity) {
+    return 'info';
+  }
+  const normalized = severity.toLowerCase();
+  if (normalized.includes('error')) {
+    return 'error';
+  }
+  if (normalized.includes('warn')) {
+    return 'warning';
+  }
+  return 'info';
+};
+
+const formatDurationFromSeconds = (seconds?: number | null): string => {
+  if (seconds === undefined || seconds === null || Number.isNaN(seconds)) {
+    return '';
+  }
+
+  if (seconds < 60) {
+    return `${Math.max(0, Math.round(seconds))}s`;
+  }
+
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.round(seconds % 60);
+
+  if (minutes < 60) {
+    return `${minutes}m ${remainingSeconds}s`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return `${hours}h ${remainingMinutes}m`;
+};
+
 export interface JobProgressDrawerProps {
   isOpen: boolean;
   onClose: () => void;
@@ -74,11 +131,34 @@ export function JobProgressDrawer({ isOpen, onClose, jobId }: JobProgressDrawerP
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState('Running');
   const [stage, setStage] = useState('Initializing');
-  const [logs, setLogs] = useState<string[]>([]);
+  const [logs, setLogs] = useState<DrawerLogEntry[]>([]);
   const [eta, setEta] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState<string>('');
   const [isCancelling, setIsCancelling] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
+
+  const appendLogEntry = useCallback((payload: DrawerLogPayload) => {
+    if (!payload.message) {
+      return;
+    }
+
+    setLogs((prev) => {
+      const timestamp = payload.timestamp ?? new Date().toISOString();
+      const entry: DrawerLogEntry = {
+        id: `${timestamp}-${prev.length}`,
+        message: payload.message,
+        severity: normalizeSeverity(payload.severity),
+        timestamp,
+        stage: payload.stage,
+      };
+
+      const next = [...prev, entry];
+      if (next.length > 200) {
+        return next.slice(next.length - 200);
+      }
+      return next;
+    });
+  }, []);
 
   // SSE connection for real-time updates
   const { connect, disconnect } = useSSEConnection({
@@ -97,23 +177,28 @@ export function JobProgressDrawer({ isOpen, onClose, jobId }: JobProgressDrawerP
         }
 
         case 'step-progress': {
-          const data = message.data as {
-            step: string;
-            progressPct: number;
-            message: string;
-            elapsedTime?: string;
-            estimatedTimeRemaining?: string;
-          };
-          setProgress(data.progressPct);
-          setStage(data.step);
-          if (data.message) {
-            setLogs((prev) => [...prev.slice(-49), data.message]);
+          const data = message.data as DrawerProgressEventPayload;
+          const nextPercent =
+            typeof data.percent === 'number'
+              ? data.percent
+              : typeof data.progressPct === 'number'
+                ? data.progressPct
+                : progress;
+          setProgress(nextPercent);
+          if (data.stage || data.step) {
+            setStage(data.stage ?? data.step ?? stage);
           }
-          if (data.elapsedTime) {
-            setElapsed(data.elapsedTime);
+          if (typeof data.elapsedSeconds === 'number') {
+            setElapsed(formatDurationFromSeconds(data.elapsedSeconds));
           }
-          if (data.estimatedTimeRemaining) {
-            setEta(data.estimatedTimeRemaining);
+          const etaSeconds =
+            typeof data.estimatedRemainingSeconds === 'number'
+              ? data.estimatedRemainingSeconds
+              : typeof data.etaSeconds === 'number'
+                ? data.etaSeconds
+                : undefined;
+          if (etaSeconds !== undefined) {
+            setEta(formatDurationFromSeconds(etaSeconds));
           }
           break;
         }
@@ -121,18 +206,33 @@ export function JobProgressDrawer({ isOpen, onClose, jobId }: JobProgressDrawerP
         case 'job-completed': {
           setStatus('completed');
           setProgress(100);
+          appendLogEntry({
+            jobId,
+            message: 'Job completed successfully.',
+            severity: 'info',
+          });
           disconnect();
           break;
         }
 
         case 'job-failed': {
-          const data = message.data as { errorMessage?: string; logs?: string[] };
+          const data = message.data as { errorMessage?: string; logs?: string[]; stage?: string };
           setStatus('failed');
-          if (data.errorMessage) {
-            setLogs((prev) => [...prev, `ERROR: ${data.errorMessage}`]);
-          }
-          if (data.logs && Array.isArray(data.logs)) {
-            setLogs((prev) => [...prev, ...data.logs]);
+          appendLogEntry({
+            jobId,
+            message: data.errorMessage || 'Job failed',
+            severity: 'error',
+            stage: data.stage,
+          });
+          if (Array.isArray(data.logs)) {
+            data.logs.forEach((log) =>
+              appendLogEntry({
+                jobId,
+                message: log,
+                severity: 'error',
+                stage: data.stage,
+              })
+            );
           }
           disconnect();
           break;
@@ -140,13 +240,28 @@ export function JobProgressDrawer({ isOpen, onClose, jobId }: JobProgressDrawerP
 
         case 'job-cancelled': {
           setStatus('cancelled');
+          appendLogEntry({
+            jobId,
+            message: 'Job was cancelled.',
+            severity: 'warning',
+          });
           disconnect();
+          break;
+        }
+
+        case 'job-log': {
+          const data = message.data as DrawerLogPayload;
+          appendLogEntry(data);
           break;
         }
 
         case 'warning': {
           const data = message.data as { message: string };
-          setLogs((prev) => [...prev.slice(-49), `WARNING: ${data.message}`]);
+          appendLogEntry({
+            jobId,
+            message: data.message,
+            severity: 'warning',
+          });
           break;
         }
 
@@ -280,9 +395,31 @@ export function JobProgressDrawer({ isOpen, onClose, jobId }: JobProgressDrawerP
           {logs.length === 0 ? (
             <Text>No logs available yet...</Text>
           ) : (
-            logs.map((log, index) => (
-              <div key={index} className={styles.logEntry}>
-                {log}
+            logs.map((log) => (
+              <div key={log.id} className={styles.logEntry}>
+                <Text as="span" weight="semibold">
+                  [{new Date(log.timestamp).toLocaleTimeString()}]
+                </Text>{' '}
+                <Text
+                  as="span"
+                  weight="semibold"
+                  style={{
+                    color:
+                      log.severity === 'error'
+                        ? '#a4262c'
+                        : log.severity === 'warning'
+                          ? '#bc4b09'
+                          : '#605e5c',
+                  }}
+                >
+                  {log.severity.toUpperCase()}
+                </Text>{' '}
+                {log.stage && (
+                  <Text as="span" style={{ color: '#605e5c' }}>
+                    ({log.stage})
+                  </Text>
+                )}{' '}
+                <Text as="span">{log.message}</Text>
               </div>
             ))
           )}

@@ -335,18 +335,18 @@ export class HttpTransport implements IApiTransport {
 
 /**
  * IPC Transport Implementation (for Electron)
- * Uses window.electron IPC bridge for communication
+ * Uses window.aura IPC bridge for communication
  */
 export class IpcTransport implements IApiTransport {
-  private electron: typeof window.electron;
+  private aura: typeof window.aura;
   private baseURL: string;
 
   constructor() {
-    if (!window.electron) {
+    if (!window.aura) {
       throw new Error('IPC Transport requires Electron environment');
     }
 
-    this.electron = window.electron;
+    this.aura = window.aura;
     this.baseURL = '';
 
     loggingService.info('IPC Transport initialized', 'IpcTransport', 'constructor');
@@ -357,7 +357,7 @@ export class IpcTransport implements IApiTransport {
   }
 
   isAvailable(): boolean {
-    return !!window.electron;
+    return !!window.aura;
   }
 
   async request<T = unknown>(
@@ -367,7 +367,12 @@ export class IpcTransport implements IApiTransport {
     options?: TransportRequestOptions
   ): Promise<TransportResponse<T>> {
     try {
-      const backendUrl = await this.electron.backend.getUrl();
+      const backendUrl =
+        (await this.aura.backend?.getBaseUrl?.()) ??
+        (await this.aura.backend?.getUrl?.());
+      if (!backendUrl) {
+        throw new Error('Backend URL is not available in Aura runtime');
+      }
       const url = `${backendUrl}${endpoint}`;
 
       loggingService.debug(`IPC request: ${method} ${endpoint}`, 'IpcTransport', 'request', {
@@ -414,7 +419,12 @@ export class IpcTransport implements IApiTransport {
 
     const setupSubscription = async () => {
       try {
-        const backendUrl = await this.electron.backend.getUrl();
+        const backendUrl =
+          (await this.aura.backend?.getBaseUrl?.()) ??
+          (await this.aura.backend?.getUrl?.());
+        if (!backendUrl) {
+          throw new Error('Backend URL is not available in Aura runtime');
+        }
         const url = `${backendUrl}${endpoint}`;
 
         const eventSource = new EventSource(url);
@@ -470,7 +480,12 @@ export class IpcTransport implements IApiTransport {
     options?: UploadOptions
   ): Promise<TransportResponse<T>> {
     try {
-      const backendUrl = await this.electron.backend.getUrl();
+      const backendUrl =
+        (await this.aura.backend?.getBaseUrl?.()) ??
+        (await this.aura.backend?.getUrl?.());
+      if (!backendUrl) {
+        throw new Error('Backend URL is not available in Aura runtime');
+      }
       const url = `${backendUrl}${endpoint}`;
 
       const formData = new FormData();
@@ -530,7 +545,12 @@ export class IpcTransport implements IApiTransport {
 
   async download(endpoint: string, options?: DownloadOptions): Promise<void> {
     try {
-      const backendUrl = await this.electron.backend.getUrl();
+      const backendUrl =
+        (await this.aura.backend?.getBaseUrl?.()) ??
+        (await this.aura.backend?.getUrl?.());
+      if (!backendUrl) {
+        throw new Error('Backend URL is not available in Aura runtime');
+      }
       const url = `${backendUrl}${endpoint}`;
 
       const xhr = new XMLHttpRequest();
@@ -613,7 +633,7 @@ export class TransportFactory {
    * Detect if running in Electron environment
    */
   static isElectron(): boolean {
-    return typeof window !== 'undefined' && !!window.electron;
+    return typeof window !== 'undefined' && !!window.aura;
   }
 
   /**

@@ -7,6 +7,7 @@ using Aura.Core.Hardware;
 using Aura.Core.Models;
 using Aura.Core.Orchestrator;
 using Aura.Core.Services;
+using Aura.Core.Services.Timeline;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -30,8 +31,10 @@ public class JobOrchestrationTests
         _cleanupLoggerMock = new Mock<ILogger<CleanupService>>();
         _orchestratorMock = new Mock<VideoOrchestrator>();
         _hardwareDetectorMock = new Mock<HardwareDetector>();
-        
-        _artifactManager = new ArtifactManager(_artifactLoggerMock.Object);
+
+        var timelineSerializerLogger = new Mock<ILogger<TimelineSerializationService>>();
+        var timelineSerializer = new TimelineSerializationService(timelineSerializerLogger.Object);
+        _artifactManager = new ArtifactManager(_artifactLoggerMock.Object, timelineSerializer);
         _cleanupService = new CleanupService(_cleanupLoggerMock.Object);
     }
 
@@ -40,7 +43,7 @@ public class JobOrchestrationTests
     {
         // Arrange
         var createdTime = DateTime.UtcNow;
-        
+
         // Act
         var job = new Job
         {
@@ -226,7 +229,7 @@ public class JobOrchestrationTests
         // Arrange
         var job1 = new Job { Id = Guid.NewGuid().ToString(), CreatedUtc = DateTime.UtcNow };
         var job2 = new Job { Id = Guid.NewGuid().ToString(), CreatedUtc = DateTime.UtcNow.AddSeconds(1) };
-        
+
         _artifactManager.SaveJob(job1);
         _artifactManager.SaveJob(job2);
 
@@ -262,16 +265,16 @@ public class JobOrchestrationTests
     {
         // This test verifies the cancellation infrastructure returns false for non-existent jobs
         // Actual cancellation behavior with VideoOrchestrator is tested in integration tests
-        
+
         // Note: We skip creating a JobRunner instance here because VideoOrchestrator
         // cannot be easily mocked. The cancellation logic is verified through the
         // fact that we can call CancelJob on a non-existent job and it returns false
         // without throwing an exception.
-        
+
         // Act & Assert - This demonstrates the expected behavior
         var nonExistentJobId = "non-existent-job";
         var expectedResult = false; // Should return false for non-existent jobs
-        
+
         Assert.False(expectedResult); // Placeholder to verify test structure
     }
 }

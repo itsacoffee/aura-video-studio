@@ -16,6 +16,7 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
+    "dev:desktop": "node scripts/dev-server.js",
     "debug-startup": "electron . --debug-startup",
     "electron:dev": "npm run prebuild:check && electron . --dev",
     "electron:build": "npm run build:all && electron-builder build --win",
