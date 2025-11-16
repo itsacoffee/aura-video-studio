@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Configuration;
+using Aura.Core.Errors;
 using Aura.Core.Models;
 using Microsoft.Extensions.Logging;
 
@@ -330,9 +331,9 @@ public class ProviderValidationService
                 new ProviderState { ProviderId = "Windows", Type = ProviderType.TTS, Enabled = false, CredentialsConfigured = true, ValidationStatus = ProviderValidationStatus.Unknown, Priority = 3 },
                 new ProviderState { ProviderId = "Piper", Type = ProviderType.TTS, Enabled = false, CredentialsConfigured = true, ValidationStatus = ProviderValidationStatus.Unknown, Priority = 4 },
                 new ProviderState { ProviderId = "Mimic3", Type = ProviderType.TTS, Enabled = false, CredentialsConfigured = true, ValidationStatus = ProviderValidationStatus.Unknown, Priority = 5 },
-                new ProviderState { ProviderId = "StabilityAI", Type = ProviderType.Image, Enabled = false, CredentialsConfigured = false, ValidationStatus = ProviderValidationStatus.NotConfigured, Priority = 1 },
-                new ProviderState { ProviderId = "StableDiffusion", Type = ProviderType.Image, Enabled = false, CredentialsConfigured = false, ValidationStatus = ProviderValidationStatus.NotConfigured, Priority = 2 },
-                new ProviderState { ProviderId = "Stock", Type = ProviderType.Image, Enabled = false, CredentialsConfigured = true, ValidationStatus = ProviderValidationStatus.Valid, Priority = 3 },
+                new ProviderState { ProviderId = "StabilityAI", Type = ProviderType.Visual, Enabled = false, CredentialsConfigured = false, ValidationStatus = ProviderValidationStatus.NotConfigured, Priority = 1 },
+                new ProviderState { ProviderId = "StableDiffusion", Type = ProviderType.Visual, Enabled = false, CredentialsConfigured = false, ValidationStatus = ProviderValidationStatus.NotConfigured, Priority = 2 },
+                new ProviderState { ProviderId = "Stock", Type = ProviderType.Visual, Enabled = false, CredentialsConfigured = true, ValidationStatus = ProviderValidationStatus.Valid, Priority = 3 },
             };
 
             foreach (var provider in defaultProviders)

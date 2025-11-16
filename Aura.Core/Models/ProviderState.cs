@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Aura.Core.Errors;
 
 namespace Aura.Core.Models;
 
@@ -57,19 +58,6 @@ public class ProviderState
     /// Priority order for fallback chains (lower number = higher priority)
     /// </summary>
     public int Priority { get; set; }
-}
-
-/// <summary>
-/// Provider type categories
-/// </summary>
-public enum ProviderType
-{
-    LLM,
-    TTS,
-    Image,
-    Video,
-    Music,
-    SFX
 }
 
 /// <summary>
