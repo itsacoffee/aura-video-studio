@@ -247,13 +247,13 @@ export const APP_ERROR_MESSAGES: Record<string, ErrorMessage> = {
   },
 
   // FFmpeg Installation Errors (PR 336)
-  E310: {
+  E340: {
     title: 'FFmpeg Status Error',
     message: 'Failed to retrieve FFmpeg status.',
     actions: ['Check FFmpeg installation', 'Try rescanning for FFmpeg', 'Install FFmpeg'],
     severity: 'error',
   },
-  E311: {
+  E341: {
     title: 'FFmpeg Not Found',
     message: 'FFmpeg download source not found or file not available.',
     actions: [
@@ -263,7 +263,7 @@ export const APP_ERROR_MESSAGES: Record<string, ErrorMessage> = {
     ],
     severity: 'error',
   },
-  E312: {
+  E342: {
     title: 'No Download Mirrors Available',
     message: 'No download mirrors available for FFmpeg installation.',
     actions: [
@@ -272,7 +272,7 @@ export const APP_ERROR_MESSAGES: Record<string, ErrorMessage> = {
     ],
     severity: 'error',
   },
-  E313: {
+  E343: {
     title: 'FFmpeg Installation Failed',
     message: 'FFmpeg installation failed due to an unknown error.',
     actions: [
@@ -283,19 +283,19 @@ export const APP_ERROR_MESSAGES: Record<string, ErrorMessage> = {
     ],
     severity: 'error',
   },
-  E314: {
+  E344: {
     title: 'FFmpeg Rescan Error',
     message: 'Failed to rescan for FFmpeg installations.',
     actions: ['Try again', 'Check file system permissions', 'Contact support if this persists'],
     severity: 'error',
   },
-  E315: {
+  E345: {
     title: 'Invalid FFmpeg Path',
     message: 'The FFmpeg path provided is invalid or empty.',
     actions: ['Provide a valid path to ffmpeg.exe', 'Browse to select the correct file'],
     severity: 'error',
   },
-  E316: {
+  E346: {
     title: 'Invalid FFmpeg Installation',
     message: 'The specified path does not contain a valid FFmpeg executable.',
     actions: [
@@ -306,13 +306,13 @@ export const APP_ERROR_MESSAGES: Record<string, ErrorMessage> = {
     ],
     severity: 'error',
   },
-  E317: {
+  E347: {
     title: 'FFmpeg Validation Error',
     message: 'Unexpected error occurred while validating FFmpeg.',
     actions: ['Try again', 'Check file permissions', 'Contact support if this persists'],
     severity: 'error',
   },
-  E320: {
+  E348: {
     title: 'Download Timeout',
     message: 'FFmpeg download timed out.',
     actions: [
@@ -323,7 +323,7 @@ export const APP_ERROR_MESSAGES: Record<string, ErrorMessage> = {
     ],
     severity: 'warning',
   },
-  E321: {
+  E349: {
     title: 'Network Error During Download',
     message: 'Network error occurred during FFmpeg download.',
     actions: [
@@ -334,7 +334,7 @@ export const APP_ERROR_MESSAGES: Record<string, ErrorMessage> = {
     ],
     severity: 'error',
   },
-  E322: {
+  E350: {
     title: 'Corrupted Download',
     message: 'Downloaded FFmpeg file is corrupted or incomplete.',
     actions: [
@@ -345,7 +345,7 @@ export const APP_ERROR_MESSAGES: Record<string, ErrorMessage> = {
     ],
     severity: 'error',
   },
-  E323: {
+  E351: {
     title: 'DNS Resolution Failed',
     message: 'Unable to resolve the download server hostname.',
     actions: [
@@ -355,7 +355,7 @@ export const APP_ERROR_MESSAGES: Record<string, ErrorMessage> = {
     ],
     severity: 'error',
   },
-  E324: {
+  E352: {
     title: 'TLS/SSL Error',
     message: 'Failed to establish a secure connection to the download server.',
     actions: [
@@ -365,7 +365,7 @@ export const APP_ERROR_MESSAGES: Record<string, ErrorMessage> = {
     ],
     severity: 'error',
   },
-  E325: {
+  E353: {
     title: 'Disk I/O Error',
     message: 'Failed to write to disk during FFmpeg installation.',
     actions: [

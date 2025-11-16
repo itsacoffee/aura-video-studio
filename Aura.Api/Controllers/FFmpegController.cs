@@ -64,7 +64,7 @@ public class FFmpegController : ControllerBase
 
             return StatusCode(500, new
             {
-                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E310",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E340",
                 title = "FFmpeg Status Error",
                 status = 500,
                 detail = $"Failed to get FFmpeg status: {ex.Message}",
@@ -97,7 +97,7 @@ public class FFmpegController : ControllerBase
             {
                 return NotFound(new
                 {
-                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E311",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E341",
                     title = "FFmpeg Not Found in Manifest",
                     status = 404,
                     detail = "FFmpeg not found in engine manifest",
@@ -128,7 +128,7 @@ public class FFmpegController : ControllerBase
             {
                 return BadRequest(new
                 {
-                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E312",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E342",
                     title = "No Download Mirrors Available",
                     status = 400,
                     detail = "No download mirrors available for FFmpeg",
@@ -229,48 +229,48 @@ public class FFmpegController : ControllerBase
     {
         if (string.IsNullOrEmpty(errorMessage))
         {
-            return "E313";
+            return "E343";
         }
 
         if (errorMessage.Contains("404") || errorMessage.Contains("not found", StringComparison.OrdinalIgnoreCase))
         {
-            return "E311";
+            return "E341";
         }
 
         if (errorMessage.Contains("timeout", StringComparison.OrdinalIgnoreCase))
         {
-            return "E320";
+            return "E348";
         }
 
         if (errorMessage.Contains("network", StringComparison.OrdinalIgnoreCase) || 
             errorMessage.Contains("connection", StringComparison.OrdinalIgnoreCase))
         {
-            return "E321";
+            return "E349";
         }
 
         if (errorMessage.Contains("checksum", StringComparison.OrdinalIgnoreCase) || 
             errorMessage.Contains("corrupt", StringComparison.OrdinalIgnoreCase))
         {
-            return "E322";
+            return "E350";
         }
 
         if (errorMessage.Contains("validation", StringComparison.OrdinalIgnoreCase))
         {
-            return "E303";
+            return "E347";
         }
 
-        return "E313";
+        return "E343";
     }
 
     private string GenerateUserFriendlyInstallError(string errorCode, string? technicalMessage)
     {
         return errorCode switch
         {
-            "E311" => "FFmpeg download source not found. The download URL may have changed.",
-            "E320" => "Download timed out. This may be due to slow network connection or large file size.",
-            "E321" => "Network error occurred during download. Check your internet connection.",
-            "E322" => "Downloaded file is corrupted. The download was incomplete or the file was tampered with.",
-            "E303" => "FFmpeg binary validation failed. The downloaded file may be incompatible with your system.",
+            "E341" => "FFmpeg download source not found. The download URL may have changed.",
+            "E348" => "Download timed out. This may be due to slow network connection or large file size.",
+            "E349" => "Network error occurred during download. Check your internet connection.",
+            "E350" => "Downloaded file is corrupted. The download was incomplete or the file was tampered with.",
+            "E347" => "FFmpeg binary validation failed. The downloaded file may be incompatible with your system.",
             _ => technicalMessage ?? "Installation failed due to an unknown error."
         };
     }
@@ -279,34 +279,34 @@ public class FFmpegController : ControllerBase
     {
         return errorCode switch
         {
-            "E311" => new[]
+            "E341" => new[]
             {
                 "Try the installation again - the mirror list may resolve to a working source",
                 "Download FFmpeg manually from https://ffmpeg.org",
                 "Use the 'Use Existing FFmpeg' option to point to a manual installation"
             },
-            "E320" => new[]
+            "E348" => new[]
             {
                 "Check your internet connection speed",
                 "Try again later when network conditions improve",
                 "Use a wired connection instead of WiFi if possible",
                 "Download FFmpeg manually and use 'Use Existing FFmpeg'"
             },
-            "E321" => new[]
+            "E349" => new[]
             {
                 "Check your internet connection",
                 "Verify firewall is not blocking the download",
                 "Try using a VPN if downloads are restricted in your region",
                 "Download FFmpeg manually and use the 'Use Existing FFmpeg' option"
             },
-            "E322" => new[]
+            "E350" => new[]
             {
                 "Clear browser cache and try again",
                 "Check available disk space",
                 "Temporarily disable antivirus during download",
                 "Download FFmpeg manually from the official website"
             },
-            "E303" => new[]
+            "E347" => new[]
             {
                 "Ensure you have the correct FFmpeg version for your OS",
                 "Check that your system architecture (x64/ARM) is supported",
@@ -328,21 +328,21 @@ public class FFmpegController : ControllerBase
         {
             if (httpEx.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
-                return ("E311", "FFmpeg source not found", "Download Source Not Found", 
+                return ("E341", "FFmpeg source not found", "Download Source Not Found", 
                     "The FFmpeg download URL returned 404 Not Found", 
-                    GetInstallationHowToFix("E311"));
+                    GetInstallationHowToFix("E341"));
             }
 
             if (httpEx.StatusCode != null && (int)httpEx.StatusCode >= 500)
             {
-                return ("E321", "Server error during download", "Server Error", 
+                return ("E349", "Server error during download", "Server Error", 
                     "The download server returned an error. This is a temporary issue.", 
                     new[] { "Try again in a few minutes", "The download mirror may be temporarily unavailable" });
             }
 
             if (httpEx.InnerException?.Message.Contains("DNS", StringComparison.OrdinalIgnoreCase) == true)
             {
-                return ("E323", "DNS resolution failed", "DNS Error", 
+                return ("E351", "DNS resolution failed", "DNS Error", 
                     "Unable to resolve the download server hostname. Check your DNS settings.", 
                     new[] { "Check your internet connection", "Try using a different DNS server (e.g., 8.8.8.8)", "Try again later" });
             }
@@ -350,30 +350,30 @@ public class FFmpegController : ControllerBase
             if (httpEx.InnerException?.Message.Contains("SSL", StringComparison.OrdinalIgnoreCase) == true ||
                 httpEx.InnerException?.Message.Contains("TLS", StringComparison.OrdinalIgnoreCase) == true)
             {
-                return ("E324", "Secure connection failed", "TLS/SSL Error", 
+                return ("E352", "Secure connection failed", "TLS/SSL Error", 
                     "Failed to establish a secure connection to the download server.", 
                     new[] { "Check your system date and time are correct", "Update your operating system", "Check firewall settings" });
             }
 
-            return ("E321", "Network error during download", "Network Error", 
-                $"Network error: {httpEx.Message}", GetInstallationHowToFix("E321"));
+            return ("E349", "Network error during download", "Network Error", 
+                $"Network error: {httpEx.Message}", GetInstallationHowToFix("E349"));
         }
 
         if (ex is TaskCanceledException)
         {
-            return ("E320", "Download timed out", "Timeout", 
-                "The download operation timed out.", GetInstallationHowToFix("E320"));
+            return ("E348", "Download timed out", "Timeout", 
+                "The download operation timed out.", GetInstallationHowToFix("E348"));
         }
 
         if (ex is IOException)
         {
-            return ("E325", "Disk I/O error", "Disk Error", 
+            return ("E353", "Disk I/O error", "Disk Error", 
                 "Failed to write to disk during installation.", 
                 new[] { "Check available disk space", "Ensure the installation directory is writable", "Close other applications that might lock files" });
         }
 
-        return ("E313", $"Installation error: {ex.Message}", "Installation Failed", 
-            ex.Message, GetInstallationHowToFix("E313"));
+        return ("E343", $"Installation error: {ex.Message}", "Installation Failed", 
+            ex.Message, GetInstallationHowToFix("E343"));
     }
 
     /// <summary>
@@ -416,7 +416,7 @@ public class FFmpegController : ControllerBase
             return StatusCode(500, new
             {
                 success = false,
-                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E314",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E344",
                 title = "Rescan Error",
                 status = 500,
                 detail = $"Failed to rescan for FFmpeg: {ex.Message}",
@@ -445,7 +445,7 @@ public class FFmpegController : ControllerBase
                 return BadRequest(new
                 {
                     success = false,
-                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E315",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E345",
                     title = "Invalid Path",
                     status = 400,
                     detail = "FFmpeg path is required",
@@ -461,7 +461,7 @@ public class FFmpegController : ControllerBase
                 return BadRequest(new
                 {
                     success = false,
-                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E316",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E346",
                     title = "Invalid FFmpeg",
                     status = 400,
                     detail = result.Error ?? "The specified path does not contain a valid FFmpeg executable",
@@ -498,7 +498,7 @@ public class FFmpegController : ControllerBase
             return StatusCode(500, new
             {
                 success = false,
-                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E317",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E347",
                 title = "Validation Error",
                 status = 500,
                 detail = $"Unexpected error validating FFmpeg: {ex.Message}",
