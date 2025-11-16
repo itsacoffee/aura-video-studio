@@ -18,10 +18,11 @@ class ShutdownOrchestrator {
     this.windowManager = null;
     this.trayManager = null;
     
-    // Configuration
-    this.GRACEFUL_TIMEOUT_MS = 5000;
-    this.COMPONENT_TIMEOUT_MS = 3000;
-    this.FORCE_KILL_TIMEOUT_MS = 2000;
+    // Configuration - aggressive timeouts for fast shutdown
+    this.GRACEFUL_TIMEOUT_MS = 2000;  // 2 seconds for graceful
+    this.COMPONENT_TIMEOUT_MS = 1500; // 1.5 seconds per component
+    this.FORCE_KILL_TIMEOUT_MS = 1000; // 1 second before force kill
+    this.ABSOLUTE_TIMEOUT_MS = 4000;   // 4 seconds absolute maximum
     
     this.isWindows = process.platform === 'win32';
   }
@@ -88,6 +89,59 @@ class ShutdownOrchestrator {
   }
 
   /**
+   * Failsafe: Kill all Aura-related processes by name
+   * Used as last resort if normal shutdown fails
+   */
+  async killAllAuraProcesses() {
+    this.logger.warn('FAILSAFE: Attempting to kill all Aura-related processes...');
+    
+    return new Promise((resolve) => {
+      if (this.isWindows) {
+        // Windows: Use taskkill to find and kill all processes matching patterns
+        const patterns = [
+          'Aura.Api.exe',
+          'dotnet.exe',  // May be hosting Aura.Api
+          'ffmpeg.exe',  // FFmpeg processes spawned by backend
+          'Aura Video Studio.exe'
+        ];
+        
+        // Build a command that kills all matching processes
+        // Note: We'll only kill child processes, not our own Electron process
+        const commands = patterns.map(pattern => 
+          `taskkill /F /FI "IMAGENAME eq ${pattern}" /FI "PID ne ${process.pid}" 2>nul`
+        ).join(' & ');
+        
+        exec(commands, (error, stdout, stderr) => {
+          if (error) {
+            this.logger.warn('Process kill command had errors (may be normal if processes already exited):', error.message);
+          }
+          if (stdout) this.logger.info('Failsafe kill output:', stdout);
+          if (stderr) this.logger.debug('Failsafe kill stderr:', stderr);
+          resolve();
+        });
+      } else {
+        // Unix: Use pkill to find and kill processes by name
+        const patterns = ['Aura.Api', 'ffmpeg'];
+        let killedCount = 0;
+        
+        const killPromises = patterns.map(pattern => 
+          new Promise((resolveKill) => {
+            exec(`pkill -9 -f "${pattern}"`, (error) => {
+              if (!error) killedCount++;
+              resolveKill();
+            });
+          })
+        );
+        
+        Promise.all(killPromises).then(() => {
+          this.logger.info(`Failsafe killed ${killedCount} process types`);
+          resolve();
+        });
+      }
+    });
+  }
+
+  /**
    * Initiate graceful shutdown sequence
    */
   async initiateShutdown(options = {}) {
@@ -103,66 +157,89 @@ class ShutdownOrchestrator {
     const skipChecks = options.skipChecks || false;
 
     this.logger.info('='.repeat(60));
-    this.logger.info(`Initiating graceful shutdown (Force: ${force}, SkipChecks: ${skipChecks})`);
+    this.logger.info(`Initiating shutdown (Force: ${force}, SkipChecks: ${skipChecks}, AbsoluteTimeout: ${this.ABSOLUTE_TIMEOUT_MS}ms)`);
     this.logger.info('='.repeat(60));
 
     try {
-      // Step 1: Check for active renders (unless skipped)
-      if (!skipChecks && !force) {
-        const renderCheck = await this.checkActiveRenders();
-        
-        if (renderCheck.hasActiveRenders) {
-          this.logger.warn(`Found ${renderCheck.jobCount} active render(s)`);
-          
-          const userChoice = await this.showActiveRenderWarning(renderCheck.jobCount);
-          
-          if (userChoice.action === 'cancel') {
-            this.logger.info('User cancelled shutdown');
-            this.isShuttingDown = false;
-            return { success: false, reason: 'user-cancelled' };
-          } else if (userChoice.action === 'wait') {
-            this.logger.info('User chose to wait for renders to complete');
-            await this.waitForRenders();
-          }
-        }
+      // Wrap entire shutdown in absolute timeout
+      const shutdownResult = await Promise.race([
+        this._executeShutdownSteps(force, skipChecks),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Absolute shutdown timeout exceeded')), this.ABSOLUTE_TIMEOUT_MS)
+        )
+      ]);
+      
+      // Check if user cancelled
+      if (shutdownResult && shutdownResult.reason === 'user-cancelled') {
+        return shutdownResult;
       }
-
-      // Step 2: Close windows gracefully
-      const windowStep = await this.closeWindows();
-      this.logger.info(`Step 1/5 Complete: ${windowStep}`);
-
-      // Step 3: Signal backend to shutdown
-      const backendSignalStep = await this.signalBackendShutdown();
-      this.logger.info(`Step 2/5 Complete: ${backendSignalStep}`);
-
-      // Step 4: Stop backend service
-      const backendStep = await this.stopBackend(force);
-      this.logger.info(`Step 3/5 Complete: ${backendStep}`);
-
-      // Step 5: Terminate all tracked child processes
-      const processStep = await this.terminateAllProcesses(force);
-      this.logger.info(`Step 4/5 Complete: ${processStep}`);
-
-      // Step 6: Cleanup resources
-      const cleanupStep = await this.cleanup();
-      this.logger.info(`Step 5/5 Complete: ${cleanupStep}`);
 
       const elapsed = Date.now() - this.shutdownStartTime;
       this.logger.info('='.repeat(60));
-      this.logger.info(`Graceful shutdown completed in ${elapsed}ms`);
+      this.logger.info(`Shutdown completed successfully in ${elapsed}ms`);
       this.logger.info('='.repeat(60));
 
       return { success: true, elapsed };
 
     } catch (error) {
-      this.logger.error('Error during shutdown sequence:', error);
+      const elapsed = Date.now() - this.shutdownStartTime;
+      this.logger.error(`Shutdown error after ${elapsed}ms: ${error.message}`);
       
-      if (force) {
-        await this.forceShutdown();
+      // Activate failsafe: kill all Aura processes by name
+      this.logger.error('Activating failsafe process termination...');
+      try {
+        await this.killAllAuraProcesses();
+      } catch (failsafeError) {
+        this.logger.error('Failsafe also failed:', failsafeError.message);
       }
       
-      return { success: false, error: error.message };
+      return { success: false, error: error.message, elapsed };
     }
+  }
+
+  /**
+   * Execute shutdown steps
+   */
+  async _executeShutdownSteps(force, skipChecks) {
+    // Step 1: Check for active renders (unless skipped)
+    if (!skipChecks && !force) {
+      const renderCheck = await this.checkActiveRenders();
+      
+      if (renderCheck.hasActiveRenders) {
+        this.logger.warn(`Found ${renderCheck.jobCount} active render(s)`);
+        
+        const userChoice = await this.showActiveRenderWarning(renderCheck.jobCount);
+        
+        if (userChoice.action === 'cancel') {
+          this.logger.info('User cancelled shutdown');
+          this.isShuttingDown = false;
+          return { success: false, reason: 'user-cancelled' };
+        } else if (userChoice.action === 'wait') {
+          this.logger.info('User chose to wait for renders to complete');
+          await this.waitForRenders();
+        }
+      }
+    }
+
+    // Step 2: Close windows gracefully
+    const windowStep = await this.closeWindows();
+    this.logger.info(`Step 1/5 Complete: ${windowStep}`);
+
+    // Step 3: Signal backend to shutdown
+    const backendSignalStep = await this.signalBackendShutdown();
+    this.logger.info(`Step 2/5 Complete: ${backendSignalStep}`);
+
+    // Step 4: Stop backend service
+    const backendStep = await this.stopBackend(force);
+    this.logger.info(`Step 3/5 Complete: ${backendStep}`);
+
+    // Step 5: Terminate all tracked child processes
+    const processStep = await this.terminateAllProcesses(force);
+    this.logger.info(`Step 4/5 Complete: ${processStep}`);
+
+    // Step 6: Cleanup resources
+    const cleanupStep = await this.cleanup();
+    this.logger.info(`Step 5/5 Complete: ${cleanupStep}`);
   }
 
   /**
