@@ -419,7 +419,8 @@ function initializeIpcHandlers(
     // FFmpeg handler
     try {
       const FFmpegHandler = require("./ipc-handlers/ffmpeg-handler");
-      handlers.ffmpeg = new FFmpegHandler(app, windowManager);
+      const backendUrl = backendService?.getUrl?.();
+      handlers.ffmpeg = new FFmpegHandler(app, windowManager, backendUrl);
       handlers.ffmpeg.register();
       succeededHandlers.push("ffmpeg");
     } catch (error) {

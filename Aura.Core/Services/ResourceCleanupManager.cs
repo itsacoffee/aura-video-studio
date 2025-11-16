@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Core.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.Services;
@@ -20,10 +21,12 @@ public class ResourceCleanupManager : IDisposable
     private readonly ConcurrentBag<string> _tempDirectories = new();
     private readonly object _lockObject = new();
     private bool _disposed;
+    private readonly string _tempRoot;
 
     public ResourceCleanupManager(ILogger<ResourceCleanupManager> logger)
     {
         _logger = logger;
+        _tempRoot = AuraEnvironmentPaths.ResolveTempPath(Path.Combine(AuraEnvironmentPaths.ResolveDataRoot(null), "Temp"));
     }
 
     /// <summary>
@@ -89,7 +92,7 @@ public class ResourceCleanupManager : IDisposable
         try
         {
             // Create temp file with unique name
-            var tempDir = Path.GetTempPath();
+            var tempDir = _tempRoot;
             var fileName = $"aura_temp_{Guid.NewGuid():N}{extension}";
             tempPath = Path.Combine(tempDir, fileName);
             finalPath = Path.Combine(tempDir, $"aura_{Guid.NewGuid():N}{extension}");

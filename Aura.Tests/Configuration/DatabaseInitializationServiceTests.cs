@@ -26,6 +26,7 @@ public class DatabaseInitializationServiceTests : IDisposable
             options.UseSqlite($"Data Source={_testDbPath}"));
 
         services.AddLogging();
+        services.Configure<DatabasePathOptions>(options => options.SqlitePath = _testDbPath);
         services.AddSingleton<DatabaseInitializationService>();
 
         _serviceProvider = services.BuildServiceProvider();

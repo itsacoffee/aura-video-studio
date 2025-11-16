@@ -1,47 +1,56 @@
 import {
+  Badge,
+  Button,
   Card,
   CardHeader,
-  Button,
-  Text,
-  Badge,
-  Spinner,
-  makeStyles,
-  tokens,
-  MessageBar,
-  MessageBarBody,
   Dialog,
-  DialogSurface,
-  DialogBody,
-  DialogTitle,
-  DialogContent,
   DialogActions,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
+  DialogTitle,
   Input,
   Label,
+  MessageBar,
+  MessageBarBody,
+  MessageBarTitle,
+  Spinner,
+  Text,
+  makeStyles,
+  tokens,
 } from '@fluentui/react-components';
 import {
   ArrowDownload24Regular,
-  Checkmark24Regular,
   ArrowSync24Regular,
+  Checkmark24Regular,
+  ChevronDown24Regular,
+  ChevronUp24Regular,
+  Document24Regular,
   Folder24Regular,
   Link24Regular,
-  Document24Regular,
 } from '@fluentui/react-icons';
-import { useState, useEffect } from 'react';
-import { apiUrl } from '../../config/api';
+import { useCallback, useEffect, useState } from 'react';
+import { apiUrl } from '@/config/api';
+import { handleApiError, type UserFriendlyError } from '@/services/api/errorHandler';
+import {
+  ffmpegClient,
+  type FFmpegDirectCheckResponse,
+  type FFmpegStatusExtended,
+} from '@/services/api/ffmpegClient';
 import { useNotifications } from '../Notifications/Toasts';
 import { ManualInstallationModal } from './ManualInstallationModal';
 
 const useStyles = makeStyles({
   card: {
     width: '100%',
-    maxWidth: '800px',
+    maxWidth: '900px',
     marginBottom: tokens.spacingVerticalM,
   },
   content: {
     padding: tokens.spacingVerticalM,
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalS,
+    gap: tokens.spacingVerticalM,
   },
   row: {
     display: 'flex',
@@ -58,113 +67,135 @@ const useStyles = makeStyles({
   metadata: {
     color: tokens.colorNeutralForeground3,
     fontSize: tokens.fontSizeBase200,
-    fontFamily: 'monospace',
+    fontFamily: tokens.fontFamilyMonospace,
   },
   pathDisplay: {
     backgroundColor: tokens.colorNeutralBackground3,
     padding: tokens.spacingVerticalS,
     borderRadius: tokens.borderRadiusMedium,
-    fontFamily: 'monospace',
+    fontFamily: tokens.fontFamilyMonospace,
+    fontSize: tokens.fontSizeBase200,
+    wordBreak: 'break-all',
+  },
+  errorList: {
+    marginTop: tokens.spacingVerticalS,
+    paddingLeft: tokens.spacingHorizontalL,
+  },
+  technicalDetails: {
+    border: `1px solid ${tokens.colorNeutralStroke3}`,
+    borderRadius: tokens.borderRadiusMedium,
+    padding: tokens.spacingVerticalM,
+    backgroundColor: tokens.colorNeutralBackground3,
+  },
+  candidateHeader: {
+    display: 'grid',
+    gridTemplateColumns: '140px 1fr 120px',
+    gap: tokens.spacingHorizontalM,
+    fontWeight: tokens.fontWeightSemibold,
+    marginBottom: tokens.spacingVerticalXS,
+  },
+  candidateRow: {
+    display: 'grid',
+    gridTemplateColumns: '140px 1fr 120px',
+    gap: tokens.spacingHorizontalM,
+    alignItems: 'center',
+    padding: `${tokens.spacingVerticalXS} 0`,
+    borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
+  },
+  candidatePath: {
+    fontFamily: tokens.fontFamilyMonospace,
     fontSize: tokens.fontSizeBase200,
     wordBreak: 'break-all',
   },
 });
 
-interface FFmpegStatus {
-  installed: boolean;
-  valid: boolean;
-  version: string | null;
-  path: string | null;
-  source: string;
-  error: string | null;
-  versionMeetsRequirement: boolean;
-  minimumVersion: string;
-  hardwareAcceleration: {
-    nvencSupported: boolean;
-    amfSupported: boolean;
-    quickSyncSupported: boolean;
-    videoToolboxSupported: boolean;
-    availableEncoders: string[];
-  };
-}
-
 export function FFmpegCard() {
   const styles = useStyles();
   const { showSuccessToast, showFailureToast } = useNotifications();
-  const [status, setStatus] = useState<FFmpegStatus | null>(null);
+
+  const [status, setStatus] = useState<FFmpegStatusExtended | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<UserFriendlyError | null>(null);
+
   const [showAttachDialog, setShowAttachDialog] = useState(false);
   const [showManualModal, setShowManualModal] = useState(false);
   const [attachPath, setAttachPath] = useState('');
 
-  useEffect(() => {
-    loadStatus();
-  }, []);
+  const [technicalDetailsOpen, setTechnicalDetailsOpen] = useState(false);
+  const [directCheck, setDirectCheck] = useState<FFmpegDirectCheckResponse | null>(null);
+  const [directCheckError, setDirectCheckError] = useState<UserFriendlyError | null>(null);
+  const [directCheckLoading, setDirectCheckLoading] = useState(false);
 
-  const loadStatus = async () => {
+  const loadStatus = useCallback(async () => {
     setIsLoading(true);
-    setError(null);
+    setActionError(null);
     try {
-      const response = await fetch(apiUrl('/api/system/ffmpeg/status'));
-
-      if (!response.ok) {
-        // Handle HTTP errors with detailed messages
-        const errorText = await response.text();
-        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-
-        try {
-          const errorData = JSON.parse(errorText);
-          errorMessage = errorData.message || errorData.error || errorMessage;
-        } catch {
-          // If not JSON, use the text response or default message
-          errorMessage = errorText || errorMessage;
-        }
-
-        throw new Error(errorMessage);
-      }
-
-      const data = await response.json();
+      const data = await ffmpegClient.getStatusExtended();
       setStatus(data);
-    } catch (err) {
-      console.error('Failed to load FFmpeg status:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load status');
+    } catch (error) {
+      const friendly = handleApiError(error);
+      setActionError(friendly);
+      setStatus(null);
     } finally {
       setIsLoading(false);
     }
+  }, []);
+
+  const loadDirectCheck = useCallback(async () => {
+    setDirectCheckLoading(true);
+    setDirectCheckError(null);
+    try {
+      const response = await ffmpegClient.directCheck();
+      setDirectCheck(response);
+    } catch (error) {
+      setDirectCheckError(handleApiError(error));
+    } finally {
+      setDirectCheckLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadStatus();
+  }, [loadStatus]);
+
+  const applyResponseError = (title: string, message: string, correlationId?: string, howToFix?: string[]) => {
+    const friendly: UserFriendlyError = {
+      title,
+      message,
+      correlationId,
+      howToFix,
+    };
+    setActionError(friendly);
+    showFailureToast({
+      title: friendly.title,
+      message: friendly.message,
+    });
   };
 
   const handleInstall = async () => {
     setIsProcessing(true);
-    setError(null);
+    setActionError(null);
     try {
-      const response = await fetch(apiUrl('/api/ffmpeg/install'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ version: 'latest' }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
+      const response = await ffmpegClient.install({ version: 'latest' });
+      if (response.success) {
         showSuccessToast({
           title: 'FFmpeg Installed',
-          message: result.message || 'FFmpeg installed successfully!',
+          message: response.message,
         });
-        // Wait a moment for the backend to finalize
-        await new Promise(resolve => setTimeout(resolve, 1000));
         await loadStatus();
       } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || errorData.error || 'Installation failed');
+        applyResponseError(
+          response.title ?? 'FFmpeg Installation Failed',
+          response.detail ?? response.message,
+          response.correlationId,
+          response.howToFix
+        );
       }
-    } catch (err) {
-      console.error('FFmpeg installation failed:', err);
-      setError(err instanceof Error ? err.message : 'Installation failed');
-      showFailureToast({
-        title: 'Installation Failed',
-        message: `Installation failed: ${err instanceof Error ? err.message : 'Unknown error'}`,
-      });
+    } catch (error) {
+      const friendly = handleApiError(error);
+      setActionError(friendly);
+      showFailureToast({ title: friendly.title, message: friendly.message });
     } finally {
       setIsProcessing(false);
     }
@@ -172,32 +203,22 @@ export function FFmpegCard() {
 
   const handleRescan = async () => {
     setIsProcessing(true);
-    setError(null);
+    setActionError(null);
     try {
-      const response = await fetch(apiUrl('/api/downloads/ffmpeg/rescan'), {
-        method: 'POST',
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.found) {
-          await loadStatus();
-          showSuccessToast({
-            title: 'FFmpeg Found',
-            message: `FFmpeg found and registered!\nPath: ${data.ffmpegPath}\nVersion: ${data.versionString}`,
-          });
-        } else {
-          showFailureToast({
-            title: 'FFmpeg Not Found',
-            message: `FFmpeg not found in standard locations.\n\nAttempted paths:\n${data.attemptedPaths?.join('\n')}\n\nUse "Attach Existing" to specify a custom path.`,
-          });
-        }
+      const response = await ffmpegClient.rescan();
+      if (response.success) {
+        showSuccessToast({
+          title: 'FFmpeg Found',
+          message: response.message,
+        });
+        await loadStatus();
       } else {
-        throw new Error('Rescan failed');
+        applyResponseError('FFmpeg Not Found', response.message, response.correlationId);
       }
-    } catch (err) {
-      console.error('FFmpeg rescan failed:', err);
-      setError(err instanceof Error ? err.message : 'Rescan failed');
+    } catch (error) {
+      const friendly = handleApiError(error);
+      setActionError(friendly);
+      showFailureToast({ title: friendly.title, message: friendly.message });
     } finally {
       setIsProcessing(false);
     }
@@ -214,34 +235,29 @@ export function FFmpegCard() {
 
     setIsProcessing(true);
     setShowAttachDialog(false);
-    setError(null);
+    setActionError(null);
 
     try {
-      const response = await fetch(apiUrl('/api/downloads/ffmpeg/attach'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: attachPath.trim() }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        await loadStatus();
+      const response = await ffmpegClient.useExisting({ path: attachPath.trim() });
+      if (response.success) {
+        setAttachPath('');
         showSuccessToast({
           title: 'FFmpeg Attached',
-          message: `FFmpeg attached successfully!\nPath: ${data.ffmpegPath}\nVersion: ${data.versionString}`,
+          message: response.message,
         });
-        setAttachPath('');
+        await loadStatus();
       } else {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to attach FFmpeg');
+        applyResponseError(
+          response.title ?? 'Attach Failed',
+          response.detail ?? response.message,
+          response.correlationId,
+          response.howToFix
+        );
       }
-    } catch (err) {
-      console.error('FFmpeg attach failed:', err);
-      setError(err instanceof Error ? err.message : 'Attach failed');
-      showFailureToast({
-        title: 'Attach Failed',
-        message: `Failed to attach: ${err instanceof Error ? err.message : 'Unknown error'}`,
-      });
+    } catch (error) {
+      const friendly = handleApiError(error);
+      setActionError(friendly);
+      showFailureToast({ title: friendly.title, message: friendly.message });
     } finally {
       setIsProcessing(false);
     }
@@ -264,14 +280,12 @@ export function FFmpegCard() {
       });
 
       if (!response.ok) {
-        // Fallback: just show the path
         showSuccessToast({
           title: 'FFmpeg Location',
           message: `FFmpeg location: ${status.path}`,
         });
       }
-    } catch (err) {
-      console.error('Failed to open folder:', err);
+    } catch {
       showSuccessToast({
         title: 'FFmpeg Location',
         message: `FFmpeg location: ${status.path}`,
@@ -279,15 +293,24 @@ export function FFmpegCard() {
     }
   };
 
+  const toggleTechnicalDetails = () => {
+    const next = !technicalDetailsOpen;
+    setTechnicalDetailsOpen(next);
+    if (next && !directCheck && !directCheckLoading) {
+      void loadDirectCheck();
+    }
+  };
+
   const getStatusBadge = () => {
-    if (isLoading) return null;
+    if (isLoading) {
+      return null;
+    }
 
     if (!status) {
       return <Badge appearance="outline">Unknown</Badge>;
     }
 
-    // Only show "Installed" if FFmpeg is both installed AND valid AND has a version
-    if (status.installed && status.valid && status.version) {
+    if (status.installed && status.valid && status.version && status.versionMeetsRequirement) {
       return (
         <Badge appearance="filled" color="success">
           Installed
@@ -295,7 +318,14 @@ export function FFmpegCard() {
       );
     }
 
-    // Show "Invalid" for installed but not working FFmpeg
+    if (status.installed && status.valid && status.version && !status.versionMeetsRequirement) {
+      return (
+        <Badge appearance="filled" color="warning">
+          Outdated
+        </Badge>
+      );
+    }
+
     if (status.installed && !status.valid) {
       return (
         <Badge appearance="filled" color="danger">
@@ -304,22 +334,100 @@ export function FFmpegCard() {
       );
     }
 
-    // Show version warning if version doesn't meet requirements
-    if (status.installed && status.version && !status.versionMeetsRequirement) {
-      return (
-        <Badge appearance="filled" color="warning">
-          Outdated
-        </Badge>
-      );
-    }
-
-    // Not installed
     return <Badge appearance="outline">Not Installed</Badge>;
   };
 
-  // FFmpeg is "ready" only if installed, valid, has version, and meets minimum version requirement
   const isReady =
     status?.installed && status?.valid && status?.version && status?.versionMeetsRequirement;
+
+  const renderActionError = () => {
+    if (!actionError) {
+      return null;
+    }
+
+    return (
+      <MessageBar intent="error">
+        <MessageBarBody>
+          <MessageBarTitle>{actionError.title}</MessageBarTitle>
+          <Text>{actionError.message}</Text>
+          {actionError.correlationId && (
+            <Text className={styles.metadata} block>
+              Correlation ID: {actionError.correlationId}
+            </Text>
+          )}
+          {actionError.howToFix && actionError.howToFix.length > 0 && (
+            <ul className={styles.errorList}>
+              {actionError.howToFix.map((tip, index) => (
+                <li key={index}>
+                  <Text size={200}>{tip}</Text>
+                </li>
+              ))}
+            </ul>
+          )}
+        </MessageBarBody>
+      </MessageBar>
+    );
+  };
+
+  const renderTechnicalDetails = () => {
+    if (!technicalDetailsOpen) {
+      return null;
+    }
+
+    if (directCheckLoading) {
+      return <Spinner label="Collecting diagnostics..." />;
+    }
+
+    if (directCheckError) {
+      return (
+        <MessageBar intent="warning">
+          <MessageBarBody>
+            <MessageBarTitle>{directCheckError.title}</MessageBarTitle>
+            <Text>{directCheckError.message}</Text>
+          </MessageBarBody>
+        </MessageBar>
+      );
+    }
+
+    if (!directCheck) {
+      return null;
+    }
+
+    return (
+      <div className={styles.technicalDetails}>
+        <Text weight="semibold" size={300} block>
+          Candidate Diagnostics
+        </Text>
+        <Text size={200} className={styles.metadata} block>
+          Active Source: {directCheck.overall.source ?? 'Not detected'}
+        </Text>
+        <div className={styles.candidateHeader}>
+          <Text size={200}>Source</Text>
+          <Text size={200}>Path</Text>
+          <Text size={200}>Status</Text>
+        </div>
+        {directCheck.candidates.map((candidate) => (
+          <div key={`${candidate.label}-${candidate.path ?? 'none'}`} className={styles.candidateRow}>
+            <Text size={200}>{candidate.label}</Text>
+            <Text size={200} className={styles.candidatePath}>
+              {candidate.path ?? 'Not configured'}
+            </Text>
+            {candidate.valid ? (
+              <Badge appearance="filled" color="success">
+                Valid
+              </Badge>
+            ) : candidate.exists ? (
+              <Badge appearance="filled" color="danger">
+                {candidate.error ?? 'Invalid'}
+              </Badge>
+            ) : (
+              <Badge appearance="outline">Missing</Badge>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <>
@@ -327,86 +435,59 @@ export function FFmpegCard() {
         <CardHeader
           header={
             <div className={styles.row}>
-              <div
-                style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}
-              >
+              <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
                 <Text weight="semibold" size={500}>
                   FFmpeg
                 </Text>
                 {getStatusBadge()}
               </div>
+              <Button
+                appearance="subtle"
+                icon={technicalDetailsOpen ? <ChevronUp24Regular /> : <ChevronDown24Regular />}
+                onClick={toggleTechnicalDetails}
+              >
+                {technicalDetailsOpen ? 'Hide Technical Details' : 'Show Technical Details'}
+              </Button>
             </div>
           }
           description={
-            <div>
-              <Text className={styles.metadata}>Required for video rendering and processing</Text>
-            </div>
+            <Text className={styles.metadata}>Required for video rendering and processing</Text>
           }
         />
         <div className={styles.content}>
-          {error && (
-            <MessageBar intent="error">
-              <MessageBarBody>{error}</MessageBarBody>
+          {renderActionError()}
+          {status?.error && !actionError && (
+            <MessageBar intent="warning">
+              <MessageBarBody>{status.error}</MessageBarBody>
             </MessageBar>
           )}
 
           {isLoading ? (
             <Spinner label="Loading FFmpeg status..." size="small" />
-          ) : (
+          ) : status ? (
             <>
-              {/* Show error message if present */}
-              {status?.error && (
-                <MessageBar intent="warning">
-                  <MessageBarBody>{status.error}</MessageBarBody>
-                </MessageBar>
-              )}
-
-              {/* Display details when FFmpeg is found */}
-              {status?.path && (
+              {status.path && (
                 <div>
-                  <Text
-                    size={300}
-                    weight="semibold"
-                    block
-                    style={{ marginBottom: tokens.spacingVerticalXXS }}
-                  >
-                    Path:
+                  <Text size={300} weight="semibold" block>
+                    Path
                   </Text>
                   <div className={styles.pathDisplay}>{status.path}</div>
-
                   {status.version && (
-                    <Text
-                      className={styles.metadata}
-                      block
-                      style={{ marginTop: tokens.spacingVerticalXXS }}
-                    >
-                      Version: {status.version}
+                    <Text className={styles.metadata} block style={{ marginTop: tokens.spacingVerticalXXS }}>
+                      Version: {status.version}{' '}
                       {status.versionMeetsRequirement ? (
-                        <Badge
-                          appearance="outline"
-                          color="success"
-                          style={{ marginLeft: tokens.spacingHorizontalS }}
-                        >
+                        <Badge appearance="outline" color="success">
                           ✓ {status.minimumVersion}+
                         </Badge>
                       ) : (
-                        <Badge
-                          appearance="outline"
-                          color="warning"
-                          style={{ marginLeft: tokens.spacingHorizontalS }}
-                        >
+                        <Badge appearance="outline" color="warning">
                           Requires {status.minimumVersion}+
                         </Badge>
                       )}
                     </Text>
                   )}
-
                   {status.source && (
-                    <Text
-                      className={styles.metadata}
-                      block
-                      style={{ marginTop: tokens.spacingVerticalXXS }}
-                    >
+                    <Text className={styles.metadata} block style={{ marginTop: tokens.spacingVerticalXXS }}>
                       Source:{' '}
                       <Badge appearance="outline">
                         {status.source === 'Managed'
@@ -458,18 +539,13 @@ export function FFmpegCard() {
                     icon={<ArrowSync24Regular />}
                     onClick={handleRescan}
                     disabled={isProcessing}
-                    title="Rescan for FFmpeg in standard locations"
                   >
                     {isProcessing ? <Spinner size="tiny" /> : 'Rescan'}
                   </Button>
 
                   {isReady && (
                     <>
-                      <Button
-                        appearance="subtle"
-                        icon={<Folder24Regular />}
-                        onClick={handleOpenFolder}
-                      >
+                      <Button appearance="subtle" icon={<Folder24Regular />} onClick={handleOpenFolder}>
                         Open Folder
                       </Button>
                       <Button
@@ -477,7 +553,6 @@ export function FFmpegCard() {
                         icon={<Checkmark24Regular />}
                         onClick={handleInstall}
                         disabled={isProcessing}
-                        title="Reinstall/repair FFmpeg"
                       >
                         Repair
                       </Button>
@@ -486,7 +561,13 @@ export function FFmpegCard() {
                 </div>
               </div>
             </>
+          ) : (
+            <MessageBar intent="warning">
+              <MessageBarBody>Unable to load FFmpeg status</MessageBarBody>
+            </MessageBar>
           )}
+
+          {renderTechnicalDetails()}
         </div>
       </Card>
 
@@ -500,25 +581,21 @@ export function FFmpegCard() {
                 id="ffmpeg-path"
                 value={attachPath}
                 onChange={(_, data) => setAttachPath(data.value)}
-                placeholder="C:\ffmpeg\bin\ffmpeg.exe or C:\ffmpeg"
+                placeholder="C:\\ffmpeg\\bin\\ffmpeg.exe or C:\\ffmpeg"
                 style={{ width: '100%' }}
               />
               <Text
                 size={200}
-                style={{
-                  marginTop: tokens.spacingVerticalS,
-                  color: tokens.colorNeutralForeground3,
-                }}
+                style={{ marginTop: tokens.spacingVerticalS, color: tokens.colorNeutralForeground3 }}
               >
-                Provide the path to ffmpeg.exe (or ffmpeg binary on Linux/Mac), or the folder
-                containing it.
+                Provide the path to ffmpeg.exe (or ffmpeg binary on Linux/Mac), or the folder containing it.
               </Text>
             </DialogContent>
             <DialogActions>
               <Button appearance="secondary" onClick={() => setShowAttachDialog(false)}>
                 Cancel
               </Button>
-              <Button appearance="primary" onClick={handleAttach}>
+              <Button appearance="primary" onClick={handleAttach} disabled={isProcessing}>
                 Attach
               </Button>
             </DialogActions>

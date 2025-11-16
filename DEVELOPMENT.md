@@ -200,6 +200,31 @@ AURA_OFFLINE_MODE=false
 AURA_ENABLE_ADVANCED_MODE=false
 ```
 
+### Desktop Data Paths
+
+When running inside the Electron shell, the main process sets a trio of environment variables so the ASP.NET backend and React UI agree on where data lives:
+
+| Variable | Purpose | Default (when unset) |
+| --- | --- | --- |
+| `AURA_DATA_PATH` | Root for user data (database, settings, projects, media) | `%LOCALAPPDATA%\Aura` on Windows, `~/.local/share/Aura` on Linux/macOS |
+| `AURA_LOGS_PATH` | Directory for rolling log files | `<AURA_DATA_PATH>\logs` |
+| `AURA_TEMP_PATH` | Scratch space for renders/SSE/temp files | `<AURA_DATA_PATH>\Temp` |
+
+Under `AURA_DATA_PATH` the backend now creates a stable structure:
+
+```
+<AURA_DATA_PATH>/
+├── AuraData/           # settings.json, provider paths, portable metadata
+├── MediaLibrary/       # uploads, thumbnails, chunked uploads
+├── Workspace/          # enhanced workspace (projects, exports, cache, previews)
+├── Temp/               # transient render + SSE artifacts (also synced to AURA_TEMP_PATH)
+├── jobs/               # telemetry JSON artifacts
+├── proxy/              # generated proxy media
+└── logs/               # Serilog rolling logs (mirrors AURA_LOGS_PATH)
+```
+
+You can override any of these by exporting the environment variables above before launching the backend (handy for portable builds, dev sandboxes, or Windows paths with spaces). When unset, the previous portable behavior (storing data next to the executable) is preserved.
+
 **Note:** Aura works without any API keys using free/local providers.
 
 ### Backend URL Contract

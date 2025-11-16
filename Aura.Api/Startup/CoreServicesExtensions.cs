@@ -55,10 +55,22 @@ public static class CoreServicesExtensions
 
         // Data persistence - Configure database with WAL mode for better concurrency
         const string MigrationsAssembly = "Aura.Api";
-        var dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "aura.db");
+        var defaultDataRoot = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Aura");
+        var resolvedDataRoot = AuraEnvironmentPaths.ResolveDataRoot(defaultDataRoot);
+        var envSqlitePath = Environment.GetEnvironmentVariable("AURA_DATABASE_PATH");
+        var sqlitePath = !string.IsNullOrWhiteSpace(envSqlitePath)
+            ? envSqlitePath
+            : Path.Combine(resolvedDataRoot, "aura.db");
+        sqlitePath = Path.GetFullPath(sqlitePath);
+        Directory.CreateDirectory(Path.GetDirectoryName(sqlitePath)!);
+
+        services.Configure<DatabasePathOptions>(options => options.SqlitePath = sqlitePath);
+
         services.AddDbContext<AuraDbContext>(options =>
         {
-            var connectionString = $"Data Source={dbPath};Mode=ReadWriteCreate;Cache=Shared;";
+            var connectionString = $"Data Source={sqlitePath};Mode=ReadWriteCreate;Cache=Shared;";
             options.UseSqlite(connectionString,
                 sqliteOptions => sqliteOptions.MigrationsAssembly(MigrationsAssembly));
         });

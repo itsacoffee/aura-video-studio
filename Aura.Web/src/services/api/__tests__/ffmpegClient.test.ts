@@ -263,4 +263,43 @@ describe('ffmpegClient', () => {
       expect(result.howToFix?.length).toBeGreaterThan(0);
     });
   });
+
+  describe('directCheck', () => {
+    it('should fetch detailed diagnostics from debug endpoint', async () => {
+      const mockResponse = {
+        candidates: [
+          {
+            label: 'EnvVar',
+            path: '/custom/ffmpeg',
+            exists: true,
+            executionAttempted: true,
+            exitCode: 0,
+            timedOut: false,
+            rawVersionOutput: 'ffmpeg version 6.0',
+            versionParsed: '6.0',
+            valid: true,
+            error: null,
+          },
+        ],
+        overall: {
+          installed: true,
+          valid: true,
+          source: 'EnvVar',
+          chosenPath: '/custom/ffmpeg',
+          version: '6.0',
+        },
+        correlationId: 'diag-001',
+      };
+
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockResponse });
+
+      const result = await ffmpegClient.directCheck();
+
+      expect(apiClient.get).toHaveBeenCalledWith('/api/debug/ffmpeg/direct-check', {
+        _skipCircuitBreaker: true,
+      });
+      expect(result.overall.installed).toBe(true);
+      expect(result.candidates[0].label).toBe('EnvVar');
+    });
+  });
 });

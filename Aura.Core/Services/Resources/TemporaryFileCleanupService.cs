@@ -19,6 +19,7 @@ public class TemporaryFileCleanupService
     private readonly TimeSpan _cleanupInterval = TimeSpan.FromHours(1);
     private readonly TimeSpan _fileRetentionPeriod = TimeSpan.FromHours(24);
     private readonly HashSet<string> _knownTempDirectories;
+    private readonly string _defaultTempDirectory;
 
     public TemporaryFileCleanupService(
         ILogger<TemporaryFileCleanupService> logger,
@@ -27,6 +28,7 @@ public class TemporaryFileCleanupService
         _logger = logger;
         _providerSettings = providerSettings;
         _knownTempDirectories = new HashSet<string>();
+        _defaultTempDirectory = AuraEnvironmentPaths.ResolveTempPath(Path.Combine(AuraEnvironmentPaths.ResolveDataRoot(null), "Temp"));
     }
 
     /// <summary>
@@ -88,10 +90,7 @@ public class TemporaryFileCleanupService
         try
         {
             // Cleanup standard temp directory
-            var tempDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "Aura",
-                "Temp");
+            var tempDir = _defaultTempDirectory;
 
             if (Directory.Exists(tempDir))
             {
@@ -345,10 +344,7 @@ public class TemporaryFileCleanupService
 
         try
         {
-            var tempDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "Aura",
-                "Temp");
+            var tempDir = _defaultTempDirectory;
 
             if (Directory.Exists(tempDir))
             {

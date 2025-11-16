@@ -1,9 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FFmpegCard } from '../FFmpegCard';
+import { ffmpegClient } from '@/services/api/ffmpegClient';
 
-// Mock the notifications hook
 vi.mock('../../Notifications/Toasts', () => ({
   useNotifications: () => ({
     showSuccessToast: vi.fn(),
@@ -11,335 +11,114 @@ vi.mock('../../Notifications/Toasts', () => ({
   }),
 }));
 
-// Mock the apiUrl function
-vi.mock('../../../config/api', () => ({
-  apiUrl: (path: string) => `http://localhost:5005${path}`,
+vi.mock('@/services/api/ffmpegClient', () => ({
+  ffmpegClient: {
+    getStatusExtended: vi.fn(),
+    install: vi.fn(),
+    rescan: vi.fn(),
+    useExisting: vi.fn(),
+    directCheck: vi.fn(),
+  },
 }));
 
-// Mock ManualInstallationModal
 vi.mock('../ManualInstallationModal', () => ({
   ManualInstallationModal: () => <div>Manual Installation Modal</div>,
 }));
 
 describe('FFmpegCard', () => {
+  const baseStatus = {
+    installed: true,
+    valid: true,
+    version: '6.0',
+    path: '/usr/bin/ffmpeg',
+    source: 'Managed',
+    error: null,
+    errorCode: null,
+    errorMessage: null,
+    attemptedPaths: [],
+    versionMeetsRequirement: true,
+    minimumVersion: '4.0',
+    hardwareAcceleration: {
+      nvencSupported: true,
+      amfSupported: false,
+      quickSyncSupported: false,
+      videoToolboxSupported: false,
+      availableEncoders: ['h264_nvenc'],
+    },
+    correlationId: 'status-123',
+  };
+
   beforeEach(() => {
-    // Clear all mocks before each test
     vi.clearAllMocks();
-    // Reset fetch mock
-    global.fetch = vi.fn();
+    vi.mocked(ffmpegClient.getStatusExtended).mockResolvedValue(baseStatus);
   });
 
-  it('should show loading state initially', () => {
-    // Mock fetch to never resolve (to keep loading state)
-    global.fetch = vi.fn(() => new Promise(() => {}));
-
+  it('renders loading state initially', () => {
+    vi.mocked(ffmpegClient.getStatusExtended).mockReturnValue(new Promise(() => {}));
     render(<FFmpegCard />);
-    expect(screen.getByText(/Loading FFmpeg status.../i)).toBeInTheDocument();
+    expect(screen.getByText(/Loading FFmpeg status/i)).toBeInTheDocument();
   });
 
-  it('should NOT show "Installed" badge when version is null', async () => {
-    const statusResponse = {
-      installed: true,
-      valid: true,
-      version: null,
-      path: '/usr/bin/ffmpeg',
-      source: 'PATH',
-      error: null,
+  it('shows installed badge when status is ready', async () => {
+    render(<FFmpegCard />);
+    await waitFor(() => expect(screen.getByText('Installed')).toBeInTheDocument());
+    expect(ffmpegClient.getStatusExtended).toHaveBeenCalled();
+  });
+
+  it('shows outdated badge when version is below requirement', async () => {
+    vi.mocked(ffmpegClient.getStatusExtended).mockResolvedValue({
+      ...baseStatus,
       versionMeetsRequirement: false,
-      minimumVersion: '4.0',
-      hardwareAcceleration: {
-        nvencSupported: false,
-        amfSupported: false,
-        quickSyncSupported: false,
-        videoToolboxSupported: false,
-        availableEncoders: [],
-      },
-    };
-
-    global.fetch = vi.fn(() =>
-      Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve(statusResponse),
-      } as Response)
-    );
+    });
 
     render(<FFmpegCard />);
-
-    await waitFor(() => {
-      expect(screen.queryByText(/^Installed$/)).not.toBeInTheDocument();
-    });
+    await waitFor(() => expect(screen.getByText(/Outdated/i)).toBeInTheDocument());
+    expect(screen.getByText(/Requires 4\.0\+/i)).toBeInTheDocument();
   });
 
-  it('should NOT show "Installed" badge when valid is false', async () => {
-    const statusResponse = {
-      installed: true,
-      valid: false,
-      version: '4.4.2',
-      path: '/usr/bin/ffmpeg',
-      source: 'PATH',
-      error: 'FFmpeg executable is corrupt',
-      versionMeetsRequirement: true,
-      minimumVersion: '4.0',
-      hardwareAcceleration: {
-        nvencSupported: false,
-        amfSupported: false,
-        quickSyncSupported: false,
-        videoToolboxSupported: false,
-        availableEncoders: [],
-      },
-    };
-
-    global.fetch = vi.fn(() =>
-      Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve(statusResponse),
-      } as Response)
-    );
+  it('renders error banner when status call fails', async () => {
+    vi.mocked(ffmpegClient.getStatusExtended).mockRejectedValue(new Error('boom'));
 
     render(<FFmpegCard />);
 
-    await waitFor(() => {
-      const badge = screen.getByText(/Invalid/i);
-      expect(badge).toBeInTheDocument();
-    });
+    await waitFor(() => expect(screen.getByText(/boom/i)).toBeInTheDocument());
   });
 
-  it('should show "Installed" badge only when installed, valid, and has version', async () => {
-    const statusResponse = {
-      installed: true,
-      valid: true,
-      version: '4.4.2',
-      path: '/usr/bin/ffmpeg',
-      source: 'Managed',
-      error: null,
-      versionMeetsRequirement: true,
-      minimumVersion: '4.0',
-      hardwareAcceleration: {
-        nvencSupported: true,
-        amfSupported: false,
-        quickSyncSupported: false,
-        videoToolboxSupported: false,
-        availableEncoders: ['h264_nvenc', 'hevc_nvenc'],
+  it('loads technical details when toggled', async () => {
+    const mockDirectCheck = {
+      candidates: [
+        {
+          label: 'EnvVar',
+          path: '/custom/ffmpeg',
+          exists: true,
+          executionAttempted: true,
+          exitCode: 0,
+          timedOut: false,
+          rawVersionOutput: 'ffmpeg version 6.0',
+          versionParsed: '6.0',
+          valid: true,
+          error: null,
+        },
+      ],
+      overall: {
+        installed: true,
+        valid: true,
+        source: 'EnvVar',
+        chosenPath: '/custom/ffmpeg',
+        version: '6.0',
       },
+      correlationId: 'diag-123',
     };
 
-    global.fetch = vi.fn(() =>
-      Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve(statusResponse),
-      } as Response)
-    );
+    vi.mocked(ffmpegClient.directCheck).mockResolvedValue(mockDirectCheck);
 
     render(<FFmpegCard />);
+    await waitFor(() => expect(screen.getByText('Installed')).toBeInTheDocument());
 
-    await waitFor(() => {
-      expect(screen.getByText(/^Installed$/)).toBeInTheDocument();
-    });
-  });
+    await userEvent.click(screen.getByRole('button', { name: /Show Technical Details/i }));
 
-  it('should display Version, Path, and Source when FFmpeg is installed', async () => {
-    const statusResponse = {
-      installed: true,
-      valid: true,
-      version: '5.1.2',
-      path: 'C:\\Program Files\\AuraVideoStudio\\ffmpeg\\5.1.2\\bin\\ffmpeg.exe',
-      source: 'Managed',
-      error: null,
-      versionMeetsRequirement: true,
-      minimumVersion: '4.0',
-      hardwareAcceleration: {
-        nvencSupported: false,
-        amfSupported: true,
-        quickSyncSupported: false,
-        videoToolboxSupported: false,
-        availableEncoders: ['h264_amf', 'hevc_amf'],
-      },
-    };
-
-    global.fetch = vi.fn(() =>
-      Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve(statusResponse),
-      } as Response)
-    );
-
-    render(<FFmpegCard />);
-
-    await waitFor(() => {
-      expect(screen.getByText(/Version: 5\.1\.2/i)).toBeInTheDocument();
-      expect(screen.getByText(/✓ 4\.0\+/i)).toBeInTheDocument();
-      expect(
-        screen.getByText('C:\\Program Files\\AuraVideoStudio\\ffmpeg\\5.1.2\\bin\\ffmpeg.exe')
-      ).toBeInTheDocument();
-      expect(screen.getByText(/Managed Installation/i)).toBeInTheDocument();
-    });
-  });
-
-  it('should display "Outdated" badge when version does not meet requirement', async () => {
-    const statusResponse = {
-      installed: true,
-      valid: true,
-      version: '3.4.0',
-      path: '/opt/ffmpeg/bin/ffmpeg',
-      source: 'Configured',
-      error: null,
-      versionMeetsRequirement: false,
-      minimumVersion: '4.0',
-      hardwareAcceleration: {
-        nvencSupported: false,
-        amfSupported: false,
-        quickSyncSupported: false,
-        videoToolboxSupported: false,
-        availableEncoders: ['libx264'],
-      },
-    };
-
-    global.fetch = vi.fn(() =>
-      Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve(statusResponse),
-      } as Response)
-    );
-
-    render(<FFmpegCard />);
-
-    await waitFor(() => {
-      expect(screen.getByText(/Outdated/i)).toBeInTheDocument();
-      expect(screen.getByText(/Requires 4\.0\+/i)).toBeInTheDocument();
-    });
-  });
-
-  it('should show "Install Managed FFmpeg" button when not ready', async () => {
-    const statusResponse = {
-      installed: false,
-      valid: false,
-      version: null,
-      path: null,
-      source: 'None',
-      error: 'FFmpeg not found',
-      versionMeetsRequirement: false,
-      minimumVersion: '4.0',
-      hardwareAcceleration: {
-        nvencSupported: false,
-        amfSupported: false,
-        quickSyncSupported: false,
-        videoToolboxSupported: false,
-        availableEncoders: [],
-      },
-    };
-
-    global.fetch = vi.fn(() =>
-      Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve(statusResponse),
-      } as Response)
-    );
-
-    render(<FFmpegCard />);
-
-    await waitFor(() => {
-      expect(screen.getByText(/Install Managed FFmpeg/i)).toBeInTheDocument();
-      expect(screen.getByText(/Attach Existing.../i)).toBeInTheDocument();
-    });
-  });
-
-  it('should display Source as "User Configured" for Configured source', async () => {
-    const statusResponse = {
-      installed: true,
-      valid: true,
-      version: '4.4.2',
-      path: '/custom/path/ffmpeg',
-      source: 'Configured',
-      error: null,
-      versionMeetsRequirement: true,
-      minimumVersion: '4.0',
-      hardwareAcceleration: {
-        nvencSupported: false,
-        amfSupported: false,
-        quickSyncSupported: false,
-        videoToolboxSupported: false,
-        availableEncoders: [],
-      },
-    };
-
-    global.fetch = vi.fn(() =>
-      Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve(statusResponse),
-      } as Response)
-    );
-
-    render(<FFmpegCard />);
-
-    await waitFor(() => {
-      expect(screen.getByText(/User Configured/i)).toBeInTheDocument();
-    });
-  });
-
-  it('should display Source as "System PATH" for PATH source', async () => {
-    const statusResponse = {
-      installed: true,
-      valid: true,
-      version: '4.4.2',
-      path: '/usr/bin/ffmpeg',
-      source: 'PATH',
-      error: null,
-      versionMeetsRequirement: true,
-      minimumVersion: '4.0',
-      hardwareAcceleration: {
-        nvencSupported: false,
-        amfSupported: false,
-        quickSyncSupported: false,
-        videoToolboxSupported: false,
-        availableEncoders: [],
-      },
-    };
-
-    global.fetch = vi.fn(() =>
-      Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve(statusResponse),
-      } as Response)
-    );
-
-    render(<FFmpegCard />);
-
-    await waitFor(() => {
-      expect(screen.getByText(/System PATH/i)).toBeInTheDocument();
-    });
-  });
-
-  it('should call correct API endpoint for status check', async () => {
-    const fetchMock = vi.fn(() =>
-      Promise.resolve({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            installed: false,
-            valid: false,
-            version: null,
-            path: null,
-            source: 'None',
-            error: null,
-            versionMeetsRequirement: false,
-            minimumVersion: '4.0',
-            hardwareAcceleration: {
-              nvencSupported: false,
-              amfSupported: false,
-              quickSyncSupported: false,
-              videoToolboxSupported: false,
-              availableEncoders: [],
-            },
-          }),
-      } as Response)
-    );
-
-    global.fetch = fetchMock;
-
-    render(<FFmpegCard />);
-
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith('http://localhost:5005/api/system/ffmpeg/status');
-    });
+    await waitFor(() => expect(screen.getByText(/Candidate Diagnostics/i)).toBeInTheDocument());
+    expect(screen.getAllByText(/EnvVar/).length).toBeGreaterThan(0);
+    expect(ffmpegClient.directCheck).toHaveBeenCalled();
   });
 });

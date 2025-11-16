@@ -7,6 +7,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Aura.Core.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.Services;
@@ -58,8 +59,8 @@ public class SecureStorageService : ISecureStorageService
         _isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
         // Set up storage path - unified for all platforms
-        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        var secureDir = Path.Combine(localAppData, "Aura", "secure");
+        var dataRoot = AuraEnvironmentPaths.ResolveDataRoot(null);
+        var secureDir = Path.Combine(dataRoot, "secure");
         Directory.CreateDirectory(secureDir);
         _storagePath = Path.Combine(secureDir, "apikeys.dat");
 

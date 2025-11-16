@@ -48,6 +48,7 @@ public class WindowsDatabaseStorageCompatibilityTests : IDisposable
         services.AddDbContext<AuraDbContext>(options =>
             options.UseSqlite($"Data Source={_testDbPath};Mode=ReadWriteCreate;Cache=Shared;"));
 
+        services.Configure<DatabasePathOptions>(options => options.SqlitePath = _testDbPath);
         services.AddScoped<DatabaseInitializationService>();
         
         _serviceProvider = services.BuildServiceProvider();
@@ -133,6 +134,7 @@ public class WindowsDatabaseStorageCompatibilityTests : IDisposable
         services.AddLogging(builder => builder.AddConsole());
         services.AddDbContext<AuraDbContext>(options =>
             options.UseSqlite($"Data Source=\"{pathWithSpaces}\";Mode=ReadWriteCreate;Cache=Shared;"));
+        services.Configure<DatabasePathOptions>(options => options.SqlitePath = pathWithSpaces);
         services.AddScoped<DatabaseInitializationService>();
 
         using var provider = services.BuildServiceProvider();

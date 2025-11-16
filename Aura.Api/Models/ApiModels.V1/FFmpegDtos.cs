@@ -45,20 +45,75 @@ public record FFmpegStatusResponse(
     string? Source,
     string? Version,
     string? Path,
+    string Mode,
+    string? Error,
     string? ErrorCode,
     string? ErrorMessage,
+    DateTime? LastValidatedAt,
+    string? LastValidationResult,
     string CorrelationId);
+
+/// <summary>
+/// Response returned when forcing detection
+/// </summary>
+public record FFmpegDetectResponse(
+    bool Success,
+    bool Installed,
+    bool Valid,
+    string? Version,
+    string? Path,
+    string Source,
+    string Mode,
+    string Message,
+    IReadOnlyList<string>? AttemptedPaths,
+    string? Detail,
+    string[]? HowToFix,
+    string CorrelationId);
+
+/// <summary>
+/// Response returned when rescanning for FFmpeg
+/// </summary>
+public record FFmpegRescanResponse(
+    bool Success,
+    bool Installed,
+    string? Version,
+    string? Path,
+    string? Source,
+    bool Valid,
+    string? Error,
+    string Message,
+    string CorrelationId);
+
+/// <summary>
+/// Response returned for path validation endpoints (set-path / use-existing)
+/// </summary>
+public record FFmpegPathValidationResponse(
+    bool Success,
+    string Message,
+    bool Installed,
+    bool Valid,
+    string? Path,
+    string? Version,
+    string Source,
+    string Mode,
+    string CorrelationId,
+    string? Title = null,
+    string? Detail = null,
+    string? ErrorCode = null,
+    string[]? HowToFix = null,
+    IReadOnlyList<string>? AttemptedPaths = null);
 
 /// <summary>
 /// FFmpeg install error response
 /// </summary>
 public record FFmpegInstallErrorResponse(
     bool Success,
-    string ErrorCode,
     string Message,
-    string? Details,
-    string? HttpStatus,
-    string? DownloadUrl,
+    string? Title,
+    string? Detail,
+    string? ErrorCode,
+    string? Type,
+    string[]? HowToFix,
     string CorrelationId);
 
 /// <summary>
@@ -70,4 +125,5 @@ public record FFmpegInstallSuccessResponse(
     string Path,
     string? Version,
     DateTime InstalledAt,
+    string? Mode,
     string CorrelationId);
