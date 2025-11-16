@@ -6,6 +6,7 @@
 
 import { apiClient } from './client';
 import type { TransportRequestOptions } from './transport';
+import { env } from '@/config/env';
 
 /**
  * Example: Health API Service
@@ -179,7 +180,7 @@ export class EnvironmentService {
     if (apiClient.isElectron()) {
       return 'Backend URL is managed by Electron IPC';
     }
-    return import.meta.env.VITE_API_BASE_URL || 'http://localhost:5005';
+    return env.apiBaseUrl;
   }
 }
 

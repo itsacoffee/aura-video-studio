@@ -3,8 +3,9 @@
  * Provides typed methods for video generation operations
  */
 
-import { post, get, createAbortController } from './apiClient';
+import { apiUrl } from '@/config/api';
 import type { ExtendedAxiosRequestConfig } from './apiClient';
+import { createAbortController, get, post } from './apiClient';
 
 /**
  * Video generation request interface
@@ -124,7 +125,8 @@ export function streamProgress(
   id: string,
   onProgress: (update: ProgressUpdate) => void
 ): EventSource {
-  const eventSource = new EventSource(`/api/jobs/${id}/events`);
+  const eventUrl = apiUrl(`/api/jobs/${id}/events`);
+  const eventSource = new EventSource(eventUrl);
 
   // Handle all event types
   const eventTypes = [

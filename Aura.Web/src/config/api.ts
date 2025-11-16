@@ -1,31 +1,12 @@
+import { env } from './env';
+
 /**
  * API configuration - centralized API base URL management
  *
- * This allows the frontend to connect to the backend API regardless of port.
- * The API URL can be configured via environment variables or auto-detected.
+ * The base URL is resolved once at startup via env.apiBaseUrl which already
+ * consults the Electron desktop bridge when available.
  */
-
-/**
- * Get the API base URL from environment or use a sensible default
- */
-function getApiBaseUrl(): string {
-  // Try environment variable first (for production builds)
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
-  }
-
-  // In development, use the dev server port with proxy
-  if (import.meta.env.DEV) {
-    // Default to common development port (matches backend default)
-    return 'http://127.0.0.1:5005';
-  }
-
-  // Production: API is served on the same origin as the SPA
-  // This works because Aura.Api serves both the static files and the API
-  return window.location.origin;
-}
-
-export const API_BASE_URL = getApiBaseUrl();
+export const API_BASE_URL = env.apiBaseUrl.replace(/\/$/, '');
 
 /**
  * Construct a full API endpoint URL

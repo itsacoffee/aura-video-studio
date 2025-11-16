@@ -6,6 +6,7 @@ import { errorReportingService } from './services/errorReportingService';
 import { loggingService } from './services/loggingService';
 import { validateEnvironment } from './utils/validateEnv';
 import { logWindowsEnvironment } from './utils/windowsUtils';
+import { apiUrl } from './config/api';
 
 // ===== GLOBAL ERROR HANDLERS (START) =====
 window.addEventListener('unhandledrejection', (event) => {
@@ -67,11 +68,37 @@ console.info('[Main] User Agent:', navigator.userAgent);
 
 // Check for Electron environment
 console.info('[Main] Checking Electron environment...');
+const desktopDiagnostics = window.desktopBridge?.getCachedDiagnostics?.() ?? null;
 console.info('[Main] window.electron exists:', typeof (window as Window).electron !== 'undefined');
-console.info('[Main] AURA_IS_ELECTRON:', window.AURA_IS_ELECTRON);
-console.info('[Main] AURA_BACKEND_URL:', window.AURA_BACKEND_URL);
-console.info('[Main] AURA_IS_DEV:', window.AURA_IS_DEV);
-console.info('[Main] AURA_VERSION:', window.AURA_VERSION);
+console.info('[Main] desktop bridge available:', !!window.desktopBridge);
+console.info('[Main] desktop bridge backend URL:', desktopDiagnostics?.backend?.baseUrl);
+console.info('[Main] desktop bridge environment:', desktopDiagnostics?.environment);
+console.info('[Main] Legacy AURA_BACKEND_URL:', window.AURA_BACKEND_URL);
+
+// Normalize relative /api requests so they work in Electron's file:// origin
+if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
+  const originalFetch = window.fetch.bind(window);
+
+  window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+    if (typeof input === 'string' && input.startsWith('/api/')) {
+      return originalFetch(apiUrl(input), init);
+    }
+
+    if (input instanceof URL && input.pathname.startsWith('/api/')) {
+      const absoluteUrl = apiUrl(`${input.pathname}${input.search || ''}`);
+      return originalFetch(absoluteUrl, init);
+    }
+
+    if (input instanceof Request && input.url.startsWith('/api/')) {
+      const requestUrl = new URL(input.url, window.location.origin);
+      const absoluteUrl = apiUrl(`${requestUrl.pathname}${requestUrl.search}`);
+      const rewrittenRequest = new Request(absoluteUrl, input);
+      return originalFetch(rewrittenRequest, init);
+    }
+
+    return originalFetch(input, init);
+  };
+}
 
 // Check for root element
 const rootElement = document.getElementById('root');

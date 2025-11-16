@@ -189,6 +189,31 @@ AURA_ENABLE_ADVANCED_MODE=false
 
 **Note:** Aura works without any API keys using free/local providers.
 
+### Backend URL Contract
+
+The frontend, backend, and Electron shell now share a single source of truth for the API origin:
+
+- Set **`AURA_BACKEND_URL`** (preferred) or `ASPNETCORE_URLS` to the desired base URL, e.g. `http://127.0.0.1:5272`.
+- Electron reads this value on startup, starts (or attaches to) the backend on that port, and exposes it to the renderer through a typed preload bridge (`window.desktopBridge`).
+- The React app always resolves requests through this bridge or `VITE_API_BASE_URL`, so there is no longer any guessing or hard-coded `localhost` URLs.
+
+Example (PowerShell):
+
+```powershell
+$env:AURA_BACKEND_URL = "http://127.0.0.1:5272"
+cd Aura.Api
+dotnet run
+```
+
+Then, in another terminal:
+
+```powershell
+cd Aura.Web
+npm run dev
+```
+
+The Vite dev server will proxy `/api/*` calls to the backend URL from the bridge automatically.
+
 ## Component Development Workflows
 
 ### Quick Start: Component Development Mode

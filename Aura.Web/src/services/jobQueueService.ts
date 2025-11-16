@@ -1,4 +1,6 @@
 import * as signalR from '@microsoft/signalr';
+import { env } from '@/config/env';
+import type { JobStatus } from '@/state/activityContext';
 
 export interface JobQueueItem {
   jobId: string;
@@ -127,7 +129,7 @@ class JobQueueService {
   }
 
   private initializeConnection() {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+    const baseUrl = env.apiBaseUrl;
     this.connection = new signalR.HubConnectionBuilder()
       .withUrl(`${baseUrl}/hubs/job-queue`, {
         skipNegotiation: false,
@@ -304,7 +306,7 @@ class JobQueueService {
 
   // API methods
   async enqueueJob(request: EnqueueJobRequest): Promise<{ jobId: string; status: string }> {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+    const baseUrl = env.apiBaseUrl;
     const response = await fetch(`${baseUrl}/api/queue/enqueue`, {
       method: 'POST',
       headers: {
@@ -322,7 +324,7 @@ class JobQueueService {
   }
 
   async getJob(jobId: string): Promise<JobQueueItem> {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+    const baseUrl = env.apiBaseUrl;
     const response = await fetch(`${baseUrl}/api/queue/${jobId}`);
 
     if (!response.ok) {
@@ -334,7 +336,7 @@ class JobQueueService {
   }
 
   async listJobs(status?: string, limit = 100): Promise<{ jobs: JobQueueItem[]; count: number }> {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+    const baseUrl = env.apiBaseUrl;
     const params = new URLSearchParams();
     if (status) params.append('status', status);
     params.append('limit', limit.toString());
@@ -350,7 +352,7 @@ class JobQueueService {
   }
 
   async cancelJob(jobId: string): Promise<void> {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+    const baseUrl = env.apiBaseUrl;
     const response = await fetch(`${baseUrl}/api/queue/${jobId}/cancel`, {
       method: 'POST',
     });
@@ -362,7 +364,7 @@ class JobQueueService {
   }
 
   async getStatistics(): Promise<QueueStatistics> {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+    const baseUrl = env.apiBaseUrl;
     const response = await fetch(`${baseUrl}/api/queue/statistics`);
 
     if (!response.ok) {
@@ -375,7 +377,7 @@ class JobQueueService {
   }
 
   async getConfiguration(): Promise<QueueConfiguration> {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+    const baseUrl = env.apiBaseUrl;
     const response = await fetch(`${baseUrl}/api/queue/configuration`);
 
     if (!response.ok) {
@@ -391,7 +393,7 @@ class JobQueueService {
     maxConcurrentJobs?: number,
     isEnabled?: boolean
   ): Promise<QueueConfiguration> {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+    const baseUrl = env.apiBaseUrl;
     const response = await fetch(`${baseUrl}/api/queue/configuration`, {
       method: 'PUT',
       headers: {

@@ -17,6 +17,7 @@ import type { VersionInfo } from '../../types/api-v1';
 import { ToastNotification } from '../Notifications/Toast';
 import { ActivityDrawer } from '../StatusBar/ActivityDrawer';
 import { ResourceMonitor } from '../StatusBar/ResourceMonitor';
+import { BackendStatusIndicator } from '../StatusBar/BackendStatusIndicator';
 
 const useStyles = makeStyles({
   footer: {
@@ -289,6 +290,7 @@ export function GlobalStatusFooter() {
                 v{version.semanticVersion}
               </Text>
             )}
+            <BackendStatusIndicator />
             <ResourceMonitor compact />
             <Button
               appearance="subtle"

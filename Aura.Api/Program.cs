@@ -18,6 +18,7 @@ using Aura.Providers.Llm;
 using Aura.Providers.Tts;
 using Aura.Providers.Video;
 using Aura.Providers.Validation;
+using Microsoft.AspNetCore.Http;
 using AspNetCoreRateLimit;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
@@ -382,32 +383,31 @@ builder.Services.AddScoped<Aura.Core.Services.TemplateManagementService>();
 // Register ActionService for server-side undo/redo
 builder.Services.AddScoped<Aura.Core.Services.IActionService, Aura.Core.Services.ActionService>();
 
+const string AuraCorsPolicy = "AuraDesktopCorsPolicy";
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>() ?? new[] { "http://localhost:5173", "http://127.0.0.1:5173" };
+
 builder.Services.AddCors(options =>
 {
-    options.AddDefaultPolicy(policy =>
+    options.AddPolicy(AuraCorsPolicy, policy =>
     {
-        // Configure CORS based on environment
-        if (builder.Environment.IsDevelopment())
+        policy
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .WithExposedHeaders("X-Correlation-ID", "X-Request-ID");
+
+        policy.SetIsOriginAllowed(origin =>
         {
-            // In development, allow any origin for easier testing
-            policy.AllowAnyOrigin()
-                  .AllowAnyHeader()
-                  .AllowAnyMethod()
-                  .WithExposedHeaders("X-Correlation-ID", "X-Request-ID");
-        }
-        else
-        {
-            // In production, restrict to specific origins
-            var allowedOrigins = builder.Configuration
-                .GetSection("Cors:AllowedOrigins")
-                .Get<string[]>() ?? new[] { "http://localhost:5173", "http://127.0.0.1:5173" };
-            
-            policy.WithOrigins(allowedOrigins)
-                  .AllowAnyHeader()
-                  .AllowAnyMethod()
-                  .AllowCredentials()
-                  .WithExposedHeaders("X-Correlation-ID", "X-Request-ID");
-        }
+            if (string.IsNullOrWhiteSpace(origin) || origin == "null")
+            {
+                // Allow Electron's file:// origin
+                return true;
+            }
+
+            return allowedOrigins.Any(allowed =>
+                string.Equals(allowed, origin, StringComparison.OrdinalIgnoreCase));
+        });
     });
 });
 
@@ -2030,7 +2030,20 @@ if (!string.IsNullOrEmpty(hangfireConnectionString))
 }
 */
 
-app.UseCors();
+app.UseCors(AuraCorsPolicy);
+
+app.Use(async (context, next) =>
+{
+    await next();
+
+    if (context.Response.StatusCode == StatusCodes.Status403Forbidden &&
+        context.Request.Headers.ContainsKey("Origin"))
+    {
+        Log.Warning("CORS rejection for origin {Origin} on path {Path}",
+            context.Request.Headers["Origin"].ToString(),
+            context.Request.Path);
+    }
+});
 
 // Add routing BEFORE static files (API routes take precedence)
 app.UseRouting();

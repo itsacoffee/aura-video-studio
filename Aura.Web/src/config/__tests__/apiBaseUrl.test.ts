@@ -21,6 +21,7 @@ describe('apiBaseUrl', () => {
     global.window = {
       location: { origin: 'http://localhost:3000' },
     } as unknown as Window & typeof globalThis;
+    delete (global.window as Window).desktopBridge;
 
     // Clear all environment variable stubs
     vi.unstubAllEnvs();
@@ -49,6 +50,11 @@ describe('apiBaseUrl', () => {
         openPath: vi.fn(),
         openExternal: vi.fn(),
       };
+      expect(isElectronEnvironment()).toBe(true);
+    });
+
+    it('should return true when desktop bridge is available', () => {
+      (global.window as Window).desktopBridge = {} as unknown as typeof window.desktopBridge;
       expect(isElectronEnvironment()).toBe(true);
     });
 
@@ -83,6 +89,25 @@ describe('apiBaseUrl', () => {
       (global.window as Window).AURA_BACKEND_URL = '   ';
       const result = await getElectronBackendUrl();
       expect(result).toBeNull();
+    });
+
+    it('should return URL from desktop bridge when available', async () => {
+      (global.window as Window).desktopBridge = {
+        getBackendBaseUrl: vi.fn().mockReturnValue('http://bridge:5005'),
+      } as unknown as typeof window.desktopBridge;
+      const result = await getElectronBackendUrl();
+      expect(result).toBe('http://bridge:5005');
+    });
+
+    it('should use diagnostic info when desktop bridge cache is empty', async () => {
+      const mockDiagnostics = { backend: { baseUrl: 'http://diagnostics:5005' } };
+      (global.window as Window).desktopBridge = {
+        getBackendBaseUrl: vi.fn().mockReturnValue(undefined),
+        getDiagnosticInfo: vi.fn().mockResolvedValue(mockDiagnostics),
+      } as unknown as typeof window.desktopBridge;
+
+      const result = await getElectronBackendUrl();
+      expect(result).toBe('http://diagnostics:5005');
     });
 
     it('should call electron.backend.getUrl() when available', async () => {
@@ -179,6 +204,18 @@ describe('apiBaseUrl', () => {
       const result = resolveApiBaseUrl();
 
       expect(result.value).toBe('http://electron:5005');
+      expect(result.source).toBe('electron');
+    });
+
+    it('should prioritize desktop bridge over legacy globals', () => {
+      (global.window as Window).desktopBridge = {
+        getBackendBaseUrl: vi.fn().mockReturnValue('http://bridge:5005'),
+      } as unknown as typeof window.desktopBridge;
+      (global.window as Window).AURA_BACKEND_URL = 'http://legacy:5005';
+      (global.window as Window).AURA_IS_ELECTRON = true;
+
+      const result = resolveApiBaseUrl();
+      expect(result.value).toBe('http://bridge:5005');
       expect(result.source).toBe('electron');
     });
 

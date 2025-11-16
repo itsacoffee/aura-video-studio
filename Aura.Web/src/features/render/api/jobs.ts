@@ -1,5 +1,5 @@
 // Jobs API client with SSE support for real-time progress updates
-
+import { apiUrl } from '@/config/api';
 export interface JobStep {
   name: string;
   status: 'Pending' | 'Running' | 'Succeeded' | 'Failed' | 'Skipped' | 'Canceled';
@@ -110,7 +110,7 @@ export function subscribeToJobEvents(
   onEvent: (event: JobEvent) => void,
   onError?: (error: Error) => void
 ): () => void {
-  const eventSource = new EventSource(`/api/jobs/${jobId}/events`);
+  const eventSource = new EventSource(apiUrl(`/api/jobs/${jobId}/events`));
 
   // Handle all event types
   const eventTypes: JobEventType[] = [
