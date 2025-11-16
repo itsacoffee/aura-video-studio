@@ -14,6 +14,7 @@ using Aura.Core.Orchestrator;
 using Aura.Core.Providers;
 using Aura.Core.Rendering;
 using Aura.Core.Services;
+using Aura.Core.Services.Providers;
 using Aura.Core.Services.Audio;
 using Aura.Core.Services.Generation;
 using Aura.Core.Services.Jobs;
@@ -39,7 +40,7 @@ namespace Aura.E2E;
 /// 3. Visual Selection - Script → Image Provider → Visual Assets
 /// 4. Video Rendering - Timeline → FFmpeg → Final Video
 /// 5. Project Save/Load - State Persistence
-/// 
+///
 /// Note: Tests may take 5-10+ minutes depending on LLM provider performance
 /// </summary>
 public class VideoGenerationPipelineCompleteE2ETests : IDisposable
@@ -110,7 +111,7 @@ public class VideoGenerationPipelineCompleteE2ETests : IDisposable
         Assert.NotNull(script);
         Assert.NotEmpty(script);
         Assert.True(script.Length >= 50, "Script should have substantial content");
-        
+
         // Assert - Script contains scene markers
         Assert.Contains("##", script);
         _output.WriteLine($"✓ Script contains scene markers");
@@ -122,7 +123,7 @@ public class VideoGenerationPipelineCompleteE2ETests : IDisposable
         // Log script preview
         var preview = script.Length > 300 ? script.Substring(0, 300) + "..." : script;
         _output.WriteLine($"\nScript Preview:\n{preview}");
-        
+
         _output.WriteLine($"\n✓ Test 1 PASSED - Script Generation: {elapsed.TotalSeconds:F2}s");
     }
 
@@ -435,14 +436,14 @@ public class VideoGenerationPipelineCompleteE2ETests : IDisposable
         _output.WriteLine($"✓ Recorded {stageTransitions.Count} stage transitions");
 
         // Assert - Key stages executed (flexible check due to different implementations)
-        var hasScriptStage = stageTransitions.Any(s => 
+        var hasScriptStage = stageTransitions.Any(s =>
             s.Contains("script", StringComparison.OrdinalIgnoreCase) ||
             s.Contains("plan", StringComparison.OrdinalIgnoreCase));
-        var hasAudioStage = stageTransitions.Any(s => 
+        var hasAudioStage = stageTransitions.Any(s =>
             s.Contains("audio", StringComparison.OrdinalIgnoreCase) ||
             s.Contains("tts", StringComparison.OrdinalIgnoreCase) ||
             s.Contains("narration", StringComparison.OrdinalIgnoreCase));
-        var hasRenderStage = stageTransitions.Any(s => 
+        var hasRenderStage = stageTransitions.Any(s =>
             s.Contains("render", StringComparison.OrdinalIgnoreCase) ||
             s.Contains("video", StringComparison.OrdinalIgnoreCase) ||
             s.Contains("compose", StringComparison.OrdinalIgnoreCase));
@@ -512,7 +513,7 @@ public class VideoGenerationPipelineCompleteE2ETests : IDisposable
         // Assert - Files deleted
         await Task.Delay(100).ConfigureAwait(false); // Brief delay to allow file system operations
         var remainingFiles = testFiles.Where(File.Exists).ToList();
-        
+
         if (remainingFiles.Any())
         {
             _output.WriteLine($"⚠ Warning: {remainingFiles.Count} files still exist after cleanup");
@@ -584,7 +585,8 @@ public class VideoGenerationPipelineCompleteE2ETests : IDisposable
             _loggerFactory.CreateLogger<PreGenerationValidator>(),
             ffmpegLocator,
             ffmpegResolver,
-            hardwareDetector
+            hardwareDetector,
+            CreateReadyProviderReadinessService()
         );
 
         var scriptValidator = new ScriptValidator();
@@ -619,6 +621,56 @@ public class VideoGenerationPipelineCompleteE2ETests : IDisposable
             telemetryCollector,
             imageProvider
         );
+    }
+
+    private IProviderReadinessService CreateReadyProviderReadinessService()
+    {
+        return new StaticProviderReadinessService(CreateReadyProvidersResult());
+    }
+
+    private static ProviderReadinessResult CreateReadyProvidersResult()
+    {
+        var result = new ProviderReadinessResult();
+        result.CategoryStatuses.Add(new ProviderCategoryStatus(
+            "LLM",
+            true,
+            "RuleBased",
+            null,
+            "RuleBased ready",
+            Array.Empty<string>(),
+            Array.Empty<ProviderCandidateStatus>()));
+        result.CategoryStatuses.Add(new ProviderCategoryStatus(
+            "TTS",
+            true,
+            "TestTTS",
+            null,
+            "Test TTS ready",
+            Array.Empty<string>(),
+            Array.Empty<ProviderCandidateStatus>()));
+        result.CategoryStatuses.Add(new ProviderCategoryStatus(
+            "Images",
+            true,
+            "TestImages",
+            null,
+            "Test image provider ready",
+            Array.Empty<string>(),
+            Array.Empty<ProviderCandidateStatus>()));
+        return result;
+    }
+
+    private sealed class StaticProviderReadinessService : IProviderReadinessService
+    {
+        private readonly ProviderReadinessResult _result;
+
+        public StaticProviderReadinessService(ProviderReadinessResult result)
+        {
+            _result = result;
+        }
+
+        public Task<ProviderReadinessResult> ValidateRequiredProvidersAsync(CancellationToken ct = default)
+        {
+            return Task.FromResult(_result);
+        }
     }
 
     private async Task<SystemProfile> DetectOrCreateSystemProfile()

@@ -195,8 +195,9 @@ sqlite3 Aura.db "SELECT COUNT(*) FROM ProjectStates WHERE IsDeleted = 0"
 - [ ] Duplicate a project
 - [ ] View project details (all tabs)
 - [ ] Export project to JSON
-- [ ] Export project package
-- [ ] Import project
+- [ ] Export project package (includes media assets & thumbnails)
+- [ ] Import project (JSON)
+- [ ] Import project package (assets restored under `Workspace/Projects/<projectId>/Assets`)
 - [ ] Check version history
 - [ ] Verify auto-save works
 - [ ] Test with 20+ projects (pagination)

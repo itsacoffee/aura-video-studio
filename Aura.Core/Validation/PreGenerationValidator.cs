@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Aura.Core.Dependencies;
 using Aura.Core.Hardware;
 using Aura.Core.Models;
+using Aura.Core.Services.Providers;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.Validation;
@@ -19,17 +20,20 @@ public class PreGenerationValidator
     private readonly IFfmpegLocator _ffmpegLocator;
     private readonly FFmpegResolver _ffmpegResolver;
     private readonly IHardwareDetector _hardwareDetector;
+    private readonly IProviderReadinessService _providerReadiness;
 
     public PreGenerationValidator(
         ILogger<PreGenerationValidator> logger,
         IFfmpegLocator ffmpegLocator,
         FFmpegResolver ffmpegResolver,
-        IHardwareDetector hardwareDetector)
+        IHardwareDetector hardwareDetector,
+        IProviderReadinessService providerReadiness)
     {
-        _logger = logger;
-        _ffmpegLocator = ffmpegLocator;
-        _ffmpegResolver = ffmpegResolver;
-        _hardwareDetector = hardwareDetector;
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _ffmpegLocator = ffmpegLocator ?? throw new ArgumentNullException(nameof(ffmpegLocator));
+        _ffmpegResolver = ffmpegResolver ?? throw new ArgumentNullException(nameof(ffmpegResolver));
+        _hardwareDetector = hardwareDetector ?? throw new ArgumentNullException(nameof(hardwareDetector));
+        _providerReadiness = providerReadiness ?? throw new ArgumentNullException(nameof(providerReadiness));
     }
 
     /// <summary>
@@ -50,7 +54,7 @@ public class PreGenerationValidator
         try
         {
             var resolutionResult = await _ffmpegResolver.ResolveAsync(null, forceRefresh: false, ct).ConfigureAwait(false);
-            
+
             if (!resolutionResult.Found || !resolutionResult.IsValid)
             {
                 issues.Add("FFmpeg is required but not found or invalid. Install managed FFmpeg or configure the path in Settings.");
@@ -66,7 +70,7 @@ public class PreGenerationValidator
                 }
                 else
                 {
-                    _logger.LogInformation("FFmpeg validation passed: {Path} (Source: {Source})", 
+                    _logger.LogInformation("FFmpeg validation passed: {Path} (Source: {Source})",
                         resolutionResult.Path, resolutionResult.Source);
                 }
             }
@@ -84,7 +88,7 @@ public class PreGenerationValidator
                 Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
                 "AuraVideos"
             );
-            
+
             // Get the drive for the output path
             var rootPath = Path.GetPathRoot(outputPath);
             if (!string.IsNullOrEmpty(rootPath))
@@ -94,7 +98,7 @@ public class PreGenerationValidator
                 {
                     double freeSpaceGB = driveInfo.AvailableFreeSpace / (1024.0 * 1024.0 * 1024.0);
                     _logger.LogInformation("Disk space check: {FreeSpace:F2}GB available on {Drive}", freeSpaceGB, rootPath);
-                    
+
                     if (freeSpaceGB < 1.0)
                     {
                         issues.Add($"Insufficient disk space on {rootPath}: {freeSpaceGB:F1}GB free, need at least 1GB. Free up disk space and try again.");
@@ -145,10 +149,10 @@ public class PreGenerationValidator
         try
         {
             var systemProfile = await _hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
-            
-            _logger.LogInformation("System hardware detected: {Cores} cores, {Ram}GB RAM", 
+
+            _logger.LogInformation("System hardware detected: {Cores} cores, {Ram}GB RAM",
                 systemProfile.LogicalCores, systemProfile.RamGB);
-            
+
             // Check CPU cores
             if (systemProfile.LogicalCores < 2)
             {
@@ -169,8 +173,26 @@ public class PreGenerationValidator
             // Don't fail validation if we can't detect hardware
         }
 
+        // Validate provider readiness (LLM, TTS, Images)
+        try
+        {
+            var readiness = await _providerReadiness.ValidateRequiredProvidersAsync(ct).ConfigureAwait(false);
+            if (!readiness.IsReady)
+            {
+                foreach (var issue in readiness.Issues)
+                {
+                    issues.Add(issue);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error validating provider readiness");
+            issues.Add("Unable to verify provider readiness. Check provider configuration and try again.");
+        }
+
         var validationResult = new ValidationResult(issues.Count == 0, issues);
-        
+
         if (validationResult.IsValid)
         {
             _logger.LogInformation("System validation passed: All checks successful");
@@ -179,7 +201,7 @@ public class PreGenerationValidator
         {
             _logger.LogWarning("System validation failed with {IssueCount} issues", issues.Count);
         }
-        
+
         return validationResult;
     }
 }

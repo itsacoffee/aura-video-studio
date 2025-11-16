@@ -2,6 +2,7 @@ using Aura.Api.Controllers;
 using Aura.Core.Dependencies;
 using Aura.Core.Hardware;
 using Aura.Core.Models;
+using Aura.Core.Services.Providers;
 using Aura.Core.Validation;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -18,6 +19,7 @@ public class ValidationControllerTests
 {
     private readonly Mock<IFfmpegLocator> _mockFfmpegLocator;
     private readonly Mock<IHardwareDetector> _mockHardwareDetector;
+    private readonly Mock<IProviderReadinessService> _providerReadiness;
     private readonly PreGenerationValidator _validator;
     private readonly ValidationController _controller;
 
@@ -25,6 +27,7 @@ public class ValidationControllerTests
     {
         _mockFfmpegLocator = new Mock<IFfmpegLocator>();
         _mockHardwareDetector = new Mock<IHardwareDetector>();
+        _providerReadiness = new Mock<IProviderReadinessService>();
 
         var mockCache = new Microsoft.Extensions.Caching.Memory.MemoryCache(
             new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
@@ -32,11 +35,16 @@ public class ValidationControllerTests
             NullLogger<FFmpegResolver>.Instance,
             mockCache);
 
+        _providerReadiness
+            .Setup(x => x.ValidateRequiredProvidersAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateReadyProvidersResult());
+
         _validator = new PreGenerationValidator(
             NullLogger<PreGenerationValidator>.Instance,
             _mockFfmpegLocator.Object,
             ffmpegResolver,
-            _mockHardwareDetector.Object
+            _mockHardwareDetector.Object,
+            _providerReadiness.Object
         );
 
         _controller = new ValidationController(_validator);
@@ -87,7 +95,7 @@ public class ValidationControllerTests
         Assert.NotNull(okResult.Value);
 
         var (isValid, issues, issueCount) = GetValidationResponse(okResult.Value);
-        
+
         Assert.True(isValid);
         Assert.Empty(issues);
         Assert.Equal(0, issueCount);
@@ -112,7 +120,7 @@ public class ValidationControllerTests
         Assert.NotNull(okResult.Value);
 
         var (isValid, issues, _) = GetValidationResponse(okResult.Value);
-        
+
         Assert.False(isValid);
         Assert.NotEmpty(issues);
         Assert.Contains(issues, i => i.Contains("Topic is required"));
@@ -137,7 +145,7 @@ public class ValidationControllerTests
         Assert.NotNull(okResult.Value);
 
         var (isValid, issues, _) = GetValidationResponse(okResult.Value);
-        
+
         Assert.False(isValid);
         Assert.NotEmpty(issues);
         Assert.Contains(issues, i => i.Contains("too short"));
@@ -162,7 +170,7 @@ public class ValidationControllerTests
         Assert.NotNull(okResult.Value);
 
         var (isValid, issues, _) = GetValidationResponse(okResult.Value);
-        
+
         Assert.False(isValid);
         Assert.NotEmpty(issues);
         Assert.Contains(issues, i => i.Contains("too short") && i.Contains("10 seconds"));
@@ -187,7 +195,7 @@ public class ValidationControllerTests
         Assert.NotNull(okResult.Value);
 
         var (isValid, issues, _) = GetValidationResponse(okResult.Value);
-        
+
         Assert.False(isValid);
         Assert.NotEmpty(issues);
         Assert.Contains(issues, i => i.Contains("too long") && i.Contains("30 minutes"));
@@ -216,7 +224,7 @@ public class ValidationControllerTests
         Assert.NotNull(okResult.Value);
 
         var (isValid, issues, _) = GetValidationResponse(okResult.Value);
-        
+
         Assert.True(isValid);
         Assert.Empty(issues);
     }
@@ -249,7 +257,7 @@ public class ValidationControllerTests
         Assert.NotNull(okResult.Value);
 
         var (isValid, issues, _) = GetValidationResponse(okResult.Value);
-        
+
         Assert.False(isValid);
         Assert.NotEmpty(issues);
         Assert.Contains(issues, i => i.Contains("FFmpeg"));
@@ -274,11 +282,36 @@ public class ValidationControllerTests
         Assert.NotNull(okResult.Value);
 
         var (isValid, issues, issueCount) = GetValidationResponse(okResult.Value);
-        
+
         Assert.False(isValid);
         Assert.NotEmpty(issues);
         Assert.Equal(issues.Count, issueCount);
         Assert.True(issueCount >= 2); // At least topic and duration issues
+    }
+
+    [Fact]
+    public async Task ValidateBrief_WhenProvidersUnavailable_ReturnsProviderReadinessIssue()
+    {
+        // Arrange
+        SetupValidSystemMocks();
+        _providerReadiness
+            .Setup(x => x.ValidateRequiredProvidersAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateProviderFailureResult());
+
+        var request = new ValidateBriefRequest(
+            Topic: "Readiness Test",
+            DurationMinutes: 1.0
+        );
+
+        // Act
+        var result = await _controller.ValidateBrief(request);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var (isValid, issues, _) = GetValidationResponse(okResult.Value);
+
+        Assert.False(isValid);
+        Assert.Contains(issues, issue => issue.Contains("LLM", StringComparison.OrdinalIgnoreCase));
     }
 
     private void SetupValidSystemMocks()
@@ -307,5 +340,57 @@ public class ValidationControllerTests
                 PhysicalCores = 2,
                 RamGB = 8
             });
+    }
+
+    private static ProviderReadinessResult CreateReadyProvidersResult()
+    {
+        var result = new ProviderReadinessResult();
+        result.CategoryStatuses.Add(CreateReadyStatus("LLM", "OpenAI"));
+        result.CategoryStatuses.Add(CreateReadyStatus("TTS", "ElevenLabs"));
+        result.CategoryStatuses.Add(CreateReadyStatus("Images", "StableDiffusion"));
+        return result;
+    }
+
+    private static ProviderReadinessResult CreateProviderFailureResult()
+    {
+        var result = new ProviderReadinessResult();
+
+        var failureCandidates = new[]
+        {
+            new ProviderCandidateStatus(
+                "OpenAI",
+                false,
+                false,
+                "MissingApiKey",
+                "API key not configured",
+                new[] { "Set OPENAI_API_KEY in Settings → Providers" })
+        };
+
+        result.CategoryStatuses.Add(
+            new ProviderCategoryStatus(
+                "LLM",
+                false,
+                null,
+                "MissingApiKey",
+                "No LLM providers are configured. Configure OpenAI, Anthropic, Gemini, or Ollama.",
+                new[] { "Configure at least one LLM provider in Settings" },
+                failureCandidates));
+
+        result.CategoryStatuses.Add(CreateReadyStatus("TTS", "ElevenLabs"));
+        result.CategoryStatuses.Add(CreateReadyStatus("Images", "StableDiffusion"));
+
+        return result;
+    }
+
+    private static ProviderCategoryStatus CreateReadyStatus(string category, string provider)
+    {
+        return new ProviderCategoryStatus(
+            category,
+            true,
+            provider,
+            null,
+            $"{provider} is ready",
+            Array.Empty<string>(),
+            Array.Empty<ProviderCandidateStatus>());
     }
 }

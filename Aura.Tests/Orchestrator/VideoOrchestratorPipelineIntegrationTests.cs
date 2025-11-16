@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Core.Dependencies;
+using Aura.Core.Hardware;
 using Aura.Core.Models;
 using Aura.Core.Orchestrator;
 using Aura.Core.Providers;
@@ -10,6 +12,7 @@ using Aura.Core.Services;
 using Aura.Core.Services.Providers;
 using Aura.Core.Telemetry;
 using Aura.Core.Validation;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -30,6 +33,10 @@ public class VideoOrchestratorPipelineIntegrationTests
     private readonly FakeImageProvider _imageProvider;
     private readonly ProviderCircuitBreakerService _circuitBreaker;
     private readonly ProviderRetryWrapper _retryWrapper;
+    private readonly Mock<IFfmpegLocator> _ffmpegLocator;
+    private readonly FFmpegResolver _ffmpegResolver;
+    private readonly Mock<IHardwareDetector> _hardwareDetector;
+    private readonly Mock<IProviderReadinessService> _providerReadiness;
     private readonly PreGenerationValidator _preValidator;
     private readonly ScriptValidator _scriptValidator;
     private readonly TtsOutputValidator _ttsValidator;
@@ -45,31 +52,66 @@ public class VideoOrchestratorPipelineIntegrationTests
         _ttsProvider = new FakeTtsProvider();
         _videoComposer = new FakeVideoComposer();
         _imageProvider = new FakeImageProvider();
-        
+
         _circuitBreaker = new ProviderCircuitBreakerService(
             NullLogger<ProviderCircuitBreakerService>.Instance);
-        
+
         _retryWrapper = new ProviderRetryWrapper(
             NullLogger<ProviderRetryWrapper>.Instance);
-        
+
+        _ffmpegLocator = new Mock<IFfmpegLocator>();
+        _hardwareDetector = new Mock<IHardwareDetector>();
+        _providerReadiness = new Mock<IProviderReadinessService>();
+
+        var cache = new MemoryCache(new MemoryCacheOptions());
+        _ffmpegResolver = new FFmpegResolver(
+            NullLogger<FFmpegResolver>.Instance,
+            cache);
+
+        _ffmpegLocator
+            .Setup(locator => locator.CheckAllCandidatesAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FfmpegValidationResult
+            {
+                Found = true,
+                FfmpegPath = "/usr/bin/ffmpeg",
+                AttemptedPaths = new List<string>()
+            });
+
+        _hardwareDetector
+            .Setup(detector => detector.DetectSystemAsync())
+            .ReturnsAsync(new SystemProfile
+            {
+                LogicalCores = 8,
+                PhysicalCores = 4,
+                RamGB = 16
+            });
+
+        _providerReadiness
+            .Setup(service => service.ValidateRequiredProvidersAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateReadyProvidersResult());
+
         _preValidator = new PreGenerationValidator(
-            NullLogger<PreGenerationValidator>.Instance);
-        
+            NullLogger<PreGenerationValidator>.Instance,
+            _ffmpegLocator.Object,
+            _ffmpegResolver,
+            _hardwareDetector.Object,
+            _providerReadiness.Object);
+
         _scriptValidator = new ScriptValidator(
             NullLogger<ScriptValidator>.Instance);
-        
+
         _ttsValidator = new TtsOutputValidator(
             NullLogger<TtsOutputValidator>.Instance);
-        
+
         _imageValidator = new ImageOutputValidator(
             NullLogger<ImageOutputValidator>.Instance);
-        
+
         _llmValidator = new LlmOutputValidator(
             NullLogger<LlmOutputValidator>.Instance);
-        
+
         _cleanupManager = new ResourceCleanupManager(
             NullLogger<ResourceCleanupManager>.Instance);
-        
+
         _telemetryCollector = new RunTelemetryCollector(
             NullLogger<RunTelemetryCollector>.Instance);
     }
@@ -118,7 +160,7 @@ public class VideoOrchestratorPipelineIntegrationTests
         // Assert
         Assert.NotNull(result);
         Assert.Contains("test_video.mp4", result);
-        
+
         // Verify all stages reported progress
         Assert.Contains(progressUpdates, p => p.Stage.Contains("Brief", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(progressUpdates, p => p.Stage.Contains("Script", StringComparison.OrdinalIgnoreCase));
@@ -209,7 +251,7 @@ public class VideoOrchestratorPipelineIntegrationTests
         var systemProfile = CreateTestSystemProfile();
 
         var cts = new CancellationTokenSource();
-        
+
         // Cancel after brief validation
         _llmProvider.OnBeforeCall = () => cts.Cancel();
 
@@ -341,7 +383,7 @@ public class VideoOrchestratorPipelineIntegrationTests
         {
             OnBeforeCall?.Invoke();
             AttemptCount++;
-            
+
             if (AttemptCount <= FailFirstNAttempts)
             {
                 throw new Exception("Transient LLM failure");
@@ -385,6 +427,36 @@ public class VideoOrchestratorPipelineIntegrationTests
             WasCalled = true;
             return Task.FromResult("/tmp/test_audio.wav");
         }
+
+    private static ProviderReadinessResult CreateReadyProvidersResult()
+    {
+        var result = new ProviderReadinessResult();
+        result.CategoryStatuses.Add(new ProviderCategoryStatus(
+            "LLM",
+            true,
+            "RuleBased",
+            null,
+            "RuleBased ready",
+            Array.Empty<string>(),
+            Array.Empty<ProviderCandidateStatus>()));
+        result.CategoryStatuses.Add(new ProviderCategoryStatus(
+            "TTS",
+            true,
+            "TestTTS",
+            null,
+            "Test TTS ready",
+            Array.Empty<string>(),
+            Array.Empty<ProviderCandidateStatus>()));
+        result.CategoryStatuses.Add(new ProviderCategoryStatus(
+            "Images",
+            true,
+            "MockImages",
+            null,
+            "Image provider ready",
+            Array.Empty<string>(),
+            Array.Empty<ProviderCandidateStatus>()));
+        return result;
+    }
     }
 
     private class FakeVideoComposer : IVideoComposer

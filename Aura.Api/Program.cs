@@ -381,6 +381,7 @@ builder.Services.AddScoped<Aura.Core.Services.ProjectVersionService>();
 // Register project management services (PR #5 - Project Management System)
 builder.Services.AddScoped<Aura.Core.Services.ProjectManagementService>();
 builder.Services.AddScoped<Aura.Core.Services.TemplateManagementService>();
+builder.Services.AddScoped<Aura.Core.Services.ProjectExportImportService>();
 // ProjectAutosaveService cannot inject scoped ProjectVersionService as singleton
 // Commenting out until refactored to use IServiceScopeFactory
 // builder.Services.AddSingleton<Aura.Api.HostedServices.ProjectAutosaveService>();
@@ -1654,6 +1655,8 @@ builder.Services.AddSingleton<Aura.Core.Services.AIEditing.SpeechRecognitionServ
 builder.Services.AddSingleton<Aura.Core.Services.FFmpeg.IFFmpegService, Aura.Core.Services.FFmpeg.FFmpegService>();
 builder.Services.AddSingleton<Aura.Core.Services.FFmpeg.IFFmpegStatusService, Aura.Core.Services.FFmpeg.FFmpegStatusService>();
 builder.Services.AddSingleton<Aura.Core.Services.FFmpeg.FFmpegDirectCheckService>();
+builder.Services.AddSingleton<Aura.Core.Services.Providers.ProviderConnectionValidationService>();
+builder.Services.AddSingleton<Aura.Core.Services.Providers.IProviderReadinessService, Aura.Core.Services.Providers.ProviderReadinessService>();
 builder.Services.AddSingleton<Aura.Core.Services.Providers.ProviderPingService>();
 builder.Services.AddSingleton<Aura.Core.Services.Export.IFormatConversionService, Aura.Core.Services.Export.FormatConversionService>();
 builder.Services.AddSingleton<Aura.Core.Services.Export.IResolutionService, Aura.Core.Services.Export.ResolutionService>();

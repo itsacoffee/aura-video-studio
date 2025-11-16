@@ -5,6 +5,7 @@ using Aura.Core.Hardware;
 using Aura.Core.Services;
 using Aura.Core.Services.FFmpeg;
 using Aura.Core.Services.Video;
+using Aura.Core.Services.Providers;
 using Microsoft.EntityFrameworkCore;
 
 namespace Aura.Api.Startup;
@@ -27,6 +28,8 @@ public static class CoreServicesExtensions
 
         // Configuration and settings
         services.AddSingleton<ProviderSettings>();
+        services.AddSingleton<ProviderConnectionValidationService>();
+        services.AddSingleton<IProviderReadinessService, ProviderReadinessService>();
         services.AddSingleton<IKeyStore, KeyStore>();
 
         // Dependency management
@@ -42,7 +45,7 @@ public static class CoreServicesExtensions
         services.AddSingleton<IProcessManager, ProcessManager>();
         services.AddSingleton<IFFmpegService, FFmpegService>();
         services.AddSingleton<IFFmpegExecutor, FFmpegExecutor>();
-        
+
         // Video Effects Services
         services.AddSingleton<Aura.Core.Services.VideoEffects.IVideoEffectService, Aura.Core.Services.VideoEffects.VideoEffectService>();
         services.AddSingleton<Aura.Core.Services.VideoEffects.IEffectCacheService, Aura.Core.Services.VideoEffects.EffectCacheService>();

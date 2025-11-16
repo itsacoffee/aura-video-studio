@@ -14,6 +14,7 @@ using Aura.Core.Orchestrator;
 using Aura.Core.Providers;
 using Aura.Core.Rendering;
 using Aura.Core.Services;
+using Aura.Core.Services.Providers;
 using Aura.Core.Services.Audio;
 using Aura.Core.Services.Generation;
 using Aura.Core.Services.Jobs;
@@ -67,7 +68,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
         // Arrange
         _output.WriteLine("=== Test 1: Complete Workflow Brief→Script→Voice→Video ===");
         var orchestrator = CreateVideoOrchestrator();
-        
+
         var brief = new Brief(
             Topic: "Getting Started with Aura Video Studio",
             Audience: "New Users",
@@ -103,7 +104,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
         );
 
         var systemProfile = await DetectOrCreateSystemProfile().ConfigureAwait(false);
-        
+
         var progressUpdates = new List<string>();
         var progress = new Progress<string>(msg =>
         {
@@ -117,7 +118,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
         // Act
         _output.WriteLine("Starting video generation...");
         var startTime = DateTime.UtcNow;
-        
+
         var outputPath = await orchestrator.GenerateVideoAsync(
             brief,
             planSpec,
@@ -137,18 +138,18 @@ public class VideoGenerationPipelineE2ETests : IDisposable
         // Assert - Pipeline completed
         Assert.NotNull(outputPath);
         Assert.NotEmpty(outputPath);
-        
+
         // Assert - Progress updates were reported
         Assert.NotEmpty(progressUpdates);
         _output.WriteLine($"Total progress updates: {progressUpdates.Count}");
-        
+
         // Assert - All stages were executed (check for key stage names in progress)
         var stageKeywords = new[] { "script", "narration", "audio", "video", "render" };
         foreach (var keyword in stageKeywords)
         {
-            var found = progressUpdates.Any(msg => 
+            var found = progressUpdates.Any(msg =>
                 msg.Contains(keyword, StringComparison.OrdinalIgnoreCase));
-            
+
             if (!found)
             {
                 _output.WriteLine($"WARNING: No progress update found for stage: {keyword}");
@@ -172,7 +173,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
     {
         // Arrange
         _output.WriteLine("=== Test 2: VideoOrchestrator with Real Provider Integration ===");
-        
+
         var llmProvider = new RuleBasedLlmProvider(
             _loggerFactory.CreateLogger<RuleBasedLlmProvider>()
         );
@@ -211,10 +212,10 @@ public class VideoGenerationPipelineE2ETests : IDisposable
         // Act
         _output.WriteLine("Testing LLM integration...");
         var script = await llmProvider.DraftScriptAsync(brief, planSpec, CancellationToken.None).ConfigureAwait(false);
-        
+
         _output.WriteLine($"Generated script length: {script.Length} characters");
         _output.WriteLine($"Script preview: {script.Substring(0, Math.Min(200, script.Length))}...");
-        
+
         // Assert - Script generation
         Assert.NotNull(script);
         Assert.NotEmpty(script);
@@ -252,7 +253,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
         // Arrange
         _output.WriteLine("=== Test 3: SSE Progress Updates Validation ===");
         var orchestrator = CreateVideoOrchestrator();
-        
+
         var brief = new Brief(
             Topic: "SSE Test Video",
             Audience: "Developers",
@@ -316,7 +317,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
 
         // Assert - Final progress reaches 100% or near-complete
         var finalProgress = detailedProgress.Last();
-        Assert.True(finalProgress.OverallPercent >= 95, 
+        Assert.True(finalProgress.OverallPercent >= 95,
             $"Final progress should be near 100%, got {finalProgress.OverallPercent}%");
 
         _output.WriteLine($"✓ SSE progress updates validated");
@@ -370,9 +371,9 @@ public class VideoGenerationPipelineE2ETests : IDisposable
         _output.WriteLine("Executing jobs concurrently...");
         var startTime = DateTime.UtcNow;
         var tasks = jobIds.Select(jobId => jobService.ExecuteJobAsync(jobId, CancellationToken.None)).ToList();
-        
+
         await Task.WhenAll(tasks).ConfigureAwait(false);
-        
+
         var elapsedTime = DateTime.UtcNow - startTime;
         _output.WriteLine($"All {jobCount} jobs completed in {elapsedTime.TotalSeconds:F2} seconds");
 
@@ -401,7 +402,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
         // Arrange
         _output.WriteLine("=== Test 5: Final Video Output Quality and Format Validation ===");
         var orchestrator = CreateVideoOrchestrator();
-        
+
         var brief = new Brief(
             Topic: "Quality Test Video",
             Audience: "Quality Assurance",
@@ -419,14 +420,14 @@ public class VideoGenerationPipelineE2ETests : IDisposable
         );
 
         var voiceSpec = new VoiceSpec("TestVoice", 1.0, 1.0, PauseStyle.Natural);
-        
+
         // Test different quality levels
         var qualityLevels = new[] { 50, 75, 90 };
-        
+
         foreach (var qualityLevel in qualityLevels)
         {
             _output.WriteLine($"\nTesting quality level: {qualityLevel}");
-            
+
             var renderSpec = new RenderSpec(
                 Res: new Resolution(1920, 1080),
                 Container: "mp4",
@@ -454,10 +455,10 @@ public class VideoGenerationPipelineE2ETests : IDisposable
             // Assert - Output path is valid
             Assert.NotNull(outputPath);
             Assert.NotEmpty(outputPath);
-            
+
             // Assert - Output format is correct
             Assert.Contains(".mp4", outputPath, StringComparison.OrdinalIgnoreCase);
-            
+
             _output.WriteLine($"Quality {qualityLevel}: Output = {outputPath}");
             _output.WriteLine($"✓ Quality level {qualityLevel}: PASS");
         }
@@ -473,7 +474,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
         foreach (var (container, codec) in testFormats)
         {
             _output.WriteLine($"\nTesting format: {container} with codec {codec}");
-            
+
             var renderSpec = new RenderSpec(
                 Res: new Resolution(1280, 720),
                 Container: container,
@@ -501,7 +502,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
             // Assert
             Assert.NotNull(outputPath);
             Assert.Contains($".{container}", outputPath, StringComparison.OrdinalIgnoreCase);
-            
+
             _output.WriteLine($"Format {container}/{codec}: Output = {outputPath}");
             _output.WriteLine($"✓ Format {container}/{codec}: PASS");
         }
@@ -520,7 +521,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
     {
         // Arrange
         _output.WriteLine("=== Test 6: Error Handling and Recovery ===");
-        
+
         var brief = new Brief(
             Topic: "Error Test",
             Audience: "Test",
@@ -559,7 +560,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
                 null,
                 CancellationToken.None
             ).ConfigureAwait(false);
-            
+
             _output.WriteLine("✓ Invalid brief handled gracefully");
         }
         catch (Exception ex)
@@ -612,12 +613,13 @@ public class VideoGenerationPipelineE2ETests : IDisposable
 
         var ffmpegLocator = new MockFfmpegLocator();
         var hardwareDetector = new HardwareDetector(_loggerFactory.CreateLogger<HardwareDetector>());
-        
+
         var preValidator = new PreGenerationValidator(
             _loggerFactory.CreateLogger<PreGenerationValidator>(),
             ffmpegLocator,
             ffmpegResolver,
-            hardwareDetector
+            hardwareDetector,
+            CreateReadyProviderReadinessService()
         );
 
         var scriptValidator = new ScriptValidator();
@@ -667,6 +669,56 @@ public class VideoGenerationPipelineE2ETests : IDisposable
     private IImageProvider CreateMockImageProvider()
     {
         return new MockImageProviderWithFiles(_loggerFactory.CreateLogger<MockImageProviderWithFiles>(), _tempFiles);
+    }
+
+    private IProviderReadinessService CreateReadyProviderReadinessService()
+    {
+        return new StaticProviderReadinessService(CreateReadyProvidersResult());
+    }
+
+    private static ProviderReadinessResult CreateReadyProvidersResult()
+    {
+        var result = new ProviderReadinessResult();
+        result.CategoryStatuses.Add(new ProviderCategoryStatus(
+            "LLM",
+            true,
+            "RuleBased",
+            null,
+            "RuleBased ready",
+            Array.Empty<string>(),
+            Array.Empty<ProviderCandidateStatus>()));
+        result.CategoryStatuses.Add(new ProviderCategoryStatus(
+            "TTS",
+            true,
+            "MockTts",
+            null,
+            "Mock TTS ready",
+            Array.Empty<string>(),
+            Array.Empty<ProviderCandidateStatus>()));
+        result.CategoryStatuses.Add(new ProviderCategoryStatus(
+            "Images",
+            true,
+            "MockImages",
+            null,
+            "Mock image provider ready",
+            Array.Empty<string>(),
+            Array.Empty<ProviderCandidateStatus>()));
+        return result;
+    }
+
+    private sealed class StaticProviderReadinessService : IProviderReadinessService
+    {
+        private readonly ProviderReadinessResult _result;
+
+        public StaticProviderReadinessService(ProviderReadinessResult result)
+        {
+            _result = result;
+        }
+
+        public Task<ProviderReadinessResult> ValidateRequiredProvidersAsync(CancellationToken ct = default)
+        {
+            return Task.FromResult(_result);
+        }
     }
 
     private RenderSpec CreateTestRenderSpec()
@@ -761,7 +813,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
         public async Task<string> SynthesizeAsync(IEnumerable<ScriptLine> lines, VoiceSpec spec, CancellationToken ct)
         {
             var outputPath = Path.Combine(Path.GetTempPath(), $"test-audio-{Guid.NewGuid():N}.wav");
-            
+
             // Generate a minimal valid WAV file (1 second of silence)
             var sampleRate = 44100;
             var channels = 1;
@@ -769,7 +821,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
             var duration = 1.0;
             var numSamples = (int)(sampleRate * duration);
             var dataSize = numSamples * channels * (bitsPerSample / 8);
-            
+
             await using (var fs = new FileStream(outputPath, FileMode.Create))
             await using (var writer = new BinaryWriter(fs))
             {
@@ -777,7 +829,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
                 writer.Write(System.Text.Encoding.ASCII.GetBytes("RIFF"));
                 writer.Write(36 + dataSize);
                 writer.Write(System.Text.Encoding.ASCII.GetBytes("WAVE"));
-                
+
                 // fmt chunk
                 writer.Write(System.Text.Encoding.ASCII.GetBytes("fmt "));
                 writer.Write(16);
@@ -787,18 +839,18 @@ public class VideoGenerationPipelineE2ETests : IDisposable
                 writer.Write(sampleRate * channels * (bitsPerSample / 8));
                 writer.Write((short)(channels * (bitsPerSample / 8)));
                 writer.Write((short)bitsPerSample);
-                
+
                 // data chunk
                 writer.Write(System.Text.Encoding.ASCII.GetBytes("data"));
                 writer.Write(dataSize);
-                
+
                 // Write silence
                 for (int i = 0; i < numSamples; i++)
                 {
                     writer.Write((short)0);
                 }
             }
-            
+
             _tempFiles.Add(outputPath);
             _logger.LogInformation("Generated mock audio file: {Path}", outputPath);
             return outputPath;
@@ -820,20 +872,20 @@ public class VideoGenerationPipelineE2ETests : IDisposable
         {
             progress?.Report(new RenderProgress(25, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(3), "Preparing"));
             await Task.Delay(100, ct).ConfigureAwait(false);
-            
+
             progress?.Report(new RenderProgress(50, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2), "Encoding"));
             await Task.Delay(100, ct).ConfigureAwait(false);
-            
+
             progress?.Report(new RenderProgress(75, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(1), "Finalizing"));
             await Task.Delay(100, ct).ConfigureAwait(false);
-            
+
             progress?.Report(new RenderProgress(100, TimeSpan.FromSeconds(4), TimeSpan.Zero, "Complete"));
-            
+
             var outputPath = Path.Combine(Path.GetTempPath(), $"test-video-{Guid.NewGuid():N}.{spec.Container}");
-            
+
             // Create a minimal file to represent the video
             await File.WriteAllTextAsync(outputPath, "Mock video file", ct).ConfigureAwait(false);
-            
+
             _tempFiles.Add(outputPath);
             _logger.LogInformation("Generated mock video file: {Path}", outputPath);
             return outputPath;
@@ -854,7 +906,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
         public async Task<IReadOnlyList<Asset>> FetchOrGenerateAsync(Scene scene, VisualSpec spec, CancellationToken ct)
         {
             var imagePath = Path.Combine(Path.GetTempPath(), $"test-image-{Guid.NewGuid():N}.jpg");
-            
+
             // Create a minimal valid JPEG file (1x1 pixel)
             byte[] minimalJpeg = new byte[]
             {
@@ -870,17 +922,17 @@ public class VideoGenerationPipelineE2ETests : IDisposable
                 0x00, 0x00, 0xFF, 0xDA, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3F, 0x00, 0xD2, 0xCF, 0x20, 0xFF,
                 0xD9
             };
-            
+
             await File.WriteAllBytesAsync(imagePath, minimalJpeg, ct).ConfigureAwait(false);
-            
+
             _tempFiles.Add(imagePath);
             _logger.LogInformation("Generated mock image file: {Path}", imagePath);
-            
+
             var assets = new List<Asset>
             {
                 new Asset("image", imagePath, "CC0", null)
             };
-            
+
             return assets;
         }
     }

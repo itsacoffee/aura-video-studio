@@ -4,6 +4,8 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Core.Configuration;
+using Aura.Core.Dependencies;
 using Aura.Core.Models;
 using Aura.Core.Models.Narrative;
 using Aura.Core.Models.Visual;
@@ -11,6 +13,12 @@ using Aura.Core.Models.Generation;
 using Aura.Core.Orchestrator;
 using Aura.Core.Providers;
 using Aura.Core.Services.Generation;
+using Aura.Core.Services;
+using Aura.Core.Services.Providers;
+using Aura.Core.Telemetry;
+using Aura.Core.Timeline;
+using Aura.Core.Validation;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Xunit;
 
@@ -128,34 +136,35 @@ public class VideoGenerationComprehensiveTests
         var mockImageProvider = new TestImageProvider();
         var mockFfmpegLocator = new TestFfmpegLocator();
         var mockHardwareDetector = new TestHardwareDetector();
-        var mockCache = new Microsoft.Extensions.Caching.Memory.MemoryCache(
-            new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
-        var ffmpegResolver = new Aura.Core.Dependencies.FFmpegResolver(
-            _loggerFactory.CreateLogger<Aura.Core.Dependencies.FFmpegResolver>(),
+        var mockCache = new MemoryCache(
+            new MemoryCacheOptions());
+        var ffmpegResolver = new FFmpegResolver(
+            _loggerFactory.CreateLogger<FFmpegResolver>(),
             mockCache);
 
-        var preGenerationValidator = new Aura.Core.Validation.PreGenerationValidator(
-            _loggerFactory.CreateLogger<Aura.Core.Validation.PreGenerationValidator>(),
+        var preGenerationValidator = new PreGenerationValidator(
+            _loggerFactory.CreateLogger<PreGenerationValidator>(),
             mockFfmpegLocator,
             ffmpegResolver,
-            mockHardwareDetector);
-        var scriptValidator = new Aura.Core.Validation.ScriptValidator();
-        var retryWrapper = new Aura.Core.Services.ProviderRetryWrapper(
-            _loggerFactory.CreateLogger<Aura.Core.Services.ProviderRetryWrapper>());
-        var ttsValidator = new Aura.Core.Validation.TtsOutputValidator(
-            _loggerFactory.CreateLogger<Aura.Core.Validation.TtsOutputValidator>());
-        var imageValidator = new Aura.Core.Validation.ImageOutputValidator(
-            _loggerFactory.CreateLogger<Aura.Core.Validation.ImageOutputValidator>());
-        var llmValidator = new Aura.Core.Validation.LlmOutputValidator(
-            _loggerFactory.CreateLogger<Aura.Core.Validation.LlmOutputValidator>());
-        var cleanupManager = new Aura.Core.Services.ResourceCleanupManager(
-            _loggerFactory.CreateLogger<Aura.Core.Services.ResourceCleanupManager>());
+            mockHardwareDetector,
+            CreateReadyProviderReadinessService());
+        var scriptValidator = new ScriptValidator();
+        var retryWrapper = new ProviderRetryWrapper(
+            _loggerFactory.CreateLogger<ProviderRetryWrapper>());
+        var ttsValidator = new TtsOutputValidator(
+            _loggerFactory.CreateLogger<TtsOutputValidator>());
+        var imageValidator = new ImageOutputValidator(
+            _loggerFactory.CreateLogger<ImageOutputValidator>());
+        var llmValidator = new LlmOutputValidator(
+            _loggerFactory.CreateLogger<LlmOutputValidator>());
+        var cleanupManager = new ResourceCleanupManager(
+            _loggerFactory.CreateLogger<ResourceCleanupManager>());
 
-        var timelineBuilder = new Aura.Core.Timeline.TimelineBuilder();
-        var providerSettings = new Aura.Core.Configuration.ProviderSettings(
-            _loggerFactory.CreateLogger<Aura.Core.Configuration.ProviderSettings>());
-        var telemetryCollector = new Aura.Core.Telemetry.RunTelemetryCollector(
-            _loggerFactory.CreateLogger<Aura.Core.Telemetry.RunTelemetryCollector>(),
+        var timelineBuilder = new TimelineBuilder();
+        var providerSettings = new ProviderSettings(
+            _loggerFactory.CreateLogger<ProviderSettings>());
+        var telemetryCollector = new RunTelemetryCollector(
+            _loggerFactory.CreateLogger<RunTelemetryCollector>(),
             System.IO.Path.GetTempPath());
 
         var orchestrator = new VideoOrchestrator(
@@ -219,34 +228,35 @@ public class VideoGenerationComprehensiveTests
         var mockVideoComposer = new TestVideoComposer();
         var mockFfmpegLocator = new TestFfmpegLocator();
         var mockHardwareDetector = new TestHardwareDetector();
-        var mockCache2 = new Microsoft.Extensions.Caching.Memory.MemoryCache(
-            new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
-        var ffmpegResolver2 = new Aura.Core.Dependencies.FFmpegResolver(
-            _loggerFactory.CreateLogger<Aura.Core.Dependencies.FFmpegResolver>(),
+        var mockCache2 = new MemoryCache(
+            new MemoryCacheOptions());
+        var ffmpegResolver2 = new FFmpegResolver(
+            _loggerFactory.CreateLogger<FFmpegResolver>(),
             mockCache2);
 
-        var preGenerationValidator = new Aura.Core.Validation.PreGenerationValidator(
-            _loggerFactory.CreateLogger<Aura.Core.Validation.PreGenerationValidator>(),
+        var preGenerationValidator = new PreGenerationValidator(
+            _loggerFactory.CreateLogger<PreGenerationValidator>(),
             mockFfmpegLocator,
             ffmpegResolver2,
-            mockHardwareDetector);
-        var scriptValidator = new Aura.Core.Validation.ScriptValidator();
-        var retryWrapper = new Aura.Core.Services.ProviderRetryWrapper(
-            _loggerFactory.CreateLogger<Aura.Core.Services.ProviderRetryWrapper>());
-        var ttsValidator = new Aura.Core.Validation.TtsOutputValidator(
-            _loggerFactory.CreateLogger<Aura.Core.Validation.TtsOutputValidator>());
-        var imageValidator = new Aura.Core.Validation.ImageOutputValidator(
-            _loggerFactory.CreateLogger<Aura.Core.Validation.ImageOutputValidator>());
-        var llmValidator = new Aura.Core.Validation.LlmOutputValidator(
-            _loggerFactory.CreateLogger<Aura.Core.Validation.LlmOutputValidator>());
-        var cleanupManager = new Aura.Core.Services.ResourceCleanupManager(
-            _loggerFactory.CreateLogger<Aura.Core.Services.ResourceCleanupManager>());
+            mockHardwareDetector,
+            CreateReadyProviderReadinessService());
+        var scriptValidator = new ScriptValidator();
+        var retryWrapper = new ProviderRetryWrapper(
+            _loggerFactory.CreateLogger<ProviderRetryWrapper>());
+        var ttsValidator = new TtsOutputValidator(
+            _loggerFactory.CreateLogger<TtsOutputValidator>());
+        var imageValidator = new ImageOutputValidator(
+            _loggerFactory.CreateLogger<ImageOutputValidator>());
+        var llmValidator = new LlmOutputValidator(
+            _loggerFactory.CreateLogger<LlmOutputValidator>());
+        var cleanupManager = new ResourceCleanupManager(
+            _loggerFactory.CreateLogger<ResourceCleanupManager>());
 
-        var timelineBuilder = new Aura.Core.Timeline.TimelineBuilder();
-        var providerSettings = new Aura.Core.Configuration.ProviderSettings(
-            _loggerFactory.CreateLogger<Aura.Core.Configuration.ProviderSettings>());
-        var telemetryCollector = new Aura.Core.Telemetry.RunTelemetryCollector(
-            _loggerFactory.CreateLogger<Aura.Core.Telemetry.RunTelemetryCollector>(),
+        var timelineBuilder = new TimelineBuilder();
+        var providerSettings = new ProviderSettings(
+            _loggerFactory.CreateLogger<ProviderSettings>());
+        var telemetryCollector = new RunTelemetryCollector(
+            _loggerFactory.CreateLogger<RunTelemetryCollector>(),
             System.IO.Path.GetTempPath());
 
         var orchestrator = new VideoOrchestrator(
@@ -291,12 +301,62 @@ public class VideoGenerationComprehensiveTests
                 brief, planSpec, voiceSpec, renderSpec, systemProfile,
                 null, cts.Token);
         });
-        
+
         // Verify it's either a cancellation or orchestration exception with cancellation as inner
         Assert.True(
-            exception is OperationCanceledException || 
+            exception is OperationCanceledException ||
             exception is Aura.Core.Services.Generation.OrchestrationException,
             $"Expected cancellation-related exception, got: {exception.GetType().Name}");
+    }
+
+    private static IProviderReadinessService CreateReadyProviderReadinessService()
+    {
+        return new StaticProviderReadinessService(CreateReadyProvidersResult());
+    }
+
+    private static ProviderReadinessResult CreateReadyProvidersResult()
+    {
+        var result = new ProviderReadinessResult();
+        result.CategoryStatuses.Add(new ProviderCategoryStatus(
+            "LLM",
+            true,
+            "TestLLM",
+            null,
+            "LLM ready",
+            Array.Empty<string>(),
+            Array.Empty<ProviderCandidateStatus>()));
+        result.CategoryStatuses.Add(new ProviderCategoryStatus(
+            "TTS",
+            true,
+            "TestTTS",
+            null,
+            "TTS ready",
+            Array.Empty<string>(),
+            Array.Empty<ProviderCandidateStatus>()));
+        result.CategoryStatuses.Add(new ProviderCategoryStatus(
+            "Images",
+            true,
+            "TestImages",
+            null,
+            "Images ready",
+            Array.Empty<string>(),
+            Array.Empty<ProviderCandidateStatus>()));
+        return result;
+    }
+
+    private sealed class StaticProviderReadinessService : IProviderReadinessService
+    {
+        private readonly ProviderReadinessResult _result;
+
+        public StaticProviderReadinessService(ProviderReadinessResult result)
+        {
+            _result = result;
+        }
+
+        public Task<ProviderReadinessResult> ValidateRequiredProvidersAsync(CancellationToken ct = default)
+        {
+            return Task.FromResult(_result);
+        }
     }
 
     // Test helper classes
@@ -435,7 +495,7 @@ More test content here to ensure we have adequate word count for the duration. M
         {
             SynthesizeCalled = true;
             var outputPath = Path.Combine(Path.GetTempPath(), $"test-audio-{Guid.NewGuid()}.wav");
-            
+
             // Create a valid WAV file
             var sampleRate = 44100;
             var channels = 1;
@@ -443,7 +503,7 @@ More test content here to ensure we have adequate word count for the duration. M
             var duration = 1.0;
             var numSamples = (int)(sampleRate * duration);
             var dataSize = numSamples * channels * (bitsPerSample / 8);
-            
+
             using (var fs = new FileStream(outputPath, FileMode.Create))
             using (var writer = new BinaryWriter(fs))
             {
@@ -465,7 +525,7 @@ More test content here to ensure we have adequate word count for the duration. M
                     writer.Write((short)0);
                 }
             }
-            
+
             return await Task.FromResult(outputPath);
         }
     }
@@ -487,7 +547,7 @@ More test content here to ensure we have adequate word count for the duration. M
         public async Task<IReadOnlyList<Asset>> FetchOrGenerateAsync(Scene scene, VisualSpec spec, CancellationToken ct)
         {
             var imagePath = Path.Combine(Path.GetTempPath(), $"test-image-{Guid.NewGuid()}.jpg");
-            
+
             // Minimal JPEG file
             byte[] minimalJpeg = new byte[]
             {
@@ -503,9 +563,9 @@ More test content here to ensure we have adequate word count for the duration. M
                 0x00, 0x00, 0xFF, 0xDA, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3F, 0x00, 0xD2, 0xCF, 0x20, 0xFF,
                 0xD9
             };
-            
+
             await File.WriteAllBytesAsync(imagePath, minimalJpeg, ct);
-            
+
             var assets = new List<Asset>
             {
                 new Asset("image", imagePath, "CC0", null)

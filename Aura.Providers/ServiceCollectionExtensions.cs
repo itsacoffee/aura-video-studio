@@ -32,7 +32,7 @@ public static class ServiceCollectionExtensions
         services.AddMusicProviders();
         services.AddSfxProviders();
         services.AddRenderingProviders();
-        
+
         return services;
     }
 
@@ -51,17 +51,17 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<ProviderMixer>();
         services.TryAddSingleton<LlmProviderFactory>();
         services.TryAddSingleton<IKeyStore, KeyStore>();
-        
+
         // Register individual LLM providers as keyed services
         // This allows direct resolution by provider name: sp.GetKeyedService<ILlmProvider>("OpenAI")
-        
+
         // RuleBased provider (ALWAYS AVAILABLE - offline fallback)
         services.AddKeyedSingleton<ILlmProvider>("RuleBased", (sp, key) =>
         {
             var logger = sp.GetRequiredService<ILogger<RuleBasedLlmProvider>>();
             return new RuleBasedLlmProvider(logger);
         });
-        
+
         // Ollama provider (local, checks availability at runtime)
         services.AddKeyedSingleton<ILlmProvider>("Ollama", (sp, key) =>
         {
@@ -70,17 +70,17 @@ public static class ServiceCollectionExtensions
             var providerSettings = sp.GetRequiredService<ProviderSettings>();
             var baseUrl = providerSettings.GetOllamaUrl();
             var model = providerSettings.GetOllamaModel();
-            
+
             return new OllamaLlmProvider(logger, httpClient, baseUrl, model);
         });
-        
+
         // OpenAI provider (requires API key)
         services.AddKeyedSingleton<ILlmProvider>("OpenAI", (sp, key) =>
         {
             var logger = sp.GetRequiredService<ILogger<OpenAiLlmProvider>>();
             var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
             var keyStore = sp.GetRequiredService<IKeyStore>();
-            
+
             // Try to get API key from secure storage
             var apiKeys = keyStore.GetAllKeys();
             if (!apiKeys.TryGetValue("openai", out var apiKey) || string.IsNullOrWhiteSpace(apiKey))
@@ -88,38 +88,38 @@ public static class ServiceCollectionExtensions
                 logger.LogDebug("OpenAI API key not configured, provider unavailable");
                 return null!;
             }
-            
+
             return new OpenAiLlmProvider(logger, httpClient, apiKey, "gpt-4o-mini");
         });
-        
+
         // Azure OpenAI provider (requires API key and endpoint)
         services.AddKeyedSingleton<ILlmProvider>("Azure", (sp, key) =>
         {
             var logger = sp.GetRequiredService<ILogger<AzureOpenAiLlmProvider>>();
             var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
             var keyStore = sp.GetRequiredService<IKeyStore>();
-            
+
             // Try to get credentials from secure storage
             var apiKeys = keyStore.GetAllKeys();
-            if (!apiKeys.TryGetValue("azure_openai_key", out var apiKey) || 
+            if (!apiKeys.TryGetValue("azure_openai_key", out var apiKey) ||
                 !apiKeys.TryGetValue("azure_openai_endpoint", out var endpoint) ||
-                string.IsNullOrWhiteSpace(apiKey) || 
+                string.IsNullOrWhiteSpace(apiKey) ||
                 string.IsNullOrWhiteSpace(endpoint))
             {
                 logger.LogDebug("Azure OpenAI credentials not configured, provider unavailable");
                 return null!;
             }
-            
+
             return new AzureOpenAiLlmProvider(logger, httpClient, apiKey, endpoint, "gpt-4");
         });
-        
+
         // Gemini provider (requires API key)
         services.AddKeyedSingleton<ILlmProvider>("Gemini", (sp, key) =>
         {
             var logger = sp.GetRequiredService<ILogger<GeminiLlmProvider>>();
             var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
             var keyStore = sp.GetRequiredService<IKeyStore>();
-            
+
             // Try to get API key from secure storage
             var apiKeys = keyStore.GetAllKeys();
             if (!apiKeys.TryGetValue("gemini", out var apiKey) || string.IsNullOrWhiteSpace(apiKey))
@@ -127,17 +127,17 @@ public static class ServiceCollectionExtensions
                 logger.LogDebug("Gemini API key not configured, provider unavailable");
                 return null!;
             }
-            
+
             return new GeminiLlmProvider(logger, httpClient, apiKey, "gemini-pro");
         });
-        
+
         // Anthropic provider (requires API key)
         services.AddKeyedSingleton<ILlmProvider>("Anthropic", (sp, key) =>
         {
             var logger = sp.GetRequiredService<ILogger<AnthropicLlmProvider>>();
             var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
             var keyStore = sp.GetRequiredService<IKeyStore>();
-            
+
             // Try to get API key from secure storage
             var apiKeys = keyStore.GetAllKeys();
             if (!apiKeys.TryGetValue("anthropic", out var apiKey) || string.IsNullOrWhiteSpace(apiKey))
@@ -145,10 +145,10 @@ public static class ServiceCollectionExtensions
                 logger.LogDebug("Anthropic API key not configured, provider unavailable");
                 return null!;
             }
-            
+
             return new AnthropicLlmProvider(logger, httpClient, apiKey);
         });
-        
+
         services.TryAddSingleton<CompositeLlmProvider>();
         services.TryAddSingleton<ILlmProvider>(sp => sp.GetRequiredService<CompositeLlmProvider>());
 
@@ -204,14 +204,14 @@ public static class ServiceCollectionExtensions
             var offlineOnly = settings.IsOfflineOnly();
             var voiceCache = sp.GetService<VoiceCache>();
             var ffmpegPath = settings.GetFfmpegPath();
-            
+
             // Only create if API key is available
             if (string.IsNullOrWhiteSpace(apiKey))
             {
                 logger.LogDebug("ElevenLabs API key not configured, skipping provider registration");
                 return null!;
             }
-            
+
             return new ElevenLabsTtsProvider(logger, httpClient, apiKey, offlineOnly, voiceCache, ffmpegPath);
         });
 
@@ -223,14 +223,14 @@ public static class ServiceCollectionExtensions
             var settings = sp.GetRequiredService<ProviderSettings>();
             var apiKey = settings.GetPlayHTApiKey();
             var userId = settings.GetPlayHTUserId();
-            
+
             // Only create if both API key and user ID are available
             if (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(userId))
             {
                 logger.LogDebug("PlayHT credentials not configured, skipping provider registration");
                 return null!;
             }
-            
+
             return new PlayHTTtsProvider(logger, httpClient, apiKey, userId);
         });
 
@@ -242,14 +242,14 @@ public static class ServiceCollectionExtensions
             var apiKey = settings.GetAzureSpeechKey();
             var region = settings.GetAzureSpeechRegion();
             var offlineOnly = settings.IsOfflineOnly();
-            
+
             // Only create if API key and region are available
             if (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(region))
             {
                 logger.LogDebug("Azure Speech credentials not configured, skipping provider registration");
                 return null!;
             }
-            
+
             return new AzureTtsProvider(logger, apiKey, region, offlineOnly);
         });
 
@@ -262,14 +262,14 @@ public static class ServiceCollectionExtensions
             var settings = sp.GetRequiredService<ProviderSettings>();
             var piperPath = settings.PiperExecutablePath;
             var modelPath = settings.PiperVoiceModelPath;
-            
+
             // Only create if paths are configured
             if (string.IsNullOrWhiteSpace(piperPath) || string.IsNullOrWhiteSpace(modelPath))
             {
                 logger.LogDebug("Piper TTS paths not configured, skipping provider registration");
                 return null!;
             }
-            
+
             return new PiperTtsProvider(logger, silentWavGenerator, wavValidator, piperPath, modelPath);
         });
 
@@ -282,14 +282,14 @@ public static class ServiceCollectionExtensions
             var wavValidator = sp.GetRequiredService<Aura.Core.Audio.WavValidator>();
             var settings = sp.GetRequiredService<ProviderSettings>();
             var baseUrl = settings.Mimic3BaseUrl;
-            
+
             // Only create if base URL is configured
             if (string.IsNullOrWhiteSpace(baseUrl))
             {
                 logger.LogDebug("Mimic3 base URL not configured, skipping provider registration");
                 return null!;
             }
-            
+
             return new Mimic3TtsProvider(logger, httpClient, silentWavGenerator, wavValidator, baseUrl);
         });
 
@@ -308,16 +308,16 @@ public static class ServiceCollectionExtensions
             var logger = sp.GetRequiredService<ILogger<Images.StableDiffusionWebUiProvider>>();
             var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
             var settings = sp.GetRequiredService<ProviderSettings>();
-            
+
             var sdUrl = settings.GetStableDiffusionUrl();
-            
+
             // Check if SD WebUI is configured
             if (string.IsNullOrWhiteSpace(sdUrl))
             {
                 logger.LogDebug("Stable Diffusion WebUI URL not configured, skipping provider registration");
                 return null!;
             }
-            
+
             // Try to get hardware info for optimization, but don't require it
             bool isNvidiaGpu = false;
             int vramGB = 0;
@@ -335,7 +335,7 @@ public static class ServiceCollectionExtensions
             {
                 logger.LogWarning(ex, "Could not detect hardware, using defaults for SD WebUI provider");
             }
-            
+
             return new Images.StableDiffusionWebUiProvider(
                 logger,
                 httpClient,
@@ -348,23 +348,23 @@ public static class ServiceCollectionExtensions
 
         // Register stock image providers (Unsplash, Pexels, Pixabay) as IEnhancedStockProvider
         // These serve as fallback options when generation fails or for cost optimization
-        
+
         // Unsplash provider (requires API key)
         services.AddSingleton<Aura.Core.Providers.IEnhancedStockProvider>(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<Images.EnhancedUnsplashProvider>>();
             var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
             var keyStore = sp.GetRequiredService<IKeyStore>();
-            
+
             var apiKeys = keyStore.GetAllKeys();
             apiKeys.TryGetValue("unsplash", out var apiKey);
-            
+
             if (string.IsNullOrWhiteSpace(apiKey))
             {
                 logger.LogDebug("Unsplash API key not configured, skipping provider registration");
                 return null!;
             }
-            
+
             return new Images.EnhancedUnsplashProvider(logger, httpClient, apiKey);
         });
 
@@ -374,16 +374,16 @@ public static class ServiceCollectionExtensions
             var logger = sp.GetRequiredService<ILogger<Images.EnhancedPexelsProvider>>();
             var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
             var keyStore = sp.GetRequiredService<IKeyStore>();
-            
+
             var apiKeys = keyStore.GetAllKeys();
             apiKeys.TryGetValue("pexels", out var apiKey);
-            
+
             if (string.IsNullOrWhiteSpace(apiKey))
             {
                 logger.LogDebug("Pexels API key not configured, skipping provider registration");
                 return null!;
             }
-            
+
             return new Images.EnhancedPexelsProvider(logger, httpClient, apiKey);
         });
 
@@ -393,16 +393,16 @@ public static class ServiceCollectionExtensions
             var logger = sp.GetRequiredService<ILogger<Images.EnhancedPixabayProvider>>();
             var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
             var keyStore = sp.GetRequiredService<IKeyStore>();
-            
+
             var apiKeys = keyStore.GetAllKeys();
             apiKeys.TryGetValue("pixabay", out var apiKey);
-            
+
             if (string.IsNullOrWhiteSpace(apiKey))
             {
                 logger.LogDebug("Pixabay API key not configured, skipping provider registration");
                 return null!;
             }
-            
+
             return new Images.EnhancedPixabayProvider(logger, httpClient, apiKey);
         });
 
@@ -412,7 +412,7 @@ public static class ServiceCollectionExtensions
             var logger = sp.GetRequiredService<ILogger<Images.PlaceholderImageProvider>>();
             var settings = sp.GetRequiredService<ProviderSettings>();
             var outputDirectory = Path.Combine(settings.GetAuraDataDirectory(), "placeholders");
-            
+
             return new Images.PlaceholderImageProvider(logger, outputDirectory);
         });
 
@@ -450,7 +450,7 @@ public static class ServiceCollectionExtensions
             var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
             var configuration = sp.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>();
             var apiKey = configuration["Audio:FreesoundApiKey"];
-            
+
             // Create provider even without API key (will return IsAvailable = false)
             return new Sfx.FreesoundSfxProvider(logger, httpClient, apiKey);
         });
@@ -466,7 +466,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<Aura.Core.Orchestrator.LlmProviderFactory>();
         services.AddSingleton<TtsProviderFactory>();
         services.AddSingleton<ImageProviderFactory>();
-        
+
         return services;
     }
 
@@ -475,6 +475,8 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddProviderHealthServices(this IServiceCollection services)
     {
+        services.AddSingleton<Aura.Core.Services.Providers.ProviderConnectionValidationService>();
+        services.AddSingleton<Aura.Core.Services.Providers.IProviderReadinessService, Aura.Core.Services.Providers.ProviderReadinessService>();
         services.AddSingleton<Aura.Core.Services.Providers.ProviderHealthMonitoringService>();
         services.AddSingleton<Aura.Core.Services.Providers.ProviderCostTrackingService>();
         services.AddSingleton<Aura.Core.Services.Providers.ProviderStatusService>();
@@ -482,11 +484,11 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<Aura.Core.Services.Providers.ProviderFallbackService>();
         services.AddSingleton<Aura.Core.Services.Health.ProviderHealthMonitor>();
         services.AddSingleton<Aura.Core.Services.Health.ProviderHealthService>();
-        
+
         // Register LLM provider-specific services
         services.AddSingleton<Aura.Core.Services.Providers.LlmProviderValidator>();
         services.AddSingleton<Aura.Core.Services.Providers.LlmProviderCircuitBreaker>();
-        
+
         // Ollama detection service (for background detection and caching)
         services.AddSingleton<Aura.Core.Services.Providers.OllamaDetectionService>(sp =>
         {
@@ -497,7 +499,7 @@ public static class ServiceCollectionExtensions
             var baseUrl = settings.GetOllamaUrl();
             return new Aura.Core.Services.Providers.OllamaDetectionService(logger, httpClient, cache, baseUrl);
         });
-        
+
         // Stable Diffusion detection service
         services.AddSingleton<Aura.Core.Services.Providers.StableDiffusionDetectionService>(sp =>
         {
@@ -507,7 +509,7 @@ public static class ServiceCollectionExtensions
             var baseUrl = settings.GetStableDiffusionUrl();
             return new Aura.Core.Services.Providers.StableDiffusionDetectionService(logger, httpClient, baseUrl);
         });
-        
+
         return services;
     }
 
@@ -519,7 +521,7 @@ public static class ServiceCollectionExtensions
     {
         // Register all rendering providers as IRenderingProvider
         // Priority order: FFmpegProvider (auto-detect) > NVENC > AMF > QSV > BasicFFmpeg
-        
+
         services.AddSingleton<Rendering.IRenderingProvider>(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<Rendering.FFmpegProvider>>();
