@@ -301,18 +301,18 @@ public class KeysCommand : ICommand
         }
     }
 
-    private async Task<int> ExportKeysAsync(string[] args)
+    private Task<int> ExportKeysAsync(string[] args)
     {
         Console.Error.WriteLine("Error: Export functionality not yet implemented");
         Console.Error.WriteLine("This feature will be added in a future update.");
-        return ExitCodes.NotImplemented;
+        return Task.FromResult(ExitCodes.NotImplemented);
     }
 
-    private async Task<int> ImportKeysAsync(string[] args)
+    private Task<int> ImportKeysAsync(string[] args)
     {
         Console.Error.WriteLine("Error: Import functionality not yet implemented");
         Console.Error.WriteLine("This feature will be added in a future update.");
-        return ExitCodes.NotImplemented;
+        return Task.FromResult(ExitCodes.NotImplemented);
     }
 
     private void ShowHelp()

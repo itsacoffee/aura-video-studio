@@ -126,7 +126,7 @@ export const ProviderPingTest: FC<ProviderPingTestProps> = ({
         <div className={styles.statusIndicator}>
           <CheckmarkCircle24Filled style={{ color: tokens.colorPaletteGreenForeground1 }} />
           <Badge color="success">Online</Badge>
-          {pingResult.responseTimeMs && <Text size={200}>{pingResult.responseTimeMs}ms</Text>}
+          {pingResult.latencyMs && <Text size={200}>{pingResult.latencyMs}ms</Text>}
         </div>
       );
     }
@@ -218,17 +218,17 @@ export const ProviderPingTest: FC<ProviderPingTestProps> = ({
             </div>
           )}
 
-          {pingResult.httpStatus && (
+          {pingResult.statusCode !== null && (
             <div className={styles.detailRow}>
               <Text size={200}>HTTP Status:</Text>
-              <Text size={200}>{pingResult.httpStatus}</Text>
+              <Text size={200}>{pingResult.statusCode}</Text>
             </div>
           )}
 
-          {pingResult.responseTimeMs && (
+          {pingResult.latencyMs && (
             <div className={styles.detailRow}>
               <Text size={200}>Response Time:</Text>
-              <Text size={200}>{pingResult.responseTimeMs}ms</Text>
+              <Text size={200}>{pingResult.latencyMs}ms</Text>
             </div>
           )}
 

@@ -10,6 +10,7 @@ import {
   Field,
   Divider,
   Spinner,
+  Caption1,
 } from '@fluentui/react-components';
 import {
   CheckmarkCircle24Filled,
@@ -87,13 +88,25 @@ interface ProvidersTabProps {
   onTestApiKey: (
     provider: string,
     apiKey: string
-  ) => Promise<{ success: boolean; message: string; responseTime?: number }>;
+  ) => Promise<{
+    success: boolean;
+    message: string;
+    responseTimeMs?: number | null;
+    statusCode?: number | null;
+    errorCode?: string | null;
+    endpoint?: string | null;
+    correlationId?: string | null;
+  }>;
 }
 
 interface TestResult {
   success: boolean;
   message: string;
-  responseTime?: number;
+  responseTime?: number | null;
+  statusCode?: number | null;
+  errorCode?: string | null;
+  endpoint?: string | null;
+  correlationId?: string | null;
   testing?: boolean;
 }
 
@@ -150,7 +163,16 @@ export function ProvidersTab({
       const result = await onTestApiKey(provider, apiKey);
       setTestResults((prev) => ({
         ...prev,
-        [provider]: { ...result, testing: false },
+        [provider]: {
+          success: result.success,
+          message: result.message,
+          responseTime: result.responseTimeMs ?? null,
+          statusCode: result.statusCode ?? null,
+          errorCode: result.errorCode ?? null,
+          endpoint: result.endpoint ?? null,
+          correlationId: result.correlationId ?? null,
+          testing: false,
+        },
       }));
     } catch (error) {
       setTestResults((prev) => ({
@@ -247,6 +269,16 @@ export function ProvidersTab({
               {testResult.message}
               {testResult.responseTime && ` (${testResult.responseTime}ms)`}
             </Text>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {typeof testResult.statusCode === 'number' && (
+                <Caption1>HTTP: {testResult.statusCode}</Caption1>
+              )}
+              {testResult.errorCode && <Caption1>Error: {testResult.errorCode}</Caption1>}
+              {testResult.endpoint && <Caption1>Endpoint: {testResult.endpoint}</Caption1>}
+              {testResult.correlationId && (
+                <Caption1>Correlation ID: {testResult.correlationId}</Caption1>
+              )}
+            </div>
           </div>
         )}
       </Field>

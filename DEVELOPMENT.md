@@ -16,6 +16,7 @@ This guide covers local development for Aura Video Studio's **backend and fronte
 ## Overview
 
 Aura Video Studio is an **Electron desktop application** that bundles:
+
 - **React frontend** (Aura.Web) - UI components built with React + TypeScript + Vite
 - **ASP.NET Core backend** (Aura.Api) - REST API with Server-Sent Events
 - **Electron shell** (Aura.Desktop) - Native desktop wrapper, IPC, window management
@@ -25,18 +26,22 @@ This guide focuses on developing the backend and frontend **components** in isol
 ## Desktop App vs Component Development
 
 ### Desktop App Development (Production-like)
+
 **When to use:** Final testing, Electron-specific features, IPC development, packaging
 
 **See:** [DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md) for:
+
 - Electron main process development
 - IPC handlers and preload scripts
 - Native desktop features (menus, tray, dialogs)
 - Building installers and distribution
 
 ### Component Development (Rapid Iteration)
+
 **When to use:** Backend API development, frontend UI development, quick testing
 
 **This guide covers:**
+
 - Running backend API standalone
 - Running frontend in browser with Vite hot-reload
 - API endpoint development
@@ -68,6 +73,7 @@ This guide focuses on developing the backend and frontend **components** in isol
 ```
 
 **In Production (Electron App):**
+
 - Electron main process spawns the .NET backend as a child process
 - Backend runs on random available port (e.g., http://localhost:54321)
 - React frontend is loaded from bundled files into Electron window
@@ -75,6 +81,7 @@ This guide focuses on developing the backend and frontend **components** in isol
 - Frontend communicates with Electron main process via IPC (through preload script)
 
 **In Development (Component Mode):**
+
 - Backend runs standalone on http://localhost:5005
 - Frontend runs in browser with Vite dev server on http://localhost:5173
 - Hot reload enabled for fast iteration
@@ -121,15 +128,16 @@ Aura/
 
 ### Prerequisites
 
-| Tool | Minimum Version | Required For | Notes |
-|------|----------------|--------------|-------|
-| **Node.js** | 20.0+ | Frontend (Aura.Web) | Use version from .nvmrc if available |
-| **npm** | 9.0+ | Frontend dependencies | Comes with Node.js |
-| **.NET SDK** | 8.0+ | Backend (Aura.Api, Aura.Core) | Required |
-| **Electron** | 32.0+ | Desktop app | Installed via npm in Aura.Desktop |
-| **FFmpeg** | 4.0+ | Video rendering | Required at runtime |
+| Tool         | Minimum Version | Required For                  | Notes                                |
+| ------------ | --------------- | ----------------------------- | ------------------------------------ |
+| **Node.js**  | 20.0+           | Frontend (Aura.Web)           | Use version from .nvmrc if available |
+| **npm**      | 9.0+            | Frontend dependencies         | Comes with Node.js                   |
+| **.NET SDK** | 8.0+            | Backend (Aura.Api, Aura.Core) | Required                             |
+| **Electron** | 32.0+           | Desktop app                   | Installed via npm in Aura.Desktop    |
+| **FFmpeg**   | 4.0+            | Video rendering               | Required at runtime                  |
 
 **Optional:**
+
 - **Git** - Version control
 - **Visual Studio Code** - Recommended editor
 - **Docker** - For containerized dependencies (alternative approach)
@@ -137,34 +145,39 @@ Aura/
 ### First-Time Setup
 
 1. **Clone the repository:**
+
    ```bash
    git clone https://github.com/your-org/aura-video-studio.git
    cd aura-video-studio
    ```
 
 2. **Install frontend dependencies:**
+
    ```bash
    cd Aura.Web
    npm install
    ```
 
 3. **Install Electron dependencies:**
+
    ```bash
    cd ../Aura.Desktop
    npm install
    ```
 
 4. **Restore .NET dependencies:**
+
    ```bash
    cd ../Aura.Api
    dotnet restore
    ```
 
 5. **Configure environment (optional):**
+
    ```bash
    # Copy example config
    cp .env.example .env
-   
+
    # Edit .env to add API keys for premium features (optional)
    nano .env
    ```
@@ -214,6 +227,25 @@ npm run dev
 
 The Vite dev server will proxy `/api/*` calls to the backend URL from the bridge automatically.
 
+### Provider Connectivity Testing
+
+Provider key validation now relies on the unified ping endpoints inside `ProvidersController`:
+
+- `POST /api/providers/{providerId}/ping` — runs a live network call using the stored API key and returns detailed diagnostics (`success`, `statusCode`, `errorCode`, `endpoint`, `latencyMs`, `correlationId`).
+- `GET /api/providers/ping-all` — iterates over every supported provider (LLM, TTS, image, and local engines) and returns a map of results for dashboards.
+
+Ping requests never accept secrets; API keys are always retrieved from the secure key vault. Optional metadata (e.g., Azure endpoint, PlayHT user ID) can be passed via the request body when a provider requires additional configuration.
+
+Common error codes:
+
+- `MissingApiKey` — key not stored yet.
+- `InvalidApiKey` — provider returned 401/403.
+- `RateLimited` — provider throttled the request (HTTP 429).
+- `ProviderUnavailable` — provider returned 5xx.
+- `NetworkError` / `Timeout` — local connectivity issues.
+
+The web UI surfaces these details inside Settings → Providers, and `settingsService.testApiKey` automatically saves the key, triggers a ping, and displays the HTTP status, latency, and correlation ID for debugging.
+
 ## Component Development Workflows
 
 ### Quick Start: Component Development Mode
@@ -235,12 +267,14 @@ npm run dev
 ```
 
 **Benefits:**
+
 - ✅ Frontend hot-reload for instant UI updates
 - ✅ Backend watch mode available via `dotnet watch run`
 - ✅ Browser DevTools for debugging
 - ✅ Fast iteration cycle
 
 **Limitations:**
+
 - ❌ No Electron-specific features (IPC, native dialogs, menus)
 - ❌ Not testing final desktop app behavior
 - ❌ Browser environment differs from Electron renderer
@@ -291,6 +325,7 @@ git commit -m "feat: your feature"
 ### Backend Development
 
 **Running with auto-reload:**
+
 ```bash
 cd Aura.Api
 dotnet watch run
@@ -298,11 +333,13 @@ dotnet watch run
 ```
 
 **Making changes:**
+
 1. Edit .cs files in Aura.Api, Aura.Core, or Aura.Providers
 2. Save file - backend automatically rebuilds and restarts
 3. Test API endpoint via browser, Postman, or frontend
 
 **Testing endpoints:**
+
 ```bash
 # Health check
 curl http://localhost:5005/health/live
@@ -314,6 +351,7 @@ curl http://localhost:5005/api/v1/jobs
 ### Frontend Development
 
 **Running with hot reload:**
+
 ```bash
 cd Aura.Web
 npm run dev
@@ -321,11 +359,13 @@ npm run dev
 ```
 
 **Making changes:**
+
 1. Edit .tsx/.ts files in Aura.Web/src
 2. Save file - browser automatically updates (no page reload)
 3. Changes reflect instantly in browser
 
 **Code quality checks:**
+
 ```bash
 cd Aura.Web
 
@@ -365,6 +405,7 @@ npm run dev
 ### Adding a New API Endpoint
 
 1. **Create/update controller:**
+
    ```csharp
    // Aura.Api/Controllers/YourController.cs
    [ApiController]
@@ -377,16 +418,18 @@ npm run dev
    ```
 
 2. **Test the endpoint:**
+
    ```bash
    # With backend running on localhost:5005
    curl http://localhost:5005/api/v1/your-endpoint
    ```
 
 3. **Update frontend API client (if needed):**
+
    ```typescript
    // Aura.Web/src/services/api/apiClient.ts
    export async function getYourData() {
-     const response = await apiClient.get('/api/v1/your-endpoint');
+     const response = await apiClient.get("/api/v1/your-endpoint");
      return response.data;
    }
    ```
@@ -457,12 +500,14 @@ make clean
 ### Backend won't start
 
 **Check .NET SDK:**
+
 ```bash
 dotnet --version
 # Should be 8.0.x or higher
 ```
 
 **Check port availability:**
+
 ```bash
 # Windows
 netstat -ano | findstr :5005
@@ -472,6 +517,7 @@ lsof -i :5005
 ```
 
 **Check logs:**
+
 ```bash
 cd Aura.Api
 dotnet run --verbosity detailed
@@ -480,12 +526,14 @@ dotnet run --verbosity detailed
 ### Frontend dev server fails
 
 **Check Node.js version:**
+
 ```bash
 node --version
 # Should be 20.0.0 or higher
 ```
 
 **Clear cache and reinstall:**
+
 ```bash
 cd Aura.Web
 rm -rf node_modules .vite dist
@@ -496,15 +544,18 @@ npm run dev
 ### Frontend can't connect to backend
 
 **Verify backend is running:**
+
 ```bash
 curl http://localhost:5005/health/live
 ```
 
 **Check CORS configuration:**
+
 - Backend should allow http://localhost:5173 in development
 - Check Aura.Api/Program.cs for CORS policy
 
 **Check frontend API base URL:**
+
 ```typescript
 // Aura.Web/src/services/api/apiClient.ts
 // Should point to http://localhost:5005 in development
@@ -513,6 +564,7 @@ curl http://localhost:5005/health/live
 ### FFmpeg not found
 
 **Install FFmpeg:**
+
 ```bash
 # Windows (winget)
 winget install ffmpeg
@@ -525,6 +577,7 @@ sudo apt-get install ffmpeg
 ```
 
 **Verify installation:**
+
 ```bash
 ffmpeg -version
 ```
@@ -555,20 +608,23 @@ dotnet restore
 ### Component Development Performance
 
 1. **Backend watch mode:**
+
    - Use `dotnet watch run` for auto-reload
    - Only rebuilds changed projects
    - Faster than full rebuild
 
 2. **Frontend hot reload:**
+
    - Vite HMR is near-instant
    - Keep dev server running
    - Use `npm run dev` (not `npm run build`)
 
 3. **Selective testing:**
+
    ```bash
    # Test specific file
    npm test -- path/to/file.test.ts
-   
+
    # Test specific .NET project
    dotnet test Aura.Tests/Aura.Tests.csproj
    ```
@@ -582,12 +638,14 @@ See [DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md) for Electron-specific optimizat
 ### Before Submitting a PR
 
 1. **Run all checks:**
+
    ```bash
    make test
    cd Aura.Web && npm run quality-check
    ```
 
 2. **Ensure clean state:**
+
    ```bash
    make clean
    make dev
@@ -595,6 +653,7 @@ See [DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md) for Electron-specific optimizat
    ```
 
 3. **Update documentation:**
+
    - Add/update relevant docs
    - Update CHANGELOG.md
    - Include inline code comments
@@ -615,6 +674,7 @@ footer
 ```
 
 **Types:**
+
 - `feat`: New feature
 - `fix`: Bug fix
 - `docs`: Documentation changes
@@ -623,6 +683,7 @@ footer
 - `chore`: Build/tooling changes
 
 **Example:**
+
 ```
 feat(api): add video export queue endpoint
 
@@ -639,11 +700,13 @@ Closes #123
 All markdown files are linted using markdownlint-cli with configuration in `.markdownlint.json`.
 
 **Installation:**
+
 ```bash
 npm install -g markdownlint-cli
 ```
 
 **Usage:**
+
 ```bash
 # Check all markdown files
 markdownlint --config .markdownlint.json "*.md" "docs/**/*.md"
@@ -654,6 +717,7 @@ markdownlint --fix --config .markdownlint.json "*.md" "docs/**/*.md"
 
 **Configuration:**
 The `.markdownlint.json` file is configured to align with the repository's established style:
+
 - Disabled stylistic rules that don't match our conventions (MD036, MD029, MD026, MD024, etc.)
 - Enabled important rules for hard tabs and whitespace
 - Allows common patterns like emphasis-as-heading and trailing punctuation in headings
@@ -663,11 +727,13 @@ The `.markdownlint.json` file is configured to align with the repository's estab
 API documentation is generated using DocFX.
 
 **Installation:**
+
 ```bash
 dotnet tool install -g docfx
 ```
 
 **Usage:**
+
 ```bash
 # Build documentation
 docfx build docfx.json
@@ -677,6 +743,7 @@ docfx serve _site
 ```
 
 **Configuration:**
+
 - `docfx.json` - Main configuration
 - Generates documentation from XML comments in C# code
 - Includes markdown documentation from `docs/` directory

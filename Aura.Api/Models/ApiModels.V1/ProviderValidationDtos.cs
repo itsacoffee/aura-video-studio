@@ -170,17 +170,18 @@ public record AllProvidersStatusResponse(
     int ReachableCount);
 
 /// <summary>
-/// Provider ping result with explicit network I/O indication
+/// Provider ping result with standardized diagnostics
 /// </summary>
 public record ProviderPingResult(
+    string Provider,
     bool Attempted,
     bool Success,
-    string? ErrorCode,
     string? Message,
-    string? HttpStatus,
+    string? ErrorCode,
+    int? StatusCode,
     string? Endpoint,
-    long? ResponseTimeMs = null,
-    string? CorrelationId = null);
+    long? LatencyMs,
+    string? CorrelationId);
 
 /// <summary>
 /// Response for ping-all endpoint

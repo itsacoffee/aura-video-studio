@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using Aura.Api.Controllers;
 using Aura.Core.Configuration;
@@ -40,6 +42,16 @@ public class ProvidersControllerTests
     {
         return new Mock<ISecureStorageService>();
     }
+    
+    private static ProviderPingService CreateProviderPingService()
+    {
+        var httpFactory = new Mock<IHttpClientFactory>();
+        httpFactory
+            .Setup(f => f.CreateClient(It.IsAny<string>()))
+            .Returns(new HttpClient(new StubHttpMessageHandler()));
+        var keyStore = new Mock<IKeyStore>();
+        return new ProviderPingService(new NullLogger<ProviderPingService>(), httpFactory.Object, keyStore.Object);
+    }
 
     [Fact]
     public async Task GetCapabilities_Should_ReturnStableDiffusionUnavailable_WhenNoNvidiaGpu()
@@ -75,7 +87,8 @@ public class ProvidersControllerTests
             mockSettings.Object, 
             CreateMockOpenAIValidationService(),
             CreateMockKeyValidationService().Object,
-            CreateMockSecureStorageService().Object);
+            CreateMockSecureStorageService().Object,
+            CreateProviderPingService());
 
         // Act
         var result = await controller.GetCapabilities();
@@ -119,7 +132,8 @@ public class ProvidersControllerTests
             mockSettings.Object, 
             CreateMockOpenAIValidationService(),
             CreateMockKeyValidationService().Object,
-            CreateMockSecureStorageService().Object);
+            CreateMockSecureStorageService().Object,
+            CreateProviderPingService());
 
         // Act
         var result = await controller.GetCapabilities();
@@ -163,7 +177,8 @@ public class ProvidersControllerTests
             mockSettings.Object, 
             CreateMockOpenAIValidationService(),
             CreateMockKeyValidationService().Object,
-            CreateMockSecureStorageService().Object);
+            CreateMockSecureStorageService().Object,
+            CreateProviderPingService());
 
         // Act
         var result = await controller.GetCapabilities();
@@ -207,7 +222,8 @@ public class ProvidersControllerTests
             mockSettings.Object, 
             CreateMockOpenAIValidationService(),
             CreateMockKeyValidationService().Object,
-            CreateMockSecureStorageService().Object);
+            CreateMockSecureStorageService().Object,
+            CreateProviderPingService());
 
         // Act
         var result = await controller.GetCapabilities();
@@ -249,7 +265,8 @@ public class ProvidersControllerTests
             mockSettings.Object, 
             CreateMockOpenAIValidationService(),
             CreateMockKeyValidationService().Object,
-            CreateMockSecureStorageService().Object);
+            CreateMockSecureStorageService().Object,
+            CreateProviderPingService());
 
         // Act
         var result = await controller.GetCapabilities();
@@ -297,7 +314,8 @@ public class ProvidersControllerTests
             mockSettings.Object, 
             CreateMockOpenAIValidationService(),
             CreateMockKeyValidationService().Object,
-            CreateMockSecureStorageService().Object);
+            CreateMockSecureStorageService().Object,
+            CreateProviderPingService());
 
         // Act
         var result = await controller.GetCapabilities();
@@ -311,5 +329,13 @@ public class ProvidersControllerTests
         Assert.Contains("RequiresNvidiaGPU", sdCapability.ReasonCodes);
         Assert.Contains("MissingApiKey:STABLE_KEY", sdCapability.ReasonCodes);
         Assert.Contains("InsufficientVRAM", sdCapability.ReasonCodes);
+    }
+
+    private sealed class StubHttpMessageHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+        }
     }
 }

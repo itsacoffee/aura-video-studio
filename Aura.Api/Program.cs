@@ -87,7 +87,7 @@ var loggerConfig = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
     .ConfigureStructuredLogging("Aura.Api") // Use our custom extension with all enrichers
     .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] [{CorrelationId}] {Message:lj}{NewLine}{Exception}")
-    .WriteTo.File(Path.Combine(logsBasePath, "aura-api-.log"), 
+    .WriteTo.File(Path.Combine(logsBasePath, "aura-api-.log"),
         rollingInterval: RollingInterval.Day,
         retainedFileCountLimit: 30, // 30 days retention
         outputTemplate: outputTemplate,
@@ -189,7 +189,7 @@ builder.Services.AddControllers(options =>
     {
         // Use camelCase for JSON property names (JavaScript convention)
         options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
-        
+
         // Add all tolerant enum converters for controller endpoints
         EnumJsonConverters.AddToOptions(options.JsonSerializerOptions);
     });
@@ -212,7 +212,7 @@ builder.Services.AddSwaggerGen(options =>
             Url = new Uri("https://github.com/Saiyan9001/aura-video-studio")
         }
     });
-    
+
     // Include XML comments for better API documentation
     var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
     var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
@@ -220,7 +220,7 @@ builder.Services.AddSwaggerGen(options =>
     {
         options.IncludeXmlComments(xmlPath);
     }
-    
+
     // Add correlation ID header to all operations
     options.OperationFilter<Aura.Api.Filters.CorrelationIdOperationFilter>();
 });
@@ -241,17 +241,17 @@ var databaseProvider = builder.Configuration.GetValue<string>("Database:Provider
 var usePostgreSQL = string.Equals(databaseProvider, "PostgreSQL", StringComparison.OrdinalIgnoreCase);
 
 // Configure database performance options
-var dbPerfOptions = builder.Configuration.GetSection("Database:Performance").Get<Aura.Api.Configuration.DatabasePerformanceOptions>() 
+var dbPerfOptions = builder.Configuration.GetSection("Database:Performance").Get<Aura.Api.Configuration.DatabasePerformanceOptions>()
     ?? new Aura.Api.Configuration.DatabasePerformanceOptions();
 
 // Build the connection string once for reuse
 string connectionString;
 if (usePostgreSQL)
 {
-    var baseConnectionString = builder.Configuration.GetConnectionString("PostgreSQL") 
+    var baseConnectionString = builder.Configuration.GetConnectionString("PostgreSQL")
         ?? builder.Configuration.GetValue<string>("Database:ConnectionString")
         ?? throw new InvalidOperationException("PostgreSQL connection string not configured. Please set 'Database:ConnectionString' or 'ConnectionStrings:PostgreSQL' in appsettings.json");
-    
+
     var connectionStringBuilder = new Npgsql.NpgsqlConnectionStringBuilder(baseConnectionString)
     {
         MaxPoolSize = dbPerfOptions.MaxPoolSize,
@@ -260,20 +260,20 @@ if (usePostgreSQL)
         CommandTimeout = dbPerfOptions.CommandTimeoutSeconds,
         Pooling = true
     };
-    
+
     connectionString = connectionStringBuilder.ToString();
-    Log.Information("Using PostgreSQL database at {Server} with connection pooling (Min: {Min}, Max: {Max})", 
+    Log.Information("Using PostgreSQL database at {Server} with connection pooling (Min: {Min}, Max: {Max})",
         connectionStringBuilder.Host, dbPerfOptions.MinPoolSize, dbPerfOptions.MaxPoolSize);
 }
 else
 {
-    var dbPath = builder.Configuration.GetValue<string>("Database:SQLitePath") 
+    var dbPath = builder.Configuration.GetValue<string>("Database:SQLitePath")
         ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "aura.db");
-    
+
     var walEnabled = dbPerfOptions.SqliteEnableWAL;
     var cacheSize = -dbPerfOptions.SqliteCacheSizeKB;
     var pageSize = dbPerfOptions.SqlitePageSize;
-    
+
     connectionString = $"Data Source={dbPath};Mode=ReadWriteCreate;Cache=Shared;" +
         $"Journal Mode={(walEnabled ? "WAL" : "DELETE")};" +  // Write-Ahead Logging for better concurrency
         "Synchronous=NORMAL;" +            // Faster writes with good reliability
@@ -282,8 +282,8 @@ else
         "Temp Store=MEMORY;" +             // Store temp tables in memory
         "Locking Mode=NORMAL;" +           // Allow multiple connections
         "Foreign Keys=True;";              // Enforce FK constraints
-    
-    Log.Information("Using SQLite database at {Path} (WAL: {WAL}, Cache: {CacheKB}KB)", 
+
+    Log.Information("Using SQLite database at {Path} (WAL: {WAL}, Cache: {CacheKB}KB)",
         dbPath, walEnabled, dbPerfOptions.SqliteCacheSizeKB);
 }
 
@@ -292,8 +292,8 @@ void ConfigureDbContextOptions(DbContextOptionsBuilder options)
 {
     if (usePostgreSQL)
     {
-        options.UseNpgsql(connectionString, 
-            npgsqlOptions => 
+        options.UseNpgsql(connectionString,
+            npgsqlOptions =>
             {
                 npgsqlOptions.MigrationsAssembly(MigrationsAssembly);
                 npgsqlOptions.EnableRetryOnFailure(
@@ -301,7 +301,7 @@ void ConfigureDbContextOptions(DbContextOptionsBuilder options)
                     maxRetryDelay: TimeSpan.FromSeconds(dbPerfOptions.MaxRetryDelaySeconds),
                     errorCodesToAdd: null);
                 npgsqlOptions.CommandTimeout(dbPerfOptions.CommandTimeoutSeconds);
-                
+
                 if (dbPerfOptions.EnableQuerySplitting)
                 {
                     npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
@@ -310,13 +310,13 @@ void ConfigureDbContextOptions(DbContextOptionsBuilder options)
     }
     else
     {
-        options.UseSqlite(connectionString, 
+        options.UseSqlite(connectionString,
             sqliteOptions => sqliteOptions.MigrationsAssembly(MigrationsAssembly));
     }
-    
+
     // Common options for both providers
     options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTrackingWithIdentityResolution);
-    
+
     if (!builder.Environment.IsDevelopment())
     {
         options.EnableSensitiveDataLogging(false);
@@ -395,7 +395,10 @@ builder.Services.AddCors(options =>
         policy
             .AllowAnyHeader()
             .AllowAnyMethod()
-            .WithExposedHeaders("X-Correlation-ID", "X-Request-ID");
+            .WithExposedHeaders("X-Correlation-ID", "X-Request-ID")
+            // Credentials are required for cookie auth / Electron fetches.
+            // Safe because origins are filtered via SetIsOriginAllowed below.
+            .AllowCredentials();
 
         policy.SetIsOriginAllowed(origin =>
         {
@@ -452,7 +455,7 @@ builder.Services.Configure<Aura.Core.Configuration.FFmpegOptions>(
 // Configure Circuit Breaker options from appsettings
 builder.Services.Configure<Aura.Core.Configuration.CircuitBreakerSettings>(
     builder.Configuration.GetSection("CircuitBreaker"));
-builder.Services.AddSingleton(sp => 
+builder.Services.AddSingleton(sp =>
     sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<Aura.Core.Configuration.CircuitBreakerSettings>>().Value);
 
 // Configure OpenAI provider options from appsettings
@@ -476,7 +479,7 @@ builder.Services.AddSingleton<Aura.Core.Dependencies.FFmpegResolver>();
 builder.Services.AddMemoryCache(); // Required for FFmpegResolver caching
 
 // Configure distributed caching with Redis fallback to in-memory
-var cachingConfig = builder.Configuration.GetSection("Caching").Get<Aura.Core.Configuration.CachingConfiguration>() 
+var cachingConfig = builder.Configuration.GetSection("Caching").Get<Aura.Core.Configuration.CachingConfiguration>()
     ?? new Aura.Core.Configuration.CachingConfiguration();
 
 if (cachingConfig.Enabled)
@@ -504,7 +507,7 @@ if (cachingConfig.Enabled)
         Log.Information("In-memory distributed cache configured");
     }
 
-    builder.Services.AddSingleton<Aura.Core.Services.Caching.IDistributedCacheService, 
+    builder.Services.AddSingleton<Aura.Core.Services.Caching.IDistributedCacheService,
         Aura.Core.Services.Caching.DistributedCacheService>();
     builder.Services.AddSingleton(cachingConfig);
 }
@@ -541,9 +544,9 @@ builder.Services.AddSingleton<Aura.Core.Services.Providers.LlmProviderRecommenda
     var settings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
     var factory = sp.GetRequiredService<Aura.Core.Orchestrator.LlmProviderFactory>();
     var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
-    
+
     var providers = factory.CreateAvailableProviders(loggerFactory);
-    
+
     return new Aura.Core.Services.Providers.LlmProviderRecommendationService(
         logger,
         healthMonitor,
@@ -562,10 +565,10 @@ builder.Services.AddSingleton<Aura.Core.Orchestrator.ScriptOrchestrator>(sp =>
     var mixer = sp.GetRequiredService<Aura.Core.Orchestrator.ProviderMixer>();
     var factory = sp.GetRequiredService<Aura.Core.Orchestrator.LlmProviderFactory>();
     var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
-    
+
     // Create available providers
     var providers = factory.CreateAvailableProviders(loggerFactory);
-    
+
     return new Aura.Core.Orchestrator.ScriptOrchestrator(logger, loggerFactory, mixer, providers);
 });
 
@@ -591,7 +594,7 @@ builder.Services.AddSingleton<Aura.Core.AI.Cache.ILlmCache>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<Aura.Core.AI.Cache.ILlmCache>>();
     var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<Aura.Core.AI.Cache.LlmCacheOptions>>();
-    
+
     // Note: DiskLlmCache referenced in tests but not found in Core - using MemoryLlmCache
     var memoryLogger = sp.GetRequiredService<ILogger<Aura.Core.AI.Cache.MemoryLlmCache>>();
     if (options.Value.UseDiskStorage)
@@ -665,7 +668,7 @@ builder.Services.Configure<Aura.Core.AI.Routing.RoutingConfiguration>(config =>
 builder.Services.AddSingleton<Aura.Core.AI.Routing.ILlmRouterService, Aura.Core.AI.Routing.LlmRouterService>();
 
 // Add Prompt Management services
-builder.Services.AddSingleton<Aura.Core.Services.PromptManagement.IPromptRepository, 
+builder.Services.AddSingleton<Aura.Core.Services.PromptManagement.IPromptRepository,
     Aura.Core.Services.PromptManagement.InMemoryPromptRepository>();
 builder.Services.AddSingleton<Aura.Core.Services.PromptManagement.PromptVariableResolver>();
 builder.Services.AddSingleton<Aura.Core.Services.PromptManagement.PromptValidator>();
@@ -756,7 +759,7 @@ builder.Services.AddHostedService<Aura.Api.HostedServices.AlertEvaluationService
 
 // Add Application Insights if enabled
 var monitoringConfig = builder.Configuration.GetSection("Monitoring").Get<Aura.Api.Configuration.MonitoringOptions>();
-if (monitoringConfig?.EnableApplicationInsights == true && 
+if (monitoringConfig?.EnableApplicationInsights == true &&
     !string.IsNullOrEmpty(monitoringConfig.ApplicationInsightsConnectionString))
 {
     builder.Services.AddApplicationInsightsTelemetry(options =>
@@ -818,14 +821,14 @@ builder.Services.ConfigureHttpClientDefaults(httpClientBuilder =>
     httpClientBuilder.ConfigurePrimaryHttpMessageHandler(() =>
     {
         var handler = new HttpClientHandler();
-        
+
         // Enable automatic proxy detection for Windows and environment variables (HTTP_PROXY, HTTPS_PROXY)
         handler.UseProxy = true;
         handler.UseDefaultCredentials = true;
-        
+
         // Allow automatic decompression
         handler.AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate;
-        
+
         return handler;
     });
 });
@@ -862,7 +865,7 @@ if (!string.IsNullOrEmpty(hangfireConnectionString))
             config.SetDataCompatibilityLevel(Hangfire.CompatibilityLevel.Version_180);
             config.UseSimpleAssemblyNameTypeSerializer();
             config.UseRecommendedSerializerSettings();
-            
+
             // Use database provider based on configuration
             if (usePostgreSQL)
             {
@@ -872,20 +875,20 @@ if (!string.IsNullOrEmpty(hangfireConnectionString))
             else
             {
                 // Use SQLite for Hangfire if PostgreSQL is not configured
-                var hangfireDbPath = builder.Configuration.GetValue<string>("Hangfire:SQLitePath") 
+                var hangfireDbPath = builder.Configuration.GetValue<string>("Hangfire:SQLitePath")
                     ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "hangfire.db");
                 config.UseSQLiteStorage($"Data Source={hangfireDbPath}");
                 Log.Information("Hangfire configured with SQLite storage at {Path}", hangfireDbPath);
             }
         });
-        
+
         builder.Services.AddHangfireServer(options =>
         {
             options.WorkerCount = Math.Max(1, Environment.ProcessorCount / 2);
             options.Queues = new[] { "default", "video-generation", "exports", "cleanup" };
             options.SchedulePollingInterval = TimeSpan.FromSeconds(15);
         });
-        
+
         Log.Information("Hangfire background job processing enabled");
     }
     catch (Exception ex)
@@ -913,14 +916,14 @@ builder.Services.AddSingleton<Aura.Providers.Tts.AzureVoiceDiscovery>(sp =>
     var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
     var apiKey = providerSettings.GetAzureSpeechKey();
     var region = providerSettings.GetAzureSpeechRegion();
-    
+
     return new Aura.Providers.Tts.AzureVoiceDiscovery(logger, httpClient, region, apiKey);
 });
 
 // DO NOT resolve default provider during startup - let it be resolved lazily when first needed
 // This prevents startup crashes due to provider resolution issues
 
-builder.Services.AddSingleton<IVideoComposer>(sp => 
+builder.Services.AddSingleton<IVideoComposer>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<FfmpegVideoComposer>>();
     var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
@@ -940,7 +943,7 @@ builder.Services.AddSingleton<IStockProvider>(sp =>
     var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
     var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
     var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
-    
+
     // Priority order: Pexels > Unsplash > Pixabay > Local
     var pexelsKey = providerSettings.GetPexelsApiKey();
     if (!string.IsNullOrWhiteSpace(pexelsKey))
@@ -950,7 +953,7 @@ builder.Services.AddSingleton<IStockProvider>(sp =>
         return new Aura.Providers.Images.PexelsStockProvider(
             logger, httpClientFactory.CreateClient(), pexelsKey);
     }
-    
+
     var unsplashKey = providerSettings.GetUnsplashAccessKey();
     if (!string.IsNullOrWhiteSpace(unsplashKey))
     {
@@ -959,7 +962,7 @@ builder.Services.AddSingleton<IStockProvider>(sp =>
         return new Aura.Providers.Images.UnsplashStockProvider(
             logger, httpClientFactory.CreateClient(), unsplashKey);
     }
-    
+
     var pixabayKey = providerSettings.GetPixabayApiKey();
     if (!string.IsNullOrWhiteSpace(pixabayKey))
     {
@@ -968,7 +971,7 @@ builder.Services.AddSingleton<IStockProvider>(sp =>
         return new Aura.Providers.Images.PixabayStockProvider(
             logger, httpClientFactory.CreateClient(), pixabayKey);
     }
-    
+
     // Fallback to local stock provider
     var localLogger = loggerFactory.CreateLogger<Aura.Providers.Images.LocalStockProvider>();
     localLogger.LogInformation("Using Local stock provider (no API keys configured)");
@@ -991,7 +994,7 @@ builder.Services.AddSingleton<Aura.Core.Services.ModelSelection.ModelSelectionSe
 // Register latency management services
 builder.Services.Configure<Aura.Core.Services.Performance.LlmTimeoutPolicy>(
     builder.Configuration.GetSection("LlmTimeouts"));
-builder.Services.AddSingleton(sp => 
+builder.Services.AddSingleton(sp =>
     sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<Aura.Core.Services.Performance.LlmTimeoutPolicy>>().Value);
 builder.Services.AddSingleton<Aura.Core.Services.Performance.LatencyTelemetry>();
 builder.Services.AddSingleton<Aura.Core.Services.Performance.LatencyManagementService>();
@@ -1048,7 +1051,7 @@ builder.Services.AddSingleton<Aura.Core.Services.Orchestration.PipelineHealthChe
     var ttsProvider = sp.GetRequiredService<ITtsProvider>();
     var narrationOptimizer = sp.GetService<Aura.Core.Services.Audio.NarrationOptimizationService>();
     var pacingOptimizer = sp.GetService<Aura.Core.Services.PacingServices.IntelligentPacingOptimizer>();
-    
+
     return new Aura.Core.Services.Orchestration.PipelineHealthCheck(
         logger: logger,
         llmProvider: llmProvider,
@@ -1073,7 +1076,7 @@ builder.Services.AddSingleton<Aura.Core.Services.Orchestration.PipelineOrchestra
     var ttsProvider = sp.GetRequiredService<ITtsProvider>();
     var narrationOptimizer = sp.GetService<Aura.Core.Services.Audio.NarrationOptimizationService>();
     var pacingOptimizer = sp.GetService<Aura.Core.Services.PacingServices.IntelligentPacingOptimizer>();
-    
+
     var config = new Aura.Core.Services.Orchestration.PipelineConfiguration
     {
         MaxConcurrentLlmCalls = Math.Max(1, Environment.ProcessorCount / 2),
@@ -1082,7 +1085,7 @@ builder.Services.AddSingleton<Aura.Core.Services.Orchestration.PipelineOrchestra
         ContinueOnOptionalFailure = true,
         EnableParallelExecution = true
     };
-    
+
     return new Aura.Core.Services.Orchestration.PipelineOrchestrationEngine(
         logger: logger,
         llmProvider: llmProvider,
@@ -1111,10 +1114,10 @@ builder.Services.AddSingleton<Aura.Core.Orchestrator.Stages.VisualsStage>();
 builder.Services.AddSingleton<Aura.Core.Orchestrator.Stages.CompositionStage>();
 
 // Register orchestrator configuration options
-builder.Services.AddSingleton(sp => 
+builder.Services.AddSingleton(sp =>
 {
     var env = sp.GetRequiredService<IWebHostEnvironment>();
-    return env.IsDevelopment() 
+    return env.IsDevelopment()
         ? Aura.Core.Orchestrator.OrchestratorOptions.CreateDebug()
         : Aura.Core.Orchestrator.OrchestratorOptions.CreateDefault();
 });
@@ -1154,7 +1157,7 @@ builder.Services.AddSingleton<IRecommendationService>(sp =>
     var logger = sp.GetRequiredService<ILogger<Aura.Core.Planner.PlannerService>>();
     var factory = sp.GetRequiredService<Aura.Providers.Planner.PlannerProviderFactory>();
     var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
-    
+
     // Use factory delegate for lazy provider initialization - providers created on first use
     // Use ProIfAvailable by default - will use Pro providers if API keys exist, else fall back to free
     Func<Dictionary<string, ILlmPlannerProvider>> providerFactory = () => factory.CreateAvailableProviders(loggerFactory);
@@ -1423,12 +1426,12 @@ builder.Services.AddSingleton<Aura.Core.Dependencies.DependencyManager>(sp =>
     var logger = sp.GetRequiredService<ILogger<Aura.Core.Dependencies.DependencyManager>>();
     var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
     var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
-    
+
     // Portable-only mode: always use portable root
     var portableRoot = providerSettings.GetPortableRootPath();
     var manifestPath = Path.Combine(providerSettings.GetAuraDataDirectory(), "install-manifest.json");
     var downloadDirectory = providerSettings.GetDownloadsDirectory();
-    
+
     return new Aura.Core.Dependencies.DependencyManager(logger, httpClient, manifestPath, downloadDirectory, portableRoot);
 });
 
@@ -1461,7 +1464,7 @@ builder.Services.AddSingleton<Aura.Core.Downloads.EngineInstaller>(sp =>
     var logger = sp.GetRequiredService<ILogger<Aura.Core.Downloads.EngineInstaller>>();
     var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
     var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
-    
+
     // Portable-only mode: always use Tools folder
     var installRoot = providerSettings.GetToolsDirectory();
     return new Aura.Core.Downloads.EngineInstaller(logger, httpClient, installRoot);
@@ -1483,7 +1486,7 @@ builder.Services.AddSingleton<Aura.Core.Downloads.ModelInstaller>(sp =>
     var logger = sp.GetRequiredService<ILogger<Aura.Core.Downloads.ModelInstaller>>();
     var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
     var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
-    
+
     // Portable-only mode: always use Tools folder
     var installRoot = providerSettings.GetToolsDirectory();
     return new Aura.Core.Downloads.ModelInstaller(logger, httpClient, installRoot);
@@ -1513,7 +1516,7 @@ builder.Services.AddSingleton<Aura.Core.Runtime.EngineDetector>(sp =>
     var logger = sp.GetRequiredService<ILogger<Aura.Core.Runtime.EngineDetector>>();
     var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
     var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
-    
+
     // Portable-only mode: always use Tools folder
     var toolsRoot = providerSettings.GetToolsDirectory();
     return new Aura.Core.Runtime.EngineDetector(logger, httpClient, toolsRoot);
@@ -1535,7 +1538,7 @@ builder.Services.AddSingleton<Aura.Core.Dependencies.FfmpegInstaller>(sp =>
     var downloader = sp.GetRequiredService<Aura.Core.Downloads.HttpDownloader>();
     var resolver = sp.GetRequiredService<Aura.Core.Dependencies.GitHubReleaseResolver>();
     var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
-    
+
     // Portable-only mode: always use Tools folder
     var toolsDirectory = providerSettings.GetToolsDirectory();
     return new Aura.Core.Dependencies.FfmpegInstaller(logger, downloader, toolsDirectory, resolver);
@@ -1546,7 +1549,7 @@ builder.Services.AddSingleton<Aura.Core.Dependencies.FfmpegLocator>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<Aura.Core.Dependencies.FfmpegLocator>>();
     var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
-    
+
     // Portable-only mode: always use Tools folder
     var toolsDirectory = providerSettings.GetToolsDirectory();
     return new Aura.Core.Dependencies.FfmpegLocator(logger, toolsDirectory);
@@ -1723,8 +1726,8 @@ builder.Services.AddSingleton(autoSaveConfig);
 // builder.Services.AddHostedService(sp => sp.GetRequiredService<Aura.Core.Services.Projects.ProjectAutoSaveService>());
 
 // Configure Kestrel to listen on specific port with environment variable overrides
-var apiUrl = Environment.GetEnvironmentVariable("AURA_API_URL") 
-    ?? Environment.GetEnvironmentVariable("ASPNETCORE_URLS") 
+var apiUrl = Environment.GetEnvironmentVariable("AURA_API_URL")
+    ?? Environment.GetEnvironmentVariable("ASPNETCORE_URLS")
     ?? "http://127.0.0.1:5005";
 builder.WebHost.UseUrls(apiUrl);
 
@@ -1767,7 +1770,7 @@ try
         Log.Error(
             "Database initialization failed: {Error}. Path writable: {PathWritable}, Exists: {Exists}",
             initResult.Error, initResult.PathWritable, initResult.DatabaseExists);
-        
+
         if (!initResult.PathWritable)
         {
             Log.Error(
@@ -1796,13 +1799,13 @@ try
     {
         Log.Error("Configuration validation failed with critical issues. Application cannot start.");
         Log.Error("Please fix the configuration issues listed above and restart the application.");
-        
+
         // Provide detailed error message for troubleshooting
         foreach (var issue in configResult.Issues.Where(i => i.Severity == IssueSeverity.Critical))
         {
             Log.Error("CRITICAL: {Key} - {Message}", issue.Key, issue.Message);
         }
-        
+
         // Exit gracefully with proper cleanup
         Log.Information("Shutting down application due to configuration errors");
         await app.StopAsync().ConfigureAwait(false);
@@ -1839,22 +1842,22 @@ try
     using var scope = app.Services.CreateScope();
     var modelCatalog = scope.ServiceProvider.GetService<Aura.Core.AI.Adapters.ModelCatalog>();
     var providerSettings = scope.ServiceProvider.GetService<Aura.Core.Configuration.ProviderSettings>();
-    
+
     if (modelCatalog != null && providerSettings != null)
     {
         Log.Information("Starting model catalog preflight validation...");
-        
+
         var apiKeys = new Dictionary<string, string>();
         var openAiKey = providerSettings.GetOpenAiApiKey();
         if (!string.IsNullOrWhiteSpace(openAiKey))
             apiKeys["openai"] = openAiKey;
-            
+
         var geminiKey = providerSettings.GetGeminiApiKey();
         if (!string.IsNullOrWhiteSpace(geminiKey))
             apiKeys["gemini"] = geminiKey;
-        
+
         var ollamaUrl = providerSettings.GetOllamaUrl();
-        
+
         var providersToCheck = new Dictionary<string, string>
         {
             ["OpenAI"] = "gpt-4o-mini",
@@ -1862,13 +1865,13 @@ try
             ["Gemini"] = "gemini-1.5-pro",
             ["Ollama"] = "llama3.1"
         };
-        
+
         var results = await modelCatalog.PreflightCheckAsync(providersToCheck, apiKeys, ollamaUrl).ConfigureAwait(false);
-        
+
         var availableCount = results.Count(r => r.Value);
         Log.Information("Model catalog preflight completed: {Available}/{Total} providers available",
             availableCount, results.Count);
-        
+
         if (availableCount == 0)
         {
             Log.Warning("No LLM providers are available. The application will use RuleBased fallback provider.");
@@ -1891,24 +1894,24 @@ try
     using var scope = app.Services.CreateScope();
     var ffmpegOptions = scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<Aura.Core.Configuration.FFmpegOptions>>();
     var hardwareDetector = scope.ServiceProvider.GetRequiredService<HardwareDetector>();
-    
+
     Log.Information("FFmpeg Configuration:");
     Log.Information("  Explicit Path: {Path}", string.IsNullOrEmpty(ffmpegOptions.Value.ExecutablePath) ? "(auto-detect)" : ffmpegOptions.Value.ExecutablePath);
     Log.Information("  Search Paths: {Count} configured", ffmpegOptions.Value.SearchPaths.Count);
     Log.Information("  Minimum Version Required: {Version}", string.IsNullOrEmpty(ffmpegOptions.Value.RequireMinimumVersion) ? "(none)" : ffmpegOptions.Value.RequireMinimumVersion);
-    
+
     // Attempt to detect FFmpeg
     var systemProfile = await hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
-    
+
     // Try to get FFmpeg path from locator
     var ffmpegLocator = scope.ServiceProvider.GetRequiredService<Aura.Core.Dependencies.IFfmpegLocator>();
     var ffmpegPath = await ffmpegLocator.GetEffectiveFfmpegPathAsync().ConfigureAwait(false);
-    
+
     if (!string.IsNullOrEmpty(ffmpegPath) && File.Exists(ffmpegPath))
     {
         Log.Information("✓ FFmpeg detected successfully");
         Log.Information("  Path: {Path}", ffmpegPath);
-        
+
         // Try to get version
         try
         {
@@ -1921,13 +1924,13 @@ try
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
-            
+
             using var process = System.Diagnostics.Process.Start(processInfo);
             if (process != null)
             {
                 var output = await process.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
                 await process.WaitForExitAsync().ConfigureAwait(false);
-                
+
                 var versionLine = output.Split('\n').FirstOrDefault(l => l.Contains("ffmpeg version"));
                 if (!string.IsNullOrEmpty(versionLine))
                 {
@@ -2036,11 +2039,12 @@ app.Use(async (context, next) =>
 {
     await next();
 
+    var originHeader = context.Request.Headers.Origin;
     if (context.Response.StatusCode == StatusCodes.Status403Forbidden &&
-        context.Request.Headers.ContainsKey("Origin"))
+        !Microsoft.Extensions.Primitives.StringValues.IsNullOrEmpty(originHeader))
     {
         Log.Warning("CORS rejection for origin {Origin} on path {Path}",
-            context.Request.Headers["Origin"].ToString(),
+            originHeader.ToString(),
             context.Request.Path);
     }
 });
@@ -2084,7 +2088,7 @@ app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.Health
     ResponseWriter = async (context, report) =>
     {
         context.Response.ContentType = "application/json";
-        
+
         var result = new
         {
             status = report.Status.ToString().ToLowerInvariant(),
@@ -2100,7 +2104,7 @@ app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.Health
                 tags = e.Value.Tags
             }).OrderBy(c => c.name).ToArray()
         };
-        
+
         await context.Response.WriteAsJsonAsync(result).ConfigureAwait(false);
     }
 });
@@ -2113,7 +2117,7 @@ app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks
     ResponseWriter = async (context, report) =>
     {
         context.Response.ContentType = "application/json";
-        
+
         var result = new
         {
             status = report.Status.ToString().ToLowerInvariant(),
@@ -2132,7 +2136,7 @@ app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks
                 exception = e.Value.Exception?.Message
             }).OrderBy(c => c.name).ToArray()
         };
-        
+
         await context.Response.WriteAsJsonAsync(result).ConfigureAwait(false);
     }
 });
@@ -2145,17 +2149,17 @@ app.MapHealthChecks("/health/{tag}", new Microsoft.AspNetCore.Diagnostics.Health
     ResponseWriter = async (context, report) =>
     {
         context.Response.ContentType = "application/json";
-        
+
         var tag = context.Request.RouteValues["tag"]?.ToString() ?? "";
         var filteredEntries = report.Entries.Where(e => e.Value.Tags.Contains(tag));
-        
+
         if (!filteredEntries.Any())
         {
             context.Response.StatusCode = 404;
             await context.Response.WriteAsJsonAsync(new { error = $"No health checks with tag '{tag}' found" }).ConfigureAwait(false);
             return;
         }
-        
+
         var result = new
         {
             status = report.Status.ToString().ToLowerInvariant(),
@@ -2169,7 +2173,7 @@ app.MapHealthChecks("/health/{tag}", new Microsoft.AspNetCore.Diagnostics.Health
                 data = e.Value.Data
             }).ToArray()
         };
-        
+
         await context.Response.WriteAsJsonAsync(result).ConfigureAwait(false);
     }
 });
@@ -2185,7 +2189,7 @@ if (Directory.Exists(wwwrootPath))
     var indexHtmlPath = Path.Combine(wwwrootPath, "index.html");
     var assetsPath = Path.Combine(wwwrootPath, "assets");
     var fileCount = Directory.GetFiles(wwwrootPath, "*", SearchOption.AllDirectories).Length;
-    
+
     if (!File.Exists(indexHtmlPath))
     {
         Log.Warning("=================================================================");
@@ -2214,10 +2218,10 @@ if (Directory.Exists(wwwrootPath))
         Log.Information("  assets/: ✓");
         Log.Information("  SPA fallback: ACTIVE (handles client-side routing)");
         Log.Information("=================================================================");
-        
+
         // Serve index.html as default file for root requests
         app.UseDefaultFiles();
-        
+
         // Configure static file serving with proper MIME types
         var staticFileOptions = new StaticFileOptions
         {
@@ -2256,7 +2260,7 @@ if (Directory.Exists(wwwrootPath))
                 }
             }
         };
-        
+
         app.UseStaticFiles(staticFileOptions);
     }
 }
@@ -2297,7 +2301,7 @@ apiGroup.MapGet("/health/live", (Aura.Api.Services.HealthCheckService healthServ
 apiGroup.MapGet("/health/ready", async (Aura.Api.Services.HealthCheckService healthService, CancellationToken ct) =>
 {
     var result = await healthService.CheckReadinessAsync(ct).ConfigureAwait(false);
-    
+
     // Return 503 Service Unavailable if unhealthy, 200 OK if healthy or degraded
     var statusCode = result.Status == Aura.Api.Models.HealthStatus.Unhealthy ? 503 : 200;
     return Results.Json(result, statusCode: statusCode);
@@ -2312,7 +2316,7 @@ apiGroup.MapGet("/health/summary", async (Aura.Api.Services.HealthDiagnosticsSer
     {
         var correlationId = Guid.NewGuid().ToString();
         Log.Information("Health summary requested, CorrelationId: {CorrelationId}", correlationId);
-        
+
         var result = await healthDiagnostics.GetHealthSummaryAsync(ct).ConfigureAwait(false);
         return Results.Ok(result);
     }
@@ -2332,9 +2336,9 @@ apiGroup.MapGet("/health/details", async (Aura.Api.Services.HealthDiagnosticsSer
     {
         var correlationId = Guid.NewGuid().ToString();
         Log.Information("Health details requested, CorrelationId: {CorrelationId}", correlationId);
-        
+
         var result = await healthDiagnostics.GetHealthDetailsAsync(ct).ConfigureAwait(false);
-        
+
         // Return 503 if system is not ready (has failed required checks)
         var statusCode = result.IsReady ? 200 : 503;
         return Results.Json(result, statusCode: statusCode);
@@ -2374,8 +2378,8 @@ apiGroup.MapPost("/health/auto-fix", async (
 {
     try
     {
-        var issueCode = options?.ContainsKey("issueCode") == true 
-            ? options["issueCode"]?.ToString() 
+        var issueCode = options?.ContainsKey("issueCode") == true
+            ? options["issueCode"]?.ToString()
             : null;
 
         if (string.IsNullOrEmpty(issueCode))
@@ -2387,7 +2391,7 @@ apiGroup.MapPost("/health/auto-fix", async (
         if (issueCode == "E302-FFMPEG_NOT_FOUND")
         {
             Log.Information("Attempting auto-fix for FFmpeg installation");
-            
+
             var progress = new Progress<Aura.Core.Downloads.HttpDownloadProgress>(p =>
             {
                 Log.Information("FFmpeg download progress: {Percent}%", p.PercentComplete);
@@ -2406,9 +2410,9 @@ apiGroup.MapPost("/health/auto-fix", async (
 
             if (!mirrors.Any())
             {
-                return Results.Ok(new 
-                { 
-                    success = false, 
+                return Results.Ok(new
+                {
+                    success = false,
                     message = "Automatic FFmpeg installation is not supported on this platform. Please install manually."
                 });
             }
@@ -2423,9 +2427,9 @@ apiGroup.MapPost("/health/auto-fix", async (
             if (result.Success)
             {
                 Log.Information("FFmpeg installed successfully at: {Path}", result.FfmpegPath);
-                return Results.Ok(new 
-                { 
-                    success = true, 
+                return Results.Ok(new
+                {
+                    success = true,
                     message = "FFmpeg installed successfully",
                     ffmpegPath = result.FfmpegPath
                 });
@@ -2433,17 +2437,17 @@ apiGroup.MapPost("/health/auto-fix", async (
             else
             {
                 Log.Error("FFmpeg installation failed: {Error}", result.ErrorMessage);
-                return Results.Ok(new 
-                { 
-                    success = false, 
+                return Results.Ok(new
+                {
+                    success = false,
                     message = $"FFmpeg installation failed: {result.ErrorMessage}"
                 });
             }
         }
 
-        return Results.Ok(new 
-        { 
-            success = false, 
+        return Results.Ok(new
+        {
+            success = false,
             message = $"Auto-fix not available for issue: {issueCode}"
         });
     }
@@ -2472,7 +2476,7 @@ app.MapGet("/diag", (HttpContext httpContext) =>
     var assetsExists = Directory.Exists(assetsPath);
     var fileCount = wwwrootExists ? Directory.GetFiles(wwwrootPath, "*", SearchOption.AllDirectories).Length : 0;
     var assetCount = assetsExists ? Directory.GetFiles(assetsPath, "*", SearchOption.TopDirectoryOnly).Length : 0;
-    
+
     // Try to find a sample JS and CSS file for testing
     string? sampleJsFile = null;
     string? sampleCssFile = null;
@@ -2483,7 +2487,7 @@ app.MapGet("/diag", (HttpContext httpContext) =>
         sampleJsFile = jsFiles.Length > 0 ? Path.GetFileName(jsFiles[0]) : null;
         sampleCssFile = cssFiles.Length > 0 ? Path.GetFileName(cssFiles[0]) : null;
     }
-    
+
     var html = $@"<!DOCTYPE html>
 <html>
 <head>
@@ -2507,13 +2511,13 @@ app.MapGet("/diag", (HttpContext httpContext) =>
         .timestamp {{ font-size: 0.8em; color: #999; margin-top: 20px; text-align: center; }}
         code {{ background: #f4f4f4; padding: 2px 6px; border-radius: 3px; font-family: 'Consolas', monospace; }}
         .test-result {{ margin: 10px 0; padding: 10px; background: #f9f9f9; border-left: 4px solid #0078d4; }}
-        button {{ 
-            background: #0078d4; 
-            color: white; 
-            border: none; 
-            padding: 10px 20px; 
-            border-radius: 4px; 
-            cursor: pointer; 
+        button {{
+            background: #0078d4;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
             margin: 5px;
         }}
         button:hover {{ background: #005a9e; }}
@@ -2523,7 +2527,7 @@ app.MapGet("/diag", (HttpContext httpContext) =>
 <body>
     <div class='container'>
         <h1>🔍 Aura Video Studio Diagnostics</h1>
-        
+
         <div class='status {(wwwrootExists && indexHtmlExists && assetsExists ? "ok" : "error")}'>
             <strong>Static File Hosting Status</strong>
             <ul>
@@ -2535,7 +2539,7 @@ app.MapGet("/diag", (HttpContext httpContext) =>
                 <li class='detail'>Asset files (.js/.css): {assetCount}</li>
             </ul>
         </div>
-        
+
         <div class='status ok'>
             <strong>API Status</strong>
             <ul>
@@ -2554,7 +2558,7 @@ app.MapGet("/diag", (HttpContext httpContext) =>
             <button onclick=""testServiceWorker()"">Check Service Worker</button>
             <div id=""testResults""></div>
         </div>
-        
+
         <h2>🔗 Quick Navigation Tests</h2>
         <div class='status info'>
             <ul>
@@ -2565,7 +2569,7 @@ app.MapGet("/diag", (HttpContext httpContext) =>
                 <li>• Open browser DevTools Console - Check for errors</li>
             </ul>
         </div>
-        
+
         {(!wwwrootExists || !indexHtmlExists ? @"
         <h2>⚠️ Issue Detected</h2>
         <div class='status error'>
@@ -2578,7 +2582,7 @@ app.MapGet("/diag", (HttpContext httpContext) =>
                 <li>4. Restart the API server after copying files</li>
             </ul>
         </div>" : "")}
-        
+
         <h2>📋 Troubleshooting Guide</h2>
         <div class='status info'>
             <strong>White/Blank Page Issues:</strong>
@@ -2589,14 +2593,14 @@ app.MapGet("/diag", (HttpContext httpContext) =>
                 <li>• Clear browser cache (Ctrl+Shift+Delete) and hard refresh (Ctrl+F5)</li>
                 <li>• Check if Content-Security-Policy is blocking scripts (Console warnings)</li>
             </ul>
-            
+
             <strong>Deep Link Refresh Fails:</strong>
             <ul>
                 <li>• Ensure SPA fallback is active (check server logs for ""SPA fallback configured"")</li>
                 <li>• Navigate to /dashboard, refresh → should still show UI, not 404</li>
                 <li>• If fallback doesn't work, consider using HashRouter (/#/route URLs)</li>
             </ul>
-            
+
             <strong>Service Worker or Stale Cache:</strong>
             <ul>
                 <li>• Click ""Check Service Worker"" button above</li>
@@ -2604,10 +2608,10 @@ app.MapGet("/diag", (HttpContext httpContext) =>
                 <li>• Clear all site data: DevTools → Application → Clear storage → Clear site data</li>
             </ul>
         </div>
-        
+
         <div class='timestamp'>Generated at {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC</div>
     </div>
-    
+
     <script>
         // Display runtime environment info
         window.addEventListener('DOMContentLoaded', function() {{
@@ -2622,23 +2626,23 @@ app.MapGet("/diag", (HttpContext httpContext) =>
                 '</ul>';
             document.querySelector('.container').insertBefore(envInfo, document.querySelector('.timestamp'));
         }});
-        
+
         function testAsset(path, expectedType) {{
             var resultsDiv = document.getElementById('testResults');
             resultsDiv.innerHTML = '<p>Testing: <code>' + path + '</code>...</p>';
-            
+
             fetch(path)
                 .then(function(response) {{
                     var contentType = response.headers.get('Content-Type') || 'unknown';
                     var status = response.status;
-                    
+
                     if (status === 200) {{
                         var typeMatch = contentType.includes(expectedType);
                         resultsDiv.innerHTML = '<div class=""test-result ' + (typeMatch ? 'ok' : 'warning') + '"">' +
                             '<strong>✓ Asset Fetch Test</strong><br>' +
                             'URL: <code>' + path + '</code><br>' +
                             'Status: ' + status + ' OK<br>' +
-                            'Content-Type: <code>' + contentType + '</code>' + 
+                            'Content-Type: <code>' + contentType + '</code>' +
                             (typeMatch ? ' ✓ Correct' : ' ⚠️ Expected: ' + expectedType) +
                             '</div>';
                     }} else {{
@@ -2658,18 +2662,18 @@ app.MapGet("/diag", (HttpContext httpContext) =>
                         '</div>';
                 }});
         }}
-        
+
         function testServiceWorker() {{
             var resultsDiv = document.getElementById('testResults');
-            
+
             if ('serviceWorker' in navigator) {{
                 navigator.serviceWorker.getRegistrations().then(function(registrations) {{
                     if (registrations.length > 0) {{
                         var swInfo = registrations.map(function(reg) {{
-                            return 'Scope: <code>' + reg.scope + '</code>, State: ' + 
+                            return 'Scope: <code>' + reg.scope + '</code>, State: ' +
                                    (reg.active ? reg.active.state : 'inactive');
                         }}).join('<br>');
-                        
+
                         resultsDiv.innerHTML = '<div class=""test-result warning"">' +
                             '<strong>⚠️ Service Worker Detected</strong><br>' +
                             'Active service workers found:<br>' + swInfo + '<br><br>' +
@@ -2696,7 +2700,7 @@ app.MapGet("/diag", (HttpContext httpContext) =>
     </script>
 </body>
 </html>";
-    
+
     return Results.Content(html, "text/html");
 })
 .WithName("DiagnosticsPage")
@@ -2712,7 +2716,7 @@ apiGroup.MapGet("/logs", (HttpContext httpContext, string? level = null, string?
         {
             // Expected format: [timestamp] [LEVEL] [CorrelationId] message
             // Example: [2025-10-10 22:39:40.123 +00:00] [INF] [abc123] Application started
-            
+
             if (!line.StartsWith("[")) return null;
 
             var parts = line.Split(new[] { '[', ']' }, StringSplitOptions.RemoveEmptyEntries);
@@ -2803,7 +2807,7 @@ apiGroup.MapPost("/logs/open-folder", () =>
     try
     {
         var logsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "logs");
-        
+
         // Create logs directory if it doesn't exist
         if (!Directory.Exists(logsDirectory))
         {
@@ -2892,7 +2896,7 @@ apiGroup.MapPost("/plan", ([FromBody] PlanRequest request) =>
             Density: ApiV1.EnumMappings.ToCore(request.Density),
             Style: request.Style
         );
-        
+
         return Results.Ok(new { success = true, plan });
     }
     catch (JsonException ex)
@@ -2915,7 +2919,7 @@ apiGroup.MapPost("/plan", ([FromBody] PlanRequest request) =>
 
 // Planner recommendations endpoint
 apiGroup.MapPost("/planner/recommendations", async (
-    [FromBody] RecommendationsRequestDto request, 
+    [FromBody] RecommendationsRequestDto request,
     IRecommendationService recommendationService,
     CancellationToken ct) =>
 {
@@ -2930,7 +2934,7 @@ apiGroup.MapPost("/planner/recommendations", async (
                 title: "Invalid Brief",
                 type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E303");
         }
-        
+
         if (request.TargetDurationMinutes <= 0 || request.TargetDurationMinutes > 120)
         {
             return Results.Problem(
@@ -2948,7 +2952,7 @@ apiGroup.MapPost("/planner/recommendations", async (
             Language: request.Language ?? "en-US",
             Aspect: ApiV1.EnumMappings.ToCore(request.Aspect ?? ApiV1.Aspect.Widescreen16x9)
         );
-        
+
         var planSpec = new PlanSpec(
             TargetDuration: TimeSpan.FromMinutes(request.TargetDurationMinutes),
             Pacing: ApiV1.EnumMappings.ToCore(request.Pacing ?? ApiV1.Pacing.Conversational),
@@ -2956,7 +2960,7 @@ apiGroup.MapPost("/planner/recommendations", async (
             Style: request.Style ?? "Standard"
         );
 
-        var constraints = request.Constraints != null 
+        var constraints = request.Constraints != null
             ? new RecommendationConstraints(
                 MaxSceneCount: request.Constraints.MaxSceneCount,
                 MinSceneCount: request.Constraints.MinSceneCount,
@@ -2971,11 +2975,11 @@ apiGroup.MapPost("/planner/recommendations", async (
             Constraints: constraints
         );
 
-        Log.Information("Generating recommendations for topic: {Topic}, duration: {Duration} min", 
+        Log.Information("Generating recommendations for topic: {Topic}, duration: {Duration} min",
             request.Topic, request.TargetDurationMinutes);
-        
+
         var recommendations = await recommendationService.GenerateRecommendationsAsync(recommendationRequest, ct).ConfigureAwait(false);
-        
+
         Log.Information("Recommendations generated successfully");
         return Results.Ok(new { success = true, recommendations });
     }
@@ -3004,7 +3008,7 @@ apiGroup.MapPost("/planner/recommendations", async (
 // Script generation endpoint
 apiGroup.MapPost("/script", async (
     HttpContext httpContext,
-    [FromBody] ScriptRequest request, 
+    [FromBody] ScriptRequest request,
     Aura.Core.Orchestrator.ScriptOrchestrator orchestrator,
     HardwareDetector hardwareDetector,
     CancellationToken ct) =>
@@ -3016,12 +3020,12 @@ apiGroup.MapPost("/script", async (
         {
             return ProblemDetailsHelper.CreateInvalidBrief("Topic is required");
         }
-        
+
         if (request.TargetDurationMinutes <= 0 || request.TargetDurationMinutes > 120)
         {
             return ProblemDetailsHelper.CreateInvalidPlan("Target duration must be between 0 and 120 minutes");
         }
-        
+
         var brief = new Brief(
             Topic: request.Topic,
             Audience: request.Audience,
@@ -3030,51 +3034,51 @@ apiGroup.MapPost("/script", async (
             Language: request.Language,
             Aspect: ApiV1.EnumMappings.ToCore(request.Aspect)
         );
-        
+
         var planSpec = new PlanSpec(
             TargetDuration: TimeSpan.FromMinutes(request.TargetDurationMinutes),
             Pacing: ApiV1.EnumMappings.ToCore(request.Pacing),
             Density: ApiV1.EnumMappings.ToCore(request.Density),
             Style: request.Style
         );
-        
+
         // Determine provider tier from request or use default
         string preferredTier = request.ProviderTier ?? "Free";
-        
+
         // Use per-stage script provider selection if provided
         if (request.ProviderSelection?.Script != null && request.ProviderSelection.Script != "Auto")
         {
             preferredTier = request.ProviderSelection.Script;
             Log.Information("Using per-stage script provider selection: {Provider}", preferredTier);
         }
-        
+
         // Get system offline status
         var profile = await hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
         bool offlineOnly = profile.OfflineOnly;
-        
-        Log.Information("Generating script for topic: {Topic}, duration: {Duration} min, tier: {Tier}, offline: {Offline}", 
+
+        Log.Information("Generating script for topic: {Topic}, duration: {Duration} min, tier: {Tier}, offline: {Offline}",
             request.Topic, request.TargetDurationMinutes, preferredTier, offlineOnly);
-        
+
         var result = await orchestrator.GenerateScriptAsync(brief, planSpec, preferredTier, offlineOnly, ct).ConfigureAwait(false);
-        
+
         if (!result.Success)
         {
             Log.Error("Script generation failed: {ErrorCode} - {ErrorMessage}", result.ErrorCode, result.ErrorMessage);
-            
+
             // Use ProblemDetailsHelper for consistent error responses with correlation ID
             return ProblemDetailsHelper.CreateScriptError(
-                result.ErrorCode ?? "E300", 
+                result.ErrorCode ?? "E300",
                 result.ErrorMessage ?? "Script generation failed",
                 httpContext
             );
         }
-        
-        Log.Information("Script generated successfully with {Provider}: {Length} characters (fallback: {IsFallback})", 
+
+        Log.Information("Script generated successfully with {Provider}: {Length} characters (fallback: {IsFallback})",
             result.ProviderUsed, result.Script?.Length ?? 0, result.IsFallback);
-        
-        return Results.Ok(new 
-        { 
-            success = true, 
+
+        return Results.Ok(new
+        {
+            success = true,
             script = result.Script,
             provider = result.ProviderUsed,
             isFallback = result.IsFallback
@@ -3115,16 +3119,16 @@ apiGroup.MapPost("/tts", async ([FromBody] TtsRequest request, ITtsProvider ttsP
             Start: TimeSpan.FromSeconds(l.StartSeconds),
             Duration: TimeSpan.FromSeconds(l.DurationSeconds)
         )).ToList();
-        
+
         var voiceSpec = new VoiceSpec(
             VoiceName: request.VoiceName,
             Rate: request.Rate,
             Pitch: request.Pitch,
             Pause: ApiV1.EnumMappings.ToCore(request.PauseStyle)
         );
-        
+
         var result = await ttsProvider.SynthesizeAsync(lines, voiceSpec, ct).ConfigureAwait(false);
-        
+
         return Results.Ok(new { success = true, audioPath = result });
     }
     catch (Exception ex)
@@ -3137,7 +3141,7 @@ apiGroup.MapPost("/tts", async ([FromBody] TtsRequest request, ITtsProvider ttsP
 .WithOpenApi();
 
 // Captions endpoint
-apiGroup.MapPost("/captions/generate", async ([FromBody] CaptionsRequest request, 
+apiGroup.MapPost("/captions/generate", async ([FromBody] CaptionsRequest request,
     [FromServices] Aura.Core.Captions.CaptionBuilder captionBuilder) =>
 {
     try
@@ -3148,11 +3152,11 @@ apiGroup.MapPost("/captions/generate", async ([FromBody] CaptionsRequest request
             Start: TimeSpan.FromSeconds(l.StartSeconds),
             Duration: TimeSpan.FromSeconds(l.DurationSeconds)
         )).ToList();
-        
+
         string captions = request.Format.ToUpperInvariant() == "VTT"
             ? captionBuilder.GenerateVtt(lines)
             : captionBuilder.GenerateSrt(lines);
-        
+
         // Optionally save to file if path is provided
         string? filePath = null;
         if (!string.IsNullOrEmpty(request.OutputPath))
@@ -3161,7 +3165,7 @@ apiGroup.MapPost("/captions/generate", async ([FromBody] CaptionsRequest request
             await File.WriteAllTextAsync(filePath, captions).ConfigureAwait(false);
             Log.Information("Captions saved to {Path}", filePath);
         }
-        
+
         return Results.Ok(new { success = true, captions, filePath });
     }
     catch (Exception ex)
@@ -3234,7 +3238,7 @@ apiGroup.MapGet("/tts/azure/voice/{voiceId}/capabilities", async (
     try
     {
         var voice = await voiceDiscovery.GetVoiceCapabilitiesAsync(voiceId, ct).ConfigureAwait(false);
-        
+
         if (voice == null)
         {
             return Results.NotFound(new { success = false, message = $"Voice '{voiceId}' not found" });
@@ -3275,8 +3279,8 @@ apiGroup.MapPost("/tts/azure/preview", async (
     try
     {
         // Limit preview text length
-        var previewText = request.Text.Length > 500 
-            ? request.Text.Substring(0, 500) + "..." 
+        var previewText = request.Text.Length > 500
+            ? request.Text.Substring(0, 500) + "..."
             : request.Text;
 
         // Convert DTO options to core options
@@ -3297,9 +3301,9 @@ apiGroup.MapPost("/tts/azure/preview", async (
         }
 
         var audioPath = await azureTtsProvider.SynthesizeWithOptionsAsync(
-            previewText, 
-            request.VoiceId, 
-            options, 
+            previewText,
+            request.VoiceId,
+            options,
             ct).ConfigureAwait(false);
 
         return Results.Ok(new { success = true, audioPath });
@@ -3338,9 +3342,9 @@ apiGroup.MapPost("/tts/azure/synthesize", async (
         }
 
         var audioPath = await azureTtsProvider.SynthesizeWithOptionsAsync(
-            request.Text, 
-            request.VoiceId, 
-            options, 
+            request.Text,
+            request.VoiceId,
+            options,
             ct).ConfigureAwait(false);
 
         return Results.Ok(new { success = true, audioPath });
@@ -3362,7 +3366,7 @@ apiGroup.MapPost("/ml/train/frame-importance", async (
 {
     try
     {
-        Log.Information("Received frame importance training request with {Count} annotations", 
+        Log.Information("Received frame importance training request with {Count} annotations",
             request.Annotations.Count);
 
         // Validate request
@@ -3378,7 +3382,7 @@ apiGroup.MapPost("/ml/train/frame-importance", async (
         }
 
         // Convert DTOs to domain models
-        var annotations = request.Annotations.Select(dto => 
+        var annotations = request.Annotations.Select(dto =>
             new Aura.Core.Models.FrameAnalysis.FrameAnnotation(
                 FramePath: dto.FramePath,
                 Rating: dto.Rating
@@ -3396,7 +3400,7 @@ apiGroup.MapPost("/ml/train/frame-importance", async (
             ErrorMessage: result.ErrorMessage
         );
 
-        return result.Success 
+        return result.Success
             ? Results.Ok(response)
             : Results.Json(response, statusCode: 500);
     }
@@ -3466,7 +3470,7 @@ apiGroup.MapPost("/downloads/{component}/install", async (string component, Aura
         });
 
         await depManager.DownloadComponentAsync(component, progress, ct).ConfigureAwait(false);
-        
+
         return Results.Ok(new { success = true, message = $"{component} installed successfully" });
     }
     catch (Exception ex)
@@ -3506,7 +3510,7 @@ apiGroup.MapPost("/downloads/{component}/repair", async (string component, Aura.
         });
 
         await depManager.RepairComponentAsync(component, progress, ct).ConfigureAwait(false);
-        
+
         return Results.Ok(new { success = true, message = $"{component} repaired successfully" });
     }
     catch (Exception ex)
@@ -3578,9 +3582,9 @@ apiGroup.MapPost("/dependencies/rescan", async (
     {
         Log.Information("Starting dependency rescan");
         var report = await rescanService.RescanAllAsync(ct).ConfigureAwait(false);
-        
-        return Results.Ok(new 
-        { 
+
+        return Results.Ok(new
+        {
             success = true,
             scanTime = report.ScanTime,
             dependencies = report.Dependencies.Select(d => new
@@ -3660,14 +3664,14 @@ apiGroup.MapGet("/logs/stream", async (HttpContext context) =>
     context.Response.Headers.Append("Content-Type", "text/event-stream");
     context.Response.Headers.Append("Cache-Control", "no-cache");
     context.Response.Headers.Append("Connection", "keep-alive");
-    
+
     try
     {
         // Simple log streaming - send a test message
         var message = $"data: {{\"timestamp\":\"{DateTime.UtcNow:O}\",\"level\":\"INFO\",\"message\":\"Log stream connected\"}}\n\n";
         await context.Response.WriteAsync(message).ConfigureAwait(false);
         await context.Response.Body.FlushAsync().ConfigureAwait(false);
-        
+
         // Keep connection alive
         await Task.Delay(Timeout.Infinite, context.RequestAborted).ConfigureAwait(false);
     }
@@ -3681,7 +3685,7 @@ apiGroup.MapGet("/logs/stream", async (HttpContext context) =>
 
 // SSE endpoint for job progress updates
 apiGroup.MapGet("/jobs/{jobId}/stream", async (
-    string jobId, 
+    string jobId,
     HttpContext context,
     JobRunner jobRunner,
     CancellationToken ct) =>
@@ -3689,21 +3693,21 @@ apiGroup.MapGet("/jobs/{jobId}/stream", async (
     context.Response.Headers.Append("Content-Type", "text/event-stream");
     context.Response.Headers.Append("Cache-Control", "no-cache");
     context.Response.Headers.Append("Connection", "keep-alive");
-    
+
     try
     {
         Log.Information("SSE stream started for job {JobId}", jobId);
-        
+
         // Send initial connection message
         var connectMsg = $"event: connected\ndata: {{\"jobId\":\"{jobId}\",\"timestamp\":\"{DateTime.UtcNow:O}\"}}\n\n";
         await context.Response.WriteAsync(connectMsg, ct).ConfigureAwait(false);
         await context.Response.Body.FlushAsync(ct).ConfigureAwait(false);
-        
+
         // Poll job status and send updates
         var lastStatus = "";
         var lastPercent = -1;
         var lastStage = "";
-        
+
         while (!ct.IsCancellationRequested)
         {
             var job = jobRunner.GetJob(jobId);
@@ -3714,14 +3718,14 @@ apiGroup.MapGet("/jobs/{jobId}/stream", async (
                 await context.Response.Body.FlushAsync(ct).ConfigureAwait(false);
                 break;
             }
-            
+
             // Send update if status changed
             if (job.Status.ToString() != lastStatus || job.Percent != lastPercent || job.Stage != lastStage)
             {
                 lastStatus = job.Status.ToString();
                 lastPercent = job.Percent;
                 lastStage = job.Stage;
-                
+
                 var statusData = JsonSerializer.Serialize(new
                 {
                     jobId = job.Id,
@@ -3731,15 +3735,15 @@ apiGroup.MapGet("/jobs/{jobId}/stream", async (
                     errorMessage = job.ErrorMessage,
                     timestamp = DateTime.UtcNow
                 });
-                
+
                 var updateMsg = $"event: progress\ndata: {statusData}\n\n";
                 await context.Response.WriteAsync(updateMsg, ct).ConfigureAwait(false);
                 await context.Response.Body.FlushAsync(ct).ConfigureAwait(false);
-                
-                Log.Information("SSE update sent for job {JobId}: {Status} {Percent}% {Stage}", 
+
+                Log.Information("SSE update sent for job {JobId}: {Status} {Percent}% {Stage}",
                     jobId, job.Status, job.Percent, job.Stage);
             }
-            
+
             // If job is done/failed/cancelled, send final message and close
             if (job.Status == JobStatus.Done || job.Status == JobStatus.Failed || job.Status == JobStatus.Canceled)
             {
@@ -3752,18 +3756,18 @@ apiGroup.MapGet("/jobs/{jobId}/stream", async (
                     errorMessage = job.ErrorMessage,
                     timestamp = DateTime.UtcNow
                 });
-                
+
                 var completeMsg = $"event: complete\ndata: {completeData}\n\n";
                 await context.Response.WriteAsync(completeMsg, ct).ConfigureAwait(false);
                 await context.Response.Body.FlushAsync(ct).ConfigureAwait(false);
-                
+
                 Log.Information("SSE stream completed for job {JobId}: {Status}", jobId, job.Status);
                 break;
             }
-            
+
             // Send keepalive every 2 seconds
             await Task.Delay(2000, ct).ConfigureAwait(false);
-            
+
             var keepaliveMsg = $": keepalive\n\n";
             await context.Response.WriteAsync(keepaliveMsg, ct).ConfigureAwait(false);
             await context.Response.Body.FlushAsync(ct).ConfigureAwait(false);
@@ -3798,13 +3802,13 @@ apiGroup.MapPost("/probes/run", async (HardwareDetector detector) =>
     {
         await detector.RunHardwareProbeAsync().ConfigureAwait(false);
         var profile = await detector.DetectSystemAsync().ConfigureAwait(false);
-        
+
         // Format response to match frontend expectations
         // Flat properties for easy frontend consumption + full profile for advanced use
-        var gpuDisplay = profile.Gpu != null 
-            ? $"{profile.Gpu.Vendor} {profile.Gpu.Model}" 
+        var gpuDisplay = profile.Gpu != null
+            ? $"{profile.Gpu.Vendor} {profile.Gpu.Model}"
             : "Unable to detect GPU hardware";
-        
+
         var response = new
         {
             success = true,
@@ -3821,13 +3825,13 @@ apiGroup.MapPost("/probes/run", async (HardwareDetector detector) =>
             // Full profile object for advanced use cases
             profile = profile
         };
-        
+
         return Results.Ok(response);
     }
     catch (Exception ex)
     {
         Log.Error(ex, "Error running probes");
-        
+
         // Return graceful fallback response instead of 500 error
         return Results.Ok(new
         {
@@ -3911,10 +3915,10 @@ apiGroup.MapPost("/profiles/apply", ([FromBody] ApplyProfileRequest request) =>
         // Store profile selection in settings
         var settingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "settings.json");
         Directory.CreateDirectory(Path.GetDirectoryName(settingsPath)!);
-        
+
         var settings = new Dictionary<string, object> { ["profile"] = request.ProfileName };
         File.WriteAllText(settingsPath, JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true }));
-        
+
         return Results.Ok(new { success = true });
     }
     catch (Exception ex)
@@ -3938,7 +3942,7 @@ apiGroup.MapPost("/providers/paths/save", ([FromBody] ProviderPathsRequest reque
     {
         var pathsConfigPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "provider-paths.json");
         Directory.CreateDirectory(Path.GetDirectoryName(pathsConfigPath)!);
-        
+
         var paths = new Dictionary<string, object>
         {
             ["stableDiffusionUrl"] = request.StableDiffusionUrl ?? "http://127.0.0.1:7860",
@@ -3947,9 +3951,9 @@ apiGroup.MapPost("/providers/paths/save", ([FromBody] ProviderPathsRequest reque
             ["ffprobePath"] = request.FfprobePath ?? "",
             ["outputDirectory"] = request.OutputDirectory ?? ""
         };
-        
+
         File.WriteAllText(pathsConfigPath, JsonSerializer.Serialize(paths, new JsonSerializerOptions { WriteIndented = true }));
-        
+
         return Results.Ok(new { success = true, message = "Provider paths saved successfully" });
     }
     catch (Exception ex)
@@ -3972,7 +3976,7 @@ apiGroup.MapGet("/providers/paths/load", () =>
             var paths = JsonSerializer.Deserialize<Dictionary<string, object>>(json);
             return Results.Ok(paths);
         }
-        
+
         // Return defaults
         return Results.Ok(new Dictionary<string, object>
         {
@@ -4001,9 +4005,9 @@ apiGroup.MapGet("/settings/portable", () =>
         var portableRoot = providerSettings.GetPortableRootPath();
         var toolsDirectory = providerSettings.GetToolsDirectory();
         var auraDataDirectory = providerSettings.GetAuraDataDirectory();
-        
-        return Results.Ok(new 
-        { 
+
+        return Results.Ok(new
+        {
             portableModeEnabled = true, // Always true in portable-only mode
             portableRootPath = portableRoot,
             toolsDirectory = toolsDirectory,
@@ -4032,7 +4036,7 @@ apiGroup.MapPost("/settings/open-tools-folder", () =>
     {
         var providerSettings = app.Services.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
         var toolsDirectory = providerSettings.GetToolsDirectory();
-        
+
         // Create directory if it doesn't exist
         if (!Directory.Exists(toolsDirectory))
         {
@@ -4070,13 +4074,13 @@ apiGroup.MapPost("/assets/search", async ([FromBody] AssetSearchRequest request,
     try
     {
         var profile = await detector.DetectSystemAsync().ConfigureAwait(false);
-        
+
         // Check if offline only mode
         if (profile.OfflineOnly && request.Provider != "local")
         {
-            return Results.Ok(new 
-            { 
-                success = false, 
+            return Results.Ok(new
+            {
+                success = false,
                 gated = true,
                 reason = "Offline mode enabled - only local assets are available",
                 assets = Array.Empty<object>()
@@ -4091,9 +4095,9 @@ apiGroup.MapPost("/assets/search", async ([FromBody] AssetSearchRequest request,
             case "pexels":
                 if (string.IsNullOrEmpty(request.ApiKey))
                 {
-                    return Results.Ok(new 
-                    { 
-                        success = false, 
+                    return Results.Ok(new
+                    {
+                        success = false,
                         gated = true,
                         reason = "Pexels API key required",
                         assets = Array.Empty<object>()
@@ -4110,9 +4114,9 @@ apiGroup.MapPost("/assets/search", async ([FromBody] AssetSearchRequest request,
             case "pixabay":
                 if (string.IsNullOrEmpty(request.ApiKey))
                 {
-                    return Results.Ok(new 
-                    { 
-                        success = false, 
+                    return Results.Ok(new
+                    {
+                        success = false,
                         gated = true,
                         reason = "Pixabay API key required",
                         assets = Array.Empty<object>()
@@ -4129,9 +4133,9 @@ apiGroup.MapPost("/assets/search", async ([FromBody] AssetSearchRequest request,
             case "unsplash":
                 if (string.IsNullOrEmpty(request.ApiKey))
                 {
-                    return Results.Ok(new 
-                    { 
-                        success = false, 
+                    return Results.Ok(new
+                    {
+                        success = false,
                         gated = true,
                         reason = "Unsplash API key required",
                         assets = Array.Empty<object>()
@@ -4188,7 +4192,7 @@ apiGroup.MapGet("/assets/stock/providers", (IConfiguration config) =>
             var logger = LoggerFactory.Create(b => b.AddConsole()).CreateLogger<Aura.Providers.Images.PexelsImageProvider>();
             var pexelsProvider = new Aura.Providers.Images.PexelsImageProvider(logger, httpClient, pexelsApiKey);
             var (remaining, limit, _) = pexelsProvider.GetQuotaStatus();
-            
+
             providers.Add(new StockProviderDto(
                 Name: "Pexels",
                 Available: true,
@@ -4241,7 +4245,7 @@ apiGroup.MapGet("/assets/stock/providers", (IConfiguration config) =>
             var logger = LoggerFactory.Create(b => b.AddConsole()).CreateLogger<Aura.Providers.Images.UnsplashImageProvider>();
             var unsplashProvider = new Aura.Providers.Images.UnsplashImageProvider(logger, httpClient, unsplashApiKey);
             var (remaining, limit) = unsplashProvider.GetQuotaStatus();
-            
+
             providers.Add(new StockProviderDto(
                 Name: "Unsplash",
                 Available: true,
@@ -4280,7 +4284,7 @@ apiGroup.MapGet("/assets/stock/quota/{provider}", (string provider, IConfigurati
     try
     {
         provider = provider.ToLowerInvariant();
-        
+
         switch (provider)
         {
             case "pexels":
@@ -4289,12 +4293,12 @@ apiGroup.MapGet("/assets/stock/quota/{provider}", (string provider, IConfigurati
                 {
                     return Results.BadRequest(new { error = "Pexels API key not configured" });
                 }
-                
+
                 var httpClient = new HttpClient();
                 var logger = LoggerFactory.Create(b => b.AddConsole()).CreateLogger<Aura.Providers.Images.PexelsImageProvider>();
                 var pexelsProvider = new Aura.Providers.Images.PexelsImageProvider(logger, httpClient, pexelsApiKey);
                 var (remaining, limit, resetTime) = pexelsProvider.GetQuotaStatus();
-                
+
                 return Results.Ok(new QuotaStatusResponse(
                     Provider: "Pexels",
                     Remaining: remaining,
@@ -4308,12 +4312,12 @@ apiGroup.MapGet("/assets/stock/quota/{provider}", (string provider, IConfigurati
                 {
                     return Results.BadRequest(new { error = "Unsplash API key not configured" });
                 }
-                
+
                 var unsplashHttpClient = new HttpClient();
                 var unsplashLogger = LoggerFactory.Create(b => b.AddConsole()).CreateLogger<Aura.Providers.Images.UnsplashImageProvider>();
                 var unsplashProvider = new Aura.Providers.Images.UnsplashImageProvider(unsplashLogger, unsplashHttpClient, unsplashApiKey);
                 var (unsplashRemaining, unsplashLimit) = unsplashProvider.GetQuotaStatus();
-                
+
                 return Results.Ok(new QuotaStatusResponse(
                     Provider: "Unsplash",
                     Remaining: unsplashRemaining,
@@ -4348,13 +4352,13 @@ apiGroup.MapPost("/assets/generate", async ([FromBody] AssetGenerateRequest requ
     try
     {
         var profile = await detector.DetectSystemAsync().ConfigureAwait(false);
-        
+
         // NVIDIA GPU gate - can be bypassed
         if (!request.BypassHardwareChecks && (profile.Gpu == null || profile.Gpu.Vendor.ToLowerInvariant() != "nvidia"))
         {
-            return Results.Ok(new 
-            { 
-                success = false, 
+            return Results.Ok(new
+            {
+                success = false,
                 gated = true,
                 reason = "Stable Diffusion typically requires an NVIDIA GPU. Use stock visuals, Pro cloud, or set BypassHardwareChecks=true to override.",
                 assets = Array.Empty<object>()
@@ -4364,9 +4368,9 @@ apiGroup.MapPost("/assets/generate", async ([FromBody] AssetGenerateRequest requ
         // VRAM gate - can be bypassed
         if (!request.BypassHardwareChecks && profile.Gpu != null && profile.Gpu.VramGB < 6)
         {
-            return Results.Ok(new 
-            { 
-                success = false, 
+            return Results.Ok(new
+            {
+                success = false,
                 gated = true,
                 reason = $"Insufficient VRAM ({profile.Gpu.VramGB}GB). Stable Diffusion typically requires minimum 6GB VRAM. Set BypassHardwareChecks=true to override.",
                 assets = Array.Empty<object>()
@@ -4376,9 +4380,9 @@ apiGroup.MapPost("/assets/generate", async ([FromBody] AssetGenerateRequest requ
         // Offline mode gate
         if (profile.OfflineOnly)
         {
-            return Results.Ok(new 
-            { 
-                success = false, 
+            return Results.Ok(new
+            {
+                success = false,
                 gated = true,
                 reason = "Offline mode enabled - Stable Diffusion WebUI requires network access",
                 assets = Array.Empty<object>()
@@ -4387,7 +4391,7 @@ apiGroup.MapPost("/assets/generate", async ([FromBody] AssetGenerateRequest requ
 
         var httpClient = httpClientFactory.CreateClient();
         var sdUrl = request.StableDiffusionUrl ?? "http://127.0.0.1:7860";
-        
+
         var sdParams = new Aura.Providers.Images.SDGenerationParams
         {
             Model = request.Model,
@@ -4428,9 +4432,9 @@ apiGroup.MapPost("/assets/generate", async ([FromBody] AssetGenerateRequest requ
 
         var assets = await sdProvider.FetchOrGenerateAsync(scene, spec, sdParams, ct).ConfigureAwait(false);
 
-        return Results.Ok(new 
-        { 
-            success = true, 
+        return Results.Ok(new
+        {
+            success = true,
             gated = false,
             model = vramGB >= 12 ? "SDXL" : "SD 1.5",
             vramGB = vramGB,
@@ -4440,9 +4444,9 @@ apiGroup.MapPost("/assets/generate", async ([FromBody] AssetGenerateRequest requ
     catch (HttpRequestException ex)
     {
         Log.Warning(ex, "Failed to connect to Stable Diffusion WebUI");
-        return Results.Ok(new 
-        { 
-            success = false, 
+        return Results.Ok(new
+        {
+            success = false,
             gated = true,
             reason = "Failed to connect to Stable Diffusion WebUI. Is it running?",
             assets = Array.Empty<object>()
@@ -4463,9 +4467,9 @@ apiGroup.MapPost("/providers/test/{provider}", async (string provider, [FromBody
     try
     {
         var httpClient = httpClientFactory.CreateClient();
-        
+
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        
+
         switch (provider.ToLower())
         {
             case "stablediffusion":
@@ -4483,7 +4487,7 @@ apiGroup.MapPost("/providers/test/{provider}", async (string provider, [FromBody
                 {
                     return Results.Ok(new { success = false, message = $"Failed to connect: {ex.Message}" });
                 }
-                
+
             case "ollama":
                 try
                 {
@@ -4499,7 +4503,7 @@ apiGroup.MapPost("/providers/test/{provider}", async (string provider, [FromBody
                 {
                     return Results.Ok(new { success = false, message = $"Failed to connect: {ex.Message}" });
                 }
-                
+
             case "ffmpeg":
                 try
                 {
@@ -4513,7 +4517,7 @@ apiGroup.MapPost("/providers/test/{provider}", async (string provider, [FromBody
                         UseShellExecute = false,
                         CreateNoWindow = true
                     };
-                    
+
                     using var process = System.Diagnostics.Process.Start(processInfo);
                     if (process != null)
                     {
@@ -4531,7 +4535,7 @@ apiGroup.MapPost("/providers/test/{provider}", async (string provider, [FromBody
                 {
                     return Results.Ok(new { success = false, message = $"Failed to execute FFmpeg: {ex.Message}" });
                 }
-                
+
             default:
                 return Results.BadRequest(new { success = false, message = $"Unknown provider: {provider}" });
         }
@@ -4554,8 +4558,8 @@ apiGroup.MapPost("/providers/validate", async (
     try
     {
         var providers = request?.Providers?.Length > 0 ? request.Providers : null;
-        
-        Log.Information("Validating providers: {Providers}", 
+
+        Log.Information("Validating providers: {Providers}",
             providers != null ? string.Join(", ", providers) : "all");
 
         var result = await validationService.ValidateProvidersAsync(providers, ct).ConfigureAwait(false);
@@ -4583,25 +4587,25 @@ app.MapHub<Aura.Api.Hubs.JobQueueHub>("/hubs/job-queue");
 Log.Information("SignalR hubs configured (JobQueueHub mapped to /hubs/job-queue)");
 
 // Root health endpoint for startup readiness checks
-app.MapGet("/healthz", () => 
+app.MapGet("/healthz", () =>
 {
     var wwwroot = Path.Combine(AppContext.BaseDirectory, "wwwroot");
     var staticReady = Directory.Exists(wwwroot) && File.Exists(Path.Combine(wwwroot, "index.html"));
-    
+
     if (staticReady)
     {
-        return Results.Ok(new 
-        { 
-            status = "healthy", 
+        return Results.Ok(new
+        {
+            status = "healthy",
             timestamp = DateTime.UtcNow,
             staticHosting = "ready"
         });
     }
     else
     {
-        return Results.Json(new 
-        { 
-            status = "degraded", 
+        return Results.Json(new
+        {
+            status = "degraded",
             timestamp = DateTime.UtcNow,
             staticHosting = "unavailable",
             message = "Static UI files not found. API is functional but web UI unavailable."
@@ -4636,7 +4640,7 @@ var healthMonitorStarted = false;
 lifetime.ApplicationStarted.Register(() =>
 {
     Log.Information("Initialization Phase 4: Application started, beginning background service initialization");
-    
+
     // Start Engine Lifecycle Manager first (deterministic ordering)
     _ = Task.Run(async () =>
     {
@@ -4653,7 +4657,7 @@ lifetime.ApplicationStarted.Register(() =>
             // Continue even if this fails - application can still function
         }
     });
-    
+
     // Start Provider Health Monitoring after a slight delay to ensure engine manager initializes first
     _ = Task.Run(async () =>
     {
@@ -4661,7 +4665,7 @@ lifetime.ApplicationStarted.Register(() =>
         {
             // Wait briefly for engine manager to start
             await Task.Delay(TimeSpan.FromSeconds(2)).ConfigureAwait(false);
-            
+
             Log.Information("Starting provider health monitoring...");
             await healthMonitor.RunPeriodicHealthChecksAsync(lifetime.ApplicationStopping).ConfigureAwait(false);
             healthMonitorStarted = true;
@@ -4683,7 +4687,7 @@ lifetime.ApplicationStarted.Register(() =>
             }
         }
     });
-    
+
     Log.Information("Initialization Phase 5: Background services initialization started");
 });
 
@@ -4691,14 +4695,14 @@ lifetime.ApplicationStopping.Register(() =>
 {
     Log.Information("=== Application Shutdown Initiated ===");
     Log.Information("Shutdown Phase 1: Stopping background services");
-    
+
     // Stop health monitor first (reverse order of startup)
     if (healthMonitorStarted)
     {
         Log.Information("Stopping provider health monitoring...");
         // Health monitor stops automatically via cancellation token
     }
-    
+
     // Stop engine lifecycle manager last
     if (engineManagerStarted)
     {
@@ -4713,7 +4717,7 @@ lifetime.ApplicationStopping.Register(() =>
             Log.Error(ex, "Error stopping Engine Lifecycle Manager");
         }
     }
-    
+
     Log.Information("Shutdown Phase 2: Background services stopped");
 });
 
@@ -4721,7 +4725,7 @@ lifetime.ApplicationStopping.Register(() =>
 static string[] GetFeatureNames(Aura.Core.Models.Voice.VoiceFeatures features)
 {
     var featureList = new List<string>();
-    
+
     if (features.HasFlag(Aura.Core.Models.Voice.VoiceFeatures.Rate))
         featureList.Add("Rate");
     if (features.HasFlag(Aura.Core.Models.Voice.VoiceFeatures.Pitch))
@@ -4744,7 +4748,7 @@ static string[] GetFeatureNames(Aura.Core.Models.Voice.VoiceFeatures features)
         featureList.Add("Phonemes");
     if (features.HasFlag(Aura.Core.Models.Voice.VoiceFeatures.SayAs))
         featureList.Add("SayAs");
-    
+
     return featureList.ToArray();
 }
 
@@ -4818,19 +4822,19 @@ _ = Task.Run(async () =>
     try
     {
         Log.Information("Running automatic dependency scan on startup");
-        
+
         using var scope = app.Services.CreateScope();
         var rescanService = scope.ServiceProvider.GetRequiredService<Aura.Core.Dependencies.DependencyRescanService>();
-        
+
         var report = await rescanService.RescanAllAsync().ConfigureAwait(false);
-        
+
         var installedCount = report.Dependencies.Count(d => d.Status == Aura.Core.Dependencies.DependencyStatus.Installed);
         var missingCount = report.Dependencies.Count(d => d.Status == Aura.Core.Dependencies.DependencyStatus.Missing);
         var partialCount = report.Dependencies.Count(d => d.Status == Aura.Core.Dependencies.DependencyStatus.PartiallyInstalled);
-        
+
         Log.Information("Startup dependency scan completed: {Installed} installed, {Missing} missing, {Partial} partially installed",
             installedCount, missingCount, partialCount);
-            
+
         if (missingCount > 0 || partialCount > 0)
         {
             Log.Warning("Some dependencies are missing or incomplete. Please visit Program Dependencies page to install them.");
@@ -4858,13 +4862,13 @@ catch (Exception ex)
     Log.Fatal(ex, "Application terminated unexpectedly");
     Log.Fatal("Error details: {Message}", ex.Message);
     Log.Fatal("Stack trace: {StackTrace}", ex.StackTrace);
-    
+
     if (ex.InnerException != null)
     {
         Log.Fatal("Inner exception: {InnerMessage}", ex.InnerException.Message);
         Log.Fatal("Inner stack trace: {InnerStackTrace}", ex.InnerException.StackTrace);
     }
-    
+
     // Give time for logs to flush
     await Task.Delay(1000).ConfigureAwait(false);
     throw;
