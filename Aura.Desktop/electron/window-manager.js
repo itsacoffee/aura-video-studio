@@ -124,8 +124,7 @@ class WindowManager {
     // Restore window state
     const savedState = this.windowStateStore.get("mainWindow");
     const primaryDisplay = screen.getPrimaryDisplay();
-    const { width: screenWidth, height: screenHeight } =
-      primaryDisplay.workAreaSize;
+    const { height: screenHeight } = primaryDisplay.workAreaSize;
 
     // Validate saved position is still within screen bounds
     let x = savedState.x;
