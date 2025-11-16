@@ -67,6 +67,11 @@ public record GenerateScriptRequest
     /// Optional model override
     /// </summary>
     public string? ModelOverride { get; init; }
+
+    /// <summary>
+    /// Model name for Ollama streaming (alias for ModelOverride)
+    /// </summary>
+    public string? Model => ModelOverride;
 }
 
 /// <summary>

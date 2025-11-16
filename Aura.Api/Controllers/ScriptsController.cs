@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Api.Models.ApiModels.V1;
@@ -9,7 +10,9 @@ using Aura.Core.Interfaces;
 using Aura.Core.Models;
 using Aura.Core.Models.Generation;
 using Aura.Core.Orchestrator;
+using Aura.Core.Services;
 using Aura.Core.Services.Generation;
+using Aura.Providers.Llm;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -27,6 +30,7 @@ public class ScriptsController : ControllerBase
     private readonly ScriptProcessor _scriptProcessor;
     private readonly ScriptCacheService _cacheService;
     private readonly ProviderMixer _providerMixer;
+    private readonly StreamingOrchestrator _streamingOrchestrator;
     
     /// <summary>
     /// In-memory script storage for MVP/demo purposes.
@@ -45,13 +49,15 @@ public class ScriptsController : ControllerBase
         ScriptOrchestrator scriptOrchestrator,
         ScriptProcessor scriptProcessor,
         ScriptCacheService cacheService,
-        ProviderMixer providerMixer)
+        ProviderMixer providerMixer,
+        StreamingOrchestrator streamingOrchestrator)
     {
         _logger = logger;
         _scriptOrchestrator = scriptOrchestrator;
         _scriptProcessor = scriptProcessor;
         _cacheService = cacheService;
         _providerMixer = providerMixer;
+        _streamingOrchestrator = streamingOrchestrator;
     }
 
     /// <summary>
@@ -1387,5 +1393,91 @@ public class ScriptsController : ControllerBase
             },
             CorrelationId = response.CorrelationId
         };
+    }
+
+    /// <summary>
+    /// Generate script with streaming support for real-time updates (SSE)
+    /// </summary>
+    [HttpPost("generate/stream")]
+    public async Task StreamGenerateScript(
+        [FromBody] GenerateScriptRequest request,
+        CancellationToken ct)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        try
+        {
+            _logger.LogInformation(
+                "[{CorrelationId}] POST /api/scripts/generate/stream - Topic: {Topic}, Stream: true",
+                correlationId, request.Topic);
+
+            Response.ContentType = "text/event-stream";
+            Response.Headers.Append("Cache-Control", "no-cache");
+            Response.Headers.Append("Connection", "keep-alive");
+            Response.Headers.Append("X-Accel-Buffering", "no");
+
+            var brief = new Brief(
+                Topic: request.Topic,
+                Audience: request.Audience,
+                Goal: request.Goal,
+                Tone: request.Tone,
+                Language: request.Language,
+                Aspect: ParseAspect(request.Aspect));
+
+            var planSpec = new PlanSpec(
+                TargetDuration: TimeSpan.FromSeconds(request.TargetDurationSeconds),
+                Pacing: ParsePacing(request.Pacing),
+                Density: ParseDensity(request.Density),
+                Style: request.Style);
+
+            var ollamaProvider = new OllamaLlmProvider(
+                _logger as ILogger<OllamaLlmProvider> ?? throw new InvalidOperationException("Logger not available"),
+                new System.Net.Http.HttpClient(),
+                baseUrl: "http://127.0.0.1:11434",
+                model: request.Model ?? "llama3.1:8b-q4_k_m"
+            );
+
+            var streamSource = ollamaProvider.GenerateStreamingAsync(brief, planSpec, ct);
+
+            await foreach (var eventData in _streamingOrchestrator.StreamScriptGenerationAsync(
+                streamSource, request.Topic, ct).ConfigureAwait(false))
+            {
+                var sseMessage = _streamingOrchestrator.FormatAsServerSentEvent(eventData);
+                var bytes = Encoding.UTF8.GetBytes(sseMessage);
+                
+                await Response.Body.WriteAsync(bytes, 0, bytes.Length, ct).ConfigureAwait(false);
+                await Response.Body.FlushAsync(ct).ConfigureAwait(false);
+
+                if (eventData.IsComplete)
+                {
+                    _logger.LogInformation(
+                        "[{CorrelationId}] Streaming generation complete. Tokens: {Tokens}, Tokens/sec: {TokensPerSec:F2}",
+                        correlationId,
+                        eventData.TokenCount,
+                        eventData.TokensPerSecond ?? 0.0);
+                    break;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("[{CorrelationId}] Streaming generation cancelled by client", correlationId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Error during streaming generation", correlationId);
+            
+            var errorEvent = new
+            {
+                eventType = "error",
+                errorMessage = "An error occurred during script generation",
+                correlationId = correlationId
+            };
+            
+            var errorMessage = $"event: error\ndata: {System.Text.Json.JsonSerializer.Serialize(errorEvent)}\n\n";
+            var bytes = Encoding.UTF8.GetBytes(errorMessage);
+            await Response.Body.WriteAsync(bytes, 0, bytes.Length, ct).ConfigureAwait(false);
+            await Response.Body.FlushAsync(ct).ConfigureAwait(false);
+        }
     }
 }
