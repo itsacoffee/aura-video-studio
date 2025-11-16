@@ -189,51 +189,85 @@ await cleanup()
 
 **Critical**: Maximum 10 seconds before force exit
 
-## Current Issues and Planned Fixes
+## Current Issues and Fixes Applied
 
-### Issue 1: Untracked FFmpeg Processes
+### Issue 1: Competing Shutdown Event Handlers - ✅ FIXED
 
-**Problem**: FFmpeg processes spawned by backend are not registered with any central process manager.
+**Problem**: `window-all-closed` and `before-quit` both tried to run shutdown, creating deadlock.
 
-**Impact**: When backend is killed, FFmpeg processes may be orphaned (not terminated with parent).
+**Impact**: App hung indefinitely on close, processes never terminated.
 
-**Fix**: 
-- Register FFmpeg process IDs with backend's `ShutdownOrchestrator.RegisterChildProcess()`
-- On job cancellation, explicitly kill registered processes
-- On backend shutdown, iterate and kill all registered processes
+**Fix Applied**:
+- `window-all-closed` now only calls `app.quit()` to trigger the quit sequence
+- `before-quit` is the single point of shutdown coordination
+- `before-quit` uses `event.preventDefault()` once, runs cleanup, then calls `process.exit(0)`
+- Added 5-second hard timeout in main.js with `process.exit(0)` failsafe
 
-### Issue 2: Backend Hosted Services May Not Respect Shutdown
+**Result**: Clean, single shutdown path without deadlock.
+
+---
+
+### Issue 2: Untracked FFmpeg Processes - ✅ FIXED
+
+**Problem**: FFmpeg processes spawned by backend were not registered with any central process manager.
+
+**Impact**: When backend was killed, FFmpeg processes were orphaned (not terminated with parent).
+
+**Fix Applied**:
+- Registered `IProcessManager` in DI container (Program.cs)
+- Backend's `ShutdownOrchestrator` now receives `IProcessManager` via constructor injection
+- Added `TerminateFFmpegProcessesAsync()` step in shutdown sequence
+- FFmpeg processes are tracked and terminated explicitly on shutdown
+
+**Result**: FFmpeg processes are properly tracked and terminated.
+
+---
+
+### Issue 3: Backend Hosted Services May Not Respect Shutdown - ⏳ MITIGATED
 
 **Problem**: Long-running background jobs (e.g., `BackgroundJobProcessorService`) may not exit quickly.
 
 **Impact**: Backend process may not terminate within timeout, requiring force kill.
 
-**Fix**:
-- Ensure all IHostedServices check `CancellationToken` frequently
-- Set aggressive timeout on `StopAsync()` for hosted services (2 seconds max)
-- Cancel in-flight operations immediately on shutdown
+**Fix Applied**:
+- Reduced graceful timeout to 2 seconds (was 3-5 seconds)
+- Reduced component timeout to 1 second (was 2-3 seconds)
+- Force kill after graceful timeout
+- Absolute 4-second timeout wraps entire shutdown
 
-### Issue 3: Process Tree Termination Not Guaranteed
+**Result**: Faster timeouts ensure force kill happens quickly. Hosted services should check CancellationToken frequently for best results.
+
+---
+
+### Issue 4: Process Tree Termination Not Guaranteed - ✅ FIXED
 
 **Problem**: On Windows, `taskkill /T` should terminate process tree, but may fail if processes are detached or re-parented.
 
 **Impact**: Child processes (FFmpeg, workers) may survive parent termination.
 
-**Fix**:
-- Ensure backend spawns processes with proper parent relationship (not detached)
-- Add explicit cleanup loop in backend to kill known child PIDs
-- Add failsafe in Electron to scan and kill all Aura-related processes by name
+**Fix Applied**:
+- Backend spawns processes with proper parent relationship (not detached)
+- Added explicit cleanup loop in backend to kill known child PIDs via ProcessManager
+- Added `killAllAuraProcesses()` failsafe in Electron to scan and kill all Aura-related processes by name
+- Failsafe kills: `Aura.Api.exe`, `dotnet.exe`, `ffmpeg.exe`, `Aura Video Studio.exe`
 
-### Issue 4: No Default Hard Timeout
+**Result**: Multiple layers of process termination ensure no orphans.
 
-**Problem**: Shutdown can theoretically wait indefinitely if user chooses "Wait for Completion" on long job.
+---
 
-**Impact**: User has no escape from waiting if job is stuck.
+### Issue 5: No Absolute Hard Timeout - ✅ FIXED
 
-**Fix**:
-- Add maximum wait time (5 minutes) even if user chooses "Wait"
-- Show progress and "Force Quit Anyway" option during wait
-- After timeout, force shutdown regardless of user choice
+**Problem**: Shutdown could theoretically wait indefinitely if user chose "Wait for Completion" on long job.
+
+**Impact**: User had no escape from waiting if job was stuck.
+
+**Fix Applied**:
+- Added 5-second absolute timeout in main.js
+- Added 4-second absolute timeout in shutdown orchestrator
+- After timeout, force-kill failsafe activates automatically
+- User can't be stuck waiting indefinitely
+
+**Result**: App always exits within 5 seconds maximum.
 
 ## Testing Strategy
 
