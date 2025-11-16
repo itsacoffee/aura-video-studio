@@ -8,6 +8,10 @@ export interface FFmpegHardwareAcceleration {
   availableEncoders: string[];
 }
 
+/**
+ * FFmpeg status response from /api/ffmpeg/status endpoint
+ * Simplified format from PR 336 improvements
+ */
 export interface FFmpegStatus {
   installed: boolean;
   valid: boolean;
@@ -15,19 +19,30 @@ export interface FFmpegStatus {
   path: string | null;
   source: string;
   error: string | null;
+  correlationId: string;
+}
+
+/**
+ * Extended FFmpeg status with hardware acceleration details
+ * From /api/system/ffmpeg/status endpoint (legacy)
+ */
+export interface FFmpegStatusExtended extends FFmpegStatus {
   errorCode: string | null;
   errorMessage: string | null;
   attemptedPaths: string[];
   versionMeetsRequirement: boolean;
   minimumVersion: string;
   hardwareAcceleration: FFmpegHardwareAcceleration;
-  correlationId: string;
 }
 
 export interface FFmpegInstallRequest {
   version?: string;
 }
 
+/**
+ * FFmpeg installation response with detailed error information
+ * PR 336 improvements: includes errorCode, howToFix, and user-friendly messages
+ */
 export interface FFmpegInstallResponse {
   success: boolean;
   message: string;
@@ -35,8 +50,10 @@ export interface FFmpegInstallResponse {
   detail?: string;
   version?: string;
   path?: string;
+  installedAt?: string;
   errorCode?: string;
   howToFix?: string[];
+  type?: string;
   correlationId: string;
 }
 
@@ -56,6 +73,10 @@ export interface UseExistingFFmpegRequest {
   path: string;
 }
 
+/**
+ * Response from use-existing FFmpeg endpoint
+ * PR 336 improvements: includes detailed error information and how-to-fix suggestions
+ */
 export interface UseExistingFFmpegResponse {
   success: boolean;
   message: string;
@@ -64,6 +85,8 @@ export interface UseExistingFFmpegResponse {
   path: string | null;
   version: string | null;
   source: string;
+  title?: string;
+  detail?: string;
   correlationId: string;
   howToFix?: string[];
 }
@@ -71,16 +94,39 @@ export interface UseExistingFFmpegResponse {
 /**
  * API client for FFmpeg status and installation
  * All FFmpeg API calls skip the circuit breaker to prevent false "service unavailable" errors during setup
+ * PR 336 improvements: Enhanced with detailed error codes, correlation IDs, and how-to-fix suggestions
  */
 export const ffmpegClient = {
   /**
-   * Get comprehensive FFmpeg status
+   * Get comprehensive FFmpeg status from /api/ffmpeg/status
+   * PR 336: Simplified endpoint with essential installation information
    */
   async getStatus(): Promise<FFmpegStatus> {
     const config: ExtendedAxiosRequestConfig = {
       _skipCircuitBreaker: true,
     };
-    const response = await apiClient.get<FFmpegStatus>('/api/system/ffmpeg/status', config);
+    const response = await apiClient.get<FFmpegStatus>('/api/ffmpeg/status', config);
+
+    // Reset circuit breaker on successful FFmpeg status check
+    if (response.data.installed && response.data.valid) {
+      resetCircuitBreaker();
+    }
+
+    return response.data;
+  },
+
+  /**
+   * Get extended FFmpeg status with hardware acceleration details
+   * This uses the legacy /api/system/ffmpeg/status endpoint with full details
+   */
+  async getStatusExtended(): Promise<FFmpegStatusExtended> {
+    const config: ExtendedAxiosRequestConfig = {
+      _skipCircuitBreaker: true,
+    };
+    const response = await apiClient.get<FFmpegStatusExtended>(
+      '/api/system/ffmpeg/status',
+      config
+    );
 
     // Reset circuit breaker on successful FFmpeg status check
     if (response.data.installed && response.data.valid) {

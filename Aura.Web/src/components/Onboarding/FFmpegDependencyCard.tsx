@@ -17,7 +17,7 @@ import {
 } from '@fluentui/react-icons';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { resetCircuitBreaker } from '../../services/api/apiClient';
-import { ffmpegClient, type FFmpegStatus } from '../../services/api/ffmpegClient';
+import { ffmpegClient, type FFmpegStatusExtended } from '../../services/api/ffmpegClient';
 import { useNotifications } from '../Notifications/Toasts';
 
 const useStyles = makeStyles({
@@ -76,8 +76,8 @@ const useStyles = makeStyles({
 });
 
 export interface FFmpegDependencyCardProps {
-  onInstallComplete?: (status: FFmpegStatus) => void;
-  onStatusChange?: (status: FFmpegStatus | null) => void;
+  onInstallComplete?: (status: FFmpegStatusExtended) => void;
+  onStatusChange?: (status: FFmpegStatusExtended | null) => void;
   autoCheck?: boolean;
   autoExpandDetails?: boolean;
   refreshSignal?: number;
@@ -92,7 +92,7 @@ export function FFmpegDependencyCard({
 }: FFmpegDependencyCardProps) {
   const styles = useStyles();
   const { showSuccessToast, showFailureToast } = useNotifications();
-  const [status, setStatus] = useState<FFmpegStatus | null>(null);
+  const [status, setStatus] = useState<FFmpegStatusExtended | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
   const [installProgress, setInstallProgress] = useState(0);
@@ -108,7 +108,7 @@ export function FFmpegDependencyCard({
       resetCircuitBreaker();
       console.info('[FFmpegDependencyCard] Circuit breaker reset, checking FFmpeg status');
 
-      const ffmpegStatus = await ffmpegClient.getStatus();
+      const ffmpegStatus = await ffmpegClient.getStatusExtended();
       setStatus(ffmpegStatus);
 
       if (ffmpegStatus.installed && ffmpegStatus.valid) {
@@ -169,26 +169,8 @@ export function FFmpegDependencyCard({
           message: rescanResult.message,
         });
 
-        // Update status from rescan result
-        const updatedStatus: FFmpegStatus = {
-          installed: rescanResult.installed,
-          valid: rescanResult.valid,
-          version: rescanResult.version,
-          path: rescanResult.path,
-          source: rescanResult.source,
-          error: rescanResult.error,
-          versionMeetsRequirement: rescanResult.installed && rescanResult.valid,
-          minimumVersion: '4.0',
-          hardwareAcceleration: {
-            nvencSupported: false,
-            amfSupported: false,
-            quickSyncSupported: false,
-            videoToolboxSupported: false,
-            availableEncoders: [],
-          },
-          correlationId: rescanResult.correlationId,
-        };
-
+        // After rescan, fetch full extended status
+        const updatedStatus = await ffmpegClient.getStatusExtended();
         setStatus(updatedStatus);
 
         if (updatedStatus.installed && updatedStatus.valid) {

@@ -27,7 +27,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type { FC } from 'react';
 import { handleApiError } from '../../services/api/errorHandler';
 import type { UserFriendlyError } from '../../services/api/errorHandler';
-import { ffmpegClient, type FFmpegStatus } from '../../services/api/ffmpegClient';
+import { ffmpegClient, type FFmpegStatusExtended } from '../../services/api/ffmpegClient';
 
 const useStyles = makeStyles({
   container: {
@@ -95,7 +95,7 @@ interface FFmpegSetupProps {
 
 export const FFmpegSetup: FC<FFmpegSetupProps> = ({ onStatusChange, onAutoAdvance }) => {
   const styles = useStyles();
-  const [status, setStatus] = useState<FFmpegStatus | null>(null);
+  const [status, setStatus] = useState<FFmpegStatusExtended | null>(null);
   const [loading, setLoading] = useState(true);
   const [installing, setInstalling] = useState(false);
   const [installProgress, setInstallProgress] = useState(0);
@@ -110,7 +110,7 @@ export const FFmpegSetup: FC<FFmpegSetupProps> = ({ onStatusChange, onAutoAdvanc
       setLoading(true);
       setError(null);
 
-      const statusData = await ffmpegClient.getStatus();
+      const statusData = await ffmpegClient.getStatusExtended();
       setStatus(statusData);
 
       const isReady = statusData.installed && statusData.valid;
@@ -207,6 +207,16 @@ export const FFmpegSetup: FC<FFmpegSetupProps> = ({ onStatusChange, onAutoAdvanc
         setError({
           title: 'FFmpeg Not Found',
           message: result.message || 'No valid FFmpeg installation found on this system.',
+          actions: [
+            {
+              label: 'Install FFmpeg',
+              description: 'Use the button above to install FFmpeg automatically',
+            },
+            {
+              label: 'Manual Install',
+              description: 'Or manually install FFmpeg and restart the wizard',
+            },
+          ],
           howToFix: [
             'Install FFmpeg using the button above',
             'Or manually install FFmpeg and restart the wizard',
@@ -226,6 +236,12 @@ export const FFmpegSetup: FC<FFmpegSetupProps> = ({ onStatusChange, onAutoAdvanc
       setError({
         title: 'Invalid Path',
         message: 'Please enter a valid path to the FFmpeg executable.',
+        actions: [
+          {
+            label: 'Browse',
+            description: 'Use the browse button to select the FFmpeg executable',
+          },
+        ],
         howToFix: [],
       });
       return;
@@ -246,6 +262,15 @@ export const FFmpegSetup: FC<FFmpegSetupProps> = ({ onStatusChange, onAutoAdvanc
           title: 'Invalid FFmpeg',
           message:
             result.message || 'The specified path does not contain a valid FFmpeg installation.',
+          actions: (
+            result.howToFix || [
+              'Ensure the path points to the ffmpeg executable (ffmpeg.exe on Windows)',
+              'Verify FFmpeg version is 4.0 or higher',
+            ]
+          ).map((step, index) => ({
+            label: `Step ${index + 1}`,
+            description: step,
+          })),
           howToFix: result.howToFix || [
             'Ensure the path points to the ffmpeg executable (ffmpeg.exe on Windows)',
             'Verify FFmpeg version is 4.0 or higher',
