@@ -3,9 +3,12 @@
  *
  * This service helps users set up Ollama as a local LLM provider during
  * the first-run wizard.
+ *
+ * PR 1: Enhanced with proper error classification instead of generic failures
  */
 
 import { ollamaClient } from './api/ollamaClient';
+import { classifyError, type ClassifiedError } from '../utils/errorClassification';
 
 export interface OllamaSetupStatus {
   installed: boolean;
@@ -14,6 +17,7 @@ export interface OllamaSetupStatus {
   modelsInstalled: string[];
   recommendedModels: OllamaModelRecommendation[];
   installationPath?: string;
+  error?: ClassifiedError;
 }
 
 export interface OllamaModelRecommendation {
@@ -34,6 +38,7 @@ export interface OllamaInstallGuide {
 
 /**
  * Check if Ollama is installed and running
+ * PR 1: Now returns detailed error information instead of silently failing
  */
 export async function checkOllamaStatus(): Promise<OllamaSetupStatus> {
   try {
@@ -51,13 +56,23 @@ export async function checkOllamaStatus(): Promise<OllamaSetupStatus> {
       recommendedModels: getRecommendedModels(),
       installationPath: status.installPath,
     };
-  } catch (error) {
-    // Ollama is not installed or not running
+  } catch (error: unknown) {
+    // Classify the error to provide specific feedback
+    const classified = classifyError(error);
+    
+    console.warn('[Ollama Setup] Status check failed:', {
+      category: classified.category,
+      title: classified.title,
+      message: classified.message,
+    });
+
+    // Ollama is not installed or not running, but include error details
     return {
       installed: false,
       running: false,
       modelsInstalled: [],
       recommendedModels: getRecommendedModels(),
+      error: classified,
     };
   }
 }
@@ -160,26 +175,38 @@ export function getInstallGuide(): OllamaInstallGuide {
 
 /**
  * Start Ollama server
+ * PR 1: Enhanced with proper error classification
  */
-export async function startOllama(): Promise<{ success: boolean; message: string }> {
+export async function startOllama(): Promise<{
+  success: boolean;
+  message: string;
+  error?: ClassifiedError;
+}> {
   try {
     const result = await ollamaClient.start();
     return {
       success: result.success || false,
       message: result.message || 'Ollama started successfully',
     };
-  } catch (error) {
+  } catch (error: unknown) {
+    const classified = classifyError(error);
     return {
       success: false,
-      message: error instanceof Error ? error.message : 'Failed to start Ollama',
+      message: classified.message,
+      error: classified,
     };
   }
 }
 
 /**
  * Pull a model from Ollama registry
+ * PR 1: Enhanced with proper error classification
  */
-export async function pullModel(modelName: string): Promise<{ success: boolean; message: string }> {
+export async function pullModel(modelName: string): Promise<{
+  success: boolean;
+  message: string;
+  error?: ClassifiedError;
+}> {
   try {
     const response = await fetch('/api/ollama/pull', {
       method: 'POST',
@@ -190,7 +217,8 @@ export async function pullModel(modelName: string): Promise<{ success: boolean; 
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to pull model: ${response.statusText}`);
+      const errorText = await response.text().catch(() => response.statusText);
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
 
     await response.json();
@@ -198,10 +226,12 @@ export async function pullModel(modelName: string): Promise<{ success: boolean; 
       success: true,
       message: `Model ${modelName} pulled successfully`,
     };
-  } catch (error) {
+  } catch (error: unknown) {
+    const classified = classifyError(error);
     return {
       success: false,
-      message: error instanceof Error ? error.message : 'Failed to pull model',
+      message: classified.message,
+      error: classified,
     };
   }
 }
