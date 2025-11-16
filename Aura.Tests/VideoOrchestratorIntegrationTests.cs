@@ -2,13 +2,21 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Core.Configuration;
+using Aura.Core.Dependencies;
 using Aura.Core.Models;
 using Aura.Core.Models.Narrative;
 using Aura.Core.Models.Visual;
 using Aura.Core.Models.Generation;
 using Aura.Core.Orchestrator;
 using Aura.Core.Providers;
+using Aura.Core.Services;
 using Aura.Core.Services.Generation;
+using Aura.Core.Services.Providers;
+using Aura.Core.Telemetry;
+using Aura.Core.Timeline;
+using Aura.Core.Validation;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Xunit;
 
@@ -45,33 +53,34 @@ public class VideoOrchestratorIntegrationTests
         var mockImageProvider = new MockImageProvider();
         var mockFfmpegLocator = new MockFfmpegLocator();
         var mockHardwareDetector = new MockHardwareDetector();
-        var mockCache = new Microsoft.Extensions.Caching.Memory.MemoryCache(
-            new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
-        var ffmpegResolver = new Aura.Core.Dependencies.FFmpegResolver(
-            _loggerFactory.CreateLogger<Aura.Core.Dependencies.FFmpegResolver>(),
+        var mockCache = new MemoryCache(
+            new MemoryCacheOptions());
+        var ffmpegResolver = new FFmpegResolver(
+            _loggerFactory.CreateLogger<FFmpegResolver>(),
             mockCache);
-        var preGenerationValidator = new Aura.Core.Validation.PreGenerationValidator(
-            _loggerFactory.CreateLogger<Aura.Core.Validation.PreGenerationValidator>(),
+        var preGenerationValidator = new PreGenerationValidator(
+            _loggerFactory.CreateLogger<PreGenerationValidator>(),
             mockFfmpegLocator,
             ffmpegResolver,
-            mockHardwareDetector);
-        var scriptValidator = new Aura.Core.Validation.ScriptValidator();
-        var retryWrapper = new Aura.Core.Services.ProviderRetryWrapper(
-            _loggerFactory.CreateLogger<Aura.Core.Services.ProviderRetryWrapper>());
-        var ttsValidator = new Aura.Core.Validation.TtsOutputValidator(
-            _loggerFactory.CreateLogger<Aura.Core.Validation.TtsOutputValidator>());
-        var imageValidator = new Aura.Core.Validation.ImageOutputValidator(
-            _loggerFactory.CreateLogger<Aura.Core.Validation.ImageOutputValidator>());
-        var llmValidator = new Aura.Core.Validation.LlmOutputValidator(
-            _loggerFactory.CreateLogger<Aura.Core.Validation.LlmOutputValidator>());
-        var cleanupManager = new Aura.Core.Services.ResourceCleanupManager(
-            _loggerFactory.CreateLogger<Aura.Core.Services.ResourceCleanupManager>());
+            mockHardwareDetector,
+            CreateReadyProviderReadinessService());
+        var scriptValidator = new ScriptValidator();
+        var retryWrapper = new ProviderRetryWrapper(
+            _loggerFactory.CreateLogger<ProviderRetryWrapper>());
+        var ttsValidator = new TtsOutputValidator(
+            _loggerFactory.CreateLogger<TtsOutputValidator>());
+        var imageValidator = new ImageOutputValidator(
+            _loggerFactory.CreateLogger<ImageOutputValidator>());
+        var llmValidator = new LlmOutputValidator(
+            _loggerFactory.CreateLogger<LlmOutputValidator>());
+        var cleanupManager = new ResourceCleanupManager(
+            _loggerFactory.CreateLogger<ResourceCleanupManager>());
 
-        var timelineBuilder = new Aura.Core.Timeline.TimelineBuilder();
-        var providerSettings = new Aura.Core.Configuration.ProviderSettings(
-            _loggerFactory.CreateLogger<Aura.Core.Configuration.ProviderSettings>());
-        var telemetryCollector = new Aura.Core.Telemetry.RunTelemetryCollector(
-            _loggerFactory.CreateLogger<Aura.Core.Telemetry.RunTelemetryCollector>(),
+        var timelineBuilder = new TimelineBuilder();
+        var providerSettings = new ProviderSettings(
+            _loggerFactory.CreateLogger<ProviderSettings>());
+        var telemetryCollector = new RunTelemetryCollector(
+            _loggerFactory.CreateLogger<RunTelemetryCollector>(),
             System.IO.Path.GetTempPath());
 
         var orchestrator = new VideoOrchestrator(
@@ -152,33 +161,34 @@ public class VideoOrchestratorIntegrationTests
         var mockVideoComposer = new MockVideoComposer();
         var mockFfmpegLocator = new MockFfmpegLocator();
         var mockHardwareDetector = new MockHardwareDetector();
-        var mockCache = new Microsoft.Extensions.Caching.Memory.MemoryCache(
-            new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
-        var ffmpegResolver = new Aura.Core.Dependencies.FFmpegResolver(
-            _loggerFactory.CreateLogger<Aura.Core.Dependencies.FFmpegResolver>(),
+        var mockCache = new MemoryCache(
+            new MemoryCacheOptions());
+        var ffmpegResolver = new FFmpegResolver(
+            _loggerFactory.CreateLogger<FFmpegResolver>(),
             mockCache);
-        var preGenerationValidator = new Aura.Core.Validation.PreGenerationValidator(
-            _loggerFactory.CreateLogger<Aura.Core.Validation.PreGenerationValidator>(),
+        var preGenerationValidator = new PreGenerationValidator(
+            _loggerFactory.CreateLogger<PreGenerationValidator>(),
             mockFfmpegLocator,
             ffmpegResolver,
-            mockHardwareDetector);
-        var scriptValidator = new Aura.Core.Validation.ScriptValidator();
-        var retryWrapper = new Aura.Core.Services.ProviderRetryWrapper(
-            _loggerFactory.CreateLogger<Aura.Core.Services.ProviderRetryWrapper>());
-        var ttsValidator = new Aura.Core.Validation.TtsOutputValidator(
-            _loggerFactory.CreateLogger<Aura.Core.Validation.TtsOutputValidator>());
-        var imageValidator = new Aura.Core.Validation.ImageOutputValidator(
-            _loggerFactory.CreateLogger<Aura.Core.Validation.ImageOutputValidator>());
-        var llmValidator = new Aura.Core.Validation.LlmOutputValidator(
-            _loggerFactory.CreateLogger<Aura.Core.Validation.LlmOutputValidator>());
-        var cleanupManager = new Aura.Core.Services.ResourceCleanupManager(
-            _loggerFactory.CreateLogger<Aura.Core.Services.ResourceCleanupManager>());
+            mockHardwareDetector,
+            CreateReadyProviderReadinessService());
+        var scriptValidator = new ScriptValidator();
+        var retryWrapper = new ProviderRetryWrapper(
+            _loggerFactory.CreateLogger<ProviderRetryWrapper>());
+        var ttsValidator = new TtsOutputValidator(
+            _loggerFactory.CreateLogger<TtsOutputValidator>());
+        var imageValidator = new ImageOutputValidator(
+            _loggerFactory.CreateLogger<ImageOutputValidator>());
+        var llmValidator = new LlmOutputValidator(
+            _loggerFactory.CreateLogger<LlmOutputValidator>());
+        var cleanupManager = new ResourceCleanupManager(
+            _loggerFactory.CreateLogger<ResourceCleanupManager>());
 
-        var timelineBuilder = new Aura.Core.Timeline.TimelineBuilder();
-        var providerSettings = new Aura.Core.Configuration.ProviderSettings(
-            _loggerFactory.CreateLogger<Aura.Core.Configuration.ProviderSettings>());
-        var telemetryCollector = new Aura.Core.Telemetry.RunTelemetryCollector(
-            _loggerFactory.CreateLogger<Aura.Core.Telemetry.RunTelemetryCollector>(),
+        var timelineBuilder = new TimelineBuilder();
+        var providerSettings = new ProviderSettings(
+            _loggerFactory.CreateLogger<ProviderSettings>());
+        var telemetryCollector = new RunTelemetryCollector(
+            _loggerFactory.CreateLogger<RunTelemetryCollector>(),
             System.IO.Path.GetTempPath());
 
         var orchestrator = new VideoOrchestrator(
@@ -227,6 +237,56 @@ public class VideoOrchestratorIntegrationTests
         Assert.True(mockLlmProvider.DraftScriptCalled);
         Assert.True(mockTtsProvider.SynthesizeCalled);
         Assert.True(mockVideoComposer.RenderCalled);
+    }
+
+    private static IProviderReadinessService CreateReadyProviderReadinessService()
+    {
+        return new StaticProviderReadinessService(CreateReadyProvidersResult());
+    }
+
+    private static ProviderReadinessResult CreateReadyProvidersResult()
+    {
+        var result = new ProviderReadinessResult();
+        result.CategoryStatuses.Add(new ProviderCategoryStatus(
+            "LLM",
+            true,
+            "MockLLM",
+            null,
+            "Mock LLM ready",
+            Array.Empty<string>(),
+            Array.Empty<ProviderCandidateStatus>()));
+        result.CategoryStatuses.Add(new ProviderCategoryStatus(
+            "TTS",
+            true,
+            "MockTTS",
+            null,
+            "Mock TTS ready",
+            Array.Empty<string>(),
+            Array.Empty<ProviderCandidateStatus>()));
+        result.CategoryStatuses.Add(new ProviderCategoryStatus(
+            "Images",
+            true,
+            "MockImages",
+            null,
+            "Mock image provider ready",
+            Array.Empty<string>(),
+            Array.Empty<ProviderCandidateStatus>()));
+        return result;
+    }
+
+    private sealed class StaticProviderReadinessService : IProviderReadinessService
+    {
+        private readonly ProviderReadinessResult _result;
+
+        public StaticProviderReadinessService(ProviderReadinessResult result)
+        {
+            _result = result;
+        }
+
+        public Task<ProviderReadinessResult> ValidateRequiredProvidersAsync(CancellationToken ct = default)
+        {
+            return Task.FromResult(_result);
+        }
     }
 
     // Mock implementations
@@ -309,10 +369,10 @@ Today AI is used in healthcare finance education and entertainment. Machine lear
         public async Task<string> SynthesizeAsync(IEnumerable<ScriptLine> lines, VoiceSpec spec, CancellationToken ct)
         {
             SynthesizeCalled = true;
-            
+
             // Create a temporary valid WAV file for testing
             var outputPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"test-audio-{Guid.NewGuid()}.wav");
-            
+
             // Generate a simple valid WAV file (silent audio, 1 second)
             // RIFF header for a valid WAV file
             var sampleRate = 44100;
@@ -321,7 +381,7 @@ Today AI is used in healthcare finance education and entertainment. Machine lear
             var duration = 1.0; // 1 second of audio
             var numSamples = (int)(sampleRate * duration);
             var dataSize = numSamples * channels * (bitsPerSample / 8);
-            
+
             using (var fs = new System.IO.FileStream(outputPath, System.IO.FileMode.Create))
             using (var writer = new System.IO.BinaryWriter(fs))
             {
@@ -329,7 +389,7 @@ Today AI is used in healthcare finance education and entertainment. Machine lear
                 writer.Write(System.Text.Encoding.ASCII.GetBytes("RIFF"));
                 writer.Write(36 + dataSize); // File size - 8
                 writer.Write(System.Text.Encoding.ASCII.GetBytes("WAVE"));
-                
+
                 // fmt chunk
                 writer.Write(System.Text.Encoding.ASCII.GetBytes("fmt "));
                 writer.Write(16); // Chunk size
@@ -339,18 +399,18 @@ Today AI is used in healthcare finance education and entertainment. Machine lear
                 writer.Write(sampleRate * channels * (bitsPerSample / 8)); // Byte rate
                 writer.Write((short)(channels * (bitsPerSample / 8))); // Block align
                 writer.Write((short)bitsPerSample);
-                
+
                 // data chunk
                 writer.Write(System.Text.Encoding.ASCII.GetBytes("data"));
                 writer.Write(dataSize);
-                
+
                 // Write silence (zeros)
                 for (int i = 0; i < numSamples; i++)
                 {
                     writer.Write((short)0);
                 }
             }
-            
+
             return await Task.FromResult(outputPath);
         }
     }
@@ -373,7 +433,7 @@ Today AI is used in healthcare finance education and entertainment. Machine lear
         {
             // Create a minimal valid JPEG file (1x1 pixel)
             var imagePath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"test-image-{Guid.NewGuid()}.jpg");
-            
+
             // Minimal JPEG file header (1x1 red pixel)
             byte[] minimalJpeg = new byte[]
             {
@@ -389,9 +449,9 @@ Today AI is used in healthcare finance education and entertainment. Machine lear
                 0x00, 0x00, 0xFF, 0xDA, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3F, 0x00, 0xD2, 0xCF, 0x20, 0xFF,
                 0xD9
             };
-            
+
             await System.IO.File.WriteAllBytesAsync(imagePath, minimalJpeg, ct);
-            
+
             var assets = new List<Asset>
             {
                 new Asset("image", imagePath, "CC0", null)
