@@ -66,6 +66,27 @@ public static class ProviderServicesExtensions
         // Default HTTP client for other uses
         services.AddHttpClient();
 
+        // Named HttpClient for Ollama with proper configuration
+        services.AddHttpClient("OllamaClient", client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+            client.DefaultRequestHeaders.Add("User-Agent", "AuraVideoStudio/1.0");
+            client.DefaultRequestHeaders.Add("Accept", "application/json");
+        })
+        .ConfigurePrimaryHttpMessageHandler(() =>
+        {
+            var handler = new HttpClientHandler
+            {
+                // Disable proxy for localhost connections
+                UseProxy = false,
+                UseDefaultCredentials = false,
+                AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate,
+                AllowAutoRedirect = true,
+                MaxAutomaticRedirections = 5
+            };
+            return handler;
+        });
+
         // OpenAI key validation service using IHttpClientFactory
         services.AddSingleton<OpenAIKeyValidationService>(sp =>
         {
@@ -114,11 +135,22 @@ public static class ProviderServicesExtensions
         services.AddSingleton<Aura.Core.Services.Providers.OllamaDetectionService>(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Providers.OllamaDetectionService>>();
-            var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+            var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient("OllamaClient");
             var cache = sp.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>();
             var settings = sp.GetRequiredService<ProviderSettings>();
             var baseUrl = settings.GetOllamaUrl();
             return new Aura.Core.Services.Providers.OllamaDetectionService(logger, httpClient, cache, baseUrl);
+        });
+        
+        // Ollama health check service
+        services.AddSingleton<Aura.Core.Services.Providers.OllamaHealthCheckService>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Providers.OllamaHealthCheckService>>();
+            var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient("OllamaClient");
+            var cache = sp.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>();
+            var settings = sp.GetRequiredService<ProviderSettings>();
+            var baseUrl = settings.GetOllamaUrl();
+            return new Aura.Core.Services.Providers.OllamaHealthCheckService(logger, httpClient, cache, baseUrl);
         });
         
         // Stable Diffusion detection service

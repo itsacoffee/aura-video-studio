@@ -51,8 +51,8 @@ public class OllamaLlmProvider : ILlmProvider
         PromptCustomizationService? promptCustomizationService = null)
     {
         _logger = logger;
-        _httpClient = httpClient;
-        _baseUrl = baseUrl;
+        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+        _baseUrl = ValidateBaseUrl(baseUrl);
         _model = model;
         _maxRetries = maxRetries;
         _timeout = TimeSpan.FromSeconds(timeoutSeconds);
@@ -69,13 +69,39 @@ public class OllamaLlmProvider : ILlmProvider
             _promptCustomizationService = promptCustomizationService;
         }
 
-        // Note: Connection test is skipped during initialization to avoid blocking startup.
-        // Connection will be tested on first use with helpful error messages.
+        _logger.LogInformation("OllamaLlmProvider initialized with baseUrl={BaseUrl}, model={Model}", _baseUrl, _model);
+    }
+
+    /// <summary>
+    /// Validate and normalize the base URL
+    /// </summary>
+    private static string ValidateBaseUrl(string baseUrl)
+    {
+        if (string.IsNullOrWhiteSpace(baseUrl))
+        {
+            baseUrl = "http://127.0.0.1:11434";
+        }
+
+        if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri))
+        {
+            throw new ArgumentException($"Invalid base URL: {baseUrl}", nameof(baseUrl));
+        }
+
+        return baseUrl.TrimEnd('/');
     }
 
     public async Task<string> DraftScriptAsync(Brief brief, PlanSpec spec, CancellationToken ct)
     {
         _logger.LogInformation("Generating script with Ollama (model: {Model}) at {BaseUrl} for topic: {Topic}", _model, _baseUrl, brief.Topic);
+
+        // Pre-check: Validate Ollama is available before attempting generation
+        var isAvailable = await IsServiceAvailableAsync(ct).ConfigureAwait(false);
+        if (!isAvailable)
+        {
+            var diagnosticMessage = await GetConnectionDiagnosticsAsync(ct).ConfigureAwait(false);
+            throw new InvalidOperationException(
+                $"Cannot connect to Ollama at {_baseUrl}. {diagnosticMessage}");
+        }
 
         var startTime = DateTime.UtcNow;
         Exception? lastException = null;
@@ -1055,6 +1081,57 @@ Return ONLY the transition text, no explanations or additional commentary:";
             _logger.LogError(ex, "Error fetching Ollama models from {BaseUrl}", _baseUrl);
             return new List<OllamaModelInfo>();
         }
+    }
+
+    /// <summary>
+    /// Get connection diagnostics information
+    /// </summary>
+    private async Task<string> GetConnectionDiagnosticsAsync(CancellationToken ct)
+    {
+        var diagnostics = new List<string>
+        {
+            "Please ensure Ollama is running.",
+            "Installation: Visit https://ollama.com to download and install.",
+            "Start service: Run 'ollama serve' in a terminal."
+        };
+
+        try
+        {
+            var endpoints = new[] { "http://localhost:11434", "http://127.0.0.1:11434" };
+            var checkedEndpoints = new List<string>();
+
+            foreach (var endpoint in endpoints)
+            {
+                try
+                {
+                    using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                    cts.CancelAfter(TimeSpan.FromSeconds(2));
+                    
+                    var response = await _httpClient.GetAsync($"{endpoint}/api/version", cts.Token).ConfigureAwait(false);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        diagnostics.Add($"Note: Ollama detected at {endpoint} but not at {_baseUrl}. Check your base URL configuration.");
+                        break;
+                    }
+                    checkedEndpoints.Add(endpoint);
+                }
+                catch
+                {
+                    checkedEndpoints.Add(endpoint);
+                }
+            }
+
+            if (checkedEndpoints.Count > 0)
+            {
+                diagnostics.Add($"Checked endpoints: {string.Join(", ", checkedEndpoints)}");
+            }
+        }
+        catch
+        {
+            // Diagnostics check failed, return basic message
+        }
+
+        return string.Join(" ", diagnostics);
     }
 
     /// <summary>

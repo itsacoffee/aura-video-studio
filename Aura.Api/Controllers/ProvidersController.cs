@@ -962,40 +962,46 @@ public class ProvidersController : ControllerBase
         
         try
         {
-            var ollamaDetectionService = HttpContext.RequestServices.GetService(typeof(Aura.Core.Services.Providers.OllamaDetectionService)) 
-                as Aura.Core.Services.Providers.OllamaDetectionService;
+            var healthCheckService = HttpContext.RequestServices.GetService(typeof(Aura.Core.Services.Providers.OllamaHealthCheckService)) 
+                as Aura.Core.Services.Providers.OllamaHealthCheckService;
 
-            if (ollamaDetectionService == null)
+            if (healthCheckService == null)
             {
                 return Ok(new
                 {
                     isAvailable = false,
+                    isHealthy = false,
                     version = (string?)null,
                     modelsCount = 0,
-                    message = "Ollama detection service not initialized",
+                    runningModelsCount = 0,
+                    message = "Ollama health check service not initialized",
                     correlationId
                 });
             }
 
-            var status = await ollamaDetectionService.GetStatusAsync(cancellationToken).ConfigureAwait(false);
-            var models = status.IsRunning 
-                ? await ollamaDetectionService.GetModelsAsync(cancellationToken).ConfigureAwait(false)
-                : new List<Aura.Core.Services.Providers.OllamaModel>();
+            var health = await healthCheckService.CheckHealthAsync(cancellationToken).ConfigureAwait(false);
 
             Log.Information(
-                "Ollama status check: Available={Available}, Models={ModelsCount}, CorrelationId: {CorrelationId}",
-                status.IsRunning,
-                models.Count,
+                "Ollama status check: Healthy={Healthy}, Version={Version}, Models={ModelsCount}, Running={RunningCount}, CorrelationId: {CorrelationId}",
+                health.IsHealthy,
+                health.Version,
+                health.AvailableModels.Count,
+                health.RunningModels.Count,
                 correlationId);
 
             return Ok(new
             {
-                isAvailable = status.IsRunning,
-                version = status.Version,
-                modelsCount = models.Count,
-                message = status.IsRunning 
-                    ? $"Ollama running with {models.Count} models"
-                    : status.ErrorMessage ?? "Ollama service not running",
+                isAvailable = health.IsHealthy,
+                isHealthy = health.IsHealthy,
+                version = health.Version,
+                modelsCount = health.AvailableModels.Count,
+                runningModelsCount = health.RunningModels.Count,
+                baseUrl = health.BaseUrl,
+                responseTimeMs = health.ResponseTimeMs,
+                message = health.IsHealthy 
+                    ? $"Ollama running with {health.AvailableModels.Count} models available"
+                    : health.ErrorMessage ?? "Ollama service not running",
+                lastChecked = health.LastChecked,
                 correlationId
             });
         }
@@ -1005,8 +1011,10 @@ public class ProvidersController : ControllerBase
             return Ok(new
             {
                 isAvailable = false,
+                isHealthy = false,
                 version = (string?)null,
                 modelsCount = 0,
+                runningModelsCount = 0,
                 message = $"Error checking Ollama: {ex.Message}",
                 correlationId
             });
@@ -1152,6 +1160,152 @@ public class ProvidersController : ControllerBase
                 isAvailable = false,
                 modelsCount = 0,
                 models = Array.Empty<object>(),
+                correlationId
+            });
+        }
+    }
+
+    /// <summary>
+    /// Pull a model from Ollama library
+    /// </summary>
+    [HttpPost("ollama/pull")]
+    public async Task<IActionResult> PullOllamaModel(
+        [FromBody] PullOllamaModelRequest request,
+        CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.ModelName))
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Model name is required",
+                    correlationId
+                });
+            }
+
+            var ollamaDetectionService = HttpContext.RequestServices.GetService(typeof(Aura.Core.Services.Providers.OllamaDetectionService)) 
+                as Aura.Core.Services.Providers.OllamaDetectionService;
+
+            if (ollamaDetectionService == null)
+            {
+                return StatusCode(503, new
+                {
+                    success = false,
+                    message = "Ollama detection service not initialized",
+                    correlationId
+                });
+            }
+
+            var status = await ollamaDetectionService.GetStatusAsync(cancellationToken).ConfigureAwait(false);
+            if (!status.IsRunning)
+            {
+                return StatusCode(503, new
+                {
+                    success = false,
+                    message = "Ollama service not running",
+                    correlationId
+                });
+            }
+
+            Log.Information("Starting model pull: {ModelName}, CorrelationId: {CorrelationId}", request.ModelName, correlationId);
+
+            var success = await ollamaDetectionService.PullModelAsync(
+                request.ModelName, 
+                null,
+                cancellationToken).ConfigureAwait(false);
+
+            if (success)
+            {
+                Log.Information("Model pull completed: {ModelName}, CorrelationId: {CorrelationId}", request.ModelName, correlationId);
+                
+                return Ok(new
+                {
+                    success = true,
+                    message = $"Model {request.ModelName} pulled successfully",
+                    modelName = request.ModelName,
+                    correlationId
+                });
+            }
+            else
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = $"Failed to pull model {request.ModelName}",
+                    correlationId
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error pulling Ollama model, CorrelationId: {CorrelationId}", correlationId);
+            return StatusCode(500, new
+            {
+                success = false,
+                message = $"Error pulling model: {ex.Message}",
+                correlationId
+            });
+        }
+    }
+
+    /// <summary>
+    /// Get running Ollama models
+    /// </summary>
+    [HttpGet("ollama/running")]
+    public async Task<IActionResult> GetRunningOllamaModels(CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        try
+        {
+            var healthCheckService = HttpContext.RequestServices.GetService(typeof(Aura.Core.Services.Providers.OllamaHealthCheckService)) 
+                as Aura.Core.Services.Providers.OllamaHealthCheckService;
+
+            if (healthCheckService == null)
+            {
+                return StatusCode(503, new
+                {
+                    success = false,
+                    message = "Ollama health check service not initialized",
+                    correlationId
+                });
+            }
+
+            var health = await healthCheckService.CheckHealthAsync(cancellationToken).ConfigureAwait(false);
+
+            if (!health.IsHealthy)
+            {
+                return StatusCode(503, new
+                {
+                    success = false,
+                    message = health.ErrorMessage ?? "Ollama service not available",
+                    correlationId
+                });
+            }
+
+            Log.Information(
+                "Running models fetched: {ModelsCount} models, CorrelationId: {CorrelationId}",
+                health.RunningModels.Count,
+                correlationId);
+
+            return Ok(new
+            {
+                success = true,
+                runningModels = health.RunningModels,
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error fetching running Ollama models, CorrelationId: {CorrelationId}", correlationId);
+            return StatusCode(500, new
+            {
+                success = false,
+                message = $"Error fetching running models: {ex.Message}",
                 correlationId
             });
         }
