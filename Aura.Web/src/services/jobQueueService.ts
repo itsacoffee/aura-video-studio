@@ -1,6 +1,5 @@
 import * as signalR from '@microsoft/signalr';
 import { env } from '@/config/env';
-import { loggingService } from '@/services/loggingService';
 import type { JobStatus } from '@/state/activityContext';
 
 export interface JobQueueItem {
