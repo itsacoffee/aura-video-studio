@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -10,6 +12,7 @@ using Aura.Core.AI;
 using Aura.Core.Models;
 using Aura.Core.Models.Generation;
 using Aura.Core.Models.Narrative;
+using Aura.Core.Models.Ollama;
 using Aura.Core.Models.Visual;
 using Aura.Core.Providers;
 using Aura.Core.Services.AI;
@@ -1291,6 +1294,194 @@ Return ONLY the transition text, no explanations or additional commentary:";
             return 0;
         }
         return (int)Math.Ceiling(text.Length / 4.0);
+    }
+
+    /// <summary>
+    /// Generate script with streaming support for real-time token-by-token updates
+    /// </summary>
+    public async IAsyncEnumerable<OllamaStreamResponse> GenerateStreamingAsync(
+        Brief brief,
+        PlanSpec spec,
+        [EnumeratorCancellation] CancellationToken ct = default)
+    {
+        _logger.LogInformation("Starting streaming generation with Ollama (model: {Model}) for topic: {Topic}", 
+            _model, brief.Topic);
+
+        var isAvailable = await IsServiceAvailableAsync(ct).ConfigureAwait(false);
+        if (!isAvailable)
+        {
+            var diagnosticMessage = await GetConnectionDiagnosticsAsync(ct).ConfigureAwait(false);
+            throw new InvalidOperationException(
+                $"Cannot connect to Ollama at {_baseUrl}. {diagnosticMessage}");
+        }
+
+        string systemPrompt = EnhancedPromptTemplates.GetSystemPromptForScriptGeneration();
+        string userPrompt = _promptCustomizationService.BuildCustomizedPrompt(brief, spec, brief.PromptModifiers);
+        
+        if (PromptEnhancementCallback != null)
+        {
+            userPrompt = await PromptEnhancementCallback(userPrompt, brief, spec).ConfigureAwait(false);
+        }
+        
+        string prompt = $"{systemPrompt}\n\n{userPrompt}";
+
+        var requestBody = new
+        {
+            model = _model,
+            prompt = prompt,
+            stream = true,
+            options = new
+            {
+                temperature = 0.7,
+                top_p = 0.9,
+                num_predict = 2048
+            }
+        };
+
+        var json = JsonSerializer.Serialize(requestBody);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/api/generate")
+        {
+            Content = content
+        };
+
+        HttpResponseMessage response;
+        try
+        {
+            response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Failed to connect to Ollama at {BaseUrl}", _baseUrl);
+            throw new InvalidOperationException(
+                $"Cannot connect to Ollama at {_baseUrl}. Please ensure Ollama is running: 'ollama serve'", ex);
+        }
+        catch (TaskCanceledException) when (ct.IsCancellationRequested)
+        {
+            _logger.LogInformation("Streaming cancelled by user");
+            throw;
+        }
+
+        using (response)
+        {
+            var stream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+            using var reader = new StreamReader(stream);
+
+            var cumulativeTokens = 0;
+
+            while (!reader.EndOfStream && !ct.IsCancellationRequested)
+            {
+                var line = await reader.ReadLineAsync().ConfigureAwait(false);
+                
+                if (string.IsNullOrWhiteSpace(line))
+                {
+                    continue;
+                }
+
+                OllamaStreamResponse? chunk = null;
+                try
+                {
+                    using var doc = JsonDocument.Parse(line);
+                    var root = doc.RootElement;
+
+                    var model = root.TryGetProperty("model", out var modelProp) 
+                        ? modelProp.GetString() ?? _model 
+                        : _model;
+
+                    var createdAt = root.TryGetProperty("created_at", out var createdAtProp)
+                        ? createdAtProp.GetString() ?? string.Empty
+                        : string.Empty;
+
+                    var responseText = root.TryGetProperty("response", out var responseProp)
+                        ? responseProp.GetString() ?? string.Empty
+                        : string.Empty;
+
+                    var done = root.TryGetProperty("done", out var doneProp) && doneProp.GetBoolean();
+
+                    long? totalDuration = null;
+                    long? loadDuration = null;
+                    int? promptEvalCount = null;
+                    long? promptEvalDuration = null;
+                    int? evalCount = null;
+                    long? evalDuration = null;
+
+                    if (done)
+                    {
+                        if (root.TryGetProperty("total_duration", out var totalDurProp) && totalDurProp.ValueKind == JsonValueKind.Number)
+                        {
+                            totalDuration = totalDurProp.GetInt64();
+                        }
+
+                        if (root.TryGetProperty("load_duration", out var loadDurProp) && loadDurProp.ValueKind == JsonValueKind.Number)
+                        {
+                            loadDuration = loadDurProp.GetInt64();
+                        }
+
+                        if (root.TryGetProperty("prompt_eval_count", out var promptEvalCountProp) && promptEvalCountProp.ValueKind == JsonValueKind.Number)
+                        {
+                            promptEvalCount = promptEvalCountProp.GetInt32();
+                        }
+
+                        if (root.TryGetProperty("prompt_eval_duration", out var promptEvalDurProp) && promptEvalDurProp.ValueKind == JsonValueKind.Number)
+                        {
+                            promptEvalDuration = promptEvalDurProp.GetInt64();
+                        }
+
+                        if (root.TryGetProperty("eval_count", out var evalCountProp) && evalCountProp.ValueKind == JsonValueKind.Number)
+                        {
+                            evalCount = evalCountProp.GetInt32();
+                        }
+
+                        if (root.TryGetProperty("eval_duration", out var evalDurProp) && evalDurProp.ValueKind == JsonValueKind.Number)
+                        {
+                            evalDuration = evalDurProp.GetInt64();
+                        }
+
+                        _logger.LogInformation("Streaming complete. Total tokens: {Tokens}, Tokens/sec: {TokensPerSec:F2}",
+                            evalCount ?? 0,
+                            evalCount.HasValue && evalDuration.HasValue && evalDuration.Value > 0
+                                ? (double)evalCount.Value / (evalDuration.Value / 1_000_000_000.0)
+                                : 0.0);
+                    }
+
+                    if (!string.IsNullOrEmpty(responseText))
+                    {
+                        cumulativeTokens++;
+                    }
+
+                    chunk = new OllamaStreamResponse
+                    {
+                        Model = model,
+                        CreatedAt = createdAt,
+                        Response = responseText,
+                        Done = done,
+                        TotalDuration = totalDuration,
+                        LoadDuration = loadDuration,
+                        PromptEvalCount = promptEvalCount,
+                        PromptEvalDuration = promptEvalDuration,
+                        EvalCount = done ? evalCount : cumulativeTokens,
+                        EvalDuration = evalDuration
+                    };
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse streaming JSON line: {Line}", line);
+                    continue;
+                }
+
+                if (chunk != null)
+                {
+                    yield return chunk;
+
+                    if (chunk.Done)
+                    {
+                        break;
+                    }
+                }
+            }
+        }
     }
 }
 
