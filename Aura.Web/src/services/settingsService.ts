@@ -2,6 +2,7 @@ import { apiUrl } from '../config/api';
 import type { UserSettings } from '../types/settings';
 import { createDefaultSettings } from '../types/settings';
 import { get, post } from './api/apiClient';
+import { providerPingClient } from './api/providerPingClient';
 import { loggingService as logger } from './loggingService';
 
 const STORAGE_KEY = 'aura-user-settings';
@@ -153,81 +154,58 @@ export class SettingsService {
   async testApiKey(
     provider: string,
     apiKey: string
-  ): Promise<{ success: boolean; message: string; responseTimeMs?: number }> {
-    try {
-      // For OpenAI, use the new live validation endpoint
-      if (provider.toLowerCase() === 'openai') {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
-
-        try {
-          const response = await fetch(apiUrl('/api/providers/openai/validate'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ apiKey }),
-            signal: controller.signal,
-          });
-
-          clearTimeout(timeoutId);
-
-          const data = await response.json();
-
-          // Handle different response types
-          if (response.ok) {
-            return {
-              success: data.isValid === true,
-              message: data.message || 'API key is valid and verified with OpenAI.',
-              responseTimeMs: data.details?.responseTimeMs,
-            };
-          }
-
-          // Handle error responses (ProblemDetails format)
-          if (data.detail || data.title) {
-            return {
-              success: false,
-              message: data.detail || data.title || 'Failed to validate API key',
-            };
-          }
-
-          // Handle validation response format
-          if (data.isValid === false) {
-            return {
-              success: false,
-              message: data.message || 'API key validation failed',
-            };
-          }
-
-          return {
-            success: false,
-            message: 'Failed to validate API key',
-          };
-        } catch (error: unknown) {
-          clearTimeout(timeoutId);
-          
-          if (error instanceof Error && error.name === 'AbortError') {
-            return {
-              success: false,
-              message: 'Connection timeout - check network connectivity',
-            };
-          }
-          throw error;
-        }
-      }
-
-      // For other providers, use the old endpoint
-      const response = await fetch(apiUrl(`/api/settings/test-api-key/${provider}`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey }),
-      });
-
-      if (response.ok) {
-        return await response.json();
-      }
-
+  ): Promise<{
+    success: boolean;
+    message: string;
+    responseTimeMs?: number | null;
+    statusCode?: number | null;
+    errorCode?: string | null;
+    endpoint?: string | null;
+    correlationId?: string | null;
+  }> {
+    const trimmedKey = apiKey.trim();
+    if (!trimmedKey) {
       return {
         success: false,
-        message: 'Failed to test API key',
+        message: 'API key is required',
+      };
+    }
+
+    const mapping = mapProviderToIdentifiers(provider);
+
+    try {
+      const saveResponse = await fetch(apiUrl('/api/keys/set'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: mapping.storageName,
+          apiKey: trimmedKey,
+        }),
+      });
+
+      if (!saveResponse.ok) {
+        const errorText = await saveResponse.text();
+        return {
+          success: false,
+          message:
+            errorText || `Failed to persist API key for ${mapping.displayName}.`,
+        };
+      }
+
+      const pingResult = await providerPingClient.pingProvider(mapping.pingName);
+
+      return {
+        success: pingResult.success,
+        message:
+          pingResult.message ||
+          (pingResult.success
+            ? `${mapping.displayName} is reachable.`
+            : `${mapping.displayName} did not respond.`),
+        responseTimeMs: pingResult.latencyMs,
+        statusCode: pingResult.statusCode,
+        errorCode: pingResult.errorCode,
+        endpoint: pingResult.endpoint,
+        correlationId: pingResult.correlationId,
       };
     } catch (error) {
       return {
@@ -422,3 +400,35 @@ export class SettingsService {
 
 // Export singleton instance
 export const settingsService = new SettingsService();
+
+interface ProviderIdentifierMap {
+  storageName: string;
+  pingName: string;
+  displayName: string;
+}
+
+const providerIdentifierMap: Record<string, ProviderIdentifierMap> = {
+  openai: { storageName: 'OpenAI', pingName: 'openai', displayName: 'OpenAI' },
+  anthropic: { storageName: 'Anthropic', pingName: 'anthropic', displayName: 'Anthropic' },
+  google: { storageName: 'Gemini', pingName: 'gemini', displayName: 'Google Gemini' },
+  gemini: { storageName: 'Gemini', pingName: 'gemini', displayName: 'Google Gemini' },
+  elevenlabs: { storageName: 'ElevenLabs', pingName: 'elevenlabs', displayName: 'ElevenLabs' },
+  stabilityai: { storageName: 'StabilityAI', pingName: 'stabilityai', displayName: 'Stability AI' },
+  azure: { storageName: 'AzureOpenAI', pingName: 'azureopenai', displayName: 'Azure OpenAI' },
+  azureopenai: { storageName: 'AzureOpenAI', pingName: 'azureopenai', displayName: 'Azure OpenAI' },
+  pexels: { storageName: 'Pexels', pingName: 'pexels', displayName: 'Pexels' },
+  pixabay: { storageName: 'Pixabay', pingName: 'pixabay', displayName: 'Pixabay' },
+  unsplash: { storageName: 'Unsplash', pingName: 'unsplash', displayName: 'Unsplash' },
+  playht: { storageName: 'PlayHT', pingName: 'playht', displayName: 'PlayHT' },
+};
+
+function mapProviderToIdentifiers(provider: string): ProviderIdentifierMap {
+  const normalized = provider.trim().toLowerCase();
+  return (
+    providerIdentifierMap[normalized] ?? {
+      storageName: provider,
+      pingName: normalized,
+      displayName: provider,
+    }
+  );
+}

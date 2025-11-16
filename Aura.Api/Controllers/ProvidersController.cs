@@ -5,6 +5,7 @@ using Aura.Core.Models.Providers;
 using Aura.Core.Services.Providers;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text.Json;
@@ -26,6 +27,7 @@ public class ProvidersController : ControllerBase
     private readonly OpenAIKeyValidationService _openAIValidationService;
     private readonly Aura.Core.Services.IKeyValidationService _keyValidationService;
     private readonly Aura.Core.Services.ISecureStorageService _secureStorageService;
+    private readonly ProviderPingService _providerPingService;
 
     public ProvidersController(
         IHardwareDetector hardwareDetector, 
@@ -34,6 +36,7 @@ public class ProvidersController : ControllerBase
         OpenAIKeyValidationService openAIValidationService,
         Aura.Core.Services.IKeyValidationService keyValidationService,
         Aura.Core.Services.ISecureStorageService secureStorageService,
+        ProviderPingService providerPingService,
         LlmProviderRecommendationService? recommendationService = null,
         ProviderHealthMonitoringService? healthMonitoringService = null,
         ProviderCostTrackingService? costTrackingService = null)
@@ -44,6 +47,7 @@ public class ProvidersController : ControllerBase
         _openAIValidationService = openAIValidationService;
         _keyValidationService = keyValidationService;
         _secureStorageService = secureStorageService;
+        _providerPingService = providerPingService;
         _recommendationService = recommendationService;
         _healthMonitoringService = healthMonitoringService;
         _costTrackingService = costTrackingService;
@@ -1618,6 +1622,7 @@ public class ProvidersController : ControllerBase
     [HttpPost("{name}/ping")]
     public async Task<IActionResult> PingProvider(
         string name,
+        [FromBody] ProviderPingRequest? request,
         CancellationToken cancellationToken)
     {
         var correlationId = HttpContext.TraceIdentifier;
@@ -1626,50 +1631,24 @@ public class ProvidersController : ControllerBase
         {
             Log.Information("[{CorrelationId}] POST /api/providers/{Name}/ping", correlationId, name);
 
-            var pingService = HttpContext.RequestServices.GetService(typeof(Aura.Core.Services.Providers.ProviderPingService)) 
-                as Aura.Core.Services.Providers.ProviderPingService;
+            var result = await _providerPingService
+                .PingAsync(name, request, cancellationToken)
+                .ConfigureAwait(false);
 
-            if (pingService == null)
+            if (string.IsNullOrWhiteSpace(result.ProviderId))
             {
-                return Problem(
-                    title: "Service Unavailable",
-                    detail: "Provider ping service is not available",
-                    statusCode: 503);
-            }
-
-            Aura.Core.Services.Providers.CoreProviderPingResult result;
-
-            switch (name.ToLowerInvariant())
-            {
-                case "openai":
-                    var openaiKey = await _secureStorageService.GetApiKeyAsync("OpenAI").ConfigureAwait(false);
-                    result = await pingService.PingOpenAIAsync(openaiKey, null, cancellationToken).ConfigureAwait(false);
-                    break;
-
-                case "anthropic":
-                    var anthropicKey = await _secureStorageService.GetApiKeyAsync("Anthropic").ConfigureAwait(false);
-                    result = await pingService.PingAnthropicAsync(anthropicKey, null, cancellationToken).ConfigureAwait(false);
-                    break;
-
-                default:
-                    return BadRequest(new
-                    {
-                        attempted = false,
-                        success = false,
-                        errorCode = "ProviderNotSupported",
-                        message = $"Provider '{name}' does not support ping operation yet.",
-                        correlationId
-                    });
+                result = result with { ProviderId = name };
             }
 
             var response = new ProviderPingResult(
+                Provider: result.ProviderId,
                 Attempted: result.Attempted,
                 Success: result.Success,
-                ErrorCode: result.ErrorCode,
                 Message: result.Message,
-                HttpStatus: result.HttpStatus,
+                ErrorCode: result.ErrorCode,
+                StatusCode: result.StatusCode,
                 Endpoint: result.Endpoint,
-                ResponseTimeMs: result.ResponseTimeMs,
+                LatencyMs: result.LatencyMs,
                 CorrelationId: correlationId);
 
             return Ok(response);
@@ -1698,47 +1677,26 @@ public class ProvidersController : ControllerBase
         {
             Log.Information("[{CorrelationId}] GET /api/providers/ping-all", correlationId);
 
-            var pingService = HttpContext.RequestServices.GetService(typeof(Aura.Core.Services.Providers.ProviderPingService)) 
-                as Aura.Core.Services.Providers.ProviderPingService;
+            var results = new Dictionary<string, ProviderPingResult>(StringComparer.OrdinalIgnoreCase);
 
-            if (pingService == null)
+            foreach (var providerId in ProviderPingService.SupportedProviders)
             {
-                return Problem(
-                    title: "Service Unavailable",
-                    detail: "Provider ping service is not available",
-                    statusCode: 503);
-            }
+                var result = await _providerPingService
+                    .PingAsync(providerId, null, cancellationToken)
+                    .ConfigureAwait(false);
 
-            var results = new System.Collections.Generic.Dictionary<string, ProviderPingResult>();
+                var apiResult = new ProviderPingResult(
+                    Provider: string.IsNullOrWhiteSpace(result.ProviderId) ? providerId : result.ProviderId,
+                    Attempted: result.Attempted,
+                    Success: result.Success,
+                    Message: result.Message,
+                    ErrorCode: result.ErrorCode,
+                    StatusCode: result.StatusCode,
+                    Endpoint: result.Endpoint,
+                    LatencyMs: result.LatencyMs,
+                    CorrelationId: correlationId);
 
-            var openaiKey = await _secureStorageService.GetApiKeyAsync("OpenAI").ConfigureAwait(false);
-            if (!string.IsNullOrWhiteSpace(openaiKey))
-            {
-                var openaiResult = await pingService.PingOpenAIAsync(openaiKey, null, cancellationToken).ConfigureAwait(false);
-                results["OpenAI"] = new ProviderPingResult(
-                    openaiResult.Attempted,
-                    openaiResult.Success,
-                    openaiResult.ErrorCode,
-                    openaiResult.Message,
-                    openaiResult.HttpStatus,
-                    openaiResult.Endpoint,
-                    openaiResult.ResponseTimeMs,
-                    correlationId);
-            }
-
-            var anthropicKey = await _secureStorageService.GetApiKeyAsync("Anthropic").ConfigureAwait(false);
-            if (!string.IsNullOrWhiteSpace(anthropicKey))
-            {
-                var anthropicResult = await pingService.PingAnthropicAsync(anthropicKey, null, cancellationToken).ConfigureAwait(false);
-                results["Anthropic"] = new ProviderPingResult(
-                    anthropicResult.Attempted,
-                    anthropicResult.Success,
-                    anthropicResult.ErrorCode,
-                    anthropicResult.Message,
-                    anthropicResult.HttpStatus,
-                    anthropicResult.Endpoint,
-                    anthropicResult.ResponseTimeMs,
-                    correlationId);
+                results[apiResult.Provider] = apiResult;
             }
 
             var response = new ProviderPingAllResponse(

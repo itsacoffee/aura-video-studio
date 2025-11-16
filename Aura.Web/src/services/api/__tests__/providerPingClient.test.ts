@@ -24,13 +24,14 @@ describe('providerPingClient', () => {
   describe('pingProvider', () => {
     it('should ping a specific provider and return result', async () => {
       const mockResult = {
+        provider: 'openai',
         attempted: true,
         success: true,
         errorCode: null,
         message: 'Connection successful',
-        httpStatus: '200',
+        statusCode: 200,
         endpoint: 'https://api.openai.com/v1/models',
-        responseTimeMs: 150,
+        latencyMs: 150,
         correlationId: 'abc-123',
       };
 
@@ -48,13 +49,14 @@ describe('providerPingClient', () => {
 
     it('should handle ping failures with error details', async () => {
       const mockResult = {
+        provider: 'openai',
         attempted: true,
         success: false,
         errorCode: 'AUTH002_ApiKeyInvalid',
         message: 'Invalid API key',
-        httpStatus: '401',
+        statusCode: 401,
         endpoint: 'https://api.openai.com/v1/models',
-        responseTimeMs: 100,
+        latencyMs: 100,
         correlationId: 'def-456',
       };
 
@@ -69,13 +71,14 @@ describe('providerPingClient', () => {
 
     it('should skip circuit breaker for ping requests', async () => {
       const mockResult = {
+        provider: 'anthropic',
         attempted: true,
         success: true,
         errorCode: null,
         message: null,
-        httpStatus: null,
+        statusCode: null,
         endpoint: null,
-        responseTimeMs: null,
+        latencyMs: null,
         correlationId: 'ghi-789',
       };
 
@@ -93,23 +96,25 @@ describe('providerPingClient', () => {
       const mockResult = {
         results: {
           OpenAI: {
+            provider: 'OpenAI',
             attempted: true,
             success: true,
             errorCode: null,
             message: 'Connected',
-            httpStatus: '200',
+            statusCode: 200,
             endpoint: 'https://api.openai.com',
-            responseTimeMs: 120,
+            latencyMs: 120,
             correlationId: 'jkl-012',
           },
           Anthropic: {
+            provider: 'Anthropic',
             attempted: true,
             success: false,
             errorCode: 'NET001_BackendUnreachable',
             message: 'Connection timeout',
-            httpStatus: null,
+            statusCode: null,
             endpoint: 'https://api.anthropic.com',
-            responseTimeMs: null,
+            latencyMs: null,
             correlationId: 'mno-345',
           },
         },

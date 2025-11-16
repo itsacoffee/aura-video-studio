@@ -10,13 +10,14 @@ import apiClient, { type ExtendedAxiosRequestConfig } from './apiClient';
  * Provider ping result with detailed network information
  */
 export interface ProviderPingResult {
+  provider: string;
   attempted: boolean;
   success: boolean;
-  errorCode: string | null;
   message: string | null;
-  httpStatus: string | null;
+  errorCode: string | null;
+  statusCode: number | null;
   endpoint: string | null;
-  responseTimeMs: number | null;
+  latencyMs: number | null;
   correlationId: string | null;
 }
 
@@ -57,13 +58,13 @@ export const providerPingClient = {
    * @param name - Provider name (e.g., "openai", "anthropic", "elevenlabs")
    * @returns Ping result with response time and detailed error information
    */
-  async pingProvider(name: string): Promise<ProviderPingResult> {
+  async pingProvider(name: string, payload?: ProviderPingRequest): Promise<ProviderPingResult> {
     const config: ExtendedAxiosRequestConfig = {
       _skipCircuitBreaker: true,
     };
     const response = await apiClient.post<ProviderPingResult>(
       `/api/providers/${name}/ping`,
-      {},
+      payload ?? {},
       config
     );
     return response.data;
@@ -102,3 +103,10 @@ export const providerPingClient = {
     return response.data;
   },
 };
+
+export interface ProviderPingRequest {
+  model?: string;
+  region?: string;
+  endpoint?: string;
+  parameters?: Record<string, string | null>;
+}
