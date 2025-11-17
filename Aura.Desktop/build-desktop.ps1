@@ -38,11 +38,14 @@ if ($Help) {
     Write-Output ""
     Write-Output "Usage: .\build-desktop.ps1 [OPTIONS]"
     Write-Output ""
+    Write-Output "This script performs a CLEAN BUILD by default, removing all build"
+    Write-Output "artifacts before building to ensure a fresh build every time."
+    Write-Output ""
     Write-Output "Options:"
     Write-Output "  -Target <platform>    Build for specific platform (win only, default: win)"
-    Write-Output "  -SkipFrontend         Skip frontend build"
-    Write-Output "  -SkipBackend          Skip backend build"
-    Write-Output "  -SkipInstaller        Skip installer creation"
+    Write-Output "  -SkipFrontend         Skip frontend build (and cleaning)"
+    Write-Output "  -SkipBackend          Skip backend build (and cleaning)"
+    Write-Output "  -SkipInstaller        Skip installer creation (and cleaning)"
     Write-Output "  -Help                 Show this help message"
     exit 0
 }
@@ -71,6 +74,71 @@ $ScriptDir = $PSScriptRoot
 $ProjectRoot = Split-Path $ScriptDir -Parent
 
 Set-Location $ScriptDir
+
+# ========================================
+# Step 0: Clean Build Artifacts
+# ========================================
+Write-Info "Cleaning build artifacts for clean build..."
+Write-Host ""
+
+# Clean frontend build artifacts
+if (-not $SkipFrontend) {
+    $FrontendDist = "$ProjectRoot\Aura.Web\dist"
+    if (Test-Path $FrontendDist) {
+        Write-Info "Cleaning frontend build artifacts..."
+        Remove-Item -Path $FrontendDist -Recurse -Force -ErrorAction SilentlyContinue
+        Write-Success "  ✓ Frontend dist folder cleaned"
+    }
+}
+
+# Clean backend build artifacts
+if (-not $SkipBackend) {
+    Write-Info "Cleaning backend build artifacts..."
+    
+    # Clean .NET build outputs (bin/obj folders)
+    $ProjectsToClean = @(
+        "$ProjectRoot\Aura.Api",
+        "$ProjectRoot\Aura.Core",
+        "$ProjectRoot\Aura.Providers",
+        "$ProjectRoot\Aura.Analyzers"
+    )
+    
+    foreach ($ProjectPath in $ProjectsToClean) {
+        if (Test-Path $ProjectPath) {
+            $BinPath = Join-Path $ProjectPath "bin"
+            $ObjPath = Join-Path $ProjectPath "obj"
+            
+            if (Test-Path $BinPath) {
+                Remove-Item -Path $BinPath -Recurse -Force -ErrorAction SilentlyContinue
+            }
+            if (Test-Path $ObjPath) {
+                Remove-Item -Path $ObjPath -Recurse -Force -ErrorAction SilentlyContinue
+            }
+        }
+    }
+    
+    # Clean backend output directory
+    $BackendOutputDir = "$ScriptDir\resources\backend\win-x64"
+    if (Test-Path $BackendOutputDir) {
+        Remove-Item -Path $BackendOutputDir -Recurse -Force -ErrorAction SilentlyContinue
+        Write-Success "  ✓ Backend output directory cleaned"
+    }
+    
+    Write-Success "  ✓ Backend build artifacts cleaned"
+}
+
+# Clean Electron dist folder (optional, but ensures fresh build)
+if (-not $SkipInstaller) {
+    $ElectronDist = "$ScriptDir\dist"
+    if (Test-Path $ElectronDist) {
+        Write-Info "Cleaning Electron dist folder..."
+        Remove-Item -Path $ElectronDist -Recurse -Force -ErrorAction SilentlyContinue
+        Write-Success "  ✓ Electron dist folder cleaned"
+    }
+}
+
+Write-Success "Clean build preparation complete"
+Write-Host ""
 
 # ========================================
 # Step 1: Build Frontend
@@ -110,6 +178,11 @@ if (-not $SkipBackend) {
     Write-Info "Building .NET backend..."
     Set-Location "$ProjectRoot\Aura.Api"
 
+    # Clean .NET build cache before building
+    Write-Info "Cleaning .NET build cache..."
+    dotnet clean -c Release --nologo | Out-Null
+    Write-Success "  ✓ .NET build cache cleaned"
+
     # Create backend output directory (must match package.json extraResources path)
     $ResourcesDir = "$ScriptDir\resources"
     $BackendDir = "$ResourcesDir\backend"
@@ -119,11 +192,13 @@ if (-not $SkipBackend) {
 
     if ($Target -eq "win") {
         Write-Info "Building backend for Windows (x64)..."
+        Write-Info "This may take several minutes..."
         dotnet publish -c Release -r win-x64 --self-contained true `
             -p:PublishSingleFile=false `
             -p:PublishTrimmed=false `
             -p:IncludeNativeLibrariesForSelfExtract=true `
             -p:SkipFrontendBuild=true `
+            --no-incremental `
             -o "$BackendDir\win-x64"
         if ($LASTEXITCODE -ne 0) {
             Show-ErrorMessage "Windows backend build failed with exit code $LASTEXITCODE"

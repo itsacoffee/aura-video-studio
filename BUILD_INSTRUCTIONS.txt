@@ -1,0 +1,368 @@
+================================================================================
+AURA VIDEO STUDIO - BUILD INSTRUCTIONS
+================================================================================
+
+This document provides step-by-step instructions for building the Aura Video
+Studio application on Windows. Follow these instructions to ensure a successful
+build.
+
+================================================================================
+PREREQUISITES
+================================================================================
+
+Before building, ensure you have the following installed:
+
+1. Node.js 18 or higher
+   - Download from: https://nodejs.org/
+   - Verify: node --version
+
+2. .NET 8.0 SDK
+   - Download from: https://dotnet.microsoft.com/download/dotnet/8.0
+   - Verify: dotnet --version
+
+3. Git (for cloning the repository)
+   - Download from: https://git-scm.com/download/win
+
+4. PowerShell 5.1 or higher (included with Windows 10/11)
+
+================================================================================
+QUICK BUILD (RECOMMENDED)
+================================================================================
+
+The easiest way to build the entire application:
+
+1. Open PowerShell in the repository root directory
+
+2. Navigate to the Desktop directory:
+   cd Aura.Desktop
+
+3. Run the build script:
+   .\build-desktop.ps1
+
+This will:
+   - Build the React frontend
+   - Build the .NET backend (self-contained for Windows x64)
+   - Package everything with Electron
+   - Create the Windows installer
+
+Build time: 15-30 minutes (first build), 5-10 minutes (subsequent builds)
+
+Output location: Aura.Desktop\dist\
+
+================================================================================
+BUILD OPTIONS
+================================================================================
+
+The build script supports several options:
+
+1. Skip Frontend Build (if already built):
+   .\build-desktop.ps1 -SkipFrontend
+
+2. Skip Backend Build (if already built):
+   .\build-desktop.ps1 -SkipBackend
+
+3. Skip Installer Creation (faster, for testing):
+   .\build-desktop.ps1 -SkipInstaller
+
+4. Clean Build (remove all artifacts first):
+   .\build-desktop.ps1
+   # Then manually clean if needed:
+   dotnet clean
+   Remove-Item -Recurse -Force Aura.Web\dist
+   Remove-Item -Recurse -Force Aura.Desktop\resources
+
+5. Show Help:
+   .\build-desktop.ps1 -Help
+
+================================================================================
+MANUAL BUILD PROCESS (STEP-BY-STEP)
+================================================================================
+
+If you prefer to build components individually or troubleshoot issues:
+
+STEP 1: Build Frontend
+----------------------
+cd Aura.Web
+npm install          # First time only, or after package.json changes
+npm run build        # Builds production bundle
+
+Output: Aura.Web\dist\
+
+Verify: Check that dist\index.html exists
+
+
+STEP 2: Build Backend
+---------------------
+cd Aura.Api
+dotnet restore       # Restore NuGet packages (first time or after changes)
+dotnet publish -c Release -r win-x64 --self-contained true `
+    -p:PublishSingleFile=false `
+    -p:PublishTrimmed=false `
+    -p:IncludeNativeLibrariesForSelfExtract=true `
+    -p:SkipFrontendBuild=true `
+    -o ..\Aura.Desktop\resources\backend\win-x64
+
+Output: Aura.Desktop\resources\backend\win-x64\
+
+Verify: Check that Aura.Api.exe exists in the output directory
+
+
+STEP 3: Build Electron App
+---------------------------
+cd Aura.Desktop
+npm install          # First time only, or after package.json changes
+npm run build:win    # Builds Windows installer
+
+Output: Aura.Desktop\dist\
+
+Verify: Check for installer .exe files in dist\
+
+================================================================================
+TROUBLESHOOTING COMMON BUILD ERRORS
+================================================================================
+
+ERROR: "DatabasePathOptions could not be found"
+------------------------------------------------
+This error occurs when the DatabasePathOptions class is not found during
+compilation. This is usually a build cache issue.
+
+SOLUTION:
+1. Clean the build cache:
+   cd Aura.Core
+   dotnet clean
+   cd ..\Aura.Api
+   dotnet clean
+
+2. Restore packages:
+   dotnet restore
+
+3. Rebuild:
+   dotnet build
+
+4. If the error persists, verify the file exists:
+   Test-Path Aura.Core\Data\DatabasePathOptions.cs
+   # Should return True
+
+5. If file is missing, ensure you're on the correct branch:
+   git status
+   git checkout main  # or your working branch
+
+
+ERROR: "Windows backend build failed with exit code 1"
+------------------------------------------------------
+This is a generic build error. Check the full error output above this message.
+
+COMMON CAUSES:
+1. Missing dependencies - Run: dotnet restore
+2. Build cache issues - Run: dotnet clean, then rebuild
+3. Missing files - Ensure you're on the correct git branch
+4. .NET SDK version mismatch - Verify: dotnet --version (should be 8.0.x)
+
+SOLUTION:
+1. Clean everything:
+   dotnet clean
+   Remove-Item -Recurse -Force Aura.*\bin
+   Remove-Item -Recurse -Force Aura.*\obj
+
+2. Restore all packages:
+   dotnet restore
+
+3. Build from scratch:
+   dotnet build --no-incremental
+
+4. If still failing, check the specific error message and file location
+
+
+ERROR: "Frontend build failed"
+------------------------------
+SOLUTION:
+1. Clear node_modules and reinstall:
+   cd Aura.Web
+   Remove-Item -Recurse -Force node_modules
+   Remove-Item package-lock.json
+   npm install
+
+2. Clear build cache:
+   Remove-Item -Recurse -Force dist
+   npm run build
+
+3. Check for TypeScript errors:
+   npm run build:prod:strict
+
+
+ERROR: "Backend not found at: ...\resources\backend\win-x64"
+-----------------------------------------------------------
+SOLUTION:
+1. Ensure backend was built:
+   cd Aura.Api
+   dotnet publish -c Release -r win-x64 --self-contained true `
+       -o ..\Aura.Desktop\resources\backend\win-x64
+
+2. Verify the output:
+   Test-Path Aura.Desktop\resources\backend\win-x64\Aura.Api.exe
+   # Should return True
+
+
+ERROR: "npm install failed"
+----------------------------
+SOLUTION:
+1. Clear npm cache:
+   npm cache clean --force
+
+2. Delete node_modules and package-lock.json:
+   Remove-Item -Recurse -Force node_modules
+   Remove-Item package-lock.json
+
+3. Reinstall:
+   npm install
+
+4. If using corporate proxy, configure npm:
+   npm config set proxy http://proxy.company.com:8080
+   npm config set https-proxy http://proxy.company.com:8080
+
+
+ERROR: "dotnet restore failed"
+-------------------------------
+SOLUTION:
+1. Clear NuGet cache:
+   dotnet nuget locals all --clear
+
+2. Check NuGet.config:
+   Test-Path NuGet.config
+   # If missing, may need to configure NuGet sources
+
+3. Restore with verbose output:
+   dotnet restore --verbosity detailed
+
+
+ERROR: "Build succeeded but installer is missing"
+--------------------------------------------------
+SOLUTION:
+1. Check if installer build was skipped:
+   Review build output for "Skipping installer creation"
+
+2. Manually build installer:
+   cd Aura.Desktop
+   npm run build:win
+
+3. Check for errors in npm output
+
+
+================================================================================
+VERIFICATION STEPS
+================================================================================
+
+After a successful build, verify the following:
+
+1. Frontend Build:
+   - File exists: Aura.Web\dist\index.html
+   - File size: Should be > 100 KB
+
+2. Backend Build:
+   - File exists: Aura.Desktop\resources\backend\win-x64\Aura.Api.exe
+   - File size: Should be > 50 MB (self-contained)
+
+3. Installer:
+   - Files exist in: Aura.Desktop\dist\
+   - Look for: *-Setup-*.exe (NSIS installer)
+   - Look for: *-portable.exe (standalone executable)
+
+4. Quick Test:
+   cd Aura.Desktop
+   npm run build:dir
+   # This creates an unpacked version for testing
+   # Launch: dist\win-unpacked\Aura Video Studio.exe
+
+================================================================================
+BUILD PERFORMANCE TIPS
+================================================================================
+
+1. First Build:
+   - Takes 15-30 minutes
+   - Downloads all dependencies
+   - Compiles everything from scratch
+
+2. Subsequent Builds:
+   - Takes 5-10 minutes
+   - Only rebuilds changed components
+   - Uses cached dependencies
+
+3. Faster Development Builds:
+   - Use -SkipInstaller for faster iteration
+   - Use -SkipFrontend if only backend changed
+   - Use -SkipBackend if only frontend changed
+
+4. Clean Builds:
+   - Only needed when:
+     * Switching branches
+     * Dependency versions change
+     * Build errors occur
+     * Strange behavior in built app
+
+================================================================================
+DEVELOPMENT MODE
+================================================================================
+
+For development (not building installer):
+
+1. Start Backend:
+   cd Aura.Api
+   dotnet run
+
+2. Start Frontend (separate terminal):
+   cd Aura.Web
+   npm run dev
+
+3. Start Electron (separate terminal):
+   cd Aura.Desktop
+   npm run dev
+
+This allows hot-reload and faster iteration during development.
+
+================================================================================
+BUILD OUTPUT STRUCTURE
+================================================================================
+
+After a successful build:
+
+Aura.Desktop\dist\
+├── Aura-Video-Studio-Setup-1.0.0.exe    (NSIS installer)
+├── Aura-Video-Studio-1.0.0-x64.exe      (Portable executable)
+├── latest.yml                           (Auto-update metadata)
+└── win-unpacked\                        (Unpacked app for testing)
+    ├── Aura Video Studio.exe
+    ├── resources\
+    │   ├── backend\
+    │   │   └── win-x64\
+    │   │       └── Aura.Api.exe
+    │   └── app.asar                     (Frontend bundle)
+    └── ...
+
+================================================================================
+IMPORTANT NOTES
+================================================================================
+
+1. Always build from the repository root or Aura.Desktop directory
+2. Ensure you're on the correct git branch before building
+3. Clean build cache if you encounter strange errors
+4. The build script automatically handles dependency installation
+5. Windows-only builds are currently supported
+6. Self-contained backend means .NET Runtime is bundled (no separate install needed)
+
+================================================================================
+GETTING HELP
+================================================================================
+
+If you encounter build issues not covered here:
+
+1. Check the full error output - it usually contains the solution
+2. Verify all prerequisites are installed and up-to-date
+3. Try a clean build (remove bin/obj folders, node_modules)
+4. Check git status - ensure you're on the correct branch
+5. Review BUILD_INSTRUCTIONS.md in Aura.Desktop for more details
+6. Check the project's main README.md for additional information
+
+================================================================================
+END OF BUILD INSTRUCTIONS
+================================================================================
+
