@@ -199,8 +199,6 @@ if (-not $SkipBackend) {
             -p:PublishTrimmed=false `
             -p:IncludeNativeLibrariesForSelfExtract=true `
             -p:SkipFrontendBuild=true `
-            --n--incremental `
-            n  -o o-incremental `
             -o "$BackendDir\win-x64"
         if ($LASTEXITCODE -ne 0) {
             Show-ErrorMessage "Windows backend build failed with exit code $LASTEXITCODE"
@@ -234,100 +232,91 @@ if (-not (Test-Path "node_modules")) {
     if ($LASTEXITCODE -ne 0) {
         Show-ErrorMessage "npm install failed with exit code $LASTEXITCODE"
         exit 1
+    }
+}
+else {
+    Write-Info "Dependencies already installed"
+}
 
+Write-Success "Electron dependencies ready"
+Write-Host ""
+
+# ========================================
+# Step 4: Validate Resources
+# ========================================
+Write-Info "Validating required resources..."
+
+$RequiredPaths = @(
+    @{ Path = "$ProjectRoot\Aura.Web\dist\index.html"; Name = "Frontend build" },
+    @{ Path = "$ScriptDir\resources\backend"; Name = "Backend binaries" }
+)
+
+$ValidationFailed = $false
+foreach ($item in $RequiredPaths) {
+    if (-not (Test-Path $item.Path)) {
+        Show-ErrorMessage "$($item.Name) not found at: $($item.Path)"
+        $ValidationFailed = $true
     }
     else {
-        Write-Info "Dependencies already installed"
+        Write-Success "  ✓ $($item.Name) found"
     }
+}
 
-    Write-Success "Electron dependencies ready"
-    Write-Host ""
+if ($ValidationFailed) {
+    Show-ErrorMessage "Resource validation failed. Cannot build installer."
+    Write-Info "Please ensure all build steps complete successfully."
+    exit 1
+}
 
-    # ========================================
-    # Step 4: Validate Resources
-    # ========================================
-    Write-Info "Validating required resources..."
+Write-Success "All required resources validated"
+Write-Host ""
 
-    $RequiredPaths = @(
-        @{ Path = "$ProjectRoot\Aura.Web\dist\index.html"; Name = "Frontend build" },
-        @{ Path = "$ScriptDir\resources\backend"; Name = "Backend binaries" }
-    )
+# ========================================
+# Step 5: Build Electron Installers
+# ========================================
+if (-not $SkipInstaller) {
+    Write-Info "Building Electron installers..."
 
-    $ValidationFailed = $false
-    foreach ($item in $RequiredPaths) {
-        if (-not (Test-Path $item.Path)) {
-            Show-ErrorMessage "$($item.Name) not found at: $($item.Path)"
-
-            $ValidationFailed = $true
-        }
-        else {
-            Write-Success "  ✓ $($item.Name) found"
+    if ($Target -eq "win") {
+        Write-Info "Building Windows installer..."
+        npm run build:win
+        if ($LASTEXITCODE -ne 0) {
+            Show-ErrorMessage "Windows installer build failed with exit code $LASTEXITCODE"
+            exit 1
         }
     }
-
-    if ($ValidationFailed) {
-        Show-ErrorMessage "Resource validation failed. Cannot build installer."
-        Write-Info "Please ensure all build steps complete successfully."
+    else {
+        Show-ErrorMessage "Only Windows builds are supported. Target: $Target"
         exit 1
     }
 
-    Write-Success "All required resources validated"
-    Write-Host ""
+    Write-Success "Installer build complete"
+}
+else {
+    Show-Warning "Skipping installer creation (building directory only)"
+    npm run build:dir
+}
 
-    # ========================================
-    # Step 5: Build Electron Installers
-    # ========================================
-    if (-not $SkipInstaller) {
-        Write-Info "Building Electron installers..."
+Write-Host ""
+Write-Success "========================================"
+Write-Success "Build Complete!"
+Write-Success "========================================"
+Write-Host ""
+Write-Info "Output directory: $ScriptDir\dist"
+Write-Host ""
 
-        if ($Target -eq "win") {
-            Write-Info "Building Windows installer..."
-            npm run build:win
-            if ($LASTEXITCODE -ne 0) {
-                Show-E
-                rrorMessage "Windows installer build failed with exit code $LASTEXITCODE"
-                exit 1
-
-            }
-        }
-        else {
-            Show-ErrorMessage "Only Windows builds are supported. Target: $Target"
-
-            exit 1
-        }
-
-
-        Write-Success "Installer build complete"
+# List generated files
+if (Test-Path "$ScriptDir\dist") {
+    Write-Info "Generated files:"
+    Get-ChildItem "$ScriptDir\dist" | ForEach-Object {
+        $size = if ($_.PSIsContainer) { "DIR" } else { "{0:N2} MB" -f ($_.Length / 1MB) }
+        Write-Host "  $($_.Name) ($size)"
     }
-    else {
-        Show-Warning "Skipping installer creation (building directory only)"
-        npm run build:dir
-    }
-
     Write-Host ""
-    Write-Success "========================================"
-    Write-Success "Build Complete!"
-    Write-Success "========================================"
-    Write-Host ""
-    Write-Info "Output directory: $ScriptDir\dist"
-    Write-Host ""
+}
 
-    # List generated files
-    if (Test-Path "$ScriptDir\dist") {
-        Write-Info "Generated files:"
-        Get-ChildItem "$ScriptDir\dist" | ForEach-Object {
-            $size = if ($_.PSIsContainer) { "DIR" } else { "{0:N2} MB" -f ($_.Length / 1MB) }
-            Write-Host "  $($_.Name) ($size)"
-        }
-        Write-Host ""
-    }
-
-    Write-Info "To run the app in development mode:"
-    Write-Host "  cd Aura.Desktop"
-    Write-Host "  npm start"
-    Write-Host ""
-
-    Write-Success "All done! 🎉"
+Write-Info "To run the app in development mode:"
+Write-Host "  cd Aura.Desktop"
 Write-Host "  npm start"
 Write-Host ""
 
