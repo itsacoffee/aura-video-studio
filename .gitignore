@@ -166,6 +166,8 @@ test-data/
 .env
 .env.local
 data/
+!Aura.Core/Data/
+!Aura.Core/Data/**
 logs/
 temp-media/
 .bak2
