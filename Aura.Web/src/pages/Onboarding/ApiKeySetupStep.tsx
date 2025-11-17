@@ -93,6 +93,29 @@ const useStyles = makeStyles({
   quickStartHint: {
     color: tokens.colorNeutralForeground4,
   },
+  localProviderCard: {
+    padding: tokens.spacingVerticalM,
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderRadius: tokens.borderRadiusMedium,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalS,
+  },
+  localInstructions: {
+    marginLeft: tokens.spacingHorizontalL,
+    color: tokens.colorNeutralForeground3,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalXXS,
+  },
+  localActions: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalS,
+    flexWrap: 'wrap',
+  },
+  successText: {
+    color: tokens.colorPaletteGreenForeground1,
+  },
 });
 
 export interface ApiKeySetupStepProps {
@@ -105,6 +128,7 @@ export interface ApiKeySetupStepProps {
   onValidateApiKey: (provider: string) => void;
   onSkipValidation?: (provider: string) => void;
   onSkipAll: () => void;
+  onLocalProviderReady?: (provider: string) => void;
 }
 
 interface ProviderConfig {
@@ -122,6 +146,12 @@ interface ProviderConfig {
   keyFormat?: string;
   requiresMultipleKeys?: boolean;
   category: 'llm' | 'tts' | 'image' | 'other';
+  requiresApiKey?: boolean;
+  localSetup?: {
+    downloadUrl?: string;
+    instructions?: string[];
+    readyHint?: string;
+  };
 }
 
 interface ProviderSection {
@@ -233,6 +263,16 @@ const providers: ProviderConfig[] = [
       costEstimate: 'Free (requires local compute resources)',
     },
     keyFormat: 'No API key needed for local Ollama',
+    requiresApiKey: false,
+    localSetup: {
+      downloadUrl: 'https://ollama.ai/download',
+      instructions: [
+        'Install Ollama and ensure the Ollama service is running.',
+        'Pull at least one model (e.g., `ollama pull llama3.1`)',
+        'Leave the Ollama tray/service running while Aura is open.',
+      ],
+      readyHint: 'Click "Mark as Ready" once Ollama is installed and running.',
+    },
     category: 'llm',
   },
   {
@@ -330,6 +370,7 @@ export function ApiKeySetupStep({
   onValidateApiKey,
   onSkipValidation,
   onSkipAll,
+  onLocalProviderReady,
 }: ApiKeySetupStepProps) {
   const styles = useStyles();
   const [rateLimit, setRateLimit] = useState<Record<string, number>>({});
@@ -460,6 +501,52 @@ export function ApiKeySetupStep({
                         keyFormat={provider.keyFormat}
                       />
 
+                    {provider.requiresApiKey === false ? (
+                      <div className={styles.localProviderCard}>
+                        <Text size={200} style={{ marginBottom: tokens.spacingVerticalS }}>
+                          {provider.localSetup?.readyHint ??
+                            'This provider runs locally and does not require an API key.'}
+                        </Text>
+
+                        {provider.localSetup?.instructions && (
+                          <ul className={styles.localInstructions}>
+                            {provider.localSetup.instructions.map((instruction) => (
+                              <li key={instruction}>
+                                <Text size={200}>{instruction}</Text>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+
+                        <div className={styles.localActions}>
+                          <Button
+                            appearance="primary"
+                            onClick={() => onLocalProviderReady?.(provider.id)}
+                          >
+                            Mark as Ready
+                          </Button>
+                          {provider.localSetup?.downloadUrl && (
+                            <Button
+                              appearance="secondary"
+                              onClick={() => openExternalLink(provider.localSetup!.downloadUrl!)}
+                            >
+                              Download Ollama
+                            </Button>
+                          )}
+                        </div>
+
+                        {validationStatus[provider.id] === 'valid' ? (
+                          <Text size={200} className={styles.successText}>
+                            ✓ {provider.name} marked as ready
+                          </Text>
+                        ) : (
+                          <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                            No API key required. Install the provider locally and mark it as
+                            ready.
+                          </Text>
+                        )}
+                      </div>
+                    ) : (
                       <div style={{ marginTop: tokens.spacingVerticalM }}>
                         <Title3 style={{ marginBottom: tokens.spacingVerticalS }}>
                           Enter API Key
@@ -483,6 +570,7 @@ export function ApiKeySetupStep({
                           </Text>
                         )}
                       </div>
+                    )}
                     </div>
                   </AccordionPanel>
                 </AccordionItem>

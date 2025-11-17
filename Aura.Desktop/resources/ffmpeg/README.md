@@ -1,3 +1,12 @@
+# Bundled FFmpeg Directory
+
+This folder is populated automatically by `scripts/ensure-ffmpeg.ps1` (invoked via
+`npm run ffmpeg:ensure` or the desktop build script). The script downloads the
+official Windows x64 FFmpeg essentials build and copies the binaries into
+`win-x64/bin` so the desktop app can ship with a working FFmpeg installation.
+
+Binaries are intentionally ignored by Git to keep the repository lightweight.
+Run the script whenever you need to refresh the bundled FFmpeg copy.
 # FFmpeg Binaries Directory
 
 This directory contains FFmpeg binaries that are bundled with the Aura Video Studio Desktop application.

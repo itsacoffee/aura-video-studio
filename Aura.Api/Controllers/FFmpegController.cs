@@ -795,6 +795,7 @@ public class FFmpegController : ControllerBase
     {
         return source switch
         {
+            "Environment" => FFmpegMode.System,
             "Managed" => FFmpegMode.Local,
             "Configured" => FFmpegMode.Custom,
             "PATH" => FFmpegMode.System,

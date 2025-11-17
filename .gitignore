@@ -166,6 +166,8 @@ test-data/
 .env
 .env.local
 data/
+Aura.Desktop/resources/ffmpeg/**/bin/
+Aura.Desktop/resources/cache/
 !Aura.Core/Data/
 !Aura.Core/Data/**
 logs/

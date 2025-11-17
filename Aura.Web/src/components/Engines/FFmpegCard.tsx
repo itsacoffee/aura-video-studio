@@ -496,6 +496,8 @@ export function FFmpegCard() {
                             ? 'System PATH'
                             : status.source === 'Configured'
                               ? 'User Configured'
+                              : status.source === 'Environment'
+                                ? 'Bundled (App)'
                               : status.source}
                       </Badge>
                     </Text>

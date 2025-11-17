@@ -370,6 +370,25 @@ export function FFmpegDependencyCard({
 
   const isReady = Boolean(status?.installed && status?.valid);
 
+  const formatSource = (source?: string | null) => {
+    if (!source) {
+      return 'Unknown';
+    }
+
+    switch (source) {
+      case 'Managed':
+        return 'Managed Installation';
+      case 'Configured':
+        return 'User Configured';
+      case 'PATH':
+        return 'System PATH';
+      case 'Environment':
+        return 'Bundled (App)';
+      default:
+        return source;
+    }
+  };
+
   return (
     <Card className={styles.card}>
       <div className={styles.header}>
@@ -469,7 +488,7 @@ export function FFmpegDependencyCard({
               </div>
               <div className={styles.detailRow}>
                 <Text weight="semibold">Source:</Text>
-                <Text>{status.source}</Text>
+                <Text>{formatSource(status.source)}</Text>
               </div>
               {status.hardwareAcceleration.availableEncoders.length > 0 && (
                 <div className={styles.detailRow}>
