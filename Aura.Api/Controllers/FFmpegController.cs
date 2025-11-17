@@ -64,6 +64,8 @@ public class FFmpegController : ControllerBase
             if (result.Found && result.IsValid)
             {
                 await _resolver.PersistConfigurationAsync(result, mode, ct).ConfigureAwait(false);
+                // Reload config to get the updated validation result
+                config = await _configStore.LoadAsync(ct).ConfigureAwait(false);
             }
 
             string? lastValidationResult = null;
