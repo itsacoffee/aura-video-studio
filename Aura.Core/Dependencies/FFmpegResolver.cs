@@ -35,7 +35,7 @@ public class FFmpegResolver
         _configStore = configStore;
 
         var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        _managedInstallRoot = Path.Combine(localAppData, "AuraVideoStudio", "ffmpeg");
+        _managedInstallRoot = Path.Combine(localAppData, "Aura", "Tools", "ffmpeg");
     }
 
     /// <summary>
@@ -49,6 +49,11 @@ public class FFmpegResolver
     {
         var envOverridePaths = GetEnvironmentOverridePaths();
         var hasEnvOverrides = envOverridePaths.Count > 0;
+        
+        if (hasEnvOverrides)
+        {
+            _logger.LogInformation("Environment FFmpeg overrides detected: {Paths}", string.Join(", ", envOverridePaths));
+        }
 
         if (!forceRefresh && _cache.TryGetValue(CacheKey, out FfmpegResolutionResult? cached))
         {
@@ -67,7 +72,7 @@ public class FFmpegResolver
             _logger.LogDebug("Environment overrides detected, bypassing cached FFmpeg result");
         }
 
-        _logger.LogInformation("Resolving FFmpeg path with precedence: Managed > Configured > PATH");
+        _logger.LogInformation("Resolving FFmpeg path with precedence: Environment > Managed > Configured > PATH");
 
         var attemptedPaths = new List<string>();
         FfmpegResolutionResult result;
@@ -438,9 +443,23 @@ public class FFmpegResolver
         CancellationToken ct)
     {
         var attemptedPaths = new List<string>();
+        
+        if (envPaths.Count == 0)
+        {
+            _logger.LogDebug("No environment FFmpeg overrides configured");
+            return new FfmpegResolutionResult
+            {
+                Found = false,
+                IsValid = false,
+                Source = "Environment",
+                AttemptedPaths = attemptedPaths,
+                Error = "No environment FFmpeg overrides configured."
+            };
+        }
 
         foreach (var envPath in envPaths)
         {
+            _logger.LogInformation("Checking environment FFmpeg override path: {Path}", envPath);
             attemptedPaths.Add(envPath);
 
             var result = await CheckConfiguredPathAsync(envPath, ct).ConfigureAwait(false);
@@ -449,7 +468,12 @@ public class FFmpegResolver
 
             if (result.Found && result.IsValid)
             {
+                _logger.LogInformation("Found valid FFmpeg via environment variable: {Path}", result.Path);
                 return result;
+            }
+            else
+            {
+                _logger.LogWarning("Environment path {Path} did not contain valid FFmpeg: {Error}", envPath, result.Error);
             }
         }
 
@@ -467,7 +491,7 @@ public class FFmpegResolver
 
     private static IReadOnlyList<string> GetEnvironmentOverridePaths()
     {
-        return new[]
+        var paths = new[]
             {
                 Environment.GetEnvironmentVariable("FFMPEG_PATH"),
                 Environment.GetEnvironmentVariable("FFMPEG_BINARIES_PATH"),
@@ -477,6 +501,8 @@ public class FFmpegResolver
             .Select(p => p!.Trim())
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
+        
+        return paths;
     }
 
     /// <summary>
