@@ -59,6 +59,13 @@ public class BackgroundJobProcessorService : BackgroundService
         _logger.LogInformation("BackgroundJobProcessorService stopped");
     }
 
+    public override async Task StopAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("BackgroundJobProcessorService StopAsync called - initiating graceful shutdown");
+        await base.StopAsync(cancellationToken).ConfigureAwait(false);
+        _logger.LogInformation("BackgroundJobProcessorService StopAsync completed");
+    }
+
     private async Task ProcessNextJobsAsync(CancellationToken stoppingToken)
     {
         using var scope = _serviceProvider.CreateScope();
@@ -126,11 +133,5 @@ public class BackgroundJobProcessorService : BackgroundService
             // Small delay between starting jobs
             await Task.Delay(TimeSpan.FromMilliseconds(500), stoppingToken).ConfigureAwait(false);
         }
-    }
-
-    public override async Task StopAsync(CancellationToken cancellationToken)
-    {
-        _logger.LogInformation("BackgroundJobProcessorService stop requested");
-        await base.StopAsync(cancellationToken).ConfigureAwait(false);
     }
 }

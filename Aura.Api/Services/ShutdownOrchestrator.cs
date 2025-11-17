@@ -102,8 +102,11 @@ public class ShutdownOrchestrator
             _shutdownInitiated = true;
         }
 
+        var shutdownStopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var processId = System.Diagnostics.Process.GetCurrentProcess().Id;
+        
         _logger.LogInformation("=================================================================");
-        _logger.LogInformation("Initiating graceful shutdown (Force: {Force})", force);
+        _logger.LogInformation("Initiating graceful shutdown (Force: {Force}, PID: {ProcessId})", force, processId);
         _logger.LogInformation("=================================================================");
 
         var result = new ShutdownResult { Success = true };
@@ -114,28 +117,38 @@ public class ShutdownOrchestrator
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(force ? 1 : GracefulTimeoutSeconds));
 
             // Step 1: Notify active SSE connections
+            var step1Start = System.Diagnostics.Stopwatch.StartNew();
             var sseStep = await NotifySseConnectionsAsync(cts.Token).ConfigureAwait(false);
+            step1Start.Stop();
             stepResults.Add($"SSE Notification: {sseStep}");
-            _logger.LogInformation("Step 1/4 Complete: {Result}", sseStep);
+            _logger.LogInformation("Step 1/4 Complete: {Result} (Elapsed: {ElapsedMs}ms)", sseStep, step1Start.ElapsedMilliseconds);
 
             // Step 2: Close SSE connections gracefully
+            var step2Start = System.Diagnostics.Stopwatch.StartNew();
             var closeStep = await CloseSseConnectionsAsync(cts.Token).ConfigureAwait(false);
+            step2Start.Stop();
             stepResults.Add($"SSE Closure: {closeStep}");
-            _logger.LogInformation("Step 2/4 Complete: {Result}", closeStep);
+            _logger.LogInformation("Step 2/4 Complete: {Result} (Elapsed: {ElapsedMs}ms)", closeStep, step2Start.ElapsedMilliseconds);
 
             // Step 3: Terminate FFmpeg processes
+            var step3Start = System.Diagnostics.Stopwatch.StartNew();
             var ffmpegStep = await TerminateFFmpegProcessesAsync(force, cts.Token).ConfigureAwait(false);
+            step3Start.Stop();
             stepResults.Add($"FFmpeg Termination: {ffmpegStep}");
-            _logger.LogInformation("Step 3/4 Complete: {Result}", ffmpegStep);
+            _logger.LogInformation("Step 3/4 Complete: {Result} (Elapsed: {ElapsedMs}ms)", ffmpegStep, step3Start.ElapsedMilliseconds);
 
             // Step 4: Terminate other child processes
+            var step4Start = System.Diagnostics.Stopwatch.StartNew();
             var processStep = await TerminateChildProcessesAsync(force, cts.Token).ConfigureAwait(false);
+            step4Start.Stop();
             stepResults.Add($"Process Termination: {processStep}");
-            _logger.LogInformation("Step 4/4 Complete: {Result}", processStep);
+            _logger.LogInformation("Step 4/4 Complete: {Result} (Elapsed: {ElapsedMs}ms)", processStep, step4Start.ElapsedMilliseconds);
 
             result.Message = string.Join("; ", stepResults);
+            
+            shutdownStopwatch.Stop();
             _logger.LogInformation("=================================================================");
-            _logger.LogInformation("Graceful shutdown completed successfully");
+            _logger.LogInformation("Graceful shutdown completed successfully (Total: {ElapsedMs}ms)", shutdownStopwatch.ElapsedMilliseconds);
             _logger.LogInformation("=================================================================");
 
             // Signal application to stop
@@ -143,17 +156,22 @@ public class ShutdownOrchestrator
             {
                 await Task.Delay(200, CancellationToken.None).ConfigureAwait(false);
             }
+            
+            _logger.LogInformation("Calling IHostApplicationLifetime.StopApplication()...");
             _lifetime.StopApplication();
+            _logger.LogInformation("StopApplication() called - host shutdown initiated");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during shutdown sequence");
+            shutdownStopwatch.Stop();
+            _logger.LogError(ex, "Error during shutdown sequence (Elapsed: {ElapsedMs}ms)", shutdownStopwatch.ElapsedMilliseconds);
             result.Success = false;
             result.Message = $"Shutdown error: {ex.Message}";
             result.Details = stepResults;
 
             if (force)
             {
+                _logger.LogWarning("Force shutdown requested, calling StopApplication() despite error");
                 _lifetime.StopApplication();
             }
         }
