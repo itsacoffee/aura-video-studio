@@ -7,6 +7,7 @@
 
 import { apiUrl } from '../config/api';
 import { isValidPath, migrateLegacyPath } from '../utils/pathUtils';
+import { ffmpegClient } from './api/ffmpegClient';
 
 export interface SettingsValidation {
   valid: boolean;
@@ -79,22 +80,31 @@ export async function validateRequiredSettings(): Promise<SettingsValidation> {
  */
 async function checkFFmpegStatus(): Promise<{ available: boolean; path?: string }> {
   try {
-    const response = await fetch(apiUrl('/api/downloads/ffmpeg/status'));
-
-    if (!response.ok) {
-      return { available: false };
-    }
-
-    const data = await response.json();
-    const isAvailable = data.state === 'Installed' || data.state === 'ExternalAttached';
-
+    const status = await ffmpegClient.getStatus();
     return {
-      available: isAvailable,
-      path: data.path,
+      available: Boolean(status.installed && status.valid),
+      path: status.path ?? undefined,
     };
   } catch (error: unknown) {
     console.error('FFmpeg status check failed:', error);
-    return { available: false };
+
+    try {
+      const response = await fetch(apiUrl('/api/downloads/ffmpeg/status'));
+      if (!response.ok) {
+        return { available: false };
+      }
+
+      const data = await response.json();
+      const isAvailable = data.state === 'Installed' || data.state === 'ExternalAttached';
+
+      return {
+        available: isAvailable,
+        path: data.path,
+      };
+    } catch (legacyError) {
+      console.error('Legacy FFmpeg status check also failed:', legacyError);
+      return { available: false };
+    }
   }
 }
 
