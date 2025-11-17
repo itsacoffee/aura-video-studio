@@ -7,6 +7,21 @@ This guide helps verify that the shutdown fix works correctly and no processes l
 - Windows 11 (primary target platform)
 - Task Manager open and visible
 - Aura Video Studio installed or running from development build
+- **IMPORTANT**: Review logs in `%APPDATA%\Aura\logs\` after each test
+
+## Recent Improvements (Latest Updates)
+
+### What Changed
+1. **Host Shutdown Timeout**: Increased from 5s (default) to 30s to allow all background services adequate shutdown time
+2. **Enhanced Logging**: Added detailed per-step timing and process ID tracking throughout shutdown sequence
+3. **Service Shutdown Logging**: All BackgroundService implementations now log their StopAsync entry/exit
+4. **Comprehensive Tests**: 11 new integration tests validate shutdown behavior
+
+### Expected Behavior
+- All processes should terminate within 30 seconds maximum
+- Logs should show complete shutdown sequence with timings
+- No zombie processes should remain in Task Manager
+- Application should be immediately restartable without port conflicts
 
 ## Test Scenarios
 
@@ -165,27 +180,82 @@ taskkill /F /IM ffmpeg.exe 2>$null
 
 ### What to look for in logs:
 
-**Good Shutdown Sequence**:
+**Good Shutdown Sequence (Updated - Latest Implementation)**:
+
+**API Backend Logs** (`%APPDATA%\Aura\logs\aura-api-*.log`):
 ```
-[INFO] Initiating shutdown (Force: false, SkipChecks: true, AbsoluteTimeout: 4000ms)
-[INFO] Step 1/5: Windows closed
-[INFO] Step 2/5: Backend shutdown signal sent
-[INFO] Step 3/5: Backend stopped
-[INFO] Step 4/5: No child processes to terminate
-[INFO] Step 5/5: Cleanup complete
-[INFO] Shutdown completed successfully in 1247ms
+[INFO] Initiating graceful shutdown (Force: false, PID: 12345)
+[INFO] Step 1/4 Complete: SSE Notification: No active connections (Elapsed: 5ms)
+[INFO] Step 2/4 Complete: SSE Closure: No connections to close (Elapsed: 1ms)
+[INFO] Step 3/4 Complete: FFmpeg Termination: No FFmpeg processes (Elapsed: 2ms)
+[INFO] Step 4/4 Complete: Process Termination: No child processes (Elapsed: 1ms)
+[INFO] Graceful shutdown completed successfully (Total: 235ms)
+[INFO] Calling IHostApplicationLifetime.StopApplication()...
+[INFO] StopApplication() called - host shutdown initiated
+[INFO] === Application Shutdown Initiated ===
+[INFO] Shutdown Phase 1: Stopping background services
+[INFO] BackgroundJobProcessorService StopAsync called - initiating graceful shutdown
+[INFO] CleanupHostedService StopAsync called - initiating graceful shutdown
+[INFO] BackgroundJobProcessorService stopping due to cancellation
+[INFO] BackgroundJobProcessorService stopped
+[INFO] BackgroundJobProcessorService StopAsync completed
+[INFO] CleanupHostedService StopAsync completed
+[INFO] Shutdown Phase 2: Background services stopped (Elapsed: 1523ms)
+[INFO] === Application Shutdown Complete (PID: 12345) ===
+[INFO] All hosted services have been stopped
+[INFO] Process should exit momentarily...
+```
+
+**Electron Logs** (`%APPDATA%\aura-video-studio\logs\`):
+```
+[INFO] Initiating shutdown (Force: false, SkipChecks: true, AbsoluteTimeout: 5000ms)
+[INFO] Step 1/5 Complete: Windows closed
+[INFO] Step 2/5 Complete: Backend shutdown signal sent
+[INFO] Step 3/5 Complete: Backend stopped
+[INFO] Step 4/5 Complete: Terminated 0 process(es)
+[INFO] Step 5/5 Complete: Cleanup complete
+[INFO] Shutdown completed successfully in 1847ms
 [INFO] Exiting application...
 ```
 
 **Problem Indicators**:
 ```
 [ERROR] Shutdown hard timeout exceeded
+[ERROR] Error during shutdown sequence
 [ERROR] Attempting force kill of backend process tree...
 [WARN] Backend did not shut down gracefully, forcing termination...
 [ERROR] Activating failsafe process termination...
+[WARN] Process {ProcessId} did not exit gracefully, force killing
 ```
 
-If you see these, the shutdown took too long and failsafe was activated. The fix should still work, but investigate why graceful shutdown failed.
+If you see these, the shutdown took too long and failsafe was activated. The fix should still work, but investigate:
+- Which step timed out (check elapsed times)
+- Are there any active jobs/renders that didn't cancel?
+- Is FFmpeg hung on a process?
+- Check for deadlocks or blocking operations in logs
+
+### Timing Expectations
+
+**Normal Shutdown** (no active work):
+- Total time: 1-3 seconds
+- Electron orchestrator: <1 second
+- Backend shutdown: 1-2 seconds
+- Service cleanup: <1 second
+
+**With Active Work**:
+- Job cancellation: Up to 5 seconds
+- FFmpeg termination: Up to 2 seconds
+- Total: Up to 10 seconds
+
+**Force Mode**:
+- Total time: <2 seconds
+- Immediate termination, no graceful cleanup
+
+**Timeout Thresholds**:
+- Host shutdown timeout: 30 seconds (should never be reached)
+- Electron absolute timeout: 5 seconds
+- Backend graceful: 2 seconds
+- FFmpeg grace period: 1 second
 
 ---
 

@@ -63,4 +63,11 @@ public class CleanupHostedService : BackgroundService
 
         _logger.LogInformation("Cleanup background service stopped");
     }
+
+    public override async Task StopAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("CleanupHostedService StopAsync called - initiating graceful shutdown");
+        await base.StopAsync(cancellationToken).ConfigureAwait(false);
+        _logger.LogInformation("CleanupHostedService StopAsync completed");
+    }
 }

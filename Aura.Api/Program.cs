@@ -58,6 +58,14 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
     WebRootPath = Path.Combine(AppContext.BaseDirectory, "wwwroot")
 });
 
+// Configure host shutdown timeout to allow graceful shutdown of all services
+// Default is 5 seconds, we extend to 30 seconds to ensure all background services,
+// FFmpeg processes, and hosted services have time to clean up properly
+builder.Services.Configure<HostOptions>(options =>
+{
+    options.ShutdownTimeout = TimeSpan.FromSeconds(30);
+});
+
 // Centralize runtime path resolution so every layer (ASP.NET host, Electron shell, CLI) behaves consistently.
 var defaultUserDataRoot = Path.Combine(
     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -4721,8 +4729,11 @@ lifetime.ApplicationStarted.Register(() =>
 
 lifetime.ApplicationStopping.Register(() =>
 {
+    Log.Information("=================================================================");
     Log.Information("=== Application Shutdown Initiated ===");
+    Log.Information("=================================================================");
     Log.Information("Shutdown Phase 1: Stopping background services");
+    var shutdownStopwatch = System.Diagnostics.Stopwatch.StartNew();
 
     // Stop health monitor first (reverse order of startup)
     if (healthMonitorStarted)
@@ -4746,7 +4757,24 @@ lifetime.ApplicationStopping.Register(() =>
         }
     }
 
-    Log.Information("Shutdown Phase 2: Background services stopped");
+    shutdownStopwatch.Stop();
+    Log.Information("Shutdown Phase 2: Background services stopped (Elapsed: {ElapsedMs}ms)", shutdownStopwatch.ElapsedMilliseconds);
+});
+
+lifetime.ApplicationStopped.Register(() =>
+{
+    var processId = System.Diagnostics.Process.GetCurrentProcess().Id;
+    Log.Information("=================================================================");
+    Log.Information("=== Application Shutdown Complete (PID: {ProcessId}) ===", processId);
+    Log.Information("=================================================================");
+    Log.Information("All hosted services have been stopped");
+    Log.Information("Process should exit momentarily...");
+    
+    // Flush logs to ensure all shutdown messages are written
+    Log.CloseAndFlush();
+    
+    // Give a small delay to ensure logs are flushed before process exits
+    System.Threading.Thread.Sleep(100);
 });
 
 // Helper methods for Azure TTS endpoints
