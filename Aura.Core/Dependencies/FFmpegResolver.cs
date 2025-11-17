@@ -159,12 +159,13 @@ public class FFmpegResolver
     /// </summary>
     private async Task<FfmpegResolutionResult> CheckManagedInstallAsync(CancellationToken ct)
     {
-        _logger.LogDebug("Checking managed install root: {Root}", _managedInstallRoot);
+        _logger.LogInformation("Checking managed install root: {Root}", _managedInstallRoot);
 
         var attemptedPaths = new List<string> { _managedInstallRoot };
 
         if (!Directory.Exists(_managedInstallRoot))
         {
+            _logger.LogDebug("Managed install directory does not exist: {Root}", _managedInstallRoot);
             return new FfmpegResolutionResult
             {
                 Found = false,
@@ -178,6 +179,7 @@ public class FFmpegResolver
         var versionDirs = Directory.GetDirectories(_managedInstallRoot);
         if (versionDirs.Length == 0)
         {
+            _logger.LogInformation("No managed FFmpeg versions installed in {Root}", _managedInstallRoot);
             return new FfmpegResolutionResult
             {
                 Found = false,
@@ -187,12 +189,15 @@ public class FFmpegResolver
             };
         }
 
+        _logger.LogInformation("Found {Count} managed FFmpeg version directories", versionDirs.Length);
+
         // Sort by directory name (descending) to get latest version
         Array.Sort(versionDirs, StringComparer.OrdinalIgnoreCase);
         Array.Reverse(versionDirs);
 
         foreach (var versionDir in versionDirs)
         {
+            _logger.LogDebug("Checking managed version directory: {Dir}", versionDir);
             var manifestPath = Path.Combine(versionDir, "install.json");
             attemptedPaths.Add(manifestPath);
             
@@ -213,6 +218,7 @@ public class FFmpegResolver
                     continue;
                 }
 
+                _logger.LogDebug("Manifest points to FFmpeg at: {Path}", manifest.FfmpegPath);
                 attemptedPaths.Add(manifest.FfmpegPath);
 
                 if (!File.Exists(manifest.FfmpegPath))
@@ -222,9 +228,11 @@ public class FFmpegResolver
                 }
 
                 // Validate the binary
+                _logger.LogDebug("Validating managed FFmpeg binary: {Path}", manifest.FfmpegPath);
                 var validation = await ValidateFFmpegBinaryAsync(manifest.FfmpegPath, ct).ConfigureAwait(false);
                 if (validation.success)
                 {
+                    _logger.LogInformation("Found valid managed FFmpeg installation at: {Path}", manifest.FfmpegPath);
                     return new FfmpegResolutionResult
                     {
                         Found = true,
@@ -238,7 +246,7 @@ public class FFmpegResolver
                 }
                 else
                 {
-                    _logger.LogWarning("Managed FFmpeg validation failed: {Error}", validation.error);
+                    _logger.LogWarning("Managed FFmpeg validation failed for {Path}: {Error}", manifest.FfmpegPath, validation.error);
                 }
             }
             catch (JsonException jsonEx)
@@ -251,6 +259,7 @@ public class FFmpegResolver
             }
         }
 
+        _logger.LogWarning("No valid managed FFmpeg installations found");
         return new FfmpegResolutionResult
         {
             Found = false,
@@ -265,7 +274,7 @@ public class FFmpegResolver
     /// </summary>
     private async Task<FfmpegResolutionResult> CheckConfiguredPathAsync(string configuredPath, CancellationToken ct)
     {
-        _logger.LogDebug("Checking configured path: {Path}", configuredPath);
+        _logger.LogInformation("Checking configured path: {Path}", configuredPath);
 
         var attemptedPaths = new List<string> { configuredPath };
         string resolvedPath;
@@ -277,31 +286,56 @@ public class FFmpegResolver
             return await CheckPathEnvironmentAsync(ct).ConfigureAwait(false);
         }
 
+        // Check if path exists at all
+        var pathExists = File.Exists(configuredPath) || Directory.Exists(configuredPath);
+        if (!pathExists)
+        {
+            _logger.LogWarning("Configured path does not exist: {Path}", configuredPath);
+            return new FfmpegResolutionResult
+            {
+                Found = false,
+                Source = "Configured",
+                Error = $"Configured path does not exist: {configuredPath}",
+                AttemptedPaths = attemptedPaths
+            };
+        }
+
         // Resolve to actual executable path
         if (File.Exists(configuredPath))
         {
+            _logger.LogDebug("Configured path is a file: {Path}", configuredPath);
             resolvedPath = configuredPath;
         }
         else if (Directory.Exists(configuredPath))
         {
+            _logger.LogDebug("Configured path is a directory: {Path}", configuredPath);
             var exeName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "ffmpeg.exe" : "ffmpeg";
             var exePath = Path.Combine(configuredPath, exeName);
             attemptedPaths.Add(exePath);
+            
+            _logger.LogDebug("Checking for FFmpeg at: {Path}", exePath);
 
             if (File.Exists(exePath))
             {
+                _logger.LogInformation("Found FFmpeg executable at: {Path}", exePath);
                 resolvedPath = exePath;
             }
             else
             {
+                _logger.LogDebug("FFmpeg not found at {Path}, checking bin subdirectory", exePath);
                 var binPath = Path.Combine(configuredPath, "bin", exeName);
                 attemptedPaths.Add(binPath);
+                _logger.LogDebug("Checking for FFmpeg at: {Path}", binPath);
+                
                 if (File.Exists(binPath))
                 {
+                    _logger.LogInformation("Found FFmpeg executable at: {Path}", binPath);
                     resolvedPath = binPath;
                 }
                 else
                 {
+                    _logger.LogWarning("FFmpeg executable not found in configured directory or bin subdirectory. Attempted paths: {Paths}", 
+                        string.Join(", ", attemptedPaths));
                     return new FfmpegResolutionResult
                     {
                         Found = false,
@@ -314,6 +348,7 @@ public class FFmpegResolver
         }
         else
         {
+            _logger.LogWarning("Configured path does not exist: {Path}", configuredPath);
             return new FfmpegResolutionResult
             {
                 Found = false,
@@ -323,9 +358,11 @@ public class FFmpegResolver
             };
         }
 
+        _logger.LogInformation("Validating FFmpeg binary at: {Path}", resolvedPath);
         var validation = await ValidateFFmpegBinaryAsync(resolvedPath, ct).ConfigureAwait(false);
         if (validation.success)
         {
+            _logger.LogInformation("FFmpeg validation succeeded for: {Path}", resolvedPath);
             return new FfmpegResolutionResult
             {
                 Found = true,
@@ -339,6 +376,7 @@ public class FFmpegResolver
         }
         else
         {
+            _logger.LogWarning("FFmpeg validation failed for {Path}: {Error}", resolvedPath, validation.error);
             return new FfmpegResolutionResult
             {
                 Found = true,
