@@ -222,6 +222,18 @@ else {
 }
 
 # ========================================
+# Step 2a: Ensure bundled FFmpeg binaries
+# ========================================
+Write-Info "Ensuring bundled FFmpeg binaries are available..."
+& "$ScriptDir\scripts\ensure-ffmpeg.ps1"
+if ($LASTEXITCODE -ne 0) {
+    Show-ErrorMessage "Failed to prepare bundled FFmpeg binaries"
+    exit 1
+}
+Write-Success "Bundled FFmpeg binaries ready"
+Write-Host ""
+
+# ========================================
 # Step 3: Install Electron Dependencies
 # ========================================
 Write-Info "Installing Electron dependencies..."
@@ -248,7 +260,8 @@ Write-Info "Validating required resources..."
 
 $RequiredPaths = @(
     @{ Path = "$ProjectRoot\Aura.Web\dist\index.html"; Name = "Frontend build" },
-    @{ Path = "$ScriptDir\resources\backend"; Name = "Backend binaries" }
+    @{ Path = "$ScriptDir\resources\backend"; Name = "Backend binaries" },
+    @{ Path = "$ScriptDir\resources\ffmpeg\win-x64\bin\ffmpeg.exe"; Name = "Bundled FFmpeg" }
 )
 
 $ValidationFailed = $false

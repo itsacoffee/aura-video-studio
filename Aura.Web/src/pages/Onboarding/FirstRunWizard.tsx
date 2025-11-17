@@ -537,6 +537,31 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
     dispatch({ type: 'SKIP_API_KEY_VALIDATION', payload: provider });
   };
 
+  const handleLocalProviderReady = useCallback(
+    (provider: string) => {
+      dispatch({
+        type: 'API_KEY_VALID',
+        payload: {
+          provider,
+          accountInfo:
+            provider === 'ollama'
+              ? 'Ollama marked as ready. Ensure the Ollama service is running before generating scripts.'
+              : 'Local provider marked as ready.',
+          fieldErrors: [],
+        },
+      });
+
+      showSuccessToast({
+        title: 'Provider Ready',
+        message:
+          provider === 'ollama'
+            ? 'Ollama will be used whenever it is running locally.'
+            : 'Local provider is now marked as ready.',
+      });
+    },
+    [dispatch, showSuccessToast]
+  );
+
   const handleWorkspacePreferencesChange = async (preferences: WorkspacePreferences) => {
     dispatch({ type: 'SET_WORKSPACE_PREFERENCES', payload: preferences });
 
@@ -1095,6 +1120,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
             message: 'Using rule-based script generation. You can add API keys later in Settings.',
           });
         }}
+        onLocalProviderReady={handleLocalProviderReady}
       />
 
       {!hasAtLeastOneProvider && (

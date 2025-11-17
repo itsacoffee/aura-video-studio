@@ -3,6 +3,7 @@
 ## Summary of Changes
 
 This PR updates the FFmpeg card in Settings/Downloads to use the comprehensive `/api/system/ffmpeg/status` endpoint and fixes the critical 428 error in the first-run wizard.
+- Desktop builds now download and bundle a Windows x64 FFmpeg copy during `build-desktop.ps1` so users always have a working encoder out of the box.
 
 ## Problem Statement Addressed
 

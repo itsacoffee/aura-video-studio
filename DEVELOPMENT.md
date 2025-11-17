@@ -588,6 +588,13 @@ curl http://localhost:5005/health/live
 
 ### FFmpeg not found
 
+**Use the bundled downloader (Windows desktop builds):**
+
+```powershell
+cd Aura.Desktop
+npm run ffmpeg:ensure
+```
+
 **Install FFmpeg:**
 
 ```bash

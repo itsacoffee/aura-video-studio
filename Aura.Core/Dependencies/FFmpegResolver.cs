@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Threading;
@@ -59,6 +60,17 @@ public class FFmpegResolver
 
         try
         {
+            // 0. Environment overrides (Electron desktop bundle, CI, etc.)
+            result = await CheckEnvironmentOverridesAsync(ct).ConfigureAwait(false);
+            attemptedPaths.AddRange(result.AttemptedPaths);
+            if (result.Found && result.IsValid)
+            {
+                _logger.LogInformation("Using environment FFmpeg path: {Path}", result.Path);
+                result.AttemptedPaths = attemptedPaths;
+                CacheResult(result);
+                return result;
+            }
+
             // 1. Check managed install first (highest priority)
             result = await CheckManagedInstallAsync(ct).ConfigureAwait(false);
             attemptedPaths.AddRange(result.AttemptedPaths);
@@ -401,6 +413,52 @@ public class FFmpegResolver
             Source = "PATH",
             Error = "FFmpeg not found on PATH or common installation directories",
             AttemptedPaths = attemptedPaths
+        };
+    }
+
+    /// <summary>
+    /// Check environment-provided overrides such as Electron's bundled FFmpeg.
+    /// </summary>
+    private async Task<FfmpegResolutionResult> CheckEnvironmentOverridesAsync(CancellationToken ct)
+    {
+        var attemptedPaths = new List<string>();
+        var envPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        void AddEnvPath(string? value)
+        {
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                envPaths.Add(value.Trim());
+            }
+        }
+
+        AddEnvPath(Environment.GetEnvironmentVariable("FFMPEG_PATH"));
+        AddEnvPath(Environment.GetEnvironmentVariable("FFMPEG_BINARIES_PATH"));
+        AddEnvPath(Environment.GetEnvironmentVariable("AURA_FFMPEG_PATH"));
+
+        foreach (var envPath in envPaths)
+        {
+            attemptedPaths.Add(envPath);
+
+            var result = await CheckConfiguredPathAsync(envPath, ct).ConfigureAwait(false);
+            result.Source = "Environment";
+            result.AttemptedPaths = new List<string>(attemptedPaths);
+
+            if (result.Found && result.IsValid)
+            {
+                return result;
+            }
+        }
+
+        return new FfmpegResolutionResult
+        {
+            Found = false,
+            IsValid = false,
+            Source = "Environment",
+            AttemptedPaths = attemptedPaths,
+            Error = envPaths.Count > 0
+                ? "Environment FFmpeg overrides were invalid."
+                : "No environment FFmpeg overrides configured."
         };
     }
 
