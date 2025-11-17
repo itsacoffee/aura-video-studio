@@ -75,12 +75,15 @@ public class SseService
         catch (OperationCanceledException)
         {
             _logger.LogInformation("SSE stream cancelled");
-            await SendEventAsync(response, "error", new { error = "Operation cancelled" }, linkedCts.Token).ConfigureAwait(false);
+            // Use CancellationToken.None because linkedCts.Token is already cancelled
+            // We need to send the error notification before the connection closes
+            await SendEventAsync(response, "error", new { error = "Operation cancelled" }, CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during SSE stream");
-            await SendEventAsync(response, "error", new { error = ex.Message }, linkedCts.Token).ConfigureAwait(false);
+            // Use CancellationToken.None to ensure error notification is sent even if token is cancelled
+            await SendEventAsync(response, "error", new { error = ex.Message }, CancellationToken.None).ConfigureAwait(false);
         }
     }
 
