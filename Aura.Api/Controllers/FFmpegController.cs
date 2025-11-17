@@ -651,6 +651,13 @@ public class FFmpegController : ControllerBase
             // Perform resolution
             var result = await _resolver.ResolveAsync(null, forceRefresh: true, ct).ConfigureAwait(false);
 
+            // If FFmpeg was found, persist the configuration
+            if (result.Found && result.IsValid)
+            {
+                var mode = DetermineMode(result.Source, FFmpegMode.System);
+                await _resolver.PersistConfigurationAsync(result, mode, ct).ConfigureAwait(false);
+            }
+
             var response = new FFmpegRescanResponse(
                 Success: result.Found && result.IsValid,
                 Installed: result.Found && result.IsValid,
@@ -748,6 +755,9 @@ public class FFmpegController : ControllerBase
 
             _logger.LogInformation("[{CorrelationId}] FFmpeg validated at: {Path}",
                 correlationId, result.Path);
+
+            // Persist the custom configuration so it's remembered
+            await _resolver.PersistConfigurationAsync(result, FFmpegMode.Custom, ct).ConfigureAwait(false);
 
             var successResponse = new FFmpegPathValidationResponse(
                 Success: true,

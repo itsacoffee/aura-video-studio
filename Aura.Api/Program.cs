@@ -2095,7 +2095,7 @@ app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.Health
 {
     Predicate = check => check.Tags.Contains("ready"),
     AllowCachingResponses = false,
-    Timeout = TimeSpan.FromSeconds(5), // Timeout health checks after 5 seconds to prevent hanging
+    // Note: Individual health checks should implement their own timeouts via CancellationToken
     ResponseWriter = async (context, report) =>
     {
         context.Response.ContentType = "application/json";
@@ -2125,7 +2125,7 @@ app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks
 {
     Predicate = _ => true, // All checks
     AllowCachingResponses = false,
-    Timeout = TimeSpan.FromSeconds(5), // Timeout health checks after 5 seconds to prevent hanging
+    // Note: Individual health checks should implement their own timeouts via CancellationToken
     ResponseWriter = async (context, report) =>
     {
         context.Response.ContentType = "application/json";

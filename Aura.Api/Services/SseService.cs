@@ -31,14 +31,25 @@ public class SseService
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(ConnectionTimeout);
 
-        var progress = new Progress<T>(value =>
+        var progress = new Progress<T>(async value =>
         {
             try
             {
+                // Check if cancellation was requested before attempting to write
+                if (cts.Token.IsCancellationRequested)
+                {
+                    return;
+                }
+
                 var json = JsonSerializer.Serialize(value);
                 var message = FormatSseMessage("progress", json);
-                response.WriteAsync(message, cts.Token).Wait();
-                response.Body.FlushAsync(cts.Token).Wait();
+                await response.WriteAsync(message, cts.Token).ConfigureAwait(false);
+                await response.Body.FlushAsync(cts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                // Client disconnected, this is normal
+                _logger.LogDebug("Progress update cancelled (client disconnected)");
             }
             catch (Exception ex)
             {

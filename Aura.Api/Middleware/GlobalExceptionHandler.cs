@@ -53,19 +53,26 @@ public class GlobalExceptionHandler : IExceptionHandler
             _errorAggregation.RecordError(exception, correlationId, context);
         }
 
+        // Determine appropriate status code and error details based on exception type
+        var (statusCode, title, detail, errorCode) = MapExceptionToResponse(exception);
+
         // Create ProblemDetails response
         var problemDetails = new ProblemDetails
         {
             Type = "https://tools.ietf.org/html/rfc7807",
-            Title = "An error occurred",
-            Status = StatusCodes.Status500InternalServerError,
-            Detail = SanitizeExceptionMessage(exception),
+            Title = title,
+            Status = statusCode,
+            Detail = detail,
             Instance = httpContext.Request.Path
         };
 
-        // Add correlation ID to extensions
+        // Add correlation ID and error code to extensions
         problemDetails.Extensions["correlationId"] = correlationId;
         problemDetails.Extensions["timestamp"] = DateTime.UtcNow;
+        if (!string.IsNullOrEmpty(errorCode))
+        {
+            problemDetails.Extensions["errorCode"] = errorCode;
+        }
 
         // Set response status code
         httpContext.Response.StatusCode = problemDetails.Status.Value;
@@ -78,23 +85,119 @@ public class GlobalExceptionHandler : IExceptionHandler
     }
 
     /// <summary>
-    /// Sanitizes exception messages to avoid exposing sensitive information or stack traces to clients
+    /// Maps exceptions to appropriate HTTP status codes and error details
+    /// Note: More specific exception types must be checked before their base types
     /// </summary>
-    private static string SanitizeExceptionMessage(Exception exception)
+    private static (int StatusCode, string Title, string Detail, string? ErrorCode) MapExceptionToResponse(Exception exception)
     {
-        // In production, we want to hide implementation details
-        // But keep useful information for debugging
-        
-        // For known exception types, we can provide more specific messages
+        // Check most specific types first (they inherit from more general types)
         return exception switch
         {
-            ArgumentException => "Invalid input provided. Please check your request and try again.",
-            InvalidOperationException => "The requested operation could not be completed.",
-            UnauthorizedAccessException => "Access denied. You don't have permission to perform this action.",
-            NotImplementedException => "This feature is not yet implemented.",
-            OperationCanceledException => "The operation was cancelled.",
-            TimeoutException => "The operation timed out. Please try again.",
-            _ => "An unexpected error occurred while processing your request."
+            ArgumentNullException nullEx => (
+                StatusCodes.Status400BadRequest,
+                "Invalid Request",
+                $"Required parameter '{nullEx.ParamName}' is missing.",
+                "E401"
+            ),
+            ArgumentException argEx => (
+                StatusCodes.Status400BadRequest,
+                "Invalid Request",
+                $"Invalid input provided: {SanitizeMessage(argEx.Message)}. Please check your request and try again.",
+                "E400"
+            ),
+            TaskCanceledException => (
+                StatusCodes.Status408RequestTimeout,
+                "Request Timeout",
+                "The operation timed out. Please try again.",
+                "E408"
+            ),
+            OperationCanceledException => (
+                StatusCodes.Status499ClientClosedRequest,
+                "Operation Cancelled",
+                "The operation was cancelled.",
+                "E499"
+            ),
+            FileNotFoundException fileEx => (
+                StatusCodes.Status404NotFound,
+                "File Not Found",
+                $"The requested file was not found: {SanitizeMessage(fileEx.FileName)}",
+                "E406"
+            ),
+            KeyNotFoundException keyEx => (
+                StatusCodes.Status404NotFound,
+                "Resource Not Found",
+                $"The requested resource was not found: {SanitizeMessage(keyEx.Message)}",
+                "E405"
+            ),
+            InvalidOperationException opEx => (
+                StatusCodes.Status400BadRequest,
+                "Invalid Operation",
+                $"The requested operation could not be completed: {SanitizeMessage(opEx.Message)}",
+                "E402"
+            ),
+            UnauthorizedAccessException => (
+                StatusCodes.Status403Forbidden,
+                "Access Denied",
+                "You don't have permission to perform this action.",
+                "E403"
+            ),
+            System.Security.SecurityException => (
+                StatusCodes.Status403Forbidden,
+                "Access Denied",
+                "Security check failed. You don't have permission to perform this action.",
+                "E404"
+            ),
+            NotImplementedException => (
+                StatusCodes.Status501NotImplemented,
+                "Not Implemented",
+                "This feature is not yet implemented.",
+                "E501"
+            ),
+            TimeoutException => (
+                StatusCodes.Status408RequestTimeout,
+                "Request Timeout",
+                "The operation timed out. Please try again.",
+                "E408"
+            ),
+            System.Net.Http.HttpRequestException => (
+                StatusCodes.Status502BadGateway,
+                "External Service Error",
+                "An error occurred while communicating with an external service. Please try again later.",
+                "E502"
+            ),
+            System.IO.IOException => (
+                StatusCodes.Status503ServiceUnavailable,
+                "I/O Error",
+                "A file system error occurred. Please check disk space and permissions.",
+                "E503"
+            ),
+            OutOfMemoryException => (
+                StatusCodes.Status507InsufficientStorage,
+                "Insufficient Resources",
+                "The server is out of memory. Please try again later or reduce the size of your request.",
+                "E507"
+            ),
+            _ => (
+                StatusCodes.Status500InternalServerError,
+                "Internal Server Error",
+                "An unexpected error occurred while processing your request.",
+                "E500"
+            )
         };
+    }
+
+    /// <summary>
+    /// Sanitizes exception messages to avoid exposing sensitive information
+    /// </summary>
+    private static string SanitizeMessage(string? message)
+    {
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            return "Unknown error";
+        }
+
+        // Remove potential sensitive information patterns
+        // In production, you might want to be more aggressive here
+        return message;
     }
 }

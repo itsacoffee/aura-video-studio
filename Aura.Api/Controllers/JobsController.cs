@@ -456,6 +456,10 @@ public class JobsController : ControllerBase
     [HttpGet("{jobId}/events")]
     public async Task GetJobEvents(string jobId, [FromQuery] string? lastEventId = null, CancellationToken ct = default)
     {
+        // Use RequestAborted to detect client disconnections properly
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, HttpContext.RequestAborted);
+        var cancellationToken = linkedCts.Token;
+        
         var correlationId = HttpContext.TraceIdentifier;
 
         // Check for Last-Event-ID header or query parameter for reconnection support
@@ -477,7 +481,7 @@ public class JobsController : ControllerBase
             var job = _jobRunner.GetJob(jobId);
             if (job == null)
             {
-                await SendSseEventWithId("error", new { message = "Job not found", jobId, correlationId }, GenerateEventId()).ConfigureAwait(false);
+                await SendSseEventWithId("error", new { message = "Job not found", jobId, correlationId }, GenerateEventId(), cancellationToken).ConfigureAwait(false);
                 return;
             }
 
@@ -488,7 +492,7 @@ public class JobsController : ControllerBase
                 percent = job.Percent,
                 correlationId,
                 isReconnect
-            }, GenerateEventId()).ConfigureAwait(false);
+            }, GenerateEventId(), cancellationToken).ConfigureAwait(false);
 
             // Track last sent values and last ping time
             var lastStatus = job.Status;
@@ -501,9 +505,9 @@ public class JobsController : ControllerBase
             var pollIntervalMs = 500; // Poll every 500ms for responsiveness
             var eventIdCounter = 0;
 
-            while (!ct.IsCancellationRequested && job.Status != JobStatus.Done && job.Status != JobStatus.Failed && job.Status != JobStatus.Canceled)
+            while (!cancellationToken.IsCancellationRequested && job.Status != JobStatus.Done && job.Status != JobStatus.Failed && job.Status != JobStatus.Canceled)
             {
-                await Task.Delay(pollIntervalMs, ct).ConfigureAwait(false);
+                await Task.Delay(pollIntervalMs, cancellationToken).ConfigureAwait(false);
 
                 job = _jobRunner.GetJob(jobId);
                 if (job == null) break;
@@ -515,7 +519,7 @@ public class JobsController : ControllerBase
                         Timestamp: DateTime.UtcNow,
                         Status: "alive"
                     );
-                    await SendSseEventWithId("heartbeat", heartbeat, GenerateEventId(++eventIdCounter)).ConfigureAwait(false);
+                    await SendSseEventWithId("heartbeat", heartbeat, GenerateEventId(++eventIdCounter), cancellationToken).ConfigureAwait(false);
                     lastPingTime = DateTime.UtcNow;
                 }
 
@@ -527,7 +531,7 @@ public class JobsController : ControllerBase
                         stage = job.Stage,
                         percent = job.Percent,
                         correlationId
-                    }, GenerateEventId(++eventIdCounter)).ConfigureAwait(false);
+                    }, GenerateEventId(++eventIdCounter), cancellationToken).ConfigureAwait(false);
                     lastStatus = job.Status;
                 }
 
@@ -540,7 +544,7 @@ public class JobsController : ControllerBase
                         status = "started",
                         phase = normalizedPhase,
                         correlationId
-                    }, GenerateEventId(++eventIdCounter)).ConfigureAwait(false);
+                    }, GenerateEventId(++eventIdCounter), cancellationToken).ConfigureAwait(false);
                     lastStage = job.Stage;
                 }
 
@@ -582,7 +586,7 @@ public class JobsController : ControllerBase
                         EstimatedRemainingSeconds: etaSpan?.TotalSeconds
                     );
 
-                    await SendSseEventWithId("step-progress", progressEvent, GenerateEventId(++eventIdCounter)).ConfigureAwait(false);
+                    await SendSseEventWithId("step-progress", progressEvent, GenerateEventId(++eventIdCounter), cancellationToken).ConfigureAwait(false);
                     lastPercent = job.Percent;
                     lastProgressMessage = latestLog;
                 }
@@ -603,7 +607,7 @@ public class JobsController : ControllerBase
                             Timestamp: DateTime.UtcNow,
                             CorrelationId: correlationId);
 
-                        await SendSseEventWithId("job-log", logEvent, GenerateEventId(++eventIdCounter)).ConfigureAwait(false);
+                        await SendSseEventWithId("job-log", logEvent, GenerateEventId(++eventIdCounter), cancellationToken).ConfigureAwait(false);
 
                         if (severity == "warning")
                         {
@@ -612,14 +616,14 @@ public class JobsController : ControllerBase
                                 message = logEntry,
                                 step = job.Stage,
                                 correlationId
-                            }, GenerateEventId(++eventIdCounter)).ConfigureAwait(false);
+                            }, GenerateEventId(++eventIdCounter), cancellationToken).ConfigureAwait(false);
                         }
                     }
 
                     lastLogCount = job.Logs.Count;
                 }
 
-                await Response.Body.FlushAsync(ct).ConfigureAwait(false);
+                await Response.Body.FlushAsync(cancellationToken).ConfigureAwait(false);
             }
 
             // Send final event
@@ -644,7 +648,7 @@ public class JobsController : ControllerBase
                         sizeBytes = videoArtifact?.SizeBytes ?? 0
                     },
                     correlationId
-                }, GenerateEventId(++eventIdCounter)).ConfigureAwait(false);
+                }, GenerateEventId(++eventIdCounter), cancellationToken).ConfigureAwait(false);
             }
             else if (job?.Status == JobStatus.Failed)
             {
@@ -661,7 +665,7 @@ public class JobsController : ControllerBase
                     errorMessage = job.ErrorMessage,
                     logs = job.Logs.TakeLast(10).ToArray(),
                     correlationId
-                }, GenerateEventId(++eventIdCounter)).ConfigureAwait(false);
+                }, GenerateEventId(++eventIdCounter), cancellationToken).ConfigureAwait(false);
             }
             else if (job?.Status == JobStatus.Canceled)
             {
@@ -672,7 +676,7 @@ public class JobsController : ControllerBase
                     stage = job.Stage,
                     message = "Job was cancelled by user",
                     correlationId
-                }, GenerateEventId(++eventIdCounter)).ConfigureAwait(false);
+                }, GenerateEventId(++eventIdCounter), cancellationToken).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException)
@@ -821,12 +825,25 @@ public class JobsController : ControllerBase
         await Response.Body.WriteAsync(bytes).ConfigureAwait(false);
     }
 
-    private async Task SendSseEventWithId(string eventType, object data, string eventId)
+    private async Task SendSseEventWithId(string eventType, object data, string eventId, CancellationToken ct = default)
     {
-        var json = JsonSerializer.Serialize(data);
-        var message = $"id: {eventId}\nevent: {eventType}\ndata: {json}\n\n";
-        var bytes = Encoding.UTF8.GetBytes(message);
-        await Response.Body.WriteAsync(bytes).ConfigureAwait(false);
+        try
+        {
+            if (ct.IsCancellationRequested)
+            {
+                return;
+            }
+
+            var json = JsonSerializer.Serialize(data);
+            var message = $"id: {eventId}\nevent: {eventType}\ndata: {json}\n\n";
+            var bytes = Encoding.UTF8.GetBytes(message);
+            await Response.Body.WriteAsync(bytes, ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // Client disconnected, this is normal
+            Log.Debug("SSE event send cancelled (client disconnected)");
+        }
     }
 
     private async Task SendSseComment(string comment)
