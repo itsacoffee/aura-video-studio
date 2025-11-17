@@ -1754,10 +1754,24 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
 {
     serverOptions.Limits.MaxRequestBodySize = 100L * 1024L * 1024L * 1024L; // 100GB max request size
     serverOptions.Limits.RequestHeadersTimeout = TimeSpan.FromMinutes(10); // Increased timeout for large uploads
-    serverOptions.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(10);
+    serverOptions.Limits.KeepAliveTimeout = TimeSpan.FromSeconds(30); // Reduced from 10 minutes to prevent lingering connections
+    
+    // Configure server to properly close connections on shutdown
+    serverOptions.AddServerHeader = false; // Reduce attack surface
 });
 
 var app = builder.Build();
+
+// Register application lifetime callbacks for clean shutdown
+var appLifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
+appLifetime.ApplicationStopping.Register(() =>
+{
+    Log.Information("Application stopping - shutting down gracefully");
+});
+appLifetime.ApplicationStopped.Register(() =>
+{
+    Log.Information("Application stopped successfully");
+});
 
 // Apply database migrations
 // Initialize database with enhanced error handling and recovery
@@ -4882,6 +4896,7 @@ Log.Information("===============================================================
 
 // Run dependency scan on startup (non-blocking, runs in background)
 // This scans for dependencies on first launch and every program startup
+// The task respects the application lifetime token to ensure clean shutdown
 _ = Task.Run(async () =>
 {
     try
@@ -4891,7 +4906,15 @@ _ = Task.Run(async () =>
         using var scope = app.Services.CreateScope();
         var rescanService = scope.ServiceProvider.GetRequiredService<Aura.Core.Dependencies.DependencyRescanService>();
 
-        var report = await rescanService.RescanAllAsync().ConfigureAwait(false);
+        // Use the application stopping token to allow graceful cancellation
+        var report = await rescanService.RescanAllAsync(appLifetime.ApplicationStopping).ConfigureAwait(false);
+
+        // Check if shutdown was requested during scan
+        if (appLifetime.ApplicationStopping.IsCancellationRequested)
+        {
+            Log.Information("Dependency scan cancelled due to application shutdown");
+            return;
+        }
 
         var installedCount = report.Dependencies.Count(d => d.Status == Aura.Core.Dependencies.DependencyStatus.Installed);
         var missingCount = report.Dependencies.Count(d => d.Status == Aura.Core.Dependencies.DependencyStatus.Missing);
@@ -4905,15 +4928,25 @@ _ = Task.Run(async () =>
             Log.Warning("Some dependencies are missing or incomplete. Please visit Program Dependencies page to install them.");
         }
     }
+    catch (OperationCanceledException)
+    {
+        Log.Information("Dependency scan cancelled due to application shutdown");
+    }
     catch (Exception ex)
     {
         Log.Error(ex, "Failed to run startup dependency scan");
     }
-});
+}, appLifetime.ApplicationStopping);
 
 try
 {
-    app.Run();
+    // Use RunAsync instead of Run to allow proper cancellation during shutdown
+    await app.RunAsync(appLifetime.ApplicationStopping).ConfigureAwait(false);
+}
+catch (OperationCanceledException)
+{
+    // Normal shutdown path - not an error
+    Log.Information("Application shutdown completed gracefully");
 }
 catch (Exception ex)
 {
@@ -4933,7 +4966,8 @@ catch (Exception ex)
 }
 finally
 {
-    Log.CloseAndFlush();
+    Log.Information("Application host stopped, flushing logs...");
+    await Log.CloseAndFlushAsync().ConfigureAwait(false);
 }
 
 // Make Program accessible for integration tests
