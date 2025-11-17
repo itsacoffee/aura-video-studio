@@ -47,10 +47,24 @@ public class FFmpegResolver
         bool forceRefresh = false,
         CancellationToken ct = default)
     {
+        var envOverridePaths = GetEnvironmentOverridePaths();
+        var hasEnvOverrides = envOverridePaths.Count > 0;
+
         if (!forceRefresh && _cache.TryGetValue(CacheKey, out FfmpegResolutionResult? cached))
         {
-            _logger.LogDebug("Returning cached FFmpeg resolution result");
-            return cached!;
+            if (!hasEnvOverrides)
+            {
+                _logger.LogDebug("Returning cached FFmpeg resolution result");
+                return cached!;
+            }
+
+            if (cached != null && cached.Source == "Environment" && cached.Found && cached.IsValid)
+            {
+                _logger.LogDebug("Returning cached environment FFmpeg resolution result");
+                return cached;
+            }
+
+            _logger.LogDebug("Environment overrides detected, bypassing cached FFmpeg result");
         }
 
         _logger.LogInformation("Resolving FFmpeg path with precedence: Managed > Configured > PATH");
@@ -61,7 +75,7 @@ public class FFmpegResolver
         try
         {
             // 0. Environment overrides (Electron desktop bundle, CI, etc.)
-            result = await CheckEnvironmentOverridesAsync(ct).ConfigureAwait(false);
+            result = await CheckEnvironmentOverridesAsync(envOverridePaths, ct).ConfigureAwait(false);
             attemptedPaths.AddRange(result.AttemptedPaths);
             if (result.Found && result.IsValid)
             {
@@ -419,22 +433,11 @@ public class FFmpegResolver
     /// <summary>
     /// Check environment-provided overrides such as Electron's bundled FFmpeg.
     /// </summary>
-    private async Task<FfmpegResolutionResult> CheckEnvironmentOverridesAsync(CancellationToken ct)
+    private async Task<FfmpegResolutionResult> CheckEnvironmentOverridesAsync(
+        IReadOnlyCollection<string> envPaths,
+        CancellationToken ct)
     {
         var attemptedPaths = new List<string>();
-        var envPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        void AddEnvPath(string? value)
-        {
-            if (!string.IsNullOrWhiteSpace(value))
-            {
-                envPaths.Add(value.Trim());
-            }
-        }
-
-        AddEnvPath(Environment.GetEnvironmentVariable("FFMPEG_PATH"));
-        AddEnvPath(Environment.GetEnvironmentVariable("FFMPEG_BINARIES_PATH"));
-        AddEnvPath(Environment.GetEnvironmentVariable("AURA_FFMPEG_PATH"));
 
         foreach (var envPath in envPaths)
         {
@@ -460,6 +463,20 @@ public class FFmpegResolver
                 ? "Environment FFmpeg overrides were invalid."
                 : "No environment FFmpeg overrides configured."
         };
+    }
+
+    private static IReadOnlyList<string> GetEnvironmentOverridePaths()
+    {
+        return new[]
+            {
+                Environment.GetEnvironmentVariable("FFMPEG_PATH"),
+                Environment.GetEnvironmentVariable("FFMPEG_BINARIES_PATH"),
+                Environment.GetEnvironmentVariable("AURA_FFMPEG_PATH")
+            }
+            .Where(p => !string.IsNullOrWhiteSpace(p))
+            .Select(p => p!.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
     }
 
     /// <summary>
