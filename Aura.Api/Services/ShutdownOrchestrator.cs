@@ -151,10 +151,10 @@ public class ShutdownOrchestrator
             _logger.LogInformation("Graceful shutdown completed successfully (Total: {ElapsedMs}ms)", shutdownStopwatch.ElapsedMilliseconds);
             _logger.LogInformation("=================================================================");
 
-            // Signal application to stop
+            // Signal application to stop with minimal delay for faster shutdown
             if (!force)
             {
-                await Task.Delay(200, CancellationToken.None).ConfigureAwait(false);
+                await Task.Delay(50, CancellationToken.None).ConfigureAwait(false); // Reduced from 200ms to 50ms
             }
             
             _logger.LogInformation("Calling IHostApplicationLifetime.StopApplication()...");
@@ -187,7 +187,7 @@ public class ShutdownOrchestrator
             return "No active connections";
         }
 
-        _logger.LogInformation("Notifying {Count} active SSE connections", connectionCount);
+        _logger.LogInformation("Notifying {Count} active SSE connections of shutdown", connectionCount);
 
         var notificationTasks = _activeConnections.Select(async kvp =>
         {
@@ -204,7 +204,7 @@ public class ShutdownOrchestrator
         });
 
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        timeoutCts.CancelAfter(TimeSpan.FromSeconds(1));
+        timeoutCts.CancelAfter(TimeSpan.FromMilliseconds(500)); // Reduced from 1 second for faster shutdown
 
         try
         {
@@ -227,7 +227,8 @@ public class ShutdownOrchestrator
 
         _logger.LogInformation("Closing {Count} SSE connections", connectionCount);
 
-        await Task.Delay(200, ct).ConfigureAwait(false);
+        // Reduced delay from 200ms to 100ms for faster shutdown
+        await Task.Delay(100, ct).ConfigureAwait(false);
 
         _activeConnections.Clear();
         return $"Closed {connectionCount} connections";

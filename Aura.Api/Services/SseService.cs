@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Api.Services;
@@ -10,12 +11,16 @@ namespace Aura.Api.Services;
 public class SseService
 {
     private readonly ILogger<SseService> _logger;
+    private readonly IHostApplicationLifetime _lifetime;
     private static readonly TimeSpan KeepAliveInterval = TimeSpan.FromSeconds(30);
-    private static readonly TimeSpan ConnectionTimeout = TimeSpan.FromMinutes(5);
+    
+    // Reduced from 5 minutes to allow faster shutdown - connections will be closed during shutdown anyway
+    private static readonly TimeSpan ConnectionTimeout = TimeSpan.FromMinutes(2);
 
-    public SseService(ILogger<SseService> logger)
+    public SseService(ILogger<SseService> logger, IHostApplicationLifetime lifetime)
     {
         _logger = logger;
+        _lifetime = lifetime;
     }
 
     public async Task StreamProgressAsync<T>(
@@ -28,28 +33,31 @@ public class SseService
         response.Headers.Append("Cache-Control", "no-cache");
         response.Headers.Append("Connection", "keep-alive");
 
-        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        cts.CancelAfter(ConnectionTimeout);
+        // Link with application stopping token to ensure shutdown is respected
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
+            ct, 
+            _lifetime.ApplicationStopping);
+        linkedCts.CancelAfter(ConnectionTimeout);
 
         var progress = new Progress<T>(async value =>
         {
             try
             {
                 // Check if cancellation was requested before attempting to write
-                if (cts.Token.IsCancellationRequested)
+                if (linkedCts.Token.IsCancellationRequested)
                 {
                     return;
                 }
 
                 var json = JsonSerializer.Serialize(value);
                 var message = FormatSseMessage("progress", json);
-                await response.WriteAsync(message, cts.Token).ConfigureAwait(false);
-                await response.Body.FlushAsync(cts.Token).ConfigureAwait(false);
+                await response.WriteAsync(message, linkedCts.Token).ConfigureAwait(false);
+                await response.Body.FlushAsync(linkedCts.Token).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
-                // Client disconnected, this is normal
-                _logger.LogDebug("Progress update cancelled (client disconnected)");
+                // Client disconnected or shutdown requested, this is normal
+                _logger.LogDebug("Progress update cancelled (client disconnected or shutdown)");
             }
             catch (Exception ex)
             {
@@ -59,20 +67,20 @@ public class SseService
 
         try
         {
-            await operation(progress, cts.Token).ConfigureAwait(false);
+            await operation(progress, linkedCts.Token).ConfigureAwait(false);
             
             // Send completion event
-            await SendEventAsync(response, "complete", new { success = true }, cts.Token).ConfigureAwait(false);
+            await SendEventAsync(response, "complete", new { success = true }, linkedCts.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             _logger.LogInformation("SSE stream cancelled");
-            await SendEventAsync(response, "error", new { error = "Operation cancelled" }, cts.Token).ConfigureAwait(false);
+            await SendEventAsync(response, "error", new { error = "Operation cancelled" }, linkedCts.Token).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during SSE stream");
-            await SendEventAsync(response, "error", new { error = ex.Message }, cts.Token).ConfigureAwait(false);
+            await SendEventAsync(response, "error", new { error = ex.Message }, linkedCts.Token).ConfigureAwait(false);
         }
     }
 
