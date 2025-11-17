@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Api.Services;
+using Aura.Core.Configuration;
 using Aura.Core.Services.FFmpeg;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -18,15 +19,18 @@ public class SystemController : ControllerBase
     private readonly ILogger<SystemController> _logger;
     private readonly IFFmpegStatusService _ffmpegStatusService;
     private readonly ShutdownOrchestrator _shutdownOrchestrator;
+    private readonly FFmpegConfigurationStore _configStore;
 
     public SystemController(
         ILogger<SystemController> logger,
         IFFmpegStatusService ffmpegStatusService,
-        ShutdownOrchestrator shutdownOrchestrator)
+        ShutdownOrchestrator shutdownOrchestrator,
+        FFmpegConfigurationStore configStore)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _ffmpegStatusService = ffmpegStatusService ?? throw new ArgumentNullException(nameof(ffmpegStatusService));
         _shutdownOrchestrator = shutdownOrchestrator ?? throw new ArgumentNullException(nameof(shutdownOrchestrator));
+        _configStore = configStore ?? throw new ArgumentNullException(nameof(configStore));
     }
 
     /// <summary>
@@ -52,6 +56,12 @@ public class SystemController : ControllerBase
             _logger.LogInformation("[{CorrelationId}] GET /api/system/ffmpeg/status", correlationId);
 
             var status = await _ffmpegStatusService.GetStatusAsync(ct).ConfigureAwait(false);
+            
+            // Load configuration to get mode and validation result
+            var config = await _configStore.LoadAsync(ct).ConfigureAwait(false);
+            
+            var mode = config?.Mode ?? FFmpegMode.None;
+            var lastValidationResult = config?.LastValidationResult ?? FFmpegValidationResult.Unknown;
 
             return Ok(new
             {
@@ -60,12 +70,15 @@ public class SystemController : ControllerBase
                 version = status.Version,
                 path = status.Path,
                 source = status.Source,
+                mode = mode.ToString().ToLowerInvariant(),
                 error = status.Error,
                 errorCode = status.ErrorCode,
                 errorMessage = status.ErrorMessage,
                 attemptedPaths = status.AttemptedPaths,
                 versionMeetsRequirement = status.VersionMeetsRequirement,
                 minimumVersion = status.MinimumVersion,
+                lastValidatedAt = config?.LastValidatedAt,
+                lastValidationResult = lastValidationResult.ToString().ToLowerInvariant(),
                 hardwareAcceleration = new
                 {
                     nvencSupported = status.HardwareAcceleration.NvencSupported,
@@ -88,12 +101,15 @@ public class SystemController : ControllerBase
                 version = (string?)null,
                 path = (string?)null,
                 source = "None",
+                mode = "none",
                 error = "Failed to check FFmpeg status",
                 errorCode = "E302",
                 errorMessage = "Unable to check FFmpeg installation status. Please try again.",
                 attemptedPaths = Array.Empty<string>(),
                 versionMeetsRequirement = false,
                 minimumVersion = "4.0",
+                lastValidatedAt = (DateTime?)null,
+                lastValidationResult = "unknown",
                 hardwareAcceleration = new
                 {
                     nvencSupported = false,
