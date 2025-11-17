@@ -459,7 +459,7 @@ public class JobsController : ControllerBase
         // Use RequestAborted to detect client disconnections properly
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, HttpContext.RequestAborted);
         var cancellationToken = linkedCts.Token;
-        
+
         var correlationId = HttpContext.TraceIdentifier;
 
         // Check for Last-Event-ID header or query parameter for reconnection support
@@ -879,7 +879,7 @@ public class JobsController : ControllerBase
         return phase switch
         {
             "processing" => "plan",
-            "complete" => "render",
+            // Keep "complete" as "complete" - a completed job should remain in the complete phase
             _ => phase
         };
     }
