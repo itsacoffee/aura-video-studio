@@ -302,7 +302,8 @@ public class VideoOrchestrator
         CancellationToken ct = default,
         string? jobId = null,
         string? correlationId = null,
-        bool isQuickDemo = false)
+        bool isQuickDemo = false,
+        IProgress<GenerationProgress>? detailedProgress = null)
     {
         var result = await GenerateVideoResultAsync(
             brief,
@@ -314,7 +315,8 @@ public class VideoOrchestrator
             ct,
             jobId,
             correlationId,
-            isQuickDemo).ConfigureAwait(false);
+            isQuickDemo,
+            detailedProgress).ConfigureAwait(false);
 
         return result.OutputPath;
     }
@@ -332,7 +334,8 @@ public class VideoOrchestrator
         CancellationToken ct = default,
         string? jobId = null,
         string? correlationId = null,
-        bool isQuickDemo = false)
+        bool isQuickDemo = false,
+        IProgress<GenerationProgress>? detailedProgress = null)
     {
         ArgumentNullException.ThrowIfNull(brief);
         ArgumentNullException.ThrowIfNull(planSpec);
@@ -862,7 +865,8 @@ public class VideoOrchestrator
         CancellationToken ct = default,
         string? jobId = null,
         string? correlationId = null,
-        bool isQuickDemo = false)
+        bool isQuickDemo = false,
+        IProgress<GenerationProgress>? detailedProgress = null)
     {
         var result = await GenerateVideoResultAsync(
             brief,
@@ -873,7 +877,8 @@ public class VideoOrchestrator
             ct,
             jobId,
             correlationId,
-            isQuickDemo).ConfigureAwait(false);
+            isQuickDemo,
+            detailedProgress).ConfigureAwait(false);
 
         return result.OutputPath;
     }

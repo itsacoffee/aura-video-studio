@@ -1,9 +1,14 @@
 <Project>
+  <PropertyGroup>
+    <BuildWinUIApplication Condition="'$(BuildWinUIApplication)'=='' and '$(BuildingInsideVisualStudio)'=='true'">true</BuildWinUIApplication>
+    <BuildWinUIApplication Condition="'$(BuildWinUIApplication)'==''">false</BuildWinUIApplication>
+  </PropertyGroup>
+
   <!-- Import different SDK based on platform -->
-  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" Condition="'$(OS)' != 'Windows_NT'" />
-  
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" Condition="'$(OS)' != 'Windows_NT' or '$(BuildWinUIApplication)' != 'true'" />
+
   <!-- On non-Windows, build as minimal library that produces no meaningful output -->
-  <PropertyGroup Condition="'$(OS)' != 'Windows_NT'">
+  <PropertyGroup Condition="'$(OS)' != 'Windows_NT' or '$(BuildWinUIApplication)' != 'true'">
     <OutputType>Library</OutputType>
     <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>Aura.App</RootNamespace>
@@ -13,18 +18,18 @@
     <EnableDefaultItems>false</EnableDefaultItems>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
-  
+
   <!-- On non-Windows, create a dummy class to produce valid assembly -->
-  <ItemGroup Condition="'$(OS)' != 'Windows_NT'">
+  <ItemGroup Condition="'$(OS)' != 'Windows_NT' or '$(BuildWinUIApplication)' != 'true'">
     <Compile Include="DummyForNonWindows.cs" />
   </ItemGroup>
 
-  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" Condition="'$(OS)' != 'Windows_NT'" />
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" Condition="'$(OS)' != 'Windows_NT' or '$(BuildWinUIApplication)' != 'true'" />
 
   <!-- Windows-only configuration starts here -->
-  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" Condition="'$(OS)' == 'Windows_NT'" />
-  
-  <PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" Condition="'$(OS)' == 'Windows_NT' and '$(BuildWinUIApplication)' == 'true'" />
+
+  <PropertyGroup Condition="'$(OS)' == 'Windows_NT' and '$(BuildWinUIApplication)' == 'true'">
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
@@ -39,10 +44,11 @@
     <Nullable>enable</Nullable>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <IsWindowsOnlyProject>true</IsWindowsOnlyProject>
+    <UseXamlCompilerExecutable>false</UseXamlCompilerExecutable>
   </PropertyGroup>
 
   <!-- Windows-only dependencies -->
-  <ItemGroup Condition="'$(OS)' == 'Windows_NT'">
+  <ItemGroup Condition="'$(OS)' == 'Windows_NT' and '$(BuildWinUIApplication)' == 'true'">
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.5.240311000" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.22621.3233" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
@@ -54,32 +60,37 @@
     <!-- Explicit references to resolve MSB3277 assembly version conflicts -->
     <PackageReference Include="System.Collections.Immutable" Version="8.0.0" />
     <PackageReference Include="System.Reflection.Metadata" Version="8.0.1" />
+    <PackageReference Include="System.Security.Permissions" Version="6.0.0" />
   </ItemGroup>
 
   <!-- Windows-only project references -->
-  <ItemGroup Condition="'$(OS)' == 'Windows_NT'">
+  <ItemGroup Condition="'$(OS)' == 'Windows_NT' and '$(BuildWinUIApplication)' == 'true'">
     <ProjectReference Include="..\Aura.Core\Aura.Core.csproj" />
     <ProjectReference Include="..\Aura.Providers\Aura.Providers.csproj" />
   </ItemGroup>
 
   <!-- Windows-only manifest -->
-  <ItemGroup Condition="'$(OS)' == 'Windows_NT'">
+  <ItemGroup Condition="'$(OS)' == 'Windows_NT' and '$(BuildWinUIApplication)' == 'true'">
     <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>
 
   <!-- Windows-only package manifest -->
-  <ItemGroup Condition="'$(OS)' == 'Windows_NT'">
+  <ItemGroup Condition="'$(OS)' == 'Windows_NT' and '$(BuildWinUIApplication)' == 'true'">
     <None Include="Package.appxmanifest">
       <SubType>Designer</SubType>
     </None>
   </ItemGroup>
 
   <!-- Windows-only assets -->
-  <ItemGroup Condition="'$(OS)' == 'Windows_NT'">
+  <ItemGroup Condition="'$(OS)' == 'Windows_NT' and '$(BuildWinUIApplication)' == 'true'">
     <Content Include="Assets\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
 
-  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" Condition="'$(OS)' == 'Windows_NT'" />
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" Condition="'$(OS)' == 'Windows_NT' and '$(BuildWinUIApplication)' == 'true'" />
+
+  <PropertyGroup Condition="'$(OS)' == 'Windows_NT' and '$(BuildWinUIApplication)' == 'true'">
+    <UseXamlCompilerExecutable>false</UseXamlCompilerExecutable>
+  </PropertyGroup>
 </Project>

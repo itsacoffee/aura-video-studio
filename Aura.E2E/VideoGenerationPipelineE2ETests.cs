@@ -286,11 +286,11 @@ public class VideoGenerationPipelineE2ETests : IDisposable
             voiceSpec,
             renderSpec,
             systemProfile,
-            null,
-            progressHandler,
-            CancellationToken.None,
-            $"job-{Guid.NewGuid():N}",
-            correlationId
+            progress: null,
+            ct: CancellationToken.None,
+            jobId: $"job-{Guid.NewGuid():N}",
+            correlationId: correlationId,
+            detailedProgress: progressHandler
         ).ConfigureAwait(false);
 
         // Assert - Progress updates were emitted

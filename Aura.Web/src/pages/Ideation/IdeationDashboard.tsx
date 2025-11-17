@@ -1,6 +1,6 @@
-import { makeStyles, tokens, Text, Button } from '@fluentui/react-components';
+import { makeStyles, tokens, Text, Button, Input } from '@fluentui/react-components';
 import { LightbulbRegular, LightbulbFilamentRegular } from '@fluentui/react-icons';
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BrainstormInput, BrainstormOptions } from '../../components/ideation/BrainstormInput';
 import { ConceptCard } from '../../components/ideation/ConceptCard';
@@ -48,6 +48,8 @@ const useStyles = makeStyles({
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: tokens.spacingHorizontalL,
   },
   conceptsGrid: {
     display: 'grid',
@@ -66,7 +68,60 @@ const useStyles = makeStyles({
   emptyIcon: {
     fontSize: '64px',
   },
+  headerActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalXL,
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+  },
+  hotkeyEditor: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalXXS,
+    minWidth: '220px',
+  },
+  hotkeyInputRow: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalS,
+    flexWrap: 'wrap',
+  },
+  hotkeyHint: {
+    color: tokens.colorNeutralForeground3,
+  },
+  hotkeyHelper: {
+    color: tokens.colorNeutralForeground4,
+    fontSize: tokens.fontSizeBase200,
+  },
+  hotkeyReset: {
+    padding: 0,
+    height: 'auto',
+  },
 });
+
+interface HotkeyConfig {
+  key?: string;
+  code: string;
+  ctrlKey: boolean;
+  altKey: boolean;
+  shiftKey: boolean;
+  metaKey: boolean;
+}
+
+const REFRESH_HOTKEY_STORAGE_KEY = 'ideation-refresh-hotkey';
+const IDEA_COUNT_STORAGE_KEY = 'ideation-idea-count';
+const DEFAULT_HOTKEY: HotkeyConfig = {
+  key: ' ',
+  code: 'Space',
+  ctrlKey: true,
+  altKey: false,
+  shiftKey: false,
+  metaKey: false,
+};
+
+const clampIdeaCount = (value: number) => Math.min(9, Math.max(3, value));
 
 export const IdeationDashboard: React.FC = () => {
   const styles = useStyles();
@@ -76,27 +131,75 @@ export const IdeationDashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [originalTopic, setOriginalTopic] = useState<string>('');
   const [originalOptions, setOriginalOptions] = useState<BrainstormOptions>({});
+  const [ideaCount, setIdeaCount] = useState<number>(6);
+  const [refreshHotkey, setRefreshHotkey] = useState<HotkeyConfig>(DEFAULT_HOTKEY);
+  const [isCapturingHotkey, setIsCapturingHotkey] = useState(false);
 
-  const handleBrainstorm = async (topic: string, options: BrainstormOptions) => {
-    setLoading(true);
-    setError(null);
-    setOriginalTopic(topic);
-    setOriginalOptions(options);
+  const formatHotkeyLabel = useCallback((config: HotkeyConfig) => {
+    const segments: string[] = [];
+    if (config.ctrlKey) segments.push('Ctrl');
+    if (config.altKey) segments.push('Alt');
+    if (config.shiftKey) segments.push('Shift');
+    if (config.metaKey) segments.push('Meta');
 
-    try {
-      const request: BrainstormRequest = {
-        topic,
-        ...options,
-      };
+    const primary =
+      config.code === 'Space'
+        ? 'Space'
+        : config.key && config.key.length === 1
+          ? config.key.toUpperCase()
+          : config.code.replace(/^(Key|Digit)/, '');
 
-      const response = await ideationService.brainstorm(request);
-      setConcepts(response.concepts);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to generate concepts');
-    } finally {
-      setLoading(false);
-    }
+    segments.push(primary);
+    return segments.join(' + ');
+  }, []);
+
+  const matchesHotkey = useCallback((event: KeyboardEvent, config: HotkeyConfig) => {
+    return (
+      event.code === config.code &&
+      event.ctrlKey === config.ctrlKey &&
+      event.altKey === config.altKey &&
+      event.shiftKey === config.shiftKey &&
+      event.metaKey === config.metaKey
+    );
+  }, []);
+
+  const isModifierOnly = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    return (
+      event.key === 'Shift' ||
+      event.key === 'Control' ||
+      event.key === 'Alt' ||
+      event.key === 'Meta'
+    );
   };
+
+  const handleBrainstorm = useCallback(
+    async (topic: string, options: BrainstormOptions) => {
+      setLoading(true);
+      setError(null);
+      setOriginalTopic(topic);
+
+      const normalizedOptions: BrainstormOptions = {
+        ...options,
+        conceptCount: clampIdeaCount(options.conceptCount ?? ideaCount),
+      };
+      setOriginalOptions(normalizedOptions);
+
+      try {
+        const request: BrainstormRequest = {
+          topic,
+          ...normalizedOptions,
+        };
+
+        const response = await ideationService.brainstorm(request);
+        setConcepts(response.concepts);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to generate concepts');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [ideaCount]
+  );
 
   const handleSelectConcept = (concept: ConceptIdea) => {
     // Navigate to create page with the selected concept pre-filled
@@ -109,10 +212,105 @@ export const IdeationDashboard: React.FC = () => {
     navigate('/create', { state: { conceptIdea: concept, expandMode: true } });
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     if (originalTopic) {
-      handleBrainstorm(originalTopic, originalOptions);
+      const latestOptions: BrainstormOptions = {
+        ...originalOptions,
+        conceptCount: clampIdeaCount(originalOptions.conceptCount ?? ideaCount),
+      };
+      void handleBrainstorm(originalTopic, latestOptions);
     }
+  }, [handleBrainstorm, ideaCount, originalOptions, originalTopic]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const storedCount = Number(window.localStorage.getItem(IDEA_COUNT_STORAGE_KEY));
+    if (!Number.isNaN(storedCount)) {
+      setIdeaCount(clampIdeaCount(storedCount));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(IDEA_COUNT_STORAGE_KEY, ideaCount.toString());
+  }, [ideaCount]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const storedHotkey = window.localStorage.getItem(REFRESH_HOTKEY_STORAGE_KEY);
+      if (storedHotkey) {
+        const parsed = JSON.parse(storedHotkey) as HotkeyConfig;
+        if (parsed && typeof parsed.code === 'string') {
+          setRefreshHotkey({
+            key: parsed.key ?? parsed.code,
+            code: parsed.code,
+            ctrlKey: Boolean(parsed.ctrlKey),
+            altKey: Boolean(parsed.altKey),
+            shiftKey: Boolean(parsed.shiftKey),
+            metaKey: Boolean(parsed.metaKey),
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to restore ideation refresh hotkey', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(REFRESH_HOTKEY_STORAGE_KEY, JSON.stringify(refreshHotkey));
+  }, [refreshHotkey]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const listener = (event: KeyboardEvent) => {
+      if (isCapturingHotkey) {
+        return;
+      }
+
+      if (matchesHotkey(event, refreshHotkey)) {
+        event.preventDefault();
+        handleRefresh();
+      }
+    };
+
+    window.addEventListener('keydown', listener);
+    return () => window.removeEventListener('keydown', listener);
+  }, [handleRefresh, matchesHotkey, refreshHotkey, isCapturingHotkey]);
+
+  const hotkeyLabel = formatHotkeyLabel(refreshHotkey);
+
+  const handleHotkeyKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!isCapturingHotkey) {
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      setIsCapturingHotkey(false);
+      return;
+    }
+
+    if (isModifierOnly(event)) {
+      return;
+    }
+
+    setRefreshHotkey({
+      key: event.key,
+      code: event.code,
+      ctrlKey: event.ctrlKey,
+      altKey: event.altKey,
+      shiftKey: event.shiftKey,
+      metaKey: event.metaKey,
+    });
+    setIsCapturingHotkey(false);
+  };
+
+  const resetHotkey = () => {
+    setRefreshHotkey(DEFAULT_HOTKEY);
   };
 
   return (
@@ -132,7 +330,12 @@ export const IdeationDashboard: React.FC = () => {
       </div>
 
       <div className={styles.content}>
-        <BrainstormInput onBrainstorm={handleBrainstorm} loading={loading} />
+        <BrainstormInput
+          onBrainstorm={handleBrainstorm}
+          loading={loading}
+          ideaCount={ideaCount}
+          onIdeaCountChange={(value) => setIdeaCount(clampIdeaCount(value))}
+        />
 
         {error && (
           <ErrorState
@@ -149,9 +352,42 @@ export const IdeationDashboard: React.FC = () => {
               <Text size={600} weight="semibold">
                 {concepts.length} Creative Concepts for &quot;{originalTopic}&quot;
               </Text>
-              <Button appearance="subtle" onClick={handleRefresh}>
-                Generate More
-              </Button>
+              <div className={styles.headerActions}>
+                <Button appearance="subtle" onClick={handleRefresh}>
+                  Generate More
+                </Button>
+                <div className={styles.hotkeyEditor}>
+                  <Text size={200} weight="semibold">
+                    Refresh shortcut
+                  </Text>
+                  <div className={styles.hotkeyInputRow}>
+                    <Input
+                      readOnly
+                      appearance={isCapturingHotkey ? 'filled-darker' : 'outline'}
+                      value={isCapturingHotkey ? 'Press new keys…' : hotkeyLabel}
+                      onFocus={() => setIsCapturingHotkey(true)}
+                      onBlur={() => setIsCapturingHotkey(false)}
+                      onKeyDown={handleHotkeyKeyDown}
+                      aria-label="Refresh ideas hotkey"
+                    />
+                    <Button
+                      appearance="subtle"
+                      className={styles.hotkeyReset}
+                      onClick={resetHotkey}
+                    >
+                      Reset to Ctrl + Space
+                    </Button>
+                  </div>
+                  <Text size={200} className={styles.hotkeyHint}>
+                    Press {hotkeyLabel} to refresh ideas instantly
+                  </Text>
+                  <Text size={200} className={styles.hotkeyHelper}>
+                    {isCapturingHotkey
+                      ? 'Listening for your new shortcut…'
+                      : 'Click the box, then press your preferred key combo'}
+                  </Text>
+                </div>
+              </div>
             </div>
 
             <div className={styles.conceptsGrid}>

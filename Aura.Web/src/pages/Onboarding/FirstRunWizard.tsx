@@ -621,6 +621,13 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
     setFfmpegRefreshSignal((prev) => prev + 1);
   };
 
+  const openExternalLink = useCallback((url: string) => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }, []);
+
   const handleBrowseForFfmpeg = useCallback(async () => {
     setIsBrowsingForFfmpeg(true);
     try {
@@ -819,6 +826,46 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
         onInstallComplete={handleFfmpegStatusUpdate}
         onStatusChange={handleFfmpegStatusUpdate}
       />
+
+      <Card
+        style={{
+          padding: tokens.spacingVerticalM,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: tokens.spacingVerticalS,
+        }}
+      >
+        <Title3>Need a download link?</Title3>
+        <Text size={200}>
+          Prefer to install FFmpeg manually? Use our managed installer above or follow the official
+          guides. Once the binaries are on disk, click re-scan or validate a path and Aura will pick
+          it up automatically.
+        </Text>
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: tokens.spacingHorizontalS,
+          }}
+        >
+          <Button
+            appearance="secondary"
+            onClick={() => openExternalLink('https://www.gyan.dev/ffmpeg/builds/')}
+          >
+            Download Windows Build
+          </Button>
+          <Button
+            appearance="secondary"
+            onClick={() => openExternalLink('https://ffmpeg.org/download.html')}
+          >
+            Official FFmpeg Instructions
+          </Button>
+        </div>
+        <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+          Tip: already have FFmpeg in your PATH? Click &quot;Re-scan&quot; after launching Aura to
+          auto-detect it.
+        </Text>
+      </Card>
 
       {!ffmpegReady && (
         <Card

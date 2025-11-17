@@ -258,14 +258,26 @@ function setupErrorHandling() {
     }
 
     // Log error
+    const error = reason instanceof Error ? reason : new Error(String(reason));
     if (startupLogger) {
       startupLogger.error(
         "UnhandledRejection",
         "Unhandled promise rejection",
-        reason instanceof Error ? reason : new Error(String(reason))
+        error
       );
     } else {
       logError("UnhandledRejection", reason);
+    }
+
+    // For non-critical rejections, log and continue
+    // Only show dialog for critical errors
+    const isCritical = error.message?.includes("ENOENT") === false && 
+                       error.message?.includes("ECONNREFUSED") === false &&
+                       error.message?.includes("timeout") === false;
+
+    if (isCritical && crashCount < MAX_CRASH_COUNT) {
+      // Show non-blocking notification instead of error box for non-critical errors
+      console.warn("Non-critical unhandled rejection - application will continue:", error.message);
     }
   });
 

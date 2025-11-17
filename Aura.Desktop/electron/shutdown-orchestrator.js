@@ -91,6 +91,7 @@ class ShutdownOrchestrator {
   /**
    * Failsafe: Kill all Aura-related processes by name
    * Used as last resort if normal shutdown fails
+   * SAFETY: Only kills processes that are children of our backend, not system-wide
    */
   async killAllAuraProcesses() {
     this.logger.warn('FAILSAFE: Attempting to kill all Aura-related processes...');
@@ -98,43 +99,69 @@ class ShutdownOrchestrator {
     return new Promise((resolve) => {
       if (this.isWindows) {
         // Windows: Use taskkill to find and kill all processes matching patterns
+        // SAFETY: Only kill processes that are likely our children, exclude our own PID
         const patterns = [
           'Aura.Api.exe',
-          'dotnet.exe',  // May be hosting Aura.Api
-          'ffmpeg.exe',  // FFmpeg processes spawned by backend
-          'Aura Video Studio.exe'
+          'ffmpeg.exe'  // FFmpeg processes spawned by backend
         ];
         
-        // Build a command that kills all matching processes
-        // Note: We'll only kill child processes, not our own Electron process
-        const commands = patterns.map(pattern => 
-          `taskkill /F /FI "IMAGENAME eq ${pattern}" /FI "PID ne ${process.pid}" 2>nul`
-        ).join(' & ');
+        const electronPid = process.pid;
+        this.logger.info(`Failsafe: Electron PID is ${electronPid}, will not kill this process`);
         
-        exec(commands, (error, stdout, stderr) => {
-          if (error) {
-            this.logger.warn('Process kill command had errors (may be normal if processes already exited):', error.message);
-          }
-          if (stdout) this.logger.info('Failsafe kill output:', stdout);
-          if (stderr) this.logger.debug('Failsafe kill stderr:', stderr);
-          resolve();
-        });
-      } else {
-        // Unix: Use pkill to find and kill processes by name
-        const patterns = ['Aura.Api', 'ffmpeg'];
-        let killedCount = 0;
-        
+        // Kill each pattern separately for better error handling
         const killPromises = patterns.map(pattern => 
           new Promise((resolveKill) => {
-            exec(`pkill -9 -f "${pattern}"`, (error) => {
-              if (!error) killedCount++;
+            const command = `taskkill /F /FI "IMAGENAME eq ${pattern}" /FI "PID ne ${electronPid}" 2>nul`;
+            this.logger.debug(`Failsafe: Executing ${command}`);
+            
+            exec(command, { timeout: 3000 }, (error, stdout, stderr) => {
+              if (error) {
+                // Error code 128 means no processes found (already exited)
+                if (error.code === 128) {
+                  this.logger.debug(`Failsafe: No ${pattern} processes found (already exited)`);
+                } else {
+                  this.logger.warn(`Failsafe: Error killing ${pattern}:`, error.message);
+                }
+              } else {
+                if (stdout && stdout.trim()) {
+                  this.logger.info(`Failsafe: Killed ${pattern} processes:`, stdout.trim());
+                }
+              }
+              if (stderr && !stderr.includes('not found')) {
+                this.logger.debug(`Failsafe: ${pattern} stderr:`, stderr.trim());
+              }
               resolveKill();
             });
           })
         );
         
         Promise.all(killPromises).then(() => {
-          this.logger.info(`Failsafe killed ${killedCount} process types`);
+          this.logger.info('Failsafe: Completed process termination attempts');
+          resolve();
+        });
+      } else {
+        // Unix: Use pkill to find and kill processes by name
+        // SAFETY: Only kill processes in our process group
+        const patterns = ['Aura.Api', 'ffmpeg'];
+        let killedCount = 0;
+        
+        const killPromises = patterns.map(pattern => 
+          new Promise((resolveKill) => {
+            // Use -P to only kill children of current process
+            exec(`pkill -9 -P ${process.pid} -f "${pattern}"`, (error) => {
+              if (!error) {
+                killedCount++;
+                this.logger.info(`Failsafe: Killed ${pattern} processes`);
+              } else {
+                this.logger.debug(`Failsafe: No ${pattern} processes found or already exited`);
+              }
+              resolveKill();
+            });
+          })
+        );
+        
+        Promise.all(killPromises).then(() => {
+          this.logger.info(`Failsafe: Attempted to kill ${killedCount} process type(s)`);
           resolve();
         });
       }

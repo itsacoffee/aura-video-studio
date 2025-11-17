@@ -271,28 +271,63 @@ class BackendService {
    * This properly terminates the process tree including child processes
    */
   _windowsTerminate(force = false) {
-    if (!this.pid) return;
+    if (!this.pid) {
+      console.warn("Cannot terminate backend: no PID available");
+      return;
+    }
 
     const forceFlag = force ? "/F" : "";
     const command = `taskkill /PID ${this.pid} ${forceFlag} /T`;
 
-    console.log("Executing:", command);
+    console.log(
+      `[BackendService] Terminating backend process tree (PID: ${this.pid}, Force: ${force})`
+    );
+    console.log(`[BackendService] Executing: ${command}`);
 
-    exec(command, (error, stdout, stderr) => {
+    exec(command, { timeout: 5000 }, (error, stdout, stderr) => {
       if (error) {
-        console.error("taskkill error:", error);
+        // Check if process already exited (error code 128 on Windows)
+        if (error.code === 128 || error.message.includes("not found")) {
+          console.log(`[BackendService] Process ${this.pid} already exited`);
+          return;
+        }
+
+        console.error(
+          `[BackendService] taskkill error (code ${error.code}):`,
+          error.message
+        );
+
         // Fallback to Node's kill
         try {
           if (this.process && !this.process.killed) {
-            this.process.kill();
+            console.log(
+              `[BackendService] Attempting fallback kill for PID ${this.pid}`
+            );
+            this.process.kill(force ? "SIGKILL" : "SIGTERM");
+          } else {
+            console.log(
+              `[BackendService] Process already killed or not available`
+            );
           }
         } catch (fallbackError) {
-          console.error("Fallback kill failed:", fallbackError);
+          console.error(
+            `[BackendService] Fallback kill failed:`,
+            fallbackError.message
+          );
         }
         return;
       }
-      if (stdout) console.log("taskkill output:", stdout);
-      if (stderr) console.error("taskkill stderr:", stderr);
+
+      if (stdout) {
+        console.log(`[BackendService] taskkill output:`, stdout.trim());
+      }
+      if (stderr && !stderr.includes("not found")) {
+        console.warn(`[BackendService] taskkill stderr:`, stderr.trim());
+      }
+
+      console.log(
+        `[BackendService] Successfully terminated backend process tree (PID: ${this.pid})`
+      );
     });
   }
 
@@ -505,13 +540,14 @@ class BackendService {
 
   /**
    * Wait for the backend to become healthy
-   * Uses /health/live endpoint for faster startup detection
+   * Uses /health/live endpoint for faster startup detection (doesn't check database/other services)
    */
   async _waitForBackend() {
     const maxAttempts =
       this.BACKEND_STARTUP_TIMEOUT / this.HEALTH_CHECK_INTERVAL;
-    const readinessEndpoint =
-      this.readinessEndpoint || this.healthEndpoint || "/health/live";
+    // Use /health/live for initial startup - it just checks if the HTTP server is running
+    // /health/ready checks database and other services which may take time to initialize
+    const readinessEndpoint = "/health/live";
     const readinessUrl = this._buildUrl(readinessEndpoint);
 
     for (let i = 0; i < maxAttempts; i++) {

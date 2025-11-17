@@ -1,5 +1,6 @@
 using Aura.Api.Configuration;
 using Aura.Core.Monitoring;
+using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Options;
 
 namespace Aura.Api.HostedServices;
@@ -13,17 +14,20 @@ public class AlertEvaluationService : BackgroundService
     private readonly ILogger<AlertEvaluationService> _logger;
     private readonly MonitoringOptions _options;
     private readonly IServiceProvider _serviceProvider;
+    private readonly IHttpClientFactory _httpClientFactory;
 
     public AlertEvaluationService(
         AlertingEngine alerting,
         ILogger<AlertEvaluationService> logger,
         IOptions<MonitoringOptions> options,
-        IServiceProvider serviceProvider)
+        IServiceProvider serviceProvider,
+        IHttpClientFactory httpClientFactory)
     {
         _alerting = alerting;
         _logger = logger;
         _options = options.Value;
         _serviceProvider = serviceProvider;
+        _httpClientFactory = httpClientFactory;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -88,7 +92,7 @@ public class AlertEvaluationService : BackgroundService
         {
             _logger.LogWarning(
                 "ALERT [{Severity}]: {Name} - {Description}. Current: {Current}, Target: {Target}",
-                alert.Severity.ToUpper(), alert.Name, alert.Description, 
+                alert.Severity.ToUpper(), alert.Name, alert.Description,
                 alert.CurrentValue, alert.TargetValue);
 
             // Send notifications to configured channels
@@ -176,7 +180,8 @@ public class AlertEvaluationService : BackgroundService
                 }
             };
 
-            using var httpClient = new HttpClient();
+            var httpClient = _httpClientFactory.CreateClient();
+            httpClient.Timeout = TimeSpan.FromSeconds(30);
             var response = await httpClient.PostAsJsonAsync(slackConfig.WebhookUrl, payload, ct).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
@@ -227,7 +232,7 @@ public class AlertEvaluationService : BackgroundService
 
         try
         {
-            using var httpClient = new HttpClient();
+            var httpClient = _httpClientFactory.CreateClient();
             httpClient.Timeout = TimeSpan.FromSeconds(webhookConfig.TimeoutSeconds);
 
             foreach (var header in webhookConfig.Headers)

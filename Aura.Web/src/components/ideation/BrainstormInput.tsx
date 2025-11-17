@@ -6,6 +6,8 @@ import {
   tokens,
   Text,
   Spinner,
+  Field,
+  Slider,
 } from '@fluentui/react-components';
 import { SparkleRegular, SendRegular } from '@fluentui/react-icons';
 import React, { useState } from 'react';
@@ -52,11 +54,20 @@ const useStyles = makeStyles({
     gap: tokens.spacingHorizontalS,
     padding: tokens.spacingVerticalM,
   },
+  sliderField: {
+    marginTop: tokens.spacingVerticalS,
+  },
+  sliderValue: {
+    marginTop: tokens.spacingVerticalXS,
+    color: tokens.colorNeutralForeground3,
+  },
 });
 
 interface BrainstormInputProps {
   onBrainstorm: (topic: string, options: BrainstormOptions) => void;
   loading?: boolean;
+  ideaCount: number;
+  onIdeaCountChange: (value: number) => void;
 }
 
 export interface BrainstormOptions {
@@ -64,11 +75,14 @@ export interface BrainstormOptions {
   tone?: string;
   targetDuration?: number;
   platform?: string;
+  conceptCount?: number;
 }
 
 export const BrainstormInput: React.FC<BrainstormInputProps> = ({
   onBrainstorm,
   loading = false,
+  ideaCount,
+  onIdeaCountChange,
 }) => {
   const styles = useStyles();
   const [topic, setTopic] = useState('');
@@ -87,6 +101,7 @@ export const BrainstormInput: React.FC<BrainstormInputProps> = ({
       tone: tone.trim() || undefined,
       targetDuration: targetDuration ? parseInt(targetDuration) : undefined,
       platform: platform.trim() || undefined,
+      conceptCount: ideaCount,
     };
 
     onBrainstorm(topic.trim(), options);
@@ -171,6 +186,24 @@ export const BrainstormInput: React.FC<BrainstormInputProps> = ({
           />
         </div>
       </div>
+
+      <Field
+        label="How many ideas should we generate?"
+        hint="Choose between 3 and 9 cards per batch"
+        className={styles.sliderField}
+      >
+        <Slider
+          min={3}
+          max={9}
+          step={1}
+          value={ideaCount}
+          onChange={(_, data) => onIdeaCountChange(data.value)}
+          disabled={loading}
+        />
+        <Text size={200} className={styles.sliderValue}>
+          {ideaCount} idea{ideaCount === 1 ? '' : 's'} per refresh
+        </Text>
+      </Field>
 
       {loading ? (
         <div className={styles.loadingContainer}>

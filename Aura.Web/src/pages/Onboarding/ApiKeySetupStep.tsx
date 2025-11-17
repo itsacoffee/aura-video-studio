@@ -77,6 +77,22 @@ const useStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground3,
     borderRadius: tokens.borderRadiusMedium,
   },
+  quickStartCard: {
+    padding: tokens.spacingVerticalM,
+    backgroundColor: tokens.colorNeutralBackground2,
+    borderRadius: tokens.borderRadiusMedium,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalS,
+  },
+  quickStartActions: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: tokens.spacingHorizontalS,
+  },
+  quickStartHint: {
+    color: tokens.colorNeutralForeground4,
+  },
 });
 
 export interface ApiKeySetupStepProps {
@@ -317,6 +333,12 @@ export function ApiKeySetupStep({
 }: ApiKeySetupStepProps) {
   const styles = useStyles();
   const [rateLimit, setRateLimit] = useState<Record<string, number>>({});
+  const openExternalLink = (url: string) => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
 
   const handleValidate = (providerId: string) => {
     // Check rate limiting - reduced from 20s to 5s for better UX
@@ -354,6 +376,32 @@ export function ApiKeySetupStep({
           You can use OpenAI for scripts with local TTS for voices, or Ollama for scripts with
           ElevenLabs for voices - any combination works. The app will use what you configure and
           fall back to free tools for anything else. All changes can be made in Settings later.
+        </Text>
+      </div>
+
+      <div className={styles.quickStartCard}>
+        <Title3>Quick start options</Title3>
+        <Text size={200}>
+          Don&apos;t have anything configured yet? Grab an OpenAI key or install Ollama locally,
+          then return here to validate.
+        </Text>
+        <div className={styles.quickStartActions}>
+          <Button
+            appearance="secondary"
+            onClick={() => openExternalLink('https://platform.openai.com/signup')}
+          >
+            Get an OpenAI Key
+          </Button>
+          <Button
+            appearance="secondary"
+            onClick={() => openExternalLink('https://ollama.ai/download')}
+          >
+            Install Ollama
+          </Button>
+        </div>
+        <Text size={200} className={styles.quickStartHint}>
+          Tip: if you plan to use Ollama, make sure the Ollama service is running before clicking
+          &quot;Validate&quot;.
         </Text>
       </div>
 

@@ -27,6 +27,9 @@ public class IdeationService
     private readonly ConversationContextManager _conversationManager;
     private readonly TrendingTopicsService _trendingTopicsService;
 
+    private const int MinConceptCount = 3;
+    private const int MaxConceptCount = 9;
+
     public IdeationService(
         ILogger<IdeationService> logger,
         ILlmProvider llmProvider,
@@ -52,7 +55,12 @@ public class IdeationService
     {
         _logger.LogInformation("Brainstorming concepts for topic: {Topic}", request.Topic);
 
-        var prompt = BuildBrainstormPrompt(request);
+        var desiredConceptCount = Math.Clamp(
+            request.ConceptCount ?? MinConceptCount,
+            MinConceptCount,
+            MaxConceptCount);
+
+        var prompt = BuildBrainstormPrompt(request, desiredConceptCount);
         
         var brief = new Brief(
             Topic: prompt,
@@ -73,7 +81,7 @@ public class IdeationService
         var response = await GenerateWithLlmAsync(brief, planSpec, ct).ConfigureAwait(false);
         
         // Parse the response into structured concepts
-        var concepts = ParseBrainstormResponse(response, request.Topic);
+        var concepts = ParseBrainstormResponse(response, request.Topic, desiredConceptCount);
 
         return new BrainstormResponse(
             Concepts: concepts,
@@ -355,10 +363,10 @@ public class IdeationService
 
     // --- Prompt Building Methods ---
 
-    private string BuildBrainstormPrompt(BrainstormRequest request)
+    private string BuildBrainstormPrompt(BrainstormRequest request, int conceptCount)
     {
         var sb = new StringBuilder();
-        sb.AppendLine($"Generate exactly 3 unique, creative, and actionable video concept ideas for the topic: '{request.Topic}'");
+        sb.AppendLine($"Generate exactly {conceptCount} unique, creative, and actionable video concept ideas for the topic: '{request.Topic}'");
         sb.AppendLine();
         sb.AppendLine("You must respond with ONLY valid JSON in this exact format:");
         sb.AppendLine("{");
@@ -569,7 +577,7 @@ public class IdeationService
 
     // --- Response Parsing Methods ---
 
-    private List<ConceptIdea> ParseBrainstormResponse(string response, string originalTopic)
+    private List<ConceptIdea> ParseBrainstormResponse(string response, string originalTopic, int desiredConceptCount)
     {
         var concepts = new List<ConceptIdea>();
         
@@ -664,21 +672,22 @@ public class IdeationService
             _logger.LogWarning(ex, "Failed to parse JSON response from LLM, falling back to generic concepts");
         }
 
-        // Fallback: If parsing failed or no concepts were generated, create 3 generic concepts
+        // Fallback: If parsing failed or no concepts were generated, create generic concepts
         if (concepts.Count == 0)
         {
             _logger.LogWarning("No concepts parsed from LLM response, generating fallback concepts");
             
             var angles = new[] { "Tutorial", "Narrative", "Case Study" };
             
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < desiredConceptCount; i++)
             {
+                var angle = angles[i % angles.Length];
                 concepts.Add(new ConceptIdea(
                     ConceptId: Guid.NewGuid().ToString(),
-                    Title: $"{originalTopic} - {angles[i]} Approach",
-                    Description: $"A {angles[i].ToLower()} style video exploring {originalTopic}. " +
+                    Title: $"{originalTopic} - {angle} Approach",
+                    Description: $"A {angle.ToLower()} style video exploring {originalTopic}. " +
                                 "This approach provides unique value through its specific perspective and presentation style.",
-                    Angle: angles[i],
+                    Angle: angle,
                     TargetAudience: "General viewers interested in the topic",
                     Pros: new List<string>
                     {
@@ -693,7 +702,7 @@ public class IdeationService
                         "Competition in this format"
                     },
                     AppealScore: 70 + (i * 5),
-                    Hook: $"Discover the most {angles[i].ToLower()} way to understand {originalTopic}",
+                    Hook: $"Discover the most {angle.ToLower()} way to understand {originalTopic}",
                     TalkingPoints: new List<string>
                     {
                         "Introduction to the topic",
@@ -707,8 +716,8 @@ public class IdeationService
             }
         }
 
-        // Ensure we return exactly 3 concepts
-        return concepts.Take(3).ToList();
+        // Ensure we return the requested number of concepts
+        return concepts.Take(desiredConceptCount).ToList();
     }
 
     private (List<ClarifyingQuestion>?, string) ParseExpandBriefResponse(string response)

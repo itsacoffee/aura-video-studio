@@ -254,19 +254,34 @@ class ProcessManager extends EventEmitter {
       const forceFlag = force ? '/F' : '';
       const command = `taskkill /PID ${pid} ${forceFlag} /T`;
       
-      this.logger.debug?.('ProcessManager', 'Executing taskkill', { command });
+      this.logger.info?.('ProcessManager', 'Terminating process', { 
+        pid, 
+        force, 
+        command 
+      });
 
-      exec(command, (error, stdout, stderr) => {
+      exec(command, { timeout: 5000 }, (error, stdout, stderr) => {
         if (error) {
-          // Process may have already exited
-          if (error.code === 128 || stderr.includes('not found')) {
+          // Process may have already exited (error code 128 on Windows)
+          if (error.code === 128 || stderr.includes('not found') || error.message.includes('not found')) {
             this.logger.debug?.('ProcessManager', 'Process already exited', { pid });
             resolve();
           } else {
+            this.logger.warn?.('ProcessManager', 'taskkill error', { 
+              pid, 
+              errorCode: error.code, 
+              errorMessage: error.message 
+            });
             reject(error);
           }
         } else {
-          this.logger.debug?.('ProcessManager', 'taskkill success', { pid, stdout });
+          this.logger.info?.('ProcessManager', 'Process terminated successfully', { 
+            pid, 
+            output: stdout?.trim() 
+          });
+          if (stderr && !stderr.includes('not found')) {
+            this.logger.warn?.('ProcessManager', 'taskkill stderr', { pid, stderr: stderr.trim() });
+          }
           resolve();
         }
       });

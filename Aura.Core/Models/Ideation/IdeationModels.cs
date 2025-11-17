@@ -110,7 +110,8 @@ public record BrainstormRequest(
     string? Audience = null,
     string? Tone = null,
     int? TargetDuration = null,
-    string? Platform = null
+    string? Platform = null,
+    int? ConceptCount = null
 );
 
 /// <summary>

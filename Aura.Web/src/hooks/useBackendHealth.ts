@@ -44,9 +44,9 @@ export interface BackendHealthSnapshot {
 export function useBackendHealth(pollIntervalMs = 15000) {
   const getCachedDiagnostics = () =>
     typeof window !== 'undefined'
-      ? window.aura?.runtime?.getCachedDiagnostics?.() ??
+      ? (window.aura?.runtime?.getCachedDiagnostics?.() ??
         window.desktopBridge?.getCachedDiagnostics?.() ??
-        null
+        null)
       : null;
 
   const [snapshot, setSnapshot] = useState<BackendHealthSnapshot>({
@@ -54,18 +54,16 @@ export function useBackendHealth(pollIntervalMs = 15000) {
     diagnostics: null,
     bridge: getCachedDiagnostics(),
     error: null,
-    lastChecked: null
+    lastChecked: null,
   });
 
-  const checkHealth = useCallback(async () => {
-    const controller = new AbortController();
-
+  const checkHealth = useCallback(async (signal: AbortSignal) => {
     try {
       const response = await fetch(apiUrl('/api/health'), {
         headers: {
-          'Cache-Control': 'no-cache'
+          'Cache-Control': 'no-cache',
         },
-        signal: controller.signal
+        signal,
       });
 
       if (!response.ok) {
@@ -80,12 +78,17 @@ export function useBackendHealth(pollIntervalMs = 15000) {
         diagnostics,
         bridge: desktopDiagnostics,
         error: null,
-        lastChecked: new Date()
+        lastChecked: new Date(),
       });
     } catch (error) {
+      // Ignore abort errors (component unmounted or cleanup)
+      if (error instanceof Error && error.name === 'AbortError') {
+        return;
+      }
+
       const err = error instanceof Error ? error : new Error(String(error));
       loggingService.warn('Backend health check failed', 'useBackendHealth', 'poll', {
-        message: err.message
+        message: err.message,
       });
 
       setSnapshot((prev) => ({
@@ -93,39 +96,52 @@ export function useBackendHealth(pollIntervalMs = 15000) {
         diagnostics: prev.diagnostics,
         bridge: prev.bridge,
         error: err.message,
-        lastChecked: new Date()
+        lastChecked: new Date(),
       }));
     }
-
-    return () => controller.abort();
   }, []);
 
   useEffect(() => {
     let isMounted = true;
-    let cleanup: (() => void) | undefined;
+    const abortController = new AbortController();
 
-    const run = async () => {
-      cleanup = await checkHealth();
+    const run = () => {
+      if (!isMounted) {
+        return;
+      }
+      checkHealth(abortController.signal).catch((error) => {
+        // Only log if not aborted and component still mounted
+        if (error.name !== 'AbortError' && isMounted) {
+          loggingService.error(
+            'Unexpected error in health check',
+            error,
+            'useBackendHealth',
+            'run'
+          );
+        }
+      });
     };
 
+    // Run immediately
     run();
     const interval = window.setInterval(run, pollIntervalMs);
 
     return () => {
-      if (!isMounted) {
-        return;
-      }
-      if (cleanup) {
-        cleanup();
-      }
-      window.clearInterval(interval);
       isMounted = false;
+      abortController.abort();
+      window.clearInterval(interval);
     };
   }, [checkHealth, pollIntervalMs]);
 
+  const refresh = useCallback(() => {
+    const controller = new AbortController();
+    checkHealth(controller.signal).catch(() => {
+      // Errors are handled in checkHealth
+    });
+  }, [checkHealth]);
+
   return {
     ...snapshot,
-    refresh: checkHealth
+    refresh,
   };
 }
-
