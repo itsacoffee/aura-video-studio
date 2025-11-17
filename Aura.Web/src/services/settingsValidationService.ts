@@ -14,17 +14,35 @@ export interface SettingsValidation {
   missingSettings?: string[];
 }
 
+interface ProviderStatusSummary {
+  name: string;
+  category?: string;
+  isAvailable?: boolean;
+  isOnline?: boolean;
+}
+
+interface ProviderStatusResponse {
+  providers?: ProviderStatusSummary[];
+}
+
 /**
  * Validate that all required settings are configured
  */
 export async function validateRequiredSettings(): Promise<SettingsValidation> {
   const missingSettings: string[] = [];
+  let ffmpegMissing = false;
 
   try {
     // Check FFmpeg availability (required for video generation)
     const ffmpegStatus = await checkFFmpegStatus();
     if (!ffmpegStatus.available) {
       missingSettings.push('FFmpeg');
+      ffmpegMissing = true;
+    }
+
+    const llmStatus = await hasReadyLlmProvider();
+    if (!llmStatus.ready) {
+      missingSettings.push('LLM Provider');
     }
 
     // Check default save location - no longer required to be set, we provide a default
@@ -35,9 +53,13 @@ export async function validateRequiredSettings(): Promise<SettingsValidation> {
 
     // If FFmpeg is missing, return invalid (save location has defaults)
     if (missingSettings.length > 0) {
+      let errorMessage = `Required software missing: ${missingSettings.join(', ')}`;
+      if (!ffmpegMissing && missingSettings.length === 1 && !llmStatus.ready && llmStatus.message) {
+        errorMessage = llmStatus.message;
+      }
       return {
         valid: false,
-        error: `Required software missing: ${missingSettings.join(', ')}`,
+        error: errorMessage,
         missingSettings,
       };
     }
@@ -73,6 +95,58 @@ async function checkFFmpegStatus(): Promise<{ available: boolean; path?: string 
   } catch (error: unknown) {
     console.error('FFmpeg status check failed:', error);
     return { available: false };
+  }
+}
+
+async function hasReadyLlmProvider(): Promise<{ ready: boolean; message?: string }> {
+  try {
+    const response = await fetch(apiUrl('/api/provider-status'));
+    if (!response.ok) {
+      return {
+        ready: false,
+        message: 'Unable to verify provider status. Complete setup in Settings > Providers.',
+      };
+    }
+
+    const data = (await response.json()) as ProviderStatusResponse;
+    const providers = data.providers ?? [];
+    const llmProviders = providers.filter(
+      (provider) => (provider.category ?? '').toLowerCase() === 'llm'
+    );
+
+    const hasOnlineProvider = llmProviders.some(
+      (provider) => Boolean(provider.isOnline) && Boolean(provider.isAvailable)
+    );
+    const hasOllamaProvider = llmProviders.some(
+      (provider) => Boolean(provider.isAvailable) && provider.name.toLowerCase().includes('ollama')
+    );
+
+    const onlyRuleBased =
+      llmProviders.length > 0 &&
+      llmProviders.every((provider) => provider.name.toLowerCase().includes('rule-based'));
+
+    if (hasOnlineProvider || hasOllamaProvider) {
+      return { ready: true };
+    }
+
+    if (onlyRuleBased) {
+      return {
+        ready: false,
+        message:
+          'Add an API key (OpenAI, Anthropic, Gemini) or start Ollama to unlock AI script generation.',
+      };
+    }
+
+    return {
+      ready: false,
+      message: 'Configure at least one LLM provider in Settings > Providers to continue.',
+    };
+  } catch (error) {
+    console.error('Provider status check failed:', error);
+    return {
+      ready: false,
+      message: 'Could not verify provider status. Ensure at least one provider is configured.',
+    };
   }
 }
 

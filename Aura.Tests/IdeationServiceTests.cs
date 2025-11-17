@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models.Ideation;
@@ -57,7 +58,7 @@ public class IdeationServiceTests
     }
 
     [Fact]
-    public async Task BrainstormConceptsAsync_ValidTopic_ReturnsConceptsWithCorrectCount()
+    public async Task BrainstormConceptsAsync_DefaultCount_ReturnsThreeConcepts()
     {
         // Arrange
         var request = new BrainstormRequest(
@@ -121,6 +122,30 @@ public class IdeationServiceTests
         Assert.Equal(3, firstConcept.Cons.Count);
     }
 
+    [Theory]
+    [InlineData(3)]
+    [InlineData(5)]
+    [InlineData(9)]
+    public async Task BrainstormConceptsAsync_CustomConceptCount_IsHonored(int requestedCount)
+    {
+        // Arrange
+        var request = new BrainstormRequest(
+            Topic: "Variable count topic",
+            ConceptCount: requestedCount);
+
+        var jsonResponse = CreateSequentialBrainstormJsonResponse(requestedCount + 2);
+
+        _mockLlmProvider
+            .Setup(p => p.DraftScriptAsync(It.IsAny<Core.Models.Brief>(), It.IsAny<Core.Models.PlanSpec>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(jsonResponse);
+
+        // Act
+        var response = await _service.BrainstormConceptsAsync(request, CancellationToken.None);
+
+        // Assert
+        Assert.Equal(requestedCount, response.Concepts.Count);
+    }
+
     private static string GetSampleBrainstormJsonResponse()
     {
         return @"{
@@ -160,6 +185,35 @@ public class IdeationServiceTests
                 }
             ]
         }";
+    }
+
+    private static string CreateSequentialBrainstormJsonResponse(int conceptCount)
+    {
+        var sb = new StringBuilder();
+        sb.Append("{\"concepts\":[");
+
+        for (int i = 0; i < conceptCount; i++)
+        {
+            if (i > 0)
+            {
+                sb.Append(',');
+            }
+
+            sb.Append("{");
+            sb.Append("\"title\":\"Concept ").Append(i + 1).Append("\",");
+            sb.Append("\"description\":\"Description ").Append(i + 1).Append("\",");
+            sb.Append("\"angle\":\"Tutorial\",");
+            sb.Append("\"targetAudience\":\"Audience ").Append(i + 1).Append("\",");
+            sb.Append("\"pros\":[\"Pro ").Append(i + 1).Append("\"],");
+            sb.Append("\"cons\":[\"Con ").Append(i + 1).Append("\"],");
+            sb.Append("\"hook\":\"Hook ").Append(i + 1).Append("\",");
+            sb.Append("\"talkingPoints\":[\"Point ").Append(i + 1).Append("\"],");
+            sb.Append("\"appealScore\":").Append(70 + i);
+            sb.Append("}");
+        }
+
+        sb.Append("]}");
+        return sb.ToString();
     }
 
     [Fact]

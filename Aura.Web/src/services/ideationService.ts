@@ -86,6 +86,7 @@ export interface BrainstormRequest {
   tone?: string;
   targetDuration?: number;
   platform?: string;
+  conceptCount?: number;
 }
 
 export interface BrainstormResponse {

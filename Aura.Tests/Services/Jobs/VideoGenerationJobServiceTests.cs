@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
+using Aura.Core.Models.Generation;
 using Aura.Core.Models.Jobs;
 using Aura.Core.Orchestrator;
 using Aura.Core.Services.Jobs;
@@ -130,7 +131,8 @@ public class VideoGenerationJobServiceTests
                 It.IsAny<CancellationToken>(),
                 It.IsAny<string>(),
                 It.IsAny<string>(),
-                It.IsAny<bool>()
+                It.IsAny<bool>(),
+                It.IsAny<IProgress<GenerationProgress>>()
             ))
             .ReturnsAsync("/path/to/output.mp4");
 
@@ -194,7 +196,8 @@ public class VideoGenerationJobServiceTests
                 It.IsAny<CancellationToken>(),
                 It.IsAny<string>(),
                 It.IsAny<string>(),
-                It.IsAny<bool>()
+                It.IsAny<bool>(),
+                It.IsAny<IProgress<GenerationProgress>>()
             ))
             .ThrowsAsync(new OperationCanceledException());
 

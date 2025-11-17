@@ -2095,6 +2095,7 @@ app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.Health
 {
     Predicate = check => check.Tags.Contains("ready"),
     AllowCachingResponses = false,
+    Timeout = TimeSpan.FromSeconds(5), // Timeout health checks after 5 seconds to prevent hanging
     ResponseWriter = async (context, report) =>
     {
         context.Response.ContentType = "application/json";
@@ -2124,6 +2125,7 @@ app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks
 {
     Predicate = _ => true, // All checks
     AllowCachingResponses = false,
+    Timeout = TimeSpan.FromSeconds(5), // Timeout health checks after 5 seconds to prevent hanging
     ResponseWriter = async (context, report) =>
     {
         context.Response.ContentType = "application/json";
@@ -4841,7 +4843,16 @@ static Aura.Core.Models.Voice.EmphasisLevel ParseEmphasis(string? emphasis)
     };
 }
 
-// Run dependency scan on startup
+// Mark application as ready to accept traffic EARLY
+// This allows the HTTP server to start accepting connections immediately
+// Background initialization will continue asynchronously
+var startupHealthCheck = app.Services.GetRequiredService<Aura.Api.HealthChecks.StartupHealthCheck>();
+startupHealthCheck.MarkAsReady();
+Log.Information("=================================================================");
+Log.Information("✓ Application marked as ready - HTTP server can accept connections");
+Log.Information("=================================================================");
+
+// Run dependency scan on startup (non-blocking, runs in background)
 // This scans for dependencies on first launch and every program startup
 _ = Task.Run(async () =>
 {
@@ -4871,13 +4882,6 @@ _ = Task.Run(async () =>
         Log.Error(ex, "Failed to run startup dependency scan");
     }
 });
-
-// Mark application as ready to accept traffic
-var startupHealthCheck = app.Services.GetRequiredService<Aura.Api.HealthChecks.StartupHealthCheck>();
-startupHealthCheck.MarkAsReady();
-Log.Information("=================================================================");
-Log.Information("✓ Application startup complete - health checks enabled");
-Log.Information("=================================================================");
 
 try
 {

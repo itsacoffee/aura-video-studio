@@ -505,13 +505,14 @@ class BackendService {
 
   /**
    * Wait for the backend to become healthy
-   * Uses /health/live endpoint for faster startup detection
+   * Uses /health/live endpoint for faster startup detection (doesn't check database/other services)
    */
   async _waitForBackend() {
     const maxAttempts =
       this.BACKEND_STARTUP_TIMEOUT / this.HEALTH_CHECK_INTERVAL;
-    const readinessEndpoint =
-      this.readinessEndpoint || this.healthEndpoint || "/health/live";
+    // Use /health/live for initial startup - it just checks if the HTTP server is running
+    // /health/ready checks database and other services which may take time to initialize
+    const readinessEndpoint = "/health/live";
     const readinessUrl = this._buildUrl(readinessEndpoint);
 
     for (let i = 0; i < maxAttempts; i++) {

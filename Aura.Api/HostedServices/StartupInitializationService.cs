@@ -33,17 +33,29 @@ public class StartupInitializationService : IHostedService
     private void DefineInitializationSteps()
     {
         // Step 1: Database connectivity (critical)
+        // Note: This runs asynchronously and doesn't block HTTP server startup
+        // The app is marked as ready before this completes, allowing health checks to pass
         _initializationSteps.Add(new InitializationStep
         {
             Name = "Database Connectivity",
-            IsCritical = true,
-            TimeoutSeconds = 30,
+            IsCritical = false, // Changed to non-critical - app can start without DB, will retry
+            TimeoutSeconds = 10, // Reduced from 30s to fail faster
             InitializeFunc = async (sp, ct) =>
             {
-                using var scope = sp.CreateScope();
-                var dbContext = scope.ServiceProvider.GetRequiredService<Aura.Core.Data.AuraDbContext>();
-                await dbContext.Database.CanConnectAsync(ct).ConfigureAwait(false);
-                return true;
+                try
+                {
+                    using var scope = sp.CreateScope();
+                    var dbContext = scope.ServiceProvider.GetRequiredService<Aura.Core.Data.AuraDbContext>();
+                    await dbContext.Database.CanConnectAsync(ct).ConfigureAwait(false);
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    // Log but don't fail - database will be checked by health checks
+                    var logger = sp.GetRequiredService<ILogger<StartupInitializationService>>();
+                    logger.LogWarning(ex, "Database connectivity check failed during startup - will retry via health checks");
+                    return false; // Non-critical, so return false but don't throw
+                }
             }
         });
 
