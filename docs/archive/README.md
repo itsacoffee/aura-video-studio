@@ -6,13 +6,15 @@ This directory contains **historical documentation** from the Aura Video Studio 
 
 ## What's Archived Here
 
-### root-summaries/
-Historical implementation summaries, PR summaries, and audit documents from the repository root. These documents described specific features, fixes, or changes at a point in time:
+### historical/
+Historical implementation summaries, PR summaries, build fix reports, and audit documents from the repository root (moved 2025-11-18). These documents described specific features, fixes, or changes at a point in time:
+- PR implementation summaries and completion reports
 - Feature implementations and enhancements
-- Bug fixes and validation summaries
-- PR-specific implementation details
+- Build fix reports and validation summaries
+- PR-specific implementation details and checklists
 - Integration and orchestration work
 - Performance and optimization reports
+- Verification and validation reports
 
 ### aura-web/
 Historical frontend implementation documentation, build reports, and feature-specific summaries from the Aura.Web project:
