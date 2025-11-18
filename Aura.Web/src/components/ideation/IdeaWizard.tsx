@@ -67,12 +67,12 @@ const useStyles = makeStyles({
     ':hover': {
       borderColor: tokens.colorBrandStroke1,
       boxShadow: tokens.shadow8,
-    } as GriffelStyle,
-  },
+    },
+  } as GriffelStyle,
   variantCardSelected: {
     borderColor: tokens.colorBrandForeground1,
     backgroundColor: tokens.colorBrandBackground2Hover,
-  },
+  } as GriffelStyle,
   variantHeader: {
     display: 'flex',
     justifyContent: 'space-between',

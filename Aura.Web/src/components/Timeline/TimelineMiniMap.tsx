@@ -46,7 +46,7 @@ const useStyles = makeStyles({
   viewportDragging: {
     cursor: 'grabbing',
     borderColor: 'var(--editor-accent-active)',
-  },
+  } as GriffelStyle,
   toggleButton: {
     position: 'absolute',
     top: '4px',

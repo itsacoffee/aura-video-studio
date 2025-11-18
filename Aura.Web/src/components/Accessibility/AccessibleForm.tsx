@@ -56,11 +56,11 @@ const useStyles = makeStyles({
     borderColor: tokens.colorPaletteRedBorder1,
     ':focus': {
       borderColor: tokens.colorPaletteRedBorder1,
-    } as GriffelStyle,
-  },
+    },
+  } as GriffelStyle,
   successInput: {
     borderColor: tokens.colorPaletteGreenBorder1,
-  },
+  } as GriffelStyle,
 });
 
 interface AccessibleFieldProps {

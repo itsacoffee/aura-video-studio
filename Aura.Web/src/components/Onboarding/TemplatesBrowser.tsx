@@ -50,12 +50,12 @@ const useStyles = makeStyles({
     ':hover': {
       transform: 'translateY(-2px)',
       boxShadow: tokens.shadow8,
-    } as GriffelStyle,
-  },
+    },
+  } as GriffelStyle,
   templateCardSelected: {
     borderColor: tokens.colorBrandStroke1,
     borderWidth: '2px',
-  },
+  } as GriffelStyle,
   templateHeader: {
     display: 'flex',
     alignItems: 'flex-start',
