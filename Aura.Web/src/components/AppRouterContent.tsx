@@ -13,7 +13,7 @@ import { DashboardPage } from '../pages/DashboardPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { FirstRunWizard } from '../pages/Onboarding/FirstRunWizard';
 import { WelcomePage } from '../pages/WelcomePage';
-import { useJobState } from '../state/jobState';
+import { useJobState, type JobStatus } from '../state/jobState';
 import { KeyboardShortcutsCheatSheet } from './Accessibility/KeyboardShortcutsCheatSheet';
 import { CommandPalette } from './CommandPalette';
 import { ConfigurationGate } from './ConfigurationGate';
@@ -222,7 +222,7 @@ export const AppRouterContent: FC<AppRouterContentProps> = ({
 const AppRouterContentInner: FC<
   AppRouterContentProps & {
     currentJobId: string | null;
-    status: string;
+    status: JobStatus;
     progress: number;
     message: string;
     showDrawer: boolean;

@@ -10,6 +10,7 @@ import {
   Spinner,
   Radio,
   RadioGroup,
+  type GriffelStyle,
 } from '@fluentui/react-components';
 import {
   QuestionCircleRegular,
@@ -85,7 +86,7 @@ const useStyles = makeStyles({
   completedCard: {
     backgroundColor: tokens.colorPaletteGreenBackground2,
     borderColor: tokens.colorPaletteGreenBorder2,
-  },
+  } as GriffelStyle,
   completedIcon: {
     color: tokens.colorPaletteGreenForeground1,
   },
@@ -226,10 +227,12 @@ export const QuestionFlow: FC<QuestionFlowProps> = ({
           <Text size={500} weight="semibold">
             Interactive Q&A
           </Text>
-          <Text size={200} as="div" style={{ color: tokens.colorNeutralForeground3 }}>
-            Answer {questions.length} question{questions.length !== 1 ? 's' : ''} to refine your
-            concept
-          </Text>
+          <div>
+            <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+              Answer {questions.length} question{questions.length !== 1 ? 's' : ''} to refine your
+              concept
+            </Text>
+          </div>
         </div>
       </div>
 

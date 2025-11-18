@@ -171,6 +171,7 @@ export function FFmpegCard() {
       message,
       correlationId,
       howToFix,
+      actions: [],
     };
     setActionError(friendly);
     showFailureToast({

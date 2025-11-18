@@ -9,6 +9,7 @@ import {
   Badge,
   Spinner,
   Divider,
+  type GriffelStyle,
 } from '@fluentui/react-components';
 import {
   EditRegular,
@@ -145,11 +146,11 @@ const useStyles = makeStyles({
       borderColor: tokens.colorBrandStroke1,
       boxShadow: tokens.shadow4,
     },
-  },
+  } as GriffelStyle,
   refinementCardSelected: {
     borderColor: tokens.colorBrandForeground1,
     backgroundColor: tokens.colorBrandBackground2Hover,
-  },
+  } as GriffelStyle,
   refinementIcon: {
     fontSize: '32px',
     marginBottom: tokens.spacingVerticalXS,
@@ -269,9 +270,11 @@ export const ConceptRefiner: FC<ConceptRefinerProps> = ({
             <Text size={500} weight="semibold">
               Concept Refiner
             </Text>
-            <Text size={200} as="div" style={{ color: tokens.colorNeutralForeground3 }}>
-              Interactively improve and adjust your concept
-            </Text>
+            <div>
+              <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                Interactively improve and adjust your concept
+              </Text>
+            </div>
           </div>
         </div>
         {onSave && (
@@ -308,9 +311,9 @@ export const ConceptRefiner: FC<ConceptRefinerProps> = ({
                 <Text weight="semibold" size={300}>
                   Hook:
                 </Text>
-                <Text size={300} as="div" style={{ marginTop: tokens.spacingVerticalXS }}>
-                  {concept.hook}
-                </Text>
+                <div style={{ marginTop: tokens.spacingVerticalXS }}>
+                  <Text size={300}>{concept.hook}</Text>
+                </div>
               </div>
             </>
           )}

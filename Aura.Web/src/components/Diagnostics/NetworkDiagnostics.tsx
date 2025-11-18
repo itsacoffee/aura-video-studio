@@ -7,7 +7,6 @@ import {
   Text,
   Button,
   Spinner,
-  Badge,
   MessageBar,
   MessageBarBody,
   Accordion,
@@ -25,7 +24,7 @@ import {
 import { useState, useEffect, useCallback } from 'react';
 import type { FC } from 'react';
 import { apiUrl } from '../../config/api';
-import { loggingService } from '../loggingService';
+import { loggingService } from '../../services/loggingService';
 
 const useStyles = makeStyles({
   container: {
@@ -148,8 +147,7 @@ export const NetworkDiagnostics: FC = () => {
         correlationId: data.correlationId,
       });
     } catch (err: unknown) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'Failed to run diagnostics';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to run diagnostics';
       setError(errorMessage);
 
       loggingService.error(
@@ -252,11 +250,7 @@ ${diagnostics.providers.map((p) => `- ${p.name}: ${p.reachable ? 'Reachable' : '
           <Text size={200}>Correlation ID: {diagnostics.correlationId}</Text>
         </div>
         <div className={styles.actionButtons}>
-          <Button
-            appearance="subtle"
-            icon={<Copy20Regular />}
-            onClick={copyToClipboard}
-          >
+          <Button appearance="subtle" icon={<Copy20Regular />} onClick={copyToClipboard}>
             Copy Summary
           </Button>
           <Button
@@ -315,8 +309,7 @@ ${diagnostics.providers.map((p) => `- ${p.name}: ${p.reachable ? 'Reachable' : '
             <>
               <DismissCircle20Filled className={styles.statusIcon} color="red" />
               <Text>
-                FFmpeg issue:{' '}
-                {diagnostics.ffmpeg.errorMessage || 'Not installed or invalid'}
+                FFmpeg issue: {diagnostics.ffmpeg.errorMessage || 'Not installed or invalid'}
               </Text>
             </>
           )}
@@ -406,9 +399,7 @@ ${diagnostics.providers.map((p) => `- ${p.name}: ${p.reachable ? 'Reachable' : '
                 )}
                 <div>
                   <Text weight="semibold">{provider.name}</Text>
-                  <Text size={200}>
-                    {provider.reachable ? 'Reachable' : 'Unreachable'}
-                  </Text>
+                  <Text size={200}>{provider.reachable ? 'Reachable' : 'Unreachable'}</Text>
                   {provider.errorMessage && (
                     <Text size={200} style={{ color: tokens.colorPaletteRedForeground1 }}>
                       {provider.errorMessage}

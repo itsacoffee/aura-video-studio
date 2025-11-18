@@ -260,9 +260,11 @@ export const BriefBuilder: FC = () => {
         <DocumentRegular className={styles.icon} />
         <div>
           <Text className={styles.title}>Brief Builder</Text>
-          <Text className={styles.subtitle} as="div">
-            Create a comprehensive video brief with AI assistance
-          </Text>
+          <div>
+            <Text className={styles.subtitle}>
+              Create a comprehensive video brief with AI assistance
+            </Text>
+          </div>
         </div>
       </div>
 
@@ -460,14 +462,11 @@ export const BriefBuilder: FC = () => {
       {currentStep === 5 && (
         <>
           <Card className={styles.summaryCard}>
-            <Text
-              size={500}
-              weight="semibold"
-              as="div"
-              style={{ marginBottom: tokens.spacingVerticalL }}
-            >
-              Your Brief Summary
-            </Text>
+            <div style={{ marginBottom: tokens.spacingVerticalL }}>
+              <Text size={500} weight="semibold">
+                Your Brief Summary
+              </Text>
+            </div>
             <div className={styles.summarySection}>
               <Text className={styles.summaryLabel}>Topic</Text>
               <Text className={styles.summaryValue}>{brief.topic}</Text>

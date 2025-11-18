@@ -116,7 +116,7 @@ export const ConceptExplorer: FC = () => {
   }, [conceptId, concept]);
 
   const handleRefine = useCallback(
-    async (direction: 'expand' | 'simplify' | 'adjust-audience' | 'merge', feedback?: string) => {
+    async (direction: 'expand' | 'simplify' | 'adjust-audience' | 'merge', _feedback?: string) => {
       if (!concept) return;
 
       setIsLoadingData(true);
@@ -124,9 +124,8 @@ export const ConceptExplorer: FC = () => {
 
       try {
         const response = await ideationService.refineConcept({
-          conceptId: concept.conceptId,
-          direction,
-          feedback,
+          concept: concept,
+          refinementDirection: direction,
         });
 
         if (response.success && response.refinedConcept) {
@@ -151,7 +150,6 @@ export const ConceptExplorer: FC = () => {
     try {
       const response = await ideationService.gatherResearch({
         topic: concept.title,
-        depth: 'comprehensive',
       });
 
       if (response.success && response.findings) {
@@ -173,10 +171,8 @@ export const ConceptExplorer: FC = () => {
 
     try {
       const response = await ideationService.generateStoryboard({
-        conceptId: concept.conceptId,
-        title: concept.title,
-        description: concept.description,
-        targetDuration: 60,
+        concept: concept,
+        targetDurationSeconds: 60,
       });
 
       if (response.success && response.scenes) {
@@ -197,9 +193,8 @@ export const ConceptExplorer: FC = () => {
     setError(null);
 
     try {
-      const response = await ideationService.getClarifyingQuestions({
+      const response = await ideationService.getQuestions({
         projectId: concept.conceptId,
-        context: concept.description,
       });
 
       if (response.success && response.questions) {
@@ -270,7 +265,6 @@ export const ConceptExplorer: FC = () => {
           title="Error loading concept"
           message={error || 'Concept not found'}
           onRetry={() => navigate('/ideation')}
-          retryLabel="Back to Ideation"
         />
       </div>
     );
@@ -301,7 +295,7 @@ export const ConceptExplorer: FC = () => {
 
       {selectedTab === 'overview' && (
         <div className={styles.conceptPreview}>
-          <ConceptCard concept={concept} onSelect={() => {}} isSelected={false} />
+          <ConceptCard concept={concept} onSelect={() => {}} />
         </div>
       )}
 
@@ -334,15 +328,16 @@ export const ConceptExplorer: FC = () => {
             <Text
               size={400}
               weight="semibold"
-              as="div"
-              style={{ marginBottom: tokens.spacingVerticalM }}
+              style={{ marginBottom: tokens.spacingVerticalM, display: 'block' }}
             >
               Concept Details
             </Text>
-            <Text size={300} as="div" style={{ lineHeight: tokens.lineHeightBase400 }}>
-              Use the tabs above to refine this concept, gather research, generate a storyboard, or
-              answer clarifying questions.
-            </Text>
+            <div style={{ lineHeight: tokens.lineHeightBase400 }}>
+              <Text size={300}>
+                Use the tabs above to refine this concept, gather research, generate a storyboard,
+                or answer clarifying questions.
+              </Text>
+            </div>
           </div>
         )}
 

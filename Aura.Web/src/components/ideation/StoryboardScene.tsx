@@ -146,7 +146,7 @@ const useStyles = makeStyles({
   },
   purpose: {
     padding: tokens.spacingVerticalS,
-    backgroundColor: tokens.colorPaletteBlueBorder2,
+    backgroundColor: tokens.colorBrandBackground2,
     borderRadius: tokens.borderRadiusMedium,
     fontSize: tokens.fontSizeBase200,
     color: tokens.colorNeutralForeground2,
@@ -243,10 +243,12 @@ export const StoryboardScene: FC<StoryboardSceneProps> = ({
           <Text size={500} weight="semibold">
             Video Storyboard
           </Text>
-          <Text size={200} as="div" style={{ color: tokens.colorNeutralForeground3 }}>
-            {scenes.length} scene{scenes.length !== 1 ? 's' : ''} • Total duration:{' '}
-            {formatDuration(totalDuration)}
-          </Text>
+          <div>
+            <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+              {scenes.length} scene{scenes.length !== 1 ? 's' : ''} • Total duration:{' '}
+              {formatDuration(totalDuration)}
+            </Text>
+          </div>
         </div>
       </div>
 
