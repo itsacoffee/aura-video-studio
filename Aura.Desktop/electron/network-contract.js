@@ -18,8 +18,9 @@ const DEFAULT_PROD_BACKEND_URL =
  * @property {number} port - Port number
  * @property {string} baseUrl - Fully qualified base URL (e.g., "http://127.0.0.1:5272")
  * @property {string} raw - Raw URL string from environment
- * @property {string} healthEndpoint - Health check path (default "/api/health")
+ * @property {string} healthEndpoint - Health check path (default "/health/live")
  * @property {string} readinessEndpoint - Readiness check path (default "/health/ready")
+ * @property {string} sseJobEventsTemplate - SSE job events path template (default "/api/jobs/{id}/events")
  * @property {boolean} shouldSelfHost - Whether Electron should spawn the backend process
  * @property {number} maxStartupMs - Startup timeout in milliseconds
  * @property {number} pollIntervalMs - Health check poll interval in milliseconds
@@ -61,9 +62,11 @@ function resolveBackendContract({ isDev }) {
     : 80;
 
   const healthEndpoint =
-    process.env.AURA_BACKEND_HEALTH_ENDPOINT || "/api/health";
+    process.env.AURA_BACKEND_HEALTH_ENDPOINT || "/health/live";
   const readinessEndpoint =
     process.env.AURA_BACKEND_READY_ENDPOINT || "/health/ready";
+  const sseJobEventsTemplate =
+    process.env.AURA_BACKEND_SSE_JOB_EVENTS_TEMPLATE || "/api/jobs/{id}/events";
   const shouldSelfHost =
     (process.env.AURA_LAUNCH_BACKEND ?? "true").toLowerCase() !== "false";
 
@@ -104,6 +107,7 @@ function resolveBackendContract({ isDev }) {
     raw: rawBaseUrl,
     healthEndpoint,
     readinessEndpoint,
+    sseJobEventsTemplate,
     shouldSelfHost,
     maxStartupMs: Number(process.env.AURA_BACKEND_STARTUP_TIMEOUT_MS || 60000),
     pollIntervalMs: Number(
@@ -132,6 +136,7 @@ function buildRuntimeDiagnostics(
       managedByElectron: contract.shouldSelfHost,
       healthEndpoint: contract.healthEndpoint,
       readinessEndpoint: contract.readinessEndpoint,
+      sseJobEventsTemplate: contract.sseJobEventsTemplate,
       pid: backendService?.pid ?? null,
     },
     environment: {

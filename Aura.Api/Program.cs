@@ -1,3 +1,4 @@
+using Aura.Api.Contracts;
 using Aura.Api.Filters;
 using Aura.Api.Helpers;
 using Aura.Api.HostedServices;
@@ -3827,6 +3828,119 @@ apiGroup.MapGet("/jobs/{jobId}/stream", async (
     }
 })
 .WithName("StreamJobProgress")
+.WithOpenApi();
+
+// SSE endpoint alias for job progress updates using standardized path from BackendEndpoints
+// This provides the contracted endpoint expected by Electron and frontend: /api/jobs/{id}/events
+apiGroup.MapGet("/jobs/{jobId}/events", async (
+    string jobId,
+    HttpContext context,
+    JobRunner jobRunner,
+    CancellationToken ct) =>
+{
+    context.Response.Headers.Append("Content-Type", "text/event-stream");
+    context.Response.Headers.Append("Cache-Control", "no-cache");
+    context.Response.Headers.Append("Connection", "keep-alive");
+
+    try
+    {
+        Log.Information("SSE events stream started for job {JobId}", jobId);
+
+        // Send initial connection message
+        var connectMsg = $"event: connected\ndata: {{\"jobId\":\"{jobId}\",\"timestamp\":\"{DateTime.UtcNow:O}\"}}\n\n";
+        await context.Response.WriteAsync(connectMsg, ct).ConfigureAwait(false);
+        await context.Response.Body.FlushAsync(ct).ConfigureAwait(false);
+
+        // Poll job status and send updates
+        var lastStatus = "";
+        var lastPercent = -1;
+        var lastStage = "";
+
+        while (!ct.IsCancellationRequested)
+        {
+            var job = jobRunner.GetJob(jobId);
+            if (job == null)
+            {
+                var errorMsg = $"event: error\ndata: {{\"error\":\"Job not found\"}}\n\n";
+                await context.Response.WriteAsync(errorMsg, ct).ConfigureAwait(false);
+                await context.Response.Body.FlushAsync(ct).ConfigureAwait(false);
+                break;
+            }
+
+            // Send update if status changed
+            if (job.Status.ToString() != lastStatus || job.Percent != lastPercent || job.Stage != lastStage)
+            {
+                lastStatus = job.Status.ToString();
+                lastPercent = job.Percent;
+                lastStage = job.Stage;
+
+                var statusData = JsonSerializer.Serialize(new
+                {
+                    jobId = job.Id,
+                    status = job.Status.ToString().ToLowerInvariant(),
+                    stage = job.Stage,
+                    percent = job.Percent,
+                    errorMessage = job.ErrorMessage,
+                    timestamp = DateTime.UtcNow
+                });
+
+                var updateMsg = $"event: progress\ndata: {statusData}\n\n";
+                await context.Response.WriteAsync(updateMsg, ct).ConfigureAwait(false);
+                await context.Response.Body.FlushAsync(ct).ConfigureAwait(false);
+
+                Log.Information("SSE update sent for job {JobId}: {Status} {Percent}% {Stage}",
+                    jobId, job.Status, job.Percent, job.Stage);
+            }
+
+            // If job is done/failed/cancelled, send final message and close
+            if (job.Status == JobStatus.Done || job.Status == JobStatus.Failed || job.Status == JobStatus.Canceled)
+            {
+                var completeData = JsonSerializer.Serialize(new
+                {
+                    jobId = job.Id,
+                    status = job.Status.ToString().ToLowerInvariant(),
+                    success = job.Status == JobStatus.Done,
+                    outputPath = job.Artifacts.FirstOrDefault()?.Path,
+                    errorMessage = job.ErrorMessage,
+                    timestamp = DateTime.UtcNow
+                });
+
+                var completeMsg = $"event: complete\ndata: {completeData}\n\n";
+                await context.Response.WriteAsync(completeMsg, ct).ConfigureAwait(false);
+                await context.Response.Body.FlushAsync(ct).ConfigureAwait(false);
+
+                Log.Information("SSE events stream completed for job {JobId}: {Status}", jobId, job.Status);
+                break;
+            }
+
+            // Send keepalive every 2 seconds
+            await Task.Delay(2000, ct).ConfigureAwait(false);
+
+            var keepaliveMsg = $": keepalive\n\n";
+            await context.Response.WriteAsync(keepaliveMsg, ct).ConfigureAwait(false);
+            await context.Response.Body.FlushAsync(ct).ConfigureAwait(false);
+        }
+    }
+    catch (OperationCanceledException)
+    {
+        Log.Information("SSE events stream cancelled for job {JobId}", jobId);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error in SSE events stream for job {JobId}", jobId);
+        try
+        {
+            var errorMsg = $"event: error\ndata: {{\"error\":\"{ex.Message.Replace("\"", "\\\"")}\"}}\n\n";
+            await context.Response.WriteAsync(errorMsg, ct).ConfigureAwait(false);
+            await context.Response.Body.FlushAsync(ct).ConfigureAwait(false);
+        }
+        catch
+        {
+            // Client may have disconnected
+        }
+    }
+})
+.WithName("StreamJobProgressEvents")
 .WithOpenApi();
 
 

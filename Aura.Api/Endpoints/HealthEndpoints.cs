@@ -1,3 +1,4 @@
+using Aura.Api.Contracts;
 using Aura.Api.Services;
 using Aura.Core.Dependencies;
 using Aura.Core.Downloads;
@@ -19,7 +20,8 @@ public static class HealthEndpoints
         var group = endpoints.MapGroup("/api");
 
         // Basic liveness check - returns 200 if API is running
-        group.MapGet("/health/live", (HealthCheckService healthService) =>
+        // Path defined in BackendEndpoints.HealthLive for consistency with Electron and frontend
+        group.MapGet(BackendEndpoints.HealthLive, (HealthCheckService healthService) =>
         {
             var result = healthService.CheckLiveness();
             return Results.Ok(result);
@@ -34,7 +36,8 @@ public static class HealthEndpoints
         .Produces<object>(200);
 
         // Readiness check - returns 200/503 based on dependency availability
-        group.MapGet("/health/ready", async (HealthCheckService healthService, CancellationToken ct) =>
+        // Path defined in BackendEndpoints.HealthReady for consistency with Electron and frontend
+        group.MapGet(BackendEndpoints.HealthReady, async (HealthCheckService healthService, CancellationToken ct) =>
         {
             var result = await healthService.CheckReadinessAsync(ct).ConfigureAwait(false);
             var statusCode = result.Status == Models.HealthStatus.Unhealthy ? 503 : 200;

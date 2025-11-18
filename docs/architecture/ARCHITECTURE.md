@@ -143,14 +143,21 @@ This architecture guarantees that Electron never spawns a backend with an invali
 **Technology**: ASP.NET Core 8 (Minimal API + Controllers)  
 **Purpose**: RESTful API backend embedded in Electron app
 
-**Key Endpoints**:
-- `GET /health/live`, `/health/ready` - Health checks
+**Key Endpoints** (Contracted paths expected by Electron main and frontend):
+- `GET /health/live` - Liveness check (fast startup detection, HTTP server ready)
+- `GET /health/ready` - Readiness check (dependencies available, returns 200/503)
+- `GET /api/jobs/{id}/events` - Server-Sent Events (SSE) for job progress updates
 - `GET /api/jobs`, `POST /api/jobs` - Job management
-- `GET /api/jobs/{id}/events` - Server-Sent Events (SSE) for progress
 - `POST /api/quick/demo` - Quick demo generation
 - `GET /api/settings`, `POST /api/settings` - Settings persistence
 - `GET /api/system/capabilities` - Hardware detection
 - `GET /api/providers/status` - Provider health checks
+
+**Endpoint Contract**:
+All health and SSE endpoint paths are defined in `Aura.Api/Contracts/BackendEndpoints.cs` as constants to ensure consistency across:
+- Backend API route registration (Program.cs, HealthEndpoints.cs)
+- Electron main process (network-contract.js, backend-service.js)
+- Frontend API clients (via network contract exposed through preload bridge)
 
 **Configuration:**
 - Runs on random available port in Electron (spawned by main process)
