@@ -11,8 +11,7 @@ interface EnvironmentState {
   hydrate: () => Promise<void>;
 }
 
-const defaultPlatform =
-  typeof navigator !== 'undefined' ? navigator.platform : null;
+const defaultPlatform = typeof navigator !== 'undefined' ? navigator.platform : null;
 
 export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
   isElectron: typeof window !== 'undefined' && !!window.aura,
@@ -30,16 +29,20 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
     try {
       const diagnostics = await window.aura.runtime.getDiagnostics();
       if (diagnostics) {
+        // Safely access nested properties with type guards
+        const backend = diagnostics.backend as Record<string, unknown> | undefined;
+        const environment = diagnostics.environment as Record<string, unknown> | undefined;
+        const os = diagnostics.os as Record<string, unknown> | undefined;
+        const paths = diagnostics.paths as Record<string, unknown> | undefined;
+
         set({
           isElectron: true,
-          backendUrl: (diagnostics.backend?.baseUrl as string | undefined) ?? null,
-          paths: diagnostics.paths ?? null,
-          mode: (diagnostics.environment?.mode as string | undefined) ?? get().mode,
-          version:
-            (diagnostics.environment?.version as string | undefined) ?? get().version,
-          platform:
-            ((diagnostics.os?.platform as string | undefined) ?? defaultPlatform),
-          arch: (diagnostics.os?.arch as string | undefined) ?? null,
+          backendUrl: (backend?.baseUrl as string | undefined) ?? null,
+          paths: paths ?? null,
+          mode: (environment?.mode as string | undefined) ?? get().mode,
+          version: (environment?.version as string | undefined) ?? get().version,
+          platform: (os?.platform as string | undefined) ?? defaultPlatform,
+          arch: (os?.arch as string | undefined) ?? null,
         });
       }
     } catch (error) {
@@ -47,4 +50,3 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
     }
   },
 }));
-
