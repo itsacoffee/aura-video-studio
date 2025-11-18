@@ -1,4 +1,4 @@
-import { apiClient } from './apiClient';
+import apiClient from './apiClient';
 
 /**
  * Event data for streaming script generation
@@ -54,6 +54,7 @@ export type StreamProgressCallback = (event: StreamingScriptEvent) => void;
 /**
  * Stream script generation from Ollama with real-time updates
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity
 export async function streamGeneration(
   request: StreamGenerationRequest,
   onProgress: StreamProgressCallback,
@@ -66,7 +67,7 @@ export async function streamGeneration(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Accept': 'text/event-stream',
+      Accept: 'text/event-stream',
     },
     body: JSON.stringify(request),
     signal,
@@ -109,7 +110,7 @@ export async function streamGeneration(
 
         if (line.startsWith('data:')) {
           const data = line.slice(5).trim();
-          
+
           try {
             const event = JSON.parse(data) as StreamingScriptEvent;
             onProgress(event);
@@ -118,7 +119,10 @@ export async function streamGeneration(
               finalContent = event.cumulativeContent;
             }
           } catch (error: unknown) {
-            console.error('Failed to parse SSE data:', error instanceof Error ? error.message : String(error));
+            console.error(
+              'Failed to parse SSE data:',
+              error instanceof Error ? error.message : String(error)
+            );
           }
         }
       }
@@ -142,7 +146,14 @@ export function streamGenerationWithEventSource(
   onComplete: () => void
 ): () => void {
   const baseUrl = apiClient.defaults.baseURL || '';
-  const queryString = new URLSearchParams(request as Record<string, string>).toString();
+  // Convert request to query parameters, filtering out undefined values
+  const params: Record<string, string> = {};
+  Object.entries(request).forEach(([key, value]) => {
+    if (value !== undefined) {
+      params[key] = String(value);
+    }
+  });
+  const queryString = new URLSearchParams(params).toString();
   const url = `${baseUrl}/api/scripts/generate/stream?${queryString}`;
 
   const eventSource = new EventSource(url);
@@ -152,7 +163,10 @@ export function streamGenerationWithEventSource(
       const data = JSON.parse(event.data) as StreamingScriptEvent;
       onProgress(data);
     } catch (error: unknown) {
-      console.error('Failed to parse progress event:', error instanceof Error ? error.message : String(error));
+      console.error(
+        'Failed to parse progress event:',
+        error instanceof Error ? error.message : String(error)
+      );
     }
   });
 
@@ -163,7 +177,10 @@ export function streamGenerationWithEventSource(
       eventSource.close();
       onComplete();
     } catch (error: unknown) {
-      console.error('Failed to parse complete event:', error instanceof Error ? error.message : String(error));
+      console.error(
+        'Failed to parse complete event:',
+        error instanceof Error ? error.message : String(error)
+      );
     }
   });
 
@@ -172,7 +189,7 @@ export function streamGenerationWithEventSource(
     try {
       const data = JSON.parse(messageEvent.data) as StreamingScriptEvent;
       onError(new Error(data.errorMessage || 'Streaming error occurred'));
-    } catch (e: unknown) {
+    } catch {
       onError(new Error('Unknown streaming error'));
     }
     eventSource.close();

@@ -2,11 +2,11 @@ import ReactDOM from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 import './styles/windows11.css';
+import { apiUrl } from './config/api';
 import { errorReportingService } from './services/errorReportingService';
 import { loggingService } from './services/loggingService';
 import { validateEnvironment } from './utils/validateEnv';
 import { logWindowsEnvironment } from './utils/windowsUtils';
-import { apiUrl } from './config/api';
 
 // ===== GLOBAL ERROR HANDLERS (START) =====
 window.addEventListener('unhandledrejection', (event) => {
@@ -72,9 +72,13 @@ const desktopDiagnostics =
   window.aura?.runtime?.getCachedDiagnostics?.() ??
   window.desktopBridge?.getCachedDiagnostics?.() ??
   null;
+const diagnosticsBackend =
+  desktopDiagnostics && typeof desktopDiagnostics === 'object' && 'backend' in desktopDiagnostics
+    ? (desktopDiagnostics.backend as Record<string, unknown> | undefined)
+    : undefined;
 console.info('[Main] window.aura exists:', typeof (window as Window).aura !== 'undefined');
 console.info('[Main] desktop bridge available:', !!window.desktopBridge);
-console.info('[Main] aura backend URL:', desktopDiagnostics?.backend?.baseUrl);
+console.info('[Main] aura backend URL:', diagnosticsBackend?.baseUrl);
 console.info('[Main] aura environment:', desktopDiagnostics?.environment);
 console.info('[Main] Legacy AURA_BACKEND_URL:', window.AURA_BACKEND_URL);
 
@@ -322,10 +326,7 @@ const backendStatusContainerStyles = `
   padding: 0 32px;
 `;
 
-function getBackendStatusMarkup(
-  state: 'waiting' | 'ready' | 'failed',
-  error?: unknown
-): string {
+function getBackendStatusMarkup(state: 'waiting' | 'ready' | 'failed', error?: unknown): string {
   const titleByState: Record<typeof state, string> = {
     waiting: 'Starting Aura Services…',
     ready: 'Aura Services Ready',
