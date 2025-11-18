@@ -88,7 +88,6 @@ export type JobStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancell
 export type ConnectionStatus = 'connected' | 'connecting' | 'disconnected' | 'error';
 export type CircuitState = 'closed' | 'open' | 'half-open';
 
-const MAX_RECONNECT_ATTEMPTS = 5;
 const INITIAL_RECONNECT_DELAY = 3000; // 3 seconds
 const CIRCUIT_BREAKER_THRESHOLD = 5;
 const CIRCUIT_BREAKER_TIMEOUT = 60000; // 1 minute
@@ -112,8 +111,8 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
       const existing = newProgress.get(jobId);
 
       const percent =
-        typeof (progress as any).Percent === 'number'
-          ? (progress as any).Percent
+        typeof (progress as { Percent?: number }).Percent === 'number'
+          ? (progress as { Percent: number }).Percent
           : progress.percent;
       const etaSeconds =
         progress.estimatedRemainingSeconds ?? progress.etaSeconds ?? existing?.etaSeconds ?? null;

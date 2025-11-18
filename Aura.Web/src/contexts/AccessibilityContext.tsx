@@ -1,6 +1,6 @@
 /**
  * Accessibility Context
- * 
+ *
  * Provides global accessibility settings and features including:
  * - High contrast mode
  * - Reduced motion

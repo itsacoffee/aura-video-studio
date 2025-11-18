@@ -25,8 +25,8 @@ const shortcutGroups: ShortcutGroup[] = [
       { keys: ['Ctrl', ','], description: 'Open Settings' },
       { keys: ['Ctrl', 'N'], description: 'New Project' },
       { keys: ['Ctrl', 'O'], description: 'Open Project' },
-      { keys: ['Esc'], description: 'Close Modal / Cancel' }
-    ]
+      { keys: ['Esc'], description: 'Close Modal / Cancel' },
+    ],
   },
   {
     category: 'Timeline Editor',
@@ -50,8 +50,8 @@ const shortcutGroups: ShortcutGroup[] = [
       { keys: ['V'], description: 'Selection Tool' },
       { keys: ['M'], description: 'Add Marker' },
       { keys: ['Ctrl', '+'], description: 'Zoom In Timeline' },
-      { keys: ['Ctrl', '-'], description: 'Zoom Out Timeline' }
-    ]
+      { keys: ['Ctrl', '-'], description: 'Zoom Out Timeline' },
+    ],
   },
   {
     category: 'Script Editor',
@@ -62,8 +62,8 @@ const shortcutGroups: ShortcutGroup[] = [
       { keys: ['Ctrl', 'F'], description: 'Find' },
       { keys: ['Ctrl', 'H'], description: 'Find and Replace' },
       { keys: ['Tab'], description: 'Indent' },
-      { keys: ['Shift', 'Tab'], description: 'Outdent' }
-    ]
+      { keys: ['Shift', 'Tab'], description: 'Outdent' },
+    ],
   },
   {
     category: 'View Controls',
@@ -72,8 +72,8 @@ const shortcutGroups: ShortcutGroup[] = [
       { keys: ['Ctrl', '2'], description: 'Toggle Properties Panel' },
       { keys: ['Ctrl', '3'], description: 'Toggle Timeline' },
       { keys: ['F'], description: 'Fit to Window' },
-      { keys: ['Ctrl', '0'], description: 'Reset Zoom' }
-    ]
+      { keys: ['Ctrl', '0'], description: 'Reset Zoom' },
+    ],
   },
   {
     category: 'Navigation',
@@ -82,9 +82,9 @@ const shortcutGroups: ShortcutGroup[] = [
       { keys: ['Ctrl', 'Shift', 'C'], description: 'Go to Create Page' },
       { keys: ['Ctrl', 'Shift', 'E'], description: 'Go to Editor' },
       { keys: ['Ctrl', 'Shift', 'X'], description: 'Go to Export' },
-      { keys: ['Ctrl', 'Shift', 'S'], description: 'Go to Settings' }
-    ]
-  }
+      { keys: ['Ctrl', 'Shift', 'S'], description: 'Go to Settings' },
+    ],
+  },
 ];
 
 interface KeyboardShortcutsModalProps {
@@ -92,18 +92,24 @@ interface KeyboardShortcutsModalProps {
   onClose: () => void;
 }
 
-export const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({ isOpen, onClose }) => {
+export const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({
+  isOpen,
+  onClose,
+}) => {
   const [searchQuery, setSearchQuery] = useState('');
 
   if (!isOpen) return null;
 
-  const filteredGroups = shortcutGroups.map(group => ({
-    ...group,
-    shortcuts: group.shortcuts.filter(shortcut =>
-      shortcut.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      shortcut.keys.some(key => key.toLowerCase().includes(searchQuery.toLowerCase()))
-    )
-  })).filter(group => group.shortcuts.length > 0);
+  const filteredGroups = shortcutGroups
+    .map((group) => ({
+      ...group,
+      shortcuts: group.shortcuts.filter(
+        (shortcut) =>
+          shortcut.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          shortcut.keys.some((key) => key.toLowerCase().includes(searchQuery.toLowerCase()))
+      ),
+    }))
+    .filter((group) => group.shortcuts.length > 0);
 
   const renderKey = (key: string) => (
     <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded shadow-sm">
@@ -118,9 +124,7 @@ export const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({ 
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-3">
             <Keyboard className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Keyboard Shortcuts
-            </h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Keyboard Shortcuts</h2>
           </div>
           <button
             onClick={onClose}
@@ -156,7 +160,7 @@ export const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({ 
             </div>
           ) : (
             <div className="space-y-8">
-              {filteredGroups.map(group => (
+              {filteredGroups.map((group) => (
                 <div key={group.category} className="space-y-3">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
                     {group.category}
@@ -180,9 +184,7 @@ export const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({ 
                         <div className="flex items-center gap-1">
                           {shortcut.keys.map((key, keyIndex) => (
                             <React.Fragment key={keyIndex}>
-                              {keyIndex > 0 && (
-                                <span className="text-gray-400 mx-1">+</span>
-                              )}
+                              {keyIndex > 0 && <span className="text-gray-400 mx-1">+</span>}
                               {renderKey(key)}
                             </React.Fragment>
                           ))}
@@ -199,7 +201,15 @@ export const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({ 
         {/* Footer */}
         <div className="p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
           <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
-            <span className="font-medium">Tip:</span> Press <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded">F1</kbd> anytime to open help, or <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded">Ctrl+K</kbd> for the command palette
+            <span className="font-medium">Tip:</span> Press{' '}
+            <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded">
+              F1
+            </kbd>{' '}
+            anytime to open help, or{' '}
+            <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded">
+              Ctrl+K
+            </kbd>{' '}
+            for the command palette
           </p>
         </div>
       </div>

@@ -172,7 +172,7 @@ const SceneInspector: FC<SceneInspectorProps> = ({
 }) => {
   const styles = useStyles();
   const { getThresholds, setThresholds } = useVisualSelectionStore();
-  
+
   const projectId = jobId;
   const thresholds = getThresholds(projectId);
   const [threshold, setThreshold] = useState(thresholds.minimumAestheticThreshold);
@@ -240,7 +240,13 @@ const SceneInspector: FC<SceneInspectorProps> = ({
             Scene {sceneIndex + 1} - Visual Candidates ({candidates.length})
           </Text>
           {belowThresholdCount > 0 && (
-            <Text size={200} style={{ color: tokens.colorPaletteRedForeground1, marginLeft: tokens.spacingHorizontalM }}>
+            <Text
+              size={200}
+              style={{
+                color: tokens.colorPaletteRedForeground1,
+                marginLeft: tokens.spacingHorizontalM,
+              }}
+            >
               ({belowThresholdCount} below threshold)
             </Text>
           )}
@@ -279,14 +285,11 @@ const SceneInspector: FC<SceneInspectorProps> = ({
             {threshold.toFixed(0)}
           </Badge>
         </div>
-        <Slider
-          min={0}
-          max={100}
-          value={threshold}
-          onChange={handleThresholdChange}
-          step={5}
-        />
-        <Text size={200} style={{ marginTop: tokens.spacingVerticalXS, color: tokens.colorNeutralForeground3 }}>
+        <Slider min={0} max={100} value={threshold} onChange={handleThresholdChange} step={5} />
+        <Text
+          size={200}
+          style={{ marginTop: tokens.spacingVerticalXS, color: tokens.colorNeutralForeground3 }}
+        >
           Candidates below this threshold will be dimmed
         </Text>
       </div>
@@ -295,7 +298,7 @@ const SceneInspector: FC<SceneInspectorProps> = ({
         {candidates.map((candidate, index) => {
           const isSelected = selectedCandidate?.imageUrl === candidate.imageUrl;
           const passesThreshold = meetsThreshold(candidate.overallScore);
-          
+
           let cardClass = styles.candidateCard;
           if (isSelected) {
             cardClass += ` ${styles.selectedCard}`;
@@ -387,15 +390,16 @@ const SceneInspector: FC<SceneInspectorProps> = ({
                       Accept
                     </Button>
                   ) : isSelected ? (
-                    <Badge appearance="filled" color="success" icon={<Eye24Regular />} style={{ flex: 1 }}>
+                    <Badge
+                      appearance="filled"
+                      color="success"
+                      icon={<Eye24Regular />}
+                      style={{ flex: 1 }}
+                    >
                       Currently Selected
                     </Badge>
                   ) : (
-                    <Button
-                      appearance="outline"
-                      disabled
-                      style={{ flex: 1 }}
-                    >
+                    <Button appearance="outline" disabled style={{ flex: 1 }}>
                       Below Threshold
                     </Button>
                   )}

@@ -26,19 +26,19 @@ export interface VideoGenerationJob {
 export interface VideoGenerationState {
   // Current active jobs
   activeJobs: Map<string, VideoGenerationJob>;
-  
+
   // Job history
   jobHistory: VideoGenerationJob[];
   maxHistorySize: number;
-  
+
   // UI state
   isGenerating: boolean;
   currentJobId: string | null;
-  
+
   // Preferences
   autoSaveProjects: boolean;
   showProgressNotifications: boolean;
-  
+
   // Actions
   startJob: (jobId: string, request: VideoGenerationJob['request']) => void;
   updateJobProgress: (jobId: string, progress: number, stage: string) => void;
@@ -49,7 +49,7 @@ export interface VideoGenerationState {
   clearJob: (jobId: string) => void;
   clearHistory: () => void;
   setCurrentJob: (jobId: string | null) => void;
-  
+
   // Preferences
   setAutoSaveProjects: (enabled: boolean) => void;
   setShowProgressNotifications: (enabled: boolean) => void;
@@ -57,7 +57,7 @@ export interface VideoGenerationState {
 
 export const useVideoGenerationStore = create<VideoGenerationState>()(
   persist(
-    (set, get) => ({
+    (set, _get) => ({
       // Initial state
       activeJobs: new Map(),
       jobHistory: [],
@@ -82,7 +82,7 @@ export const useVideoGenerationStore = create<VideoGenerationState>()(
         set((state) => {
           const newActiveJobs = new Map(state.activeJobs);
           newActiveJobs.set(jobId, newJob);
-          
+
           return {
             activeJobs: newActiveJobs,
             isGenerating: true,

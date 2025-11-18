@@ -110,26 +110,16 @@ export const MediaGrid: React.FC<MediaGridProps> = ({
           <div className={styles.menu}>
             <Menu>
               <MenuTrigger disableButtonEnhancement>
-                <Button
-                  appearance="subtle"
-                  icon={<MoreVertical24Regular />}
-                  size="small"
-                />
+                <Button appearance="subtle" icon={<MoreVertical24Regular />} size="small" />
               </MenuTrigger>
               <MenuPopover>
                 <MenuList>
-                  <MenuItem 
-                    icon={<Eye24Regular />}
-                    onClick={() => onPreview?.(item)}
-                  >
+                  <MenuItem icon={<Eye24Regular />} onClick={() => onPreview?.(item)}>
                     View
                   </MenuItem>
                   <MenuItem icon={<Edit24Regular />}>Edit</MenuItem>
                   <MenuItem icon={<CloudArrowDown24Regular />}>Download</MenuItem>
-                  <MenuItem
-                    icon={<Delete24Regular />}
-                    onClick={() => onDelete(item.id)}
-                  >
+                  <MenuItem icon={<Delete24Regular />} onClick={() => onDelete(item.id)}>
                     Delete
                   </MenuItem>
                 </MenuList>
@@ -167,9 +157,7 @@ export const MediaGrid: React.FC<MediaGridProps> = ({
               <Badge appearance="tint" color="brand">
                 {item.type}
               </Badge>
-              {item.collectionName && (
-                <Badge appearance="outline">{item.collectionName}</Badge>
-              )}
+              {item.collectionName && <Badge appearance="outline">{item.collectionName}</Badge>}
               {item.tags.slice(0, 2).map((tag) => (
                 <Badge key={tag} appearance="outline" size="small">
                   {tag}

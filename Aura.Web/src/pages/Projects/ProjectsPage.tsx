@@ -211,10 +211,7 @@ function ProjectsPageContent() {
         <>
           {loadingProjects && (
             <Card>
-              <SkeletonTable
-                columns={5}
-                rows={5}
-              />
+              <SkeletonTable columns={5} rows={5} />
             </Card>
           )}
 
@@ -327,10 +324,7 @@ function ProjectsPageContent() {
         <>
           {loading && (
             <Card>
-              <SkeletonTable
-                columns={6}
-                rows={5}
-              />
+              <SkeletonTable columns={6} rows={5} />
             </Card>
           )}
 

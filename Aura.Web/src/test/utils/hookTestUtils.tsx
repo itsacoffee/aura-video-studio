@@ -15,13 +15,13 @@ interface CustomRenderHookOptions<Props> extends RenderHookOptions<Props> {
 
 /**
  * Render a hook with common providers
- * 
+ *
  * @example
  * ```ts
  * const { result } = renderHookWithProviders(() => useMyHook());
  * expect(result.current.value).toBe(42);
  * ```
- * 
+ *
  * @example with initial props
  * ```ts
  * const { result, rerender } = renderHookWithProviders(
@@ -43,7 +43,7 @@ export function renderHookWithProviders<Result, Props>(
 
   function Wrapper({ children }: { children: ReactNode }) {
     const fluentContent = <FluentProvider theme={theme}>{children}</FluentProvider>;
-    
+
     if (withQueryClient) {
       return <QueryClientProvider client={testQueryClient}>{fluentContent}</QueryClientProvider>;
     }

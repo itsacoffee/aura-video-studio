@@ -222,11 +222,7 @@ export const StorageManagementPanel: React.FC<StorageManagementPanelProps> = ({ 
               </Text>
               <Text size={200}>{usagePercentage.toFixed(1)}%</Text>
             </div>
-            <ProgressBar
-              value={usagePercentage}
-              max={100}
-              color={getStorageColor()}
-            />
+            <ProgressBar value={usagePercentage} max={100} color={getStorageColor()} />
           </div>
         </Card>
 
@@ -290,7 +286,9 @@ export const StorageManagementPanel: React.FC<StorageManagementPanelProps> = ({ 
           <div className={styles.suggestionList}>
             {suggestions.map((suggestion) => (
               <div key={suggestion.id} className={styles.suggestionItem}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM }}>
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM }}
+                >
                   {suggestion.severity === 'error' && (
                     <Warning24Regular className={styles.warningIcon} />
                   )}

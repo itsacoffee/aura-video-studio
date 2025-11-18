@@ -122,11 +122,15 @@ interface SkeletonCardProps {
 /**
  * Skeleton for card-like content
  */
-export function SkeletonCard({ hasImage = true, hasAvatar = false, className = '' }: SkeletonCardProps) {
+export function SkeletonCard({
+  hasImage = true,
+  hasAvatar = false,
+  className = '',
+}: SkeletonCardProps) {
   return (
     <div className={`p-4 space-y-4 bg-var(--color-surface) rounded-lg ${className}`}>
       {hasImage && <Skeleton height="12rem" variant="rectangular" />}
-      
+
       <div className="space-y-3">
         {hasAvatar && (
           <div className="flex items-center space-x-3">
@@ -136,7 +140,7 @@ export function SkeletonCard({ hasImage = true, hasAvatar = false, className = '
             </div>
           </div>
         )}
-        
+
         <Skeleton width="60%" height="1.5rem" />
         <SkeletonText lines={2} />
       </div>
@@ -188,7 +192,7 @@ export function SkeletonTable({ rows = 5, columns = 4, className = '' }: Skeleto
           </div>
         ))}
       </div>
-      
+
       {/* Rows */}
       {Array.from({ length: rows }).map((_, rowIndex) => (
         <div key={rowIndex} className="flex space-x-4 py-2">

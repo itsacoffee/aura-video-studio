@@ -213,7 +213,7 @@ export const useRenderStore = create<RenderState>((set, get) => ({
       // Send render request to API
       // Import at runtime to avoid circular dependencies
       const { default: apiClient } = await import('../services/api/apiClient');
-      
+
       const response = await apiClient.post<{ jobId: string }>('/api/jobs', {
         settings: nextItem.settings,
       });
@@ -230,7 +230,7 @@ export const useRenderStore = create<RenderState>((set, get) => ({
             outputPath?: string;
             error?: string;
           }>(`/api/jobs/${jobId}`);
-          
+
           const progressData = progressResponse.data;
 
           updateQueueItem(nextItem.id, {
@@ -280,11 +280,11 @@ export const useRenderStore = create<RenderState>((set, get) => ({
       }, 2000); // Poll every 2 seconds
     } catch (error: unknown) {
       console.error('Error starting render:', error);
-      
+
       // Import error classifier
       const { classifyError } = await import('../utils/errorClassification');
       const classified = classifyError(error);
-      
+
       const errorMessage = `${classified.title}: ${classified.message}`;
 
       // Retry once for retryable errors

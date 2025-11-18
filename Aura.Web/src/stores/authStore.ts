@@ -77,7 +77,7 @@ export const useAuthStore = create<AuthState>()(
 
           // Store tokens
           const tokenExpiry = calculateExpiry(response.expiresIn);
-          
+
           // Update local storage for API client
           localStorage.setItem('auth_token', response.token);
           if (response.refreshToken) {
@@ -177,7 +177,7 @@ export const useAuthStore = create<AuthState>()(
 
           // Update tokens
           const tokenExpiry = calculateExpiry(response.expiresIn);
-          
+
           // Update local storage
           localStorage.setItem('auth_token', response.token);
           if (response.refreshToken) {
@@ -218,7 +218,11 @@ export const useAuthStore = create<AuthState>()(
 
         // Check if token needs refresh
         if (isTokenExpired(tokenExpiry)) {
-          loggingService.debug('Token expired, refreshing before loading user', 'authStore', 'loadUser');
+          loggingService.debug(
+            'Token expired, refreshing before loading user',
+            'authStore',
+            'loadUser'
+          );
           await get().refreshAuthToken();
         }
 
@@ -299,7 +303,7 @@ export const useAuthStore = create<AuthState>()(
        */
       checkTokenExpiry: (): boolean => {
         const { tokenExpiry, refreshToken } = get();
-        
+
         if (isTokenExpired(tokenExpiry)) {
           if (refreshToken) {
             // Trigger refresh in background
@@ -307,7 +311,7 @@ export const useAuthStore = create<AuthState>()(
           }
           return true;
         }
-        
+
         return false;
       },
     }),
@@ -325,11 +329,11 @@ export const useAuthStore = create<AuthState>()(
         // After rehydration, check if token is still valid
         if (state) {
           const { token, tokenExpiry } = state;
-          
+
           if (token) {
             // Update API client with token
             localStorage.setItem('auth_token', token);
-            
+
             // Set authenticated state based on token validity
             if (!isTokenExpired(tokenExpiry)) {
               state.isAuthenticated = true;
@@ -353,7 +357,7 @@ export const useAuthStore = create<AuthState>()(
 if (typeof window !== 'undefined') {
   setInterval(() => {
     const { isAuthenticated, checkTokenExpiry } = useAuthStore.getState();
-    
+
     if (isAuthenticated) {
       checkTokenExpiry();
     }

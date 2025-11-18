@@ -9,20 +9,20 @@ export function ProjectCardSkeleton() {
     <div className="relative bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-4">
       {/* Thumbnail */}
       <Skeleton variant="rectangular" height="160px" className="mb-4" />
-      
+
       {/* Title */}
       <Skeleton variant="text" height="24px" width="80%" className="mb-2" />
-      
+
       {/* Description */}
       <Skeleton variant="text" height="16px" width="100%" className="mb-1" />
       <Skeleton variant="text" height="16px" width="90%" className="mb-3" />
-      
+
       {/* Tags */}
       <div className="flex gap-2 mb-3">
         <Skeleton variant="rounded" height="24px" width="60px" />
         <Skeleton variant="rounded" height="24px" width="80px" />
       </div>
-      
+
       {/* Footer meta */}
       <div className="flex items-center justify-between">
         <Skeleton variant="text" height="14px" width="100px" />
@@ -84,7 +84,7 @@ export function ProjectGridSkeleton({ count = 8 }: { count?: number }) {
 }
 
 /**
- * List of project item skeletons  
+ * List of project item skeletons
  */
 export function ProjectListSkeleton({ count = 10 }: { count?: number }) {
   return (

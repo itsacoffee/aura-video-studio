@@ -159,15 +159,7 @@ export const MediaPreviewDialog: React.FC<MediaPreviewDialogProps> = ({
 
     switch (media.type) {
       case 'Video':
-        return (
-          <video
-            ref={videoRef}
-            className={styles.media}
-            src={media.url}
-            controls
-            autoPlay
-          />
-        );
+        return <video ref={videoRef} className={styles.media} src={media.url} controls autoPlay />;
 
       case 'Audio':
         return (
@@ -218,7 +210,7 @@ export const MediaPreviewDialog: React.FC<MediaPreviewDialogProps> = ({
   };
 
   const renderMetadata = () => {
-    const metadata = media.metadata || {} as MediaMetadata;
+    const metadata = media.metadata || ({} as MediaMetadata);
 
     return (
       <div className={styles.metadataPane}>
@@ -264,9 +256,7 @@ export const MediaPreviewDialog: React.FC<MediaPreviewDialogProps> = ({
               {metadata.duration && (
                 <>
                   <Text className={styles.metadataLabel}>Duration:</Text>
-                  <Text className={styles.metadataValue}>
-                    {formatDuration(metadata.duration)}
-                  </Text>
+                  <Text className={styles.metadataValue}>{formatDuration(metadata.duration)}</Text>
                 </>
               )}
 
@@ -310,9 +300,7 @@ export const MediaPreviewDialog: React.FC<MediaPreviewDialogProps> = ({
               {metadata.sampleRate && (
                 <>
                   <Text className={styles.metadataLabel}>Sample Rate:</Text>
-                  <Text className={styles.metadataValue}>
-                    {metadata.sampleRate} Hz
-                  </Text>
+                  <Text className={styles.metadataValue}>{metadata.sampleRate} Hz</Text>
                 </>
               )}
             </div>
@@ -354,13 +342,7 @@ export const MediaPreviewDialog: React.FC<MediaPreviewDialogProps> = ({
       <DialogSurface className={styles.surface}>
         <DialogBody className={styles.body}>
           <DialogTitle
-            action={
-              <Button
-                appearance="subtle"
-                icon={<Dismiss24Regular />}
-                onClick={onClose}
-              />
-            }
+            action={<Button appearance="subtle" icon={<Dismiss24Regular />} onClick={onClose} />}
           >
             {media.fileName}
           </DialogTitle>

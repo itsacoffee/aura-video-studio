@@ -3,6 +3,9 @@ import React from 'react';
 
 export default function RoleManagementPanel() {
   return (
-    <Card><Title2>Role Management</Title2><Text>Requires @tremor/react</Text></Card>
+    <Card>
+      <Title2>Role Management</Title2>
+      <Text>Requires @tremor/react</Text>
+    </Card>
   );
 }

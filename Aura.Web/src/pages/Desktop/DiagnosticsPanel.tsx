@@ -1,6 +1,6 @@
 /**
  * Desktop Diagnostics Panel
- * 
+ *
  * Comprehensive system diagnostics for troubleshooting:
  * - System requirements validation
  * - Dependency checks (FFmpeg, Ollama, .NET)
@@ -109,7 +109,7 @@ interface SystemInfo {
 export function DiagnosticsPanel() {
   const styles = useStyles();
   const { showSuccess, showError, showInfo } = useNotifications();
-  
+
   const [isChecking, setIsChecking] = useState(false);
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
   const [requirements, setRequirements] = useState<DiagnosticResult[]>([]);
@@ -117,8 +117,8 @@ export function DiagnosticsPanel() {
   const [providers, setProviders] = useState<DiagnosticResult[]>([]);
   const [logs, setLogs] = useState<string>('');
 
-  const isElectron = typeof window !== 'undefined' && 
-    (window as any).electron?.platform?.isElectron;
+  const isElectron =
+    typeof window !== 'undefined' && (window as any).electron?.platform?.isElectron;
 
   useEffect(() => {
     runDiagnostics();
@@ -126,7 +126,7 @@ export function DiagnosticsPanel() {
 
   const runDiagnostics = async () => {
     setIsChecking(true);
-    
+
     try {
       // Run all diagnostics in parallel
       await Promise.all([
@@ -135,7 +135,7 @@ export function DiagnosticsPanel() {
         checkDependencies(),
         checkProviders(),
       ]);
-      
+
       showSuccess('Diagnostics complete');
     } catch (error) {
       showError('Failed to run diagnostics');
@@ -159,7 +159,7 @@ export function DiagnosticsPanel() {
     try {
       const response = await fetch('/api/setup/validate-requirements');
       const data = await response.json();
-      
+
       setRequirements(
         data.requirements.map((req: any) => ({
           name: req.name,
@@ -182,7 +182,7 @@ export function DiagnosticsPanel() {
 
   const checkDependencies = async () => {
     const results: DiagnosticResult[] = [];
-    
+
     // Check FFmpeg
     try {
       const response = await fetch('/api/health/ffmpeg');
@@ -190,13 +190,13 @@ export function DiagnosticsPanel() {
       results.push({
         name: 'FFmpeg',
         status: data.isAvailable ? 'pass' : 'fail',
-        message: data.isAvailable 
-          ? `Version ${data.version} at ${data.path}` 
-          : 'Not found',
-        action: !data.isAvailable ? {
-          label: 'Install FFmpeg',
-          onClick: () => window.location.hash = '#/setup',
-        } : undefined,
+        message: data.isAvailable ? `Version ${data.version} at ${data.path}` : 'Not found',
+        action: !data.isAvailable
+          ? {
+              label: 'Install FFmpeg',
+              onClick: () => (window.location.hash = '#/setup'),
+            }
+          : undefined,
       });
     } catch {
       results.push({
@@ -205,7 +205,7 @@ export function DiagnosticsPanel() {
         message: 'Failed to check FFmpeg status',
       });
     }
-    
+
     // Check Ollama
     try {
       const response = await fetch('/api/setup/ollama-status');
@@ -223,7 +223,7 @@ export function DiagnosticsPanel() {
         message: 'Not detected',
       });
     }
-    
+
     // Check .NET Backend
     try {
       const response = await fetch('/api/health');
@@ -239,41 +239,42 @@ export function DiagnosticsPanel() {
         message: 'Cannot connect to backend',
       });
     }
-    
+
     setDependencies(results);
   };
 
   const checkProviders = async () => {
     const results: DiagnosticResult[] = [];
-    
+
     // Check configured providers
     try {
       const response = await fetch('/api/settings');
       const settings = await response.json();
-      
+
       // Check if any LLM provider is configured
       const llmProviders = ['OpenAI', 'Anthropic', 'Google', 'Ollama'];
-      const configuredLlm = llmProviders.some(p => 
-        settings[`${p.toLowerCase()}ApiKey`] || settings[`${p.toLowerCase()}Enabled`]
+      const configuredLlm = llmProviders.some(
+        (p) => settings[`${p.toLowerCase()}ApiKey`] || settings[`${p.toLowerCase()}Enabled`]
       );
-      
+
       results.push({
         name: 'LLM Provider',
         status: configuredLlm ? 'pass' : 'warning',
         message: configuredLlm ? 'Configured' : 'No provider configured',
-        action: !configuredLlm ? {
-          label: 'Configure Provider',
-          onClick: () => window.location.hash = '#/settings',
-        } : undefined,
+        action: !configuredLlm
+          ? {
+              label: 'Configure Provider',
+              onClick: () => (window.location.hash = '#/settings'),
+            }
+          : undefined,
       });
-      
+
       // Check TTS configuration
       results.push({
         name: 'TTS Provider',
         status: settings.ttsProvider ? 'pass' : 'warning',
         message: settings.ttsProvider ? `Using ${settings.ttsProvider}` : 'Not configured',
       });
-      
     } catch (error) {
       results.push({
         name: 'Provider Configuration',
@@ -281,7 +282,7 @@ export function DiagnosticsPanel() {
         message: 'Failed to check provider configuration',
       });
     }
-    
+
     setProviders(results);
   };
 
@@ -297,18 +298,18 @@ OS: ${systemInfo?.osDescription}
 Framework: ${systemInfo?.frameworkDescription}
 
 === System Requirements ===
-${requirements.map(r => `${r.name}: ${r.status.toUpperCase()} - ${r.message}`).join('\n')}
+${requirements.map((r) => `${r.name}: ${r.status.toUpperCase()} - ${r.message}`).join('\n')}
 
 === Dependencies ===
-${dependencies.map(d => `${d.name}: ${d.status.toUpperCase()} - ${d.message}`).join('\n')}
+${dependencies.map((d) => `${d.name}: ${d.status.toUpperCase()} - ${d.message}`).join('\n')}
 
 === Providers ===
-${providers.map(p => `${p.name}: ${p.status.toUpperCase()} - ${p.message}`).join('\n')}
+${providers.map((p) => `${p.name}: ${p.status.toUpperCase()} - ${p.message}`).join('\n')}
 
 === Logs ===
 ${logs || 'No logs available'}
     `.trim();
-    
+
     try {
       await navigator.clipboard.writeText(diagnosticsText);
       showSuccess('Diagnostics copied to clipboard');
@@ -322,7 +323,7 @@ ${logs || 'No logs available'}
       showInfo('Logs folder is only accessible in the desktop app');
       return;
     }
-    
+
     try {
       const electron = (window as any).electron;
       const paths = await electron.app.getPaths();
@@ -348,10 +349,17 @@ ${logs || 'No logs available'}
   const renderDiagnosticCard = (title: string, items: DiagnosticResult[]) => (
     <Card className={styles.card}>
       <CardHeader header={<Title3>{title}</Title3>} />
-      
+
       {items.map((item, index) => (
         <div key={index} className={styles.statusRow}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS, flex: 1 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: tokens.spacingHorizontalS,
+              flex: 1,
+            }}
+          >
             {renderStatusIcon(item.status)}
             <div>
               <Text weight="semibold">{item.name}</Text>
@@ -359,13 +367,16 @@ ${logs || 'No logs available'}
                 {item.message}
               </Text>
               {item.details && (
-                <Text size={200} style={{ display: 'block', color: tokens.colorNeutralForeground4 }}>
+                <Text
+                  size={200}
+                  style={{ display: 'block', color: tokens.colorNeutralForeground4 }}
+                >
                   {item.details}
                 </Text>
               )}
             </div>
           </div>
-          
+
           {item.action && (
             <Button size="small" onClick={item.action.onClick}>
               {item.action.label}
@@ -383,26 +394,16 @@ ${logs || 'No logs available'}
           <Title2>System Diagnostics</Title2>
           <Text>Comprehensive system and dependency checks</Text>
         </div>
-        
+
         <div className={styles.actionButtons}>
-          <Button
-            icon={<ArrowSync24Regular />}
-            onClick={runDiagnostics}
-            disabled={isChecking}
-          >
+          <Button icon={<ArrowSync24Regular />} onClick={runDiagnostics} disabled={isChecking}>
             {isChecking ? 'Checking...' : 'Refresh'}
           </Button>
-          <Button
-            icon={<Copy24Regular />}
-            onClick={copyDiagnostics}
-          >
+          <Button icon={<Copy24Regular />} onClick={copyDiagnostics}>
             Copy Report
           </Button>
           {isElectron && (
-            <Button
-              icon={<FolderOpen24Regular />}
-              onClick={openLogsFolder}
-            >
+            <Button icon={<FolderOpen24Regular />} onClick={openLogsFolder}>
               Open Logs
             </Button>
           )}
@@ -414,16 +415,22 @@ ${logs || 'No logs available'}
         <div className={styles.section}>
           <Card className={styles.card}>
             <CardHeader header={<Title3>System Information</Title3>} />
-            <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: tokens.spacingVerticalS }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '200px 1fr',
+                gap: tokens.spacingVerticalS,
+              }}
+            >
               <Text weight="semibold">Platform:</Text>
               <Text>{systemInfo.platform}</Text>
-              
+
               <Text weight="semibold">Architecture:</Text>
               <Text>{systemInfo.architecture}</Text>
-              
+
               <Text weight="semibold">OS Version:</Text>
               <Text>{systemInfo.osDescription}</Text>
-              
+
               <Text weight="semibold">.NET Version:</Text>
               <Text>{systemInfo.frameworkDescription}</Text>
             </div>
@@ -461,9 +468,7 @@ ${logs || 'No logs available'}
       <div className={styles.section}>
         <Card className={styles.card}>
           <CardHeader header={<Title3>Need Help?</Title3>} />
-          <Text>
-            If you're experiencing issues, try these resources:
-          </Text>
+          <Text>If you're experiencing issues, try these resources:</Text>
           <ul>
             <li>
               <Link href="https://docs.aura-video-studio.com/troubleshooting" target="_blank">

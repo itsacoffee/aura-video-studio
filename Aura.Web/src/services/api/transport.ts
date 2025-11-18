@@ -368,8 +368,7 @@ export class IpcTransport implements IApiTransport {
   ): Promise<TransportResponse<T>> {
     try {
       const backendUrl =
-        (await this.aura.backend?.getBaseUrl?.()) ??
-        (await this.aura.backend?.getUrl?.());
+        (await this.aura.backend?.getBaseUrl?.()) ?? (await this.aura.backend?.getUrl?.());
       if (!backendUrl) {
         throw new Error('Backend URL is not available in Aura runtime');
       }
@@ -420,8 +419,7 @@ export class IpcTransport implements IApiTransport {
     const setupSubscription = async () => {
       try {
         const backendUrl =
-          (await this.aura.backend?.getBaseUrl?.()) ??
-          (await this.aura.backend?.getUrl?.());
+          (await this.aura.backend?.getBaseUrl?.()) ?? (await this.aura.backend?.getUrl?.());
         if (!backendUrl) {
           throw new Error('Backend URL is not available in Aura runtime');
         }
@@ -481,8 +479,7 @@ export class IpcTransport implements IApiTransport {
   ): Promise<TransportResponse<T>> {
     try {
       const backendUrl =
-        (await this.aura.backend?.getBaseUrl?.()) ??
-        (await this.aura.backend?.getUrl?.());
+        (await this.aura.backend?.getBaseUrl?.()) ?? (await this.aura.backend?.getUrl?.());
       if (!backendUrl) {
         throw new Error('Backend URL is not available in Aura runtime');
       }
@@ -546,8 +543,7 @@ export class IpcTransport implements IApiTransport {
   async download(endpoint: string, options?: DownloadOptions): Promise<void> {
     try {
       const backendUrl =
-        (await this.aura.backend?.getBaseUrl?.()) ??
-        (await this.aura.backend?.getUrl?.());
+        (await this.aura.backend?.getBaseUrl?.()) ?? (await this.aura.backend?.getUrl?.());
       if (!backendUrl) {
         throw new Error('Backend URL is not available in Aura runtime');
       }

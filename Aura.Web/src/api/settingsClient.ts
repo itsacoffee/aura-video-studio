@@ -366,16 +366,13 @@ class SettingsClient {
     json: string,
     overwriteExisting: boolean = false
   ): Promise<SettingsUpdateResult> {
-    const response = await fetch(
-      `${this.baseUrl}/import?overwriteExisting=${overwriteExisting}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(json),
-      }
-    );
+    const response = await fetch(`${this.baseUrl}/import?overwriteExisting=${overwriteExisting}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(json),
+    });
 
     if (!response.ok) {
       throw new Error(`Failed to import settings: ${response.statusText}`);
@@ -444,9 +441,7 @@ class SettingsClient {
   /**
    * Update provider configuration
    */
-  async updateProviderConfiguration(
-    config: ProviderConfiguration
-  ): Promise<SettingsUpdateResult> {
+  async updateProviderConfiguration(config: ProviderConfiguration): Promise<SettingsUpdateResult> {
     const response = await fetch(`${this.baseUrl}/providers`, {
       method: 'PUT',
       headers: {

@@ -83,7 +83,7 @@ function validateApiBaseUrl(value: string, source: ApiBaseUrlSource, errors: str
         }" (must be http: or https:)`
       );
     }
-  } catch (error) {
+  } catch {
     errors.push(
       `${
         source === 'env' ? 'VITE_API_BASE_URL' : 'Resolved API base URL'

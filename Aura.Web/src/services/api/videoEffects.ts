@@ -8,7 +8,7 @@ import {
   EffectPreviewRequest,
   EffectPreviewResponse,
   ValidationResponse,
-  CacheStatistics
+  CacheStatistics,
 } from '../../types/videoEffects';
 
 const BASE_URL = '/api/video-effects';
@@ -44,9 +44,9 @@ class VideoEffectsApi {
     const response = await fetch(`${BASE_URL}/presets`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify(preset)
+      body: JSON.stringify(preset),
     });
     if (!response.ok) {
       throw new Error('Failed to save preset');
@@ -59,7 +59,7 @@ class VideoEffectsApi {
    */
   async deletePreset(id: string): Promise<void> {
     const response = await fetch(`${BASE_URL}/presets/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
     });
     if (!response.ok) {
       throw new Error('Failed to delete preset');
@@ -73,9 +73,9 @@ class VideoEffectsApi {
     const response = await fetch(`${BASE_URL}/apply`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify(request)
+      body: JSON.stringify(request),
     });
     if (!response.ok) {
       throw new Error('Failed to apply effects');
@@ -90,9 +90,9 @@ class VideoEffectsApi {
     const response = await fetch(`${BASE_URL}/apply-preset`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify(request)
+      body: JSON.stringify(request),
     });
     if (!response.ok) {
       throw new Error('Failed to apply preset');
@@ -107,9 +107,9 @@ class VideoEffectsApi {
     const response = await fetch(`${BASE_URL}/preview`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify(request)
+      body: JSON.stringify(request),
     });
     if (!response.ok) {
       throw new Error('Failed to generate preview');
@@ -121,7 +121,9 @@ class VideoEffectsApi {
    * Get recommended effects for a video
    */
   async getRecommendations(videoPath: string): Promise<EffectPreset[]> {
-    const response = await fetch(`${BASE_URL}/recommendations?videoPath=${encodeURIComponent(videoPath)}`);
+    const response = await fetch(
+      `${BASE_URL}/recommendations?videoPath=${encodeURIComponent(videoPath)}`
+    );
     if (!response.ok) {
       throw new Error('Failed to get recommendations');
     }
@@ -135,9 +137,9 @@ class VideoEffectsApi {
     const response = await fetch(`${BASE_URL}/validate`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify(effect)
+      body: JSON.stringify(effect),
     });
     if (!response.ok) {
       throw new Error('Failed to validate effect');
@@ -161,7 +163,7 @@ class VideoEffectsApi {
    */
   async clearCache(): Promise<void> {
     const response = await fetch(`${BASE_URL}/cache`, {
-      method: 'DELETE'
+      method: 'DELETE',
     });
     if (!response.ok) {
       throw new Error('Failed to clear cache');

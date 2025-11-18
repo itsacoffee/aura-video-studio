@@ -276,7 +276,7 @@ export const AudienceManagementPage: React.FC = () => {
                         size="small"
                         icon={<EditRegular />}
                         appearance="subtle"
-                        onClick={() => (navigateToRoute(`/audience/edit/${profile.id}`))}
+                        onClick={() => navigateToRoute(`/audience/edit/${profile.id}`)}
                         title="Edit profile"
                       />
                       <Button

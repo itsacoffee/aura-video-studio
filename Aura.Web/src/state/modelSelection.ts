@@ -241,9 +241,7 @@ export const useModelSelectionStore = create<ModelSelectionStore>((set, get) => 
   setAllowAutomaticFallback: async (allow) => {
     // This would be implemented via settings API endpoint
     set((state) => ({
-      selections: state.selections
-        ? { ...state.selections, allowAutomaticFallback: allow }
-        : null,
+      selections: state.selections ? { ...state.selections, allowAutomaticFallback: allow } : null,
     }));
   },
 

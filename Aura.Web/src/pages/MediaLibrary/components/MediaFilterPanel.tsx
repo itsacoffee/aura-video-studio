@@ -60,12 +60,7 @@ export const MediaFilterPanel: React.FC<MediaFilterPanelProps> = ({
   const styles = useStyles();
 
   const mediaTypes: MediaType[] = ['Video', 'Image', 'Audio', 'Document', 'Other'];
-  const mediaSources: MediaSource[] = [
-    'UserUpload',
-    'Generated',
-    'StockMedia',
-    'Imported',
-  ];
+  const mediaSources: MediaSource[] = ['UserUpload', 'Generated', 'StockMedia', 'Imported'];
 
   return (
     <Card className={styles.panel}>
@@ -73,11 +68,7 @@ export const MediaFilterPanel: React.FC<MediaFilterPanelProps> = ({
         <Text weight="semibold" size={400}>
           Filters
         </Text>
-        <Button
-          appearance="subtle"
-          icon={<Dismiss24Regular />}
-          onClick={onClose}
-        />
+        <Button appearance="subtle" icon={<Dismiss24Regular />} onClick={onClose} />
       </div>
 
       <div className={styles.content}>
@@ -122,9 +113,7 @@ export const MediaFilterPanel: React.FC<MediaFilterPanelProps> = ({
             <Label>Collection</Label>
             <Dropdown
               placeholder="All collections"
-              value={
-                collections.find((c) => c.id === filters.collectionId)?.name
-              }
+              value={collections.find((c) => c.id === filters.collectionId)?.name}
               onOptionSelect={(_, data) =>
                 onFilterChange({
                   collectionId: data.optionValue || undefined,

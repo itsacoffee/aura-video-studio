@@ -1,12 +1,15 @@
 /**
  * React Hook for Configuration Status
- * 
+ *
  * Provides easy access to configuration status throughout the application
  */
 
 import { useEffect, useState, useCallback } from 'react';
 import { configurationStatusService } from '../services/configurationStatusService';
-import type { ConfigurationStatus, SystemCheckResult } from '../services/configurationStatusService';
+import type {
+  ConfigurationStatus,
+  SystemCheckResult,
+} from '../services/configurationStatusService';
 
 export interface UseConfigurationStatusOptions {
   autoRefresh?: boolean;
@@ -21,7 +24,10 @@ export interface UseConfigurationStatusReturn {
   needsSetup: boolean;
   refresh: () => Promise<void>;
   runSystemChecks: () => Promise<SystemCheckResult | null>;
-  testProviders: () => Promise<Record<string, { success: boolean; message: string; responseTimeMs: number }> | null>;
+  testProviders: () => Promise<Record<
+    string,
+    { success: boolean; message: string; responseTimeMs: number }
+  > | null>;
   markConfigured: () => Promise<void>;
 }
 

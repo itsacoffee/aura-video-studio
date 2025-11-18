@@ -37,7 +37,7 @@ export type EasingFunction =
 export interface Keyframe {
   time: number;
   parameterName: string;
-  value: any;
+  value: string | number | boolean;
   easing: EasingFunction;
   interpolationMode?: string;
 }
@@ -54,7 +54,7 @@ export interface VideoEffect {
   enabled: boolean;
   layer: number;
   keyframes: Keyframe[];
-  parameters: Record<string, any>;
+  parameters: Record<string, string | number | boolean>;
   tags: string[];
 }
 
@@ -63,8 +63,8 @@ export interface EffectParameter {
   label: string;
   description?: string;
   type: 'number' | 'color' | 'boolean' | 'text' | 'select';
-  defaultValue: any;
-  value?: any;
+  defaultValue: string | number | boolean;
+  value?: string | number | boolean;
   min?: number;
   max?: number;
   step?: number;

@@ -373,7 +373,10 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
 
           {selectedModel && (
             <>
-              <Tooltip content="Test model availability with a lightweight probe" relationship="label">
+              <Tooltip
+                content="Test model availability with a lightweight probe"
+                relationship="label"
+              >
                 <Button
                   appearance="subtle"
                   icon={<FlashCheckmark20Regular />}
@@ -383,8 +386,11 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
                   Test
                 </Button>
               </Tooltip>
-              
-              <Tooltip content="Explain this model choice and compare with recommendations" relationship="label">
+
+              <Tooltip
+                content="Explain this model choice and compare with recommendations"
+                relationship="label"
+              >
                 <Button
                   appearance="subtle"
                   icon={<Info20Regular />}
@@ -573,21 +579,29 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
               {isLoadingExplanation ? (
                 <Spinner label="Loading explanation..." />
               ) : explanation ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
+                <div
+                  style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}
+                >
                   <div>
-                    <Text weight="semibold" style={{ display: 'block' }}>Your Selection</Text>
+                    <Text weight="semibold" style={{ display: 'block' }}>
+                      Your Selection
+                    </Text>
                     <Text style={{ display: 'block' }}>
-                      {explanation.selectedModel.modelId} - Context: {explanation.selectedModel.contextWindow.toLocaleString()} tokens, 
-                      Max output: {explanation.selectedModel.maxTokens.toLocaleString()} tokens
+                      {explanation.selectedModel.modelId} - Context:{' '}
+                      {explanation.selectedModel.contextWindow.toLocaleString()} tokens, Max output:{' '}
+                      {explanation.selectedModel.maxTokens.toLocaleString()} tokens
                     </Text>
                   </div>
 
                   {explanation.recommendedModel && !explanation.selectedIsRecommended && (
                     <div>
-                      <Text weight="semibold" style={{ display: 'block' }}>Recommended Model</Text>
+                      <Text weight="semibold" style={{ display: 'block' }}>
+                        Recommended Model
+                      </Text>
                       <Text style={{ display: 'block' }}>
-                        {explanation.recommendedModel.modelId} - Context: {explanation.recommendedModel.contextWindow.toLocaleString()} tokens, 
-                        Max output: {explanation.recommendedModel.maxTokens.toLocaleString()} tokens
+                        {explanation.recommendedModel.modelId} - Context:{' '}
+                        {explanation.recommendedModel.contextWindow.toLocaleString()} tokens, Max
+                        output: {explanation.recommendedModel.maxTokens.toLocaleString()} tokens
                       </Text>
                     </div>
                   )}
@@ -601,7 +615,10 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
                   )}
 
                   <div>
-                    <Text weight="semibold" style={{ display: 'block', marginBottom: tokens.spacingVerticalXS }}>
+                    <Text
+                      weight="semibold"
+                      style={{ display: 'block', marginBottom: tokens.spacingVerticalXS }}
+                    >
                       Reasoning
                     </Text>
                     <Text>{explanation.reasoning}</Text>
@@ -609,7 +626,10 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
 
                   {explanation.tradeoffs.length > 0 && (
                     <div>
-                      <Text weight="semibold" style={{ display: 'block', marginBottom: tokens.spacingVerticalXS }}>
+                      <Text
+                        weight="semibold"
+                        style={{ display: 'block', marginBottom: tokens.spacingVerticalXS }}
+                      >
                         Tradeoffs
                       </Text>
                       <ul style={{ margin: 0, paddingLeft: tokens.spacingHorizontalL }}>
@@ -624,7 +644,10 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
 
                   {explanation.suggestions.length > 0 && (
                     <div>
-                      <Text weight="semibold" style={{ display: 'block', marginBottom: tokens.spacingVerticalXS }}>
+                      <Text
+                        weight="semibold"
+                        style={{ display: 'block', marginBottom: tokens.spacingVerticalXS }}
+                      >
                         Suggestions
                       </Text>
                       <ul style={{ margin: 0, paddingLeft: tokens.spacingHorizontalL }}>
@@ -642,10 +665,7 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
               )}
             </DialogContent>
             <DialogActions>
-              <Button
-                appearance="primary"
-                onClick={() => setShowExplanationDialog(false)}
-              >
+              <Button appearance="primary" onClick={() => setShowExplanationDialog(false)}>
                 Close
               </Button>
             </DialogActions>

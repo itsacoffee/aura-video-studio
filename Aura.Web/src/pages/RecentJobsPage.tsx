@@ -358,7 +358,7 @@ export function RecentJobsPage() {
                   {job.status === 'Done' && (
                     <Button
                       appearance="primary"
-                      onClick={() => (navigateToRoute(`/editor/${job.id}`))}
+                      onClick={() => navigateToRoute(`/editor/${job.id}`)}
                     >
                       Edit Video
                     </Button>

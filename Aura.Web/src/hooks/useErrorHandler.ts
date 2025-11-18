@@ -1,6 +1,10 @@
 import { useCallback, useState } from 'react';
 import type { ErrorInfo } from '../components/Errors/ErrorDialog';
-import { errorHandlingService, type ErrorContext, type ErrorHandlingOptions } from '../services/errorHandlingService';
+import {
+  errorHandlingService,
+  type ErrorContext,
+  type ErrorHandlingOptions,
+} from '../services/errorHandlingService';
 
 /**
  * Hook for handling errors with user feedback
@@ -17,7 +21,7 @@ export function useErrorHandler() {
     ) => {
       const result = await errorHandlingService.handleError(error, context, options);
 
-      if (result.errorInfo && (options?.showDialog !== false)) {
+      if (result.errorInfo && options?.showDialog !== false) {
         setCurrentError(result.errorInfo);
         setShowErrorDialog(true);
       }

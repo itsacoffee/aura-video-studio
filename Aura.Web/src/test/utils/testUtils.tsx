@@ -30,7 +30,7 @@ export function createTestQueryClient(): QueryClient {
       },
     },
     logger: {
-      log: console.log,
+      log: () => {}, // Silence logs in tests
       warn: console.warn,
       error: () => {}, // Silence errors in tests
     },
@@ -39,12 +39,12 @@ export function createTestQueryClient(): QueryClient {
 
 /**
  * Custom render method that includes common providers
- * 
+ *
  * @example
  * ```tsx
  * const { getByText } = renderWithProviders(<MyComponent />);
  * ```
- * 
+ *
  * @example with custom query client
  * ```tsx
  * const queryClient = createTestQueryClient();
@@ -68,11 +68,7 @@ export function renderWithProviders(
 
     // Wrap with QueryClientProvider if requested
     if (withQueryClient) {
-      content = (
-        <QueryClientProvider client={testQueryClient}>
-          {content}
-        </QueryClientProvider>
-      );
+      content = <QueryClientProvider client={testQueryClient}>{content}</QueryClientProvider>;
     }
 
     // Wrap with Router if requested
@@ -89,7 +85,7 @@ export function renderWithProviders(
 
 /**
  * Wait for a condition to be true
- * 
+ *
  * @example
  * ```tsx
  * await waitFor(() => expect(getByText('Loaded')).toBeInTheDocument());
@@ -105,7 +101,7 @@ export { default as userEvent } from '@testing-library/user-event';
 /**
  * Mock functions and spies
  */
-export const createMockFn = <T extends (...args: any[]) => any>(): jest.Mock<
+export const createMockFn = <T extends (...args: unknown[]) => unknown>(): jest.Mock<
   ReturnType<T>,
   Parameters<T>
 > => {
@@ -211,7 +207,7 @@ export function setupMockIntersectionObserver(): void {
       return [];
     }
     unobserve() {}
-  } as any;
+  } as unknown as IntersectionObserver;
 }
 
 /**
@@ -244,7 +240,9 @@ export function createMockResponse<T>(
     blob: async () => new Blob([JSON.stringify(data)]),
     arrayBuffer: async () => new ArrayBuffer(0),
     formData: async () => new FormData(),
-    clone: function() { return this; },
+    clone: function () {
+      return this;
+    },
     body: null,
     bodyUsed: false,
     redirected: false,

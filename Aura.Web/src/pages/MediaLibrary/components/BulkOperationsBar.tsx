@@ -66,8 +66,7 @@ export const BulkOperationsBar: React.FC<BulkOperationsBarProps> = ({
   const [inputValue, setInputValue] = useState('');
 
   const bulkMutation = useMutation({
-    mutationFn: (request: BulkMediaOperationRequest) =>
-      mediaLibraryApi.bulkOperation(request),
+    mutationFn: (request: BulkMediaOperationRequest) => mediaLibraryApi.bulkOperation(request),
     onSuccess: () => {
       setShowDialog(false);
       onComplete();
@@ -148,11 +147,7 @@ export const BulkOperationsBar: React.FC<BulkOperationsBarProps> = ({
             Remove Tags
           </Button>
 
-          <Button
-            icon={<Delete24Regular />}
-            appearance="subtle"
-            onClick={handleDelete}
-          >
+          <Button icon={<Delete24Regular />} appearance="subtle" onClick={handleDelete}>
             Delete
           </Button>
 
@@ -165,9 +160,7 @@ export const BulkOperationsBar: React.FC<BulkOperationsBarProps> = ({
       <Dialog open={showDialog} onOpenChange={(_, data) => setShowDialog(data.open)}>
         <DialogSurface>
           <DialogBody>
-            <DialogTitle>
-              {dialogType === 'addTags' ? 'Add Tags' : 'Remove Tags'}
-            </DialogTitle>
+            <DialogTitle>{dialogType === 'addTags' ? 'Add Tags' : 'Remove Tags'}</DialogTitle>
             <DialogContent>
               <Input
                 placeholder="Enter tags (comma-separated)"
@@ -181,9 +174,7 @@ export const BulkOperationsBar: React.FC<BulkOperationsBarProps> = ({
               </Button>
               <Button
                 appearance="primary"
-                onClick={
-                  dialogType === 'addTags' ? handleAddTags : handleRemoveTags
-                }
+                onClick={dialogType === 'addTags' ? handleAddTags : handleRemoveTags}
                 disabled={!inputValue}
               >
                 {dialogType === 'addTags' ? 'Add' : 'Remove'}

@@ -162,7 +162,8 @@ const EXAMPLE_PROMPTS = [
   {
     videoType: 'explainer' as const,
     title: 'Explainer: Crypto Basics',
-    prompt: 'Understanding cryptocurrency and blockchain technology - a beginner-friendly guide to digital currencies',
+    prompt:
+      'Understanding cryptocurrency and blockchain technology - a beginner-friendly guide to digital currencies',
     category: 'Education',
   },
 ];
@@ -490,12 +491,12 @@ export const BriefInput: FC<BriefInputProps> = ({
 
       <div>
         <Title3>Need Inspiration? Try These Examples</Title3>
-        <Text 
-          size={300} 
-          style={{ 
+        <Text
+          size={300}
+          style={{
             marginTop: tokens.spacingVerticalXS,
             marginBottom: tokens.spacingVerticalM,
-            color: tokens.colorNeutralForeground3 
+            color: tokens.colorNeutralForeground3,
           }}
         >
           Click any template to get started quickly
@@ -507,11 +508,7 @@ export const BriefInput: FC<BriefInputProps> = ({
               className={styles.exampleCard}
               onClick={() => handleExampleClick(example)}
             >
-              <Badge 
-                appearance="tint" 
-                color="informative"
-                className={styles.categoryBadge}
-              >
+              <Badge appearance="tint" color="informative" className={styles.categoryBadge}>
                 {example.category}
               </Badge>
               <Text weight="semibold" size={300}>

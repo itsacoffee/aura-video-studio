@@ -1,6 +1,6 @@
 /**
  * Video Effects System Components
- * 
+ *
  * A comprehensive suite of components for applying and managing
  * professional video effects, transitions, and filters.
  */
@@ -21,5 +21,5 @@ export type {
   EffectStack,
   ApplyEffectsRequest,
   ApplyEffectsResponse,
-  CacheStatistics
+  CacheStatistics,
 } from '../../types/videoEffects';

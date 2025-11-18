@@ -1,6 +1,6 @@
 /**
  * Service for tracking and managing overall configuration status
- * 
+ *
  * This service provides a centralized way to check if the application
  * is properly configured and ready for video generation.
  */
@@ -75,18 +75,18 @@ class ConfigurationStatusService {
    */
   async getStatus(forceRefresh = false): Promise<ConfigurationStatus> {
     const now = Date.now();
-    
-    if (!forceRefresh && this.cachedStatus && (now - this.lastFetch) < REFRESH_INTERVAL) {
+
+    if (!forceRefresh && this.cachedStatus && now - this.lastFetch < REFRESH_INTERVAL) {
       return this.cachedStatus;
     }
 
     try {
       // Check localStorage for quick status
       const localStatus = this.getLocalStatus();
-      
+
       // Fetch fresh status from backend
       const backendStatus = await this.fetchBackendStatus();
-      
+
       // Merge and prioritize backend data
       const status: ConfigurationStatus = {
         ...localStatus,
@@ -122,7 +122,7 @@ class ConfigurationStatusService {
   async runSystemChecks(): Promise<SystemCheckResult> {
     try {
       const response = await fetch(apiUrl('/api/health/system-check'));
-      
+
       if (!response.ok) {
         throw new Error(`System check failed: ${response.statusText}`);
       }
@@ -149,7 +149,9 @@ class ConfigurationStatusService {
   /**
    * Test all configured providers
    */
-  async testProviders(): Promise<Record<string, { success: boolean; message: string; responseTimeMs: number }>> {
+  async testProviders(): Promise<
+    Record<string, { success: boolean; message: string; responseTimeMs: number }>
+  > {
     try {
       const response = await fetch(apiUrl('/api/provider-profiles/test-all'), {
         method: 'POST',
@@ -175,10 +177,15 @@ class ConfigurationStatusService {
   /**
    * Check if FFmpeg is installed and working
    */
-  async checkFFmpeg(): Promise<{ installed: boolean; version?: string; path?: string; error?: string }> {
+  async checkFFmpeg(): Promise<{
+    installed: boolean;
+    version?: string;
+    path?: string;
+    error?: string;
+  }> {
     try {
       const response = await fetch(apiUrl('/api/ffmpeg/status'));
-      
+
       if (!response.ok) {
         return { installed: false, error: `Check failed: ${response.statusText}` };
       }
@@ -191,9 +198,9 @@ class ConfigurationStatusService {
         error: data.error,
       };
     } catch (error) {
-      return { 
-        installed: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+      return {
+        installed: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
   }
@@ -203,10 +210,10 @@ class ConfigurationStatusService {
    */
   subscribe(listener: (status: ConfigurationStatus) => void): () => void {
     this.listeners.push(listener);
-    
+
     // Return unsubscribe function
     return () => {
-      this.listeners = this.listeners.filter(l => l !== listener);
+      this.listeners = this.listeners.filter((l) => l !== listener);
     };
   }
 
@@ -217,7 +224,7 @@ class ConfigurationStatusService {
     const status = await this.getStatus(true);
     status.isConfigured = true;
     status.lastChecked = new Date().toISOString();
-    
+
     this.saveLocalStatus(status);
     this.notifyListeners(status);
   }
@@ -235,10 +242,14 @@ class ConfigurationStatusService {
   /**
    * Check disk space availability
    */
-  async checkDiskSpace(path?: string): Promise<{ available: number; total: number; unit: 'GB'; sufficient: boolean }> {
+  async checkDiskSpace(
+    path?: string
+  ): Promise<{ available: number; total: number; unit: 'GB'; sufficient: boolean }> {
     try {
-      const response = await fetch(apiUrl(`/api/system/disk-space${path ? `?path=${encodeURIComponent(path)}` : ''}`));
-      
+      const response = await fetch(
+        apiUrl(`/api/system/disk-space${path ? `?path=${encodeURIComponent(path)}` : ''}`)
+      );
+
       if (!response.ok) {
         throw new Error(`Disk space check failed: ${response.statusText}`);
       }
@@ -260,7 +271,7 @@ class ConfigurationStatusService {
   private async fetchBackendStatus(): Promise<Partial<ConfigurationStatus>> {
     try {
       const response = await fetch(apiUrl('/api/setup/configuration-status'));
-      
+
       if (!response.ok) {
         if (response.status === 404) {
           // Endpoint doesn't exist yet, build status from individual checks
@@ -324,7 +335,8 @@ class ConfigurationStatusService {
       issues.push({
         severity: 'error',
         code: 'NO_PROVIDER',
-        message: 'No AI provider configured. Configure at least one provider to generate video scripts.',
+        message:
+          'No AI provider configured. Configure at least one provider to generate video scripts.',
         actionLabel: 'Configure Providers',
         actionUrl: '/setup',
       });
@@ -334,7 +346,8 @@ class ConfigurationStatusService {
       issues.push({
         severity: 'error',
         code: 'NO_FFMPEG',
-        message: ffmpegResult.error || 'FFmpeg not detected. FFmpeg is required for video rendering.',
+        message:
+          ffmpegResult.error || 'FFmpeg not detected. FFmpeg is required for video rendering.',
         actionLabel: 'Install FFmpeg',
         actionUrl: '/setup',
       });
@@ -409,7 +422,7 @@ class ConfigurationStatusService {
   }
 
   private notifyListeners(status: ConfigurationStatus): void {
-    this.listeners.forEach(listener => {
+    this.listeners.forEach((listener) => {
       try {
         listener(status);
       } catch (error) {

@@ -9,7 +9,6 @@ import { lazy } from 'react';
 import { HashRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { LazyRoute } from '../components/LazyRoute';
-
 // Mock loggingService
 vi.mock('../services/loggingService', () => ({
   loggingService: {

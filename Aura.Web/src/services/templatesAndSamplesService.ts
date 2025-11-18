@@ -1,6 +1,6 @@
 /**
  * Service for managing video templates, sample projects, and example prompts
- * 
+ *
  * This service provides users with starter templates and examples during
  * the first-run wizard to help them get started quickly.
  */
@@ -56,18 +56,21 @@ export function getVideoTemplates(): VideoTemplate[] {
     {
       id: 'youtube-tutorial',
       name: 'YouTube Tutorial',
-      description: 'Create educational tutorial videos for YouTube with clear structure and engaging visuals',
+      description:
+        'Create educational tutorial videos for YouTube with clear structure and engaging visuals',
       category: 'tutorial',
       duration: 180, // 3 minutes
       difficulty: 'beginner',
-      promptExample: 'Create a tutorial video about how to make homemade pasta, including ingredients, step-by-step instructions, and cooking tips',
+      promptExample:
+        'Create a tutorial video about how to make homemade pasta, including ingredients, step-by-step instructions, and cooking tips',
       tags: ['youtube', 'education', 'tutorial', 'how-to'],
       estimatedTime: '2-3 minutes',
     },
     {
       id: 'social-shorts',
       name: 'Social Media Shorts',
-      description: 'Quick, engaging short-form content perfect for TikTok, Instagram Reels, and YouTube Shorts',
+      description:
+        'Quick, engaging short-form content perfect for TikTok, Instagram Reels, and YouTube Shorts',
       category: 'social-media',
       duration: 60, // 1 minute
       difficulty: 'beginner',
@@ -82,7 +85,8 @@ export function getVideoTemplates(): VideoTemplate[] {
       category: 'marketing',
       duration: 120, // 2 minutes
       difficulty: 'intermediate',
-      promptExample: 'Create a product demo video for a new smart home device, highlighting its key features and ease of use',
+      promptExample:
+        'Create a product demo video for a new smart home device, highlighting its key features and ease of use',
       tags: ['marketing', 'product', 'demo', 'commercial'],
       estimatedTime: '3-4 minutes',
     },
@@ -93,7 +97,8 @@ export function getVideoTemplates(): VideoTemplate[] {
       category: 'educational',
       duration: 240, // 4 minutes
       difficulty: 'intermediate',
-      promptExample: 'Explain how photosynthesis works in plants, using simple analogies and visual examples',
+      promptExample:
+        'Explain how photosynthesis works in plants, using simple analogies and visual examples',
       tags: ['education', 'explainer', 'science', 'learning'],
       estimatedTime: '3-5 minutes',
     },
@@ -104,7 +109,8 @@ export function getVideoTemplates(): VideoTemplate[] {
       category: 'news',
       duration: 150, // 2.5 minutes
       difficulty: 'intermediate',
-      promptExample: 'Create a news summary video about recent developments in renewable energy technology',
+      promptExample:
+        'Create a news summary video about recent developments in renewable energy technology',
       tags: ['news', 'current-events', 'journalism', 'informative'],
       estimatedTime: '2-3 minutes',
     },
@@ -115,7 +121,8 @@ export function getVideoTemplates(): VideoTemplate[] {
       category: 'storytelling',
       duration: 300, // 5 minutes
       difficulty: 'advanced',
-      promptExample: 'Tell the inspiring story of how a small startup became a successful company through innovation and perseverance',
+      promptExample:
+        'Tell the inspiring story of how a small startup became a successful company through innovation and perseverance',
       tags: ['storytelling', 'narrative', 'emotional', 'journey'],
       estimatedTime: '5-7 minutes',
     },
@@ -137,7 +144,8 @@ export function getVideoTemplates(): VideoTemplate[] {
       category: 'educational',
       duration: 210, // 3.5 minutes
       difficulty: 'intermediate',
-      promptExample: 'Compare electric cars vs hybrid cars, covering cost, performance, and environmental impact',
+      promptExample:
+        'Compare electric cars vs hybrid cars, covering cost, performance, and environmental impact',
       tags: ['comparison', 'review', 'vs', 'analysis'],
       estimatedTime: '3-4 minutes',
     },
@@ -149,15 +157,17 @@ export function getVideoTemplates(): VideoTemplate[] {
  */
 export function getSampleProjects(): SampleProject[] {
   const templates = getVideoTemplates();
-  
+
   return [
     {
       id: 'sample-coffee-tutorial',
       name: 'How to Make Perfect Coffee',
       description: 'A beginner-friendly tutorial demonstrating the sample project workflow',
       template: templates.find((t) => t.id === 'youtube-tutorial')!,
-      prompt: 'Create a 3-minute tutorial video about how to make the perfect cup of coffee at home. Include equipment needed, step-by-step brewing instructions, and tips for choosing beans.',
-      expectedOutput: '3-minute educational video with introduction, main content sections, and conclusion',
+      prompt:
+        'Create a 3-minute tutorial video about how to make the perfect cup of coffee at home. Include equipment needed, step-by-step brewing instructions, and tips for choosing beans.',
+      expectedOutput:
+        '3-minute educational video with introduction, main content sections, and conclusion',
       learningPoints: [
         'How to write effective prompts',
         'Understanding video structure',
@@ -170,7 +180,8 @@ export function getSampleProjects(): SampleProject[] {
       name: '5 Morning Routine Hacks',
       description: 'Quick social media content example',
       template: templates.find((t) => t.id === 'social-shorts')!,
-      prompt: 'Create a 60-second video about 5 morning routine hacks to start your day productively',
+      prompt:
+        'Create a 60-second video about 5 morning routine hacks to start your day productively',
       expectedOutput: 'Fast-paced 1-minute video with quick transitions between tips',
       learningPoints: [
         'Creating engaging short-form content',
@@ -184,7 +195,8 @@ export function getSampleProjects(): SampleProject[] {
       name: 'Why Is the Sky Blue?',
       description: 'Educational explainer video sample',
       template: templates.find((t) => t.id === 'educational-explainer')!,
-      prompt: 'Explain why the sky appears blue during the day in a way that a 10-year-old could understand. Use simple analogies and avoid complex scientific jargon.',
+      prompt:
+        'Explain why the sky appears blue during the day in a way that a 10-year-old could understand. Use simple analogies and avoid complex scientific jargon.',
       expectedOutput: '2-3 minute explainer with clear visual descriptions and simple language',
       learningPoints: [
         'Simplifying complex topics',
@@ -204,7 +216,8 @@ export function getExamplePrompts(): ExamplePrompt[] {
     {
       id: 'prompt-cooking-basic',
       title: 'Basic Cooking Tutorial',
-      prompt: 'Create a video showing how to make scrambled eggs, including ingredient prep, cooking technique, and plating tips',
+      prompt:
+        'Create a video showing how to make scrambled eggs, including ingredient prep, cooking technique, and plating tips',
       category: 'tutorial',
       tags: ['cooking', 'food', 'beginner', 'how-to'],
       expectedDuration: 120,
@@ -217,7 +230,8 @@ export function getExamplePrompts(): ExamplePrompt[] {
     {
       id: 'prompt-tech-review',
       title: 'Tech Product Review',
-      prompt: 'Review the latest smartphone, covering design, performance, camera quality, battery life, and value for money',
+      prompt:
+        'Review the latest smartphone, covering design, performance, camera quality, battery life, and value for money',
       category: 'educational',
       tags: ['tech', 'review', 'gadgets', 'analysis'],
       expectedDuration: 240,
@@ -231,7 +245,8 @@ export function getExamplePrompts(): ExamplePrompt[] {
     {
       id: 'prompt-travel-vlog',
       title: 'Travel Destination Guide',
-      prompt: 'Create a travel guide video for Paris, highlighting top attractions, local food, transportation tips, and budget recommendations',
+      prompt:
+        'Create a travel guide video for Paris, highlighting top attractions, local food, transportation tips, and budget recommendations',
       category: 'entertainment',
       tags: ['travel', 'guide', 'tourism', 'lifestyle'],
       expectedDuration: 300,
@@ -245,7 +260,8 @@ export function getExamplePrompts(): ExamplePrompt[] {
     {
       id: 'prompt-science-explainer',
       title: 'Science Concept Explanation',
-      prompt: 'Explain how solar panels convert sunlight into electricity, using simple language and everyday analogies',
+      prompt:
+        'Explain how solar panels convert sunlight into electricity, using simple language and everyday analogies',
       category: 'educational',
       tags: ['science', 'technology', 'energy', 'explainer'],
       expectedDuration: 180,
@@ -259,7 +275,8 @@ export function getExamplePrompts(): ExamplePrompt[] {
     {
       id: 'prompt-business-tips',
       title: 'Business Advice Video',
-      prompt: 'Share 7 essential tips for entrepreneurs starting their first business, covering planning, funding, marketing, and growth',
+      prompt:
+        'Share 7 essential tips for entrepreneurs starting their first business, covering planning, funding, marketing, and growth',
       category: 'educational',
       tags: ['business', 'entrepreneurship', 'tips', 'advice'],
       expectedDuration: 240,
@@ -273,7 +290,8 @@ export function getExamplePrompts(): ExamplePrompt[] {
     {
       id: 'prompt-fitness-routine',
       title: 'Fitness Workout Guide',
-      prompt: 'Create a 15-minute home workout routine for beginners, with no equipment needed. Include warmup, exercises, and cooldown',
+      prompt:
+        'Create a 15-minute home workout routine for beginners, with no equipment needed. Include warmup, exercises, and cooldown',
       category: 'tutorial',
       tags: ['fitness', 'health', 'workout', 'exercise'],
       expectedDuration: 180,
@@ -301,7 +319,8 @@ export function getExamplePrompts(): ExamplePrompt[] {
     {
       id: 'prompt-art-tutorial',
       title: 'Art Technique Tutorial',
-      prompt: 'Teach beginners how to draw a realistic eye, step by step, with shading and detail techniques',
+      prompt:
+        'Teach beginners how to draw a realistic eye, step by step, with shading and detail techniques',
       category: 'tutorial',
       tags: ['art', 'drawing', 'creative', 'how-to'],
       expectedDuration: 300,
@@ -325,7 +344,9 @@ export function getTemplatesByCategory(category: TemplateCategory): VideoTemplat
 /**
  * Get templates by difficulty
  */
-export function getTemplatesByDifficulty(difficulty: 'beginner' | 'intermediate' | 'advanced'): VideoTemplate[] {
+export function getTemplatesByDifficulty(
+  difficulty: 'beginner' | 'intermediate' | 'advanced'
+): VideoTemplate[] {
   return getVideoTemplates().filter((t) => t.difficulty === difficulty);
 }
 
@@ -421,7 +442,8 @@ export function getTutorialGuides(): TutorialGuide[] {
       steps: [
         {
           title: 'Write Your Prompt',
-          description: 'Start by describing the video you want to create. Be specific about the topic, style, and duration.',
+          description:
+            'Start by describing the video you want to create. Be specific about the topic, style, and duration.',
           duration: '2 min',
         },
         {
@@ -431,7 +453,8 @@ export function getTutorialGuides(): TutorialGuide[] {
         },
         {
           title: 'Generate Script',
-          description: 'Aura will generate a script based on your prompt. Review and edit as needed.',
+          description:
+            'Aura will generate a script based on your prompt. Review and edit as needed.',
           duration: '3 min',
         },
         {
@@ -450,7 +473,8 @@ export function getTutorialGuides(): TutorialGuide[] {
       steps: [
         {
           title: 'Be Specific',
-          description: 'Include details about tone, pace, target audience, and key points to cover.',
+          description:
+            'Include details about tone, pace, target audience, and key points to cover.',
           duration: '3 min',
         },
         {
@@ -479,7 +503,8 @@ export function getTutorialGuides(): TutorialGuide[] {
       steps: [
         {
           title: 'Add Custom Assets',
-          description: 'Import your own images, videos, and audio files to personalize your content.',
+          description:
+            'Import your own images, videos, and audio files to personalize your content.',
           duration: '5 min',
         },
         {

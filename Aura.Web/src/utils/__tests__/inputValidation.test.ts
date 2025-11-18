@@ -247,11 +247,7 @@ describe('inputValidation', () => {
 
   describe('combineValidations', () => {
     it('should combine multiple valid results', () => {
-      const result = combineValidations(
-        { isValid: true },
-        { isValid: true },
-        { isValid: true }
-      );
+      const result = combineValidations({ isValid: true }, { isValid: true }, { isValid: true });
       expect(result.isValid).toBe(true);
     });
 

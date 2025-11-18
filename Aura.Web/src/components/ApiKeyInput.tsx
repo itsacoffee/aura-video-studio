@@ -152,7 +152,13 @@ export function ApiKeyInput({
           <Text className={styles.errorText} size={200}>
             {error}
           </Text>
-          <div style={{ display: 'flex', gap: tokens.spacingHorizontalS, marginTop: tokens.spacingVerticalS }}>
+          <div
+            style={{
+              display: 'flex',
+              gap: tokens.spacingHorizontalS,
+              marginTop: tokens.spacingVerticalS,
+            }}
+          >
             <Button
               appearance="secondary"
               size="small"
@@ -162,11 +168,7 @@ export function ApiKeyInput({
               Test Again
             </Button>
             {onSkipValidation && (
-              <Button
-                appearance="subtle"
-                size="small"
-                onClick={onSkipValidation}
-              >
+              <Button appearance="subtle" size="small" onClick={onSkipValidation}>
                 Skip Validation (Save Anyway)
               </Button>
             )}

@@ -104,11 +104,7 @@ export interface ProgressUpdate {
 /**
  * SSE Event types from backend
  */
-export type SseEventType = 
-  | 'progress' 
-  | 'stage-complete' 
-  | 'done' 
-  | 'error';
+export type SseEventType = 'progress' | 'stage-complete' | 'done' | 'error';
 
 /**
  * SSE Event data structure
@@ -159,14 +155,10 @@ export class VideoGenerationService {
         duration: request.durationMinutes,
       });
 
-      const response = await post<VideoGenerationResponse>(
-        '/api/video/generate',
-        request,
-        {
-          timeout: 60000, // 60 seconds timeout for initial request
-          _skipDeduplication: false, // Allow deduplication to prevent duplicate submissions
-        }
-      );
+      const response = await post<VideoGenerationResponse>('/api/video/generate', request, {
+        timeout: 60000, // 60 seconds timeout for initial request
+        _skipDeduplication: false, // Allow deduplication to prevent duplicate submissions
+      });
 
       this.currentJobId = response.jobId;
 
@@ -237,9 +229,14 @@ export class VideoGenerationService {
     onConnectionStatusChange?: ConnectionStatusCallback
   ): () => void {
     try {
-      loggingService.info('Starting SSE progress stream', 'videoGenerationService', 'streamProgress', {
-        jobId,
-      });
+      loggingService.info(
+        'Starting SSE progress stream',
+        'videoGenerationService',
+        'streamProgress',
+        {
+          jobId,
+        }
+      );
 
       // Clean up existing SSE client if any
       this.stopStreaming();
@@ -295,10 +292,15 @@ export class VideoGenerationService {
       this.sseClient.on('done', (event) => {
         try {
           const data = event.data as SseEventData;
-          loggingService.info('Video generation completed', 'videoGenerationService', 'streamProgress', {
-            jobId: data.jobId,
-            videoUrl: data.videoUrl,
-          });
+          loggingService.info(
+            'Video generation completed',
+            'videoGenerationService',
+            'streamProgress',
+            {
+              jobId: data.jobId,
+              videoUrl: data.videoUrl,
+            }
+          );
 
           onProgress({
             percentage: 100,
@@ -519,9 +521,14 @@ export class VideoGenerationService {
         onProgress
       );
 
-      loggingService.info('Video downloaded successfully', 'videoGenerationService', 'downloadVideo', {
-        jobId,
-      });
+      loggingService.info(
+        'Video downloaded successfully',
+        'videoGenerationService',
+        'downloadVideo',
+        {
+          jobId,
+        }
+      );
     } catch (error) {
       loggingService.error(
         'Failed to download video',
@@ -572,9 +579,14 @@ export class VideoGenerationService {
    */
   async cancelGeneration(jobId: string): Promise<void> {
     try {
-      loggingService.info('Cancelling video generation', 'videoGenerationService', 'cancelGeneration', {
-        jobId,
-      });
+      loggingService.info(
+        'Cancelling video generation',
+        'videoGenerationService',
+        'cancelGeneration',
+        {
+          jobId,
+        }
+      );
 
       await post<{ message: string; jobId: string; correlationId: string }>(
         `/api/video/${jobId}/cancel`,
@@ -589,9 +601,14 @@ export class VideoGenerationService {
         this.stopStreaming();
       }
 
-      loggingService.info('Video generation cancelled', 'videoGenerationService', 'cancelGeneration', {
-        jobId,
-      });
+      loggingService.info(
+        'Video generation cancelled',
+        'videoGenerationService',
+        'cancelGeneration',
+        {
+          jobId,
+        }
+      );
     } catch (error) {
       loggingService.error(
         'Failed to cancel video generation',

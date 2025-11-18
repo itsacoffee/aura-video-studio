@@ -17,7 +17,7 @@ describe('VideoGenerationStore', () => {
   });
 
   it('should start a new job', () => {
-    const { startJob, activeJobs, isGenerating, currentJobId } = useVideoGenerationStore.getState();
+    const { startJob } = useVideoGenerationStore.getState();
 
     startJob('job-1', {
       topic: 'Test Video',
@@ -44,7 +44,7 @@ describe('VideoGenerationStore', () => {
 
     const state = useVideoGenerationStore.getState();
     const job = state.activeJobs.get('job-1');
-    
+
     expect(job?.progress).toBe(50);
     expect(job?.stage).toBe('Processing');
     expect(job?.status).toBe('Running');
@@ -62,7 +62,7 @@ describe('VideoGenerationStore', () => {
     completeJob('job-1', '/path/to/video.mp4');
 
     const state = useVideoGenerationStore.getState();
-    
+
     expect(state.activeJobs.size).toBe(0);
     expect(state.jobHistory.length).toBe(1);
     expect(state.jobHistory[0].status).toBe('Done');
@@ -82,7 +82,7 @@ describe('VideoGenerationStore', () => {
     failJob('job-1', 'Network error');
 
     const state = useVideoGenerationStore.getState();
-    
+
     expect(state.activeJobs.size).toBe(0);
     expect(state.jobHistory.length).toBe(1);
     expect(state.jobHistory[0].status).toBe('Failed');
@@ -101,7 +101,7 @@ describe('VideoGenerationStore', () => {
     cancelJob('job-1');
 
     const state = useVideoGenerationStore.getState();
-    
+
     expect(state.activeJobs.size).toBe(0);
     expect(state.jobHistory.length).toBe(1);
     expect(state.jobHistory[0].status).toBe('Canceled');
@@ -115,7 +115,7 @@ describe('VideoGenerationStore', () => {
     startJob('job-3', { topic: 'Video 3', brief: {}, planSpec: {} });
 
     const state = useVideoGenerationStore.getState();
-    
+
     expect(state.activeJobs.size).toBe(3);
     expect(state.isGenerating).toBe(true);
   });
@@ -130,7 +130,7 @@ describe('VideoGenerationStore', () => {
     }
 
     const state = useVideoGenerationStore.getState();
-    
+
     expect(state.jobHistory.length).toBe(maxHistorySize);
   });
 

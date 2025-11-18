@@ -148,15 +148,17 @@ export const setupApi = {
   /**
    * Save wizard progress for resume capability
    */
-  async saveWizardProgress(request: WizardProgressRequest): Promise<{ success: boolean; message: string; correlationId?: string }> {
+  async saveWizardProgress(
+    request: WizardProgressRequest
+  ): Promise<{ success: boolean; message: string; correlationId?: string }> {
     const config: ExtendedAxiosRequestConfig = {
       _skipCircuitBreaker: true,
     };
-    const response = await apiClient.post<{ success: boolean; message: string; correlationId?: string }>(
-      '/api/setup/wizard/save-progress',
-      request,
-      config
-    );
+    const response = await apiClient.post<{
+      success: boolean;
+      message: string;
+      correlationId?: string;
+    }>('/api/setup/wizard/save-progress', request, config);
     return response.data;
   },
 
@@ -175,30 +177,34 @@ export const setupApi = {
   /**
    * Mark wizard as complete
    */
-  async completeWizard(request: WizardCompleteRequest): Promise<{ success: boolean; message: string; correlationId?: string }> {
+  async completeWizard(
+    request: WizardCompleteRequest
+  ): Promise<{ success: boolean; message: string; correlationId?: string }> {
     const config: ExtendedAxiosRequestConfig = {
       _skipCircuitBreaker: true,
     };
-    const response = await apiClient.post<{ success: boolean; message: string; correlationId?: string }>(
-      '/api/setup/wizard/complete',
-      request,
-      config
-    );
+    const response = await apiClient.post<{
+      success: boolean;
+      message: string;
+      correlationId?: string;
+    }>('/api/setup/wizard/complete', request, config);
     return response.data;
   },
 
   /**
    * Reset wizard state (for testing or re-running)
    */
-  async resetWizard(request: WizardResetRequest): Promise<{ success: boolean; message: string; correlationId?: string }> {
+  async resetWizard(
+    request: WizardResetRequest
+  ): Promise<{ success: boolean; message: string; correlationId?: string }> {
     const config: ExtendedAxiosRequestConfig = {
       _skipCircuitBreaker: true,
     };
-    const response = await apiClient.post<{ success: boolean; message: string; correlationId?: string }>(
-      '/api/setup/wizard/reset',
-      request,
-      config
-    );
+    const response = await apiClient.post<{
+      success: boolean;
+      message: string;
+      correlationId?: string;
+    }>('/api/setup/wizard/reset', request, config);
     return response.data;
   },
 };

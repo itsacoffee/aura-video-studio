@@ -78,7 +78,9 @@ const useStyles = makeStyles({
 });
 
 // Map backend job status to UI status
-const mapJobStatus = (status: string): 'queued' | 'processing' | 'paused' | 'completed' | 'failed' => {
+const mapJobStatus = (
+  status: string
+): 'queued' | 'processing' | 'paused' | 'completed' | 'failed' => {
   switch (status) {
     case 'Pending':
       return 'queued';
@@ -97,12 +99,9 @@ const mapJobStatus = (status: string): 'queued' | 'processing' | 'paused' | 'com
 
 export function ExportQueueManager() {
   const styles = useStyles();
-  
+
   // Use the job queue hook
-  const {
-    jobs: queueJobs,
-    cancelJob,
-  } = useJobQueue();
+  const { jobs: queueJobs, cancelJob } = useJobQueue();
 
   // Map backend jobs to export jobs format
   const jobs = queueJobs.map((job) => ({

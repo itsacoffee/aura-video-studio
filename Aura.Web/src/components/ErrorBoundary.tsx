@@ -37,9 +37,15 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     // Log error to logging service
-    loggingService.error('React Error Boundary caught an error', error, 'ErrorBoundary', 'componentDidCatch', {
-      componentStack: errorInfo.componentStack,
-    });
+    loggingService.error(
+      'React Error Boundary caught an error',
+      error,
+      'ErrorBoundary',
+      'componentDidCatch',
+      {
+        componentStack: errorInfo.componentStack,
+      }
+    );
 
     // Update state with error info
     this.setState({
@@ -67,18 +73,18 @@ export class ErrorBoundary extends Component<Props, State> {
 
       // Default fallback UI
       return (
-        <div style={{
-          padding: '2rem',
-          maxWidth: '600px',
-          margin: '2rem auto',
-          backgroundColor: '#fee',
-          border: '1px solid #fcc',
-          borderRadius: '8px',
-        }}>
-          <h1 style={{ color: '#c00', marginBottom: '1rem' }}>
-            Oops! Something went wrong
-          </h1>
-          
+        <div
+          style={{
+            padding: '2rem',
+            maxWidth: '600px',
+            margin: '2rem auto',
+            backgroundColor: '#fee',
+            border: '1px solid #fcc',
+            borderRadius: '8px',
+          }}
+        >
+          <h1 style={{ color: '#c00', marginBottom: '1rem' }}>Oops! Something went wrong</h1>
+
           <p style={{ marginBottom: '1rem', color: '#666' }}>
             We're sorry for the inconvenience. The application encountered an unexpected error.
           </p>
@@ -88,13 +94,15 @@ export class ErrorBoundary extends Component<Props, State> {
               <summary style={{ cursor: 'pointer', fontWeight: 'bold', marginBottom: '0.5rem' }}>
                 Error Details
               </summary>
-              <pre style={{
-                backgroundColor: '#f5f5f5',
-                padding: '1rem',
-                borderRadius: '4px',
-                overflow: 'auto',
-                fontSize: '0.875rem',
-              }}>
+              <pre
+                style={{
+                  backgroundColor: '#f5f5f5',
+                  padding: '1rem',
+                  borderRadius: '4px',
+                  overflow: 'auto',
+                  fontSize: '0.875rem',
+                }}
+              >
                 {this.state.error.toString()}
                 {this.state.errorInfo && (
                   <>

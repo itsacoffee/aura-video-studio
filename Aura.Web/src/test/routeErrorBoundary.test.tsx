@@ -6,7 +6,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { RouteErrorBoundary } from '../components/ErrorBoundary/RouteErrorBoundary';
-
 // Mock loggingService BEFORE importing component
 vi.mock('../services/loggingService', () => ({
   loggingService: {
@@ -17,7 +16,6 @@ vi.mock('../services/loggingService', () => ({
 }));
 
 import { loggingService } from '../services/loggingService';
-
 // Component that throws an error
 const ThrowError = ({ error }: { error?: string }) => {
   throw new Error(error || 'Test error');

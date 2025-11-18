@@ -1,6 +1,6 @@
 /**
  * Configuration Persistence Utilities
- * 
+ *
  * Handles saving, loading, and backing up configuration data
  */
 
@@ -60,7 +60,11 @@ export function createConfigurationBackup(
     // Add to history
     addToConfigurationHistory(backup);
 
-    logger.info('Configuration backup created successfully', 'configurationPersistence', 'createBackup');
+    logger.info(
+      'Configuration backup created successfully',
+      'configurationPersistence',
+      'createBackup'
+    );
   } catch (error) {
     logger.error(
       'Failed to create configuration backup',
@@ -123,7 +127,7 @@ export function getConfigurationHistory(): ConfigurationBackup[] {
 function addToConfigurationHistory(backup: ConfigurationBackup): void {
   try {
     const history = getConfigurationHistory();
-    
+
     // Add new entry
     history.unshift(backup);
 
@@ -178,7 +182,11 @@ export function importConfiguration(json: string): ConfigurationExport | null {
       throw new Error('Invalid configuration format');
     }
 
-    logger.info('Configuration imported successfully', 'configurationPersistence', 'importConfiguration');
+    logger.info(
+      'Configuration imported successfully',
+      'configurationPersistence',
+      'importConfiguration'
+    );
     return data;
   } catch (error) {
     logger.error(
@@ -201,10 +209,16 @@ export function downloadConfigurationFile(
   settings: Record<string, unknown>,
   includeSecrets = false
 ): void {
-  const json = exportConfiguration(providersConfig, workspaceConfig, ffmpegConfig, settings, includeSecrets);
+  const json = exportConfiguration(
+    providersConfig,
+    workspaceConfig,
+    ffmpegConfig,
+    settings,
+    includeSecrets
+  );
   const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
-  
+
   const a = document.createElement('a');
   a.href = url;
   a.download = `aura-config-${new Date().toISOString().split('T')[0]}.json`;
@@ -225,14 +239,18 @@ function maskSecrets(config: Record<string, unknown>): Record<string, unknown> {
   for (const [key, value] of Object.entries(config)) {
     if (typeof value === 'object' && value !== null) {
       masked[key] = maskSecrets(value as Record<string, unknown>);
-    } else if (typeof value === 'string' && (
-      key.toLowerCase().includes('key') ||
-      key.toLowerCase().includes('secret') ||
-      key.toLowerCase().includes('password') ||
-      key.toLowerCase().includes('token')
-    )) {
+    } else if (
+      typeof value === 'string' &&
+      (key.toLowerCase().includes('key') ||
+        key.toLowerCase().includes('secret') ||
+        key.toLowerCase().includes('password') ||
+        key.toLowerCase().includes('token'))
+    ) {
       // Mask sensitive values
-      masked[key] = value.length > 8 ? `${value.substring(0, 4)}...${value.substring(value.length - 4)}` : '***';
+      masked[key] =
+        value.length > 8
+          ? `${value.substring(0, 4)}...${value.substring(value.length - 4)}`
+          : '***';
     } else {
       masked[key] = value;
     }

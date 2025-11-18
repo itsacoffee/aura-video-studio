@@ -7,7 +7,6 @@
 import { render, screen } from '@testing-library/react';
 import { HashRouter, Route, Routes } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-
 // Mock loggingService BEFORE importing NotFoundPage
 vi.mock('../services/loggingService', () => ({
   loggingService: {

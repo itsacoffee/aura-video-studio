@@ -369,7 +369,10 @@ export const typedApiClient = new TypedApiClient({
 // Export aliases for backwards compatibility
 export const typedClient = typedApiClient;
 export const apiClient = typedApiClient;
-export const typedFetch = <T = any>(urlOrConfig: string | AxiosRequestConfig, config?: AxiosRequestConfig): Promise<T> => {
+export const typedFetch = <T = any>(
+  urlOrConfig: string | AxiosRequestConfig,
+  config?: AxiosRequestConfig
+): Promise<T> => {
   if (typeof urlOrConfig === 'string') {
     return typedApiClient.get<T>(urlOrConfig, config);
   } else {

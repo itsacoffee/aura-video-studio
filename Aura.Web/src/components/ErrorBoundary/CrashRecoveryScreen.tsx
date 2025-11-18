@@ -92,10 +92,10 @@ export function CrashRecoveryScreen({ onRecovered }: CrashRecoveryScreenProps) {
 
   const handleSafeMode = () => {
     loggingService.info('User entering safe mode', 'CrashRecoveryScreen', 'handleSafeMode');
-    
+
     // Reset crash counter
     crashRecoveryService.resetCrashCounter();
-    
+
     // Navigate to safe home page
     navigate('/', { replace: true });
     onRecovered();
@@ -144,10 +144,10 @@ export function CrashRecoveryScreen({ onRecovered }: CrashRecoveryScreenProps) {
       'CrashRecoveryScreen',
       'handleRestoreAutosave'
     );
-    
+
     // Reset crash counter
     crashRecoveryService.resetCrashCounter();
-    
+
     // Reload to trigger autosave recovery
     window.location.reload();
   };

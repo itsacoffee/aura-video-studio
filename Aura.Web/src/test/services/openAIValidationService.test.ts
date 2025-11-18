@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { 
-  getStatusDisplayText, 
+import {
+  getStatusDisplayText,
   getStatusAppearance,
-  formatElapsedTime
+  formatElapsedTime,
 } from '../../services/openAIValidationService';
 
 describe('openAIValidationService', () => {

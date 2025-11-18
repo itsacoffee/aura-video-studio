@@ -5,43 +5,47 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { JobQueueItem, QueueStatistics, QueueConfiguration } from '../services/jobQueueService';
+import type {
+  JobQueueItem,
+  QueueStatistics,
+  QueueConfiguration,
+} from '../services/jobQueueService';
 
 export interface JobQueueState {
   // Jobs
   jobs: JobQueueItem[];
   activeJobIds: Set<string>;
-  
+
   // Statistics
   statistics: QueueStatistics | null;
-  
+
   // Configuration
   configuration: QueueConfiguration | null;
-  
+
   // UI State
   isConnected: boolean;
   isLoadingJobs: boolean;
   error: string | null;
-  
+
   // Filters
   statusFilter: string | null;
-  
+
   // Actions
   setJobs: (jobs: JobQueueItem[]) => void;
   addJob: (job: JobQueueItem) => void;
   updateJob: (jobId: string, updates: Partial<JobQueueItem>) => void;
   removeJob: (jobId: string) => void;
   clearCompletedJobs: () => void;
-  
+
   setStatistics: (stats: QueueStatistics) => void;
   setConfiguration: (config: QueueConfiguration) => void;
-  
+
   setConnected: (connected: boolean) => void;
   setLoadingJobs: (loading: boolean) => void;
   setError: (error: string | null) => void;
-  
+
   setStatusFilter: (status: string | null) => void;
-  
+
   // Computed
   getJobById: (jobId: string) => JobQueueItem | undefined;
   getPendingJobs: () => JobQueueItem[];
@@ -65,21 +69,21 @@ export const useJobQueueStore = create<JobQueueState>()(
 
       // Set all jobs
       setJobs: (jobs) => {
-        set({ 
+        set({
           jobs,
           activeJobIds: new Set(
             jobs
-              .filter(j => j.status === 'Processing' || j.status === 'Pending')
-              .map(j => j.jobId)
-          )
+              .filter((j) => j.status === 'Processing' || j.status === 'Pending')
+              .map((j) => j.jobId)
+          ),
         });
       },
 
       // Add a new job
       addJob: (job) => {
         set((state) => {
-          const existingJobIndex = state.jobs.findIndex(j => j.jobId === job.jobId);
-          
+          const existingJobIndex = state.jobs.findIndex((j) => j.jobId === job.jobId);
+
           if (existingJobIndex !== -1) {
             // Update existing job
             const newJobs = [...state.jobs];
@@ -95,7 +99,7 @@ export const useJobQueueStore = create<JobQueueState>()(
       // Update a job
       updateJob: (jobId, updates) => {
         set((state) => {
-          const jobIndex = state.jobs.findIndex(j => j.jobId === jobId);
+          const jobIndex = state.jobs.findIndex((j) => j.jobId === jobId);
           if (jobIndex === -1) return state;
 
           const updatedJob = { ...state.jobs[jobIndex], ...updates };
@@ -110,9 +114,9 @@ export const useJobQueueStore = create<JobQueueState>()(
             newActiveJobIds.delete(jobId);
           }
 
-          return { 
+          return {
             jobs: newJobs,
-            activeJobIds: newActiveJobIds
+            activeJobIds: newActiveJobIds,
           };
         });
       },
@@ -122,10 +126,10 @@ export const useJobQueueStore = create<JobQueueState>()(
         set((state) => {
           const newActiveJobIds = new Set(state.activeJobIds);
           newActiveJobIds.delete(jobId);
-          
+
           return {
-            jobs: state.jobs.filter(j => j.jobId !== jobId),
-            activeJobIds: newActiveJobIds
+            jobs: state.jobs.filter((j) => j.jobId !== jobId),
+            activeJobIds: newActiveJobIds,
           };
         });
       },
@@ -133,7 +137,7 @@ export const useJobQueueStore = create<JobQueueState>()(
       // Clear completed jobs
       clearCompletedJobs: () => {
         set((state) => ({
-          jobs: state.jobs.filter(j => j.status !== 'Completed')
+          jobs: state.jobs.filter((j) => j.status !== 'Completed'),
         }));
       },
 
@@ -169,27 +173,27 @@ export const useJobQueueStore = create<JobQueueState>()(
 
       // Get job by ID
       getJobById: (jobId) => {
-        return get().jobs.find(j => j.jobId === jobId);
+        return get().jobs.find((j) => j.jobId === jobId);
       },
 
       // Get pending jobs
       getPendingJobs: () => {
-        return get().jobs.filter(j => j.status === 'Pending');
+        return get().jobs.filter((j) => j.status === 'Pending');
       },
 
       // Get processing jobs
       getProcessingJobs: () => {
-        return get().jobs.filter(j => j.status === 'Processing');
+        return get().jobs.filter((j) => j.status === 'Processing');
       },
 
       // Get completed jobs
       getCompletedJobs: () => {
-        return get().jobs.filter(j => j.status === 'Completed');
+        return get().jobs.filter((j) => j.status === 'Completed');
       },
 
       // Get failed jobs
       getFailedJobs: () => {
-        return get().jobs.filter(j => j.status === 'Failed');
+        return get().jobs.filter((j) => j.status === 'Failed');
       },
     }),
     {

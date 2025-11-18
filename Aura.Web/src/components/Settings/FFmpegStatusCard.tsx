@@ -119,13 +119,14 @@ export function FFmpegStatusCard() {
           message: result.message || 'Managed FFmpeg has been installed successfully.',
         });
         // Wait a moment for the backend to finalize
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
         await fetchStatus();
       } else {
         const errorData = await response.json();
         showFailureToast({
           title: 'Installation Failed',
-          message: errorData.message || errorData.detail || 'Failed to install FFmpeg. Please check logs.',
+          message:
+            errorData.message || errorData.detail || 'Failed to install FFmpeg. Please check logs.',
         });
       }
     } catch (error) {

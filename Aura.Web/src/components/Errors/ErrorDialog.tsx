@@ -214,7 +214,9 @@ ${error.stackTrace ? `\nStack Trace:\n${error.stackTrace}` : ''}
     try {
       // Call recovery endpoint
       // This would be implemented in the actual component
-      await new Promise(resolve => setTimeout(resolve, error.automatedRecovery.estimatedTimeSeconds * 1000));
+      await new Promise((resolve) =>
+        setTimeout(resolve, error.automatedRecovery.estimatedTimeSeconds * 1000)
+      );
       onRetry?.();
     } catch (err) {
       console.error('Recovery failed:', err);
@@ -231,7 +233,11 @@ ${error.stackTrace ? `\nStack Trace:\n${error.stackTrace}` : ''}
             <div className={styles.header}>
               {getSeverityIcon()}
               <Text weight="semibold">{error.title}</Text>
-              <Badge className={styles.severityBadge} appearance="filled" color={getSeverityColor()}>
+              <Badge
+                className={styles.severityBadge}
+                appearance="filled"
+                color={getSeverityColor()}
+              >
                 {error.severity.toUpperCase()}
               </Badge>
             </div>
@@ -241,9 +247,7 @@ ${error.stackTrace ? `\nStack Trace:\n${error.stackTrace}` : ''}
             <div className={styles.section}>
               <Text>{error.message}</Text>
               {error.correlationId && (
-                <div className={styles.correlationId}>
-                  Correlation ID: {error.correlationId}
-                </div>
+                <div className={styles.correlationId}>Correlation ID: {error.correlationId}</div>
               )}
             </div>
 
@@ -253,7 +257,13 @@ ${error.stackTrace ? `\nStack Trace:\n${error.stackTrace}` : ''}
                 <div className={styles.sectionTitle}>Automated Recovery Available</div>
                 <div className={styles.actionItem}>
                   <Text>{error.automatedRecovery.description}</Text>
-                  <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginTop: tokens.spacingVerticalXS }}>
+                  <Text
+                    size={200}
+                    style={{
+                      color: tokens.colorNeutralForeground3,
+                      marginTop: tokens.spacingVerticalXS,
+                    }}
+                  >
                     Estimated time: {error.automatedRecovery.estimatedTimeSeconds} seconds
                   </Text>
                 </div>
@@ -280,16 +290,27 @@ ${error.stackTrace ? `\nStack Trace:\n${error.stackTrace}` : ''}
                 <div className={styles.sectionTitle}>Troubleshooting Steps</div>
                 {error.troubleshootingSteps.map((step) => (
                   <div key={step.step} className={styles.troubleshootingStep}>
-                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: tokens.spacingVerticalS }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        marginBottom: tokens.spacingVerticalS,
+                      }}
+                    >
                       <span className={styles.stepNumber}>{step.step}</span>
                       <Text weight="semibold">{step.title}</Text>
                     </div>
-                    <Text size={200} style={{ marginLeft: '36px', marginBottom: tokens.spacingVerticalS }}>
+                    <Text
+                      size={200}
+                      style={{ marginLeft: '36px', marginBottom: tokens.spacingVerticalS }}
+                    >
                       {step.description}
                     </Text>
                     <ul style={{ marginLeft: '36px' }}>
                       {step.actions.map((action, idx) => (
-                        <li key={idx}><Text size={200}>{action}</Text></li>
+                        <li key={idx}>
+                          <Text size={200}>{action}</Text>
+                        </li>
                       ))}
                     </ul>
                   </div>
@@ -304,10 +325,18 @@ ${error.stackTrace ? `\nStack Trace:\n${error.stackTrace}` : ''}
                 <ul className={styles.linksList}>
                   {error.documentationLinks.map((link, index) => (
                     <li key={index} className={styles.linkItem}>
-                      <a href={link.url} target="_blank" rel="noopener noreferrer" style={{ color: tokens.colorBrandForeground1 }}>
+                      <a
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: tokens.colorBrandForeground1 }}
+                      >
                         <Text weight="semibold">{link.title}</Text>
                       </a>
-                      <Text size={200} style={{ display: 'block', marginTop: tokens.spacingVerticalXXS }}>
+                      <Text
+                        size={200}
+                        style={{ display: 'block', marginTop: tokens.spacingVerticalXXS }}
+                      >
                         {link.description}
                       </Text>
                     </li>
@@ -323,23 +352,29 @@ ${error.stackTrace ? `\nStack Trace:\n${error.stackTrace}` : ''}
                   <AccordionHeader>Technical Details</AccordionHeader>
                   <AccordionPanel>
                     {error.errorCode && (
-                      <Text size={200} style={{ display: 'block', marginBottom: tokens.spacingVerticalS }}>
+                      <Text
+                        size={200}
+                        style={{ display: 'block', marginBottom: tokens.spacingVerticalS }}
+                      >
                         <strong>Error Code:</strong> {error.errorCode}
                       </Text>
                     )}
                     {error.technicalDetails && (
-                      <div className={styles.technicalDetails}>
-                        {error.technicalDetails}
-                      </div>
+                      <div className={styles.technicalDetails}>{error.technicalDetails}</div>
                     )}
                     {error.stackTrace && (
                       <>
-                        <Text size={200} weight="semibold" style={{ display: 'block', margin: `${tokens.spacingVerticalM} 0 ${tokens.spacingVerticalS} 0` }}>
+                        <Text
+                          size={200}
+                          weight="semibold"
+                          style={{
+                            display: 'block',
+                            margin: `${tokens.spacingVerticalM} 0 ${tokens.spacingVerticalS} 0`,
+                          }}
+                        >
                           Stack Trace:
                         </Text>
-                        <div className={styles.technicalDetails}>
-                          {error.stackTrace}
-                        </div>
+                        <div className={styles.technicalDetails}>{error.stackTrace}</div>
                       </>
                     )}
                   </AccordionPanel>
@@ -348,11 +383,7 @@ ${error.stackTrace ? `\nStack Trace:\n${error.stackTrace}` : ''}
             )}
           </DialogContent>
           <DialogActions>
-            <Button
-              appearance="subtle"
-              icon={<Copy24Regular />}
-              onClick={handleCopyDetails}
-            >
+            <Button appearance="subtle" icon={<Copy24Regular />} onClick={handleCopyDetails}>
               {copySuccess ? 'Copied!' : 'Copy Details'}
             </Button>
             {onExportDiagnostics && (
@@ -375,11 +406,7 @@ ${error.stackTrace ? `\nStack Trace:\n${error.stackTrace}` : ''}
               </Button>
             )}
             {onRetry && error.canRetry && (
-              <Button
-                appearance="primary"
-                icon={<ArrowClockwise24Regular />}
-                onClick={onRetry}
-              >
+              <Button appearance="primary" icon={<ArrowClockwise24Regular />} onClick={onRetry}>
                 Retry
               </Button>
             )}

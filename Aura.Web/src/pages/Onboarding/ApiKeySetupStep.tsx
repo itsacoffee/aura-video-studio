@@ -501,76 +501,76 @@ export function ApiKeySetupStep({
                         keyFormat={provider.keyFormat}
                       />
 
-                    {provider.requiresApiKey === false ? (
-                      <div className={styles.localProviderCard}>
-                        <Text size={200} style={{ marginBottom: tokens.spacingVerticalS }}>
-                          {provider.localSetup?.readyHint ??
-                            'This provider runs locally and does not require an API key.'}
-                        </Text>
+                      {provider.requiresApiKey === false ? (
+                        <div className={styles.localProviderCard}>
+                          <Text size={200} style={{ marginBottom: tokens.spacingVerticalS }}>
+                            {provider.localSetup?.readyHint ??
+                              'This provider runs locally and does not require an API key.'}
+                          </Text>
 
-                        {provider.localSetup?.instructions && (
-                          <ul className={styles.localInstructions}>
-                            {provider.localSetup.instructions.map((instruction) => (
-                              <li key={instruction}>
-                                <Text size={200}>{instruction}</Text>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
+                          {provider.localSetup?.instructions && (
+                            <ul className={styles.localInstructions}>
+                              {provider.localSetup.instructions.map((instruction) => (
+                                <li key={instruction}>
+                                  <Text size={200}>{instruction}</Text>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
 
-                        <div className={styles.localActions}>
-                          <Button
-                            appearance="primary"
-                            onClick={() => onLocalProviderReady?.(provider.id)}
-                          >
-                            Mark as Ready
-                          </Button>
-                          {provider.localSetup?.downloadUrl && (
+                          <div className={styles.localActions}>
                             <Button
-                              appearance="secondary"
-                              onClick={() => openExternalLink(provider.localSetup!.downloadUrl!)}
+                              appearance="primary"
+                              onClick={() => onLocalProviderReady?.(provider.id)}
                             >
-                              Download Ollama
+                              Mark as Ready
                             </Button>
+                            {provider.localSetup?.downloadUrl && (
+                              <Button
+                                appearance="secondary"
+                                onClick={() => openExternalLink(provider.localSetup!.downloadUrl!)}
+                              >
+                                Download Ollama
+                              </Button>
+                            )}
+                          </div>
+
+                          {validationStatus[provider.id] === 'valid' ? (
+                            <Text size={200} className={styles.successText}>
+                              ✓ {provider.name} marked as ready
+                            </Text>
+                          ) : (
+                            <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                              No API key required. Install the provider locally and mark it as
+                              ready.
+                            </Text>
                           )}
                         </div>
-
-                        {validationStatus[provider.id] === 'valid' ? (
-                          <Text size={200} className={styles.successText}>
-                            ✓ {provider.name} marked as ready
-                          </Text>
-                        ) : (
-                          <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                            No API key required. Install the provider locally and mark it as
-                            ready.
-                          </Text>
-                        )}
-                      </div>
-                    ) : (
-                      <div style={{ marginTop: tokens.spacingVerticalM }}>
-                        <Title3 style={{ marginBottom: tokens.spacingVerticalS }}>
-                          Enter API Key
-                        </Title3>
-                        <EnhancedApiKeyInput
-                          providerDisplayName={provider.name}
-                          value={apiKeys[provider.id] || ''}
-                          onChange={(value) => onApiKeyChange(provider.id, value)}
-                          onValidate={() => handleValidate(provider.id)}
-                          validationStatus={validationStatus[provider.id] || 'idle'}
-                          fieldErrors={fieldErrors[provider.id]}
-                          accountInfo={accountInfo[provider.id]}
-                          onSkipValidation={
-                            onSkipValidation ? () => onSkipValidation(provider.id) : undefined
-                          }
-                        />
-                        {provider.requiresMultipleKeys && (
-                          <Text size={200} style={{ marginTop: tokens.spacingVerticalS }}>
-                            Note: {provider.name} requires both User ID and Secret Key (enter as
-                            &quot;userId:secretKey&quot;)
-                          </Text>
-                        )}
-                      </div>
-                    )}
+                      ) : (
+                        <div style={{ marginTop: tokens.spacingVerticalM }}>
+                          <Title3 style={{ marginBottom: tokens.spacingVerticalS }}>
+                            Enter API Key
+                          </Title3>
+                          <EnhancedApiKeyInput
+                            providerDisplayName={provider.name}
+                            value={apiKeys[provider.id] || ''}
+                            onChange={(value) => onApiKeyChange(provider.id, value)}
+                            onValidate={() => handleValidate(provider.id)}
+                            validationStatus={validationStatus[provider.id] || 'idle'}
+                            fieldErrors={fieldErrors[provider.id]}
+                            accountInfo={accountInfo[provider.id]}
+                            onSkipValidation={
+                              onSkipValidation ? () => onSkipValidation(provider.id) : undefined
+                            }
+                          />
+                          {provider.requiresMultipleKeys && (
+                            <Text size={200} style={{ marginTop: tokens.spacingVerticalS }}>
+                              Note: {provider.name} requires both User ID and Secret Key (enter as
+                              &quot;userId:secretKey&quot;)
+                            </Text>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </AccordionPanel>
                 </AccordionItem>

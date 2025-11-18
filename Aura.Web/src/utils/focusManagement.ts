@@ -1,6 +1,6 @@
 /**
  * Focus Management Utilities
- * 
+ *
  * Provides utilities for managing keyboard focus, including:
  * - Focus trapping for modals
  * - Focus restoration

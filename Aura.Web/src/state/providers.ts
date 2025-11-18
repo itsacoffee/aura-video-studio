@@ -275,7 +275,7 @@ export const useProviderStore = create<ProviderStoreState>((set) => ({
       const response = await fetch(`/api/providers/${encodeURIComponent(name)}/validate-detailed`, {
         method: 'POST',
       });
-      
+
       if (response.ok) {
         const result = (await response.json()) as {
           name: string;
@@ -288,7 +288,7 @@ export const useProviderStore = create<ProviderStoreState>((set) => ({
           category?: string;
           tier?: string;
         };
-        
+
         set((state) => ({
           providerStatuses: state.providerStatuses.map((p) =>
             p.name === name
@@ -297,7 +297,7 @@ export const useProviderStore = create<ProviderStoreState>((set) => ({
                   isConfigured: result.configured,
                   reachable: result.reachable,
                   isAvailable: result.configured && result.reachable,
-                  status: result.reachable ? 'Available' : (result.errorMessage || 'Not Available'),
+                  status: result.reachable ? 'Available' : result.errorMessage || 'Not Available',
                   errorCode: result.errorCode,
                   errorMessage: result.errorMessage,
                   howToFix: result.howToFix,

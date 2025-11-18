@@ -1,11 +1,4 @@
-import {
-  makeStyles,
-  tokens,
-  Card,
-  Title3,
-  Text,
-  ProgressBar,
-} from '@fluentui/react-components';
+import { makeStyles, tokens, Card, Title3, Text, ProgressBar } from '@fluentui/react-components';
 import type { FC } from 'react';
 import type {
   CurrentPeriodSpending,

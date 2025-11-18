@@ -15,29 +15,28 @@ export interface UseJobQueueOptions {
 }
 
 export function useJobQueue(options: UseJobQueueOptions = {}) {
-  const {
-    autoConnect = true,
-    autoRefresh = true,
-    refreshInterval = 5000,
-  } = options;
+  const { autoConnect = true, autoRefresh = true, refreshInterval = 5000 } = options;
 
   const store = useJobQueueStore();
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Load jobs from API
-  const loadJobs = useCallback(async (status?: string) => {
-    try {
-      store.setLoadingJobs(true);
-      store.setError(null);
-      const result = await jobQueueService.listJobs(status);
-      store.setJobs(result.jobs);
-    } catch (error) {
-      console.error('Failed to load jobs:', error);
-      store.setError(error instanceof Error ? error.message : 'Failed to load jobs');
-    } finally {
-      store.setLoadingJobs(false);
-    }
-  }, [store]);
+  const loadJobs = useCallback(
+    async (status?: string) => {
+      try {
+        store.setLoadingJobs(true);
+        store.setError(null);
+        const result = await jobQueueService.listJobs(status);
+        store.setJobs(result.jobs);
+      } catch (error) {
+        console.error('Failed to load jobs:', error);
+        store.setError(error instanceof Error ? error.message : 'Failed to load jobs');
+      } finally {
+        store.setLoadingJobs(false);
+      }
+    },
+    [store]
+  );
 
   // Load statistics
   const loadStatistics = useCallback(async () => {
@@ -60,53 +59,59 @@ export function useJobQueue(options: UseJobQueueOptions = {}) {
   }, [store]);
 
   // Enqueue a new job
-  const enqueueJob = useCallback(async (request: EnqueueJobRequest) => {
-    try {
-      store.setError(null);
-      const result = await jobQueueService.enqueueJob(request);
-      
-      // Refresh jobs list after a short delay to ensure the job is in the queue
-      setTimeout(() => loadJobs(), 500);
-      
-      return result;
-    } catch (error) {
-      console.error('Failed to enqueue job:', error);
-      store.setError(error instanceof Error ? error.message : 'Failed to enqueue job');
-      throw error;
-    }
-  }, [store, loadJobs]);
+  const enqueueJob = useCallback(
+    async (request: EnqueueJobRequest) => {
+      try {
+        store.setError(null);
+        const result = await jobQueueService.enqueueJob(request);
+
+        // Refresh jobs list after a short delay to ensure the job is in the queue
+        setTimeout(() => loadJobs(), 500);
+
+        return result;
+      } catch (error) {
+        console.error('Failed to enqueue job:', error);
+        store.setError(error instanceof Error ? error.message : 'Failed to enqueue job');
+        throw error;
+      }
+    },
+    [store, loadJobs]
+  );
 
   // Cancel a job
-  const cancelJob = useCallback(async (jobId: string) => {
-    try {
-      store.setError(null);
-      await jobQueueService.cancelJob(jobId);
-      
-      // Refresh jobs list
-      await loadJobs();
-    } catch (error) {
-      console.error('Failed to cancel job:', error);
-      store.setError(error instanceof Error ? error.message : 'Failed to cancel job');
-      throw error;
-    }
-  }, [store, loadJobs]);
+  const cancelJob = useCallback(
+    async (jobId: string) => {
+      try {
+        store.setError(null);
+        await jobQueueService.cancelJob(jobId);
+
+        // Refresh jobs list
+        await loadJobs();
+      } catch (error) {
+        console.error('Failed to cancel job:', error);
+        store.setError(error instanceof Error ? error.message : 'Failed to cancel job');
+        throw error;
+      }
+    },
+    [store, loadJobs]
+  );
 
   // Update configuration
-  const updateConfiguration = useCallback(async (
-    maxConcurrentJobs?: number,
-    isEnabled?: boolean
-  ) => {
-    try {
-      store.setError(null);
-      const config = await jobQueueService.updateConfiguration(maxConcurrentJobs, isEnabled);
-      store.setConfiguration(config);
-      return config;
-    } catch (error) {
-      console.error('Failed to update configuration:', error);
-      store.setError(error instanceof Error ? error.message : 'Failed to update configuration');
-      throw error;
-    }
-  }, [store]);
+  const updateConfiguration = useCallback(
+    async (maxConcurrentJobs?: number, isEnabled?: boolean) => {
+      try {
+        store.setError(null);
+        const config = await jobQueueService.updateConfiguration(maxConcurrentJobs, isEnabled);
+        store.setConfiguration(config);
+        return config;
+      } catch (error) {
+        console.error('Failed to update configuration:', error);
+        store.setError(error instanceof Error ? error.message : 'Failed to update configuration');
+        throw error;
+      }
+    },
+    [store]
+  );
 
   // Setup SignalR event handlers
   useEffect(() => {
@@ -117,7 +122,7 @@ export function useJobQueue(options: UseJobQueueOptions = {}) {
         outputPath: data.outputPath || undefined,
         errorMessage: data.errorMessage || undefined,
       });
-      
+
       // Refresh statistics when job status changes
       loadStatistics();
     });
@@ -139,7 +144,7 @@ export function useJobQueue(options: UseJobQueueOptions = {}) {
         outputPath: data.outputPath,
         completedAt: data.timestamp,
       });
-      
+
       // Show notification if browser supports it
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('Video Ready!', {
@@ -147,7 +152,7 @@ export function useJobQueue(options: UseJobQueueOptions = {}) {
           icon: '/favicon.ico',
         });
       }
-      
+
       loadStatistics();
     });
 
@@ -157,7 +162,7 @@ export function useJobQueue(options: UseJobQueueOptions = {}) {
         status: 'Failed',
         errorMessage: data.errorMessage,
       });
-      
+
       // Show notification if browser supports it
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('Video Generation Failed', {
@@ -165,7 +170,7 @@ export function useJobQueue(options: UseJobQueueOptions = {}) {
           icon: '/favicon.ico',
         });
       }
-      
+
       loadStatistics();
     });
 
@@ -185,13 +190,9 @@ export function useJobQueue(options: UseJobQueueOptions = {}) {
       try {
         await jobQueueService.start();
         store.setConnected(true);
-        
+
         // Load initial data
-        await Promise.all([
-          loadJobs(),
-          loadStatistics(),
-          loadConfiguration(),
-        ]);
+        await Promise.all([loadJobs(), loadStatistics(), loadConfiguration()]);
       } catch (error) {
         console.error('Failed to connect to job queue:', error);
         store.setConnected(false);
@@ -239,13 +240,13 @@ export function useJobQueue(options: UseJobQueueOptions = {}) {
     isLoadingJobs: store.isLoadingJobs,
     error: store.error,
     statusFilter: store.statusFilter,
-    
+
     // Computed
     pendingJobs: store.getPendingJobs(),
     processingJobs: store.getProcessingJobs(),
     completedJobs: store.getCompletedJobs(),
     failedJobs: store.getFailedJobs(),
-    
+
     // Actions
     enqueueJob,
     cancelJob,

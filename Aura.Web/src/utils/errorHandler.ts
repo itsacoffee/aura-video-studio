@@ -45,7 +45,10 @@ export class AuthenticationError extends AppError {
 }
 
 export class ValidationError extends AppError {
-  constructor(message: string, public fields?: Record<string, string>) {
+  constructor(
+    message: string,
+    public fields?: Record<string, string>
+  ) {
     super(message, 'VALIDATION_ERROR', 400, 'validation');
     this.name = 'ValidationError';
   }
@@ -95,7 +98,7 @@ export function getUserFriendlyMessage(error: unknown): string {
     }
 
     if (error.message.includes('forbidden') || error.message.includes('403')) {
-      return 'You don\'t have permission to perform this action.';
+      return "You don't have permission to perform this action.";
     }
 
     if (error.message.includes('not found') || error.message.includes('404')) {
@@ -226,10 +229,7 @@ export async function retryWithBackoff<T>(
 /**
  * Convert HTTP status code to appropriate error
  */
-export function createErrorFromStatus(
-  status: number,
-  message?: string
-): AppError {
+export function createErrorFromStatus(status: number, message?: string): AppError {
   switch (status) {
     case 400:
       return new ValidationError(message || 'Invalid request');

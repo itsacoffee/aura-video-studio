@@ -53,7 +53,7 @@ export function AnimatedTooltip({
 
     // Auto-adjust placement based on available space
     let newPlacement = placement;
-    
+
     if (placement === 'top' && rect.top < 100) {
       newPlacement = 'bottom';
     } else if (placement === 'bottom' && rect.bottom > viewport.height - 100) {
@@ -90,7 +90,7 @@ export function AnimatedTooltip({
       onBlur={handleMouseLeave}
     >
       {children}
-      
+
       <AnimatePresence>
         {isVisible && (
           <motion.div
@@ -102,7 +102,7 @@ export function AnimatedTooltip({
           >
             <div className="relative px-3 py-2 text-sm text-white bg-gray-900 dark:bg-gray-700 rounded-lg shadow-xl whitespace-nowrap">
               {content}
-              
+
               {/* Arrow */}
               <div
                 className={`absolute w-0 h-0 border-4 border-transparent ${arrowStyles[position]}`}

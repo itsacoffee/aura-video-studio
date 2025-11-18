@@ -101,7 +101,7 @@ export const ProviderRecommendationsTab: FC = () => {
     try {
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      
+
       const [config, spending, report, pricing] = await Promise.all([
         providerRecommendationService.getCostTrackingConfiguration(),
         providerRecommendationService.getCurrentPeriodSpending(),
@@ -420,9 +420,7 @@ export const ProviderRecommendationsTab: FC = () => {
                 configuration={costConfig}
                 providerPricing={providerPricing}
                 onSave={handleSaveCostConfiguration}
-                currentSpending={
-                  spendingReport?.costByProvider || ({} as Record<string, number>)
-                }
+                currentSpending={spendingReport?.costByProvider || ({} as Record<string, number>)}
               />
             </>
           )}

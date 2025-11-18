@@ -3,6 +3,9 @@ import React from 'react';
 
 export default function ConfigurationPanel() {
   return (
-    <Card><Title2>Configuration</Title2><Text>Requires @tremor/react</Text></Card>
+    <Card>
+      <Title2>Configuration</Title2>
+      <Text>Requires @tremor/react</Text>
+    </Card>
   );
 }

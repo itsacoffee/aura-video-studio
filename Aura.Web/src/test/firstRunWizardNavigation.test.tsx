@@ -169,8 +169,6 @@ describe('FirstRunWizard Completion Navigation', () => {
   });
 
   it('should allow navigation after wizard completion', async () => {
-    const onComplete = vi.fn();
-
     const { rerender } = render(
       <QueryClientProvider client={queryClient}>
         <FluentProvider theme={webLightTheme}>

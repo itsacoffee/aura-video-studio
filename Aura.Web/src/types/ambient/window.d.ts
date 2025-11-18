@@ -99,5 +99,4 @@ declare global {
   }
 }
 
-export { };
-
+export {};

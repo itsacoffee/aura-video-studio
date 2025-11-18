@@ -150,9 +150,7 @@ export const MediaUploadDialog: React.FC<MediaUploadDialogProps> = ({
             index ===
             self.findIndex(
               (f) =>
-                f.name === file.name &&
-                f.lastModified === file.lastModified &&
-                f.size === file.size
+                f.name === file.name && f.lastModified === file.lastModified && f.size === file.size
             )
         );
       });
@@ -170,9 +168,7 @@ export const MediaUploadDialog: React.FC<MediaUploadDialogProps> = ({
             index ===
             self.findIndex(
               (f) =>
-                f.name === file.name &&
-                f.lastModified === file.lastModified &&
-                f.size === file.size
+                f.name === file.name && f.lastModified === file.lastModified && f.size === file.size
             )
         );
       });
@@ -207,9 +203,7 @@ export const MediaUploadDialog: React.FC<MediaUploadDialogProps> = ({
             <div className={styles.form}>
               {files.length === 0 ? (
                 <div
-                  className={`${styles.dropzone} ${
-                    dragActive ? styles.dropzoneActive : ''
-                  }`}
+                  className={`${styles.dropzone} ${dragActive ? styles.dropzoneActive : ''}`}
                   onDragEnter={handleDragEnter}
                   onDragLeave={handleDragLeave}
                   onDragOver={handleDragOver}
@@ -228,9 +222,7 @@ export const MediaUploadDialog: React.FC<MediaUploadDialogProps> = ({
                   <Text size={400} weight="semibold">
                     Drag & drop files here or click to browse
                   </Text>
-                  <Text size={200}>
-                    Supports videos, images, audio, and documents
-                  </Text>
+                  <Text size={200}>Supports videos, images, audio, and documents</Text>
                   <input
                     ref={fileInputRef}
                     id="file-input"
@@ -250,10 +242,7 @@ export const MediaUploadDialog: React.FC<MediaUploadDialogProps> = ({
                       )}
                     </div>
                   ))}
-                  <Button
-                    appearance="subtle"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
+                  <Button appearance="subtle" onClick={() => fileInputRef.current?.click()}>
                     Add more files
                   </Button>
                   <input
@@ -283,9 +272,7 @@ export const MediaUploadDialog: React.FC<MediaUploadDialogProps> = ({
                   <Label>Collection</Label>
                   <Dropdown
                     placeholder="Select collection"
-                    value={
-                      collections.find((c) => c.id === formData.collectionId)?.name
-                    }
+                    value={collections.find((c) => c.id === formData.collectionId)?.name}
                     onOptionSelect={(_, data) =>
                       setFormData((prev) => ({
                         ...prev,

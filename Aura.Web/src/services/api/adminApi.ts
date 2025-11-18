@@ -56,11 +56,11 @@ export interface AuditLog {
 export async function getSystemStats(): Promise<SystemStats> {
   try {
     loggingService.debug('Fetching system stats', 'adminApi', 'getSystemStats');
-    
+
     const response = await get<SystemStats>('/api/admin/stats');
-    
+
     loggingService.debug('System stats fetched', 'adminApi', 'getSystemStats');
-    
+
     return response;
   } catch (error) {
     loggingService.error(
@@ -92,22 +92,22 @@ export async function getUsers(
 }> {
   try {
     loggingService.debug('Fetching users', 'adminApi', 'getUsers');
-    
+
     const params = new URLSearchParams({
       page: page.toString(),
       limit: limit.toString(),
       ...filters,
     });
-    
+
     const response = await get<{
       users: User[];
       total: number;
       page: number;
       limit: number;
     }>(`/api/admin/users?${params.toString()}`);
-    
+
     loggingService.debug('Users fetched', 'adminApi', 'getUsers');
-    
+
     return response;
   } catch (error) {
     loggingService.error(
@@ -126,11 +126,11 @@ export async function getUsers(
 export async function getUser(userId: string): Promise<User> {
   try {
     loggingService.debug('Fetching user', 'adminApi', 'getUser', { userId });
-    
+
     const response = await get<User>(`/api/admin/users/${userId}`);
-    
+
     loggingService.debug('User fetched', 'adminApi', 'getUser');
-    
+
     return response;
   } catch (error) {
     loggingService.error(
@@ -152,11 +152,11 @@ export async function updateUser(
 ): Promise<User> {
   try {
     loggingService.info('Updating user', 'adminApi', 'updateUser', { userId });
-    
+
     const response = await put<User>(`/api/admin/users/${userId}`, updates);
-    
+
     loggingService.info('User updated', 'adminApi', 'updateUser');
-    
+
     return response;
   } catch (error) {
     loggingService.error(
@@ -175,9 +175,9 @@ export async function updateUser(
 export async function deleteUser(userId: string): Promise<void> {
   try {
     loggingService.warn('Deleting user', 'adminApi', 'deleteUser', { userId });
-    
+
     await del<void>(`/api/admin/users/${userId}`);
-    
+
     loggingService.warn('User deleted', 'adminApi', 'deleteUser');
   } catch (error) {
     loggingService.error(
@@ -196,9 +196,9 @@ export async function deleteUser(userId: string): Promise<void> {
 export async function suspendUser(userId: string, reason?: string): Promise<void> {
   try {
     loggingService.warn('Suspending user', 'adminApi', 'suspendUser', { userId });
-    
+
     await post<void>(`/api/admin/users/${userId}/suspend`, { reason });
-    
+
     loggingService.warn('User suspended', 'adminApi', 'suspendUser');
   } catch (error) {
     loggingService.error(
@@ -217,9 +217,9 @@ export async function suspendUser(userId: string, reason?: string): Promise<void
 export async function unsuspendUser(userId: string): Promise<void> {
   try {
     loggingService.info('Unsuspending user', 'adminApi', 'unsuspendUser', { userId });
-    
+
     await post<void>(`/api/admin/users/${userId}/unsuspend`);
-    
+
     loggingService.info('User unsuspended', 'adminApi', 'unsuspendUser');
   } catch (error) {
     loggingService.error(
@@ -253,22 +253,22 @@ export async function getAuditLogs(
 }> {
   try {
     loggingService.debug('Fetching audit logs', 'adminApi', 'getAuditLogs');
-    
+
     const params = new URLSearchParams({
       page: page.toString(),
       limit: limit.toString(),
       ...filters,
     });
-    
+
     const response = await get<{
       logs: AuditLog[];
       total: number;
       page: number;
       limit: number;
     }>(`/api/admin/audit-logs?${params.toString()}`);
-    
+
     loggingService.debug('Audit logs fetched', 'adminApi', 'getAuditLogs');
-    
+
     return response;
   } catch (error) {
     loggingService.error(
@@ -287,9 +287,9 @@ export async function getAuditLogs(
 export async function clearCache(cacheType?: string): Promise<void> {
   try {
     loggingService.info('Clearing cache', 'adminApi', 'clearCache', { cacheType });
-    
+
     await post<void>('/api/admin/cache/clear', { cacheType });
-    
+
     loggingService.info('Cache cleared', 'adminApi', 'clearCache');
   } catch (error) {
     loggingService.error(
@@ -305,17 +305,18 @@ export async function clearCache(cacheType?: string): Promise<void> {
 /**
  * Run system maintenance
  */
-export async function runMaintenance(tasks: string[]): Promise<{ results: Record<string, unknown> }> {
+export async function runMaintenance(
+  tasks: string[]
+): Promise<{ results: Record<string, unknown> }> {
   try {
     loggingService.info('Running system maintenance', 'adminApi', 'runMaintenance', { tasks });
-    
-    const response = await post<{ results: Record<string, unknown> }>(
-      '/api/admin/maintenance',
-      { tasks }
-    );
-    
+
+    const response = await post<{ results: Record<string, unknown> }>('/api/admin/maintenance', {
+      tasks,
+    });
+
     loggingService.info('System maintenance completed', 'adminApi', 'runMaintenance');
-    
+
     return response;
   } catch (error) {
     loggingService.error(
@@ -334,11 +335,11 @@ export async function runMaintenance(tasks: string[]): Promise<{ results: Record
 export async function getSystemConfig(): Promise<Record<string, unknown>> {
   try {
     loggingService.debug('Fetching system config', 'adminApi', 'getSystemConfig');
-    
+
     const response = await get<Record<string, unknown>>('/api/admin/config');
-    
+
     loggingService.debug('System config fetched', 'adminApi', 'getSystemConfig');
-    
+
     return response;
   } catch (error) {
     loggingService.error(
@@ -359,11 +360,11 @@ export async function updateSystemConfig(
 ): Promise<Record<string, unknown>> {
   try {
     loggingService.info('Updating system config', 'adminApi', 'updateSystemConfig');
-    
+
     const response = await put<Record<string, unknown>>('/api/admin/config', config);
-    
+
     loggingService.info('System config updated', 'adminApi', 'updateSystemConfig');
-    
+
     return response;
   } catch (error) {
     loggingService.error(

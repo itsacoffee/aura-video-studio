@@ -62,7 +62,7 @@ describe('ProjectsStore', () => {
 
     const state = useProjectsStore.getState();
     const updatedProject = state.projects.get('1');
-    
+
     expect(updatedProject?.name).toBe('Updated Name');
     expect(updatedProject?.status).toBe('in-progress');
   });
