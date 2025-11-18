@@ -653,60 +653,103 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
     window.open(url, '_blank', 'noopener,noreferrer');
   }, []);
 
-  const handleBrowseForFfmpeg = useCallback(async () => {
-    setIsBrowsingForFfmpeg(true);
-    try {
-      let selectedPath: string | null = null;
+  /**
+   * Normalize a path to point to FFmpeg executable
+   * Converts folder paths to executable paths based on platform conventions
+   */
+  const normalizeFfmpegPath = (path: string): string => {
+    let normalized = path.trim().replace(/[\\/]+$/, '');
+    const usesWindowsSeparators = normalized.includes('\\') && !normalized.includes('/');
+    const separator = usesWindowsSeparators ? '\\' : '/';
+    const executableName = usesWindowsSeparators ? 'ffmpeg.exe' : 'ffmpeg';
+    const lower = normalized.toLowerCase();
 
-      const isWindows = navigator.userAgent.toLowerCase().includes('windows');
-      const ffmpegFilters = isWindows
-        ? [{ name: 'FFmpeg executable', extensions: ['exe'] }]
-        : [{ name: 'FFmpeg executable', extensions: ['*'] }];
-      if (window.aura?.dialogs?.openFile) {
-        selectedPath = await window.aura.dialogs.openFile({
+    // Path already points to executable
+    if (lower.endsWith(executableName)) {
+      return normalized;
+    }
+
+    // Path points to bin folder
+    if (lower.endsWith(`${separator}bin`.toLowerCase())) {
+      return `${normalized}${separator}${executableName}`;
+    }
+
+    // Path points to ffmpeg folder
+    if (lower.endsWith(`${separator}ffmpeg`)) {
+      return `${normalized}${separator}bin${separator}${executableName}`;
+    }
+
+    // Assume path is a folder, append executable name
+    return `${normalized}${separator}${executableName}`;
+  };
+
+  /**
+   * Attempt to select FFmpeg path using available pickers
+   */
+  const selectFfmpegPath = async (): Promise<string | null> => {
+    const isWindows = navigator.userAgent.toLowerCase().includes('windows');
+    const ffmpegFilters = isWindows
+      ? [{ name: 'FFmpeg executable', extensions: ['exe'] }]
+      : [{ name: 'FFmpeg executable', extensions: ['*'] }];
+
+    // Try Electron file picker first
+    if (window.aura?.dialogs?.openFile) {
+      try {
+        const filePath = await window.aura.dialogs.openFile({
           title: 'Select FFmpeg Executable',
           filters: ffmpegFilters,
         });
+        if (filePath) return filePath;
+      } catch (error: unknown) {
+        console.warn('Electron file picker failed:', error);
       }
+    }
+
+    // Fallback to folder picker
+    try {
+      return await pickFolder();
+    } catch (error: unknown) {
+      console.warn('Folder picker failed:', error);
+      return null;
+    }
+  };
+
+  const handleBrowseForFfmpeg = useCallback(async () => {
+    setIsBrowsingForFfmpeg(true);
+    try {
+      const selectedPath = await selectFfmpegPath();
 
       if (!selectedPath) {
-        selectedPath = await pickFolder();
+        return;
       }
 
-      if (selectedPath) {
-        let normalized = selectedPath.trim();
-        if (normalized.length === 0) {
-          return;
-        }
-
-        normalized = normalized.replace(/[\\/]+$/, '');
-        const usesWindowsSeparators = normalized.includes('\\') && !normalized.includes('/');
-        const separator = usesWindowsSeparators ? '\\' : '/';
-        const executableName = usesWindowsSeparators ? 'ffmpeg.exe' : 'ffmpeg';
-        const lower = normalized.toLowerCase();
-
-        if (lower.endsWith(executableName)) {
-          // already points to executable
-        } else if (lower.endsWith(`${separator}bin`.toLowerCase())) {
-          normalized = `${normalized}${separator}${executableName}`;
-        } else if (lower.endsWith(`${separator}ffmpeg`)) {
-          normalized = `${normalized}${separator}bin${separator}${executableName}`;
-        } else {
-          normalized = `${normalized}${separator}${executableName}`;
-        }
-
-        setFfmpegReady(false);
-        setFfmpegManualOverride(false);
-        setFfmpegPathInput(normalized);
+      // Validate path is not empty after trimming
+      const trimmedPath = selectedPath.trim();
+      if (trimmedPath.length === 0) {
+        showFailureToast({
+          title: 'Invalid Path',
+          message: 'The selected path is empty. Please select a valid FFmpeg executable or folder.',
+        });
+        return;
       }
-    } catch (error) {
+
+      // Normalize path to point to executable
+      const normalizedPath = normalizeFfmpegPath(trimmedPath);
+
+      // Reset state and populate input for validation
+      setFfmpegReady(false);
+      setFfmpegManualOverride(false);
+      setFfmpegPathInput(normalizedPath);
+
+      console.info('[Browse FFmpeg] Selected path:', normalizedPath);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error('Failed to browse for FFmpeg:', error);
       showFailureToast({
         title: 'Browse Failed',
-        message: 'Unable to open the system file picker. Enter the FFmpeg path manually instead.',
+        message: `Unable to open the system file picker: ${errorMessage}. Enter the FFmpeg path manually instead.`,
       });
     } finally {
-      // CRITICAL FIX: Always reset browsing state in finally block
       setIsBrowsingForFfmpeg(false);
     }
   }, [showFailureToast]);
