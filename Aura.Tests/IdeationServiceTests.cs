@@ -392,4 +392,129 @@ public class IdeationServiceTests
             Assert.NotNull(question.QuestionType);
         });
     }
+
+    [Fact]
+    public async Task IdeaToBriefAsync_ValidRequest_ReturnsVariants()
+    {
+        // Arrange
+        var request = new IdeaToBriefRequest(
+            Idea: "Explain quantum computing to my grandmother",
+            TargetPlatform: "YouTube",
+            Audience: "Non-technical seniors",
+            PreferredApproaches: "make it warm and relatable, like telling a story"
+        );
+
+        _mockLlmProvider
+            .Setup(p => p.DraftScriptAsync(It.IsAny<Core.Models.Brief>(), It.IsAny<Core.Models.PlanSpec>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("Mock LLM response");
+
+        // Act
+        var response = await _service.IdeaToBriefAsync(request, CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(response);
+        Assert.Equal(request.Idea, response.OriginalIdea);
+        Assert.NotEmpty(response.Variants);
+        Assert.Equal(3, response.Variants.Count); // Default variant count
+        Assert.All(response.Variants, variant =>
+        {
+            Assert.NotNull(variant.VariantId);
+            Assert.NotNull(variant.Approach);
+            Assert.NotNull(variant.Brief);
+            Assert.NotNull(variant.PlanSpec);
+            Assert.NotNull(variant.Explanation);
+            Assert.True(variant.SuitabilityScore >= 0 && variant.SuitabilityScore <= 100);
+        });
+    }
+
+    [Fact]
+    public async Task IdeaToBriefAsync_WithJsonResponse_ParsesVariantsCorrectly()
+    {
+        // Arrange
+        var request = new IdeaToBriefRequest(
+            Idea: "Video about climate change solutions",
+            VariantCount: 2
+        );
+
+        var mockJsonResponse = @"{
+            ""variants"": [
+                {
+                    ""approach"": ""Hopeful and solution-focused storytelling"",
+                    ""topic"": ""Innovative Climate Solutions Making a Real Difference"",
+                    ""audience"": ""Environmentally conscious individuals seeking actionable information"",
+                    ""goal"": ""Inspire viewers with practical climate solutions"",
+                    ""tone"": ""Optimistic yet grounded"",
+                    ""targetDurationSeconds"": 180,
+                    ""pacing"": ""Conversational"",
+                    ""density"": ""Balanced"",
+                    ""style"": ""Solution-focused documentary"",
+                    ""explanation"": ""This approach focuses on empowering viewers with practical solutions rather than dwelling on problems, creating a positive and actionable viewing experience."",
+                    ""suitabilityScore"": 92,
+                    ""strengths"": [""Empowering message"", ""Actionable content"", ""Positive tone""],
+                    ""considerations"": [""Balance optimism with realism"", ""Include credible sources""]
+                },
+                {
+                    ""approach"": ""Scientific deep-dive with accessible explanations"",
+                    ""topic"": ""The Science Behind Emerging Climate Technologies"",
+                    ""audience"": ""Science enthusiasts and informed citizens"",
+                    ""goal"": ""Educate viewers on the technical aspects of climate solutions"",
+                    ""tone"": ""Authoritative yet accessible"",
+                    ""targetDurationSeconds"": 240,
+                    ""pacing"": ""Deliberate"",
+                    ""density"": ""Dense"",
+                    ""style"": ""Educational analysis with visual aids"",
+                    ""explanation"": ""This approach takes a more technical route, explaining the science behind climate technologies while keeping it accessible for non-experts."",
+                    ""suitabilityScore"": 85,
+                    ""strengths"": [""In-depth coverage"", ""Credible information"", ""Appeals to curious minds""],
+                    ""considerations"": [""May be complex for some viewers"", ""Requires strong visual support""]
+                }
+            ]
+        }";
+
+        _mockLlmProvider
+            .Setup(p => p.DraftScriptAsync(It.IsAny<Core.Models.Brief>(), It.IsAny<Core.Models.PlanSpec>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mockJsonResponse);
+
+        // Act
+        var response = await _service.IdeaToBriefAsync(request, CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(response);
+        Assert.Equal(2, response.Variants.Count);
+        
+        var firstVariant = response.Variants[0];
+        Assert.Equal("Hopeful and solution-focused storytelling", firstVariant.Approach);
+        Assert.Equal("Innovative Climate Solutions Making a Real Difference", firstVariant.Brief.Topic);
+        Assert.Equal("Inspire viewers with practical climate solutions", firstVariant.Brief.Goal);
+        Assert.Equal(92, firstVariant.SuitabilityScore);
+        Assert.Equal(3, firstVariant.Strengths!.Count);
+        Assert.Equal(2, firstVariant.Considerations!.Count);
+    }
+
+    [Fact]
+    public async Task IdeaToBriefAsync_OpenEndedApproach_AllowsCreativeInterpretation()
+    {
+        // Arrange - Test that freeform approaches work
+        var request = new IdeaToBriefRequest(
+            Idea: "History of pizza",
+            PreferredApproaches: "make it like a detective mystery solving the origin"
+        );
+
+        _mockLlmProvider
+            .Setup(p => p.DraftScriptAsync(It.IsAny<Core.Models.Brief>(), It.IsAny<Core.Models.PlanSpec>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("Mock response");
+
+        // Act
+        var response = await _service.IdeaToBriefAsync(request, CancellationToken.None);
+
+        // Assert - Verify it generates variants without constraining to preset approaches
+        Assert.NotNull(response);
+        Assert.NotEmpty(response.Variants);
+        Assert.All(response.Variants, variant =>
+        {
+            // Approach should be a descriptive string, not limited to preset values
+            Assert.NotEmpty(variant.Approach);
+            Assert.True(variant.Approach.Length > 5); // Should be descriptive
+        });
+    }
 }
