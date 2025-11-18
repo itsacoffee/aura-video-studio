@@ -65,7 +65,7 @@ const useStyles = makeStyles({
 });
 
 export interface ApiError {
-  errorCode: string;
+  errorCode?: string;
   message: string;
   technicalDetails?: string;
   suggestedActions?: string[];
@@ -111,7 +111,9 @@ export function ApiErrorDisplay({
               <Text size={600} weight="semibold" block>
                 {error.errorTitle || 'Error Occurred'}
               </Text>
-              <Text className={styles.errorCode}>Error Code: {error.errorCode}</Text>
+              {error.errorCode && (
+                <Text className={styles.errorCode}>Error Code: {error.errorCode}</Text>
+              )}
             </div>
           </div>
 
@@ -154,7 +156,10 @@ export function ApiErrorDisplay({
                   {error.technicalDetails}
                 </Text>
                 {error.correlationId && (
-                  <Text size={200} style={{ marginTop: tokens.spacingVerticalXS, display: 'block' }}>
+                  <Text
+                    size={200}
+                    style={{ marginTop: tokens.spacingVerticalXS, display: 'block' }}
+                  >
                     Correlation ID: {error.correlationId}
                   </Text>
                 )}
@@ -164,11 +169,7 @@ export function ApiErrorDisplay({
 
           <div className={styles.actions}>
             {onRetry && error.isTransient && (
-              <Button
-                appearance="primary"
-                icon={<ArrowClockwise24Regular />}
-                onClick={handleRetry}
-              >
+              <Button appearance="primary" icon={<ArrowClockwise24Regular />} onClick={handleRetry}>
                 Try Again
               </Button>
             )}
@@ -191,31 +192,4 @@ export function ApiErrorDisplay({
       </Card>
     </div>
   );
-}
-
-/**
- * Parse API error from fetch response
- */
-export async function parseApiError(response: Response): Promise<ApiError> {
-  try {
-    const data = await response.json();
-    return {
-      errorCode: data.errorCode || `HTTP_${response.status}`,
-      message: data.message || response.statusText || 'An error occurred',
-      technicalDetails: data.technicalDetails,
-      suggestedActions: data.suggestedActions || [],
-      learnMoreUrl: data.learnMoreUrl,
-      errorTitle: data.errorTitle,
-      isTransient: data.isTransient || false,
-      correlationId: data.correlationId,
-    };
-  } catch {
-    // If response is not JSON, create a generic error
-    return {
-      errorCode: `HTTP_${response.status}`,
-      message: response.statusText || 'An error occurred',
-      suggestedActions: ['Check your internet connection', 'Try again later'],
-      isTransient: response.status >= 500,
-    };
-  }
 }
