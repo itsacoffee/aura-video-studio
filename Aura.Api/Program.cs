@@ -430,11 +430,28 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Configure FFmpeg options from appsettings.json
+builder.Services.Configure<Aura.Core.Configuration.FFmpegOptions>(
+    builder.Configuration.GetSection("FFmpeg"));
+
+// Register FFmpeg configuration store
+builder.Services.AddSingleton<Aura.Core.Configuration.FFmpegConfigurationStore>();
+
+// Register unified FFmpeg configuration service
+builder.Services.AddSingleton<Aura.Core.Configuration.IFfmpegConfigurationService, Aura.Core.Configuration.FfmpegConfigurationService>();
+
 // Register core services
 builder.Services.AddSingleton<HardwareDetector>();
 builder.Services.AddSingleton<IHardwareDetector>(sp => sp.GetRequiredService<HardwareDetector>());
 builder.Services.AddSingleton<Aura.Core.Hardware.DiagnosticsHelper>();
-builder.Services.AddSingleton<Aura.Core.Configuration.ProviderSettings>();
+
+// Register ProviderSettings with FFmpeg configuration service dependency
+builder.Services.AddSingleton<Aura.Core.Configuration.ProviderSettings>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Configuration.ProviderSettings>>();
+    var ffmpegConfigService = sp.GetRequiredService<Aura.Core.Configuration.IFfmpegConfigurationService>();
+    return new Aura.Core.Configuration.ProviderSettings(logger, ffmpegConfigService);
+});
 
 // Register secure storage and key management services
 builder.Services.AddSingleton<Aura.Core.Services.ISecureStorageService, Aura.Core.Services.SecureStorageService>();
@@ -464,10 +481,6 @@ builder.Services.AddSingleton<Aura.Core.Services.OllamaService>(sp =>
 // Register OllamaDetectionService as a hosted service for background detection
 builder.Services.AddHostedService(sp => sp.GetRequiredService<Aura.Core.Services.Providers.OllamaDetectionService>());
 
-// Configure FFmpeg options from appsettings
-builder.Services.Configure<Aura.Core.Configuration.FFmpegOptions>(
-    builder.Configuration.GetSection("FFmpeg"));
-
 // Configure Circuit Breaker options from appsettings
 builder.Services.Configure<Aura.Core.Configuration.CircuitBreakerSettings>(
     builder.Configuration.GetSection("CircuitBreaker"));
@@ -478,17 +491,21 @@ builder.Services.AddSingleton(sp =>
 builder.Services.Configure<Aura.Core.Configuration.OpenAIConfiguration>(
     builder.Configuration.GetSection("Providers:OpenAI"));
 
-// Register FFmpeg locator for centralized FFmpeg path resolution
+// Register FFmpeg locator using unified configuration
 builder.Services.AddSingleton<Aura.Core.Dependencies.IFfmpegLocator>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<Aura.Core.Dependencies.FfmpegLocator>>();
+    var configService = sp.GetRequiredService<Aura.Core.Configuration.IFfmpegConfigurationService>();
     var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
-    var toolsDir = providerSettings.GetToolsDirectory();
-    return new Aura.Core.Dependencies.FfmpegLocator(logger, toolsDir);
-});
 
-// Register FFmpeg configuration store
-builder.Services.AddSingleton<Aura.Core.Configuration.FFmpegConfigurationStore>();
+    var effectiveConfig = configService.GetEffectiveConfigurationAsync().GetAwaiter().GetResult();
+
+    // Use ProviderSettings for tools directory, but override binary path from effective config
+    var toolsDir = providerSettings.GetToolsDirectory();
+    var explicitPath = effectiveConfig.Path;
+
+    return new Aura.Core.Dependencies.FfmpegLocator(logger, toolsDir, explicitPath);
+});
 
 // Register FFmpeg resolver with managed install precedence and caching
 builder.Services.AddSingleton<Aura.Core.Dependencies.FFmpegResolver>();
@@ -1561,16 +1578,7 @@ builder.Services.AddSingleton<Aura.Core.Dependencies.FfmpegInstaller>(sp =>
     return new Aura.Core.Dependencies.FfmpegInstaller(logger, downloader, toolsDirectory, resolver);
 });
 
-// Register FFmpeg Locator
-builder.Services.AddSingleton<Aura.Core.Dependencies.FfmpegLocator>(sp =>
-{
-    var logger = sp.GetRequiredService<ILogger<Aura.Core.Dependencies.FfmpegLocator>>();
-    var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
-
-    // Portable-only mode: always use Tools folder
-    var toolsDirectory = providerSettings.GetToolsDirectory();
-    return new Aura.Core.Dependencies.FfmpegLocator(logger, toolsDirectory);
-});
+// Note: FFmpeg Locator is already registered earlier with unified configuration service
 
 // Register ComponentDownloader
 builder.Services.AddSingleton<Aura.Core.Dependencies.ComponentDownloader>(sp =>
@@ -1586,7 +1594,7 @@ builder.Services.AddSingleton<Aura.Core.Dependencies.ComponentDownloader>(sp =>
 builder.Services.AddSingleton<Aura.Core.Dependencies.DependencyRescanService>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<Aura.Core.Dependencies.DependencyRescanService>>();
-    var ffmpegLocator = sp.GetRequiredService<Aura.Core.Dependencies.FfmpegLocator>();
+    var ffmpegLocator = sp.GetRequiredService<Aura.Core.Dependencies.IFfmpegLocator>();
     var componentDownloader = sp.GetRequiredService<Aura.Core.Dependencies.ComponentDownloader>();
     return new Aura.Core.Dependencies.DependencyRescanService(logger, ffmpegLocator, componentDownloader);
 });
@@ -1595,7 +1603,7 @@ builder.Services.AddSingleton<Aura.Core.Dependencies.DependencyRescanService>(sp
 builder.Services.AddSingleton<Aura.Core.Services.Setup.DependencyDetector>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Setup.DependencyDetector>>();
-    var ffmpegLocator = sp.GetRequiredService<Aura.Core.Dependencies.FfmpegLocator>();
+    var ffmpegLocator = sp.GetRequiredService<Aura.Core.Dependencies.IFfmpegLocator>();
     var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
     return new Aura.Core.Services.Setup.DependencyDetector(logger, ffmpegLocator, httpClient);
 });

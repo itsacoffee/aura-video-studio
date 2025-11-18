@@ -15,13 +15,15 @@ namespace Aura.Core.Configuration;
 public class ProviderSettings
 {
     private readonly ILogger<ProviderSettings> _logger;
+    private readonly IFfmpegConfigurationService? _ffmpegConfigService;
     private readonly string _configPath;
     private readonly string _portableRoot;
     private Dictionary<string, object>? _settings;
 
-    public ProviderSettings(ILogger<ProviderSettings> logger)
+    public ProviderSettings(ILogger<ProviderSettings> logger, IFfmpegConfigurationService? ffmpegConfigService = null)
     {
         _logger = logger;
+        _ffmpegConfigService = ffmpegConfigService;
         
         var envDataRoot = AuraEnvironmentPaths.TryGetDataRootFromEnvironment();
         if (!string.IsNullOrWhiteSpace(envDataRoot))
@@ -228,10 +230,21 @@ public class ProviderSettings
     }
 
     /// <summary>
-    /// Get FFmpeg executable path
+    /// Get FFmpeg executable path from unified configuration.
     /// </summary>
     public string GetFfmpegPath()
     {
+        // If configuration service is available, use it
+        if (_ffmpegConfigService != null)
+        {
+            var config = _ffmpegConfigService.GetEffectiveConfigurationAsync().GetAwaiter().GetResult();
+            if (!string.IsNullOrWhiteSpace(config.Path))
+            {
+                return config.Path!;
+            }
+        }
+        
+        // Fallback to legacy settings.json approach
         LoadSettings();
         var path = GetStringSetting("ffmpegPath", "");
         

@@ -738,10 +738,11 @@ class BackendService {
       AURA_DATA_PATH: this.app.getPath("userData"),
       AURA_LOGS_PATH: path.join(this.app.getPath("userData"), "logs"),
       AURA_TEMP_PATH: path.join(this.app.getPath("temp"), "aura-video-studio"),
-      // Set FFmpeg path for backend (multiple env vars for compatibility)
+      // Primary hint for backend FFmpeg configuration pipeline
+      AURA_FFMPEG_PATH: ffmpegPath,
+      // Backwards-compatible env vars
       FFMPEG_PATH: ffmpegPath,
       FFMPEG_BINARIES_PATH: ffmpegPath,
-      AURA_FFMPEG_PATH: ffmpegPath,
     };
   }
 

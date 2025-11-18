@@ -48,14 +48,14 @@ public class DependencyRescanReport
 public class DependencyRescanService
 {
     private readonly ILogger<DependencyRescanService> _logger;
-    private readonly FfmpegLocator _ffmpegLocator;
+    private readonly IFfmpegLocator _ffmpegLocator;
     private readonly ComponentDownloader _componentDownloader;
     private readonly string _appDataPath;
     private readonly string _lastScanPath;
 
     public DependencyRescanService(
         ILogger<DependencyRescanService> logger,
-        FfmpegLocator ffmpegLocator,
+        IFfmpegLocator ffmpegLocator,
         ComponentDownloader componentDownloader)
     {
         _logger = logger;
