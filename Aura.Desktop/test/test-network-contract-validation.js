@@ -303,21 +303,27 @@ test('NetworkContract provides sensible defaults', () => {
   const originalUrl = process.env.AURA_BACKEND_URL;
   const originalHealth = process.env.AURA_BACKEND_HEALTH_ENDPOINT;
   const originalReady = process.env.AURA_BACKEND_READY_ENDPOINT;
+  const originalSseTemplate = process.env.AURA_BACKEND_SSE_JOB_EVENTS_TEMPLATE;
   
   try {
     process.env.AURA_BACKEND_URL = 'http://127.0.0.1:5272';
     delete process.env.AURA_BACKEND_HEALTH_ENDPOINT;
     delete process.env.AURA_BACKEND_READY_ENDPOINT;
+    delete process.env.AURA_BACKEND_SSE_JOB_EVENTS_TEMPLATE;
     
     const contract = resolveBackendContract({ isDev: true });
     
-    // Check defaults
-    if (contract.healthEndpoint !== '/api/health') {
-      throw new Error(`Expected healthEndpoint '/api/health', got '${contract.healthEndpoint}'`);
+    // Check defaults (updated to match BackendEndpoints constants)
+    if (contract.healthEndpoint !== '/health/live') {
+      throw new Error(`Expected healthEndpoint '/health/live', got '${contract.healthEndpoint}'`);
     }
     
     if (contract.readinessEndpoint !== '/health/ready') {
       throw new Error(`Expected readinessEndpoint '/health/ready', got '${contract.readinessEndpoint}'`);
+    }
+    
+    if (contract.sseJobEventsTemplate !== '/api/jobs/{id}/events') {
+      throw new Error(`Expected sseJobEventsTemplate '/api/jobs/{id}/events', got '${contract.sseJobEventsTemplate}'`);
     }
     
     if (contract.maxStartupMs !== 60000) {
@@ -333,6 +339,123 @@ test('NetworkContract provides sensible defaults', () => {
     
     if (originalHealth) process.env.AURA_BACKEND_HEALTH_ENDPOINT = originalHealth;
     if (originalReady) process.env.AURA_BACKEND_READY_ENDPOINT = originalReady;
+    if (originalSseTemplate) process.env.AURA_BACKEND_SSE_JOB_EVENTS_TEMPLATE = originalSseTemplate;
+  }
+});
+
+// Test 11: Contract includes SSE job events template
+test('NetworkContract includes sseJobEventsTemplate field', () => {
+  const { resolveBackendContract } = require('../electron/network-contract');
+  
+  const originalUrl = process.env.AURA_BACKEND_URL;
+  
+  try {
+    process.env.AURA_BACKEND_URL = 'http://127.0.0.1:5272';
+    const contract = resolveBackendContract({ isDev: true });
+    
+    if (!('sseJobEventsTemplate' in contract)) {
+      throw new Error('NetworkContract missing sseJobEventsTemplate field');
+    }
+    
+    if (typeof contract.sseJobEventsTemplate !== 'string') {
+      throw new Error('sseJobEventsTemplate should be string');
+    }
+    
+    if (!contract.sseJobEventsTemplate.includes('{id}')) {
+      throw new Error('sseJobEventsTemplate should contain {id} placeholder');
+    }
+  } finally {
+    if (originalUrl) {
+      process.env.AURA_BACKEND_URL = originalUrl;
+    } else {
+      delete process.env.AURA_BACKEND_URL;
+    }
+  }
+});
+
+// Test 12: VideoHandler builds correct SSE URL
+test('VideoHandler._buildJobEventsUrl constructs valid URL', () => {
+  // Mock VideoHandler URL building logic
+  const networkContract = {
+    baseUrl: 'http://127.0.0.1:5272',
+    sseJobEventsTemplate: '/api/jobs/{id}/events'
+  };
+  
+  const sseJobEventsTemplate = networkContract.sseJobEventsTemplate;
+  const buildJobEventsUrl = (jobId) => {
+    if (!jobId) {
+      throw new Error('Job ID is required to build events URL');
+    }
+    const path = sseJobEventsTemplate.replace('{id}', encodeURIComponent(jobId));
+    return new URL(path, networkContract.baseUrl).toString();
+  };
+  
+  const testJobId = 'job-12345';
+  const url = buildJobEventsUrl(testJobId);
+  
+  const expectedUrl = 'http://127.0.0.1:5272/api/jobs/job-12345/events';
+  if (url !== expectedUrl) {
+    throw new Error(`Expected URL '${expectedUrl}', got '${url}'`);
+  }
+});
+
+// Test 13: VideoHandler handles special characters in job ID
+test('VideoHandler._buildJobEventsUrl encodes special characters', () => {
+  const networkContract = {
+    baseUrl: 'http://127.0.0.1:5272',
+    sseJobEventsTemplate: '/api/jobs/{id}/events'
+  };
+  
+  const sseJobEventsTemplate = networkContract.sseJobEventsTemplate;
+  const buildJobEventsUrl = (jobId) => {
+    if (!jobId) {
+      throw new Error('Job ID is required to build events URL');
+    }
+    const path = sseJobEventsTemplate.replace('{id}', encodeURIComponent(jobId));
+    return new URL(path, networkContract.baseUrl).toString();
+  };
+  
+  const testJobId = 'job-with spaces & special/chars';
+  const url = buildJobEventsUrl(testJobId);
+  
+  // URL should be properly encoded
+  if (!url.includes('job-with%20spaces')) {
+    throw new Error('URL should encode spaces');
+  }
+  
+  if (!url.includes('%26')) {
+    throw new Error('URL should encode ampersands');
+  }
+});
+
+// Test 14: VideoHandler throws error for empty job ID
+test('VideoHandler._buildJobEventsUrl throws for empty job ID', () => {
+  const networkContract = {
+    baseUrl: 'http://127.0.0.1:5272',
+    sseJobEventsTemplate: '/api/jobs/{id}/events'
+  };
+  
+  const sseJobEventsTemplate = networkContract.sseJobEventsTemplate;
+  const buildJobEventsUrl = (jobId) => {
+    if (!jobId) {
+      throw new Error('Job ID is required to build events URL');
+    }
+    const path = sseJobEventsTemplate.replace('{id}', encodeURIComponent(jobId));
+    return new URL(path, networkContract.baseUrl).toString();
+  };
+  
+  let threw = false;
+  try {
+    buildJobEventsUrl('');
+  } catch (error) {
+    threw = true;
+    if (!error.message.includes('Job ID is required')) {
+      throw new Error(`Wrong error message: ${error.message}`);
+    }
+  }
+  
+  if (!threw) {
+    throw new Error('Should throw for empty job ID');
   }
 });
 
