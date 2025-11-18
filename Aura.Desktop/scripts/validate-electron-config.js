@@ -132,15 +132,24 @@ console.log('='.repeat(60));
 const rootPreloadPath = path.join(rootDir, 'preload.js');
 if (fs.existsSync(rootPreloadPath)) {
   const rootPreloadContent = fs.readFileSync(rootPreloadPath, 'utf8');
-  if (rootPreloadContent.includes("require('./electron/preload')")) {
+  if (rootPreloadContent.includes("require('./electron/preload')") ||
+      rootPreloadContent.includes("require(canonicalPreloadPath)")) {
     console.log('✅ Root preload.js correctly redirects to electron/preload.js');
+    
+    // Check for warning comments
+    if (rootPreloadContent.includes('LEGACY PRELOAD WRAPPER') && 
+        rootPreloadContent.includes('DO NOT USE DIRECTLY')) {
+      console.log('✅ Root preload.js has proper warning comments');
+    } else {
+      console.warn('⚠️  WARNING: Root preload.js should have stronger warning comments');
+      hasWarnings = true;
+    }
   } else {
     console.warn('⚠️  WARNING: Root preload.js exists but may not redirect properly');
     hasWarnings = true;
   }
 } else {
-  console.warn('⚠️  WARNING: Root preload.js not found (not critical if using electron/preload.js directly)');
-  hasWarnings = true;
+  console.log('ℹ️  No root preload.js file found (using electron/preload.js directly)');
 }
 
 // Check if legacy electron.js exists
@@ -150,12 +159,21 @@ console.log('='.repeat(60));
 
 const legacyElectronJs = path.join(rootDir, 'electron.js');
 if (fs.existsSync(legacyElectronJs)) {
-  console.warn('⚠️  WARNING: Legacy electron.js file found');
-  console.warn('   This file is not used by the current configuration');
-  console.warn('   It can be safely removed if no longer needed for reference');
-  hasWarnings = true;
+  console.log('ℹ️  Legacy electron.js file found (expected)');
+  
+  // Check if it has the execution guard
+  const legacyContent = fs.readFileSync(legacyElectronJs, 'utf8');
+  if (legacyContent.includes('LEGACY ELECTRON ENTRY') && 
+      legacyContent.includes('throw new Error')) {
+    console.log('✅ Legacy electron.js has proper execution guard');
+    console.log('   This file will prevent accidental execution');
+  } else {
+    console.warn('⚠️  WARNING: Legacy electron.js exists but may not have execution guard');
+    console.warn('   The file should throw an error if executed');
+    hasWarnings = true;
+  }
 } else {
-  console.log('✅ No legacy electron.js file found');
+  console.log('✅ No legacy electron.js file found (clean state)');
 }
 
 // Check for proper initialization
@@ -167,11 +185,10 @@ const mainContent = fs.readFileSync(mainFilePath, 'utf8');
 
 const requiredInitChecks = [
   { pattern: /app\.whenReady\(\)/, name: 'app.whenReady() handler' },
-  { pattern: /WindowManager.*require/, name: 'WindowManager import' },
-  { pattern: /BackendService.*require/, name: 'BackendService import' },
-  { pattern: /createMainWindow/, name: 'createMainWindow call' },
-  { pattern: /backendService\.start/, name: 'Backend service start' },
-  { pattern: /registerIpcHandlers/, name: 'IPC handler registration' }
+  { pattern: /(SafeInit|safe-initialization).*require/i, name: 'Safe initialization module' },
+  { pattern: /createMainWindow/, name: 'Window creation' },
+  { pattern: /(backendService|backend).*start/i, name: 'Backend startup' },
+  { pattern: /(registerIpcHandlers|ipc.*handler)/i, name: 'IPC handler setup' }
 ];
 
 for (const check of requiredInitChecks) {
@@ -215,6 +232,51 @@ for (const dep of requiredDevDependencies) {
     console.error(`❌ ERROR: Missing dev dependency: ${dep}`);
     hasErrors = true;
   }
+}
+
+// Check build configuration excludes legacy files
+console.log('\n' + '='.repeat(60));
+console.log('Checking build configuration...');
+console.log('='.repeat(60));
+
+if (packageJson.build && packageJson.build.files) {
+  const buildFiles = packageJson.build.files;
+  const excludesElectronJs = buildFiles.some(pattern => 
+    pattern === '!electron.js' || pattern.includes('!electron.js')
+  );
+  
+  if (excludesElectronJs) {
+    console.log('✅ Build configuration excludes legacy electron.js');
+  } else {
+    console.warn('⚠️  WARNING: Build configuration does not explicitly exclude electron.js');
+    console.warn('   Consider adding "!electron.js" to build.files array');
+    hasWarnings = true;
+  }
+  
+  const includesElectronDir = buildFiles.some(pattern =>
+    pattern.includes('electron/**') || pattern === 'electron/**/*'
+  );
+  
+  if (includesElectronDir) {
+    console.log('✅ Build configuration includes electron/ directory');
+  } else {
+    console.warn('⚠️  WARNING: Build configuration may not include electron/ directory');
+    hasWarnings = true;
+  }
+} else {
+  console.warn('⚠️  WARNING: No build.files configuration found');
+  hasWarnings = true;
+}
+
+// Check auraMeta documentation
+if (packageJson.auraMeta && packageJson.auraMeta.entryPoints) {
+  console.log('✅ Entry point documentation found in auraMeta section');
+  console.log(`   Main entry: ${packageJson.auraMeta.entryPoints.main}`);
+  console.log(`   Preload entry: ${packageJson.auraMeta.entryPoints.preload}`);
+} else {
+  console.warn('⚠️  WARNING: No auraMeta entry point documentation found');
+  console.warn('   Consider adding auraMeta.entryPoints section to package.json');
+  hasWarnings = true;
 }
 
 // Final summary

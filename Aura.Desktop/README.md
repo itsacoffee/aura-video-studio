@@ -93,9 +93,9 @@ Output will be in the `dist/` directory.
 
 ```
 Aura.Desktop/
-├── electron/                   # Main process modules (modular architecture)
-│   ├── main.js                # Application entry point (orchestrator)
-│   ├── preload.js             # Secure IPC bridge
+├── electron/                   # Main process modules (modular architecture) ✅ ACTIVE
+│   ├── main.js                # ✅ CANONICAL ENTRY POINT - Application main process
+│   ├── preload.js             # ✅ CANONICAL PRELOAD - Secure IPC bridge
 │   ├── window-manager.js      # Window lifecycle management
 │   ├── app-config.js          # Configuration storage
 │   ├── backend-service.js     # Backend process management
@@ -112,8 +112,8 @@ Aura.Desktop/
 │       └── ffmpeg-handler.js   # FFmpeg operations
 │
 ├── package.json               # Dependencies and build configuration
-├── preload.js                 # Legacy redirect to electron/preload.js
-├── electron.js                # Legacy monolithic file (kept for reference)
+├── preload.js                 # ⚠️  LEGACY: Backwards-compat redirect (DO NOT USE)
+├── electron.js                # ⚠️  LEGACY: Reference-only with execution guard (DO NOT USE)
 ├── build-desktop.ps1          # Build script (Windows)
 ├── build-desktop.sh           # Build script (cross-platform, Windows target only)
 │
@@ -143,19 +143,60 @@ Aura.Desktop/
 └── dist/                      # Build output (installers, packages)
 ```
 
+### Entry Point Enforcement
+
+**✅ Canonical Entry Points (MUST USE THESE):**
+- **Main Process**: `electron/main.js` - This is the ONLY supported Electron main entry point
+- **Preload Script**: `electron/preload.js` - This is the ONLY supported preload file
+
+**⚠️  Legacy Files (DO NOT USE IN NEW CODE):**
+- **preload.js** (root level) - Backwards compatibility redirect only. Contains strong warnings and safe forwarding to `electron/preload.js`. Any reference to this file in new configuration should be considered a bug.
+- **electron.js** (root level) - Historical reference file with immediate execution guard. Contains a throw statement that prevents execution. Kept only for architectural reference. If this file is ever executed, it indicates a critical configuration error.
+
+**Configuration Requirements:**
+- `package.json` "main" field MUST be `"electron/main.js"`
+- All BrowserWindow preload paths MUST reference `electron/preload.js`
+- Build scripts MUST NOT reference `electron.js` or root-level `preload.js`
+- electron-builder configuration MUST use `electron/main.js` as entry
+
 ## 🔧 Configuration
 
 ### Modular Architecture
 
 The application uses a **modular architecture** for better maintainability:
 
-- **electron/main.js** - Entry point that orchestrates all modules
+- **electron/main.js** - Entry point that orchestrates all modules (CANONICAL ENTRY)
+- **electron/preload.js** - Secure IPC bridge (CANONICAL PRELOAD)
 - **electron/window-manager.js** - Window creation and lifecycle
 - **electron/backend-service.js** - Backend spawning and health monitoring
 - **electron/app-config.js** - Persistent configuration with encryption
 - **electron/tray-manager.js** - System tray integration
 - **electron/menu-builder.js** - Application menu creation
 - **electron/ipc-handlers/** - Secure IPC channel handlers
+
+### Migration Notes
+
+**Monolithic to Modular Migration (COMPLETE)**
+
+The Electron application has been fully migrated from a monolithic architecture to a clean, modular design:
+
+- **Before**: Single 867-line `electron.js` file with all functionality
+- **After**: Modular architecture with focused, maintainable modules in `electron/` directory
+
+**Key Changes:**
+- ✅ Main entry point moved to `electron/main.js`
+- ✅ Preload script moved to `electron/preload.js`
+- ✅ Functionality split into focused modules (window-manager, backend-service, etc.)
+- ✅ Type safety with TypeScript definitions
+- ✅ Improved testability and maintainability
+
+**Legacy File Status:**
+- `electron.js` - Contains execution guard, will throw error if loaded
+- `preload.js` (root) - Safe redirect with warnings, forwards to `electron/preload.js`
+
+**No build or run script should ever reference the legacy `electron.js` file.**
+
+If you encounter an error from `electron.js`, it means your configuration is incorrect. Update your `package.json` or build scripts to reference `electron/main.js` instead.
 
 ### Validation
 
