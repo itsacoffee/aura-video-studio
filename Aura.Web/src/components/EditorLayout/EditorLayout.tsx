@@ -7,11 +7,27 @@ import { MenuBar } from '../MenuBar/MenuBar';
 import { PanelHeader } from './PanelHeader';
 import '../../styles/video-editor-theme.css';
 
+// Panel region types - Premiere-style layout structure
+export type PanelRegion = 'top' | 'bottom' | 'right';
+
+// Panel configuration interface
+export interface EditorLayoutPanelConfig {
+  id: string;
+  title: string;
+  icon?: ReactNode;
+  defaultSize?: number; // width in pixels for right panels, percentage for top/bottom
+  minSize?: number;
+  maxSize?: number;
+  region: PanelRegion;
+  visibleByDefault?: boolean;
+}
+
 // Constants
 const COLLAPSED_PANEL_WIDTH = 48;
 
 const useStyles = makeStyles({
-  container: {
+  // Shell container - top-level editor structure
+  editorShell: {
     display: 'flex',
     flexDirection: 'column',
     height: '100vh',
@@ -31,23 +47,31 @@ const useStyles = makeStyles({
     overflow: 'hidden',
     backgroundColor: 'var(--editor-bg-primary)',
   },
-  panelCollapsed: {
-    width: `${COLLAPSED_PANEL_WIDTH}px !important`,
-    minWidth: `${COLLAPSED_PANEL_WIDTH}px !important`,
-  },
-  content: {
+  // Main content area below menu bar
+  editorContent: {
     display: 'flex',
     flex: 1,
     overflow: 'hidden',
   },
-  mainArea: {
+  // Left sidebar (media, effects)
+  leftSidebar: {
+    display: 'flex',
+    overflow: 'hidden',
+  },
+  // Center region (preview + timeline stack)
+  centerRegion: {
     display: 'flex',
     flexDirection: 'column',
     flex: 1,
     overflow: 'hidden',
   },
-  previewPanel: {
-    flex: 6,
+  // Right sidebar (properties, history stack)
+  rightSidebar: {
+    display: 'flex',
+    overflow: 'hidden',
+  },
+  // Top region panel (preview)
+  topRegionPanel: {
     minHeight: '300px',
     display: 'flex',
     flexDirection: 'column',
@@ -56,8 +80,8 @@ const useStyles = makeStyles({
     overflow: 'hidden',
     transition: 'flex var(--editor-transition-base)',
   },
-  timelinePanel: {
-    flex: 4,
+  // Bottom region panel (timeline)
+  bottomRegionPanel: {
     minHeight: '200px',
     display: 'flex',
     flexDirection: 'column',
@@ -65,8 +89,8 @@ const useStyles = makeStyles({
     overflow: 'hidden',
     transition: 'flex var(--editor-transition-base)',
   },
-  propertiesPanel: {
-    width: '320px',
+  // Right sidebar panel
+  rightSidebarPanel: {
     minWidth: '280px',
     maxWidth: '400px',
     borderLeft: `1px solid var(--editor-panel-border)`,
@@ -76,8 +100,8 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     transition: 'width var(--editor-transition-base)',
   },
-  mediaLibraryPanel: {
-    width: '280px',
+  // Left sidebar panel
+  leftSidebarPanel: {
     minWidth: '240px',
     maxWidth: '350px',
     borderRight: `1px solid var(--editor-panel-border)`,
@@ -87,18 +111,12 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     transition: 'width var(--editor-transition-base)',
   },
-  effectsLibraryPanel: {
-    width: '280px',
-    minWidth: '240px',
-    maxWidth: '350px',
-    borderRight: `1px solid var(--editor-panel-border)`,
-    backgroundColor: 'var(--editor-panel-bg)',
-    overflow: 'hidden',
-    display: 'flex',
-    flexDirection: 'column',
-    transition: 'width var(--editor-transition-base)',
+  panelCollapsed: {
+    width: `${COLLAPSED_PANEL_WIDTH}px !important`,
+    minWidth: `${COLLAPSED_PANEL_WIDTH}px !important`,
   },
-  resizer: {
+  // Vertical resizer (for horizontal panel separation)
+  dividerVertical: {
     width: '4px',
     cursor: 'ew-resize',
     backgroundColor: 'transparent',
@@ -128,14 +146,15 @@ const useStyles = makeStyles({
       outlineOffset: '2px',
     },
   },
-  resizerDragging: {
+  dividerDragging: {
     '&::after': {
       backgroundColor: 'var(--editor-accent)',
       boxShadow: '0 0 6px var(--editor-focus-ring)',
       width: '3px',
     },
   },
-  horizontalResizer: {
+  // Horizontal resizer (for vertical panel separation)
+  dividerHorizontal: {
     height: '4px',
     cursor: 'ns-resize',
     backgroundColor: 'transparent',
@@ -165,7 +184,7 @@ const useStyles = makeStyles({
       outlineOffset: '2px',
     },
   },
-  horizontalResizerDragging: {
+  dividerHorizontalDragging: {
     '&::after': {
       backgroundColor: 'var(--editor-accent)',
       boxShadow: '0 0 6px var(--editor-focus-ring)',
@@ -174,13 +193,10 @@ const useStyles = makeStyles({
   },
 });
 
-interface EditorLayoutProps {
-  preview?: ReactNode;
-  timeline?: ReactNode;
-  properties?: ReactNode;
-  mediaLibrary?: ReactNode;
-  effects?: ReactNode;
-  history?: ReactNode;
+// New interface using panel configuration
+export interface EditorLayoutProps {
+  panels: EditorLayoutPanelConfig[];
+  renderPanel: (id: string) => React.ReactNode;
   onImportMedia?: () => void;
   onExportVideo?: () => void;
   onShowKeyboardShortcuts?: () => void;
@@ -189,22 +205,16 @@ interface EditorLayoutProps {
   isDirty?: boolean;
   autosaveStatus?: 'idle' | 'saving' | 'saved' | 'error';
   lastSaved?: Date | null;
-  useTopMenuBar?: boolean; // New prop to use professional top menu bar
+  useTopMenuBar?: boolean;
 }
 
-// LocalStorage keys for panel sizes
-const STORAGE_KEYS = {
-  propertiesWidth: 'editor-properties-width',
-  mediaLibraryWidth: 'editor-media-library-width',
-  effectsLibraryWidth: 'editor-effects-library-width',
-  historyWidth: 'editor-history-width',
-  previewHeight: 'editor-preview-height',
-};
+// LocalStorage key prefix for panel sizes
+const STORAGE_KEY_PREFIX = 'aura-editor-panel-';
 
 // Helper to load from localStorage with default fallback
-const loadPanelSize = (key: string, defaultValue: number): number => {
+const loadPanelSize = (panelId: string, defaultValue: number): number => {
   try {
-    const stored = localStorage.getItem(key);
+    const stored = localStorage.getItem(`${STORAGE_KEY_PREFIX}${panelId}`);
     return stored ? parseFloat(stored) : defaultValue;
   } catch {
     return defaultValue;
@@ -212,21 +222,17 @@ const loadPanelSize = (key: string, defaultValue: number): number => {
 };
 
 // Helper to save to localStorage
-const savePanelSize = (key: string, value: number): void => {
+const savePanelSize = (panelId: string, value: number): void => {
   try {
-    localStorage.setItem(key, value.toString());
+    localStorage.setItem(`${STORAGE_KEY_PREFIX}${panelId}`, value.toString());
   } catch {
     // Ignore localStorage errors
   }
 };
 
 export function EditorLayout({
-  preview,
-  timeline,
-  properties,
-  mediaLibrary,
-  effects,
-  history,
+  panels,
+  renderPanel,
   onImportMedia,
   onExportVideo,
   onShowKeyboardShortcuts,
@@ -247,30 +253,25 @@ export function EditorLayout({
     currentLayoutId,
   } = useWorkspaceLayoutStore();
 
+  // Group panels by region
+  const topPanels = panels.filter((p) => p.region === 'top');
+  const bottomPanels = panels.filter((p) => p.region === 'bottom');
+  const rightPanels = panels.filter((p) => p.region === 'right');
+
   // Load current layout or use defaults
   const currentLayout = getCurrentLayout();
 
-  const [propertiesWidth, setPropertiesWidth] = useState(() =>
-    loadPanelSize(STORAGE_KEYS.propertiesWidth, currentLayout?.panelSizes.propertiesWidth || 320)
-  );
-  const [mediaLibraryWidth, setMediaLibraryWidth] = useState(() =>
-    loadPanelSize(
-      STORAGE_KEYS.mediaLibraryWidth,
-      currentLayout?.panelSizes.mediaLibraryWidth || 280
-    )
-  );
-  const [effectsLibraryWidth, setEffectsLibraryWidth] = useState(() =>
-    loadPanelSize(
-      STORAGE_KEYS.effectsLibraryWidth,
-      currentLayout?.panelSizes.effectsLibraryWidth || 280
-    )
-  );
-  const [historyWidth, setHistoryWidth] = useState(() =>
-    loadPanelSize(STORAGE_KEYS.historyWidth, currentLayout?.panelSizes.historyWidth || 320)
-  );
-  const [previewHeight, setPreviewHeight] = useState(() =>
-    loadPanelSize(STORAGE_KEYS.previewHeight, currentLayout?.panelSizes.previewHeight || 60)
-  ); // Percentage
+  // State for panel sizes - keyed by panel ID
+  const [panelSizes, setPanelSizes] = useState<Record<string, number>>(() => {
+    const sizes: Record<string, number> = {};
+    panels.forEach((panel) => {
+      const layoutSize =
+        currentLayout?.panelSizes[`${panel.id}Width` as keyof typeof currentLayout.panelSizes];
+      const defaultSize = panel.defaultSize ?? (panel.region === 'right' ? 320 : 60);
+      sizes[panel.id] = loadPanelSize(panel.id, (layoutSize as number) ?? defaultSize);
+    });
+    return sizes;
+  });
 
   // Track dragging state for visual feedback
   const [isDraggingHorizontal, setIsDraggingHorizontal] = useState(false);
@@ -279,13 +280,13 @@ export function EditorLayout({
   // Get current panel sizes for saving workspace
   const getCurrentPanelSizes = useCallback(() => {
     return {
-      propertiesWidth,
-      mediaLibraryWidth,
-      effectsLibraryWidth,
-      historyWidth,
-      previewHeight,
+      propertiesWidth: panelSizes['properties'] ?? 320,
+      mediaLibraryWidth: panelSizes['mediaLibrary'] ?? 280,
+      effectsLibraryWidth: panelSizes['effects'] ?? 280,
+      historyWidth: panelSizes['history'] ?? 320,
+      previewHeight: panelSizes['preview'] ?? 60,
     };
-  }, [propertiesWidth, mediaLibraryWidth, effectsLibraryWidth, historyWidth, previewHeight]);
+  }, [panelSizes]);
 
   // Handle ESC key to exit fullscreen
   const handleKeyDown = useCallback(
@@ -307,11 +308,8 @@ export function EditorLayout({
   // Listen for fullscreen change events to sync with browser fullscreen state
   useEffect(() => {
     const handleFullscreenChange = () => {
-      // Sync our state with the actual fullscreen state
       const isInFullscreen = !!document.fullscreenElement;
       if (isInFullscreen !== isFullscreen) {
-        // State is out of sync, update it directly without calling exitFullscreen
-        // to avoid triggering document.exitFullscreen again
         useWorkspaceLayoutStore.setState({ isFullscreen: isInFullscreen });
       }
     };
@@ -324,71 +322,63 @@ export function EditorLayout({
 
   // Persist panel sizes to localStorage
   useEffect(() => {
-    savePanelSize(STORAGE_KEYS.propertiesWidth, propertiesWidth);
-  }, [propertiesWidth]);
-
-  useEffect(() => {
-    savePanelSize(STORAGE_KEYS.mediaLibraryWidth, mediaLibraryWidth);
-  }, [mediaLibraryWidth]);
-
-  useEffect(() => {
-    savePanelSize(STORAGE_KEYS.previewHeight, previewHeight);
-  }, [previewHeight]);
-
-  useEffect(() => {
-    savePanelSize(STORAGE_KEYS.effectsLibraryWidth, effectsLibraryWidth);
-  }, [effectsLibraryWidth]);
-
-  useEffect(() => {
-    savePanelSize(STORAGE_KEYS.historyWidth, historyWidth);
-  }, [historyWidth]);
+    Object.entries(panelSizes).forEach(([panelId, size]) => {
+      savePanelSize(panelId, size);
+    });
+  }, [panelSizes]);
 
   // React to layout changes and apply panel sizes from the layout
   useEffect(() => {
     const layout = getCurrentLayout();
     if (layout) {
-      // Update panel sizes based on the selected layout
-      setPropertiesWidth(layout.panelSizes.propertiesWidth);
-      setMediaLibraryWidth(layout.panelSizes.mediaLibraryWidth);
-      setEffectsLibraryWidth(layout.panelSizes.effectsLibraryWidth);
-      setHistoryWidth(layout.panelSizes.historyWidth);
-      setPreviewHeight(layout.panelSizes.previewHeight);
+      const newSizes: Record<string, number> = {};
+      panels.forEach((panel) => {
+        const layoutSize = layout.panelSizes[`${panel.id}Width` as keyof typeof layout.panelSizes];
+        if (layoutSize) {
+          newSizes[panel.id] = layoutSize as number;
+        }
+      });
+      if (Object.keys(newSizes).length > 0) {
+        setPanelSizes((prev) => ({ ...prev, ...newSizes }));
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentLayoutId]);
 
-  // Handle resizing properties panel
-  const handlePropertiesResize = (e: React.MouseEvent) => {
-    const startX = e.clientX;
-    const startWidth = propertiesWidth;
-    setIsDraggingHorizontal(true);
+  // Generic resize handler for vertical dividers (horizontal panel separation)
+  const handleVerticalDividerResize =
+    (panelId: string, minSize: number, maxSize: number, direction: 'left' | 'right') =>
+    (e: React.MouseEvent) => {
+      const startX = e.clientX;
+      const startWidth = panelSizes[panelId] ?? 320;
+      setIsDraggingHorizontal(true);
 
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      const delta = startX - moveEvent.clientX;
-      let newWidth = Math.max(280, Math.min(400, startWidth + delta));
-      // Apply snap-to-breakpoint
-      newWidth = snapToBreakpoint(newWidth, 280, 400);
-      setPropertiesWidth(newWidth);
+      const handleMouseMove = (moveEvent: MouseEvent) => {
+        const delta =
+          direction === 'left' ? moveEvent.clientX - startX : startX - moveEvent.clientX;
+        let newWidth = Math.max(minSize, Math.min(maxSize, startWidth + delta));
+        newWidth = snapToBreakpoint(newWidth, minSize, maxSize);
+        setPanelSizes((prev) => ({ ...prev, [panelId]: newWidth }));
+      };
+
+      const handleMouseUp = () => {
+        setIsDraggingHorizontal(false);
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
     };
 
-    const handleMouseUp = () => {
-      setIsDraggingHorizontal(false);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-  };
-
-  // Handle resizing preview panel
-  const handlePreviewResize = (e: React.MouseEvent) => {
+  // Resize handler for horizontal divider (vertical panel separation - preview/timeline)
+  const handleHorizontalDividerResize = (topPanelId: string) => (e: React.MouseEvent) => {
     const container = (e.target as HTMLElement).parentElement?.parentElement;
     if (!container) return;
 
     const startY = e.clientY;
     const containerHeight = container.clientHeight;
-    const startHeight = previewHeight;
+    const startHeight = panelSizes[topPanelId] ?? 60;
     setIsDraggingVertical(true);
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
@@ -404,7 +394,7 @@ export function EditorLayout({
           break;
         }
       }
-      setPreviewHeight(newHeight);
+      setPanelSizes((prev) => ({ ...prev, [topPanelId]: newHeight }));
     };
 
     const handleMouseUp = () => {
@@ -417,86 +407,113 @@ export function EditorLayout({
     document.addEventListener('mouseup', handleMouseUp);
   };
 
-  // Handle resizing media library panel
-  const handleMediaLibraryResize = (e: React.MouseEvent) => {
-    const startX = e.clientX;
-    const startWidth = mediaLibraryWidth;
-    setIsDraggingHorizontal(true);
-
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      const delta = moveEvent.clientX - startX;
-      let newWidth = Math.max(240, Math.min(350, startWidth + delta));
-      // Apply snap-to-breakpoint
-      newWidth = snapToBreakpoint(newWidth, 240, 350);
-      setMediaLibraryWidth(newWidth);
+  // Keyboard resize handler for vertical dividers
+  const handleVerticalDividerKeyboard =
+    (panelId: string, minSize: number, maxSize: number, direction: 'left' | 'right') =>
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        const delta = (e.key === 'ArrowLeft') === (direction === 'left') ? -10 : 10;
+        setPanelSizes((prev) => {
+          const currentSize = prev[panelId] ?? 320;
+          const newSize = Math.max(minSize, Math.min(maxSize, currentSize + delta));
+          savePanelSize(panelId, newSize);
+          return { ...prev, [panelId]: newSize };
+        });
+      }
     };
 
-    // Identical cleanup logic is acceptable for drag handlers
-    // eslint-disable-next-line sonarjs/no-identical-functions
-    const handleMouseUp = () => {
-      setIsDraggingHorizontal(false);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+  // Keyboard resize handler for horizontal divider
+  const handleHorizontalDividerKeyboard = (panelId: string) => (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      const delta = e.key === 'ArrowUp' ? 5 : -5;
+      setPanelSizes((prev) => {
+        const currentSize = prev[panelId] ?? 60;
+        const newSize = Math.max(40, Math.min(80, currentSize + delta));
+        savePanelSize(panelId, newSize);
+        return { ...prev, [panelId]: newSize };
+      });
+    }
   };
 
-  // Handle resizing effects library panel
-  const handleEffectsLibraryResize = (e: React.MouseEvent) => {
-    const startX = e.clientX;
-    const startWidth = effectsLibraryWidth;
-    setIsDraggingHorizontal(true);
+  // Render panel with header and collapse functionality
+  const renderPanelWithHeader = (panel: EditorLayoutPanelConfig) => {
+    const isCollapsed = collapsedPanels[panel.id as keyof typeof collapsedPanels] ?? false;
+    const content = renderPanel(panel.id);
 
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      const delta = moveEvent.clientX - startX;
-      let newWidth = Math.max(240, Math.min(350, startWidth + delta));
-      // Apply snap-to-breakpoint
-      newWidth = snapToBreakpoint(newWidth, 240, 350);
-      setEffectsLibraryWidth(newWidth);
-    };
-
-    // Identical cleanup logic is acceptable for drag handlers
-    // eslint-disable-next-line sonarjs/no-identical-functions
-    const handleMouseUp = () => {
-      setIsDraggingHorizontal(false);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    return (
+      <div key={panel.id}>
+        <PanelHeader
+          title={panel.title}
+          isCollapsed={isCollapsed}
+          onToggleCollapse={() => togglePanelCollapsed(panel.id as keyof typeof collapsedPanels)}
+        />
+        {!isCollapsed && content}
+      </div>
+    );
   };
 
-  // Handle resizing history panel
-  const handleHistoryResize = (e: React.MouseEvent) => {
-    const startX = e.clientX;
-    const startWidth = historyWidth;
-    setIsDraggingHorizontal(true);
+  // Render vertical divider (for horizontal panel separation)
+  const renderVerticalDivider = (
+    panelId: string,
+    minSize: number,
+    maxSize: number,
+    direction: 'left' | 'right'
+  ) => (
+    // Interactive resizer - intentionally uses mouse and keyboard events
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
+    <div
+      className={`${styles.dividerVertical} ${isDraggingHorizontal ? styles.dividerDragging : ''}`}
+      onMouseDown={handleVerticalDividerResize(panelId, minSize, maxSize, direction)}
+      role="separator"
+      aria-orientation="vertical"
+      aria-label={`Resize ${panelId} panel`}
+      // Separator role is interactive and requires tabIndex for keyboard accessibility
+      // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+      tabIndex={0}
+      onKeyDown={handleVerticalDividerKeyboard(panelId, minSize, maxSize, direction)}
+    />
+  );
 
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      const delta = startX - moveEvent.clientX;
-      let newWidth = Math.max(280, Math.min(400, startWidth + delta));
-      // Apply snap-to-breakpoint
-      newWidth = snapToBreakpoint(newWidth, 280, 400);
-      setHistoryWidth(newWidth);
-    };
+  // Render horizontal divider (for vertical panel separation)
+  const renderHorizontalDivider = (topPanelId: string) => (
+    // Interactive resizer - intentionally uses mouse and keyboard events
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
+    <div
+      className={`${styles.dividerHorizontal} ${isDraggingVertical ? styles.dividerHorizontalDragging : ''}`}
+      onMouseDown={handleHorizontalDividerResize(topPanelId)}
+      role="separator"
+      aria-orientation="horizontal"
+      aria-label={`Resize ${topPanelId} panel`}
+      // Separator role is interactive and requires tabIndex for keyboard accessibility
+      // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+      tabIndex={0}
+      onKeyDown={handleHorizontalDividerKeyboard(topPanelId)}
+    />
+  );
 
-    // Identical cleanup logic is acceptable for drag handlers
-    // eslint-disable-next-line sonarjs/no-identical-functions
-    const handleMouseUp = () => {
-      setIsDraggingHorizontal(false);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+  // Determine if panel is in left sidebar (media, effects)
+  const isLeftSidebarPanel = (panel: EditorLayoutPanelConfig) => {
+    return panel.id === 'mediaLibrary' || panel.id === 'effects';
   };
+
+  // Get left sidebar panels (order: media, effects)
+  const leftSidebarPanels = rightPanels.filter(isLeftSidebarPanel).sort((a, b) => {
+    const order = ['mediaLibrary', 'effects'];
+    return order.indexOf(a.id) - order.indexOf(b.id);
+  });
+
+  // Get right sidebar panels (order: properties, history)
+  const rightSidebarPanels = rightPanels
+    .filter((p) => !isLeftSidebarPanel(p))
+    .sort((a, b) => {
+      const order = ['properties', 'history'];
+      return order.indexOf(a.id) - order.indexOf(b.id);
+    });
 
   return (
-    <div className={isFullscreen ? styles.fullscreenContainer : styles.container}>
+    <div className={isFullscreen ? styles.fullscreenContainer : styles.editorShell}>
       {useTopMenuBar ? (
         <TopMenuBar
           onImportMedia={onImportMedia}
@@ -517,221 +534,104 @@ export function EditorLayout({
           lastSaved={lastSaved}
         />
       )}
-      <div className={styles.content}>
-        {mediaLibrary && (
-          <>
-            <div
-              className={`${styles.mediaLibraryPanel} ${collapsedPanels.mediaLibrary ? styles.panelCollapsed : ''}`}
-              style={{
-                width: collapsedPanels.mediaLibrary
-                  ? `${COLLAPSED_PANEL_WIDTH}px`
-                  : `${mediaLibraryWidth}px`,
-              }}
-            >
-              <PanelHeader
-                title="Media Library"
-                isCollapsed={collapsedPanels.mediaLibrary}
-                onToggleCollapse={() => togglePanelCollapsed('mediaLibrary')}
+      <div className={styles.editorContent}>
+        {/* Left Sidebar - Media Library + Effects */}
+        {leftSidebarPanels.length > 0 && (
+          <div className={styles.leftSidebar}>
+            {leftSidebarPanels.map((panel, index) => {
+              const isCollapsed =
+                collapsedPanels[panel.id as keyof typeof collapsedPanels] ?? false;
+              const minSize = panel.minSize ?? 240;
+              const maxSize = panel.maxSize ?? 350;
+              const panelWidth = panelSizes[panel.id] ?? panel.defaultSize ?? 280;
+
+              return (
+                <React.Fragment key={panel.id}>
+                  <div
+                    className={`${styles.leftSidebarPanel} ${isCollapsed ? styles.panelCollapsed : ''}`}
+                    style={{
+                      width: isCollapsed ? `${COLLAPSED_PANEL_WIDTH}px` : `${panelWidth}px`,
+                    }}
+                  >
+                    {renderPanelWithHeader(panel)}
+                  </div>
+                  {index < leftSidebarPanels.length - 1 &&
+                    renderVerticalDivider(panel.id, minSize, maxSize, 'left')}
+                </React.Fragment>
+              );
+            })}
+            {/* Divider between left sidebar and center */}
+            {leftSidebarPanels.length > 0 && (
+              <div
+                className={`${styles.dividerVertical} ${isDraggingHorizontal ? styles.dividerDragging : ''}`}
+                style={{ cursor: 'ew-resize' }}
               />
-              {!collapsedPanels.mediaLibrary && mediaLibrary}
-            </div>
-            {/* Interactive resizer - intentionally uses mouse and keyboard events */}
-            {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
-            <div
-              className={`${styles.resizer} ${isDraggingHorizontal ? styles.resizerDragging : ''}`}
-              onMouseDown={handleMediaLibraryResize}
-              role="separator"
-              aria-orientation="vertical"
-              aria-label="Resize media library panel"
-              // Separator role is interactive and requires tabIndex for keyboard accessibility
-              // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'ArrowLeft') {
-                  e.preventDefault();
-                  setMediaLibraryWidth((prev) => Math.max(240, prev - 10));
-                  savePanelSize(
-                    STORAGE_KEYS.mediaLibraryWidth,
-                    Math.max(240, mediaLibraryWidth - 10)
-                  );
-                } else if (e.key === 'ArrowRight') {
-                  e.preventDefault();
-                  setMediaLibraryWidth((prev) => Math.min(350, prev + 10));
-                  savePanelSize(
-                    STORAGE_KEYS.mediaLibraryWidth,
-                    Math.min(350, mediaLibraryWidth + 10)
-                  );
-                }
-              }}
-            />
-          </>
-        )}
-        {effects && (
-          <>
-            <div
-              className={`${styles.effectsLibraryPanel} ${collapsedPanels.effects ? styles.panelCollapsed : ''}`}
-              style={{
-                width: collapsedPanels.effects
-                  ? `${COLLAPSED_PANEL_WIDTH}px`
-                  : `${effectsLibraryWidth}px`,
-              }}
-            >
-              <PanelHeader
-                title="Effects"
-                isCollapsed={collapsedPanels.effects}
-                onToggleCollapse={() => togglePanelCollapsed('effects')}
-              />
-              {!collapsedPanels.effects && effects}
-            </div>
-            {/* Interactive resizer - intentionally uses mouse and keyboard events */}
-            {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
-            <div
-              className={`${styles.resizer} ${isDraggingHorizontal ? styles.resizerDragging : ''}`}
-              onMouseDown={handleEffectsLibraryResize}
-              role="separator"
-              aria-orientation="vertical"
-              aria-label="Resize effects library panel"
-              // Separator role is interactive and requires tabIndex for keyboard accessibility
-              // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'ArrowLeft') {
-                  e.preventDefault();
-                  setEffectsLibraryWidth((prev) => Math.max(240, prev - 10));
-                  savePanelSize(
-                    STORAGE_KEYS.effectsLibraryWidth,
-                    Math.max(240, effectsLibraryWidth - 10)
-                  );
-                } else if (e.key === 'ArrowRight') {
-                  e.preventDefault();
-                  setEffectsLibraryWidth((prev) => Math.min(350, prev + 10));
-                  savePanelSize(
-                    STORAGE_KEYS.effectsLibraryWidth,
-                    Math.min(350, effectsLibraryWidth + 10)
-                  );
-                }
-              }}
-            />
-          </>
-        )}
-        <div className={styles.mainArea}>
-          <div className={styles.previewPanel} style={{ flex: previewHeight }}>
-            {preview}
+            )}
           </div>
-          {/* Interactive resizer - intentionally uses mouse and keyboard events */}
-          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
-          <div
-            className={`${styles.horizontalResizer} ${isDraggingVertical ? styles.horizontalResizerDragging : ''}`}
-            onMouseDown={handlePreviewResize}
-            role="separator"
-            aria-orientation="horizontal"
-            aria-label="Resize preview panel"
-            // Separator role is interactive and requires tabIndex for keyboard accessibility
-            // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                setPreviewHeight((prev) => Math.min(80, prev + 5));
-                savePanelSize(STORAGE_KEYS.previewHeight, Math.min(80, previewHeight + 5));
-              } else if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                setPreviewHeight((prev) => Math.max(40, prev - 5));
-                savePanelSize(STORAGE_KEYS.previewHeight, Math.max(40, previewHeight - 5));
-              }
-            }}
-          />
-          <div className={styles.timelinePanel} style={{ flex: 100 - previewHeight }}>
-            {timeline}
-          </div>
+        )}
+
+        {/* Center Region - Preview (top) + Timeline (bottom) */}
+        <div className={styles.centerRegion}>
+          {/* Top Region - Preview */}
+          {topPanels.length > 0 &&
+            topPanels.map((panel) => {
+              const previewHeight = panelSizes[panel.id] ?? panel.defaultSize ?? 60;
+              return (
+                <React.Fragment key={panel.id}>
+                  <div className={styles.topRegionPanel} style={{ flex: previewHeight }}>
+                    {renderPanel(panel.id)}
+                  </div>
+                  {bottomPanels.length > 0 && renderHorizontalDivider(panel.id)}
+                </React.Fragment>
+              );
+            })}
+
+          {/* Bottom Region - Timeline */}
+          {bottomPanels.length > 0 &&
+            bottomPanels.map((panel) => {
+              const previewHeight = panelSizes[topPanels[0]?.id] ?? 60;
+              return (
+                <div
+                  key={panel.id}
+                  className={styles.bottomRegionPanel}
+                  style={{ flex: 100 - previewHeight }}
+                >
+                  {renderPanel(panel.id)}
+                </div>
+              );
+            })}
         </div>
-        {properties && (
-          <>
-            {/* Interactive resizer - intentionally uses mouse and keyboard events */}
-            {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
+
+        {/* Right Sidebar - Properties + History */}
+        {rightSidebarPanels.length > 0 && (
+          <div className={styles.rightSidebar}>
+            {/* Divider between center and right sidebar */}
             <div
-              className={`${styles.resizer} ${isDraggingHorizontal ? styles.resizerDragging : ''}`}
-              onMouseDown={handlePropertiesResize}
-              role="separator"
-              aria-orientation="vertical"
-              aria-label="Resize properties panel"
-              // Separator role is interactive and requires tabIndex for keyboard accessibility
-              // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'ArrowLeft') {
-                  e.preventDefault();
-                  setPropertiesWidth((prev) => Math.min(400, prev + 10));
-                  savePanelSize(STORAGE_KEYS.propertiesWidth, Math.min(400, propertiesWidth + 10));
-                } else if (e.key === 'ArrowRight') {
-                  e.preventDefault();
-                  setPropertiesWidth((prev) => Math.max(280, prev - 10));
-                  savePanelSize(STORAGE_KEYS.propertiesWidth, Math.max(280, propertiesWidth - 10));
-                }
-              }}
+              className={`${styles.dividerVertical} ${isDraggingHorizontal ? styles.dividerDragging : ''}`}
+              style={{ cursor: 'ew-resize' }}
             />
-            <div
-              className={`${styles.propertiesPanel} ${collapsedPanels.properties ? styles.panelCollapsed : ''}`}
-              style={{
-                width: collapsedPanels.properties
-                  ? `${COLLAPSED_PANEL_WIDTH}px`
-                  : `${propertiesWidth}px`,
-              }}
-            >
-              <PanelHeader
-                title="Properties"
-                isCollapsed={collapsedPanels.properties}
-                onToggleCollapse={() => togglePanelCollapsed('properties')}
-              />
-              {!collapsedPanels.properties && properties}
-            </div>
-          </>
-        )}
-        {history && (
-          <>
-            {/* Interactive resizer - intentionally uses mouse and keyboard events */}
-            {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
-            <div
-              className={`${styles.resizer} ${isDraggingHorizontal ? styles.resizerDragging : ''}`}
-              onMouseDown={handleHistoryResize}
-              role="separator"
-              aria-orientation="vertical"
-              aria-label="Resize history panel"
-              // Separator role is interactive and requires tabIndex for keyboard accessibility
-              // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'ArrowLeft') {
-                  e.preventDefault();
-                  setHistoryWidth((prev) => {
-                    const newWidth = Math.min(400, prev + 10);
-                    savePanelSize(STORAGE_KEYS.historyWidth, newWidth);
-                    return newWidth;
-                  });
-                } else if (e.key === 'ArrowRight') {
-                  e.preventDefault();
-                  setHistoryWidth((prev) => {
-                    const newWidth = Math.max(280, prev - 10);
-                    savePanelSize(STORAGE_KEYS.historyWidth, newWidth);
-                    return newWidth;
-                  });
-                }
-              }}
-            />
-            <div
-              className={`${styles.propertiesPanel} ${collapsedPanels.history ? styles.panelCollapsed : ''}`}
-              style={{
-                width: collapsedPanels.history ? `${COLLAPSED_PANEL_WIDTH}px` : `${historyWidth}px`,
-              }}
-            >
-              <PanelHeader
-                title="History"
-                isCollapsed={collapsedPanels.history}
-                onToggleCollapse={() => togglePanelCollapsed('history')}
-              />
-              {!collapsedPanels.history && history}
-            </div>
-          </>
+            {rightSidebarPanels.map((panel, index) => {
+              const isCollapsed =
+                collapsedPanels[panel.id as keyof typeof collapsedPanels] ?? false;
+              const minSize = panel.minSize ?? 280;
+              const maxSize = panel.maxSize ?? 400;
+              const panelWidth = panelSizes[panel.id] ?? panel.defaultSize ?? 320;
+
+              return (
+                <React.Fragment key={panel.id}>
+                  {index > 0 && renderVerticalDivider(panel.id, minSize, maxSize, 'right')}
+                  <div
+                    className={`${styles.rightSidebarPanel} ${isCollapsed ? styles.panelCollapsed : ''}`}
+                    style={{
+                      width: isCollapsed ? `${COLLAPSED_PANEL_WIDTH}px` : `${panelWidth}px`,
+                    }}
+                  >
+                    {renderPanelWithHeader(panel)}
+                  </div>
+                </React.Fragment>
+              );
+            })}
+          </div>
         )}
       </div>
     </div>

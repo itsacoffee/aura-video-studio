@@ -28,17 +28,18 @@ export interface WorkspaceLayout {
 }
 
 // Preset workspace layouts matching professional NLE standards
+// Updated to match 60/30/10 proportions (Preview 60%, Timeline 30%, Properties 10%)
 export const PRESET_LAYOUTS: Record<string, WorkspaceLayout> = {
   editing: {
     id: 'editing',
     name: 'Editing',
-    description: 'Focus on timeline with large preview',
+    description: 'Focus on timeline with large preview (60/30/10 proportions)',
     panelSizes: {
       propertiesWidth: 320,
       mediaLibraryWidth: 280,
       effectsLibraryWidth: 280,
       historyWidth: 320,
-      previewHeight: 70,
+      previewHeight: 60, // 60% for preview
     },
     visiblePanels: {
       properties: false,
