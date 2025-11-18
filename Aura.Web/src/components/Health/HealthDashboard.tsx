@@ -32,6 +32,7 @@ import {
 import React from 'react';
 import { useHealthMonitoring } from '../../hooks/useHealthMonitoring';
 import type { HealthCheckEntry } from '../../services/api/healthApi';
+import type { HealthCheckDetail } from '../../types/api-v1';
 
 const useStyles = makeStyles({
   container: {
@@ -189,6 +190,16 @@ const getCheckIcon = (name: string): React.JSX.Element => {
   return iconMap[name] || <Server24Regular />;
 };
 
+/**
+ * Get status from either HealthCheckResponse or HealthDetailsResponse
+ */
+const getHealthStatus = (health: { status?: string; overallStatus?: string } | null): string => {
+  if (!health) return 'unknown';
+  if ('status' in health && health.status) return health.status;
+  if ('overallStatus' in health && health.overallStatus) return health.overallStatus;
+  return 'unknown';
+};
+
 export function HealthDashboard() {
   const styles = useStyles();
   const {
@@ -242,51 +253,60 @@ export function HealthDashboard() {
     );
   };
 
-  const renderCheck = (check: HealthCheckEntry) => (
-    <Card key={check.name} className={styles.checkCard}>
-      <div className={styles.checkHeader}>
-        <div className={styles.checkTitle}>
-          {getCheckIcon(check.name)}
-          <Text weight="semibold" size={400}>
-            {check.name}
-          </Text>
+  const renderCheck = (check: HealthCheckEntry | HealthCheckDetail) => {
+    // Type guard to check if it's HealthCheckEntry
+    const isHealthCheckEntry = (c: HealthCheckEntry | HealthCheckDetail): c is HealthCheckEntry =>
+      'duration' in c && typeof c.duration === 'number';
+
+    return (
+      <Card key={check.name} className={styles.checkCard}>
+        <div className={styles.checkHeader}>
+          <div className={styles.checkTitle}>
+            {getCheckIcon(check.name)}
+            <Text weight="semibold" size={400}>
+              {check.name}
+            </Text>
+          </div>
+          {getStatusBadge(check.status)}
         </div>
-        {getStatusBadge(check.status)}
-      </div>
 
-      {check.description && <Caption1>{check.description}</Caption1>}
+        {'description' in check && check.description && <Caption1>{check.description}</Caption1>}
+        {'message' in check && check.message && <Caption1>{check.message}</Caption1>}
 
-      {renderMetrics(check)}
+        {isHealthCheckEntry(check) && renderMetrics(check)}
 
-      {check.exception && (
-        <div
-          style={{
-            padding: tokens.spacingVerticalS,
-            backgroundColor: tokens.colorNeutralBackground3,
-            borderRadius: tokens.borderRadiusSmall,
-          }}
-        >
-          <Caption1 style={{ color: tokens.colorPaletteRedForeground1 }}>
-            Error: {check.exception}
+        {'exception' in check && check.exception && (
+          <div
+            style={{
+              padding: tokens.spacingVerticalS,
+              backgroundColor: tokens.colorNeutralBackground3,
+              borderRadius: tokens.borderRadiusSmall,
+            }}
+          >
+            <Caption1 style={{ color: tokens.colorPaletteRedForeground1 }}>
+              Error: {check.exception}
+            </Caption1>
+          </div>
+        )}
+
+        {'tags' in check && check.tags && check.tags.length > 0 && (
+          <div className={styles.tags}>
+            {check.tags.map((tag) => (
+              <Badge key={tag} appearance="tint" size="small">
+                {tag}
+              </Badge>
+            ))}
+          </div>
+        )}
+
+        {isHealthCheckEntry(check) && (
+          <Caption1 style={{ color: tokens.colorNeutralForeground3 }}>
+            Check duration: {check.duration.toFixed(0)}ms
           </Caption1>
-        </div>
-      )}
-
-      {check.tags && check.tags.length > 0 && (
-        <div className={styles.tags}>
-          {check.tags.map((tag) => (
-            <Badge key={tag} appearance="tint" size="small">
-              {tag}
-            </Badge>
-          ))}
-        </div>
-      )}
-
-      <Caption1 style={{ color: tokens.colorNeutralForeground3 }}>
-        Check duration: {check.duration.toFixed(0)}ms
-      </Caption1>
-    </Card>
-  );
+        )}
+      </Card>
+    );
+  };
 
   if (loading && !health) {
     return (
@@ -305,11 +325,7 @@ export function HealthDashboard() {
           <Text>Real-time monitoring of all system dependencies and services</Text>
         </div>
         <div className={styles.headerActions}>
-          <Switch
-            label="Auto-refresh"
-            checked={isMonitoring}
-            onChange={handleToggleMonitoring}
-          />
+          <Switch label="Auto-refresh" checked={isMonitoring} onChange={handleToggleMonitoring} />
           <Button
             icon={<ArrowClockwise24Regular />}
             onClick={refresh}
@@ -342,9 +358,11 @@ export function HealthDashboard() {
 
       {health && (
         <>
-          {health.status === 'unhealthy' && (
+          {getHealthStatus(health) === 'unhealthy' && (
             <Card className={styles.errorBanner}>
-              <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, alignItems: 'center' }}>
+              <div
+                style={{ display: 'flex', gap: tokens.spacingHorizontalM, alignItems: 'center' }}
+              >
                 <ErrorCircle24Filled />
                 <div>
                   <Text weight="semibold">System Unhealthy</Text>
@@ -355,14 +373,19 @@ export function HealthDashboard() {
             </Card>
           )}
 
-          {health.status === 'degraded' && (
+          {getHealthStatus(health) === 'degraded' && (
             <Card className={styles.warningBanner}>
-              <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, alignItems: 'center' }}>
+              <div
+                style={{ display: 'flex', gap: tokens.spacingHorizontalM, alignItems: 'center' }}
+              >
                 <Warning24Filled />
                 <div>
                   <Text weight="semibold">System Degraded</Text>
                   <br />
-                  <Text>Some health checks are reporting degraded status. System may operate with reduced functionality.</Text>
+                  <Text>
+                    Some health checks are reporting degraded status. System may operate with
+                    reduced functionality.
+                  </Text>
                 </div>
               </div>
             </Card>
@@ -370,9 +393,9 @@ export function HealthDashboard() {
 
           <div className={styles.overallStatus}>
             <Card className={styles.statusCard}>
-              <div className={styles.statusIcon}>{getStatusIcon(health.status)}</div>
+              <div className={styles.statusIcon}>{getStatusIcon(getHealthStatus(health))}</div>
               <div className={styles.statusContent}>
-                <Title3>Overall Status: {health.status.toUpperCase()}</Title3>
+                <Title3>Overall Status: {getHealthStatus(health).toUpperCase()}</Title3>
                 <div className={styles.statusMeta}>
                   <div>
                     <Caption1>Last Updated</Caption1>
@@ -380,18 +403,23 @@ export function HealthDashboard() {
                   </div>
                   <div>
                     <Caption1>Total Duration</Caption1>
-                    <Body1>{health.duration?.toFixed(0) || 0}ms</Body1>
+                    <Body1>
+                      {'duration' in health && typeof health.duration === 'number'
+                        ? health.duration.toFixed(0)
+                        : 0}
+                      ms
+                    </Body1>
                   </div>
-                  {health.environment && (
+                  {'environment' in health && health.environment && (
                     <div>
                       <Caption1>Environment</Caption1>
-                      <Body1>{health.environment}</Body1>
+                      <Body1>{String(health.environment)}</Body1>
                     </div>
                   )}
-                  {health.version && (
+                  {'version' in health && health.version && (
                     <div>
                       <Caption1>Version</Caption1>
-                      <Body1>{health.version}</Body1>
+                      <Body1>{String(health.version)}</Body1>
                     </div>
                   )}
                   <div>
