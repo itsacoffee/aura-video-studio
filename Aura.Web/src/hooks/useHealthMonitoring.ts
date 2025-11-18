@@ -4,7 +4,12 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { getHealthDetails, getHealthReady, type HealthCheckResponse } from '../services/api/healthApi';
+import {
+  getHealthDetails,
+  getHealthReady,
+  type HealthCheckResponse,
+} from '../services/api/healthApi';
+import type { HealthDetailsResponse } from '../types/api-v1';
 
 export interface UseHealthMonitoringOptions {
   /**
@@ -45,7 +50,7 @@ export interface UseHealthMonitoringOptions {
 }
 
 export interface HealthMonitoringState {
-  health: HealthCheckResponse | null;
+  health: HealthCheckResponse | HealthDetailsResponse | null;
   loading: boolean;
   error: Error | null;
   retryCount: number;
@@ -76,13 +81,13 @@ export function useHealthMonitoring(options: UseHealthMonitoringOptions = {}) {
   const retryTimeoutRef = useRef<number | null>(null);
   const isMountedRef = useRef(true);
 
+  const scheduleRetryRef = useRef<() => void>();
+
   const fetchHealth = useCallback(async () => {
     if (!isMountedRef.current) return;
 
     try {
-      const data = useReadyEndpoint
-        ? await getHealthReady()
-        : await getHealthDetails();
+      const data = useReadyEndpoint ? await getHealthReady() : await getHealthDetails();
 
       if (!isMountedRef.current) return;
 
@@ -96,8 +101,13 @@ export function useHealthMonitoring(options: UseHealthMonitoringOptions = {}) {
       }));
 
       // Check if unhealthy and should retry
-      if (enableAutoRetry && data.status === 'unhealthy' && state.retryCount < maxRetries) {
-        scheduleRetry();
+      // HealthCheckResponse has status, HealthDetailsResponse has overallStatus
+      const isUnhealthy =
+        'status' in data
+          ? data.status === 'unhealthy'
+          : 'overallStatus' in data && data.overallStatus === 'unhealthy';
+      if (enableAutoRetry && isUnhealthy && state.retryCount < maxRetries) {
+        scheduleRetryRef.current?.();
       }
     } catch (err) {
       if (!isMountedRef.current) return;
@@ -113,7 +123,7 @@ export function useHealthMonitoring(options: UseHealthMonitoringOptions = {}) {
 
       // Retry on error if enabled
       if (enableAutoRetry && state.retryCount < maxRetries) {
-        scheduleRetry();
+        scheduleRetryRef.current?.();
       }
     }
   }, [useReadyEndpoint, enableAutoRetry, maxRetries, state.retryCount]);
@@ -127,6 +137,9 @@ export function useHealthMonitoring(options: UseHealthMonitoringOptions = {}) {
       fetchHealth();
     }, retryDelay);
   }, [fetchHealth, retryDelay]);
+
+  // Keep ref up to date
+  scheduleRetryRef.current = scheduleRetry;
 
   const startMonitoring = useCallback(() => {
     if (state.isMonitoring) return;

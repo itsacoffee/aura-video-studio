@@ -388,7 +388,7 @@ export function LocalEngines() {
 
       {LOCAL_ENGINES.map((engineConfig) => {
         const status = engineStatuses.get(engineConfig.id);
-        const config = engineConfigs[engineConfig.id] || {};
+        const config = engineConfigs[engineConfig.id] || { autoStart: false };
 
         return (
           <Card key={engineConfig.id} className={styles.engineCard}>

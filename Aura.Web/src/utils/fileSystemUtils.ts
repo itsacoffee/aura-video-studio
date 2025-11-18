@@ -17,9 +17,9 @@ export async function openFile(filePath: string): Promise<boolean> {
       logger.debug('File opened via Aura shell', 'fileSystemUtils', 'openFile', { filePath });
       return true;
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       logger.warn(
-        'Aura shell openFile failed, falling back to API',
-        error instanceof Error ? error : new Error(String(error)),
+        `Aura shell openFile failed, falling back to API: ${errorMessage}`,
         'fileSystemUtils',
         'openFile'
       );
@@ -70,9 +70,9 @@ export async function openFolder(filePath: string): Promise<boolean> {
       logger.debug('Folder opened via Aura shell', 'fileSystemUtils', 'openFolder', { filePath });
       return true;
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       logger.warn(
-        'Aura shell openFolder failed, falling back to API',
-        error instanceof Error ? error : new Error(String(error)),
+        `Aura shell openFolder failed, falling back to API: ${errorMessage}`,
         'fileSystemUtils',
         'openFolder'
       );

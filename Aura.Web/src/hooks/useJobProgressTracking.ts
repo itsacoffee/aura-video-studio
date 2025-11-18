@@ -17,10 +17,12 @@ export interface UseJobProgressOptions {
 }
 
 export interface UseJobProgressResult {
-  progress: ReturnType<typeof useProgressStore.getState>['jobProgress'] extends Map<string, infer T> ? T | undefined : never;
+  progress: ReturnType<typeof useProgressStore.getState>['jobProgress'] extends Map<string, infer T>
+    ? T | undefined
+    : never;
   isConnected: boolean;
   reconnectAttempts: number;
-  circuitState: ReturnType<typeof useProgressStore.getState>['getCircuitState'];
+  circuitState: ReturnType<ReturnType<typeof useProgressStore.getState>['getCircuitState']>;
   disconnect: () => void;
 }
 
@@ -30,7 +32,7 @@ export interface UseJobProgressResult {
  */
 export function useJobProgress(options: UseJobProgressOptions): UseJobProgressResult {
   const { jobId, enabled = true, onComplete, onError } = options;
-  
+
   const {
     updateProgress,
     setJobStatus,
@@ -50,97 +52,110 @@ export function useJobProgress(options: UseJobProgressOptions): UseJobProgressRe
 
   const progress = getProgress(jobId);
   const circuitState = getCircuitState();
-  
+
   const reconnectAttemptsRef = useRef(0);
   const hasCompletedRef = useRef(false);
 
   // Handle SSE messages
-  const handleMessage = useCallback((message: { type: string; data: unknown }) => {
-    try {
-      switch (message.type) {
-        case 'step-progress': {
-          const progressData = message.data as ProgressEventDto;
-          updateProgress(jobId, progressData);
-          recordSuccess();
-          break;
-        }
-
-        case 'job-status': {
-          const statusData = message.data as { status: string };
-          const jobStatus = mapApiStatusToJobStatus(statusData.status);
-          setJobStatus(jobId, jobStatus);
-          recordSuccess();
-          break;
-        }
-
-        case 'step-status': {
-          const stepData = message.data as { step: string; status: string };
-          recordSuccess();
-          break;
-        }
-
-        case 'warning': {
-          const warningData = message.data as { message: string };
-          addWarning(jobId, warningData.message);
-          break;
-        }
-
-        case 'job-completed': {
-          setJobStatus(jobId, 'completed');
-          hasCompletedRef.current = true;
-          recordSuccess();
-          if (onComplete) {
-            onComplete();
+  const handleMessage = useCallback(
+    (message: { type: string; data: unknown }) => {
+      try {
+        switch (message.type) {
+          case 'step-progress': {
+            const progressData = message.data as ProgressEventDto;
+            updateProgress(jobId, progressData);
+            recordSuccess();
+            break;
           }
-          break;
-        }
 
-        case 'job-failed': {
-          const failData = message.data as { errorMessage?: string };
-          setJobStatus(jobId, 'failed');
-          hasCompletedRef.current = true;
-          recordSuccess();
-          if (onError && failData.errorMessage) {
-            onError(new Error(failData.errorMessage));
+          case 'job-status': {
+            const statusData = message.data as { status: string };
+            const jobStatus = mapApiStatusToJobStatus(statusData.status);
+            setJobStatus(jobId, jobStatus);
+            recordSuccess();
+            break;
           }
-          break;
-        }
 
-        case 'job-cancelled': {
-          setJobStatus(jobId, 'cancelled');
-          hasCompletedRef.current = true;
-          recordSuccess();
-          break;
-        }
-
-        case 'heartbeat': {
-          const heartbeat = message.data as HeartbeatEventDto;
-          updateConnectionStatus(jobId, 'connected');
-          recordSuccess();
-          break;
-        }
-
-        case 'error': {
-          const errorData = message.data as { message: string };
-          recordFailure();
-          if (onError) {
-            onError(new Error(errorData.message));
+          case 'step-status': {
+            const _stepData = message.data as { step: string; status: string };
+            recordSuccess();
+            break;
           }
-          break;
-        }
 
-        default:
-          console.warn(`Unhandled SSE event type: ${message.type}`);
+          case 'warning': {
+            const warningData = message.data as { message: string };
+            addWarning(jobId, warningData.message);
+            break;
+          }
+
+          case 'job-completed': {
+            setJobStatus(jobId, 'completed');
+            hasCompletedRef.current = true;
+            recordSuccess();
+            if (onComplete) {
+              onComplete();
+            }
+            break;
+          }
+
+          case 'job-failed': {
+            const failData = message.data as { errorMessage?: string };
+            setJobStatus(jobId, 'failed');
+            hasCompletedRef.current = true;
+            recordSuccess();
+            if (onError && failData.errorMessage) {
+              onError(new Error(failData.errorMessage));
+            }
+            break;
+          }
+
+          case 'job-cancelled': {
+            setJobStatus(jobId, 'cancelled');
+            hasCompletedRef.current = true;
+            recordSuccess();
+            break;
+          }
+
+          case 'heartbeat': {
+            const _heartbeat = message.data as HeartbeatEventDto;
+            updateConnectionStatus(jobId, 'connected');
+            recordSuccess();
+            break;
+          }
+
+          case 'error': {
+            const errorData = message.data as { message: string };
+            recordFailure();
+            if (onError) {
+              onError(new Error(errorData.message));
+            }
+            break;
+          }
+
+          default:
+            console.warn(`Unhandled SSE event type: ${message.type}`);
+        }
+      } catch (error) {
+        const err = error instanceof Error ? error : new Error('Failed to process SSE message');
+        console.error('Error processing SSE message:', err);
+        recordFailure();
+        if (onError) {
+          onError(err);
+        }
       }
-    } catch (error) {
-      const err = error instanceof Error ? error : new Error('Failed to process SSE message');
-      console.error('Error processing SSE message:', err);
-      recordFailure();
-      if (onError) {
-        onError(err);
-      }
-    }
-  }, [jobId, updateProgress, setJobStatus, addWarning, recordSuccess, recordFailure, updateConnectionStatus, onComplete, onError]);
+    },
+    [
+      jobId,
+      updateProgress,
+      setJobStatus,
+      addWarning,
+      recordSuccess,
+      recordFailure,
+      updateConnectionStatus,
+      onComplete,
+      onError,
+    ]
+  );
 
   // Handle connection open
   const handleOpen = useCallback(() => {
@@ -151,15 +166,18 @@ export function useJobProgress(options: UseJobProgressOptions): UseJobProgressRe
   }, [jobId, updateConnectionStatus, resetConnection, recordSuccess]);
 
   // Handle connection error
-  const handleError = useCallback((error: Error) => {
-    console.error(`SSE connection error for job ${jobId}:`, error);
-    updateConnectionStatus(jobId, 'error');
-    recordFailure();
-    
-    if (onError) {
-      onError(error);
-    }
-  }, [jobId, updateConnectionStatus, recordFailure, onError]);
+  const handleError = useCallback(
+    (error: Error) => {
+      console.error(`SSE connection error for job ${jobId}:`, error);
+      updateConnectionStatus(jobId, 'error');
+      recordFailure();
+
+      if (onError) {
+        onError(error);
+      }
+    },
+    [jobId, updateConnectionStatus, recordFailure, onError]
+  );
 
   // Handle connection close
   const handleClose = useCallback(() => {
@@ -170,7 +188,12 @@ export function useJobProgress(options: UseJobProgressOptions): UseJobProgressRe
   const reconnectDelay = getReconnectDelay(reconnectAttemptsRef.current);
 
   // Initialize SSE connection
-  const { isConnected, reconnectAttempt, connect, disconnect } = useSSEConnection({
+  const {
+    isConnected: _isConnected,
+    reconnectAttempt,
+    connect,
+    disconnect,
+  } = useSSEConnection({
     onMessage: handleMessage,
     onError: handleError,
     onOpen: handleOpen,
@@ -252,9 +275,11 @@ export function useJobProgress(options: UseJobProgressOptions): UseJobProgressRe
 /**
  * Map API job status to internal job status
  */
-function mapApiStatusToJobStatus(apiStatus: string): 'queued' | 'running' | 'completed' | 'failed' | 'cancelled' {
+function mapApiStatusToJobStatus(
+  apiStatus: string
+): 'queued' | 'running' | 'completed' | 'failed' | 'cancelled' {
   const normalized = apiStatus.toLowerCase();
-  
+
   switch (normalized) {
     case 'queued':
       return 'queued';

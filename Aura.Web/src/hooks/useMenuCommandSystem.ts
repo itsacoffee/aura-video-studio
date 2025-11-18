@@ -292,40 +292,54 @@ export function useMenuCommandSystem() {
 
     // Wire up Electron menu listeners to dispatcher
     unsubscribers.push(
-      menu.onNewProject((payload) => menuCommandDispatcher.dispatch('menu:newProject', payload))
-    );
-    unsubscribers.push(
-      menu.onOpenProject((payload) => menuCommandDispatcher.dispatch('menu:openProject', payload))
-    );
-    unsubscribers.push(
-      menu.onOpenRecentProject((payload) =>
-        menuCommandDispatcher.dispatch('menu:openRecentProject', payload)
+      menu.onNewProject(
+        (payload) => void menuCommandDispatcher.dispatch('menu:newProject', payload)
       )
     );
     unsubscribers.push(
-      menu.onSaveProject((payload) => menuCommandDispatcher.dispatch('menu:saveProject', payload))
-    );
-    unsubscribers.push(
-      menu.onSaveProjectAs((payload) =>
-        menuCommandDispatcher.dispatch('menu:saveProjectAs', payload)
+      menu.onOpenProject(
+        (payload) => void menuCommandDispatcher.dispatch('menu:openProject', payload)
       )
     );
     unsubscribers.push(
-      menu.onImportVideo((payload) => menuCommandDispatcher.dispatch('menu:importVideo', payload))
-    );
-    unsubscribers.push(
-      menu.onImportAudio((payload) => menuCommandDispatcher.dispatch('menu:importAudio', payload))
-    );
-    unsubscribers.push(
-      menu.onImportImages((payload) => menuCommandDispatcher.dispatch('menu:importImages', payload))
-    );
-    unsubscribers.push(
-      menu.onImportDocument((payload) =>
-        menuCommandDispatcher.dispatch('menu:importDocument', payload)
+      menu.onOpenRecentProject(
+        (payload) => void menuCommandDispatcher.dispatch('menu:openRecentProject', payload)
       )
     );
     unsubscribers.push(
-      menu.onExportVideo((payload) => menuCommandDispatcher.dispatch('menu:exportVideo', payload))
+      menu.onSaveProject(
+        (payload) => void menuCommandDispatcher.dispatch('menu:saveProject', payload)
+      )
+    );
+    unsubscribers.push(
+      menu.onSaveProjectAs(
+        (payload) => void menuCommandDispatcher.dispatch('menu:saveProjectAs', payload)
+      )
+    );
+    unsubscribers.push(
+      menu.onImportVideo(
+        (payload) => void menuCommandDispatcher.dispatch('menu:importVideo', payload)
+      )
+    );
+    unsubscribers.push(
+      menu.onImportAudio(
+        (payload) => void menuCommandDispatcher.dispatch('menu:importAudio', payload)
+      )
+    );
+    unsubscribers.push(
+      menu.onImportImages(
+        (payload) => void menuCommandDispatcher.dispatch('menu:importImages', payload)
+      )
+    );
+    unsubscribers.push(
+      menu.onImportDocument(
+        (payload) => void menuCommandDispatcher.dispatch('menu:importDocument', payload)
+      )
+    );
+    unsubscribers.push(
+      menu.onExportVideo(
+        (payload) => void menuCommandDispatcher.dispatch('menu:exportVideo', payload)
+      )
     );
     unsubscribers.push(
       menu.onExportTimeline((payload) =>
