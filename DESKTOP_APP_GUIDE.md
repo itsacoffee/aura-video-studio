@@ -17,14 +17,14 @@ This guide covers building, developing, and maintaining the Aura Video Studio de
 
 ## Architecture Overview
 
-The Aura Video Studio desktop app uses **Electron** to wrap the React frontend and ASP.NET Core backend into a native desktop application.
+The Aura Video Studio desktop app uses **Electron** to wrap the React frontend and ASP.NET Core backend into a native desktop application. **This is the authoritative, production runtime** — the canonical way users interact with Aura Video Studio.
 
 ### Components
 
 ```
 Aura.Desktop/
 ├── electron/
-│   ├── main.js            # Main process entry point
+│   ├── main.js            # Main process entry point (modular main process)
 │   ├── preload.js         # Preload script (sandboxed bridge)
 │   ├── window-manager.js  # Window lifecycle management
 │   ├── backend-service.js # Backend process management
@@ -45,6 +45,19 @@ Aura.Desktop/
     ├── frontend/          # Built React app
     └── ffmpeg/            # FFmpeg binaries (optional)
 ```
+
+**For complete Electron main process architecture, IPC handlers, window manager, backend service, tray, menu, and protocol handler details, see:**  
+[Aura.Desktop/electron/README.md](electron/README.md)
+
+### Do Not Use Legacy Entry Files
+
+**⚠️ Important:**  
+The file `Aura.Desktop/preload.js` at the root is a **legacy artifact** that simply redirects to `electron/preload.js`. It exists for backwards compatibility only. All new configurations and development should reference the modular entry points in the `electron/` directory:
+- **Main entry:** `electron/main.js`
+- **Preload script:** `electron/preload.js`
+- **IPC handlers:** `electron/ipc-handlers/`
+
+Do not wire `electron.js` (if present) or root `preload.js` into new Electron configurations. Always use the modular structure under `Aura.Desktop/electron/`.
 
 ### Process Model
 
