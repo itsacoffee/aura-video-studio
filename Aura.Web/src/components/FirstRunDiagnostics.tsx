@@ -18,7 +18,7 @@ import {
 } from '@fluentui/react-icons';
 import { useEffect, useState, useCallback } from 'react';
 import { apiUrl } from '../config/api';
-
+import { navigateToRoute } from '@/utils/navigation';
 const useStyles = makeStyles({
   card: {
     marginBottom: tokens.spacingVerticalL,
@@ -197,7 +197,7 @@ export function FirstRunDiagnostics({
     switch (action.actionType) {
       case 'navigate':
         if (action.actionUrl) {
-          window.location.href = action.actionUrl;
+          navigateToRoute(action.actionUrl);
         }
         break;
       case 'retry':

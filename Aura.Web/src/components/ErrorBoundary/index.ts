@@ -9,7 +9,6 @@ export { CrashRecoveryScreen } from './CrashRecoveryScreen';
 export { ApiErrorDisplay } from './ApiErrorDisplay';
 export { parseApiError } from './apiErrorParser';
 export type { ApiError } from './ApiErrorDisplay';
-export type { ApiError } from './ApiErrorDisplay';
 export { EnhancedErrorFallback } from './EnhancedErrorFallback';
 export { ErrorRecoveryModal } from './ErrorRecoveryModal';
 export type { ErrorRecoveryOptions } from './ErrorRecoveryModal';

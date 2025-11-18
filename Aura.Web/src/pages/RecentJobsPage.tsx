@@ -25,7 +25,7 @@ import { useNavigate } from 'react-router-dom';
 import { retryJob } from '../features/render/api/jobs';
 import { openLogsFolder } from '../utils/apiErrorHandler';
 import { openFile, openFolder } from '../utils/fileSystemUtils';
-
+import { navigateToRoute } from '@/utils/navigation';
 const useStyles = makeStyles({
   container: {
     padding: tokens.spacingVerticalXL,
@@ -358,7 +358,7 @@ export function RecentJobsPage() {
                   {job.status === 'Done' && (
                     <Button
                       appearance="primary"
-                      onClick={() => (window.location.href = `/editor/${job.id}`)}
+                      onClick={() => (navigateToRoute(`/editor/${job.id}`))}
                     >
                       Edit Video
                     </Button>

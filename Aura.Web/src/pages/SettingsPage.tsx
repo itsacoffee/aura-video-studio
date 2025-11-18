@@ -76,6 +76,7 @@ import type { OllamaModel } from '../types/api-v1';
 import type { UserSettings } from '../types/settings';
 import { createDefaultSettings } from '../types/settings';
 import { providerPathsSchema } from '../utils/formValidation';
+import { navigateToRoute } from '../utils/navigation';
 import { RescanPanel } from './DownloadCenter/RescanPanel';
 
 // Default Ollama model constant
@@ -1110,7 +1111,7 @@ export function SettingsPage() {
                         'This will guide you through setup again. Current settings will be preserved. Continue?'
                       )
                     ) {
-                      window.location.href = '/setup?rerun=true';
+                      navigateToRoute('/setup?rerun=true');
                     }
                   }}
                 >
@@ -1125,7 +1126,7 @@ export function SettingsPage() {
                     ) {
                       try {
                         await resetFirstRunStatus();
-                        window.location.href = '/setup';
+                        navigateToRoute('/setup');
                       } catch (error) {
                         console.error('Error resetting first-run status:', error);
                         alert('Failed to reset first-run status. Check console for details.');

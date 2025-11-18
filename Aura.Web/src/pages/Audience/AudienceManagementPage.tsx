@@ -31,7 +31,7 @@ import {
 import React, { useState, useEffect } from 'react';
 import apiClient from '../../services/api/apiClient';
 import type { AudienceProfileDto } from '../../types/api-v1';
-
+import { navigateToRoute } from '@/utils/navigation';
 interface AudienceProfile {
   id: string;
   name: string;
@@ -188,7 +188,7 @@ export const AudienceManagementPage: React.FC = () => {
         <Button
           appearance="primary"
           icon={<AddRegular />}
-          onClick={() => (window.location.href = '/audience/create')}
+          onClick={() => navigateToRoute('/audience/create')}
         >
           Create Profile
         </Button>
@@ -276,7 +276,7 @@ export const AudienceManagementPage: React.FC = () => {
                         size="small"
                         icon={<EditRegular />}
                         appearance="subtle"
-                        onClick={() => (window.location.href = `/audience/edit/${profile.id}`)}
+                        onClick={() => (navigateToRoute(`/audience/edit/${profile.id}`))}
                         title="Edit profile"
                       />
                       <Button
