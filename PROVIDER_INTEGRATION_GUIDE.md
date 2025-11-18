@@ -2326,3 +2326,292 @@ If you have existing code that:
 - [LATENCY_PATIENCE_POLICY.md](LATENCY_PATIENCE_POLICY.md) - Provider patience thresholds
 - [PROVIDER_STICKINESS_IMPLEMENTATION_SUMMARY.md](PROVIDER_STICKINESS_IMPLEMENTATION_SUMMARY.md) - Technical implementation details
 - [PROVIDER_INTEGRATION_IMPLEMENTATION.md](PROVIDER_INTEGRATION_IMPLEMENTATION.md) - Implementation guide
+
+---
+
+## LLM-First Orchestration Services
+
+Aura Video Studio now deeply integrates LLMs across all video generation stages, not just script generation. These services provide AI-powered creative assistance and optimization throughout the pipeline.
+
+### Orchestration Context
+
+**File**: `Aura.Core/Orchestrator/Models/OrchestrationContext.cs`
+
+**Purpose**: Provides comprehensive context to all LLM-driven stages for optimal decision-making.
+
+**Contents**:
+- Brief (topic, audience, goal, tone)
+- PlanSpec (duration, pacing, density)
+- ProviderProfile (which providers are available)
+- SystemProfile (hardware capabilities)
+- Target platform (YouTube, TikTok, LinkedIn, etc.)
+- Language preferences (primary and secondary)
+- Budget sensitivity and feature flags
+
+**Usage**:
+```csharp
+var context = new OrchestrationContext(
+    brief: userBrief,
+    planSpec: planSpec,
+    activeProfile: providerProfile,
+    hardware: systemProfile,
+    providerSettings: providerSettings)
+{
+    TargetPlatform = "YouTube",
+    PrimaryLanguage = "en-US",
+    UseAdvancedVisuals = true,
+    BudgetSensitive = false
+};
+
+// Pass to any LLM-enhanced service
+var suggestions = await visualService.SuggestVisualsAsync(script, context, ct);
+```
+
+### Pacing Stage
+
+**File**: `Aura.Core/Orchestrator/Stages/PacingStage.cs`
+
+**Purpose**: LLM-assisted script pacing and scene restructuring for platform-optimized content.
+
+**Features**:
+- Normalizes scene lengths to avoid too-short (<3s) or too-long scenes
+- Suggests merging brief related scenes
+- Recommends splitting overly complex scenes
+- Marks "peak attention" moments for viewer engagement
+- Optimizes call-to-action placement based on platform
+- Adapts to platform-specific attention spans (TikTok: 3-5s, YouTube: 10-30s)
+
+**LLM Mode**: Uses LLM to provide intelligent restructuring recommendations
+
+**Fallback Mode**: Deterministic pacing normalization when LLM unavailable
+
+**Integration**:
+```csharp
+var pacingStage = new PacingStage(logger, llmProvider);
+var refinedScript = await pacingStage.RefineScriptPacingAsync(script, context, ct);
+```
+
+### Visual Suggestion Service
+
+**File**: `Aura.Core/Services/StockMedia/VisualSuggestionService.cs`
+
+**Purpose**: LLM-driven recommendations for optimal visual strategy per scene.
+
+**Visual Strategies**:
+1. **Stock**: Free or paid stock images (cost-effective, reliable)
+2. **Generative**: AI-generated images via Stable Diffusion or DALL-E (unique, customizable)
+3. **SolidColor**: Simple colored backgrounds (minimalist, professional)
+
+**Features**:
+- Analyzes scene content and context
+- Recommends best visual strategy per scene
+- Generates optimized prompts for stock search or generative AI
+- Provides rationale for each recommendation
+- Batch processing for budget-conscious operations
+
+**Output**: `List<VisualSuggestion>` with strategy, queries/prompts, colors, and rationale
+
+**Integration**:
+```csharp
+var visualService = new VisualSuggestionService(logger, llmProvider);
+var suggestions = await visualService.SuggestVisualsAsync(script, context, ct);
+
+foreach (var suggestion in suggestions)
+{
+    if (suggestion.Strategy == "Generative" && sdProvider != null)
+    {
+        var image = await sdProvider.GenerateAsync(suggestion.SdPrompt, ct);
+    }
+    else if (suggestion.Strategy == "Stock")
+    {
+        var images = await stockProvider.SearchAsync(suggestion.StockQuery, ct);
+    }
+    // Use suggestion.ColorHex as fallback
+}
+```
+
+### Thumbnail Prompt Service
+
+**File**: `Aura.Core/Services/Thumbnails/ThumbnailPromptService.cs`
+
+**Purpose**: Generates compelling thumbnail concepts optimized for platform and engagement.
+
+**Features**:
+- Analyzes strongest scenes for thumbnail potential
+- Generates 3 alternative thumbnail concepts
+- Platform-specific guidelines (YouTube: 1280x720, TikTok: vertical, etc.)
+- Visual prompts for image generation or stock search
+- Text overlay suggestions
+- Layout and composition recommendations
+- Color palette suggestions
+
+**Output**: `ThumbnailSuggestion` with multiple concepts, layouts, and rationale
+
+**Platform Guidelines**:
+- **YouTube**: Bold text, high contrast, faces work well
+- **TikTok**: Vertical format, minimal text, action/intrigue
+- **LinkedIn**: Professional aesthetic, data visualizations, corporate appropriate
+- **Instagram**: Square format, aesthetic appeal, brand colors
+
+**Integration**:
+```csharp
+var thumbnailService = new ThumbnailPromptService(logger, llmProvider);
+var suggestion = await thumbnailService.GenerateThumbnailPromptAsync(script, context, ct);
+
+// Use first concept (or let user choose)
+var bestConcept = suggestion.Concepts[0];
+Console.WriteLine($"Generate thumbnail: {bestConcept.VisualPrompt}");
+Console.WriteLine($"Add text overlay: {bestConcept.TextOverlay}");
+Console.WriteLine($"Color palette: {string.Join(", ", bestConcept.ColorPalette)}");
+```
+
+### Title and Description Suggestion Service
+
+**File**: `Aura.Core/Services/Metadata/TitleDescriptionSuggestionService.cs`
+
+**Purpose**: SEO-aware metadata generation for video publishing platforms.
+
+**Features**:
+- Generates 3-5 title alternatives optimized for clicks and SEO
+- Short descriptions for previews (1-2 sentences)
+- Long descriptions with full context and keywords
+- Platform-specific character limits and guidelines
+- Keyword/tag suggestions
+- Rationale for each variant
+
+**Platform Optimization**:
+- **YouTube**: First 60 chars visible, keywords early, timestamps, CTAs
+- **TikTok**: Shorter is better, curiosity hooks, trending hashtags
+- **LinkedIn**: Professional tone, business value, avoid clickbait
+- **Instagram**: First line hooks viewers, 5-10 hashtags
+
+**Output**: `MetadataSuggestion` with multiple variants and recommendation
+
+**Integration**:
+```csharp
+var metadataService = new TitleDescriptionSuggestionService(logger, llmProvider);
+var suggestion = await metadataService.GenerateMetadataAsync(script, context, ct);
+
+// Present alternatives to user or use recommended variant
+foreach (var variant in suggestion.Alternatives)
+{
+    Console.WriteLine($"Title: {variant.Title}");
+    Console.WriteLine($"Description: {variant.ShortDescription}");
+    Console.WriteLine($"Keywords: {string.Join(", ", variant.Keywords)}");
+    Console.WriteLine($"Why: {variant.Rationale}\n");
+}
+```
+
+### Language Naturalization Service
+
+**File**: `Aura.Core/Services/Localization/LanguageNaturalizationService.cs`
+
+**Purpose**: LLM-powered translation and cultural adaptation for global audiences.
+
+**Features**:
+- Supports **hundreds of languages and dialects** via LLM capabilities
+- Not limited to common languages - works with less common languages and regional dialects
+- Cultural adaptation (idioms, references, examples)
+- Maintains technical accuracy and tone
+- Natural, conversational phrasing appropriate for locale
+- Batch processing for efficiency
+
+**Supported Locales**: Any language or dialect the LLM can handle, including:
+- Standard locales: en-US, es-MX, ja-JP, fr-FR, de-DE, pt-BR, zh-CN, ar-SA, hi-IN, etc.
+- Regional dialects: en-AU (Australian), es-AR (Argentine Spanish), fr-CA (Canadian French)
+- Less common languages: yi (Yiddish), gd (Scottish Gaelic), cy (Welsh), mi (Maori)
+- Historical/specialized variants: Any linguistic variant supported by the LLM
+
+**Output**: `LocalizedScript` with naturalized scenes and application notes
+
+**Integration**:
+```csharp
+var localizationService = new LanguageNaturalizationService(logger, llmProvider);
+
+// Naturalize to any locale
+var localized = await localizationService.NaturalizeScriptAsync(
+    script, 
+    targetLocale: "es-MX",  // Mexican Spanish
+    context, 
+    ct);
+
+if (localized.NaturalizationApplied)
+{
+    // Use localized.Scenes for TTS and rendering
+    Console.WriteLine($"Naturalized to {localized.Locale}");
+    Console.WriteLine($"Notes: {localized.Notes}");
+}
+```
+
+**Multi-Language Workflow**:
+```csharp
+// Generate video in multiple locales
+var targetLocales = new[] { "es-MX", "pt-BR", "ja-JP", "de-DE", "hi-IN" };
+
+foreach (var locale in targetLocales)
+{
+    var localizedScript = await localizationService.NaturalizeScriptAsync(
+        originalScript, locale, context, ct);
+    
+    // Generate video with localized script and locale-specific TTS voice
+    var video = await GenerateLocalizedVideoAsync(localizedScript, locale, ct);
+}
+```
+
+### Fallback Behavior
+
+All LLM-first orchestration services include **deterministic fallbacks** when LLM providers are unavailable:
+
+- **PacingStage**: Applies basic scene length normalization
+- **VisualSuggestionService**: Uses keyword extraction for stock queries
+- **ThumbnailPromptService**: Generates standard concepts based on topic
+- **TitleDescriptionSuggestionService**: Creates descriptive metadata from topic
+- **LanguageNaturalizationService**: Returns original script with locale marker
+
+This ensures the pipeline **never fails** due to LLM unavailability, though quality may be reduced.
+
+### Provider Detection
+
+Services automatically detect provider type:
+```csharp
+if (_llmProvider.GetType().Name.Contains("RuleBased") || 
+    _llmProvider.GetType().Name.Contains("Mock"))
+{
+    // Use deterministic fallback
+}
+else
+{
+    // Use LLM-enhanced processing
+}
+```
+
+### Best Practices
+
+**Context Construction**:
+- Always provide complete `OrchestrationContext` for best results
+- Set `TargetPlatform` to optimize for specific platforms
+- Enable `UseAdvancedVisuals` only if SD/DALL-E providers available
+- Set `BudgetSensitive` to true for cost-conscious batch processing
+
+**Batch Processing**:
+- Visual and localization services use batch processing to reduce LLM API costs
+- Batch sizes adjust based on `BudgetSensitive` flag
+- Balance between API costs and processing speed
+
+**Error Handling**:
+- All services log warnings and gracefully fall back on errors
+- Never throws on LLM failures - returns deterministic alternatives
+- Check `NaturalizationApplied` or similar flags to know if LLM was used
+
+**Integration with Existing Services**:
+- `VisualSuggestionService` complements `QueryCompositionService`
+- Thumbnail prompts can feed into image generation or stock search
+- Metadata suggestions integrate with publishing workflows
+- Localized scripts work with all TTS providers
+
+### Related Documentation
+
+- [LLM_INTEGRATION_AUDIT.md](LLM_INTEGRATION_AUDIT.md) - LLM provider technical details
+- [UNIFIED_LLM_ORCHESTRATOR_GUIDE.md](UNIFIED_LLM_ORCHESTRATOR_GUIDE.md) - LLM orchestration patterns
+- [TRANSLATION_USER_GUIDE.md](TRANSLATION_USER_GUIDE.md) - Localization features
+- [PROMPT_ENGINEERING_API.md](PROMPT_ENGINEERING_API.md) - Prompt customization
