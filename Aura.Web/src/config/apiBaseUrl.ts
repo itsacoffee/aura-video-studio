@@ -34,11 +34,16 @@ const getBridgeBackendUrl = (): string | undefined => {
 
   // Priority order for bridge URLs:
   // 1. aura.runtime diagnostics (cached)
-  // 2. desktopBridge.backend.getUrl() (network contract)
+  // 2. desktopBridge.backend.baseUrl (network contract)
   // 3. desktopBridge.getBackendBaseUrl() (legacy)
+  const cachedDiagnostics = window.aura?.runtime?.getCachedDiagnostics?.();
+  const backend =
+    cachedDiagnostics && typeof cachedDiagnostics === 'object' && 'backend' in cachedDiagnostics
+      ? (cachedDiagnostics.backend as Record<string, unknown> | undefined)
+      : undefined;
   const auraUrl =
-    window.aura?.runtime?.getCachedDiagnostics?.()?.backend?.baseUrl ??
-    window.desktopBridge?.backend?.getUrl?.() ??
+    (backend?.baseUrl as string | undefined) ??
+    window.desktopBridge?.backend?.baseUrl ??
     window.desktopBridge?.getBackendBaseUrl?.();
 
   return auraUrl ? trimValue(auraUrl) : undefined;
@@ -61,6 +66,7 @@ export function isElectronEnvironment(): boolean {
  * Get backend URL from Electron API (async)
  * Returns null if not in Electron or if the API is unavailable
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity
 export async function getElectronBackendUrl(): Promise<string | null> {
   if (typeof window === 'undefined') {
     return null;
@@ -74,7 +80,11 @@ export async function getElectronBackendUrl(): Promise<string | null> {
   if (window.aura?.runtime?.getDiagnostics) {
     try {
       const diagnostics = await window.aura.runtime.getDiagnostics();
-      const diagnosticUrl = diagnostics?.backend?.baseUrl;
+      const backend =
+        diagnostics && typeof diagnostics === 'object' && 'backend' in diagnostics
+          ? (diagnostics.backend as Record<string, unknown> | undefined)
+          : undefined;
+      const diagnosticUrl = backend?.baseUrl as string | undefined;
       const trimmedDiagnosticUrl = trimValue(diagnosticUrl);
       if (trimmedDiagnosticUrl) {
         return trimmedDiagnosticUrl;

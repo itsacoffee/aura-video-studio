@@ -292,14 +292,10 @@ export function useMenuCommandSystem() {
 
     // Wire up Electron menu listeners to dispatcher
     unsubscribers.push(
-      menu.onNewProject(
-        (payload) => void menuCommandDispatcher.dispatch('menu:newProject', payload)
-      )
+      menu.onNewProject(() => void menuCommandDispatcher.dispatch('menu:newProject', {}))
     );
     unsubscribers.push(
-      menu.onOpenProject(
-        (payload) => void menuCommandDispatcher.dispatch('menu:openProject', payload)
-      )
+      menu.onOpenProject(() => void menuCommandDispatcher.dispatch('menu:openProject', {}))
     );
     unsubscribers.push(
       menu.onOpenRecentProject(
@@ -307,88 +303,64 @@ export function useMenuCommandSystem() {
       )
     );
     unsubscribers.push(
-      menu.onSaveProject(
-        (payload) => void menuCommandDispatcher.dispatch('menu:saveProject', payload)
+      menu.onSaveProject(() => void menuCommandDispatcher.dispatch('menu:saveProject', {}))
+    );
+    unsubscribers.push(
+      menu.onSaveProjectAs(() => void menuCommandDispatcher.dispatch('menu:saveProjectAs', {}))
+    );
+    unsubscribers.push(
+      menu.onImportVideo(() => void menuCommandDispatcher.dispatch('menu:importVideo', {}))
+    );
+    unsubscribers.push(
+      menu.onImportAudio(() => void menuCommandDispatcher.dispatch('menu:importAudio', {}))
+    );
+    unsubscribers.push(
+      menu.onImportImages(() => void menuCommandDispatcher.dispatch('menu:importImages', {}))
+    );
+    unsubscribers.push(
+      menu.onImportDocument(() => void menuCommandDispatcher.dispatch('menu:importDocument', {}))
+    );
+    unsubscribers.push(
+      menu.onExportVideo(() => void menuCommandDispatcher.dispatch('menu:exportVideo', {}))
+    );
+    unsubscribers.push(
+      menu.onExportTimeline(() => void menuCommandDispatcher.dispatch('menu:exportTimeline', {}))
+    );
+    unsubscribers.push(menu.onFind(() => void menuCommandDispatcher.dispatch('menu:find', {})));
+    unsubscribers.push(
+      menu.onOpenPreferences(() => void menuCommandDispatcher.dispatch('menu:openPreferences', {}))
+    );
+    unsubscribers.push(
+      menu.onOpenProviderSettings(
+        () => void menuCommandDispatcher.dispatch('menu:openProviderSettings', {})
       )
     );
     unsubscribers.push(
-      menu.onSaveProjectAs(
-        (payload) => void menuCommandDispatcher.dispatch('menu:saveProjectAs', payload)
+      menu.onOpenFFmpegConfig(
+        () => void menuCommandDispatcher.dispatch('menu:openFFmpegConfig', {})
       )
     );
     unsubscribers.push(
-      menu.onImportVideo(
-        (payload) => void menuCommandDispatcher.dispatch('menu:importVideo', payload)
+      menu.onClearCache(() => void menuCommandDispatcher.dispatch('menu:clearCache', {}))
+    );
+    unsubscribers.push(
+      menu.onViewLogs(() => void menuCommandDispatcher.dispatch('menu:viewLogs', {}))
+    );
+    unsubscribers.push(
+      menu.onRunDiagnostics(() => void menuCommandDispatcher.dispatch('menu:runDiagnostics', {}))
+    );
+    unsubscribers.push(
+      menu.onOpenGettingStarted(
+        () => void menuCommandDispatcher.dispatch('menu:openGettingStarted', {})
       )
     );
     unsubscribers.push(
-      menu.onImportAudio(
-        (payload) => void menuCommandDispatcher.dispatch('menu:importAudio', payload)
+      menu.onShowKeyboardShortcuts(
+        () => void menuCommandDispatcher.dispatch('menu:showKeyboardShortcuts', {})
       )
     );
     unsubscribers.push(
-      menu.onImportImages(
-        (payload) => void menuCommandDispatcher.dispatch('menu:importImages', payload)
-      )
-    );
-    unsubscribers.push(
-      menu.onImportDocument(
-        (payload) => void menuCommandDispatcher.dispatch('menu:importDocument', payload)
-      )
-    );
-    unsubscribers.push(
-      menu.onExportVideo(
-        (payload) => void menuCommandDispatcher.dispatch('menu:exportVideo', payload)
-      )
-    );
-    unsubscribers.push(
-      menu.onExportTimeline((payload) =>
-        menuCommandDispatcher.dispatch('menu:exportTimeline', payload)
-      )
-    );
-    unsubscribers.push(
-      menu.onFind((payload) => menuCommandDispatcher.dispatch('menu:find', payload))
-    );
-    unsubscribers.push(
-      menu.onOpenPreferences((payload) =>
-        menuCommandDispatcher.dispatch('menu:openPreferences', payload)
-      )
-    );
-    unsubscribers.push(
-      menu.onOpenProviderSettings((payload) =>
-        menuCommandDispatcher.dispatch('menu:openProviderSettings', payload)
-      )
-    );
-    unsubscribers.push(
-      menu.onOpenFFmpegConfig((payload) =>
-        menuCommandDispatcher.dispatch('menu:openFFmpegConfig', payload)
-      )
-    );
-    unsubscribers.push(
-      menu.onClearCache((payload) => menuCommandDispatcher.dispatch('menu:clearCache', payload))
-    );
-    unsubscribers.push(
-      menu.onViewLogs((payload) => menuCommandDispatcher.dispatch('menu:viewLogs', payload))
-    );
-    unsubscribers.push(
-      menu.onRunDiagnostics((payload) =>
-        menuCommandDispatcher.dispatch('menu:runDiagnostics', payload)
-      )
-    );
-    unsubscribers.push(
-      menu.onOpenGettingStarted((payload) =>
-        menuCommandDispatcher.dispatch('menu:openGettingStarted', payload)
-      )
-    );
-    unsubscribers.push(
-      menu.onShowKeyboardShortcuts((payload) =>
-        menuCommandDispatcher.dispatch('menu:showKeyboardShortcuts', payload)
-      )
-    );
-    unsubscribers.push(
-      menu.onCheckForUpdates((payload) =>
-        menuCommandDispatcher.dispatch('menu:checkForUpdates', payload)
-      )
+      menu.onCheckForUpdates(() => void menuCommandDispatcher.dispatch('menu:checkForUpdates', {}))
     );
 
     loggingService.info('Menu command system initialized', {

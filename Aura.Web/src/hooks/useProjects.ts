@@ -32,21 +32,21 @@ export interface UseProjectsResult {
   total: number;
   page: number;
   pageSize: number;
-  
+
   // Loading states
   isLoading: boolean;
   isRefetching: boolean;
-  
+
   // Error handling
   error: Error | null;
   clearError: () => void;
-  
+
   // CRUD operations
   createProject: (project: CreateProjectRequest) => Promise<Project>;
   updateProject: (id: string, updates: UpdateProjectRequest) => Promise<Project>;
   deleteProject: (id: string) => Promise<void>;
   duplicateProject: (id: string) => Promise<Project>;
-  
+
   // Data management
   refetch: () => Promise<void>;
   setFilters: (filters: ProjectListFilters) => void;
@@ -58,7 +58,7 @@ export interface UseProjectsResult {
  */
 export function useProjects(options: UseProjectsOptions = {}): UseProjectsResult {
   const { filters: initialFilters, autoRefetch = false, refetchInterval } = options;
-  
+
   const [filters, setFilters] = useState<ProjectListFilters>(initialFilters || {});
   const { error, setError, clearError } = useApiError();
   const queryClient = useQueryClient();
@@ -72,16 +72,21 @@ export function useProjects(options: UseProjectsOptions = {}): UseProjectsResult
     isLoading,
     isRefetching,
     refetch: refetchQuery,
+    error: queryError,
   } = useQuery<ProjectListResponse>({
     queryKey,
     queryFn: () => listProjects(filters),
     staleTime: 30000, // 30 seconds
     refetchOnWindowFocus: autoRefetch,
     refetchInterval: refetchInterval,
-    onError: (err) => {
-      setError(err instanceof Error ? err : new Error('Failed to fetch projects'));
-    },
   });
+
+  // Handle query errors using useEffect
+  useEffect(() => {
+    if (queryError) {
+      setError(queryError instanceof Error ? queryError : new Error('Failed to fetch projects'));
+    }
+  }, [queryError, setError]);
 
   // Create project mutation with optimistic update
   const createMutation = useMutation({
@@ -139,7 +144,22 @@ export function useProjects(options: UseProjectsOptions = {}): UseProjectsResult
           ...previousProjects,
           projects: previousProjects.projects.map((project) =>
             project.id === id
-              ? { ...project, ...updates, updatedAt: new Date().toISOString() }
+              ? ({
+                  ...project,
+                  ...updates,
+                  // Properly merge nested partial objects
+                  brief: updates.brief ? { ...project.brief, ...updates.brief } : project.brief,
+                  planSpec: updates.planSpec
+                    ? { ...project.planSpec, ...updates.planSpec }
+                    : project.planSpec,
+                  voiceSpec: updates.voiceSpec
+                    ? { ...project.voiceSpec, ...updates.voiceSpec }
+                    : project.voiceSpec,
+                  renderSpec: updates.renderSpec
+                    ? { ...project.renderSpec, ...updates.renderSpec }
+                    : project.renderSpec,
+                  updatedAt: new Date().toISOString(),
+                } as Project)
               : project
           ),
         });
@@ -276,15 +296,20 @@ export function useProject(id: string) {
     data: project,
     isLoading,
     refetch,
+    error: queryError,
   } = useQuery<Project>({
     queryKey: ['project', id],
     queryFn: () => getProject(id),
     enabled: !!id,
     staleTime: 60000, // 1 minute
-    onError: (err) => {
-      setError(err instanceof Error ? err : new Error('Failed to fetch project'));
-    },
   });
+
+  // Handle query errors using useEffect
+  useEffect(() => {
+    if (queryError) {
+      setError(queryError instanceof Error ? queryError : new Error('Failed to fetch project'));
+    }
+  }, [queryError, setError]);
 
   const updateMutation = useMutation({
     mutationFn: (updates: UpdateProjectRequest) => updateProject(id, updates),

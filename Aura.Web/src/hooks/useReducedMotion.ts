@@ -14,7 +14,7 @@ export function useReducedMotion(): boolean {
     }
 
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    
+
     // Set initial value
     setPrefersReducedMotion(mediaQuery.matches);
 
@@ -30,9 +30,8 @@ export function useReducedMotion(): boolean {
     }
     // Fallback for older browsers
     else {
-      // @ts-expect-error - addListener is deprecated but needed for older browsers
+      // addListener/removeListener are deprecated but needed for older browsers
       mediaQuery.addListener(handleChange);
-      // @ts-expect-error - removeListener is deprecated but needed for older browsers
       return () => mediaQuery.removeListener(handleChange);
     }
   }, []);
