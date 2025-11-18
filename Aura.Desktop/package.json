@@ -13,6 +13,20 @@
     "type": "git",
     "url": "https://github.com/coffee285/aura-video-studio.git"
   },
+  "auraMeta": {
+    "entryPoints": {
+      "main": "electron/main.js",
+      "preload": "electron/preload.js",
+      "notes": [
+        "The 'main' field above MUST ALWAYS point to electron/main.js",
+        "electron/main.js is the canonical and ONLY supported main process entry point",
+        "electron/preload.js is the canonical and ONLY supported preload script",
+        "Root-level electron.js (if present) is a legacy reference file with execution guard",
+        "Root-level preload.js is a legacy redirect for backwards compatibility only",
+        "Any direct reference to electron.js or root preload.js in new code should be treated as a bug"
+      ]
+    }
+  },
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
@@ -32,7 +46,7 @@
     "postinstall": "electron-builder install-app-deps",
     "pack": "npm run build:all && electron-builder --dir",
     "dist": "npm run build:all && electron-builder --win",
-    "test": "node test/test-electron-backend-integration.js && node test/test-startup-logger.js && node test/test-startup-diagnostics.js && node test/test-initialization-tracker.js && node test/test-early-crash-logger.js && node test/test-integration-corrupted-config.js && node test/test-preload-menu-events.js && node test/test-menu-ipc-integration.js && node test/test-menu-command-map.js && node test/test-menu-command-handler.js && node test/test-safe-mode.js && node test/test-window-loading-diagnostics.js && node test/test-shutdown-orchestrator.js && node test/test-process-manager.js",
+    "test": "node test/test-electron-backend-integration.js && node test/test-startup-logger.js && node test/test-startup-diagnostics.js && node test/test-initialization-tracker.js && node test/test-early-crash-logger.js && node test/test-integration-corrupted-config.js && node test/test-preload-menu-events.js && node test/test-menu-ipc-integration.js && node test/test-menu-command-map.js && node test/test-menu-command-handler.js && node test/test-safe-mode.js && node test/test-window-loading-diagnostics.js && node test/test-shutdown-orchestrator.js && node test/test-process-manager.js && node test/test-legacy-electron-guard.js && node test/test-legacy-preload-redirect.js",
     "test:backend-integration": "node test/test-electron-backend-integration.js",
     "test:logger": "node test/test-startup-logger.js",
     "test:diagnostics": "node test/test-startup-diagnostics.js",
@@ -47,6 +61,8 @@
     "test:window-loading": "node test/test-window-loading-diagnostics.js",
     "test:shutdown": "node test/test-shutdown-orchestrator.js",
     "test:process-manager": "node test/test-process-manager.js",
+    "test:legacy-guard": "node test/test-legacy-electron-guard.js",
+    "test:legacy-preload": "node test/test-legacy-preload-redirect.js",
     "validate": "node scripts/validate-build-config.js",
     "validate:electron": "node scripts/validate-electron-config.js",
     "validate:menu": "node scripts/validate-menu-events.js"
@@ -67,7 +83,8 @@
       "!backend/**/*.xml",
       "!**/.git/*",
       "!**/.vscode/*",
-      "!**/node_modules/*/{CHANGELOG.md,README.md,*.ts,*.map}"
+      "!**/node_modules/*/{CHANGELOG.md,README.md,*.ts,*.map}",
+      "!electron.js"
     ],
     "extraResources": [
       {
