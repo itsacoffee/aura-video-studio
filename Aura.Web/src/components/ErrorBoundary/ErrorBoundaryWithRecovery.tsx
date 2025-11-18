@@ -5,6 +5,7 @@ import {
   Home24Regular,
 } from '@fluentui/react-icons';
 import { Component, ReactNode, ErrorInfo } from 'react';
+import { navigateToRoute } from '@/utils/navigation';
 
 const useStyles = makeStyles({
   container: {
@@ -137,8 +138,7 @@ export class ErrorBoundaryWithRecovery extends Component<
   };
 
   handleGoHome = (): void => {
-    window.location.href = '/';
-  };
+    navigateToRoute('/');  };
 
   render(): ReactNode {
     const { hasError, error, errorInfo, errorCount } = this.state;

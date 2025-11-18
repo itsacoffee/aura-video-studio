@@ -12,7 +12,7 @@ import { Video24Regular, TagMultiple24Regular, DataTrending24Regular } from '@fl
 import React, { useState } from 'react';
 import { MetadataGenerator } from './MetadataGenerator';
 import { PlatformSelector } from './PlatformSelector';
-
+import { navigateToRoute } from '@/utils/navigation';
 const useStyles = makeStyles({
   container: {
     padding: tokens.spacingVerticalXXL,
@@ -156,7 +156,7 @@ export const PlatformDashboard: React.FC = () => {
             onPlatformsSelected={(platforms) => {
               // Handle platform selection - navigate to create page with platforms pre-selected
               if (platforms.length > 0) {
-                window.location.href = `/create?platforms=${platforms.join(',')}`;
+                navigateToRoute(`/create?platforms=${platforms.join(',')}`);
               }
             }}
           />

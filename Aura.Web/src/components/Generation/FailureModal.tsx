@@ -22,7 +22,7 @@ import { useState } from 'react';
 import { JobFailure } from '../../state/jobs';
 import { openLogsFolder } from '../../utils/apiErrorHandler';
 import { useNotifications } from '../Notifications/Toasts';
-
+import { navigateToRoute } from '@/utils/navigation';
 const useStyles = makeStyles({
   dialogContent: {
     display: 'flex',
@@ -132,7 +132,7 @@ export function FailureModal({ open, onClose, failure, jobId: _jobId }: FailureM
   };
 
   const handleAttachFFmpeg = async () => {
-    window.location.href = '/dependencies';
+    navigateToRoute('/dependencies');
   };
 
   const isFFmpegError =

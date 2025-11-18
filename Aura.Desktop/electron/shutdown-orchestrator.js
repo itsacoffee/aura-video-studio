@@ -47,7 +47,7 @@ class ShutdownOrchestrator {
 
     try {
       const port = this.backendService.getPort();
-      const response = await axios.get(`http://localhost:${port}/api/jobs/active`, {
+      const response = await axios.get(`http://127.0.0.1:${port}/api/jobs/active`, {
         timeout: 2000
       });
       
@@ -336,7 +336,7 @@ class ShutdownOrchestrator {
       const port = this.backendService.getPort();
       this.logger.info(`Signaling backend shutdown via API (port ${port})...`);
       
-      await axios.post(`http://localhost:${port}/api/system/shutdown`, {}, {
+      await axios.post(`http://127.0.0.1:${port}/api/system/shutdown`, {}, {
         timeout: 3000
       });
 

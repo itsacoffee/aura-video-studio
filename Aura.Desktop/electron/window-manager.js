@@ -482,13 +482,13 @@ class WindowManager {
       // More permissive CSP for development
       console.log("[WindowManager] Using development CSP");
       return [
-        "default-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* ws://localhost:* file: data: blob:",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* file:",
-        "style-src 'self' 'unsafe-inline' http://localhost:* file:",
-        "img-src 'self' data: blob: http://localhost:* file:",
+        "default-src 'self' 'unsafe-inline' 'unsafe-eval' http://127.0.0.1:* ws://127.0.0.1:* file: data: blob:",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' http://127.0.0.1:* file:",
+        "style-src 'self' 'unsafe-inline' http://127.0.0.1:* file:",
+        "img-src 'self' data: blob: http://127.0.0.1:* file:",
         "font-src 'self' data: file:",
-        "connect-src 'self' http://localhost:* ws://localhost:*",
-        "media-src 'self' blob: http://localhost:* file:",
+        "connect-src 'self' http://127.0.0.1:* ws://127.0.0.1:*",
+        "media-src 'self' blob: http://127.0.0.1:* file:",
       ].join("; ");
     } else {
       // Strict CSP for production but compatible with file:// protocol
@@ -499,7 +499,7 @@ class WindowManager {
         "style-src 'self' 'unsafe-inline' file:", // Allow inline styles for React
         "img-src 'self' data: blob: file:",
         "font-src 'self' data: file:",
-        "connect-src 'self' http://localhost:*",
+        "connect-src 'self' http://127.0.0.1:*",
         "media-src 'self' blob: file:",
         "object-src 'none'",
         "base-uri 'self'",

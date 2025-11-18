@@ -25,6 +25,7 @@ import { keyboardShortcutManager } from '../../services/keyboardShortcutManager'
 import { useKeybindingsStore, shortcutMetadata } from '../../state/keybindings';
 import type { ShortcutKey } from '../../types/keybinding';
 import { formatShortcutForDisplay, getCategoryDescription } from '../../utils/keybinding-utils';
+import { navigateToRoute } from '@/utils/navigation';
 
 const useStyles = makeStyles({
   surface: {
@@ -191,7 +192,7 @@ export function KeyboardShortcutsCheatSheet({ open, onClose }: KeyboardShortcuts
   const handleCustomizeClick = () => {
     onClose();
     // Navigate to settings page
-    window.location.href = '/settings#keyboard-shortcuts';
+    navigateToRoute('/settings#keyboard-shortcuts');
   };
 
   return (

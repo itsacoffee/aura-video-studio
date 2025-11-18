@@ -24,7 +24,7 @@ import {
 } from '@fluentui/react-icons';
 import { useState, useEffect } from 'react';
 import { apiUrl } from '../../config/api';
-
+import { navigateToRoute } from '@/utils/navigation';
 interface DependencyReport {
   id: string;
   displayName: string;
@@ -163,12 +163,12 @@ export function RescanPanel() {
 
     const handleInstall = () => {
       // Navigate to the main downloads page where installation is handled
-      window.location.href = '/downloads';
+      navigateToRoute('/downloads');
     };
 
     const handleAttach = () => {
       // Navigate to the main downloads page for attaching existing installations
-      window.location.href = '/downloads';
+      navigateToRoute('/downloads');
     };
 
     return (

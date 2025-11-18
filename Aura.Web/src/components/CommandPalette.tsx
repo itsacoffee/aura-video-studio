@@ -31,7 +31,7 @@ import Fuse from 'fuse.js';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../App';
-
+import { navigateToRoute } from '@/utils/navigation';
 const useStyles = makeStyles({
   surface: {
     maxWidth: '600px',
@@ -137,7 +137,7 @@ function getRecentProjects(): Command[] {
       category: 'Recent Projects',
       icon: Folder24Regular,
       action: () => {
-        window.location.href = `/projects/${project.id}`;
+        navigateToRoute(`/projects/${project.id}`);
       },
       weight: 3, // Higher weight for recent items
     }));

@@ -36,7 +36,7 @@ import {
   retryJob,
 } from '../../features/render/api/jobs';
 import { useJobProgress } from '../../hooks/useJobProgress';
-
+import { navigateToRoute } from '@/utils/navigation';
 const useStyles = makeStyles({
   drawer: {
     width: '420px',
@@ -214,7 +214,7 @@ export function RenderStatusDrawer({ jobId, isOpen, onClose }: RenderStatusDrawe
       onClose();
       // Retry creates a new job - navigate to it
       if (response?.jobId) {
-        window.location.href = `/generate?jobId=${response.jobId}`;
+        navigateToRoute(`/generate?jobId=${response.jobId}`);
       }
     } catch (error) {
       console.error('Failed to retry job:', error);
@@ -227,12 +227,12 @@ export function RenderStatusDrawer({ jobId, isOpen, onClose }: RenderStatusDrawe
 
   const handleOpenSettings = () => {
     // Deep-link to settings page
-    window.location.href = '/settings?tab=providers';
+    navigateToRoute('/settings?tab=providers');
   };
 
   const handleOpenSystemCheck = () => {
     // Navigate to health check page
-    window.location.href = '/health';
+    navigateToRoute('/health');
   };
 
   const handleOpenFolder = () => {

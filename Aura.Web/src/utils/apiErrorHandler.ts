@@ -125,7 +125,7 @@ export function openLogsFolder(): void {
   // Call API endpoint to open logs folder
   fetch('/api/logs/open-folder', {
     method: 'POST',
-  }).catch((error) => {
+  }).catch(async (error) => {
     logger.error(
       'Failed to open logs folder',
       error instanceof Error ? error : new Error(String(error)),
@@ -133,6 +133,7 @@ export function openLogsFolder(): void {
       'openLogsFolder'
     );
     // Fallback: try to navigate to logs page
-    window.location.href = '/logs';
+    const { navigateToRoute } = await import('./navigation');
+    navigateToRoute('/logs');
   });
 }
