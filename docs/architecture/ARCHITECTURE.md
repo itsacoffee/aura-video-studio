@@ -40,6 +40,10 @@ Aura Video Studio is an **Electron desktop application** for creating AI-powered
 **Technology**: Electron 32.2.5 + Node.js  
 **Purpose**: Desktop application shell, process management, native OS integration
 
+**This is the authoritative shell** — the primary, user-facing runtime for Aura Video Studio. All new integrations should be tested in the Electron app, not just in the browser.
+
+**Main entry point:** `Aura.Desktop/electron/main.js` (modular main process)
+
 **Key Components**:
 - `electron/main.js` - Main process entry point, orchestration
 - `electron/window-manager.js` - Window lifecycle and state persistence
@@ -67,7 +71,9 @@ Aura Video Studio is an **Electron desktop application** for creating AI-powered
 - Input validation and sanitization
 - Content Security Policy (CSP)
 
-**See:** Aura.Desktop/electron/README.md for detailed architecture
+**References:**
+- [DESKTOP_APP_GUIDE.md](../../DESKTOP_APP_GUIDE.md) - Complete Electron development guide
+- [Aura.Desktop/electron/README.md](../../Aura.Desktop/electron/README.md) - Electron main process architecture (IPC, window manager, backend service, tray, menu, protocol handler)
 
 ### 2. Aura.Core (Business Logic)
 **Technology**: .NET 8 Class Library  
@@ -349,10 +355,12 @@ npm run dev
 
 ## References
 
-- [ARCHITECTURE_MIGRATION_NOTE.md](./ARCHITECTURE_MIGRATION_NOTE.md) - Migration from web to Electron
-- Electron README - Electron architecture details
-- [DESKTOP_APP_GUIDE.md](../../DESKTOP_APP_GUIDE.md) - Desktop app development
+- [DESKTOP_APP_GUIDE.md](../../DESKTOP_APP_GUIDE.md) - Complete Electron development guide (current, canonical)
+- [Aura.Desktop/electron/README.md](../../Aura.Desktop/electron/README.md) - Electron main process architecture (current, canonical)
+- [ARCHITECTURE_MIGRATION_NOTE.md](./ARCHITECTURE_MIGRATION_NOTE.md) - Historic migration documentation (web-based to Electron; migration complete)
 - [DEVELOPMENT.md](../../DEVELOPMENT.md) - Component development workflows
+
+**Note:** The migration from web-based to Electron desktop is complete. ARCHITECTURE_MIGRATION_NOTE.md is historic documentation explaining the migration context. The current architecture is described in the main ARCHITECTURE.md document, DESKTOP_APP_GUIDE.md, and Aura.Desktop/electron/README.md.
 
 ---
 

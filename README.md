@@ -39,15 +39,15 @@ Create high-quality videos fast with an AI-first workflow designed for everyone.
   - Proxy media and cached waveforms/thumbnails (configurable)
   - Export presets with preflight validation and post-export integrity checks
 
-## Architecture
+## Architecture at a Glance
 
-Aura Video Studio is built as an **Electron desktop application** with an embedded backend:
+Aura Video Studio is built as an **Electron desktop application** — this is the primary, user-facing runtime:
 
-- **Aura.Desktop** — Electron app (main process, window management, IPC, bundling)
-  - **Main Process**: Orchestrates backend, manages windows, handles IPC
-  - **Renderer Process**: React frontend loaded in Electron window
-  - **Preload Script**: Secure bridge for frontend-Electron communication
-- **Aura.Web** — React + TypeScript + Vite frontend (bundled into Electron)
+- **Aura.Desktop** — Electron shell (primary runtime and distribution target)
+  - **Main Process**: Entry point at `electron/main.js`; orchestrates backend, manages windows, handles IPC, tray, menu, and protocol handling
+  - **Renderer Process**: React frontend loaded from bundled files into Electron window
+  - **Preload Script**: Secure bridge for frontend-Electron communication via IPC
+- **Aura.Web** — React + TypeScript + Vite frontend (always bundled into Electron; not deployed as standalone SaaS SPA)
 - **Aura.Api** — ASP.NET Core backend (embedded as child process, REST + SSE)
 - **Aura.Core** — Domain logic, orchestration, models, validation, rendering
 - **Aura.Providers** — LLM, TTS, images, video provider integrations
@@ -58,6 +58,7 @@ Aura Video Studio is built as an **Electron desktop application** with an embedd
 ┌──────────────────────────────────────┐
 │     Electron Main Process            │
 │  (Node.js, window mgmt, lifecycle)   │
+│  Main entry: electron/main.js        │
 └────┬─────────────────────┬───────────┘
      │                     │
      │ spawns              │ IPC
@@ -68,6 +69,8 @@ Aura Video Studio is built as an **Electron desktop application** with an embedd
 │  (child)     │───►│  (React UI)     │
 └──────────────┘    └─────────────────┘
 ```
+
+**Migration Status:** The migration from pure web deployment to Electron desktop is **complete**. All new integrations should be tested in the Electron app, not just in the browser. Running Aura.Web standalone in a browser is supported only as a development aid for rapid UI iteration.
 
 ## Installation Options
 
@@ -88,9 +91,9 @@ See [DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md) for comprehensive Electron deve
 
 ## Quick start (Development)
 
-### Electron Desktop Development
+### Electron Desktop Development (Primary Workflow)
 
-**Recommended approach for desktop app development:**
+**The canonical, production-like development experience:**
 
 ```bash
 # 1. Install dependencies
@@ -114,11 +117,15 @@ npm run dev
 
 The Electron app will start with the embedded backend and frontend. Changes to the backend require a rebuild and restart. Frontend changes require rebuilding and reloading the Electron window.
 
-For detailed Electron development workflows, debugging, and hot-reload setup, see [DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md).
+**This is the recommended workflow for testing the complete application stack**, including Electron IPC, native dialogs, window management, tray integration, protocol handling, and backend lifecycle.
 
-### Alternative: Component Development (Web Only)
+For detailed Electron development workflows, debugging, and hot-reload setup, see:
+- [DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md) — Comprehensive Electron development guide
+- [Aura.Desktop/electron/README.md](Aura.Desktop/electron/README.md) — Electron main process architecture (IPC, window manager, backend service, tray, menu, protocol handler)
 
-For rapid frontend iteration without Electron:
+### Alternative: Browser-Only Development Mode (Component Testing Only)
+
+**For rapid frontend/backend iteration without Electron (development aid only, not deployment target):**
 
 ```bash
 # Terminal 1: Start backend API
@@ -132,7 +139,23 @@ npm run dev
 # Web UI at http://localhost:5173 with hot reload
 ```
 
-**Note:** This runs the frontend standalone in a browser (not in Electron). Use this for quick UI development, but final testing should always be done in the Electron app.
+**⚠️ Important Limitations:**
+- This runs the frontend standalone in a browser (not in Electron)
+- Does **not** exercise Electron IPC, tray, protocol, window management, or shutdown behavior
+- Does **not** test the embedded backend lifecycle (spawned by Electron main process)
+- Use this for quick UI/API component development only
+- **Always perform final testing in the Electron app** before committing
+
+**When to use browser-only mode:**
+- Rapid UI component iteration with hot-reload
+- Backend API endpoint testing
+- Frontend unit tests and debugging
+
+**When to use Electron mode:**
+- Testing complete application stack
+- Verifying IPC communication
+- Testing native integrations (dialogs, menus, tray)
+- Final integration and acceptance testing
 
 ### Next Steps
 

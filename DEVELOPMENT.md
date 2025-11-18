@@ -17,11 +17,13 @@ This guide covers local development for Aura Video Studio's **backend and fronte
 
 Aura Video Studio is an **Electron desktop application** that bundles:
 
-- **React frontend** (Aura.Web) - UI components built with React + TypeScript + Vite
-- **ASP.NET Core backend** (Aura.Api) - REST API with Server-Sent Events
+- **React frontend** (Aura.Web) - UI components built with React + TypeScript + Vite, **always bundled into Electron**
+- **ASP.NET Core backend** (Aura.Api) - REST API with Server-Sent Events, embedded as child process
 - **Electron shell** (Aura.Desktop) - Native desktop wrapper, IPC, window management
 
-This guide focuses on developing the backend and frontend **components** in isolation for rapid iteration. For full desktop app development (Electron main process, IPC, packaging), see [DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md).
+**This guide focuses on developing the backend and frontend components in isolation for rapid iteration.** For full desktop app development (Electron main process, IPC, packaging), see [DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md).
+
+**Important:** Aura.Web is the React frontend that is **always bundled into Aura.Desktop** (the Electron shell). Running Aura.Web standalone in the browser is useful for faster frontend iteration, **but it is not the deployment target**. The production runtime is the Electron desktop application.
 
 ## Desktop App vs Component Development
 
@@ -36,6 +38,17 @@ This guide focuses on developing the backend and frontend **components** in isol
 - Native desktop features (menus, tray, dialogs)
 - Building installers and distribution
 
+**Workflow:**
+```bash
+# Build frontend
+cd Aura.Web && npm run build:prod
+
+# Run Electron app
+cd ../Aura.Desktop && npm run dev
+```
+
+**This is the production-like runtime.** Use this for final testing to ensure all Electron IPC, tray, window management, protocol handling, and backend lifecycle behavior work correctly.
+
 ### Component Development (Rapid Iteration)
 
 **When to use:** Backend API development, frontend UI development, quick testing
@@ -46,6 +59,22 @@ This guide focuses on developing the backend and frontend **components** in isol
 - Running frontend in browser with Vite hot-reload
 - API endpoint development
 - UI component development
+
+**Workflow:**
+```bash
+# Terminal 1: Backend
+cd Aura.Api && dotnet run
+
+# Terminal 2: Frontend
+cd Aura.Web && npm run dev
+# Open browser to http://localhost:5173
+```
+
+**⚠️ Important Limitations:**
+- This does **not** exercise Electron IPC, tray, native dialogs, window management, or protocol handling
+- This does **not** test the embedded backend lifecycle (spawned by Electron main process)
+- This is a **development aid only**, not the deployment target
+- Use this for rapid UI/API iteration, but **always perform final testing in Electron**
 
 ## Architecture
 
@@ -91,12 +120,12 @@ This guide focuses on developing the backend and frontend **components** in isol
 
 ```
 Aura/
-├── Aura.Desktop/        # Electron desktop application
+├── Aura.Desktop/        # Electron desktop application (primary runtime, production target)
 │   ├── electron/        # Main process, IPC handlers, window management
 │   ├── assets/          # Icons, splash screen
 │   ├── build/           # Build configuration (NSIS, DMG)
 │   └── package.json     # Electron dependencies and build scripts
-├── Aura.Api/            # REST API + SSE endpoints
+├── Aura.Api/            # REST API + SSE endpoints (embedded as child process)
 │   ├── Controllers/     # API controllers
 │   ├── HealthChecks/    # Health check implementations
 │   ├── Data/            # Database context and seed data
@@ -112,7 +141,7 @@ Aura/
 │   ├── Tts/             # Text-to-speech providers
 │   ├── Images/          # Image providers
 │   └── Video/           # Video processing
-├── Aura.Web/            # React frontend (bundled into Electron)
+├── Aura.Web/            # React frontend (always bundled into Aura.Desktop)
 │   ├── src/
 │   │   ├── api/         # API client
 │   │   ├── components/  # React components
@@ -123,6 +152,8 @@ Aura/
 ├── Aura.Tests/          # Unit and integration tests
 └── Aura.E2E/            # End-to-end tests (Playwright)
 ```
+
+**Note:** **Aura.Web is the React frontend that is always bundled into Aura.Desktop (Electron shell).** Running Aura.Web standalone in the browser is useful for faster frontend iteration, but **it is not the deployment target**. The production runtime is the Electron desktop application, where the frontend is loaded from bundled files and communicates with the embedded backend.
 
 ## Development Environment
 
@@ -275,7 +306,7 @@ The web UI surfaces these details inside Settings → Providers, and `settingsSe
 
 ### Quick Start: Component Development Mode
 
-**For rapid backend/frontend iteration without Electron:**
+**For rapid backend/frontend iteration without Electron (development aid only):**
 
 ```bash
 # Terminal 1: Start backend API
@@ -300,13 +331,14 @@ npm run dev
 
 **Limitations:**
 
-- ❌ No Electron-specific features (IPC, native dialogs, menus)
+- ❌ No Electron-specific features (IPC, native dialogs, menus, tray, protocol handling)
 - ❌ Not testing final desktop app behavior
 - ❌ Browser environment differs from Electron renderer
+- ❌ Not testing embedded backend lifecycle (spawned by Electron main process)
 
 **When to use:** Backend API development, frontend UI components, quick prototyping
 
-**When to switch to Electron:** Testing IPC, native features, final integration testing
+**When to switch to Electron:** Testing IPC, native features, backend lifecycle, final integration testing
 
 ### Desktop App Development Mode
 
@@ -323,6 +355,8 @@ npm run build:prod
 cd ../Aura.Desktop
 npm run dev
 ```
+
+**This is the production-like runtime.** Always test in Electron before committing to ensure all features work correctly.
 
 ### Typical Development Session
 
