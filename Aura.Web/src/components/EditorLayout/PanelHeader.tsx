@@ -63,7 +63,7 @@ export function PanelHeader({
   };
 
   return (
-    <div className={styles.header}>
+    <div className={`${styles.header} aura-editor-panel__header`}>
       <span className={styles.title}>{title}</span>
       <Button
         appearance="subtle"

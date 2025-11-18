@@ -75,7 +75,7 @@ const useStyles = makeStyles({
     minHeight: '300px',
     display: 'flex',
     flexDirection: 'column',
-    borderBottom: `1px solid var(--editor-panel-border)`,
+    borderBottom: `1px solid var(--editor-panel-border-subtle)`,
     backgroundColor: 'var(--editor-bg-secondary)',
     overflow: 'hidden',
     transition: 'flex var(--editor-transition-base)',
@@ -93,7 +93,7 @@ const useStyles = makeStyles({
   rightSidebarPanel: {
     minWidth: '280px',
     maxWidth: '400px',
-    borderLeft: `1px solid var(--editor-panel-border)`,
+    borderLeft: `1px solid var(--editor-panel-border-subtle)`,
     backgroundColor: 'var(--editor-panel-bg)',
     overflow: 'auto',
     display: 'flex',
@@ -104,7 +104,7 @@ const useStyles = makeStyles({
   leftSidebarPanel: {
     minWidth: '240px',
     maxWidth: '350px',
-    borderRight: `1px solid var(--editor-panel-border)`,
+    borderRight: `1px solid var(--editor-panel-border-subtle)`,
     backgroundColor: 'var(--editor-panel-bg)',
     overflow: 'hidden',
     display: 'flex',
@@ -447,19 +447,33 @@ export function EditorLayout({
     }
   };
 
+  // Helper to get panel modifier class
+  const getPanelModifierClass = (panelId: string): string => {
+    const modifierMap: Record<string, string> = {
+      preview: 'aura-editor-panel--preview',
+      timeline: 'aura-editor-panel--timeline',
+      properties: 'aura-editor-panel--properties',
+      mediaLibrary: 'aura-editor-panel--library',
+      effects: 'aura-editor-panel--effects',
+      history: 'aura-editor-panel--history',
+    };
+    return modifierMap[panelId] || '';
+  };
+
   // Render panel with header and collapse functionality
   const renderPanelWithHeader = (panel: EditorLayoutPanelConfig) => {
     const isCollapsed = collapsedPanels[panel.id as keyof typeof collapsedPanels] ?? false;
     const content = renderPanel(panel.id);
+    const panelModifier = getPanelModifierClass(panel.id);
 
     return (
-      <div key={panel.id}>
+      <div key={panel.id} className={`aura-editor-panel ${panelModifier}`}>
         <PanelHeader
           title={panel.title}
           isCollapsed={isCollapsed}
           onToggleCollapse={() => togglePanelCollapsed(panel.id as keyof typeof collapsedPanels)}
         />
-        {!isCollapsed && content}
+        {!isCollapsed && <div className="aura-editor-panel__body">{content}</div>}
       </div>
     );
   };
@@ -558,7 +572,7 @@ export function EditorLayout({
               return (
                 <React.Fragment key={panel.id}>
                   <div
-                    className={`${styles.leftSidebarPanel} ${isCollapsed ? styles.panelCollapsed : ''}`}
+                    className={`${styles.leftSidebarPanel} aura-editor-region aura-editor-region--sidebar ${isCollapsed ? styles.panelCollapsed : ''}`}
                     style={{
                       width: isCollapsed ? `${COLLAPSED_PANEL_WIDTH}px` : `${panelWidth}px`,
                     }}
@@ -588,8 +602,13 @@ export function EditorLayout({
               const previewHeight = panelSizes[panel.id] ?? panel.defaultSize ?? 60;
               return (
                 <React.Fragment key={panel.id}>
-                  <div className={styles.topRegionPanel} style={{ flex: previewHeight }}>
-                    {renderPanel(panel.id)}
+                  <div
+                    className={`${styles.topRegionPanel} aura-editor-region aura-editor-region--top`}
+                    style={{ flex: previewHeight }}
+                  >
+                    <div className="aura-editor-panel aura-editor-panel--preview">
+                      {renderPanel(panel.id)}
+                    </div>
                   </div>
                   {bottomPanels.length > 0 && renderHorizontalDivider(panel.id)}
                 </React.Fragment>
@@ -603,10 +622,12 @@ export function EditorLayout({
               return (
                 <div
                   key={panel.id}
-                  className={styles.bottomRegionPanel}
+                  className={`${styles.bottomRegionPanel} aura-editor-region aura-editor-region--bottom`}
                   style={{ flex: 100 - previewHeight }}
                 >
-                  {renderPanel(panel.id)}
+                  <div className="aura-editor-panel aura-editor-panel--timeline">
+                    {renderPanel(panel.id)}
+                  </div>
                 </div>
               );
             })}
@@ -631,7 +652,7 @@ export function EditorLayout({
                 <React.Fragment key={panel.id}>
                   {index > 0 && renderVerticalDivider(panel.id, minSize, maxSize, 'right')}
                   <div
-                    className={`${styles.rightSidebarPanel} ${isCollapsed ? styles.panelCollapsed : ''}`}
+                    className={`${styles.rightSidebarPanel} aura-editor-region aura-editor-region--sidebar ${isCollapsed ? styles.panelCollapsed : ''}`}
                     style={{
                       width: isCollapsed ? `${COLLAPSED_PANEL_WIDTH}px` : `${panelWidth}px`,
                     }}

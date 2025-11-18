@@ -970,18 +970,20 @@ export function VideoEditorPage() {
 
   return (
     <>
-      <EditorLayout
-        panels={panelConfig}
-        renderPanel={renderPanel}
-        onImportMedia={handleImportMedia}
-        onExportVideo={handleExportVideo}
-        onShowKeyboardShortcuts={() => setShowKeyboardShortcuts(true)}
-        onSaveProject={handleSaveProject}
-        projectName={projectName}
-        isDirty={isDirty}
-        autosaveStatus={autosaveStatus}
-        lastSaved={lastSaved}
-      />
+      <div className="aura-video-editor-root">
+        <EditorLayout
+          panels={panelConfig}
+          renderPanel={renderPanel}
+          onImportMedia={handleImportMedia}
+          onExportVideo={handleExportVideo}
+          onShowKeyboardShortcuts={() => setShowKeyboardShortcuts(true)}
+          onSaveProject={handleSaveProject}
+          projectName={projectName}
+          isDirty={isDirty}
+          autosaveStatus={autosaveStatus}
+          lastSaved={lastSaved}
+        />
+      </div>
       {showExportDialog && (
         <ExportDialog
           open={showExportDialog}
