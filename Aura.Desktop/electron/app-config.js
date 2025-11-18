@@ -32,10 +32,24 @@ class AppConfig {
     });
 
     // Secure storage for sensitive data (API keys, tokens)
+    // Note: Provider URLs and non-secret config are managed by the backend (Aura.Core ProviderSettings)
+    // Electron only stores secrets for desktop convenience
     this.secureStore = new Store({
       name: 'aura-secure',
       encryptionKey: this._getEncryptionKey(),
-      defaults: {}
+      defaults: {
+        // API keys - stored securely, synced to backend when needed
+        OpenAiKey: '',
+        AnthropicKey: '',
+        GeminiKey: '',
+        ElevenLabsKey: '',
+        PlayHTKey: '',
+        PlayHTUserId: '',
+        PexelsKey: '',
+        UnsplashKey: '',
+        PixabayKey: '',
+        AzureSpeechKey: '',
+      }
     });
 
     // Recent files/projects store
