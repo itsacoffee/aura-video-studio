@@ -12,14 +12,8 @@ import {
   Slider,
   Dropdown,
   Option,
-  Textarea,
 } from '@fluentui/react-components';
-import {
-  Save24Regular,
-  Image24Regular,
-  Delete24Regular,
-  Add24Regular,
-} from '@fluentui/react-icons';
+import { Save24Regular, Delete24Regular, Add24Regular } from '@fluentui/react-icons';
 import { useState } from 'react';
 import type {
   ExportSettings,
@@ -79,7 +73,7 @@ export function AdvancedExportSettingsTab({
   hasChanges,
 }: AdvancedExportSettingsTabProps) {
   const styles = useStyles();
-  const [selectedDestination, setSelectedDestination] = useState<UploadDestination | null>(null);
+  const [_selectedDestination, _setSelectedDestination] = useState<UploadDestination | null>(null);
 
   const updateWatermark = (updates: Partial<typeof settings.watermark>) => {
     onChange({
@@ -198,9 +192,10 @@ export function AdvancedExportSettingsTab({
                   </div>
                   <Field label="Font Color">
                     <Input
-                      type="color"
+                      type="text"
                       value={settings.watermark.fontColor}
                       onChange={(e) => updateWatermark({ fontColor: e.target.value })}
+                      placeholder="#FFFFFF"
                     />
                   </Field>
                   <Field label="Enable Shadow">
@@ -286,7 +281,8 @@ export function AdvancedExportSettingsTab({
         <Title2>Output File Naming Pattern</Title2>
         <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
           Customize how exported files are named. Available placeholders: {'{'}project{'}'}, {'{'}
-          date{'}'}, {'{'}time{'}'}, {'{'}preset{'}'}, {'{'}resolution{'}'}, {'{'}duration{'}'}, {'{'}counter{'}'}
+          date{'}'}, {'{'}time{'}'}, {'{'}preset{'}'}, {'{'}resolution{'}'}, {'{'}duration{'}'},{' '}
+          {'{'}counter{'}'}
         </Text>
 
         <div className={styles.form}>
@@ -347,9 +343,7 @@ export function AdvancedExportSettingsTab({
               <Input
                 type="number"
                 value={settings.namingPattern.counterDigits.toString()}
-                onChange={(e) =>
-                  updateNamingPattern({ counterDigits: parseInt(e.target.value) })
-                }
+                onChange={(e) => updateNamingPattern({ counterDigits: parseInt(e.target.value) })}
               />
             </Field>
           </div>
@@ -385,11 +379,7 @@ export function AdvancedExportSettingsTab({
             <Title2>Auto-Upload Destinations</Title2>
             <Text size={200}>Configure automatic upload locations for exported videos</Text>
           </div>
-          <Button
-            appearance="primary"
-            icon={<Add24Regular />}
-            onClick={addUploadDestination}
-          >
+          <Button appearance="primary" icon={<Add24Regular />} onClick={addUploadDestination}>
             Add Destination
           </Button>
         </div>
@@ -600,9 +590,7 @@ export function AdvancedExportSettingsTab({
           <Field label="Keep Intermediate Files">
             <Switch
               checked={settings.keepIntermediateFiles}
-              onChange={(_, data) =>
-                onChange({ ...settings, keepIntermediateFiles: data.checked })
-              }
+              onChange={(_, data) => onChange({ ...settings, keepIntermediateFiles: data.checked })}
             />
             <Text size={200}>Save temporary files for debugging (increases disk usage)</Text>
           </Field>

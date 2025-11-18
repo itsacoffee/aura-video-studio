@@ -151,7 +151,7 @@ export const ROUTE_METADATA: Record<string, RouteMetadata> = {
  * Used at runtime to ensure menu navigation targets are valid
  */
 export function validateRoute(route: string): boolean {
-  const allRoutes = Object.values(ROUTES);
+  const allRoutes = Object.values(ROUTES) as string[];
   // Check exact match
   if (allRoutes.includes(route)) {
     return true;
