@@ -178,11 +178,11 @@ export const ResearchPanel: FC<ResearchPanelProps> = ({
   const styles = useStyles();
   const [filter, setFilter] = useState<'all' | 'high-credibility' | 'high-relevance'>('all');
 
-  const getScoreColor = useCallback((score: number): 'brand' | 'success' | 'warning' | 'danger' => {
+  const getScoreColor = useCallback((score: number): 'brand' | 'success' | 'warning' | 'error' => {
     if (score >= 80) return 'success';
     if (score >= 60) return 'brand';
     if (score >= 40) return 'warning';
-    return 'danger';
+    return 'error';
   }, []);
 
   const filteredFindings = findings.filter((finding) => {
@@ -228,9 +228,11 @@ export const ResearchPanel: FC<ResearchPanelProps> = ({
             <Text size={500} weight="semibold">
               Research Findings
             </Text>
-            <Text size={200} as="div" style={{ color: tokens.colorNeutralForeground3 }}>
-              {filteredFindings.length} finding{filteredFindings.length !== 1 ? 's' : ''}
-            </Text>
+            <div>
+              <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                {filteredFindings.length} finding{filteredFindings.length !== 1 ? 's' : ''}
+              </Text>
+            </div>
           </div>
         </div>
         {onRefresh && (

@@ -226,10 +226,12 @@ export const QuestionFlow: FC<QuestionFlowProps> = ({
           <Text size={500} weight="semibold">
             Interactive Q&A
           </Text>
-          <Text size={200} as="div" style={{ color: tokens.colorNeutralForeground3 }}>
-            Answer {questions.length} question{questions.length !== 1 ? 's' : ''} to refine your
-            concept
-          </Text>
+          <div>
+            <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+              Answer {questions.length} question{questions.length !== 1 ? 's' : ''} to refine your
+              concept
+            </Text>
+          </div>
         </div>
       </div>
 

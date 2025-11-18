@@ -334,15 +334,16 @@ export const ConceptExplorer: FC = () => {
             <Text
               size={400}
               weight="semibold"
-              as="div"
-              style={{ marginBottom: tokens.spacingVerticalM }}
+              style={{ marginBottom: tokens.spacingVerticalM, display: 'block' }}
             >
               Concept Details
             </Text>
-            <Text size={300} as="div" style={{ lineHeight: tokens.lineHeightBase400 }}>
-              Use the tabs above to refine this concept, gather research, generate a storyboard, or
-              answer clarifying questions.
-            </Text>
+            <div style={{ lineHeight: tokens.lineHeightBase400 }}>
+              <Text size={300}>
+                Use the tabs above to refine this concept, gather research, generate a storyboard,
+                or answer clarifying questions.
+              </Text>
+            </div>
           </div>
         )}
 

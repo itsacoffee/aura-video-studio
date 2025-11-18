@@ -110,7 +110,7 @@ const useStyles = makeStyles({
   infoCard: {
     padding: tokens.spacingVerticalL,
     marginBottom: tokens.spacingVerticalL,
-    backgroundColor: tokens.colorPaletteBlueBorder2,
+    backgroundColor: tokens.colorBrandBackground2,
   },
   infoText: {
     fontSize: tokens.fontSizeBase300,
@@ -257,14 +257,11 @@ export const StoryboardVisualizer: FC = () => {
 
       <div className={styles.visualization}>
         <div className={styles.timelineOverview}>
-          <Text
-            size={400}
-            weight="semibold"
-            as="div"
-            style={{ marginBottom: tokens.spacingVerticalM }}
-          >
-            Timeline Overview
-          </Text>
+          <div style={{ marginBottom: tokens.spacingVerticalM }}>
+            <Text size={400} weight="semibold">
+              Timeline Overview
+            </Text>
+          </div>
           <div className={styles.timelineBar}>
             {scenes.map((scene, index) => {
               const widthPercentage = (scene.durationSeconds / totalDuration) * 100;
