@@ -10,21 +10,22 @@
   --editor-bg-secondary: #252525;
   --editor-bg-tertiary: #2d2d2d;
   --editor-bg-elevated: #353535;
-  
+
   /* Panel colors */
   --editor-panel-bg: #1e1e1e;
   --editor-panel-header-bg: #2a2a2a;
   --editor-panel-border: #3a3a3a;
+  --editor-panel-border-subtle: #2d2d2d;
   --editor-panel-hover: #2f2f2f;
   --editor-panel-active: #3a3a3a;
-  
+
   /* Timeline specific colors */
   --timeline-bg: #1a1a1a;
   --timeline-track-bg: #232323;
   --timeline-track-border: #2d2d2d;
   --timeline-ruler-bg: #252525;
   --timeline-ruler-text: #999;
-  
+
   /* Clip colors */
   --clip-video-bg: #4a5568;
   --clip-audio-bg: #2d7a8f;
@@ -32,47 +33,47 @@
   --clip-border: #ffffff20;
   --clip-selected: #0ea5e9;
   --clip-hover: #ffffff10;
-  
+
   /* Playhead and scrubber */
   --playhead-color: #f44;
   --playhead-shadow: #ff444480;
   --scrubber-bg: #333;
   --scrubber-handle: #666;
-  
+
   /* Text colors */
   --editor-text-primary: #e8e8e8;
   --editor-text-secondary: #a0a0a0;
   --editor-text-tertiary: #707070;
   --editor-text-disabled: #505050;
-  
+
   /* Interactive elements */
   --editor-accent: #0ea5e9;
   --editor-accent-hover: #38bdf8;
   --editor-accent-active: #0284c7;
   --editor-focus-ring: #0ea5e980;
-  
+
   /* Status colors */
   --editor-success: #10b981;
   --editor-warning: #f59e0b;
   --editor-error: #ef4444;
   --editor-info: #3b82f6;
-  
+
   /* Shadows for depth */
   --editor-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 40%);
   --editor-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 50%), 0 2px 4px -1px rgb(0 0 0 / 40%);
   --editor-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 60%), 0 4px 6px -2px rgb(0 0 0 / 50%);
   --editor-shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 70%), 0 10px 10px -5px rgb(0 0 0 / 60%);
-  
+
   /* Transitions */
   --editor-transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --editor-transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
   --editor-transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
-  
+
   /* Border radius */
   --editor-radius-sm: 2px;
   --editor-radius-md: 4px;
   --editor-radius-lg: 6px;
-  
+
   /* Spacing scale */
   --editor-space-xs: 4px;
   --editor-space-sm: 8px;
@@ -80,7 +81,7 @@
   --editor-space-lg: 16px;
   --editor-space-xl: 24px;
   --editor-space-2xl: 32px;
-  
+
   /* Typography */
   --editor-font-size-xs: 11px;
   --editor-font-size-sm: 12px;
@@ -91,7 +92,7 @@
   --editor-font-weight-medium: 500;
   --editor-font-weight-semibold: 600;
   --editor-font-weight-bold: 700;
-  
+
   /* Z-index layers */
   --editor-z-base: 1;
   --editor-z-panel: 10;
@@ -128,14 +129,143 @@
   --editor-shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 25%), 0 10px 10px -5px rgb(0 0 0 / 20%);
 }
 
-/* Base editor container styling */
+/* ============================================
+   UNIFIED VIDEO EDITOR STRUCTURE
+   ============================================ */
+
+/* Root wrapper for video editor - top-level container */
+.aura-video-editor-root {
+  background-color: var(--editor-bg-primary);
+  color: var(--editor-text-primary);
+  font-size: var(--editor-font-size-base);
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Legacy support - keep for backward compatibility */
 .video-editor-container {
   background-color: var(--editor-bg-primary);
   color: var(--editor-text-primary);
   font-size: var(--editor-font-size-base);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================================
+   EDITOR REGIONS - Structural layout areas
+   ============================================ */
+
+/* Base region styles */
+.aura-editor-region {
+  display: flex;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Top region (Preview panel) - elevated with shadow */
+.aura-editor-region--top {
+  flex-direction: column;
+  background-color: var(--editor-bg-secondary);
+  box-shadow: var(--editor-shadow-md);
+  z-index: var(--editor-z-base);
+}
+
+/* Bottom region (Timeline) - slightly elevated */
+.aura-editor-region--bottom {
+  flex-direction: column;
+  background-color: var(--timeline-bg);
+  box-shadow: var(--editor-shadow-sm);
+  z-index: var(--editor-z-base);
+}
+
+/* Sidebar regions (Properties, Media, Effects, History) */
+.aura-editor-region--sidebar {
+  flex-direction: column;
+  background-color: var(--editor-panel-bg);
+  border-left: 1px solid var(--editor-panel-border);
+}
+
+/* ============================================
+   EDITOR PANELS - Individual panel styling
+   ============================================ */
+
+/* Base panel styles - unified structure */
+.aura-editor-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Panel-specific modifiers for additional styling */
+.aura-editor-panel--preview {
+  background-color: var(--editor-bg-secondary);
+}
+
+.aura-editor-panel--timeline {
+  background-color: var(--timeline-bg);
+}
+
+.aura-editor-panel--properties,
+.aura-editor-panel--library,
+.aura-editor-panel--effects,
+.aura-editor-panel--history {
+  background-color: var(--editor-panel-bg);
+}
+
+/* Panel body - consistent internal padding for all panels */
+.aura-editor-panel__body {
+  flex: 1;
+  padding: var(--editor-space-md);
+  overflow: auto;
+
+  /* Ensure scrollbar doesn't touch panel edge */
+  padding-right: var(--editor-space-lg);
+}
+
+/* Special case for timeline - no padding needed as it has internal structure */
+.aura-editor-panel--timeline .aura-editor-panel__body {
+  padding: 0;
+}
+
+/* Panel header - unified across all panels */
+.aura-editor-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 36px;
+  padding: var(--editor-space-sm) var(--editor-space-md);
+  background-color: var(--editor-panel-header-bg);
+  border-bottom: 1px solid var(--editor-panel-border);
+  font-size: var(--editor-font-size-sm);
+  font-weight: var(--editor-font-weight-semibold);
+  color: var(--editor-text-primary);
+  user-select: none;
+  transition: background-color var(--editor-transition-fast);
+}
+
+.aura-editor-panel__header:hover {
+  background-color: var(--editor-panel-hover);
+}
+
+/* Accent bar for active panel (optional enhancement) */
+.aura-editor-panel--active .aura-editor-panel__header::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background-color: var(--editor-accent);
 }
 
 /* Panel styling */
@@ -240,26 +370,42 @@
 }
 
 .timeline-clip.video {
-  background: linear-gradient(135deg, var(--clip-video-bg) 0%, color-mix(in srgb, var(--clip-video-bg) 80%, black) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--clip-video-bg) 0%,
+    color-mix(in srgb, var(--clip-video-bg) 80%, black) 100%
+  );
 }
 
 .timeline-clip.audio {
-  background: linear-gradient(135deg, var(--clip-audio-bg) 0%, color-mix(in srgb, var(--clip-audio-bg) 80%, black) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--clip-audio-bg) 0%,
+    color-mix(in srgb, var(--clip-audio-bg) 80%, black) 100%
+  );
 }
 
 .timeline-clip.image {
-  background: linear-gradient(135deg, var(--clip-image-bg) 0%, color-mix(in srgb, var(--clip-image-bg) 80%, black) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--clip-image-bg) 0%,
+    color-mix(in srgb, var(--clip-image-bg) 80%, black) 100%
+  );
 }
 
 .timeline-clip:hover {
   border-color: var(--editor-accent);
-  box-shadow: 0 0 0 1px var(--editor-accent), var(--editor-shadow-md);
+  box-shadow:
+    0 0 0 1px var(--editor-accent),
+    var(--editor-shadow-md);
   transform: translateY(-1px);
 }
 
 .timeline-clip.selected {
   border: 2px solid var(--clip-selected);
-  box-shadow: 0 0 0 1px var(--clip-selected), var(--editor-shadow-lg);
+  box-shadow:
+    0 0 0 1px var(--clip-selected),
+    var(--editor-shadow-lg);
   z-index: var(--editor-z-panel);
 }
 
@@ -340,14 +486,20 @@
 }
 
 .editor-button.primary {
-  background: linear-gradient(135deg, var(--editor-accent) 0%, color-mix(in srgb, var(--editor-accent) 80%, black) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--editor-accent) 0%,
+    color-mix(in srgb, var(--editor-accent) 80%, black) 100%
+  );
   border-color: var(--editor-accent);
   color: white;
 }
 
 .editor-button.primary:hover {
   background: linear-gradient(135deg, var(--editor-accent-hover) 0%, var(--editor-accent) 100%);
-  box-shadow: 0 0 0 2px var(--editor-focus-ring), var(--editor-shadow-md);
+  box-shadow:
+    0 0 0 2px var(--editor-focus-ring),
+    var(--editor-shadow-md);
 }
 
 .editor-button:disabled {
@@ -460,7 +612,9 @@
 
 .timeline-zoom-slider-handle:hover {
   transform: translate(-50%, -50%) scale(1.2);
-  box-shadow: 0 0 0 4px var(--editor-focus-ring), var(--editor-shadow-lg);
+  box-shadow:
+    0 0 0 4px var(--editor-focus-ring),
+    var(--editor-shadow-lg);
 }
 
 .timeline-zoom-slider-handle:active {
