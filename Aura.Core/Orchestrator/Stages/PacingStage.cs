@@ -80,7 +80,11 @@ public class PacingStage
             script.Scenes.Count,
             refinedScenes.Count);
 
-        return new Script(refinedScenes);
+        return script with 
+        { 
+            Scenes = refinedScenes,
+            TotalDuration = TimeSpan.FromSeconds(refinedScenes.Sum(s => s.Duration.TotalSeconds))
+        };
     }
 
     private string BuildPacingPrompt(Script script, OrchestrationContext context)
@@ -206,13 +210,10 @@ Respond with JSON in this format:
         }
 
         _logger.LogInformation("Applied deterministic pacing to {SceneCount} scenes", refinedScenes.Count);
-        return new Script 
+        return script with 
         { 
             Scenes = refinedScenes,
-            Title = script.Title,
-            TotalDuration = TimeSpan.FromSeconds(refinedScenes.Sum(s => s.Duration.TotalSeconds)),
-            Metadata = script.Metadata,
-            CorrelationId = script.CorrelationId
+            TotalDuration = TimeSpan.FromSeconds(refinedScenes.Sum(s => s.Duration.TotalSeconds))
         };
     }
 
