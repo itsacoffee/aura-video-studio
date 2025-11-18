@@ -578,4 +578,179 @@ public class ProviderConfigurationController : ControllerBase
         var json = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
         await System.IO.File.WriteAllTextAsync(configPath, json, ct).ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// Get unified provider configuration (without secrets)
+    /// </summary>
+    [HttpGet("config")]
+    public ActionResult<ProviderConfigurationDto> GetConfig()
+    {
+        try
+        {
+            var dto = new ProviderConfigurationDto
+            {
+                OpenAi = new OpenAiConfigDto
+                {
+                    ApiKey = null, // Do not echo secrets
+                    Endpoint = _providerSettings.GetOpenAiEndpoint(),
+                },
+                Ollama = new OllamaConfigDto
+                {
+                    Url = _providerSettings.GetOllamaUrl(),
+                    Model = _providerSettings.GetOllamaModel(),
+                },
+                StableDiffusion = new StableDiffusionConfigDto
+                {
+                    Url = _providerSettings.GetStableDiffusionUrl(),
+                },
+                Anthropic = new AnthropicConfigDto
+                {
+                    ApiKey = null, // Do not echo secrets
+                },
+                Gemini = new GeminiConfigDto
+                {
+                    ApiKey = null, // Do not echo secrets
+                },
+                ElevenLabs = new ElevenLabsConfigDto
+                {
+                    ApiKey = null, // Do not echo secrets
+                }
+            };
+
+            return Ok(dto);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting unified provider configuration");
+            return StatusCode(500, new ProblemDetails
+            {
+                Title = "Configuration Error",
+                Status = 500,
+                Detail = "Failed to retrieve provider configuration",
+                Extensions = { ["correlationId"] = HttpContext.TraceIdentifier }
+            });
+        }
+    }
+
+    /// <summary>
+    /// Update unified provider configuration (non-secret fields)
+    /// </summary>
+    [HttpPost("config")]
+    public async Task<ActionResult> UpdateConfig([FromBody] ProviderConfigurationUpdateDto updateDto, CancellationToken ct)
+    {
+        try
+        {
+            if (updateDto == null)
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Invalid Request",
+                    Status = 400,
+                    Detail = "Configuration update data is required",
+                    Extensions = { ["correlationId"] = HttpContext.TraceIdentifier }
+                });
+            }
+
+            await _providerSettings.UpdateAsync(settings =>
+            {
+                if (updateDto.OpenAi?.Endpoint is { Length: > 0 } endpoint)
+                {
+                    settings.SetOpenAiEndpoint(endpoint);
+                    _logger.LogInformation("Updated OpenAI endpoint");
+                }
+
+                if (updateDto.Ollama?.Url is { Length: > 0 } ollamaUrl)
+                {
+                    settings.SetOllamaUrl(ollamaUrl);
+                    _logger.LogInformation("Updated Ollama URL");
+                }
+
+                if (updateDto.Ollama?.Model is { Length: > 0 } ollamaModel)
+                {
+                    settings.SetOllamaModel(ollamaModel);
+                    _logger.LogInformation("Updated Ollama model");
+                }
+
+                if (updateDto.StableDiffusion?.Url is { Length: > 0 } sdUrl)
+                {
+                    settings.SetStableDiffusionUrl(sdUrl);
+                    _logger.LogInformation("Updated Stable Diffusion URL");
+                }
+            }, ct).ConfigureAwait(false);
+
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating provider configuration");
+            return StatusCode(500, new ProblemDetails
+            {
+                Title = "Configuration Error",
+                Status = 500,
+                Detail = "Failed to update provider configuration",
+                Extensions = { ["correlationId"] = HttpContext.TraceIdentifier }
+            });
+        }
+    }
+
+    /// <summary>
+    /// Update provider secrets (API keys)
+    /// </summary>
+    [HttpPost("config/secrets")]
+    public async Task<ActionResult> UpdateSecrets([FromBody] ProviderSecretsUpdateDto secretsDto, CancellationToken ct)
+    {
+        try
+        {
+            if (secretsDto == null)
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Invalid Request",
+                    Status = 400,
+                    Detail = "Secrets update data is required",
+                    Extensions = { ["correlationId"] = HttpContext.TraceIdentifier }
+                });
+            }
+
+            await _providerSettings.UpdateAsync(settings =>
+            {
+                if (!string.IsNullOrWhiteSpace(secretsDto.OpenAiApiKey))
+                {
+                    settings.SetOpenAiKey(secretsDto.OpenAiApiKey);
+                    _logger.LogInformation("Updated OpenAI API key");
+                }
+
+                if (!string.IsNullOrWhiteSpace(secretsDto.AnthropicApiKey))
+                {
+                    settings.SetAnthropicKey(secretsDto.AnthropicApiKey);
+                    _logger.LogInformation("Updated Anthropic API key");
+                }
+
+                if (!string.IsNullOrWhiteSpace(secretsDto.GeminiApiKey))
+                {
+                    settings.SetGeminiKey(secretsDto.GeminiApiKey);
+                    _logger.LogInformation("Updated Gemini API key");
+                }
+
+                if (!string.IsNullOrWhiteSpace(secretsDto.ElevenLabsApiKey))
+                {
+                    settings.SetElevenLabsKey(secretsDto.ElevenLabsApiKey);
+                    _logger.LogInformation("Updated ElevenLabs API key");
+                }
+            }, ct).ConfigureAwait(false);
+
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating provider secrets");
+            return StatusCode(500, new ProblemDetails
+            {
+                Title = "Configuration Error",
+                Status = 500,
+                Detail = "Failed to update provider secrets",
+                Extensions = { ["correlationId"] = HttpContext.TraceIdentifier }
+            });
+        }
+    }
 }

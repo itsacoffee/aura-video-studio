@@ -4,6 +4,8 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.Configuration;
@@ -155,6 +157,20 @@ public class ProviderSettings
     }
 
     /// <summary>
+    /// Set Stable Diffusion WebUI URL
+    /// </summary>
+    public void SetStableDiffusionUrl(string url)
+    {
+        LoadSettings();
+        if (_settings == null)
+        {
+            _settings = new Dictionary<string, object>();
+        }
+        _settings["stableDiffusionUrl"] = url;
+        SaveSettings();
+    }
+
+    /// <summary>
     /// Stable Diffusion WebUI URL (for offline availability check)
     /// </summary>
     public string? StableDiffusionWebUiUrl => GetStableDiffusionUrl();
@@ -166,6 +182,20 @@ public class ProviderSettings
     {
         LoadSettings();
         return GetStringSetting("ollamaUrl", "http://127.0.0.1:11434");
+    }
+
+    /// <summary>
+    /// Set Ollama URL
+    /// </summary>
+    public void SetOllamaUrl(string url)
+    {
+        LoadSettings();
+        if (_settings == null)
+        {
+            _settings = new Dictionary<string, object>();
+        }
+        _settings["ollamaUrl"] = url;
+        SaveSettings();
     }
 
     /// <summary>
@@ -290,6 +320,43 @@ public class ProviderSettings
     }
 
     /// <summary>
+    /// Get OpenAI endpoint URL
+    /// </summary>
+    public string GetOpenAiEndpoint()
+    {
+        LoadSettings();
+        return GetStringSetting("openAiEndpoint", "https://api.openai.com/v1");
+    }
+
+    /// <summary>
+    /// Set OpenAI API key
+    /// </summary>
+    public void SetOpenAiKey(string apiKey)
+    {
+        LoadSettings();
+        if (_settings == null)
+        {
+            _settings = new Dictionary<string, object>();
+        }
+        _settings["openAiApiKey"] = apiKey;
+        SaveSettings();
+    }
+
+    /// <summary>
+    /// Set OpenAI endpoint URL
+    /// </summary>
+    public void SetOpenAiEndpoint(string endpoint)
+    {
+        LoadSettings();
+        if (_settings == null)
+        {
+            _settings = new Dictionary<string, object>();
+        }
+        _settings["openAiEndpoint"] = endpoint;
+        SaveSettings();
+    }
+
+    /// <summary>
     /// Get Azure OpenAI API key
     /// </summary>
     public string? GetAzureOpenAiApiKey()
@@ -317,12 +384,63 @@ public class ProviderSettings
     }
 
     /// <summary>
+    /// Set Gemini API key
+    /// </summary>
+    public void SetGeminiKey(string apiKey)
+    {
+        LoadSettings();
+        if (_settings == null)
+        {
+            _settings = new Dictionary<string, object>();
+        }
+        _settings["geminiApiKey"] = apiKey;
+        SaveSettings();
+    }
+
+    /// <summary>
+    /// Get Anthropic API key
+    /// </summary>
+    public string? GetAnthropicKey()
+    {
+        LoadSettings();
+        return GetStringSetting("anthropicApiKey", "");
+    }
+
+    /// <summary>
+    /// Set Anthropic API key
+    /// </summary>
+    public void SetAnthropicKey(string apiKey)
+    {
+        LoadSettings();
+        if (_settings == null)
+        {
+            _settings = new Dictionary<string, object>();
+        }
+        _settings["anthropicApiKey"] = apiKey;
+        SaveSettings();
+    }
+
+    /// <summary>
     /// Get ElevenLabs API key
     /// </summary>
     public string? GetElevenLabsApiKey()
     {
         LoadSettings();
         return GetStringSetting("elevenLabsApiKey", "");
+    }
+
+    /// <summary>
+    /// Set ElevenLabs API key
+    /// </summary>
+    public void SetElevenLabsKey(string apiKey)
+    {
+        LoadSettings();
+        if (_settings == null)
+        {
+            _settings = new Dictionary<string, object>();
+        }
+        _settings["elevenLabsApiKey"] = apiKey;
+        SaveSettings();
     }
 
     /// <summary>
@@ -825,6 +943,23 @@ public class ProviderSettings
     {
         _settings = null;
         LoadSettings();
+    }
+
+    /// <summary>
+    /// Update settings asynchronously with thread-safe mutation
+    /// </summary>
+    /// <param name="updateAction">Action to modify settings</param>
+    /// <param name="ct">Cancellation token</param>
+    public async Task UpdateAsync(Action<ProviderSettings> updateAction, CancellationToken ct = default)
+    {
+        await Task.Run(() =>
+        {
+            lock (_settings ?? new Dictionary<string, object>())
+            {
+                LoadSettings();
+                updateAction(this);
+            }
+        }, ct).ConfigureAwait(false);
     }
 
     /// <summary>
