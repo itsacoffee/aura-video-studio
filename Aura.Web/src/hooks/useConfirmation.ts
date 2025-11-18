@@ -1,4 +1,4 @@
-import type { ConfirmationDialogProps } from './ConfirmationDialog';
+import type { ConfirmationDialogProps } from '../components/Common/ConfirmationDialog';
 
 /**
  * Hook to use confirmation dialog programmatically
