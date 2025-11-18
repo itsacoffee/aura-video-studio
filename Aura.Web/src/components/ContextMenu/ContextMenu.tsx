@@ -8,13 +8,13 @@ import {
   MenuGroup,
   MenuGroupHeader,
 } from '@fluentui/react-components';
-import type { ReactNode, MouseEvent } from 'react';
-import { useEffect, useState, useCallback } from 'react';
+import type { ReactElement, MouseEvent as ReactMouseEvent } from 'react';
+import { useEffect, useState, useCallback, isValidElement } from 'react';
 
 export interface ContextMenuItem {
   id: string;
   label: string;
-  icon?: ReactNode;
+  icon?: ReactElement;
   shortcut?: string;
   disabled?: boolean;
   divider?: boolean;
@@ -79,7 +79,10 @@ export function ContextMenu({ position, items, onClose, open, className }: Conte
       return (
         <Menu key={item.id}>
           <MenuTrigger>
-            <MenuItem icon={item.icon} disabled={item.disabled}>
+            <MenuItem
+              {...(item.icon && isValidElement(item.icon) ? { icon: <>{item.icon}</> } : {})}
+              disabled={item.disabled}
+            >
               {item.label}
             </MenuItem>
           </MenuTrigger>
@@ -93,7 +96,7 @@ export function ContextMenu({ position, items, onClose, open, className }: Conte
     return (
       <MenuItem
         key={item.id}
-        icon={item.icon}
+        {...(item.icon && isValidElement(item.icon) ? { icon: <>{item.icon}</> } : {})}
         disabled={item.disabled}
         onClick={() => handleItemClick(item.onClick)}
       >
@@ -155,6 +158,7 @@ export function ContextMenu({ position, items, onClose, open, className }: Conte
 /**
  * Hook for managing context menu state
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function useContextMenu() {
   const [contextMenu, setContextMenu] = useState<{
     position: { x: number; y: number } | null;
@@ -162,7 +166,7 @@ export function useContextMenu() {
     position: null,
   });
 
-  const showContextMenu = useCallback((event: MouseEvent) => {
+  const showContextMenu = useCallback((event: ReactMouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
     setContextMenu({
@@ -183,7 +187,7 @@ export function useContextMenu() {
       }
     };
 
-    const handleContextMenu = (e: MouseEvent) => {
+    const handleContextMenu = (e: Event) => {
       if (contextMenu.position) {
         e.preventDefault();
         hideContextMenu();
