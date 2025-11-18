@@ -112,7 +112,7 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
 
       const percent =
         typeof (progress as { Percent?: number }).Percent === 'number'
-          ? (progress as { Percent: number }).Percent
+          ? (progress as unknown as { Percent: number }).Percent
           : progress.percent;
       const etaSeconds =
         progress.estimatedRemainingSeconds ?? progress.etaSeconds ?? existing?.etaSeconds ?? null;
