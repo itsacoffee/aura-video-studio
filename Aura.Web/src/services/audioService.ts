@@ -60,9 +60,7 @@ export async function generateNarration(
 /**
  * Generate audio narration with streaming response (returns audio file directly).
  */
-export async function generateNarrationStream(
-  request: GenerateNarrationRequest
-): Promise<Blob> {
+export async function generateNarrationStream(request: GenerateNarrationRequest): Promise<Blob> {
   try {
     const response = await apiClient.post(
       '/api/audio/generate-narration',
@@ -83,7 +81,7 @@ export async function generateNarrationStream(
 export function createAudioPreview(audioBlob: Blob): HTMLAudioElement {
   const url = URL.createObjectURL(audioBlob);
   const audio = new Audio(url);
-  
+
   // Clean up object URL when audio is loaded
   audio.addEventListener('loadeddata', () => {
     URL.revokeObjectURL(url);
@@ -159,14 +157,11 @@ export function getAvailableVoices(): Array<{ value: string; label: string; desc
 /**
  * Download audio file from narration response.
  */
-export async function downloadNarrationAudio(
-  audioPath: string,
-  filename?: string
-): Promise<void> {
+export async function downloadNarrationAudio(audioPath: string, filename?: string): Promise<void> {
   try {
     const response = await fetch(audioPath);
     const blob = await response.blob();
-    
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

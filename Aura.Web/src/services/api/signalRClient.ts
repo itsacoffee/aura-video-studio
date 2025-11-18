@@ -7,7 +7,12 @@ import * as signalR from '@microsoft/signalr';
 import { loggingService } from '../loggingService';
 import { env } from '@/config/env';
 
-export type ConnectionState = 'Disconnected' | 'Connecting' | 'Connected' | 'Reconnecting' | 'Disconnected';
+export type ConnectionState =
+  | 'Disconnected'
+  | 'Connecting'
+  | 'Connected'
+  | 'Reconnecting'
+  | 'Disconnected';
 
 export interface SignalRConfig {
   hubUrl: string;
@@ -56,7 +61,8 @@ export class SignalRClient {
           },
           // Add additional options for better connection handling
           skipNegotiation: false,
-          transport: signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.ServerSentEvents,
+          transport:
+            signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.ServerSentEvents,
         })
         .configureLogging(this.config.logging);
 
@@ -169,10 +175,10 @@ export class SignalRClient {
     try {
       this.isManualDisconnect = true;
       loggingService.info('Disconnecting from SignalR', 'signalRClient', 'disconnect');
-      
+
       await this.connection.stop();
       this.connection = null;
-      
+
       loggingService.info('Disconnected from SignalR', 'signalRClient', 'disconnect');
       this.notifyStateChange('Disconnected');
     } catch (error) {

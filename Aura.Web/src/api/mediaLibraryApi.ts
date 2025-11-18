@@ -41,19 +41,19 @@ class MediaLibraryApi {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('type', request.type);
-    
+
     if (request.description) {
       formData.append('description', request.description);
     }
-    
+
     if (request.tags && request.tags.length > 0) {
       formData.append('tags', request.tags.join(','));
     }
-    
+
     if (request.collectionId) {
       formData.append('collectionId', request.collectionId);
     }
-    
+
     formData.append('generateThumbnail', String(request.generateThumbnail ?? true));
     formData.append('extractMetadata', String(request.extractMetadata ?? true));
 

@@ -25,21 +25,21 @@ const helpSections: HelpSection[] = [
         id: 'first-video',
         title: 'Create Your First Video',
         description: 'Learn how to generate your first AI-powered video in minutes',
-        link: '/docs/getting-started/QUICK_START.md'
+        link: '/docs/getting-started/QUICK_START.md',
       },
       {
         id: 'onboarding',
         title: 'First Run Setup',
         description: 'Configure Aura for your workflow with the onboarding wizard',
-        link: '/docs/getting-started/FIRST_RUN_GUIDE.md'
+        link: '/docs/getting-started/FIRST_RUN_GUIDE.md',
       },
       {
         id: 'providers',
         title: 'Provider Configuration',
         description: 'Set up AI providers and API keys for script, voice, and images',
-        link: '/docs/user-guide/USER_MANUAL.md#provider-configuration'
-      }
-    ]
+        link: '/docs/user-guide/USER_MANUAL.md#provider-configuration',
+      },
+    ],
   },
   {
     id: 'features',
@@ -50,27 +50,27 @@ const helpSections: HelpSection[] = [
         id: 'script-generation',
         title: 'Script Generation',
         description: 'Use AI to create compelling video scripts from your ideas',
-        link: '/docs/user-guide/USER_MANUAL.md#script-generation'
+        link: '/docs/user-guide/USER_MANUAL.md#script-generation',
       },
       {
         id: 'text-to-speech',
         title: 'Text-to-Speech',
         description: 'Convert scripts to natural-sounding voiceovers',
-        link: '/docs/user-guide/USER_MANUAL.md#voice-generation-text-to-speech'
+        link: '/docs/user-guide/USER_MANUAL.md#voice-generation-text-to-speech',
       },
       {
         id: 'timeline-editor',
         title: 'Timeline Editor',
         description: 'Edit your video with professional timeline controls',
-        link: '/docs/features/TIMELINE.md'
+        link: '/docs/features/TIMELINE.md',
       },
       {
         id: 'export',
         title: 'Video Export',
         description: 'Render and export videos in multiple formats',
-        link: '/docs/user-guide/USER_MANUAL.md#export'
-      }
-    ]
+        link: '/docs/user-guide/USER_MANUAL.md#export',
+      },
+    ],
   },
   {
     id: 'troubleshooting',
@@ -81,21 +81,21 @@ const helpSections: HelpSection[] = [
         id: 'common-issues',
         title: 'Common Issues',
         description: 'Quick fixes for frequently encountered problems',
-        link: '/docs/troubleshooting/Troubleshooting.md'
+        link: '/docs/troubleshooting/Troubleshooting.md',
       },
       {
         id: 'faq',
         title: 'Frequently Asked Questions',
         description: 'Answers to the most common questions about Aura',
-        link: '/docs/user-guide/FAQ.md'
+        link: '/docs/user-guide/FAQ.md',
       },
       {
         id: 'diagnostics',
         title: 'Generate Diagnostic Bundle',
         description: 'Create a support bundle for troubleshooting',
-        link: '/settings/diagnostics'
-      }
-    ]
+        link: '/settings/diagnostics',
+      },
+    ],
   },
   {
     id: 'shortcuts',
@@ -106,16 +106,16 @@ const helpSections: HelpSection[] = [
         id: 'global-shortcuts',
         title: 'Global Shortcuts',
         description: 'Keyboard shortcuts that work throughout the app',
-        link: '#shortcuts-modal'
+        link: '#shortcuts-modal',
       },
       {
         id: 'timeline-shortcuts',
         title: 'Timeline Shortcuts',
         description: 'Speed up editing with timeline keyboard shortcuts',
-        link: '#shortcuts-modal'
-      }
-    ]
-  }
+        link: '#shortcuts-modal',
+      },
+    ],
+  },
 ];
 
 interface HelpPanelProps {
@@ -130,13 +130,16 @@ export const HelpPanel: React.FC<HelpPanelProps> = ({ isOpen, onClose, onOpenSho
 
   if (!isOpen) return null;
 
-  const filteredSections = helpSections.map(section => ({
-    ...section,
-    content: section.content.filter(item =>
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.description.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  })).filter(section => section.content.length > 0);
+  const filteredSections = helpSections
+    .map((section) => ({
+      ...section,
+      content: section.content.filter(
+        (item) =>
+          item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.description.toLowerCase().includes(searchQuery.toLowerCase())
+      ),
+    }))
+    .filter((section) => section.content.length > 0);
 
   const handleItemClick = (link: string) => {
     if (link === '#shortcuts-modal') {
@@ -164,9 +167,7 @@ export const HelpPanel: React.FC<HelpPanelProps> = ({ isOpen, onClose, onOpenSho
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-3">
             <HelpCircle className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Help Center
-            </h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Help Center</h2>
           </div>
           <button
             onClick={onClose}
@@ -202,14 +203,14 @@ export const HelpPanel: React.FC<HelpPanelProps> = ({ isOpen, onClose, onOpenSho
             </div>
           ) : (
             <div className="space-y-6">
-              {filteredSections.map(section => (
+              {filteredSections.map((section) => (
                 <div key={section.id} className="space-y-3">
                   <div className="flex items-center gap-2 text-gray-900 dark:text-white">
                     {section.icon}
                     <h3 className="text-lg font-semibold">{section.title}</h3>
                   </div>
                   <div className="grid gap-3">
-                    {section.content.map(item => (
+                    {section.content.map((item) => (
                       <button
                         key={item.id}
                         onClick={() => handleItemClick(item.link || '#')}

@@ -97,9 +97,7 @@ export function BackendStatusIndicator() {
           </span>
         )}
         {lastChecked && (
-          <span className={styles.meta}>
-            Last checked: {lastChecked.toLocaleTimeString()}
-          </span>
+          <span className={styles.meta}>Last checked: {lastChecked.toLocaleTimeString()}</span>
         )}
         {error && <span className={styles.meta}>Last error: {error}</span>}
       </div>
@@ -136,4 +134,3 @@ export function BackendStatusIndicator() {
     </Tooltip>
   );
 }
-

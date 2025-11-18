@@ -134,7 +134,7 @@ export function mockIntersectionObserver() {
     root = null;
     rootMargin = '';
     thresholds = [];
-  } as any;
+  } as unknown as IntersectionObserver;
 }
 
 /**
@@ -145,7 +145,7 @@ export function mockResizeObserver() {
     observe = vi.fn();
     disconnect = vi.fn();
     unobserve = vi.fn();
-  } as any;
+  } as unknown as typeof ResizeObserver;
 }
 
 /**
@@ -195,7 +195,7 @@ export function createMockImageFile(
         resolve(new File([blob], fileName, { type: 'image/jpeg' }));
       }
     }, 'image/jpeg');
-  }) as any;
+  });
 }
 
 /**
@@ -397,7 +397,7 @@ export function createMockResponse<T>(
     error?: boolean;
   } = {}
 ): Promise<T> {
-  const { status = 200, delay = 0, error = false } = options;
+  const { delay = 0, error = false } = options;
 
   return new Promise((resolve, reject) => {
     setTimeout(() => {
@@ -428,6 +428,6 @@ export function teardownTest(teardown: () => void | Promise<void>): void {
 /**
  * Snapshot testing helper
  */
-export function expectSnapshot(value: any, name?: string): void {
+export function expectSnapshot(value: unknown, name?: string): void {
   expect(value).toMatchSnapshot(name);
 }

@@ -35,11 +35,11 @@ export const useProviderProfilesStore = create<ProviderProfilesState>((set) => (
   ...initialState,
 
   setProfiles: (profiles) => set({ profiles }),
-  
+
   setActiveProfile: (activeProfile) => set({ activeProfile }),
-  
+
   setRecommendation: (recommendation) => set({ recommendation }),
-  
+
   setValidationResult: (profileId, result) =>
     set((state) => ({
       validationResults: {
@@ -47,10 +47,10 @@ export const useProviderProfilesStore = create<ProviderProfilesState>((set) => (
         [profileId]: result,
       },
     })),
-  
+
   setLoading: (loading) => set({ loading }),
-  
+
   setError: (error) => set({ error }),
-  
+
   reset: () => set(initialState),
 }));

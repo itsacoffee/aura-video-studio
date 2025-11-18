@@ -47,9 +47,7 @@ export async function setActiveProfile(profileId: string): Promise<{
 /**
  * Validate a provider profile
  */
-export async function validateProfile(
-  profileId: string
-): Promise<ProfileValidationResultDto> {
+export async function validateProfile(profileId: string): Promise<ProfileValidationResultDto> {
   const response = await apiClient.post<ProfileValidationResultDto>(
     `/api/provider-profiles/${profileId}/validate`
   );

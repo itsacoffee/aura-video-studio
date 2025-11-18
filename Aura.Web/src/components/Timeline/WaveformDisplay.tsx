@@ -1,6 +1,6 @@
 /**
  * Waveform Display Component
- * 
+ *
  * Renders audio waveform visualization for timeline clips
  */
 
@@ -57,7 +57,7 @@ export function WaveformDisplay({
           audioPath,
           targetSamples: samples,
         });
-        
+
         if (mounted) {
           setWaveformData(data);
           setError(null);
@@ -106,10 +106,10 @@ export function WaveformDisplay({
       const x = i * barWidth;
       const amplitude = Math.abs(data[i]);
       const barHeight = amplitude * maxHeight;
-      
+
       const y1 = centerY - barHeight / 2;
       const y2 = centerY + barHeight / 2;
-      
+
       ctx.fillRect(x, y1, Math.max(1, barWidth - 0.5), y2 - y1);
     }
 

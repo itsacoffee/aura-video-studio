@@ -85,9 +85,7 @@ export const AnimatedButton = forwardRef<HTMLButtonElement, AnimatedButtonProps>
               viewBox="0 0 24 24"
               animate={prefersReducedMotion ? undefined : { rotate: 360 }}
               transition={
-                prefersReducedMotion
-                  ? undefined
-                  : { duration: 1, repeat: Infinity, ease: 'linear' }
+                prefersReducedMotion ? undefined : { duration: 1, repeat: Infinity, ease: 'linear' }
               }
             >
               <circle

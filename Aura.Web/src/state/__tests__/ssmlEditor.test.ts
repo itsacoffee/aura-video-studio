@@ -19,8 +19,7 @@ describe('SSML Editor Store', () => {
     });
 
     it('should have default UI state', () => {
-      const { showWaveform, showTimingMarkers, autoFitEnabled } =
-        useSSMLEditorStore.getState();
+      const { showWaveform, showTimingMarkers, autoFitEnabled } = useSSMLEditorStore.getState();
       expect(showWaveform).toBe(true);
       expect(showTimingMarkers).toBe(false);
       expect(autoFitEnabled).toBe(true);
@@ -189,43 +188,31 @@ describe('SSML Editor Store', () => {
       };
 
       useSSMLEditorStore.getState().setProviderConstraints(constraints);
-      expect(useSSMLEditorStore.getState().providerConstraints).toEqual(
-        constraints
-      );
+      expect(useSSMLEditorStore.getState().providerConstraints).toEqual(constraints);
     });
   });
 
   describe('Validation Management', () => {
     it('should set validation errors', () => {
-      useSSMLEditorStore
-        .getState()
-        .setValidationErrors(0, ['Error 1', 'Error 2']);
+      useSSMLEditorStore.getState().setValidationErrors(0, ['Error 1', 'Error 2']);
       const errors = useSSMLEditorStore.getState().validationErrors.get(0);
       expect(errors).toEqual(['Error 1', 'Error 2']);
     });
 
     it('should set validation warnings', () => {
-      useSSMLEditorStore
-        .getState()
-        .setValidationWarnings(0, ['Warning 1', 'Warning 2']);
+      useSSMLEditorStore.getState().setValidationWarnings(0, ['Warning 1', 'Warning 2']);
       const warnings = useSSMLEditorStore.getState().validationWarnings.get(0);
       expect(warnings).toEqual(['Warning 1', 'Warning 2']);
     });
 
     it('should clear validation for scene', () => {
-      useSSMLEditorStore
-        .getState()
-        .setValidationErrors(0, ['Error 1', 'Error 2']);
-      useSSMLEditorStore
-        .getState()
-        .setValidationWarnings(0, ['Warning 1', 'Warning 2']);
+      useSSMLEditorStore.getState().setValidationErrors(0, ['Error 1', 'Error 2']);
+      useSSMLEditorStore.getState().setValidationWarnings(0, ['Warning 1', 'Warning 2']);
 
       useSSMLEditorStore.getState().clearValidation(0);
 
       expect(useSSMLEditorStore.getState().validationErrors.get(0)).toBeUndefined();
-      expect(
-        useSSMLEditorStore.getState().validationWarnings.get(0)
-      ).toBeUndefined();
+      expect(useSSMLEditorStore.getState().validationWarnings.get(0)).toBeUndefined();
     });
   });
 
@@ -241,13 +228,9 @@ describe('SSML Editor Store', () => {
     it('should toggle timing markers visibility', () => {
       const initialState = useSSMLEditorStore.getState().showTimingMarkers;
       useSSMLEditorStore.getState().toggleTimingMarkers();
-      expect(useSSMLEditorStore.getState().showTimingMarkers).toBe(
-        !initialState
-      );
+      expect(useSSMLEditorStore.getState().showTimingMarkers).toBe(!initialState);
       useSSMLEditorStore.getState().toggleTimingMarkers();
-      expect(useSSMLEditorStore.getState().showTimingMarkers).toBe(
-        initialState
-      );
+      expect(useSSMLEditorStore.getState().showTimingMarkers).toBe(initialState);
     });
 
     it('should set auto-fit enabled', () => {

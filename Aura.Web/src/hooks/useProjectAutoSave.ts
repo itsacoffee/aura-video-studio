@@ -29,8 +29,7 @@ export function useProjectAutoSave({
   const lastSaveRef = useRef<Date | null>(null);
 
   const autoSaveMutation = useMutation({
-    mutationFn: (data: AutoSaveData) =>
-      projectManagementApi.autoSaveProject(projectId, data),
+    mutationFn: (data: AutoSaveData) => projectManagementApi.autoSaveProject(projectId, data),
     onSuccess: () => {
       lastSaveRef.current = new Date();
     },

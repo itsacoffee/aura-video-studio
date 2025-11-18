@@ -52,7 +52,7 @@ export function ErrorAnimation({
               }}
             />
           </motion.div>
-          
+
           <motion.p
             className={`${textSize} font-medium text-error-600 dark:text-error-400 text-center max-w-md`}
             initial={{ opacity: 0, y: 10 }}

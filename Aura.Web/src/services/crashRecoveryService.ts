@@ -34,7 +34,7 @@ class CrashRecoveryService {
     try {
       // Check if session was active when page closed
       const sessionActive = sessionStorage.getItem(SESSION_KEY) === 'true';
-      
+
       // Load previous recovery state
       const savedState = localStorage.getItem(STORAGE_KEY);
       const previousState: RecoveryState = savedState
@@ -70,9 +70,7 @@ class CrashRecoveryService {
           wasCleanShutdown: false,
           lastCrash: crashRecord,
           crashCount: previousState.crashCount + 1,
-          consecutiveCrashes: isConsecutiveCrash
-            ? previousState.consecutiveCrashes + 1
-            : 1,
+          consecutiveCrashes: isConsecutiveCrash ? previousState.consecutiveCrashes + 1 : 1,
         };
 
         // Log crash
@@ -128,7 +126,7 @@ class CrashRecoveryService {
   markCleanShutdown(): void {
     try {
       sessionStorage.removeItem(SESSION_KEY);
-      
+
       if (this.recoveryState) {
         this.recoveryState.wasCleanShutdown = true;
         this.saveRecoveryState();
@@ -148,7 +146,13 @@ class CrashRecoveryService {
    */
   recordError(error: Error, context?: Record<string, unknown>): void {
     try {
-      loggingService.error('Potential crash error recorded', error, 'CrashRecoveryService', 'recordError', context);
+      loggingService.error(
+        'Potential crash error recorded',
+        error,
+        'CrashRecoveryService',
+        'recordError',
+        context
+      );
 
       if (this.recoveryState && this.recoveryState.lastCrash) {
         this.recoveryState.lastCrash.error = error.message;
@@ -207,11 +211,7 @@ class CrashRecoveryService {
       sessionStorage.removeItem(SESSION_KEY);
       this.recoveryState = null;
 
-      loggingService.info(
-        'Recovery data cleared',
-        'CrashRecoveryService',
-        'clearRecoveryData'
-      );
+      loggingService.info('Recovery data cleared', 'CrashRecoveryService', 'clearRecoveryData');
     } catch (error) {
       loggingService.error(
         'Failed to clear recovery data',

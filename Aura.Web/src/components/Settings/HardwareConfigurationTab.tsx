@@ -92,7 +92,7 @@ export function HardwareConfigurationTab() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
-  
+
   const [config, setConfig] = useState<HardwareConfig>({
     preferredGpuId: 'auto',
     enableHardwareAcceleration: true,
@@ -101,7 +101,7 @@ export function HardwareConfigurationTab() {
     useGpuForImageGeneration: true,
     maxConcurrentJobs: 1,
   });
-  
+
   const [gpus, setGpus] = useState<GPU[]>([]);
   const [encoders, setEncoders] = useState<Encoder[]>([]);
   const [presets, setPresets] = useState<Preset[]>([]);
@@ -288,10 +288,13 @@ export function HardwareConfigurationTab() {
             {recommendedEncoder && (
               <Text
                 size={200}
-                style={{ marginTop: tokens.spacingVerticalXS, color: tokens.colorNeutralForeground3 }}
+                style={{
+                  marginTop: tokens.spacingVerticalXS,
+                  color: tokens.colorNeutralForeground3,
+                }}
               >
-                Recommended: {recommendedEncoder.name} - Quality: {recommendedEncoder.quality}, Speed:{' '}
-                {recommendedEncoder.speed}
+                Recommended: {recommendedEncoder.name} - Quality: {recommendedEncoder.quality},
+                Speed: {recommendedEncoder.speed}
               </Text>
             )}
           </Field>
@@ -310,7 +313,10 @@ export function HardwareConfigurationTab() {
             {presets.find((p) => p.id === config.encodingPreset) && (
               <Text
                 size={200}
-                style={{ marginTop: tokens.spacingVerticalXS, color: tokens.colorNeutralForeground3 }}
+                style={{
+                  marginTop: tokens.spacingVerticalXS,
+                  color: tokens.colorNeutralForeground3,
+                }}
               >
                 {presets.find((p) => p.id === config.encodingPreset)?.description}
               </Text>
@@ -320,7 +326,9 @@ export function HardwareConfigurationTab() {
           <Field label="GPU for Image Generation">
             <Switch
               checked={config.useGpuForImageGeneration}
-              onChange={(_, data) => setConfig({ ...config, useGpuForImageGeneration: data.checked })}
+              onChange={(_, data) =>
+                setConfig({ ...config, useGpuForImageGeneration: data.checked })
+              }
             />
             <Text size={200}>
               Use GPU for AI image generation (Stable Diffusion). Requires compatible GPU.
@@ -349,7 +357,13 @@ export function HardwareConfigurationTab() {
           Test hardware acceleration capabilities of your system
         </Text>
 
-        <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, marginBottom: tokens.spacingVerticalL }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: tokens.spacingHorizontalM,
+            marginBottom: tokens.spacingVerticalL,
+          }}
+        >
           <Button appearance="secondary" onClick={testAcceleration} disabled={testing}>
             {testing ? 'Testing...' : 'Test Hardware Acceleration'}
           </Button>
@@ -362,9 +376,13 @@ export function HardwareConfigurationTab() {
             </Text>
             <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalS }}>
               {testResults.nvenc && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}
+                >
                   {testResults.nvenc.available ? (
-                    <CheckmarkCircle24Filled style={{ color: tokens.colorPaletteGreenForeground1 }} />
+                    <CheckmarkCircle24Filled
+                      style={{ color: tokens.colorPaletteGreenForeground1 }}
+                    />
                   ) : (
                     <DismissCircle24Filled style={{ color: tokens.colorPaletteRedForeground1 }} />
                   )}
@@ -374,9 +392,13 @@ export function HardwareConfigurationTab() {
                 </div>
               )}
               {testResults.amf && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}
+                >
                   {testResults.amf.available ? (
-                    <CheckmarkCircle24Filled style={{ color: tokens.colorPaletteGreenForeground1 }} />
+                    <CheckmarkCircle24Filled
+                      style={{ color: tokens.colorPaletteGreenForeground1 }}
+                    />
                   ) : (
                     <DismissCircle24Filled style={{ color: tokens.colorPaletteRedForeground1 }} />
                   )}
@@ -386,9 +408,13 @@ export function HardwareConfigurationTab() {
                 </div>
               )}
               {testResults.quickSync && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}
+                >
                   {testResults.quickSync.available ? (
-                    <CheckmarkCircle24Filled style={{ color: tokens.colorPaletteGreenForeground1 }} />
+                    <CheckmarkCircle24Filled
+                      style={{ color: tokens.colorPaletteGreenForeground1 }}
+                    />
                   ) : (
                     <DismissCircle24Filled style={{ color: tokens.colorPaletteRedForeground1 }} />
                   )}

@@ -26,7 +26,7 @@ describe('windowsUtils', () => {
           platform: 'Win32',
         } as Navigator,
       });
-      
+
       const result = isWindows();
       expect(typeof result).toBe('boolean');
     });
@@ -39,7 +39,7 @@ describe('windowsUtils', () => {
           userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
         } as Navigator,
       });
-      
+
       const result = isWindows11();
       expect(typeof result).toBe('boolean');
     });
@@ -48,49 +48,49 @@ describe('windowsUtils', () => {
   describe('DPI Scaling', () => {
     it('should get device pixel ratio', () => {
       mockWindow({ devicePixelRatio: 2 });
-      
+
       const ratio = getDevicePixelRatio();
       expect(ratio).toBe(2);
     });
 
     it('should detect high DPI', () => {
       mockWindow({ devicePixelRatio: 2 });
-      
+
       const result = isHighDPI();
       expect(result).toBe(true);
     });
 
     it('should not detect high DPI for normal screens', () => {
       mockWindow({ devicePixelRatio: 1 });
-      
+
       const result = isHighDPI();
       expect(result).toBe(false);
     });
 
     it('should convert CSS pixels to physical pixels', () => {
       mockWindow({ devicePixelRatio: 2 });
-      
+
       const physical = cssToPhysicalPixels(100);
       expect(physical).toBe(200);
     });
 
     it('should convert physical pixels to CSS pixels', () => {
       mockWindow({ devicePixelRatio: 2 });
-      
+
       const css = physicalToCSSPixels(200);
       expect(css).toBe(100);
     });
 
     it('should get DPI scaling percentage', () => {
       mockWindow({ devicePixelRatio: 1.5 });
-      
+
       const percentage = getDPIScalingPercentage();
       expect(percentage).toBe(150);
     });
 
     it('should get comprehensive DPI scale info', () => {
       mockWindow({ devicePixelRatio: 2 });
-      
+
       const info = getDPIScaleInfo();
       expect(info).toEqual({
         ratio: 2,
@@ -128,9 +128,9 @@ describe('windowsUtils', () => {
         dispatchEvent: vi.fn(),
         onchange: null,
       }));
-      
+
       window.matchMedia = matchMediaMock as unknown as typeof window.matchMedia;
-      
+
       const theme = getSystemThemePreference();
       expect(['light', 'dark']).toContain(theme);
     });
@@ -145,7 +145,7 @@ describe('windowsUtils', () => {
           userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
         } as Navigator,
       });
-      
+
       const result = supportsSnapLayouts();
       expect(typeof result).toBe('boolean');
     });

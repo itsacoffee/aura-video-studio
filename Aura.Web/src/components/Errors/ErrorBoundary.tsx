@@ -82,7 +82,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   private convertToErrorDialogInfo(): ErrorDialogInfo {
     const { error, errorInfo } = this.state;
-    
+
     return {
       title: 'Application Error',
       message: error?.message || 'An unexpected error occurred',
@@ -122,7 +122,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   private handleExportDiagnostics = async () => {
     const { error, errorInfo } = this.state;
-    
+
     const diagnostics = {
       timestamp: new Date().toISOString(),
       error: {
@@ -203,7 +203,7 @@ export class ErrorBoundary extends Component<Props, State> {
             onRetry={this.handleRetry}
             onExportDiagnostics={this.handleExportDiagnostics}
           />
-          
+
           {/* Optionally show a fallback UI */}
           <div
             style={{

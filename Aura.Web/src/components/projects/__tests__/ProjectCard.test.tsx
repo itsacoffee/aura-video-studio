@@ -57,7 +57,7 @@ describe('ProjectCard Performance', () => {
     );
 
     const renderCount = vi.fn();
-    
+
     // Same props should not trigger re-render (React.memo optimization)
     rerender(
       <BrowserRouter>

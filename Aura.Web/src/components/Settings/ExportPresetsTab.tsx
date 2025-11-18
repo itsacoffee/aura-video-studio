@@ -18,12 +18,7 @@ import {
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
-import {
-  Add24Regular,
-  Delete24Regular,
-  Edit24Regular,
-  Star24Filled,
-} from '@fluentui/react-icons';
+import { Add24Regular, Delete24Regular, Edit24Regular, Star24Filled } from '@fluentui/react-icons';
 import { useEffect, useState } from 'react';
 import { apiUrl } from '../../config/api';
 
@@ -232,7 +227,14 @@ export function ExportPresetsTab() {
   return (
     <div className={styles.container}>
       <Card className={styles.section}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: tokens.spacingVerticalL }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: tokens.spacingVerticalL,
+          }}
+        >
           <div>
             <Title2>Export Presets</Title2>
             <Text size={200} style={{ marginTop: tokens.spacingVerticalS }}>
@@ -245,13 +247,29 @@ export function ExportPresetsTab() {
         </div>
 
         <Title3>Built-in Presets</Title3>
-        <Text size={200} style={{ marginBottom: tokens.spacingVerticalM, color: tokens.colorNeutralForeground3 }}>
+        <Text
+          size={200}
+          style={{ marginBottom: tokens.spacingVerticalM, color: tokens.colorNeutralForeground3 }}
+        >
           Optimized presets for popular platforms
         </Text>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: tokens.spacingVerticalM }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+            gap: tokens.spacingVerticalM,
+          }}
+        >
           {builtInPresets.map((preset) => (
             <Card key={preset.id} className={styles.presetCard}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: tokens.spacingVerticalS }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'start',
+                  marginBottom: tokens.spacingVerticalS,
+                }}
+              >
                 <Text weight="semibold" size={400}>
                   {preset.name}
                 </Text>
@@ -259,18 +277,40 @@ export function ExportPresetsTab() {
                   <Star24Filled style={{ color: tokens.colorPaletteYellowForeground1 }} />
                 )}
               </div>
-              <Text size={200} style={{ marginBottom: tokens.spacingVerticalS, color: tokens.colorNeutralForeground3 }}>
+              <Text
+                size={200}
+                style={{
+                  marginBottom: tokens.spacingVerticalS,
+                  color: tokens.colorNeutralForeground3,
+                }}
+              >
                 {preset.description}
               </Text>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: tokens.spacingVerticalXS, marginTop: tokens.spacingVerticalM }}>
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: tokens.spacingVerticalXS,
+                  marginTop: tokens.spacingVerticalM,
+                }}
+              >
                 <span className={`${styles.badge} ${styles.builtInBadge}`}>Built-in</span>
-                <span className={styles.badge} style={{ backgroundColor: tokens.colorNeutralBackground4 }}>
+                <span
+                  className={styles.badge}
+                  style={{ backgroundColor: tokens.colorNeutralBackground4 }}
+                >
                   {preset.resolution}
                 </span>
-                <span className={styles.badge} style={{ backgroundColor: tokens.colorNeutralBackground4 }}>
+                <span
+                  className={styles.badge}
+                  style={{ backgroundColor: tokens.colorNeutralBackground4 }}
+                >
                   {preset.frameRate} FPS
                 </span>
-                <span className={styles.badge} style={{ backgroundColor: tokens.colorNeutralBackground4 }}>
+                <span
+                  className={styles.badge}
+                  style={{ backgroundColor: tokens.colorNeutralBackground4 }}
+                >
                   {preset.codec}
                 </span>
               </div>
@@ -281,13 +321,32 @@ export function ExportPresetsTab() {
         {customPresets.length > 0 && (
           <>
             <Title3 style={{ marginTop: tokens.spacingVerticalXXL }}>Custom Presets</Title3>
-            <Text size={200} style={{ marginBottom: tokens.spacingVerticalM, color: tokens.colorNeutralForeground3 }}>
+            <Text
+              size={200}
+              style={{
+                marginBottom: tokens.spacingVerticalM,
+                color: tokens.colorNeutralForeground3,
+              }}
+            >
               Your custom export configurations
             </Text>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: tokens.spacingVerticalM }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+                gap: tokens.spacingVerticalM,
+              }}
+            >
               {customPresets.map((preset) => (
                 <Card key={preset.id} className={styles.presetCard}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: tokens.spacingVerticalS }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'start',
+                      marginBottom: tokens.spacingVerticalS,
+                    }}
+                  >
                     <Text weight="semibold" size={400}>
                       {preset.name}
                     </Text>
@@ -312,18 +371,40 @@ export function ExportPresetsTab() {
                       />
                     </div>
                   </div>
-                  <Text size={200} style={{ marginBottom: tokens.spacingVerticalS, color: tokens.colorNeutralForeground3 }}>
+                  <Text
+                    size={200}
+                    style={{
+                      marginBottom: tokens.spacingVerticalS,
+                      color: tokens.colorNeutralForeground3,
+                    }}
+                  >
                     {preset.description}
                   </Text>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: tokens.spacingVerticalXS, marginTop: tokens.spacingVerticalM }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: tokens.spacingVerticalXS,
+                      marginTop: tokens.spacingVerticalM,
+                    }}
+                  >
                     <span className={`${styles.badge} ${styles.customBadge}`}>Custom</span>
-                    <span className={styles.badge} style={{ backgroundColor: tokens.colorNeutralBackground4 }}>
+                    <span
+                      className={styles.badge}
+                      style={{ backgroundColor: tokens.colorNeutralBackground4 }}
+                    >
                       {preset.resolution}
                     </span>
-                    <span className={styles.badge} style={{ backgroundColor: tokens.colorNeutralBackground4 }}>
+                    <span
+                      className={styles.badge}
+                      style={{ backgroundColor: tokens.colorNeutralBackground4 }}
+                    >
                       {preset.frameRate} FPS
                     </span>
-                    <span className={styles.badge} style={{ backgroundColor: tokens.colorNeutralBackground4 }}>
+                    <span
+                      className={styles.badge}
+                      style={{ backgroundColor: tokens.colorNeutralBackground4 }}
+                    >
                       {preset.codec}
                     </span>
                   </div>

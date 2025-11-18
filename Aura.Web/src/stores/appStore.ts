@@ -35,21 +35,21 @@ export interface AppState {
   isSidebarOpen: boolean;
   isCommandPaletteOpen: boolean;
   activeModal: string | null;
-  
+
   // Notifications
   notifications: Notification[];
   maxNotifications: number;
-  
+
   // Settings
   settings: AppSettings;
-  
+
   // Network status
   isOnline: boolean;
-  
+
   // Loading states
   globalLoading: boolean;
   loadingMessage: string | null;
-  
+
   // Actions - UI
   toggleSidebar: () => void;
   setSidebarOpen: (isOpen: boolean) => void;
@@ -57,19 +57,19 @@ export interface AppState {
   setCommandPaletteOpen: (isOpen: boolean) => void;
   openModal: (modalId: string) => void;
   closeModal: () => void;
-  
+
   // Actions - Notifications
   addNotification: (notification: Omit<Notification, 'id' | 'timestamp'>) => string;
   removeNotification: (id: string) => void;
   clearNotifications: () => void;
-  
+
   // Actions - Settings
   updateSettings: (updates: Partial<AppSettings>) => void;
   resetSettings: () => void;
-  
+
   // Actions - Network
   setOnlineStatus: (isOnline: boolean) => void;
-  
+
   // Actions - Loading
   setGlobalLoading: (isLoading: boolean, message?: string) => void;
 }
@@ -92,14 +92,14 @@ export const useAppStore = create<AppState>()(
       isSidebarOpen: true,
       isCommandPaletteOpen: false,
       activeModal: null,
-      
+
       notifications: [],
       maxNotifications: 5,
-      
+
       settings: defaultSettings,
-      
+
       isOnline: navigator.onLine,
-      
+
       globalLoading: false,
       loadingMessage: null,
 
@@ -132,7 +132,7 @@ export const useAppStore = create<AppState>()(
       addNotification: (notification) => {
         const id = crypto.randomUUID();
         const timestamp = new Date().toISOString();
-        
+
         const newNotification: Notification = {
           ...notification,
           id,
@@ -141,7 +141,7 @@ export const useAppStore = create<AppState>()(
 
         set((state) => {
           const notifications = [newNotification, ...state.notifications];
-          
+
           // Keep only max notifications
           if (notifications.length > state.maxNotifications) {
             notifications.pop();
@@ -162,7 +162,7 @@ export const useAppStore = create<AppState>()(
 
       removeNotification: (id) => {
         set((state) => ({
-          notifications: state.notifications.filter(n => n.id !== id),
+          notifications: state.notifications.filter((n) => n.id !== id),
         }));
       },
 
@@ -184,7 +184,7 @@ export const useAppStore = create<AppState>()(
       // Network Actions
       setOnlineStatus: (isOnline) => {
         set({ isOnline });
-        
+
         // Show notification when coming back online
         if (isOnline) {
           get().addNotification({

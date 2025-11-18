@@ -124,7 +124,7 @@ export const CelebrationEffect: FC<CelebrationEffectProps> = ({
   const playSuccessSound = () => {
     try {
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      
+
       // Create a pleasant success sound
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
@@ -152,7 +152,7 @@ export const CelebrationEffect: FC<CelebrationEffectProps> = ({
   return (
     <div className={styles.container}>
       {(type === 'pulse' || type === 'both') && <div className={styles.successPulse} />}
-      
+
       {(type === 'confetti' || type === 'both') &&
         confettiParticles.map((particle) => (
           <div

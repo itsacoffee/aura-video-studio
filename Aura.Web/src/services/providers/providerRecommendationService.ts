@@ -148,9 +148,7 @@ class ProviderRecommendationService {
   /**
    * Update cost tracking configuration
    */
-  async updateCostTrackingConfiguration(
-    config: CostTrackingConfiguration
-  ): Promise<boolean> {
+  async updateCostTrackingConfiguration(config: CostTrackingConfiguration): Promise<boolean> {
     try {
       await apiClient.put('/api/cost-tracking/configuration', config);
       return true;

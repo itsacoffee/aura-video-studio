@@ -354,15 +354,15 @@ export function EnhancedTimelineEditor() {
 
           {/* Enhanced Timeline with Advanced Features */}
           <div className={styles.timelineSection}>
-            <Timeline 
-              duration={totalDuration} 
+            <Timeline
+              duration={totalDuration}
               currentTime={currentTime}
               isPlaying={isPlaying}
               playbackSpeed={playbackSpeed}
               onTimeChange={setCurrentTime}
               onPlayPauseChange={setIsPlaying}
               onPlaybackSpeedChange={setPlaybackSpeed}
-              onSave={saveTimeline} 
+              onSave={saveTimeline}
             />
           </div>
         </div>

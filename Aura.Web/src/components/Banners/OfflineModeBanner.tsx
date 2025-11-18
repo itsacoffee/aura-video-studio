@@ -8,11 +8,7 @@ import {
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
-import {
-  CloudOff24Regular,
-  Info24Regular,
-  Settings24Regular,
-} from '@fluentui/react-icons';
+import { CloudOff24Regular, Info24Regular, Settings24Regular } from '@fluentui/react-icons';
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiUrl } from '../../config/api';
@@ -46,7 +42,11 @@ interface OfflineModeBannerProps {
   onConfigure?: () => void;
 }
 
-export function OfflineModeBanner({ show = true, compact = false, onConfigure }: OfflineModeBannerProps) {
+export function OfflineModeBanner({
+  show = true,
+  compact = false,
+  onConfigure,
+}: OfflineModeBannerProps) {
   const styles = useStyles();
   const navigate = useNavigate();
   const [capabilities, setCapabilities] = useState<OfflineCapabilities | null>(null);
@@ -58,12 +58,12 @@ export function OfflineModeBanner({ show = true, compact = false, onConfigure }:
       const response = await fetch(`${apiUrl}/offline-providers/status`);
       if (response.ok) {
         const data = await response.json();
-        
+
         const missingProviders: string[] = [];
         if (!data.hasTtsProvider) missingProviders.push('Text-to-Speech');
         if (!data.hasLlmProvider) missingProviders.push('Script Generation');
         if (!data.hasImageProvider) missingProviders.push('Image Generation');
-        
+
         setCapabilities({
           hasTtsProvider: data.hasTtsProvider,
           hasLlmProvider: data.hasLlmProvider,
@@ -99,11 +99,7 @@ export function OfflineModeBanner({ show = true, compact = false, onConfigure }:
 
   if (capabilities.isFullyOperational) {
     return (
-      <MessageBar
-        className={styles.banner}
-        intent="success"
-        icon={<CloudOff24Regular />}
-      >
+      <MessageBar className={styles.banner} intent="success" icon={<CloudOff24Regular />}>
         <MessageBarBody>
           <MessageBarTitle>Offline Mode Active</MessageBarTitle>
           {!compact && (
@@ -111,18 +107,16 @@ export function OfflineModeBanner({ show = true, compact = false, onConfigure }:
               <div className={styles.capability}>✅ Text-to-Speech: Available</div>
               <div className={styles.capability}>✅ Script Generation: Available</div>
               <div className={styles.capability}>
-                {capabilities.hasImageProvider ? '✅ Image Generation: Available' : '⚠️ Image Generation: Using Stock Images'}
+                {capabilities.hasImageProvider
+                  ? '✅ Image Generation: Available'
+                  : '⚠️ Image Generation: Using Stock Images'}
               </div>
             </div>
           )}
         </MessageBarBody>
         {!compact && (
           <MessageBarActions>
-            <Button
-              appearance="subtle"
-              icon={<Settings24Regular />}
-              onClick={handleConfigure}
-            >
+            <Button appearance="subtle" icon={<Settings24Regular />} onClick={handleConfigure}>
               Configure
             </Button>
           </MessageBarActions>
@@ -132,11 +126,7 @@ export function OfflineModeBanner({ show = true, compact = false, onConfigure }:
   }
 
   return (
-    <MessageBar
-      className={styles.banner}
-      intent="warning"
-      icon={<Info24Regular />}
-    >
+    <MessageBar className={styles.banner} intent="warning" icon={<Info24Regular />}>
       <MessageBarBody>
         <MessageBarTitle>Offline Mode - Limited Capabilities</MessageBarTitle>
         {!compact && (

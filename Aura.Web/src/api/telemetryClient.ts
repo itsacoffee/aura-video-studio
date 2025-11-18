@@ -3,20 +3,13 @@
  */
 
 import apiClient from '@/services/api/apiClient';
-import type {
-  RunTelemetryCollection,
-  TelemetrySchemaInfo,
-} from '@/types/telemetry';
+import type { RunTelemetryCollection, TelemetrySchemaInfo } from '@/types/telemetry';
 
 /**
  * Get telemetry data for a specific job
  */
-export async function getJobTelemetry(
-  jobId: string
-): Promise<RunTelemetryCollection> {
-  const response = await apiClient.get<RunTelemetryCollection>(
-    `/api/telemetry/${jobId}`
-  );
+export async function getJobTelemetry(jobId: string): Promise<RunTelemetryCollection> {
+  const response = await apiClient.get<RunTelemetryCollection>(`/api/telemetry/${jobId}`);
   return response.data;
 }
 
@@ -24,9 +17,7 @@ export async function getJobTelemetry(
  * Get telemetry schema information
  */
 export async function getTelemetrySchema(): Promise<TelemetrySchemaInfo> {
-  const response = await apiClient.get<TelemetrySchemaInfo>(
-    '/api/telemetry/schema'
-  );
+  const response = await apiClient.get<TelemetrySchemaInfo>('/api/telemetry/schema');
   return response.data;
 }
 

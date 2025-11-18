@@ -121,13 +121,7 @@ interface JobQueuePanelProps {
 
 export function JobQueuePanel({ onSettingsClick }: JobQueuePanelProps) {
   const styles = useStyles();
-  const {
-    statistics,
-    isConnected,
-    cancelJob,
-    pendingJobs,
-    processingJobs,
-  } = useJobQueue();
+  const { statistics, isConnected, cancelJob, pendingJobs, processingJobs } = useJobQueue();
 
   // Show only active jobs (pending or processing)
   const activeJobs = [...processingJobs, ...pendingJobs].slice(0, 5);

@@ -130,7 +130,7 @@ export function VideoPreviewPlayer({
   // Sync play/pause state with external control
   useEffect(() => {
     if (externalIsPlaying === undefined) return;
-    
+
     const video = videoRef.current;
     if (!video) return;
 
@@ -149,7 +149,7 @@ export function VideoPreviewPlayer({
   useEffect(() => {
     const video = videoRef.current;
     if (!video || externalPlaybackSpeed === undefined) return;
-    
+
     video.playbackRate = externalPlaybackSpeed;
     setPlaybackRate(externalPlaybackSpeed);
   }, [externalPlaybackSpeed]);
@@ -243,7 +243,7 @@ export function VideoPreviewPlayer({
     isSeekingRef.current = true;
     video.currentTime = value;
     onSeek?.(value);
-    
+
     setTimeout(() => {
       isSeekingRef.current = false;
     }, 100);

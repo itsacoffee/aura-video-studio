@@ -166,7 +166,7 @@ describe('API Client', () => {
       for (let i = 0; i < 5; i++) {
         try {
           await get('/api/test', { _skipRetry: true });
-        } catch (error) {
+        } catch {
           // Expected to fail
         }
       }
@@ -190,7 +190,7 @@ describe('API Client', () => {
       for (let i = 0; i < 5; i++) {
         try {
           await get('/api/test', { _skipRetry: true });
-        } catch (error) {
+        } catch {
           // Expected
         }
       }

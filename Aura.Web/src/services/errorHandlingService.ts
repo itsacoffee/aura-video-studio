@@ -228,7 +228,8 @@ class ErrorHandlingService {
   private categorizeError(error: Error): string {
     if (this.isNetworkError(error)) return 'NETWORK_ERROR';
     if (error.name === 'ValidationError') return 'VALIDATION_ERROR';
-    if (error.message.includes('provider') || error.message.includes('API')) return 'PROVIDER_ERROR';
+    if (error.message.includes('provider') || error.message.includes('API'))
+      return 'PROVIDER_ERROR';
     if (error.message.includes('render') || error.message.includes('FFmpeg')) return 'RENDER_ERROR';
     return 'UNKNOWN_ERROR';
   }
@@ -312,7 +313,10 @@ class ErrorHandlingService {
             step: 1,
             title: 'Check Internet Connection',
             description: 'Verify that your device is connected to the internet',
-            actions: ['Open a browser and navigate to a website', 'Check WiFi or ethernet connection'],
+            actions: [
+              'Open a browser and navigate to a website',
+              'Check WiFi or ethernet connection',
+            ],
           },
           {
             step: 2,

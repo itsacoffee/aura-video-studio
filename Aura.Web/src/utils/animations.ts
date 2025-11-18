@@ -46,14 +46,14 @@ export const springs = {
  */
 export const fadeVariants: Variants = {
   hidden: { opacity: 0 },
-  visible: { 
+  visible: {
     opacity: 1,
     transition: {
       duration: durations.base,
       ease: easings.default,
     },
   },
-  exit: { 
+  exit: {
     opacity: 0,
     transition: {
       duration: durations.fast,
@@ -68,16 +68,16 @@ export const fadeVariants: Variants = {
 export const slideVariants = {
   fromTop: {
     hidden: { y: -20, opacity: 0 },
-    visible: { 
-      y: 0, 
+    visible: {
+      y: 0,
       opacity: 1,
       transition: {
         duration: durations.base,
         ease: easings.default,
       },
     },
-    exit: { 
-      y: -20, 
+    exit: {
+      y: -20,
       opacity: 0,
       transition: {
         duration: durations.fast,
@@ -87,16 +87,16 @@ export const slideVariants = {
   },
   fromBottom: {
     hidden: { y: 20, opacity: 0 },
-    visible: { 
-      y: 0, 
+    visible: {
+      y: 0,
       opacity: 1,
       transition: {
         duration: durations.base,
         ease: easings.default,
       },
     },
-    exit: { 
-      y: 20, 
+    exit: {
+      y: 20,
       opacity: 0,
       transition: {
         duration: durations.fast,
@@ -106,16 +106,16 @@ export const slideVariants = {
   },
   fromLeft: {
     hidden: { x: -20, opacity: 0 },
-    visible: { 
-      x: 0, 
+    visible: {
+      x: 0,
       opacity: 1,
       transition: {
         duration: durations.base,
         ease: easings.default,
       },
     },
-    exit: { 
-      x: -20, 
+    exit: {
+      x: -20,
       opacity: 0,
       transition: {
         duration: durations.fast,
@@ -125,16 +125,16 @@ export const slideVariants = {
   },
   fromRight: {
     hidden: { x: 20, opacity: 0 },
-    visible: { 
-      x: 0, 
+    visible: {
+      x: 0,
       opacity: 1,
       transition: {
         duration: durations.base,
         ease: easings.default,
       },
     },
-    exit: { 
-      x: 20, 
+    exit: {
+      x: 20,
       opacity: 0,
       transition: {
         duration: durations.fast,
@@ -149,16 +149,16 @@ export const slideVariants = {
  */
 export const scaleVariants: Variants = {
   hidden: { scale: 0.95, opacity: 0 },
-  visible: { 
-    scale: 1, 
+  visible: {
+    scale: 1,
     opacity: 1,
     transition: {
       duration: durations.base,
       ease: easings.default,
     },
   },
-  exit: { 
-    scale: 0.95, 
+  exit: {
+    scale: 0.95,
     opacity: 0,
     transition: {
       duration: durations.fast,
@@ -171,16 +171,16 @@ export const scaleVariants: Variants = {
  * Expand/collapse variants for accordions and collapsible sections
  */
 export const expandVariants: Variants = {
-  collapsed: { 
-    height: 0, 
+  collapsed: {
+    height: 0,
     opacity: 0,
     transition: {
       duration: durations.base,
       ease: easings.default,
     },
   },
-  expanded: { 
-    height: 'auto', 
+  expanded: {
+    height: 'auto',
     opacity: 1,
     transition: {
       duration: durations.base,
@@ -290,20 +290,20 @@ export const rotateVariants: Variants = {
  * Page transition variants
  */
 export const pageTransitionVariants: Variants = {
-  initial: { 
-    opacity: 0, 
+  initial: {
+    opacity: 0,
     y: 20,
   },
-  animate: { 
-    opacity: 1, 
+  animate: {
+    opacity: 1,
     y: 0,
     transition: {
       duration: durations.slow,
       ease: easings.smooth,
     },
   },
-  exit: { 
-    opacity: 0, 
+  exit: {
+    opacity: 0,
     y: -20,
     transition: {
       duration: durations.fast,
@@ -317,13 +317,13 @@ export const pageTransitionVariants: Variants = {
  */
 export const backdropVariants: Variants = {
   hidden: { opacity: 0 },
-  visible: { 
+  visible: {
     opacity: 1,
     transition: {
       duration: durations.base,
     },
   },
-  exit: { 
+  exit: {
     opacity: 0,
     transition: {
       duration: durations.fast,
@@ -337,14 +337,14 @@ export const backdropVariants: Variants = {
 export const drawerVariants = {
   left: {
     hidden: { x: '-100%' },
-    visible: { 
+    visible: {
       x: 0,
       transition: {
         duration: durations.slow,
         ease: easings.smooth,
       },
     },
-    exit: { 
+    exit: {
       x: '-100%',
       transition: {
         duration: durations.base,
@@ -354,14 +354,14 @@ export const drawerVariants = {
   },
   right: {
     hidden: { x: '100%' },
-    visible: { 
+    visible: {
       x: 0,
       transition: {
         duration: durations.slow,
         ease: easings.smooth,
       },
     },
-    exit: { 
+    exit: {
       x: '100%',
       transition: {
         duration: durations.base,
@@ -371,14 +371,14 @@ export const drawerVariants = {
   },
   top: {
     hidden: { y: '-100%' },
-    visible: { 
+    visible: {
       y: 0,
       transition: {
         duration: durations.slow,
         ease: easings.smooth,
       },
     },
-    exit: { 
+    exit: {
       y: '-100%',
       transition: {
         duration: durations.base,
@@ -388,14 +388,14 @@ export const drawerVariants = {
   },
   bottom: {
     hidden: { y: '100%' },
-    visible: { 
+    visible: {
       y: 0,
       transition: {
         duration: durations.slow,
         ease: easings.smooth,
       },
     },
-    exit: { 
+    exit: {
       y: '100%',
       transition: {
         duration: durations.base,
@@ -409,13 +409,13 @@ export const drawerVariants = {
  * Tooltip variants
  */
 export const tooltipVariants: Variants = {
-  hidden: { 
-    opacity: 0, 
+  hidden: {
+    opacity: 0,
     scale: 0.9,
     y: 5,
   },
-  visible: { 
-    opacity: 1, 
+  visible: {
+    opacity: 1,
     scale: 1,
     y: 0,
     transition: {
@@ -423,8 +423,8 @@ export const tooltipVariants: Variants = {
       ease: easings.snappy,
     },
   },
-  exit: { 
-    opacity: 0, 
+  exit: {
+    opacity: 0,
     scale: 0.9,
     y: 5,
     transition: {
@@ -439,14 +439,14 @@ export const tooltipVariants: Variants = {
  */
 export const buttonPressVariants: Variants = {
   rest: { scale: 1 },
-  hover: { 
+  hover: {
     scale: 1.02,
     transition: {
       duration: durations.fast,
       ease: easings.snappy,
     },
   },
-  tap: { 
+  tap: {
     scale: 0.98,
     transition: {
       duration: durations.fast,
@@ -459,11 +459,11 @@ export const buttonPressVariants: Variants = {
  * Card hover effect
  */
 export const cardHoverVariants: Variants = {
-  rest: { 
+  rest: {
     y: 0,
     boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)',
   },
-  hover: { 
+  hover: {
     y: -4,
     boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
     transition: {
@@ -477,8 +477,8 @@ export const cardHoverVariants: Variants = {
  * List item variants for staggered animations
  */
 export const listItemVariants: Variants = {
-  hidden: { 
-    opacity: 0, 
+  hidden: {
+    opacity: 0,
     x: -20,
   },
   visible: (index: number) => ({
@@ -511,10 +511,7 @@ export function createTransition(
 /**
  * Helper function to create variants with reduced motion support
  */
-export function createVariants(
-  variants: Variants,
-  prefersReducedMotion: boolean
-): Variants {
+export function createVariants(variants: Variants, prefersReducedMotion: boolean): Variants {
   if (prefersReducedMotion) {
     // For reduced motion, only animate opacity
     const reducedVariants: Variants = {};

@@ -234,7 +234,13 @@ export const RichProgressDisplay: FC<RichProgressDisplayProps> = ({
     <Card className={styles.container}>
       {/* Overall Progress */}
       <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: tokens.spacingVerticalS }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            marginBottom: tokens.spacingVerticalS,
+          }}
+        >
           <Text weight="semibold" size={400}>
             Generating Your Video
           </Text>

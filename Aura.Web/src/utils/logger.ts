@@ -144,7 +144,7 @@ class Logger {
     context?: Record<string, unknown>
   ): void {
     loggingService.performance(operation, duration, component, context);
-    
+
     const perfContext = {
       ...context,
       operation,
@@ -153,11 +153,22 @@ class Logger {
       category: this.getPerformanceCategory(duration),
     };
 
-    this.bufferLog(LogLevel.PERFORMANCE, `Performance: ${operation}`, component, 'performance', perfContext);
+    this.bufferLog(
+      LogLevel.PERFORMANCE,
+      `Performance: ${operation}`,
+      component,
+      'performance',
+      perfContext
+    );
 
     // Warn on slow operations
     if (duration > 3000) {
-      this.warn(`Slow operation detected: ${operation} took ${duration}ms`, component, 'performance', perfContext);
+      this.warn(
+        `Slow operation detected: ${operation} took ${duration}ms`,
+        component,
+        'performance',
+        perfContext
+      );
     }
   }
 
@@ -173,7 +184,7 @@ class Logger {
     const start = performance.now();
     const childSpan = this.createChildSpan(operation);
     const previousContext = this.traceContext;
-    
+
     try {
       this.setTraceContext(childSpan);
       const result = await fn();
@@ -204,8 +215,11 @@ class Logger {
         this.error(message, error, component, action, context),
       performance: (operation: string, duration: number, context?: Record<string, unknown>) =>
         this.performance(operation, duration, component, context),
-      timeOperation: <T,>(operation: string, fn: () => Promise<T>, context?: Record<string, unknown>) =>
-        this.timeOperation(operation, fn, component, context),
+      timeOperation: <T>(
+        operation: string,
+        fn: () => Promise<T>,
+        context?: Record<string, unknown>
+      ) => this.timeOperation(operation, fn, component, context),
     };
   }
 
@@ -229,11 +243,13 @@ class Logger {
       context,
       traceContext: this.traceContext || undefined,
       correlationId: this.getCorrelationId() || undefined,
-      error: error ? {
-        name: error.name,
-        message: error.message,
-        stack: error.stack,
-      } : undefined,
+      error: error
+        ? {
+            name: error.name,
+            message: error.message,
+            stack: error.stack,
+          }
+        : undefined,
     };
 
     this.logBuffer.push(entry);
@@ -272,7 +288,7 @@ class Logger {
 
     try {
       const correlationId = this.getCorrelationId();
-      
+
       await fetch('/api/logs/batch', {
         method: 'POST',
         headers: {
@@ -374,8 +390,9 @@ class Logger {
    * Generate a unique ID for tracing
    */
   private generateId(): string {
-    return Math.random().toString(36).substring(2, 15) +
-           Math.random().toString(36).substring(2, 15);
+    return (
+      Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+    );
   }
 
   /**

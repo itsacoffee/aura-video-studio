@@ -187,8 +187,7 @@ export class SettingsService {
         const errorText = await saveResponse.text();
         return {
           success: false,
-          message:
-            errorText || `Failed to persist API key for ${mapping.displayName}.`,
+          message: errorText || `Failed to persist API key for ${mapping.displayName}.`,
         };
       }
 
@@ -218,7 +217,9 @@ export class SettingsService {
   /**
    * Get available models for OpenAI API key
    */
-  async getOpenAIModels(apiKey: string): Promise<{ success: boolean; models?: string[]; message?: string }> {
+  async getOpenAIModels(
+    apiKey: string
+  ): Promise<{ success: boolean; models?: string[]; message?: string }> {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
@@ -248,7 +249,7 @@ export class SettingsService {
         };
       } catch (error: unknown) {
         clearTimeout(timeoutId);
-        
+
         if (error instanceof Error && error.name === 'AbortError') {
           return {
             success: false,
@@ -271,7 +272,12 @@ export class SettingsService {
   async testOpenAIGeneration(
     apiKey: string,
     model: string
-  ): Promise<{ success: boolean; generatedText?: string; responseTimeMs?: number; message?: string }> {
+  ): Promise<{
+    success: boolean;
+    generatedText?: string;
+    responseTimeMs?: number;
+    message?: string;
+  }> {
     try {
       const response = await fetch(apiUrl('/api/providers/openai/test-generation'), {
         method: 'POST',

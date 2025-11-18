@@ -169,14 +169,11 @@ export const BudgetConfiguration: FC<BudgetConfigurationProps> = ({
               className={styles.budgetInput}
               type="number"
               value={config.providerBudgets[provider.providerName]?.toString() || ''}
-              onChange={(_, data) =>
-                handleProviderBudgetChange(provider.providerName, data.value)
-              }
+              onChange={(_, data) => handleProviderBudgetChange(provider.providerName, data.value)}
               placeholder="No limit"
             />
             <span className={styles.currentSpend}>
-              Current: {config.currency}{' '}
-              {(currentSpending[provider.providerName] || 0).toFixed(2)}
+              Current: {config.currency} {(currentSpending[provider.providerName] || 0).toFixed(2)}
             </span>
           </div>
         ))}

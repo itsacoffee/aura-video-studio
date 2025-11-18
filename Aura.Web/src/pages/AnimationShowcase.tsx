@@ -5,18 +5,8 @@ import {
   DismissRegular,
 } from '@fluentui/react-icons';
 import { useState } from 'react';
-import {
-  AnimatedList,
-  AnimatedListItem,
-  FadeIn,
-  SlideIn,
-  ScaleIn,
-} from '../components/animations';
-import {
-  SuccessAnimation,
-  ErrorAnimation,
-  ProgressIndicator,
-} from '../components/feedback';
+import { AnimatedList, AnimatedListItem, FadeIn, SlideIn, ScaleIn } from '../components/animations';
+import { SuccessAnimation, ErrorAnimation, ProgressIndicator } from '../components/feedback';
 import {
   Skeleton,
   SkeletonText,
@@ -93,11 +83,7 @@ export function AnimationShowcase() {
                 <AnimatedButton variant="danger" leftIcon={<DismissRegular />}>
                   Danger Button
                 </AnimatedButton>
-                <AnimatedButton
-                  variant="primary"
-                  isLoading={isLoading}
-                  onClick={handleLoadingDemo}
-                >
+                <AnimatedButton variant="primary" isLoading={isLoading} onClick={handleLoadingDemo}>
                   {isLoading ? 'Processing...' : 'Click to Load'}
                 </AnimatedButton>
               </div>

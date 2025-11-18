@@ -96,9 +96,7 @@ export const MediaList: React.FC<MediaListProps> = ({
               <TableCell>
                 <div className={styles.nameCell}>
                   <Avatar
-                    image={
-                      item.thumbnailUrl ? { src: item.thumbnailUrl } : undefined
-                    }
+                    image={item.thumbnailUrl ? { src: item.thumbnailUrl } : undefined}
                     size={48}
                     shape="square"
                   />
@@ -137,28 +135,16 @@ export const MediaList: React.FC<MediaListProps> = ({
               <TableCell>
                 <Menu>
                   <MenuTrigger disableButtonEnhancement>
-                    <Button
-                      appearance="subtle"
-                      icon={<MoreVertical24Regular />}
-                      size="small"
-                    />
+                    <Button appearance="subtle" icon={<MoreVertical24Regular />} size="small" />
                   </MenuTrigger>
                   <MenuPopover>
                     <MenuList>
-                      <MenuItem 
-                        icon={<Eye24Regular />}
-                        onClick={() => onPreview?.(item)}
-                      >
+                      <MenuItem icon={<Eye24Regular />} onClick={() => onPreview?.(item)}>
                         View
                       </MenuItem>
                       <MenuItem icon={<Edit24Regular />}>Edit</MenuItem>
-                      <MenuItem icon={<CloudArrowDown24Regular />}>
-                        Download
-                      </MenuItem>
-                      <MenuItem
-                        icon={<Delete24Regular />}
-                        onClick={() => onDelete(item.id)}
-                      >
+                      <MenuItem icon={<CloudArrowDown24Regular />}>Download</MenuItem>
+                      <MenuItem icon={<Delete24Regular />} onClick={() => onDelete(item.id)}>
                         Delete
                       </MenuItem>
                     </MenuList>

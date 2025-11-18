@@ -101,15 +101,9 @@ function ProviderStatusCard({ provider }: { provider: ProviderStatus }) {
       style={{ color: tokens.colorPaletteGreenForeground1 }}
     />
   ) : !provider.isConfigured ? (
-    <Info24Regular
-      className={styles.icon}
-      style={{ color: tokens.colorNeutralForeground3 }}
-    />
+    <Info24Regular className={styles.icon} style={{ color: tokens.colorNeutralForeground3 }} />
   ) : (
-    <Warning24Filled
-      className={styles.icon}
-      style={{ color: tokens.colorPaletteRedForeground1 }}
-    />
+    <Warning24Filled className={styles.icon} style={{ color: tokens.colorPaletteRedForeground1 }} />
   );
 
   const statusBadge = isConfiguredAndReachable ? (
@@ -156,8 +150,15 @@ function ProviderStatusCard({ provider }: { provider: ProviderStatus }) {
           </Text>
           {provider.howToFix && provider.howToFix.length > 0 && (
             <div className={styles.howToFix}>
-              <Text size={100} weight="semibold">How to fix:</Text>
-              <ul style={{ margin: `${tokens.spacingVerticalXXS} 0`, paddingLeft: tokens.spacingHorizontalM }}>
+              <Text size={100} weight="semibold">
+                How to fix:
+              </Text>
+              <ul
+                style={{
+                  margin: `${tokens.spacingVerticalXXS} 0`,
+                  paddingLeft: tokens.spacingHorizontalM,
+                }}
+              >
                 {provider.howToFix.map((step, index) => (
                   <li key={index}>
                     <Text size={100}>{step}</Text>

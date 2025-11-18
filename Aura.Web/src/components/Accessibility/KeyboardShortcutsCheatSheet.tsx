@@ -1,6 +1,6 @@
 /**
  * Keyboard Shortcuts Cheat Sheet
- * 
+ *
  * A comprehensive overlay showing all available keyboard shortcuts,
  * organized by category with search functionality.
  */
@@ -225,7 +225,8 @@ export function KeyboardShortcutsCheatSheet({ open, onClose }: KeyboardShortcuts
               />
             </div>
 
-            {filteredLegacyShortcuts.length === 0 && Object.keys(groupedTimelineShortcuts).length === 0 ? (
+            {filteredLegacyShortcuts.length === 0 &&
+            Object.keys(groupedTimelineShortcuts).length === 0 ? (
               <div className={styles.emptyState}>
                 <Text size={400}>No shortcuts found</Text>
                 <br />
@@ -253,9 +254,8 @@ export function KeyboardShortcutsCheatSheet({ open, onClose }: KeyboardShortcuts
                   </div>
                 ))}
 
-                {filteredLegacyShortcuts.length > 0 && Object.keys(groupedTimelineShortcuts).length > 0 && (
-                  <Divider />
-                )}
+                {filteredLegacyShortcuts.length > 0 &&
+                  Object.keys(groupedTimelineShortcuts).length > 0 && <Divider />}
 
                 {/* Timeline Shortcuts */}
                 {Object.entries(groupedTimelineShortcuts).map(([category, shortcuts]) => (

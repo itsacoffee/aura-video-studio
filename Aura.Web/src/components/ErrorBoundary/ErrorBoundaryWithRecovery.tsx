@@ -138,7 +138,8 @@ export class ErrorBoundaryWithRecovery extends Component<
   };
 
   handleGoHome = (): void => {
-    navigateToRoute('/');  };
+    navigateToRoute('/');
+  };
 
   render(): ReactNode {
     const { hasError, error, errorInfo, errorCount } = this.state;

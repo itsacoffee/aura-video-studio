@@ -247,9 +247,7 @@ export const MediaLibraryPanel = forwardRef<MediaLibraryPanelRef, MediaLibraryPa
         // Mark the clip with an error state rather than removing it
         setClips((prev) =>
           prev.map((clip) =>
-            clip.id === clipId
-              ? { ...clip, uploadProgress: undefined, preview: undefined }
-              : clip
+            clip.id === clipId ? { ...clip, uploadProgress: undefined, preview: undefined } : clip
           )
         );
       }

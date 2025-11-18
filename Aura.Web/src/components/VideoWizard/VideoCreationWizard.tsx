@@ -268,7 +268,7 @@ export const VideoCreationWizard: FC = () => {
     if (currentStep < STEP_LABELS.length - 1 && stepValidation[currentStep].isValid) {
       setCurrentStep((prev) => prev + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
-      
+
       // Show celebration when completing final step
       if (currentStep === STEP_LABELS.length - 2) {
         setShowCelebration(true);

@@ -2,15 +2,7 @@
  * TypeScript types for RunTelemetry v1 schema
  */
 
-export type RunStage =
-  | 'brief'
-  | 'plan'
-  | 'script'
-  | 'ssml'
-  | 'tts'
-  | 'visuals'
-  | 'render'
-  | 'post';
+export type RunStage = 'brief' | 'plan' | 'script' | 'ssml' | 'tts' | 'visuals' | 'render' | 'post';
 
 export type SelectionSource = 'default' | 'pinned' | 'cli' | 'fallback';
 

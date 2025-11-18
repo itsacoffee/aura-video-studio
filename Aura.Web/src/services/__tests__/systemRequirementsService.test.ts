@@ -13,36 +13,37 @@ describe('systemRequirementsService', () => {
       // Mock API responses
       global.fetch = vi.fn((url: string | URL | Request) => {
         const urlString = url.toString();
-        
+
         if (urlString.includes('/api/system/disk-space')) {
           return Promise.resolve({
             ok: true,
             json: () => Promise.resolve({ availableGB: 100, totalGB: 500 }),
           } as Response);
         }
-        
+
         if (urlString.includes('/api/system/gpu')) {
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({
-              detected: true,
-              vendor: 'NVIDIA',
-              model: 'GeForce RTX 3060',
-              memoryMB: 6144,
-              hardwareAcceleration: true,
-              videoEncoding: true,
-              videoDecoding: true,
-            }),
+            json: () =>
+              Promise.resolve({
+                detected: true,
+                vendor: 'NVIDIA',
+                model: 'GeForce RTX 3060',
+                memoryMB: 6144,
+                hardwareAcceleration: true,
+                videoEncoding: true,
+                videoDecoding: true,
+              }),
           } as Response);
         }
-        
+
         if (urlString.includes('/api/system/memory')) {
           return Promise.resolve({
             ok: true,
             json: () => Promise.resolve({ totalGB: 16, availableGB: 10 }),
           } as Response);
         }
-        
+
         return Promise.reject(new Error('Not found'));
       }) as typeof fetch;
 
@@ -58,14 +59,14 @@ describe('systemRequirementsService', () => {
     it('should handle low disk space', async () => {
       global.fetch = vi.fn((url: string | URL | Request) => {
         const urlString = url.toString();
-        
+
         if (urlString.includes('/api/system/disk-space')) {
           return Promise.resolve({
             ok: true,
             json: () => Promise.resolve({ availableGB: 5, totalGB: 100 }),
           } as Response);
         }
-        
+
         return Promise.reject(new Error('Not found'));
       }) as typeof fetch;
 
@@ -79,22 +80,23 @@ describe('systemRequirementsService', () => {
     it('should warn about insufficient GPU', async () => {
       global.fetch = vi.fn((url: string | URL | Request) => {
         const urlString = url.toString();
-        
+
         if (urlString.includes('/api/system/gpu')) {
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({
-              detected: false,
-              vendor: 'None',
-              model: 'None',
-              memoryMB: 0,
-              hardwareAcceleration: false,
-              videoEncoding: false,
-              videoDecoding: false,
-            }),
+            json: () =>
+              Promise.resolve({
+                detected: false,
+                vendor: 'None',
+                model: 'None',
+                memoryMB: 0,
+                hardwareAcceleration: false,
+                videoEncoding: false,
+                videoDecoding: false,
+              }),
           } as Response);
         }
-        
+
         return Promise.reject(new Error('Not found'));
       }) as typeof fetch;
 

@@ -1,6 +1,6 @@
 /**
  * Desktop Setup Wizard
- * 
+ *
  * Enhanced first-run wizard for Electron desktop app with:
  * - FFmpeg auto-installation
  * - Ollama detection and installation guidance
@@ -100,7 +100,7 @@ export function DesktopSetupWizard() {
   const styles = useStyles();
   const navigate = useNavigate();
   const { showSuccess, showError, showInfo } = useNotifications();
-  
+
   const [mode, setMode] = useState<SetupMode>('welcome');
   const [setupType, setSetupType] = useState<'express' | 'custom'>('express');
   const [dependencies, setDependencies] = useState<DependencyStatus>({
@@ -116,8 +116,8 @@ export function DesktopSetupWizard() {
   } | null>(null);
 
   // Check if running in Electron
-  const isElectron = typeof window !== 'undefined' && 
-    (window as any).electron?.platform?.isElectron;
+  const isElectron =
+    typeof window !== 'undefined' && (window as any).electron?.platform?.isElectron;
 
   useEffect(() => {
     if (isElectron) {
@@ -132,7 +132,7 @@ export function DesktopSetupWizard() {
       const paths = await electron.app.getPaths();
       const platform = electron.platform.os;
       const arch = electron.platform.arch;
-      
+
       setSystemInfo({ platform, arch, paths });
     } catch (error) {
       console.error('Failed to load system info:', error);
@@ -144,12 +144,12 @@ export function DesktopSetupWizard() {
     try {
       const response = await fetch('/api/health/ffmpeg');
       const data = await response.json();
-      setDependencies(prev => ({
+      setDependencies((prev) => ({
         ...prev,
         ffmpeg: data.isAvailable ? 'found' : 'not-found',
       }));
     } catch {
-      setDependencies(prev => ({ ...prev, ffmpeg: 'not-found' }));
+      setDependencies((prev) => ({ ...prev, ffmpeg: 'not-found' }));
     }
 
     // Check Ollama
@@ -159,32 +159,32 @@ export function DesktopSetupWizard() {
         signal: AbortSignal.timeout(2000),
       });
       if (response.ok) {
-        setDependencies(prev => ({ ...prev, ollama: 'found' }));
+        setDependencies((prev) => ({ ...prev, ollama: 'found' }));
       } else {
-        setDependencies(prev => ({ ...prev, ollama: 'not-found' }));
+        setDependencies((prev) => ({ ...prev, ollama: 'not-found' }));
       }
     } catch {
-      setDependencies(prev => ({ ...prev, ollama: 'not-found' }));
+      setDependencies((prev) => ({ ...prev, ollama: 'not-found' }));
     }
 
     // .NET is bundled, always available
-    setDependencies(prev => ({ ...prev, dotnet: 'found' }));
+    setDependencies((prev) => ({ ...prev, dotnet: 'found' }));
   };
 
   const installFFmpeg = async () => {
     try {
-      setDependencies(prev => ({ ...prev, ffmpeg: 'installing' }));
+      setDependencies((prev) => ({ ...prev, ffmpeg: 'installing' }));
       showInfo('Downloading FFmpeg...');
 
       // Platform-specific installation
       const platform = systemInfo?.platform || 'unknown';
-      
+
       if (platform === 'win32') {
         // Windows: Download and extract
         const response = await fetch('/api/setup/install-ffmpeg', {
           method: 'POST',
         });
-        
+
         if (!response.ok) {
           throw new Error('FFmpeg installation failed');
         }
@@ -195,10 +195,10 @@ export function DesktopSetupWizard() {
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-            
+
             const text = new TextDecoder().decode(value);
             const lines = text.split('\n');
-            
+
             for (const line of lines) {
               if (line.includes('progress:')) {
                 const progress = parseInt(line.split(':')[1]);
@@ -219,12 +219,11 @@ export function DesktopSetupWizard() {
         }
       }
 
-      setDependencies(prev => ({ ...prev, ffmpeg: 'installed' }));
+      setDependencies((prev) => ({ ...prev, ffmpeg: 'installed' }));
       showSuccess('FFmpeg installed successfully!');
-      
     } catch (error) {
       console.error('FFmpeg installation error:', error);
-      setDependencies(prev => ({ ...prev, ffmpeg: 'error' }));
+      setDependencies((prev) => ({ ...prev, ffmpeg: 'error' }));
       showError('Failed to install FFmpeg. Please install manually.');
     }
   };
@@ -240,7 +239,7 @@ export function DesktopSetupWizard() {
   };
 
   const skipOllama = () => {
-    setDependencies(prev => ({ ...prev, ollama: 'skip' }));
+    setDependencies((prev) => ({ ...prev, ollama: 'skip' }));
     showInfo('You can install Ollama later from Settings');
   };
 
@@ -251,29 +250,58 @@ export function DesktopSetupWizard() {
         <Text as="p" size={500} style={{ marginTop: tokens.spacingVerticalL }}>
           Let's get you set up to create amazing AI-powered videos!
         </Text>
-        
-        <div style={{ marginTop: tokens.spacingVerticalXXL, display: 'flex', gap: tokens.spacingHorizontalL, justifyContent: 'center' }}>
-          <Card className={styles.card} onClick={() => { setSetupType('express'); setMode('dependencies'); }}>
+
+        <div
+          style={{
+            marginTop: tokens.spacingVerticalXXL,
+            display: 'flex',
+            gap: tokens.spacingHorizontalL,
+            justifyContent: 'center',
+          }}
+        >
+          <Card
+            className={styles.card}
+            onClick={() => {
+              setSetupType('express');
+              setMode('dependencies');
+            }}
+          >
             <CardHeader
               header={<Title3>Express Setup</Title3>}
               description="Recommended for most users. Auto-detect and configure everything."
             />
-            <Badge appearance="filled" color="brand">Recommended</Badge>
+            <Badge appearance="filled" color="brand">
+              Recommended
+            </Badge>
           </Card>
-          
-          <Card className={styles.card} onClick={() => { setSetupType('custom'); setMode('configuration'); }}>
+
+          <Card
+            className={styles.card}
+            onClick={() => {
+              setSetupType('custom');
+              setMode('configuration');
+            }}
+          >
             <CardHeader
               header={<Title3>Custom Setup</Title3>}
               description="Choose providers, paths, and settings manually."
             />
           </Card>
         </div>
-        
+
         {!isElectron && (
-          <div style={{ marginTop: tokens.spacingVerticalXXL, padding: tokens.spacingVerticalL, backgroundColor: tokens.colorNeutralBackground3, borderRadius: tokens.borderRadiusMedium }}>
+          <div
+            style={{
+              marginTop: tokens.spacingVerticalXXL,
+              padding: tokens.spacingVerticalL,
+              backgroundColor: tokens.colorNeutralBackground3,
+              borderRadius: tokens.borderRadiusMedium,
+            }}
+          >
             <Warning24Regular className={styles.statusIcon} />
             <Text>
-              You're running the web version. Some features (like auto-installation) are only available in the desktop app.
+              You're running the web version. Some features (like auto-installation) are only
+              available in the desktop app.
             </Text>
           </div>
         )}
@@ -286,7 +314,7 @@ export function DesktopSetupWizard() {
       <div className={styles.section}>
         <Title2>System Dependencies</Title2>
         <Text>Checking and installing required software...</Text>
-        
+
         <div className={styles.grid}>
           {/* FFmpeg Card */}
           <Card className={styles.card}>
@@ -305,7 +333,7 @@ export function DesktopSetupWizard() {
               header={<Title3>FFmpeg</Title3>}
               description="Required for video rendering"
             />
-            
+
             {dependencies.ffmpeg === 'not-found' && (
               <>
                 <Text size={300}>FFmpeg not detected. Install to render videos.</Text>
@@ -319,18 +347,22 @@ export function DesktopSetupWizard() {
                 </Button>
               </>
             )}
-            
+
             {dependencies.ffmpeg === 'installing' && (
               <>
                 <Text size={300}>Installing FFmpeg...</Text>
-                <ProgressBar value={installProgress} max={100} style={{ marginTop: tokens.spacingVerticalS }} />
+                <ProgressBar
+                  value={installProgress}
+                  max={100}
+                  style={{ marginTop: tokens.spacingVerticalS }}
+                />
               </>
             )}
-            
+
             {(dependencies.ffmpeg === 'found' || dependencies.ffmpeg === 'installed') && (
               <Text size={300}>✓ FFmpeg is ready!</Text>
             )}
-            
+
             {dependencies.ffmpeg === 'error' && (
               <>
                 <Text size={300}>Installation failed. Please install manually:</Text>
@@ -356,13 +388,19 @@ export function DesktopSetupWizard() {
               header={<Title3>Ollama</Title3>}
               description="Optional: Run AI models locally"
             />
-            
+
             {dependencies.ollama === 'not-found' && (
               <>
                 <Text size={300}>
                   Ollama lets you run AI models locally for free, with complete privacy.
                 </Text>
-                <div style={{ marginTop: tokens.spacingVerticalM, display: 'flex', gap: tokens.spacingHorizontalS }}>
+                <div
+                  style={{
+                    marginTop: tokens.spacingVerticalM,
+                    display: 'flex',
+                    gap: tokens.spacingHorizontalS,
+                  }}
+                >
                   <Button
                     appearance="primary"
                     icon={<ArrowDownload24Regular />}
@@ -374,11 +412,11 @@ export function DesktopSetupWizard() {
                 </div>
               </>
             )}
-            
+
             {dependencies.ollama === 'found' && (
               <Text size={300}>✓ Ollama detected and ready!</Text>
             )}
-            
+
             {dependencies.ollama === 'skip' && (
               <Text size={300}>Skipped. You can install later in Settings.</Text>
             )}
@@ -394,7 +432,7 @@ export function DesktopSetupWizard() {
             <Text size={300}>✓ Backend server is ready!</Text>
           </Card>
         </div>
-        
+
         <div style={{ marginTop: tokens.spacingVerticalXXL, textAlign: 'center' }}>
           <Button
             appearance="primary"
@@ -403,8 +441,8 @@ export function DesktopSetupWizard() {
             iconPosition="after"
             onClick={() => setMode('configuration')}
             disabled={
-              dependencies.ffmpeg !== 'found' && 
-              dependencies.ffmpeg !== 'installed' && 
+              dependencies.ffmpeg !== 'found' &&
+              dependencies.ffmpeg !== 'installed' &&
               dependencies.ffmpeg !== 'error'
             }
           >
@@ -432,9 +470,12 @@ export function DesktopSetupWizard() {
           </Button>
         )}
       </div>
-      
+
       <Text size={300}>
-        Need help? <Link href="https://docs.aura-video-studio.com/setup" target="_blank">Setup Guide</Link>
+        Need help?{' '}
+        <Link href="https://docs.aura-video-studio.com/setup" target="_blank">
+          Setup Guide
+        </Link>
       </Text>
     </div>
   );
@@ -454,10 +495,10 @@ export function DesktopSetupWizard() {
           </Text>
         )}
       </div>
-      
+
       {mode === 'welcome' && renderWelcomeScreen()}
       {mode === 'dependencies' && renderDependenciesScreen()}
-      
+
       {renderFooter()}
     </div>
   );

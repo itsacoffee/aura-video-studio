@@ -113,20 +113,20 @@ export async function listProjects(
   config?: ExtendedAxiosRequestConfig
 ): Promise<ProjectListResponse> {
   const params = new URLSearchParams();
-  
+
   if (filters) {
     if (filters.page !== undefined) params.append('page', filters.page.toString());
     if (filters.pageSize !== undefined) params.append('pageSize', filters.pageSize.toString());
     if (filters.status) params.append('status', filters.status);
     if (filters.search) params.append('search', filters.search);
-    if (filters.tags) filters.tags.forEach(tag => params.append('tags', tag));
+    if (filters.tags) filters.tags.forEach((tag) => params.append('tags', tag));
     if (filters.sortBy) params.append('sortBy', filters.sortBy);
     if (filters.sortOrder) params.append('sortOrder', filters.sortOrder);
   }
 
   const queryString = params.toString();
   const url = queryString ? `/api/projects?${queryString}` : '/api/projects';
-  
+
   return get<ProjectListResponse>(url, config);
 }
 
@@ -219,7 +219,7 @@ export async function importProject(
 ): Promise<Project> {
   const formData = new FormData();
   formData.append('file', file);
-  
+
   return post<Project>('/api/projects/import', formData, {
     ...config,
     headers: {

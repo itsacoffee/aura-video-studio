@@ -90,7 +90,9 @@ export function AIModelsSettingsTab() {
         </MessageBarBody>
       </MessageBar>
 
-      <Divider style={{ marginTop: tokens.spacingVerticalL, marginBottom: tokens.spacingVerticalL }} />
+      <Divider
+        style={{ marginTop: tokens.spacingVerticalL, marginBottom: tokens.spacingVerticalL }}
+      />
 
       <div className={styles.content}>
         <Card className={styles.infoBox}>

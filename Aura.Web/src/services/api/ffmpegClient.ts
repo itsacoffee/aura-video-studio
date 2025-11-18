@@ -208,10 +208,7 @@ export const ffmpegClient = {
     const config: ExtendedAxiosRequestConfig = {
       _skipCircuitBreaker: true,
     };
-    const response = await apiClient.get<FFmpegStatusExtended>(
-      '/api/system/ffmpeg/status',
-      config
-    );
+    const response = await apiClient.get<FFmpegStatusExtended>('/api/system/ffmpeg/status', config);
 
     // Reset circuit breaker on successful FFmpeg status check
     if (response.data.installed && response.data.valid) {
@@ -270,11 +267,7 @@ export const ffmpegClient = {
     const config: ExtendedAxiosRequestConfig = {
       _skipCircuitBreaker: true,
     };
-    const response = await apiClient.post<SetPathResponse>(
-      '/api/ffmpeg/set-path',
-      request,
-      config
-    );
+    const response = await apiClient.post<SetPathResponse>('/api/ffmpeg/set-path', request, config);
 
     // Reset circuit breaker on successful validation
     if (response.data.success && response.data.installed && response.data.valid) {

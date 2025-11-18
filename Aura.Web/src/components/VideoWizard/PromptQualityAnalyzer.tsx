@@ -191,7 +191,7 @@ export const PromptQualityAnalyzer: FC<PromptQualityAnalyzerProps> = ({
     if (targetAudience && targetAudience.trim()) {
       suggestions.push({
         type: 'success',
-        message: 'Great! You\'ve specified your target audience.',
+        message: "Great! You've specified your target audience.",
       });
     } else {
       suggestions.push({
@@ -204,7 +204,7 @@ export const PromptQualityAnalyzer: FC<PromptQualityAnalyzerProps> = ({
     if (keyMessage && keyMessage.trim()) {
       suggestions.push({
         type: 'success',
-        message: 'Excellent! You\'ve defined a clear key message.',
+        message: "Excellent! You've defined a clear key message.",
       });
     } else {
       suggestions.push({
@@ -248,10 +248,29 @@ export const PromptQualityAnalyzer: FC<PromptQualityAnalyzerProps> = ({
   };
 
   const getScoreBadge = () => {
-    if (analysis.level === 'excellent') return <Badge appearance="filled" color="success">Excellent</Badge>;
-    if (analysis.level === 'good') return <Badge appearance="filled" color="informative">Good</Badge>;
-    if (analysis.level === 'fair') return <Badge appearance="filled" color="warning">Fair</Badge>;
-    return <Badge appearance="filled" color="danger">Needs Work</Badge>;
+    if (analysis.level === 'excellent')
+      return (
+        <Badge appearance="filled" color="success">
+          Excellent
+        </Badge>
+      );
+    if (analysis.level === 'good')
+      return (
+        <Badge appearance="filled" color="informative">
+          Good
+        </Badge>
+      );
+    if (analysis.level === 'fair')
+      return (
+        <Badge appearance="filled" color="warning">
+          Fair
+        </Badge>
+      );
+    return (
+      <Badge appearance="filled" color="danger">
+        Needs Work
+      </Badge>
+    );
   };
 
   const getSuggestionIcon = (type: string) => {
@@ -289,7 +308,9 @@ export const PromptQualityAnalyzer: FC<PromptQualityAnalyzerProps> = ({
         </div>
         <ProgressBar
           value={analysis.score / 100}
-          color={analysis.level === 'excellent' || analysis.level === 'good' ? 'success' : 'warning'}
+          color={
+            analysis.level === 'excellent' || analysis.level === 'good' ? 'success' : 'warning'
+          }
         />
       </div>
 

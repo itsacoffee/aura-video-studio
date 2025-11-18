@@ -110,14 +110,17 @@ export function FailureModal({ open, onClose, failure, jobId: _jobId }: FailureM
         const result = await response.json();
         showSuccessToast({
           title: 'FFmpeg Installed',
-          message: result.message || 'Managed FFmpeg has been installed successfully. You can now retry video generation.',
+          message:
+            result.message ||
+            'Managed FFmpeg has been installed successfully. You can now retry video generation.',
         });
         onClose();
       } else {
         const errorData = await response.json();
         showFailureToast({
           title: 'Installation Failed',
-          message: errorData.message || errorData.detail || 'Failed to install FFmpeg. Please check logs.',
+          message:
+            errorData.message || errorData.detail || 'Failed to install FFmpeg. Please check logs.',
         });
       }
     } catch (error) {

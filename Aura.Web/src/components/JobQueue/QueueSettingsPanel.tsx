@@ -78,12 +78,7 @@ const useStyles = makeStyles({
 
 export function QueueSettingsPanel() {
   const styles = useStyles();
-  const {
-    configuration,
-    statistics,
-    updateConfiguration,
-    isLoadingJobs,
-  } = useJobQueue();
+  const { configuration, statistics, updateConfiguration, isLoadingJobs } = useJobQueue();
 
   const [maxConcurrentJobs, setMaxConcurrentJobs] = useState(2);
   const [isEnabled, setIsEnabled] = useState(true);
@@ -150,10 +145,7 @@ export function QueueSettingsPanel() {
             <Body1>Queue Enabled</Body1>
             <Caption1>Enable or disable the job queue processing</Caption1>
           </div>
-          <Switch
-            checked={isEnabled}
-            onChange={(_, data) => handleIsEnabledChange(data.checked)}
-          />
+          <Switch checked={isEnabled} onChange={(_, data) => handleIsEnabledChange(data.checked)} />
         </div>
 
         <div className={styles.settingRow}>
@@ -177,7 +169,8 @@ export function QueueSettingsPanel() {
           <div className={styles.settingInfo}>
             <Body1>Pause on Battery</Body1>
             <Caption1>
-              {configuration.pauseOnBattery ? 'Enabled' : 'Disabled'} - Automatically pause processing when on battery power
+              {configuration.pauseOnBattery ? 'Enabled' : 'Disabled'} - Automatically pause
+              processing when on battery power
             </Caption1>
           </div>
         </div>
@@ -185,14 +178,19 @@ export function QueueSettingsPanel() {
         <div className={styles.settingRow}>
           <div className={styles.settingInfo}>
             <Body1>CPU Throttle Threshold</Body1>
-            <Caption1>{configuration.cpuThrottleThreshold}% - Pause processing if CPU usage exceeds this</Caption1>
+            <Caption1>
+              {configuration.cpuThrottleThreshold}% - Pause processing if CPU usage exceeds this
+            </Caption1>
           </div>
         </div>
 
         <div className={styles.settingRow}>
           <div className={styles.settingInfo}>
             <Body1>Memory Throttle Threshold</Body1>
-            <Caption1>{configuration.memoryThrottleThreshold}% - Pause processing if memory usage exceeds this</Caption1>
+            <Caption1>
+              {configuration.memoryThrottleThreshold}% - Pause processing if memory usage exceeds
+              this
+            </Caption1>
           </div>
         </div>
       </div>
@@ -203,14 +201,19 @@ export function QueueSettingsPanel() {
         <div className={styles.settingRow}>
           <div className={styles.settingInfo}>
             <Body1>Job History Retention</Body1>
-            <Caption1>{configuration.jobHistoryRetentionDays} days - How long to keep completed job history</Caption1>
+            <Caption1>
+              {configuration.jobHistoryRetentionDays} days - How long to keep completed job history
+            </Caption1>
           </div>
         </div>
 
         <div className={styles.settingRow}>
           <div className={styles.settingInfo}>
             <Body1>Failed Job Retention</Body1>
-            <Caption1>{configuration.failedJobRetentionDays} days - How long to keep failed jobs for debugging</Caption1>
+            <Caption1>
+              {configuration.failedJobRetentionDays} days - How long to keep failed jobs for
+              debugging
+            </Caption1>
           </div>
         </div>
       </div>
@@ -271,8 +274,8 @@ export function QueueSettingsPanel() {
       </div>
 
       <Caption1 style={{ color: tokens.colorNeutralForeground3 }}>
-        Note: Some settings like throttle thresholds and retention policies require backend configuration
-        and cannot be changed from the UI.
+        Note: Some settings like throttle thresholds and retention policies require backend
+        configuration and cannot be changed from the UI.
       </Caption1>
     </div>
   );

@@ -56,11 +56,11 @@ export interface RegisterResponse {
 export async function login(request: LoginRequest): Promise<LoginResponse> {
   try {
     loggingService.info('Attempting login', 'authApi', 'login', { email: request.email });
-    
+
     const response = await post<LoginResponse>('/api/auth/login', request);
-    
+
     loggingService.info('Login successful', 'authApi', 'login', { userId: response.user.id });
-    
+
     return response;
   } catch (error) {
     loggingService.error(
@@ -79,9 +79,9 @@ export async function login(request: LoginRequest): Promise<LoginResponse> {
 export async function logout(): Promise<void> {
   try {
     loggingService.info('Logging out', 'authApi', 'logout');
-    
+
     await post<void>('/api/auth/logout');
-    
+
     loggingService.info('Logout successful', 'authApi', 'logout');
   } catch (error) {
     loggingService.error(
@@ -100,13 +100,13 @@ export async function logout(): Promise<void> {
 export async function refreshToken(request: RefreshTokenRequest): Promise<RefreshTokenResponse> {
   try {
     loggingService.debug('Refreshing token', 'authApi', 'refreshToken');
-    
+
     const response = await post<RefreshTokenResponse>('/api/auth/refresh', request, {
       _skipRetry: true, // Don't retry token refresh
     });
-    
+
     loggingService.debug('Token refresh successful', 'authApi', 'refreshToken');
-    
+
     return response;
   } catch (error) {
     loggingService.error(
@@ -125,11 +125,11 @@ export async function refreshToken(request: RefreshTokenRequest): Promise<Refres
 export async function register(request: RegisterRequest): Promise<RegisterResponse> {
   try {
     loggingService.info('Attempting registration', 'authApi', 'register', { email: request.email });
-    
+
     const response = await post<RegisterResponse>('/api/auth/register', request);
-    
+
     loggingService.info('Registration successful', 'authApi', 'register');
-    
+
     return response;
   } catch (error) {
     loggingService.error(
@@ -148,13 +148,13 @@ export async function register(request: RegisterRequest): Promise<RegisterRespon
 export async function getCurrentUser(): Promise<UserProfile> {
   try {
     loggingService.debug('Fetching current user', 'authApi', 'getCurrentUser');
-    
+
     const response = await get<UserProfile>('/api/auth/me');
-    
+
     loggingService.debug('Current user fetched', 'authApi', 'getCurrentUser', {
       userId: response.id,
     });
-    
+
     return response;
   } catch (error) {
     loggingService.error(
@@ -175,11 +175,11 @@ export async function updateProfile(
 ): Promise<UserProfile> {
   try {
     loggingService.info('Updating user profile', 'authApi', 'updateProfile');
-    
+
     const response = await post<UserProfile>('/api/auth/profile', updates);
-    
+
     loggingService.info('Profile updated successfully', 'authApi', 'updateProfile');
-    
+
     return response;
   } catch (error) {
     loggingService.error(
@@ -195,18 +195,15 @@ export async function updateProfile(
 /**
  * Change password
  */
-export async function changePassword(
-  currentPassword: string,
-  newPassword: string
-): Promise<void> {
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
   try {
     loggingService.info('Changing password', 'authApi', 'changePassword');
-    
+
     await post<void>('/api/auth/change-password', {
       currentPassword,
       newPassword,
     });
-    
+
     loggingService.info('Password changed successfully', 'authApi', 'changePassword');
   } catch (error) {
     loggingService.error(
@@ -227,9 +224,9 @@ export async function requestPasswordReset(email: string): Promise<void> {
     loggingService.info('Requesting password reset', 'authApi', 'requestPasswordReset', {
       email,
     });
-    
+
     await post<void>('/api/auth/forgot-password', { email });
-    
+
     loggingService.info('Password reset requested', 'authApi', 'requestPasswordReset');
   } catch (error) {
     loggingService.error(
@@ -248,12 +245,12 @@ export async function requestPasswordReset(email: string): Promise<void> {
 export async function resetPassword(token: string, newPassword: string): Promise<void> {
   try {
     loggingService.info('Resetting password', 'authApi', 'resetPassword');
-    
+
     await post<void>('/api/auth/reset-password', {
       token,
       newPassword,
     });
-    
+
     loggingService.info('Password reset successfully', 'authApi', 'resetPassword');
   } catch (error) {
     loggingService.error(
@@ -272,9 +269,9 @@ export async function resetPassword(token: string, newPassword: string): Promise
 export async function verifyEmail(token: string): Promise<void> {
   try {
     loggingService.info('Verifying email', 'authApi', 'verifyEmail');
-    
+
     await post<void>('/api/auth/verify-email', { token });
-    
+
     loggingService.info('Email verified successfully', 'authApi', 'verifyEmail');
   } catch (error) {
     loggingService.error(
@@ -295,7 +292,7 @@ export async function checkEmailAvailability(email: string): Promise<boolean> {
     const response = await get<{ available: boolean }>(
       `/api/auth/check-email?email=${encodeURIComponent(email)}`
     );
-    
+
     return response.available;
   } catch (error) {
     loggingService.error(

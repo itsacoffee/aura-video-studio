@@ -52,7 +52,7 @@ export function ProgressIndicator({
           )}
         </div>
       )}
-      
+
       <div
         className="relative overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700"
         style={{ height }}
@@ -62,11 +62,7 @@ export function ProgressIndicator({
           style={{ backgroundColor: color, boxShadow: `0 0 10px ${color}40` }}
           initial={{ width: 0 }}
           animate={{ width: `${clampedProgress}%` }}
-          transition={
-            prefersReducedMotion
-              ? { duration: 0 }
-              : { duration: 0.5, ease: 'easeOut' }
-          }
+          transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.5, ease: 'easeOut' }}
         />
       </div>
     </div>
@@ -106,7 +102,7 @@ function CircularProgress({ progress, size, color }: CircularProgressProps) {
           fill="transparent"
           className="text-gray-200 dark:text-gray-700"
         />
-        
+
         {/* Progress circle */}
         <motion.circle
           cx={dimension / 2}
@@ -118,17 +114,13 @@ function CircularProgress({ progress, size, color }: CircularProgressProps) {
           strokeLinecap="round"
           initial={{ strokeDashoffset: circumference }}
           animate={{ strokeDashoffset: offset }}
-          transition={
-            prefersReducedMotion
-              ? { duration: 0 }
-              : { duration: 0.5, ease: 'easeOut' }
-          }
+          transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.5, ease: 'easeOut' }}
           style={{
             strokeDasharray: circumference,
           }}
         />
       </svg>
-      
+
       <div className="absolute inset-0 flex items-center justify-center">
         <span className={`${fontSize} font-semibold`} style={{ color }}>
           {Math.round(progress)}%

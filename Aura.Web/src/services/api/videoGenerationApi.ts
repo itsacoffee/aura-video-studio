@@ -70,15 +70,15 @@ export async function generateVideo(request: VideoGenerationRequest): Promise<Vi
     loggingService.info('Starting video generation', 'videoGenerationApi', 'generateVideo', {
       title: request.title,
     });
-    
+
     const response = await post<VideoJob>('/api/video/generate', request, {
       timeout: 300000, // 5 minutes timeout for generation requests
     });
-    
+
     loggingService.info('Video generation started', 'videoGenerationApi', 'generateVideo', {
       jobId: response.id,
     });
-    
+
     return response;
   } catch (error) {
     loggingService.error(
@@ -99,15 +99,15 @@ export async function renderProject(request: RenderRequest): Promise<VideoJob> {
     loggingService.info('Starting project render', 'videoGenerationApi', 'renderProject', {
       projectId: request.projectId,
     });
-    
+
     const response = await post<VideoJob>('/api/video/render', request, {
       timeout: 300000, // 5 minutes timeout
     });
-    
+
     loggingService.info('Project render started', 'videoGenerationApi', 'renderProject', {
       jobId: response.id,
     });
-    
+
     return response;
   } catch (error) {
     loggingService.error(
@@ -126,15 +126,15 @@ export async function renderProject(request: RenderRequest): Promise<VideoJob> {
 export async function getJobStatus(jobId: string): Promise<VideoJob> {
   try {
     loggingService.debug('Fetching job status', 'videoGenerationApi', 'getJobStatus', { jobId });
-    
+
     const response = await get<VideoJob>(`/api/jobs/${jobId}`);
-    
+
     loggingService.debug('Job status fetched', 'videoGenerationApi', 'getJobStatus', {
       jobId,
       status: response.status,
       progress: response.progress,
     });
-    
+
     return response;
   } catch (error) {
     loggingService.error(
@@ -150,33 +150,31 @@ export async function getJobStatus(jobId: string): Promise<VideoJob> {
 /**
  * Get all jobs
  */
-export async function getJobs(
-  filters?: {
-    status?: string;
-    limit?: number;
-    offset?: number;
-  }
-): Promise<{
+export async function getJobs(filters?: {
+  status?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<{
   jobs: VideoJob[];
   total: number;
 }> {
   try {
     loggingService.debug('Fetching jobs', 'videoGenerationApi', 'getJobs');
-    
+
     const params = new URLSearchParams();
     if (filters?.status) params.append('status', filters.status);
     if (filters?.limit) params.append('limit', filters.limit.toString());
     if (filters?.offset) params.append('offset', filters.offset.toString());
-    
+
     const response = await get<{ jobs: VideoJob[]; total: number }>(
       `/api/jobs?${params.toString()}`
     );
-    
+
     loggingService.debug('Jobs fetched', 'videoGenerationApi', 'getJobs', {
       count: response.jobs.length,
       total: response.total,
     });
-    
+
     return response;
   } catch (error) {
     loggingService.error(
@@ -195,9 +193,9 @@ export async function getJobs(
 export async function cancelJob(jobId: string): Promise<void> {
   try {
     loggingService.info('Cancelling job', 'videoGenerationApi', 'cancelJob', { jobId });
-    
+
     await post<void>(`/api/jobs/${jobId}/cancel`);
-    
+
     loggingService.info('Job cancelled', 'videoGenerationApi', 'cancelJob', { jobId });
   } catch (error) {
     loggingService.error(
@@ -216,13 +214,13 @@ export async function cancelJob(jobId: string): Promise<void> {
 export async function retryJob(jobId: string): Promise<VideoJob> {
   try {
     loggingService.info('Retrying job', 'videoGenerationApi', 'retryJob', { jobId });
-    
+
     const response = await post<VideoJob>(`/api/jobs/${jobId}/retry`);
-    
+
     loggingService.info('Job retry started', 'videoGenerationApi', 'retryJob', {
       newJobId: response.id,
     });
-    
+
     return response;
   } catch (error) {
     loggingService.error(
@@ -241,9 +239,9 @@ export async function retryJob(jobId: string): Promise<VideoJob> {
 export async function deleteJob(jobId: string): Promise<void> {
   try {
     loggingService.info('Deleting job', 'videoGenerationApi', 'deleteJob', { jobId });
-    
+
     await del<void>(`/api/jobs/${jobId}`);
-    
+
     loggingService.info('Job deleted', 'videoGenerationApi', 'deleteJob', { jobId });
   } catch (error) {
     loggingService.error(
@@ -262,11 +260,11 @@ export async function deleteJob(jobId: string): Promise<void> {
 export async function downloadVideo(jobId: string, filename?: string): Promise<void> {
   try {
     loggingService.info('Downloading video', 'videoGenerationApi', 'downloadVideo', { jobId });
-    
+
     const response = await get<Blob>(`/api/jobs/${jobId}/download`, {
       responseType: 'blob',
     });
-    
+
     // Create download link
     const blob = new Blob([response]);
     const url = window.URL.createObjectURL(blob);
@@ -277,7 +275,7 @@ export async function downloadVideo(jobId: string, filename?: string): Promise<v
     link.click();
     document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
-    
+
     loggingService.info('Video downloaded', 'videoGenerationApi', 'downloadVideo', { jobId });
   } catch (error) {
     loggingService.error(
@@ -299,13 +297,13 @@ export async function exportVideo(request: ExportRequest): Promise<VideoJob> {
       jobId: request.jobId,
       format: request.format,
     });
-    
+
     const response = await post<VideoJob>('/api/video/export', request);
-    
+
     loggingService.info('Video export started', 'videoGenerationApi', 'exportVideo', {
       exportJobId: response.id,
     });
-    
+
     return response;
   } catch (error) {
     loggingService.error(
@@ -326,11 +324,11 @@ export async function getThumbnail(jobId: string): Promise<string> {
     loggingService.debug('Fetching video thumbnail', 'videoGenerationApi', 'getThumbnail', {
       jobId,
     });
-    
+
     const response = await get<{ thumbnailUrl: string }>(`/api/jobs/${jobId}/thumbnail`);
-    
+
     loggingService.debug('Thumbnail fetched', 'videoGenerationApi', 'getThumbnail', { jobId });
-    
+
     return response.thumbnailUrl;
   } catch (error) {
     loggingService.error(
@@ -346,9 +344,7 @@ export async function getThumbnail(jobId: string): Promise<string> {
 /**
  * Get video metadata
  */
-export async function getVideoMetadata(
-  jobId: string
-): Promise<{
+export async function getVideoMetadata(jobId: string): Promise<{
   duration: number;
   resolution: string;
   fps: number;
@@ -360,7 +356,7 @@ export async function getVideoMetadata(
     loggingService.debug('Fetching video metadata', 'videoGenerationApi', 'getVideoMetadata', {
       jobId,
     });
-    
+
     const response = await get<{
       duration: number;
       resolution: string;
@@ -369,11 +365,11 @@ export async function getVideoMetadata(
       fileSize: number;
       bitrate: number;
     }>(`/api/jobs/${jobId}/metadata`);
-    
+
     loggingService.debug('Video metadata fetched', 'videoGenerationApi', 'getVideoMetadata', {
       jobId,
     });
-    
+
     return response;
   } catch (error) {
     loggingService.error(

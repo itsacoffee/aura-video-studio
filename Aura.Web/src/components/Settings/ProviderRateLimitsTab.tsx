@@ -357,10 +357,7 @@ export function ProviderRateLimitsTab({
                       updateProviderLimit(providerName, { enabled: data.checked })
                     }
                   />
-                  <Button
-                    appearance="subtle"
-                    onClick={() => removeProviderLimit(providerName)}
-                  >
+                  <Button appearance="subtle" onClick={() => removeProviderLimit(providerName)}>
                     Remove
                   </Button>
                 </div>

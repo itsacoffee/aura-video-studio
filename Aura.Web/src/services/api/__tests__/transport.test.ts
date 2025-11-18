@@ -49,7 +49,8 @@ describe('TransportFactory', () => {
       },
     } as typeof window.aura;
     (global.window as typeof window & { aura?: unknown }).aura = mockAura;
-    (global.window as typeof window & { electron?: unknown }).electron = mockAura as unknown as typeof window.electron;
+    (global.window as typeof window & { electron?: unknown }).electron =
+      mockAura as unknown as typeof window.electron;
 
     const transport = TransportFactory.create('http://localhost:5005');
     expect(transport).toBeInstanceOf(IpcTransport);

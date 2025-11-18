@@ -1,6 +1,6 @@
 /**
  * Service for checking system requirements during first-run setup
- * 
+ *
  * This service validates that the user's system meets the minimum requirements
  * for running Aura Video Studio, including:
  * - Disk space availability
@@ -169,19 +169,26 @@ async function checkGPU(): Promise<GPUInfo> {
     const response = await fetch('/api/system/gpu');
     if (response.ok) {
       const data = await response.json();
-      
+
       if (!data.detected) {
         status = 'warning';
         recommendations.push('No dedicated GPU detected. Video encoding will use CPU (slower).');
         recommendations.push('Consider using a system with a dedicated GPU for faster rendering.');
-      } else if (data.vendor.toLowerCase().includes('intel') && data.model.toLowerCase().includes('uhd')) {
+      } else if (
+        data.vendor.toLowerCase().includes('intel') &&
+        data.model.toLowerCase().includes('uhd')
+      ) {
         status = 'warning';
-        recommendations.push('Integrated GPU detected. Performance may be limited for complex projects.');
+        recommendations.push(
+          'Integrated GPU detected. Performance may be limited for complex projects.'
+        );
       }
 
       // Check for NVIDIA GPU (best for video encoding)
       if (data.vendor.toLowerCase().includes('nvidia')) {
-        recommendations.push('NVIDIA GPU detected. Enable NVENC hardware acceleration in Settings for optimal performance.');
+        recommendations.push(
+          'NVIDIA GPU detected. Enable NVENC hardware acceleration in Settings for optimal performance.'
+        );
       }
 
       return {
@@ -205,13 +212,13 @@ async function checkGPU(): Promise<GPUInfo> {
   // Fallback: Try WebGL to detect GPU
   const canvas = document.createElement('canvas');
   const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-  
+
   if (gl && gl instanceof WebGLRenderingContext) {
     const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
     if (debugInfo) {
       const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
       const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-      
+
       return {
         detected: true,
         vendor: vendor,
@@ -305,7 +312,7 @@ function analyzeMemory(totalGB: number, availableGB: number): MemoryInfo {
 async function checkOS(): Promise<OSInfo> {
   const platform = navigator.platform;
   const userAgent = navigator.userAgent;
-  
+
   let osName = 'Unknown';
   let version = 'Unknown';
   let compatible = true;
@@ -339,7 +346,8 @@ async function checkOS(): Promise<OSInfo> {
     version = 'Unknown';
   }
 
-  const architecture = navigator.userAgent.includes('x64') || navigator.userAgent.includes('WOW64') ? 'x64' : 'x86';
+  const architecture =
+    navigator.userAgent.includes('x64') || navigator.userAgent.includes('WOW64') ? 'x64' : 'x86';
 
   return {
     platform: osName,
@@ -374,7 +382,9 @@ export function getSystemRecommendations(requirements: SystemRequirements): stri
 
   // OS recommendations
   if (!requirements.os.compatible) {
-    recommendations.push('⚠️ Your operating system is not officially supported. Some features may not work correctly.');
+    recommendations.push(
+      '⚠️ Your operating system is not officially supported. Some features may not work correctly.'
+    );
   }
 
   return recommendations;

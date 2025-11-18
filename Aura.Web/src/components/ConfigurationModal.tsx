@@ -1,6 +1,6 @@
 /**
  * Configuration Modal - A modal wrapper for the First Run Wizard
- * 
+ *
  * This component provides a modal interface for configuration that can be
  * launched from anywhere in the app, particularly from the Welcome page.
  */

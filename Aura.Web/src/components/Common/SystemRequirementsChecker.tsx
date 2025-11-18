@@ -163,9 +163,7 @@ export function SystemRequirementsChecker({
         name: 'WebGL Support',
         description: 'Hardware-accelerated graphics',
         status: gl ? 'pass' : 'warn',
-        message: gl
-          ? 'WebGL is supported'
-          : 'WebGL is not available. Video preview may be slower.',
+        message: gl ? 'WebGL is supported' : 'WebGL is not available. Video preview may be slower.',
       });
 
       // Check Web Workers support
@@ -281,9 +279,7 @@ export function SystemRequirementsChecker({
           {failedChecks.length > 0 && (
             <MessageBar intent="error">
               <MessageBarBody>
-                <Text weight="semibold">
-                  {failedChecks.length} critical issue(s) detected
-                </Text>
+                <Text weight="semibold">{failedChecks.length} critical issue(s) detected</Text>
                 <Text size={300} block>
                   Some features may not work properly. Please address these issues.
                 </Text>
@@ -315,7 +311,13 @@ export function SystemRequirementsChecker({
               <div key={check.id} className={styles.checkItem}>
                 <div className={styles.checkIcon}>{getIcon(check.status)}</div>
                 <div className={styles.checkContent}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: tokens.spacingHorizontalS,
+                    }}
+                  >
                     <Text weight="semibold">{check.name}</Text>
                     {getStatusBadge(check.status)}
                   </div>

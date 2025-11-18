@@ -7,7 +7,6 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ProtectedRoute } from '../components/ProtectedRoute';
-
 // Mock the useAuth hook
 vi.mock('../hooks/useAuth', () => ({
   useAuth: vi.fn(),
@@ -182,7 +181,9 @@ describe('Protected Routes and Route Guards', () => {
     await waitFor(() => {
       expect(screen.queryByText('Admin Content')).not.toBeInTheDocument();
       expect(screen.getByText('Access Denied')).toBeInTheDocument();
-      expect(screen.getByText("You don't have permission to access this page.")).toBeInTheDocument();
+      expect(
+        screen.getByText("You don't have permission to access this page.")
+      ).toBeInTheDocument();
     });
   });
 

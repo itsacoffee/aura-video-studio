@@ -69,12 +69,9 @@ export const StorageStats: React.FC<StorageStatsProps> = ({ stats }) => {
 
         <div className={styles.row}>
           <Text size={300}>
-            {formatFileSize(stats.totalSizeBytes)} of{' '}
-            {formatFileSize(stats.quotaBytes)} used
+            {formatFileSize(stats.totalSizeBytes)} of {formatFileSize(stats.quotaBytes)} used
           </Text>
-          <Text size={300}>
-            {formatFileSize(stats.availableBytes)} available
-          </Text>
+          <Text size={300}>{formatFileSize(stats.availableBytes)} available</Text>
         </div>
 
         <div className={styles.stats}>

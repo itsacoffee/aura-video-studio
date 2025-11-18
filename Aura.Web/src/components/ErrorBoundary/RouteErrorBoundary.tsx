@@ -36,7 +36,7 @@ export class RouteErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     const routePath = this.props.routePath || window.location.hash || window.location.pathname;
-    
+
     loggingService.error(
       `RouteErrorBoundary caught an error in route: ${routePath}`,
       error,

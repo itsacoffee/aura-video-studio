@@ -1,6 +1,6 @@
 /**
  * Utility Functions Index
- * 
+ *
  * Central exports for commonly used utility functions
  */
 

@@ -1,4 +1,5 @@
 import { test, expect, chromium } from '@playwright/test';
+import type { PerformanceWithMemory, WindowWithGC } from './types';
 
 /**
  * Memory and performance regression tests
@@ -17,10 +18,11 @@ test.describe('Memory and Performance Regression', () => {
 
       // Get initial memory usage
       const initialMetrics = await page.evaluate(() => {
-        if (performance && (performance as any).memory) {
+        const perf = performance as PerformanceWithMemory;
+        if (perf && perf.memory) {
           return {
-            usedJSHeapSize: (performance as any).memory.usedJSHeapSize,
-            totalJSHeapSize: (performance as any).memory.totalJSHeapSize,
+            usedJSHeapSize: perf.memory.usedJSHeapSize,
+            totalJSHeapSize: perf.memory.totalJSHeapSize,
           };
         }
         return null;
@@ -47,17 +49,19 @@ test.describe('Memory and Performance Regression', () => {
 
       // Force garbage collection if available
       await page.evaluate(() => {
-        if ((window as any).gc) {
-          (window as any).gc();
+        const win = window as WindowWithGC;
+        if (win.gc) {
+          win.gc();
         }
       });
 
       // Get final memory usage
       const finalMetrics = await page.evaluate(() => {
-        if (performance && (performance as any).memory) {
+        const perf = performance as PerformanceWithMemory;
+        if (perf && perf.memory) {
           return {
-            usedJSHeapSize: (performance as any).memory.usedJSHeapSize,
-            totalJSHeapSize: (performance as any).memory.totalJSHeapSize,
+            usedJSHeapSize: perf.memory.usedJSHeapSize,
+            totalJSHeapSize: perf.memory.totalJSHeapSize,
           };
         }
         return null;
@@ -138,9 +142,8 @@ test.describe('Memory and Performance Regression', () => {
 
     // Get initial listener count
     const initialListeners = await page.evaluate(() => {
-      return (window as any).getEventListeners
-        ? Object.keys((window as any).getEventListeners(document)).length
-        : 0;
+      const win = window as WindowWithGC;
+      return win.getEventListeners ? Object.keys(win.getEventListeners(document)).length : 0;
     });
 
     // Navigate through multiple pages
@@ -152,9 +155,8 @@ test.describe('Memory and Performance Regression', () => {
 
     // Get final listener count
     const finalListeners = await page.evaluate(() => {
-      return (window as any).getEventListeners
-        ? Object.keys((window as any).getEventListeners(document)).length
-        : 0;
+      const win = window as WindowWithGC;
+      return win.getEventListeners ? Object.keys(win.getEventListeners(document)).length : 0;
     });
 
     // Listener count should not grow significantly
@@ -196,10 +198,13 @@ test.describe('Memory and Performance Regression', () => {
     await page.goto('/');
 
     // Get baseline metrics
-    const beforeMetrics = await page.evaluate(() => ({
-      heap: (performance as any).memory?.usedJSHeapSize || 0,
-      connections: (performance as any).getEntriesByType?.('resource').length || 0,
-    }));
+    const beforeMetrics = await page.evaluate(() => {
+      const perf = performance as PerformanceWithMemory;
+      return {
+        heap: perf.memory?.usedJSHeapSize || 0,
+        connections: performance.getEntriesByType?.('resource').length || 0,
+      };
+    });
 
     // Simulate job running
     await page.waitForTimeout(2000);
@@ -210,18 +215,22 @@ test.describe('Memory and Performance Regression', () => {
 
     // Force cleanup
     await page.evaluate(() => {
-      if ((window as any).gc) {
-        (window as any).gc();
+      const win = window as WindowWithGC;
+      if (win.gc) {
+        win.gc();
       }
     });
 
     await page.waitForTimeout(1000);
 
     // Get after metrics
-    const afterMetrics = await page.evaluate(() => ({
-      heap: (performance as any).memory?.usedJSHeapSize || 0,
-      connections: (performance as any).getEntriesByType?.('resource').length || 0,
-    }));
+    const afterMetrics = await page.evaluate(() => {
+      const perf = performance as PerformanceWithMemory;
+      return {
+        heap: perf.memory?.usedJSHeapSize || 0,
+        connections: performance.getEntriesByType?.('resource').length || 0,
+      };
+    });
 
     console.info('Before:', beforeMetrics);
     console.info('After:', afterMetrics);

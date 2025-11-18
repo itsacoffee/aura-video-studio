@@ -61,7 +61,8 @@ export function classifyError(error: unknown): ClassifiedError {
       return {
         category: ErrorCategory.TIMEOUT,
         title: 'Request Timeout',
-        message: 'The server took too long to respond. This may be due to slow network or the service being overloaded.',
+        message:
+          'The server took too long to respond. This may be due to slow network or the service being overloaded.',
         technicalDetails: axiosError.message || 'Request timeout',
         isRetryable: true,
         suggestedActions: [
@@ -257,7 +258,7 @@ export function classifyError(error: unknown): ClassifiedError {
 /**
  * Get suggested actions for client errors based on status code
  */
-function getClientErrorActions(status: number, detail: string): string[] {
+function getClientErrorActions(status: number, _detail: string): string[] {
   switch (status) {
     case 400:
       return [

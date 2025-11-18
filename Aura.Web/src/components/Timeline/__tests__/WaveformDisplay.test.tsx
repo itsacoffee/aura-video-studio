@@ -16,7 +16,7 @@ vi.mock('../../../services/waveformService', () => ({
 describe('WaveformDisplay', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue({
       fillStyle: '',
       strokeStyle: '',
@@ -41,13 +41,7 @@ describe('WaveformDisplay', () => {
 
       vi.mocked(waveformService.generateWaveform).mockResolvedValue(mockWaveformData);
 
-      render(
-        <WaveformDisplay
-          audioPath="/test-audio.wav"
-          width={400}
-          height={100}
-        />
-      );
+      render(<WaveformDisplay audioPath="/test-audio.wav" width={400} height={100} />);
 
       await waitFor(() => {
         expect(waveformService.generateWaveform).toHaveBeenCalledWith({
@@ -63,11 +57,7 @@ describe('WaveformDisplay', () => {
       );
 
       const { container } = render(
-        <WaveformDisplay
-          audioPath="/bad-audio.wav"
-          width={400}
-          height={100}
-        />
+        <WaveformDisplay audioPath="/bad-audio.wav" width={400} height={100} />
       );
 
       await waitFor(() => {
@@ -87,11 +77,7 @@ describe('WaveformDisplay', () => {
       vi.mocked(waveformService.generateWaveform).mockResolvedValue(mockWaveformData);
 
       const { container } = render(
-        <WaveformDisplay
-          audioPath="/test-audio.wav"
-          width={600}
-          height={120}
-        />
+        <WaveformDisplay audioPath="/test-audio.wav" width={600} height={120} />
       );
 
       await waitFor(() => {
@@ -136,11 +122,7 @@ describe('WaveformDisplay', () => {
       vi.mocked(waveformService.generateWaveform).mockResolvedValue(mockWaveformData);
 
       const { unmount } = render(
-        <WaveformDisplay
-          audioPath="/test-audio.wav"
-          width={400}
-          height={100}
-        />
+        <WaveformDisplay audioPath="/test-audio.wav" width={400} height={100} />
       );
 
       await waitFor(() => {
@@ -160,24 +142,14 @@ describe('WaveformDisplay', () => {
       vi.mocked(waveformService.generateWaveform).mockResolvedValue(mockWaveformData);
 
       const { rerender } = render(
-        <WaveformDisplay
-          audioPath="/test-audio-1.wav"
-          width={400}
-          height={100}
-        />
+        <WaveformDisplay audioPath="/test-audio-1.wav" width={400} height={100} />
       );
 
       await waitFor(() => {
         expect(waveformService.generateWaveform).toHaveBeenCalledTimes(1);
       });
 
-      rerender(
-        <WaveformDisplay
-          audioPath="/test-audio-2.wav"
-          width={400}
-          height={100}
-        />
-      );
+      rerender(<WaveformDisplay audioPath="/test-audio-2.wav" width={400} height={100} />);
 
       await waitFor(() => {
         expect(waveformService.generateWaveform).toHaveBeenCalledTimes(2);

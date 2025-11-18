@@ -54,7 +54,7 @@ export function SuccessAnimation({
               }}
             />
           </motion.div>
-          
+
           <motion.p
             className={`${textSize} font-medium text-success-600 dark:text-success-400`}
             initial={{ opacity: 0, y: 10 }}

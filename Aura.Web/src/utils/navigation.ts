@@ -1,6 +1,6 @@
 /**
  * Navigation utilities that work in both web and Electron environments
- * 
+ *
  * In Electron, we use hash-based routing with file:// protocol
  * In web, we can use standard navigation
  */
@@ -12,7 +12,7 @@
 export function navigateToRoute(path: string): void {
   // Check if running in Electron
   const isElectron = typeof window !== 'undefined' && (window.aura || window.electron);
-  
+
   if (isElectron) {
     // In Electron, use hash-based routing
     const hashPath = path.startsWith('#') ? path : `#${path}`;
@@ -37,7 +37,7 @@ export function reloadPage(): void {
  */
 export async function navigateToExternalUrl(url: string): Promise<void> {
   const electron = typeof window !== 'undefined' ? window.aura || window.electron : null;
-  
+
   if (electron?.shell?.openExternal) {
     // In Electron, open in default browser
     await electron.shell.openExternal(url);

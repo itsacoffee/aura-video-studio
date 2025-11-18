@@ -101,9 +101,7 @@ export function TemplateSelectionDialog({ onClose, onSelected }: TemplateSelecti
                   </p>
 
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-500 dark:text-gray-400">
-                      {template.category}
-                    </span>
+                    <span className="text-gray-500 dark:text-gray-400">{template.category}</span>
                     {template.isSystemTemplate && (
                       <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full">
                         Official

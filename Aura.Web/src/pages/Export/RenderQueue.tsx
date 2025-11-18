@@ -149,7 +149,7 @@ const mapJobStatus = (status: string): 'queued' | 'rendering' | 'complete' | 'fa
 
 export function RenderQueue() {
   const styles = useStyles();
-  
+
   // Use the job queue hook
   const {
     jobs,
@@ -189,16 +189,22 @@ export function RenderQueue() {
   }));
 
   const currentRender = queueItems.find((item) => item.status === 'rendering');
-  const queuedCount = statistics?.pendingJobs || queueItems.filter((item) => item.status === 'queued').length;
-  const completedCount = statistics?.completedJobs || queueItems.filter((item) => item.status === 'complete').length;
-  const failedCount = statistics?.failedJobs || queueItems.filter((item) => item.status === 'failed').length;
+  const queuedCount =
+    statistics?.pendingJobs || queueItems.filter((item) => item.status === 'queued').length;
+  const completedCount =
+    statistics?.completedJobs || queueItems.filter((item) => item.status === 'complete').length;
+  const failedCount =
+    statistics?.failedJobs || queueItems.filter((item) => item.status === 'failed').length;
 
   const overallProgress =
     statistics && statistics.totalJobs > 0
       ? Math.round((statistics.completedJobs / statistics.totalJobs) * 100)
       : queueItems.length > 0
-      ? Math.round((queueItems.filter((item) => item.status === 'complete').length / queueItems.length) * 100)
-      : 0;
+        ? Math.round(
+            (queueItems.filter((item) => item.status === 'complete').length / queueItems.length) *
+              100
+          )
+        : 0;
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -212,12 +218,9 @@ export function RenderQueue() {
 
   const handlePauseResume = async () => {
     if (!configuration) return;
-    
+
     try {
-      await updateConfiguration(
-        configuration.maxConcurrentJobs,
-        !configuration.isEnabled
-      );
+      await updateConfiguration(configuration.maxConcurrentJobs, !configuration.isEnabled);
       setIsPaused(!isPaused);
     } catch (error) {
       console.error('Failed to pause/resume queue:', error);
@@ -297,12 +300,8 @@ export function RenderQueue() {
       <div className={styles.header}>
         <Title1>Render Queue</Title1>
         <Text>Manage your video export queue and monitor rendering progress</Text>
-        {!isConnected && (
-          <Badge color="danger">Disconnected from queue service</Badge>
-        )}
-        {error && (
-          <Text style={{ color: 'red' }}>{error}</Text>
-        )}
+        {!isConnected && <Badge color="danger">Disconnected from queue service</Badge>}
+        {error && <Text style={{ color: 'red' }}>{error}</Text>}
         <div className={styles.headerActions}>
           <Button
             appearance="secondary"
@@ -424,13 +423,9 @@ export function RenderQueue() {
                 </TableCell>
                 <TableCell>
                   {item.status === 'rendering' && (
-                    <Caption1>
-                      {item.currentStage || 'Processing...'}
-                    </Caption1>
+                    <Caption1>{item.currentStage || 'Processing...'}</Caption1>
                   )}
-                  {item.status === 'complete' && (
-                    <Caption1>Done</Caption1>
-                  )}
+                  {item.status === 'complete' && <Caption1>Done</Caption1>}
                   {item.status === 'failed' && <Caption1>Failed</Caption1>}
                   {item.status === 'queued' && <Caption1>Waiting...</Caption1>}
                 </TableCell>

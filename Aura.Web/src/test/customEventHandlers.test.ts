@@ -5,7 +5,6 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-
 // Mock loggingService before importing
 vi.mock('../services/loggingService', () => ({
   loggingService: {

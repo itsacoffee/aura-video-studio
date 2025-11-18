@@ -11,12 +11,12 @@ export interface ProjectsState {
   // Projects cache
   projects: Map<string, Project>;
   projectsList: string[]; // Ordered list of project IDs
-  
+
   // UI state
   selectedProjectId: string | null;
   isLoading: boolean;
   isSyncing: boolean;
-  
+
   // Filters and sorting
   filters: {
     status?: Project['status'];
@@ -25,49 +25,49 @@ export interface ProjectsState {
   };
   sortBy: 'createdAt' | 'updatedAt' | 'name';
   sortOrder: 'asc' | 'desc';
-  
+
   // Pagination
   currentPage: number;
   pageSize: number;
   totalProjects: number;
-  
+
   // Recent projects for quick access
   recentProjects: string[]; // Project IDs
   maxRecentProjects: number;
-  
+
   // Draft auto-save
   draftProject: Partial<Project> | null;
-  
+
   // Actions - Project management
   addProject: (project: Project) => void;
   updateProject: (id: string, updates: Partial<Project>) => void;
   removeProject: (id: string) => void;
   setProjects: (projects: Project[]) => void;
   clearProjects: () => void;
-  
+
   // Actions - Selection and navigation
   selectProject: (id: string | null) => void;
   addToRecent: (id: string) => void;
-  
+
   // Actions - Filters and sorting
   setFilters: (filters: Partial<ProjectsState['filters']>) => void;
   clearFilters: () => void;
   setSortBy: (sortBy: ProjectsState['sortBy']) => void;
   setSortOrder: (sortOrder: ProjectsState['sortOrder']) => void;
-  
+
   // Actions - Pagination
   setPage: (page: number) => void;
   setPageSize: (pageSize: number) => void;
   setTotalProjects: (total: number) => void;
-  
+
   // Actions - Loading states
   setLoading: (isLoading: boolean) => void;
   setSyncing: (isSyncing: boolean) => void;
-  
+
   // Actions - Draft management
   saveDraft: (draft: Partial<Project>) => void;
   clearDraft: () => void;
-  
+
   // Getters
   getProject: (id: string) => Project | undefined;
   getFilteredProjects: () => Project[];
@@ -83,18 +83,18 @@ export const useProjectsStore = create<ProjectsState>()(
       selectedProjectId: null,
       isLoading: false,
       isSyncing: false,
-      
+
       filters: {},
       sortBy: 'updatedAt',
       sortOrder: 'desc',
-      
+
       currentPage: 1,
       pageSize: 10,
       totalProjects: 0,
-      
+
       recentProjects: [],
       maxRecentProjects: 10,
-      
+
       draftProject: null,
 
       // Add a project to the store
@@ -102,10 +102,10 @@ export const useProjectsStore = create<ProjectsState>()(
         set((state) => {
           const newProjects = new Map(state.projects);
           newProjects.set(project.id, project);
-          
+
           return {
             projects: newProjects,
-            projectsList: [project.id, ...state.projectsList.filter(id => id !== project.id)],
+            projectsList: [project.id, ...state.projectsList.filter((id) => id !== project.id)],
           };
         });
       },
@@ -137,18 +137,18 @@ export const useProjectsStore = create<ProjectsState>()(
 
           return {
             projects: newProjects,
-            projectsList: state.projectsList.filter(projectId => projectId !== id),
+            projectsList: state.projectsList.filter((projectId) => projectId !== id),
             selectedProjectId: state.selectedProjectId === id ? null : state.selectedProjectId,
-            recentProjects: state.recentProjects.filter(projectId => projectId !== id),
+            recentProjects: state.recentProjects.filter((projectId) => projectId !== id),
           };
         });
       },
 
       // Set multiple projects (bulk update)
       setProjects: (projects) => {
-        const projectsMap = new Map(projects.map(p => [p.id, p]));
-        const projectsList = projects.map(p => p.id);
-        
+        const projectsMap = new Map(projects.map((p) => [p.id, p]));
+        const projectsList = projects.map((p) => p.id);
+
         set({
           projects: projectsMap,
           projectsList,
@@ -178,9 +178,9 @@ export const useProjectsStore = create<ProjectsState>()(
         set((state) => {
           const recentProjects = [
             id,
-            ...state.recentProjects.filter(projectId => projectId !== id),
+            ...state.recentProjects.filter((projectId) => projectId !== id),
           ].slice(0, state.maxRecentProjects);
-          
+
           return { recentProjects };
         });
       },
@@ -254,21 +254,22 @@ export const useProjectsStore = create<ProjectsState>()(
         let filtered = Array.from(projects.values());
 
         if (filters.status) {
-          filtered = filtered.filter(p => p.status === filters.status);
+          filtered = filtered.filter((p) => p.status === filters.status);
         }
 
         if (filters.search) {
           const searchLower = filters.search.toLowerCase();
-          filtered = filtered.filter(p =>
-            p.name.toLowerCase().includes(searchLower) ||
-            p.description?.toLowerCase().includes(searchLower) ||
-            p.brief.topic.toLowerCase().includes(searchLower)
+          filtered = filtered.filter(
+            (p) =>
+              p.name.toLowerCase().includes(searchLower) ||
+              p.description?.toLowerCase().includes(searchLower) ||
+              p.brief.topic.toLowerCase().includes(searchLower)
           );
         }
 
         if (filters.tags && filters.tags.length > 0) {
-          filtered = filtered.filter(p =>
-            p.tags && filters.tags!.some(tag => p.tags!.includes(tag))
+          filtered = filtered.filter(
+            (p) => p.tags && filters.tags!.some((tag) => p.tags!.includes(tag))
           );
         }
 

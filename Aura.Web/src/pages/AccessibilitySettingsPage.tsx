@@ -1,6 +1,6 @@
 /**
  * Accessibility Settings Page
- * 
+ *
  * Allows users to customize accessibility settings including:
  * - High contrast mode
  * - Reduced motion
@@ -131,7 +131,11 @@ export function AccessibilitySettingsPage() {
       <div className={styles.section}>
         <Card className={styles.card}>
           <CardHeader
-            header={<Text weight="semibold" size={500}>Visual Accessibility</Text>}
+            header={
+              <Text weight="semibold" size={500}>
+                Visual Accessibility
+              </Text>
+            }
             description="Settings for improving visual clarity and contrast"
           />
           <Divider />
@@ -187,7 +191,9 @@ export function AccessibilitySettingsPage() {
               <div>
                 <RadioGroup
                   value={settings.fontSize}
-                  onChange={(_, data) => updateSettings({ fontSize: data.value as typeof settings.fontSize })}
+                  onChange={(_, data) =>
+                    updateSettings({ fontSize: data.value as typeof settings.fontSize })
+                  }
                   className={styles.radioGroup}
                   aria-label="Font size"
                 >
@@ -203,7 +209,11 @@ export function AccessibilitySettingsPage() {
 
         <Card className={styles.card}>
           <CardHeader
-            header={<Text weight="semibold" size={500}>Motion & Animation</Text>}
+            header={
+              <Text weight="semibold" size={500}>
+                Motion & Animation
+              </Text>
+            }
             description="Control animations and transitions"
           />
           <Divider />
@@ -226,7 +236,11 @@ export function AccessibilitySettingsPage() {
 
         <Card className={styles.card}>
           <CardHeader
-            header={<Text weight="semibold" size={500}>Screen Reader</Text>}
+            header={
+              <Text weight="semibold" size={500}>
+                Screen Reader
+              </Text>
+            }
             description="Settings for screen reader users"
           />
           <Divider />
@@ -249,20 +263,23 @@ export function AccessibilitySettingsPage() {
       </div>
 
       <div className={styles.actions}>
-        <Button
-          appearance="secondary"
-          icon={<ArrowReset20Regular />}
-          onClick={handleReset}
-        >
+        <Button appearance="secondary" icon={<ArrowReset20Regular />} onClick={handleReset}>
           Reset to Defaults
         </Button>
       </div>
 
-      <Divider style={{ marginTop: tokens.spacingVerticalXL, marginBottom: tokens.spacingVerticalXL }} />
+      <Divider
+        style={{ marginTop: tokens.spacingVerticalXL, marginBottom: tokens.spacingVerticalXL }}
+      />
 
       <div>
-        <Text size={300} weight="semibold">Keyboard Shortcuts</Text>
-        <Text block style={{ marginTop: tokens.spacingVerticalS, color: tokens.colorNeutralForeground3 }}>
+        <Text size={300} weight="semibold">
+          Keyboard Shortcuts
+        </Text>
+        <Text
+          block
+          style={{ marginTop: tokens.spacingVerticalS, color: tokens.colorNeutralForeground3 }}
+        >
           Press <strong>Ctrl+/</strong> (or <strong>Cmd+/</strong> on Mac) to view all available
           keyboard shortcuts. You can customize keyboard shortcuts in the Settings page.
         </Text>

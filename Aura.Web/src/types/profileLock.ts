@@ -78,12 +78,12 @@ export interface ValidateProviderResponse {
 /**
  * Provider status for UI display
  */
-export type ProviderStatusState = 
-  | 'active'      // Provider is working normally
-  | 'waiting'     // Extended wait (30-180s)
+export type ProviderStatusState =
+  | 'active' // Provider is working normally
+  | 'waiting' // Extended wait (30-180s)
   | 'extended-wait' // Deep wait (180s+)
   | 'stall-suspected' // No heartbeat detected
-  | 'error'       // Fatal error occurred
+  | 'error' // Fatal error occurred
   | 'user-requested-fallback'; // User initiated fallback
 
 export interface ProviderStatusInfo {
@@ -109,7 +109,7 @@ export const PIPELINE_STAGES = [
   'refinement',
   'tts',
   'visual_prompts',
-  'rendering'
+  'rendering',
 ] as const;
 
-export type PipelineStage = typeof PIPELINE_STAGES[number];
+export type PipelineStage = (typeof PIPELINE_STAGES)[number];
