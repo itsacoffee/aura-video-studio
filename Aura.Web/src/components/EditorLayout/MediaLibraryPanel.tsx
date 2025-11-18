@@ -242,8 +242,16 @@ export const MediaLibraryPanel = forwardRef<MediaLibraryPanelRef, MediaLibraryPa
         }, 1000);
       } catch (error) {
         console.error('Error processing media file:', error);
-        // Remove failed clip
-        setClips((prev) => prev.filter((clip) => clip.id !== clipId));
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        console.warn(`Failed to process ${file.name}: ${errorMessage}`);
+        // Mark the clip with an error state rather than removing it
+        setClips((prev) =>
+          prev.map((clip) =>
+            clip.id === clipId
+              ? { ...clip, uploadProgress: undefined, preview: undefined }
+              : clip
+          )
+        );
       }
     };
 
@@ -274,7 +282,20 @@ export const MediaLibraryPanel = forwardRef<MediaLibraryPanelRef, MediaLibraryPa
         uploadProgress: 0,
       }));
 
-      setClips((prev) => [...prev, ...newClips]);
+      // Deduplicate clips based on (name, size, lastModified) before adding
+      setClips((prev) => {
+        const allClips = [...prev, ...newClips];
+        return allClips.filter(
+          (clip, index, self) =>
+            index ===
+            self.findIndex(
+              (c) =>
+                c.name === clip.name &&
+                c.file.size === clip.file.size &&
+                c.file.lastModified === clip.file.lastModified
+            )
+        );
+      });
 
       // Process each file
       for (const clip of newClips) {
@@ -304,6 +325,7 @@ export const MediaLibraryPanel = forwardRef<MediaLibraryPanelRef, MediaLibraryPa
     };
 
     const handleClipDragEnd = () => {
+      // Always reset drag state, even if drop was canceled
       onClipDragEnd?.();
     };
 

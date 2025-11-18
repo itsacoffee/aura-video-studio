@@ -301,7 +301,7 @@ export default defineConfig(({ mode }) => {
       include: [
         'src/**/*.test.{ts,tsx}',
         'tests/smoke/**/*.test.ts',
-        'tests/integration/**/*.test.ts',
+        'tests/integration/**/*.test.{ts,tsx}',
       ],
       exclude: ['tests/e2e/**', 'node_modules/**'],
       coverage: {

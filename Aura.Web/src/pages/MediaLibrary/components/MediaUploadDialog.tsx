@@ -13,13 +13,6 @@ import {
   Textarea,
   Dropdown,
   Option,
-  TagPicker,
-  TagPickerControl,
-  TagPickerGroup,
-  TagPickerInput,
-  TagPickerList,
-  TagPickerOption,
-  Tag,
   ProgressBar,
   Text,
   Label,
@@ -84,14 +77,15 @@ interface MediaUploadDialogProps {
 
 export const MediaUploadDialog: React.FC<MediaUploadDialogProps> = ({
   collections,
-  tags,
   onClose,
   onSuccess,
 }) => {
   const styles = useStyles();
   const [files, setFiles] = useState<File[]>([]);
   const [dragActive, setDragActive] = useState(false);
+  const [dragDepth, setDragDepth] = useState(0);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<Omit<MediaUploadRequest, 'fileName' | 'type'>>({
     description: '',
@@ -116,31 +110,76 @@ export const MediaUploadDialog: React.FC<MediaUploadDialogProps> = ({
     },
   });
 
-  const handleDrag = useCallback((e: React.DragEvent) => {
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true);
-    } else if (e.type === 'dragleave') {
-      setDragActive(false);
-    }
+    setDragDepth((prev) => prev + 1);
+    setDragActive(true);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragDepth((prev) => {
+      const newDepth = prev - 1;
+      if (newDepth === 0) {
+        setDragActive(false);
+      }
+      return newDepth;
+    });
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
+    setDragDepth(0);
 
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const newFiles = Array.from(e.dataTransfer.files);
-      setFiles((prev) => [...prev, ...newFiles]);
+      setFiles((prev) => {
+        const allFiles = [...prev, ...newFiles];
+        // Deduplicate based on name, lastModified, and size
+        return allFiles.filter(
+          (file, index, self) =>
+            index ===
+            self.findIndex(
+              (f) =>
+                f.name === file.name &&
+                f.lastModified === file.lastModified &&
+                f.size === file.size
+            )
+        );
+      });
     }
   }, []);
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const newFiles = Array.from(e.target.files);
-      setFiles((prev) => [...prev, ...newFiles]);
+      setFiles((prev) => {
+        const allFiles = [...prev, ...newFiles];
+        // Deduplicate based on name, lastModified, and size
+        return allFiles.filter(
+          (file, index, self) =>
+            index ===
+            self.findIndex(
+              (f) =>
+                f.name === file.name &&
+                f.lastModified === file.lastModified &&
+                f.size === file.size
+            )
+        );
+      });
+    }
+    // Clear input value to allow reselecting the same file
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   }, []);
 
@@ -171,11 +210,19 @@ export const MediaUploadDialog: React.FC<MediaUploadDialogProps> = ({
                   className={`${styles.dropzone} ${
                     dragActive ? styles.dropzoneActive : ''
                   }`}
-                  onDragEnter={handleDrag}
-                  onDragLeave={handleDrag}
-                  onDragOver={handleDrag}
+                  onDragEnter={handleDragEnter}
+                  onDragLeave={handleDragLeave}
+                  onDragOver={handleDragOver}
                   onDrop={handleDrop}
-                  onClick={() => document.getElementById('file-input')?.click()}
+                  onClick={() => fileInputRef.current?.click()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      fileInputRef.current?.click();
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Drop files here or click to select files"
                 >
                   <CloudArrowUp24Regular style={{ fontSize: '48px' }} />
                   <Text size={400} weight="semibold">
@@ -185,6 +232,7 @@ export const MediaUploadDialog: React.FC<MediaUploadDialogProps> = ({
                     Supports videos, images, audio, and documents
                   </Text>
                   <input
+                    ref={fileInputRef}
                     id="file-input"
                     type="file"
                     multiple
@@ -204,11 +252,12 @@ export const MediaUploadDialog: React.FC<MediaUploadDialogProps> = ({
                   ))}
                   <Button
                     appearance="subtle"
-                    onClick={() => document.getElementById('file-input')?.click()}
+                    onClick={() => fileInputRef.current?.click()}
                   >
                     Add more files
                   </Button>
                   <input
+                    ref={fileInputRef}
                     id="file-input"
                     type="file"
                     multiple
