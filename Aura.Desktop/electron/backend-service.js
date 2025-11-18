@@ -48,8 +48,10 @@ class BackendService {
     this.healthCheckInterval = null;
     this.pid = null;
     this.isWindows = process.platform === "win32";
-    this.healthEndpoint = networkContract.healthEndpoint || "/api/health";
+    // Health endpoints from network contract (aligned with BackendEndpoints constants in Aura.Api)
+    this.healthEndpoint = networkContract.healthEndpoint || "/health/live";
     this.readinessEndpoint = networkContract.readinessEndpoint || "/health/ready";
+    this.sseJobEventsTemplate = networkContract.sseJobEventsTemplate || "/api/jobs/{id}/events";
 
     // Constants
     this.BACKEND_STARTUP_TIMEOUT = networkContract.maxStartupMs ?? 60000; // 60 seconds

@@ -7,8 +7,10 @@ const { ipcMain } = require('electron');
 const axios = require('axios');
 
 class VideoHandler {
-  constructor(backendUrl) {
+  constructor(backendUrl, networkContract) {
     this.backendUrl = backendUrl;
+    this.networkContract = networkContract;
+    this.sseJobEventsTemplate = networkContract?.sseJobEventsTemplate || '/api/jobs/{id}/events';
     this.activeGenerations = new Map();
   }
 
@@ -17,6 +19,19 @@ class VideoHandler {
    */
   setBackendUrl(url) {
     this.backendUrl = url;
+  }
+
+  /**
+   * Build full job events URL for SSE subscription
+   * @param {string} jobId - The job ID to build the URL for
+   * @returns {string} - Full URL for SSE job events
+   */
+  _buildJobEventsUrl(jobId) {
+    if (!jobId) {
+      throw new Error('Job ID is required to build events URL');
+    }
+    const path = this.sseJobEventsTemplate.replace('{id}', encodeURIComponent(jobId));
+    return new URL(path, this.backendUrl).toString();
   }
 
   /**
