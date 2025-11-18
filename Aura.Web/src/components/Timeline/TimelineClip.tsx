@@ -2,6 +2,7 @@ import { makeStyles, tokens, Tooltip, type GriffelStyle } from '@fluentui/react-
 import React, { useState, useRef, useCallback } from 'react';
 import { snapToFrame } from '../../services/timelineEngine';
 import { AppliedEffect } from '../../types/effects';
+import { WaveformDisplay } from './WaveformDisplay';
 import '../../styles/video-editor-theme.css';
 
 const useStyles = makeStyles({
@@ -157,6 +158,7 @@ export interface TimelineClipData {
   file?: File;
   thumbnails?: Array<{ dataUrl: string; timestamp: number }>;
   waveform?: { peaks: number[]; duration: number };
+  audioPath?: string;
   preview?: string;
   keyframes?: Record<string, Array<{ time: number; value: number | string | boolean }>>;
 }
@@ -345,19 +347,28 @@ export function TimelineClip({
       )}
 
       {/* Waveform for audio clips */}
-      {(clip.type === 'audio' || (clip.type === 'video' && !clip.thumbnails)) &&
-        clip.waveform &&
-        clip.waveform.peaks.length > 0 && (
-          <div className={styles.clipWaveform}>
-            {clip.waveform.peaks.map((peak, idx) => (
-              <div
-                key={idx}
-                className={styles.waveformBar}
-                style={{ height: `${Math.max(2, peak * 100)}%` }}
-              />
-            ))}
-          </div>
-        )}
+      {(clip.type === 'audio' || (clip.type === 'video' && !clip.thumbnails)) && (
+        <>
+          {clip.audioPath ? (
+            <WaveformDisplay
+              audioPath={clip.audioPath}
+              width={clip.duration * pixelsPerSecond}
+              height={40}
+              color="rgba(255, 255, 255, 0.8)"
+            />
+          ) : clip.waveform && clip.waveform.peaks.length > 0 ? (
+            <div className={styles.clipWaveform}>
+              {clip.waveform.peaks.map((peak, idx) => (
+                <div
+                  key={idx}
+                  className={styles.waveformBar}
+                  style={{ height: `${Math.max(2, peak * 100)}%` }}
+                />
+              ))}
+            </div>
+          ) : null}
+        </>
+      )}
 
       <span className={styles.clipLabel}>{clip.label}</span>
 

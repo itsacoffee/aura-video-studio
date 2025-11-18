@@ -91,15 +91,21 @@ const useStyles = makeStyles({
 interface VideoPreviewPlayerProps {
   videoUrl?: string;
   currentTime?: number;
+  isPlaying?: boolean;
+  playbackSpeed?: number;
   onTimeUpdate?: (time: number) => void;
   onSeek?: (time: number) => void;
+  onPlayPauseChange?: (isPlaying: boolean) => void;
 }
 
 export function VideoPreviewPlayer({
   videoUrl,
   currentTime = 0,
+  isPlaying: externalIsPlaying,
+  playbackSpeed: externalPlaybackSpeed,
   onTimeUpdate,
   onSeek,
+  onPlayPauseChange,
 }: VideoPreviewPlayerProps) {
   const styles = useStyles();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -108,13 +114,54 @@ export function VideoPreviewPlayer({
   const [isMuted, setIsMuted] = useState(false);
   const [duration, setDuration] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1);
+  const isSeekingRef = useRef(false);
+
+  // Sync video time with external currentTime changes (from timeline)
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || isSeekingRef.current) return;
+
+    const timeDiff = Math.abs(video.currentTime - currentTime);
+    if (timeDiff > 0.1) {
+      video.currentTime = currentTime;
+    }
+  }, [currentTime]);
+
+  // Sync play/pause state with external control
+  useEffect(() => {
+    if (externalIsPlaying === undefined) return;
+    
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (externalIsPlaying && !isPlaying) {
+      video.play().catch((error: unknown) => {
+        console.error('Failed to play video:', error);
+      });
+      setIsPlaying(true);
+    } else if (!externalIsPlaying && isPlaying) {
+      video.pause();
+      setIsPlaying(false);
+    }
+  }, [externalIsPlaying, isPlaying]);
+
+  // Sync playback speed with external control
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || externalPlaybackSpeed === undefined) return;
+    
+    video.playbackRate = externalPlaybackSpeed;
+    setPlaybackRate(externalPlaybackSpeed);
+  }, [externalPlaybackSpeed]);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
     const handleTimeUpdate = () => {
-      onTimeUpdate?.(video.currentTime);
+      if (!isSeekingRef.current) {
+        onTimeUpdate?.(video.currentTime);
+      }
     };
 
     const handleLoadedMetadata = () => {
@@ -123,18 +170,33 @@ export function VideoPreviewPlayer({
 
     const handleEnded = () => {
       setIsPlaying(false);
+      onPlayPauseChange?.(false);
+    };
+
+    const handlePlay = () => {
+      setIsPlaying(true);
+      onPlayPauseChange?.(true);
+    };
+
+    const handlePause = () => {
+      setIsPlaying(false);
+      onPlayPauseChange?.(false);
     };
 
     video.addEventListener('timeupdate', handleTimeUpdate);
     video.addEventListener('loadedmetadata', handleLoadedMetadata);
     video.addEventListener('ended', handleEnded);
+    video.addEventListener('play', handlePlay);
+    video.addEventListener('pause', handlePause);
 
     return () => {
       video.removeEventListener('timeupdate', handleTimeUpdate);
       video.removeEventListener('loadedmetadata', handleLoadedMetadata);
       video.removeEventListener('ended', handleEnded);
+      video.removeEventListener('play', handlePlay);
+      video.removeEventListener('pause', handlePause);
     };
-  }, [onTimeUpdate]);
+  }, [onTimeUpdate, onPlayPauseChange]);
 
   const handlePlayPause = useCallback(() => {
     const video = videoRef.current;
@@ -178,8 +240,13 @@ export function VideoPreviewPlayer({
     const video = videoRef.current;
     if (!video) return;
 
+    isSeekingRef.current = true;
     video.currentTime = value;
     onSeek?.(value);
+    
+    setTimeout(() => {
+      isSeekingRef.current = false;
+    }, 100);
   };
 
   const handleVolumeChange = (value: number) => {
