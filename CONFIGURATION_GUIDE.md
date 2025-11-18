@@ -382,6 +382,55 @@ TTS providers are registered via the existing `AddAuraProviders()` extension met
 }
 ```
 
+### Minimum Configuration for Basic AI Video Generation
+
+The following components are strictly required for core video generation functionality:
+
+#### Required Components:
+1. **LLM Provider** (at least one):
+   - RuleBased (always available, no setup required)
+   - OR Ollama (local, free)
+   - OR OpenAI/Anthropic/Gemini (cloud, requires API key)
+
+2. **TTS Provider** (at least one):
+   - Windows SAPI (always available on Windows, no setup required)
+   - OR Piper (local, free, cross-platform)
+   - OR ElevenLabs/PlayHT (cloud, requires API key)
+
+3. **FFmpeg** (required for video rendering):
+   - Available via system PATH
+   - OR configured path in Settings
+   - OR managed install via Aura
+
+#### Optional Components:
+- **Image Providers**: When missing, videos render with placeholder visuals
+  - Stable Diffusion (local GPU)
+  - Stock providers (Pexels, Unsplash, Pixabay)
+  - Stability AI (cloud)
+
+**Important**: Videos will always render successfully even if no image providers are configured. The pipeline gracefully degrades to use placeholder visuals when images are unavailable.
+
+#### Example: Minimal Free-Only Configuration
+```json
+{
+  "Providers": {
+    "Llm": {
+      "RuleBased": {
+        "Enabled": true
+      }
+    },
+    "Tts": {
+      "WindowsSapi": {
+        "Enabled": true
+      }
+    }
+  },
+  "FFmpeg": {
+    "Path": "ffmpeg"
+  }
+}
+```
+
 ---
 
 ## Environment-Specific Configuration

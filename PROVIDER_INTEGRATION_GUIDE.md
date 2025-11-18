@@ -989,8 +989,11 @@ ElevenLabs/PlayHT → Azure → Piper/Mimic3 → Windows SAPI
 4. Always-available fallback (Windows SAPI)
 
 ### Image Fallback Chain
+
+The image provider fallback chain ensures videos can always be generated, even when no image providers are configured:
+
 ```
-StableDiffusion → Stability API → Stock Images → Solid Color
+StableDiffusion → Stability API → Stock Images (Pexels, Unsplash, Pixabay, Local) → Placeholder Visuals
 ```
 
 **Automatic fallback** on:
@@ -998,6 +1001,20 @@ StableDiffusion → Stability API → Stock Images → Solid Color
 - API error
 - Quota exceeded
 - Validation failure
+- No image provider configured
+
+**Graceful Degradation**:
+- **Videos always render**, even when no image provider is configured
+- When all image providers fail, the pipeline continues with placeholder visuals
+- Placeholder visuals can be solid colors, default backgrounds, or bundled fallback images
+- The video rendering pipeline never fails due to missing images
+- This ensures core functionality (script generation, TTS, FFmpeg rendering) always works
+
+**Example Scenarios**:
+- **Free-Only Profile with no image providers**: Video renders with placeholder visuals
+- **Temporary API outage**: Falls back to stock images or placeholders
+- **Quota exhausted**: Uses local stock or placeholders
+- **Network offline**: Uses local providers and placeholders
 
 ## Error Handling
 
