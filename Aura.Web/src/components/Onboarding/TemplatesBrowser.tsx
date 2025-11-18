@@ -15,6 +15,7 @@ import {
   Input,
   Dropdown,
   Option,
+  type GriffelStyle,
 } from '@fluentui/react-components';
 import { Video24Regular, Play24Regular, Info24Regular } from '@fluentui/react-icons';
 import { useState, useMemo } from 'react';
@@ -50,11 +51,11 @@ const useStyles = makeStyles({
       transform: 'translateY(-2px)',
       boxShadow: tokens.shadow8,
     },
-  },
+  } as GriffelStyle,
   templateCardSelected: {
     borderColor: tokens.colorBrandStroke1,
     borderWidth: '2px',
-  },
+  } as GriffelStyle,
   templateHeader: {
     display: 'flex',
     alignItems: 'flex-start',

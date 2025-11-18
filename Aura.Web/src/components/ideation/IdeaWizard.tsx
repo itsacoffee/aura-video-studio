@@ -10,12 +10,9 @@ import {
   CardHeader,
   Badge,
   Spinner,
+  type GriffelStyle,
 } from '@fluentui/react-components';
-import {
-  LightbulbRegular,
-  ArrowRightRegular,
-  CheckmarkCircleRegular,
-} from '@fluentui/react-icons';
+import { LightbulbRegular, ArrowRightRegular, CheckmarkCircleRegular } from '@fluentui/react-icons';
 import React, { useState, useCallback } from 'react';
 import type { FC } from 'react';
 
@@ -64,16 +61,18 @@ const useStyles = makeStyles({
   variantCard: {
     cursor: 'pointer',
     transition: 'all 0.2s ease',
-    border: `2px solid ${tokens.colorNeutralStroke1}`,
+    borderWidth: '2px',
+    borderStyle: 'solid',
+    borderColor: tokens.colorNeutralStroke1,
     ':hover': {
       borderColor: tokens.colorBrandStroke1,
       boxShadow: tokens.shadow8,
     },
-  },
+  } as GriffelStyle,
   variantCardSelected: {
     borderColor: tokens.colorBrandForeground1,
     backgroundColor: tokens.colorBrandBackground2Hover,
-  },
+  } as GriffelStyle,
   variantHeader: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -158,13 +157,13 @@ const IdeaWizard: FC<IdeaWizardProps> = ({ onComplete, onCancel }) => {
   const styles = useStyles();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [loading, setLoading] = useState(false);
-  
+
   // Step 1: User input
   const [idea, setIdea] = useState('');
   const [platform, setPlatform] = useState('');
   const [audience, setAudience] = useState('');
   const [preferredApproaches, setPreferredApproaches] = useState('');
-  
+
   // Step 2: Variants
   const [variants, setVariants] = useState<BriefVariant[]>([]);
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
@@ -226,8 +225,8 @@ const IdeaWizard: FC<IdeaWizardProps> = ({ onComplete, onCancel }) => {
         Step 1: Describe Your Idea
       </Text>
       <Text>
-        Share your video idea in your own words. Be as creative or specific as you like -
-        the AI will interpret it and generate structured video concepts.
+        Share your video idea in your own words. Be as creative or specific as you like - the AI
+        will interpret it and generate structured video concepts.
       </Text>
 
       <div className={styles.inputSection}>
@@ -251,10 +250,7 @@ const IdeaWizard: FC<IdeaWizardProps> = ({ onComplete, onCancel }) => {
           />
         </Field>
 
-        <Field
-          label="Target Audience (optional)"
-          hint="Describe your audience however you like"
-        >
+        <Field label="Target Audience (optional)" hint="Describe your audience however you like">
           <Input
             value={audience}
             onChange={(e) => setAudience(e.target.value)}
@@ -300,8 +296,8 @@ const IdeaWizard: FC<IdeaWizardProps> = ({ onComplete, onCancel }) => {
         Step 2: Choose Your Approach
       </Text>
       <Text>
-        Select the brief variant that best matches your creative vision. Each offers a
-        unique take on your idea.
+        Select the brief variant that best matches your creative vision. Each offers a unique take
+        on your idea.
       </Text>
 
       <div className={styles.variantsGrid}>

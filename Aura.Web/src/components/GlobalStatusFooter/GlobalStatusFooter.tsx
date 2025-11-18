@@ -16,8 +16,8 @@ import { useActivity, type Activity } from '../../state/activityContext';
 import type { VersionInfo } from '../../types/api-v1';
 import { ToastNotification } from '../Notifications/Toast';
 import { ActivityDrawer } from '../StatusBar/ActivityDrawer';
-import { ResourceMonitor } from '../StatusBar/ResourceMonitor';
 import { BackendStatusIndicator } from '../StatusBar/BackendStatusIndicator';
+import { ResourceMonitor } from '../StatusBar/ResourceMonitor';
 
 const useStyles = makeStyles({
   footer: {

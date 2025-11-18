@@ -6,7 +6,7 @@
  * click-to-jump navigation.
  */
 
-import { makeStyles } from '@fluentui/react-components';
+import { makeStyles, type GriffelStyle } from '@fluentui/react-components';
 import React, { useRef, useCallback, useEffect, useState, useMemo } from 'react';
 import '../../styles/video-editor-theme.css';
 
@@ -41,12 +41,12 @@ const useStyles = makeStyles({
     pointerEvents: 'none',
     '&:hover': {
       borderColor: 'var(--editor-accent-hover)',
-    },
+    } as GriffelStyle,
   },
   viewportDragging: {
     cursor: 'grabbing',
     borderColor: 'var(--editor-accent-active)',
-  },
+  } as GriffelStyle,
   toggleButton: {
     position: 'absolute',
     top: '4px',

@@ -3,10 +3,9 @@
  * Provides type-safe API client access with React Query integration
  */
 
-import { useQuery, useMutation, useQueryClient, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
 import { queryKeys } from '../api/queryClient';
 import * as adminApi from '../services/api/adminApi';
-import * as projectsApi from '../services/api/projectsApi';
 import * as userApi from '../services/api/userApi';
 import * as videoApi from '../services/api/videoGenerationApi';
 import type { VideoGenerationRequest, VideoJob } from '../services/api/videoGenerationApi';
@@ -56,9 +55,12 @@ export function useJobStatus(
     queryKey: queryKeys.jobs.status(jobId || ''),
     queryFn: () => videoApi.getJobStatus(jobId!),
     enabled: !!jobId,
-    refetchInterval: (data) => {
+    refetchInterval: (query) => {
       // Stop polling when job is completed, failed, or cancelled
-      if (data?.status && ['completed', 'failed', 'cancelled'].includes(data.status)) {
+      if (
+        query.state.data?.status &&
+        ['completed', 'failed', 'cancelled'].includes(query.state.data.status)
+      ) {
         return false;
       }
       return 2000; // Poll every 2 seconds
@@ -148,8 +150,13 @@ export function useAdminUsers(
   });
 
   const updateUser = useMutation({
-    mutationFn: ({ userId, updates }: { userId: string; updates: Parameters<typeof adminApi.updateUser>[1] }) =>
-      adminApi.updateUser(userId, updates),
+    mutationFn: ({
+      userId,
+      updates,
+    }: {
+      userId: string;
+      updates: Parameters<typeof adminApi.updateUser>[1];
+    }) => adminApi.updateUser(userId, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
     },

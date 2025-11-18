@@ -177,11 +177,7 @@ export function ExportHistoryPage() {
         <div className={styles.header}>
           <Title1>Export History</Title1>
         </div>
-        <SkeletonTable
-          columns={8}
-          rows={10}
-          rowCount={5}
-        />
+        <SkeletonTable columns={8} rows={5} />
       </div>
     );
   }

@@ -353,12 +353,7 @@ export const WizardProjectsTab: FC<WizardProjectsTabProps> = ({ itemsPerPage = 2
   if (loading) {
     return (
       <Card>
-        <SkeletonTable
-          columns={['Name', 'Status', 'Progress', 'Last Modified', 'Actions']}
-          rowCount={5}
-          columnWidths={['30%', '15%', '15%', '20%', '20%']}
-          ariaLabel="Loading wizard projects"
-        />
+        <SkeletonTable columns={5} rows={5} />
       </Card>
     );
   }
@@ -474,6 +469,12 @@ export const WizardProjectsTab: FC<WizardProjectsTabProps> = ({ itemsPerPage = 2
                       <div
                         style={{ display: 'flex', gap: tokens.spacingHorizontalS }}
                         onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.stopPropagation();
+                          }
+                        }}
+                        role="presentation"
                       >
                         <Button
                           size="small"

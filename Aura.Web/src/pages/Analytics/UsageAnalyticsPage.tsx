@@ -165,7 +165,7 @@ export default function UsageAnalyticsPage() {
   const [selectedTab, setSelectedTab] = useState<TabValue>('overview');
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
-  
+
   // Data states
   const [usageStats, setUsageStats] = useState<UsageStatistics | null>(null);
   const [costStats, setCostStats] = useState<CostStatistics | null>(null);
@@ -180,7 +180,7 @@ export default function UsageAnalyticsPage() {
   const getDateRange = (): { start: Date; end: Date } => {
     const end = new Date();
     const start = new Date();
-    
+
     switch (dateRange) {
       case '7d':
         start.setDate(start.getDate() - 7);
@@ -195,7 +195,7 @@ export default function UsageAnalyticsPage() {
         start.setFullYear(2020, 0, 1); // Far past date
         break;
     }
-    
+
     return { start, end };
   };
 
@@ -203,7 +203,7 @@ export default function UsageAnalyticsPage() {
     try {
       setLoading(true);
       const { start, end } = getDateRange();
-      
+
       const [usage, costs, perf, budget, settingsData, dbData] = await Promise.all([
         getUsageStatistics(start, end),
         getCostStatistics(start, end),
@@ -212,7 +212,7 @@ export default function UsageAnalyticsPage() {
         getAnalyticsSettings(),
         getDatabaseInfo(),
       ]);
-      
+
       setUsageStats(usage);
       setCostStats(costs);
       setPerfStats(perf);
@@ -298,7 +298,7 @@ export default function UsageAnalyticsPage() {
     const seconds = Math.floor(ms / 1000);
     const minutes = Math.floor(seconds / 60);
     const hours = Math.floor(minutes / 60);
-    
+
     if (hours > 0) return `${hours}h ${minutes % 60}m`;
     if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
     return `${seconds}s`;
@@ -323,23 +323,19 @@ export default function UsageAnalyticsPage() {
         <div className={styles.headerActions}>
           <Dropdown
             value={dateRange}
-            onOptionSelect={(_, data) => setDateRange(data.optionValue as string)}
+            onOptionSelect={(_, data) =>
+              setDateRange(data.optionValue as '7d' | '30d' | '90d' | 'all')
+            }
           >
             <Option value="7d">Last 7 days</Option>
             <Option value="30d">Last 30 days</Option>
             <Option value="90d">Last 90 days</Option>
             <Option value="all">All time</Option>
           </Dropdown>
-          <Button
-            icon={<ArrowDownload24Regular />}
-            onClick={() => handleExport('json')}
-          >
+          <Button icon={<ArrowDownload24Regular />} onClick={() => handleExport('json')}>
             Export JSON
           </Button>
-          <Button
-            icon={<ArrowDownload24Regular />}
-            onClick={() => handleExport('csv')}
-          >
+          <Button icon={<ArrowDownload24Regular />} onClick={() => handleExport('csv')}>
             Export CSV
           </Button>
         </div>
@@ -350,20 +346,33 @@ export default function UsageAnalyticsPage() {
         <div style={{ flex: 1 }}>
           <Text weight="semibold">🔒 Privacy First</Text>
           <Text size={200} style={{ display: 'block' }}>
-            All analytics data is stored locally on your machine. No data is sent to external servers.
+            All analytics data is stored locally on your machine. No data is sent to external
+            servers.
           </Text>
         </div>
         {settings && !settings.isEnabled && (
-          <Badge appearance="filled" color="warning">Analytics Disabled</Badge>
+          <Badge appearance="filled" color="warning">
+            Analytics Disabled
+          </Badge>
         )}
       </div>
 
       <TabList selectedValue={selectedTab} onTabSelect={handleTabSelect} className={styles.tabs}>
-        <Tab value="overview" icon={<DataUsage24Regular />}>Overview</Tab>
-        <Tab value="usage" icon={<DataUsage24Regular />}>Usage</Tab>
-        <Tab value="costs" icon={<Money24Regular />}>Costs</Tab>
-        <Tab value="performance" icon={<Timer24Regular />}>Performance</Tab>
-        <Tab value="settings" icon={<Settings24Regular />}>Settings</Tab>
+        <Tab value="overview" icon={<DataUsage24Regular />}>
+          Overview
+        </Tab>
+        <Tab value="usage" icon={<DataUsage24Regular />}>
+          Usage
+        </Tab>
+        <Tab value="costs" icon={<Money24Regular />}>
+          Costs
+        </Tab>
+        <Tab value="performance" icon={<Timer24Regular />}>
+          Performance
+        </Tab>
+        <Tab value="settings" icon={<Settings24Regular />}>
+          Settings
+        </Tab>
       </TabList>
 
       {selectedTab === 'overview' && usageStats && costStats && perfStats && budgetStatus && (
@@ -411,9 +420,7 @@ export default function UsageAnalyticsPage() {
                 <Timer24Regular />
                 <Text weight="semibold">Avg Duration</Text>
               </div>
-              <div className={styles.statValue}>
-                {formatDuration(perfStats.averageDurationMs)}
-              </div>
+              <div className={styles.statValue}>{formatDuration(perfStats.averageDurationMs)}</div>
               <Text className={styles.statSubtext}>
                 Median: {formatDuration(perfStats.medianDurationMs)}
               </Text>
@@ -426,7 +433,13 @@ export default function UsageAnalyticsPage() {
             </div>
             <Card>
               <div style={{ padding: tokens.spacingVerticalL }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: tokens.spacingVerticalS }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginBottom: tokens.spacingVerticalS,
+                  }}
+                >
                   <Text weight="semibold">Monthly Spending ({budgetStatus.yearMonth})</Text>
                   <Text weight="semibold">
                     {formatCurrency(budgetStatus.totalCost, budgetStatus.currency)}
@@ -435,11 +448,14 @@ export default function UsageAnalyticsPage() {
                 <div className={styles.progressBar}>
                   <div
                     className={styles.progressFill}
-                    style={{ width: `${(budgetStatus.daysElapsed / budgetStatus.daysInMonth) * 100}%` }}
+                    style={{
+                      width: `${(budgetStatus.daysElapsed / budgetStatus.daysInMonth) * 100}%`,
+                    }}
                   />
                 </div>
                 <Text size={200} style={{ display: 'block', marginTop: tokens.spacingVerticalXS }}>
-                  Day {budgetStatus.daysElapsed} of {budgetStatus.daysInMonth} • Projected: {formatCurrency(budgetStatus.projectedMonthlyTotal, budgetStatus.currency)}
+                  Day {budgetStatus.daysElapsed} of {budgetStatus.daysInMonth} • Projected:{' '}
+                  {formatCurrency(budgetStatus.projectedMonthlyTotal, budgetStatus.currency)}
                 </Text>
               </div>
             </Card>
@@ -453,14 +469,18 @@ export default function UsageAnalyticsPage() {
               {Object.entries(usageStats.providerBreakdown).map(([provider, stats]) => (
                 <Card key={provider}>
                   <div style={{ padding: tokens.spacingVerticalM }}>
-                    <Text weight="semibold" style={{ display: 'block', marginBottom: tokens.spacingVerticalS }}>
+                    <Text
+                      weight="semibold"
+                      style={{ display: 'block', marginBottom: tokens.spacingVerticalS }}
+                    >
                       {provider}
                     </Text>
                     <Text size={200} style={{ display: 'block' }}>
                       {stats.totalOperations} operations
                     </Text>
                     <Text size={200} style={{ display: 'block' }}>
-                      {((stats.totalInputTokens + stats.totalOutputTokens) / 1000).toFixed(1)}K tokens
+                      {((stats.totalInputTokens + stats.totalOutputTokens) / 1000).toFixed(1)}K
+                      tokens
                     </Text>
                     <Text size={200} style={{ display: 'block' }}>
                       {formatCurrency(costStats.costPerProvider[provider] || 0)}
@@ -478,7 +498,7 @@ export default function UsageAnalyticsPage() {
           <Card>
             <div style={{ padding: tokens.spacingVerticalL }}>
               <Title2>Analytics Settings</Title2>
-              
+
               <div className={styles.settingRow}>
                 <div>
                   <Text weight="semibold">Enable Analytics</Text>
@@ -514,14 +534,22 @@ export default function UsageAnalyticsPage() {
                 </div>
                 <Switch
                   checked={settings.collectHardwareMetrics}
-                  onChange={(_, data) => handleSettingsUpdate({ collectHardwareMetrics: data.checked })}
+                  onChange={(_, data) =>
+                    handleSettingsUpdate({ collectHardwareMetrics: data.checked })
+                  }
                 />
               </div>
 
               <div style={{ marginTop: tokens.spacingVerticalXL }}>
                 <Title3>Database Storage</Title3>
                 <div style={{ marginTop: tokens.spacingVerticalM }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: tokens.spacingVerticalS }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      marginBottom: tokens.spacingVerticalS,
+                    }}
+                  >
                     <Text>Storage Used</Text>
                     <Text weight="semibold">
                       {dbInfo.estimatedSizeMB.toFixed(2)} MB / {dbInfo.maxSizeMB} MB
@@ -538,15 +566,26 @@ export default function UsageAnalyticsPage() {
                       {dbInfo.totalRecords.toLocaleString()} total records
                     </Text>
                     <Text size={200} style={{ display: 'block' }}>
-                      {dbInfo.usageRecords.toLocaleString()} usage • {dbInfo.costRecords.toLocaleString()} cost • {dbInfo.performanceRecords.toLocaleString()} performance
+                      {dbInfo.usageRecords.toLocaleString()} usage •{' '}
+                      {dbInfo.costRecords.toLocaleString()} cost •{' '}
+                      {dbInfo.performanceRecords.toLocaleString()} performance
                     </Text>
                   </div>
                 </div>
               </div>
 
-              <div style={{ marginTop: tokens.spacingVerticalXL, display: 'flex', gap: tokens.spacingHorizontalM }}>
+              <div
+                style={{
+                  marginTop: tokens.spacingVerticalXL,
+                  display: 'flex',
+                  gap: tokens.spacingHorizontalM,
+                }}
+              >
                 <Button onClick={handleCleanup}>Run Cleanup Now</Button>
-                <Dialog open={showClearDialog} onOpenChange={(_, data) => setShowClearDialog(data.open)}>
+                <Dialog
+                  open={showClearDialog}
+                  onOpenChange={(_, data) => setShowClearDialog(data.open)}
+                >
                   <DialogTrigger>
                     <Button appearance="subtle" icon={<Delete24Regular />}>
                       Clear All Data
@@ -556,8 +595,8 @@ export default function UsageAnalyticsPage() {
                     <DialogBody>
                       <DialogTitle>Clear All Analytics Data?</DialogTitle>
                       <DialogContent>
-                        This will permanently delete all usage statistics, cost tracking, and performance metrics.
-                        This action cannot be undone.
+                        This will permanently delete all usage statistics, cost tracking, and
+                        performance metrics. This action cannot be undone.
                       </DialogContent>
                       <DialogActions>
                         <DialogTrigger>

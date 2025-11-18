@@ -3,7 +3,6 @@
  */
 
 import axios from 'axios';
-import { env } from '@/config/env';
 import type {
   SetProfileLockRequest,
   UnlockProfileLockRequest,
@@ -11,8 +10,9 @@ import type {
   OfflineCompatibilityResponse,
   ValidateProviderRequest,
   ValidateProviderResponse,
-  ProviderProfileLock
+  ProviderProfileLock,
 } from '../types/profileLock';
+import { env } from '@/config/env';
 
 const API_BASE_URL = env.apiBaseUrl;
 
@@ -22,7 +22,7 @@ const API_BASE_URL = env.apiBaseUrl;
 export async function getProfileLockStatus(jobId?: string): Promise<ProfileLockStatus> {
   const url = `${API_BASE_URL}/api/provider-lock/status`;
   const params = jobId ? { jobId } : {};
-  
+
   const response = await axios.get<ProfileLockStatus>(url, { params });
   return response.data;
 }
@@ -30,11 +30,9 @@ export async function getProfileLockStatus(jobId?: string): Promise<ProfileLockS
 /**
  * Set a provider profile lock for a job
  */
-export async function setProfileLock(
-  request: SetProfileLockRequest
-): Promise<ProviderProfileLock> {
+export async function setProfileLock(request: SetProfileLockRequest): Promise<ProviderProfileLock> {
   const url = `${API_BASE_URL}/api/provider-lock/set`;
-  
+
   const response = await axios.post<ProviderProfileLock>(url, request);
   return response.data;
 }
@@ -46,7 +44,7 @@ export async function unlockProfileLock(
   request: UnlockProfileLockRequest
 ): Promise<{ jobId: string; unlocked: boolean; reason?: string; correlationId: string }> {
   const url = `${API_BASE_URL}/api/provider-lock/unlock`;
-  
+
   const response = await axios.post(url, request);
   return response.data;
 }
@@ -58,9 +56,9 @@ export async function checkOfflineCompatibility(
   providerName: string
 ): Promise<OfflineCompatibilityResponse> {
   const url = `${API_BASE_URL}/api/provider-lock/offline-compatible`;
-  
+
   const response = await axios.get<OfflineCompatibilityResponse>(url, {
-    params: { providerName }
+    params: { providerName },
   });
   return response.data;
 }
@@ -72,7 +70,7 @@ export async function validateProvider(
   request: ValidateProviderRequest
 ): Promise<ValidateProviderResponse> {
   const url = `${API_BASE_URL}/api/provider-lock/validate`;
-  
+
   const response = await axios.post<ValidateProviderResponse>(url, request);
   return response.data;
 }
@@ -85,9 +83,9 @@ export async function removeProfileLock(
   isSessionLevel: boolean = true
 ): Promise<{ jobId: string; removed: boolean; correlationId: string }> {
   const url = `${API_BASE_URL}/api/provider-lock/${jobId}`;
-  
+
   const response = await axios.delete(url, {
-    params: { isSessionLevel }
+    params: { isSessionLevel },
   });
   return response.data;
 }
@@ -119,7 +117,7 @@ export function createProfileLockRequest(
       tags: [],
       source: 'User',
       allowManualFallback: options?.allowManualFallback ?? true,
-      maxWaitBeforeFallbackSeconds: options?.maxWaitSeconds
-    }
+      maxWaitBeforeFallbackSeconds: options?.maxWaitSeconds,
+    },
   };
 }

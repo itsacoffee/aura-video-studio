@@ -6,7 +6,7 @@
  * Industry-standard controls found in Premiere Pro and CapCut.
  */
 
-import { makeStyles } from '@fluentui/react-components';
+import { makeStyles, type GriffelStyle } from '@fluentui/react-components';
 import {
   Play24Regular,
   Pause24Regular,
@@ -83,7 +83,7 @@ const useStyles = makeStyles({
     '&:hover': {
       backgroundColor: 'var(--editor-panel-hover)',
       borderColor: 'var(--editor-accent)',
-    },
+    } as GriffelStyle,
   },
   speedLabel: {
     fontSize: 'var(--editor-font-size-sm)',
