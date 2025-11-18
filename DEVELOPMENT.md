@@ -260,16 +260,48 @@ You can override any of these by exporting the environment variables above befor
 
 ### Backend URL Contract
 
-The frontend, backend, and Electron shell now share a single source of truth for the API origin:
+The frontend, backend, and Electron shell now share a single source of truth for the API origin through an enforced **Network Contract**:
 
-- Set **`AURA_BACKEND_URL`** (preferred) or `ASPNETCORE_URLS` to the desired base URL, e.g. `http://127.0.0.1:5272`.
-- Electron reads this value on startup, starts (or attaches to) the backend on that port, and exposes it to the renderer through a typed preload bridge (`window.desktopBridge`).
-- The React app always resolves requests through this bridge or `VITE_API_BASE_URL`, so there is no longer any guessing or hard-coded `localhost` URLs.
+#### How It Works
 
-Example (PowerShell):
+1. **Contract Resolution** - Electron main process calls `resolveBackendContract({ isDev })` on startup, which:
+   - Reads `AURA_BACKEND_URL` (preferred) or `ASPNETCORE_URLS` environment variable
+   - Falls back to defaults: `http://127.0.0.1:5272` (dev) or `http://127.0.0.1:5890` (prod)
+   - Validates the URL format and port are valid
+   - Returns a validated `NetworkContract` object with: `baseUrl`, `port`, `healthEndpoint`, `readinessEndpoint`, `maxStartupMs`, etc.
+
+2. **Contract Enforcement** - Both `BackendService` and `ExternalBackendService`:
+   - Require a valid `networkContract` in their constructors
+   - Will **refuse to start** if `baseUrl` or `port` are missing or invalid
+   - This prevents any silent failures or hardcoded fallbacks
+
+3. **Contract Exposure** - The preload bridge exposes the contract URL to the frontend via:
+   - `window.desktopBridge.backend.getUrl()` - Contract-based URL (recommended)
+   - `window.AURA_BACKEND_URL` - Legacy compatibility property
+   - `window.aura.backend.getBaseUrl()` - Async API method
+
+4. **Frontend Resolution** - `Aura.Web` resolves its API base URL in priority order:
+   - **First**: Electron contract URL from `desktopBridge.backend.getUrl()`
+   - **Second**: `VITE_API_BASE_URL` environment variable
+   - **Third**: `window.location.origin` (when served from backend)
+   - **Last**: Default fallback with warning
+
+#### Environment Variables
+
+- **`AURA_BACKEND_URL`** (preferred) - Full base URL including protocol, host, and port
+  - Example: `http://127.0.0.1:5272`
+- **`ASPNETCORE_URLS`** (alternative) - ASP.NET Core binding URLs
+- **`AURA_BACKEND_HEALTH_ENDPOINT`** (optional) - Health check path (default: `/api/health`)
+- **`AURA_BACKEND_READY_ENDPOINT`** (optional) - Readiness check path (default: `/health/ready`)
+- **`AURA_BACKEND_STARTUP_TIMEOUT_MS`** (optional) - Startup timeout in ms (default: `60000`)
+
+#### Example Usage (PowerShell)
 
 ```powershell
+# Set backend URL
 $env:AURA_BACKEND_URL = "http://127.0.0.1:5272"
+
+# Start backend
 cd Aura.Api
 dotnet run
 ```
@@ -277,11 +309,18 @@ dotnet run
 Then, in another terminal:
 
 ```powershell
+# Frontend will automatically detect backend URL from bridge
 cd Aura.Web
 npm run dev
 ```
 
-The Vite dev server will proxy `/api/*` calls to the backend URL from the bridge automatically.
+#### Contract Benefits
+
+- ✅ **No hardcoded ports** - All components use the validated contract
+- ✅ **Fail-fast validation** - Invalid configurations are caught at startup
+- ✅ **Single source of truth** - One canonical URL shared across all layers
+- ✅ **Type-safe** - Full TypeScript/JSDoc definitions for the contract
+- ✅ **Easy debugging** - Clear error messages when contract is invalid
 
 ### Provider Connectivity Testing
 

@@ -12,8 +12,24 @@ const DEFAULT_PROD_BACKEND_URL =
   process.env.AURA_PROD_BACKEND_URL || "http://127.0.0.1:5890";
 
 /**
+ * @typedef {Object} NetworkContract
+ * @property {string} protocol - Protocol (http or https)
+ * @property {string} host - Hostname (e.g., 127.0.0.1)
+ * @property {number} port - Port number
+ * @property {string} baseUrl - Fully qualified base URL (e.g., "http://127.0.0.1:5272")
+ * @property {string} raw - Raw URL string from environment
+ * @property {string} healthEndpoint - Health check path (default "/api/health")
+ * @property {string} readinessEndpoint - Readiness check path (default "/health/ready")
+ * @property {boolean} shouldSelfHost - Whether Electron should spawn the backend process
+ * @property {number} maxStartupMs - Startup timeout in milliseconds
+ * @property {number} pollIntervalMs - Health check poll interval in milliseconds
+ */
+
+/**
  * Resolve the backend connection contract that every layer must follow.
  * @param {{ isDev: boolean }} options
+ * @returns {NetworkContract}
+ * @throws {Error} If the contract cannot be resolved or is invalid
  */
 function resolveBackendContract({ isDev }) {
   const urlCandidates = [
@@ -51,13 +67,40 @@ function resolveBackendContract({ isDev }) {
   const shouldSelfHost =
     (process.env.AURA_LAUNCH_BACKEND ?? "true").toLowerCase() !== "false";
 
+  const baseUrl = `${parsed.protocol}//${parsed.hostname}${
+    parsed.port ? `:${parsed.port}` : ""
+  }`;
+
+  // Runtime validation: ensure contract is complete
+  if (!baseUrl || typeof baseUrl !== "string" || baseUrl.trim() === "") {
+    throw new Error(
+      "NetworkContract validation failed: baseUrl is required and must be a non-empty string"
+    );
+  }
+
+  if (!port || typeof port !== "number" || port <= 0 || port > 65535) {
+    throw new Error(
+      `NetworkContract validation failed: port must be a valid integer between 1 and 65535 (got: ${port})`
+    );
+  }
+
+  if (!healthEndpoint || typeof healthEndpoint !== "string") {
+    throw new Error(
+      "NetworkContract validation failed: healthEndpoint must be a non-empty string"
+    );
+  }
+
+  if (!readinessEndpoint || typeof readinessEndpoint !== "string") {
+    throw new Error(
+      "NetworkContract validation failed: readinessEndpoint must be a non-empty string"
+    );
+  }
+
   return {
     protocol,
     host: parsed.hostname,
     port,
-    baseUrl: `${parsed.protocol}//${parsed.hostname}${
-      parsed.port ? `:${parsed.port}` : ""
-    }`,
+    baseUrl,
     raw: rawBaseUrl,
     healthEndpoint,
     readinessEndpoint,

@@ -4,9 +4,31 @@
  */
 class ExternalBackendService {
   constructor(networkContract) {
+    // Enforce contract validation
+    if (!networkContract) {
+      throw new Error(
+        "ExternalBackendService requires a valid networkContract. " +
+        "Contract must be resolved via resolveBackendContract() before initializing ExternalBackendService."
+      );
+    }
+
+    if (!networkContract.baseUrl || typeof networkContract.baseUrl !== "string") {
+      throw new Error(
+        "ExternalBackendService networkContract missing baseUrl. " +
+        "Set AURA_BACKEND_URL or ASPNETCORE_URLS environment variable."
+      );
+    }
+
+    if (!networkContract.port || typeof networkContract.port !== "number" || networkContract.port <= 0) {
+      throw new Error(
+        "ExternalBackendService networkContract missing valid port. " +
+        "Set AURA_BACKEND_URL or ASPNETCORE_URLS environment variable."
+      );
+    }
+
     this.networkContract = networkContract;
-    this.port = networkContract?.port ?? null;
-    this.baseUrl = networkContract?.baseUrl ?? null;
+    this.port = networkContract.port;
+    this.baseUrl = networkContract.baseUrl;
     this.pid = null;
   }
 

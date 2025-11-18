@@ -46,13 +46,15 @@ Aura Video Studio is an **Electron desktop application** for creating AI-powered
 
 **Key Components**:
 - `electron/main.js` - Main process entry point, orchestration
+- `electron/network-contract.js` - Network contract resolution and validation
 - `electron/window-manager.js` - Window lifecycle and state persistence
-- `electron/backend-service.js` - Backend process spawning and management
+- `electron/backend-service.js` - Backend process spawning and management (enforces network contract)
+- `electron/external-backend-service.js` - External backend connection (enforces network contract)
 - `electron/menu-builder.js` - Application menu system
 - `electron/tray-manager.js` - System tray integration
 - `electron/protocol-handler.js` - Custom protocol (aura://) support
 - `electron/ipc-handlers/` - IPC handlers (config, system, video, diagnostics)
-- `electron/preload.js` - Security bridge for renderer ↔ main IPC
+- `electron/preload.js` - Security bridge for renderer ↔ main IPC (exposes contract URL)
 
 **Features**:
 - Single instance lock (prevents multiple instances)
@@ -71,8 +73,20 @@ Aura Video Studio is an **Electron desktop application** for creating AI-powered
 - Input validation and sanitization
 - Content Security Policy (CSP)
 
+**Network Contract:**
+
+Aura.Desktop enforces a strict network contract to ensure all components (Electron, backend, frontend) share a single source of truth for the API endpoint:
+
+- **Contract Resolution** (`network-contract.js`): Resolves and validates the backend URL from environment variables on startup, ensuring `baseUrl`, `port`, and health endpoints are valid before proceeding
+- **Contract Enforcement**: Both `BackendService` and `ExternalBackendService` require a valid `networkContract` in their constructors and throw descriptive errors if the contract is missing or invalid
+- **Contract Exposure** (`preload.js`): The validated contract URL is exposed to the renderer via `window.desktopBridge.backend.getUrl()` and `window.AURA_BACKEND_URL` for consistent API resolution
+- **Fail-Fast Design**: Invalid configurations are caught at startup with clear error messages, preventing silent failures or hardcoded fallbacks
+
+This architecture guarantees that Electron never spawns a backend with an invalid URL, and the frontend always uses the same URL that Electron validated.
+
 **References:**
 - [DESKTOP_APP_GUIDE.md](../../DESKTOP_APP_GUIDE.md) - Complete Electron development guide
+- [DEVELOPMENT.md](../../DEVELOPMENT.md#backend-url-contract) - Network contract usage and configuration
 - [Aura.Desktop/electron/README.md](../../Aura.Desktop/electron/README.md) - Electron main process architecture (IPC, window manager, backend service, tray, menu, protocol handler)
 
 ### 2. Aura.Core (Business Logic)
@@ -144,6 +158,21 @@ Aura Video Studio is an **Electron desktop application** for creating AI-powered
 - Integrates with Aura.Core and Aura.Providers
 - SQLite database for persistence
 - Server-Sent Events (SSE) for real-time progress
+
+**Network Contract:**
+
+The backend API's URL and port are determined by a validated `NetworkContract` that enforces a single source of truth:
+
+- **Contract Resolution**: Electron main process resolves the network contract on startup via `resolveBackendContract()`, which reads environment variables (`AURA_BACKEND_URL` or `ASPNETCORE_URLS`) and validates the URL format, port range, and required endpoints
+- **Contract Validation**: The contract validates:
+  - `baseUrl` must be a non-empty string with valid URL format
+  - `port` must be a valid integer between 1 and 65535
+  - `healthEndpoint` and `readinessEndpoint` must be non-empty strings
+  - Throws descriptive errors if validation fails, preventing silent failures
+- **Contract Enforcement**: Both `BackendService` (managed) and `ExternalBackendService` (external) require a valid `networkContract` in their constructors and will refuse to start without one
+- **Contract Exposure**: The validated contract is exposed to the frontend via the preload bridge at `window.desktopBridge.backend.getUrl()` for consistent API resolution
+
+This architecture ensures no hardcoded ports, fail-fast validation for invalid configurations, and a single canonical URL shared across Electron, backend, and frontend layers.
 
 **Platforms**: Cross-platform (ASP.NET Core 8)
 

@@ -109,6 +109,16 @@ describe('apiBaseUrl', () => {
       expect(result).toBe('http://bridge:5005');
     });
 
+    it('should return URL from desktopBridge.backend.getUrl() when available', async () => {
+      (global.window as Window).desktopBridge = {
+        backend: {
+          getUrl: vi.fn().mockReturnValue('http://contract-bridge:5272'),
+        },
+      } as unknown as typeof window.desktopBridge;
+      const result = await getElectronBackendUrl();
+      expect(result).toBe('http://contract-bridge:5272');
+    });
+
     it('should use diagnostic info when desktop bridge cache is empty', async () => {
       const mockDiagnostics = { backend: { baseUrl: 'http://diagnostics:5005' } };
       (global.window as Window).desktopBridge = {
@@ -221,6 +231,20 @@ describe('apiBaseUrl', () => {
       const result = resolveApiBaseUrl();
       expect(result.value).toBe('http://bridge:5005');
       expect(result.source).toBe('electron');
+    });
+
+    it('should use desktopBridge.backend.getUrl() for contract-based URL', () => {
+      (global.window as Window).desktopBridge = {
+        backend: {
+          getUrl: vi.fn().mockReturnValue('http://contract-url:5272'),
+        },
+      } as unknown as typeof window.desktopBridge;
+      (global.window as Window).AURA_IS_ELECTRON = true;
+
+      const result = resolveApiBaseUrl();
+      expect(result.value).toBe('http://contract-url:5272');
+      expect(result.source).toBe('electron');
+      expect(result.isElectron).toBe(true);
     });
 
     it('should prioritize env over origin', () => {
