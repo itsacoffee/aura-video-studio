@@ -4941,7 +4941,9 @@ _ = Task.Run(async () =>
 try
 {
     // Use RunAsync instead of Run to allow proper cancellation during shutdown
-    await app.RunAsync(appLifetime.ApplicationStopping).ConfigureAwait(false);
+    // Do not pass ApplicationStopping token to avoid circular dependency
+    // The host manages its own shutdown lifecycle and will trigger ApplicationStopping
+    await app.RunAsync().ConfigureAwait(false);
 }
 catch (OperationCanceledException)
 {
