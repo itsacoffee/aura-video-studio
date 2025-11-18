@@ -12,6 +12,7 @@ import { generateWorkspaceThumbnail } from '../utils/workspaceThumbnailGenerator
 
 interface WorkspaceLayoutState {
   currentLayoutId: string;
+  activePresetId: string | null;
   isFullscreen: boolean;
   collapsedPanels: {
     properties: boolean;
@@ -19,11 +20,24 @@ interface WorkspaceLayoutState {
     effects: boolean;
     history: boolean;
   };
+  visiblePanels: {
+    properties: boolean;
+    mediaLibrary: boolean;
+    effects: boolean;
+    history: boolean;
+  };
 
   setCurrentLayout: (layoutId: string) => void;
+  setActivePreset: (id: string) => void;
+  resetToPreset: (id: string) => void;
   toggleFullscreen: () => void;
   exitFullscreen: () => void;
   togglePanelCollapsed: (panel: keyof WorkspaceLayoutState['collapsedPanels']) => void;
+  togglePanelVisibility: (panel: keyof WorkspaceLayoutState['visiblePanels']) => void;
+  setPanelVisibility: (
+    panel: keyof WorkspaceLayoutState['visiblePanels'],
+    visible: boolean
+  ) => void;
   toggleAllLeftPanels: () => void;
   resetLayout: () => void;
   getCurrentLayout: () => WorkspaceLayout | null;
@@ -58,8 +72,15 @@ const saveCollapsedPanels = (collapsed: WorkspaceLayoutState['collapsedPanels'])
 
 export const useWorkspaceLayoutStore = create<WorkspaceLayoutState>((set, get) => ({
   currentLayoutId: getCurrentLayoutId(),
+  activePresetId: getCurrentLayoutId(),
   isFullscreen: false,
   collapsedPanels: loadCollapsedPanels(),
+  visiblePanels: {
+    properties: true,
+    mediaLibrary: true,
+    effects: true,
+    history: true,
+  },
 
   setCurrentLayout: (layoutId: string) => {
     const layout = applyWorkspaceLayout(layoutId);
@@ -72,10 +93,77 @@ export const useWorkspaceLayoutStore = create<WorkspaceLayoutState>((set, get) =
         effects: !layout.visiblePanels.effects,
         history: !layout.visiblePanels.history,
       };
+      const newVisiblePanels = { ...layout.visiblePanels };
       saveCollapsedPanels(newCollapsedPanels);
-      set({ currentLayoutId: layoutId, collapsedPanels: newCollapsedPanels });
+      set({
+        currentLayoutId: layoutId,
+        activePresetId: layoutId,
+        collapsedPanels: newCollapsedPanels,
+        visiblePanels: newVisiblePanels,
+      });
     } else {
-      set({ currentLayoutId: layoutId });
+      set({ currentLayoutId: layoutId, activePresetId: layoutId });
+    }
+  },
+
+  setActivePreset: (id: string) => {
+    const layout = applyWorkspaceLayout(id);
+    if (layout) {
+      const newCollapsedPanels = {
+        properties: !layout.visiblePanels.properties,
+        mediaLibrary: !layout.visiblePanels.mediaLibrary,
+        effects: !layout.visiblePanels.effects,
+        history: !layout.visiblePanels.history,
+      };
+      const newVisiblePanels = { ...layout.visiblePanels };
+      saveCollapsedPanels(newCollapsedPanels);
+      set({
+        currentLayoutId: id,
+        activePresetId: id,
+        collapsedPanels: newCollapsedPanels,
+        visiblePanels: newVisiblePanels,
+      });
+    }
+  },
+
+  resetToPreset: (id: string) => {
+    const layout = getWorkspaceLayout(id);
+    if (layout) {
+      // Clear localStorage for panel sizes to reset to defaults
+      const panelKeys = [
+        'aura-editor-panel-properties',
+        'aura-editor-panel-mediaLibrary',
+        'aura-editor-panel-effects',
+        'aura-editor-panel-history',
+        'aura-editor-panel-preview',
+      ];
+
+      panelKeys.forEach((key) => {
+        try {
+          localStorage.removeItem(key);
+        } catch {
+          // Ignore errors
+        }
+      });
+
+      // Apply the preset layout
+      applyWorkspaceLayout(id);
+
+      const newCollapsedPanels = {
+        properties: !layout.visiblePanels.properties,
+        mediaLibrary: !layout.visiblePanels.mediaLibrary,
+        effects: !layout.visiblePanels.effects,
+        history: !layout.visiblePanels.history,
+      };
+      const newVisiblePanels = { ...layout.visiblePanels };
+      saveCollapsedPanels(newCollapsedPanels);
+
+      set({
+        currentLayoutId: id,
+        activePresetId: id,
+        collapsedPanels: newCollapsedPanels,
+        visiblePanels: newVisiblePanels,
+      });
     }
   },
 
@@ -113,6 +201,34 @@ export const useWorkspaceLayoutStore = create<WorkspaceLayoutState>((set, get) =
     set({ collapsedPanels: newCollapsed });
   },
 
+  togglePanelVisibility: (panel: keyof WorkspaceLayoutState['visiblePanels']) => {
+    const newVisible = {
+      ...get().visiblePanels,
+      [panel]: !get().visiblePanels[panel],
+    };
+    // Also update collapsed state to match visibility
+    const newCollapsed = {
+      ...get().collapsedPanels,
+      [panel]: !newVisible[panel],
+    };
+    saveCollapsedPanels(newCollapsed);
+    set({ visiblePanels: newVisible, collapsedPanels: newCollapsed });
+  },
+
+  setPanelVisibility: (panel: keyof WorkspaceLayoutState['visiblePanels'], visible: boolean) => {
+    const newVisible = {
+      ...get().visiblePanels,
+      [panel]: visible,
+    };
+    // Also update collapsed state to match visibility
+    const newCollapsed = {
+      ...get().collapsedPanels,
+      [panel]: !visible,
+    };
+    saveCollapsedPanels(newCollapsed);
+    set({ visiblePanels: newVisible, collapsedPanels: newCollapsed });
+  },
+
   toggleAllLeftPanels: () => {
     const currentPanels = get().collapsedPanels;
     // If any left panel is visible (not collapsed), collapse all. Otherwise, expand all.
@@ -122,8 +238,13 @@ export const useWorkspaceLayoutStore = create<WorkspaceLayoutState>((set, get) =
       mediaLibrary: shouldCollapseAll,
       effects: shouldCollapseAll,
     };
+    const newVisible = {
+      ...get().visiblePanels,
+      mediaLibrary: !shouldCollapseAll,
+      effects: !shouldCollapseAll,
+    };
     saveCollapsedPanels(newCollapsed);
-    set({ collapsedPanels: newCollapsed });
+    set({ collapsedPanels: newCollapsed, visiblePanels: newVisible });
   },
 
   resetLayout: () => {

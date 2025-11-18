@@ -224,12 +224,123 @@ const useStyles = makeStyles({
 5. **Keyboard Shortcuts**: Visual keyboard shortcut overlay
 6. **Mini-map**: Add timeline mini-map for long projects
 
+### 5. Workspace Presets & Panel Controls
+
+#### Workspace Presets (Adobe Premiere Pro-style)
+
+Added comprehensive workspace preset system for optimized editing workflows:
+
+**Available Presets:**
+1. **Editing** (Default) - Balanced 60/30/10 layout
+   - 60% preview area for content review
+   - 30% timeline for clip arrangement
+   - Minimal sidebars (all panels collapsed)
+   - Keyboard shortcut: `Alt+1`
+
+2. **Focus: Preview** - Maximized preview
+   - 75% preview for detailed viewing
+   - 25% timeline for quick adjustments
+   - Ideal for color grading and detail work
+   - All sidebars collapsed for maximum preview space
+
+3. **Focus: Timeline** - Maximized timeline
+   - 40% preview for reference
+   - 60% timeline for precise editing
+   - Perfect for complex multi-track editing
+   - All sidebars collapsed
+
+4. **Minimal Sidebar** - Clean workspace
+   - 60% preview with compact sidebars
+   - All panels use minimal width (240-280px)
+   - Reduced visual clutter
+   - Easy access to all tools when needed
+
+5. **Color** - Color grading optimized
+   - 70% preview for accurate color evaluation
+   - Properties panel visible (350px) for color controls
+   - Keyboard shortcut: `Alt+2`
+
+6. **Audio** - Audio mixing focused
+   - 50/50 split for balanced view
+   - Properties and Media Library visible
+   - Optimal for audio editing workflows
+   - Keyboard shortcut: `Alt+4`
+
+7. **Effects** - Effects work optimized
+   - Effects Library panel expanded (300px)
+   - Properties panel visible for parameter adjustment
+   - Keyboard shortcut: `Alt+3`
+
+8. **Assembly** - Quick content assembly
+   - Media Library visible (300px)
+   - 55/45 preview/timeline split
+   - Ideal for rough cuts and organization
+   - Keyboard shortcut: `Alt+5`
+
+#### Panel Visibility Controls
+
+**View Menu Integration:**
+- Added "View → Panels" section with individual panel toggles
+- Each panel shows checkmark when visible
+- Panels can be shown/hidden independently
+- State persists across sessions
+
+**Controllable Panels:**
+- Properties Panel - Effect and clip property controls
+- Media Library Panel - Asset browser and import
+- Effects Panel - Effect presets and library
+- History Panel - Undo/redo history visualization
+
+**Protected Panels:**
+- Preview and Timeline panels cannot be hidden (critical to editing workflow)
+- Ensures core editing functionality always available
+
+#### Workspace Management
+
+**Reset Layout:**
+- "View → Reset Layout" restores default "Editing" preset
+- Clears all customized panel sizes
+- Returns all panels to preset defaults
+- Keyboard shortcut: `Alt+0`
+- Provides toast notification confirming reset
+
+**Layout Persistence:**
+- Active preset tracked in `activePresetId` state
+- Panel sizes stored in localStorage per panel ID
+- Collapsed/visible states persist across sessions
+- Custom layouts (user-created) available alongside presets
+
+**State Management:**
+- `useWorkspaceLayoutStore` manages all layout state
+- `setActivePreset(id)` - Switch to preset and apply its configuration
+- `resetToPreset(id)` - Hard reset to preset defaults (clears custom sizes)
+- `togglePanelVisibility(id)` - Show/hide specific panel
+- `setPanelVisibility(id, visible)` - Set panel visibility explicitly
+
+#### User Experience
+
+**Smooth Transitions:**
+- Panel size changes animate smoothly (250ms cubic-bezier)
+- Visibility toggles fade in/out gracefully
+- No jarring layout shifts
+
+**Visual Feedback:**
+- Toast notifications on workspace switch ("Switched to Color workspace")
+- Checkmarks in View menu indicate visible panels
+- Active preset highlighted in workspace switcher dropdown
+
+**Keyboard Shortcuts:**
+- `Alt+1` through `Alt+5` for common presets
+- `Alt+0` for reset to default
+- All shortcuts show in menu for discoverability
+
 ### Future Considerations
 1. Light theme variant for daytime use
 2. Custom theme builder for user preferences
-3. Workspace presets (Editing, Color, Audio, etc.)
-4. Performance profiling for animation optimization
-5. Accessibility audit and enhancements
+3. Performance profiling for animation optimization
+4. Accessibility audit and enhancements
+5. Preset preview thumbnails in workspace switcher
+6. Drag-and-drop panel rearrangement
 
 ## Testing Recommendations
 

@@ -48,6 +48,60 @@ export const PRESET_LAYOUTS: Record<string, WorkspaceLayout> = {
       history: false,
     },
   },
+  'focus-preview': {
+    id: 'focus-preview',
+    name: 'Focus: Preview',
+    description: 'Maximized preview area for detailed viewing (75/25 split)',
+    panelSizes: {
+      propertiesWidth: 320,
+      mediaLibraryWidth: 280,
+      effectsLibraryWidth: 280,
+      historyWidth: 320,
+      previewHeight: 75, // 75% for preview, 25% for timeline
+    },
+    visiblePanels: {
+      properties: false,
+      mediaLibrary: false,
+      effects: false,
+      history: false,
+    },
+  },
+  'focus-timeline': {
+    id: 'focus-timeline',
+    name: 'Focus: Timeline',
+    description: 'Maximized timeline for precise editing (40/60 split)',
+    panelSizes: {
+      propertiesWidth: 320,
+      mediaLibraryWidth: 280,
+      effectsLibraryWidth: 280,
+      historyWidth: 320,
+      previewHeight: 40, // 40% for preview, 60% for timeline
+    },
+    visiblePanels: {
+      properties: false,
+      mediaLibrary: false,
+      effects: false,
+      history: false,
+    },
+  },
+  'minimal-sidebar': {
+    id: 'minimal-sidebar',
+    name: 'Minimal Sidebar',
+    description: 'Clean workspace with minimal side panels',
+    panelSizes: {
+      propertiesWidth: 280,
+      mediaLibraryWidth: 240,
+      effectsLibraryWidth: 240,
+      historyWidth: 280,
+      previewHeight: 60,
+    },
+    visiblePanels: {
+      properties: false,
+      mediaLibrary: false,
+      effects: false,
+      history: false,
+    },
+  },
   color: {
     id: 'color',
     name: 'Color',

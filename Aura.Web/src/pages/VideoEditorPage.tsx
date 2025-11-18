@@ -119,7 +119,7 @@ export function VideoEditorPage() {
   const { addActivity, updateActivity } = useActivity();
 
   // Workspace layout management
-  const { setCurrentLayout, toggleFullscreen, resetLayout, getCurrentLayout } =
+  const { setActivePreset, toggleFullscreen, getCurrentLayout, resetToPreset } =
     useWorkspaceLayoutStore();
 
   // Toast notifications
@@ -525,7 +525,7 @@ export function VideoEditorPage() {
         context: 'video-editor',
         handler: (e) => {
           e.preventDefault();
-          resetLayout();
+          resetToPreset('editing');
           const layout = getCurrentLayout();
           if (layout) {
             showSuccessToast({
@@ -616,7 +616,7 @@ export function VideoEditorPage() {
   }, []);
 
   const handleWorkspaceSwitch = (layoutId: string) => {
-    setCurrentLayout(layoutId);
+    setActivePreset(layoutId);
     const layout = PRESET_LAYOUTS[layoutId];
     if (layout) {
       showSuccessToast({
