@@ -286,6 +286,22 @@ The frontend, backend, and Electron shell now share a single source of truth for
    - **Third**: `window.location.origin` (when served from backend)
    - **Last**: Default fallback with warning
 
+#### Port Behavior Summary
+
+The following table clarifies how backend ports are determined in different scenarios:
+
+| Scenario | Port Determination | Configuration | Frontend Access |
+|----------|-------------------|---------------|-----------------|
+| **Standalone API Dev** | Fixed `http://127.0.0.1:5005` | `ASPNETCORE_URLS` in appsettings or via `dotnet run` | Frontend dev server proxies to `http://localhost:5005` via `VITE_API_BASE_URL` |
+| **Electron Dev** | Dynamic from contract (default `http://127.0.0.1:5272`) | `AURA_BACKEND_URL` env var (optional), otherwise `resolveBackendContract` uses defaults | `desktopBridge.backend.getUrl()` or `window.AURA_BACKEND_URL` |
+| **Electron Production** | Dynamic from contract (default `http://127.0.0.1:5890`) | Contract resolved internally by Electron main process | `desktopBridge.backend.getUrl()` - port not meant to be known a priori |
+
+**Key Points:**
+- **Port 5005** is exclusively for standalone backend development (`cd Aura.Api && dotnet run`)
+- **Electron does NOT use port 5005** - it uses the contract-resolved port (5272 dev, 5890 prod by default)
+- Setting `AURA_BACKEND_URL` overrides the default contract URL for Electron
+- The frontend always gets the URL from the contract when running in Electron
+
 #### Environment Variables
 
 - **`AURA_BACKEND_URL`** (preferred) - Full base URL including protocol, host, and port

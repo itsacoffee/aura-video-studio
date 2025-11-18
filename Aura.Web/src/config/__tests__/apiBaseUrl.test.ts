@@ -8,16 +8,18 @@ import {
   resolveApiBaseUrlAsync,
   isElectronEnvironment,
   getElectronBackendUrl,
-  type ApiBaseUrlResolution,
 } from '../apiBaseUrl';
 
 describe('apiBaseUrl', () => {
   // Store original values
   const originalWindow = global.window;
-  const originalImportMeta = import.meta.env;
+  const _originalImportMeta = import.meta.env;
 
   beforeEach(() => {
     // Reset window object
+    // Note: http://localhost:3000 is a generic dev server origin for testing purposes
+    // In Electron runtime, the actual backend URL comes from the network contract
+    // and is NOT necessarily localhost:3000 or localhost:5005
     global.window = {
       location: { origin: 'http://localhost:3000' },
     } as unknown as Window & typeof globalThis;
@@ -71,6 +73,9 @@ describe('apiBaseUrl', () => {
       expect(result).toBeNull();
     });
 
+    // Note: In real Electron runtime, AURA_BACKEND_URL would contain the contract URL
+    // (e.g., http://127.0.0.1:5272 for dev, not http://localhost:5005)
+    // The port 5005 is only used for standalone backend dev (dotnet run)
     it('should return URL from AURA_BACKEND_URL global variable', async () => {
       (global.window as Window).AURA_BACKEND_URL = 'http://localhost:5005';
       const result = await getElectronBackendUrl();
@@ -193,6 +198,8 @@ describe('apiBaseUrl', () => {
       expect(result.source).toBe('env');
     });
 
+    // Note: window.location.origin fallback is for frontend dev server context
+    // In production Electron, the contract URL is used via desktopBridge
     it('should use window.location.origin as fallback', () => {
       const result = resolveApiBaseUrl();
 
@@ -291,7 +298,7 @@ describe('apiBaseUrl', () => {
       };
       vi.stubEnv('VITE_API_BASE_URL', 'http://fallback.example.com');
 
-      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const _consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const result = await resolveApiBaseUrlAsync();
 
       expect(result.value).toBe('http://fallback.example.com');
