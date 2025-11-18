@@ -15,9 +15,32 @@ class BackendService {
     this.isDev = isDev;
     this.process = null;
     this.processManager = processManager; // Optional: centralized process tracking
+
+    // Enforce contract validation
+    if (!networkContract) {
+      throw new Error(
+        "BackendService requires a valid networkContract. " +
+        "Contract must be resolved via resolveBackendContract() before initializing BackendService."
+      );
+    }
+
+    if (!networkContract.baseUrl || typeof networkContract.baseUrl !== "string") {
+      throw new Error(
+        "BackendService networkContract missing baseUrl. " +
+        "Set AURA_BACKEND_URL or ASPNETCORE_URLS environment variable."
+      );
+    }
+
+    if (!networkContract.port || typeof networkContract.port !== "number" || networkContract.port <= 0) {
+      throw new Error(
+        "BackendService networkContract missing valid port. " +
+        "Set AURA_BACKEND_URL or ASPNETCORE_URLS environment variable."
+      );
+    }
+
     this.networkContract = networkContract;
-    this.baseUrl = networkContract?.baseUrl ?? null;
-    this.port = networkContract?.port ?? null;
+    this.baseUrl = networkContract.baseUrl;
+    this.port = networkContract.port;
     this.isQuitting = false;
     this.isRestarting = false;
     this.restartAttempts = 0;
@@ -25,13 +48,12 @@ class BackendService {
     this.healthCheckInterval = null;
     this.pid = null;
     this.isWindows = process.platform === "win32";
-    this.healthEndpoint = networkContract?.healthEndpoint || "/api/health";
-    this.readinessEndpoint =
-      networkContract?.readinessEndpoint || "/health/ready";
+    this.healthEndpoint = networkContract.healthEndpoint || "/api/health";
+    this.readinessEndpoint = networkContract.readinessEndpoint || "/health/ready";
 
     // Constants
-    this.BACKEND_STARTUP_TIMEOUT = networkContract?.maxStartupMs ?? 60000; // 60 seconds
-    this.HEALTH_CHECK_INTERVAL = networkContract?.pollIntervalMs ?? 1000; // 1 second
+    this.BACKEND_STARTUP_TIMEOUT = networkContract.maxStartupMs ?? 60000; // 60 seconds
+    this.HEALTH_CHECK_INTERVAL = networkContract.pollIntervalMs ?? 1000; // 1 second
     this.AUTO_RESTART_DELAY = 5000; // 5 seconds
     // Timeout configurations - aggressive for faster shutdown
     this.GRACEFUL_SHUTDOWN_TIMEOUT = 2000; // 2 seconds for graceful shutdown (reduced from 3s)
@@ -43,12 +65,6 @@ class BackendService {
    */
   async start() {
     try {
-      if (!this.baseUrl || !this.port) {
-        throw new Error(
-          "Backend contract missing base URL/port. Set AURA_BACKEND_URL or ASPNETCORE_URLS."
-        );
-      }
-
       console.log(`Starting backend on ${this.baseUrl}...`);
 
       // Determine backend executable path

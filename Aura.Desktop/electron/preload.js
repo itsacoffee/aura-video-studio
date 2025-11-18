@@ -286,7 +286,10 @@ const desktopBridge = {
     return runtimeBootstrap;
   },
   getCachedDiagnostics: () => runtimeBootstrap,
-  backend: runtimeBootstrap?.backend || null,
+  backend: {
+    ...(runtimeBootstrap?.backend || {}),
+    getUrl: () => runtimeBootstrap?.backend?.baseUrl || null,
+  },
   environment: runtimeBootstrap?.environment || null,
   os: runtimeBootstrap?.os || null,
   paths: runtimeBootstrap?.paths || null,

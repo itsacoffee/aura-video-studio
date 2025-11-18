@@ -32,8 +32,13 @@ const getBridgeBackendUrl = (): string | undefined => {
     return undefined;
   }
 
+  // Priority order for bridge URLs:
+  // 1. aura.runtime diagnostics (cached)
+  // 2. desktopBridge.backend.getUrl() (network contract)
+  // 3. desktopBridge.getBackendBaseUrl() (legacy)
   const auraUrl =
     window.aura?.runtime?.getCachedDiagnostics?.()?.backend?.baseUrl ??
+    window.desktopBridge?.backend?.getUrl?.() ??
     window.desktopBridge?.getBackendBaseUrl?.();
 
   return auraUrl ? trimValue(auraUrl) : undefined;
