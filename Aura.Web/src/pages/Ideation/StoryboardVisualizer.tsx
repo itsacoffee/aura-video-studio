@@ -139,22 +139,24 @@ export const StoryboardVisualizer: FC = () => {
   const [isLoading, setIsLoading] = useState(!scenes || scenes.length === 0);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (conceptId && (!scenes || scenes.length === 0)) {
-      loadStoryboard();
-    }
-  }, [conceptId, scenes, loadStoryboard]);
-
   const loadStoryboard = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
       const response = await ideationService.generateStoryboard({
-        conceptId: conceptId || 'default',
-        title: location.state?.title || 'Untitled',
-        description: location.state?.description || '',
-        targetDuration: location.state?.targetDuration || 60,
+        concept: {
+          conceptId: conceptId || 'default',
+          title: location.state?.title || 'Untitled',
+          description: location.state?.description || '',
+          angle: '',
+          targetAudience: '',
+          pros: [],
+          cons: [],
+          appealScore: 0,
+          hook: '',
+        },
+        targetDurationSeconds: location.state?.targetDuration || 60,
       });
 
       if (response.success && response.scenes) {
@@ -167,6 +169,12 @@ export const StoryboardVisualizer: FC = () => {
       setIsLoading(false);
     }
   }, [conceptId, location.state]);
+
+  useEffect(() => {
+    if (conceptId && (!scenes || scenes.length === 0)) {
+      loadStoryboard();
+    }
+  }, [conceptId, scenes, loadStoryboard]);
 
   const handleEditScene = useCallback((sceneNumber: number) => {
     // Navigate to scene editor or show edit modal

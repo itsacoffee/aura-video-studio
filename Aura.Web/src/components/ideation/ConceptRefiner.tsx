@@ -9,6 +9,7 @@ import {
   Badge,
   Spinner,
   Divider,
+  type GriffelStyle,
 } from '@fluentui/react-components';
 import {
   EditRegular,
@@ -145,11 +146,11 @@ const useStyles = makeStyles({
       borderColor: tokens.colorBrandStroke1,
       boxShadow: tokens.shadow4,
     },
-  },
+  } as GriffelStyle,
   refinementCardSelected: {
     borderColor: tokens.colorBrandForeground1,
     backgroundColor: tokens.colorBrandBackground2Hover,
-  },
+  } as GriffelStyle,
   refinementIcon: {
     fontSize: '32px',
     marginBottom: tokens.spacingVerticalXS,

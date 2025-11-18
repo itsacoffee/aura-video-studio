@@ -10,6 +10,7 @@ import {
   Spinner,
   Radio,
   RadioGroup,
+  type GriffelStyle,
 } from '@fluentui/react-components';
 import {
   QuestionCircleRegular,
@@ -85,7 +86,7 @@ const useStyles = makeStyles({
   completedCard: {
     backgroundColor: tokens.colorPaletteGreenBackground2,
     borderColor: tokens.colorPaletteGreenBorder2,
-  },
+  } as GriffelStyle,
   completedIcon: {
     color: tokens.colorPaletteGreenForeground1,
   },
