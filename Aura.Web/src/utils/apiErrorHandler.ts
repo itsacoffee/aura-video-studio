@@ -1,7 +1,10 @@
 /**
  * Utility for handling API errors and extracting ProblemDetails from responses
+ * This is a legacy compatibility layer. Use @/services/api/errorHandler instead.
+ * @deprecated Use handleApiError from @/services/api/errorHandler for new code
  */
 
+import { handleApiError, type UserFriendlyError } from '../services/api/errorHandler';
 import { loggingService as logger } from '../services/loggingService';
 
 export interface ProblemDetails {
@@ -24,10 +27,35 @@ export interface ParsedApiError {
 }
 
 /**
+ * Map UserFriendlyError to ParsedApiError for backward compatibility
+ */
+function mapToLegacyParsedApiError(friendlyError: UserFriendlyError): ParsedApiError {
+  return {
+    title: friendlyError.title,
+    message: friendlyError.message,
+    errorDetails: friendlyError.technicalDetails,
+    correlationId: friendlyError.correlationId,
+    errorCode: friendlyError.errorCode,
+    originalError: friendlyError,
+  };
+}
+
+/**
+ * Extract error code from type URI (e.g., "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E300" -> "E300")
+ */
+function extractErrorCodeFromType(type?: string): string | undefined {
+  if (!type) return undefined;
+
+  const match = type.match(/E\d{3,}/);
+  return match ? match[0] : undefined;
+}
+
+/**
  * Parse an error response from the API and extract ProblemDetails
+ * @deprecated Use handleApiError from @/services/api/errorHandler for new code
  */
 export async function parseApiError(error: unknown): Promise<ParsedApiError> {
-  // If it's a Response object (from fetch)
+  // If it's a Response object (from fetch), we need to handle it specially
   if (error instanceof Response) {
     try {
       const contentType = error.headers.get('content-type');
@@ -58,7 +86,7 @@ export async function parseApiError(error: unknown): Promise<ParsedApiError> {
         correlationId: error.headers.get('X-Correlation-ID') || undefined,
         originalError: { status: error.status, body: text },
       };
-    } catch (parseError) {
+    } catch {
       // If parsing fails, return basic error info
       return {
         title: `Error ${error.status}`,
@@ -69,46 +97,9 @@ export async function parseApiError(error: unknown): Promise<ParsedApiError> {
     }
   }
 
-  // If it's already a parsed ProblemDetails object
-  if (error && typeof error === 'object') {
-    const errorObj = error as Partial<ProblemDetails & { message?: string }>;
-    if (errorObj.title || errorObj.detail || errorObj.status) {
-      return {
-        title: errorObj.title || 'Error',
-        message: errorObj.detail || errorObj.message || 'An error occurred',
-        errorDetails: errorObj.detail,
-        correlationId: errorObj.correlationId,
-        errorCode: errorObj.errorCode || extractErrorCodeFromType(errorObj.type),
-        originalError: error,
-      };
-    }
-
-    // Standard Error object
-    if (errorObj.message) {
-      return {
-        title: 'Error',
-        message: errorObj.message,
-        originalError: error,
-      };
-    }
-  }
-
-  // Fallback for unknown error types
-  return {
-    title: 'Error',
-    message: String(error) || 'An unknown error occurred',
-    originalError: error,
-  };
-}
-
-/**
- * Extract error code from type URI (e.g., "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E300" -> "E300")
- */
-function extractErrorCodeFromType(type?: string): string | undefined {
-  if (!type) return undefined;
-
-  const match = type.match(/E\d{3,}/);
-  return match ? match[0] : undefined;
+  // For non-Response errors, use the centralized handler
+  const friendlyError = handleApiError(error);
+  return mapToLegacyParsedApiError(friendlyError);
 }
 
 /**
