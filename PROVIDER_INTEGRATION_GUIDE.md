@@ -2178,9 +2178,145 @@ If elapsed time exceeds 2× expected time and no heartbeats → Consider manual 
    - Test full pipeline with `offlineModeEnabled: true`
    - Ensure quality meets your requirements
 
+## Configuration Ownership
+
+### Unified Configuration Model
+
+Aura Video Studio uses a **unified configuration model** to ensure consistency across the stack and avoid configuration drift between frontend, Electron, and backend.
+
+#### Single Source of Truth: Aura.Core ProviderSettings
+
+`Aura.Core.Configuration.ProviderSettings` is the authoritative source for all provider configuration:
+- **Provider URLs**: OpenAI endpoint, Ollama URL, Stable Diffusion URL
+- **Provider Settings**: Model selections, default voices, regional settings
+- **API Keys**: Securely stored, never exposed in GET responses
+
+#### Backend API Surface
+
+`Aura.Api` exposes consistent REST endpoints for provider configuration:
+
+**GET /api/ProviderConfiguration/config**
+- Returns current provider configuration (URLs, endpoints, model selections)
+- **Never returns API keys or secrets** for security
+- Used by frontend to display current settings
+
+**POST /api/ProviderConfiguration/config**
+- Updates non-secret provider configuration (URLs, endpoints, models)
+- Changes are persisted to disk by ProviderSettings
+- Use for updating provider URLs, Ollama models, etc.
+
+**POST /api/ProviderConfiguration/config/secrets**
+- Updates provider API keys securely
+- Separate endpoint for clear security boundary
+- Keys are logged (sanitized) but never returned in responses
+
+#### Frontend Integration
+
+`Aura.Web` reads and writes provider settings **exclusively through backend APIs**:
+
+```typescript
+import { 
+  getProviderConfiguration, 
+  updateProviderConfiguration, 
+  updateProviderSecrets 
+} from '@/services/api/providerConfigClient';
+
+// Load current configuration
+const config = await getProviderConfiguration();
+console.log(config.ollama.url); // e.g., "http://127.0.0.1:11434"
+
+// Update provider URL
+await updateProviderConfiguration({
+  ollama: { url: 'http://192.168.1.100:11434' }
+});
+
+// Update API key
+await updateProviderSecrets({
+  openAiApiKey: 'sk-...'
+});
+```
+
+**Key principles:**
+- Frontend never persists provider URLs in Electron or browser storage
+- All configuration reads go through `getProviderConfiguration()`
+- All configuration writes go through `updateProviderConfiguration()` or `updateProviderSecrets()`
+- No conflicting configuration between frontend and backend
+
+#### Electron Desktop Integration
+
+`Aura.Desktop` handles **secure storage of secrets only** for desktop convenience:
+
+**What Electron Stores:**
+- API keys in encrypted `aura-secure` store (OpenAI, Anthropic, Gemini, ElevenLabs, etc.)
+- UI preferences and window state in `aura-config` store
+
+**What Electron Does NOT Store:**
+- Provider URLs (managed by backend ProviderSettings)
+- Provider endpoint configuration (managed by backend)
+- Model selections (managed by backend)
+
+**Workflow:**
+1. User enters API key in Settings UI
+2. Frontend sends key to backend via `POST /api/ProviderConfiguration/config/secrets`
+3. Backend persists to ProviderSettings
+4. Optionally, Electron stores a copy in secure storage for convenience
+5. Backend is always the source of truth for provider readiness checks
+
+#### Benefits of Unified Configuration
+
+**No Configuration Drift:**
+- Frontend, Electron, and backend always see the same provider URLs
+- No risk of "it works locally but not in production" scenarios
+
+**Simpler Provider Validation:**
+- `/api/providers/status` checks use the same configuration the UI is editing
+- No need to reconcile multiple sources of truth
+
+**Easier to Add New Providers:**
+- Add getters/setters to `ProviderSettings`
+- Add fields to API DTOs
+- Update frontend client
+- Single flow, no duplication
+
+**Clear Security Boundaries:**
+- Secrets go through dedicated `/config/secrets` endpoint
+- Non-secret config goes through `/config` endpoint
+- API keys never returned in GET responses
+
+### Configuration Persistence
+
+**Backend Storage:**
+- Configuration stored in `{AURA_DATA_PATH}/AuraData/settings.json`
+- Reloaded on demand via `ProviderSettings.Reload()`
+- Thread-safe updates via `ProviderSettings.UpdateAsync()`
+
+**Electron Secure Storage:**
+- API keys in `%APPDATA%/Roaming/aura-video-studio/aura-secure.json` (encrypted)
+- Encryption key derived from machine-specific data
+- Not synced between machines (intentional security feature)
+
+**Frontend:**
+- No persistent provider configuration storage
+- All state loaded from backend on startup
+- Configuration changes sent immediately to backend
+
+### Migration from Old Model
+
+If you have existing code that:
+- Stores provider URLs in Electron config
+- Reads provider settings from local storage
+- Manages provider state independently
+
+**Action Required:**
+1. Remove Electron config writes for provider URLs
+2. Update Settings UI to use new `providerConfigClient` methods
+3. Remove any `localStorage.setItem()` calls for provider config
+4. Ensure all reads go through `getProviderConfiguration()`
+
 ### Related Documentation
 
 - [LLM_INTEGRATION_AUDIT.md](LLM_INTEGRATION_AUDIT.md) - LLM provider details
 - [TTS_PROVIDER_IMPLEMENTATION_SUMMARY.md](TTS_PROVIDER_IMPLEMENTATION_SUMMARY.md) - TTS provider details
 - [LATENCY_PATIENCE_POLICY.md](LATENCY_PATIENCE_POLICY.md) - Provider patience thresholds
 - [PROVIDER_STICKINESS_IMPLEMENTATION_SUMMARY.md](PROVIDER_STICKINESS_IMPLEMENTATION_SUMMARY.md) - Technical implementation details
+- [PROVIDER_INTEGRATION_IMPLEMENTATION.md](PROVIDER_INTEGRATION_IMPLEMENTATION.md) - Implementation guide
