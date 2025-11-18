@@ -265,7 +265,6 @@ export const ConceptExplorer: FC = () => {
           title="Error loading concept"
           message={error || 'Concept not found'}
           onRetry={() => navigate('/ideation')}
-          retryLabel="Back to Ideation"
         />
       </div>
     );
@@ -296,7 +295,7 @@ export const ConceptExplorer: FC = () => {
 
       {selectedTab === 'overview' && (
         <div className={styles.conceptPreview}>
-          <ConceptCard concept={concept} onSelect={() => {}} isSelected={false} />
+          <ConceptCard concept={concept} onSelect={() => {}} />
         </div>
       )}
 
