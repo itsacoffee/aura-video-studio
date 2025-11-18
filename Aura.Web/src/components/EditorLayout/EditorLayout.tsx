@@ -248,15 +248,25 @@ export function EditorLayout({
     isFullscreen,
     exitFullscreen,
     collapsedPanels,
+    visiblePanels,
     togglePanelCollapsed,
     getCurrentLayout,
     currentLayoutId,
   } = useWorkspaceLayoutStore();
 
-  // Group panels by region
+  // Group panels by region and filter by visibility
+  // Preview and timeline are always visible (critical panels)
   const topPanels = panels.filter((p) => p.region === 'top');
   const bottomPanels = panels.filter((p) => p.region === 'bottom');
-  const rightPanels = panels.filter((p) => p.region === 'right');
+  const rightPanels = panels.filter((p) => {
+    if (p.region !== 'right') return false;
+    // Check if panel should be visible based on visiblePanels state
+    const panelId = p.id as keyof typeof visiblePanels;
+    if (panelId in visiblePanels) {
+      return visiblePanels[panelId];
+    }
+    return true; // Show by default if not in visiblePanels
+  });
 
   // Load current layout or use defaults
   const currentLayout = getCurrentLayout();

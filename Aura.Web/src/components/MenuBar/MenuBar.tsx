@@ -28,6 +28,7 @@ import {
   Settings24Regular,
   PanelLeft24Regular,
   PanelLeftContract24Regular,
+  Checkmark24Regular,
 } from '@fluentui/react-icons';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -141,8 +142,15 @@ export function MenuBar({
   const navigate = useNavigate();
   const [undoStack] = useState<string[]>([]);
   const [redoStack] = useState<string[]>([]);
-  const { isFullscreen, toggleFullscreen, resetLayout, toggleAllLeftPanels, collapsedPanels } =
-    useWorkspaceLayoutStore();
+  const {
+    isFullscreen,
+    toggleFullscreen,
+    resetLayout,
+    toggleAllLeftPanels,
+    collapsedPanels,
+    visiblePanels,
+    togglePanelVisibility,
+  } = useWorkspaceLayoutStore();
   const [workspaceManagerOpen, setWorkspaceManagerOpen] = useState(false);
 
   // Check if all left panels are collapsed
@@ -265,6 +273,31 @@ export function MenuBar({
               Manage Workspaces...
             </MenuItem>
             <MenuItem onClick={resetLayout}>Reset Layout</MenuItem>
+            <MenuDivider />
+            <MenuItem
+              icon={visiblePanels.properties ? <Checkmark24Regular /> : undefined}
+              onClick={() => togglePanelVisibility('properties')}
+            >
+              Properties Panel
+            </MenuItem>
+            <MenuItem
+              icon={visiblePanels.mediaLibrary ? <Checkmark24Regular /> : undefined}
+              onClick={() => togglePanelVisibility('mediaLibrary')}
+            >
+              Media Library Panel
+            </MenuItem>
+            <MenuItem
+              icon={visiblePanels.effects ? <Checkmark24Regular /> : undefined}
+              onClick={() => togglePanelVisibility('effects')}
+            >
+              Effects Panel
+            </MenuItem>
+            <MenuItem
+              icon={visiblePanels.history ? <Checkmark24Regular /> : undefined}
+              onClick={() => togglePanelVisibility('history')}
+            >
+              History Panel
+            </MenuItem>
             <MenuDivider />
             <MenuItem>Zoom In</MenuItem>
             <MenuItem>Zoom Out</MenuItem>
