@@ -123,7 +123,7 @@ export function VideoEditorPage() {
     useWorkspaceLayoutStore();
 
   // Toast notifications
-  const { showSuccessToast } = useNotifications();
+  const { showSuccessToast, showFailureToast } = useNotifications();
 
   // Command history for undo/redo
   const commandHistory = useMemo(() => new CommandHistory(50), []);
@@ -629,8 +629,23 @@ export function VideoEditorPage() {
   const selectedClip = clips.find((clip) => clip.id === selectedClipId);
 
   const handleImportMedia = () => {
-    // Trigger file picker in MediaLibraryPanel
-    mediaLibraryRef.current?.openFilePicker();
+    try {
+      // Trigger file picker in MediaLibraryPanel
+      if (mediaLibraryRef.current) {
+        mediaLibraryRef.current.openFilePicker();
+      } else {
+        showFailureToast({
+          title: 'Import Failed',
+          message: 'Media library is not available. Please try again.',
+        });
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      showFailureToast({
+        title: 'Import Failed',
+        message: `Failed to open file picker: ${errorMessage}`,
+      });
+    }
   };
 
   const handleExportVideo = () => {
