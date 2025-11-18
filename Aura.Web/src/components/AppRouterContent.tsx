@@ -71,6 +71,15 @@ const TrendingTopicsExplorer = lazy(() =>
     default: m.TrendingTopicsExplorer,
   }))
 );
+const ConceptExplorer = lazy(() =>
+  import('../pages/Ideation/ConceptExplorer').then((m) => ({ default: m.default }))
+);
+const BriefBuilder = lazy(() =>
+  import('../pages/Ideation/BriefBuilder').then((m) => ({ default: m.default }))
+);
+const StoryboardVisualizer = lazy(() =>
+  import('../pages/Ideation/StoryboardVisualizer').then((m) => ({ default: m.default }))
+);
 const RunDetailsPage = lazy(() =>
   import('../pages/Jobs/RunDetailsPage').then((m) => ({ default: m.RunDetailsPage }))
 );
@@ -272,6 +281,30 @@ const AppRouterContentInner: FC<
                 element={
                   <LazyRoute routePath="/ideation">
                     <IdeationDashboard />
+                  </LazyRoute>
+                }
+              />
+              <Route
+                path="ideation/concept/:conceptId"
+                element={
+                  <LazyRoute routePath="/ideation/concept/:conceptId">
+                    <ConceptExplorer />
+                  </LazyRoute>
+                }
+              />
+              <Route
+                path="ideation/brief-builder"
+                element={
+                  <LazyRoute routePath="/ideation/brief-builder">
+                    <BriefBuilder />
+                  </LazyRoute>
+                }
+              />
+              <Route
+                path="ideation/storyboard/:conceptId"
+                element={
+                  <LazyRoute routePath="/ideation/storyboard/:conceptId">
+                    <StoryboardVisualizer />
                   </LazyRoute>
                 }
               />
