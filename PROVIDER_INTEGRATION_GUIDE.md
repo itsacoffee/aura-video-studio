@@ -2272,6 +2272,12 @@ await updateProviderSecrets({
 - `/api/providers/status` checks use the same configuration the UI is editing
 - No need to reconcile multiple sources of truth
 
+**Diagnostics and Troubleshooting:**
+- `GET /api/system/diagnostics/ffmpeg-config` - FFmpeg configuration status
+- `GET /api/system/diagnostics/providers-config` - Provider configuration snapshot (non-secret)
+- Available in all environments for debugging configuration issues
+- See [FFMPEG_CONFIGURATION_UNIFIED.md](FFMPEG_CONFIGURATION_UNIFIED.md) and [PROVIDER_CONFIG_UNIFICATION_SUMMARY.md](PROVIDER_CONFIG_UNIFICATION_SUMMARY.md) for details
+
 **Easier to Add New Providers:**
 - Add getters/setters to `ProviderSettings`
 - Add fields to API DTOs

@@ -208,3 +208,81 @@ var ffmpegPath = config.Path ?? "ffmpeg";
 - `Aura.Core/Dependencies/FfmpegLocator.cs` - FFmpeg path resolution
 - `Aura.Api/Program.cs` - Service registration
 - `Aura.Desktop/electron/backend-service.js` - Electron integration
+
+## Diagnostics
+
+To troubleshoot FFmpeg configuration issues, use the diagnostics endpoint:
+
+### FFmpeg Configuration Diagnostics Endpoint
+
+**GET** `/api/system/diagnostics/ffmpeg-config`
+
+Returns the current effective FFmpeg configuration from the unified configuration service.
+
+**Response Example:**
+
+```json
+{
+  "correlationId": "abc123",
+  "timestamp": "2024-01-01T12:00:00Z",
+  "available": true,
+  "mode": "Custom",
+  "path": "C:\\Tools\\ffmpeg\\bin\\ffmpeg.exe",
+  "isValid": true,
+  "source": "Persisted",
+  "lastValidatedAt": "2024-01-01T11:55:00Z",
+  "validationResult": "Ok"
+}
+```
+
+**Fields:**
+- `available`: Whether the FFmpeg configuration service is available
+- `mode`: Configuration mode (Auto, Custom, Bundled, etc.)
+- `path`: Effective FFmpeg executable path
+- `isValid`: Whether the FFmpeg binary was successfully validated
+- `source`: Where the configuration came from (Persisted, Environment, Configured, PATH)
+- `lastValidatedAt`: When the FFmpeg binary was last validated
+- `validationResult`: Result of last validation (Ok, NotFound, Invalid, etc.)
+
+### Usage
+
+Call this endpoint when:
+- FFmpeg is not being detected
+- Video rendering fails with FFmpeg errors
+- After changing FFmpeg configuration
+- During initial setup to verify FFmpeg is properly configured
+
+This endpoint is available in all environments (dev, test, production) for troubleshooting.
+
+## Legacy Configuration Migration
+
+**Note:** The following legacy configuration methods are **no longer supported** and have been removed:
+
+1. **Environment Variables:**
+   - ❌ `FFMPEG_PATH` (removed)
+   - ❌ `FFMPEG_BINARIES_PATH` (removed)
+   - ✅ `AURA_FFMPEG_PATH` (supported, but only as a hint from Electron)
+
+2. **Direct Configuration Access:**
+   - ❌ Reading `Configuration["FFmpeg:ExecutablePath"]` directly
+   - ✅ Use `IFfmpegConfigurationService.GetEffectiveConfigurationAsync()`
+
+3. **ProviderSettings FFmpeg Path:**
+   - ⚠️  `ProviderSettings.GetFfmpegPath()` now delegates to `IFfmpegConfigurationService`
+   - Legacy settings.json fallback maintained for backward compatibility but deprecated
+
+**Migration Path:**
+
+If your code currently uses:
+```csharp
+// OLD (deprecated)
+var ffmpegPath = Environment.GetEnvironmentVariable("FFMPEG_PATH");
+var configuredPath = _configuration["FFmpeg:ExecutablePath"];
+```
+
+Update to:
+```csharp
+// NEW (unified configuration)
+var config = await _ffmpegConfigurationService.GetEffectiveConfigurationAsync();
+var ffmpegPath = config.Path;
+```

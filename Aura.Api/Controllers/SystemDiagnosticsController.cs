@@ -23,17 +23,23 @@ public class SystemDiagnosticsController : ControllerBase
     private readonly IFFmpegStatusService? _ffmpegStatusService;
     private readonly IHttpClientFactory? _httpClientFactory;
     private readonly IConfiguration _configuration;
+    private readonly Aura.Core.Configuration.IFfmpegConfigurationService? _ffmpegConfigurationService;
+    private readonly Aura.Core.Configuration.ProviderSettings? _providerSettings;
 
     public SystemDiagnosticsController(
         ILogger<SystemDiagnosticsController> logger,
         IConfiguration configuration,
         IFFmpegStatusService? ffmpegStatusService = null,
-        IHttpClientFactory? httpClientFactory = null)
+        IHttpClientFactory? httpClientFactory = null,
+        Aura.Core.Configuration.IFfmpegConfigurationService? ffmpegConfigurationService = null,
+        Aura.Core.Configuration.ProviderSettings? providerSettings = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _ffmpegStatusService = ffmpegStatusService;
         _httpClientFactory = httpClientFactory;
+        _ffmpegConfigurationService = ffmpegConfigurationService;
+        _providerSettings = providerSettings;
     }
 
     /// <summary>
@@ -386,6 +392,160 @@ public class SystemDiagnosticsController : ControllerBase
             };
         }
     }
+
+    /// <summary>
+    /// Get FFmpeg configuration diagnostics (unified configuration status)
+    /// </summary>
+    /// <remarks>
+    /// Shows the effective FFmpeg configuration from the unified configuration service.
+    /// Useful for debugging FFmpeg detection and configuration issues.
+    /// 
+    /// Available in all environments for troubleshooting.
+    /// </remarks>
+    [HttpGet("diagnostics/ffmpeg-config")]
+    [ProducesResponseType(typeof(FfmpegConfigDiagnostics), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetFfmpegConfigDiagnostics(CancellationToken ct = default)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        _logger.LogInformation("[{CorrelationId}] GET /api/system/diagnostics/ffmpeg-config", correlationId);
+
+        try
+        {
+            if (_ffmpegConfigurationService == null)
+            {
+                return Ok(new FfmpegConfigDiagnostics
+                {
+                    CorrelationId = correlationId,
+                    Timestamp = DateTime.UtcNow,
+                    Available = false,
+                    ErrorMessage = "FFmpeg configuration service not available"
+                });
+            }
+
+            var config = await _ffmpegConfigurationService.GetEffectiveConfigurationAsync(ct).ConfigureAwait(false);
+
+            return Ok(new FfmpegConfigDiagnostics
+            {
+                CorrelationId = correlationId,
+                Timestamp = DateTime.UtcNow,
+                Available = true,
+                Mode = config.Mode.ToString(),
+                Path = config.Path,
+                IsValid = config.IsValid,
+                Source = config.Source,
+                LastValidatedAt = config.LastValidatedAt,
+                ValidationResult = config.LastValidationResult.ToString()
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Error getting FFmpeg config diagnostics", correlationId);
+            return Ok(new FfmpegConfigDiagnostics
+            {
+                CorrelationId = correlationId,
+                Timestamp = DateTime.UtcNow,
+                Available = false,
+                ErrorMessage = $"Error retrieving FFmpeg configuration: {ex.Message}"
+            });
+        }
+    }
+
+    /// <summary>
+    /// Get provider configuration diagnostics (non-secret snapshot)
+    /// </summary>
+    /// <remarks>
+    /// Shows current provider configuration URLs and settings (no API keys).
+    /// Useful for debugging provider connectivity and configuration issues.
+    /// 
+    /// Available in all environments for troubleshooting.
+    /// </remarks>
+    [HttpGet("diagnostics/providers-config")]
+    [ProducesResponseType(typeof(ProviderConfigDiagnostics), StatusCodes.Status200OK)]
+    public IActionResult GetProvidersConfigDiagnostics()
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        _logger.LogInformation("[{CorrelationId}] GET /api/system/diagnostics/providers-config", correlationId);
+
+        try
+        {
+            if (_providerSettings == null)
+            {
+                return Ok(new ProviderConfigDiagnostics
+                {
+                    CorrelationId = correlationId,
+                    Timestamp = DateTime.UtcNow,
+                    Available = false,
+                    ErrorMessage = "Provider settings service not available"
+                });
+            }
+
+            // Get non-secret configuration snapshot
+            var snapshot = new ProviderConfigSnapshot
+            {
+                OpenAI = new OpenAIConfig
+                {
+                    Endpoint = _providerSettings.GetOpenAiEndpoint(),
+                    HasApiKey = !string.IsNullOrWhiteSpace(_providerSettings.GetOpenAiApiKey())
+                },
+                Ollama = new OllamaConfig
+                {
+                    Url = _providerSettings.GetOllamaUrl(),
+                    Model = _providerSettings.GetOllamaModel(),
+                    ExecutablePath = _providerSettings.GetOllamaExecutablePath()
+                },
+                StableDiffusion = new StableDiffusionConfig
+                {
+                    Url = _providerSettings.GetStableDiffusionUrl()
+                },
+                Anthropic = new AnthropicConfig
+                {
+                    HasApiKey = !string.IsNullOrWhiteSpace(_providerSettings.GetAnthropicKey())
+                },
+                Gemini = new GeminiConfig
+                {
+                    HasApiKey = !string.IsNullOrWhiteSpace(_providerSettings.GetGeminiApiKey())
+                },
+                ElevenLabs = new ElevenLabsConfig
+                {
+                    HasApiKey = !string.IsNullOrWhiteSpace(_providerSettings.GetElevenLabsApiKey())
+                },
+                Azure = new AzureConfig
+                {
+                    SpeechRegion = _providerSettings.GetAzureSpeechRegion(),
+                    HasSpeechKey = !string.IsNullOrWhiteSpace(_providerSettings.GetAzureSpeechKey()),
+                    HasOpenAIKey = !string.IsNullOrWhiteSpace(_providerSettings.GetAzureOpenAiApiKey()),
+                    OpenAIEndpoint = _providerSettings.GetAzureOpenAiEndpoint()
+                },
+                Paths = new PathsConfig
+                {
+                    PortableRoot = _providerSettings.GetPortableRootPath(),
+                    ToolsDirectory = _providerSettings.GetToolsDirectory(),
+                    AuraDataDirectory = _providerSettings.GetAuraDataDirectory(),
+                    ProjectsDirectory = _providerSettings.GetProjectsDirectory(),
+                    OutputDirectory = _providerSettings.GetOutputDirectory()
+                }
+            };
+
+            return Ok(new ProviderConfigDiagnostics
+            {
+                CorrelationId = correlationId,
+                Timestamp = DateTime.UtcNow,
+                Available = true,
+                Configuration = snapshot
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Error getting provider config diagnostics", correlationId);
+            return Ok(new ProviderConfigDiagnostics
+            {
+                CorrelationId = correlationId,
+                Timestamp = DateTime.UtcNow,
+                Available = false,
+                ErrorMessage = $"Error retrieving provider configuration: {ex.Message}"
+            });
+        }
+    }
 }
 
 /// <summary>
@@ -434,4 +594,95 @@ public class NetworkCheck
     public bool CorsConfigured { get; set; }
     public bool BaseUrlConfigured { get; set; }
     public List<string> Issues { get; set; } = new();
+}
+
+/// <summary>
+/// FFmpeg configuration diagnostics response
+/// </summary>
+public class FfmpegConfigDiagnostics
+{
+    public string CorrelationId { get; set; } = string.Empty;
+    public DateTime Timestamp { get; set; }
+    public bool Available { get; set; }
+    public string? Mode { get; set; }
+    public string? Path { get; set; }
+    public bool IsValid { get; set; }
+    public string? Source { get; set; }
+    public DateTime? LastValidatedAt { get; set; }
+    public string? ValidationResult { get; set; }
+    public string? ErrorMessage { get; set; }
+}
+
+/// <summary>
+/// Provider configuration diagnostics response
+/// </summary>
+public class ProviderConfigDiagnostics
+{
+    public string CorrelationId { get; set; } = string.Empty;
+    public DateTime Timestamp { get; set; }
+    public bool Available { get; set; }
+    public ProviderConfigSnapshot? Configuration { get; set; }
+    public string? ErrorMessage { get; set; }
+}
+
+public class ProviderConfigSnapshot
+{
+    public OpenAIConfig OpenAI { get; set; } = new();
+    public OllamaConfig Ollama { get; set; } = new();
+    public StableDiffusionConfig StableDiffusion { get; set; } = new();
+    public AnthropicConfig Anthropic { get; set; } = new();
+    public GeminiConfig Gemini { get; set; } = new();
+    public ElevenLabsConfig ElevenLabs { get; set; } = new();
+    public AzureConfig Azure { get; set; } = new();
+    public PathsConfig Paths { get; set; } = new();
+}
+
+public class OpenAIConfig
+{
+    public string Endpoint { get; set; } = string.Empty;
+    public bool HasApiKey { get; set; }
+}
+
+public class OllamaConfig
+{
+    public string Url { get; set; } = string.Empty;
+    public string Model { get; set; } = string.Empty;
+    public string ExecutablePath { get; set; } = string.Empty;
+}
+
+public class StableDiffusionConfig
+{
+    public string Url { get; set; } = string.Empty;
+}
+
+public class AnthropicConfig
+{
+    public bool HasApiKey { get; set; }
+}
+
+public class GeminiConfig
+{
+    public bool HasApiKey { get; set; }
+}
+
+public class ElevenLabsConfig
+{
+    public bool HasApiKey { get; set; }
+}
+
+public class AzureConfig
+{
+    public string SpeechRegion { get; set; } = string.Empty;
+    public bool HasSpeechKey { get; set; }
+    public bool HasOpenAIKey { get; set; }
+    public string? OpenAIEndpoint { get; set; }
+}
+
+public class PathsConfig
+{
+    public string PortableRoot { get; set; } = string.Empty;
+    public string ToolsDirectory { get; set; } = string.Empty;
+    public string AuraDataDirectory { get; set; } = string.Empty;
+    public string ProjectsDirectory { get; set; } = string.Empty;
+    public string OutputDirectory { get; set; } = string.Empty;
 }

@@ -320,20 +320,91 @@ Duration: 295 ms
 ## Next Steps
 
 **For Production Deployment:**
-1. Merge this PR
+1. ✅ Merge this PR
 2. Update existing Settings UI components to use new `providerConfigClient`
 3. Remove any Electron IPC calls for provider URLs
 4. Test configuration persistence across app restarts
 5. Verify all provider status checks use unified configuration
 
 **For Future Enhancements:**
-1. Add configuration validation API endpoint
+1. ~~Add configuration validation API endpoint~~ (✅ Completed - see Diagnostics section)
 2. Add configuration export/import for provider settings
 3. Add configuration versioning and migration
 4. Add configuration change notifications (WebSocket/SSE)
+
+## Diagnostics
+
+To troubleshoot provider configuration issues, use the diagnostics endpoint:
+
+### Provider Configuration Diagnostics Endpoint
+
+**GET** `/api/system/diagnostics/providers-config`
+
+Returns a non-secret snapshot of the current provider configuration from ProviderSettings.
+
+**Response Example:**
+
+```json
+{
+  "correlationId": "abc123",
+  "timestamp": "2024-01-01T12:00:00Z",
+  "available": true,
+  "configuration": {
+    "openAI": {
+      "endpoint": "https://api.openai.com/v1",
+      "hasApiKey": true
+    },
+    "ollama": {
+      "url": "http://127.0.0.1:11434",
+      "model": "llama3.1:8b-q4_k_m",
+      "executablePath": "C:\\Users\\user\\AppData\\Local\\Programs\\Ollama\\ollama.exe"
+    },
+    "stableDiffusion": {
+      "url": "http://127.0.0.1:7860"
+    },
+    "anthropic": {
+      "hasApiKey": false
+    },
+    "gemini": {
+      "hasApiKey": false
+    },
+    "elevenLabs": {
+      "hasApiKey": true
+    },
+    "azure": {
+      "speechRegion": "eastus",
+      "hasSpeechKey": true,
+      "hasOpenAIKey": false,
+      "openAIEndpoint": null
+    },
+    "paths": {
+      "portableRoot": "C:\\Aura",
+      "toolsDirectory": "C:\\Aura\\Tools",
+      "auraDataDirectory": "C:\\Aura\\AuraData",
+      "projectsDirectory": "C:\\Aura\\Projects",
+      "outputDirectory": "C:\\Aura\\Projects"
+    }
+  }
+}
+```
+
+**Security:**
+- API keys are **never** returned (only `hasApiKey` boolean)
+- All secrets remain encrypted and secure
+- Only configuration URLs and paths are exposed
+
+**Usage:**
+
+Call this endpoint when:
+- Providers are not connecting (check URLs and key presence)
+- Configuration appears to be wrong (verify current settings)
+- After changing provider configuration (confirm changes applied)
+- During troubleshooting to see effective configuration
+
+This endpoint is available in all environments (dev, test, production) for troubleshooting.
 
 ## Conclusion
 
 This PR establishes a unified, secure, and maintainable approach to provider configuration management. By centralizing all provider settings in `Aura.Core.ProviderSettings` and exposing them through consistent REST endpoints, we eliminate configuration drift and provide a clear, auditable path for all configuration changes.
 
-The implementation follows established patterns (similar to PR #384 for FFmpeg), includes comprehensive tests, and provides clear documentation for integration.
+The implementation follows established patterns (similar to PR #384 for FFmpeg), includes comprehensive tests, provides clear documentation for integration, and now includes diagnostics endpoints for troubleshooting configuration issues.
