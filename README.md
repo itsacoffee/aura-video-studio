@@ -1,64 +1,47 @@
 # Aura Video Studio
 
-> **🎬 AI-Powered Video Generation Studio**
+> **🎬 AI-Powered Video Generation Suite**
 
-Create high-quality videos fast with an AI-first workflow designed for everyone. Aura Video Studio combines a beginner-friendly Guided Mode with an Advanced Mode for power users—unlocking a full ML Lab, deep prompt customization, expert render controls, and more.
+Desktop application for AI-powered video generation that transforms creative briefs into complete videos with script generation, text-to-speech synthesis, visual composition, and professional video rendering.
 
-## 🚀 Download Desktop App
+## 🚀 Quick Start
 
-**Get started in minutes with our one-click installers:**
-
-- **Windows**: [Download Installer](https://github.com/coffee285/aura-video-studio/releases/latest) (.exe)
+**Download Desktop App:**
+- **Windows**: [Download Installer](https://github.com/coffee285/aura-video-studio/releases/latest) (.exe) - Windows 11 (x64) primary
 - **macOS**: [Download DMG](https://github.com/coffee285/aura-video-studio/releases/latest) (Intel + Apple Silicon)
 - **Linux**: [Download AppImage](https://github.com/coffee285/aura-video-studio/releases/latest) (Universal)
 
 📦 See [INSTALLATION.md](INSTALLATION.md) for detailed installation instructions.
 
----
+## Key Features
 
-## What makes Aura different
+**AI-Powered Video Creation:**
+- **AI Script Generation**: Transform creative briefs into structured scripts with scene timing
+- **Multi-Provider TTS**: ElevenLabs, PlayHT, Windows SAPI, Piper, Mimic3
+- **Visual Generation**: Stable Diffusion integration, stock images, Replicate cloud models
+- **Timeline Composition**: Transitions, effects, and professional video editing
+- **Hardware-Accelerated Rendering**: NVENC (NVIDIA), AMF (AMD), QuickSync (Intel)
 
-- Beginner-first Guided Mode
-  - Start-to-finish flow with sensible defaults
-  - “Why this choice?” hints and inline help
-  - Explain/improve buttons on every AI step
+**User Experience:**
+- **Guided Mode**: Beginner-friendly workflow with sensible defaults and inline help
+- **Advanced Mode**: ML Lab, deep prompt customization, expert render controls
+- **Real-time Progress**: Server-Sent Events for live pipeline updates
+- **Provider Profiles**: Automatic fallback and retry logic
 
-- Advanced Mode (for power users)
-  - ML Lab: annotate frames and retrain “frame importance” on your own content
-  - Deep prompt customization and templates
-  - Expert render flags, motion graphics recipes, and chroma key tools
-  - Provider tuning, strict structured outputs, and reliability controls
+**Performance & Reliability:**
+- FFmpeg-based rendering pipeline with hardware acceleration
+- Structured logging and diagnostics
+- Preflight validation and post-export integrity checks
 
-- Reliability by design
-  - Provider profiles with fallback and auto-retry
-  - Strict schemas on LLM outputs to prevent bad downstream states
-  - Structured logging, diagnostics, and support bundles
+## High-Level Architecture
 
-- Performance-focused editing
-  - Responsive timeline and scrubbing
-  - Proxy media and cached waveforms/thumbnails (configurable)
-  - Export presets with preflight validation and post-export integrity checks
+Aura Video Studio is built as an **Electron desktop application**:
 
-## Architecture at a Glance
-
-Aura Video Studio is built as an **Electron desktop application** — this is the primary, user-facing runtime:
-
-- **Aura.Desktop** — Electron shell (primary runtime and distribution target)
-  - **Main Process**: Entry point at `electron/main.js`; orchestrates backend, manages windows, handles IPC, tray, menu, and protocol handling
-  - **Renderer Process**: React frontend loaded from bundled files into Electron window
-  - **Preload Script**: Secure bridge for frontend-Electron communication via IPC
-- **Aura.Web** — React + TypeScript + Vite frontend (always bundled into Electron; not deployed as standalone SaaS SPA)
-- **Aura.Api** — ASP.NET Core backend (embedded as child process, REST + SSE)
-- **Aura.Core** — Domain logic, orchestration, models, validation, rendering
-- **Aura.Providers** — LLM, TTS, images, video provider integrations
-- **Aura.Cli** — Cross-platform CLI for headless automation
-
-**Process Model:**
 ```
 ┌──────────────────────────────────────┐
 │     Electron Main Process            │
 │  (Node.js, window mgmt, lifecycle)   │
-│  Main entry: electron/main.js        │
+│  Entry: electron/main.js             │
 └────┬─────────────────────┬───────────┘
      │                     │
      │ spawns              │ IPC
@@ -70,155 +53,110 @@ Aura Video Studio is built as an **Electron desktop application** — this is th
 └──────────────┘    └─────────────────┘
 ```
 
-**Migration Status:** The migration from pure web deployment to Electron desktop is **complete**. All new integrations should be tested in the Electron app, not just in the browser. Running Aura.Web standalone in a browser is supported only as a development aid for rapid UI iteration.
+**Technology Stack:**
 
-## Installation Options
+- **Frontend**: React 18 + TypeScript + Vite 6.4.1 + Fluent UI
+  - State: Zustand 5.0.8
+  - Routing: React Router 6
+  - HTTP: Axios with circuit breaker
+  - Testing: Vitest 3.2.4, Playwright 1.56.0
+  
+- **Backend**: ASP.NET Core 8 (Minimal API + Controllers)
+  - .NET 8 SDK with nullable reference types
+  - Serilog structured logging
+  - RESTful API + Server-Sent Events
+  
+- **Core Library**: .NET 8 class library
+  - Business logic and orchestration
+  - FFmpeg command builder and pipeline
+  - Hardware detection and optimization
+  
+- **Provider System**: Modular integrations
+  - **LLM**: OpenAI, Anthropic, Google Gemini, Ollama, RuleBased
+  - **TTS**: ElevenLabs, PlayHT, Windows SAPI, Piper, Mimic3
+  - **Images**: Stable Diffusion WebUI, stock, Replicate
+  - **Video**: FFmpeg with hardware acceleration
 
-### Option 1: Desktop App (Recommended for Users)
+**Primary Workflows:**
 
-**No command-line knowledge required!**
+1. **Brief** → User provides creative brief (topic, audience, goal, tone)
+2. **Plan** → AI generates script with scenes and timing
+3. **Voice** → Configure voice settings and TTS provider
+4. **Generate** → Execute full video generation pipeline
+5. **Monitor** → Real-time progress updates via SSE
+6. **Export** → Download finished video with subtitles
 
-1. Download the installer for your platform from [Releases](https://github.com/coffee285/aura-video-studio/releases/latest)
-2. Run the installer
-3. Follow the setup wizard
-4. Start creating videos!
+## System Requirements
 
-See [INSTALLATION.md](INSTALLATION.md) for detailed instructions.
+**Minimum:**
+- **OS**: Windows 11 (x64), macOS 10.15+, or Linux (x64)
+- **CPU**: Quad-core processor
+- **RAM**: 8GB
+- **Disk**: 5GB free space
+- **Network**: Internet connection for cloud providers
 
-### Option 2: Development Setup
+**Recommended:**
+- **OS**: Windows 11 (x64)
+- **CPU**: 8+ cores
+- **RAM**: 16GB+
+- **GPU**: NVIDIA RTX 20-series+ or AMD Radeon with hardware encoding
+- **Disk**: 10GB+ SSD
 
-See [DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md) for comprehensive Electron development instructions.
+**Development Prerequisites:**
+- Node.js 20.0.0+ (20.x recommended via .nvmrc)
+- npm 9.0.0+
+- .NET 8 SDK
+- Git with long paths enabled
+- FFmpeg 4.0+ for video rendering
 
-## Quick start (Development)
+## Development Setup
 
 ### Electron Desktop Development (Primary Workflow)
 
-**The canonical, production-like development experience:**
+The canonical, production-like development experience:
 
 ```bash
 # 1. Install dependencies
-cd Aura.Web
-npm install
-cd ../Aura.Desktop
-npm install
+cd Aura.Web && npm install
+cd ../Aura.Desktop && npm install
 
-# 2. Build the frontend
-cd ../Aura.Web
-npm run build:prod
+# 2. Build frontend
+cd ../Aura.Web && npm run build:prod
 
-# 3. Build the backend
-cd ../Aura.Api
-dotnet build
+# 3. Build backend
+cd ../Aura.Api && dotnet build
 
 # 4. Run in Electron (development mode)
-cd ../Aura.Desktop
-npm run dev
+cd ../Aura.Desktop && npm run dev
 ```
 
-The Electron app will start with the embedded backend and frontend. Changes to the backend require a rebuild and restart. Frontend changes require rebuilding and reloading the Electron window.
+This runs the complete application stack including Electron IPC, native dialogs, window management, tray integration, and backend lifecycle.
 
-**This is the recommended workflow for testing the complete application stack**, including Electron IPC, native dialogs, window management, tray integration, protocol handling, and backend lifecycle.
+📖 See [DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md) for comprehensive Electron development instructions.
 
-For detailed Electron development workflows, debugging, and hot-reload setup, see:
-- [DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md) — Comprehensive Electron development guide
-- [Aura.Desktop/electron/README.md](Aura.Desktop/electron/README.md) — Electron main process architecture (IPC, window manager, backend service, tray, menu, protocol handler)
+### Browser-Only Development Mode (Component Testing)
 
-### Alternative: Browser-Only Development Mode (Component Testing Only)
-
-**For rapid frontend/backend iteration without Electron (development aid only, not deployment target):**
+For rapid frontend/backend iteration without Electron (development aid only):
 
 ```bash
 # Terminal 1: Start backend API
-cd Aura.Api
-dotnet run
+cd Aura.Api && dotnet run
 # API available at http://localhost:5005
 
-# Terminal 2: Start Vite dev server (standalone)
-cd Aura.Web
-npm run dev
+# Terminal 2: Start Vite dev server
+cd Aura.Web && npm run dev
 # Web UI at http://localhost:5173 with hot reload
 ```
 
-**⚠️ Important Limitations:**
-- This runs the frontend standalone in a browser (not in Electron)
-- Does **not** exercise Electron IPC, tray, protocol, window management, or shutdown behavior
-- Does **not** test the embedded backend lifecycle (spawned by Electron main process)
-- Use this for quick UI/API component development only
-- **Always perform final testing in the Electron app** before committing
+⚠️ **Limitations**: Does not exercise Electron IPC, tray, protocol, window management, or shutdown behavior. Use only for quick UI/API component development. Always perform final testing in the Electron app.
 
-**When to use browser-only mode:**
-- Rapid UI component iteration with hot-reload
-- Backend API endpoint testing
-- Frontend unit tests and debugging
+📖 See [DEVELOPMENT.md](DEVELOPMENT.md) for backend/frontend component development.
 
-**When to use Electron mode:**
-- Testing complete application stack
-- Verifying IPC communication
-- Testing native integrations (dialogs, menus, tray)
-- Final integration and acceptance testing
-
-### Next Steps
-
-- **For Users:**
-  - 📥 [INSTALLATION.md](INSTALLATION.md) - Install the desktop app
-  - 🎓 [FIRST_RUN_GUIDE.md](FIRST_RUN_GUIDE.md) - Initial configuration
-  - 🎬 Start creating your first video!
-
-- **For Developers:**
-  - 🖥️ [DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md) - Electron desktop app development
-  - 📖 [DEVELOPMENT.md](DEVELOPMENT.md) - Backend/frontend component development
-  - 🔧 [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Common issues
-
-## Quick start (End users)
-
-Download and install the desktop app:
-
-1. Download the installer for your platform from [Releases](https://github.com/coffee285/aura-video-studio/releases/latest)
-2. Run the installer and follow the setup wizard
-3. Launch Aura Video Studio from your Applications folder or Start Menu
-4. Complete the first-run setup (see [FIRST_RUN_GUIDE.md](FIRST_RUN_GUIDE.md))
-5. Start creating videos with the Guided Mode workflow
-
-## Advanced Mode
-
-Advanced Mode reveals expert features that assume familiarity with video tooling and ML concepts.
-
-- How to enable
-  - Settings → “Advanced Mode” toggle
-  - Changes are reversible anytime
-
-- What it unlocks
-  - ML Lab (frame importance retraining): annotate frames, train, deploy, and rollback
-  - Deep prompt controls and templates
-  - Expert render flags and motion/chroma tools
-  - Provider tuning and health views
-
-- Safety & resource notes
-  - Preflight checks run before training
-  - Model swaps are atomic with backups and an easy “Revert to default”
-
-## Provider profiles
-
-Use built-in profiles to balance cost, quality, and offline use:
-- Free-Only: no API keys required; deterministic/scripted path
-- Balanced Mix: use pro providers when available with free fallbacks
-- Pro-Max: premium providers end-to-end (API keys required)
-
-## Security & privacy
-
-- Local loopback API by default, restrictive CORS, and key redaction in logs
-- Keys encrypted at rest (platform-appropriate)
-- Privacy Mode to redact PII in diagnostics/support bundles
-
-## Testing & CI
-
-Aura Video Studio has comprehensive test coverage across all layers:
-
-### Running Tests Locally
+## Testing
 
 **Quick Start - All Tests:**
 ```bash
-# Run all tests with coverage (recommended)
+# Run all tests with coverage
 ./scripts/test-local.sh
 
 # Run only .NET tests
@@ -233,124 +171,83 @@ Aura Video Studio has comprehensive test coverage across all layers:
 
 **Individual Test Suites:**
 
-**.NET Tests (Unit & Integration):**
 ```bash
-# Run all .NET tests with coverage
-dotnet test Aura.Tests/Aura.Tests.csproj --collect:"XPlat Code Coverage"
+# .NET Tests (Unit & Integration)
+dotnet test --collect:"XPlat Code Coverage"
 
-# Generate HTML coverage report
-dotnet tool install --global dotnet-reportgenerator-globaltool
-reportgenerator -reports:"TestResults/**/coverage.cobertura.xml" \
-  -targetdir:"TestResults/CoverageReport" \
-  -reporttypes:"Html"
-# Open TestResults/CoverageReport/index.html
+# Frontend Tests (Vitest)
+cd Aura.Web && npm test
+
+# E2E Tests (Playwright)
+cd Aura.Web && npm run playwright
 ```
 
-**Frontend Tests (Vitest):**
-```bash
-cd Aura.Web
+📖 See [docs/development/testing.md](docs/development/testing.md) for comprehensive testing guide.
 
-# Run once
-npm test
+## Documentation
 
-# Watch mode (auto-rerun on changes)
-npm run test:watch
+**Essential:**
+- [README](README.md) - This file
+- [INSTALLATION.md](INSTALLATION.md) - Install the desktop app
+- [FIRST_RUN_GUIDE.md](FIRST_RUN_GUIDE.md) - Initial configuration
+- [DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md) - Electron desktop development
+- [BUILD_GUIDE.md](BUILD_GUIDE.md) - Build from source
+- [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Common issues
 
-# With coverage
-npm run test:coverage
-# Open coverage/index.html
-```
-
-**E2E Tests (Playwright):**
-```bash
-cd Aura.Web
-
-# Install browsers (first time only)
-npx playwright install --with-deps chromium
-
-# Run tests
-npm run playwright
-
-# Interactive mode (debug tests)
-npm run playwright:ui
-
-# View report
-npx playwright show-report
-```
-
-### Continuous Integration
-
-CI runs automatically on every pull request and push to main/develop branches:
-
-- **`.github/workflows/ci-unified.yml`** - Main CI pipeline
-  - .NET Build & Test (Linux-compatible projects)
-  - Frontend Build, Lint & Test
-  - E2E Tests (Playwright with full browser automation)
-  - Coverage collection and artifact upload
-
-**CI Artifacts:**
-- Test results (TRX, JUnit formats)
-- Coverage reports (Cobertura XML + HTML)
-- Playwright HTML report with traces and videos
-- Built frontend assets
-
-**CI Features:**
-- NuGet package caching for faster builds
-- Parallel test execution where safe
-- Continue-on-error for non-critical failures
-- Comprehensive summary in GitHub Actions UI
-
-See the [CI Platform Requirements](CI_PLATFORM_REQUIREMENTS.md) for details on cross-platform builds.
-
-## Roadmap highlights
-
-- Advanced Mode gating
-- ML Lab: annotation + training + rollback UX
-- Provider health + circuit breakers + strict schema validation
-- Proxy media, waveform/thumbnail caching for smooth editing
-- Export presets, preflight validation, and post-export integrity
-- Observability: correlation IDs, diagnostics, and support bundles
+**Complete Documentation:**
+- [Documentation Index](docs/DocsIndex.md) - Complete map of all documentation
+- [User Guides](docs/user-guide/) - Feature-specific end-user docs
+- [Developer Docs](docs/development/) - Contributor setup, testing, CI/CD
+- [Architecture](docs/architecture/) - System design and component diagrams
+- [API Reference](docs/api/) - REST API and SSE event documentation
+- [Providers](docs/providers/) - LLM, TTS, image, and video provider configuration
+- [Operations](docs/operations/) - Deployment, configuration, logging, monitoring
 
 ## Contributing
 
 We welcome contributions! Please:
+- Read [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow and standards
 - Discuss significant features via issues first
-- Follow code style and docs standards
+- Follow code style and the **zero-placeholder policy** (no TODO/FIXME comments)
 - Include tests where practical
+- Run quality checks before submitting PRs
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+**Zero-Placeholder Policy:**
+All committed code must be production-ready with no TODO, FIXME, HACK, or WIP comments. This is enforced by Husky pre-commit hooks and CI. Create GitHub Issues for future work instead of code comments.
 
-## Documentation
+📖 See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
-Comprehensive documentation is available to help you get started and make the most of Aura Video Studio:
+## Code Quality
 
-- **[Documentation Index](docs/DocsIndex.md)** - Complete map of all documentation
-- **[Getting Started Guide](docs/getting-started/QUICK_START.md)** - Quick setup and first video
-- **[First Run Guide](FIRST_RUN_GUIDE.md)** - Initial configuration walkthrough
-- **[Build Guide](BUILD_GUIDE.md)** - Build from source
-- **[Quality Gates Reference](QUALITY_GATES.md)** - Code quality enforcement and CI gates
-- **User Guides** - Feature-specific end-user documentation
-- **API Reference** - REST API and SSE event documentation
-- **Architecture** - System design and technical details
-- **[Style Guide](docs/style/DocsStyleGuide.md)** - Documentation standards
-
-For a complete list of guides organized by audience (end users, developers, operations) and topic, see [docs/DocsIndex.md](docs/DocsIndex.md).
-
-### For Contributors
-
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** - How to contribute to the project
-- **[BUILD_GUIDE.md](BUILD_GUIDE.md)** - Build instructions and quality gates
-- **[QUALITY_GATES.md](QUALITY_GATES.md)** - Quick reference for code quality checks
-- **[Run Quality Checks](./scripts/check-quality-gates.sh)** - Local testing script
-
+**Quality Gates:**
 ```bash
 # Check all quality gates before committing
 ./scripts/check-quality-gates.sh
 
 # See status of all gates
-cat QUALITY_GATES.md
+cat docs/development/QUALITY_GATES.md
 ```
+
+**Enforced Standards:**
+- TypeScript strict mode (no `any` types)
+- ESLint with zero warnings (`--max-warnings 0`)
+- .NET 8 with warnings as errors in Release mode
+- Pre-commit hooks for placeholder scanning
+- CI checks on all pull requests
+
+## Security & Privacy
+
+- Local loopback API by default with restrictive CORS
+- API keys encrypted at rest (platform-appropriate)
+- Key redaction in logs
+- Privacy Mode to redact PII in diagnostics/support bundles
+
+📖 See [SECURITY.md](SECURITY.md) for vulnerability reporting.
 
 ## License
 
-See LICENSE.
+See [LICENSE](LICENSE) for details.
+
+---
+
+**Questions?** Check the [Documentation Index](docs/DocsIndex.md) or file an issue.
