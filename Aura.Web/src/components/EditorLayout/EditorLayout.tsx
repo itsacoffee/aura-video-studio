@@ -75,7 +75,7 @@ const useStyles = makeStyles({
     minHeight: '300px',
     display: 'flex',
     flexDirection: 'column',
-    borderBottom: `1px solid var(--editor-panel-border)`,
+    borderBottom: `1px solid var(--editor-panel-border-subtle)`,
     backgroundColor: 'var(--editor-bg-secondary)',
     overflow: 'hidden',
     transition: 'flex var(--editor-transition-base)',
@@ -93,7 +93,7 @@ const useStyles = makeStyles({
   rightSidebarPanel: {
     minWidth: '280px',
     maxWidth: '400px',
-    borderLeft: `1px solid var(--editor-panel-border)`,
+    borderLeft: `1px solid var(--editor-panel-border-subtle)`,
     backgroundColor: 'var(--editor-panel-bg)',
     overflow: 'auto',
     display: 'flex',
@@ -104,7 +104,7 @@ const useStyles = makeStyles({
   leftSidebarPanel: {
     minWidth: '240px',
     maxWidth: '350px',
-    borderRight: `1px solid var(--editor-panel-border)`,
+    borderRight: `1px solid var(--editor-panel-border-subtle)`,
     backgroundColor: 'var(--editor-panel-bg)',
     overflow: 'hidden',
     display: 'flex',

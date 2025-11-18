@@ -190,7 +190,7 @@
 .aura-editor-region--sidebar {
   flex-direction: column;
   background-color: var(--editor-panel-bg);
-  border-left: 1px solid var(--editor-panel-border);
+  border-left: 1px solid var(--editor-panel-border-subtle);
 }
 
 /* ============================================
@@ -245,7 +245,7 @@
   min-height: 36px;
   padding: var(--editor-space-sm) var(--editor-space-md);
   background-color: var(--editor-panel-header-bg);
-  border-bottom: 1px solid var(--editor-panel-border);
+  border-bottom: 1px solid var(--editor-panel-border-subtle);
   font-size: var(--editor-font-size-sm);
   font-weight: var(--editor-font-weight-semibold);
   color: var(--editor-text-primary);
@@ -314,7 +314,7 @@
 
 .timeline-ruler {
   background-color: var(--timeline-ruler-bg);
-  border-bottom: 1px solid var(--editor-panel-border);
+  border-bottom: 1px solid var(--editor-panel-border-subtle);
   height: 32px;
   position: relative;
   user-select: none;
@@ -329,7 +329,7 @@
 
 .timeline-track {
   background-color: var(--timeline-track-bg);
-  border-bottom: 1px solid var(--timeline-track-border);
+  border-bottom: 1px solid var(--editor-panel-border-subtle);
   min-height: 48px;
   position: relative;
   display: flex;
@@ -337,7 +337,7 @@
 
 .timeline-track-header {
   background-color: var(--editor-panel-header-bg);
-  border-right: 1px solid var(--editor-panel-border);
+  border-right: 1px solid var(--editor-panel-border-subtle);
   width: 120px;
   min-width: 120px;
   display: flex;
