@@ -8,11 +8,7 @@ interface TooltipHelperProps {
   placement?: 'top' | 'bottom' | 'left' | 'right';
 }
 
-export const TooltipHelper: FC<TooltipHelperProps> = ({
-  content,
-  title,
-  placement = 'top',
-}) => {
+export const TooltipHelper: FC<TooltipHelperProps> = ({ content, title, placement = 'top' }) => {
   const tooltipContent = (
     <div style={{ maxWidth: '300px', padding: tokens.spacingVerticalS }}>
       {title && (
@@ -28,8 +24,20 @@ export const TooltipHelper: FC<TooltipHelperProps> = ({
     </div>
   );
 
+  // Map our placement to Fluent UI positioning
+  const positionMap = {
+    top: 'above',
+    bottom: 'below',
+    left: 'before',
+    right: 'after',
+  } as const;
+
   return (
-    <Tooltip content={tooltipContent} relationship="description" positioning={placement}>
+    <Tooltip
+      content={tooltipContent}
+      relationship="description"
+      positioning={{ position: positionMap[placement] }}
+    >
       <Info24Regular
         style={{
           fontSize: '16px',

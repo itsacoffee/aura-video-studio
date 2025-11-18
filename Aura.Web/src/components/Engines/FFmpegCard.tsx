@@ -30,6 +30,8 @@ import {
   Link24Regular,
 } from '@fluentui/react-icons';
 import { useCallback, useEffect, useState } from 'react';
+import { useNotifications } from '../Notifications/Toasts';
+import { ManualInstallationModal } from './ManualInstallationModal';
 import { apiUrl } from '@/config/api';
 import { handleApiError, type UserFriendlyError } from '@/services/api/errorHandler';
 import {
@@ -37,8 +39,6 @@ import {
   type FFmpegDirectCheckResponse,
   type FFmpegStatusExtended,
 } from '@/services/api/ffmpegClient';
-import { useNotifications } from '../Notifications/Toasts';
-import { ManualInstallationModal } from './ManualInstallationModal';
 
 const useStyles = makeStyles({
   card: {
@@ -109,6 +109,7 @@ const useStyles = makeStyles({
   },
 });
 
+// eslint-disable-next-line sonarjs/cognitive-complexity
 export function FFmpegCard() {
   const styles = useStyles();
   const { showSuccessToast, showFailureToast } = useNotifications();
@@ -159,7 +160,12 @@ export function FFmpegCard() {
     void loadStatus();
   }, [loadStatus]);
 
-  const applyResponseError = (title: string, message: string, correlationId?: string, howToFix?: string[]) => {
+  const applyResponseError = (
+    title: string,
+    message: string,
+    correlationId?: string,
+    howToFix?: string[]
+  ) => {
     const friendly: UserFriendlyError = {
       title,
       message,
@@ -407,7 +413,10 @@ export function FFmpegCard() {
           <Text size={200}>Status</Text>
         </div>
         {directCheck.candidates.map((candidate) => (
-          <div key={`${candidate.label}-${candidate.path ?? 'none'}`} className={styles.candidateRow}>
+          <div
+            key={`${candidate.label}-${candidate.path ?? 'none'}`}
+            className={styles.candidateRow}
+          >
             <Text size={200}>{candidate.label}</Text>
             <Text size={200} className={styles.candidatePath}>
               {candidate.path ?? 'Not configured'}
@@ -435,7 +444,9 @@ export function FFmpegCard() {
         <CardHeader
           header={
             <div className={styles.row}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}
+              >
                 <Text weight="semibold" size={500}>
                   FFmpeg
                 </Text>
@@ -473,7 +484,11 @@ export function FFmpegCard() {
                   </Text>
                   <div className={styles.pathDisplay}>{status.path}</div>
                   {status.version && (
-                    <Text className={styles.metadata} block style={{ marginTop: tokens.spacingVerticalXXS }}>
+                    <Text
+                      className={styles.metadata}
+                      block
+                      style={{ marginTop: tokens.spacingVerticalXXS }}
+                    >
                       Version: {status.version}{' '}
                       {status.versionMeetsRequirement ? (
                         <Badge appearance="outline" color="success">
@@ -487,7 +502,11 @@ export function FFmpegCard() {
                     </Text>
                   )}
                   {status.source && (
-                    <Text className={styles.metadata} block style={{ marginTop: tokens.spacingVerticalXXS }}>
+                    <Text
+                      className={styles.metadata}
+                      block
+                      style={{ marginTop: tokens.spacingVerticalXXS }}
+                    >
                       Source:{' '}
                       <Badge appearance="outline">
                         {status.source === 'Managed'
@@ -498,7 +517,7 @@ export function FFmpegCard() {
                               ? 'User Configured'
                               : status.source === 'Environment'
                                 ? 'Bundled (App)'
-                              : status.source}
+                                : status.source}
                       </Badge>
                     </Text>
                   )}
@@ -547,7 +566,11 @@ export function FFmpegCard() {
 
                   {isReady && (
                     <>
-                      <Button appearance="subtle" icon={<Folder24Regular />} onClick={handleOpenFolder}>
+                      <Button
+                        appearance="subtle"
+                        icon={<Folder24Regular />}
+                        onClick={handleOpenFolder}
+                      >
                         Open Folder
                       </Button>
                       <Button
@@ -588,9 +611,13 @@ export function FFmpegCard() {
               />
               <Text
                 size={200}
-                style={{ marginTop: tokens.spacingVerticalS, color: tokens.colorNeutralForeground3 }}
+                style={{
+                  marginTop: tokens.spacingVerticalS,
+                  color: tokens.colorNeutralForeground3,
+                }}
               >
-                Provide the path to ffmpeg.exe (or ffmpeg binary on Linux/Mac), or the folder containing it.
+                Provide the path to ffmpeg.exe (or ffmpeg binary on Linux/Mac), or the folder
+                containing it.
               </Text>
             </DialogContent>
             <DialogActions>

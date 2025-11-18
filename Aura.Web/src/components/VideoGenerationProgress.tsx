@@ -19,6 +19,7 @@ import {
   Divider,
   makeStyles,
   MessageBar,
+  MessageBarActions,
   MessageBarBody,
   ProgressBar,
   Text,
@@ -28,6 +29,7 @@ import {
 import {
   Checkmark24Filled,
   Clock24Regular,
+  Dismiss24Regular,
   DocumentArrowDown24Regular,
   Stop24Regular,
 } from '@fluentui/react-icons';
@@ -481,6 +483,7 @@ export const VideoGenerationProgress: FC<VideoGenerationProgressProps> = ({
   }, [jobId, resetState]);
 
   const { connect, disconnect, isConnected } = useSSEConnection({
+    // eslint-disable-next-line sonarjs/cognitive-complexity
     onMessage: (message) => {
       loggingService.debug('SSE message received', 'VideoGenerationProgress', 'onMessage', {
         type: message.type,
@@ -762,7 +765,7 @@ export const VideoGenerationProgress: FC<VideoGenerationProgressProps> = ({
               ● Live
             </Text>
           )}
-          <Tooltip content="Clear log entries">
+          <Tooltip content="Clear log entries" relationship="label">
             <Button size="small" appearance="subtle" onClick={handleClearLogs}>
               Clear Log
             </Button>
@@ -836,7 +839,7 @@ export const VideoGenerationProgress: FC<VideoGenerationProgressProps> = ({
                 <ProgressBar
                   className={styles.stageProgress}
                   value={stageProgress / 100}
-                  appearance={status === 'completed' ? 'success' : 'primary'}
+                  color={status === 'completed' ? 'success' : 'brand'}
                 />
               </div>
             </div>
@@ -847,12 +850,16 @@ export const VideoGenerationProgress: FC<VideoGenerationProgressProps> = ({
       {warningMessages.length > 0 && (
         <div className={styles.warningList}>
           {warningMessages.map((warning, index) => (
-            <MessageBar
-              key={`${warning}-${index}`}
-              intent="warning"
-              onDismiss={() => handleDismissWarning(index)}
-            >
+            <MessageBar key={`${warning}-${index}`} intent="warning">
               <MessageBarBody>{warning}</MessageBarBody>
+              <MessageBarActions>
+                <Button
+                  appearance="transparent"
+                  icon={<Dismiss24Regular />}
+                  onClick={() => handleDismissWarning(index)}
+                  aria-label="Dismiss warning"
+                />
+              </MessageBarActions>
             </MessageBar>
           ))}
         </div>

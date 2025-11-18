@@ -101,7 +101,7 @@ export function ExampleValidatedForm({ onSubmit }: ExampleValidatedFormProps) {
   });
 
   return (
-    <form className={styles.form} onSubmit={handleSubmit}>
+    <form className={styles.form} onSubmit={handleSubmit(() => {})}>
       <Text size={600} weight="semibold">
         Create Video
       </Text>

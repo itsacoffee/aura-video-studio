@@ -1,6 +1,6 @@
 /**
  * Accessible Form Components
- * 
+ *
  * Provides accessible form field components with proper ARIA labels,
  * error announcements, and validation messages.
  */
@@ -12,6 +12,7 @@ import {
   makeStyles,
   tokens,
   Text,
+  type GriffelStyle,
 } from '@fluentui/react-components';
 import { ErrorCircle20Regular, Checkmark20Regular } from '@fluentui/react-icons';
 import React, { useId, useCallback } from 'react';
@@ -55,7 +56,7 @@ const useStyles = makeStyles({
     borderColor: tokens.colorPaletteRedBorder1,
     ':focus': {
       borderColor: tokens.colorPaletteRedBorder1,
-    },
+    } as GriffelStyle,
   },
   successInput: {
     borderColor: tokens.colorPaletteGreenBorder1,

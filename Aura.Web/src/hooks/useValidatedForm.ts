@@ -48,7 +48,8 @@ export function useValidatedForm<T extends FieldValues>({
 }: UseValidatedFormOptions<T>): UseFormReturn<T> {
   const form = useForm<T>({
     ...options,
-    resolver: zodResolver(schema),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(schema as any),
   });
 
   const originalHandleSubmit = form.handleSubmit;

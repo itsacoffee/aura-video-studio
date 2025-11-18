@@ -1,4 +1,4 @@
-import { makeStyles, tokens, Tooltip } from '@fluentui/react-components';
+import { makeStyles, tokens, Tooltip, type GriffelStyle } from '@fluentui/react-components';
 import React, { useState, useRef, useCallback } from 'react';
 import { snapToFrame } from '../../services/timelineEngine';
 import { AppliedEffect } from '../../types/effects';
@@ -25,19 +25,22 @@ const useStyles = makeStyles({
     transition: 'all var(--editor-transition-fast)',
     boxShadow: 'var(--editor-shadow-sm)',
     '&.video': {
-      background: 'linear-gradient(135deg, var(--clip-video-bg) 0%, color-mix(in srgb, var(--clip-video-bg) 80%, black) 100%)',
+      background:
+        'linear-gradient(135deg, var(--clip-video-bg) 0%, color-mix(in srgb, var(--clip-video-bg) 80%, black) 100%)',
     },
     '&.audio': {
-      background: 'linear-gradient(135deg, var(--clip-audio-bg) 0%, color-mix(in srgb, var(--clip-audio-bg) 80%, black) 100%)',
+      background:
+        'linear-gradient(135deg, var(--clip-audio-bg) 0%, color-mix(in srgb, var(--clip-audio-bg) 80%, black) 100%)',
     },
     '&.image': {
-      background: 'linear-gradient(135deg, var(--clip-image-bg) 0%, color-mix(in srgb, var(--clip-image-bg) 80%, black) 100%)',
+      background:
+        'linear-gradient(135deg, var(--clip-image-bg) 0%, color-mix(in srgb, var(--clip-image-bg) 80%, black) 100%)',
     },
     '&:hover': {
       borderColor: 'var(--editor-accent)',
       boxShadow: '0 0 0 1px var(--editor-accent), var(--editor-shadow-md)',
       transform: 'translateY(-1px)',
-    },
+    } as GriffelStyle,
   },
   clipSelected: {
     border: `2px solid var(--clip-selected)`,

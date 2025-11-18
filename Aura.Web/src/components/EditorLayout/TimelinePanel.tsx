@@ -12,6 +12,7 @@ import {
   MenuPopover,
   MenuList,
   MenuItem,
+  type GriffelStyle,
 } from '@fluentui/react-components';
 import {
   Add24Regular,
@@ -84,7 +85,7 @@ const useStyles = makeStyles({
   trackDragOver: {
     backgroundColor: 'var(--editor-panel-hover)',
     borderColor: 'var(--editor-accent)',
-  },
+  } as GriffelStyle,
   trackLabel: {
     width: '120px',
     padding: 'var(--editor-space-sm)',
