@@ -10,9 +10,9 @@
  */
 
 import { sseConnectionManager } from './sseConnectionManager';
+import { env } from '@/config/env';
 import { loggingService } from '@/services/loggingService';
 import { toError } from '@/utils/errorUtils';
-import { env } from '@/config/env';
 
 export interface SSEConnectionOptions {
   url: string;

@@ -30,6 +30,8 @@ import {
   Link24Regular,
 } from '@fluentui/react-icons';
 import { useCallback, useEffect, useState } from 'react';
+import { useNotifications } from '../Notifications/Toasts';
+import { ManualInstallationModal } from './ManualInstallationModal';
 import { apiUrl } from '@/config/api';
 import { handleApiError, type UserFriendlyError } from '@/services/api/errorHandler';
 import {
@@ -37,8 +39,6 @@ import {
   type FFmpegDirectCheckResponse,
   type FFmpegStatusExtended,
 } from '@/services/api/ffmpegClient';
-import { useNotifications } from '../Notifications/Toasts';
-import { ManualInstallationModal } from './ManualInstallationModal';
 
 const useStyles = makeStyles({
   card: {

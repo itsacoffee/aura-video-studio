@@ -149,24 +149,59 @@ const useStyles = makeStyles({
 
 export interface TimelineProps {
   duration?: number;
+  currentTime?: number;
+  isPlaying?: boolean;
+  playbackSpeed?: number;
+  onTimeChange?: (time: number) => void;
+  onPlayPauseChange?: (isPlaying: boolean) => void;
+  onPlaybackSpeedChange?: (speed: number) => void;
   onSave?: () => void;
 }
 
-export function Timeline({ duration = 120, onSave }: TimelineProps) {
+export function Timeline({ 
+  duration = 120, 
+  currentTime: externalCurrentTime,
+  isPlaying: externalIsPlaying,
+  playbackSpeed: _externalPlaybackSpeed,
+  onTimeChange,
+  onPlayPauseChange,
+  onPlaybackSpeedChange: _onPlaybackSpeedChange,
+  onSave 
+}: TimelineProps) {
   const styles = useStyles();
   const {
     tracks,
-    currentTime,
+    currentTime: internalCurrentTime,
     zoom,
-    isPlaying,
-    setCurrentTime,
+    isPlaying: internalIsPlaying,
+    setCurrentTime: setInternalCurrentTime,
     setZoom,
-    setPlaying,
+    setPlaying: setInternalPlaying,
     updateTrack,
     toggleMute,
     toggleSolo,
     toggleLock,
   } = useTimelineStore();
+
+  // Use external state if provided, otherwise use internal state
+  const currentTime = externalCurrentTime !== undefined ? externalCurrentTime : internalCurrentTime;
+  const isPlaying = externalIsPlaying !== undefined ? externalIsPlaying : internalIsPlaying;
+
+  const setCurrentTime = useCallback((time: number) => {
+    if (onTimeChange) {
+      onTimeChange(time);
+    } else {
+      setInternalCurrentTime(time);
+    }
+  }, [onTimeChange, setInternalCurrentTime]);
+
+  const setPlaying = useCallback((playing: boolean) => {
+    if (onPlayPauseChange) {
+      onPlayPauseChange(playing);
+    } else {
+      setInternalPlaying(playing);
+    }
+  }, [onPlayPauseChange, setInternalPlaying]);
 
   const [showShortcuts, setShowShortcuts] = useState(false);
   const timelineRef = useRef<HTMLDivElement>(null);

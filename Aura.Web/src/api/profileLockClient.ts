@@ -3,7 +3,6 @@
  */
 
 import axios from 'axios';
-import { env } from '@/config/env';
 import type {
   SetProfileLockRequest,
   UnlockProfileLockRequest,
@@ -13,6 +12,7 @@ import type {
   ValidateProviderResponse,
   ProviderProfileLock
 } from '../types/profileLock';
+import { env } from '@/config/env';
 
 const API_BASE_URL = env.apiBaseUrl;
 

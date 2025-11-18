@@ -3,9 +3,9 @@
  * Provides typed methods for video generation operations
  */
 
-import { apiUrl } from '@/config/api';
 import type { ExtendedAxiosRequestConfig } from './apiClient';
 import { createAbortController, get, post } from './apiClient';
+import { apiUrl } from '@/config/api';
 
 /**
  * Video generation request interface

@@ -248,26 +248,36 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
 
       switch (event.key.toLowerCase()) {
         case 'j':
-          if (!isPlaying) {
-            onPlayPause();
-          }
-          setShuttleSpeed((prev) => Math.max(prev - 1, -4));
+          event.preventDefault();
+          setShuttleSpeed((prev) => {
+            const newSpeed = Math.max(prev - 1, -4);
+            if (newSpeed < 0 && !isPlaying) {
+              onPlayPause();
+            }
+            return newSpeed;
+          });
           break;
         case 'k':
+          event.preventDefault();
           if (isPlaying) {
             onPlayPause();
           }
           setShuttleSpeed(0);
           break;
         case 'l':
-          if (!isPlaying) {
-            onPlayPause();
-          }
-          setShuttleSpeed((prev) => Math.min(prev + 1, 4));
+          event.preventDefault();
+          setShuttleSpeed((prev) => {
+            const newSpeed = Math.min(prev + 1, 4);
+            if (newSpeed > 0 && !isPlaying) {
+              onPlayPause();
+            }
+            return newSpeed;
+          });
           break;
         case ' ':
           event.preventDefault();
           onPlayPause();
+          setShuttleSpeed(0);
           break;
         case ',':
           event.preventDefault();
@@ -302,7 +312,9 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
   ]);
 
   useEffect(() => {
-    if (shuttleSpeed !== 0) {
+    if (shuttleSpeed === 0) {
+      onSpeedChange(1);
+    } else {
       const speed = Math.abs(shuttleSpeed) * 0.5;
       onSpeedChange(speed);
     }

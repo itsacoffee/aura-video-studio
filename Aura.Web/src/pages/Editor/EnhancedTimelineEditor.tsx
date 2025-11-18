@@ -92,6 +92,8 @@ export function EnhancedTimelineEditor() {
   const [selectedSceneIndex] = useState<number | null>(null);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -343,13 +345,25 @@ export function EnhancedTimelineEditor() {
             <VideoPreviewPlayer
               videoUrl={previewUrl || undefined}
               currentTime={currentTime}
+              isPlaying={isPlaying}
+              playbackSpeed={playbackSpeed}
               onTimeUpdate={setCurrentTime}
+              onPlayPauseChange={setIsPlaying}
             />
           </div>
 
           {/* Enhanced Timeline with Advanced Features */}
           <div className={styles.timelineSection}>
-            <Timeline duration={totalDuration} onSave={saveTimeline} />
+            <Timeline 
+              duration={totalDuration} 
+              currentTime={currentTime}
+              isPlaying={isPlaying}
+              playbackSpeed={playbackSpeed}
+              onTimeChange={setCurrentTime}
+              onPlayPauseChange={setIsPlaying}
+              onPlaybackSpeedChange={setPlaybackSpeed}
+              onSave={saveTimeline} 
+            />
           </div>
         </div>
 

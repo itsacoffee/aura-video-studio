@@ -7,8 +7,8 @@
  * PR 1: Enhanced with proper error classification instead of generic failures
  */
 
-import { ollamaClient } from './api/ollamaClient';
 import { classifyError, type ClassifiedError } from '../utils/errorClassification';
+import { ollamaClient } from './api/ollamaClient';
 
 export interface OllamaSetupStatus {
   installed: boolean;
