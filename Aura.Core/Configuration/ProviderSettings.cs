@@ -261,10 +261,12 @@ public class ProviderSettings
 
     /// <summary>
     /// Get FFmpeg executable path from unified configuration.
+    /// Delegates to IFfmpegConfigurationService for unified config resolution.
+    /// Falls back to settings.json for backward compatibility.
     /// </summary>
     public string GetFfmpegPath()
     {
-        // If configuration service is available, use it
+        // Primary: Use unified configuration service (PR #384)
         if (_ffmpegConfigService != null)
         {
             var config = _ffmpegConfigService.GetEffectiveConfigurationAsync().GetAwaiter().GetResult();
@@ -274,14 +276,13 @@ public class ProviderSettings
             }
         }
         
-        // Fallback to legacy settings.json approach
+        // Legacy fallback: settings.json (deprecated, kept for backward compatibility)
         LoadSettings();
         var path = GetStringSetting("ffmpegPath", "");
         
-        // If empty, try to find in common locations or use system PATH
+        // If empty, default to system PATH
         if (string.IsNullOrWhiteSpace(path))
         {
-            // Default to system PATH
             return "ffmpeg";
         }
         
@@ -289,17 +290,43 @@ public class ProviderSettings
     }
 
     /// <summary>
-    /// Get FFprobe executable path
+    /// Get FFprobe executable path.
+    /// Derives from FFmpeg path using unified configuration.
     /// </summary>
     public string GetFfprobePath()
     {
+        // Derive from FFmpeg path when using unified configuration
+        if (_ffmpegConfigService != null)
+        {
+            var config = _ffmpegConfigService.GetEffectiveConfigurationAsync().GetAwaiter().GetResult();
+            if (!string.IsNullOrWhiteSpace(config.Path))
+            {
+                // FFprobe is typically in same directory as FFmpeg
+                var ffmpegDir = Path.GetDirectoryName(config.Path);
+                if (!string.IsNullOrEmpty(ffmpegDir))
+                {
+                    var ffprobeExe = Path.Combine(ffmpegDir, "ffprobe.exe");
+                    if (File.Exists(ffprobeExe))
+                    {
+                        return ffprobeExe;
+                    }
+                    // Try without .exe extension for non-Windows
+                    var ffprobe = Path.Combine(ffmpegDir, "ffprobe");
+                    if (File.Exists(ffprobe))
+                    {
+                        return ffprobe;
+                    }
+                }
+            }
+        }
+        
+        // Legacy fallback: settings.json
         LoadSettings();
         var path = GetStringSetting("ffprobePath", "");
         
-        // If empty, try to find in common locations or use system PATH
+        // If empty, default to system PATH
         if (string.IsNullOrWhiteSpace(path))
         {
-            // Default to system PATH
             return "ffprobe";
         }
         

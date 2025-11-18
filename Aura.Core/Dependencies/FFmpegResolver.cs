@@ -529,18 +529,16 @@ public class FFmpegResolver
 
     private static IReadOnlyList<string> GetEnvironmentOverridePaths()
     {
-        var paths = new[]
-            {
-                Environment.GetEnvironmentVariable("FFMPEG_PATH"),
-                Environment.GetEnvironmentVariable("FFMPEG_BINARIES_PATH"),
-                Environment.GetEnvironmentVariable("AURA_FFMPEG_PATH")
-            }
-            .Where(p => !string.IsNullOrWhiteSpace(p))
-            .Select(p => p!.Trim())
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
+        // Only use AURA_FFMPEG_PATH as per unified configuration (PR #384)
+        // Legacy FFMPEG_PATH and FFMPEG_BINARIES_PATH are no longer supported
+        var auraPath = Environment.GetEnvironmentVariable("AURA_FFMPEG_PATH");
         
-        return paths;
+        if (!string.IsNullOrWhiteSpace(auraPath))
+        {
+            return new[] { auraPath.Trim() };
+        }
+        
+        return Array.Empty<string>();
     }
 
     /// <summary>

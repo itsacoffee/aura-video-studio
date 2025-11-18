@@ -283,7 +283,7 @@ public class FfmpegLocator : IFfmpegLocator
             }
         }
 
-        // 1. Check AURA_FFMPEG_PATH environment variable (second priority for explicit config)
+        // 1. Check AURA_FFMPEG_PATH environment variable (primary Electron hint after explicit config)
         var auraFfmpegPath = Environment.GetEnvironmentVariable("AURA_FFMPEG_PATH");
         if (!string.IsNullOrEmpty(auraFfmpegPath))
         {
@@ -298,24 +298,6 @@ public class FfmpegLocator : IFfmpegLocator
                 candidates.Add(auraExe);
                 _logger.LogDebug("Added AURA_FFMPEG_PATH directory from environment: {Path}", auraExe);
             }
-        }
-
-        // 1. Check environment variables from Electron (for bundled apps)
-        var electronFfmpegPath = Environment.GetEnvironmentVariable("FFMPEG_PATH");
-        var electronBinariesPath = Environment.GetEnvironmentVariable("FFMPEG_BINARIES_PATH");
-        
-        if (!string.IsNullOrEmpty(electronFfmpegPath))
-        {
-            var electronExe = Path.Combine(electronFfmpegPath, exeName);
-            candidates.Add(electronExe);
-            _logger.LogDebug("Added Electron FFmpeg path from environment: {Path}", electronExe);
-        }
-        
-        if (!string.IsNullOrEmpty(electronBinariesPath) && electronBinariesPath != electronFfmpegPath)
-        {
-            var electronBinExe = Path.Combine(electronBinariesPath, exeName);
-            candidates.Add(electronBinExe);
-            _logger.LogDebug("Added Electron binaries path from environment: {Path}", electronBinExe);
         }
 
         // 2. Configured path from registry/install.json (if provided)
