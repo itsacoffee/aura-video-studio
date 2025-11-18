@@ -3919,6 +3919,39 @@ apiGroup.MapGet("/diagnostics/json", async (Aura.Core.Hardware.DiagnosticsHelper
 .WithName("GetDiagnosticsJson")
 .WithOpenApi();
 
+// Backend URL diagnostics endpoint (Development only)
+// Reports the active port and base URLs that the backend is listening on
+if (builder.Environment.IsDevelopment())
+{
+    apiGroup.MapGet("/diagnostics/backend-url", (HttpContext context) =>
+    {
+        try
+        {
+            var aspnetcoreUrls = Environment.GetEnvironmentVariable("ASPNETCORE_URLS");
+            var auraBackendUrl = Environment.GetEnvironmentVariable("AURA_BACKEND_URL");
+            var requestUrl = $"{context.Request.Scheme}://{context.Request.Host}";
+            
+            return Results.Ok(new
+            {
+                activeBaseUrl = requestUrl,
+                configuredUrls = new
+                {
+                    aspnetcoreUrls = aspnetcoreUrls ?? "(not set)",
+                    auraBackendUrl = auraBackendUrl ?? "(not set)"
+                },
+                note = "In Electron, the backend URL is dynamically resolved via the network contract. Port 5005 is only used for standalone backend dev (dotnet run)."
+            });
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error getting backend URL diagnostics");
+            return Results.Problem("Error getting backend URL diagnostics", statusCode: 500);
+        }
+    })
+    .WithName("GetBackendUrlDiagnostics")
+    .WithOpenApi()
+    .WithTags("Diagnostics");
+}
 
 apiGroup.MapGet("/profiles/list", () =>
 {
