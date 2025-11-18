@@ -59,7 +59,10 @@ export const DiagnosticsPanel: FC = () => {
     try {
       let diagnostics: { success: boolean; results: DiagnosticsResults } | undefined;
       if (auraDiagnostics?.runAll) {
-        diagnostics = (await auraDiagnostics.runAll()) as { success: boolean; results: DiagnosticsResults };
+        diagnostics = (await auraDiagnostics.runAll()) as {
+          success: boolean;
+          results: DiagnosticsResults;
+        };
       } else if (legacyInvoke) {
         diagnostics = (await legacyInvoke('diagnostics:runAll')) as {
           success: boolean;
@@ -81,6 +84,7 @@ export const DiagnosticsPanel: FC = () => {
     runDiagnostics();
   }, []);
 
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   const handleFix = async (checkName: string) => {
     const auraDiagnostics = window.aura?.diagnostics;
     const legacyInvoke = window.electron?.invoke;
@@ -93,18 +97,40 @@ export const DiagnosticsPanel: FC = () => {
       string,
       (() => Promise<{ success: boolean; message: string; requiresRestart?: boolean }>) | undefined
     > = {
-      ffmpeg: auraDiagnostics?.fixFFmpeg,
-      api: auraDiagnostics?.fixAPI,
-      providers: auraDiagnostics?.fixProviders,
+      ffmpeg: auraDiagnostics?.fixFFmpeg
+        ? () =>
+            auraDiagnostics
+              .fixFFmpeg()
+              .then(
+                (result) =>
+                  result as { success: boolean; message: string; requiresRestart?: boolean }
+              )
+        : undefined,
+      api: auraDiagnostics?.fixAPI
+        ? () =>
+            auraDiagnostics
+              .fixAPI()
+              .then(
+                (result) =>
+                  result as { success: boolean; message: string; requiresRestart?: boolean }
+              )
+        : undefined,
+      providers: auraDiagnostics?.fixProviders
+        ? () =>
+            auraDiagnostics
+              .fixProviders()
+              .then(
+                (result) =>
+                  result as { success: boolean; message: string; requiresRestart?: boolean }
+              )
+        : undefined,
     };
 
     const fallbackChannel = `diagnostics:fix${checkName.charAt(0).toUpperCase() + checkName.slice(1)}`;
 
     setFixingCheck(checkName);
     try {
-      let result:
-        | { success: boolean; message: string; requiresRestart?: boolean }
-        | undefined;
+      let result: { success: boolean; message: string; requiresRestart?: boolean } | undefined;
 
       const fixer = auraFixers[checkName];
       if (fixer) {

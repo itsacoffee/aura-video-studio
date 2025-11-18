@@ -12,6 +12,7 @@ interface Props {
   children: ReactNode;
   fallback?: (error: Error, reset: () => void) => ReactNode;
   onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
+  onRetry?: () => void;
   componentName?: string;
 }
 
@@ -64,6 +65,11 @@ export class ComponentErrorBoundary extends Component<Props, State> {
       hasError: false,
       error: null,
     });
+
+    // Call onRetry callback if provided
+    if (this.props.onRetry) {
+      this.props.onRetry();
+    }
   };
 
   render(): ReactNode {

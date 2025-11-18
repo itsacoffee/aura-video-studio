@@ -630,7 +630,9 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                           }}
                           onMouseEnter={() => setSelectedIndex(globalIndex)}
                         >
-                          <Icon className={styles.icon} />
+                          <div className={styles.icon}>
+                            <Icon />
+                          </div>
                           <div className={styles.commandContent}>
                             <Text className={styles.commandName}>{command.name}</Text>
                             <Text className={styles.commandDescription}>{command.description}</Text>

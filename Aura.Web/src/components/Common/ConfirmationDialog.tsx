@@ -18,7 +18,7 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import { Warning24Regular } from '@fluentui/react-icons';
-import { ReactNode } from 'react';
+import { ReactElement } from 'react';
 
 const useStyles = makeStyles({
   content: {
@@ -47,8 +47,8 @@ const useStyles = makeStyles({
 export type ConfirmationSeverity = 'warning' | 'danger' | 'info';
 
 export interface ConfirmationDialogProps {
-  /** The trigger element (e.g., a button) */
-  trigger: ReactNode;
+  /** The trigger element (e.g., a button) - must be a ReactElement, not a string */
+  trigger: ReactElement;
 
   /** Dialog title */
   title: string;
