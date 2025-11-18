@@ -202,14 +202,11 @@ export const IdeationDashboard: React.FC = () => {
   );
 
   const handleSelectConcept = (concept: ConceptIdea) => {
-    // Navigate to create page with the selected concept pre-filled
-    navigate('/create', { state: { conceptIdea: concept } });
+    navigate(`/ideation/concept/${concept.conceptId}`, { state: { concept } });
   };
 
   const handleExpandConcept = (concept: ConceptIdea) => {
-    // Navigate to concept detail/expansion view
-    // For now, navigate to create page with the concept
-    navigate('/create', { state: { conceptIdea: concept, expandMode: true } });
+    navigate(`/ideation/concept/${concept.conceptId}`, { state: { concept } });
   };
 
   const handleRefresh = useCallback(() => {
@@ -327,6 +324,11 @@ export const IdeationDashboard: React.FC = () => {
           creative variations with different storytelling approaches, target audiences, and
           production angles.
         </Text>
+        <div style={{ marginTop: tokens.spacingVerticalM }}>
+          <Button appearance="outline" onClick={() => navigate('/ideation/brief-builder')}>
+            Start with Brief Builder
+          </Button>
+        </div>
       </div>
 
       <div className={styles.content}>
