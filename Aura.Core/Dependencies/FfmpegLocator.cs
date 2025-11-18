@@ -56,10 +56,12 @@ public class FfmpegLocator : IFfmpegLocator
     private readonly ILogger<FfmpegLocator> _logger;
     private readonly string _toolsDirectory;
     private readonly string _dependenciesDirectory;
+    private readonly string? _explicitPath;
 
-    public FfmpegLocator(ILogger<FfmpegLocator> logger, string? toolsDirectory = null)
+    public FfmpegLocator(ILogger<FfmpegLocator> logger, string? toolsDirectory = null, string? explicitPath = null)
     {
         _logger = logger;
+        _explicitPath = explicitPath;
         
         var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         _toolsDirectory = toolsDirectory ?? Path.Combine(localAppData, "Aura", "Tools");
@@ -265,7 +267,23 @@ public class FfmpegLocator : IFfmpegLocator
         var candidates = new List<string>();
         var exeName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "ffmpeg.exe" : "ffmpeg";
 
-        // 0. Check AURA_FFMPEG_PATH environment variable (highest priority for explicit config)
+        // 0. Check explicit path from unified configuration service (highest priority)
+        if (!string.IsNullOrEmpty(_explicitPath))
+        {
+            if (File.Exists(_explicitPath))
+            {
+                candidates.Add(_explicitPath);
+                _logger.LogDebug("Added explicit path from configuration service: {Path}", _explicitPath);
+            }
+            else if (Directory.Exists(_explicitPath))
+            {
+                var explicitExe = Path.Combine(_explicitPath, exeName);
+                candidates.Add(explicitExe);
+                _logger.LogDebug("Added explicit directory from configuration service: {Path}", explicitExe);
+            }
+        }
+
+        // 1. Check AURA_FFMPEG_PATH environment variable (second priority for explicit config)
         var auraFfmpegPath = Environment.GetEnvironmentVariable("AURA_FFMPEG_PATH");
         if (!string.IsNullOrEmpty(auraFfmpegPath))
         {

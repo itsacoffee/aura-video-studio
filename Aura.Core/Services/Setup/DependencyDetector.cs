@@ -46,12 +46,12 @@ public record DependencyStatus(
 public class DependencyDetector
 {
     private readonly ILogger<DependencyDetector> _logger;
-    private readonly FfmpegLocator? _ffmpegLocator;
+    private readonly IFfmpegLocator? _ffmpegLocator;
     private readonly HttpClient? _httpClient;
 
     public DependencyDetector(
         ILogger<DependencyDetector> logger,
-        FfmpegLocator? ffmpegLocator = null,
+        IFfmpegLocator? ffmpegLocator = null,
         HttpClient? httpClient = null)
     {
         _logger = logger;

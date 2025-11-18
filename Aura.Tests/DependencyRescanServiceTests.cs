@@ -10,15 +10,13 @@ namespace Aura.Tests;
 
 public class DependencyRescanServiceTests
 {
-    private readonly Mock<FfmpegLocator> _mockFfmpegLocator;
+    private readonly Mock<IFfmpegLocator> _mockFfmpegLocator;
     private readonly Mock<ComponentDownloader> _mockComponentDownloader;
     private readonly DependencyRescanService _service;
 
     public DependencyRescanServiceTests()
     {
-        _mockFfmpegLocator = new Mock<FfmpegLocator>(
-            NullLogger<FfmpegLocator>.Instance,
-            null);
+        _mockFfmpegLocator = new Mock<IFfmpegLocator>();
         
         _mockComponentDownloader = new Mock<ComponentDownloader>(
             NullLogger<ComponentDownloader>.Instance,
