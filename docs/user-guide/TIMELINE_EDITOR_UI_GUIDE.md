@@ -2,6 +2,8 @@
 
 ## Visual Layout
 
+**Note**: The default layout shown below uses the "Editing" workspace preset (60/30/10 proportions). The layout can be changed using workspace presets in the View menu. See [Workspace Presets](#workspace-presets) section for details.
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ Timeline Editor                            [Back] [Save] [Generate Preview]  │
@@ -377,3 +379,80 @@
 - Advanced keyboard shortcuts
 
 These can be added in future iterations with appropriate libraries and additional development.
+
+## Workspace Presets
+
+The video editor supports multiple workspace presets (similar to Adobe Premiere Pro) to optimize the layout for different tasks. Access presets via:
+- **View → Workspace Switcher** dropdown (toolbar)
+- **Keyboard shortcuts**: Alt+1 through Alt+5
+- **View → Reset Layout** to restore default
+
+### Available Presets
+
+**1. Editing (Default)** - `Alt+1`
+- 60% preview, 30% timeline, 10% properties
+- All side panels collapsed for focused editing
+- Balanced layout for general video editing
+
+**2. Focus: Preview**
+- 75% preview, 25% timeline
+- Maximized preview area for detailed viewing
+- Ideal for color grading and visual inspection
+- All side panels hidden
+
+**3. Focus: Timeline**
+- 40% preview, 60% timeline
+- Maximized timeline for precise multi-track editing
+- Perfect for complex edits with many clips
+- All side panels hidden
+
+**4. Minimal Sidebar**
+- Compact panel widths (240-280px)
+- Reduced visual clutter
+- Easy access to tools when needed
+
+**5. Color** - `Alt+2`
+- 70% preview for accurate color evaluation
+- Properties panel visible (350px)
+- Optimized for color grading work
+
+**6. Audio** - `Alt+4`
+- 50/50 preview/timeline split
+- Properties and Media Library visible
+- Optimal for audio editing workflows
+
+**7. Effects** - `Alt+3`
+- Effects Library panel expanded (300px)
+- Properties panel visible for adjustments
+- Efficient effects application workflow
+
+**8. Assembly** - `Alt+5`
+- Media Library visible (300px)
+- 55/45 preview/timeline split
+- Ideal for rough cuts and organization
+
+### Panel Visibility Controls
+
+Individual panels can be shown/hidden via **View → Panels**:
+
+- ✓ **Properties Panel** - Clip properties and effects controls
+- ✓ **Media Library Panel** - Asset browser and import
+- ✓ **Effects Panel** - Effect presets and library
+- ✓ **History Panel** - Undo/redo visualization
+
+**Note**: Preview and Timeline panels are always visible (critical for editing).
+
+### Reset Layout
+
+To restore default layout and panel sizes:
+- **View → Reset Layout** or press `Alt+0`
+- Clears all customized panel sizes
+- Returns to "Editing" preset
+- Shows confirmation notification
+
+### Layout Persistence
+
+- Panel sizes and positions persist across sessions
+- Collapsed/visible states saved automatically
+- Custom adjustments maintained until reset
+- Active preset tracked and restored on reload
