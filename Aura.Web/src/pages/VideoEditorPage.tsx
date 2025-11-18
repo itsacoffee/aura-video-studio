@@ -6,7 +6,7 @@ import {
   UpdatePropertyCommand,
   AddEffectCommand,
 } from '../commands/clipCommands';
-import { EditorLayout } from '../components/EditorLayout/EditorLayout';
+import { EditorLayout, EditorLayoutPanelConfig } from '../components/EditorLayout/EditorLayout';
 import { EffectsLibraryPanel } from '../components/EditorLayout/EffectsLibraryPanel';
 import { HistoryPanel } from '../components/EditorLayout/HistoryPanel';
 import { MediaLibraryPanel } from '../components/EditorLayout/MediaLibraryPanel';
@@ -565,46 +565,55 @@ export function VideoEditorPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTime, selectedClipId, commandHistory]);
 
-  const handleUpdateClip = (updates: Partial<TimelineClip>) => {
-    if (!selectedClipId) return;
+  const handleUpdateClip = useCallback(
+    (updates: Partial<TimelineClip>) => {
+      if (!selectedClipId) return;
 
-    const command = new UpdatePropertyCommand(selectedClipId, updates, clips, setClips);
-    commandHistory.execute(command);
-  };
+      const command = new UpdatePropertyCommand(selectedClipId, updates, clips, setClips);
+      commandHistory.execute(command);
+    },
+    [selectedClipId, clips, commandHistory]
+  );
 
-  const handleUpdateClipById = (clipId: string, updates: Partial<TimelineClip>) => {
-    const command = new UpdatePropertyCommand(clipId, updates, clips, setClips);
-    commandHistory.execute(command);
-  };
+  const handleUpdateClipById = useCallback(
+    (clipId: string, updates: Partial<TimelineClip>) => {
+      const command = new UpdatePropertyCommand(clipId, updates, clips, setClips);
+      commandHistory.execute(command);
+    },
+    [clips, commandHistory]
+  );
 
-  const handleDeleteClip = () => {
+  const handleDeleteClip = useCallback(() => {
     if (!selectedClipId) return;
 
     const command = new DeleteClipCommand(selectedClipId, clips, setClips);
     commandHistory.execute(command);
     setSelectedClipId(null);
-  };
+  }, [selectedClipId, clips, commandHistory]);
 
-  const handleAddClip = (_trackId: string, clip: TimelineClip) => {
-    const command = new AddClipCommand(clip, setClips);
-    commandHistory.execute(command);
-  };
+  const handleAddClip = useCallback(
+    (_trackId: string, clip: TimelineClip) => {
+      const command = new AddClipCommand(clip, setClips);
+      commandHistory.execute(command);
+    },
+    [commandHistory]
+  );
 
-  const handleTrackToggleVisibility = (trackId: string) => {
+  const handleTrackToggleVisibility = useCallback((trackId: string) => {
     setTracks((prevTracks) =>
       prevTracks.map((track) =>
         track.id === trackId ? { ...track, visible: !track.visible } : track
       )
     );
-  };
+  }, []);
 
-  const handleTrackToggleLock = (trackId: string) => {
+  const handleTrackToggleLock = useCallback((trackId: string) => {
     setTracks((prevTracks) =>
       prevTracks.map((track) =>
         track.id === trackId ? { ...track, locked: !track.locked } : track
       )
     );
-  };
+  }, []);
 
   const handleWorkspaceSwitch = (layoutId: string) => {
     setCurrentLayout(layoutId);
@@ -814,61 +823,156 @@ export function VideoEditorPage() {
     }
   };
 
-  const handleApplyPreset = (preset: EffectPreset) => {
-    if (!selectedClipId) return;
+  const handleApplyPreset = useCallback(
+    (preset: EffectPreset) => {
+      if (!selectedClipId) return;
 
-    // Apply preset effects to selected clip as a batch
-    const presetEffects: AppliedEffect[] = preset.effects.map((presetEffect, index) => ({
-      id: `effect-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 11)}`,
-      effectType: presetEffect.effectType,
-      enabled: true,
-      parameters: presetEffect.parameters,
-    }));
+      // Apply preset effects to selected clip as a batch
+      const presetEffects: AppliedEffect[] = preset.effects.map((presetEffect, index) => ({
+        id: `effect-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 11)}`,
+        effectType: presetEffect.effectType,
+        enabled: true,
+        parameters: presetEffect.parameters,
+      }));
 
-    // Use command for each effect
-    presetEffects.forEach((effect) => {
-      const command = new AddEffectCommand(selectedClipId, effect, setClips);
-      commandHistory.execute(command);
-    });
-  };
+      // Use command for each effect
+      presetEffects.forEach((effect) => {
+        const command = new AddEffectCommand(selectedClipId, effect, setClips);
+        commandHistory.execute(command);
+      });
+    },
+    [selectedClipId, commandHistory]
+  );
+
+  // Define panel configuration for Premiere-style layout
+  const panelConfig: EditorLayoutPanelConfig[] = useMemo(
+    () => [
+      {
+        id: 'preview',
+        title: 'Preview',
+        region: 'top',
+        defaultSize: 60, // 60% of vertical space
+        minSize: 40,
+        maxSize: 80,
+        visibleByDefault: true,
+      },
+      {
+        id: 'timeline',
+        title: 'Timeline',
+        region: 'bottom',
+        defaultSize: 40, // 40% of vertical space (100 - preview)
+        visibleByDefault: true,
+      },
+      {
+        id: 'mediaLibrary',
+        title: 'Media Library',
+        region: 'right', // Treated as left sidebar in layout logic
+        defaultSize: 280,
+        minSize: 240,
+        maxSize: 350,
+        visibleByDefault: false,
+      },
+      {
+        id: 'effects',
+        title: 'Effects',
+        region: 'right', // Treated as left sidebar in layout logic
+        defaultSize: 280,
+        minSize: 240,
+        maxSize: 350,
+        visibleByDefault: false,
+      },
+      {
+        id: 'properties',
+        title: 'Properties',
+        region: 'right',
+        defaultSize: 320,
+        minSize: 280,
+        maxSize: 400,
+        visibleByDefault: false,
+      },
+      {
+        id: 'history',
+        title: 'History',
+        region: 'right',
+        defaultSize: 320,
+        minSize: 280,
+        maxSize: 400,
+        visibleByDefault: false,
+      },
+    ],
+    []
+  );
+
+  // Render panel by ID
+  const renderPanel = useCallback(
+    (panelId: string) => {
+      switch (panelId) {
+        case 'preview':
+          return (
+            <VideoPreviewPanel
+              ref={videoPreviewRef}
+              currentTime={currentTime}
+              effects={selectedClip?.effects}
+              onTimeUpdate={setCurrentTime}
+              onPlay={() => setIsPlaying(true)}
+              onPause={() => setIsPlaying(false)}
+            />
+          );
+        case 'timeline':
+          return (
+            <TimelinePanel
+              clips={clips}
+              tracks={tracks}
+              currentTime={currentTime}
+              onTimeChange={setCurrentTime}
+              onClipSelect={setSelectedClipId}
+              selectedClipId={selectedClipId}
+              onClipAdd={handleAddClip}
+              onClipUpdate={handleUpdateClipById}
+              onTrackToggleVisibility={handleTrackToggleVisibility}
+              onTrackToggleLock={handleTrackToggleLock}
+            />
+          );
+        case 'properties':
+          return (
+            <PropertiesPanel
+              selectedClip={selectedClip}
+              onUpdateClip={handleUpdateClip}
+              onDeleteClip={handleDeleteClip}
+            />
+          );
+        case 'mediaLibrary':
+          return <MediaLibraryPanel ref={mediaLibraryRef} />;
+        case 'effects':
+          return <EffectsLibraryPanel onPresetApply={handleApplyPreset} />;
+        case 'history':
+          return <HistoryPanel commandHistory={commandHistory} />;
+        default:
+          return null;
+      }
+    },
+    [
+      currentTime,
+      selectedClip,
+      clips,
+      tracks,
+      selectedClipId,
+      handleAddClip,
+      handleUpdateClipById,
+      handleTrackToggleVisibility,
+      handleTrackToggleLock,
+      handleUpdateClip,
+      handleDeleteClip,
+      commandHistory,
+      handleApplyPreset,
+    ]
+  );
 
   return (
     <>
       <EditorLayout
-        mediaLibrary={<MediaLibraryPanel ref={mediaLibraryRef} />}
-        effects={<EffectsLibraryPanel onPresetApply={handleApplyPreset} />}
-        history={<HistoryPanel commandHistory={commandHistory} />}
-        preview={
-          <VideoPreviewPanel
-            ref={videoPreviewRef}
-            currentTime={currentTime}
-            effects={selectedClip?.effects}
-            onTimeUpdate={setCurrentTime}
-            onPlay={() => setIsPlaying(true)}
-            onPause={() => setIsPlaying(false)}
-          />
-        }
-        timeline={
-          <TimelinePanel
-            clips={clips}
-            tracks={tracks}
-            currentTime={currentTime}
-            onTimeChange={setCurrentTime}
-            onClipSelect={setSelectedClipId}
-            selectedClipId={selectedClipId}
-            onClipAdd={handleAddClip}
-            onClipUpdate={handleUpdateClipById}
-            onTrackToggleVisibility={handleTrackToggleVisibility}
-            onTrackToggleLock={handleTrackToggleLock}
-          />
-        }
-        properties={
-          <PropertiesPanel
-            selectedClip={selectedClip}
-            onUpdateClip={handleUpdateClip}
-            onDeleteClip={handleDeleteClip}
-          />
-        }
+        panels={panelConfig}
+        renderPanel={renderPanel}
         onImportMedia={handleImportMedia}
         onExportVideo={handleExportVideo}
         onShowKeyboardShortcuts={() => setShowKeyboardShortcuts(true)}
