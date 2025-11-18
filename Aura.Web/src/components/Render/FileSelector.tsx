@@ -82,81 +82,21 @@ interface FileSelectorProps {
   onClose: () => void;
   onSelect: (file: FileMetadata) => void;
   onBrowse: () => void;
+  recentFiles?: FileMetadata[];
+  generatedFiles?: FileMetadata[];
 }
 
-export function FileSelector({ open, onClose, onSelect, onBrowse }: FileSelectorProps) {
+export function FileSelector({
+  open,
+  onClose,
+  onSelect,
+  onBrowse,
+  recentFiles = [],
+  generatedFiles = [],
+}: FileSelectorProps) {
   const styles = useStyles();
   const [selectedTab, setSelectedTab] = useState<'recent' | 'generated'>('recent');
   const [selectedFile, setSelectedFile] = useState<FileMetadata | null>(null);
-
-  // Mock data for demonstration
-  const recentFiles: FileMetadata[] = [
-    {
-      name: 'Marketing_Video_Q4.mp4',
-      path: '/Users/username/Videos/Marketing_Video_Q4.mp4',
-      type: 'video',
-      duration: 125,
-      size: 85 * 1024 * 1024,
-      resolution: { width: 1920, height: 1080 },
-      codec: 'H.264',
-      bitrate: 8000000,
-      fps: 30,
-      audioCodec: 'AAC',
-      sampleRate: 48000,
-    },
-    {
-      name: 'Product_Demo_v2.mov',
-      path: '/Users/username/Videos/Product_Demo_v2.mov',
-      type: 'video',
-      duration: 95,
-      size: 320 * 1024 * 1024,
-      resolution: { width: 1920, height: 1080 },
-      codec: 'ProRes',
-      bitrate: 28000000,
-      fps: 30,
-      audioCodec: 'PCM',
-      sampleRate: 48000,
-    },
-    {
-      name: 'Interview_Audio.mp3',
-      path: '/Users/username/Audio/Interview_Audio.mp3',
-      type: 'audio',
-      duration: 1845,
-      size: 42 * 1024 * 1024,
-      codec: 'MP3',
-      bitrate: 192000,
-      sampleRate: 44100,
-    },
-  ];
-
-  const generatedFiles: FileMetadata[] = [
-    {
-      name: 'Aura_Generated_2024_01_15.mp4',
-      path: '/Users/username/.aura/outputs/Aura_Generated_2024_01_15.mp4',
-      type: 'video',
-      duration: 45,
-      size: 35 * 1024 * 1024,
-      resolution: { width: 1920, height: 1080 },
-      codec: 'H.264',
-      bitrate: 6000000,
-      fps: 30,
-      audioCodec: 'AAC',
-      sampleRate: 48000,
-    },
-    {
-      name: 'Aura_Generated_2024_01_14.mp4',
-      path: '/Users/username/.aura/outputs/Aura_Generated_2024_01_14.mp4',
-      type: 'video',
-      duration: 60,
-      size: 48 * 1024 * 1024,
-      resolution: { width: 1920, height: 1080 },
-      codec: 'H.264',
-      bitrate: 6000000,
-      fps: 30,
-      audioCodec: 'AAC',
-      sampleRate: 48000,
-    },
-  ];
 
   const files = selectedTab === 'recent' ? recentFiles : generatedFiles;
 
