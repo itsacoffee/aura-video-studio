@@ -102,7 +102,19 @@ export function ImportWorkspaceDialog({
     setSelectedFile(file);
 
     try {
+      if (!file || file.size === 0) {
+        setValidationErrors(['The selected file is empty. Please choose a valid workspace file.']);
+        return;
+      }
+
       const content = await readFileAsText(file);
+
+      if (!content || content.trim().length === 0) {
+        setValidationErrors([
+          'The file appears to be empty or unreadable. Please choose a valid workspace file.',
+        ]);
+        return;
+      }
 
       if (file.name.endsWith('.workspace-bundle')) {
         const bundle = parseWorkspaceBundleJSON(content);
@@ -116,7 +128,9 @@ export function ImportWorkspaceDialog({
             setSelectedWorkspaces(new Set(bundle.workspaces.map((_, i) => i)));
           }
         } else {
-          setValidationErrors(['Failed to parse workspace bundle file']);
+          setValidationErrors([
+            'Could not parse workspace bundle file. Ensure the file is not corrupted.',
+          ]);
         }
       } else {
         const workspace = parseWorkspaceJSON(content);
@@ -130,31 +144,46 @@ export function ImportWorkspaceDialog({
             setSelectedWorkspaces(new Set([0]));
           }
         } else {
-          setValidationErrors(['Failed to parse workspace file']);
+          setValidationErrors([
+            'Could not parse workspace file. Ensure the file is not corrupted.',
+          ]);
         }
       }
     } catch (error) {
       console.error('Error reading file:', error);
-      setValidationErrors([error instanceof Error ? error.message : 'Unknown error occurred']);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'An unknown error occurred while reading the file.';
+      setValidationErrors([`Failed to read workspace file: ${errorMessage}`]);
     }
   };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragging(true);
   };
 
-  const handleDragLeave = () => {
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     setIsDragging(false);
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragging(false);
 
     const file = e.dataTransfer.files[0];
     if (file && (file.name.endsWith('.workspace') || file.name.endsWith('.workspace-bundle'))) {
       handleFileSelect(file);
+    } else if (file) {
+      handleReset();
+      setValidationErrors([
+        'Invalid file type. Please select a .workspace or .workspace-bundle file.',
+      ]);
     }
   };
 
@@ -162,6 +191,9 @@ export function ImportWorkspaceDialog({
     const file = e.target.files?.[0];
     if (file) {
       handleFileSelect(file);
+    }
+    if (e.target) {
+      e.target.value = '';
     }
   };
 
