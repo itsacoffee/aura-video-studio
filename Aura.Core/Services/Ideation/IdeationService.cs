@@ -361,6 +361,46 @@ public class IdeationService
         );
     }
 
+    /// <summary>
+    /// Convert freeform idea into structured brief with multiple variants
+    /// </summary>
+    public async Task<IdeaToBriefResponse> IdeaToBriefAsync(
+        IdeaToBriefRequest request,
+        CancellationToken ct = default)
+    {
+        _logger.LogInformation("Converting idea to brief: {Idea}", request.Idea);
+
+        var variantCount = Math.Clamp(request.VariantCount ?? 3, 2, 4);
+        var prompt = BuildIdeaToBriefPrompt(request, variantCount);
+        
+        var brief = new Brief(
+            Topic: prompt,
+            Audience: request.Audience ?? "General",
+            Goal: "Generate structured brief variants from freeform idea",
+            Tone: "Professional",
+            Language: request.Language ?? "en-US",
+            Aspect: Aspect.Widescreen16x9
+        );
+
+        var planSpec = new PlanSpec(
+            TargetDuration: TimeSpan.FromSeconds(60),
+            Pacing: Pacing.Conversational,
+            Density: Density.Balanced,
+            Style: "Analytical"
+        );
+
+        var response = await GenerateWithLlmAsync(brief, planSpec, ct).ConfigureAwait(false);
+        
+        // Parse the response into structured brief variants
+        var variants = ParseIdeaToBriefResponse(response, request);
+
+        return new IdeaToBriefResponse(
+            Variants: variants,
+            OriginalIdea: request.Idea,
+            GeneratedAt: DateTime.UtcNow
+        );
+    }
+
     // --- Prompt Building Methods ---
 
     private string BuildBrainstormPrompt(BrainstormRequest request, int conceptCount)
@@ -571,6 +611,65 @@ public class IdeationService
         sb.AppendLine("- Unique angle or perspective");
         sb.AppendLine("- Style and tone preferences");
         sb.AppendLine("- Key messages to convey");
+
+        return sb.ToString();
+    }
+
+    private string BuildIdeaToBriefPrompt(IdeaToBriefRequest request, int variantCount)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine($"Convert this freeform idea into {variantCount} structured video brief variants with different creative approaches:");
+        sb.AppendLine();
+        sb.AppendLine($"Idea: {request.Idea}");
+        sb.AppendLine();
+        
+        if (!string.IsNullOrEmpty(request.TargetPlatform))
+        {
+            sb.AppendLine($"Target Platform: {request.TargetPlatform}");
+        }
+        
+        if (!string.IsNullOrEmpty(request.Audience))
+        {
+            sb.AppendLine($"Target Audience: {request.Audience}");
+        }
+        
+        if (!string.IsNullOrEmpty(request.PreferredApproaches))
+        {
+            sb.AppendLine($"User's Creative Direction: {request.PreferredApproaches}");
+        }
+        
+        sb.AppendLine();
+        sb.AppendLine("You must respond with ONLY valid JSON in this exact format:");
+        sb.AppendLine("{");
+        sb.AppendLine("  \"variants\": [");
+        sb.AppendLine("    {");
+        sb.AppendLine("      \"approach\": \"Freeform creative approach description (e.g., 'detective-style investigation', 'philosophical deep-dive', 'fun educational journey')\",");
+        sb.AppendLine("      \"topic\": \"Specific, focused topic derived from the idea\",");
+        sb.AppendLine("      \"audience\": \"Detailed target audience description\",");
+        sb.AppendLine("      \"goal\": \"What the video should achieve (can be any goal, not limited to preset options)\",");
+        sb.AppendLine("      \"tone\": \"Freeform tone description (e.g., 'Casual and witty', 'Authoritative yet approachable', 'Mysterious and intriguing')\",");
+        sb.AppendLine("      \"targetDurationSeconds\": 60,");
+        sb.AppendLine("      \"pacing\": \"Fast|Conversational|Deliberate\",");
+        sb.AppendLine("      \"density\": \"Sparse|Balanced|Dense\",");
+        sb.AppendLine("      \"style\": \"Freeform style description (e.g., 'Documentary-style', 'Step-by-step tutorial', 'Narrative storytelling with examples')\",");
+        sb.AppendLine("      \"explanation\": \"2-3 sentences explaining why this approach works for the original idea\",");
+        sb.AppendLine("      \"suitabilityScore\": 85,");
+        sb.AppendLine("      \"strengths\": [\"Strength 1\", \"Strength 2\", \"Strength 3\"],");
+        sb.AppendLine("      \"considerations\": [\"Consideration 1\", \"Consideration 2\"]");
+        sb.AppendLine("    }");
+        sb.AppendLine("  ]");
+        sb.AppendLine("}");
+        sb.AppendLine();
+        sb.AppendLine("Requirements:");
+        sb.AppendLine($"- Generate exactly {variantCount} genuinely different variants with unique creative approaches");
+        sb.AppendLine("- Be creative and open-minded - interpret the user's ideas and preferences in interesting ways");
+        sb.AppendLine("- Don't limit yourself to standard categories - create unique, compelling approaches");
+        sb.AppendLine("- If user specified preferred approaches, honor their creative direction while adding your own interpretation");
+        sb.AppendLine("- Ensure each variant is practical and achievable");
+        sb.AppendLine("- Make recommendations specific to the platform if provided");
+        sb.AppendLine("- Duration should be appropriate for the platform context");
+        sb.AppendLine("- Suitability scores should realistically range from 70-95");
+        sb.AppendLine("- Return ONLY the JSON object, no additional text or markdown formatting");
 
         return sb.ToString();
     }
@@ -895,6 +994,172 @@ public class IdeationService
                 QuestionType: "multiple-choice"
             )
         };
+    }
+
+    private List<BriefVariant> ParseIdeaToBriefResponse(string response, IdeaToBriefRequest request)
+    {
+        var variants = new List<BriefVariant>();
+        
+        try
+        {
+            // Clean the response - remove markdown code blocks if present
+            var cleanedResponse = response.Trim();
+            if (cleanedResponse.StartsWith("```json"))
+            {
+                cleanedResponse = cleanedResponse.Substring(7);
+            }
+            if (cleanedResponse.StartsWith("```"))
+            {
+                cleanedResponse = cleanedResponse.Substring(3);
+            }
+            if (cleanedResponse.EndsWith("```"))
+            {
+                cleanedResponse = cleanedResponse.Substring(0, cleanedResponse.Length - 3);
+            }
+            cleanedResponse = cleanedResponse.Trim();
+
+            // Parse JSON response
+            var jsonDoc = JsonDocument.Parse(cleanedResponse);
+            if (jsonDoc.RootElement.TryGetProperty("variants", out var variantsArray))
+            {
+                foreach (var variantElement in variantsArray.EnumerateArray())
+                {
+                    var approach = variantElement.GetProperty("approach").GetString() ?? "educational";
+                    var topic = variantElement.GetProperty("topic").GetString() ?? request.Idea;
+                    var audience = variantElement.GetProperty("audience").GetString() ?? request.Audience ?? "General";
+                    var goal = variantElement.GetProperty("goal").GetString() ?? "Educate";
+                    var tone = variantElement.GetProperty("tone").GetString() ?? "Professional";
+                    var durationSec = variantElement.GetProperty("targetDurationSeconds").GetInt32();
+                    var pacingStr = variantElement.GetProperty("pacing").GetString() ?? "Conversational";
+                    var densityStr = variantElement.GetProperty("density").GetString() ?? "Balanced";
+                    var style = variantElement.GetProperty("style").GetString() ?? "Tutorial";
+                    var explanation = variantElement.GetProperty("explanation").GetString() ?? "";
+                    var suitabilityScore = variantElement.GetProperty("suitabilityScore").GetDouble();
+
+                    var strengths = new List<string>();
+                    if (variantElement.TryGetProperty("strengths", out var strengthsArray))
+                    {
+                        foreach (var strength in strengthsArray.EnumerateArray())
+                        {
+                            strengths.Add(strength.GetString() ?? "");
+                        }
+                    }
+
+                    var considerations = new List<string>();
+                    if (variantElement.TryGetProperty("considerations", out var considerationsArray))
+                    {
+                        foreach (var consideration in considerationsArray.EnumerateArray())
+                        {
+                            considerations.Add(consideration.GetString() ?? "");
+                        }
+                    }
+
+                    // Convert pacing and density strings to enums
+                    var pacing = Enum.TryParse<Pacing>(pacingStr, ignoreCase: true, out var pacingEnum) 
+                        ? pacingEnum : Pacing.Conversational;
+                    var density = Enum.TryParse<Density>(densityStr, ignoreCase: true, out var densityEnum) 
+                        ? densityEnum : Density.Balanced;
+
+                    var brief = new Brief(
+                        Topic: topic,
+                        Audience: audience,
+                        Goal: goal,
+                        Tone: tone,
+                        Language: request.Language ?? "en-US",
+                        Aspect: Aspect.Widescreen16x9
+                    );
+
+                    var planSpec = new PlanSpec(
+                        TargetDuration: TimeSpan.FromSeconds(durationSec),
+                        Pacing: pacing,
+                        Density: density,
+                        Style: style
+                    );
+
+                    variants.Add(new BriefVariant(
+                        VariantId: Guid.NewGuid().ToString(),
+                        Approach: approach,
+                        Brief: brief,
+                        PlanSpec: planSpec,
+                        Explanation: explanation,
+                        SuitabilityScore: suitabilityScore,
+                        Strengths: strengths,
+                        Considerations: considerations
+                    ));
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to parse LLM response for idea-to-brief, using fallback");
+        }
+
+        // Fallback: Generate default variants if parsing failed
+        if (variants.Count == 0)
+        {
+            variants.Add(CreateDefaultBriefVariant(request, "educational", 120));
+            variants.Add(CreateDefaultBriefVariant(request, "storytelling", 90));
+            variants.Add(CreateDefaultBriefVariant(request, "practical", 60));
+        }
+
+        return variants.Take(Math.Min(request.VariantCount ?? 3, 4)).ToList();
+    }
+
+    private BriefVariant CreateDefaultBriefVariant(IdeaToBriefRequest request, string approach, int durationSec)
+    {
+        // Map approach to goal and tone in an open-ended way
+        var (goal, tone, style) = approach switch
+        {
+            "educational" => ("Educate and inform viewers", "Clear and accessible", "Step-by-step explanation"),
+            "storytelling" => ("Inspire through narrative", "Engaging and emotive", "Narrative-driven journey"),
+            "practical" => ("Demonstrate real-world application", "Direct and actionable", "Hands-on demonstration"),
+            _ => ("Inform and engage", "Professional yet approachable", "Balanced informational")
+        };
+
+        var brief = new Brief(
+            Topic: request.Idea,
+            Audience: request.Audience ?? "General audience seeking to understand this topic",
+            Goal: goal,
+            Tone: tone,
+            Language: request.Language ?? "en-US",
+            Aspect: Aspect.Widescreen16x9
+        );
+
+        var pacing = durationSec <= 60 ? Pacing.Fast : Pacing.Conversational;
+        var planSpec = new PlanSpec(
+            TargetDuration: TimeSpan.FromSeconds(durationSec),
+            Pacing: pacing,
+            Density: Density.Balanced,
+            Style: style
+        );
+
+        var approachDescription = approach switch
+        {
+            "educational" => "Clear, structured educational approach",
+            "storytelling" => "Narrative-driven storytelling approach",
+            "practical" => "Hands-on practical demonstration",
+            _ => $"Balanced {approach} approach"
+        };
+
+        return new BriefVariant(
+            VariantId: Guid.NewGuid().ToString(),
+            Approach: approachDescription,
+            Brief: brief,
+            PlanSpec: planSpec,
+            Explanation: $"This {approachDescription} presents the concept in a way that resonates with the target audience while remaining true to the core idea.",
+            SuitabilityScore: 80,
+            Strengths: new List<string> 
+            { 
+                $"Matches the {approach} creative direction",
+                "Appropriate pacing for the platform",
+                "Accessible to target audience"
+            },
+            Considerations: new List<string> 
+            { 
+                "Consider adding specific examples relevant to your audience",
+                "Visual aids can enhance understanding"
+            }
+        );
     }
 
     /// <summary>

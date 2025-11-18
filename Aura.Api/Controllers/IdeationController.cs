@@ -298,4 +298,37 @@ public class IdeationController : ControllerBase
             return StatusCode(500, new { error = "Failed to get clarifying questions" });
         }
     }
+
+    /// <summary>
+    /// Convert freeform idea into structured brief with multiple variants
+    /// </summary>
+    [HttpPost("idea-to-brief")]
+    public async Task<IActionResult> IdeaToBrief(
+        [FromBody] IdeaToBriefRequest request,
+        CancellationToken ct)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.Idea))
+            {
+                return BadRequest(new { error = "Idea is required" });
+            }
+
+            var response = await _ideationService.IdeaToBriefAsync(request, ct).ConfigureAwait(false);
+
+            return Ok(new
+            {
+                success = true,
+                variants = response.Variants,
+                originalIdea = response.OriginalIdea,
+                generatedAt = response.GeneratedAt,
+                count = response.Variants.Count
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error converting idea to brief: {Idea}", request.Idea);
+            return StatusCode(500, new { error = "Failed to convert idea to brief" });
+        }
+    }
 }

@@ -244,3 +244,38 @@ public record QuestionsResponse(
     List<ClarifyingQuestion> Questions,
     string Context
 );
+
+/// <summary>
+/// Request to convert freeform idea into structured brief
+/// </summary>
+public record IdeaToBriefRequest(
+    string Idea,
+    string? TargetPlatform = null,      // Optional: "YouTube", "TikTok", "Instagram", etc. - or any custom platform description
+    string? Audience = null,             // Optional: Freeform audience description (e.g., "tech-savvy millennials", "curious beginners")
+    string? Language = null,
+    int? VariantCount = null,            // Number of brief variants to generate (2-4)
+    string? PreferredApproaches = null   // Optional: Freeform guidance for LLM (e.g., "make one funny, one serious, one like a documentary")
+);
+
+/// <summary>
+/// Represents a generated brief variant with explanation
+/// </summary>
+public record BriefVariant(
+    string VariantId,
+    string Approach,                    // Freeform approach description from LLM (e.g., "humorous tutorial", "dramatic storytelling", "scientific deep-dive")
+    Brief Brief,                        // Structured brief
+    PlanSpec PlanSpec,                  // Suggested plan specification
+    string Explanation,                 // Why this approach works for the idea
+    double SuitabilityScore,            // 0-100 score for how well this fits the original idea
+    List<string>? Strengths = null,     // Advantages of this approach
+    List<string>? Considerations = null // Things to consider with this approach
+);
+
+/// <summary>
+/// Response with generated brief variants
+/// </summary>
+public record IdeaToBriefResponse(
+    List<BriefVariant> Variants,
+    string OriginalIdea,
+    DateTime GeneratedAt
+);
