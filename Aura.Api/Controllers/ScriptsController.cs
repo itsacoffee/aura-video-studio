@@ -10,10 +10,12 @@ using Aura.Core.Interfaces;
 using Aura.Core.Models;
 using Aura.Core.Models.Generation;
 using Aura.Core.Orchestrator;
+using Aura.Core.Providers;
 using Aura.Core.Services;
 using Aura.Core.Services.Generation;
 using Aura.Providers.Llm;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Api.Controllers;
@@ -1408,8 +1410,8 @@ public class ScriptsController : ControllerBase
         try
         {
             _logger.LogInformation(
-                "[{CorrelationId}] POST /api/scripts/generate/stream - Topic: {Topic}, Stream: true",
-                correlationId, request.Topic);
+                "[{CorrelationId}] POST /api/scripts/generate/stream - Topic: {Topic}, Provider: {Provider}",
+                correlationId, request.Topic, request.PreferredProvider ?? "auto");
 
             Response.ContentType = "text/event-stream";
             Response.Headers.Append("Cache-Control", "no-cache");
@@ -1430,32 +1432,114 @@ public class ScriptsController : ControllerBase
                 Density: ParseDensity(request.Density),
                 Style: request.Style);
 
-            var ollamaProvider = new OllamaLlmProvider(
-                _logger as ILogger<OllamaLlmProvider> ?? throw new InvalidOperationException("Logger not available"),
-                new System.Net.Http.HttpClient(),
-                baseUrl: "http://127.0.0.1:11434",
-                model: request.Model ?? "llama3.1:8b-q4_k_m"
-            );
-
-            var streamSource = ollamaProvider.GenerateStreamingAsync(brief, planSpec, ct);
-
-            await foreach (var eventData in _streamingOrchestrator.StreamScriptGenerationAsync(
-                streamSource, request.Topic, ct).ConfigureAwait(false))
+            // Get provider using keyed services
+            ILlmProvider? provider = null;
+            string providerName = request.PreferredProvider ?? "Ollama"; // Default to Ollama for free users
+            
+            // Try to get the requested provider
+            if (!string.IsNullOrEmpty(request.PreferredProvider))
             {
-                var sseMessage = _streamingOrchestrator.FormatAsServerSentEvent(eventData);
-                var bytes = Encoding.UTF8.GetBytes(sseMessage);
-                
-                await Response.Body.WriteAsync(bytes, 0, bytes.Length, ct).ConfigureAwait(false);
-                await Response.Body.FlushAsync(ct).ConfigureAwait(false);
-
-                if (eventData.IsComplete)
+                provider = HttpContext.RequestServices.GetKeyedService<ILlmProvider>(request.PreferredProvider);
+                if (provider == null)
                 {
-                    _logger.LogInformation(
-                        "[{CorrelationId}] Streaming generation complete. Tokens: {Tokens}, Tokens/sec: {TokensPerSec:F2}",
-                        correlationId,
-                        eventData.TokenCount,
-                        eventData.TokensPerSecond ?? 0.0);
+                    _logger.LogWarning("Requested provider {Provider} not available, trying alternatives", request.PreferredProvider);
+                }
+            }
+            
+            // Fallback chain: try Ollama -> RuleBased
+            if (provider == null)
+            {
+                provider = HttpContext.RequestServices.GetKeyedService<ILlmProvider>("Ollama");
+                providerName = "Ollama";
+            }
+            
+            if (provider == null)
+            {
+                provider = HttpContext.RequestServices.GetKeyedService<ILlmProvider>("RuleBased");
+                providerName = "RuleBased";
+            }
+            
+            if (provider == null)
+            {
+                throw new InvalidOperationException("No LLM providers available. Please configure at least one provider.");
+            }
+            
+            // Send initial event with provider characteristics
+            var characteristics = provider.GetCharacteristics();
+            var initEvent = new
+            {
+                eventType = "init",
+                providerName = providerName,
+                isLocal = characteristics.IsLocal,
+                expectedFirstTokenMs = characteristics.ExpectedFirstTokenMs,
+                expectedTokensPerSec = characteristics.ExpectedTokensPerSec,
+                costPer1KTokens = characteristics.CostPer1KTokens,
+                supportsStreaming = characteristics.SupportsStreaming
+            };
+            
+            await WriteSSEEvent("init", initEvent, ct).ConfigureAwait(false);
+
+            if (!characteristics.SupportsStreaming || !provider.SupportsStreaming)
+            {
+                _logger.LogWarning("Provider {Provider} does not support streaming, using fallback", providerName);
+                await WriteSSEEvent("error", new { errorMessage = $"Provider {providerName} does not support streaming" }, ct).ConfigureAwait(false);
+                return;
+            }
+
+            // Stream the generation
+            await foreach (var chunk in provider.DraftScriptStreamAsync(brief, planSpec, ct).ConfigureAwait(false))
+            {
+                if (chunk.ErrorMessage != null)
+                {
+                    await WriteSSEEvent("error", new { errorMessage = chunk.ErrorMessage }, ct).ConfigureAwait(false);
                     break;
+                }
+                
+                if (chunk.IsFinal)
+                {
+                    // Final chunk with metadata
+                    var finalEvent = new
+                    {
+                        eventType = "complete",
+                        content = chunk.Content,
+                        accumulatedContent = chunk.AccumulatedContent,
+                        tokenCount = chunk.TokenIndex,
+                        metadata = new
+                        {
+                            totalTokens = chunk.Metadata?.TotalTokens,
+                            estimatedCost = chunk.Metadata?.EstimatedCost,
+                            tokensPerSecond = chunk.Metadata?.TokensPerSecond,
+                            isLocalModel = chunk.Metadata?.IsLocalModel,
+                            modelName = chunk.Metadata?.ModelName,
+                            timeToFirstTokenMs = chunk.Metadata?.TimeToFirstTokenMs,
+                            totalDurationMs = chunk.Metadata?.TotalDurationMs,
+                            finishReason = chunk.Metadata?.FinishReason
+                        }
+                    };
+                    
+                    await WriteSSEEvent("complete", finalEvent, ct).ConfigureAwait(false);
+                    
+                    _logger.LogInformation(
+                        "[{CorrelationId}] Streaming generation complete. Provider: {Provider}, Tokens: {Tokens}, Tokens/sec: {TokensPerSec:F2}, Cost: ${Cost:F4}",
+                        correlationId,
+                        providerName,
+                        chunk.TokenIndex,
+                        chunk.Metadata?.TokensPerSecond ?? 0.0,
+                        chunk.Metadata?.EstimatedCost ?? 0m);
+                    break;
+                }
+                else
+                {
+                    // Regular chunk
+                    var chunkEvent = new
+                    {
+                        eventType = "chunk",
+                        content = chunk.Content,
+                        accumulatedContent = chunk.AccumulatedContent,
+                        tokenIndex = chunk.TokenIndex
+                    };
+                    
+                    await WriteSSEEvent("chunk", chunkEvent, ct).ConfigureAwait(false);
                 }
             }
         }
@@ -1467,18 +1551,32 @@ public class ScriptsController : ControllerBase
         {
             _logger.LogError(ex, "[{CorrelationId}] Error during streaming generation", correlationId);
             
-            var errorEvent = new
+            try
             {
-                eventType = "error",
-                errorMessage = "An error occurred during script generation",
-                correlationId = correlationId
-            };
-            
-            var errorMessage = $"event: error\ndata: {System.Text.Json.JsonSerializer.Serialize(errorEvent)}\n\n";
-            var bytes = Encoding.UTF8.GetBytes(errorMessage);
-            await Response.Body.WriteAsync(bytes, 0, bytes.Length, ct).ConfigureAwait(false);
-            await Response.Body.FlushAsync(ct).ConfigureAwait(false);
+                await WriteSSEEvent("error", new
+                {
+                    errorMessage = "An error occurred during script generation",
+                    correlationId = correlationId
+                }, ct).ConfigureAwait(false);
+            }
+            catch
+            {
+                // Ignore errors writing error event
+            }
         }
+    }
+    
+    /// <summary>
+    /// Helper method to write Server-Sent Events
+    /// </summary>
+    private async Task WriteSSEEvent(string eventType, object data, CancellationToken ct)
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(data);
+        var message = $"event: {eventType}\ndata: {json}\n\n";
+        var bytes = Encoding.UTF8.GetBytes(message);
+        
+        await Response.Body.WriteAsync(bytes, 0, bytes.Length, ct).ConfigureAwait(false);
+        await Response.Body.FlushAsync(ct).ConfigureAwait(false);
     }
 
     /// <summary>
