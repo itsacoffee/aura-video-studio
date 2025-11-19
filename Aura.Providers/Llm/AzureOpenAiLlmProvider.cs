@@ -1165,11 +1165,18 @@ Return ONLY the transition text, no explanations or additional commentary:";
         _logger.LogWarning("Azure OpenAI streaming not yet implemented, using non-streaming fallback");
         
         string result;
+        Exception? error = null;
         try
         {
             result = await DraftScriptAsync(brief, spec, ct).ConfigureAwait(false);
         }
         catch (Exception ex)
+        {
+            error = ex;
+            result = string.Empty;
+        }
+
+        if (error != null)
         {
             yield return new LlmStreamChunk
             {
@@ -1177,7 +1184,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
                 Content = string.Empty,
                 TokenIndex = 0,
                 IsFinal = true,
-                ErrorMessage = $"Error: {ex.Message}"
+                ErrorMessage = $"Error: {error.Message}"
             };
             yield break;
         }

@@ -1796,14 +1796,15 @@ Return ONLY the transition text, no explanations or additional commentary:";
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(_timeout);
 
-        HttpResponseMessage response;
+        HttpResponseMessage? response = null;
+        Exception? initError = null;
         try
         {
-            response = await _httpClient.PostAsync(
-                "https://api.openai.com/v1/chat/completions", 
-                content, 
-                HttpCompletionOption.ResponseHeadersRead, 
-                cts.Token).ConfigureAwait(false);
+            var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/chat/completions")
+            {
+                Content = content
+            };
+            response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cts.Token).ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -1820,18 +1821,23 @@ Return ONLY the transition text, no explanations or additional commentary:";
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error initiating streaming script generation");
+            initError = ex;
+        }
+
+        if (initError != null)
+        {
             yield return new LlmStreamChunk
             {
                 ProviderName = "OpenAI",
                 Content = string.Empty,
                 TokenIndex = 0,
                 IsFinal = true,
-                ErrorMessage = $"Streaming error: {ex.Message}"
+                ErrorMessage = $"Streaming error: {initError.Message}"
             };
             yield break;
         }
 
-        using (response)
+        using (response!)
         {
             var stream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
             using var reader = new StreamReader(stream);
@@ -1883,9 +1889,20 @@ Return ONLY the transition text, no explanations or additional commentary:";
                     break;
                 }
 
+                // Parse JSON - skip on parse error
+                JsonDocument? doc = null;
                 try
                 {
-                    using var doc = JsonDocument.Parse(data);
+                    doc = JsonDocument.Parse(data);
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse streaming JSON line: {Line}", data);
+                    continue;
+                }
+
+                using (doc)
+                {
                     var root = doc.RootElement;
 
                     if (!root.TryGetProperty("choices", out var choices) || choices.GetArrayLength() == 0)
@@ -1957,11 +1974,6 @@ Return ONLY the transition text, no explanations or additional commentary:";
                         };
                         break;
                     }
-                }
-                catch (JsonException ex)
-                {
-                    _logger.LogWarning(ex, "Failed to parse streaming JSON line: {Line}", data);
-                    continue;
                 }
             }
         }
