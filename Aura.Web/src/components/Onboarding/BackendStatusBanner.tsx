@@ -34,6 +34,7 @@ export function BackendStatusBanner({ onDismiss, showRetry = true }: BackendStat
   const [isChecking, setIsChecking] = useState(false);
   const [backendReachable, setBackendReachable] = useState(true);
   const [dismissed, setDismissed] = useState(false);
+  const [initialCheckComplete, setInitialCheckComplete] = useState(false);
 
   const checkBackend = useCallback(async () => {
     setIsChecking(true);
@@ -45,6 +46,7 @@ export function BackendStatusBanner({ onDismiss, showRetry = true }: BackendStat
       setBackendReachable(false);
     } finally {
       setIsChecking(false);
+      setInitialCheckComplete(true);
     }
   }, []);
 
@@ -61,7 +63,7 @@ export function BackendStatusBanner({ onDismiss, showRetry = true }: BackendStat
     onDismiss?.();
   }, [onDismiss]);
 
-  if (backendReachable || dismissed) {
+  if (backendReachable || dismissed || !initialCheckComplete) {
     return null;
   }
 
