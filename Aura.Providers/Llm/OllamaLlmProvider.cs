@@ -1730,11 +1730,37 @@ Return ONLY the transition text, no explanations or additional commentary:";
         DateTime? firstTokenTime = null;
         var accumulated = new StringBuilder();
         var tokenIndex = 0;
+        LlmStreamChunk? errorChunk = null;
+
+        var streamEnumerator = GenerateStreamingAsync(brief, spec, ct).ConfigureAwait(false).GetAsyncEnumerator();
 
         try
         {
-            await foreach (var ollamaChunk in GenerateStreamingAsync(brief, spec, ct).ConfigureAwait(false))
+            while (true)
             {
+                OllamaStreamResponse ollamaChunk;
+                try
+                {
+                    if (!await streamEnumerator.MoveNextAsync())
+                    {
+                        break;
+                    }
+                    ollamaChunk = streamEnumerator.Current;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error during unified streaming script generation");
+                    errorChunk = new LlmStreamChunk
+                    {
+                        ProviderName = "Ollama",
+                        Content = string.Empty,
+                        TokenIndex = tokenIndex,
+                        IsFinal = true,
+                        ErrorMessage = $"Streaming error: {ex.Message}"
+                    };
+                    break;
+                }
+
                 if (!string.IsNullOrEmpty(ollamaChunk.Response))
                 {
                     if (!firstTokenTime.HasValue)
@@ -1784,20 +1810,18 @@ Return ONLY the transition text, no explanations or additional commentary:";
                             FinishReason = "stop"
                         }
                     };
+                    break;
                 }
             }
         }
-        catch (Exception ex)
+        finally
         {
-            _logger.LogError(ex, "Error during unified streaming script generation");
-            yield return new LlmStreamChunk
-            {
-                ProviderName = "Ollama",
-                Content = string.Empty,
-                TokenIndex = tokenIndex,
-                IsFinal = true,
-                ErrorMessage = $"Streaming error: {ex.Message}"
-            };
+            await streamEnumerator.DisposeAsync();
+        }
+
+        if (errorChunk != null)
+        {
+            yield return errorChunk;
         }
     }
 }

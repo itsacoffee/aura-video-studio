@@ -1763,42 +1763,43 @@ Return ONLY the transition text, no explanations or additional commentary:";
         var startTime = DateTime.UtcNow;
         DateTime? firstTokenTime = null;
 
+        // Build enhanced prompts
+        string systemPrompt = EnhancedPromptTemplates.GetSystemPromptForScriptGeneration();
+        string userPrompt = _promptCustomizationService.BuildCustomizedPrompt(brief, spec, brief.PromptModifiers);
+
+        // Apply enhancement callback if configured
+        if (PromptEnhancementCallback != null)
+        {
+            userPrompt = await PromptEnhancementCallback(userPrompt, brief, spec).ConfigureAwait(false);
+        }
+
+        // Create streaming request
+        var requestBody = new
+        {
+            model = _model,
+            messages = new[]
+            {
+                new { role = "system", content = systemPrompt },
+                new { role = "user", content = userPrompt }
+            },
+            temperature = 0.7,
+            max_tokens = 2048,
+            stream = true
+        };
+
+        _httpClient.DefaultRequestHeaders.Clear();
+        _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
+
+        var json = JsonSerializer.Serialize(requestBody);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(_timeout);
+
+        HttpResponseMessage response;
         try
         {
-            // Build enhanced prompts
-            string systemPrompt = EnhancedPromptTemplates.GetSystemPromptForScriptGeneration();
-            string userPrompt = _promptCustomizationService.BuildCustomizedPrompt(brief, spec, brief.PromptModifiers);
-
-            // Apply enhancement callback if configured
-            if (PromptEnhancementCallback != null)
-            {
-                userPrompt = await PromptEnhancementCallback(userPrompt, brief, spec).ConfigureAwait(false);
-            }
-
-            // Create streaming request
-            var requestBody = new
-            {
-                model = _model,
-                messages = new[]
-                {
-                    new { role = "system", content = systemPrompt },
-                    new { role = "user", content = userPrompt }
-                },
-                temperature = 0.7,
-                max_tokens = 2048,
-                stream = true
-            };
-
-            _httpClient.DefaultRequestHeaders.Clear();
-            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
-
-            var json = JsonSerializer.Serialize(requestBody);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            cts.CancelAfter(_timeout);
-
-            var response = await _httpClient.PostAsync(
+            response = await _httpClient.PostAsync(
                 "https://api.openai.com/v1/chat/completions", 
                 content, 
                 HttpCompletionOption.ResponseHeadersRead, 
@@ -1810,7 +1811,28 @@ Return ONLY the transition text, no explanations or additional commentary:";
                 throw new InvalidOperationException(
                     $"OpenAI API error: HTTP {response.StatusCode} - {errorContent}");
             }
+        }
+        catch (TaskCanceledException) when (ct.IsCancellationRequested)
+        {
+            _logger.LogInformation("Streaming cancelled by user");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error initiating streaming script generation");
+            yield return new LlmStreamChunk
+            {
+                ProviderName = "OpenAI",
+                Content = string.Empty,
+                TokenIndex = 0,
+                IsFinal = true,
+                ErrorMessage = $"Streaming error: {ex.Message}"
+            };
+            yield break;
+        }
 
+        using (response)
+        {
             var stream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
             using var reader = new StreamReader(stream);
 
@@ -1942,23 +1964,6 @@ Return ONLY the transition text, no explanations or additional commentary:";
                     continue;
                 }
             }
-        }
-        catch (TaskCanceledException) when (ct.IsCancellationRequested)
-        {
-            _logger.LogInformation("Streaming cancelled by user");
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error during streaming script generation");
-            yield return new LlmStreamChunk
-            {
-                ProviderName = "OpenAI",
-                Content = string.Empty,
-                TokenIndex = 0,
-                IsFinal = true,
-                ErrorMessage = $"Streaming error: {ex.Message}"
-            };
         }
     }
 
