@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -11,6 +13,7 @@ using Aura.Core.AI.SchemaBuilders;
 using Aura.Core.Models;
 using Aura.Core.Models.Narrative;
 using Aura.Core.Models.OpenAI;
+using Aura.Core.Models.Streaming;
 using Aura.Core.Models.Visual;
 using Aura.Core.Providers;
 using Aura.Core.Services.AI;
@@ -1723,6 +1726,249 @@ Return ONLY the transition text, no explanations or additional commentary:";
                 Message = $"Validation error: {ex.Message}"
             };
         }
+    }
+
+    /// <summary>
+    /// Whether this provider supports streaming (OpenAI supports streaming)
+    /// </summary>
+    public bool SupportsStreaming => true;
+
+    /// <summary>
+    /// Get provider characteristics for adaptive UI
+    /// </summary>
+    public LlmProviderCharacteristics GetCharacteristics()
+    {
+        return new LlmProviderCharacteristics
+        {
+            IsLocal = false,
+            ExpectedFirstTokenMs = 500,
+            ExpectedTokensPerSec = 30,
+            SupportsStreaming = true,
+            ProviderTier = "Pro",
+            CostPer1KTokens = _model.Contains("gpt-4o", StringComparison.OrdinalIgnoreCase) ? 0.01m : 0.001m
+        };
+    }
+
+    /// <summary>
+    /// Stream script generation with real-time token-by-token updates
+    /// </summary>
+    public async IAsyncEnumerable<LlmStreamChunk> DraftScriptStreamAsync(
+        Brief brief, 
+        PlanSpec spec, 
+        [EnumeratorCancellation] CancellationToken ct = default)
+    {
+        _logger.LogInformation("Starting streaming script generation with OpenAI (model: {Model}) for topic: {Topic}", 
+            _model, brief.Topic);
+
+        var startTime = DateTime.UtcNow;
+        DateTime? firstTokenTime = null;
+
+        try
+        {
+            // Build enhanced prompts
+            string systemPrompt = EnhancedPromptTemplates.GetSystemPromptForScriptGeneration();
+            string userPrompt = _promptCustomizationService.BuildCustomizedPrompt(brief, spec, brief.PromptModifiers);
+
+            // Apply enhancement callback if configured
+            if (PromptEnhancementCallback != null)
+            {
+                userPrompt = await PromptEnhancementCallback(userPrompt, brief, spec).ConfigureAwait(false);
+            }
+
+            // Create streaming request
+            var requestBody = new
+            {
+                model = _model,
+                messages = new[]
+                {
+                    new { role = "system", content = systemPrompt },
+                    new { role = "user", content = userPrompt }
+                },
+                temperature = 0.7,
+                max_tokens = 2048,
+                stream = true
+            };
+
+            _httpClient.DefaultRequestHeaders.Clear();
+            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
+
+            var json = JsonSerializer.Serialize(requestBody);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(_timeout);
+
+            var response = await _httpClient.PostAsync(
+                "https://api.openai.com/v1/chat/completions", 
+                content, 
+                HttpCompletionOption.ResponseHeadersRead, 
+                cts.Token).ConfigureAwait(false);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                throw new InvalidOperationException(
+                    $"OpenAI API error: HTTP {response.StatusCode} - {errorContent}");
+            }
+
+            var stream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+            using var reader = new StreamReader(stream);
+
+            var accumulated = new StringBuilder();
+            var tokenIndex = 0;
+
+            while (!reader.EndOfStream && !ct.IsCancellationRequested)
+            {
+                var line = await reader.ReadLineAsync().ConfigureAwait(false);
+                
+                if (string.IsNullOrWhiteSpace(line) || !line.StartsWith("data: "))
+                {
+                    continue;
+                }
+
+                var data = line.Substring(6); // Remove "data: " prefix
+                
+                if (data == "[DONE]")
+                {
+                    // Final chunk
+                    var duration = DateTime.UtcNow - startTime;
+                    var timeToFirstToken = firstTokenTime.HasValue 
+                        ? (firstTokenTime.Value - startTime).TotalMilliseconds 
+                        : 0;
+                    var tokensPerSec = tokenIndex > 0 && duration.TotalSeconds > 0
+                        ? tokenIndex / duration.TotalSeconds
+                        : 0;
+
+                    yield return new LlmStreamChunk
+                    {
+                        ProviderName = "OpenAI",
+                        Content = string.Empty,
+                        AccumulatedContent = accumulated.ToString(),
+                        TokenIndex = tokenIndex,
+                        IsFinal = true,
+                        Metadata = new LlmStreamMetadata
+                        {
+                            TotalTokens = tokenIndex,
+                            EstimatedCost = CalculateCost(tokenIndex),
+                            TokensPerSecond = tokensPerSec,
+                            IsLocalModel = false,
+                            ModelName = _model,
+                            TimeToFirstTokenMs = timeToFirstToken,
+                            TotalDurationMs = duration.TotalMilliseconds,
+                            FinishReason = "stop"
+                        }
+                    };
+                    break;
+                }
+
+                try
+                {
+                    using var doc = JsonDocument.Parse(data);
+                    var root = doc.RootElement;
+
+                    if (!root.TryGetProperty("choices", out var choices) || choices.GetArrayLength() == 0)
+                    {
+                        continue;
+                    }
+
+                    var firstChoice = choices[0];
+                    if (!firstChoice.TryGetProperty("delta", out var delta))
+                    {
+                        continue;
+                    }
+
+                    if (delta.TryGetProperty("content", out var contentProp))
+                    {
+                        var chunk = contentProp.GetString() ?? string.Empty;
+                        
+                        if (!string.IsNullOrEmpty(chunk))
+                        {
+                            if (!firstTokenTime.HasValue)
+                            {
+                                firstTokenTime = DateTime.UtcNow;
+                            }
+
+                            accumulated.Append(chunk);
+                            tokenIndex++;
+
+                            yield return new LlmStreamChunk
+                            {
+                                ProviderName = "OpenAI",
+                                Content = chunk,
+                                AccumulatedContent = accumulated.ToString(),
+                                TokenIndex = tokenIndex,
+                                IsFinal = false
+                            };
+                        }
+                    }
+
+                    // Check for finish_reason
+                    if (firstChoice.TryGetProperty("finish_reason", out var finishReason) && 
+                        finishReason.ValueKind != JsonValueKind.Null)
+                    {
+                        var duration = DateTime.UtcNow - startTime;
+                        var timeToFirstToken = firstTokenTime.HasValue 
+                            ? (firstTokenTime.Value - startTime).TotalMilliseconds 
+                            : 0;
+                        var tokensPerSec = tokenIndex > 0 && duration.TotalSeconds > 0
+                            ? tokenIndex / duration.TotalSeconds
+                            : 0;
+
+                        yield return new LlmStreamChunk
+                        {
+                            ProviderName = "OpenAI",
+                            Content = string.Empty,
+                            AccumulatedContent = accumulated.ToString(),
+                            TokenIndex = tokenIndex,
+                            IsFinal = true,
+                            Metadata = new LlmStreamMetadata
+                            {
+                                TotalTokens = tokenIndex,
+                                EstimatedCost = CalculateCost(tokenIndex),
+                                TokensPerSecond = tokensPerSec,
+                                IsLocalModel = false,
+                                ModelName = _model,
+                                TimeToFirstTokenMs = timeToFirstToken,
+                                TotalDurationMs = duration.TotalMilliseconds,
+                                FinishReason = finishReason.GetString() ?? "stop"
+                            }
+                        };
+                        break;
+                    }
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse streaming JSON line: {Line}", data);
+                    continue;
+                }
+            }
+        }
+        catch (TaskCanceledException) when (ct.IsCancellationRequested)
+        {
+            _logger.LogInformation("Streaming cancelled by user");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during streaming script generation");
+            yield return new LlmStreamChunk
+            {
+                ProviderName = "OpenAI",
+                Content = string.Empty,
+                TokenIndex = 0,
+                IsFinal = true,
+                ErrorMessage = $"Streaming error: {ex.Message}"
+            };
+        }
+    }
+
+    /// <summary>
+    /// Calculate estimated cost for OpenAI tokens
+    /// </summary>
+    private decimal CalculateCost(int tokens)
+    {
+        var costPer1KTokens = _model.Contains("gpt-4o", StringComparison.OrdinalIgnoreCase) ? 0.01m : 0.001m;
+        return (tokens / 1000m) * costPer1KTokens;
     }
 }
 

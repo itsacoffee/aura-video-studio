@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Configuration;
 using Aura.Core.Models;
 using Aura.Core.Models.Narrative;
+using Aura.Core.Models.Streaming;
 using Aura.Core.Models.Visual;
 using Aura.Core.Orchestrator;
 using Microsoft.Extensions.Logging;
@@ -153,6 +155,155 @@ public class CompositeLlmProvider : ILlmProvider
             DefaultPreferredTier,
             result => string.IsNullOrWhiteSpace(result),
             allowDefaultResultOnFailure: true);
+    }
+
+    /// <summary>
+    /// Whether this composite provider supports streaming (delegates to underlying providers)
+    /// </summary>
+    public bool SupportsStreaming => true;
+
+    /// <summary>
+    /// Get characteristics from the first available streaming provider
+    /// </summary>
+    public LlmProviderCharacteristics GetCharacteristics()
+    {
+        var providers = GetProviders();
+        var chain = BuildProviderChain(providers, DefaultPreferredTier, "get characteristics");
+
+        foreach (var providerName in chain)
+        {
+            if (providers.TryGetValue(providerName, out var provider) && provider != null)
+            {
+                if (provider.SupportsStreaming)
+                {
+                    return provider.GetCharacteristics();
+                }
+            }
+        }
+
+        return new LlmProviderCharacteristics
+        {
+            IsLocal = false,
+            ExpectedFirstTokenMs = 1000,
+            ExpectedTokensPerSec = 15,
+            SupportsStreaming = true,
+            ProviderTier = "Unknown"
+        };
+    }
+
+    /// <summary>
+    /// Stream script generation using the first available streaming provider
+    /// </summary>
+    public async IAsyncEnumerable<LlmStreamChunk> DraftScriptStreamAsync(
+        Brief brief, 
+        PlanSpec spec, 
+        [EnumeratorCancellation] CancellationToken ct = default)
+    {
+        var providers = GetProviders();
+        var chain = BuildProviderChain(providers, DefaultPreferredTier, "streaming script generation");
+
+        Exception? lastException = null;
+
+        foreach (var providerName in chain)
+        {
+            if (!providers.TryGetValue(providerName, out var provider) || provider == null)
+            {
+                continue;
+            }
+
+            if (!provider.SupportsStreaming)
+            {
+                _logger.LogDebug("Provider {Provider} does not support streaming, skipping", providerName);
+                continue;
+            }
+
+            _logger.LogInformation("Starting streaming script generation with provider {Provider}", providerName);
+
+            var hasYieldedChunks = false;
+            var streamEnumerator = provider.DraftScriptStreamAsync(brief, spec, ct).ConfigureAwait(false).GetAsyncEnumerator();
+            LlmStreamChunk? errorChunk = null;
+
+            try
+            {
+                while (true)
+                {
+                    LlmStreamChunk chunk;
+                    try
+                    {
+                        if (!await streamEnumerator.MoveNextAsync())
+                        {
+                            break;
+                        }
+                        chunk = streamEnumerator.Current;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        lastException = ex;
+                        _logger.LogWarning(ex, "Streaming script generation failed with provider {Provider}, trying next", providerName);
+                        
+                        if (hasYieldedChunks)
+                        {
+                            errorChunk = new LlmStreamChunk
+                            {
+                                ProviderName = providerName,
+                                Content = string.Empty,
+                                TokenIndex = 0,
+                                IsFinal = true,
+                                ErrorMessage = $"Stream interrupted: {ex.Message}"
+                            };
+                        }
+                        break;
+                    }
+
+                    hasYieldedChunks = true;
+                    yield return chunk;
+
+                    if (chunk.IsFinal)
+                    {
+                        if (!string.IsNullOrWhiteSpace(chunk.ErrorMessage))
+                        {
+                            _logger.LogWarning(
+                                "Provider {Provider} completed with error: {Error}",
+                                providerName,
+                                chunk.ErrorMessage);
+                            break;
+                        }
+
+                        yield break;
+                    }
+                }
+
+                if (errorChunk != null)
+                {
+                    yield return errorChunk;
+                    yield break;
+                }
+
+                if (hasYieldedChunks)
+                {
+                    yield break;
+                }
+            }
+            finally
+            {
+                await streamEnumerator.DisposeAsync();
+            }
+        }
+
+        yield return new LlmStreamChunk
+        {
+            ProviderName = "Composite",
+            Content = string.Empty,
+            TokenIndex = 0,
+            IsFinal = true,
+            ErrorMessage = lastException != null 
+                ? $"All streaming providers failed: {lastException.Message}" 
+                : "No streaming providers available"
+        };
     }
 
     private Dictionary<string, ILlmProvider> GetProviders(bool forceRefresh = false)

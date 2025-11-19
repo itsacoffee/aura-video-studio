@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
 using Aura.Core.Models.Narrative;
+using Aura.Core.Models.Streaming;
 using Aura.Core.Models.Visual;
 
 namespace Aura.Core.Providers;
@@ -11,6 +12,21 @@ namespace Aura.Core.Providers;
 public interface ILlmProvider
 {
     Task<string> DraftScriptAsync(Brief brief, PlanSpec spec, CancellationToken ct);
+    
+    /// <summary>
+    /// Draft script with real-time streaming support for token-by-token generation
+    /// </summary>
+    IAsyncEnumerable<LlmStreamChunk> DraftScriptStreamAsync(Brief brief, PlanSpec spec, CancellationToken ct);
+    
+    /// <summary>
+    /// Whether this provider supports streaming
+    /// </summary>
+    bool SupportsStreaming { get; }
+    
+    /// <summary>
+    /// Get provider characteristics for adaptive UI (expected latency, throughput, cost)
+    /// </summary>
+    LlmProviderCharacteristics GetCharacteristics();
     
     /// <summary>
     /// Executes a raw prompt completion for structured output generation (used by orchestration layer)

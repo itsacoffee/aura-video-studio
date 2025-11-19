@@ -13,6 +13,7 @@ using Aura.Core.Models;
 using Aura.Core.Models.Generation;
 using Aura.Core.Models.Narrative;
 using Aura.Core.Models.Ollama;
+using Aura.Core.Models.Streaming;
 using Aura.Core.Models.Visual;
 using Aura.Core.Providers;
 using Aura.Core.Services.AI;
@@ -1690,6 +1691,112 @@ Return ONLY the transition text, no explanations or additional commentary:";
                 ToolExecutionLog = toolExecutionLog,
                 TotalToolCalls = totalToolCalls,
                 GenerationTime = duration
+            };
+        }
+    }
+
+    /// <summary>
+    /// Whether this provider supports streaming (Ollama supports streaming)
+    /// </summary>
+    public bool SupportsStreaming => true;
+
+    /// <summary>
+    /// Get provider characteristics for adaptive UI
+    /// </summary>
+    public LlmProviderCharacteristics GetCharacteristics()
+    {
+        return new LlmProviderCharacteristics
+        {
+            IsLocal = true,
+            ExpectedFirstTokenMs = 2000, // Model loading time
+            ExpectedTokensPerSec = 5, // Consumer hardware average
+            SupportsStreaming = true,
+            ProviderTier = "Free",
+            CostPer1KTokens = null // Free!
+        };
+    }
+
+    /// <summary>
+    /// Stream script generation with unified interface (wraps existing GenerateStreamingAsync)
+    /// </summary>
+    public async IAsyncEnumerable<LlmStreamChunk> DraftScriptStreamAsync(
+        Brief brief, 
+        PlanSpec spec, 
+        [EnumeratorCancellation] CancellationToken ct = default)
+    {
+        _logger.LogInformation("Starting unified streaming script generation with Ollama for topic: {Topic}", brief.Topic);
+
+        var startTime = DateTime.UtcNow;
+        DateTime? firstTokenTime = null;
+        var accumulated = new StringBuilder();
+        var tokenIndex = 0;
+
+        try
+        {
+            await foreach (var ollamaChunk in GenerateStreamingAsync(brief, spec, ct).ConfigureAwait(false))
+            {
+                if (!string.IsNullOrEmpty(ollamaChunk.Response))
+                {
+                    if (!firstTokenTime.HasValue)
+                    {
+                        firstTokenTime = DateTime.UtcNow;
+                    }
+
+                    accumulated.Append(ollamaChunk.Response);
+                    tokenIndex++;
+
+                    yield return new LlmStreamChunk
+                    {
+                        ProviderName = "Ollama",
+                        Content = ollamaChunk.Response,
+                        AccumulatedContent = accumulated.ToString(),
+                        TokenIndex = tokenIndex,
+                        IsFinal = false
+                    };
+                }
+
+                if (ollamaChunk.Done)
+                {
+                    var duration = DateTime.UtcNow - startTime;
+                    var timeToFirstToken = firstTokenTime.HasValue 
+                        ? (firstTokenTime.Value - startTime).TotalMilliseconds 
+                        : 0;
+                    var tokensPerSec = ollamaChunk.GetTokensPerSecond() ?? 0.0;
+
+                    yield return new LlmStreamChunk
+                    {
+                        ProviderName = "Ollama",
+                        Content = string.Empty,
+                        AccumulatedContent = accumulated.ToString(),
+                        TokenIndex = ollamaChunk.EvalCount ?? tokenIndex,
+                        IsFinal = true,
+                        Metadata = new LlmStreamMetadata
+                        {
+                            TotalTokens = ollamaChunk.EvalCount ?? tokenIndex,
+                            EstimatedCost = 0m, // Free!
+                            TokensPerSecond = tokensPerSec,
+                            IsLocalModel = true,
+                            ModelName = _model,
+                            TimeToFirstTokenMs = timeToFirstToken,
+                            TotalDurationMs = ollamaChunk.TotalDuration.HasValue 
+                                ? ollamaChunk.TotalDuration.Value / 1_000_000.0 
+                                : duration.TotalMilliseconds,
+                            FinishReason = "stop"
+                        }
+                    };
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during unified streaming script generation");
+            yield return new LlmStreamChunk
+            {
+                ProviderName = "Ollama",
+                Content = string.Empty,
+                TokenIndex = tokenIndex,
+                IsFinal = true,
+                ErrorMessage = $"Streaming error: {ex.Message}"
             };
         }
     }
