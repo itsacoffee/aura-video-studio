@@ -115,4 +115,35 @@ internal sealed class FailingLlmProvider : ILlmProvider
     {
         throw new System.Exception($"{_name} provider is not available");
     }
+    
+    public bool SupportsStreaming => false;
+    
+    public LlmProviderCharacteristics GetCharacteristics()
+    {
+        return new LlmProviderCharacteristics
+        {
+            IsLocal = true,
+            ExpectedFirstTokenMs = 0,
+            ExpectedTokensPerSec = 0,
+            SupportsStreaming = false,
+            ProviderTier = "Test",
+            CostPer1KTokens = null
+        };
+    }
+    
+    public async IAsyncEnumerable<LlmStreamChunk> DraftScriptStreamAsync(
+        Brief brief,
+        PlanSpec spec,
+        [EnumeratorCancellation] CancellationToken ct = default)
+    {
+        await Task.CompletedTask;
+        yield return new LlmStreamChunk
+        {
+            ProviderName = _name,
+            Content = string.Empty,
+            TokenIndex = 0,
+            IsFinal = true,
+            ErrorMessage = $"{_name} provider is not available"
+        };
+    }
 }

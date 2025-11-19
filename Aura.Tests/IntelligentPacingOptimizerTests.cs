@@ -354,6 +354,46 @@ public class IntelligentPacingOptimizerTests
         {
             return Task.FromResult<string?>(null);
         }
+        
+        public bool SupportsStreaming => true;
+        
+        public LlmProviderCharacteristics GetCharacteristics()
+        {
+            return new LlmProviderCharacteristics
+            {
+                IsLocal = true,
+                ExpectedFirstTokenMs = 0,
+                ExpectedTokensPerSec = 100,
+                SupportsStreaming = true,
+                ProviderTier = "Test",
+                CostPer1KTokens = null
+            };
+        }
+        
+        public async IAsyncEnumerable<LlmStreamChunk> DraftScriptStreamAsync(
+            Brief brief,
+            PlanSpec spec,
+            [EnumeratorCancellation] CancellationToken ct = default)
+        {
+            var result = await DraftScriptAsync(brief, spec, ct).ConfigureAwait(false);
+            
+            yield return new LlmStreamChunk
+            {
+                ProviderName = "MockSuccessful",
+                Content = result,
+                AccumulatedContent = result,
+                TokenIndex = result.Length / 4,
+                IsFinal = true,
+                Metadata = new LlmStreamMetadata
+                {
+                    TotalTokens = result.Length / 4,
+                    EstimatedCost = null,
+                    IsLocalModel = true,
+                    ModelName = "mock",
+                    FinishReason = "stop"
+                }
+            };
+        }
     }
 
     private sealed class MockFailingLlmProvider : ILlmProvider
@@ -409,6 +449,37 @@ public class IntelligentPacingOptimizerTests
         public Task<string?> GenerateTransitionTextAsync(string fromSceneText, string toSceneText, string videoGoal, CancellationToken ct)
         {
             return Task.FromResult<string?>(null);
+        }
+        
+        public bool SupportsStreaming => false;
+        
+        public LlmProviderCharacteristics GetCharacteristics()
+        {
+            return new LlmProviderCharacteristics
+            {
+                IsLocal = true,
+                ExpectedFirstTokenMs = 0,
+                ExpectedTokensPerSec = 0,
+                SupportsStreaming = false,
+                ProviderTier = "Test",
+                CostPer1KTokens = null
+            };
+        }
+        
+        public async IAsyncEnumerable<LlmStreamChunk> DraftScriptStreamAsync(
+            Brief brief,
+            PlanSpec spec,
+            [EnumeratorCancellation] CancellationToken ct = default)
+        {
+            await Task.CompletedTask;
+            yield return new LlmStreamChunk
+            {
+                ProviderName = "MockFailing",
+                Content = string.Empty,
+                TokenIndex = 0,
+                IsFinal = true,
+                ErrorMessage = "Mock LLM failure"
+            };
         }
     }
 }

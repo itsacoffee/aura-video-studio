@@ -606,6 +606,38 @@ internal sealed class PipelineValidationFailingLlmProvider : ILlmProvider
         _logger.LogError("LLM provider is unavailable or misconfigured");
         throw new InvalidOperationException("LLM provider is unavailable or misconfigured");
     }
+    
+    public bool SupportsStreaming => false;
+    
+    public LlmProviderCharacteristics GetCharacteristics()
+    {
+        return new LlmProviderCharacteristics
+        {
+            IsLocal = true,
+            ExpectedFirstTokenMs = 0,
+            ExpectedTokensPerSec = 0,
+            SupportsStreaming = false,
+            ProviderTier = "Test",
+            CostPer1KTokens = null
+        };
+    }
+    
+    public async IAsyncEnumerable<LlmStreamChunk> DraftScriptStreamAsync(
+        Brief brief,
+        PlanSpec spec,
+        [EnumeratorCancellation] CancellationToken ct = default)
+    {
+        _logger.LogError("LLM provider is unavailable or misconfigured");
+        await Task.CompletedTask;
+        yield return new LlmStreamChunk
+        {
+            ProviderName = "PipelineValidationFailing",
+            Content = string.Empty,
+            TokenIndex = 0,
+            IsFinal = true,
+            ErrorMessage = "LLM provider is unavailable or misconfigured"
+        };
+    }
 }
 
 /// <summary>
