@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -9,6 +10,7 @@ using System.Threading.Tasks;
 using Aura.Core.AI;
 using Aura.Core.Models;
 using Aura.Core.Models.Narrative;
+using Aura.Core.Models.Streaming;
 using Aura.Core.Models.Visual;
 using Aura.Core.Providers;
 using Aura.Core.Services.AI;
@@ -1130,4 +1132,78 @@ Return ONLY the transition text, no explanations or additional commentary:";
     }
 
     // Removed legacy prompt building methods - now using EnhancedPromptTemplates
+
+    /// <summary>
+    /// Whether this provider supports streaming
+    /// </summary>
+    public bool SupportsStreaming => false;
+
+    /// <summary>
+    /// Get provider characteristics for adaptive UI
+    /// </summary>
+    public LlmProviderCharacteristics GetCharacteristics()
+    {
+        return new LlmProviderCharacteristics
+        {
+            IsLocal = false,
+            ExpectedFirstTokenMs = 500,
+            ExpectedTokensPerSec = 30,
+            SupportsStreaming = false,
+            ProviderTier = "Pro",
+            CostPer1KTokens = 0.01m
+        };
+    }
+
+    /// <summary>
+    /// Azure OpenAI streaming not yet implemented. Falls back to non-streaming DraftScriptAsync.
+    /// </summary>
+    public async IAsyncEnumerable<LlmStreamChunk> DraftScriptStreamAsync(
+        Brief brief, 
+        PlanSpec spec, 
+        [EnumeratorCancellation] CancellationToken ct = default)
+    {
+        _logger.LogWarning("Azure OpenAI streaming not yet implemented, using non-streaming fallback");
+        
+        string result;
+        Exception? error = null;
+        try
+        {
+            result = await DraftScriptAsync(brief, spec, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            error = ex;
+            result = string.Empty;
+        }
+
+        if (error != null)
+        {
+            yield return new LlmStreamChunk
+            {
+                ProviderName = "Azure",
+                Content = string.Empty,
+                TokenIndex = 0,
+                IsFinal = true,
+                ErrorMessage = $"Error: {error.Message}"
+            };
+            yield break;
+        }
+
+        yield return new LlmStreamChunk
+        {
+            ProviderName = "Azure",
+            Content = result,
+            AccumulatedContent = result,
+            TokenIndex = result.Length / 4,
+            IsFinal = true,
+            Metadata = new LlmStreamMetadata
+            {
+                TotalTokens = result.Length / 4,
+                EstimatedCost = (result.Length / 4000m) * 0.01m,
+                IsLocalModel = false,
+                ModelName = _deploymentName,
+                FinishReason = "stop"
+            }
+        };
+    }
 }

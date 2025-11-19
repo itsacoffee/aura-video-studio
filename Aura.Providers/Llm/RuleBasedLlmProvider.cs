@@ -1,10 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
 using Aura.Core.Models.Narrative;
+using Aura.Core.Models.Streaming;
 using Aura.Core.Models.Visual;
 using Aura.Core.Providers;
 using Aura.Core.Services.AI;
@@ -859,5 +862,45 @@ public class RuleBasedLlmProvider : ILlmProvider
         }
         
         return Core.Models.Generation.TransitionType.Cut;
+    }
+
+    /// <summary>
+    /// Whether this provider supports streaming (RuleBased does not support streaming)
+    /// </summary>
+    public bool SupportsStreaming => false;
+
+    /// <summary>
+    /// Get provider characteristics for adaptive UI
+    /// </summary>
+    public LlmProviderCharacteristics GetCharacteristics()
+    {
+        return new LlmProviderCharacteristics
+        {
+            IsLocal = true,
+            ExpectedFirstTokenMs = 0,
+            ExpectedTokensPerSec = 0,
+            SupportsStreaming = false,
+            ProviderTier = "Free",
+            CostPer1KTokens = null
+        };
+    }
+
+    /// <summary>
+    /// RuleBased provider does not support streaming
+    /// </summary>
+    public async IAsyncEnumerable<LlmStreamChunk> DraftScriptStreamAsync(
+        Brief brief, 
+        PlanSpec spec, 
+        [EnumeratorCancellation] CancellationToken ct = default)
+    {
+        await Task.CompletedTask;
+        yield return new LlmStreamChunk
+        {
+            ProviderName = "RuleBased",
+            Content = string.Empty,
+            TokenIndex = 0,
+            IsFinal = true,
+            ErrorMessage = "RuleBased provider does not support streaming. Use DraftScriptAsync instead."
+        };
     }
 }

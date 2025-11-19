@@ -1,10 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
 using Aura.Core.Models.Narrative;
+using Aura.Core.Models.Streaming;
 using Aura.Core.Models.Visual;
 using Aura.Core.Providers;
 using Microsoft.Extensions.Logging;
@@ -15,7 +18,7 @@ namespace Aura.Providers.Llm;
 /// Mock LLM provider for testing purposes.
 /// Provides predictable responses without requiring API keys or network calls.
 /// </summary>
-public class MockLlmProvider : ILlmProvider
+public partial class MockLlmProvider : ILlmProvider
 {
     private readonly ILogger<MockLlmProvider> _logger;
     private readonly MockBehavior _behavior;
@@ -409,4 +412,100 @@ public enum MockBehavior
     /// Return empty string responses
     /// </summary>
     EmptyResponse
+}
+
+public partial class MockLlmProvider
+{
+    /// <summary>
+    /// Whether this provider supports streaming (mock can simulate streaming)
+    /// </summary>
+    public bool SupportsStreaming => true;
+
+    /// <summary>
+    /// Get provider characteristics for adaptive UI
+    /// </summary>
+    public LlmProviderCharacteristics GetCharacteristics()
+    {
+        return new LlmProviderCharacteristics
+        {
+            IsLocal = true,
+            ExpectedFirstTokenMs = 0,
+            ExpectedTokensPerSec = 100,
+            SupportsStreaming = true,
+            ProviderTier = "Test",
+            CostPer1KTokens = null
+        };
+    }
+
+    /// <summary>
+    /// Mock streaming implementation for testing
+    /// </summary>
+    public async IAsyncEnumerable<LlmStreamChunk> DraftScriptStreamAsync(
+        Brief brief, 
+        PlanSpec spec, 
+        [EnumeratorCancellation] CancellationToken ct = default)
+    {
+        RecordCall(nameof(DraftScriptStreamAsync));
+        _logger.LogInformation("Mock LLM streaming script generation for topic: {Topic}", brief.Topic);
+
+        if (_behavior == MockBehavior.Failure)
+        {
+            yield return new LlmStreamChunk
+            {
+                ProviderName = "Mock",
+                Content = string.Empty,
+                TokenIndex = 0,
+                IsFinal = true,
+                ErrorMessage = "Mock LLM provider configured to fail"
+            };
+            yield break;
+        }
+
+        if (_behavior == MockBehavior.Timeout)
+        {
+            await Task.Delay(TimeSpan.FromMinutes(10), ct).ConfigureAwait(false);
+        }
+
+        var result = GenerateMockScript(brief, spec);
+        var words = result.Split(' ');
+        var accumulated = new StringBuilder();
+
+        for (int i = 0; i < words.Length; i++)
+        {
+            if (SimulatedLatency > TimeSpan.Zero)
+            {
+                await Task.Delay(SimulatedLatency, ct).ConfigureAwait(false);
+            }
+
+            var word = words[i] + (i < words.Length - 1 ? " " : "");
+            accumulated.Append(word);
+
+            yield return new LlmStreamChunk
+            {
+                ProviderName = "Mock",
+                Content = word,
+                AccumulatedContent = accumulated.ToString(),
+                TokenIndex = i + 1,
+                IsFinal = false
+            };
+        }
+
+        yield return new LlmStreamChunk
+        {
+            ProviderName = "Mock",
+            Content = string.Empty,
+            AccumulatedContent = accumulated.ToString(),
+            TokenIndex = words.Length,
+            IsFinal = true,
+            Metadata = new LlmStreamMetadata
+            {
+                TotalTokens = words.Length,
+                EstimatedCost = null,
+                TokensPerSecond = SimulatedLatency > TimeSpan.Zero ? 1.0 / SimulatedLatency.TotalSeconds : 100.0,
+                IsLocalModel = true,
+                ModelName = "mock",
+                FinishReason = "stop"
+            }
+        };
+    }
 }
