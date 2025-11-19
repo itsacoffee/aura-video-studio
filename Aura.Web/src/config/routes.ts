@@ -26,6 +26,7 @@ export const ROUTES = {
   HEALTH: '/health',
   LOGS: '/logs',
   SETTINGS: '/settings',
+  COST_HISTORY: '/cost-history',
 } as const;
 
 /**
@@ -43,6 +44,7 @@ export const MENU_ROUTES = {
   SETTINGS: ROUTES.SETTINGS,
   LOGS: ROUTES.LOGS,
   HEALTH: ROUTES.HEALTH,
+  COST_HISTORY: ROUTES.COST_HISTORY,
 } as const;
 
 /**
@@ -143,6 +145,11 @@ export const ROUTE_METADATA: Record<string, RouteMetadata> = {
     path: ROUTES.RENDER,
     title: 'Render',
     description: 'Render and export videos',
+  },
+  COST_HISTORY: {
+    path: ROUTES.COST_HISTORY,
+    title: 'Cost History',
+    description: 'View and analyze spending across all video generation jobs',
   },
 };
 
