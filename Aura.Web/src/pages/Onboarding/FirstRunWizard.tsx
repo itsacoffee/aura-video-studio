@@ -54,24 +54,24 @@ import { ApiKeySetupStep } from './ApiKeySetupStep';
 
 /**
  * FirstRunWizard - The primary onboarding wizard for new users
- * 
+ *
  * This is the ONLY setup wizard that should be used. It provides a streamlined
  * 6-step mandatory setup process:
- * 
+ *
  * Step 0: Welcome - Introduction to Aura Video Studio
  * Step 1: FFmpeg Check - Quick detection of existing FFmpeg installation
  * Step 2: FFmpeg Install - Guided installation or manual configuration
  * Step 3: Provider Configuration - Set up at least one LLM provider (or use offline mode)
  * Step 4: Workspace Setup - Configure default save locations
  * Step 5: Complete - Summary and transition to main app
- * 
+ *
  * Key Features:
  * - Circuit breaker state is cleared on mount to prevent false "backend not running" errors
  * - Auto-save progress to backend and localStorage for resume capability
  * - Resume dialog shows if user has incomplete setup from previous session
  * - Backend status banner shows only when backend is actually unreachable
  * - Graceful shutdown with proper FFmpeg process cleanup
- * 
+ *
  * NOTE: SetupWizard.tsx has been removed as it was an old/unused implementation
  * that caused confusion. FirstRunWizard is the canonical implementation.
  */
@@ -199,7 +199,6 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
   // FFmpeg status state
   const [ffmpegReady, setFfmpegReady] = useState(false);
   const [ffmpegPath, setFfmpegPath] = useState<string | null>(null);
-  const [ffmpegStatus, setFfmpegStatus] = useState<FFmpegStatus | null>(null);
   const [ffmpegPathInput, setFfmpegPathInput] = useState('');
   const [isBrowsingForFfmpeg, setIsBrowsingForFfmpeg] = useState(false);
   const [isValidatingFfmpegPath, setIsValidatingFfmpegPath] = useState(false);
@@ -224,6 +223,9 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
   // Provider validation state
   const [hasAtLeastOneProvider, setHasAtLeastOneProvider] = useState(false);
+
+  // Completion state
+  const [isCompletingSetup, setIsCompletingSetup] = useState(false);
 
   // Notifications hook
   const { showSuccessToast, showFailureToast } = useNotifications();
@@ -486,6 +488,11 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
   };
 
   const completeOnboarding = async () => {
+    if (isCompletingSetup) {
+      return; // Prevent double-clicks
+    }
+
+    setIsCompletingSetup(true);
     try {
       console.info('[FirstRunWizard] Starting onboarding completion', {
         ffmpegPath,
@@ -555,6 +562,8 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
         title: 'Setup Error',
         message: `Failed to complete setup: ${errorObj.message}. Please try again or skip to the main app.`,
       });
+    } finally {
+      setIsCompletingSetup(false);
     }
   };
 
@@ -625,8 +634,6 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
   const handleFfmpegStatusUpdate = useCallback(
     (status: FFmpegStatus | null) => {
-      setFfmpegStatus(status);
-
       const isReady = Boolean(status?.installed && status?.valid);
       if (isReady) {
         setFfmpegManualOverride(false);
@@ -873,18 +880,6 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
         setFfmpegPathInput(resolvedPath);
         setFfmpegManualOverride(true);
         dispatch({ type: 'INSTALL_COMPLETE', payload: 'ffmpeg' });
-        setFfmpegStatus((prev) =>
-          prev
-            ? {
-                ...prev,
-                installed: true,
-                valid: true,
-                path: resolvedPath,
-                version: result.version ?? prev.version,
-                error: null,
-              }
-            : prev
-        );
         showSuccessToast({
           title: 'FFmpeg Attached',
           message: result.message || `Aura will use FFmpeg at ${resolvedPath}.`,
@@ -921,7 +916,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
   // New simplified step renderers for mandatory setup
 
-  // Step 1: FFmpeg Check - Quick status check only
+  // Step 1: FFmpeg Check - Quick status check only, no installation options
   const renderStep1FFmpeg = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
       <div style={{ textAlign: 'center', marginBottom: tokens.spacingVerticalM }}>
@@ -947,53 +942,93 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
         </Card>
       </div>
 
-      <FFmpegDependencyCard
-        autoCheck={true}
-        autoExpandDetails={false}
-        refreshSignal={ffmpegRefreshSignal}
-        onInstallComplete={handleFfmpegStatusUpdate}
-        onStatusChange={handleFfmpegStatusUpdate}
-      />
-
-      {ffmpegReady && ffmpegPath && (
-        <Card
+      <Card
+        style={{
+          padding: tokens.spacingVerticalL,
+        }}
+      >
+        <div
           style={{
-            padding: tokens.spacingVerticalM,
-            backgroundColor: tokens.colorPaletteGreenBackground1,
-            borderLeft: `4px solid ${tokens.colorPaletteGreenBorder1}`,
+            display: 'flex',
+            alignItems: 'center',
+            gap: tokens.spacingHorizontalM,
+            marginBottom: tokens.spacingVerticalM,
           }}
         >
-          <Text
-            weight="semibold"
-            style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}
+          {isRescanningFfmpeg ? (
+            <Spinner size="medium" />
+          ) : ffmpegReady && ffmpegPath ? (
+            <Checkmark24Regular
+              style={{
+                fontSize: '32px',
+                color: tokens.colorPaletteGreenForeground1,
+              }}
+            />
+          ) : (
+            <Warning24Regular
+              style={{
+                fontSize: '32px',
+                color: tokens.colorPaletteYellowForeground1,
+              }}
+            />
+          )}
+          <div style={{ flex: 1 }}>
+            <Title3>FFmpeg Status</Title3>
+            {ffmpegReady && ffmpegPath ? (
+              <Text style={{ display: 'block', marginTop: tokens.spacingVerticalXS }}>
+                ✓ FFmpeg is installed and ready at {ffmpegPath}
+              </Text>
+            ) : (
+              <Text style={{ display: 'block', marginTop: tokens.spacingVerticalXS }}>
+                Checking for FFmpeg installation...
+              </Text>
+            )}
+          </div>
+          <Button
+            appearance="secondary"
+            icon={<ArrowClockwise24Regular />}
+            onClick={handleRescanFfmpeg}
+            disabled={isRescanningFfmpeg}
           >
-            <Checkmark24Regular /> FFmpeg Found!
-          </Text>
-          <Text style={{ display: 'block', marginTop: tokens.spacingVerticalXS }}>
-            FFmpeg is already installed at {ffmpegPath}. You can proceed to the next step.
-          </Text>
-        </Card>
-      )}
+            {isRescanningFfmpeg ? 'Checking...' : 'Check Again'}
+          </Button>
+        </div>
 
-      {!ffmpegReady && (
-        <Card
-          style={{
-            padding: tokens.spacingVerticalM,
-            backgroundColor: tokens.colorNeutralBackground3,
-          }}
-        >
-          <Text
-            weight="semibold"
-            style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}
+        {ffmpegReady && ffmpegPath && (
+          <div
+            style={{
+              padding: tokens.spacingVerticalM,
+              backgroundColor: tokens.colorPaletteGreenBackground1,
+              borderRadius: tokens.borderRadiusMedium,
+              borderLeft: `4px solid ${tokens.colorPaletteGreenBorder1}`,
+            }}
           >
-            <Warning24Regular /> FFmpeg Not Detected
-          </Text>
-          <Text style={{ display: 'block', marginTop: tokens.spacingVerticalXS }}>
-            Don&apos;t worry! The next step will help you install FFmpeg or configure an existing
-            installation.
-          </Text>
-        </Card>
-      )}
+            <Text weight="semibold">Great! FFmpeg is ready to use.</Text>
+            <Text style={{ display: 'block', marginTop: tokens.spacingVerticalXS }}>
+              You can proceed to the next step.
+            </Text>
+          </div>
+        )}
+
+        {!ffmpegReady && !isRescanningFfmpeg && (
+          <div
+            style={{
+              padding: tokens.spacingVerticalM,
+              backgroundColor: tokens.colorNeutralBackground3,
+              borderRadius: tokens.borderRadiusMedium,
+            }}
+          >
+            <Text weight="semibold">
+              <Warning24Regular style={{ marginRight: tokens.spacingHorizontalXS }} />
+              FFmpeg Not Detected
+            </Text>
+            <Text style={{ display: 'block', marginTop: tokens.spacingVerticalXS }}>
+              Don&apos;t worry! The next step will guide you through installing FFmpeg or
+              configuring an existing installation.
+            </Text>
+          </div>
+        )}
+      </Card>
     </div>
   );
 
@@ -1007,6 +1042,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
         </Text>
       </div>
 
+      {/* Managed Installation Option */}
       <FFmpegDependencyCard
         autoCheck={false}
         autoExpandDetails={true}
@@ -1015,12 +1051,12 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
         onStatusChange={handleFfmpegStatusUpdate}
       />
 
+      {/* Manual Configuration Option - Consolidated without duplicate Re-scan */}
       <Card className={styles.manualAttachCard}>
         <div className={styles.manualHeader}>
-          <Title3>Use an Existing FFmpeg</Title3>
+          <Title3>Or Use an Existing FFmpeg Installation</Title3>
           <Text size={200}>
-            Already have FFmpeg installed? Provide the executable path so Aura can use it right
-            away.
+            Already have FFmpeg installed? Provide the path to your FFmpeg executable below.
           </Text>
         </div>
 
@@ -1059,14 +1095,6 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
           >
             {isValidatingFfmpegPath ? 'Validating...' : 'Validate Path'}
           </Button>
-          <Button
-            appearance="secondary"
-            icon={<ArrowClockwise24Regular />}
-            onClick={handleRescanFfmpeg}
-            disabled={isRescanningFfmpeg}
-          >
-            {isRescanningFfmpeg ? 'Re-scanning...' : 'Re-scan'}
-          </Button>
         </div>
 
         <div className={styles.statusSummary}>
@@ -1080,16 +1108,13 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
             </Text>
           ) : (
             <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-              {ffmpegStatus?.error
-                ? `Last check: ${ffmpegStatus.error}`
-                : ffmpegStatus?.path
-                  ? `Last detected path: ${ffmpegStatus.path}`
-                  : 'FFmpeg not detected yet. Validate an executable path or install the managed build.'}
+              Enter the path to your FFmpeg executable and click Validate Path
             </Text>
           )}
         </div>
       </Card>
 
+      {/* Manual Installation Resources */}
       <Card
         style={{
           padding: tokens.spacingVerticalM,
@@ -1100,8 +1125,8 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
       >
         <Title3>Manual Installation Resources</Title3>
         <Text size={200}>
-          Prefer to install FFmpeg manually? Download from the official sources below, then use
-          &quot;Re-scan&quot; or &quot;Browse&quot; to configure it.
+          Need to download FFmpeg? Get it from the official sources below. After installing, return
+          here and use the Browse button above to locate your FFmpeg executable.
         </Text>
         <div
           style={{
@@ -1125,6 +1150,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
         </div>
       </Card>
 
+      {/* Warning about proceeding without FFmpeg */}
       {!ffmpegReady && (
         <Card
           style={{
@@ -1140,8 +1166,8 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
             <Warning24Regular /> FFmpeg Required for Video Rendering
           </Text>
           <Text style={{ display: 'block', marginTop: tokens.spacingVerticalXS }}>
-            You can proceed without FFmpeg, but video generation will not work until it&apos;s
-            properly installed. Configure it later from Settings if needed.
+            You can proceed to the next step without FFmpeg, but video generation will not work
+            until it&apos;s properly installed. You can configure it later from Settings if needed.
           </Text>
         </Card>
       )}
@@ -1346,8 +1372,14 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
               alignItems: 'center',
             }}
           >
-            <Button appearance="primary" size="large" onClick={completeOnboarding}>
-              Start Creating Videos
+            <Button
+              appearance="primary"
+              size="large"
+              onClick={completeOnboarding}
+              disabled={isCompletingSetup}
+              icon={isCompletingSetup ? <Spinner size="tiny" /> : undefined}
+            >
+              {isCompletingSetup ? 'Finishing Setup...' : 'Start Creating Videos'}
             </Button>
             <Text
               size={200}
