@@ -4901,8 +4901,38 @@ lifetime.ApplicationStopping.Register(() =>
     Log.Information("=================================================================");
     Log.Information("=== Application Shutdown Initiated ===");
     Log.Information("=================================================================");
-    Log.Information("Shutdown Phase 1: Stopping background services");
+    Log.Information("Shutdown Phase 1: Stopping background services and cleaning up processes");
     var shutdownStopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+    // CRITICAL FIX: Kill all tracked FFmpeg processes to prevent orphaned processes
+    // This resolves the issue where FFmpeg and .NET Host processes remain in Task Manager
+    try
+    {
+        Log.Information("Shutdown Phase 1a: Terminating all FFmpeg processes");
+        var processManager = app.Services.GetService<Aura.Core.Services.FFmpeg.IProcessManager>();
+        if (processManager != null)
+        {
+            var trackedProcesses = processManager.GetTrackedProcesses();
+            if (trackedProcesses.Length > 0)
+            {
+                Log.Warning("Found {Count} tracked FFmpeg processes to terminate", trackedProcesses.Length);
+                processManager.KillAllProcessesAsync(CancellationToken.None).GetAwaiter().GetResult();
+                Log.Information("All FFmpeg processes terminated successfully");
+            }
+            else
+            {
+                Log.Information("No FFmpeg processes to terminate");
+            }
+        }
+        else
+        {
+            Log.Warning("ProcessManager not available for cleanup");
+        }
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error terminating FFmpeg processes during shutdown");
+    }
 
     // Stop health monitor first (reverse order of startup)
     if (healthMonitorStarted)
@@ -4927,7 +4957,7 @@ lifetime.ApplicationStopping.Register(() =>
     }
 
     shutdownStopwatch.Stop();
-    Log.Information("Shutdown Phase 2: Background services stopped (Elapsed: {ElapsedMs}ms)", shutdownStopwatch.ElapsedMilliseconds);
+    Log.Information("Shutdown Phase 2: Background services stopped and processes cleaned up (Elapsed: {ElapsedMs}ms)", shutdownStopwatch.ElapsedMilliseconds);
 });
 
 lifetime.ApplicationStopped.Register(() =>
