@@ -1,9 +1,82 @@
 import apiClient from './apiClient';
 
 /**
- * Event data for streaming script generation
+ * Provider characteristics from init event
  */
-export interface StreamingScriptEvent {
+export interface ProviderCharacteristics {
+  providerName: string;
+  isLocal: boolean;
+  expectedFirstTokenMs: number;
+  expectedTokensPerSec: number;
+  costPer1KTokens: number | null;
+  supportsStreaming: boolean;
+}
+
+/**
+ * Streaming chunk event
+ */
+export interface StreamChunkEvent {
+  eventType: 'chunk';
+  content: string;
+  accumulatedContent: string;
+  tokenIndex: number;
+}
+
+/**
+ * Complete event with metadata
+ */
+export interface StreamCompleteEvent {
+  eventType: 'complete';
+  content: string;
+  accumulatedContent: string;
+  tokenCount: number;
+  metadata: {
+    totalTokens: number | null;
+    estimatedCost: number | null;
+    tokensPerSecond: number | null;
+    isLocalModel: boolean | null;
+    modelName: string | null;
+    timeToFirstTokenMs: number | null;
+    totalDurationMs: number | null;
+    finishReason: string | null;
+  };
+}
+
+/**
+ * Error event
+ */
+export interface StreamErrorEvent {
+  eventType: 'error';
+  errorMessage: string;
+  correlationId?: string;
+}
+
+/**
+ * Init event with provider info
+ */
+export interface StreamInitEvent {
+  eventType: 'init';
+  providerName: string;
+  isLocal: boolean;
+  expectedFirstTokenMs: number;
+  expectedTokensPerSec: number;
+  costPer1KTokens: number | null;
+  supportsStreaming: boolean;
+}
+
+/**
+ * Union type for all streaming events
+ */
+export type StreamingScriptEvent =
+  | StreamInitEvent
+  | StreamChunkEvent
+  | StreamCompleteEvent
+  | StreamErrorEvent;
+
+/**
+ * Event data for streaming script generation (deprecated, use StreamingScriptEvent)
+ */
+export interface LegacyStreamingScriptEvent {
   eventType: 'chunk' | 'complete' | 'error';
   content: string;
   cumulativeContent: string;
@@ -17,7 +90,7 @@ export interface StreamingScriptEvent {
 }
 
 /**
- * Final generation metrics from Ollama
+ * Final generation metrics from Ollama (deprecated)
  */
 export interface GenerationMetrics {
   totalDurationMs: number;
@@ -44,6 +117,7 @@ export interface StreamGenerationRequest {
   density?: string;
   style?: string;
   model?: string;
+  preferredProvider?: string;
 }
 
 /**
@@ -52,7 +126,8 @@ export interface StreamGenerationRequest {
 export type StreamProgressCallback = (event: StreamingScriptEvent) => void;
 
 /**
- * Stream script generation from Ollama with real-time updates
+ * Stream script generation with unified provider support
+ * Supports all LLM providers: OpenAI, Anthropic, Gemini, Azure, Ollama
  */
 // eslint-disable-next-line sonarjs/cognitive-complexity
 export async function streamGeneration(
@@ -85,6 +160,7 @@ export async function streamGeneration(
   const decoder = new TextDecoder();
   let buffer = '';
   let finalContent = '';
+  let currentEventType: string | null = null;
 
   try {
     while (true) {
@@ -101,10 +177,12 @@ export async function streamGeneration(
 
       for (const line of lines) {
         if (line.trim() === '') {
+          currentEventType = null;
           continue;
         }
 
         if (line.startsWith('event:')) {
+          currentEventType = line.slice(6).trim();
           continue;
         }
 
@@ -112,12 +190,61 @@ export async function streamGeneration(
           const data = line.slice(5).trim();
 
           try {
-            const event = JSON.parse(data) as StreamingScriptEvent;
-            onProgress(event);
+            const parsedData = JSON.parse(data);
 
-            if (event.isComplete) {
-              finalContent = event.cumulativeContent;
+            if (!currentEventType) {
+              currentEventType = parsedData.eventType;
             }
+
+            let event: StreamingScriptEvent;
+
+            switch (currentEventType) {
+              case 'init':
+                event = {
+                  eventType: 'init',
+                  providerName: parsedData.providerName,
+                  isLocal: parsedData.isLocal,
+                  expectedFirstTokenMs: parsedData.expectedFirstTokenMs,
+                  expectedTokensPerSec: parsedData.expectedTokensPerSec,
+                  costPer1KTokens: parsedData.costPer1KTokens,
+                  supportsStreaming: parsedData.supportsStreaming,
+                } as StreamInitEvent;
+                break;
+
+              case 'chunk':
+                event = {
+                  eventType: 'chunk',
+                  content: parsedData.content,
+                  accumulatedContent: parsedData.accumulatedContent,
+                  tokenIndex: parsedData.tokenIndex,
+                } as StreamChunkEvent;
+                break;
+
+              case 'complete':
+                event = {
+                  eventType: 'complete',
+                  content: parsedData.content || '',
+                  accumulatedContent: parsedData.accumulatedContent,
+                  tokenCount: parsedData.tokenCount,
+                  metadata: parsedData.metadata || {},
+                } as StreamCompleteEvent;
+                finalContent = parsedData.accumulatedContent;
+                break;
+
+              case 'error':
+                event = {
+                  eventType: 'error',
+                  errorMessage: parsedData.errorMessage,
+                  correlationId: parsedData.correlationId,
+                } as StreamErrorEvent;
+                break;
+
+              default:
+                console.warn('Unknown event type:', currentEventType);
+                continue;
+            }
+
+            onProgress(event);
           } catch (error: unknown) {
             console.error(
               'Failed to parse SSE data:',
@@ -138,6 +265,7 @@ export async function streamGeneration(
  * Stream script generation using EventSource (alternative implementation)
  * Note: EventSource doesn't support POST requests or custom headers easily,
  * so the fetch-based approach above is preferred
+ * @deprecated Use streamGeneration instead for better control and POST support
  */
 export function streamGenerationWithEventSource(
   request: StreamGenerationRequest,
@@ -158,13 +286,40 @@ export function streamGenerationWithEventSource(
 
   const eventSource = new EventSource(url);
 
-  eventSource.addEventListener('progress', (event: MessageEvent) => {
+  eventSource.addEventListener('init', (event: MessageEvent) => {
     try {
-      const data = JSON.parse(event.data) as StreamingScriptEvent;
-      onProgress(data);
+      const data = JSON.parse(event.data);
+      const initEvent: StreamInitEvent = {
+        eventType: 'init',
+        providerName: data.providerName,
+        isLocal: data.isLocal,
+        expectedFirstTokenMs: data.expectedFirstTokenMs,
+        expectedTokensPerSec: data.expectedTokensPerSec,
+        costPer1KTokens: data.costPer1KTokens,
+        supportsStreaming: data.supportsStreaming,
+      };
+      onProgress(initEvent);
     } catch (error: unknown) {
       console.error(
-        'Failed to parse progress event:',
+        'Failed to parse init event:',
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+  });
+
+  eventSource.addEventListener('chunk', (event: MessageEvent) => {
+    try {
+      const data = JSON.parse(event.data);
+      const chunkEvent: StreamChunkEvent = {
+        eventType: 'chunk',
+        content: data.content,
+        accumulatedContent: data.accumulatedContent,
+        tokenIndex: data.tokenIndex,
+      };
+      onProgress(chunkEvent);
+    } catch (error: unknown) {
+      console.error(
+        'Failed to parse chunk event:',
         error instanceof Error ? error.message : String(error)
       );
     }
@@ -172,8 +327,15 @@ export function streamGenerationWithEventSource(
 
   eventSource.addEventListener('complete', (event: MessageEvent) => {
     try {
-      const data = JSON.parse(event.data) as StreamingScriptEvent;
-      onProgress(data);
+      const data = JSON.parse(event.data);
+      const completeEvent: StreamCompleteEvent = {
+        eventType: 'complete',
+        content: data.content || '',
+        accumulatedContent: data.accumulatedContent,
+        tokenCount: data.tokenCount,
+        metadata: data.metadata || {},
+      };
+      onProgress(completeEvent);
       eventSource.close();
       onComplete();
     } catch (error: unknown) {
@@ -184,11 +346,16 @@ export function streamGenerationWithEventSource(
     }
   });
 
-  eventSource.addEventListener('error', (event: Event) => {
-    const messageEvent = event as MessageEvent;
+  eventSource.addEventListener('error', (event: MessageEvent) => {
     try {
-      const data = JSON.parse(messageEvent.data) as StreamingScriptEvent;
-      onError(new Error(data.errorMessage || 'Streaming error occurred'));
+      const data = JSON.parse(event.data);
+      const errorEvent: StreamErrorEvent = {
+        eventType: 'error',
+        errorMessage: data.errorMessage || 'Streaming error occurred',
+        correlationId: data.correlationId,
+      };
+      onProgress(errorEvent);
+      onError(new Error(errorEvent.errorMessage));
     } catch {
       onError(new Error('Unknown streaming error'));
     }
