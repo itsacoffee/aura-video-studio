@@ -101,6 +101,11 @@ if ($Help) {
     Write-Output "to provide a clean environment for testing. Use this between builds to"
     Write-Output "ensure you're testing with a fresh, first-run state."
     Write-Output ""
+    Write-Output "IMPORTANT: This script resets the first-run wizard state by:"
+    Write-Output "  • Deleting the SQLite database (%LOCALAPPDATA%\Aura\aura.db)"
+    Write-Output "  • Calling the backend reset API (if the server is running)"
+    Write-Output "  • Note: localStorage will be cleared when the app restarts"
+    Write-Output ""
     Write-Output "Options:"
     Write-Output "  -IncludeUserContent   Also remove user documents and videos (NOT recommended)"
     Write-Output "  -DryRun              Show what would be removed without actually removing"
@@ -108,6 +113,8 @@ if ($Help) {
     Write-Output ""
     Write-Output "What gets cleaned:"
     Write-Output "  • AppData configuration and cache (%LOCALAPPDATA%\aura-video-studio)"
+    Write-Output "  • First-run wizard state (database and localStorage)"
+    Write-Output "  • SQLite database (%LOCALAPPDATA%\Aura\aura.db)"
     Write-Output "  • Logs and diagnostics"
     Write-Output "  • Downloaded tools (FFmpeg, TTS engines, etc.)"
     Write-Output "  • Temporary processing files"
@@ -276,10 +283,106 @@ foreach ($project in $projectsToClean) {
 Write-Host ""
 
 # ========================================
-# Step 6: Clean User Content (Optional)
+# Step 6: Reset First-Run Wizard State
+# ========================================
+Write-Info "Step 6: Resetting first-run wizard state..."
+Write-Host ""
+
+function Reset-WizardState {
+    # Reset database
+    $databasePath = "$env:LOCALAPPDATA\Aura\aura.db"
+    if (Remove-PathSafely $databasePath "SQLite database (wizard state)") {
+        $cleanupStats.Removed++
+    } else {
+        $cleanupStats.NotFound++
+    }
+    
+    # Also check for alternative database location
+    $altDatabasePath = "$env:LOCALAPPDATA\Aura\data\aura.db"
+    if (Remove-PathSafely $altDatabasePath "SQLite database (alternate path)") {
+        $cleanupStats.Removed++
+    }
+    
+    # Clean database journal and WAL files
+    $dbJournalFiles = @(
+        "$env:LOCALAPPDATA\Aura\aura.db-shm",
+        "$env:LOCALAPPDATA\Aura\aura.db-wal",
+        "$env:LOCALAPPDATA\Aura\aura.db-journal",
+        "$env:LOCALAPPDATA\Aura\data\aura.db-shm",
+        "$env:LOCALAPPDATA\Aura\data\aura.db-wal",
+        "$env:LOCALAPPDATA\Aura\data\aura.db-journal"
+    )
+    
+    foreach ($journalFile in $dbJournalFiles) {
+        if (Test-Path $journalFile) {
+            if (Remove-PathSafely $journalFile "Database journal/WAL file") {
+                $cleanupStats.Removed++
+            }
+        }
+    }
+    
+    Write-Info "Database state reset complete"
+}
+
+function Reset-WizardBackendState {
+    param(
+        [int]$ApiPort = 5005
+    )
+    
+    Write-Info "Attempting to reset wizard state via backend API..."
+    
+    try {
+        $apiUrl = "http://localhost:$ApiPort/api/setup/wizard/reset"
+        
+        # Check if backend is running
+        $healthUrl = "http://localhost:$ApiPort/health/live"
+        $healthCheck = $null
+        try {
+            $healthCheck = Invoke-WebRequest -Uri $healthUrl -Method GET -TimeoutSec 2 -ErrorAction SilentlyContinue
+        } catch {
+            # Backend not running, skip
+            Write-Info "Backend API not running (expected if not started yet)"
+            return
+        }
+        
+        if ($healthCheck -and $healthCheck.StatusCode -eq 200) {
+            Write-Info "Backend is running, calling reset endpoint..."
+            
+            $body = @{
+                userId = "default"
+                preserveData = $false
+            } | ConvertTo-Json
+            
+            $response = Invoke-WebRequest -Uri $apiUrl -Method POST -Body $body -ContentType "application/json" -TimeoutSec 5
+            
+            if ($response.StatusCode -eq 200) {
+                Write-Success "Backend wizard state reset successfully"
+            } else {
+                Show-Warning "Backend returned status code: $($response.StatusCode)"
+            }
+        }
+    } catch {
+        # This is optional, so just warn
+        Show-Warning "Could not reset wizard state via backend API: $($_.Exception.Message)"
+        Write-Info "This is normal if the backend is not running"
+    }
+}
+
+# Execute wizard state reset
+Reset-WizardState
+
+# Optionally try to call backend reset (best effort)
+if (-not $DryRun) {
+    Reset-WizardBackendState
+}
+
+Write-Host ""
+
+# ========================================
+# Step 7: Clean User Content (Optional)
 # ========================================
 if ($IncludeUserContent) {
-    Write-Info "Step 6: Cleaning user content (as requested)..."
+    Write-Info "Step 7: Cleaning user content (as requested)..."
     Write-Host ""
     
     $documentsPath = "$env:USERPROFILE\Documents\Aura Video Studio"
@@ -298,7 +401,7 @@ if ($IncludeUserContent) {
     
     Write-Host ""
 } else {
-    Write-Info "Step 6: Preserving user content (use -IncludeUserContent to remove)"
+    Write-Info "Step 7: Preserving user content (use -IncludeUserContent to remove)"
     Write-Host ""
     
     $documentsPath = "$env:USERPROFILE\Documents\Aura Video Studio"

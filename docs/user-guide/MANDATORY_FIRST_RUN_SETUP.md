@@ -391,6 +391,120 @@ The specified path is not writable or does not exist.
 4. **Import settings**: Load configuration from file
 5. **Skip for developers**: Environment variable to bypass for dev/test
 
+## Resetting the Wizard (For Testing & Development)
+
+While the wizard is designed to run only once per installation, developers and testers may need to reset it to verify the first-run experience. There are multiple ways to reset the wizard state:
+
+### Method 1: Using `clean-desktop.ps1` Script (Recommended)
+
+The most comprehensive way to reset the wizard is to use the `clean-desktop.ps1` script located in the `Aura.Desktop` folder:
+
+```powershell
+# Preview what will be cleaned (dry run)
+.\Aura.Desktop\clean-desktop.ps1 -DryRun
+
+# Clean everything including wizard state
+.\Aura.Desktop\clean-desktop.ps1
+```
+
+**What this script resets:**
+- ✅ SQLite database (`%LOCALAPPDATA%\Aura\aura.db`) - removes all wizard progress
+- ✅ Database WAL/journal files
+- ✅ Backend wizard state (via API call if server is running)
+- ✅ AppData configuration and cache
+- ✅ Downloaded tools and temporary files
+- ✅ Build artifacts
+
+**Note:** LocalStorage is cleared automatically when the app restarts and detects no backend state.
+
+### Method 2: Backend API Call
+
+If the backend server is running, you can call the reset endpoint directly:
+
+```bash
+# Using curl (Windows/Linux/macOS)
+curl -X POST http://localhost:5005/api/setup/wizard/reset \
+  -H "Content-Type: application/json" \
+  -d '{"userId":"default","preserveData":false}'
+
+# Using PowerShell
+$body = @{userId="default"; preserveData=$false} | ConvertTo-Json
+Invoke-WebRequest -Uri "http://localhost:5005/api/setup/wizard/reset" `
+  -Method POST -Body $body -ContentType "application/json"
+```
+
+### Method 3: Manual Database Deletion
+
+If you only want to reset the wizard without cleaning everything:
+
+1. **Stop the application** (both frontend and backend)
+2. **Delete the database file:**
+   - Windows: `%LOCALAPPDATA%\Aura\aura.db`
+   - Also delete: `aura.db-shm`, `aura.db-wal`, `aura.db-journal` (if present)
+3. **Clear browser localStorage** (if testing web version):
+   - Open Developer Tools (F12)
+   - Go to Application tab → Local Storage
+   - Delete keys: `hasCompletedFirstRun`, `hasSeenOnboarding`, `wizardProgress`
+4. **Restart the application**
+
+### Method 4: Programmatic Reset (From Frontend)
+
+For automated testing or development tools, use the exported functions:
+
+```typescript
+import { resetFirstRunStatus } from './services/firstRunService';
+import { clearWizardStateFromStorage, resetWizardInBackend } from './state/onboarding';
+
+// Full reset (localStorage + backend)
+await resetFirstRunStatus();
+
+// Individual resets
+clearWizardStateFromStorage(); // Clear localStorage only
+await resetWizardInBackend(false); // Clear backend only (preserveData=false)
+```
+
+### Verification After Reset
+
+After resetting, verify the wizard appears correctly:
+
+1. Start the application
+2. Should see the welcome screen (Step 1 of 5)
+3. No "Continue where you left off?" dialog
+4. Empty configuration (except smart defaults)
+
+### Database Location Reference
+
+The wizard state is stored in the SQLite database at:
+
+```
+Windows:  %LOCALAPPDATA%\Aura\aura.db
+          (typically: C:\Users\<YourName>\AppData\Local\Aura\aura.db)
+
+macOS:    ~/Library/Application Support/Aura/aura.db
+
+Linux:    ~/.local/share/Aura/aura.db
+```
+
+The database contains the `UserSetups` table which tracks:
+- Wizard completion status (`Completed` boolean)
+- Current step (`LastStep` integer)
+- Wizard state JSON (`WizardState` text)
+- Timestamps (`CreatedAt`, `UpdatedAt`, `CompletedAt`)
+
+### Troubleshooting Reset Issues
+
+**Issue:** Wizard still shows "completed" after reset
+- **Cause:** Backend database not deleted or still running
+- **Solution:** Stop backend, delete database, restart
+
+**Issue:** "Continue where you left off?" appears after clean reset
+- **Cause:** Old wizard progress saved in backend
+- **Solution:** Use `clean-desktop.ps1` to ensure backend reset
+
+**Issue:** App bypasses wizard even after reset
+- **Cause:** localStorage still has completion flag
+- **Solution:** Clear browser cache/localStorage or use incognito mode
+
 ## Conclusion
 
 The mandatory first-run setup wizard ensures every user has a working configuration before creating their first video. By simplifying to 5 essential steps and adding clear validation, the setup experience is both thorough and user-friendly.
@@ -404,5 +518,6 @@ Key achievements:
 - ✅ Smart defaults for workspace
 - ✅ Validation at every step
 - ✅ Persistence to prevent re-runs
+- ✅ Comprehensive reset mechanism for testing
 
 This implementation resolves the critical usability issue where new users could bypass setup and encounter errors when trying to generate videos.
