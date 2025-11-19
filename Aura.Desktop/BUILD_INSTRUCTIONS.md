@@ -60,6 +60,44 @@ npm run build:win
 Installers will be created in `Aura.Desktop/dist/`:
 - **Windows**: `*-Setup-*.exe` (NSIS installer), `*-portable.exe` (standalone)
 
+## Clean Build Environment
+
+For testing installers and ensuring a fresh first-run experience, use the cleanup script to remove all application data and build artifacts:
+
+### Preview Cleanup (Dry Run)
+```powershell
+.\clean-desktop.ps1 -DryRun
+```
+
+### Clean Everything (Except User Content)
+```powershell
+.\clean-desktop.ps1
+```
+
+This removes:
+- Application configuration and cache (`%LOCALAPPDATA%\aura-video-studio`)
+- Downloaded tools and engines (`%LOCALAPPDATA%\Aura\Tools`)
+- Logs and diagnostics
+- Temporary processing files
+- Build artifacts (dist, bin, obj folders)
+
+User documents and videos are **preserved by default**. Use `-IncludeUserContent` to also remove them (with confirmation prompt).
+
+### Typical Testing Workflow
+```powershell
+# 1. Clean environment
+.\clean-desktop.ps1
+
+# 2. Build fresh installer
+.\build-desktop.ps1
+
+# 3. Test installer
+.\dist\Aura-Video-Studio-Setup-1.0.0.exe
+
+# 4. After testing, clean again for next iteration
+.\clean-desktop.ps1
+```
+
 ## Code Signing
 
 Code signing is optional. If you have a code signing certificate:
