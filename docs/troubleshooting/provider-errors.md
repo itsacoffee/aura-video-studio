@@ -26,6 +26,106 @@ The following error codes are returned by the provider validation system when ch
 
 ---
 
+## API Key Validation During Setup
+
+When validating API keys in the First-Run Wizard or Settings, the system distinguishes between different types of errors:
+
+### Error Types and What They Mean
+
+#### ✅ "Valid" - Key Verified Successfully
+- The API key format is correct
+- Network connection to the provider was successful
+- The provider accepted the key and returned a successful response
+- You can proceed with using this provider
+
+#### ❌ "Invalid" - Key Rejected by Provider
+- The API key was rejected by the provider (HTTP 401 Unauthorized)
+- Common causes:
+  - Key was typed incorrectly
+  - Key was revoked or expired
+  - Key doesn't have proper permissions
+- **Action**: Double-check your API key and regenerate if needed
+
+#### 🌐 "Unable to reach backend" - Network Error
+- The frontend cannot connect to the Aura backend server
+- This is **not** an invalid API key - it's a connectivity issue
+- Common causes:
+  - Backend API is not running
+  - Firewall is blocking the connection
+  - Incorrect backend URL configured
+- **Action**: 
+  - Ensure `dotnet run --project Aura.Api` is running
+  - Check firewall settings
+  - Verify `VITE_API_BASE_URL` in `.env.local`
+
+#### ⏱️ "Request timed out" - Timeout Error
+- The request took too long to complete (>90 seconds)
+- Network may be slow or provider is experiencing high latency
+- **Action**: 
+  - Check your internet connection speed
+  - Try again when network conditions improve
+  - You can continue setup and the key will be validated on first use
+
+#### 🔒 "OpenAI service issue" - Provider Server Error
+- The provider's API returned a server error (5xx)
+- The key may be valid, but the service is having issues
+- **Action**:
+  - Check the provider's status page
+  - Wait and try again later
+  - You can continue setup anyway
+
+#### 🚫 "Access denied" - Permission Error (HTTP 403)
+- The API key is valid but lacks necessary permissions
+- Common causes:
+  - Organization/project restrictions
+  - Billing account not set up
+  - Rate limits or quotas exceeded
+- **Action**:
+  - Check your account settings at the provider's dashboard
+  - Ensure billing is set up
+  - Verify organization/project access
+
+### Validation Flow
+
+1. **Format Check**: Validates the key format locally (e.g., OpenAI keys start with `sk-`)
+2. **Backend Connection**: Attempts to connect to Aura backend
+3. **Provider Verification**: Backend contacts the provider's API to verify the key
+4. **Result Interpretation**: Parses the response and shows appropriate message
+
+### Troubleshooting Validation Errors
+
+#### Problem: Valid key shows as "Invalid"
+**This should now be fixed!** If you still see this:
+
+1. Check the exact error message shown
+2. If it mentions "Unable to reach backend" or "Network error", this is not about your key
+3. Ensure the backend is running: `dotnet run --project Aura.Api`
+4. Check backend logs for detailed error information
+5. Try resetting the circuit breaker by restarting the frontend
+
+#### Problem: Validation takes too long
+The validation has extended timeouts (90 seconds) with retry logic:
+
+1. First attempt: Immediate validation
+2. Retry attempts: Up to 2 retries with exponential backoff
+3. Each attempt has a 90-second timeout
+
+If validation consistently times out:
+- Check your network connection
+- Try using a wired connection instead of WiFi
+- Check if a proxy or firewall is interfering
+- Contact your network administrator if on a corporate network
+
+#### Problem: "Circuit breaker is open" error
+The circuit breaker protects against cascading failures:
+
+1. It opens after 10 consecutive failures
+2. It stays open for 60 seconds before retrying
+3. **Solution**: The validation flow now resets the circuit breaker before each attempt
+4. If you still see this, restart the frontend application
+
+---
+
 ## LLM Errors
 
 Language Model (LLM) provider errors occur when there are issues communicating with OpenAI, Anthropic, or other LLM services.

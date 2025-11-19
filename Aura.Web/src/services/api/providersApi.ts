@@ -59,6 +59,9 @@ export interface ProviderModelsResponse {
 export interface ApiKeyValidationResponse {
   isValid: boolean;
   message: string;
+  status?: string;
+  errorType?: string;
+  networkCheckPassed?: boolean;
   details?: Record<string, unknown>;
 }
 
@@ -111,13 +114,37 @@ export async function testProviderConnection(
 }
 
 /**
- * Validate OpenAI API key
+ * Validate OpenAI API key with detailed error handling
  */
 export async function validateOpenAIKey(
   apiKey: string,
   config?: ExtendedAxiosRequestConfig
 ): Promise<ApiKeyValidationResponse> {
-  return post<ApiKeyValidationResponse>('/api/providers/openai/validate', { apiKey }, config);
+  const response = await post<{
+    isValid: boolean;
+    status: string;
+    message?: string;
+    correlationId?: string;
+    details?: {
+      provider: string;
+      keyFormat: string;
+      formatValid: boolean;
+      networkCheckPassed?: boolean;
+      httpStatusCode?: number;
+      errorType?: string;
+      responseTimeMs?: number;
+      diagnosticInfo?: string;
+    };
+  }>('/api/providers/openai/validate', { apiKey }, config);
+
+  return {
+    isValid: response.isValid,
+    message: response.message || 'Validation completed',
+    status: response.status,
+    errorType: response.details?.errorType,
+    networkCheckPassed: response.details?.networkCheckPassed,
+    details: response.details,
+  };
 }
 
 /**
