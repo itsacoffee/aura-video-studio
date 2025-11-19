@@ -65,23 +65,18 @@ const useStyles = makeStyles({
     minHeight: 'var(--toolbar-button-size)',
     fontSize: 'var(--font-size-xs)',
     fontWeight: 'var(--font-weight-medium)',
+  },
+  toggleButtonUnchecked: {
     color: 'var(--color-text-secondary)',
     border: '1px solid var(--color-border-subtle)',
     borderRadius: 'var(--radius-sm)',
     transition: 'all var(--transition-fast)',
-    '&:hover': {
-      backgroundColor: 'var(--color-bg-hover)',
-      color: 'var(--color-text-primary)',
-      borderColor: 'var(--color-border-strong)',
-    },
   },
   toggleButtonChecked: {
     backgroundColor: 'var(--color-bg-selected)',
     color: 'var(--color-accent-primary)',
-    borderColor: 'var(--color-accent-primary)',
-    '&:hover': {
-      backgroundColor: 'var(--color-bg-active)',
-    },
+    border: '1px solid var(--color-accent-primary)',
+    borderRadius: 'var(--radius-sm)',
   },
   timecode: {
     fontFamily: 'var(--font-family-mono)',
@@ -220,26 +215,25 @@ export function TimelineToolbar({
 
         {/* Edit Tools Group */}
         <ToolbarGroup showSeparator aria-label="Edit tools">
-          {tools.map((tool) => (
-            <Tooltip
-              key={tool.id}
-              content={tool.shortcut ? `${tool.label} (${tool.shortcut})` : tool.label}
-              relationship="label"
-            >
-              <Button
-                appearance="subtle"
-                icon={tool.icon}
-                onClick={() => onToolChange(tool.id)}
-                className={
-                  activeTool === tool.id
-                    ? `${styles.toolButton} ${styles.toolButtonActive}`
-                    : styles.toolButton
-                }
-                aria-label={tool.label}
-                aria-pressed={activeTool === tool.id}
-              />
-            </Tooltip>
-          ))}
+          {tools.map((tool) => {
+            const tooltipText = tool.shortcut ? `${tool.label} (${tool.shortcut})` : tool.label;
+            return (
+              <Tooltip key={tool.id} content={tooltipText} relationship="label">
+                <Button
+                  appearance="subtle"
+                  icon={tool.icon as never}
+                  onClick={() => onToolChange(tool.id)}
+                  className={
+                    activeTool === tool.id
+                      ? `${styles.toolButton} ${styles.toolButtonActive}`
+                      : styles.toolButton
+                  }
+                  aria-label={tool.label}
+                  aria-pressed={activeTool === tool.id}
+                />
+              </Tooltip>
+            );
+          })}
         </ToolbarGroup>
 
         {/* Edit Modes Group */}
@@ -248,11 +242,11 @@ export function TimelineToolbar({
             <ToggleButton
               checked={rippleMode}
               onClick={onRippleModeToggle}
-              className={
-                rippleMode
-                  ? `${styles.toggleButton} ${styles.toggleButtonChecked}`
-                  : styles.toggleButton
-              }
+              style={{
+                minWidth: 'var(--toolbar-button-size)',
+                minHeight: 'var(--toolbar-button-size)',
+                fontSize: 'var(--font-size-xs)',
+              }}
               size="small"
             >
               Ripple
@@ -262,11 +256,11 @@ export function TimelineToolbar({
             <ToggleButton
               checked={snapping}
               onClick={onSnappingToggle}
-              className={
-                snapping
-                  ? `${styles.toggleButton} ${styles.toggleButtonChecked}`
-                  : styles.toggleButton
-              }
+              style={{
+                minWidth: 'var(--toolbar-button-size)',
+                minHeight: 'var(--toolbar-button-size)',
+                fontSize: 'var(--font-size-xs)',
+              }}
               size="small"
             >
               Snap
@@ -276,11 +270,11 @@ export function TimelineToolbar({
             <ToggleButton
               checked={magnetic}
               onClick={onMagneticToggle}
-              className={
-                magnetic
-                  ? `${styles.toggleButton} ${styles.toggleButtonChecked}`
-                  : styles.toggleButton
-              }
+              style={{
+                minWidth: 'var(--toolbar-button-size)',
+                minHeight: 'var(--toolbar-button-size)',
+                fontSize: 'var(--font-size-xs)',
+              }}
               size="small"
             >
               Magnetic

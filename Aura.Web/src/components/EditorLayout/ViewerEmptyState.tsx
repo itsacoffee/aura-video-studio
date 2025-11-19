@@ -48,11 +48,7 @@ const useStyles = makeStyles({
     padding: 'var(--space-2xl)',
   },
   dropZoneActive: {
-    borderColor: 'var(--color-accent-primary)',
-    backgroundColor: 'rgba(61, 130, 246, 0.1)',
-    '& $subtitle': {
-      color: 'var(--color-text-primary)',
-    },
+    backgroundColor: '#3d82f619',
   },
 });
 
