@@ -595,4 +595,29 @@ public class EnhancedCostTrackingService
             _logger.LogError(ex, "Failed to save provider pricing");
         }
     }
+
+    /// <summary>
+    /// Get cost history for a date range with optional filtering
+    /// </summary>
+    public List<CostLog> GetCostHistory(DateTime startDate, DateTime endDate, string? provider = null, string? feature = null)
+    {
+        lock (_lock)
+        {
+            var query = _costLogs.Where(log => 
+                log.Timestamp >= startDate && 
+                log.Timestamp <= endDate);
+
+            if (!string.IsNullOrEmpty(provider))
+            {
+                query = query.Where(log => log.ProviderName.Equals(provider, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (!string.IsNullOrEmpty(feature))
+            {
+                query = query.Where(log => log.Feature.ToString().Equals(feature, StringComparison.OrdinalIgnoreCase));
+            }
+
+            return query.OrderByDescending(log => log.Timestamp).ToList();
+        }
+    }
 }
