@@ -23,6 +23,7 @@ import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../../components/Notifications/Toasts';
 import { AutoSaveIndicator } from '../../components/Onboarding/AutoSaveIndicator';
 import type { AutoSaveStatus } from '../../components/Onboarding/AutoSaveIndicator';
+import { BackendStatusBanner } from '../../components/Onboarding/BackendStatusBanner';
 import { FFmpegDependencyCard } from '../../components/Onboarding/FFmpegDependencyCard';
 import { ResumeWizardDialog } from '../../components/Onboarding/ResumeWizardDialog';
 import { WelcomeScreen } from '../../components/Onboarding/WelcomeScreen';
@@ -339,12 +340,24 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
     }
   }, [showSuccessToast, showFailureToast]);
 
-  const handleStartFresh = useCallback(() => {
+  const handleStartFresh = useCallback(async () => {
+    // Clear localStorage
     clearWizardStateFromStorage();
+
+    // Also reset backend wizard state
+    try {
+      const { resetWizardInBackend } = await import('../../state/onboarding');
+      await resetWizardInBackend(false); // Don't preserve data
+      console.info('[FirstRunWizard] Wizard state reset in backend and localStorage');
+    } catch (error) {
+      console.warn('[FirstRunWizard] Failed to reset wizard state in backend:', error);
+      // Continue anyway - localStorage is cleared which is most important
+    }
+
     setShowResumeDialog(false);
     showSuccessToast({
       title: 'Starting Fresh',
-      message: 'Previous setup progress cleared.',
+      message: 'Previous setup progress cleared. Starting wizard from the beginning.',
     });
   }, [showSuccessToast]);
 
@@ -754,6 +767,64 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
     }
   }, [showFailureToast]);
 
+  /**
+   * Parse FFmpeg validation error to extract user-friendly messages
+   */
+  const parseFFmpegValidationError = useCallback(
+    (error: unknown): { title: string; message: string } => {
+      let errorTitle = 'Validation Error';
+      let errorMessage = 'Unexpected error validating FFmpeg path.';
+
+      if (error && typeof error === 'object') {
+        const axiosError = error as {
+          code?: string;
+          response?: {
+            data?: {
+              message?: string;
+              detail?: string;
+              error?: string;
+              howToFix?: string[];
+              title?: string;
+            };
+            status?: number;
+          };
+          message?: string;
+          request?: unknown;
+        };
+
+        // Network-level errors (no response received)
+        if (axiosError.code === 'ERR_NETWORK' || axiosError.code === 'ECONNREFUSED') {
+          errorTitle = 'Backend Unreachable';
+          errorMessage =
+            'Unable to connect to the Aura backend. Please ensure the backend server is running and try again.';
+        } else if (axiosError.code === 'ECONNABORTED' || axiosError.code === 'ETIMEDOUT') {
+          errorTitle = 'Connection Timeout';
+          errorMessage = 'The request timed out. Check your network connection or try again later.';
+        } else if (axiosError.request && !axiosError.response) {
+          errorTitle = 'Network Error';
+          errorMessage =
+            'No response from the backend. Please check that the Aura backend is running and accessible.';
+        } else if (axiosError.response?.data) {
+          const data = axiosError.response.data;
+          errorTitle = data.title || 'Validation Failed';
+          errorMessage = data.message || data.detail || data.error || errorMessage;
+
+          if (data.howToFix && data.howToFix.length > 0) {
+            errorMessage +=
+              '\n\nSuggestions:\n' + data.howToFix.map((tip) => `• ${tip}`).join('\n');
+          }
+        } else if (axiosError.message) {
+          errorMessage = axiosError.message;
+        }
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+
+      return { title: errorTitle, message: errorMessage };
+    },
+    []
+  );
+
   const handleValidateFfmpegPath = useCallback(async () => {
     const trimmedPath = ffmpegPathInput.trim();
     if (trimmedPath.length === 0) {
@@ -766,11 +837,9 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
     setIsValidatingFfmpegPath(true);
     try {
-      // Reset circuit breaker before attempting validation
       resetCircuitBreaker();
       console.info('[Validate FFmpeg] Circuit breaker reset, attempting validation');
 
-      // Use the new backend use-existing endpoint
       const result = await ffmpegClient.useExisting({ path: trimmedPath });
 
       if (result.success && result.installed && result.valid) {
@@ -808,70 +877,13 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
       }
     } catch (error: unknown) {
       console.error('Failed to validate FFmpeg path:', error);
-
-      let errorTitle = 'Validation Error';
-      let errorMessage = 'Unexpected error validating FFmpeg path.';
-      
-      // Distinguish between network errors and validation errors
-      if (error && typeof error === 'object') {
-        const axiosError = error as {
-          code?: string;
-          response?: {
-            data?: {
-              message?: string;
-              detail?: string;
-              error?: string;
-              howToFix?: string[];
-              title?: string;
-            };
-            status?: number;
-          };
-          message?: string;
-          request?: unknown;
-        };
-
-        // Network-level errors (no response received)
-        if (axiosError.code === 'ERR_NETWORK' || axiosError.code === 'ECONNREFUSED') {
-          errorTitle = 'Backend Unreachable';
-          errorMessage = 
-            'Unable to connect to the Aura backend. Please ensure the backend server is running and try again.';
-        } else if (axiosError.code === 'ECONNABORTED' || axiosError.code === 'ETIMEDOUT') {
-          errorTitle = 'Connection Timeout';
-          errorMessage = 
-            'The request timed out. Check your network connection or try again later.';
-        } else if (axiosError.request && !axiosError.response) {
-          // Request was made but no response received
-          errorTitle = 'Network Error';
-          errorMessage = 
-            'No response from the backend. Please check that the Aura backend is running and accessible.';
-        } else if (axiosError.response?.data) {
-          // HTTP response received with error details
-          const data = axiosError.response.data;
-          errorTitle = data.title || 'Validation Failed';
-          errorMessage = data.message || data.detail || data.error || errorMessage;
-
-          // Show how-to-fix tips if available
-          if (data.howToFix && data.howToFix.length > 0) {
-            errorMessage +=
-              '\n\nSuggestions:\n' + data.howToFix.map((tip) => `• ${tip}`).join('\n');
-          }
-        } else if (axiosError.message) {
-          errorMessage = axiosError.message;
-        }
-      } else if (error instanceof Error) {
-        errorMessage = error.message;
-      }
-
+      const { title, message } = parseFFmpegValidationError(error);
       setFfmpegReady(false);
-      showFailureToast({
-        title: errorTitle,
-        message: errorMessage,
-      });
+      showFailureToast({ title, message });
     } finally {
-      // CRITICAL FIX: Always reset validating state in finally block
       setIsValidatingFfmpegPath(false);
     }
-  }, [dispatch, ffmpegPathInput, showFailureToast, showSuccessToast]);
+  }, [dispatch, ffmpegPathInput, parseFFmpegValidationError, showFailureToast, showSuccessToast]);
 
   const renderStep0 = () => (
     <WelcomeScreen
@@ -1104,8 +1116,8 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
             <Warning24Regular /> FFmpeg Required for Video Rendering
           </Text>
           <Text style={{ display: 'block', marginTop: tokens.spacingVerticalXS }}>
-            You can proceed without FFmpeg, but video generation will not work until it&apos;s properly
-            installed. Configure it later from Settings if needed.
+            You can proceed without FFmpeg, but video generation will not work until it&apos;s
+            properly installed. Configure it later from Settings if needed.
           </Text>
         </Card>
       )}
@@ -1313,24 +1325,12 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
             <Button appearance="primary" size="large" onClick={completeOnboarding}>
               Start Creating Videos
             </Button>
-            <Button
-              appearance="secondary"
-              size="medium"
-              onClick={() => {
-                // Mark as completed and go to main app
-                clearWizardStateFromStorage();
-                markFirstRunCompleted()
-                  .then(() => {
-                    navigate('/');
-                  })
-                  .catch((err) => {
-                    console.error('Failed to mark first run completed:', err);
-                    navigate('/');
-                  });
-              }}
+            <Text
+              size={200}
+              style={{ marginTop: tokens.spacingVerticalXS, color: tokens.colorNeutralForeground3 }}
             >
-              Go to Main App
-            </Button>
+              This will save your configuration and take you to the main app
+            </Text>
           </div>
         </div>
       </div>
@@ -1407,6 +1407,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
       />
 
       <div className={styles.content}>
+        {state.step > 0 && state.step < totalSteps - 1 && <BackendStatusBanner />}
         <div className={styles.stepContent} key={state.step}>
           {renderStepContent()}
         </div>
