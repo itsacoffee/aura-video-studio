@@ -9,6 +9,8 @@ using Aura.Core.Providers;
 using Microsoft.Extensions.Logging;
 using Xunit;
 using TimelineModel = Aura.Core.Providers.Timeline;
+using System.Runtime.CompilerServices;
+using Aura.Core.Models.Streaming;
 
 namespace Aura.Tests.Integration;
 
@@ -160,6 +162,46 @@ public class ProviderPipelineArchitectureTests
 
         public Task<string?> GenerateTransitionTextAsync(string fromSceneText, string toSceneText, string videoGoal, CancellationToken ct) =>
             Task.FromResult<string?>(null);
+
+        public bool SupportsStreaming => true;
+
+        public LlmProviderCharacteristics GetCharacteristics()
+        {
+            return new LlmProviderCharacteristics
+            {
+                IsLocal = true,
+                ExpectedFirstTokenMs = 0,
+                ExpectedTokensPerSec = 100,
+                SupportsStreaming = true,
+                ProviderTier = "Test",
+                CostPer1KTokens = null
+            };
+        }
+
+        public async IAsyncEnumerable<LlmStreamChunk> DraftScriptStreamAsync(
+            Brief brief,
+            PlanSpec spec,
+            [EnumeratorCancellation] CancellationToken ct = default)
+        {
+            var result = await DraftScriptAsync(brief, spec, ct).ConfigureAwait(false);
+
+            yield return new LlmStreamChunk
+            {
+                ProviderName = "Mock",
+                Content = result,
+                AccumulatedContent = result,
+                TokenIndex = result.Length / 4,
+                IsFinal = true,
+                Metadata = new LlmStreamMetadata
+                {
+                    TotalTokens = result.Length / 4,
+                    EstimatedCost = null,
+                    IsLocalModel = true,
+                    ModelName = "mock",
+                    FinishReason = "stop"
+                }
+            };
+        }
     }
 
     private sealed class MockTtsProvider : ITtsProvider
@@ -246,5 +288,36 @@ public class ProviderPipelineArchitectureTests
 
         public Task<string?> GenerateTransitionTextAsync(string fromSceneText, string toSceneText, string videoGoal, CancellationToken ct) =>
             throw new InvalidOperationException("Provider unavailable");
+
+        public bool SupportsStreaming => false;
+
+        public LlmProviderCharacteristics GetCharacteristics()
+        {
+            return new LlmProviderCharacteristics
+            {
+                IsLocal = true,
+                ExpectedFirstTokenMs = 0,
+                ExpectedTokensPerSec = 0,
+                SupportsStreaming = false,
+                ProviderTier = "Test",
+                CostPer1KTokens = null
+            };
+        }
+
+        public async IAsyncEnumerable<LlmStreamChunk> DraftScriptStreamAsync(
+            Brief brief,
+            PlanSpec spec,
+            [EnumeratorCancellation] CancellationToken ct = default)
+        {
+            await Task.CompletedTask;
+            yield return new LlmStreamChunk
+            {
+                ProviderName = "FailingMock",
+                Content = string.Empty,
+                TokenIndex = 0,
+                IsFinal = true,
+                ErrorMessage = "Provider unavailable"
+            };
+        }
     }
 }

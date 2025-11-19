@@ -2,10 +2,12 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
 using Aura.Core.Models.Narrative;
+using Aura.Core.Models.Streaming;
 using Aura.Core.Models.Visual;
 using Aura.Core.Orchestrator;
 using Aura.Core.Providers;
@@ -546,5 +548,36 @@ internal class ConcurrentFailingLlmProvider : ILlmProvider
         CancellationToken ct)
     {
         throw new InvalidOperationException("Simulated provider failure");
+    }
+
+    public bool SupportsStreaming => false;
+
+    public LlmProviderCharacteristics GetCharacteristics()
+    {
+        return new LlmProviderCharacteristics
+        {
+            IsLocal = true,
+            ExpectedFirstTokenMs = 0,
+            ExpectedTokensPerSec = 0,
+            SupportsStreaming = false,
+            ProviderTier = "Test",
+            CostPer1KTokens = null
+        };
+    }
+
+    public async IAsyncEnumerable<LlmStreamChunk> DraftScriptStreamAsync(
+        Brief brief,
+        PlanSpec spec,
+        [EnumeratorCancellation] CancellationToken ct = default)
+    {
+        await Task.CompletedTask;
+        yield return new LlmStreamChunk
+        {
+            ProviderName = "ConcurrentFailing",
+            Content = string.Empty,
+            TokenIndex = 0,
+            IsFinal = true,
+            ErrorMessage = "Simulated provider failure"
+        };
     }
 }

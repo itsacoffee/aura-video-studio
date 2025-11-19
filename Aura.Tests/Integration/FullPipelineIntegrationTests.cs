@@ -12,6 +12,8 @@ using Aura.Providers.Llm;
 using Aura.Providers.Tts;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
+using System.Runtime.CompilerServices;
+using Aura.Core.Models.Streaming;
 
 namespace Aura.Tests.Integration;
 
@@ -460,5 +462,36 @@ internal class FailingLlmProvider : ILlmProvider
         CancellationToken ct)
     {
         throw new InvalidOperationException("Provider unavailable");
+    }
+
+    public bool SupportsStreaming => false;
+
+    public LlmProviderCharacteristics GetCharacteristics()
+    {
+        return new LlmProviderCharacteristics
+        {
+            IsLocal = true,
+            ExpectedFirstTokenMs = 0,
+            ExpectedTokensPerSec = 0,
+            SupportsStreaming = false,
+            ProviderTier = "Test",
+            CostPer1KTokens = null
+        };
+    }
+
+    public async IAsyncEnumerable<LlmStreamChunk> DraftScriptStreamAsync(
+        Brief brief,
+        PlanSpec spec,
+        [EnumeratorCancellation] CancellationToken ct = default)
+    {
+        await Task.CompletedTask;
+        yield return new LlmStreamChunk
+        {
+            ProviderName = "FailingMock",
+            Content = string.Empty,
+            TokenIndex = 0,
+            IsFinal = true,
+            ErrorMessage = "Provider unavailable"
+        };
     }
 }

@@ -2,12 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Configuration;
 using Aura.Core.Dependencies;
 using Aura.Core.Models;
 using Aura.Core.Models.Narrative;
+using Aura.Core.Models.Streaming;
 using Aura.Core.Models.Visual;
 using Aura.Core.Models.Generation;
 using Aura.Core.Orchestrator;
@@ -423,6 +425,46 @@ More test content here to ensure we have adequate word count for the duration. M
         {
             return Task.FromResult<string?>(null);
         }
+
+        public bool SupportsStreaming => true;
+
+        public LlmProviderCharacteristics GetCharacteristics()
+        {
+            return new LlmProviderCharacteristics
+            {
+                IsLocal = true,
+                ExpectedFirstTokenMs = 0,
+                ExpectedTokensPerSec = 100,
+                SupportsStreaming = true,
+                ProviderTier = "Test",
+                CostPer1KTokens = null
+            };
+        }
+
+        public async IAsyncEnumerable<LlmStreamChunk> DraftScriptStreamAsync(
+            Brief brief,
+            PlanSpec spec,
+            [EnumeratorCancellation] CancellationToken ct = default)
+        {
+            var result = await DraftScriptAsync(brief, spec, ct).ConfigureAwait(false);
+
+            yield return new LlmStreamChunk
+            {
+                ProviderName = "Test",
+                Content = result,
+                AccumulatedContent = result,
+                TokenIndex = result.Length / 4,
+                IsFinal = true,
+                Metadata = new LlmStreamMetadata
+                {
+                    TotalTokens = result.Length / 4,
+                    EstimatedCost = null,
+                    IsLocalModel = true,
+                    ModelName = "test",
+                    FinishReason = "stop"
+                }
+            };
+        }
     }
 
     private sealed class TestSlowLlmProvider : ILlmProvider
@@ -479,6 +521,46 @@ More test content here to ensure we have adequate word count for the duration. M
         public Task<string?> GenerateTransitionTextAsync(string fromSceneText, string toSceneText, string videoGoal, CancellationToken ct)
         {
             return Task.FromResult<string?>(null);
+        }
+
+        public bool SupportsStreaming => true;
+
+        public LlmProviderCharacteristics GetCharacteristics()
+        {
+            return new LlmProviderCharacteristics
+            {
+                IsLocal = true,
+                ExpectedFirstTokenMs = 5000,
+                ExpectedTokensPerSec = 1,
+                SupportsStreaming = true,
+                ProviderTier = "Test",
+                CostPer1KTokens = null
+            };
+        }
+
+        public async IAsyncEnumerable<LlmStreamChunk> DraftScriptStreamAsync(
+            Brief brief,
+            PlanSpec spec,
+            [EnumeratorCancellation] CancellationToken ct = default)
+        {
+            var result = await DraftScriptAsync(brief, spec, ct).ConfigureAwait(false);
+
+            yield return new LlmStreamChunk
+            {
+                ProviderName = "TestSlow",
+                Content = result,
+                AccumulatedContent = result,
+                TokenIndex = result.Length / 4,
+                IsFinal = true,
+                Metadata = new LlmStreamMetadata
+                {
+                    TotalTokens = result.Length / 4,
+                    EstimatedCost = null,
+                    IsLocalModel = true,
+                    ModelName = "test-slow",
+                    FinishReason = "stop"
+                }
+            };
         }
     }
 
