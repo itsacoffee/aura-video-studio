@@ -159,6 +159,9 @@ const Windows11DemoPage = lazy(() =>
 const ErrorHandlingDemoPage = lazy(() =>
   import('../pages/ErrorHandlingDemoPage').then((m) => ({ default: m.ErrorHandlingDemoPage }))
 );
+const StreamingScriptDemo = lazy(() =>
+  import('../pages/Demo/StreamingScriptDemo').then((m) => ({ default: m.StreamingScriptDemo }))
+);
 
 interface AppRouterContentProps {
   showShortcuts: boolean;
@@ -594,6 +597,14 @@ const AppRouterContentInner: FC<
               {/* Development-only routes - lazy loaded */}
               {env.enableDevTools && (
                 <>
+                  <Route
+                    path="streaming-demo"
+                    element={
+                      <LazyRoute routePath="/streaming-demo">
+                        <StreamingScriptDemo />
+                      </LazyRoute>
+                    }
+                  />
                   <Route
                     path="error-handling-demo"
                     element={
