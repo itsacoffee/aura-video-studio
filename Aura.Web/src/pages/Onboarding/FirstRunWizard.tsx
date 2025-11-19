@@ -809,22 +809,45 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
     } catch (error: unknown) {
       console.error('Failed to validate FFmpeg path:', error);
 
+      let errorTitle = 'Validation Error';
       let errorMessage = 'Unexpected error validating FFmpeg path.';
+      
+      // Distinguish between network errors and validation errors
       if (error && typeof error === 'object') {
         const axiosError = error as {
+          code?: string;
           response?: {
             data?: {
               message?: string;
               detail?: string;
               error?: string;
               howToFix?: string[];
+              title?: string;
             };
+            status?: number;
           };
           message?: string;
+          request?: unknown;
         };
 
-        if (axiosError.response?.data) {
+        // Network-level errors (no response received)
+        if (axiosError.code === 'ERR_NETWORK' || axiosError.code === 'ECONNREFUSED') {
+          errorTitle = 'Backend Unreachable';
+          errorMessage = 
+            'Unable to connect to the Aura backend. Please ensure the backend server is running and try again.';
+        } else if (axiosError.code === 'ECONNABORTED' || axiosError.code === 'ETIMEDOUT') {
+          errorTitle = 'Connection Timeout';
+          errorMessage = 
+            'The request timed out. Check your network connection or try again later.';
+        } else if (axiosError.request && !axiosError.response) {
+          // Request was made but no response received
+          errorTitle = 'Network Error';
+          errorMessage = 
+            'No response from the backend. Please check that the Aura backend is running and accessible.';
+        } else if (axiosError.response?.data) {
+          // HTTP response received with error details
           const data = axiosError.response.data;
+          errorTitle = data.title || 'Validation Failed';
           errorMessage = data.message || data.detail || data.error || errorMessage;
 
           // Show how-to-fix tips if available
@@ -841,7 +864,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
       setFfmpegReady(false);
       showFailureToast({
-        title: 'Validation Error',
+        title: errorTitle,
         message: errorMessage,
       });
     } finally {
@@ -862,12 +885,13 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
   // New simplified step renderers for mandatory setup
 
+  // Step 1: FFmpeg Check - Quick status check only
   const renderStep1FFmpeg = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
       <div style={{ textAlign: 'center', marginBottom: tokens.spacingVerticalM }}>
-        <Title2>FFmpeg Installation</Title2>
+        <Title2>Check for Existing FFmpeg</Title2>
         <Text style={{ display: 'block', marginTop: tokens.spacingVerticalS }}>
-          FFmpeg is required for video generation. We&apos;ll help you install it automatically.
+          Let&apos;s check if FFmpeg is already installed on your system.
         </Text>
         <Card
           style={{
@@ -877,7 +901,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
           }}
         >
           <Text size={300}>
-            <strong>Why is this required?</strong>
+            <strong>What is FFmpeg?</strong>
           </Text>
           <Text style={{ display: 'block', marginTop: tokens.spacingVerticalXS }}>
             FFmpeg is the industry-standard tool for video processing. Aura uses it to render your
@@ -889,132 +913,66 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
       <FFmpegDependencyCard
         autoCheck={true}
-        autoExpandDetails={true}
+        autoExpandDetails={false}
         refreshSignal={ffmpegRefreshSignal}
         onInstallComplete={handleFfmpegStatusUpdate}
         onStatusChange={handleFfmpegStatusUpdate}
       />
 
-      <Card
-        style={{
-          padding: tokens.spacingVerticalM,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: tokens.spacingVerticalS,
-        }}
-      >
-        <Title3>Need a download link?</Title3>
-        <Text size={200}>
-          Prefer to install FFmpeg manually? Use our managed installer above or follow the official
-          guides. Once the binaries are on disk, click re-scan or validate a path and Aura will pick
-          it up automatically.
-        </Text>
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: tokens.spacingHorizontalS,
-          }}
-        >
-          <Button
-            appearance="secondary"
-            onClick={() => openExternalLink('https://www.gyan.dev/ffmpeg/builds/')}
-          >
-            Download Windows Build
-          </Button>
-          <Button
-            appearance="secondary"
-            onClick={() => openExternalLink('https://ffmpeg.org/download.html')}
-          >
-            Official FFmpeg Instructions
-          </Button>
-        </div>
-        <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-          Tip: already have FFmpeg in your PATH? Click &quot;Re-scan&quot; after launching Aura to
-          auto-detect it.
-        </Text>
-      </Card>
-
-      {!ffmpegReady && (
+      {ffmpegReady && ffmpegPath && (
         <Card
           style={{
             padding: tokens.spacingVerticalM,
-            backgroundColor: tokens.colorPaletteYellowBackground1,
-            borderLeft: `4px solid ${tokens.colorPaletteYellowBorder1}`,
+            backgroundColor: tokens.colorPaletteGreenBackground1,
+            borderLeft: `4px solid ${tokens.colorPaletteGreenBorder1}`,
           }}
         >
           <Text
             weight="semibold"
             style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}
           >
-            <Warning24Regular /> Want to install FFmpeg manually?
+            <Checkmark24Regular /> FFmpeg Found!
           </Text>
           <Text style={{ display: 'block', marginTop: tokens.spacingVerticalXS }}>
-            If you prefer to install FFmpeg yourself or already have it installed, you can skip this
-            step. However, video generation will not work until FFmpeg is properly installed.
+            FFmpeg is already installed at {ffmpegPath}. You can proceed to the next step.
           </Text>
-          <div
-            style={{
-              marginTop: tokens.spacingVerticalS,
-              display: 'flex',
-              gap: tokens.spacingHorizontalS,
-            }}
+        </Card>
+      )}
+
+      {!ffmpegReady && (
+        <Card
+          style={{
+            padding: tokens.spacingVerticalM,
+            backgroundColor: tokens.colorNeutralBackground3,
+          }}
+        >
+          <Text
+            weight="semibold"
+            style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}
           >
-            <Button
-              appearance="secondary"
-              onClick={() => {
-                if (
-                  window.confirm(
-                    'Are you sure you want to skip FFmpeg installation? Video generation will not work without FFmpeg. You can install it later from Settings.'
-                  )
-                ) {
-                  setFfmpegReady(true);
-                  setFfmpegManualOverride(true);
-                  showSuccessToast({
-                    title: 'FFmpeg Skipped',
-                    message:
-                      'Remember to install FFmpeg before creating videos. You can do this from Settings.',
-                  });
-                }
-              }}
-            >
-              Skip for Now
-            </Button>
-          </div>
+            <Warning24Regular /> FFmpeg Not Detected
+          </Text>
+          <Text style={{ display: 'block', marginTop: tokens.spacingVerticalXS }}>
+            Don&apos;t worry! The next step will help you install FFmpeg or configure an existing
+            installation.
+          </Text>
         </Card>
       )}
     </div>
   );
 
-  // Step 2: FFmpeg Installation Check with Download Button
+  // Step 2: FFmpeg Install - Installation and manual configuration
   const renderStep2FFmpeg = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
       <div style={{ textAlign: 'center', marginBottom: tokens.spacingVerticalM }}>
-        <Title2>FFmpeg Setup</Title2>
+        <Title2>Install or Configure FFmpeg</Title2>
         <Text style={{ display: 'block', marginTop: tokens.spacingVerticalS }}>
-          FFmpeg powers Aura&apos;s rendering pipeline. Install the managed build or point Aura to
-          an existing installation.
+          Choose how you want to set up FFmpeg: managed installation or manual configuration.
         </Text>
-        <Card
-          style={{
-            marginTop: tokens.spacingVerticalM,
-            padding: tokens.spacingVerticalS,
-            backgroundColor: tokens.colorNeutralBackground3,
-          }}
-        >
-          <Text size={300}>
-            <strong>Why is this required?</strong>
-          </Text>
-          <Text style={{ display: 'block', marginTop: tokens.spacingVerticalXS }}>
-            FFmpeg is the industry-standard tool for video processing. Aura uses it to render your
-            videos, add transitions, apply effects, and export in various formats. Without FFmpeg,
-            video generation cannot proceed.
-          </Text>
-        </Card>
       </div>
 
       <FFmpegDependencyCard
-        autoCheck={true}
+        autoCheck={false}
         autoExpandDetails={true}
         refreshSignal={ffmpegRefreshSignal}
         onInstallComplete={handleFfmpegStatusUpdate}
@@ -1096,6 +1054,41 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
         </div>
       </Card>
 
+      <Card
+        style={{
+          padding: tokens.spacingVerticalM,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: tokens.spacingVerticalS,
+        }}
+      >
+        <Title3>Manual Installation Resources</Title3>
+        <Text size={200}>
+          Prefer to install FFmpeg manually? Download from the official sources below, then use
+          &quot;Re-scan&quot; or &quot;Browse&quot; to configure it.
+        </Text>
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: tokens.spacingHorizontalS,
+          }}
+        >
+          <Button
+            appearance="secondary"
+            onClick={() => openExternalLink('https://www.gyan.dev/ffmpeg/builds/')}
+          >
+            Download Windows Build
+          </Button>
+          <Button
+            appearance="secondary"
+            onClick={() => openExternalLink('https://ffmpeg.org/download.html')}
+          >
+            Official FFmpeg Instructions
+          </Button>
+        </div>
+      </Card>
+
       {!ffmpegReady && (
         <Card
           style={{
@@ -1108,11 +1101,11 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
             weight="semibold"
             style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}
           >
-            <Warning24Regular /> FFmpeg is required before you can render videos
+            <Warning24Regular /> FFmpeg Required for Video Rendering
           </Text>
           <Text style={{ display: 'block', marginTop: tokens.spacingVerticalXS }}>
-            Install the managed build or validate the path to an existing installation to continue.
-            You can always re-run this step later from Settings.
+            You can proceed without FFmpeg, but video generation will not work until it&apos;s properly
+            installed. Configure it later from Settings if needed.
           </Text>
         </Card>
       )}

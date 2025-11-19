@@ -179,52 +179,45 @@ export function DesktopSetupWizard() {
       // Platform-specific installation
       const platform = systemInfo?.platform || 'unknown';
 
-      if (platform === 'win32') {
-        // Windows: Download and extract
-        const response = await fetch('/api/setup/install-ffmpeg', {
+      if (platform === 'win32' || platform === 'Windows') {
+        // Windows: Use unified FFmpeg installation endpoint
+        const response = await fetch('/api/ffmpeg/install', {
           method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ version: 'latest' }),
         });
 
-        if (!response.ok) {
-          throw new Error('FFmpeg installation failed');
+        const result = await response.json();
+
+        if (!result.success) {
+          throw new Error(result.message || 'FFmpeg installation failed');
         }
 
-        // Monitor installation progress
-        const reader = response.body?.getReader();
-        if (reader) {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            const text = new TextDecoder().decode(value);
-            const lines = text.split('\n');
-
-            for (const line of lines) {
-              if (line.includes('progress:')) {
-                const progress = parseInt(line.split(':')[1]);
-                setInstallProgress(progress);
-              }
-            }
-          }
-        }
+        // Show success with version info
+        showSuccess(`FFmpeg ${result.version || 'latest'} installed successfully!`);
+        setDependencies((prev) => ({ ...prev, ffmpeg: 'installed' }));
       } else {
         // macOS/Linux: Guide user to use package manager
         const electron = (window as any).electron;
-        if (platform === 'darwin') {
+        if (platform === 'darwin' || platform === 'macOS') {
           showInfo('Opening Homebrew installation guide...');
           await electron.shell.openExternal('https://formulae.brew.sh/formula/ffmpeg');
         } else {
           showInfo('Opening FFmpeg installation guide...');
           await electron.shell.openExternal('https://ffmpeg.org/download.html');
         }
+        setDependencies((prev) => ({ ...prev, ffmpeg: 'not-found' }));
       }
-
-      setDependencies((prev) => ({ ...prev, ffmpeg: 'installed' }));
-      showSuccess('FFmpeg installed successfully!');
-    } catch (error) {
-      console.error('FFmpeg installation error:', error);
+    } catch (error: unknown) {
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      console.error('FFmpeg installation error:', errorObj);
       setDependencies((prev) => ({ ...prev, ffmpeg: 'error' }));
-      showError('Failed to install FFmpeg. Please install manually.');
+      
+      // Show detailed error message if available
+      const errorMessage = errorObj.message || 'Failed to install FFmpeg. Please install manually.';
+      showError(errorMessage);
     }
   };
 
