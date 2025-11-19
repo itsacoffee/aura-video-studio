@@ -13,11 +13,11 @@ Aura Video Studio uses a **single, streamlined 6-step setup wizard** called `Fir
 ### 6-Step Flow
 
 1. **Welcome** - Introduction to Aura Video Studio
-2. **FFmpeg Check** - Quick detection of existing FFmpeg installation
-3. **FFmpeg Install** - Guided installation or manual configuration
+2. **FFmpeg Check** - Quick status check showing if FFmpeg is already installed
+3. **FFmpeg Install** - Guided installation with managed FFmpeg or manual path configuration
 4. **Provider Configuration** - Set up at least one LLM provider (or use offline mode)
 5. **Workspace Setup** - Configure default save locations
-6. **Complete** - Summary and transition to main app
+6. **Complete** - Summary and "Start Creating Videos" button to finish setup
 
 ### Key Features
 
@@ -25,7 +25,15 @@ Aura Video Studio uses a **single, streamlined 6-step setup wizard** called `Fir
 - **Auto-Save Progress**: Your progress is saved automatically to both backend and localStorage
 - **Resume Capability**: If you exit mid-setup, you'll see a dialog asking if you want to resume or start fresh
 - **Backend Status Check**: Shows warnings only when backend is actually unreachable (not on initial load)
-- **Process Cleanup**: All FFmpeg processes are properly terminated when the app exits
+- **Simplified UI**: Clean, focused interface with no duplicate buttons or redundant actions
+- **Clear Loading States**: All actions show progress indicators and prevent double-clicks
+
+### UI Design Principles (Applied in Latest Update)
+
+- **Step 2 (FFmpeg Check)**: Shows simple status with single "Check Again" button
+- **Step 3 (FFmpeg Install)**: One section for managed install (FFmpegDependencyCard), one section for manual configuration - no duplicate Re-scan buttons
+- **Step 6 (Complete)**: Single "Start Creating Videos" button with loading spinner to prevent double-clicks
+- **Backend Banner**: Shows once per step, dismissible, and automatically hides when backend is reachable
 
 ## Common Issues
 
@@ -34,9 +42,19 @@ Aura Video Studio uses a **single, streamlined 6-step setup wizard** called `Fir
 **Cause**: You started the wizard but didn't complete it in a previous session.
 
 **Solution**: 
-- Click **"Resume Setup"** to continue from where you left off
-- Click **"Start Fresh"** to begin the wizard from the beginning
+- Click **"Resume Setup"** to continue from where you left off (restores state from backend)
+- Click **"Start Fresh"** to begin the wizard from the beginning (clears both backend and localStorage state)
 - This is normal behavior and helps you avoid losing progress
+
+**What "Start Fresh" Does**:
+1. Clears wizard progress from localStorage (`wizardProgress` key)
+2. Calls backend API to reset wizard state in database (`/api/setup/wizard/reset`)
+3. Resets to Step 0 (Welcome screen)
+4. Preserves other app settings (API keys, workspace preferences are NOT deleted)
+
+**Note**: If you need to completely reset the app including all settings, use the cleanup scripts instead:
+- Windows: `Scripts/clean-desktop.ps1`
+- Linux/Mac: See `DESKTOP_APP_GUIDE.md` for cleanup instructions
 
 ### Issue 2: "Backend Server Not Running" Error
 
@@ -132,8 +150,12 @@ Check saved progress → Show resume dialog (if applicable) → Run wizard → C
 - [ ] Fresh install shows wizard on first launch
 - [ ] Can complete all 6 steps successfully
 - [ ] Progress is saved and resumable
-- [ ] "Start Fresh" clears all saved state
+- [ ] "Start Fresh" clears all saved state (both localStorage and backend)
 - [ ] Backend status banner only shows when backend is actually down
+- [ ] Backend status banner is dismissible and doesn't reappear after dismissal
+- [ ] Step 2 (FFmpeg Check) has single "Check Again" button (no Install button)
+- [ ] Step 3 (FFmpeg Install) has no duplicate Re-scan buttons
+- [ ] Step 6 (Complete) button shows loading spinner and is disabled during completion
 - [ ] FFmpeg processes are cleaned up on app exit
 - [ ] No orphaned processes remain in Task Manager after exit
 
