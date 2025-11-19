@@ -610,4 +610,112 @@ public class CostTrackingController : ControllerBase
             WithinBudget: report.WithinBudget,
             BudgetLimit: report.BudgetLimit);
     }
+
+    /// <summary>
+    /// Get cost history for a date range with filtering
+    /// </summary>
+    [HttpGet("history")]
+    public IActionResult GetCostHistory(
+        [FromQuery] DateTime? startDate = null,
+        [FromQuery] DateTime? endDate = null,
+        [FromQuery] string? provider = null,
+        [FromQuery] string? feature = null)
+    {
+        if (_costTrackingService == null)
+        {
+            return Problem("Cost tracking service not available", statusCode: 503);
+        }
+
+        try
+        {
+            var start = startDate ?? DateTime.UtcNow.AddMonths(-1);
+            var end = endDate ?? DateTime.UtcNow;
+
+            var entries = _costTrackingService.GetCostHistory(start, end, provider, feature);
+
+            var response = new
+            {
+                entries = entries.Select(e => new
+                {
+                    timestamp = e.Timestamp,
+                    jobId = e.ProjectId ?? "N/A",
+                    projectName = e.ProjectName,
+                    provider = e.ProviderName,
+                    feature = e.Feature.ToString(),
+                    cost = e.Cost,
+                    currency = "USD"
+                }).ToList(),
+                startDate = start,
+                endDate = end,
+                totalEntries = entries.Count
+            };
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error getting cost history");
+            return Problem($"Error getting cost history: {ex.Message}", statusCode: 500);
+        }
+    }
+
+    /// <summary>
+    /// Export cost history in CSV or JSON format
+    /// </summary>
+    [HttpGet("history/export")]
+    public IActionResult ExportCostHistory(
+        [FromQuery] DateTime? startDate = null,
+        [FromQuery] DateTime? endDate = null,
+        [FromQuery] string? provider = null,
+        [FromQuery] string? feature = null,
+        [FromQuery] string format = "csv")
+    {
+        if (_costTrackingService == null)
+        {
+            return Problem("Cost tracking service not available", statusCode: 503);
+        }
+
+        try
+        {
+            var start = startDate ?? DateTime.UtcNow.AddMonths(-1);
+            var end = endDate ?? DateTime.UtcNow;
+
+            var entries = _costTrackingService.GetCostHistory(start, end, provider, feature);
+
+            if (format.ToLowerInvariant() == "csv")
+            {
+                var csv = new System.Text.StringBuilder();
+                csv.AppendLine("Timestamp,JobId,ProjectName,Provider,Feature,Cost,Currency");
+                
+                foreach (var entry in entries)
+                {
+                    csv.AppendLine($"{entry.Timestamp:yyyy-MM-dd HH:mm:ss},{entry.ProjectId ?? "N/A"},{entry.ProjectName ?? "N/A"},{entry.ProviderName},{entry.Feature},{ entry.Cost:F2},USD");
+                }
+
+                var bytes = System.Text.Encoding.UTF8.GetBytes(csv.ToString());
+                return File(bytes, "text/csv", $"cost-history-{start:yyyy-MM-dd}-to-{end:yyyy-MM-dd}.csv");
+            }
+            else
+            {
+                var json = System.Text.Json.JsonSerializer.Serialize(entries.Select(e => new
+                {
+                    timestamp = e.Timestamp,
+                    jobId = e.ProjectId ?? "N/A",
+                    projectName = e.ProjectName,
+                    provider = e.ProviderName,
+                    feature = e.Feature.ToString(),
+                    cost = e.Cost,
+                    currency = "USD"
+                }));
+
+                var bytes = System.Text.Encoding.UTF8.GetBytes(json);
+                return File(bytes, "application/json", $"cost-history-{start:yyyy-MM-dd}-to-{end:yyyy-MM-dd}.json");
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error exporting cost history");
+            return Problem($"Error exporting cost history: {ex.Message}", statusCode: 500);
+        }
+    }
 }

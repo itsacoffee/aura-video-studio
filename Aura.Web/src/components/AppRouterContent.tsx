@@ -63,6 +63,11 @@ const ProviderHealthDashboard = lazy(() =>
   }))
 );
 const SystemHealthDashboard = lazy(() => import('../pages/Health/SystemHealthDashboard'));
+const CostHistoryPage = lazy(() =>
+  import('../pages/CostHistory/CostHistoryPage').then((m) => ({
+    default: m.CostHistoryPage,
+  }))
+);
 const IdeationDashboard = lazy(() =>
   import('../pages/Ideation/IdeationDashboard').then((m) => ({ default: m.IdeationDashboard }))
 );
@@ -410,6 +415,14 @@ const AppRouterContentInner: FC<
                 element={
                   <LazyRoute routePath="/assets">
                     <AssetLibrary />
+                  </LazyRoute>
+                }
+              />
+              <Route
+                path="cost-history"
+                element={
+                  <LazyRoute routePath="/cost-history">
+                    <CostHistoryPage />
                   </LazyRoute>
                 }
               />
