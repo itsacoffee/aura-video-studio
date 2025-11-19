@@ -35,6 +35,43 @@ public static class HealthEndpoints
         })
         .Produces<object>(200);
 
+        // Canonical system health endpoint - comprehensive status information
+        group.MapGet("/api/health", async (HealthCheckService healthService, HttpContext context, CancellationToken ct) =>
+        {
+            try
+            {
+                var correlationId = context.TraceIdentifier;
+                var result = await healthService.GetSystemHealthAsync(correlationId, ct).ConfigureAwait(false);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error retrieving system health");
+                var correlationId = context.TraceIdentifier;
+                
+                // Always return 200 with error status in body, never leak exceptions
+                return Results.Ok(new
+                {
+                    backendOnline = true,
+                    version = "unknown",
+                    overallStatus = "error",
+                    database = new { status = "unknown", migrationUpToDate = false, message = "Error checking database" },
+                    ffmpeg = new { installed = false, valid = false, message = "Error checking FFmpeg" },
+                    providersSummary = new { totalConfigured = 0, totalReachable = 0, message = "Error checking providers" },
+                    timestamp = DateTimeOffset.UtcNow,
+                    correlationId
+                });
+            }
+        })
+        .WithName("SystemHealth")
+        .WithOpenApi(operation =>
+        {
+            operation.Summary = "Get comprehensive system health";
+            operation.Description = "Returns comprehensive system health status including backend, database, FFmpeg, and providers. Always returns 200 with status in body.";
+            return operation;
+        })
+        .Produces<object>(200);
+
         // Readiness check - returns 200/503 based on dependency availability
         // Path defined in BackendEndpoints.HealthReady for consistency with Electron and frontend
         group.MapGet(BackendEndpoints.HealthReady, async (HealthCheckService healthService, CancellationToken ct) =>

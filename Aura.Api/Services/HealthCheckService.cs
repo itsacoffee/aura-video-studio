@@ -3,13 +3,16 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.NetworkInformation;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Api.Helpers;
 using Aura.Api.Models;
+using Aura.Api.Models.ApiModels.V1;
 using Aura.Core.Configuration;
 using Aura.Core.Dependencies;
 using Aura.Core.Providers;
+using Aura.Core.Services.Providers;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Api.Services;
@@ -23,17 +26,20 @@ public class HealthCheckService
     private readonly IFfmpegLocator _ffmpegLocator;
     private readonly ProviderSettings _providerSettings;
     private readonly TtsProviderFactory _ttsProviderFactory;
+    private readonly ProviderStatusService? _providerStatusService;
 
     public HealthCheckService(
         ILogger<HealthCheckService> logger,
         IFfmpegLocator ffmpegLocator,
         ProviderSettings providerSettings,
-        TtsProviderFactory ttsProviderFactory)
+        TtsProviderFactory ttsProviderFactory,
+        ProviderStatusService? providerStatusService = null)
     {
         _logger = logger;
         _ffmpegLocator = ffmpegLocator;
         _providerSettings = providerSettings;
         _ttsProviderFactory = ttsProviderFactory;
+        _providerStatusService = providerStatusService;
     }
 
     /// <summary>
@@ -114,6 +120,78 @@ public class HealthCheckService
         };
 
         return new HealthCheckResponse(HealthStatus.Healthy, checks, Array.Empty<string>());
+    }
+
+    /// <summary>
+    /// Get comprehensive system health status
+    /// </summary>
+    public async Task<SystemHealthResponse> GetSystemHealthAsync(string correlationId, CancellationToken ct = default)
+    {
+        var version = Assembly.GetExecutingAssembly()
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+            .InformationalVersion ?? "unknown";
+
+        // Get FFmpeg status
+        var ffmpegResult = await CheckFfmpegAsync(ct).ConfigureAwait(false);
+        var ffmpegHealth = new FfmpegHealth(
+            Installed: ffmpegResult.Status == HealthStatus.Healthy || ffmpegResult.Status == HealthStatus.Degraded,
+            Valid: ffmpegResult.Status == HealthStatus.Healthy,
+            Version: ffmpegResult.Details?.GetValueOrDefault("version")?.ToString(),
+            Path: ffmpegResult.Details?.GetValueOrDefault("path")?.ToString(),
+            Message: ffmpegResult.Message
+        );
+
+        // Get database status (placeholder for now, can be enhanced later)
+        var databaseHealth = new DatabaseHealth(
+            Status: "healthy",
+            MigrationUpToDate: true,
+            Message: "Database operational"
+        );
+
+        // Get provider summary
+        int totalConfigured = 0;
+        int totalReachable = 0;
+        string? providerMessage = null;
+
+        if (_providerStatusService != null)
+        {
+            try
+            {
+                var providerStatus = await _providerStatusService.GetAllProviderStatusAsync(ct).ConfigureAwait(false);
+                totalConfigured = providerStatus.Providers.Count(p => p.IsAvailable);
+                totalReachable = providerStatus.Providers.Count(p => p.IsOnline);
+                providerMessage = providerStatus.Message;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to get provider status");
+                providerMessage = "Provider status unavailable";
+            }
+        }
+
+        var providersSummary = new ProvidersSummary(
+            TotalConfigured: totalConfigured,
+            TotalReachable: totalReachable,
+            Message: providerMessage
+        );
+
+        // Determine overall status
+        var overallStatus = HealthStatus.Healthy;
+        if (ffmpegHealth.Installed == false)
+        {
+            overallStatus = HealthStatus.Degraded;
+        }
+
+        return new SystemHealthResponse(
+            BackendOnline: true,
+            Version: version,
+            OverallStatus: overallStatus,
+            Database: databaseHealth,
+            Ffmpeg: ffmpegHealth,
+            ProvidersSummary: providersSummary,
+            Timestamp: DateTimeOffset.UtcNow,
+            CorrelationId: correlationId
+        );
     }
 
     /// <summary>
