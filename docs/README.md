@@ -45,6 +45,12 @@ Solutions for common issues and problems.
 - [Troubleshooting Guide](./troubleshooting/Troubleshooting.md) - Common issues and solutions
 - [FAQ](./getting-started/FIRST_RUN_FAQ.md) - Frequently asked questions
 
+### Code Quality & Verification
+Documentation of code quality checks and build validations.
+
+- [ESLint Warnings Explained](./ESLINT_WARNINGS.md) - Complete documentation of all 264 ESLint warnings
+- [PR #404 Verification Report](../VERIFICATION_REPORT.md) - Comprehensive verification after code quality improvements
+
 ### Best Practices
 Guidelines for optimal usage and performance.
 
