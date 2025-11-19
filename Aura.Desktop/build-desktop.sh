@@ -104,12 +104,32 @@ if [ "$SKIP_FRONTEND" = false ]; then
   print_info "Building React frontend..."
   cd "$PROJECT_ROOT/Aura.Web"
 
+  # Always check and install dependencies to ensure they're up to date
   if [ ! -d "node_modules" ]; then
     print_info "Installing frontend dependencies..."
     npm install || {
       print_error "Failed to install frontend dependencies"
       exit 1
     }
+  else
+    # Verify critical dependencies exist
+    MISSING_PACKAGES=()
+    for package in vite react typescript; do
+      if [ ! -d "node_modules/$package" ]; then
+        MISSING_PACKAGES+=("$package")
+      fi
+    done
+    
+    if [ ${#MISSING_PACKAGES[@]} -gt 0 ]; then
+      print_info "Critical dependencies missing, reinstalling..."
+      print_info "Missing: ${MISSING_PACKAGES[*]}"
+      npm install || {
+        print_error "Failed to install frontend dependencies"
+        exit 1
+      }
+    else
+      print_info "Frontend dependencies verified"
+    fi
   fi
 
   print_info "Running frontend build..."
@@ -173,12 +193,30 @@ print_info "Installing Electron dependencies..."
 cd "$SCRIPT_DIR"
 
 if [ ! -d "node_modules" ]; then
+  print_info "Installing Electron dependencies (node_modules not found)..."
   npm install || {
     print_error "Failed to install Electron dependencies"
     exit 1
   }
 else
-  print_info "Dependencies already installed"
+  # Verify critical dependencies exist
+  MISSING_PACKAGES=()
+  for package in electron electron-builder electron-store; do
+    if [ ! -d "node_modules/$package" ]; then
+      MISSING_PACKAGES+=("$package")
+    fi
+  done
+  
+  if [ ${#MISSING_PACKAGES[@]} -gt 0 ]; then
+    print_info "Critical Electron dependencies missing, reinstalling..."
+    print_info "Missing: ${MISSING_PACKAGES[*]}"
+    npm install || {
+      print_error "Failed to install Electron dependencies"
+      exit 1
+    }
+  else
+    print_info "Electron dependencies verified"
+  fi
 fi
 
 print_success "Electron dependencies ready"
