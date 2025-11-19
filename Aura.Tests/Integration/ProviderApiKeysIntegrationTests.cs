@@ -3,8 +3,6 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
-using Aura.Providers.Llm;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -39,9 +37,9 @@ public class ProviderApiKeysIntegrationTests
     public async Task OpenAI_Provider_ShouldGenerateValidScript()
     {
         // Arrange
-        var logger = NullLogger<OpenAILlmProvider>.Instance;
+        var logger = NullLogger<Aura.Providers.Llm.OpenAiLlmProvider>.Instance;
         var httpClient = new HttpClient();
-        var provider = new OpenAILlmProvider(logger, httpClient, OpenAiApiKey);
+        var provider = new Aura.Providers.Llm.OpenAiLlmProvider(logger, httpClient, OpenAiApiKey);
 
         // Act
         var script = await provider.DraftScriptAsync(_testBrief, _testSpec, CancellationToken.None);
@@ -62,9 +60,9 @@ public class ProviderApiKeysIntegrationTests
     public async Task OpenAI_Provider_ShouldHandleDifferentTopics()
     {
         // Arrange
-        var logger = NullLogger<OpenAILlmProvider>.Instance;
+        var logger = NullLogger<Aura.Providers.Llm.OpenAiLlmProvider>.Instance;
         var httpClient = new HttpClient();
-        var provider = new OpenAILlmProvider(logger, httpClient, OpenAiApiKey);
+        var provider = new Aura.Providers.Llm.OpenAiLlmProvider(logger, httpClient, OpenAiApiKey);
         
         var brief1 = _testBrief with { Topic = "Introduction to Python Programming" };
         var brief2 = _testBrief with { Topic = "History of Ancient Rome" };
@@ -87,9 +85,9 @@ public class ProviderApiKeysIntegrationTests
     public async Task OpenAI_Provider_ShouldRespectTargetDuration()
     {
         // Arrange
-        var logger = NullLogger<OpenAILlmProvider>.Instance;
+        var logger = NullLogger<Aura.Providers.Llm.OpenAiLlmProvider>.Instance;
         var httpClient = new HttpClient();
-        var provider = new OpenAILlmProvider(logger, httpClient, OpenAiApiKey);
+        var provider = new Aura.Providers.Llm.OpenAiLlmProvider(logger, httpClient, OpenAiApiKey);
         
         var shortSpec = _testSpec with { TargetDuration = TimeSpan.FromSeconds(30) };
         var longSpec = _testSpec with { TargetDuration = TimeSpan.FromMinutes(3) };
@@ -113,9 +111,9 @@ public class ProviderApiKeysIntegrationTests
     public async Task OpenAI_Provider_ShouldHandleDifferentTones()
     {
         // Arrange
-        var logger = NullLogger<OpenAILlmProvider>.Instance;
+        var logger = NullLogger<Aura.Providers.Llm.OpenAiLlmProvider>.Instance;
         var httpClient = new HttpClient();
-        var provider = new OpenAILlmProvider(logger, httpClient, OpenAiApiKey);
+        var provider = new Aura.Providers.Llm.OpenAiLlmProvider(logger, httpClient, OpenAiApiKey);
         
         var professionalBrief = _testBrief with { Tone = "Professional" };
         var casualBrief = _testBrief with { Tone = "Casual" };
@@ -134,9 +132,9 @@ public class ProviderApiKeysIntegrationTests
     public async Task OpenAI_Provider_ShouldHandleInvalidApiKey()
     {
         // Arrange
-        var logger = NullLogger<OpenAILlmProvider>.Instance;
+        var logger = NullLogger<Aura.Providers.Llm.OpenAiLlmProvider>.Instance;
         var httpClient = new HttpClient();
-        var provider = new OpenAILlmProvider(logger, httpClient, "invalid-api-key");
+        var provider = new Aura.Providers.Llm.OpenAiLlmProvider(logger, httpClient, "invalid-api-key");
 
         // Act & Assert
         await Assert.ThrowsAnyAsync<Exception>(async () =>
