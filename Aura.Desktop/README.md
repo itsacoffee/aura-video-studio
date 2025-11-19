@@ -89,6 +89,30 @@ Output will be in the `dist/` directory.
 .\build-desktop.ps1 -SkipBackend
 ```
 
+### Clean Environment for Testing
+
+When testing builds, you may want to start with a completely clean environment to simulate a first-run experience:
+
+```powershell
+# Remove all application data (recommended for testing)
+.\clean-desktop.ps1
+
+# Preview what would be removed (dry run)
+.\clean-desktop.ps1 -DryRun
+
+# Remove EVERYTHING including user documents and videos (use with caution!)
+.\clean-desktop.ps1 -IncludeUserContent
+```
+
+The cleanup script removes:
+- Application configuration and cache (`%LOCALAPPDATA%\aura-video-studio`)
+- Downloaded tools and engines (`%LOCALAPPDATA%\Aura\Tools`)
+- Logs and diagnostics
+- Temporary processing files
+- Build artifacts (dist, bin, obj folders)
+
+By default, user documents and videos are **preserved**. Use `-IncludeUserContent` to remove them as well (not recommended unless intentional).
+
 ## 📁 Project Structure
 
 ```
