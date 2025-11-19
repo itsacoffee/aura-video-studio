@@ -147,9 +147,36 @@ if (-not $SkipFrontend) {
     Write-Info "Building React frontend..."
     Set-Location "$ProjectRoot\Aura.Web"
 
+    # Always check and install dependencies to ensure they're up to date
     if (-not (Test-Path "node_modules")) {
         Write-Info "Installing frontend dependencies..."
         npm install
+        if ($LASTEXITCODE -ne 0) {
+            Show-ErrorMessage "Frontend npm install failed with exit code $LASTEXITCODE"
+            exit 1
+        }
+    } else {
+        # Verify critical dependencies exist
+        $criticalPackages = @("vite", "react", "typescript")
+        $missingPackages = @()
+        
+        foreach ($package in $criticalPackages) {
+            if (-not (Test-Path "node_modules\$package")) {
+                $missingPackages += $package
+            }
+        }
+        
+        if ($missingPackages.Count -gt 0) {
+            Write-Info "Critical dependencies missing, reinstalling..."
+            Write-Info "Missing: $($missingPackages -join ', ')"
+            npm install
+            if ($LASTEXITCODE -ne 0) {
+                Show-ErrorMessage "Frontend npm install failed with exit code $LASTEXITCODE"
+                exit 1
+            }
+        } else {
+            Write-Info "Frontend dependencies verified"
+        }
     }
 
     Write-Info "Running frontend build..."
@@ -240,6 +267,7 @@ Write-Info "Installing Electron dependencies..."
 Set-Location $ScriptDir
 
 if (-not (Test-Path "node_modules")) {
+    Write-Info "Installing Electron dependencies (node_modules not found)..."
     npm install
     if ($LASTEXITCODE -ne 0) {
         Show-ErrorMessage "npm install failed with exit code $LASTEXITCODE"
@@ -247,7 +275,27 @@ if (-not (Test-Path "node_modules")) {
     }
 }
 else {
-    Write-Info "Dependencies already installed"
+    # Verify critical dependencies exist
+    $criticalPackages = @("electron", "electron-builder", "electron-store")
+    $missingPackages = @()
+    
+    foreach ($package in $criticalPackages) {
+        if (-not (Test-Path "node_modules\$package")) {
+            $missingPackages += $package
+        }
+    }
+    
+    if ($missingPackages.Count -gt 0) {
+        Write-Info "Critical Electron dependencies missing, reinstalling..."
+        Write-Info "Missing: $($missingPackages -join ', ')"
+        npm install
+        if ($LASTEXITCODE -ne 0) {
+            Show-ErrorMessage "npm install failed with exit code $LASTEXITCODE"
+            exit 1
+        }
+    } else {
+        Write-Info "Electron dependencies verified"
+    }
 }
 
 Write-Success "Electron dependencies ready"

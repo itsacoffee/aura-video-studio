@@ -112,7 +112,9 @@ if ($Help) {
     Write-Output "  -Help                Show this help message"
     Write-Output ""
     Write-Output "What gets cleaned:"
-    Write-Output "  • AppData configuration and cache (%LOCALAPPDATA%\aura-video-studio)"
+    Write-Output "  • AppData configuration and cache:"
+    Write-Output "    - %LOCALAPPDATA%\aura-video-studio"
+    Write-Output "    - %APPDATA%\aura-video-studio (Roaming)"
     Write-Output "  • First-run wizard state (database and localStorage)"
     Write-Output "  • SQLite database (%LOCALAPPDATA%\Aura\aura.db)"
     Write-Output "  • Logs and diagnostics"
@@ -174,16 +176,29 @@ Write-Host ""
 Write-Info "Step 2: Cleaning AppData directories..."
 Write-Host ""
 
+# Clean LocalAppData directories
 $appDataPath = "$env:LOCALAPPDATA\aura-video-studio"
-if (Remove-PathSafely $appDataPath "Main application data") {
+if (Remove-PathSafely $appDataPath "Main application data (LocalAppData)") {
     $cleanupStats.Removed++
 } else {
     $cleanupStats.NotFound++
 }
 
-# Also check for any case variations
+# Also check for any case variations in LocalAppData
 $appDataPathAlt = "$env:LOCALAPPDATA\Aura Video Studio"
-if (Remove-PathSafely $appDataPathAlt "Application data (alternate path)") {
+if (Remove-PathSafely $appDataPathAlt "Application data (LocalAppData alternate)") {
+    $cleanupStats.Removed++
+}
+
+# Clean Roaming AppData directories (Electron may store config here)
+$roamingAppDataPath = "$env:APPDATA\aura-video-studio"
+if (Remove-PathSafely $roamingAppDataPath "Application data (Roaming)") {
+    $cleanupStats.Removed++
+}
+
+# Also check for case variations in Roaming
+$roamingAppDataPathAlt = "$env:APPDATA\Aura Video Studio"
+if (Remove-PathSafely $roamingAppDataPathAlt "Application data (Roaming alternate)") {
     $cleanupStats.Removed++
 }
 
