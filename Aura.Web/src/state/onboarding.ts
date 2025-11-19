@@ -1098,6 +1098,20 @@ export async function validateApiKeyThunk(
     } catch (validationError) {
       console.error('[Enhanced Validation] Error:', validationError);
 
+      // Check if this is a network error before falling back
+      const { isNetworkError } = await import('../services/api/errorHandler');
+      if (isNetworkError(validationError)) {
+        console.warn('[Enhanced Validation] Network error detected, not marking key as invalid');
+        dispatch({
+          type: 'API_KEY_INVALID',
+          payload: {
+            provider,
+            error: 'Unable to reach the backend server to validate your API key. Please ensure the backend service is running and try again.',
+          },
+        });
+        return;
+      }
+
       // Fallback to legacy validation if enhanced validation fails
       console.info('[Enhanced Validation] Falling back to legacy validation');
       const response = await fetch(apiUrl('/api/providers/validate'), {
@@ -1144,13 +1158,31 @@ export async function validateApiKeyThunk(
       }
     }
   } catch (error: unknown) {
+    console.error('API key validation error:', error);
+    
+    // Import error handler to properly categorize errors
+    const { isNetworkError, parseApiError } = await import('../services/api/errorHandler');
+    
+    // Check if this is a network error
+    if (isNetworkError(error)) {
+      const { message } = parseApiError(error);
+      dispatch({
+        type: 'API_KEY_INVALID',
+        payload: {
+          provider,
+          error: message || 'Network error: Unable to connect to the backend server. Please ensure the backend is running and your network connection is stable.',
+        },
+      });
+      return;
+    }
+    
+    // For other errors, provide a clear message
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    console.error('API key validation error:', errorMessage);
     dispatch({
       type: 'API_KEY_INVALID',
       payload: {
         provider,
-        error: `Could not validate API key: ${errorMessage}`,
+        error: `Validation failed: ${errorMessage}. Please try again or check your network connection.`,
       },
     });
   }
