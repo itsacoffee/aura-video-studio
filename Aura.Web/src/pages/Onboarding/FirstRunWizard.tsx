@@ -1313,24 +1313,9 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
             <Button appearance="primary" size="large" onClick={completeOnboarding}>
               Start Creating Videos
             </Button>
-            <Button
-              appearance="secondary"
-              size="medium"
-              onClick={() => {
-                // Mark as completed and go to main app
-                clearWizardStateFromStorage();
-                markFirstRunCompleted()
-                  .then(() => {
-                    navigate('/');
-                  })
-                  .catch((err) => {
-                    console.error('Failed to mark first run completed:', err);
-                    navigate('/');
-                  });
-              }}
-            >
-              Go to Main App
-            </Button>
+            <Text size={200} style={{ marginTop: tokens.spacingVerticalXS, color: tokens.colorNeutralForeground3 }}>
+              This will save your configuration and take you to the main app
+            </Text>
           </div>
         </div>
       </div>
