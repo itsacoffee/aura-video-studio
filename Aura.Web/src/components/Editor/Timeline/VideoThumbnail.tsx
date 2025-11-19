@@ -101,9 +101,20 @@ export function VideoThumbnail({
     loadFFmpeg();
 
     return () => {
-      // Cleanup
+      // Cleanup on component unmount
       if (thumbnailUrlRef.current) {
         URL.revokeObjectURL(thumbnailUrlRef.current);
+        thumbnailUrlRef.current = null;
+      }
+    };
+  }, []);
+
+  // Cleanup thumbnail URL when component unmounts
+  useEffect(() => {
+    return () => {
+      if (thumbnailUrlRef.current) {
+        URL.revokeObjectURL(thumbnailUrlRef.current);
+        thumbnailUrlRef.current = null;
       }
     };
   }, []);
@@ -116,50 +127,91 @@ export function VideoThumbnail({
       setIsLoading(true);
       setError(null);
 
+      let inputFileName = 'input.mp4';
+      let thumbnailFileName = 'thumbnail.jpg';
+
       try {
         const ffmpeg = ffmpegRef.current!;
 
-        // Load video file
-        await ffmpeg.writeFile('input.mp4', await fetchFile(videoPath));
+        // Derive input filename from video path extension if possible
+        const pathLower = videoPath.toLowerCase();
+        if (pathLower.includes('.')) {
+          const extension = pathLower.substring(pathLower.lastIndexOf('.'));
+          if (extension.length > 1 && extension.length <= 5) {
+            inputFileName = `input${extension}`;
+          }
+        }
 
-        // Extract thumbnail at specified timestamp
-        await ffmpeg.exec([
-          '-i',
-          'input.mp4',
-          '-ss',
-          timestamp.toString(),
-          '-vframes',
-          '1',
-          '-vf',
-          `scale=${width}:${height}`,
-          'thumbnail.jpg',
-        ]);
+        // Load video file with error handling for fetch failures
+        let videoData: Uint8Array;
+        try {
+          videoData = await fetchFile(videoPath);
+        } catch (fetchError: unknown) {
+          const errorMessage =
+            fetchError instanceof Error
+              ? fetchError.message
+              : 'Network error or file not accessible';
+          console.error('Failed to fetch video file:', fetchError);
+          setError(`Cannot load video: ${errorMessage}`);
+          return;
+        }
+
+        await ffmpeg.writeFile(inputFileName, videoData);
+
+        // Extract thumbnail at specified timestamp with error handling
+        try {
+          await ffmpeg.exec([
+            '-i',
+            inputFileName,
+            '-ss',
+            timestamp.toString(),
+            '-vframes',
+            '1',
+            '-vf',
+            `scale=${width}:${height}`,
+            thumbnailFileName,
+          ]);
+        } catch (execError: unknown) {
+          console.error('FFmpeg exec failed:', execError);
+          setError('Failed to process video');
+          return;
+        }
 
         // Read the thumbnail file
-        const data = await ffmpeg.readFile('thumbnail.jpg');
+        const data = await ffmpeg.readFile(thumbnailFileName);
         const blob = new Blob([data], { type: 'image/jpeg' });
         const url = URL.createObjectURL(blob);
 
-        // Cleanup FFmpeg files
-        await ffmpeg.deleteFile('input.mp4');
-        await ffmpeg.deleteFile('thumbnail.jpg');
-
-        // Update thumbnail URL
-        if (thumbnailUrl) {
-          URL.revokeObjectURL(thumbnailUrl);
+        // Revoke previous thumbnail URL before setting new one
+        if (thumbnailUrlRef.current) {
+          URL.revokeObjectURL(thumbnailUrlRef.current);
         }
         thumbnailUrlRef.current = url;
         setThumbnailUrl(url);
-      } catch (err) {
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
         console.error('Failed to extract thumbnail:', err);
-        setError('Failed to load thumbnail');
+        setError(`Thumbnail generation failed: ${errorMessage}`);
       } finally {
+        // Cleanup FFmpeg files with error handling
+        if (ffmpegRef.current) {
+          try {
+            await ffmpegRef.current.deleteFile(inputFileName);
+          } catch (deleteError: unknown) {
+            console.warn('Failed to delete input file:', deleteError);
+          }
+          try {
+            await ffmpegRef.current.deleteFile(thumbnailFileName);
+          } catch (deleteError: unknown) {
+            console.warn('Failed to delete thumbnail file:', deleteError);
+          }
+        }
         setIsLoading(false);
       }
     };
 
     extractThumbnail();
-  }, [videoPath, timestamp, width, height, ffmpegLoaded, thumbnailUrl]);
+  }, [videoPath, timestamp, width, height, ffmpegLoaded]);
 
   if (!videoPath) {
     return (
