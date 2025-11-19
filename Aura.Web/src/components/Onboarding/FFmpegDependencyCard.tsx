@@ -121,6 +121,7 @@ export function FFmpegDependencyCard({
 
       if (err && typeof err === 'object') {
         const axiosError = err as {
+          code?: string;
           response?: {
             data?: {
               message?: string;
@@ -130,9 +131,17 @@ export function FFmpegDependencyCard({
             status?: number;
           };
           message?: string;
+          request?: unknown;
         };
 
-        if (axiosError.response?.data) {
+        // Network-level errors (no response received)
+        if (axiosError.code === 'ERR_NETWORK' || axiosError.code === 'ECONNREFUSED') {
+          errorMessage = 'Backend unreachable. Please ensure the Aura backend is running.';
+        } else if (axiosError.code === 'ECONNABORTED' || axiosError.code === 'ETIMEDOUT') {
+          errorMessage = 'Connection timeout. Check your network connection.';
+        } else if (axiosError.request && !axiosError.response) {
+          errorMessage = 'No response from backend. Please check that the Aura backend is running.';
+        } else if (axiosError.response?.data) {
           const data = axiosError.response.data;
           errorMessage = data.message || data.detail || data.error || errorMessage;
 
@@ -189,6 +198,7 @@ export function FFmpegDependencyCard({
 
       if (err && typeof err === 'object') {
         const axiosError = err as {
+          code?: string;
           response?: {
             data?: {
               message?: string;
@@ -197,9 +207,17 @@ export function FFmpegDependencyCard({
             };
           };
           message?: string;
+          request?: unknown;
         };
 
-        if (axiosError.response?.data) {
+        // Network-level errors
+        if (axiosError.code === 'ERR_NETWORK' || axiosError.code === 'ECONNREFUSED') {
+          errorMessage = 'Backend unreachable. Please ensure the Aura backend is running.';
+        } else if (axiosError.code === 'ECONNABORTED' || axiosError.code === 'ETIMEDOUT') {
+          errorMessage = 'Connection timeout. Check your network connection.';
+        } else if (axiosError.request && !axiosError.response) {
+          errorMessage = 'No response from backend. Please check that the Aura backend is running.';
+        } else if (axiosError.response?.data) {
           const data = axiosError.response.data;
           errorMessage = data.message || data.detail || data.error || errorMessage;
         } else if (axiosError.message) {
@@ -282,23 +300,38 @@ export function FFmpegDependencyCard({
         throw new Error(result.message || 'Installation failed');
       }
     } catch (err: unknown) {
+      let errorTitle = 'Installation Failed';
       let errorMessage = 'Installation failed';
 
       if (err && typeof err === 'object') {
         const axiosError = err as {
+          code?: string;
           response?: {
             data?: {
               message?: string;
               detail?: string;
               error?: string;
+              title?: string;
             };
             status?: number;
           };
           message?: string;
+          request?: unknown;
         };
 
-        if (axiosError.response?.data) {
+        // Network-level errors
+        if (axiosError.code === 'ERR_NETWORK' || axiosError.code === 'ECONNREFUSED') {
+          errorTitle = 'Backend Unreachable';
+          errorMessage = 'Unable to connect to the Aura backend. Please ensure it is running.';
+        } else if (axiosError.code === 'ECONNABORTED' || axiosError.code === 'ETIMEDOUT') {
+          errorTitle = 'Connection Timeout';
+          errorMessage = 'The installation request timed out. This may be due to a slow download.';
+        } else if (axiosError.request && !axiosError.response) {
+          errorTitle = 'Network Error';
+          errorMessage = 'No response from backend. Please check that the Aura backend is running.';
+        } else if (axiosError.response?.data) {
           const data = axiosError.response.data;
+          errorTitle = data.title || errorTitle;
           errorMessage = data.message || data.detail || data.error || errorMessage;
         } else if (axiosError.message) {
           errorMessage = axiosError.message;
@@ -309,7 +342,7 @@ export function FFmpegDependencyCard({
 
       setError(errorMessage);
       showFailureToast({
-        title: 'Installation Failed',
+        title: errorTitle,
         message: errorMessage,
       });
     } finally {
