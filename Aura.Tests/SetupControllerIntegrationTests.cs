@@ -347,4 +347,80 @@ public class SetupControllerIntegrationTests : IClassFixture<WebApplicationFacto
         Assert.Contains("\"isValid\":false", content);
         Assert.Contains("empty", content, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public async Task CheckFFmpegPath_WithNonExistentPath_ReturnsNotFound()
+    {
+        // Arrange
+        var request = new
+        {
+            Path = "/non/existent/path/to/ffmpeg"
+        };
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/setup/check-ffmpeg", request);
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.Contains("\"found\":false", content);
+        Assert.Contains("not found", content, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task CheckFFmpegPath_WithEmptyPath_ReturnsNotFound()
+    {
+        // Arrange
+        var request = new
+        {
+            Path = ""
+        };
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/setup/check-ffmpeg", request);
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.Contains("\"found\":false", content);
+        Assert.Contains("empty", content, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task SaveFFmpegPath_WithEmptyPath_ReturnsBadRequest()
+    {
+        // Arrange
+        var request = new
+        {
+            Path = ""
+        };
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/setup/save-ffmpeg-path", request);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.Contains("\"success\":false", content);
+        Assert.Contains("empty", content, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task SaveFFmpegPath_WithNonExistentPath_ReturnsBadRequest()
+    {
+        // Arrange
+        var request = new
+        {
+            Path = "/non/existent/path/to/ffmpeg"
+        };
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/setup/save-ffmpeg-path", request);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.Contains("\"success\":false", content);
+        Assert.Contains("not found", content, StringComparison.OrdinalIgnoreCase);
+    }
 }
