@@ -289,17 +289,13 @@ else
     var cacheSize = -dbPerfOptions.SqliteCacheSizeKB;
     var pageSize = dbPerfOptions.SqlitePageSize;
 
-    connectionString = $"Data Source={sqlitePath};Mode=ReadWriteCreate;Cache=Shared;" +
-        $"Journal Mode={(walEnabled ? "WAL" : "DELETE")};" +  // Write-Ahead Logging for better concurrency
-        "Synchronous=NORMAL;" +            // Faster writes with good reliability
-        $"Page Size={pageSize};" +         // Optimal page size for modern systems
-        $"Cache Size={cacheSize};" +       // Cache size (negative = KB)
-        "Temp Store=MEMORY;" +             // Store temp tables in memory
-        "Locking Mode=NORMAL;" +           // Allow multiple connections
-        "Foreign Keys=True;";              // Enforce FK constraints
+    // Only use connection string keywords supported by Microsoft.Data.Sqlite
+    // Other SQLite settings (WAL, Synchronous, Page Size, Cache Size, etc.) are
+    // configured via PRAGMA statements in DatabaseInitializationService.cs
+    connectionString = $"Data Source={sqlitePath};Mode=ReadWriteCreate;Cache=Shared;Foreign Keys=True;";
 
-    Log.Information("Using SQLite database at {Path} (WAL: {WAL}, Cache: {CacheKB}KB)",
-        sqlitePath, walEnabled, dbPerfOptions.SqliteCacheSizeKB);
+    Log.Information("Using SQLite database at {Path} (WAL: {WAL}, Cache: {CacheKB}KB, PageSize: {PageSize})",
+        sqlitePath, walEnabled, dbPerfOptions.SqliteCacheSizeKB, pageSize);
 }
 
 // Helper method to configure DbContext options
