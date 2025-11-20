@@ -190,3 +190,28 @@ public record ProviderPingAllResponse(
     Dictionary<string, ProviderPingResult> Results,
     DateTime Timestamp,
     string CorrelationId);
+
+/// <summary>
+/// API key configuration for saving with validation status
+/// </summary>
+public record ApiKeyConfigDto(
+    string Provider,
+    string Key,
+    bool IsValidated = false);
+
+/// <summary>
+/// Request to save API keys with optional validation bypass during setup
+/// </summary>
+public record SaveSetupApiKeysRequest(
+    List<ApiKeyConfigDto> ApiKeys,
+    bool AllowInvalid = false,
+    string? CorrelationId = null);
+
+/// <summary>
+/// Response for setup API key save operation
+/// </summary>
+public record SaveSetupApiKeysResponse(
+    bool Success,
+    List<string>? Warnings = null,
+    string? ErrorMessage = null,
+    string? CorrelationId = null);
