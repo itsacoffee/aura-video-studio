@@ -4,7 +4,8 @@
  * This component MUST be rendered inside MemoryRouter/BrowserRouter
  */
 
-import { lazy, useState, type FC } from 'react';
+import { Spinner } from '@fluentui/react-components';
+import { lazy, useState, useEffect, type FC } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { env } from '../config/env';
 import { NavigationProvider } from '../contexts/NavigationContext';
@@ -13,6 +14,7 @@ import { DashboardPage } from '../pages/DashboardPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { FirstRunWizard } from '../pages/Onboarding/FirstRunWizard';
 import { WelcomePage } from '../pages/WelcomePage';
+import { hasCompletedFirstRun } from '../services/firstRunService';
 import { useJobState, type JobStatus } from '../state/jobState';
 import { KeyboardShortcutsCheatSheet } from './Accessibility/KeyboardShortcutsCheatSheet';
 import { CommandPalette } from './CommandPalette';
@@ -168,6 +170,47 @@ const StreamingScriptDemo = lazy(() =>
   import('../pages/Demo/StreamingScriptDemo').then((m) => ({ default: m.StreamingScriptDemo }))
 );
 
+/**
+ * ProtectedRoute Component
+ * Checks first-run status and redirects to setup if not completed
+ */
+const ProtectedRoute: FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [setupComplete, setSetupComplete] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    hasCompletedFirstRun()
+      .then(setSetupComplete)
+      .catch(() => {
+        // On error, assume not complete (safer default)
+        setSetupComplete(false);
+      });
+  }, []);
+
+  // Show loading spinner while checking
+  if (setupComplete === null) {
+    return (
+      <div
+        style={{
+          height: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Spinner size="large" label="Loading..." />
+      </div>
+    );
+  }
+
+  // Redirect to setup if not complete
+  if (!setupComplete) {
+    return <Navigate to="/setup" replace />;
+  }
+
+  // Render protected content
+  return <>{children}</>;
+};
+
 interface AppRouterContentProps {
   showShortcuts: boolean;
   showShortcutsPanel: boolean;
@@ -280,8 +323,15 @@ const AppRouterContentInner: FC<
             {/* Legacy route redirect for backward compatibility */}
             <Route path="/onboarding" element={<Navigate to="/setup" replace />} />
 
-            {/* Main routes with Layout wrapper */}
-            <Route path="/" element={<Layout />}>
+            {/* Main routes with Layout wrapper - Protected by first-run check */}
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <Layout />
+                </ProtectedRoute>
+              }
+            >
               <Route index element={<WelcomePage />} />
               <Route path="dashboard" element={<DashboardPage />} />
               <Route
