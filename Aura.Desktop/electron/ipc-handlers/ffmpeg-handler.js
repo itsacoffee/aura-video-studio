@@ -39,8 +39,35 @@ class FFmpegHandler {
 
   /**
    * Check FFmpeg installation status
+   * First tries backend API for consistent detection, then falls back to local checks
    */
-  _checkFFmpegStatus() {
+  async _checkFFmpegStatus() {
+    // Try to get status from backend first for consistent detection
+    if (this.backendUrl) {
+      try {
+        const backendResponse = await axios.get(`${this.backendUrl}/api/ffmpeg/status`, {
+          timeout: 5000 // 5 second timeout
+        });
+        
+        if (backendResponse.data?.installed) {
+          console.log('[FFmpeg] Using backend detection result:', backendResponse.data.path);
+          return {
+            installed: backendResponse.data.installed,
+            version: backendResponse.data.version,
+            path: backendResponse.data.path,
+            source: backendResponse.data.source || 'Backend',
+            binaries: {
+              ffmpeg: true,
+              ffprobe: true, // Assume ffprobe is available with ffmpeg
+            },
+          };
+        }
+      } catch (error) {
+        console.warn('[FFmpeg] Backend status check failed, using local detection:', error.message);
+      }
+    }
+    
+    // Fallback to local detection
     const sources = [
       { label: "Bundled", resolver: () => this._resolveBundledBinary() },
       { label: "Managed", resolver: () => this._resolveManagedBinary() },
@@ -88,7 +115,7 @@ class FFmpegHandler {
    * Attempt to open the detected FFmpeg directory
    */
   async _openDetectedDirectory() {
-    const status = this._checkFFmpegStatus();
+    const status = await this._checkFFmpegStatus();
     if (!status.path) {
       throw new Error("FFmpeg directory not found");
     }
