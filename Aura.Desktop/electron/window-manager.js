@@ -46,15 +46,19 @@ class WindowManager {
       resizable: false,
       skipTaskbar: true,
       webPreferences: {
-        nodeIntegration: false,
-        contextIsolation: true,
-        sandbox: true,
+        nodeIntegration: true,
+        contextIsolation: false,
       },
     });
 
-    const splashPath = path.join(__dirname, "../assets", "splash.html");
-    if (fs.existsSync(splashPath)) {
-      this.splashWindow.loadFile(splashPath);
+    // Try the new splash.html first in electron directory
+    const newSplashPath = path.join(__dirname, "splash.html");
+    const assetsSplashPath = path.join(__dirname, "../assets", "splash.html");
+    
+    if (fs.existsSync(newSplashPath)) {
+      this.splashWindow.loadFile(newSplashPath);
+    } else if (fs.existsSync(assetsSplashPath)) {
+      this.splashWindow.loadFile(assetsSplashPath);
     } else {
       // Fallback HTML splash
       this.splashWindow.loadURL(`data:text/html,

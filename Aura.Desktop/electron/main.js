@@ -877,6 +877,17 @@ async function startApplication() {
     try {
       windowManager.createSplashWindow();
       splashWindow = windowManager.getSplashWindow();
+      
+      // Send initial status update
+      if (splashWindow && !splashWindow.isDestroyed()) {
+        splashWindow.webContents.on('did-finish-load', () => {
+          splashWindow.webContents.send('status-update', {
+            message: 'Starting backend server...',
+            progress: 10
+          });
+        });
+      }
+      
       console.log("✓ Splash screen displayed");
       initializationTracker.succeedStep(InitializationStep.SPLASH_SCREEN);
     } catch (error) {
@@ -915,6 +926,13 @@ async function startApplication() {
     }
 
     // Step 10: Start backend service
+    if (splashWindow && !splashWindow.isDestroyed()) {
+      splashWindow.webContents.send('status-update', {
+        message: 'Starting backend server...',
+        progress: 15
+      });
+    }
+    
     const backendResult = await SafeInit.initializeBackendService(
       app,
       IS_DEV,
@@ -946,7 +964,63 @@ async function startApplication() {
     }
 
     backendService = backendResult.component;
-    console.log("✓ Backend service ready at:", backendService.getUrl());
+    console.log("✓ Backend service started at:", backendService.getUrl());
+    
+    // Step 10.5: Wait for backend to be fully ready
+    if (splashWindow && !splashWindow.isDestroyed()) {
+      splashWindow.webContents.send('status-update', {
+        message: 'Waiting for backend to be ready...',
+        progress: 30
+      });
+    }
+    
+    console.log("Waiting for backend to be fully ready...");
+    const backendReady = await backendService.waitForReady({
+      timeout: 90000, // 90 seconds
+      onProgress: (progress) => {
+        if (splashWindow && !splashWindow.isDestroyed()) {
+          splashWindow.webContents.send('status-update', {
+            message: progress.message || 'Initializing backend...',
+            progress: 30 + (progress.percent * 60) // Scale to 30-90%
+          });
+        }
+      }
+    });
+
+    if (!backendReady) {
+      // Backend failed to become ready - show error dialog with options
+      console.error("Backend failed to become ready");
+      
+      const choice = await dialog.showMessageBox({
+        type: 'error',
+        title: 'Backend Startup Failed',
+        message: 'The Aura backend server failed to start.',
+        detail: 'Would you like to:\n• View logs for troubleshooting\n• Retry starting the application\n• Exit',
+        buttons: ['View Logs', 'Retry', 'Exit'],
+        defaultId: 1
+      });
+
+      if (choice.response === 0) {
+        // Open logs folder
+        const { shell } = require('electron');
+        const logsPath = path.join(app.getPath('userData'), 'logs');
+        shell.openPath(logsPath);
+        app.quit();
+        return;
+      } else if (choice.response === 1) {
+        // Retry - close splash and restart
+        if (splashWindow && !splashWindow.isDestroyed()) {
+          splashWindow.close();
+        }
+        return startApplication();
+      } else {
+        // Exit
+        app.quit();
+        return;
+      }
+    }
+
+    console.log("✓ Backend is fully ready!");
     refreshRuntimeBridgeState();
 
     // Step 11: Register IPC handlers with individual tracking
@@ -991,6 +1065,13 @@ async function startApplication() {
     }
 
     // Step 12: Create main window
+    if (splashWindow && !splashWindow.isDestroyed()) {
+      splashWindow.webContents.send('status-update', {
+        message: 'Backend ready! Loading application...',
+        progress: 95
+      });
+    }
+    
     initializationTracker.startStep(InitializationStep.MAIN_WINDOW);
     try {
       const preloadPath = path.join(__dirname, "preload.js");
@@ -1152,9 +1233,14 @@ async function startApplication() {
       // Close splash screen only after ALL critical steps complete or explicit failure
       if (initializationTracker.allCriticalStepsSucceeded()) {
         if (splashWindow && !splashWindow.isDestroyed()) {
+          splashWindow.webContents.send('status-update', {
+            message: 'Application loaded',
+            progress: 100
+          });
+          
           setTimeout(() => {
             splashWindow.close();
-          }, 1000);
+          }, 500);
         }
 
         // Log successful startup
