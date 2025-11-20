@@ -61,7 +61,7 @@ Do not wire `electron.js` (if present) or root `preload.js` into new Electron co
 
 ### Process Model
 
-> **📘 Complete Documentation**: See [PROCESS_MODEL.md](./PROCESS_MODEL.md) for comprehensive process architecture, shutdown behavior, and troubleshooting guide.
+> **📘 Complete Documentation**: See [docs/internal/PROCESS_MODEL.md](./docs/internal/docs/internal/PROCESS_MODEL.md) for comprehensive process architecture, shutdown behavior, and troubleshooting guide.
 
 **Quick Overview**:
 
@@ -99,7 +99,7 @@ Do not wire `electron.js` (if present) or root `preload.js` into new Electron co
 - **Graceful**: Active render jobs prompt user before exit
 - **Timeout**: Force-kill after 10 seconds if graceful shutdown fails
 
-See [PROCESS_MODEL.md](./PROCESS_MODEL.md) for detailed shutdown sequence, troubleshooting, and diagnostics.
+See [docs/internal/PROCESS_MODEL.md](./docs/internal/PROCESS_MODEL.md) for detailed shutdown sequence, troubleshooting, and diagnostics.
 
 ### Security Model
 
@@ -107,6 +107,31 @@ See [PROCESS_MODEL.md](./PROCESS_MODEL.md) for detailed shutdown sequence, troub
 - **Node Integration:** Disabled (renderer is sandboxed)
 - **Preload Script:** Exposes safe IPC API via `contextBridge`
 - **Web Security:** Enabled (prevents loading arbitrary remote content)
+
+### Clean Shutdown
+
+> **✅ All processes terminate cleanly**: Closing the desktop app properly terminates all Aura and FFmpeg processes.
+
+The desktop app implements a comprehensive shutdown sequence:
+
+1. **Graceful Shutdown** (2-3 seconds):
+   - Notifies active connections
+   - Signals backend to shutdown via API
+   - Waits for backend to exit gracefully
+
+2. **Force Termination** (if needed):
+   - Kills backend process tree using OS tools
+   - On Windows: `taskkill /F /T` for process tree
+   - On Unix: `SIGKILL` to process group
+
+3. **Orphan Detection** (on startup):
+   - Checks if port is already in use
+   - Detects and cleans up orphaned backend processes
+   - Prevents "backend unreachable" errors
+
+**Result**: No Aura or FFmpeg processes remain in Task Manager after exit.
+
+**Verification**: See [PROCESS_SHUTDOWN_VERIFICATION.md](./docs/PROCESS_SHUTDOWN_VERIFICATION.md) for manual test scenarios.
 
 ---
 

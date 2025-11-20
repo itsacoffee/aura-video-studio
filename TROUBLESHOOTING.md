@@ -555,6 +555,182 @@ Access to XMLHttpRequest blocked by CORS policy
    rm -rf Aura.Web/node_modules/.vite
    ```
 
+## Desktop App and Process Issues
+
+### Issue: Aura processes remain in Task Manager after closing
+
+**Symptom**: After closing the desktop app, you see leftover processes:
+- `Aura Video Studio.exe` or `Aura.Api.exe`
+- `ffmpeg.exe` processes
+- Multiple instances in Task Manager
+
+**Cause**: Shutdown sequence didn't complete properly, leaving orphaned processes.
+
+**Solution**:
+
+1. **Manual cleanup** (Windows):
+   ```powershell
+   # Kill all Aura processes
+   taskkill /F /IM "Aura Video Studio.exe"
+   taskkill /F /IM "Aura.Api.exe"
+   taskkill /F /IM "ffmpeg.exe"
+   ```
+
+2. **Manual cleanup** (macOS/Linux):
+   ```bash
+   # Kill all Aura processes
+   pkill -9 "Aura Video Studio"
+   pkill -9 "Aura.Api"
+   pkill -9 "ffmpeg"
+   ```
+
+3. **Check logs** for shutdown errors:
+   - **Windows**: `%APPDATA%\Aura Video Studio\logs\main-YYYYMMDD.log`
+   - **macOS**: `~/Library/Application Support/Aura Video Studio/logs/`
+   - **Linux**: `~/.config/Aura Video Studio/logs/`
+
+4. **Report the issue** if it persists:
+   - Include process PIDs and timestamps
+   - Attach relevant log files
+   - Note what you were doing when closing the app
+
+**Prevention**:
+- Always use File → Quit instead of force-closing
+- Wait for jobs to complete before exiting
+- Keep the app updated (includes shutdown improvements)
+
+### Issue: "Backend unreachable" or "Port already in use"
+
+**Symptom**: Desktop app fails to start with error about port 5005 (or configured port) already in use.
+
+**Cause**: Orphaned backend process from a previous run is still bound to the port.
+
+**Solution**:
+
+1. **Check what's using the port** (Windows):
+   ```powershell
+   netstat -ano | findstr ":5005"
+   ```
+   Note the PID in the rightmost column.
+
+2. **Check what's using the port** (macOS/Linux):
+   ```bash
+   lsof -i :5005
+   ```
+
+3. **Kill the process**:
+   ```powershell
+   # Windows (replace <PID> with actual process ID)
+   taskkill /F /PID <PID>
+   ```
+   ```bash
+   # macOS/Linux
+   kill -9 <PID>
+   ```
+
+4. **Restart Aura Video Studio**
+
+**Automatic cleanup**: The desktop app now detects orphaned processes on startup (v1.x.x+) and attempts to clean them automatically. If you see this error on newer versions, check logs for cleanup failures.
+
+### Issue: FFmpeg processes keep running after video generation
+
+**Symptom**: Task Manager shows multiple `ffmpeg.exe` processes even after video generation completes.
+
+**Cause**: FFmpeg processes weren't properly terminated after job completion or cancellation.
+
+**Solution**:
+
+1. **Check backend logs** for FFmpeg process tracking:
+   ```
+   %APPDATA%\Aura\logs\aura-api-YYYYMMDD.log
+   ```
+   Look for: "Registered FFmpeg process" and "Unregistered FFmpeg process"
+
+2. **Force terminate all FFmpeg**:
+   ```powershell
+   # Windows
+   taskkill /F /IM "ffmpeg.exe"
+   ```
+   ```bash
+   # macOS/Linux
+   pkill -9 ffmpeg
+   ```
+
+3. **Restart backend** via desktop app:
+   - Use "Restart Backend" action if available in UI
+   - Or restart the entire desktop app
+
+**Note**: FFmpeg processes are automatically terminated:
+- On job completion
+- On job cancellation
+- On backend shutdown
+- After 60-minute timeout
+
+If FFmpeg processes persist beyond these conditions, it indicates a bug. Please report with logs.
+
+### Issue: Application won't start after crash
+
+**Symptom**: Desktop app fails to start, shows "Backend unreachable" or hangs on splash screen.
+
+**Cause**: Previous crash left orphaned processes or corrupted state.
+
+**Solution**:
+
+1. **Clean up orphaned processes** (use commands from above sections)
+
+2. **Check for lock files**:
+   ```powershell
+   # Windows
+   dir "%APPDATA%\Aura" /s /b | findstr "lock"
+   
+   # Delete any *.lock files
+   del "%APPDATA%\Aura\*.lock"
+   ```
+
+3. **Check log files** for crash reports:
+   - Look in `%APPDATA%\Aura Video Studio\logs\`
+   - Search for "crash", "error", "exception"
+
+4. **Clear temp files**:
+   ```powershell
+   # Windows
+   rd /s /q "%TEMP%\aura-video-studio"
+   ```
+
+5. **Restart your computer** (if above steps don't work)
+
+6. **Reinstall** as last resort (preserves user data)
+
+**Report**: If crashes persist, include:
+- Crash logs from `logs/crash-*.log`
+- Main process logs
+- Backend logs
+- Steps to reproduce
+
+### Issue: System shutdown hangs on "Closing Aura Video Studio"
+
+**Symptom**: Windows/macOS/Linux shutdown waits indefinitely for Aura to close, or shows "Force Quit" dialog.
+
+**Cause**: Aura is taking too long to shutdown (e.g., long-running job, stuck FFmpeg process).
+
+**Solution**:
+
+1. **Current session** (when it happens):
+   - Choose "Force Quit" in the shutdown dialog
+   - System will proceed with shutdown
+
+2. **For future**:
+   - Cancel any active renders before shutting down system
+   - Close Aura manually before initiating system shutdown
+   - Update to latest version (includes faster shutdown)
+
+**Expected behavior**: Aura should exit within 5 seconds of system shutdown signal, even with active jobs.
+
+**Report**: If Aura consistently delays system shutdown beyond 10 seconds, this is a bug. Include:
+- What operation was running (render, TTS, etc.)
+- How long before force quit was needed
+- Logs from the session
+
 ## Platform-Specific Issues
 
 ### Windows

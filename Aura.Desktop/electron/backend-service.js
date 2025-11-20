@@ -69,6 +69,9 @@ class BackendService {
     try {
       console.log(`Starting backend on ${this.baseUrl}...`);
 
+      // Check for orphaned backend processes from previous runs
+      await this._detectAndCleanupOrphanedBackend();
+
       // Determine backend executable path
       const backendPath = this._getBackendPath();
 
@@ -848,6 +851,101 @@ class BackendService {
       clearInterval(this.healthCheckInterval);
       this.healthCheckInterval = null;
     }
+  }
+
+  /**
+   * Detect and cleanup orphaned backend processes from previous runs
+   * This prevents "port already in use" errors and ensures clean startup
+   */
+  async _detectAndCleanupOrphanedBackend() {
+    console.log(`[OrphanDetection] Checking for orphaned backend on port ${this.port}...`);
+
+    // Check if port is already in use by trying to connect
+    const portInUse = await this._isPortInUse(this.port);
+
+    if (!portInUse) {
+      console.log('[OrphanDetection] Port is available, no cleanup needed');
+      return;
+    }
+
+    console.warn(`[OrphanDetection] Port ${this.port} is already in use, attempting cleanup...`);
+
+    // Try to find and kill orphaned Aura.Api processes
+    await this._killOrphanedBackendProcesses();
+
+    // Wait a moment for port to be released
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Verify port is now available
+    const stillInUse = await this._isPortInUse(this.port);
+    if (stillInUse) {
+      console.error(`[OrphanDetection] Failed to cleanup port ${this.port}. Manual intervention may be required.`);
+      throw new Error(`Port ${this.port} is still in use after cleanup. Please close any running Aura processes in Task Manager.`);
+    }
+
+    console.log('[OrphanDetection] Cleanup successful, port is now available');
+  }
+
+  /**
+   * Check if a port is in use by attempting to connect
+   */
+  async _isPortInUse(port) {
+    return new Promise((resolve) => {
+      const testSocket = net.createConnection({ port, host: '127.0.0.1' });
+
+      testSocket.on('connect', () => {
+        testSocket.end();
+        resolve(true); // Port is in use
+      });
+
+      testSocket.on('error', (err) => {
+        resolve(false); // Port is available (connection refused)
+      });
+
+      // Timeout after 1 second
+      setTimeout(() => {
+        testSocket.destroy();
+        resolve(false);
+      }, 1000);
+    });
+  }
+
+  /**
+   * Kill orphaned backend processes
+   */
+  async _killOrphanedBackendProcesses() {
+    return new Promise((resolve) => {
+      if (this.isWindows) {
+        // Windows: Find and kill Aura.Api.exe processes
+        const command = 'taskkill /F /IM "Aura.Api.exe" 2>nul';
+        console.log(`[OrphanDetection] Executing: ${command}`);
+
+        exec(command, { timeout: 5000 }, (error, stdout, stderr) => {
+          if (error) {
+            if (error.code === 128) {
+              console.log('[OrphanDetection] No Aura.Api.exe processes found (already exited)');
+            } else {
+              console.warn(`[OrphanDetection] taskkill error: ${error.message}`);
+            }
+          } else {
+            if (stdout && stdout.trim()) {
+              console.log(`[OrphanDetection] Killed orphaned backend: ${stdout.trim()}`);
+            }
+          }
+          resolve();
+        });
+      } else {
+        // Unix: Find and kill Aura.Api processes
+        exec('pkill -9 "Aura.Api"', (error) => {
+          if (!error) {
+            console.log('[OrphanDetection] Killed orphaned backend processes');
+          } else {
+            console.log('[OrphanDetection] No orphaned backend processes found');
+          }
+          resolve();
+        });
+      }
+    });
   }
 }
 
