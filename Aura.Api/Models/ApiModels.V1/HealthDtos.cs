@@ -84,3 +84,42 @@ public static class RemediationActionType
     public const string OpenHelp = "open_help";
     public const string SwitchProvider = "switch_provider";
 }
+
+/// <summary>
+/// Canonical system health response with comprehensive status information
+/// </summary>
+public record SystemHealthResponse(
+    bool BackendOnline,
+    string Version,
+    string OverallStatus,
+    DatabaseHealth Database,
+    FfmpegHealth Ffmpeg,
+    ProvidersSummary ProvidersSummary,
+    DateTimeOffset Timestamp,
+    string? CorrelationId = null);
+
+/// <summary>
+/// Database health information
+/// </summary>
+public record DatabaseHealth(
+    string Status,
+    bool MigrationUpToDate,
+    string? Message = null);
+
+/// <summary>
+/// FFmpeg health information
+/// </summary>
+public record FfmpegHealth(
+    bool Installed,
+    bool Valid,
+    string? Version = null,
+    string? Path = null,
+    string? Message = null);
+
+/// <summary>
+/// Providers summary information
+/// </summary>
+public record ProvidersSummary(
+    int TotalConfigured,
+    int TotalReachable,
+    string? Message = null);

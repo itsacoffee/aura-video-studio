@@ -1717,6 +1717,228 @@ public class ProvidersController : ControllerBase
                 instance: correlationId);
         }
     }
+
+    /// <summary>
+    /// Get status of all configured providers with validation info
+    /// </summary>
+    [HttpGet("status")]
+    public async Task<IActionResult> GetProvidersStatus(CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        try
+        {
+            Log.Information("[{CorrelationId}] Getting provider status", correlationId);
+
+            var providers = new List<ProviderConnectionStatusDto>();
+
+            // Ping all supported providers
+            foreach (var providerId in ProviderPingService.SupportedProviders)
+            {
+                var pingResult = await _providerPingService
+                    .PingAsync(providerId, null, cancellationToken)
+                    .ConfigureAwait(false);
+
+                var status = new ProviderConnectionStatusDto(
+                    Name: providerId,
+                    Configured: pingResult.Attempted,
+                    Reachable: pingResult.Success,
+                    ErrorCode: pingResult.ErrorCode,
+                    ErrorMessage: pingResult.Message,
+                    HowToFix: DetermineHowToFix(providerId, pingResult.ErrorCode),
+                    LastValidated: pingResult.Attempted ? DateTime.UtcNow : null,
+                    Category: DetermineCategory(providerId),
+                    Tier: DetermineTier(providerId)
+                );
+
+                providers.Add(status);
+            }
+
+            var configuredCount = providers.Count(p => p.Configured);
+            var reachableCount = providers.Count(p => p.Reachable);
+
+            var response = new AllProvidersStatusResponse(
+                Providers: providers,
+                LastUpdated: DateTime.UtcNow,
+                ConfiguredCount: configuredCount,
+                ReachableCount: reachableCount
+            );
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[{CorrelationId}] Error getting provider status", correlationId);
+            return Problem(
+                title: "Provider Status Error",
+                detail: "Failed to get provider status",
+                statusCode: 500,
+                type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/api/errors.md#provider-status-error",
+                instance: correlationId);
+        }
+    }
+
+    /// <summary>
+    /// Validate a specific provider's configuration and connectivity
+    /// </summary>
+    [HttpPost("validate")]
+    public async Task<IActionResult> ValidateProvider(
+        [FromBody] ValidateProviderKeyRequest request,
+        CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.Provider))
+            {
+                return BadRequest(new { 
+                    success = false,
+                    message = "Provider name is required",
+                    correlationId
+                });
+            }
+
+            if (string.IsNullOrWhiteSpace(request.ApiKey))
+            {
+                return BadRequest(new { 
+                    success = false,
+                    message = "API key is required",
+                    correlationId
+                });
+            }
+
+            Log.Information(
+                "[{CorrelationId}] Validating provider {Provider}",
+                correlationId,
+                request.Provider);
+
+            var startTime = DateTime.UtcNow;
+            var testResult = await _keyValidationService.TestApiKeyAsync(
+                request.Provider.ToLowerInvariant(),
+                request.ApiKey,
+                cancellationToken).ConfigureAwait(false);
+            var responseTime = (long)(DateTime.UtcNow - startTime).TotalMilliseconds;
+
+            var errorCode = testResult.IsValid ? null : DetermineErrorCode(testResult.Message);
+            var howToFix = testResult.IsValid ? new List<string>() : DetermineHowToFix(request.Provider, errorCode);
+
+            var status = new ProviderConnectionStatusDto(
+                Name: request.Provider,
+                Configured: true,
+                Reachable: testResult.IsValid,
+                ErrorCode: errorCode,
+                ErrorMessage: testResult.Message,
+                HowToFix: howToFix,
+                LastValidated: DateTime.UtcNow,
+                Category: DetermineCategory(request.Provider),
+                Tier: DetermineTier(request.Provider)
+            );
+
+            var response = new ValidateProviderConnectionResponse(
+                Status: status,
+                Success: testResult.IsValid,
+                Message: testResult.Message ?? (testResult.IsValid ? "Provider validated successfully" : "Provider validation failed")
+            );
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[{CorrelationId}] Error validating provider {Provider}", 
+                correlationId, request.Provider);
+            return Problem(
+                title: "Provider Validation Error",
+                detail: "An unexpected error occurred while validating the provider",
+                statusCode: 500,
+                type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/api/errors.md#provider-validation-error",
+                instance: correlationId);
+        }
+    }
+
+    private static string DetermineCategory(string provider)
+    {
+        return provider.ToLowerInvariant() switch
+        {
+            "openai" or "anthropic" or "gemini" or "azureopenai" or "ollama" => "LLM",
+            "elevenlabs" or "playht" => "TTS",
+            "stabilityai" or "stablediffusion" => "Image",
+            "pexels" or "pixabay" or "unsplash" => "Stock Media",
+            _ => "Unknown"
+        };
+    }
+
+    private static string DetermineTier(string provider)
+    {
+        return provider.ToLowerInvariant() switch
+        {
+            "openai" or "anthropic" or "gemini" or "elevenlabs" or "playht" => "Premium",
+            "ollama" => "Free/Local",
+            "pexels" or "pixabay" or "unsplash" => "Free",
+            _ => "Unknown"
+        };
+    }
+
+    private static string? DetermineErrorCode(string? errorMessage)
+    {
+        if (string.IsNullOrEmpty(errorMessage))
+            return null;
+
+        var lowerMessage = errorMessage.ToLowerInvariant();
+
+        if (lowerMessage.Contains("not configured") || lowerMessage.Contains("api key") || lowerMessage.Contains("key is required"))
+            return "ProviderNotConfigured";
+        if (lowerMessage.Contains("invalid") || lowerMessage.Contains("unauthorized") || lowerMessage.Contains("forbidden"))
+            return "ProviderKeyInvalid";
+        if (lowerMessage.Contains("timeout") || lowerMessage.Contains("timed out"))
+            return "ProviderNetworkTimeout";
+        if (lowerMessage.Contains("rate limit") || lowerMessage.Contains("too many requests"))
+            return "ProviderRateLimited";
+        if (lowerMessage.Contains("network") || lowerMessage.Contains("connection"))
+            return "ProviderNetworkError";
+
+        return "ProviderError";
+    }
+
+    private static List<string> DetermineHowToFix(string provider, string? errorCode)
+    {
+        var howToFix = new List<string>();
+
+        switch (errorCode)
+        {
+            case "ProviderNotConfigured":
+            case "ProviderKeyMissing":
+                howToFix.Add($"Configure your {provider} API key in Settings");
+                howToFix.Add($"Get an API key from the {provider} website");
+                break;
+
+            case "ProviderKeyInvalid":
+                howToFix.Add("Check your API key for typos");
+                howToFix.Add("Verify the key is still valid");
+                howToFix.Add("Generate a new API key if needed");
+                break;
+
+            case "ProviderNetworkTimeout":
+            case "ProviderNetworkError":
+                howToFix.Add("Check your internet connection");
+                howToFix.Add("Verify the provider service is accessible");
+                howToFix.Add("Try again in a few moments");
+                break;
+
+            case "ProviderRateLimited":
+                howToFix.Add("Wait a few minutes before trying again");
+                howToFix.Add("Check your usage limits");
+                howToFix.Add("Consider upgrading your plan");
+                break;
+
+            case "ProviderError":
+                howToFix.Add("Check the application logs for details");
+                howToFix.Add("Try again later");
+                break;
+        }
+
+        return howToFix;
+    }
 }
 
 /// <summary>

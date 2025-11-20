@@ -1,6 +1,13 @@
 import { apiUrl } from '../../config/api';
-import type { HealthSummaryResponse, HealthDetailsResponse } from '../../types/api-v1';
-import { get } from './apiClient';
+import type { 
+  HealthSummaryResponse, 
+  HealthDetailsResponse,
+  SystemHealthResponse,
+  AllProvidersStatusResponse,
+  ValidateProviderConnectionResponse,
+  ValidateProviderKeyRequest
+} from '../../types/api-v1';
+import { get, post } from './apiClient';
 
 export interface HealthCheckEntry {
   name: string;
@@ -20,6 +27,13 @@ export interface HealthCheckResponse {
   version?: string;
   checks: HealthCheckEntry[];
   tag?: string;
+}
+
+/**
+ * Get comprehensive system health (canonical endpoint)
+ */
+export async function getSystemHealth(): Promise<SystemHealthResponse> {
+  return get<SystemHealthResponse>(`${apiUrl}/health`);
 }
 
 /**
@@ -51,7 +65,23 @@ export async function getHealthByTag(tag: string): Promise<HealthCheckResponse> 
 }
 
 /**
- * @deprecated Use getHealthDetails instead
+ * Get status of all providers
+ */
+export async function getProvidersStatus(): Promise<AllProvidersStatusResponse> {
+  return get<AllProvidersStatusResponse>(`${apiUrl}/providers/status`);
+}
+
+/**
+ * Validate a specific provider's API key
+ */
+export async function validateProviderKey(
+  request: ValidateProviderKeyRequest
+): Promise<ValidateProviderConnectionResponse> {
+  return post<ValidateProviderConnectionResponse>(`${apiUrl}/providers/validate`, request);
+}
+
+/**
+ * @deprecated Use getSystemHealth instead for canonical health endpoint
  */
 export async function getHealthSummary(): Promise<HealthSummaryResponse> {
   // Fallback for backward compatibility

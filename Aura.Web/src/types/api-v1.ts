@@ -805,6 +805,99 @@ export const HealthCheckCategory = {
   Video: 'Video',
 } as const;
 
+// ============================================================================
+// CANONICAL SYSTEM HEALTH TYPES
+// ============================================================================
+
+/**
+ * Canonical system health response with comprehensive status information
+ */
+export interface SystemHealthResponse {
+  backendOnline: boolean;
+  version: string;
+  overallStatus: string;
+  database: DatabaseHealth;
+  ffmpeg: FfmpegHealth;
+  providersSummary: ProvidersSummary;
+  timestamp: string;
+  correlationId?: string;
+}
+
+/**
+ * Database health information
+ */
+export interface DatabaseHealth {
+  status: string;
+  migrationUpToDate: boolean;
+  message?: string;
+}
+
+/**
+ * FFmpeg health information
+ */
+export interface FfmpegHealth {
+  installed: boolean;
+  valid: boolean;
+  version?: string;
+  path?: string;
+  message?: string;
+}
+
+/**
+ * Providers summary information
+ */
+export interface ProvidersSummary {
+  totalConfigured: number;
+  totalReachable: number;
+  message?: string;
+}
+
+// ============================================================================
+// PROVIDER VALIDATION TYPES
+// ============================================================================
+
+/**
+ * Provider connection status with detailed information
+ */
+export interface ProviderConnectionStatusDto {
+  name: string;
+  configured: boolean;
+  reachable: boolean;
+  errorCode?: string;
+  errorMessage?: string;
+  howToFix: string[];
+  lastValidated?: string;
+  category: string;
+  tier: string;
+}
+
+/**
+ * Response for provider connection validation
+ */
+export interface ValidateProviderConnectionResponse {
+  status: ProviderConnectionStatusDto;
+  success: boolean;
+  message: string;
+}
+
+/**
+ * List of all provider connection statuses
+ */
+export interface AllProvidersStatusResponse {
+  providers: ProviderConnectionStatusDto[];
+  lastUpdated: string;
+  configuredCount: number;
+  reachableCount: number;
+}
+
+/**
+ * Request for validating a specific provider
+ */
+export interface ValidateProviderKeyRequest {
+  provider: string;
+  apiKey: string;
+}
+
 /**
  * Circuit breaker states
  */
