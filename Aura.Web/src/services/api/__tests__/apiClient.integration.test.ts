@@ -5,7 +5,7 @@
 
 import type { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { describe, it, expect } from 'vitest';
-import { parseApiError } from '../../../utils/apiErrorParser';
+import { parseApiErrorDetailed as parseApiError } from '../errorHandler';
 
 describe('API Client Error Handling Integration', () => {
   describe('parseApiError - Network Errors', () => {
