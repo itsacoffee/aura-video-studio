@@ -31,8 +31,8 @@ public class TestContainerFactory : IDisposable
         {
             DatabaseType.InMemory => new InMemoryDatabaseContainer(),
             DatabaseType.Sqlite => new SqliteTestContainer(),
-            DatabaseType.PostgreSql => throw new NotImplementedException("PostgreSQL container not yet implemented"),
-            DatabaseType.SqlServer => throw new NotImplementedException("SQL Server container not yet implemented"),
+            DatabaseType.PostgreSql => throw new NotSupportedException("PostgreSQL container not yet implemented"),
+            DatabaseType.SqlServer => throw new NotSupportedException("SQL Server container not yet implemented"),
             _ => throw new ArgumentException($"Unknown database type: {type}", nameof(type))
         };
 
@@ -54,8 +54,8 @@ public class TestContainerFactory : IDisposable
         ITestContainer container = type switch
         {
             MessageQueueType.InMemory => new InMemoryQueueContainer(),
-            MessageQueueType.Redis => throw new NotImplementedException("Redis container not yet implemented"),
-            MessageQueueType.RabbitMq => throw new NotImplementedException("RabbitMQ container not yet implemented"),
+            MessageQueueType.Redis => throw new NotSupportedException("Redis container not yet implemented"),
+            MessageQueueType.RabbitMq => throw new NotSupportedException("RabbitMQ container not yet implemented"),
             _ => throw new ArgumentException($"Unknown queue type: {type}", nameof(type))
         };
 
@@ -75,8 +75,8 @@ public class TestContainerFactory : IDisposable
         ITestContainer container = type switch
         {
             StorageType.InMemory => new InMemoryStorageContainer(),
-            StorageType.Azurite => throw new NotImplementedException("Azurite container not yet implemented"),
-            StorageType.MinIO => throw new NotImplementedException("MinIO container not yet implemented"),
+            StorageType.Azurite => throw new NotSupportedException("Azurite container not yet implemented"),
+            StorageType.MinIO => throw new NotSupportedException("MinIO container not yet implemented"),
             _ => throw new ArgumentException($"Unknown storage type: {type}", nameof(type))
         };
 

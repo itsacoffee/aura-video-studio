@@ -26,7 +26,11 @@ public abstract class BaseSagaStep : ISagaStep
     /// <inheritdoc />
     public virtual Task ExecuteAsync(SagaContext context, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException("ExecuteAsync must be implemented");
+        // This is a base implementation that must be overridden by derived classes
+        // or implemented via the generic BaseSagaStep<TResult> pattern
+        throw new InvalidOperationException(
+            $"ExecuteAsync must be implemented by step {StepId}. " +
+            "Either override this method directly or use BaseSagaStep<TResult> to provide typed execution.");
     }
 
     /// <inheritdoc />

@@ -99,7 +99,7 @@ public abstract class BaseLlmScriptProvider : IScriptLlmProvider
         ScriptGenerationRequest request,
         CancellationToken cancellationToken)
     {
-        throw new NotImplementedException($"Streaming not supported by {GetProviderMetadata().Name}");
+        throw new NotSupportedException($"Streaming not supported by {GetProviderMetadata().Name}");
     }
 
     /// <summary>
