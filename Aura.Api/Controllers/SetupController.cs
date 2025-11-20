@@ -623,6 +623,17 @@ public class SetupController : ControllerBase
     }
 
     /// <summary>
+    /// Get setup status (alias for wizard/status for backward compatibility)
+    /// </summary>
+    [HttpGet("status")]
+    public async Task<IActionResult> GetSetupStatus(
+        [FromQuery] string? userId,
+        CancellationToken cancellationToken)
+    {
+        return await GetWizardStatus(userId, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Get wizard status and saved progress
     /// </summary>
     [HttpGet("wizard/status")]
@@ -845,6 +856,20 @@ public class SetupController : ControllerBase
         public string? UserId { get; set; }
         public bool PreserveData { get; set; } = false;
         public string? CorrelationId { get; set; }
+    }
+
+    public class SaveSetupApiKeysRequest
+    {
+        public required List<ApiKeyConfigDto> ApiKeys { get; set; }
+        public bool AllowInvalid { get; set; }
+        public string? CorrelationId { get; set; }
+    }
+
+    public class ApiKeyConfigDto
+    {
+        public required string Provider { get; set; }
+        public required string Key { get; set; }
+        public bool IsValidated { get; set; }
     }
 
     /// <summary>
