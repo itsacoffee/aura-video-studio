@@ -11,6 +11,10 @@ import {
   AccordionPanel,
   Badge,
   Divider,
+  Checkbox,
+  MessageBar,
+  MessageBarBody,
+  MessageBarTitle,
 } from '@fluentui/react-components';
 import { useState } from 'react';
 import { EnhancedApiKeyInput } from '../../components/Onboarding/EnhancedApiKeyInput';
@@ -129,6 +133,8 @@ export interface ApiKeySetupStepProps {
   onSkipValidation?: (provider: string) => void;
   onSkipAll: () => void;
   onLocalProviderReady?: (provider: string) => void;
+  allowInvalidKeys?: boolean;
+  onAllowInvalidKeysChange?: (allow: boolean) => void;
 }
 
 interface ProviderConfig {
@@ -371,6 +377,8 @@ export function ApiKeySetupStep({
   onSkipValidation,
   onSkipAll,
   onLocalProviderReady,
+  allowInvalidKeys = false,
+  onAllowInvalidKeysChange,
 }: ApiKeySetupStepProps) {
   const styles = useStyles();
   const [rateLimit, setRateLimit] = useState<Record<string, number>>({});
@@ -400,6 +408,12 @@ export function ApiKeySetupStep({
   const hasAtLeastOneValidKey = Object.values(validationStatus).some(
     (status) => status === 'valid'
   );
+
+  const configuredKeys = Object.entries(apiKeys).filter(([_, key]) => key && key.trim().length > 0);
+  const invalidKeys = configuredKeys.filter(
+    ([provider, _]) => validationStatus[provider] === 'invalid'
+  );
+  const hasInvalidKeys = invalidKeys.length > 0;
 
   return (
     <div className={styles.container}>
@@ -579,6 +593,26 @@ export function ApiKeySetupStep({
           </div>
         );
       })}
+
+      {hasInvalidKeys && (
+        <MessageBar intent="warning">
+          <MessageBarBody>
+            <MessageBarTitle>Some API keys are invalid</MessageBarTitle>
+            <Text style={{ display: 'block', marginBottom: tokens.spacingVerticalS }}>
+              The following providers have invalid API keys:{' '}
+              {invalidKeys.map(([p]) => p).join(', ')}. You can continue setup and fix them later in
+              Settings.
+            </Text>
+            {onAllowInvalidKeysChange && (
+              <Checkbox
+                checked={allowInvalidKeys}
+                onChange={(_, data) => onAllowInvalidKeysChange(data.checked as boolean)}
+                label="Allow me to continue with invalid API keys (I'll fix them later)"
+              />
+            )}
+          </MessageBarBody>
+        </MessageBar>
+      )}
 
       <div className={styles.buttonRow}>
         <Button appearance="subtle" onClick={onSkipAll}>
