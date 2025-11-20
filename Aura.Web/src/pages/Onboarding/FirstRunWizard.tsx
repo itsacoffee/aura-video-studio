@@ -521,6 +521,40 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
       return; // Prevent double-clicks
     }
 
+    // Validate setup and show warnings if needed
+    const warnings: string[] = [];
+
+    if (!ffmpegReady) {
+      warnings.push('FFmpeg not detected - video rendering will not work until you install it');
+    }
+
+    const validApiKeys = Object.entries(state.apiKeyValidationStatus)
+      .filter(([_, status]) => status === 'valid')
+      .map(([provider]) => provider);
+
+    if (validApiKeys.length === 0 && !state.apiKeyValidationStatus['ollama']) {
+      warnings.push(
+        'No LLM provider configured - script generation will use basic rule-based fallback'
+      );
+    }
+
+    if (!state.workspacePreferences?.defaultSaveLocation) {
+      warnings.push('Workspace location not configured - videos will be saved to default location');
+    }
+
+    // Show warnings dialog if there are any
+    if (warnings.length > 0) {
+      const proceed = window.confirm(
+        'Setup has some warnings:\n\n' +
+          warnings.map((w, i) => `${i + 1}. ${w}`).join('\n') +
+          '\n\nDo you want to complete setup anyway?'
+      );
+
+      if (!proceed) {
+        return;
+      }
+    }
+
     setIsCompletingSetup(true);
     try {
       console.info('[FirstRunWizard] Starting onboarding completion', {
@@ -593,6 +627,33 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
       });
     } finally {
       setIsCompletingSetup(false);
+    }
+  };
+
+  const handleExitWizard = async () => {
+    const confirmed = window.confirm(
+      'Are you sure you want to exit the setup wizard?\n\n' +
+        'You can complete setup later from the Settings page.'
+    );
+
+    if (confirmed) {
+      console.info('[FirstRunWizard] User confirmed exit from wizard');
+      // Save current progress
+      try {
+        await saveWizardProgressToBackend(state);
+        localStorage.setItem('aura-setup-aborted', 'true');
+        localStorage.setItem('aura-setup-aborted-step', state.step.toString());
+      } catch (error: unknown) {
+        const errorObj = error instanceof Error ? error : new Error(String(error));
+        console.warn('[FirstRunWizard] Failed to save progress on exit:', errorObj);
+      }
+
+      // Navigate to main app
+      if (onComplete) {
+        await onComplete();
+      } else {
+        navigate('/');
+      }
     }
   };
 
@@ -863,7 +924,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
             '4. Try validating the path again';
         } else if (axiosError.code === 'ECONNABORTED' || axiosError.code === 'ETIMEDOUT') {
           errorTitle = 'Connection Timeout';
-          errorMessage = 
+          errorMessage =
             'The validation request timed out. The backend may be starting up or overloaded.\n\n' +
             'Wait a moment and try again. If the problem persists, restart the backend.';
         } else if (axiosError.request && !axiosError.response) {
@@ -1492,7 +1553,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
           totalSteps={totalSteps}
           stepLabels={stepLabels}
           onStepClick={handleStepClick}
-          onSaveAndExit={undefined} // No exit during mandatory setup
+          onSaveAndExit={handleExitWizard}
         />
       </div>
 
