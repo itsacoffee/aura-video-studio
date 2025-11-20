@@ -1952,51 +1952,62 @@ try
     Log.Information("  Search Paths: {Count} configured", ffmpegOptions.Value.SearchPaths.Count);
     Log.Information("  Minimum Version Required: {Version}", string.IsNullOrEmpty(ffmpegOptions.Value.RequireMinimumVersion) ? "(none)" : ffmpegOptions.Value.RequireMinimumVersion);
 
-    // Attempt to detect FFmpeg
-    var systemProfile = await hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
-
-    // Try to get FFmpeg path from locator
-    var ffmpegLocator = scope.ServiceProvider.GetRequiredService<Aura.Core.Dependencies.IFfmpegLocator>();
-    var ffmpegPath = await ffmpegLocator.GetEffectiveFfmpegPathAsync().ConfigureAwait(false);
-
-    if (!string.IsNullOrEmpty(ffmpegPath) && File.Exists(ffmpegPath))
+    // Use FFmpegResolver for comprehensive detection
+    var ffmpegResolver = scope.ServiceProvider.GetRequiredService<Aura.Core.Dependencies.FFmpegResolver>();
+    var resolution = await ffmpegResolver.ResolveAsync(
+        ffmpegOptions.Value.ExecutablePath,
+        forceRefresh: true,
+        ct: CancellationToken.None
+    ).ConfigureAwait(false);
+    
+    // Log resolution results
+    Log.Information("FFmpeg Resolution Results:");
+    Log.Information("  Found: {Found}", resolution.Found);
+    Log.Information("  Valid: {IsValid}", resolution.IsValid);
+    Log.Information("  Resolved Path: {Path}", resolution.Path ?? "NOT FOUND");
+    Log.Information("  Version: {Version}", resolution.Version ?? "Unknown");
+    Log.Information("  Source: {Source}", resolution.Source ?? "N/A");
+    
+    if (resolution.AttemptedPaths.Count > 0)
     {
-        Log.Information("✓ FFmpeg detected successfully");
-        Log.Information("  Path: {Path}", ffmpegPath);
+        Log.Information("  Attempted Paths ({Count}):", resolution.AttemptedPaths.Count);
+        foreach (var attemptedPath in resolution.AttemptedPaths.Take(10))
+        {
+            Log.Debug("    - {Path}", attemptedPath);
+        }
+    }
 
-        // Try to get version
+    if (resolution.Found && resolution.IsValid)
+    {
+        Log.Information("✓ FFmpeg detected and validated successfully");
+        
+        // Persist configuration if not already saved
         try
         {
-            var processInfo = new System.Diagnostics.ProcessStartInfo
-            {
-                FileName = ffmpegPath,
-                Arguments = "-version",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
-            using var process = System.Diagnostics.Process.Start(processInfo);
-            if (process != null)
-            {
-                var output = await process.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
-                await process.WaitForExitAsync().ConfigureAwait(false);
-
-                var versionLine = output.Split('\n').FirstOrDefault(l => l.Contains("ffmpeg version"));
-                if (!string.IsNullOrEmpty(versionLine))
-                {
-                    Log.Information("  Version Info: {Version}", versionLine.Trim());
-                }
-            }
+            await ffmpegResolver.PersistConfigurationAsync(
+                resolution,
+                Aura.Core.Configuration.FFmpegMode.System,
+                CancellationToken.None
+            ).ConfigureAwait(false);
+            Log.Debug("FFmpeg configuration persisted to disk");
         }
-        catch (Exception versionEx)
+        catch (Exception persistEx)
         {
-            Log.Warning(versionEx, "Could not determine FFmpeg version");
+            Log.Warning(persistEx, "Could not persist FFmpeg configuration");
         }
     }
     else
     {
+        Log.Error("FFmpeg not found on startup. Application may not function correctly.");
+        if (!string.IsNullOrEmpty(resolution.Error))
+        {
+            Log.Error("  Error: {Error}", resolution.Error);
+        }
+        if (resolution.AttemptedPaths.Count > 0)
+        {
+            Log.Error("  Attempted paths: {Paths}", string.Join(", ", resolution.AttemptedPaths.Take(5)));
+        }
+        
         if (app.Environment.IsProduction())
         {
             Log.Warning("═══════════════════════════════════════════════════════════════");
@@ -2004,12 +2015,6 @@ try
             Log.Warning("═══════════════════════════════════════════════════════════════");
             Log.Warning("FFmpeg is required for video generation but was not detected.");
             Log.Warning("Video rendering will NOT work until FFmpeg is installed.");
-            Log.Warning("");
-            Log.Warning("Configured search paths:");
-            foreach (var path in ffmpegOptions.Value.SearchPaths)
-            {
-                Log.Warning("  - {Path}", path);
-            }
             Log.Warning("");
             Log.Warning("To fix this issue:");
             Log.Warning("  1. Install FFmpeg from https://ffmpeg.org/download.html");

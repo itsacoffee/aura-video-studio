@@ -46,15 +46,18 @@ public class FFmpegDetectionService : IFFmpegDetectionService
 {
     private readonly ILogger<FFmpegDetectionService> _logger;
     private readonly IMemoryCache _cache;
+    private readonly Aura.Core.Configuration.FFmpegConfigurationStore? _configStore;
     private const string CacheKey = "ffmpeg:detection";
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(10);
 
     public FFmpegDetectionService(
         ILogger<FFmpegDetectionService> logger,
-        IMemoryCache cache)
+        IMemoryCache cache,
+        Aura.Core.Configuration.FFmpegConfigurationStore? configStore = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+        _configStore = configStore;
     }
 
     public async Task<FFmpegInfo> DetectFFmpegAsync(CancellationToken cancellationToken = default)
@@ -98,6 +101,30 @@ public class FFmpegDetectionService : IFFmpegDetectionService
                 ffmpegPath,
                 version ?? "unknown"
             );
+
+            // Persist detected path to configuration store for future runs
+            if (_configStore != null && !string.IsNullOrEmpty(ffmpegPath))
+            {
+                try
+                {
+                    var config = new Aura.Core.Configuration.FFmpegConfiguration
+                    {
+                        Mode = DetermineFFmpegMode(ffmpegPath),
+                        Path = ffmpegPath,
+                        Version = version,
+                        LastValidatedAt = DateTime.UtcNow,
+                        LastValidationResult = Aura.Core.Configuration.FFmpegValidationResult.Ok,
+                        Source = DetermineFFmpegSource(ffmpegPath)
+                    };
+                    
+                    await _configStore.SaveAsync(config, cancellationToken).ConfigureAwait(false);
+                    _logger.LogInformation("Persisted detected FFmpeg path to configuration: {Path}", ffmpegPath);
+                }
+                catch (Exception persistEx)
+                {
+                    _logger.LogWarning(persistEx, "Failed to persist FFmpeg configuration, continuing with detection");
+                }
+            }
 
             // Cache the result
             _cache.Set(CacheKey, info, CacheDuration);
@@ -405,5 +432,84 @@ public class FFmpegDetectionService : IFFmpegDetectionService
         }
 
         return null;
+    }
+    
+    /// <summary>
+    /// Determine FFmpeg mode based on the path where it was found
+    /// </summary>
+    private Aura.Core.Configuration.FFmpegMode DetermineFFmpegMode(string ffmpegPath)
+    {
+        var appDir = AppDomain.CurrentDomain.BaseDirectory;
+        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var toolsDir = Path.Combine(localAppData, "Aura", "Tools");
+        
+        if (ffmpegPath.StartsWith(appDir, StringComparison.OrdinalIgnoreCase))
+        {
+            return Aura.Core.Configuration.FFmpegMode.Local;
+        }
+        else if (ffmpegPath.StartsWith(toolsDir, StringComparison.OrdinalIgnoreCase))
+        {
+            return Aura.Core.Configuration.FFmpegMode.Local;
+        }
+        else
+        {
+            return Aura.Core.Configuration.FFmpegMode.System;
+        }
+    }
+    
+    /// <summary>
+    /// Determine FFmpeg source description based on the path
+    /// </summary>
+    private string DetermineFFmpegSource(string ffmpegPath)
+    {
+        var appDir = AppDomain.CurrentDomain.BaseDirectory;
+        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var toolsDir = Path.Combine(localAppData, "Aura", "Tools");
+        
+        if (ffmpegPath.StartsWith(appDir, StringComparison.OrdinalIgnoreCase))
+        {
+            return "Bundled";
+        }
+        else if (ffmpegPath.StartsWith(toolsDir, StringComparison.OrdinalIgnoreCase))
+        {
+            return "Managed";
+        }
+        else if (IsInSystemPath(ffmpegPath))
+        {
+            return "PATH";
+        }
+        else
+        {
+            return "System";
+        }
+    }
+    
+    /// <summary>
+    /// Check if the path is in system PATH
+    /// </summary>
+    private bool IsInSystemPath(string ffmpegPath)
+    {
+        try
+        {
+            var pathEnv = Environment.GetEnvironmentVariable("PATH");
+            if (string.IsNullOrEmpty(pathEnv))
+            {
+                return false;
+            }
+            
+            var ffmpegDir = Path.GetDirectoryName(ffmpegPath);
+            if (string.IsNullOrEmpty(ffmpegDir))
+            {
+                return false;
+            }
+            
+            var pathDirs = pathEnv.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries);
+            return pathDirs.Any(dir => 
+                Path.GetFullPath(dir).Equals(Path.GetFullPath(ffmpegDir), StringComparison.OrdinalIgnoreCase));
+        }
+        catch
+        {
+            return false;
+        }
     }
 }
