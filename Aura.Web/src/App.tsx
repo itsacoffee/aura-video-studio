@@ -261,6 +261,36 @@ function App() {
     };
   }, []);
 
+  // Validate backend readiness on app mount
+  useEffect(() => {
+    const validateBackendReady = async () => {
+      try {
+        const response = await fetch(`${env.apiBaseUrl}/health/ready`);
+        const data = await response.json();
+
+        if (!data.ready) {
+          console.error('Backend not ready:', data);
+          // Show user-friendly warning
+          errorReportingService.warning(
+            'System Initializing',
+            'Some features may not be available yet. Please wait...',
+            { duration: 8000 }
+          );
+        }
+      } catch (error: unknown) {
+        console.error('Backend readiness check failed:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        loggingService.warn(
+          `Backend readiness check failed: ${errorMessage}`,
+          'App',
+          'backendReadiness'
+        );
+      }
+    };
+
+    validateBackendReady();
+  }, []);
+
   // Apply dark mode class to document root and save preference
   useEffect(() => {
     const root = document.documentElement;

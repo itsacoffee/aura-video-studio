@@ -74,17 +74,93 @@ public static class HealthEndpoints
 
         // Readiness check - returns 200/503 based on dependency availability
         // Path defined in BackendEndpoints.HealthReady for consistency with Electron and frontend
-        group.MapGet(BackendEndpoints.HealthReady, async (HealthCheckService healthService, CancellationToken ct) =>
+        group.MapGet(BackendEndpoints.HealthReady, async (IServiceProvider services, CancellationToken ct) =>
         {
-            var result = await healthService.CheckReadinessAsync(ct).ConfigureAwait(false);
-            var statusCode = result.Status == Models.HealthStatus.Unhealthy ? 503 : 200;
-            return Results.Json(result, statusCode: statusCode);
+            var checks = new Dictionary<string, bool>();
+            var errors = new List<string>();
+            
+            // Check database
+            try
+            {
+                var dbContext = services.GetService<Aura.Core.Data.AuraDbContext>();
+                if (dbContext != null)
+                {
+                    await dbContext.Database.CanConnectAsync(ct).ConfigureAwait(false);
+                    checks["database"] = true;
+                }
+                else
+                {
+                    checks["database"] = false;
+                    errors.Add("Database: DbContext not available");
+                }
+            }
+            catch (Exception ex)
+            {
+                checks["database"] = false;
+                errors.Add($"Database: {ex.Message}");
+            }
+            
+            // Check FFmpeg
+            try
+            {
+                var ffmpegResolver = services.GetService<Aura.Core.Dependencies.FFmpegResolver>();
+                if (ffmpegResolver != null)
+                {
+                    var resolution = await ffmpegResolver.ResolveAsync(null, false, ct).ConfigureAwait(false);
+                    checks["ffmpeg"] = resolution.Found;
+                    if (!resolution.Found)
+                    {
+                        errors.Add("FFmpeg: Not found on system");
+                    }
+                }
+                else
+                {
+                    checks["ffmpeg"] = false;
+                    errors.Add("FFmpeg: Resolver not available");
+                }
+            }
+            catch (Exception ex)
+            {
+                checks["ffmpeg"] = false;
+                errors.Add($"FFmpeg: {ex.Message}");
+            }
+            
+            // Check settings
+            try
+            {
+                var settingsService = services.GetService<Aura.Core.Services.Settings.ISettingsService>();
+                if (settingsService != null)
+                {
+                    var settings = await settingsService.GetSettingsAsync(ct).ConfigureAwait(false);
+                    checks["settings"] = settings != null;
+                    if (settings == null)
+                    {
+                        errors.Add("Settings: Could not load settings");
+                    }
+                }
+                else
+                {
+                    checks["settings"] = false;
+                    errors.Add("Settings: Service not available");
+                }
+            }
+            catch (Exception ex)
+            {
+                checks["settings"] = false;
+                errors.Add($"Settings: {ex.Message}");
+            }
+            
+            var allReady = checks.Values.All(v => v);
+            
+            return allReady 
+                ? Results.Ok(new { ready = true, checks })
+                : Results.Json(new { ready = false, checks, errors }, statusCode: 503);
         })
         .WithName("HealthReady")
         .WithOpenApi(operation =>
         {
             operation.Summary = "Check API readiness";
-            operation.Description = "Performs dependency checks. Returns 503 if system is not ready to serve requests.";
+            operation.Description = "Performs comprehensive dependency checks including database, FFmpeg, and settings. Returns 503 if system is not ready to serve requests.";
             return operation;
         })
         .Produces<object>(200)

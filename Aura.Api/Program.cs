@@ -2060,6 +2060,35 @@ catch (Exception ex)
     Log.Warning(ex, "Error during FFmpeg detection - continuing startup anyway");
 }
 
+// Startup Phase 4: Service Validation
+Log.Information("========================================");
+Log.Information("Startup Phase 4: Service Validation");
+Log.Information("========================================");
+
+// Validate critical services are registered
+Log.Information("Validating service registration...");
+var criticalServices = new[]
+{
+    typeof(Aura.Core.Services.Settings.ISettingsService),
+    typeof(Aura.Core.Dependencies.FFmpegResolver),
+    typeof(Aura.Core.Configuration.ProviderSettings),
+    typeof(Aura.Core.Services.ConfigurationManager)
+};
+
+foreach (var serviceType in criticalServices)
+{
+    var service = app.Services.GetService(serviceType);
+    if (service == null)
+    {
+        Log.Fatal("Critical service not registered: {ServiceType}", serviceType.Name);
+        throw new InvalidOperationException($"Required service {serviceType.Name} is not registered");
+    }
+    Log.Information("  ✓ {ServiceType}", serviceType.Name);
+}
+
+Log.Information("All critical services registered successfully");
+Log.Information("========================================");
+
 // Add correlation ID middleware early in the pipeline
 app.UseCorrelationId();
 
