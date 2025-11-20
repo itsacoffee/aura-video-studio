@@ -1,4 +1,5 @@
 using Aura.Api.Models.ApiModels.V1;
+using Aura.Api.Utilities;
 using Aura.Core.Services;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
@@ -31,14 +32,9 @@ public class WizardProjectsController : ControllerBase
         {
             if (string.IsNullOrWhiteSpace(request.Name))
             {
-                return BadRequest(new
-                {
-                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
-                    title = "Invalid Request",
-                    status = 400,
-                    detail = "Project name is required",
-                    correlationId
-                });
+                return ProblemDetailsFactory.CreateBadRequest(
+                    detail: "Project name is required",
+                    correlationId: correlationId);
             }
 
             var project = await _projectService.SaveProjectAsync(
@@ -63,14 +59,9 @@ public class WizardProjectsController : ControllerBase
         catch (Exception ex)
         {
             Log.Error(ex, "[{CorrelationId}] Failed to save wizard project", correlationId);
-            return StatusCode(500, new
-            {
-                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
-                title = "Server Error",
-                status = 500,
-                detail = "Failed to save project",
-                correlationId
-            });
+            return ProblemDetailsFactory.CreateInternalServerError(
+                detail: "Failed to save project",
+                correlationId: correlationId);
         }
     }
 
@@ -87,14 +78,9 @@ public class WizardProjectsController : ControllerBase
             var project = await _projectService.GetProjectAsync(id, ct).ConfigureAwait(false);
             if (project == null || project.IsDeleted)
             {
-                return NotFound(new
-                {
-                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
-                    title = "Project Not Found",
-                    status = 404,
-                    detail = $"Project {id} not found",
-                    correlationId
-                });
+                return ProblemDetailsFactory.CreateNotFound(
+                    detail: $"Project {id} not found",
+                    correlationId: correlationId);
             }
 
             var assets = project.Assets.Select(a => new GeneratedAssetDto(
@@ -124,14 +110,9 @@ public class WizardProjectsController : ControllerBase
         catch (Exception ex)
         {
             Log.Error(ex, "[{CorrelationId}] Failed to get wizard project {ProjectId}", correlationId, id);
-            return StatusCode(500, new
-            {
-                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
-                title = "Server Error",
-                status = 500,
-                detail = "Failed to retrieve project",
-                correlationId
-            });
+            return ProblemDetailsFactory.CreateInternalServerError(
+                detail: "Failed to retrieve project",
+                correlationId: correlationId);
         }
     }
 
@@ -164,14 +145,9 @@ public class WizardProjectsController : ControllerBase
         catch (Exception ex)
         {
             Log.Error(ex, "[{CorrelationId}] Failed to get wizard projects", correlationId);
-            return StatusCode(500, new
-            {
-                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
-                title = "Server Error",
-                status = 500,
-                detail = "Failed to retrieve projects",
-                correlationId
-            });
+            return ProblemDetailsFactory.CreateInternalServerError(
+                detail: "Failed to retrieve projects",
+                correlationId: correlationId);
         }
     }
 
@@ -204,14 +180,9 @@ public class WizardProjectsController : ControllerBase
         catch (Exception ex)
         {
             Log.Error(ex, "[{CorrelationId}] Failed to get recent wizard projects", correlationId);
-            return StatusCode(500, new
-            {
-                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
-                title = "Server Error",
-                status = 500,
-                detail = "Failed to retrieve recent projects",
-                correlationId
-            });
+            return ProblemDetailsFactory.CreateInternalServerError(
+                detail: "Failed to retrieve recent projects",
+                correlationId: correlationId);
         }
     }
 
@@ -227,14 +198,9 @@ public class WizardProjectsController : ControllerBase
         {
             if (string.IsNullOrWhiteSpace(request.NewName))
             {
-                return BadRequest(new
-                {
-                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
-                    title = "Invalid Request",
-                    status = 400,
-                    detail = "New project name is required",
-                    correlationId
-                });
+                return ProblemDetailsFactory.CreateBadRequest(
+                    detail: "New project name is required",
+                    correlationId: correlationId);
             }
 
             var duplicate = await _projectService.DuplicateProjectAsync(id, request.NewName, ct).ConfigureAwait(false);
@@ -249,26 +215,16 @@ public class WizardProjectsController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return NotFound(new
-            {
-                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
-                title = "Project Not Found",
-                status = 404,
-                detail = ex.Message,
-                correlationId
-            });
+            return ProblemDetailsFactory.CreateNotFound(
+                detail: ex.Message,
+                correlationId: correlationId);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "[{CorrelationId}] Failed to duplicate wizard project {ProjectId}", correlationId, id);
-            return StatusCode(500, new
-            {
-                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
-                title = "Server Error",
-                status = 500,
-                detail = "Failed to duplicate project",
-                correlationId
-            });
+            return ProblemDetailsFactory.CreateInternalServerError(
+                detail: "Failed to duplicate project",
+                correlationId: correlationId);
         }
     }
 
@@ -290,26 +246,16 @@ public class WizardProjectsController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return NotFound(new
-            {
-                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
-                title = "Project Not Found",
-                status = 404,
-                detail = ex.Message,
-                correlationId
-            });
+            return ProblemDetailsFactory.CreateNotFound(
+                detail: ex.Message,
+                correlationId: correlationId);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "[{CorrelationId}] Failed to delete wizard project {ProjectId}", correlationId, id);
-            return StatusCode(500, new
-            {
-                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
-                title = "Server Error",
-                status = 500,
-                detail = "Failed to delete project",
-                correlationId
-            });
+            return ProblemDetailsFactory.CreateInternalServerError(
+                detail: "Failed to delete project",
+                correlationId: correlationId);
         }
     }
 
@@ -331,26 +277,16 @@ public class WizardProjectsController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return NotFound(new
-            {
-                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
-                title = "Project Not Found",
-                status = 404,
-                detail = ex.Message,
-                correlationId
-            });
+            return ProblemDetailsFactory.CreateNotFound(
+                detail: ex.Message,
+                correlationId: correlationId);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "[{CorrelationId}] Failed to export wizard project {ProjectId}", correlationId, id);
-            return StatusCode(500, new
-            {
-                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
-                title = "Server Error",
-                status = 500,
-                detail = "Failed to export project",
-                correlationId
-            });
+            return ProblemDetailsFactory.CreateInternalServerError(
+                detail: "Failed to export project",
+                correlationId: correlationId);
         }
     }
 
@@ -366,14 +302,9 @@ public class WizardProjectsController : ControllerBase
         {
             if (string.IsNullOrWhiteSpace(request.ProjectJson))
             {
-                return BadRequest(new
-                {
-                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
-                    title = "Invalid Request",
-                    status = 400,
-                    detail = "Project JSON is required",
-                    correlationId
-                });
+                return ProblemDetailsFactory.CreateBadRequest(
+                    detail: "Project JSON is required",
+                    correlationId: correlationId);
             }
 
             var project = await _projectService.ImportProjectAsync(request.ProjectJson, request.NewName, ct).ConfigureAwait(false);
@@ -389,14 +320,9 @@ public class WizardProjectsController : ControllerBase
         catch (Exception ex)
         {
             Log.Error(ex, "[{CorrelationId}] Failed to import wizard project", correlationId);
-            return StatusCode(500, new
-            {
-                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
-                title = "Server Error",
-                status = 500,
-                detail = $"Failed to import project: {ex.Message}",
-                correlationId
-            });
+            return ProblemDetailsFactory.CreateInternalServerError(
+                detail: $"Failed to import project: {ex.Message}",
+                correlationId: correlationId);
         }
     }
 
@@ -428,26 +354,16 @@ public class WizardProjectsController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return NotFound(new
-            {
-                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
-                title = "Project Not Found",
-                status = 404,
-                detail = ex.Message,
-                correlationId
-            });
+            return ProblemDetailsFactory.CreateNotFound(
+                detail: ex.Message,
+                correlationId: correlationId);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "[{CorrelationId}] Failed to clear content for wizard project {ProjectId}", correlationId, id);
-            return StatusCode(500, new
-            {
-                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
-                title = "Server Error",
-                status = 500,
-                detail = "Failed to clear generated content",
-                correlationId
-            });
+            return ProblemDetailsFactory.CreateInternalServerError(
+                detail: "Failed to clear generated content",
+                correlationId: correlationId);
         }
     }
 }

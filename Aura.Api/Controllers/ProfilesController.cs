@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Api.Utilities;
 using Aura.Core.Models.Profiles;
 using Aura.Core.Services.Profiles;
 using Microsoft.AspNetCore.Mvc;
@@ -40,7 +41,10 @@ public class ProfilesController : ControllerBase
         {
             if (string.IsNullOrWhiteSpace(userId))
             {
-                return BadRequest(new { error = "UserId is required" });
+                return ProblemDetailsFactory.CreateBadRequest(
+                    detail: "UserId is required",
+                    correlationId: HttpContext.TraceIdentifier,
+                    field: "UserId");
             }
 
             var profiles = await _profileService.GetUserProfilesAsync(userId, ct).ConfigureAwait(false);
@@ -65,7 +69,9 @@ public class ProfilesController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting profiles for user {UserId}", userId);
-            return StatusCode(500, new { error = "Failed to retrieve profiles" });
+            return ProblemDetailsFactory.CreateInternalServerError(
+                detail: "Failed to retrieve profiles",
+                correlationId: HttpContext.TraceIdentifier);
         }
     }
 
@@ -81,12 +87,18 @@ public class ProfilesController : ControllerBase
         {
             if (string.IsNullOrWhiteSpace(request.UserId))
             {
-                return BadRequest(new { error = "UserId is required" });
+                return ProblemDetailsFactory.CreateBadRequest(
+                    detail: "UserId is required",
+                    correlationId: HttpContext.TraceIdentifier,
+                    field: "UserId");
             }
 
             if (string.IsNullOrWhiteSpace(request.ProfileName))
             {
-                return BadRequest(new { error = "ProfileName is required" });
+                return ProblemDetailsFactory.CreateBadRequest(
+                    detail: "ProfileName is required",
+                    correlationId: HttpContext.TraceIdentifier,
+                    field: "ProfileName");
             }
 
             var profile = await _profileService.CreateProfileAsync(request, ct).ConfigureAwait(false);
@@ -109,7 +121,9 @@ public class ProfilesController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating profile for user {UserId}", request.UserId);
-            return StatusCode(500, new { error = "Failed to create profile" });
+            return ProblemDetailsFactory.CreateInternalServerError(
+                detail: "Failed to create profile",
+                correlationId: HttpContext.TraceIdentifier);
         }
     }
 
@@ -125,13 +139,20 @@ public class ProfilesController : ControllerBase
         {
             if (string.IsNullOrWhiteSpace(profileId))
             {
-                return BadRequest(new { error = "ProfileId is required" });
+                return ProblemDetailsFactory.CreateBadRequest(
+                    detail: "ProfileId is required",
+                    correlationId: HttpContext.TraceIdentifier,
+                    field: "ProfileId");
             }
 
             var profile = await _profileService.GetProfileAsync(profileId, ct).ConfigureAwait(false);
             if (profile == null)
             {
-                return NotFound(new { error = $"Profile {profileId} not found" });
+                return ProblemDetailsFactory.CreateNotFound(
+                    detail: $"Profile {profileId} not found",
+                    correlationId: HttpContext.TraceIdentifier,
+                    resourceId: profileId,
+                    resourceType: "Profile");
             }
 
             var preferences = await _profileService.GetPreferencesAsync(profileId, ct).ConfigureAwait(false);
@@ -165,7 +186,9 @@ public class ProfilesController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting profile {ProfileId}", profileId);
-            return StatusCode(500, new { error = "Failed to retrieve profile" });
+            return ProblemDetailsFactory.CreateInternalServerError(
+                detail: "Failed to retrieve profile",
+                correlationId: HttpContext.TraceIdentifier);
         }
     }
 
@@ -182,7 +205,10 @@ public class ProfilesController : ControllerBase
         {
             if (string.IsNullOrWhiteSpace(profileId))
             {
-                return BadRequest(new { error = "ProfileId is required" });
+                return ProblemDetailsFactory.CreateBadRequest(
+                    detail: "ProfileId is required",
+                    correlationId: HttpContext.TraceIdentifier,
+                    field: "ProfileId");
             }
 
             var updated = await _profileService.UpdateProfileAsync(profileId, request, ct).ConfigureAwait(false);
@@ -202,12 +228,18 @@ public class ProfilesController : ControllerBase
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Profile {ProfileId} not found", profileId);
-            return NotFound(new { error = ex.Message });
+            return ProblemDetailsFactory.CreateNotFound(
+                detail: ex.Message,
+                correlationId: HttpContext.TraceIdentifier,
+                resourceId: profileId,
+                resourceType: "Profile");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating profile {ProfileId}", profileId);
-            return StatusCode(500, new { error = "Failed to update profile" });
+            return ProblemDetailsFactory.CreateInternalServerError(
+                detail: "Failed to update profile",
+                correlationId: HttpContext.TraceIdentifier);
         }
     }
 
@@ -223,7 +255,10 @@ public class ProfilesController : ControllerBase
         {
             if (string.IsNullOrWhiteSpace(profileId))
             {
-                return BadRequest(new { error = "ProfileId is required" });
+                return ProblemDetailsFactory.CreateBadRequest(
+                    detail: "ProfileId is required",
+                    correlationId: HttpContext.TraceIdentifier,
+                    field: "ProfileId");
             }
 
             await _profileService.DeleteProfileAsync(profileId, ct).ConfigureAwait(false);
@@ -237,12 +272,16 @@ public class ProfilesController : ControllerBase
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Cannot delete profile {ProfileId}", profileId);
-            return BadRequest(new { error = ex.Message });
+            return ProblemDetailsFactory.CreateBadRequest(
+                detail: ex.Message,
+                correlationId: HttpContext.TraceIdentifier);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error deleting profile {ProfileId}", profileId);
-            return StatusCode(500, new { error = "Failed to delete profile" });
+            return ProblemDetailsFactory.CreateInternalServerError(
+                detail: "Failed to delete profile",
+                correlationId: HttpContext.TraceIdentifier);
         }
     }
 
@@ -258,7 +297,10 @@ public class ProfilesController : ControllerBase
         {
             if (string.IsNullOrWhiteSpace(profileId))
             {
-                return BadRequest(new { error = "ProfileId is required" });
+                return ProblemDetailsFactory.CreateBadRequest(
+                    detail: "ProfileId is required",
+                    correlationId: HttpContext.TraceIdentifier,
+                    field: "ProfileId");
             }
 
             var activated = await _profileService.ActivateProfileAsync(profileId, ct).ConfigureAwait(false);
@@ -278,12 +320,18 @@ public class ProfilesController : ControllerBase
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Cannot activate profile {ProfileId}", profileId);
-            return NotFound(new { error = ex.Message });
+            return ProblemDetailsFactory.CreateNotFound(
+                detail: ex.Message,
+                correlationId: HttpContext.TraceIdentifier,
+                resourceId: profileId,
+                resourceType: "Profile");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error activating profile {ProfileId}", profileId);
-            return StatusCode(500, new { error = "Failed to activate profile" });
+            return ProblemDetailsFactory.CreateInternalServerError(
+                detail: "Failed to activate profile",
+                correlationId: HttpContext.TraceIdentifier);
         }
     }
 
@@ -300,12 +348,18 @@ public class ProfilesController : ControllerBase
         {
             if (string.IsNullOrWhiteSpace(profileId))
             {
-                return BadRequest(new { error = "ProfileId is required" });
+                return ProblemDetailsFactory.CreateBadRequest(
+                    detail: "ProfileId is required",
+                    correlationId: HttpContext.TraceIdentifier,
+                    field: "ProfileId");
             }
 
             if (string.IsNullOrWhiteSpace(request.NewProfileName))
             {
-                return BadRequest(new { error = "NewProfileName is required" });
+                return ProblemDetailsFactory.CreateBadRequest(
+                    detail: "NewProfileName is required",
+                    correlationId: HttpContext.TraceIdentifier,
+                    field: "NewProfileName");
             }
 
             var duplicated = await _profileService.DuplicateProfileAsync(
@@ -328,12 +382,18 @@ public class ProfilesController : ControllerBase
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Cannot duplicate profile {ProfileId}", profileId);
-            return NotFound(new { error = ex.Message });
+            return ProblemDetailsFactory.CreateNotFound(
+                detail: ex.Message,
+                correlationId: HttpContext.TraceIdentifier,
+                resourceId: profileId,
+                resourceType: "Profile");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error duplicating profile {ProfileId}", profileId);
-            return StatusCode(500, new { error = "Failed to duplicate profile" });
+            return ProblemDetailsFactory.CreateInternalServerError(
+                detail: "Failed to duplicate profile",
+                correlationId: HttpContext.TraceIdentifier);
         }
     }
 
@@ -363,7 +423,9 @@ public class ProfilesController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting templates");
-            return StatusCode(500, new { error = "Failed to retrieve templates" });
+            return ProblemDetailsFactory.CreateInternalServerError(
+                detail: "Failed to retrieve templates",
+                correlationId: HttpContext.TraceIdentifier);
         }
     }
 
@@ -379,23 +441,35 @@ public class ProfilesController : ControllerBase
         {
             if (string.IsNullOrWhiteSpace(request.UserId))
             {
-                return BadRequest(new { error = "UserId is required" });
+                return ProblemDetailsFactory.CreateBadRequest(
+                    detail: "UserId is required",
+                    correlationId: HttpContext.TraceIdentifier,
+                    field: "UserId");
             }
 
             if (string.IsNullOrWhiteSpace(request.ProfileName))
             {
-                return BadRequest(new { error = "ProfileName is required" });
+                return ProblemDetailsFactory.CreateBadRequest(
+                    detail: "ProfileName is required",
+                    correlationId: HttpContext.TraceIdentifier,
+                    field: "ProfileName");
             }
 
             if (string.IsNullOrWhiteSpace(request.FromTemplateId))
             {
-                return BadRequest(new { error = "FromTemplateId is required" });
+                return ProblemDetailsFactory.CreateBadRequest(
+                    detail: "FromTemplateId is required",
+                    correlationId: HttpContext.TraceIdentifier,
+                    field: "FromTemplateId");
             }
 
             var template = ProfileTemplateService.GetTemplate(request.FromTemplateId);
             if (template == null)
             {
-                return NotFound(new { error = $"Template {request.FromTemplateId} not found" });
+                return ProblemDetailsFactory.CreateNotFound(
+                    detail: $"Template {request.FromTemplateId} not found",
+                    correlationId: HttpContext.TraceIdentifier,
+                    resourceId: request.FromTemplateId);
             }
 
             var profile = await _profileService.CreateProfileAsync(request, ct).ConfigureAwait(false);
@@ -418,7 +492,9 @@ public class ProfilesController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating profile from template");
-            return StatusCode(500, new { error = "Failed to create profile from template" });
+            return ProblemDetailsFactory.CreateInternalServerError(
+                detail: "Failed to create profile from template",
+                correlationId: HttpContext.TraceIdentifier);
         }
     }
 
@@ -435,7 +511,10 @@ public class ProfilesController : ControllerBase
         {
             if (string.IsNullOrWhiteSpace(profileId))
             {
-                return BadRequest(new { error = "ProfileId is required" });
+                return ProblemDetailsFactory.CreateBadRequest(
+                    detail: "ProfileId is required",
+                    correlationId: HttpContext.TraceIdentifier,
+                    field: "ProfileId");
             }
 
             var updated = await _profileService.UpdatePreferencesAsync(profileId, request, ct).ConfigureAwait(false);
@@ -459,12 +538,18 @@ public class ProfilesController : ControllerBase
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Cannot update preferences for profile {ProfileId}", profileId);
-            return NotFound(new { error = ex.Message });
+            return ProblemDetailsFactory.CreateNotFound(
+                detail: ex.Message,
+                correlationId: HttpContext.TraceIdentifier,
+                resourceId: profileId,
+                resourceType: "Profile");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating preferences for profile {ProfileId}", profileId);
-            return StatusCode(500, new { error = "Failed to update preferences" });
+            return ProblemDetailsFactory.CreateInternalServerError(
+                detail: "Failed to update preferences",
+                correlationId: HttpContext.TraceIdentifier);
         }
     }
 
@@ -481,17 +566,26 @@ public class ProfilesController : ControllerBase
         {
             if (string.IsNullOrWhiteSpace(profileId))
             {
-                return BadRequest(new { error = "ProfileId is required" });
+                return ProblemDetailsFactory.CreateBadRequest(
+                    detail: "ProfileId is required",
+                    correlationId: HttpContext.TraceIdentifier,
+                    field: "ProfileId");
             }
 
             if (string.IsNullOrWhiteSpace(request.SuggestionType))
             {
-                return BadRequest(new { error = "SuggestionType is required" });
+                return ProblemDetailsFactory.CreateBadRequest(
+                    detail: "SuggestionType is required",
+                    correlationId: HttpContext.TraceIdentifier,
+                    field: "SuggestionType");
             }
 
             if (string.IsNullOrWhiteSpace(request.Decision))
             {
-                return BadRequest(new { error = "Decision is required" });
+                return ProblemDetailsFactory.CreateBadRequest(
+                    detail: "Decision is required",
+                    correlationId: HttpContext.TraceIdentifier,
+                    field: "Decision");
             }
 
             // Create the actual request with profileId
@@ -512,7 +606,9 @@ public class ProfilesController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error recording decision for profile {ProfileId}", profileId);
-            return StatusCode(500, new { error = "Failed to record decision" });
+            return ProblemDetailsFactory.CreateInternalServerError(
+                detail: "Failed to record decision",
+                correlationId: HttpContext.TraceIdentifier);
         }
     }
 
@@ -528,7 +624,10 @@ public class ProfilesController : ControllerBase
         {
             if (string.IsNullOrWhiteSpace(profileId))
             {
-                return BadRequest(new { error = "ProfileId is required" });
+                return ProblemDetailsFactory.CreateBadRequest(
+                    detail: "ProfileId is required",
+                    correlationId: HttpContext.TraceIdentifier,
+                    field: "ProfileId");
             }
 
             var preferences = await _profileService.GetPreferencesAsync(profileId, ct).ConfigureAwait(false);
@@ -599,12 +698,18 @@ public class ProfilesController : ControllerBase
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Cannot get preferences summary for profile {ProfileId}", profileId);
-            return NotFound(new { error = ex.Message });
+            return ProblemDetailsFactory.CreateNotFound(
+                detail: ex.Message,
+                correlationId: HttpContext.TraceIdentifier,
+                resourceId: profileId,
+                resourceType: "Profile");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting preferences summary for profile {ProfileId}", profileId);
-            return StatusCode(500, new { error = "Failed to get preferences summary" });
+            return ProblemDetailsFactory.CreateInternalServerError(
+                detail: "Failed to get preferences summary",
+                correlationId: HttpContext.TraceIdentifier);
         }
     }
 }
