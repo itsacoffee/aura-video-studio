@@ -22,22 +22,17 @@ import {
   ProgressBar,
   Link,
   Badge,
-  Tooltip,
 } from '@fluentui/react-components';
 import {
-  Checkmark24Regular,
   CheckmarkCircle24Filled,
   Warning24Regular,
   ErrorCircle24Regular,
   ArrowDownload24Regular,
-  Folder24Regular,
-  Settings24Regular,
   Info24Regular,
   ChevronRight24Regular,
   ChevronLeft24Regular,
 } from '@fluentui/react-icons';
-import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { useNotifications } from '../../components/Notifications/Toasts';
 import { FirstRunWizard } from '../Onboarding/FirstRunWizard';
 
@@ -98,7 +93,6 @@ interface DependencyStatus {
 
 export function DesktopSetupWizard() {
   const styles = useStyles();
-  const navigate = useNavigate();
   const { showSuccess, showError, showInfo } = useNotifications();
 
   const [mode, setMode] = useState<SetupMode>('welcome');
@@ -108,7 +102,6 @@ export function DesktopSetupWizard() {
     ollama: 'checking',
     dotnet: 'checking',
   });
-  const [installProgress, setInstallProgress] = useState(0);
   const [systemInfo, setSystemInfo] = useState<{
     platform: string;
     arch: string;
@@ -117,36 +110,80 @@ export function DesktopSetupWizard() {
 
   // Check if running in Electron
   const isElectron =
-    typeof window !== 'undefined' && (window as any).electron?.platform?.isElectron;
+    typeof window !== 'undefined' &&
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).electron?.platform?.isElectron;
 
   useEffect(() => {
     if (isElectron) {
-      loadSystemInfo();
-      checkDependencies();
+      void loadSystemInfo();
+      void checkDependencies();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isElectron]);
 
   const loadSystemInfo = async () => {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const electron = (window as any).electron;
       const paths = await electron.app.getPaths();
       const platform = electron.platform.os;
       const arch = electron.platform.arch;
 
       setSystemInfo({ platform, arch, paths });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to load system info:', error);
     }
   };
 
-  const checkDependencies = async () => {
-    // Check FFmpeg
+  const detectFFmpeg = async (): Promise<{ found: boolean; path: string; version: string }> => {
+    // Check managed installation first
+    const managedPaths = [
+      './ffmpeg/bin/ffmpeg.exe',
+      './ffmpeg/bin/ffmpeg',
+      '../ffmpeg/bin/ffmpeg.exe', // Electron app.asar.unpacked path
+      '../ffmpeg/bin/ffmpeg',
+    ];
+
+    for (const path of managedPaths) {
+      try {
+        const response = await fetch('/api/setup/check-ffmpeg', {
+          method: 'POST',
+          body: JSON.stringify({ path }),
+          headers: { 'Content-Type': 'application/json' },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.found) {
+            return { found: true, path: data.path, version: data.version };
+          }
+        }
+      } catch {
+        // FFmpeg not found at this path, continue checking other locations
+      }
+    }
+
+    // Fallback to system PATH check via health endpoint
     try {
       const response = await fetch('/api/health/ffmpeg');
       const data = await response.json();
+      if (data.isAvailable && data.path) {
+        return { found: true, path: data.path, version: data.version || 'unknown' };
+      }
+    } catch (error: unknown) {
+      console.warn('Failed to check system FFmpeg:', error);
+    }
+
+    return { found: false, path: '', version: '' };
+  };
+
+  const checkDependencies = async () => {
+    // Check FFmpeg using enhanced detection
+    try {
+      const ffmpegResult = await detectFFmpeg();
       setDependencies((prev) => ({
         ...prev,
-        ffmpeg: data.isAvailable ? 'found' : 'not-found',
+        ffmpeg: ffmpegResult.found ? 'found' : 'not-found',
       }));
     } catch {
       setDependencies((prev) => ({ ...prev, ffmpeg: 'not-found' }));
@@ -200,6 +237,7 @@ export function DesktopSetupWizard() {
         setDependencies((prev) => ({ ...prev, ffmpeg: 'installed' }));
       } else {
         // macOS/Linux: Guide user to use package manager
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const electron = (window as any).electron;
         if (platform === 'darwin' || platform === 'macOS') {
           showInfo('Opening Homebrew installation guide...');
@@ -214,7 +252,7 @@ export function DesktopSetupWizard() {
       const errorObj = error instanceof Error ? error : new Error(String(error));
       console.error('FFmpeg installation error:', errorObj);
       setDependencies((prev) => ({ ...prev, ffmpeg: 'error' }));
-      
+
       // Show detailed error message if available
       const errorMessage = errorObj.message || 'Failed to install FFmpeg. Please install manually.';
       showError(errorMessage);
@@ -223,10 +261,12 @@ export function DesktopSetupWizard() {
 
   const openOllamaDownload = async () => {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const electron = (window as any).electron;
       await electron.shell.openExternal('https://ollama.ai/download');
       showInfo('Opening Ollama download page. After installing, click "Recheck" below.');
-    } catch (error) {
+    } catch (error: unknown) {
+      console.error('Failed to open Ollama download:', error);
       showError('Failed to open Ollama download page');
     }
   };
@@ -241,7 +281,7 @@ export function DesktopSetupWizard() {
       <div style={{ textAlign: 'center', maxWidth: '600px', margin: '0 auto' }}>
         <Title1>Welcome to Aura Video Studio</Title1>
         <Text as="p" size={500} style={{ marginTop: tokens.spacingVerticalL }}>
-          Let's get you set up to create amazing AI-powered videos!
+          Let&apos;s get you set up to create amazing AI-powered videos!
         </Text>
 
         <div
@@ -293,7 +333,7 @@ export function DesktopSetupWizard() {
           >
             <Warning24Regular className={styles.statusIcon} />
             <Text>
-              You're running the web version. Some features (like auto-installation) are only
+              You&apos;re running the web version. Some features (like auto-installation) are only
               available in the desktop app.
             </Text>
           </div>
