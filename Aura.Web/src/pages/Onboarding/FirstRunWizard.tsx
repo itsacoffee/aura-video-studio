@@ -302,6 +302,13 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
     // Track new step view
     wizardAnalytics.stepViewed(state.step, stepLabels[state.step] || 'Unknown');
     setStepStartTime(currentTime);
+
+    // CRITICAL FIX: Trigger FFmpeg status check when entering Step 2
+    // This ensures the status is checked automatically, fixing the "Not Ready" issue
+    if (state.step === 2) {
+      console.info('[FirstRunWizard] Entering Step 2, triggering FFmpeg status check');
+      setFfmpegRefreshSignal((prev) => prev + 1);
+    }
   }, [state.step]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Save progress on state changes
@@ -1044,7 +1051,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
       {/* Managed Installation Option */}
       <FFmpegDependencyCard
-        autoCheck={false}
+        autoCheck={true}
         autoExpandDetails={true}
         refreshSignal={ffmpegRefreshSignal}
         onInstallComplete={handleFfmpegStatusUpdate}
