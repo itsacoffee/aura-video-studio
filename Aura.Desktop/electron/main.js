@@ -979,9 +979,12 @@ async function startApplication() {
       timeout: 90000, // 90 seconds
       onProgress: (progress) => {
         if (splashWindow && !splashWindow.isDestroyed()) {
+          // More accurate progress mapping
+          const progressPercent = Math.min(95, 30 + (progress.percent * 60));
           splashWindow.webContents.send('status-update', {
             message: progress.message || 'Initializing backend...',
-            progress: 30 + (progress.percent * 60) // Scale to 30-90%
+            progress: progressPercent,
+            details: progress.phase || '' // Add phase info
           });
         }
       }
