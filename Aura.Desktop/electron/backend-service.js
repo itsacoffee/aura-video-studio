@@ -407,6 +407,103 @@ class BackendService {
   }
 
   /**
+   * Wait for backend to be fully ready
+   * @param {Object} options - Options for waiting
+   * @param {number} options.timeout - Maximum time to wait (ms)
+   * @param {Function} options.onProgress - Progress callback
+   * @returns {Promise<boolean>} True if ready, false if timeout
+   */
+  async waitForReady(options = {}) {
+    const {
+      timeout = 90000,
+      onProgress = null
+    } = options;
+
+    const startTime = Date.now();
+    const checkInterval = 1000; // Check every second
+    let attempt = 0;
+    const maxAttempts = Math.floor(timeout / checkInterval);
+
+    console.log(`Waiting for backend to be ready (timeout: ${timeout}ms)...`);
+
+    while (Date.now() - startTime < timeout) {
+      attempt++;
+      
+      try {
+        // Check liveness first (is HTTP server responding?)
+        const livenessUrl = this._buildUrl(this.healthEndpoint || "/health/live");
+        const livenessResponse = await axios.get(livenessUrl, {
+          timeout: 5000,
+          validateStatus: () => true // Accept any status code
+        });
+
+        if (livenessResponse.status === 200) {
+          console.log('Backend HTTP server is alive');
+          
+          // Now check readiness (are all dependencies ready?)
+          const readinessUrl = this._buildUrl(this.readinessEndpoint || "/health/ready");
+          const readinessResponse = await axios.get(readinessUrl, {
+            timeout: 10000,
+            validateStatus: () => true
+          });
+
+          if (readinessResponse.status === 200) {
+            console.log('Backend is fully ready!');
+            
+            if (onProgress) {
+              onProgress({
+                message: 'Backend is ready',
+                percent: 1.0,
+                attempt,
+                maxAttempts
+              });
+            }
+            
+            return true;
+          } else {
+            // Readiness check failed - backend is alive but not ready yet
+            const readinessData = readinessResponse.data;
+            const failedChecks = readinessData?.checks?.filter(c => c.status !== 'healthy') || [];
+            
+            console.log(`Backend not ready yet (attempt ${attempt}/${maxAttempts}):`, 
+              failedChecks.map(c => c.name).join(', '));
+            
+            if (onProgress) {
+              onProgress({
+                message: failedChecks.length > 0 
+                  ? `Initializing: ${failedChecks.map(c => c.name).join(', ')}`
+                  : 'Initializing backend...',
+                percent: Math.min(0.9, attempt / maxAttempts),
+                attempt,
+                maxAttempts
+              });
+            }
+          }
+        }
+      } catch (error) {
+        // Backend not responding yet
+        console.log(`Backend not responding yet (attempt ${attempt}/${maxAttempts}):`, error.message);
+        
+        if (onProgress) {
+          onProgress({
+            message: 'Starting backend server...',
+            percent: Math.min(0.8, attempt / maxAttempts),
+            attempt,
+            maxAttempts
+          });
+        }
+      }
+
+      // Wait before next check
+      await new Promise(resolve => setTimeout(resolve, checkInterval));
+    }
+
+    // Timeout reached
+    console.error(`Backend failed to become ready within ${timeout}ms`);
+    return false;
+  }
+
+  /**
    * Check Windows Firewall compatibility
    */
   async checkFirewallCompatibility() {
