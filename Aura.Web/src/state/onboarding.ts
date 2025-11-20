@@ -1106,7 +1106,8 @@ export async function validateApiKeyThunk(
           type: 'API_KEY_INVALID',
           payload: {
             provider,
-            error: 'Unable to reach the backend server to validate your API key. Please ensure the backend service is running and try again.',
+            error:
+              'Unable to reach the backend server to validate your API key. Please ensure the backend service is running and try again.',
           },
         });
         return;
@@ -1159,23 +1160,25 @@ export async function validateApiKeyThunk(
     }
   } catch (error: unknown) {
     console.error('API key validation error:', error);
-    
+
     // Import error handler to properly categorize errors
     const { isNetworkError, parseApiError } = await import('../services/api/errorHandler');
-    
+
     // Check if this is a network error
     if (isNetworkError(error)) {
-      const { message } = parseApiError(error);
+      const { message } = await parseApiError(error);
       dispatch({
         type: 'API_KEY_INVALID',
         payload: {
           provider,
-          error: message || 'Network error: Unable to connect to the backend server. Please ensure the backend is running and your network connection is stable.',
+          error:
+            message ||
+            'Network error: Unable to connect to the backend server. Please ensure the backend is running and your network connection is stable.',
         },
       });
       return;
     }
-    
+
     // For other errors, provide a clear message
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     dispatch({

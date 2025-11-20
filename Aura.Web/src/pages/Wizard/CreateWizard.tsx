@@ -53,6 +53,7 @@ import { ProviderSelection } from '../../components/Wizard/ProviderSelection';
 import { apiUrl } from '../../config/api';
 import { useWizardAutoSave } from '../../hooks/useWizardAutoSave';
 import { postCancellable, isAbortError } from '../../services/api/cancellableRequests';
+import { parseApiError, openLogsFolder } from '../../services/api/errorHandler';
 import { loggingService as logger } from '../../services/loggingService';
 import { useJobState } from '../../state/jobState';
 import type { PreflightReport, PerStageProviderSelection } from '../../state/providers';
@@ -66,7 +67,6 @@ import type {
   CaptionsConfig,
   StockSourcesConfig,
 } from '../../types';
-import { parseApiError, openLogsFolder } from '../../utils/apiErrorHandler';
 import { normalizeEnumsForApi, validateAndWarnEnums } from '../../utils/enumNormalizer';
 import { validateBriefRequest } from '../../utils/formValidation';
 

@@ -18,8 +18,8 @@ import {
 } from '@fluentui/react-icons';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { openLogsFolder } from '../../services/api/errorHandler';
 import { useJobsStore } from '../../state/jobs';
-import { openLogsFolder } from '../../utils/apiErrorHandler';
 import { openFile, openFolder } from '../../utils/fileSystemUtils';
 import { useNotifications } from '../Notifications/Toasts';
 import { FailureModal } from './FailureModal';

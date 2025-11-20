@@ -12,9 +12,12 @@ import {
 } from '@fluentui/react-components';
 import { ArrowTrendingRegular, SearchRegular } from '@fluentui/react-icons';
 import React, { useState, useEffect, useCallback } from 'react';
+import {
+  parseApiErrorDetailed as parseApiError,
+  type ParsedApiError,
+} from '../../services/api/errorHandler';
 import { contentPlanningService, TrendData } from '../../services/contentPlanningService';
 import { settingsService } from '../../services/settingsService';
-import { parseApiError, type ParsedApiError } from '../../utils/apiErrorParser';
 import { checkApiKeys } from '../../utils/apiKeyChecker';
 import { ErrorState } from './ErrorState';
 import { MissingApiKeyState } from './MissingApiKeyState';

@@ -20,9 +20,9 @@ import {
 } from '@fluentui/react-icons';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { parseApiError } from '../services/api/errorHandler';
 import { ollamaClient } from '../services/api/ollamaClient';
 import type { PreflightReport, StageCheck, CheckStatus, FixAction } from '../state/providers';
-import { parseApiError } from '../utils/apiErrorHandler';
 import { useNotifications } from './Notifications/Toasts';
 
 const useStyles = makeStyles({
