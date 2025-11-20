@@ -539,13 +539,140 @@ export function handleApiError(error: unknown): UserFriendlyError {
 }
 
 /**
- * Parse API error for simple error message display
+ * Legacy ParsedApiError type for backward compatibility with contentPlanning components
  */
-export function parseApiError(error: unknown): { message: string; code?: string } {
+export interface ParsedApiError {
+  type: 'network' | 'auth' | 'rateLimit' | 'timeout' | 'server' | 'unknown';
+  message: string;
+  details?: string;
+  retryable: boolean;
+}
+
+/**
+ * Legacy detailed error type for backward compatibility with wizard components
+ */
+export interface DetailedApiError {
+  title: string;
+  message: string;
+  errorDetails?: string;
+  correlationId?: string;
+  errorCode?: string;
+  originalError: unknown;
+}
+
+/**
+ * Extract error code from type URI (e.g., "https://github.com/.../README.md#E300" -> "E300")
+ */
+function extractErrorCodeFromType(type?: string): string | undefined {
+  if (!type) return undefined;
+
+  const match = type.match(/E\d{3,}/);
+  return match ? match[0] : undefined;
+}
+
+/**
+ * Parse API error with full details for backward compatibility
+ * Handles Response objects and other error types
+ */
+export async function parseApiError(error: unknown): Promise<DetailedApiError> {
+  // If it's a Response object (from fetch), we need to handle it specially
+  if (error instanceof Response) {
+    try {
+      const contentType = error.headers.get('content-type');
+
+      // Try to parse as JSON (ProblemDetails)
+      if (
+        contentType?.includes('application/json') ||
+        contentType?.includes('application/problem+json')
+      ) {
+        const problemDetails: StandardErrorResponse = await error.json();
+
+        return {
+          title: problemDetails.title || `Error ${error.status}`,
+          message: problemDetails.detail || error.statusText || 'An error occurred',
+          errorDetails: problemDetails.detail,
+          correlationId:
+            problemDetails.correlationId || error.headers.get('X-Correlation-ID') || undefined,
+          errorCode: problemDetails.errorCode || extractErrorCodeFromType(problemDetails.type),
+          originalError: problemDetails,
+        };
+      }
+
+      // Fallback for non-JSON responses
+      const text = await error.text();
+      return {
+        title: `Error ${error.status}`,
+        message: text || error.statusText || 'An error occurred',
+        correlationId: error.headers.get('X-Correlation-ID') || undefined,
+        originalError: { status: error.status, body: text },
+      };
+    } catch {
+      // If parsing fails, return basic error info
+      return {
+        title: `Error ${error.status}`,
+        message: error.statusText || 'An error occurred',
+        correlationId: error.headers.get('X-Correlation-ID') || undefined,
+        originalError: error,
+      };
+    }
+  }
+
+  // For non-Response errors, use the centralized handler
   const friendlyError = handleApiError(error);
   return {
+    title: friendlyError.title,
     message: friendlyError.message,
-    code: friendlyError.errorCode,
+    errorDetails: friendlyError.technicalDetails,
+    correlationId: friendlyError.correlationId,
+    errorCode: friendlyError.errorCode,
+    originalError: friendlyError,
+  };
+}
+
+/**
+ * Parse API error with detailed type information for backward compatibility
+ * Used by content planning components
+ */
+export function parseApiErrorDetailed(error: unknown): ParsedApiError {
+  const friendlyError = handleApiError(error);
+
+  // Determine ErrorType from error code or title
+  let type: ParsedApiError['type'] = 'unknown';
+
+  if (friendlyError.errorCode?.startsWith('NET') || friendlyError.title.includes('Network')) {
+    type = 'network';
+  } else if (
+    friendlyError.errorCode?.startsWith('AUTH') ||
+    friendlyError.title.includes('API Key') ||
+    friendlyError.title.includes('Authentication')
+  ) {
+    type = 'auth';
+  } else if (
+    friendlyError.errorCode === 'AUTH006_RateLimitExceeded' ||
+    friendlyError.title.includes('Rate Limit')
+  ) {
+    type = 'rateLimit';
+  } else if (
+    friendlyError.errorCode === 'NET004_NetworkTimeout' ||
+    friendlyError.title.includes('Timeout')
+  ) {
+    type = 'timeout';
+  } else if (friendlyError.title.includes('Server') || friendlyError.title.includes('Service')) {
+    type = 'server';
+  }
+
+  // Determine if retryable based on error code or actions
+  const retryable =
+    friendlyError.errorCode?.startsWith('NET') ||
+    friendlyError.errorCode?.startsWith('E3') || // FFmpeg errors
+    friendlyError.actions.some((a) => a.label.toLowerCase().includes('retry')) ||
+    false;
+
+  return {
+    type,
+    message: friendlyError.message,
+    details: friendlyError.technicalDetails,
+    retryable,
   };
 }
 
@@ -571,4 +698,24 @@ export function isValidationError(error: unknown): boolean {
 export function isAuthenticationError(error: unknown): boolean {
   const friendlyError = handleApiError(error);
   return getErrorCategory(friendlyError.errorCode) === ErrorCategory.Authentication;
+}
+
+/**
+ * Open logs folder in file explorer (platform-aware)
+ */
+export function openLogsFolder(): void {
+  // Call API endpoint to open logs folder
+  fetch('/api/logs/open-folder', {
+    method: 'POST',
+  }).catch(async (error) => {
+    loggingService.error(
+      'Failed to open logs folder',
+      error instanceof Error ? error : new Error(String(error)),
+      'errorHandler',
+      'openLogsFolder'
+    );
+    // Fallback: try to navigate to logs page
+    const { navigateToRoute } = await import('../../utils/navigation');
+    navigateToRoute('/logs');
+  });
 }

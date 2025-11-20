@@ -13,9 +13,12 @@ import {
 } from '@fluentui/react-components';
 import { LightbulbRegular, SparkleRegular } from '@fluentui/react-icons';
 import React, { useState, useEffect } from 'react';
+import {
+  parseApiErrorDetailed as parseApiError,
+  type ParsedApiError,
+} from '../../services/api/errorHandler';
 import { contentPlanningService, TopicSuggestion } from '../../services/contentPlanningService';
 import { settingsService } from '../../services/settingsService';
-import { parseApiError, type ParsedApiError } from '../../utils/apiErrorParser';
 import { checkApiKeys } from '../../utils/apiKeyChecker';
 import { ErrorState } from './ErrorState';
 import { MissingApiKeyState } from './MissingApiKeyState';

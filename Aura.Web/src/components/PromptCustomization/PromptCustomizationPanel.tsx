@@ -37,6 +37,7 @@ import {
 } from '@fluentui/react-icons';
 import { useState, useEffect, useCallback } from 'react';
 import type { FC } from 'react';
+import { parseApiError } from '../../services/api/errorHandler';
 import {
   getPromptPreview,
   listExamples,
@@ -45,7 +46,6 @@ import {
 } from '../../services/api/promptsApi';
 import { usePromptCustomizationStore } from '../../state/promptCustomization';
 import type { Brief, PlanSpec, PromptPreset } from '../../types';
-import { parseApiError } from '../../utils/apiErrorHandler';
 import { useNotifications } from '../Notifications/Toasts';
 
 const useStyles = makeStyles({

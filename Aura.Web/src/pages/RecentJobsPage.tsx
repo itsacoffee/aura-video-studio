@@ -23,7 +23,7 @@ import {
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { retryJob } from '../features/render/api/jobs';
-import { openLogsFolder } from '../utils/apiErrorHandler';
+import { openLogsFolder } from '../services/api/errorHandler';
 import { openFile, openFolder } from '../utils/fileSystemUtils';
 import { navigateToRoute } from '@/utils/navigation';
 const useStyles = makeStyles({

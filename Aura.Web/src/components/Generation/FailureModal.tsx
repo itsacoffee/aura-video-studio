@@ -19,8 +19,8 @@ import {
   Settings24Regular,
 } from '@fluentui/react-icons';
 import { useState } from 'react';
+import { openLogsFolder } from '../../services/api/errorHandler';
 import { JobFailure } from '../../state/jobs';
-import { openLogsFolder } from '../../utils/apiErrorHandler';
 import { useNotifications } from '../Notifications/Toasts';
 import { navigateToRoute } from '@/utils/navigation';
 const useStyles = makeStyles({
