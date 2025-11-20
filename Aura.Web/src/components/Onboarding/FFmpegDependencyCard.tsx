@@ -134,13 +134,25 @@ export function FFmpegDependencyCard({
           request?: unknown;
         };
 
-        // Network-level errors (no response received)
+        // Network-level errors (no response received) - IMPROVED GUIDANCE
         if (axiosError.code === 'ERR_NETWORK' || axiosError.code === 'ECONNREFUSED') {
-          errorMessage = 'Backend unreachable. Please ensure the Aura backend is running.';
+          errorMessage = 
+            'Backend server is not running. To start the backend:\n\n' +
+            '1. Open a terminal in the project root\n' +
+            '2. Run: dotnet run --project Aura.Api\n' +
+            '3. Wait for "Application started" message\n' +
+            '4. Click "Check Again" or refresh this page';
         } else if (axiosError.code === 'ECONNABORTED' || axiosError.code === 'ETIMEDOUT') {
-          errorMessage = 'Connection timeout. Check your network connection.';
+          errorMessage = 
+            'Connection timeout. The backend may be starting up or overloaded.\n\n' +
+            'Wait a moment and try again. If the problem persists, restart the backend.';
         } else if (axiosError.request && !axiosError.response) {
-          errorMessage = 'No response from backend. Please check that the Aura backend is running.';
+          errorMessage = 
+            'No response from backend server. To start the backend:\n\n' +
+            '1. Open a terminal in the project root\n' +
+            '2. Run: dotnet run --project Aura.Api\n' +
+            '3. Wait for "Application started" message\n' +
+            '4. Click "Check Again" or refresh this page';
         } else if (axiosError.response?.data) {
           const data = axiosError.response.data;
           errorMessage = data.message || data.detail || data.error || errorMessage;
@@ -210,13 +222,25 @@ export function FFmpegDependencyCard({
           request?: unknown;
         };
 
-        // Network-level errors
+        // Network-level errors - IMPROVED GUIDANCE
         if (axiosError.code === 'ERR_NETWORK' || axiosError.code === 'ECONNREFUSED') {
-          errorMessage = 'Backend unreachable. Please ensure the Aura backend is running.';
+          errorMessage = 
+            'Backend server is not running. To start the backend:\n\n' +
+            '1. Open a terminal in the project root\n' +
+            '2. Run: dotnet run --project Aura.Api\n' +
+            '3. Wait for "Application started" message\n' +
+            '4. Try rescanning again';
         } else if (axiosError.code === 'ECONNABORTED' || axiosError.code === 'ETIMEDOUT') {
-          errorMessage = 'Connection timeout. Check your network connection.';
+          errorMessage = 
+            'Connection timeout. The backend may be starting up or overloaded.\n\n' +
+            'Wait a moment and try again. If the problem persists, restart the backend.';
         } else if (axiosError.request && !axiosError.response) {
-          errorMessage = 'No response from backend. Please check that the Aura backend is running.';
+          errorMessage = 
+            'No response from backend server. To start the backend:\n\n' +
+            '1. Open a terminal in the project root\n' +
+            '2. Run: dotnet run --project Aura.Api\n' +
+            '3. Wait for "Application started" message\n' +
+            '4. Try rescanning again';
         } else if (axiosError.response?.data) {
           const data = axiosError.response.data;
           errorMessage = data.message || data.detail || data.error || errorMessage;
@@ -500,6 +524,8 @@ export function FFmpegDependencyCard({
             size={200}
             style={{
               color: tokens.colorPaletteRedForeground1,
+              whiteSpace: 'pre-wrap',
+              display: 'block',
             }}
           >
             ⚠ {error}
