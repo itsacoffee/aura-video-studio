@@ -22,15 +22,18 @@ public class VideoController : ControllerBase
     private readonly ILogger<VideoController> _logger;
     private readonly JobRunner _jobRunner;
     private readonly SseService _sseService;
+    private readonly Aura.Core.Services.FFmpeg.IFFmpegStatusService _ffmpegStatusService;
 
     public VideoController(
         ILogger<VideoController> logger,
         JobRunner jobRunner,
-        SseService sseService)
+        SseService sseService,
+        Aura.Core.Services.FFmpeg.IFFmpegStatusService ffmpegStatusService)
     {
         _logger = logger;
         _jobRunner = jobRunner;
         _sseService = sseService;
+        _ffmpegStatusService = ffmpegStatusService;
     }
 
     /// <summary>
@@ -54,6 +57,47 @@ public class VideoController : ControllerBase
             _logger.LogInformation(
                 "[{CorrelationId}] POST /api/videos/generate - Brief: {Brief}, Duration: {Duration}m",
                 correlationId, request.Brief.Substring(0, Math.Min(50, request.Brief.Length)), request.DurationMinutes);
+
+            // Validate FFmpeg is available before starting video generation
+            var ffmpegStatus = await _ffmpegStatusService.GetStatusAsync(ct).ConfigureAwait(false);
+            
+            if (!ffmpegStatus.Installed || !ffmpegStatus.Valid)
+            {
+                _logger.LogWarning(
+                    "[{CorrelationId}] FFmpeg not available. Installed={Installed}, Valid={Valid}, Path={Path}",
+                    correlationId, ffmpegStatus.Installed, ffmpegStatus.Valid, ffmpegStatus.Path);
+                
+                return StatusCode(503, new ProblemDetails
+                {
+                    Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E302",
+                    Title = "FFmpeg Not Available",
+                    Status = 503,
+                    Detail = "FFmpeg is required but not found. Video generation cannot proceed until FFmpeg is installed and configured.",
+                    Extensions =
+                    {
+                        ["correlationId"] = correlationId,
+                        ["ffmpegStatus"] = new
+                        {
+                            installed = ffmpegStatus.Installed,
+                            valid = ffmpegStatus.Valid,
+                            path = ffmpegStatus.Path,
+                            source = ffmpegStatus.Source,
+                            error = ffmpegStatus.Error
+                        },
+                        ["suggestedActions"] = new[]
+                        {
+                            "Install FFmpeg via Download Center",
+                            "Add FFmpeg to system PATH",
+                            "Configure FFmpeg path in Settings",
+                            "Check FFmpeg status at /api/ffmpeg/status"
+                        }
+                    }
+                });
+            }
+            
+            _logger.LogInformation(
+                "[{CorrelationId}] FFmpeg validated: Version={Version}, Source={Source}", 
+                correlationId, ffmpegStatus.Version, ffmpegStatus.Source);
 
             // Create brief from request
             var brief = new Brief(
