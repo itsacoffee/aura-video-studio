@@ -524,6 +524,8 @@ export function FFmpegDependencyCard({
             size={200}
             style={{
               color: tokens.colorPaletteRedForeground1,
+              whiteSpace: 'pre-wrap',
+              display: 'block',
             }}
           >
             ⚠ {error}

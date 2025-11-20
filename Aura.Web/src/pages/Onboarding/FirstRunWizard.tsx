@@ -832,16 +832,26 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
         // Network-level errors (no response received)
         if (axiosError.code === 'ERR_NETWORK' || axiosError.code === 'ECONNREFUSED') {
-          errorTitle = 'Backend Unreachable';
+          errorTitle = 'Backend Not Running';
           errorMessage =
-            'Unable to connect to the Aura backend. Please ensure the backend server is running and try again.';
+            'Cannot connect to the Aura backend server. To start the backend:\n\n' +
+            '1. Open a terminal in the project root\n' +
+            '2. Run: dotnet run --project Aura.Api\n' +
+            '3. Wait for "Application started" message\n' +
+            '4. Try validating the path again';
         } else if (axiosError.code === 'ECONNABORTED' || axiosError.code === 'ETIMEDOUT') {
           errorTitle = 'Connection Timeout';
-          errorMessage = 'The request timed out. Check your network connection or try again later.';
+          errorMessage = 
+            'The validation request timed out. The backend may be starting up or overloaded.\n\n' +
+            'Wait a moment and try again. If the problem persists, restart the backend.';
         } else if (axiosError.request && !axiosError.response) {
           errorTitle = 'Network Error';
           errorMessage =
-            'No response from the backend. Please check that the Aura backend is running and accessible.';
+            'No response from the backend server. To start the backend:\n\n' +
+            '1. Open a terminal in the project root\n' +
+            '2. Run: dotnet run --project Aura.Api\n' +
+            '3. Wait for "Application started" message\n' +
+            '4. Try validating the path again';
         } else if (axiosError.response?.data) {
           const data = axiosError.response.data;
           errorTitle = data.title || 'Validation Failed';
