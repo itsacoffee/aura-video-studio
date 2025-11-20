@@ -848,6 +848,122 @@ public class SetupController : ControllerBase
     }
 
     /// <summary>
+    /// Save API keys with optional validation bypass
+    /// Allows users to save invalid keys with explicit acknowledgment
+    /// </summary>
+    [HttpPost("save-api-keys")]
+    public async Task<IActionResult> SaveApiKeys(
+        [FromBody] SaveSetupApiKeysRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var correlationId = request.CorrelationId ?? HttpContext.TraceIdentifier;
+            _logger.LogInformation("Saving API keys, AllowInvalid: {AllowInvalid}, Count: {Count}, CorrelationId: {CorrelationId}",
+                request.AllowInvalid, request.ApiKeys.Count, correlationId);
+
+            var warnings = new List<string>();
+            var userId = "default";
+
+            var userSetup = await _dbContext.UserSetups
+                .FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken).ConfigureAwait(false);
+
+            if (userSetup == null)
+            {
+                userSetup = new UserSetupEntity
+                {
+                    UserId = userId,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                _dbContext.UserSetups.Add(userSetup);
+            }
+
+            var apiKeyState = new Dictionary<string, object>();
+            if (!string.IsNullOrEmpty(userSetup.WizardState))
+            {
+                try
+                {
+                    var existing = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(userSetup.WizardState);
+                    if (existing != null)
+                    {
+                        apiKeyState = existing;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse existing wizard state");
+                }
+            }
+
+            var apiKeysData = new Dictionary<string, Dictionary<string, object>>();
+            if (apiKeyState.TryGetValue("apiKeys", out var existingKeysObj))
+            {
+                var existingKeysJson = System.Text.Json.JsonSerializer.Serialize(existingKeysObj);
+                apiKeysData = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, object>>>(existingKeysJson) 
+                    ?? new Dictionary<string, Dictionary<string, object>>();
+            }
+
+            foreach (var keyConfig in request.ApiKeys)
+            {
+                var isValid = keyConfig.IsValidated;
+
+                if (!isValid && !request.AllowInvalid)
+                {
+                    _logger.LogWarning("API key for {Provider} is invalid and AllowInvalid is false", keyConfig.Provider);
+                    return BadRequest(new
+                    {
+                        success = false,
+                        errorMessage = $"API key for {keyConfig.Provider} is invalid. Enable 'Allow Invalid' to save anyway.",
+                        provider = keyConfig.Provider,
+                        correlationId = correlationId
+                    });
+                }
+
+                if (!isValid)
+                {
+                    warnings.Add($"{keyConfig.Provider}: Key saved but not validated");
+                    _logger.LogInformation("Saving unvalidated key for {Provider}", keyConfig.Provider);
+                }
+
+                apiKeysData[keyConfig.Provider] = new Dictionary<string, object>
+                {
+                    ["key"] = keyConfig.Key,
+                    ["isValidated"] = isValid,
+                    ["savedAt"] = DateTime.UtcNow.ToString("o")
+                };
+            }
+
+            apiKeyState["apiKeys"] = apiKeysData;
+            userSetup.WizardState = System.Text.Json.JsonSerializer.Serialize(apiKeyState);
+            userSetup.UpdatedAt = DateTime.UtcNow;
+
+            await _dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+            _logger.LogInformation("API keys saved successfully. Warnings: {WarningCount}, CorrelationId: {CorrelationId}",
+                warnings.Count, correlationId);
+
+            return Ok(new
+            {
+                success = true,
+                warnings = warnings.Count > 0 ? warnings : null,
+                correlationId = correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save API keys, CorrelationId: {CorrelationId}", 
+                request.CorrelationId ?? HttpContext.TraceIdentifier);
+            return StatusCode(500, new
+            {
+                success = false,
+                errorMessage = "Failed to save API keys",
+                detail = ex.Message,
+                correlationId = request.CorrelationId ?? HttpContext.TraceIdentifier
+            });
+        }
+    }
+
+    /// <summary>
     /// Get configuration status for the application
     /// </summary>
     [HttpGet("configuration-status")]

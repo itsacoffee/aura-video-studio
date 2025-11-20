@@ -25,19 +25,75 @@ Aura Video Studio uses a **single, streamlined 6-step setup wizard** called `Fir
 - **Auto-Save Progress**: Your progress is saved automatically to both backend and localStorage
 - **Resume Capability**: If you exit mid-setup, you'll see a dialog asking if you want to resume or start fresh
 - **Backend Status Check**: Shows warnings only when backend is actually unreachable (not on initial load)
+- **Automatic Status Check**: Step 2 automatically checks FFmpeg status when you enter the step
+- **Clear Error Messages**: Network errors now include step-by-step instructions for starting the backend
 - **Simplified UI**: Clean, focused interface with no duplicate buttons or redundant actions
 - **Clear Loading States**: All actions show progress indicators and prevent double-clicks
 
-### UI Design Principles (Applied in Latest Update)
+### UI Design Principles (Latest Update - This PR)
 
 - **Step 2 (FFmpeg Check)**: Shows simple status with single "Check Again" button
-- **Step 3 (FFmpeg Install)**: One section for managed install (FFmpegDependencyCard), one section for manual configuration - no duplicate Re-scan buttons
+- **Step 3 (FFmpeg Install)**: 
+  - Automatically checks FFmpeg status when you enter the step
+  - One section for managed install (FFmpegDependencyCard)
+  - One section for manual configuration
+  - No duplicate Re-scan buttons
+  - Clear error messages with backend startup instructions
 - **Step 6 (Complete)**: Single "Start Creating Videos" button with loading spinner to prevent double-clicks
 - **Backend Banner**: Shows once per step, dismissible, and automatically hides when backend is reachable
 
+## Backend Requirement
+
+**CRITICAL**: The Aura backend server MUST be running for Step 2 (FFmpeg Install) to work properly.
+
+### How to Start the Backend
+
+1. Open a terminal in the project root directory
+2. Run: `dotnet run --project Aura.Api`
+3. Wait for the message: **"Application started. Press Ctrl+C to shut down."**
+4. Keep this terminal window open while using the wizard
+
+The backend typically starts on `http://localhost:5005` (configurable in `appsettings.json`).
+
+### What Happens Without Backend
+
+If the backend is not running when you reach Step 2:
+- Status check will fail with clear error message
+- Error message includes step-by-step instructions to start backend
+- "Re-scan" and "Install Managed FFmpeg" buttons will not work
+- You must start the backend and then click "Check Again" or refresh
+
 ## Common Issues
 
-### Issue 1: "You have incomplete setup. Would you like to resume where you left off?"
+### Issue 1: Step 2 shows "FFmpeg Not Ready" or "Backend unreachable" (NEW - Fixed in This PR)
+
+**Symptoms**:
+- Step 2 shows "FFmpeg (Video Encoding) – Not Ready"
+- Error message: "Backend server is not running"
+- "Re-scan" button doesn't work
+- "Install Managed FFmpeg" button is disabled or doesn't work
+
+**Root Cause** (Now Fixed):
+- Previous versions didn't automatically check FFmpeg status when entering Step 2
+- Users saw "Not Ready" because no check was performed
+- Network errors didn't provide clear guidance on starting the backend
+
+**Solution**:
+1. **Ensure backend is running** (see "Backend Requirement" section above)
+2. **Current version automatically checks** when you enter Step 2
+3. **If you see an error**:
+   - Read the error message carefully - it now includes step-by-step instructions
+   - Follow the instructions to start the backend (if not running)
+   - Click "Check Again" after starting the backend
+   - If problem persists, check backend logs for errors
+
+**What This PR Fixed**:
+- ✅ Step 2 now automatically checks FFmpeg status on entry
+- ✅ Error messages now include backend startup instructions
+- ✅ Clear distinction between "backend not running" vs "FFmpeg not found"
+- ✅ "Re-scan" and "Install" buttons work properly when backend is running
+
+### Issue 2: "You have incomplete setup. Would you like to resume where you left off?"
 
 **Cause**: You started the wizard but didn't complete it in a previous session.
 

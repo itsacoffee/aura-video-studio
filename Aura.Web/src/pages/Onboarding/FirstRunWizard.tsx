@@ -223,6 +223,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
   // Provider validation state
   const [hasAtLeastOneProvider, setHasAtLeastOneProvider] = useState(false);
+  const [allowInvalidKeys, setAllowInvalidKeys] = useState(false);
 
   // Completion state
   const [isCompletingSetup, setIsCompletingSetup] = useState(false);
@@ -302,6 +303,13 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
     // Track new step view
     wizardAnalytics.stepViewed(state.step, stepLabels[state.step] || 'Unknown');
     setStepStartTime(currentTime);
+
+    // CRITICAL FIX: Trigger FFmpeg status check when entering Step 2
+    // This ensures the status is checked automatically, fixing the "Not Ready" issue
+    if (state.step === 2) {
+      console.info('[FirstRunWizard] Entering Step 2, triggering FFmpeg status check');
+      setFfmpegRefreshSignal((prev) => prev + 1);
+    }
   }, [state.step]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Save progress on state changes
@@ -445,14 +453,35 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
     // Step 3: Provider Configuration -> Step 4: Workspace Setup
     if (state.step === 3) {
-      // Must have at least one provider configured
-      if (!hasAtLeastOneProvider) {
+      // Check if there are any configured (non-empty) API keys
+      const configuredKeys = Object.entries(state.apiKeys).filter(
+        ([_, key]) => key && key.trim().length > 0
+      );
+      const hasInvalidKeys = configuredKeys.some(
+        ([provider, _]) => state.apiKeyValidationStatus[provider] === 'invalid'
+      );
+
+      // Must have at least one provider configured OR allow invalid keys checkbox must be checked
+      const canProceed =
+        hasAtLeastOneProvider || (configuredKeys.length > 0 && allowInvalidKeys && hasInvalidKeys);
+
+      if (!canProceed && !hasAtLeastOneProvider) {
         showFailureToast({
           title: 'Provider Required',
           message: 'Please configure at least one LLM provider or choose offline mode to continue.',
         });
         return;
       }
+
+      if (!canProceed && hasInvalidKeys && !allowInvalidKeys) {
+        showFailureToast({
+          title: 'Invalid API Keys',
+          message:
+            'Some API keys are invalid. Please validate them or check "Allow me to continue with invalid API keys" to proceed.',
+        });
+        return;
+      }
+
       dispatch({ type: 'SET_STEP', payload: 4 });
       return;
     }
@@ -825,16 +854,26 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
         // Network-level errors (no response received)
         if (axiosError.code === 'ERR_NETWORK' || axiosError.code === 'ECONNREFUSED') {
-          errorTitle = 'Backend Unreachable';
+          errorTitle = 'Backend Not Running';
           errorMessage =
-            'Unable to connect to the Aura backend. Please ensure the backend server is running and try again.';
+            'Cannot connect to the Aura backend server. To start the backend:\n\n' +
+            '1. Open a terminal in the project root\n' +
+            '2. Run: dotnet run --project Aura.Api\n' +
+            '3. Wait for "Application started" message\n' +
+            '4. Try validating the path again';
         } else if (axiosError.code === 'ECONNABORTED' || axiosError.code === 'ETIMEDOUT') {
           errorTitle = 'Connection Timeout';
-          errorMessage = 'The request timed out. Check your network connection or try again later.';
+          errorMessage = 
+            'The validation request timed out. The backend may be starting up or overloaded.\n\n' +
+            'Wait a moment and try again. If the problem persists, restart the backend.';
         } else if (axiosError.request && !axiosError.response) {
           errorTitle = 'Network Error';
           errorMessage =
-            'No response from the backend. Please check that the Aura backend is running and accessible.';
+            'No response from the backend server. To start the backend:\n\n' +
+            '1. Open a terminal in the project root\n' +
+            '2. Run: dotnet run --project Aura.Api\n' +
+            '3. Wait for "Application started" message\n' +
+            '4. Try validating the path again';
         } else if (axiosError.response?.data) {
           const data = axiosError.response.data;
           errorTitle = data.title || 'Validation Failed';
@@ -1044,7 +1083,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
       {/* Managed Installation Option */}
       <FFmpegDependencyCard
-        autoCheck={false}
+        autoCheck={true}
         autoExpandDetails={true}
         refreshSignal={ffmpegRefreshSignal}
         onInstallComplete={handleFfmpegStatusUpdate}
@@ -1219,6 +1258,8 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
           });
         }}
         onLocalProviderReady={handleLocalProviderReady}
+        allowInvalidKeys={allowInvalidKeys}
+        onAllowInvalidKeysChange={setAllowInvalidKeys}
       />
 
       {!hasAtLeastOneProvider && (

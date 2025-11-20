@@ -204,26 +204,35 @@ export function WelcomePage() {
   const [loading, setLoading] = useState(true);
   const [_isFirstRun, setIsFirstRun] = useState(false);
   const [_checkingFirstRun, setCheckingFirstRun] = useState(true);
+  const [isCheckingSetup, setIsCheckingSetup] = useState(true);
   const [configStatus, setConfigStatus] = useState<ConfigurationStatus | null>(null);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [loadingConfig, setLoadingConfig] = useState(true);
 
   useEffect(() => {
-    // Check first-run status
-    const checkFirstRunStatus = async () => {
+    // Check first-run status and redirect to setup if not complete
+    const checkSetupStatus = async () => {
+      setIsCheckingSetup(true);
       try {
         const completed = await hasCompletedFirstRun();
+        if (!completed) {
+          // Redirect to setup wizard if first-run not completed
+          navigate('/setup', { replace: true });
+          return;
+        }
         setIsFirstRun(!completed);
+        setIsCheckingSetup(false);
       } catch (error) {
-        console.error('Error checking first-run status:', error);
-        setIsFirstRun(false);
+        console.error('Failed to check setup status:', error);
+        // Retry after 2 seconds if backend is temporarily unavailable
+        setTimeout(checkSetupStatus, 2000);
       } finally {
         setCheckingFirstRun(false);
       }
     };
 
-    checkFirstRunStatus();
-  }, []);
+    checkSetupStatus();
+  }, [navigate]);
 
   useEffect(() => {
     // Load configuration status
@@ -306,6 +315,22 @@ export function WelcomePage() {
 
   const isSystemReady = !loadingConfig && configStatus?.isConfigured;
   const needsSetup = !loadingConfig && !configStatus?.isConfigured;
+
+  // Show loading spinner while checking setup status
+  if (isCheckingSetup) {
+    return (
+      <div
+        style={{
+          height: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Spinner size="large" label="Checking setup status..." />
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>

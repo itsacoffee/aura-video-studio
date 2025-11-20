@@ -1,6 +1,34 @@
 import apiClient, { type ExtendedAxiosRequestConfig } from './apiClient';
 
 /**
+ * API key configuration for saving with validation status
+ */
+export interface ApiKeyConfigDto {
+  provider: string;
+  key: string;
+  isValidated?: boolean;
+}
+
+/**
+ * Request to save API keys with optional validation bypass during setup
+ */
+export interface SaveSetupApiKeysRequest {
+  apiKeys: ApiKeyConfigDto[];
+  allowInvalid?: boolean;
+  correlationId?: string;
+}
+
+/**
+ * Response for setup API key save operation
+ */
+export interface SaveSetupApiKeysResponse {
+  success: boolean;
+  warnings?: string[] | null;
+  errorMessage?: string | null;
+  correlationId?: string | null;
+}
+
+/**
  * System setup status response
  */
 export interface SystemSetupStatus {
@@ -188,6 +216,22 @@ export const setupApi = {
       message: string;
       correlationId?: string;
     }>('/api/setup/wizard/complete', request, config);
+    return response.data;
+  },
+
+  /**
+   * Save API keys with optional validation bypass
+   * Allows users to save invalid keys with explicit acknowledgment
+   */
+  async saveApiKeys(request: SaveSetupApiKeysRequest): Promise<SaveSetupApiKeysResponse> {
+    const config: ExtendedAxiosRequestConfig = {
+      _skipCircuitBreaker: true,
+    };
+    const response = await apiClient.post<SaveSetupApiKeysResponse>(
+      '/api/setup/save-api-keys',
+      request,
+      config
+    );
     return response.data;
   },
 
