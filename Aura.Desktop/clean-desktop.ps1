@@ -336,6 +336,20 @@ function Reset-WizardState {
         }
     }
     
+    # Clean database lock files (explicit cleanup for potential lock issues)
+    $dbLockFiles = @(
+        "$env:LOCALAPPDATA\Aura\aura.db-lock",
+        "$env:LOCALAPPDATA\Aura\data\aura.db-lock"
+    )
+    
+    foreach ($lockFile in $dbLockFiles) {
+        if (Test-Path $lockFile) {
+            if (Remove-PathSafely $lockFile "Database lock file") {
+                $cleanupStats.Removed++
+            }
+        }
+    }
+    
     Write-Info "Database state reset complete"
 }
 
