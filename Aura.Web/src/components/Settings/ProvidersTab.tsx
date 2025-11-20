@@ -11,6 +11,7 @@ import {
   Divider,
   Spinner,
   Caption1,
+  Badge,
 } from '@fluentui/react-components';
 import {
   CheckmarkCircle24Filled,
@@ -18,6 +19,7 @@ import {
   Eye24Regular,
   EyeOff24Regular,
   ArrowSort24Regular,
+  Warning24Regular,
 } from '@fluentui/react-icons';
 import { useState } from 'react';
 import type { ApiKeysSettings, AdvancedSettings } from '../../types/settings';
@@ -214,9 +216,29 @@ export function ProvidersTab({
     const isVisible = visibleKeys[key];
     const testResult = testResults[key];
 
+    const validationBadge =
+      testResult && !testResult.testing ? (
+        <Badge
+          appearance="filled"
+          color={testResult.success ? 'success' : 'danger'}
+          icon={testResult.success ? <CheckmarkCircle24Filled /> : <Warning24Regular />}
+        >
+          {testResult.success ? 'Valid' : 'Invalid'}
+        </Badge>
+      ) : value.trim() ? (
+        <Badge appearance="outline" color="informative">
+          Not Validated
+        </Badge>
+      ) : null;
+
     return (
       <Field
-        label={label}
+        label={
+          <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+            <span>{label}</span>
+            {validationBadge}
+          </div>
+        }
         hint={
           docsUrl ? (
             <span>
@@ -248,7 +270,7 @@ export function ProvidersTab({
             onClick={() => handleTestConnection(key, value)}
             disabled={!value.trim() || testResult?.testing}
           >
-            {testResult?.testing ? <Spinner size="tiny" /> : 'Test'}
+            {testResult?.testing ? <Spinner size="tiny" /> : 'Validate'}
           </Button>
         </div>
         {testResult && !testResult.testing && (
@@ -280,6 +302,15 @@ export function ProvidersTab({
               )}
             </div>
           </div>
+        )}
+        {testResult && !testResult.success && !testResult.testing && (
+          <Text
+            size={200}
+            style={{ marginTop: tokens.spacingVerticalXS, color: tokens.colorNeutralForeground3 }}
+          >
+            💡 Tip: You can save this key and fix it later. Invalid keys won&apos;t prevent using
+            other providers.
+          </Text>
         )}
       </Field>
     );

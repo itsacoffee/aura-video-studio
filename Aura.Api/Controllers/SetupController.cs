@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
 using Aura.Core.Data;
+using Aura.Core.Configuration;
 
 namespace Aura.Api.Controllers;
 
@@ -18,18 +19,21 @@ public class SetupController : ControllerBase
     private readonly IWebHostEnvironment _environment;
     private readonly HttpClient _httpClient;
     private readonly AuraDbContext _dbContext;
+    private readonly IFfmpegConfigurationService _ffmpegConfigService;
 
     public SetupController(
         ILogger<SetupController> logger,
         IWebHostEnvironment environment,
         IHttpClientFactory httpClientFactory,
-        AuraDbContext dbContext)
+        AuraDbContext dbContext,
+        IFfmpegConfigurationService ffmpegConfigService)
     {
         _logger = logger;
         _environment = environment;
         _httpClient = httpClientFactory.CreateClient();
         _httpClient.Timeout = TimeSpan.FromMinutes(10); // Long timeout for downloads
         _dbContext = dbContext;
+        _ffmpegConfigService = ffmpegConfigService;
     }
 
     /// <summary>
@@ -844,6 +848,122 @@ public class SetupController : ControllerBase
     }
 
     /// <summary>
+    /// Save API keys with optional validation bypass
+    /// Allows users to save invalid keys with explicit acknowledgment
+    /// </summary>
+    [HttpPost("save-api-keys")]
+    public async Task<IActionResult> SaveApiKeys(
+        [FromBody] SaveSetupApiKeysRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var correlationId = request.CorrelationId ?? HttpContext.TraceIdentifier;
+            _logger.LogInformation("Saving API keys, AllowInvalid: {AllowInvalid}, Count: {Count}, CorrelationId: {CorrelationId}",
+                request.AllowInvalid, request.ApiKeys.Count, correlationId);
+
+            var warnings = new List<string>();
+            var userId = "default";
+
+            var userSetup = await _dbContext.UserSetups
+                .FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken).ConfigureAwait(false);
+
+            if (userSetup == null)
+            {
+                userSetup = new UserSetupEntity
+                {
+                    UserId = userId,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                _dbContext.UserSetups.Add(userSetup);
+            }
+
+            var apiKeyState = new Dictionary<string, object>();
+            if (!string.IsNullOrEmpty(userSetup.WizardState))
+            {
+                try
+                {
+                    var existing = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(userSetup.WizardState);
+                    if (existing != null)
+                    {
+                        apiKeyState = existing;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse existing wizard state");
+                }
+            }
+
+            var apiKeysData = new Dictionary<string, Dictionary<string, object>>();
+            if (apiKeyState.TryGetValue("apiKeys", out var existingKeysObj))
+            {
+                var existingKeysJson = System.Text.Json.JsonSerializer.Serialize(existingKeysObj);
+                apiKeysData = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, object>>>(existingKeysJson) 
+                    ?? new Dictionary<string, Dictionary<string, object>>();
+            }
+
+            foreach (var keyConfig in request.ApiKeys)
+            {
+                var isValid = keyConfig.IsValidated;
+
+                if (!isValid && !request.AllowInvalid)
+                {
+                    _logger.LogWarning("API key for {Provider} is invalid and AllowInvalid is false", keyConfig.Provider);
+                    return BadRequest(new
+                    {
+                        success = false,
+                        errorMessage = $"API key for {keyConfig.Provider} is invalid. Enable 'Allow Invalid' to save anyway.",
+                        provider = keyConfig.Provider,
+                        correlationId = correlationId
+                    });
+                }
+
+                if (!isValid)
+                {
+                    warnings.Add($"{keyConfig.Provider}: Key saved but not validated");
+                    _logger.LogInformation("Saving unvalidated key for {Provider}", keyConfig.Provider);
+                }
+
+                apiKeysData[keyConfig.Provider] = new Dictionary<string, object>
+                {
+                    ["key"] = keyConfig.Key,
+                    ["isValidated"] = isValid,
+                    ["savedAt"] = DateTime.UtcNow.ToString("o")
+                };
+            }
+
+            apiKeyState["apiKeys"] = apiKeysData;
+            userSetup.WizardState = System.Text.Json.JsonSerializer.Serialize(apiKeyState);
+            userSetup.UpdatedAt = DateTime.UtcNow;
+
+            await _dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+            _logger.LogInformation("API keys saved successfully. Warnings: {WarningCount}, CorrelationId: {CorrelationId}",
+                warnings.Count, correlationId);
+
+            return Ok(new
+            {
+                success = true,
+                warnings = warnings.Count > 0 ? warnings : null,
+                correlationId = correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save API keys, CorrelationId: {CorrelationId}", 
+                request.CorrelationId ?? HttpContext.TraceIdentifier);
+            return StatusCode(500, new
+            {
+                success = false,
+                errorMessage = "Failed to save API keys",
+                detail = ex.Message,
+                correlationId = request.CorrelationId ?? HttpContext.TraceIdentifier
+            });
+        }
+    }
+
+    /// <summary>
     /// Get configuration status for the application
     /// </summary>
     [HttpGet("configuration-status")]
@@ -892,5 +1012,195 @@ public class SetupController : ControllerBase
                 Extensions = { ["correlationId"] = HttpContext.TraceIdentifier }
             });
         }
+    }
+
+    /// <summary>
+    /// Check if FFmpeg exists at the specified path and return version information
+    /// </summary>
+    [HttpPost("check-ffmpeg")]
+    public async Task<IActionResult> CheckFFmpegPath(
+        [FromBody] FFmpegPathRequest request,
+        CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        try
+        {
+            _logger.LogInformation("[{CorrelationId}] Checking FFmpeg path: {Path}", 
+                correlationId, request.Path);
+
+            if (string.IsNullOrWhiteSpace(request.Path))
+            {
+                return Ok(new { 
+                    found = false, 
+                    error = "Path cannot be empty",
+                    correlationId 
+                });
+            }
+
+            var path = request.Path.Trim();
+            
+            // Check if file exists
+            if (!System.IO.File.Exists(path))
+            {
+                _logger.LogInformation("[{CorrelationId}] FFmpeg not found at path: {Path}", 
+                    correlationId, path);
+                return Ok(new { 
+                    found = false, 
+                    error = $"File not found at: {path}",
+                    correlationId 
+                });
+            }
+
+            // Execute ffmpeg -version to verify it's valid
+            var processStartInfo = new ProcessStartInfo
+            {
+                FileName = path,
+                Arguments = "-version",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using var process = Process.Start(processStartInfo);
+            if (process == null)
+            {
+                return Ok(new { 
+                    found = false, 
+                    error = "Failed to start FFmpeg process",
+                    correlationId 
+                });
+            }
+
+            var output = await process.StandardOutput.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+            await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+
+            if (process.ExitCode != 0)
+            {
+                var errorOutput = await process.StandardError.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+                _logger.LogWarning("[{CorrelationId}] FFmpeg execution failed with exit code {ExitCode}: {Error}", 
+                    correlationId, process.ExitCode, errorOutput);
+                return Ok(new { 
+                    found = false, 
+                    error = $"FFmpeg validation failed with exit code {process.ExitCode}",
+                    correlationId 
+                });
+            }
+
+            var version = ParseFFmpegVersionString(output);
+            
+            _logger.LogInformation("[{CorrelationId}] FFmpeg validated successfully: {Path} (version: {Version})", 
+                correlationId, path, version);
+
+            return Ok(new { 
+                found = true, 
+                path = path, 
+                version = version ?? "unknown",
+                correlationId 
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Failed to check FFmpeg path: {Path}", 
+                correlationId, request.Path);
+            return Ok(new { 
+                found = false, 
+                error = $"Error checking FFmpeg: {ex.Message}",
+                correlationId 
+            });
+        }
+    }
+
+    /// <summary>
+    /// Save FFmpeg path to persistent configuration
+    /// </summary>
+    [HttpPost("save-ffmpeg-path")]
+    public async Task<IActionResult> SaveFFmpegPath(
+        [FromBody] SaveFFmpegPathRequest request,
+        CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        try
+        {
+            _logger.LogInformation("[{CorrelationId}] Saving FFmpeg path to configuration: {Path}", 
+                correlationId, request.Path);
+
+            if (string.IsNullOrWhiteSpace(request.Path))
+            {
+                return BadRequest(new { 
+                    success = false, 
+                    error = "Path cannot be empty",
+                    correlationId 
+                });
+            }
+
+            // Validate that the path exists and is executable
+            if (!System.IO.File.Exists(request.Path))
+            {
+                return BadRequest(new { 
+                    success = false, 
+                    error = $"File not found at: {request.Path}",
+                    correlationId 
+                });
+            }
+
+            // Get current configuration and update path
+            var config = await _ffmpegConfigService.GetEffectiveConfigurationAsync(cancellationToken).ConfigureAwait(false);
+            config.Path = request.Path;
+            config.Mode = FFmpegMode.Custom;
+            config.Source = "Configured";
+            
+            // Update configuration
+            await _ffmpegConfigService.UpdateConfigurationAsync(config, cancellationToken).ConfigureAwait(false);
+            
+            _logger.LogInformation("[{CorrelationId}] FFmpeg path saved successfully: {Path}", 
+                correlationId, request.Path);
+
+            return Ok(new { 
+                success = true, 
+                path = request.Path,
+                correlationId 
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Failed to save FFmpeg path", correlationId);
+            return StatusCode(500, new { 
+                success = false, 
+                error = $"Failed to save FFmpeg path: {ex.Message}",
+                correlationId 
+            });
+        }
+    }
+
+    /// <summary>
+    /// Parse FFmpeg version from -version output
+    /// </summary>
+    private static string? ParseFFmpegVersionString(string output)
+    {
+        if (string.IsNullOrEmpty(output))
+        {
+            return null;
+        }
+
+        // Parse version from first line (e.g., "ffmpeg version 6.0 Copyright...")
+        var firstLine = output.Split('\n', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
+        var versionMatch = System.Text.RegularExpressions.Regex.Match(firstLine, @"ffmpeg version ([\d.]+[\w-]*)");
+        return versionMatch.Success ? versionMatch.Groups[1].Value : null;
+    }
+
+    /// <summary>
+    /// Request models for setup endpoints
+    /// </summary>
+    public class FFmpegPathRequest
+    {
+        public required string Path { get; set; }
+    }
+
+    public class SaveFFmpegPathRequest
+    {
+        public required string Path { get; set; }
     }
 }

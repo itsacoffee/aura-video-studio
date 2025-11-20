@@ -10,6 +10,7 @@ import { loggingService as logger } from './loggingService';
 
 const FIRST_RUN_KEY = 'hasCompletedFirstRun';
 const LEGACY_KEY = 'hasSeenOnboarding'; // For backward compatibility
+const CACHE_DURATION_MS = 5000; // 5 seconds
 
 export interface FirstRunStatus {
   hasCompletedFirstRun: boolean;
@@ -17,27 +18,43 @@ export interface FirstRunStatus {
   version?: string;
 }
 
+// Cache for first-run status to prevent excessive API calls
+let firstRunCache: { status: boolean; timestamp: number } | null = null;
+
 /**
  * Check if the user has completed the first-run wizard
  *
  * Checks both localStorage (fast) and backend (persistent across devices/reinstalls)
  * Returns true if EITHER shows completion (optimistic approach)
+ * Uses caching to prevent excessive API calls
  */
 export async function hasCompletedFirstRun(): Promise<boolean> {
+  // Check cache first
+  const now = Date.now();
+  if (firstRunCache && now - firstRunCache.timestamp < CACHE_DURATION_MS) {
+    return firstRunCache.status;
+  }
+
   // Check localStorage first (fast path)
   const localStatus = getLocalFirstRunStatus();
   if (localStatus) {
+    // Update cache
+    firstRunCache = { status: true, timestamp: now };
     return true;
   }
 
-  // Check backend as fallback
+  // Check backend as fallback with retry logic
   try {
-    const backendStatus = await getBackendFirstRunStatus();
+    const backendStatus = await getBackendFirstRunStatusWithRetry();
     if (backendStatus.hasCompletedFirstRun) {
       // Sync to localStorage for future fast checks
       setLocalFirstRunStatus(true);
+      // Update cache
+      firstRunCache = { status: true, timestamp: now };
       return true;
     }
+    // Update cache with false status
+    firstRunCache = { status: false, timestamp: now };
   } catch (error) {
     logger.warn(
       'Failed to check backend first-run status, using localStorage only',
@@ -45,6 +62,8 @@ export async function hasCompletedFirstRun(): Promise<boolean> {
       'checkFirstRun',
       { error: String(error) }
     );
+    // Cache the negative result for a short time
+    firstRunCache = { status: false, timestamp: now };
   }
 
   return false;
@@ -102,6 +121,40 @@ export async function getBackendFirstRunStatus(): Promise<FirstRunStatus> {
 }
 
 /**
+ * Get first-run status from backend with retry logic
+ * Implements exponential backoff with max 3 retries
+ */
+async function getBackendFirstRunStatusWithRetry(
+  maxRetries: number = 3,
+  baseDelay: number = 1000
+): Promise<FirstRunStatus> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await getBackendFirstRunStatus();
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+
+      // Don't retry on last attempt
+      if (attempt < maxRetries - 1) {
+        // Exponential backoff: 1s, 2s, 4s
+        const delay = baseDelay * Math.pow(2, attempt);
+        logger.info(
+          `Retrying first-run status check (attempt ${attempt + 1}/${maxRetries}) after ${delay}ms`,
+          'firstRunService',
+          'retry'
+        );
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+  }
+
+  // All retries failed
+  throw lastError || new Error('Failed to get first-run status after retries');
+}
+
+/**
  * Set first-run completion status in backend (using new wizard endpoint)
  */
 export async function setBackendFirstRunStatus(completed: boolean): Promise<void> {
@@ -136,11 +189,22 @@ export async function setBackendFirstRunStatus(completed: boolean): Promise<void
 }
 
 /**
+ * Clear the first-run status cache
+ * Should be called after wizard completion or reset
+ */
+export function clearFirstRunCache(): void {
+  firstRunCache = null;
+}
+
+/**
  * Mark first-run as completed in both localStorage and backend
  */
 export async function markFirstRunCompleted(): Promise<void> {
   // Set in localStorage immediately for fast feedback
   setLocalFirstRunStatus(true);
+
+  // Clear cache to force fresh check next time
+  clearFirstRunCache();
 
   // Persist to backend (fire and forget, don't block on errors)
   try {
@@ -161,6 +225,9 @@ export async function markFirstRunCompleted(): Promise<void> {
  * This function is now exported for use in Settings to allow users to re-run the wizard
  */
 export async function resetFirstRunStatus(): Promise<void> {
+  // Clear cache
+  clearFirstRunCache();
+
   // Clear localStorage
   setLocalFirstRunStatus(false);
   localStorage.removeItem(FIRST_RUN_KEY);

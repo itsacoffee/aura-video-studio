@@ -223,6 +223,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
   // Provider validation state
   const [hasAtLeastOneProvider, setHasAtLeastOneProvider] = useState(false);
+  const [allowInvalidKeys, setAllowInvalidKeys] = useState(false);
 
   // Completion state
   const [isCompletingSetup, setIsCompletingSetup] = useState(false);
@@ -452,14 +453,35 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
     // Step 3: Provider Configuration -> Step 4: Workspace Setup
     if (state.step === 3) {
-      // Must have at least one provider configured
-      if (!hasAtLeastOneProvider) {
+      // Check if there are any configured (non-empty) API keys
+      const configuredKeys = Object.entries(state.apiKeys).filter(
+        ([_, key]) => key && key.trim().length > 0
+      );
+      const hasInvalidKeys = configuredKeys.some(
+        ([provider, _]) => state.apiKeyValidationStatus[provider] === 'invalid'
+      );
+
+      // Must have at least one provider configured OR allow invalid keys checkbox must be checked
+      const canProceed =
+        hasAtLeastOneProvider || (configuredKeys.length > 0 && allowInvalidKeys && hasInvalidKeys);
+
+      if (!canProceed && !hasAtLeastOneProvider) {
         showFailureToast({
           title: 'Provider Required',
           message: 'Please configure at least one LLM provider or choose offline mode to continue.',
         });
         return;
       }
+
+      if (!canProceed && hasInvalidKeys && !allowInvalidKeys) {
+        showFailureToast({
+          title: 'Invalid API Keys',
+          message:
+            'Some API keys are invalid. Please validate them or check "Allow me to continue with invalid API keys" to proceed.',
+        });
+        return;
+      }
+
       dispatch({ type: 'SET_STEP', payload: 4 });
       return;
     }
@@ -1236,6 +1258,8 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
           });
         }}
         onLocalProviderReady={handleLocalProviderReady}
+        allowInvalidKeys={allowInvalidKeys}
+        onAllowInvalidKeysChange={setAllowInvalidKeys}
       />
 
       {!hasAtLeastOneProvider && (

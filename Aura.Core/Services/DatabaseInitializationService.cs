@@ -182,21 +182,37 @@ public class DatabaseInitializationService
     }
 
     /// <summary>
-    /// Configure SQLite WAL mode for better concurrency
+    /// Configure SQLite performance settings via PRAGMA statements
+    /// These settings cannot be set in the connection string (not supported by Microsoft.Data.Sqlite)
     /// </summary>
     private async Task<bool> ConfigureWalModeAsync(AuraDbContext context, CancellationToken ct)
     {
         try
         {
+            // Configure journal mode (WAL provides better concurrency)
             await context.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;", ct).ConfigureAwait(false);
+            
+            // Configure synchronous mode (NORMAL is faster with good reliability)
             await context.Database.ExecuteSqlRawAsync("PRAGMA synchronous=NORMAL;", ct).ConfigureAwait(false);
+            
+            // Configure page size (4096 is optimal for modern systems)
+            await context.Database.ExecuteSqlRawAsync("PRAGMA page_size=4096;", ct).ConfigureAwait(false);
+            
+            // Configure cache size (negative value means KB, -64000 = 64MB cache)
+            await context.Database.ExecuteSqlRawAsync("PRAGMA cache_size=-64000;", ct).ConfigureAwait(false);
+            
+            // Configure temp store (MEMORY stores temp tables in memory for speed)
+            await context.Database.ExecuteSqlRawAsync("PRAGMA temp_store=MEMORY;", ct).ConfigureAwait(false);
+            
+            // Configure locking mode (NORMAL allows multiple connections)
+            await context.Database.ExecuteSqlRawAsync("PRAGMA locking_mode=NORMAL;", ct).ConfigureAwait(false);
 
-            _logger.LogInformation("SQLite WAL mode configured successfully");
+            _logger.LogInformation("SQLite performance settings configured successfully (WAL, cache, etc.)");
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to configure SQLite WAL mode, using default journal mode");
+            _logger.LogWarning(ex, "Failed to configure SQLite performance settings, using defaults");
             return false;
         }
     }
