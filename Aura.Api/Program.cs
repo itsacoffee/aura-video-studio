@@ -234,6 +234,7 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddSingleton<Aura.Api.HealthChecks.StartupHealthCheck>();
 builder.Services.AddHealthChecks()
     .AddCheck<Aura.Api.HealthChecks.StartupHealthCheck>("Startup", tags: new[] { "ready" })
+    .AddCheck<Aura.Api.HealthChecks.DatabaseConfigurationHealthCheck>("DatabaseConfiguration", tags: new[] { "ready", "db", "config" })
     .AddCheck<Aura.Api.HealthChecks.DatabaseHealthCheck>("Database", tags: new[] { "ready", "db" })
     .AddCheck<Aura.Api.HealthChecks.DependencyHealthCheck>("Dependencies", tags: new[] { "ready", "dependencies" })
     .AddCheck<Aura.Api.HealthChecks.DiskSpaceHealthCheck>("DiskSpace", tags: new[] { "ready", "infrastructure" })
@@ -285,17 +286,30 @@ else
 
     builder.Services.Configure<DatabasePathOptions>(options => options.SqlitePath = sqlitePath);
 
-    var walEnabled = dbPerfOptions.SqliteEnableWAL;
-    var cacheSize = -dbPerfOptions.SqliteCacheSizeKB;
-    var pageSize = dbPerfOptions.SqlitePageSize;
+    // Build connection string with only supported parameters
+    // Note: Parameters like Journal Mode, Cache Size, Page Size, etc. are NOT supported
+    // by Microsoft.Data.Sqlite and must be configured via PRAGMA statements after connection
+    connectionString = $"Data Source={sqlitePath};Mode=ReadWriteCreate;Cache=Shared;Foreign Keys=True";
 
-    // Only use connection string keywords supported by Microsoft.Data.Sqlite
-    // Other SQLite settings (WAL, Synchronous, Page Size, Cache Size, etc.) are
-    // configured via PRAGMA statements in DatabaseInitializationService.cs
-    connectionString = $"Data Source={sqlitePath};Mode=ReadWriteCreate;Cache=Shared;Foreign Keys=True;";
+    Log.Information("Using SQLite database at {Path} (WAL will be configured via PRAGMA)", sqlitePath);
+}
 
-    Log.Information("Using SQLite database at {Path} (WAL: {WAL}, Cache: {CacheKB}KB, PageSize: {PageSize})",
-        sqlitePath, walEnabled, dbPerfOptions.SqliteCacheSizeKB, pageSize);
+// Validate connection string before using it
+// This catches configuration errors early with clear error messages
+using (var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(builder =>
+{
+    builder.AddSerilog(Log.Logger);
+}))
+{
+    var validationLogger = loggerFactory.CreateLogger<Aura.Core.Services.DatabaseConfigurationValidator>();
+    var validator = new Aura.Core.Services.DatabaseConfigurationValidator(validationLogger);
+
+    if (!validator.ValidateConnectionString(connectionString, out var validationError))
+    {
+        var errorMessage = $"Database configuration error: {validationError}";
+        Log.Fatal(errorMessage);
+        throw new InvalidOperationException(errorMessage);
+    }
 }
 
 // Helper method to configure DbContext options
@@ -365,6 +379,7 @@ builder.Services.AddScoped<Aura.Core.Data.ProjectStateRepository>();
 builder.Services.AddScoped<Aura.Core.Data.ConfigurationRepository>();
 builder.Services.AddSingleton<Aura.Core.Services.ConfigurationManager>();
 builder.Services.AddSingleton<Aura.Core.Services.DatabaseInitializationService>();
+builder.Services.AddSingleton<Aura.Core.Services.DatabaseConfigurationValidator>();
 
 // Register Unit of Work pattern for transactional data access
 builder.Services.AddScoped<Aura.Core.Data.IUnitOfWork, Aura.Core.Data.UnitOfWork>();
