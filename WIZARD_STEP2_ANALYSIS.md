@@ -230,8 +230,58 @@ useEffect(() => {
 
 ## Priority Actions
 
+### ✅ COMPLETED IN THIS PR
+
 1. **HIGH**: Fix autoCheck or refreshSignal to trigger status check on Step 2 entry
+   - ✅ Added useEffect to trigger FFmpeg check when entering Step 2
+   - ✅ Changed autoCheck from false to true
+   - ✅ Status now automatically checked on step entry
+
 2. **HIGH**: Improve error messages to distinguish backend vs FFmpeg issues
-3. **MEDIUM**: Add backend health check before FFmpeg operations
-4. **MEDIUM**: Update documentation to match actual behavior
+   - ✅ Enhanced all network error messages with detailed instructions
+   - ✅ Added "dotnet run --project Aura.Api" command in errors
+   - ✅ Added numbered steps for backend startup
+   - ✅ Added whiteSpace: 'pre-wrap' for proper line break display
+   - ✅ Updated both FFmpegDependencyCard and FirstRunWizard error handlers
+
+3. **MEDIUM**: Update documentation to match actual behavior
+   - ✅ Updated WIZARD_SETUP_GUIDE.md with backend requirements
+   - ✅ Added comprehensive troubleshooting section for Step 2
+   - ✅ Documented automatic status check feature
+   - ✅ Added DesktopSetupWizard deprecation notice
+
+### ⏳ FUTURE ENHANCEMENTS (Not Required for This PR)
+
+4. **MEDIUM**: Add backend health check before FFmpeg operations
+   - Optional optimization - current error messages are sufficient
+   - Could pre-check backend before attempting FFmpeg operations
+   - Would provide slightly faster feedback to users
+
 5. **LOW**: Consolidate to new `/api/ffmpeg/*` endpoints only
+   - Current: Mixed usage of `/api/system/ffmpeg/status` (legacy) and `/api/ffmpeg/*` (new)
+   - Future: Deprecate `/api/system/ffmpeg/status` endpoint
+   - Not critical - both endpoints work correctly
+
+### Testing Performed
+
+✅ Manual verification of changes:
+- [x] Reviewed FirstRunWizard.tsx Step 2 auto-check logic
+- [x] Reviewed error message improvements (3 locations)
+- [x] Reviewed documentation updates
+- [x] Verified whiteSpace: 'pre-wrap' added for proper rendering
+- [x] Verified DesktopSetupWizard marked as legacy
+
+### Remaining Test Requirements (For QA/User Testing)
+
+Manual tests needed:
+- [ ] Start wizard with backend NOT running → Verify clear error with instructions
+- [ ] Start wizard with backend running, no FFmpeg → Verify detection offers install
+- [ ] Start wizard with backend running, FFmpeg present → Verify automatic detection
+- [ ] Click "Re-scan" with backend NOT running → Verify error has startup instructions
+- [ ] Enter manual path and validate with backend down → Verify error clarity
+- [ ] Verify multi-line error messages display properly (newlines work)
+
+Integration tests recommended:
+- [ ] Test FFmpeg status check on Step 2 entry
+- [ ] Test error message format and content
+- [ ] Test "Re-scan" and "Install" button behavior
