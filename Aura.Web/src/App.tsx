@@ -24,6 +24,7 @@ import {
   hasCompletedFirstRun,
   markFirstRunCompleted,
   migrateLegacyFirstRunStatus,
+  clearFirstRunCache,
 } from './services/firstRunService';
 import { healthMonitorService } from './services/healthMonitorService';
 import { keyboardShortcutManager } from './services/keyboardShortcutManager';
@@ -542,6 +543,8 @@ function App() {
                   console.info('[App] FirstRunWizard onComplete called');
                   // Mark first run as completed
                   await markFirstRunCompleted();
+                  // Clear cache to ensure fresh status check
+                  clearFirstRunCache();
                   // Update state to hide onboarding and show main app
                   setShouldShowOnboarding(false);
                   console.info('[App] Transitioning to main app');
