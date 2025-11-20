@@ -490,4 +490,74 @@ public class SettingsServiceTests : IDisposable
         Assert.True(entity.UpdatedAt <= DateTime.UtcNow);
         Assert.True(entity.CreatedAt <= entity.UpdatedAt);
     }
+
+    [Fact]
+    public async Task ConfigurationPersistence_LoadsAfterRestart_WhenDatabaseExists()
+    {
+        // Arrange - Save settings to database
+        var originalSettings = await _settingsService.GetSettingsAsync();
+        originalSettings.General.Theme = ThemeMode.Dark;
+        originalSettings.General.AutosaveIntervalSeconds = 300;
+        originalSettings.VideoDefaults.DefaultResolution = "1920x1080";
+        
+        await _settingsService.UpdateSettingsAsync(originalSettings);
+
+        // Act - Create a new service instance to simulate app restart
+        var newSettingsService = new SettingsService(
+            _mockLogger.Object,
+            _mockProviderSettings.Object,
+            _mockKeyStore.Object,
+            _mockSecureStorage.Object,
+            _mockHardwareDetector.Object,
+            _dbContext
+        );
+        
+        var loadedSettings = await newSettingsService.GetSettingsAsync();
+
+        // Assert - Settings should be loaded from database
+        Assert.NotNull(loadedSettings);
+        Assert.Equal(ThemeMode.Dark, loadedSettings.General.Theme);
+        Assert.Equal(300, loadedSettings.General.AutosaveIntervalSeconds);
+        Assert.Equal("1920x1080", loadedSettings.VideoDefaults.DefaultResolution);
+    }
+
+    [Fact]
+    public async Task ConfigurationPersistence_CreatesDefaults_WhenDatabaseEmpty()
+    {
+        // Arrange - Ensure database is empty (already is in new test instance)
+        
+        // Act - Load settings (should create defaults)
+        var settings = await _settingsService.GetSettingsAsync();
+
+        // Assert - Should return default settings
+        Assert.NotNull(settings);
+        Assert.Equal("1.0.0", settings.Version);
+        Assert.NotNull(settings.General);
+        Assert.NotNull(settings.FileLocations);
+        Assert.NotNull(settings.VideoDefaults);
+        
+        // Verify settings were persisted to database
+        var entity = await _dbContext.Settings.FirstOrDefaultAsync();
+        Assert.NotNull(entity);
+        Assert.Equal("user-settings", entity.Id);
+    }
+
+    [Fact]
+    public async Task ConfigurationPersistence_SurvivesMultipleReads()
+    {
+        // Arrange
+        var settings = await _settingsService.GetSettingsAsync();
+        settings.General.Theme = ThemeMode.Dark;
+        await _settingsService.UpdateSettingsAsync(settings);
+
+        // Act - Read settings multiple times
+        var read1 = await _settingsService.GetSettingsAsync();
+        var read2 = await _settingsService.GetSettingsAsync();
+        var read3 = await _settingsService.GetSettingsAsync();
+
+        // Assert - All reads should return consistent data
+        Assert.Equal(ThemeMode.Dark, read1.General.Theme);
+        Assert.Equal(ThemeMode.Dark, read2.General.Theme);
+        Assert.Equal(ThemeMode.Dark, read3.General.Theme);
+    }
 }

@@ -1816,6 +1816,32 @@ try
         var configManager = app.Services.GetRequiredService<Aura.Core.Services.ConfigurationManager>();
         await configManager.InitializeAsync().ConfigureAwait(false);
         Log.Information("Configuration system initialized successfully");
+
+        // Validate configuration persistence after database initialization
+        Log.Information("Validating configuration persistence...");
+        using var scope = app.Services.CreateScope();
+        var settingsService = scope.ServiceProvider.GetRequiredService<Aura.Core.Services.Settings.ISettingsService>();
+
+        try
+        {
+            // Verify settings can be loaded
+            var settings = await settingsService.GetSettingsAsync().ConfigureAwait(false);
+            if (settings == null)
+            {
+                Log.Warning("No user settings found, initializing defaults");
+                await settingsService.ResetToDefaultsAsync().ConfigureAwait(false);
+                Log.Information("Default user settings created successfully");
+            }
+            else
+            {
+                Log.Information("User settings loaded and validated successfully");
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to validate configuration persistence");
+            Log.Warning("Configuration validation failed, but application will continue");
+        }
     }
     else
     {

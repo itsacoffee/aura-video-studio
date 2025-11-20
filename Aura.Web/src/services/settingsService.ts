@@ -397,6 +397,42 @@ export class SettingsService {
   }
 
   /**
+   * Verify settings are synchronized with backend on app startup
+   * Compares localStorage cache with backend and updates if needed
+   */
+  async verifySyncWithBackend(): Promise<boolean> {
+    try {
+      const backendSettings = await get<UserSettings>(apiUrl('/api/settings/user'));
+      const localSettings = this.getFromLocalStorage();
+
+      if (!localSettings || JSON.stringify(backendSettings) !== JSON.stringify(localSettings)) {
+        this.saveToLocalStorage(backendSettings);
+        this.saveToCache(backendSettings);
+        logger.info(
+          'Settings synchronized with backend',
+          'settingsService',
+          'verifySyncWithBackend'
+        );
+        return true;
+      }
+      logger.info(
+        'Settings already in sync with backend',
+        'settingsService',
+        'verifySyncWithBackend'
+      );
+      return true;
+    } catch (error) {
+      logger.error(
+        'Settings sync verification failed',
+        error instanceof Error ? error : new Error(String(error)),
+        'settingsService',
+        'verifySyncWithBackend'
+      );
+      return false;
+    }
+  }
+
+  /**
    * Clear cache (useful for testing)
    */
   clearCache(): void {
