@@ -2,8 +2,10 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Core.Configuration;
 
 namespace Aura.Api.HealthChecks;
 
@@ -14,11 +16,15 @@ namespace Aura.Api.HealthChecks;
 public class StartupHealthCheck : IHealthCheck
 {
     private readonly ILogger<StartupHealthCheck> _logger;
+    private readonly FFmpegConfigurationStore _ffmpegConfigStore;
     private bool _isReady;
 
-    public StartupHealthCheck(ILogger<StartupHealthCheck> logger)
+    public StartupHealthCheck(
+        ILogger<StartupHealthCheck> logger,
+        FFmpegConfigurationStore ffmpegConfigStore)
     {
         _logger = logger;
+        _ffmpegConfigStore = ffmpegConfigStore ?? throw new ArgumentNullException(nameof(ffmpegConfigStore));
         _isReady = false;
     }
 
@@ -32,37 +38,62 @@ public class StartupHealthCheck : IHealthCheck
         _logger.LogInformation("Application startup complete - ready to accept traffic");
     }
 
-    public Task<HealthCheckResult> CheckHealthAsync(
+    public async Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,
         CancellationToken cancellationToken = default)
     {
         try
         {
-            if (!_isReady)
+            var data = new Dictionary<string, object>
             {
-                return Task.FromResult(HealthCheckResult.Unhealthy(
-                    "Application is still starting up",
-                    data: new Dictionary<string, object>
-                    {
-                        ["ready"] = false,
-                        ["timestamp"] = DateTime.UtcNow
-                    }));
+                ["ready"] = _isReady,
+                ["timestamp"] = DateTime.UtcNow
+            };
+
+            // Check FFmpeg configuration status
+            try
+            {
+                var ffmpegConfig = await _ffmpegConfigStore.LoadAsync(cancellationToken).ConfigureAwait(false);
+                var ffmpegHealthy = ffmpegConfig != null && 
+                                    !string.IsNullOrEmpty(ffmpegConfig.Path) && 
+                                    File.Exists(ffmpegConfig.Path);
+                
+                data["ffmpeg_configured"] = ffmpegHealthy;
+                
+                if (ffmpegHealthy)
+                {
+                    data["ffmpeg_path"] = ffmpegConfig.Path!;
+                    data["ffmpeg_source"] = ffmpegConfig.Source ?? "Unknown";
+                }
+                else
+                {
+                    data["ffmpeg_warning"] = "FFmpeg not configured or not found";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to check FFmpeg configuration during health check");
+                data["ffmpeg_configured"] = false;
+                data["ffmpeg_error"] = ex.Message;
             }
 
-            return Task.FromResult(HealthCheckResult.Healthy(
+            if (!_isReady)
+            {
+                return HealthCheckResult.Unhealthy(
+                    "Application is still starting up",
+                    data: data);
+            }
+
+            return HealthCheckResult.Healthy(
                 "Application is ready",
-                data: new Dictionary<string, object>
-                {
-                    ["ready"] = true,
-                    ["timestamp"] = DateTime.UtcNow
-                }));
+                data: data);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error checking startup status");
-            return Task.FromResult(HealthCheckResult.Unhealthy(
+            return HealthCheckResult.Unhealthy(
                 "Error checking startup status",
-                exception: ex));
+                exception: ex);
         }
     }
 }
