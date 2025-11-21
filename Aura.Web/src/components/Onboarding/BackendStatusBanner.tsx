@@ -7,10 +7,13 @@ import {
   MessageBarBody,
   MessageBarActions,
   Link,
+  Spinner,
 } from '@fluentui/react-components';
 import { ArrowClockwise24Regular, Dismiss24Regular } from '@fluentui/react-icons';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { resetCircuitBreaker } from '../../services/api/apiClient';
+import { backendHealthService } from '../../services/backendHealthService';
+import { loggingService } from '../../services/loggingService';
 
 const useStyles = makeStyles({
   banner: {
@@ -46,66 +49,46 @@ export function BackendStatusBanner({ onDismiss, showRetry = true }: BackendStat
   const [dismissed, setDismissed] = useState(false);
   const [initialCheckComplete, setInitialCheckComplete] = useState(false);
 
-  const checkBackend = useCallback(async () => {
+  const retryCountRef = useRef(0);
+  const maxAutoRetries = 15; // Auto-retry for up to 15 seconds (backend startup time)
+
+  const checkBackend = useCallback(async (isAutoRetry = false) => {
     setIsChecking(true);
     try {
       resetCircuitBreaker();
-      
-      // Use simple health check endpoint that doesn't require database or dependencies
-      // This ensures we can detect if backend is running even during first-run setup
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5005'}/healthz/simple`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
+
+      // Use backend health service with retry logic
+      // For initial check during startup, use aggressive retries
+      const healthStatus = await backendHealthService.checkHealth({
+        timeout: 3000,
+        maxRetries: isAutoRetry ? 1 : 3,
+        retryDelay: 500,
+        exponentialBackoff: false,
       });
-      
-      if (!response.ok) {
-        throw new Error(`Backend returned status ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      // Simple endpoint just returns { status: "ok" } if backend is running
-      if (data.status === 'ok') {
+
+      if (healthStatus.healthy) {
         setStatus({
           reachable: true,
           online: true,
           error: null,
         });
+        retryCountRef.current = 0;
       } else {
         setStatus({
-          reachable: true,
+          reachable: healthStatus.reachable,
           online: false,
-          error: 'http-error',
-          message: 'Backend returned unexpected response',
+          error: healthStatus.reachable ? 'http-error' : 'unreachable',
+          message: healthStatus.error || 'Backend not responding',
         });
       }
     } catch (error: unknown) {
-      // Determine if this is a network/connection error or HTTP error
       const errorObj = error instanceof Error ? error : new Error(String(error));
-      const errorMessage = errorObj.message.toLowerCase();
-
-      // Network-level errors (no HTTP response at all)
-      if (
-        errorMessage.includes('network') ||
-        errorMessage.includes('econnrefused') ||
-        errorMessage.includes('timeout') ||
-        errorMessage.includes('failed to fetch')
-      ) {
-        setStatus({
-          reachable: false,
-          online: false,
-          error: 'unreachable',
-          message: 'Cannot connect to backend server',
-        });
-      } else {
-        // HTTP-level errors (got a response, but not successful)
-        setStatus({
-          reachable: true,
-          online: false,
-          error: 'http-error',
-          message: 'Backend error - see logs for details',
-        });
-      }
+      setStatus({
+        reachable: false,
+        online: false,
+        error: 'unreachable',
+        message: errorObj.message,
+      });
     } finally {
       setIsChecking(false);
       setInitialCheckComplete(true);
@@ -113,11 +96,38 @@ export function BackendStatusBanner({ onDismiss, showRetry = true }: BackendStat
   }, []);
 
   useEffect(() => {
-    void checkBackend();
-  }, [checkBackend]);
+    // Initial check
+    void checkBackend(false);
+
+    // Auto-retry mechanism for backend startup
+    // Backend might take a few seconds to start, especially on first launch
+    const retryInterval = setInterval(() => {
+      if (status.error === 'unreachable' && retryCountRef.current < maxAutoRetries) {
+        retryCountRef.current++;
+        // Log retry attempt for debugging
+        loggingService.info(
+          'BackendStatusBanner',
+          'Auto-retrying backend health check',
+          undefined,
+          {
+            attempt: retryCountRef.current,
+            maxAttempts: maxAutoRetries,
+          }
+        );
+        void checkBackend(true);
+      } else if (status.error === null || retryCountRef.current >= maxAutoRetries) {
+        clearInterval(retryInterval);
+      }
+    }, 1000);
+
+    return () => {
+      clearInterval(retryInterval);
+    };
+  }, [checkBackend, status.error]);
 
   const handleRetry = useCallback(() => {
-    void checkBackend();
+    retryCountRef.current = 0; // Reset retry count on manual retry
+    void checkBackend(false);
   }, [checkBackend]);
 
   const handleDismiss = useCallback(() => {
@@ -125,12 +135,63 @@ export function BackendStatusBanner({ onDismiss, showRetry = true }: BackendStat
     onDismiss?.();
   }, [onDismiss]);
 
+  // Show loading state while backend is starting up
+  if (isChecking && !initialCheckComplete) {
+    return (
+      <MessageBar intent="info" className={styles.banner}>
+        <MessageBarBody>
+          <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+            <Spinner size="tiny" />
+            <div>
+              <Text weight="semibold" block>
+                Starting Backend Server...
+              </Text>
+              <Text className={styles.helpText}>
+                The Aura backend server is starting. This may take a few seconds on first launch.
+              </Text>
+            </div>
+          </div>
+        </MessageBarBody>
+      </MessageBar>
+    );
+  }
+
+  // Show auto-retry message if backend is unreachable but we're still retrying
+  if (
+    status.error === 'unreachable' &&
+    retryCountRef.current > 0 &&
+    retryCountRef.current < maxAutoRetries
+  ) {
+    return (
+      <MessageBar intent="warning" className={styles.banner}>
+        <MessageBarBody>
+          <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+            <Spinner size="tiny" />
+            <div>
+              <Text weight="semibold" block>
+                Waiting for Backend Server...
+              </Text>
+              <Text className={styles.helpText}>
+                The backend server is starting up. Attempt {retryCountRef.current} of{' '}
+                {maxAutoRetries}.
+              </Text>
+              <Text className={styles.helpText}>
+                If you&apos;re running Aura in Electron, the backend should auto-start
+                automatically.
+              </Text>
+            </div>
+          </div>
+        </MessageBarBody>
+      </MessageBar>
+    );
+  }
+
   // Don't show banner if everything is OK, dismissed, or not yet checked
   if (status.error === null || dismissed || !initialCheckComplete) {
     return null;
   }
 
-  // Show unreachable error (network-level)
+  // Show unreachable error (network-level) - only after retries exhausted
   if (status.error === 'unreachable') {
     return (
       <MessageBar intent="error" className={styles.banner}>
@@ -139,11 +200,16 @@ export function BackendStatusBanner({ onDismiss, showRetry = true }: BackendStat
             Backend Server Not Reachable
           </Text>
           <Text className={styles.helpText}>
-            The Aura backend server is not reachable. Please start the backend server before
-            continuing with setup.
+            The Aura backend server could not be reached after multiple attempts.
           </Text>
           <Text className={styles.helpText}>
-            <strong>To start the backend:</strong>
+            <strong>If you&apos;re running via Electron (Desktop App):</strong>
+          </Text>
+          <Text className={styles.helpText}>• The backend should auto-start automatically</Text>
+          <Text className={styles.helpText}>• Check the application logs for errors</Text>
+          <Text className={styles.helpText}>• Try restarting the application</Text>
+          <Text className={styles.helpText}>
+            <strong>If you&apos;re running via browser (Development):</strong>
           </Text>
           <Text className={styles.helpText}>
             • Navigate to the project root directory in your terminal
