@@ -395,14 +395,20 @@ public class SetupController : ControllerBase
 
     /// <summary>
     /// Complete the first-run setup wizard
+    /// Idempotent - multiple calls with same configuration result in success
     /// </summary>
     [HttpPost("complete")]
     public async Task<IActionResult> CompleteSetup(
         [FromBody] SetupCompleteRequest request,
         CancellationToken cancellationToken)
     {
+        var correlationId = HttpContext.TraceIdentifier;
+        
         try
         {
+            _logger.LogInformation("[{CorrelationId}] Starting setup completion, FFmpegPath: {FFmpegPath}, OutputDirectory: {OutputDirectory}",
+                correlationId, request.FFmpegPath ?? "(none)", request.OutputDirectory ?? "(none)");
+            
             var errors = new List<string>();
 
             // Validate output directory if provided
@@ -411,6 +417,7 @@ public class SetupController : ControllerBase
                 if (!Directory.Exists(request.OutputDirectory))
                 {
                     errors.Add($"Output directory does not exist: {request.OutputDirectory}");
+                    _logger.LogWarning("[{CorrelationId}] Output directory validation failed: directory not found", correlationId);
                 }
                 else
                 {
@@ -424,6 +431,7 @@ public class SetupController : ControllerBase
                     catch (Exception ex)
                     {
                         errors.Add($"Output directory is not writable: {ex.Message}");
+                        _logger.LogWarning(ex, "[{CorrelationId}] Output directory validation failed: not writable", correlationId);
                     }
                 }
             }
@@ -434,6 +442,7 @@ public class SetupController : ControllerBase
                 if (!System.IO.File.Exists(request.FFmpegPath))
                 {
                     errors.Add($"FFmpeg executable not found at: {request.FFmpegPath}");
+                    _logger.LogWarning("[{CorrelationId}] FFmpeg validation failed: file not found", correlationId);
                 }
                 else
                 {
@@ -458,24 +467,38 @@ public class SetupController : ControllerBase
                         if (process.ExitCode != 0)
                         {
                             errors.Add("FFmpeg validation failed: executable returned error");
+                            _logger.LogWarning("[{CorrelationId}] FFmpeg validation failed: exit code {ExitCode}", correlationId, process.ExitCode);
+                        }
+                        else
+                        {
+                            _logger.LogInformation("[{CorrelationId}] FFmpeg validated successfully", correlationId);
                         }
                     }
                     catch (Exception ex)
                     {
                         errors.Add($"FFmpeg validation failed: {ex.Message}");
+                        _logger.LogWarning(ex, "[{CorrelationId}] FFmpeg validation failed: execution error", correlationId);
                     }
                 }
+            }
+            else
+            {
+                _logger.LogInformation("[{CorrelationId}] FFmpeg path not provided, setup will complete without FFmpeg configuration", correlationId);
             }
 
             if (errors.Any())
             {
-                return Ok(new { success = false, errors = errors.ToArray() });
+                _logger.LogWarning("[{CorrelationId}] Setup validation failed with {ErrorCount} error(s): {Errors}",
+                    correlationId, errors.Count, string.Join("; ", errors));
+                return Ok(new { success = false, errors = errors.ToArray(), correlationId });
             }
 
-            // Find or create user setup record
+            // Find or create user setup record (idempotent operation)
             var userSetup = await _dbContext.UserSetups
                 .FirstOrDefaultAsync(u => u.UserId == "default", cancellationToken).ConfigureAwait(false);
 
+            var isNewSetup = userSetup == null;
+            
             if (userSetup == null)
             {
                 userSetup = new UserSetupEntity
@@ -484,18 +507,21 @@ public class SetupController : ControllerBase
                     Completed = true,
                     CompletedAt = DateTime.UtcNow,
                     Version = "1.0.0",
-                    LastStep = 6, // Final step
+                    LastStep = 6,
                     UpdatedAt = DateTime.UtcNow
                 };
                 _dbContext.UserSetups.Add(userSetup);
+                _logger.LogInformation("[{CorrelationId}] Creating new setup record for user 'default'", correlationId);
             }
             else
             {
+                // Update existing record (idempotent - safe to call multiple times)
                 userSetup.Completed = true;
                 userSetup.CompletedAt = DateTime.UtcNow;
                 userSetup.Version = "1.0.0";
                 userSetup.LastStep = 6;
                 userSetup.UpdatedAt = DateTime.UtcNow;
+                _logger.LogInformation("[{CorrelationId}] Updating existing setup record for user 'default' (idempotent operation)", correlationId);
             }
 
             // Store paths in wizard state JSON
@@ -512,14 +538,19 @@ public class SetupController : ControllerBase
 
             await _dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-            _logger.LogInformation("First-run setup completed for user 'default'");
+            _logger.LogInformation("[{CorrelationId}] Setup completed successfully for user 'default', IsNewSetup: {IsNewSetup}, FFmpegConfigured: {FFmpegConfigured}, WorkspaceConfigured: {WorkspaceConfigured}",
+                correlationId, isNewSetup, !string.IsNullOrEmpty(request.FFmpegPath), !string.IsNullOrEmpty(request.OutputDirectory));
 
-            return Ok(new { success = true, errors = Array.Empty<string>() });
+            return Ok(new { success = true, errors = Array.Empty<string>(), correlationId });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to complete setup");
-            return StatusCode(500, new { error = "Failed to complete setup", detail = ex.Message });
+            _logger.LogError(ex, "[{CorrelationId}] Failed to complete setup", correlationId);
+            return StatusCode(500, new { 
+                success = false,
+                errors = new[] { "Failed to complete setup. Please try again or contact support if the problem persists." },
+                correlationId 
+            });
         }
     }
 
