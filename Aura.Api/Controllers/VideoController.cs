@@ -23,17 +23,70 @@ public class VideoController : ControllerBase
     private readonly JobRunner _jobRunner;
     private readonly SseService _sseService;
     private readonly Aura.Core.Services.FFmpeg.IFFmpegStatusService _ffmpegStatusService;
+    private readonly VideoOrchestrator _videoOrchestrator;
 
     public VideoController(
         ILogger<VideoController> logger,
         JobRunner jobRunner,
         SseService sseService,
-        Aura.Core.Services.FFmpeg.IFFmpegStatusService ffmpegStatusService)
+        Aura.Core.Services.FFmpeg.IFFmpegStatusService ffmpegStatusService,
+        VideoOrchestrator videoOrchestrator)
     {
         _logger = logger;
         _jobRunner = jobRunner;
         _sseService = sseService;
         _ffmpegStatusService = ffmpegStatusService;
+        _videoOrchestrator = videoOrchestrator;
+    }
+
+    /// <summary>
+    /// Validate pipeline readiness before video generation
+    /// </summary>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>Validation result with list of errors if any</returns>
+    [HttpGet("validate")]
+    [ProducesResponseType(typeof(PipelineValidationResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> ValidatePipeline(CancellationToken ct = default)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        try
+        {
+            _logger.LogInformation("[{CorrelationId}] GET /api/video/validate - Pipeline validation requested", correlationId);
+
+            var (isValid, errors) = await _videoOrchestrator.ValidatePipelineAsync(ct).ConfigureAwait(false);
+            
+            var response = new PipelineValidationResponse(
+                IsValid: isValid,
+                Errors: errors,
+                Timestamp: DateTime.UtcNow,
+                CorrelationId: correlationId
+            );
+
+            if (!isValid)
+            {
+                _logger.LogWarning("[{CorrelationId}] Pipeline validation failed with {ErrorCount} errors", correlationId, errors.Count);
+            }
+            else
+            {
+                _logger.LogInformation("[{CorrelationId}] Pipeline validation passed", correlationId);
+            }
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Error validating pipeline", correlationId);
+            
+            return StatusCode(
+                StatusCodes.Status500InternalServerError,
+                CreateProblemDetails(
+                    "Validation Error",
+                    "An error occurred while validating the video generation pipeline",
+                    StatusCodes.Status500InternalServerError,
+                    correlationId));
+        }
     }
 
     /// <summary>
@@ -58,7 +111,30 @@ public class VideoController : ControllerBase
                 "[{CorrelationId}] POST /api/videos/generate - Brief: {Brief}, Duration: {Duration}m",
                 correlationId, request.Brief.Substring(0, Math.Min(50, request.Brief.Length)), request.DurationMinutes);
 
-            // Validate FFmpeg is available before starting video generation
+            // Pre-flight validation: Check all services are ready
+            var (isValid, errors) = await _videoOrchestrator.ValidatePipelineAsync(ct).ConfigureAwait(false);
+            
+            if (!isValid)
+            {
+                _logger.LogWarning("[{CorrelationId}] Video generation pre-flight check failed", correlationId);
+                return BadRequest(new ProblemDetails
+                {
+                    Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
+                    Title = "Pipeline Validation Failed",
+                    Status = 400,
+                    Detail = "The video generation pipeline is not ready. Please fix the issues below before generating videos.",
+                    Extensions =
+                    {
+                        ["correlationId"] = correlationId,
+                        ["errors"] = errors,
+                        ["message"] = "Please fix the issues above before generating videos"
+                    }
+                });
+            }
+
+            _logger.LogInformation("[{CorrelationId}] Pre-flight check passed, starting video generation", correlationId);
+
+            // Validate FFmpeg is available before starting video generation (legacy check - can be removed since it's in ValidatePipelineAsync)
             var ffmpegStatus = await _ffmpegStatusService.GetStatusAsync(ct).ConfigureAwait(false);
             
             if (!ffmpegStatus.Installed || !ffmpegStatus.Valid)
