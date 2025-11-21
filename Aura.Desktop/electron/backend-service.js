@@ -58,9 +58,9 @@ class BackendService {
     this.BACKEND_STARTUP_TIMEOUT = networkContract.maxStartupMs ?? 60000; // 60 seconds
     this.HEALTH_CHECK_INTERVAL = networkContract.pollIntervalMs ?? 1000; // 1 second
     this.AUTO_RESTART_DELAY = 5000; // 5 seconds
-    // Timeout configurations - aggressive for faster shutdown
-    this.GRACEFUL_SHUTDOWN_TIMEOUT = 2000; // 2 seconds for graceful shutdown (reduced from 3s)
-    this.FORCE_KILL_TIMEOUT = 1000; // 1 second after graceful timeout (total 3s max, reduced from 5s)
+    // Timeout configurations - extended for proper cleanup of all child processes
+    this.GRACEFUL_SHUTDOWN_TIMEOUT = 5000; // 5 seconds for graceful shutdown (increased from 2s)
+    this.FORCE_KILL_TIMEOUT = 3000; // 3 seconds after graceful timeout (total 8s max, increased from 3s total)
   }
 
   /**
@@ -1115,40 +1115,52 @@ class BackendService {
       let failed = 0;
 
       if (this.isWindows) {
-        // Windows: Find and kill Aura.Api.exe processes ONLY
-        // SAFETY: Using exact image name match to avoid killing unrelated .NET apps
-        const command = 'taskkill /F /IM "Aura.Api.exe" 2>nul';
-        console.log(`[OrphanDetection] Executing: ${command}`);
-
-        exec(command, { timeout: 5000 }, (error, stdout, stderr) => {
-          if (error) {
-            if (error.code === 128) {
-              console.log('[OrphanDetection] No Aura.Api.exe processes found (already exited)');
-            } else {
-              console.warn(`[OrphanDetection] taskkill error: ${error.message}`);
-              failed = 1;
-            }
-          } else {
-            if (stdout && stdout.trim()) {
-              console.log(`[OrphanDetection] Killed orphaned backend: ${stdout.trim()}`);
+        // Windows: Kill both Aura.Api.exe and child FFmpeg processes
+        // SAFETY: Using exact image name match to avoid killing unrelated apps
+        const commands = [
+          'taskkill /F /IM "Aura.Api.exe" /T 2>nul',
+          'taskkill /F /IM "ffmpeg.exe" /FI "WINDOWTITLE eq Aura*" 2>nul'
+        ];
+        
+        let completed = 0;
+        commands.forEach(cmd => {
+          console.log(`[OrphanDetection] Executing: ${cmd}`);
+          exec(cmd, { timeout: 5000 }, (error, stdout, stderr) => {
+            if (!error && stdout && stdout.trim()) {
+              console.log(`[OrphanDetection] ${stdout.trim()}`);
               // Count terminated processes from output
               const matches = stdout.match(/SUCCESS/gi);
-              terminated = matches ? matches.length : 1;
+              if (matches) {
+                terminated += matches.length;
+              }
+            } else if (error && error.code !== 128) {
+              // Only count non-"process not found" errors as failures
+              failed++;
             }
-          }
-          resolve({ terminated, failed });
+            
+            completed++;
+            if (completed === commands.length) {
+              resolve({ terminated, failed });
+            }
+          });
         });
       } else {
-        // Unix: Find and kill Aura.Api processes
+        // Unix: Kill process groups for both Aura.Api and FFmpeg
         // SAFETY: Using exact process name match
-        exec('pkill -9 "Aura.Api"', (error, stdout, stderr) => {
-          if (!error) {
+        exec('pkill -9 -f "Aura.Api"', (error1) => {
+          if (!error1) {
             console.log('[OrphanDetection] Killed orphaned backend processes');
-            terminated = 1;
-          } else {
-            console.log('[OrphanDetection] No orphaned backend processes found');
+            terminated++;
           }
-          resolve({ terminated, failed });
+          
+          exec('pkill -9 -f "ffmpeg.*aura"', (error2) => {
+            if (!error2) {
+              console.log('[OrphanDetection] Killed orphaned FFmpeg processes');
+              terminated++;
+            }
+            
+            resolve({ terminated, failed });
+          });
         });
       }
     });
