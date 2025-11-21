@@ -136,18 +136,18 @@ export function FFmpegDependencyCard({
 
         // Network-level errors (no response received) - IMPROVED GUIDANCE
         if (axiosError.code === 'ERR_NETWORK' || axiosError.code === 'ECONNREFUSED') {
-          errorMessage = 
+          errorMessage =
             'Backend server is not running. To start the backend:\n\n' +
             '1. Open a terminal in the project root\n' +
             '2. Run: dotnet run --project Aura.Api\n' +
             '3. Wait for "Application started" message\n' +
             '4. Click "Check Again" or refresh this page';
         } else if (axiosError.code === 'ECONNABORTED' || axiosError.code === 'ETIMEDOUT') {
-          errorMessage = 
+          errorMessage =
             'Connection timeout. The backend may be starting up or overloaded.\n\n' +
             'Wait a moment and try again. If the problem persists, restart the backend.';
         } else if (axiosError.request && !axiosError.response) {
-          errorMessage = 
+          errorMessage =
             'No response from backend server. To start the backend:\n\n' +
             '1. Open a terminal in the project root\n' +
             '2. Run: dotnet run --project Aura.Api\n' +
@@ -224,18 +224,18 @@ export function FFmpegDependencyCard({
 
         // Network-level errors - IMPROVED GUIDANCE
         if (axiosError.code === 'ERR_NETWORK' || axiosError.code === 'ECONNREFUSED') {
-          errorMessage = 
+          errorMessage =
             'Backend server is not running. To start the backend:\n\n' +
             '1. Open a terminal in the project root\n' +
             '2. Run: dotnet run --project Aura.Api\n' +
             '3. Wait for "Application started" message\n' +
             '4. Try rescanning again';
         } else if (axiosError.code === 'ECONNABORTED' || axiosError.code === 'ETIMEDOUT') {
-          errorMessage = 
+          errorMessage =
             'Connection timeout. The backend may be starting up or overloaded.\n\n' +
             'Wait a moment and try again. If the problem persists, restart the backend.';
         } else if (axiosError.request && !axiosError.response) {
-          errorMessage = 
+          errorMessage =
             'No response from backend server. To start the backend:\n\n' +
             '1. Open a terminal in the project root\n' +
             '2. Run: dotnet run --project Aura.Api\n' +

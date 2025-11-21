@@ -52,16 +52,17 @@ export function BackendStatusBanner({ onDismiss, showRetry = true }: BackendStat
     try {
       resetCircuitBreaker();
       const healthResponse = await getSystemHealth();
-      
+
       // Backend is reachable and responding
       if (healthResponse.backendOnline) {
         setStatus({
           reachable: true,
           online: true,
           error: healthResponse.overallStatus === 'degraded' ? 'degraded' : null,
-          message: healthResponse.overallStatus === 'degraded' 
-            ? 'Backend is running but some components are not fully operational'
-            : undefined,
+          message:
+            healthResponse.overallStatus === 'degraded'
+              ? 'Backend is running but some components are not fully operational'
+              : undefined,
         });
       } else {
         setStatus({
@@ -75,7 +76,7 @@ export function BackendStatusBanner({ onDismiss, showRetry = true }: BackendStat
       // Determine if this is a network/connection error or HTTP error
       const errorObj = error instanceof Error ? error : new Error(String(error));
       const errorMessage = errorObj.message.toLowerCase();
-      
+
       // Network-level errors (no HTTP response at all)
       if (
         errorMessage.includes('network') ||
@@ -131,7 +132,8 @@ export function BackendStatusBanner({ onDismiss, showRetry = true }: BackendStat
             Backend Degraded
           </Text>
           <Text className={styles.helpText}>
-            The backend server is running but some components are not fully operational. Some features may not work as expected.
+            The backend server is running but some components are not fully operational. Some
+            features may not work as expected.
           </Text>
         </MessageBarBody>
         <MessageBarActions>
@@ -206,7 +208,8 @@ export function BackendStatusBanner({ onDismiss, showRetry = true }: BackendStat
           Backend Error
         </Text>
         <Text className={styles.helpText}>
-          The backend server is running but returned an error. Check the application logs for more details.
+          The backend server is running but returned an error. Check the application logs for more
+          details.
         </Text>
         {status.message && (
           <Text className={styles.helpText}>

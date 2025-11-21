@@ -589,19 +589,21 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
       if (!setupResult.success) {
         // Show errors inline on the page
-        const errors = setupResult.errors || ['Setup validation failed. Please check your configuration.'];
+        const errors = setupResult.errors || [
+          'Setup validation failed. Please check your configuration.',
+        ];
         setCompletionErrors(errors);
-        
+
         console.error('[FirstRunWizard] Setup validation failed:', {
           errors,
-          correlationId: setupResult.correlationId
+          correlationId: setupResult.correlationId,
         });
-        
+
         showFailureToast({
           title: 'Setup Validation Failed',
           message: errors.join('; '),
         });
-        
+
         // Don't proceed with completion
         return;
       }
@@ -646,9 +648,9 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
     } catch (error: unknown) {
       const errorObj = error instanceof Error ? error : new Error(String(error));
       console.error('[FirstRunWizard] Error completing setup:', errorObj);
-      
+
       setCompletionErrors([`Failed to complete setup: ${errorObj.message}`]);
-      
+
       showFailureToast({
         title: 'Setup Error',
         message: `Failed to complete setup: ${errorObj.message}. Please try again or exit to the main app.`,
@@ -1450,10 +1452,21 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
                 margin: '0 auto 1rem auto',
               }}
             >
-              <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXS, textAlign: 'left' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: tokens.spacingVerticalXS,
+                  textAlign: 'left',
+                }}
+              >
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}
+                >
                   <Warning24Regular style={{ color: tokens.colorPaletteRedForeground1 }} />
-                  <Title3 style={{ color: tokens.colorPaletteRedForeground1 }}>Validation Failed</Title3>
+                  <Title3 style={{ color: tokens.colorPaletteRedForeground1 }}>
+                    Validation Failed
+                  </Title3>
                 </div>
                 <ul style={{ margin: 0, paddingLeft: '1.5rem' }}>
                   {completionErrors.map((error, index) => (
@@ -1462,7 +1475,13 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
                     </li>
                   ))}
                 </ul>
-                <Text size={200} style={{ color: tokens.colorPaletteRedForeground1, marginTop: tokens.spacingVerticalXS }}>
+                <Text
+                  size={200}
+                  style={{
+                    color: tokens.colorPaletteRedForeground1,
+                    marginTop: tokens.spacingVerticalXS,
+                  }}
+                >
                   Please go back and fix these issues, or exit to complete setup later.
                 </Text>
               </div>
