@@ -387,7 +387,7 @@ public class BackgroundJobQueueManager
         var config = await context.QueueConfiguration.FirstOrDefaultAsync(ct).ConfigureAwait(false);
         if (config == null)
         {
-            config = new QueueConfigurationEntity { Id = 1 };
+            config = new QueueConfigurationEntity { Id = "default" };
             context.QueueConfiguration.Add(config);
         }
         

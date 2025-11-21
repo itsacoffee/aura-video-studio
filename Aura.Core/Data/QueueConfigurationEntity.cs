@@ -11,7 +11,7 @@ namespace Aura.Core.Data;
 public class QueueConfigurationEntity
 {
     [Key]
-    public int Id { get; set; } = 1;  // Singleton config
+    public string Id { get; set; } = "default";  // Singleton config
     
     /// <summary>
     /// Maximum number of concurrent jobs
