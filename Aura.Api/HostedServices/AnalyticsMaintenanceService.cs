@@ -32,8 +32,22 @@ public class AnalyticsMaintenanceService : BackgroundService
     {
         _logger.LogInformation("Analytics Maintenance Service started");
 
-        // Wait a bit before starting to let the app fully initialize
-        await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken).ConfigureAwait(false);
+        // Wait longer for application startup to complete
+        await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken).ConfigureAwait(false);
+
+        // Verify schema before starting maintenance
+        var healthCheck = await CheckDatabaseSchemaAsync(stoppingToken).ConfigureAwait(false);
+        if (!healthCheck.IsHealthy)
+        {
+            _logger.LogWarning(
+                "Analytics Maintenance Service cannot start: {Message}",
+                healthCheck.Message);
+            _logger.LogWarning("SOLUTION: Run database migrations or delete the database to recreate with correct schema");
+            _logger.LogInformation("Analytics Maintenance Service exiting gracefully due to missing database schema");
+            return;
+        }
+
+        _logger.LogInformation("Database schema validated successfully, starting analytics maintenance");
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -103,6 +117,65 @@ public class AnalyticsMaintenanceService : BackgroundService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to perform analytics maintenance");
+        }
+    }
+
+    /// <summary>
+    /// Checks if the database schema is valid and creates default settings if needed
+    /// </summary>
+    private async Task<Aura.Core.Services.ServiceHealthCheckResult> CheckDatabaseSchemaAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<AuraDbContext>();
+
+            // Check if AnalyticsRetentionSettings table exists and has data
+            var settingsExist = await context.AnalyticsRetentionSettings.AnyAsync(cancellationToken).ConfigureAwait(false);
+
+            if (!settingsExist)
+            {
+                _logger.LogWarning("AnalyticsRetentionSettings table has no data, creating default settings");
+
+                // Create default settings
+                var defaultSettings = new AnalyticsRetentionSettingsEntity
+                {
+                    Id = "default",
+                    IsEnabled = true,
+                    AutoCleanupEnabled = true,
+                    UsageStatisticsRetentionDays = 90,
+                    PerformanceMetricsRetentionDays = 30,
+                    CostTrackingRetentionDays = 365,
+                    AggregateOldData = true,
+                    AggregationThresholdDays = 30,
+                    MaxDatabaseSizeMB = 500,
+                    CleanupHourUtc = 2,
+                    TrackSuccessOnly = false,
+                    CollectHardwareMetrics = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                context.AnalyticsRetentionSettings.Add(defaultSettings);
+                await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+                _logger.LogInformation("Created default AnalyticsRetentionSettings");
+            }
+
+            return new Aura.Core.Services.ServiceHealthCheckResult(true, "Database schema is valid");
+        }
+        catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.SqliteErrorCode == 1)
+        {
+            // SQLITE_ERROR - table doesn't exist
+            var message = $"AnalyticsRetentionSettings table does not exist. Error: {ex.Message}";
+            _logger.LogWarning(ex, message);
+            return new Aura.Core.Services.ServiceHealthCheckResult(false, message, ex);
+        }
+        catch (Exception ex)
+        {
+            var message = $"Failed to check database schema: {ex.Message}";
+            _logger.LogError(ex, message);
+            return new Aura.Core.Services.ServiceHealthCheckResult(false, message, ex);
         }
     }
 }

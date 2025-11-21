@@ -5382,6 +5382,78 @@ _ = Task.Run(async () =>
     }
 }, appLifetime.ApplicationStopping);
 
+// Register startup health check callback
+appLifetime.ApplicationStarted.Register(() =>
+{
+    _ = Task.Run(async () =>
+    {
+        try
+        {
+            using var scope = app.Services.CreateScope();
+            var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+            var dbContext = scope.ServiceProvider.GetRequiredService<AuraDbContext>();
+
+            logger.LogInformation("=== Startup Health Check Report ===");
+
+            var healthIssues = 0;
+
+            // Check Settings table
+            try
+            {
+                var settingsExists = await dbContext.Settings.AnyAsync().ConfigureAwait(false);
+                logger.LogInformation("✓ Settings table: {Status}", settingsExists ? "OK" : "Empty (will use defaults)");
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning("✗ Settings table: MISSING ({Message})", ex.Message);
+                healthIssues++;
+            }
+
+            // Check QueueConfiguration table
+            try
+            {
+                var queueConfigExists = await dbContext.QueueConfiguration.AnyAsync().ConfigureAwait(false);
+                logger.LogInformation("✓ QueueConfiguration table: {Status}", queueConfigExists ? "OK" : "Empty (will create defaults)");
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning("✗ QueueConfiguration table: MISSING ({Message})", ex.Message);
+                healthIssues++;
+            }
+
+            // Check AnalyticsRetentionSettings table
+            try
+            {
+                var analyticsSettingsExists = await dbContext.AnalyticsRetentionSettings.AnyAsync().ConfigureAwait(false);
+                logger.LogInformation("✓ AnalyticsRetentionSettings table: {Status}", analyticsSettingsExists ? "OK" : "Empty (will create defaults)");
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning("✗ AnalyticsRetentionSettings table: MISSING ({Message})", ex.Message);
+                healthIssues++;
+            }
+
+            if (healthIssues > 0)
+            {
+                logger.LogWarning(
+                    "=== Health Check Complete: {IssueCount} issue(s) found ===",
+                    healthIssues);
+                logger.LogWarning("SOLUTION: Run database migrations to create missing tables");
+                logger.LogWarning("Application will continue with graceful degradation");
+            }
+            else
+            {
+                logger.LogInformation("=== Health Check Complete: All systems operational ===");
+            }
+        }
+        catch (Exception ex)
+        {
+            var logger = app.Services.GetService<ILogger<Program>>();
+            logger?.LogError(ex, "Failed to perform startup health check");
+        }
+    });
+});
+
 try
 {
     // Use RunAsync instead of Run to allow proper cancellation during shutdown

@@ -102,14 +102,20 @@ public class SettingsService : ISettingsService
             }
 
             // No settings found, create defaults
-            var defaultSettings = CreateDefaultSettings();
-            await SaveSettingsToDatabaseAsync(defaultSettings, ct).ConfigureAwait(false);
+            var defaultSettings = await CreateDefaultSettingsAsync(ct).ConfigureAwait(false);
             return CloneSettings(defaultSettings);
+        }
+        catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.SqliteErrorCode == 1)
+        {
+            // Settings table doesn't exist - return in-memory defaults
+            _logger.LogWarning(ex, "Settings table does not exist, using in-memory defaults");
+            _logger.LogWarning("SOLUTION: Run database migrations to create Settings table");
+            return CreateDefaultSettingsInMemory();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load user settings, using defaults");
-            return CreateDefaultSettings();
+            _logger.LogError(ex, "Failed to load user settings, using in-memory defaults");
+            return CreateDefaultSettingsInMemory();
         }
     }
 
@@ -991,5 +997,40 @@ public class SettingsService : ISettingsService
                 ResponseTimeMs = (int)stopwatch.ElapsedMilliseconds
             };
         }
+    }
+
+    /// <summary>
+    /// Creates default settings in memory without attempting database write
+    /// </summary>
+    private UserSettings CreateDefaultSettingsInMemory()
+    {
+        _logger.LogInformation("Creating in-memory default settings (database unavailable)");
+        return CreateDefaultSettings();
+    }
+
+    /// <summary>
+    /// Creates default settings and attempts to save to database
+    /// Returns in-memory defaults if save fails
+    /// </summary>
+    private async Task<UserSettings> CreateDefaultSettingsAsync(CancellationToken ct)
+    {
+        var defaultSettings = CreateDefaultSettings();
+
+        try
+        {
+            await SaveSettingsToDatabaseAsync(defaultSettings, ct).ConfigureAwait(false);
+            _logger.LogInformation("Created and saved default user settings to database");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to save default settings to database, using in-memory defaults");
+        }
+
+        lock (_lock)
+        {
+            _cachedSettings = CloneSettings(defaultSettings);
+        }
+
+        return CloneSettings(defaultSettings);
     }
 }
