@@ -901,12 +901,19 @@ class BackendService {
   }
 
   /**
+   * Get platform-specific FFmpeg directory name
+   */
+  _getPlatformFFmpegDir() {
+    const platform = process.platform;
+    return platform === "win32" ? "win-x64" : (platform === "darwin" ? "osx-x64" : "linux-x64");
+  }
+
+  /**
    * Prepare environment variables for backend
    */
   _prepareEnvironment() {
     // Determine FFmpeg path - check managed location first
-    const platform = process.platform;
-    const platformDir = platform === "win32" ? "win-x64" : (platform === "darwin" ? "osx-x64" : "linux-x64");
+    const platformDir = this._getPlatformFFmpegDir();
     
     const ffmpegPaths = [
       // Managed FFmpeg in resources (installed mode)
@@ -918,7 +925,7 @@ class BackendService {
     ];
 
     let ffmpegPath = null;
-    const ffmpegExe = platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
+    const ffmpegExe = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
     
     for (const candidatePath of ffmpegPaths) {
       const ffmpegFullPath = path.join(candidatePath, ffmpegExe);

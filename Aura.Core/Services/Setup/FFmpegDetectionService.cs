@@ -194,6 +194,8 @@ public class FFmpegDetectionService : IFFmpegDetectionService
         }
         
         // 2. Check managed FFmpeg locations (LocalApplicationData)
+        // Note: Currently Windows-specific as per requirement. Cross-platform support
+        // is handled by FFMPEG_PATH environment variable set by Electron.
         var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         var managedPaths = new[]
         {
