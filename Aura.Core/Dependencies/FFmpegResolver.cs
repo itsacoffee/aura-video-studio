@@ -543,16 +543,14 @@ public class FFmpegResolver
         var ffmpegPath = Environment.GetEnvironmentVariable("FFMPEG_PATH");
         if (!string.IsNullOrWhiteSpace(ffmpegPath))
         {
-            var trimmedPath = ffmpegPath.Trim();
-            paths.Add(trimmedPath);
+            paths.Add(ffmpegPath.Trim());
         }
         
         // Check legacy FFMPEG_BINARIES_PATH as final fallback
         var binariesPath = Environment.GetEnvironmentVariable("FFMPEG_BINARIES_PATH");
         if (!string.IsNullOrWhiteSpace(binariesPath))
         {
-            var trimmedPath = binariesPath.Trim();
-            paths.Add(trimmedPath);
+            paths.Add(binariesPath.Trim());
         }
         
         return paths.ToList();
