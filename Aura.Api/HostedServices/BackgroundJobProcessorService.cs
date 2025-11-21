@@ -2,7 +2,10 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Core.Data;
 using Aura.Core.Services.Queue;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -17,22 +20,39 @@ public class BackgroundJobProcessorService : BackgroundService
 {
     private readonly ILogger<BackgroundJobProcessorService> _logger;
     private readonly IServiceProvider _serviceProvider;
+    private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly TimeSpan _pollingInterval = TimeSpan.FromSeconds(5);
 
     public BackgroundJobProcessorService(
         ILogger<BackgroundJobProcessorService> logger,
-        IServiceProvider serviceProvider)
+        IServiceProvider serviceProvider,
+        IServiceScopeFactory serviceScopeFactory)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        _serviceScopeFactory = serviceScopeFactory ?? throw new ArgumentNullException(nameof(serviceScopeFactory));
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation("BackgroundJobProcessorService starting");
 
-        // Wait a bit for the application to fully start
+        // Wait for application startup to complete
         await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken).ConfigureAwait(false);
+
+        // Check database schema before starting processing
+        var healthCheck = await CheckDatabaseSchemaAsync(stoppingToken).ConfigureAwait(false);
+        if (!healthCheck.IsHealthy)
+        {
+            _logger.LogError(
+                "BackgroundJobProcessorService cannot start: {Message}",
+                healthCheck.Message);
+            _logger.LogError("SOLUTION: Run database migrations or delete the database to recreate with correct schema");
+            _logger.LogInformation("BackgroundJobProcessorService exiting gracefully due to missing database schema");
+            return;
+        }
+
+        _logger.LogInformation("Database schema validated successfully, starting job processing");
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -132,6 +152,64 @@ public class BackgroundJobProcessorService : BackgroundService
 
             // Small delay between starting jobs
             await Task.Delay(TimeSpan.FromMilliseconds(500), stoppingToken).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// Checks if the database schema is valid and creates default configuration if needed
+    /// </summary>
+    private async Task<Aura.Core.Services.ServiceHealthCheckResult> CheckDatabaseSchemaAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var scope = _serviceScopeFactory.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<AuraDbContext>();
+
+            // Check if QueueConfiguration table exists and has data
+            var configExists = await dbContext.QueueConfiguration.AnyAsync(cancellationToken).ConfigureAwait(false);
+
+            if (!configExists)
+            {
+                _logger.LogWarning("QueueConfiguration table has no data, creating default configuration");
+
+                // Create default configuration
+                var defaultConfig = new QueueConfigurationEntity
+                {
+                    Id = "default",
+                    IsEnabled = true,
+                    MaxConcurrentJobs = 2,
+                    PollingIntervalSeconds = 5,
+                    RetryBaseDelaySeconds = 60,
+                    RetryMaxDelaySeconds = 3600,
+                    EnableNotifications = true,
+                    PauseOnBattery = false,
+                    CpuThrottleThreshold = 90,
+                    MemoryThrottleThreshold = 90,
+                    JobHistoryRetentionDays = 30,
+                    FailedJobRetentionDays = 90,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                dbContext.QueueConfiguration.Add(defaultConfig);
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+                _logger.LogInformation("Created default QueueConfiguration");
+            }
+
+            return new Aura.Core.Services.ServiceHealthCheckResult(true, "Database schema is valid");
+        }
+        catch (SqliteException ex) when (ex.SqliteErrorCode == 1)
+        {
+            // SQLITE_ERROR - table doesn't exist
+            var message = $"QueueConfiguration table does not exist. Error: {ex.Message}";
+            _logger.LogError(ex, message);
+            return new Aura.Core.Services.ServiceHealthCheckResult(false, message, ex);
+        }
+        catch (Exception ex)
+        {
+            var message = $"Failed to check database schema: {ex.Message}";
+            _logger.LogError(ex, message);
+            return new Aura.Core.Services.ServiceHealthCheckResult(false, message, ex);
         }
     }
 }
