@@ -17,6 +17,7 @@ class FFmpegHandler {
     this.backendUrl = backendUrl;
     this.downloadProgress = 0;
     this.isInstalling = false;
+    this.ffmpegProcesses = new Set(); // Track spawned ffmpeg child processes
   }
 
   /**
@@ -35,6 +36,66 @@ class FFmpegHandler {
     );
 
     console.log("FFmpeg IPC handlers registered");
+  }
+
+  /**
+   * Stop all tracked FFmpeg processes
+   * Called during application shutdown to ensure no zombie processes remain
+   */
+  async stop() {
+    console.log("[FFmpegHandler] Stopping FFmpeg processes...");
+    
+    if (this.ffmpegProcesses.size === 0) {
+      console.log("[FFmpegHandler] No FFmpeg processes to stop");
+      return;
+    }
+
+    console.log(`[FFmpegHandler] Terminating ${this.ffmpegProcesses.size} FFmpeg process(es)...`);
+
+    for (const proc of this.ffmpegProcesses) {
+      try {
+        if (proc && !proc.killed) {
+          proc.kill("SIGINT"); // Try graceful first
+          
+          // Give it a moment, then force kill if needed
+          setTimeout(() => {
+            if (proc && !proc.killed) {
+              try {
+                proc.kill("SIGKILL");
+              } catch (err) {
+                console.warn("[FFmpegHandler] Failed to force-kill ffmpeg process:", err.message);
+              }
+            }
+          }, 1000);
+        }
+      } catch (err) {
+        console.warn("[FFmpegHandler] Failed to kill ffmpeg process:", err.message);
+      }
+    }
+    
+    this.ffmpegProcesses.clear();
+    console.log("[FFmpegHandler] FFmpeg processes cleanup complete");
+  }
+
+  /**
+   * Track an FFmpeg child process
+   * Should be called whenever ffmpeg is spawned as a child process
+   * @param {ChildProcess} process - The spawned ffmpeg process
+   */
+  trackProcess(process) {
+    if (!process || !process.pid) {
+      console.warn("[FFmpegHandler] Cannot track process without PID");
+      return;
+    }
+
+    console.log(`[FFmpegHandler] Tracking ffmpeg process (PID: ${process.pid})`);
+    this.ffmpegProcesses.add(process);
+
+    // Remove from set when it exits
+    process.once("exit", () => {
+      console.log(`[FFmpegHandler] FFmpeg process exited (PID: ${process.pid})`);
+      this.ffmpegProcesses.delete(process);
+    });
   }
 
   /**
