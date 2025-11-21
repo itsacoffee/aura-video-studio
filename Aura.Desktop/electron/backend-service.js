@@ -10,12 +10,13 @@ const net = require("net");
 const axios = require("axios");
 
 class BackendService {
-  constructor(app, isDev, processManager = null, networkContract = null) {
+  constructor(app, isDev, processManager = null, networkContract = null, logger = null) {
     this.app = app;
     this.isDev = isDev;
     this.process = null;
     this.backendProcess = null; // Alias for this.process for consistency with problem statement
     this.processManager = processManager; // Optional: centralized process tracking
+    this.logger = logger || console; // Use provided logger or fallback to console
 
     // Enforce contract validation
     if (!networkContract) {
@@ -461,99 +462,89 @@ class BackendService {
   }
 
   /**
-   * Wait for backend to be fully ready
-   * @param {Object} options - Options for waiting
-   * @param {number} options.timeout - Maximum time to wait (ms)
+   * Wait for backend to be ready with enhanced health checks
+   * @param {Object} options - Wait options
+   * @param {number} options.timeout - Maximum wait time in ms (default: 90000)
    * @param {Function} options.onProgress - Progress callback
    * @returns {Promise<boolean>} True if ready, false if timeout
    */
-  async waitForReady(options = {}) {
-    const {
-      timeout = 90000,
-      onProgress = null
-    } = options;
-
+  async waitForReady({ timeout = 90000, onProgress = null } = {}) {
     const startTime = Date.now();
-    const checkInterval = 1000; // Check every second
-    let attempt = 0;
-    const maxAttempts = Math.floor(timeout / checkInterval);
+    const healthCheckUrl = `${this.getUrl()}/health`;
+    let lastError = null;
+    let attemptCount = 0;
+    const maxAttempts = Math.floor(timeout / 1000); // One attempt per second
 
-    console.log(`Waiting for backend to be ready (timeout: ${timeout}ms)...`);
-
+    this.logger.info?.('BackendService', `Waiting for backend health check at: ${healthCheckUrl}`);
+    
     while (Date.now() - startTime < timeout) {
-      attempt++;
+      attemptCount++;
       
       try {
-        // Check liveness first (is HTTP server responding?)
-        const livenessUrl = this._buildUrl(this.healthEndpoint || "/health/live");
-        const livenessResponse = await axios.get(livenessUrl, {
+        // Check if process is still running
+        if (this.process && this.process.killed) {
+          this.logger.error?.('BackendService', 'Backend process was killed');
+          return false;
+        }
+
+        // Try health check
+        const response = await axios.get(healthCheckUrl, {
           timeout: 5000,
-          validateStatus: () => true // Accept any status code
+          validateStatus: (status) => status === 200,
         });
 
-        if (livenessResponse.status === 200) {
-          console.log('Backend HTTP server is alive');
-          
-          // Now check readiness (are all dependencies ready?)
-          const readinessUrl = this._buildUrl(this.readinessEndpoint || "/health/ready");
-          const readinessResponse = await axios.get(readinessUrl, {
-            timeout: 10000,
-            validateStatus: () => true
+        if (response.status === 200 && response.data) {
+          this.logger.info?.('BackendService', 'Backend health check passed', {
+            attemptCount,
+            elapsedMs: Date.now() - startTime,
+            healthData: response.data,
           });
-
-          if (readinessResponse.status === 200) {
-            console.log('Backend is fully ready!');
-            
-            if (onProgress) {
-              onProgress({
-                message: 'Backend is ready',
-                percent: 1.0,
-                attempt,
-                maxAttempts
-              });
-            }
-            
-            return true;
-          } else {
-            // Readiness check failed - backend is alive but not ready yet
-            const readinessData = readinessResponse.data;
-            const failedChecks = readinessData?.checks?.filter(c => c.status !== 'healthy') || [];
-            
-            console.log(`Backend not ready yet (attempt ${attempt}/${maxAttempts}):`, 
-              failedChecks.map(c => c.name).join(', '));
-            
-            if (onProgress) {
-              onProgress({
-                message: failedChecks.length > 0 
-                  ? `Initializing: ${failedChecks.map(c => c.name).join(', ')}`
-                  : 'Initializing backend...',
-                percent: Math.min(0.9, attempt / maxAttempts),
-                attempt,
-                maxAttempts
-              });
-            }
+          
+          // Call progress callback with success
+          if (onProgress) {
+            onProgress({
+              percent: 100,
+              message: 'Backend ready',
+              phase: 'complete',
+            });
           }
+          
+          return true;
         }
       } catch (error) {
-        // Backend not responding yet
-        console.log(`Backend not responding yet (attempt ${attempt}/${maxAttempts}):`, error.message);
+        lastError = error;
         
+        // Log every 10 attempts or on first attempt
+        if (attemptCount === 1 || attemptCount % 10 === 0) {
+          this.logger.debug?.('BackendService', `Health check attempt ${attemptCount}/${maxAttempts}`, {
+            error: error.message,
+            elapsedMs: Date.now() - startTime,
+          });
+        }
+
+        // Call progress callback
         if (onProgress) {
+          const progress = Math.min(95, (attemptCount / maxAttempts) * 100);
           onProgress({
-            message: 'Starting backend server...',
-            percent: Math.min(0.8, attempt / maxAttempts),
-            attempt,
-            maxAttempts
+            percent: progress,
+            message: `Waiting for backend (attempt ${attemptCount})...`,
+            phase: 'health-check',
           });
         }
       }
 
-      // Wait before next check
-      await new Promise(resolve => setTimeout(resolve, checkInterval));
+      // Wait 1 second before next attempt
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 
     // Timeout reached
-    console.error(`Backend failed to become ready within ${timeout}ms`);
+    this.logger.error?.('BackendService', 'Backend health check timeout', {
+      attemptCount,
+      timeoutMs: timeout,
+      lastError: lastError?.message,
+      processRunning: this.process && !this.process.killed,
+    });
+
     return false;
   }
 
