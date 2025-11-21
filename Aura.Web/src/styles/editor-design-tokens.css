@@ -1,276 +1,268 @@
 /**
- * Aura Video Studio - Editor Design Tokens
- * A++ Workflow-Oriented Design System
- * 
- * This file defines all core design tokens for the video editor interface.
- * All values are based on the design specification from the PR requirements.
+ * Professional Video Editor Design Tokens
+ * Inspired by Adobe Premiere Pro, Final Cut Pro, and CapCut
  */
 
 :root {
-  /* ========================================
-   * COLOR TOKENS
-   * ======================================== */
+  /* ==================== SPACING SYSTEM ==================== */
+  --space-0: 0px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 40px;
+  --space-8: 48px;
+  --space-9: 64px;
+  --space-10: 80px;
+  --panel-padding: var(--space-4);
+  --toolbar-height: 48px;
+  --timeline-height: 240px;
+  --sidebar-width: 280px;
+  --inspector-width: 320px;
 
-  /* Background Colors */
-  --color-bg-app: #14161a;
-  --color-bg-panel: #181b21;
-  --color-bg-panel-header: #1e2229;
-  --color-bg-surface-subtle: #20242d;
-
-  /* Accent Colors */
-  --color-accent-primary: #3d82f6;
-  --color-accent-warning: #f97316;
-  --color-accent-danger: #f97373;
-
-  /* Text Colors */
-  --color-text-primary: #f5f7fa;
-  --color-text-secondary: #c4ccd8;
-  --color-text-muted: #8a93a4;
-
-  /* Border & Divider Colors */
-  --color-border-subtle: #272c35;
-  --color-border-strong: #303744;
-
-  /* Interactive State Colors */
-  --color-bg-hover: #232732;
-  --color-bg-selected: #223a61;
-  --color-bg-active: #335283;
-  --color-bg-badge: #2d3748;
-
-  /* ========================================
-   * TYPOGRAPHY TOKENS
-   * ======================================== */
-
-  /* Font Families */
-  --font-family-default:
-    -apple-system, blinkmacsystemfont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell',
-    'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-  --font-family-mono:
-    'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Droid Sans Mono', 'Source Code Pro', monospace;
-
-  /* Font Sizes */
-  --font-size-xs: 10px;
+  /* ==================== TYPOGRAPHY ==================== */
+  --font-family-primary: -apple-system, blinkmacsystemfont, 'Segoe UI', 'Roboto', sans-serif;
+  --font-family-mono: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
+  --font-size-xs: 11px;
   --font-size-sm: 12px;
-  --font-size-md: 13px;
-  --font-size-lg: 14px;
-  --font-size-xl: 16px;
-
-  /* Font Weights */
-  --font-weight-regular: 400;
+  --font-size-base: 13px;
+  --font-size-md: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 18px;
+  --font-size-2xl: 20px;
+  --font-size-3xl: 24px;
+  --font-size-4xl: 32px;
+  --font-weight-normal: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
-
-  /* Line Heights */
-  --line-height-tight: 1.2;
+  --line-height-tight: 1.25;
   --line-height-normal: 1.5;
-  --line-height-relaxed: 1.75;
+  --line-height-relaxed: 1.625;
 
-  /* ========================================
-   * SPACING TOKENS
-   * ======================================== */
+  /* ==================== COLORS - PROFESSIONAL DARK THEME ==================== */
+  --color-primary-400: #60a5fa;
+  --color-primary-500: #3b82f6;
+  --color-primary-600: #2563eb;
+  --color-primary-700: #1d4ed8;
+  --color-accent-500: #a855f7;
+  --color-accent-600: #9333ea;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
 
-  --space-xs: 2px;
-  --space-sm: 4px;
-  --space-md: 8px;
-  --space-lg: 12px;
-  --space-xl: 16px;
-  --space-2xl: 24px;
-  --space-3xl: 32px;
+  /* ==================== DARK THEME ==================== */
+  --bg-app: #0a0a0a;
+  --bg-panel: #141414;
+  --bg-panel-hover: #1a1a1a;
+  --bg-input: #1f1f1f;
+  --bg-elevated: #242424;
+  --bg-timeline: #0f0f0f;
+  --bg-toolbar: #1a1a1a;
+  --text-primary: #f0f0f0;
+  --text-secondary: #a0a0a0;
+  --text-tertiary: #6b6b6b;
+  --text-disabled: #4a4a4a;
+  --text-link: var(--color-primary-400);
+  --border-subtle: #2a2a2a;
+  --border-default: #333;
+  --border-strong: #404040;
+  --border-focus: var(--color-primary-500);
 
-  /* ========================================
-   * CORNER RADIUS TOKENS
-   * ======================================== */
+  /* ==================== SHADOWS ==================== */
+  --shadow-sm: 0 2px 4px 0 rgb(0 0 0 / 30%);
+  --shadow-md: 0 4px 8px 0 rgb(0 0 0 / 35%);
+  --shadow-lg: 0 8px 16px 0 rgb(0 0 0 / 40%);
+  --shadow-xl: 0 12px 24px 0 rgb(0 0 0 / 45%);
+  --shadow-2xl: 0 20px 40px 0 rgb(0 0 0 / 50%);
+  --glow-primary: 0 0 0 3px rgb(59 130 246 / 30%);
+  --glow-success: 0 0 0 3px rgb(16 185 129 / 30%);
+  --glow-error: 0 0 0 3px rgb(239 68 68 / 30%);
 
+  /* ==================== BORDER RADIUS ==================== */
   --radius-sm: 3px;
   --radius-md: 6px;
   --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
   --radius-full: 9999px;
 
-  /* ========================================
-   * SHADOW TOKENS
-   * ======================================== */
+  /* ==================== TRANSITIONS ==================== */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
+  --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
+  --transition-base: all var(--duration-fast) var(--ease-standard);
+  --transition-color:
+    color var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard);
+  --transition-transform: transform var(--duration-normal) var(--ease-out-expo);
 
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 40%);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 50%), 0 2px 4px -1px rgb(0 0 0 / 40%);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 60%), 0 4px 6px -2px rgb(0 0 0 / 50%);
-  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 70%), 0 10px 10px -5px rgb(0 0 0 / 60%);
+  /* ==================== Z-INDEX ==================== */
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-tooltip: 1070;
+  --z-notification: 1080;
 
-  /* Focus Shadow */
-  --shadow-focus: 0 0 0 3px rgb(61 130 246 / 40%);
+  /* ==================== LEGACY COMPATIBILITY ==================== */
 
-  /* ========================================
-   * TRANSITION TOKENS
-   * ======================================== */
-
-  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
-
-  /* ========================================
-   * Z-INDEX LAYERS
-   * ======================================== */
-
+  /* Map existing editor theme variables to new tokens */
+  --color-bg-app: var(--bg-app);
+  --color-bg-panel: var(--bg-panel);
+  --color-bg-panel-header: var(--bg-elevated);
+  --color-bg-surface-subtle: var(--bg-input);
+  --color-accent-primary: var(--color-primary-500);
+  --color-accent-warning: var(--color-warning);
+  --color-accent-danger: var(--color-error);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-tertiary);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+  --color-bg-hover: var(--bg-panel-hover);
+  --color-bg-selected: #223a61;
+  --color-bg-active: #335283;
+  --color-bg-badge: var(--bg-elevated);
+  --font-family-default: var(--font-family-primary);
+  --space-xs: var(--space-1);
+  --space-sm: var(--space-2);
+  --space-md: var(--space-3);
+  --space-lg: var(--space-4);
+  --space-xl: var(--space-5);
+  --space-2xl: var(--space-6);
+  --space-3xl: var(--space-7);
+  --font-weight-regular: var(--font-weight-normal);
+  --shadow-focus: var(--glow-primary);
   --z-base: 0;
   --z-panel: 10;
   --z-toolbar: 20;
-  --z-dropdown: 30;
-  --z-modal: 40;
-  --z-tooltip: 50;
-  --z-notification: 60;
-
-  /* ========================================
-   * COMPONENT-SPECIFIC TOKENS
-   * ======================================== */
-
-  /* Panel Dimensions */
   --panel-header-height: 36px;
   --sidebar-collapsed-width: 48px;
   --sidebar-expanded-width-min: 240px;
   --sidebar-expanded-width-max: 400px;
-
-  /* Timeline */
   --timeline-track-height-compact: 24px;
   --timeline-track-height-default: 32px;
   --timeline-track-height-comfortable: 48px;
   --playhead-width: 2px;
   --playhead-handle-size: 12px;
-
-  /* Toolbar */
   --toolbar-button-size: 32px;
   --toolbar-icon-size: 20px;
-  --toolbar-padding-v: var(--space-sm);
-  --toolbar-padding-h: var(--space-md);
-
-  /* Interactive Target Sizes (Accessibility) */
+  --toolbar-padding-v: var(--space-2);
+  --toolbar-padding-h: var(--space-3);
   --target-size-min: 24px;
   --target-size-comfortable: 32px;
   --target-size-large: 44px;
-
-  /* ========================================
-   * SEMANTIC COLOR MAPPINGS
-   * ======================================== */
-
-  /* Map semantic colors to base tokens for consistency */
-  --color-success: #10b981;
-  --color-warning: var(--color-accent-warning);
-  --color-error: var(--color-accent-danger);
-  --color-info: var(--color-accent-primary);
-
-  /* Clip Type Colors (for timeline) */
   --clip-color-video: #4a5568;
   --clip-color-audio: #2d7a8f;
   --clip-color-image: #6b46c1;
   --clip-color-text: #8b5cf6;
-
-  /* ========================================
-   * LEGACY COMPATIBILITY
-   * Map existing editor theme variables to new tokens
-   * This allows gradual migration without breaking existing code
-   * ======================================== */
-
-  /* Background mappings */
-  --editor-bg-primary: var(--color-bg-app);
-  --editor-bg-secondary: var(--color-bg-panel);
-  --editor-bg-tertiary: var(--color-bg-surface-subtle);
-  --editor-panel-bg: var(--color-bg-panel);
-  --editor-panel-header-bg: var(--color-bg-panel-header);
-
-  /* Border mappings */
-  --editor-panel-border: var(--color-border-strong);
-  --editor-panel-border-subtle: var(--color-border-subtle);
-
-  /* Text mappings */
-  --editor-text-primary: var(--color-text-primary);
-  --editor-text-secondary: var(--color-text-secondary);
-  --editor-text-tertiary: var(--color-text-muted);
-
-  /* Accent mappings */
-  --editor-accent: var(--color-accent-primary);
-  --editor-accent-hover: #5b93f7;
-  --editor-accent-active: var(--color-bg-active);
-
-  /* State mappings */
-  --editor-panel-hover: var(--color-bg-hover);
+  --editor-bg-primary: var(--bg-app);
+  --editor-bg-secondary: var(--bg-panel);
+  --editor-bg-tertiary: var(--bg-input);
+  --editor-panel-bg: var(--bg-panel);
+  --editor-panel-header-bg: var(--bg-elevated);
+  --editor-panel-border: var(--border-strong);
+  --editor-panel-border-subtle: var(--border-subtle);
+  --editor-text-primary: var(--text-primary);
+  --editor-text-secondary: var(--text-secondary);
+  --editor-text-tertiary: var(--text-tertiary);
+  --editor-accent: var(--color-primary-500);
+  --editor-accent-hover: var(--color-primary-400);
+  --editor-accent-active: var(--color-primary-600);
+  --editor-panel-hover: var(--bg-panel-hover);
   --editor-panel-active: var(--color-bg-active);
-
-  /* Spacing mappings */
-  --editor-space-xs: var(--space-sm);
-  --editor-space-sm: var(--space-md);
-  --editor-space-md: var(--space-lg);
-  --editor-space-lg: var(--space-xl);
-
-  /* Typography mappings */
+  --editor-space-xs: var(--space-2);
+  --editor-space-sm: var(--space-3);
+  --editor-space-md: var(--space-4);
+  --editor-space-lg: var(--space-5);
   --editor-font-size-xs: var(--font-size-xs);
   --editor-font-size-sm: var(--font-size-sm);
-  --editor-font-size-base: var(--font-size-md);
-  --editor-font-weight-normal: var(--font-weight-regular);
+  --editor-font-size-base: var(--font-size-base);
+  --editor-font-weight-normal: var(--font-weight-normal);
   --editor-font-weight-medium: var(--font-weight-medium);
   --editor-font-weight-semibold: var(--font-weight-semibold);
-
-  /* Border radius mappings */
   --editor-radius-sm: var(--radius-sm);
   --editor-radius-md: var(--radius-md);
-
-  /* Transition mappings */
-  --editor-transition-fast: var(--transition-fast);
-  --editor-transition-base: var(--transition-base);
+  --editor-transition-fast: var(--transition-base);
+  --editor-transition-base: all var(--duration-normal) var(--ease-standard);
 }
 
-/* ========================================
- * UTILITY CLASSES
- * These provide quick access to common token patterns
- * ======================================== */
+/* ==================== LIGHT THEME ==================== */
+:root:not(.dark) {
+  --bg-app: #fff;
+  --bg-panel: #f8f9fa;
+  --bg-panel-hover: #f0f1f3;
+  --bg-input: #fff;
+  --bg-elevated: #fff;
+  --bg-timeline: #f5f5f5;
+  --bg-toolbar: #fafafa;
+  --text-primary: #1a1a1a;
+  --text-secondary: #666;
+  --text-tertiary: #999;
+  --text-disabled: #ccc;
+  --border-subtle: #e5e7eb;
+  --border-default: #d1d5db;
+  --border-strong: #9ca3af;
+  --shadow-sm: 0 2px 4px 0 rgb(0 0 0 / 6%);
+  --shadow-md: 0 4px 8px 0 rgb(0 0 0 / 8%);
+  --shadow-lg: 0 8px 16px 0 rgb(0 0 0 / 10%);
+  --shadow-xl: 0 12px 24px 0 rgb(0 0 0 / 12%);
+  --shadow-2xl: 0 20px 40px 0 rgb(0 0 0 / 14%);
+}
 
+/* ==================== UTILITY CLASSES ==================== */
 .text-primary {
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .text-secondary {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .text-muted {
-  color: var(--color-text-muted);
+  color: var(--text-tertiary);
 }
 
 .bg-panel {
-  background-color: var(--color-bg-panel);
+  background-color: var(--bg-panel);
 }
 
 .bg-panel-header {
-  background-color: var(--color-bg-panel-header);
+  background-color: var(--bg-elevated);
 }
 
 .border-subtle {
-  border-color: var(--color-border-subtle);
+  border-color: var(--border-subtle);
 }
 
 .border-strong {
-  border-color: var(--color-border-strong);
+  border-color: var(--border-strong);
 }
 
-/* Interaction states */
 .interactive-hover:hover {
-  background-color: var(--color-bg-hover);
-  transition: background-color var(--transition-fast);
+  background-color: var(--bg-panel-hover);
+  transition: background-color var(--transition-base);
 }
 
 .interactive-active:active {
   background-color: var(--color-bg-active);
 }
 
-/* Focus ring for accessibility */
 .focus-ring:focus {
   outline: none;
-  box-shadow: var(--shadow-focus);
+  box-shadow: var(--glow-primary);
 }
 
-/* Smooth transitions */
 .transition-fast {
-  transition: all var(--transition-fast);
+  transition: var(--transition-base);
 }
 
 .transition-base {
-  transition: all var(--transition-base);
+  transition: all var(--duration-normal) var(--ease-standard);
 }
