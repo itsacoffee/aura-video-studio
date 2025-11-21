@@ -226,9 +226,67 @@ if (Remove-PathSafely $ffmpegPath "Downloaded FFmpeg") {
 Write-Host ""
 
 # ========================================
-# Step 4: Clean Temporary Files
+# Step 3.5: Additional Cleanup Locations
 # ========================================
-Write-Info "Step 4: Cleaning temporary files..."
+Write-Info "Step 3.5: Cleaning additional configuration locations..."
+Write-Host ""
+
+# Additional cleanup locations identified in codebase
+$additionalLocations = @(
+    "$env:LOCALAPPDATA\Aura\dependencies",          # FFmpeg managed installs
+    "$env:LOCALAPPDATA\Aura\Logs",                  # Log files
+    "$env:LOCALAPPDATA\Aura\Cache",                 # Cache directory
+    "$env:LOCALAPPDATA\AuraVideoStudio",            # Alternative app data location
+    "$env:APPDATA\AuraVideoStudio",                 # Roaming app data
+    "$env:USERPROFILE\Documents\AuraVideoStudio"    # User projects (conditional)
+)
+
+Write-Host "Additional cleanup locations:" -ForegroundColor Cyan
+foreach ($location in $additionalLocations) {
+    $expandedPath = [Environment]::ExpandEnvironmentVariables($location)
+    
+    # Special handling for Documents - prompt user
+    if ($location -like "*Documents*" -and -not $IncludeUserContent) {
+        Write-Host "  Skipping user content: $location (use -IncludeUserContent to remove)" -ForegroundColor Yellow
+        continue
+    }
+    
+    if (Remove-PathSafely -Path $expandedPath -Description $location) {
+        $cleanupStats.Removed++
+    }
+}
+
+# Clean registry entries (Windows-specific)
+if ($PSVersionTable.PSVersion.Major -ge 5) {
+    Write-Host "`nCleaning Windows Registry entries..." -ForegroundColor Cyan
+    $registryPaths = @(
+        "HKCU:\Software\Aura",
+        "HKCU:\Software\AuraVideoStudio"
+    )
+    
+    foreach ($regPath in $registryPaths) {
+        if (Test-Path $regPath) {
+            if ($DryRun) {
+                Write-Info "[DRY RUN] Would remove registry key: $regPath"
+            } else {
+                try {
+                    Remove-Item -Path $regPath -Recurse -Force -ErrorAction Stop
+                    Write-Success "Removed registry key: $regPath"
+                    $cleanupStats.Removed++
+                } catch {
+                    Show-Warning "Could not remove registry key: $regPath"
+                }
+            }
+        }
+    }
+}
+
+Write-Host ""
+
+# ========================================
+# Step 5: Clean Temporary Files
+# ========================================
+Write-Info "Step 5: Cleaning temporary files..."
 Write-Host ""
 
 $tempPath = "$env:TEMP\aura-video-studio"
@@ -241,9 +299,9 @@ if (Remove-PathSafely $tempPath "Temporary processing files") {
 Write-Host ""
 
 # ========================================
-# Step 5: Clean Build Artifacts (Dev Environment)
+# Step 6: Clean Build Artifacts (Dev Environment)
 # ========================================
-Write-Info "Step 5: Cleaning build artifacts (development)..."
+Write-Info "Step 6: Cleaning build artifacts (development)..."
 Write-Host ""
 
 $ScriptDir = $PSScriptRoot
@@ -298,9 +356,9 @@ foreach ($project in $projectsToClean) {
 Write-Host ""
 
 # ========================================
-# Step 6: Reset First-Run Wizard State
+# Step 7: Reset First-Run Wizard State
 # ========================================
-Write-Info "Step 6: Resetting first-run wizard state..."
+Write-Info "Step 7: Resetting first-run wizard state..."
 Write-Host ""
 
 function Reset-WizardState {
@@ -408,10 +466,10 @@ if (-not $DryRun) {
 Write-Host ""
 
 # ========================================
-# Step 7: Clean User Content (Optional)
+# Step 8: Clean User Content (Optional)
 # ========================================
 if ($IncludeUserContent) {
-    Write-Info "Step 7: Cleaning user content (as requested)..."
+    Write-Info "Step 8: Cleaning user content (as requested)..."
     Write-Host ""
     
     $documentsPath = "$env:USERPROFILE\Documents\Aura Video Studio"
@@ -430,7 +488,7 @@ if ($IncludeUserContent) {
     
     Write-Host ""
 } else {
-    Write-Info "Step 7: Preserving user content (use -IncludeUserContent to remove)"
+    Write-Info "Step 8: Preserving user content (use -IncludeUserContent to remove)"
     Write-Host ""
     
     $documentsPath = "$env:USERPROFILE\Documents\Aura Video Studio"
@@ -445,6 +503,33 @@ if ($IncludeUserContent) {
     
     Write-Host ""
 }
+
+# ========================================
+# Cleanup Verification Report
+# ========================================
+Write-Host "`n========================================" -ForegroundColor Cyan
+Write-Host "Cleanup Verification Report" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+
+$verificationPaths = @(
+    "$env:LOCALAPPDATA\Aura",
+    "$env:APPDATA\Aura",
+    "$env:LOCALAPPDATA\AuraVideoStudio",
+    "$env:APPDATA\AuraVideoStudio",
+    "$env:LOCALAPPDATA\aura-video-studio",
+    "$env:APPDATA\aura-video-studio"
+)
+
+foreach ($path in $verificationPaths) {
+    $expanded = [Environment]::ExpandEnvironmentVariables($path)
+    if (Test-Path $expanded) {
+        Write-Host "  ⚠️  Still exists: $expanded" -ForegroundColor Yellow
+    } else {
+        Write-Host "  ✓ Cleaned: $expanded" -ForegroundColor Green
+    }
+}
+
+Write-Host ""
 
 # ========================================
 # Summary
