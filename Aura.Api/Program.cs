@@ -1455,6 +1455,9 @@ builder.Services.AddSingleton<Aura.Core.Errors.ErrorMappingService>();
 // Register resilience services for error recovery and monitoring
 builder.Services.AddResilienceServices(builder.Configuration);
 
+// Register Startup Configuration Validator - validates FFmpeg and critical config before accepting requests
+builder.Services.AddHostedService<Aura.Api.Services.StartupConfigurationValidator>();
+
 // Register Startup Initialization Service - runs first to ensure critical services are ready
 builder.Services.AddHostedService<Aura.Api.HostedServices.StartupInitializationService>();
 

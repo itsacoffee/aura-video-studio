@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.AI;
 using Aura.Core.AI.Adapters;
+using Aura.Core.Configuration;
 using Aura.Core.Hardware;
 using Aura.Core.Models;
 using Aura.Core.Models.Diagnostics;
@@ -16,6 +17,7 @@ using Aura.Core.Services.Orchestration;
 using Aura.Core.Services.Validation;
 using Aura.Core.Services.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Api.Controllers;
@@ -45,9 +47,12 @@ public class DiagnosticsController : ControllerBase
     private readonly FailureAnalysisService? _failureAnalysisService;
     private readonly IHttpClientFactory? _httpClientFactory;
     private readonly Aura.Core.Services.Providers.OpenAIKeyValidationService? _openAIValidation;
+    private readonly FFmpegConfigurationStore? _ffmpegConfigStore;
+    private readonly IConfiguration _configuration;
 
     public DiagnosticsController(
         ILogger<DiagnosticsController> logger,
+        IConfiguration configuration,
         SystemHealthService? healthService = null,
         SystemIntegrityValidator? integrityValidator = null,
         PromptTemplateValidator? promptValidator = null,
@@ -64,9 +69,11 @@ public class DiagnosticsController : ControllerBase
         DiagnosticBundleService? bundleService = null,
         FailureAnalysisService? failureAnalysisService = null,
         IHttpClientFactory? httpClientFactory = null,
-        Aura.Core.Services.Providers.OpenAIKeyValidationService? openAIValidation = null)
+        Aura.Core.Services.Providers.OpenAIKeyValidationService? openAIValidation = null,
+        FFmpegConfigurationStore? ffmpegConfigStore = null)
     {
         _logger = logger;
+        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _healthService = healthService;
         _integrityValidator = integrityValidator;
         _promptValidator = promptValidator;
@@ -84,6 +91,7 @@ public class DiagnosticsController : ControllerBase
         _failureAnalysisService = failureAnalysisService;
         _httpClientFactory = httpClientFactory;
         _openAIValidation = openAIValidation;
+        _ffmpegConfigStore = ffmpegConfigStore;
     }
 
     /// <summary>
@@ -272,6 +280,66 @@ public class DiagnosticsController : ControllerBase
 
         await Task.CompletedTask.ConfigureAwait(false);
         return Ok(config);
+    }
+
+    /// <summary>
+    /// Get startup configuration including FFmpeg, database, and directory settings
+    /// </summary>
+    [HttpGet("startup-config")]
+    public async Task<IActionResult> GetStartupConfiguration(CancellationToken ct = default)
+    {
+        _logger.LogInformation("Startup configuration requested");
+
+        try
+        {
+            FFmpegConfiguration? ffmpegConfig = null;
+            if (_ffmpegConfigStore != null)
+            {
+                ffmpegConfig = await _ffmpegConfigStore.LoadAsync(ct).ConfigureAwait(false);
+            }
+
+            var databaseProvider = _configuration.GetValue<string>("Database:Provider") ?? "SQLite";
+            var databaseConfig = new
+            {
+                Provider = databaseProvider,
+                ConnectionString = databaseProvider == "SQLite" 
+                    ? _configuration.GetValue<string>("Database:SQLitePath") ?? "Not configured"
+                    : "PostgreSQL (connection string hidden for security)"
+            };
+
+            var outputDirectory = _configuration["OutputDirectory"] 
+                ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), 
+                    "AuraVideoStudio", "Output");
+
+            var result = new
+            {
+                ffmpeg = ffmpegConfig != null ? new
+                {
+                    mode = ffmpegConfig.Mode.ToString(),
+                    path = ffmpegConfig.Path,
+                    version = ffmpegConfig.Version,
+                    isValid = ffmpegConfig.IsValid,
+                    source = ffmpegConfig.Source,
+                    lastValidatedAt = ffmpegConfig.LastValidatedAt,
+                    lastValidationResult = ffmpegConfig.LastValidationResult.ToString()
+                } : null,
+                database = databaseConfig,
+                outputDirectory = outputDirectory,
+                timestamp = DateTime.UtcNow
+            };
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get startup configuration");
+            return StatusCode(500, new
+            {
+                Error = "Failed to retrieve startup configuration",
+                Message = ex.Message,
+                Timestamp = DateTime.UtcNow
+            });
+        }
     }
 
     /// <summary>
