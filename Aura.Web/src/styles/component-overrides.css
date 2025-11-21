@@ -1,0 +1,69 @@
+/* ==================== FLUENT UI OVERRIDES ==================== */
+.fui-Button {
+  min-height: 32px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md) !important;
+  font-weight: var(--font-weight-medium);
+}
+
+.fui-Input {
+  border-radius: var(--radius-md) !important;
+  min-height: 32px;
+}
+
+.fui-Card {
+  border-radius: var(--radius-lg) !important;
+  padding: var(--space-5);
+}
+
+.fui-Dialog__surface {
+  border-radius: var(--radius-xl) !important;
+  box-shadow: var(--shadow-2xl);
+}
+
+/* ==================== WIZARD REFINEMENTS ==================== */
+.wizard-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: var(--space-6);
+  gap: var(--space-5);
+}
+
+.wizard-header,
+.wizard-footer {
+  padding: var(--space-4) var(--space-6);
+  background-color: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ==================== TIMELINE REFINEMENTS ==================== */
+.timeline-container {
+  height: var(--timeline-height);
+  background-color: var(--bg-timeline);
+  border-top: 1px solid var(--border-default);
+  padding: var(--space-4);
+}
+
+.timeline-clip {
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition-base);
+}
+
+.timeline-clip:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+/* ==================== RESPONSIVE ==================== */
+@media (width <= 768px) {
+  :root {
+    --sidebar-width: 240px;
+    --inspector-width: 280px;
+    --toolbar-height: 44px;
+  }
+}
