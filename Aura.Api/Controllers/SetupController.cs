@@ -548,7 +548,7 @@ public class SetupController : ControllerBase
             _logger.LogError(ex, "[{CorrelationId}] Failed to complete setup", correlationId);
             return StatusCode(500, new { 
                 success = false,
-                error = "Failed to complete setup. Please try again or contact support if the problem persists.", 
+                errors = new[] { "Failed to complete setup. Please try again or contact support if the problem persists." },
                 correlationId 
             });
         }
