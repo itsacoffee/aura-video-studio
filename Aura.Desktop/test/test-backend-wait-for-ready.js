@@ -36,11 +36,13 @@ test('BackendService has waitForReady method', () => {
   assert.strictEqual(typeof BackendService.prototype.waitForReady, 'function', 'waitForReady should be a function');
 });
 
-// Test 3: Check method signature (accepts options parameter)
+// Test 3: Check method signature (accepts options parameter or destructured parameters)
 test('waitForReady method accepts options parameter', () => {
   const BackendService = require('../electron/backend-service.js');
   const methodStr = BackendService.prototype.waitForReady.toString();
-  assert.ok(methodStr.includes('options'), 'waitForReady should accept options parameter');
+  // Accept either 'options' or destructured parameters like '{ timeout = ..., onProgress = ... }'
+  const hasOptions = methodStr.includes('options') || (methodStr.includes('timeout') && methodStr.includes('onProgress'));
+  assert.ok(hasOptions, 'waitForReady should accept options parameter or destructured parameters');
 });
 
 // Test 4: Check that waitForReady is async

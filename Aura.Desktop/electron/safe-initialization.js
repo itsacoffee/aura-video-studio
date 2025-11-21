@@ -239,7 +239,8 @@ async function initializeBackendService(
         app,
         isDev,
         processManager,
-        networkContract
+        networkContract,
+        logger
       );
     }
 
