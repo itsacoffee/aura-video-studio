@@ -1769,6 +1769,9 @@ builder.Services.AddSingleton<Aura.Core.Services.ML.PostTrainingAnalysisService>
 // Register Advanced Mode service
 builder.Services.AddSingleton<Aura.Core.Services.AdvancedModeService>();
 
+// Register Firewall Utility for Windows Firewall management
+builder.Services.AddSingleton<Aura.Core.Utils.FirewallUtility>();
+
 // Register Enhanced Local Storage and Project File Services
 builder.Services.AddSingleton<Aura.Core.Services.Storage.IEnhancedLocalStorageService, Aura.Core.Services.Storage.EnhancedLocalStorageService>();
 builder.Services.AddScoped<Aura.Core.Services.Projects.IProjectFileService, Aura.Core.Services.Projects.ProjectFileService>();
@@ -3090,6 +3093,67 @@ apiGroup.MapGet("/capabilities", async (HardwareDetector detector) =>
     }
 })
 .WithName("GetCapabilities")
+.WithOpenApi();
+
+// Firewall configuration endpoints
+apiGroup.MapPost("/system/firewall/check", async (
+    [FromQuery] string executablePath,
+    Aura.Core.Utils.FirewallUtility firewallUtility) =>
+{
+    try
+    {
+        var exists = await firewallUtility.RuleExistsAsync(executablePath);
+        return Results.Ok(new { ruleExists = exists });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error checking firewall rule");
+        return Results.Problem("Error checking firewall rule", statusCode: 500);
+    }
+})
+.WithName("CheckFirewallRule")
+.WithTags("System")
+.WithOpenApi();
+
+apiGroup.MapPost("/system/firewall/add", async (
+    [FromQuery] string executablePath,
+    [FromQuery] bool includePublic,
+    Aura.Core.Utils.FirewallUtility firewallUtility) =>
+{
+    if (!Aura.Core.Utils.FirewallUtility.IsAdministrator())
+    {
+        return Results.Problem(
+            statusCode: 403,
+            title: "Administrator privileges required",
+            detail: "Adding firewall rules requires administrator privileges. Please run the application as administrator or use the installer."
+        );
+    }
+
+    try
+    {
+        var result = await firewallUtility.AddFirewallRuleAsync(executablePath, includePublic);
+        
+        if (result.Success)
+        {
+            return Results.Ok(new { message = result.Message });
+        }
+        else
+        {
+            return Results.Problem(
+                statusCode: 500,
+                title: "Failed to add firewall rule",
+                detail: result.Message
+            );
+        }
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error adding firewall rule");
+        return Results.Problem("Error adding firewall rule", statusCode: 500);
+    }
+})
+.WithName("AddFirewallRule")
+.WithTags("System")
 .WithOpenApi();
 
 // Plan endpoint - create or update timeline plan
@@ -5444,6 +5508,31 @@ appLifetime.ApplicationStarted.Register(() =>
             else
             {
                 logger.LogInformation("=== Health Check Complete: All systems operational ===");
+            }
+
+            // Check Windows Firewall rule status
+            try
+            {
+                var firewallUtility = scope.ServiceProvider.GetRequiredService<Aura.Core.Utils.FirewallUtility>();
+                var executablePath = Environment.ProcessPath ?? System.Reflection.Assembly.GetExecutingAssembly().Location;
+
+                if (Aura.Core.Utils.FirewallUtility.IsWindows())
+                {
+                    var ruleExists = await firewallUtility.RuleExistsAsync(executablePath).ConfigureAwait(false);
+                    if (!ruleExists)
+                    {
+                        logger.LogWarning("Windows Firewall rule not found for {Path}. Users may experience connection issues.", executablePath);
+                        logger.LogInformation("To add firewall rule, run as administrator or use the installer");
+                    }
+                    else
+                    {
+                        logger.LogInformation("Windows Firewall rule exists for backend");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to check Windows Firewall status");
             }
         }
         catch (Exception ex)
