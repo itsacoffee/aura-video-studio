@@ -11,6 +11,11 @@ import { test, expect } from '@playwright/test';
  * - Backend auto-start is enabled
  * - Windows Firewall may or may not have rules configured
  */
+
+// Mock storage keys
+const MOCK_FIREWALL_MISSING_KEY = 'mock-firewall-missing';
+const BACKEND_AUTO_START_KEY = 'backend-auto-start-enabled';
+
 test.describe('First Launch Experience', () => {
   test('should launch app and reach setup wizard without errors', async ({ page }) => {
     await page.goto('http://localhost:5173');
@@ -36,7 +41,7 @@ test.describe('First Launch Experience', () => {
     await page.goto('http://localhost:5173');
 
     await page.evaluate(() => {
-      window.localStorage.setItem('mock-firewall-missing', 'true');
+      window.localStorage.setItem(MOCK_FIREWALL_MISSING_KEY, 'true');
     });
 
     await page.reload();
@@ -113,9 +118,9 @@ test.describe('First Launch Experience', () => {
 
     await page.waitForSelector('[data-testid="setup-wizard"]', { timeout: 30000 });
 
-    const autoStartEnabled = await page.evaluate(() => {
-      return localStorage.getItem('backend-auto-start-enabled');
-    });
+    const autoStartEnabled = await page.evaluate((key) => {
+      return localStorage.getItem(key);
+    }, BACKEND_AUTO_START_KEY);
 
     expect(autoStartEnabled === null || autoStartEnabled === 'true').toBe(true);
   });
@@ -124,7 +129,7 @@ test.describe('First Launch Experience', () => {
     await page.goto('http://localhost:5173');
 
     await page.evaluate(() => {
-      window.localStorage.setItem('mock-firewall-missing', 'true');
+      window.localStorage.setItem(MOCK_FIREWALL_MISSING_KEY, 'true');
     });
 
     await page.reload();
@@ -143,7 +148,7 @@ test.describe('First Launch Experience', () => {
     await page.goto('http://localhost:5173');
 
     await page.evaluate(() => {
-      window.localStorage.setItem('mock-firewall-missing', 'true');
+      window.localStorage.setItem(MOCK_FIREWALL_MISSING_KEY, 'true');
     });
 
     await page.reload();

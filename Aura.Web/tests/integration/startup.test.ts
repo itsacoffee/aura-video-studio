@@ -59,7 +59,7 @@ describe('Application Startup Integration Tests', () => {
   }, 15000);
 
   it('should detect backend executable in production path', () => {
-    const execPath = processManager['detectBackendExecutable']();
+    const execPath = processManager.detectBackendExecutable();
     expect(execPath).toContain('Aura.Api');
   });
 

@@ -73,9 +73,8 @@ export class BackendProcessManager {
 
   /**
    * Detect backend executable path based on environment
-   * Private method exposed for testing
    */
-  private detectBackendExecutable(): string {
+  detectBackendExecutable(): string {
     if (process.env.NODE_ENV === 'development') {
       return 'Aura.Api.exe';
     }
