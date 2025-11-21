@@ -529,16 +529,43 @@ public class FFmpegResolver
 
     private static IReadOnlyList<string> GetEnvironmentOverridePaths()
     {
-        // Only use AURA_FFMPEG_PATH as per unified configuration (PR #384)
-        // Legacy FFMPEG_PATH and FFMPEG_BINARIES_PATH are no longer supported
-        var auraPath = Environment.GetEnvironmentVariable("AURA_FFMPEG_PATH");
+        // Priority: AURA_FFMPEG_PATH (primary) > FFMPEG_PATH (backward compat) > FFMPEG_BINARIES_PATH (legacy)
+        // This ensures compatibility with Electron's backend-service.js which sets all three variables
+        // Note: Using List with LINQ for guaranteed order preservation (max 3 items, O(n²) is acceptable)
+        var paths = new List<string>();
         
+        // Priority 1: AURA_FFMPEG_PATH (primary)
+        var auraPath = Environment.GetEnvironmentVariable("AURA_FFMPEG_PATH");
         if (!string.IsNullOrWhiteSpace(auraPath))
         {
-            return new[] { auraPath.Trim() };
+            paths.Add(auraPath.Trim());
         }
         
-        return Array.Empty<string>();
+        // Priority 2: FFMPEG_PATH (backward compatibility)
+        var ffmpegPath = Environment.GetEnvironmentVariable("FFMPEG_PATH");
+        if (!string.IsNullOrWhiteSpace(ffmpegPath))
+        {
+            var trimmed = ffmpegPath.Trim();
+            // Only add if not already in the list (case-insensitive comparison)
+            if (!paths.Any(p => p.Equals(trimmed, StringComparison.OrdinalIgnoreCase)))
+            {
+                paths.Add(trimmed);
+            }
+        }
+        
+        // Priority 3: FFMPEG_BINARIES_PATH (legacy)
+        var binariesPath = Environment.GetEnvironmentVariable("FFMPEG_BINARIES_PATH");
+        if (!string.IsNullOrWhiteSpace(binariesPath))
+        {
+            var trimmed = binariesPath.Trim();
+            // Only add if not already in the list (case-insensitive comparison)
+            if (!paths.Any(p => p.Equals(trimmed, StringComparison.OrdinalIgnoreCase)))
+            {
+                paths.Add(trimmed);
+            }
+        }
+        
+        return paths;
     }
 
     /// <summary>
