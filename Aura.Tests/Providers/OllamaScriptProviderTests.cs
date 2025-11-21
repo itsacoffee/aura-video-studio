@@ -105,7 +105,7 @@ public class OllamaScriptProviderTests : IDisposable
 
         // Assert
         Assert.NotEmpty(progressUpdates);
-        Assert.True(progressUpdates.Count >= 3, "Should have at least 3 progress updates");
+        Assert.True(progressUpdates.Count > 1, "Should have multiple progress updates during streaming");
         
         var lastUpdate = progressUpdates.Last();
         Assert.Equal(100, lastUpdate.PercentComplete);

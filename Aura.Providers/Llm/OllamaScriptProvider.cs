@@ -242,7 +242,8 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
                     buffer.Append(chunk.Response);
                     tokenCount++;
 
-                    var percentComplete = chunk.Done ? 100 : Math.Min(95, tokenCount / 20);
+                    const int expectedMaxTokens = 2048;
+                    var percentComplete = chunk.Done ? 100 : Math.Min(95, (tokenCount * 100) / expectedMaxTokens);
 
                     yield return new ScriptGenerationProgress
                     {
