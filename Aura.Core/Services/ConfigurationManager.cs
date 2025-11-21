@@ -255,6 +255,13 @@ public class ConfigurationManager
         // For immediate effect, we rely on category/key invalidation
     }
 
+    private bool _degradedMode = false;
+
+    /// <summary>
+    /// Indicates whether the configuration system is operating in degraded mode (using defaults only)
+    /// </summary>
+    public bool IsDegradedMode => _degradedMode;
+
     /// <summary>
     /// Load configuration on startup with defaults
     /// </summary>
@@ -264,12 +271,24 @@ public class ConfigurationManager
 
         try
         {
-            var defaults = GetDefaultConfigurations();
-
             using var scope = _scopeFactory.CreateScope();
             var repository = scope.ServiceProvider.GetRequiredService<ConfigurationRepository>();
 
             var existing = await repository.GetAllAsync(false, ct).ConfigureAwait(false);
+            
+            if (existing == null || existing.Count == 0)
+            {
+                _logger.LogWarning("No configurations loaded from database. Using default configuration values.");
+                _logger.LogWarning("Configuration system will operate in degraded mode with defaults only.");
+                
+                // Load defaults into cache
+                LoadDefaultConfigurations();
+                
+                _degradedMode = true;
+                return;
+            }
+
+            var defaults = GetDefaultConfigurations();
             var existingKeys = existing.Select(c => c.Key).ToHashSet();
 
             var newConfigs = defaults
@@ -290,12 +309,48 @@ public class ConfigurationManager
             {
                 _logger.LogInformation("All default configurations already exist");
             }
+            
+            _degradedMode = false;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error initializing configuration system");
-            throw;
+            _logger.LogWarning("Configuration system will operate in degraded mode with defaults only");
+            
+            // Load defaults to allow application to continue
+            LoadDefaultConfigurations();
+            
+            _degradedMode = true;
         }
+    }
+
+    private void LoadDefaultConfigurations()
+    {
+        // Load essential default configurations
+        var defaults = new Dictionary<string, string>
+        {
+            { "System:ApplicationName", "Aura Video Studio" },
+            { "System:Version", "1.0.0" },
+            { "System:Environment", "Development" },
+            { "Logging:MinimumLevel", "Information" },
+            { "Api:Port", "5005" },
+            { "Api:Host", "127.0.0.1" }
+        };
+
+        foreach (var kvp in defaults)
+        {
+            try
+            {
+                var cacheKey = $"config:{kvp.Key}";
+                _cache.Set(cacheKey, kvp.Value, _cacheExpiration);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to set default configuration for {Key}", kvp.Key);
+            }
+        }
+
+        _logger.LogInformation("Loaded {Count} default configurations", defaults.Count);
     }
 
     private void InvalidateCache(string key, string? category)
