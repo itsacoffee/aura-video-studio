@@ -135,11 +135,11 @@ export const setupApi = {
    */
   async completeSetup(
     request: SetupCompleteRequest
-  ): Promise<{ success: boolean; errors?: string[] }> {
+  ): Promise<{ success: boolean; errors?: string[]; correlationId?: string }> {
     const config: ExtendedAxiosRequestConfig = {
       _skipCircuitBreaker: true,
     };
-    const response = await apiClient.post<{ success: boolean; errors?: string[] }>(
+    const response = await apiClient.post<{ success: boolean; errors?: string[]; correlationId?: string }>(
       '/api/setup/complete',
       request,
       config

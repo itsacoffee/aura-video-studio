@@ -227,6 +227,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
   // Completion state
   const [isCompletingSetup, setIsCompletingSetup] = useState(false);
+  const [completionErrors, setCompletionErrors] = useState<string[]>([]);
 
   // Notifications hook
   const { showSuccessToast, showFailureToast } = useNotifications();
@@ -521,6 +522,9 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
       return; // Prevent double-clicks
     }
 
+    // Clear any previous errors
+    setCompletionErrors([]);
+
     // Validate setup and show warnings if needed
     const warnings: string[] = [];
 
@@ -571,13 +575,21 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
       console.info('[FirstRunWizard] Setup API response:', setupResult);
 
       if (!setupResult.success) {
-        const errorMessage =
-          setupResult.errors?.join(', ') || 'Please ensure all requirements are met.';
-        console.error('[FirstRunWizard] Setup validation failed:', errorMessage);
+        // Show errors inline on the page
+        const errors = setupResult.errors || ['Setup validation failed. Please check your configuration.'];
+        setCompletionErrors(errors);
+        
+        console.error('[FirstRunWizard] Setup validation failed:', {
+          errors,
+          correlationId: setupResult.correlationId
+        });
+        
         showFailureToast({
           title: 'Setup Validation Failed',
-          message: errorMessage,
+          message: errors.join('; '),
         });
+        
+        // Don't proceed with completion
         return;
       }
 
@@ -621,9 +633,12 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
     } catch (error: unknown) {
       const errorObj = error instanceof Error ? error : new Error(String(error));
       console.error('[FirstRunWizard] Error completing setup:', errorObj);
+      
+      setCompletionErrors([`Failed to complete setup: ${errorObj.message}`]);
+      
       showFailureToast({
         title: 'Setup Error',
-        message: `Failed to complete setup: ${errorObj.message}. Please try again or skip to the main app.`,
+        message: `Failed to complete setup: ${errorObj.message}. Please try again or exit to the main app.`,
       });
     } finally {
       setIsCompletingSetup(false);
@@ -1379,7 +1394,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
     </div>
   );
 
-  // Step 4: Setup Complete
+  // Step 5: Setup Complete (Step 6/6)
   const renderStep4Complete = () => {
     const validApiKeys = Object.entries(state.apiKeyValidationStatus)
       .filter(([_, status]) => status === 'valid')
@@ -1400,7 +1415,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
               style={{ width: '64px', height: '64px', color: tokens.colorPaletteGreenForeground1 }}
             />
           </div>
-          <Title2>Setup Complete! Let&apos;s create your first video</Title2>
+          <Title2>Setup Summary - Ready to Save</Title2>
           <Text
             style={{
               display: 'block',
@@ -1408,8 +1423,38 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
               marginBottom: tokens.spacingVerticalL,
             }}
           >
-            You&apos;re all set! Here&apos;s what we configured:
+            Review your configuration and save to complete setup:
           </Text>
+
+          {/* Show validation errors if any */}
+          {completionErrors.length > 0 && (
+            <Card
+              style={{
+                padding: tokens.spacingVerticalM,
+                backgroundColor: tokens.colorPaletteRedBackground1,
+                border: `1px solid ${tokens.colorPaletteRedBorder1}`,
+                maxWidth: '600px',
+                margin: '0 auto 1rem auto',
+              }}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXS, textAlign: 'left' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+                  <Warning24Regular style={{ color: tokens.colorPaletteRedForeground1 }} />
+                  <Title3 style={{ color: tokens.colorPaletteRedForeground1 }}>Validation Failed</Title3>
+                </div>
+                <ul style={{ margin: 0, paddingLeft: '1.5rem' }}>
+                  {completionErrors.map((error, index) => (
+                    <li key={index}>
+                      <Text style={{ color: tokens.colorPaletteRedForeground1 }}>{error}</Text>
+                    </li>
+                  ))}
+                </ul>
+                <Text size={200} style={{ color: tokens.colorPaletteRedForeground1, marginTop: tokens.spacingVerticalXS }}>
+                  Please go back and fix these issues, or exit to complete setup later.
+                </Text>
+              </div>
+            </Card>
+          )}
 
           <Card
             style={{
@@ -1469,11 +1514,20 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
             style={{
               marginTop: tokens.spacingVerticalL,
               display: 'flex',
-              flexDirection: 'column',
-              gap: tokens.spacingHorizontalS,
+              flexDirection: 'row',
+              gap: tokens.spacingHorizontalM,
+              justifyContent: 'center',
               alignItems: 'center',
             }}
           >
+            <Button
+              appearance="secondary"
+              size="large"
+              onClick={handleExitWizard}
+              disabled={isCompletingSetup}
+            >
+              Exit Wizard
+            </Button>
             <Button
               appearance="primary"
               size="large"
@@ -1481,15 +1535,15 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
               disabled={isCompletingSetup}
               icon={isCompletingSetup ? <Spinner size="tiny" /> : undefined}
             >
-              {isCompletingSetup ? 'Finishing Setup...' : 'Start Creating Videos'}
+              {isCompletingSetup ? 'Saving...' : 'Save'}
             </Button>
-            <Text
-              size={200}
-              style={{ marginTop: tokens.spacingVerticalXS, color: tokens.colorNeutralForeground3 }}
-            >
-              This will save your configuration and take you to the main app
-            </Text>
           </div>
+          <Text
+            size={200}
+            style={{ marginTop: tokens.spacingVerticalS, color: tokens.colorNeutralForeground3 }}
+          >
+            Save will complete setup and take you to the main app
+          </Text>
         </div>
       </div>
     );
