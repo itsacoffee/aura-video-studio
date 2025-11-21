@@ -1,0 +1,239 @@
+.splash-screen {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: splashFadeIn 0.4s ease-out;
+  overflow: hidden;
+}
+
+.splash-screen--fadeout {
+  animation: splashFadeOut 0.6s ease-in forwards;
+}
+
+@keyframes splashFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes splashFadeOut {
+  to {
+    opacity: 0;
+    transform: scale(1.05);
+  }
+}
+
+.splash-content {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  animation: contentSlideUp 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes contentSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Logo Styles */
+.splash-logo {
+  margin-bottom: var(--space-3xl, 32px);
+}
+
+.splash-logo-icon {
+  display: inline-block;
+  margin-bottom: var(--space-2xl, 24px);
+  animation: logoFloat 3s ease-in-out infinite;
+}
+
+@keyframes logoFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.splash-logo-path {
+  animation: logoPulse 2s ease-in-out infinite;
+  transform-origin: center;
+}
+
+@keyframes logoPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.splash-logo-cutout {
+  animation: cutoutRotate 8s linear infinite;
+  transform-origin: center;
+}
+
+@keyframes cutoutRotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.splash-title {
+  font-size: 48px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #3b82f6, #a855f7, #ec4899);
+  background-clip: text;
+  /* stylelint-disable-next-line property-no-vendor-prefix -- Required for text gradient effect */
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin: 0;
+  letter-spacing: -1px;
+  animation: titleGradient 3s ease infinite;
+  background-size: 200% 200%;
+}
+
+@keyframes titleGradient {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.splash-subtitle {
+  font-size: 18px;
+  color: #a0a0a0;
+  margin: var(--space-lg, 12px) 0 0;
+  font-weight: 300;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+/* Progress Bar */
+.splash-progress {
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 0 var(--space-2xl, 24px);
+}
+
+.splash-progress-track {
+  height: 3px;
+  background: rgb(255 255 255 / 10%);
+  border-radius: var(--radius-full, 9999px);
+  overflow: hidden;
+  margin-bottom: var(--space-lg, 12px);
+}
+
+.splash-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #a855f7);
+  border-radius: var(--radius-full, 9999px);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 20px rgb(59 130 246 / 50%);
+}
+
+.splash-status {
+  font-size: 13px;
+  color: #a0a0a0;
+  margin: 0;
+  animation: statusFade 0.3s ease-in-out;
+}
+
+@keyframes statusFade {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Footer */
+.splash-footer {
+  margin-top: var(--space-3xl, 32px);
+}
+
+.splash-version {
+  font-size: 12px;
+  color: #6b6b6b;
+  margin: 0;
+}
+
+/* Particles Background */
+.splash-particles {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.splash-particle {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: rgb(59 130 246 / 40%);
+  border-radius: 50%;
+  animation: particleFloat linear infinite;
+}
+
+@keyframes particleFloat {
+  0% {
+    transform: translateY(100vh) scale(0);
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 1;
+  }
+
+  90% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(-100vh) scale(1);
+    opacity: 0;
+  }
+}
+
+/* Responsive */
+@media (width <= 768px) {
+  .splash-title {
+    font-size: 36px;
+  }
+
+  .splash-subtitle {
+    font-size: 14px;
+  }
+
+  .splash-logo-icon svg {
+    width: 80px;
+    height: 80px;
+  }
+}

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aura Splash Screen Demo</title>
+    <style>
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+    </style>
+    <link rel="stylesheet" href="../../src/components/SplashScreen/SplashScreen.css">
+</head>
+<body>
+    <div class="splash-screen">
+        <div class="splash-content">
+            <div class="splash-logo">
+                <div class="splash-logo-icon">
+                    <svg width="120" height="120" viewBox="0 0 120 120" fill="none">
+                        <defs>
+                            <linearGradient id="auraGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#3b82f6" />
+                                <stop offset="50%" stop-color="#a855f7" />
+                                <stop offset="100%" stop-color="#ec4899" />
+                            </linearGradient>
+                            <filter id="glow">
+                                <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+                                <feMerge>
+                                    <feMergeNode in="coloredBlur"/>
+                                    <feMergeNode in="SourceGraphic"/>
+                                </feMerge>
+                            </filter>
+                        </defs>
+                        <path d="M 60 20 L 90 50 L 90 70 L 60 90 L 30 70 L 30 50 Z" fill="url(#auraGradient)" filter="url(#glow)" class="splash-logo-path" />
+                        <path d="M 45 55 L 60 45 L 75 55 L 75 65 L 60 75 L 45 65 Z" fill="#0a0a0a" class="splash-logo-cutout" />
+                    </svg>
+                </div>
+                <h1 class="splash-title">Aura</h1>
+                <p class="splash-subtitle">Video Studio</p>
+            </div>
+            <div class="splash-progress">
+                <div class="splash-progress-track">
+                    <div class="splash-progress-fill" style="width: 60%;"></div>
+                </div>
+                <p class="splash-status">Loading effects library</p>
+            </div>
+            <div class="splash-footer">
+                <p class="splash-version">Version 1.0.0</p>
+            </div>
+        </div>
+        <div class="splash-particles">
+            <div class="splash-particle" style="left: 10%; animation-delay: 0s;"></div>
+            <div class="splash-particle" style="left: 20%; animation-delay: 0.5s;"></div>
+            <div class="splash-particle" style="left: 30%; animation-delay: 1s;"></div>
+            <div class="splash-particle" style="left: 40%; animation-delay: 1.5s;"></div>
+            <div class="splash-particle" style="left: 50%; animation-delay: 2s;"></div>
+            <div class="splash-particle" style="left: 60%; animation-delay: 2.5s;"></div>
+            <div class="splash-particle" style="left: 70%; animation-delay: 0.8s;"></div>
+            <div class="splash-particle" style="left: 80%; animation-delay: 1.3s;"></div>
+            <div class="splash-particle" style="left: 90%; animation-delay: 1.8s;"></div>
+        </div>
+    </div>
+</body>
+</html>

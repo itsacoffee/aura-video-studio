@@ -8,6 +8,7 @@ import { AppRouterContent } from './components/AppRouterContent';
 import { CrashRecoveryScreen } from './components/ErrorBoundary';
 import type { InitializationError } from './components/Initialization';
 import { InitializationScreen, StartupErrorScreen } from './components/Initialization';
+import { SplashScreen } from './components/SplashScreen/SplashScreen';
 import { env } from './config/env';
 import { ROUTE_METADATA_ENHANCED } from './config/routesWithGuards';
 import { AccessibilityProvider } from './contexts/AccessibilityContext';
@@ -99,6 +100,12 @@ function App() {
   const [isInitializing, setIsInitializing] = useState(true);
   const [initializationError, setInitializationError] = useState<InitializationError | null>(null);
   const [showCrashRecovery, setShowCrashRecovery] = useState(false);
+
+  const [showSplash, setShowSplash] = useState(() => {
+    // Only show splash on first load or after crashes
+    const hasShownSplash = sessionStorage.getItem('aura-splash-shown');
+    return !hasShownSplash || showCrashRecovery;
+  });
 
   const [_showDiagnostics, _setShowDiagnostics] = useState(false);
 
@@ -526,6 +533,22 @@ function App() {
   const themeName = localStorage.getItem('themeName') || 'aura';
   const currentTheme =
     themeName === 'aura' ? getAuraTheme(isDarkMode) : isDarkMode ? webDarkTheme : webLightTheme;
+
+  // Show splash screen on first load
+  if (showSplash) {
+    return (
+      <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
+        <FluentProvider theme={currentTheme}>
+          <SplashScreen
+            onComplete={() => {
+              sessionStorage.setItem('aura-splash-shown', 'true');
+              setShowSplash(false);
+            }}
+          />
+        </FluentProvider>
+      </ThemeContext.Provider>
+    );
+  }
 
   // Show crash recovery screen if multiple crashes detected
   if (showCrashRecovery) {
