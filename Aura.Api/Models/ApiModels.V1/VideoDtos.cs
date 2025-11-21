@@ -90,3 +90,12 @@ public record ArtifactInfo(
     string Path,
     string Type,
     long SizeBytes);
+
+/// <summary>
+/// Response from pipeline validation check
+/// </summary>
+public record PipelineValidationResponse(
+    bool IsValid,
+    List<string> Errors,
+    DateTime Timestamp,
+    string CorrelationId);

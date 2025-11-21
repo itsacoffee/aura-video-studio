@@ -47,6 +47,7 @@ public class VideoOrchestrator
     private readonly PipelineOrchestrationEngine? _pipelineEngine;
     private readonly Services.RAG.RagScriptEnhancer? _ragScriptEnhancer;
     private readonly Telemetry.RunTelemetryCollector _telemetryCollector;
+    private readonly Dependencies.FFmpegResolver? _ffmpegResolver;
 
     public VideoOrchestrator(
         ILogger<VideoOrchestrator> logger,
@@ -70,7 +71,8 @@ public class VideoOrchestrator
         Services.PacingServices.PacingApplicationService? pacingApplicationService = null,
         NarrationOptimizationService? narrationOptimizationService = null,
         PipelineOrchestrationEngine? pipelineEngine = null,
-        Services.RAG.RagScriptEnhancer? ragScriptEnhancer = null)
+        Services.RAG.RagScriptEnhancer? ragScriptEnhancer = null,
+        Dependencies.FFmpegResolver? ffmpegResolver = null)
     {
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(llmProvider);
@@ -111,6 +113,182 @@ public class VideoOrchestrator
         _narrationOptimizationService = narrationOptimizationService;
         _pipelineEngine = pipelineEngine;
         _ragScriptEnhancer = ragScriptEnhancer;
+        _ffmpegResolver = ffmpegResolver;
+    }
+
+    /// <summary>
+    /// Validates that all required services are available and functional before starting generation.
+    /// This prevents wasting time on partial generation that will fail.
+    /// </summary>
+    /// <returns>Tuple of (isValid, errors list)</returns>
+    public async Task<(bool isValid, List<string> errors)> ValidatePipelineAsync(
+        CancellationToken ct = default)
+    {
+        var errors = new List<string>();
+        _logger.LogInformation("Running pre-flight validation for video generation pipeline");
+
+        // 1. Check LLM Provider
+        try
+        {
+            if (_llmProvider == null)
+            {
+                errors.Add("LLM Provider not available - cannot generate scripts");
+            }
+            else
+            {
+                _logger.LogDebug("✓ LLM Provider available: {Type}", _llmProvider.GetType().Name);
+                
+                // For Ollama, check if it's actually running using reflection since we don't have a direct reference
+                var providerType = _llmProvider.GetType();
+                if (providerType.Name == "OllamaLlmProvider")
+                {
+                    var healthCheckMethod = providerType.GetMethod("IsServiceAvailableAsync");
+                    if (healthCheckMethod != null)
+                    {
+                        try
+                        {
+                            var task = healthCheckMethod.Invoke(_llmProvider, new object[] { ct });
+                            if (task is Task<bool> healthTask)
+                            {
+                                var isHealthy = await healthTask.ConfigureAwait(false);
+                                if (!isHealthy)
+                                {
+                                    errors.Add("Ollama LLM configured but not responding. Please start Ollama.");
+                                }
+                                else
+                                {
+                                    _logger.LogInformation("✓ Ollama LLM service is healthy");
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to check Ollama health");
+                            errors.Add($"Ollama LLM health check failed: {ex.Message}");
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            errors.Add($"LLM Provider error: {ex.Message}");
+        }
+
+        // 2. Check TTS Provider
+        try
+        {
+            if (_ttsProvider == null)
+            {
+                errors.Add("TTS Provider not available - cannot generate narration");
+            }
+            else
+            {
+                var voices = await _ttsProvider.GetAvailableVoicesAsync().ConfigureAwait(false);
+                if (voices.Count == 0)
+                {
+                    errors.Add("TTS Provider has no available voices. Check TTS configuration.");
+                }
+                else
+                {
+                    _logger.LogDebug("✓ TTS Provider available: {Type} with {Count} voices", 
+                        _ttsProvider.GetType().Name, voices.Count);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            errors.Add($"TTS Provider error: {ex.Message}");
+        }
+
+        // 3. Check FFmpeg Availability
+        try
+        {
+            if (_videoComposer == null)
+            {
+                errors.Add("Video Composer not available - cannot render final video");
+            }
+            else
+            {
+                _logger.LogDebug("✓ Video Composer available: {Type}", _videoComposer.GetType().Name);
+                
+                // Use FFmpeg resolver if available
+                if (_ffmpegResolver != null)
+                {
+                    var ffmpegResult = await _ffmpegResolver.ResolveAsync(ct: ct).ConfigureAwait(false);
+                    
+                    if (!ffmpegResult.Found)
+                    {
+                        errors.Add($"FFmpeg not found. Checked {ffmpegResult.AttemptedPaths.Count} locations. Please install FFmpeg or run setup.");
+                    }
+                    else if (!ffmpegResult.IsValid)
+                    {
+                        errors.Add($"FFmpeg found at {ffmpegResult.Path} but is not valid. {ffmpegResult.Error}");
+                    }
+                    else
+                    {
+                        _logger.LogInformation("✓ FFmpeg found at: {Path} (version: {Version})", 
+                            ffmpegResult.Path, ffmpegResult.Version);
+                    }
+                }
+                else
+                {
+                    _logger.LogWarning("FFmpeg resolver not available - skipping FFmpeg validation");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            errors.Add($"Video Composer error: {ex.Message}");
+        }
+
+        // 4. Check Image Provider (optional - can use placeholders)
+        if (_imageProvider == null)
+        {
+            _logger.LogWarning("Image Provider not configured - will use fallback placeholders");
+        }
+        else
+        {
+            _logger.LogDebug("✓ Image Provider available: {Type}", _imageProvider.GetType().Name);
+        }
+
+        // 5. Check output directory is writable
+        try
+        {
+            var outputDir = Path.Combine(Path.GetTempPath(), "AuraVideoStudio", "Output");
+            if (!Directory.Exists(outputDir))
+            {
+                Directory.CreateDirectory(outputDir);
+            }
+            
+            // Test write permissions
+            var testFile = Path.Combine(outputDir, $"write_test_{Guid.NewGuid()}.tmp");
+            File.WriteAllText(testFile, "test");
+            File.Delete(testFile);
+            
+            _logger.LogDebug("✓ Output directory writable: {Path}", outputDir);
+        }
+        catch (Exception ex)
+        {
+            errors.Add($"Output directory not writable: {ex.Message}");
+        }
+
+        var isValid = errors.Count == 0;
+        
+        if (!isValid)
+        {
+            _logger.LogError("Pipeline validation FAILED with {Count} errors:", errors.Count);
+            foreach (var error in errors)
+            {
+                _logger.LogError("  ❌ {Error}", error);
+            }
+        }
+        else
+        {
+            _logger.LogInformation("✅ Pipeline validation PASSED - all services ready");
+        }
+
+        return (isValid, errors);
     }
 
     /// <summary>
