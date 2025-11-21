@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Aura.Core.Models;
 using Aura.Core.Orchestration;
 using Aura.Core.Providers;
+using Aura.Core.Services.Providers;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.Orchestrator;
@@ -24,6 +25,7 @@ public class ScriptOrchestrator
     private Dictionary<string, ILlmProvider>? _providers;
     private readonly object _lock = new object();
     private volatile LlmStageAdapter? _stageAdapter;
+    private readonly OllamaDetectionService? _ollamaDetectionService;
 
     /// <summary>
     /// Constructor with pre-created providers (for backward compatibility)
@@ -32,13 +34,15 @@ public class ScriptOrchestrator
         ILogger<ScriptOrchestrator> logger,
         ILoggerFactory loggerFactory,
         ProviderMixer providerMixer,
-        Dictionary<string, ILlmProvider> providers)
+        Dictionary<string, ILlmProvider> providers,
+        OllamaDetectionService? ollamaDetectionService = null)
     {
         _logger = logger;
         _loggerFactory = loggerFactory;
         _providerMixer = providerMixer;
         _providers = providers;
         _providerFactory = null;
+        _ollamaDetectionService = ollamaDetectionService;
     }
 
     /// <summary>
@@ -48,13 +52,15 @@ public class ScriptOrchestrator
         ILogger<ScriptOrchestrator> logger,
         ILoggerFactory loggerFactory,
         ProviderMixer providerMixer,
-        Func<Dictionary<string, ILlmProvider>> providerFactory)
+        Func<Dictionary<string, ILlmProvider>> providerFactory,
+        OllamaDetectionService? ollamaDetectionService = null)
     {
         _logger = logger;
         _loggerFactory = loggerFactory;
         _providerMixer = providerMixer;
         _providerFactory = providerFactory;
         _providers = null;
+        _ollamaDetectionService = ollamaDetectionService;
     }
 
     private Dictionary<string, ILlmProvider> GetProviders()
@@ -83,6 +89,38 @@ public class ScriptOrchestrator
     }
 
     /// <summary>
+    /// Ensures Ollama detection has completed before script generation.
+    /// Waits up to 10 seconds for detection, then proceeds with available providers.
+    /// </summary>
+    private async Task EnsureOllamaDetectionCompleteAsync(CancellationToken ct)
+    {
+        if (_ollamaDetectionService == null)
+        {
+            _logger.LogDebug("OllamaDetectionService not available, skipping detection wait");
+            return;
+        }
+
+        if (_ollamaDetectionService.IsDetectionComplete)
+        {
+            _logger.LogDebug("Ollama detection already complete");
+            return;
+        }
+
+        _logger.LogInformation("Waiting for Ollama detection to complete...");
+        var detectionCompleted = await _ollamaDetectionService.WaitForInitialDetectionAsync(
+            TimeSpan.FromSeconds(10), ct).ConfigureAwait(false);
+
+        if (detectionCompleted)
+        {
+            _logger.LogInformation("Ollama detection completed successfully");
+        }
+        else
+        {
+            _logger.LogWarning("Ollama detection did not complete within timeout, proceeding with available providers");
+        }
+    }
+
+    /// <summary>
     /// Generate a script using the appropriate provider based on tier and availability.
     /// Uses the deterministic ResolveLlm method for provider selection.
     /// </summary>
@@ -95,6 +133,9 @@ public class ScriptOrchestrator
     {
         _logger.LogInformation("Starting deterministic script generation for topic: {Topic}, preferredTier: {Tier}, offlineOnly: {OfflineOnly}", 
             brief.Topic, preferredTier, offlineOnly);
+
+        // Wait for Ollama detection to complete before selecting providers
+        await EnsureOllamaDetectionCompleteAsync(ct).ConfigureAwait(false);
 
         // Use the new deterministic ResolveLlm method
         var decision = _providerMixer.ResolveLlm(GetProviders(), preferredTier, offlineOnly);
@@ -203,6 +244,9 @@ public class ScriptOrchestrator
     {
         _logger.LogInformation("Starting script generation for topic: {Topic}, preferredTier: {Tier}, offlineOnly: {OfflineOnly}", 
             brief.Topic, preferredTier, offlineOnly);
+
+        // Wait for Ollama detection to complete before selecting providers
+        await EnsureOllamaDetectionCompleteAsync(ct).ConfigureAwait(false);
 
         // Block Pro providers if offline-only mode
         if (offlineOnly && (preferredTier == "Pro" || preferredTier == "ProIfAvailable"))

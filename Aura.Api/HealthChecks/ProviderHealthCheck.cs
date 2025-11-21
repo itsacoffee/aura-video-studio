@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Aura.Core.Configuration;
 using Aura.Core.Orchestrator;
 using Aura.Core.Providers;
+using Aura.Core.Services.Providers;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 
@@ -23,6 +24,7 @@ public class ProviderHealthCheck : IHealthCheck
     private readonly ILoggerFactory _loggerFactory;
     private readonly IEnumerable<ITtsProvider> _ttsProviders;
     private readonly IVideoComposer _videoComposer;
+    private readonly OllamaDetectionService _ollamaDetectionService;
 
     public ProviderHealthCheck(
         ILogger<ProviderHealthCheck> logger,
@@ -30,7 +32,8 @@ public class ProviderHealthCheck : IHealthCheck
         LlmProviderFactory llmProviderFactory,
         ILoggerFactory loggerFactory,
         IEnumerable<ITtsProvider> ttsProviders,
-        IVideoComposer videoComposer)
+        IVideoComposer videoComposer,
+        OllamaDetectionService ollamaDetectionService)
     {
         _logger = logger;
         _providerSettings = providerSettings;
@@ -38,9 +41,10 @@ public class ProviderHealthCheck : IHealthCheck
         _loggerFactory = loggerFactory;
         _ttsProviders = ttsProviders;
         _videoComposer = videoComposer;
+        _ollamaDetectionService = ollamaDetectionService;
     }
 
-    public Task<HealthCheckResult> CheckHealthAsync(
+    public async Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,
         CancellationToken cancellationToken = default)
     {        
@@ -55,6 +59,17 @@ public class ProviderHealthCheck : IHealthCheck
             data["llm_providers_available"] = llmProviders.Count;
             data["tts_providers_available"] = ttsProvidersFiltered.Count;
             data["video_composer_available"] = _videoComposer != null;
+
+            // Add Ollama detection status
+            data["ollama_detection_complete"] = _ollamaDetectionService.IsDetectionComplete;
+            var ollamaStatus = await _ollamaDetectionService.GetStatusAsync(cancellationToken).ConfigureAwait(false);
+            data["ollama_running"] = ollamaStatus.IsRunning;
+            if (ollamaStatus.IsRunning)
+            {
+                data["ollama_version"] = ollamaStatus.Version ?? "unknown";
+                var models = await _ollamaDetectionService.GetModelsAsync(cancellationToken).ConfigureAwait(false);
+                data["ollama_models_count"] = models.Count;
+            }
 
             if (llmProviders.Count > 0)
             {
@@ -84,7 +99,7 @@ public class ProviderHealthCheck : IHealthCheck
             {
                 return Task.FromResult(HealthCheckResult.Unhealthy(
                     "Video composer not available - critical for rendering",
-                    data: data));
+                    data: data)).Result;
             }
 
             if (warnings.Count > 0)
@@ -92,19 +107,19 @@ public class ProviderHealthCheck : IHealthCheck
                 data["warnings"] = warnings.ToArray();
                 return Task.FromResult(HealthCheckResult.Degraded(
                     $"Provider configuration has {warnings.Count} warning(s)",
-                    data: data));
+                    data: data)).Result;
             }
 
             return Task.FromResult(HealthCheckResult.Healthy(
                 "All provider types are properly configured",
-                data: data));
+                data: data)).Result;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error checking provider health");
             return Task.FromResult(HealthCheckResult.Unhealthy(
                 "Error checking provider configuration",
-                exception: ex));
+                exception: ex)).Result;
         }
     }
 
