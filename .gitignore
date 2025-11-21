@@ -173,3 +173,5 @@ Aura.Desktop/resources/cache/
 logs/
 temp-media/
 .bak2
+# Root-level backend build output
+dist/backend/
