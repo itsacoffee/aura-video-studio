@@ -653,6 +653,19 @@ async function cleanup() {
       }
     }
 
+    // Stop FFmpeg processes (if handler exists)
+    if (ipcHandlers.ffmpeg) {
+      console.log("Stopping FFmpeg processes...");
+      if (startupLogger) {
+        startupLogger.info("Cleanup", "Stopping FFmpeg processes");
+      }
+      await ipcHandlers.ffmpeg.stop();
+      console.log("FFmpeg processes stopped");
+      if (startupLogger) {
+        startupLogger.info("Cleanup", "FFmpeg processes stopped successfully");
+      }
+    }
+
     // Stop backend service (now async for proper Windows process termination)
     if (backendService) {
       console.log("Stopping backend service...");

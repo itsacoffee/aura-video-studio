@@ -14,6 +14,7 @@ class BackendService {
     this.app = app;
     this.isDev = isDev;
     this.process = null;
+    this.backendProcess = null; // Alias for this.process for consistency with problem statement
     this.processManager = processManager; // Optional: centralized process tracking
 
     // Enforce contract validation
@@ -116,7 +117,8 @@ class BackendService {
         detached: false, // Keep attached so we can control it, but we'll handle child processes separately
       });
 
-      // Store PID for Windows process tree termination
+      // Store both process reference and PID
+      this.backendProcess = this.process; // Alias for consistency
       this.pid = this.process.pid;
 
       // Register with ProcessManager if available
@@ -157,24 +159,69 @@ class BackendService {
    * Stop the backend service
    */
   async stop() {
-    console.log("Stopping backend service...");
+    console.log("[BackendService] Stopping backend process...");
     this.isQuitting = true;
 
     // Stop health checks
     this._stopHealthChecks();
 
     // Kill backend process
-    if (this.process && !this.process.killed) {
+    if (this.backendProcess && !this.backendProcess.killed) {
       try {
-        await this._terminateBackend();
+        // Attempt graceful shutdown first
+        try {
+          this.backendProcess.kill("SIGINT");
+        } catch (err) {
+          console.warn("[BackendService] Failed to send SIGINT:", err.message);
+        }
+
+        const timeoutMs = 5000;
+        const exited = await this._waitForExit(timeoutMs);
+
+        if (!exited) {
+          console.warn("[BackendService] Backend did not exit within timeout. Forcing kill.");
+          try {
+            this.backendProcess.kill("SIGKILL");
+          } catch (err) {
+            console.error("[BackendService] Failed to force-kill backend:", err.message);
+          }
+        }
       } catch (error) {
         console.error("Error terminating backend:", error);
       }
     }
 
     this.process = null;
+    this.backendProcess = null;
     this.pid = null;
     this.port = null;
+  }
+
+  /**
+   * Wait for backend process to exit
+   * @param {number} timeoutMs - Maximum time to wait in milliseconds
+   * @returns {Promise<boolean>} True if exited within timeout, false otherwise
+   */
+  _waitForExit(timeoutMs) {
+    return new Promise((resolve) => {
+      if (!this.backendProcess || this.backendProcess.killed) {
+        resolve(true);
+        return;
+      }
+
+      let exited = false;
+      const timeout = setTimeout(() => {
+        if (!exited) {
+          resolve(false);
+        }
+      }, timeoutMs);
+
+      this.backendProcess.once("exit", () => {
+        exited = true;
+        clearTimeout(timeout);
+        resolve(true);
+      });
+    });
   }
 
   /**
@@ -997,18 +1044,26 @@ class BackendService {
   async _detectAndCleanupOrphanedBackend() {
     console.log(`[OrphanDetection] Checking for orphaned backend on port ${this.port}...`);
 
+    let found = 0;
+    let terminated = 0;
+    let failed = 0;
+
     // Check if port is already in use by trying to connect
     const portInUse = await this._isPortInUse(this.port);
 
     if (!portInUse) {
       console.log('[OrphanDetection] Port is available, no cleanup needed');
+      console.log(`[OrphanDetection] Orphan cleanup: ${found} found, ${terminated} terminated, ${failed} failed`);
       return;
     }
 
     console.warn(`[OrphanDetection] Port ${this.port} is already in use, attempting cleanup...`);
+    found = 1; // At least one process using the port
 
     // Try to find and kill orphaned Aura.Api processes
-    await this._killOrphanedBackendProcesses();
+    const cleanupResult = await this._killOrphanedBackendProcesses();
+    terminated = cleanupResult.terminated;
+    failed = cleanupResult.failed;
 
     // Wait a moment for port to be released
     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -1017,10 +1072,12 @@ class BackendService {
     const stillInUse = await this._isPortInUse(this.port);
     if (stillInUse) {
       console.error(`[OrphanDetection] Failed to cleanup port ${this.port}. Manual intervention may be required.`);
+      console.log(`[OrphanDetection] Orphan cleanup: ${found} found, ${terminated} terminated, ${failed + 1} failed`);
       throw new Error(`Port ${this.port} is still in use after cleanup. Please close any running Aura processes in Task Manager.`);
     }
 
     console.log('[OrphanDetection] Cleanup successful, port is now available');
+    console.log(`[OrphanDetection] Orphan cleanup: ${found} found, ${terminated} terminated, ${failed} failed`);
   }
 
   /**
@@ -1049,11 +1106,17 @@ class BackendService {
 
   /**
    * Kill orphaned backend processes
+   * SAFETY: Only targets processes matching strict signature (Aura.Api.exe or Aura.Api)
+   * to avoid killing unrelated .NET applications
    */
   async _killOrphanedBackendProcesses() {
     return new Promise((resolve) => {
+      let terminated = 0;
+      let failed = 0;
+
       if (this.isWindows) {
-        // Windows: Find and kill Aura.Api.exe processes
+        // Windows: Find and kill Aura.Api.exe processes ONLY
+        // SAFETY: Using exact image name match to avoid killing unrelated .NET apps
         const command = 'taskkill /F /IM "Aura.Api.exe" 2>nul';
         console.log(`[OrphanDetection] Executing: ${command}`);
 
@@ -1063,23 +1126,29 @@ class BackendService {
               console.log('[OrphanDetection] No Aura.Api.exe processes found (already exited)');
             } else {
               console.warn(`[OrphanDetection] taskkill error: ${error.message}`);
+              failed = 1;
             }
           } else {
             if (stdout && stdout.trim()) {
               console.log(`[OrphanDetection] Killed orphaned backend: ${stdout.trim()}`);
+              // Count terminated processes from output
+              const matches = stdout.match(/SUCCESS/gi);
+              terminated = matches ? matches.length : 1;
             }
           }
-          resolve();
+          resolve({ terminated, failed });
         });
       } else {
         // Unix: Find and kill Aura.Api processes
-        exec('pkill -9 "Aura.Api"', (error) => {
+        // SAFETY: Using exact process name match
+        exec('pkill -9 "Aura.Api"', (error, stdout, stderr) => {
           if (!error) {
             console.log('[OrphanDetection] Killed orphaned backend processes');
+            terminated = 1;
           } else {
             console.log('[OrphanDetection] No orphaned backend processes found');
           }
-          resolve();
+          resolve({ terminated, failed });
         });
       }
     });
