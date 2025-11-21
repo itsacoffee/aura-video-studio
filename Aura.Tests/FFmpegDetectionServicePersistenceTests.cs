@@ -134,6 +134,68 @@ public class FFmpegDetectionServicePersistenceTests : IDisposable
         Assert.True(loadedConfig.IsValid);
     }
 
+    [Fact]
+    public async Task FFmpegConfigurationStore_SavesNewTrackingProperties()
+    {
+        // Arrange
+        var testConfig = new FFmpegConfiguration
+        {
+            Mode = FFmpegMode.Custom,
+            Path = "/opt/ffmpeg/bin/ffmpeg",
+            Version = "5.1.2",
+            LastValidatedAt = DateTime.UtcNow,
+            LastValidationResult = FFmpegValidationResult.Ok,
+            Source = "ElectronDetection",
+            DetectionSourceType = DetectionSource.ElectronDetection,
+            LastDetectedPath = "/opt/ffmpeg/bin/ffmpeg",
+            LastDetectedAt = DateTime.UtcNow,
+            ValidationOutput = "ffmpeg version 5.1.2"
+        };
+
+        // Act
+        await _configStore.SaveAsync(testConfig, CancellationToken.None);
+        var loadedConfig = await _configStore.LoadAsync(CancellationToken.None);
+
+        // Assert
+        Assert.Equal(DetectionSource.ElectronDetection, loadedConfig.DetectionSourceType);
+        Assert.Equal(testConfig.LastDetectedPath, loadedConfig.LastDetectedPath);
+        Assert.NotNull(loadedConfig.LastDetectedAt);
+        Assert.Equal(testConfig.ValidationOutput, loadedConfig.ValidationOutput);
+    }
+
+    [Fact]
+    public async Task FFmpegConfiguration_DetectionSourceEnum_RoundTrips()
+    {
+        // Test each detection source value
+        var sources = new[]
+        {
+            DetectionSource.None,
+            DetectionSource.Managed,
+            DetectionSource.System,
+            DetectionSource.UserConfigured,
+            DetectionSource.Environment,
+            DetectionSource.ElectronDetection
+        };
+
+        foreach (var source in sources)
+        {
+            // Arrange
+            var testConfig = new FFmpegConfiguration
+            {
+                Mode = FFmpegMode.System,
+                Path = "/usr/bin/ffmpeg",
+                DetectionSourceType = source
+            };
+
+            // Act
+            await _configStore.SaveAsync(testConfig, CancellationToken.None);
+            var loadedConfig = await _configStore.LoadAsync(CancellationToken.None);
+
+            // Assert
+            Assert.Equal(source, loadedConfig.DetectionSourceType);
+        }
+    }
+
     public void Dispose()
     {
         try

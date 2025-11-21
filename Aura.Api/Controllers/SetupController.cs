@@ -1199,6 +1199,157 @@ public class SetupController : ControllerBase
             });
         }
     }
+    
+    /// <summary>
+    /// Configure FFmpeg path with validation and persistence (called by Electron after detection)
+    /// </summary>
+    [HttpPost("configure-ffmpeg")]
+    public async Task<IActionResult> ConfigureFFmpeg(
+        [FromBody] ConfigureFFmpegRequest request,
+        CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        try
+        {
+            _logger.LogInformation("[{CorrelationId}] Configuring FFmpeg path: {Path}, Source: {Source}", 
+                correlationId, request.Path, request.Source ?? "Unknown");
+
+            if (string.IsNullOrWhiteSpace(request.Path))
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Invalid FFmpeg Path",
+                    Status = 400,
+                    Detail = "Path cannot be empty",
+                    Extensions = { ["correlationId"] = correlationId }
+                });
+            }
+
+            // Validate that the path exists
+            if (!System.IO.File.Exists(request.Path))
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "FFmpeg Not Found",
+                    Status = 400,
+                    Detail = $"File not found at: {request.Path}",
+                    Extensions = { ["correlationId"] = correlationId }
+                });
+            }
+
+            // Test FFmpeg execution
+            string? version = null;
+            string? validationOutput = null;
+            try
+            {
+                var processStartInfo = new ProcessStartInfo
+                {
+                    FileName = request.Path,
+                    Arguments = "-version",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+
+                using var process = Process.Start(processStartInfo);
+                if (process == null)
+                {
+                    return BadRequest(new ProblemDetails
+                    {
+                        Title = "FFmpeg Validation Failed",
+                        Status = 400,
+                        Detail = "Failed to start FFmpeg process",
+                        Extensions = { ["correlationId"] = correlationId }
+                    });
+                }
+
+                validationOutput = await process.StandardOutput.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+                await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+
+                if (process.ExitCode != 0)
+                {
+                    var errorOutput = await process.StandardError.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+                    _logger.LogWarning("[{CorrelationId}] FFmpeg validation failed with exit code {ExitCode}: {Error}", 
+                        correlationId, process.ExitCode, errorOutput);
+                    
+                    return BadRequest(new ProblemDetails
+                    {
+                        Title = "FFmpeg Validation Failed",
+                        Status = 400,
+                        Detail = $"FFmpeg validation failed with exit code {process.ExitCode}",
+                        Extensions = { ["correlationId"] = correlationId }
+                    });
+                }
+
+                version = ParseFFmpegVersionString(validationOutput);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[{CorrelationId}] Failed to validate FFmpeg executable", correlationId);
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "FFmpeg Validation Error",
+                    Status = 400,
+                    Detail = $"Error validating FFmpeg: {ex.Message}",
+                    Extensions = { ["correlationId"] = correlationId }
+                });
+            }
+
+            // Determine detection source based on request source
+            var detectionSource = request.Source?.ToLowerInvariant() switch
+            {
+                "electrondetection" => DetectionSource.ElectronDetection,
+                "environment" => DetectionSource.Environment,
+                "userconfigured" => DetectionSource.UserConfigured,
+                "managed" => DetectionSource.Managed,
+                "system" => DetectionSource.System,
+                _ => DetectionSource.System
+            };
+
+            // Create configuration with validation results
+            var config = new FFmpegConfiguration
+            {
+                Mode = FFmpegMode.Custom,
+                Path = request.Path,
+                Version = version,
+                LastValidatedAt = DateTime.UtcNow,
+                LastValidationResult = FFmpegValidationResult.Ok,
+                Source = request.Source ?? "Configured",
+                DetectionSourceType = detectionSource,
+                LastDetectedPath = request.Path,
+                LastDetectedAt = DateTime.UtcNow,
+                ValidationOutput = validationOutput
+            };
+
+            // Persist configuration
+            await _ffmpegConfigService.UpdateConfigurationAsync(config, cancellationToken).ConfigureAwait(false);
+            
+            _logger.LogInformation("[{CorrelationId}] FFmpeg configured successfully: {Path} (version: {Version})", 
+                correlationId, request.Path, version ?? "unknown");
+
+            return Ok(new
+            {
+                success = true,
+                path = request.Path,
+                version = version ?? "unknown",
+                source = request.Source,
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Failed to configure FFmpeg", correlationId);
+            return StatusCode(500, new ProblemDetails
+            {
+                Title = "Configuration Error",
+                Status = 500,
+                Detail = $"Failed to configure FFmpeg: {ex.Message}",
+                Extensions = { ["correlationId"] = correlationId }
+            });
+        }
+    }
 
     /// <summary>
     /// Parse FFmpeg version from -version output
@@ -1227,5 +1378,11 @@ public class SetupController : ControllerBase
     public class SaveFFmpegPathRequest
     {
         public required string Path { get; set; }
+    }
+    
+    public class ConfigureFFmpegRequest
+    {
+        public required string Path { get; set; }
+        public string? Source { get; set; }
     }
 }

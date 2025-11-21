@@ -29,6 +29,42 @@ public enum FFmpegMode
 }
 
 /// <summary>
+/// Source of FFmpeg detection/configuration
+/// </summary>
+public enum DetectionSource
+{
+    /// <summary>
+    /// Not yet detected or configured
+    /// </summary>
+    None,
+    
+    /// <summary>
+    /// App-managed installation
+    /// </summary>
+    Managed,
+    
+    /// <summary>
+    /// Found on system PATH or common directories
+    /// </summary>
+    System,
+    
+    /// <summary>
+    /// User-configured via UI or setup wizard
+    /// </summary>
+    UserConfigured,
+    
+    /// <summary>
+    /// Provided via environment variable
+    /// </summary>
+    Environment,
+    
+    /// <summary>
+    /// Detected by Electron desktop app
+    /// </summary>
+    ElectronDetection
+}
+
+/// <summary>
 /// Validation result for FFmpeg executable
 /// </summary>
 public enum FFmpegValidationResult
@@ -108,6 +144,21 @@ public class FFmpegConfiguration
     /// Full validation output from ffmpeg -version
     /// </summary>
     public string? ValidationOutput { get; set; }
+    
+    /// <summary>
+    /// Last detected FFmpeg path (may differ from current Path if user overrode)
+    /// </summary>
+    public string? LastDetectedPath { get; set; }
+    
+    /// <summary>
+    /// When FFmpeg was last detected (not user-configured)
+    /// </summary>
+    public DateTime? LastDetectedAt { get; set; }
+    
+    /// <summary>
+    /// Source of the detection/configuration
+    /// </summary>
+    public DetectionSource DetectionSourceType { get; set; } = DetectionSource.None;
     
     /// <summary>
     /// Checks if FFmpeg is currently valid based on last validation
