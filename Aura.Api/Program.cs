@@ -230,7 +230,16 @@ builder.Services.AddSwaggerGen(options =>
     options.OperationFilter<Aura.Api.Filters.CorrelationIdOperationFilter>();
 });
 
+// Register MemoryCache early for FFmpegResolver and other services
+// Note: AddMemoryCache is idempotent - calling it multiple times is safe but unnecessary
+builder.Services.AddMemoryCache();
+
+// Register FFmpeg configuration services BEFORE health checks
+// Health checks depend on FFmpegResolver via DependencyHealthCheck
+builder.Services.AddSingleton<Aura.Core.Dependencies.FFmpegResolver>();
+
 // Add health checks
+// Note: Health checks depend on services registered above
 builder.Services.AddSingleton<Aura.Api.HealthChecks.StartupHealthCheck>();
 builder.Services.AddHealthChecks()
     .AddCheck<Aura.Api.HealthChecks.StartupHealthCheck>("Startup", tags: new[] { "ready" })
@@ -518,9 +527,8 @@ builder.Services.AddSingleton<Aura.Core.Dependencies.IFfmpegLocator>(sp =>
     return new Aura.Core.Dependencies.FfmpegLocator(logger, toolsDir, explicitPath);
 });
 
-// Register FFmpeg resolver with managed install precedence and caching
-builder.Services.AddSingleton<Aura.Core.Dependencies.FFmpegResolver>();
-builder.Services.AddMemoryCache(); // Required for FFmpegResolver caching
+// Note: FFmpegResolver and MemoryCache already registered above before health checks
+// to ensure proper initialization order
 
 // Configure distributed caching with Redis fallback to in-memory
 var cachingConfig = builder.Configuration.GetSection("Caching").Get<Aura.Core.Configuration.CachingConfiguration>()
@@ -755,7 +763,7 @@ builder.Services.AddSingleton<Aura.Core.Services.Learning.PredictiveSuggestionRa
 builder.Services.AddSingleton<Aura.Core.Services.Learning.LearningService>();
 
 // Register Ideation service
-builder.Services.AddMemoryCache(); // For trending topics caching and rate limiting
+// Note: MemoryCache already registered above for shared use across services
 builder.Services.AddSingleton<Aura.Core.Services.Ideation.TrendingTopicsService>();
 builder.Services.AddSingleton<Aura.Core.Services.Ideation.IdeationService>();
 
@@ -4916,6 +4924,43 @@ var healthMonitorStarted = false;
 lifetime.ApplicationStarted.Register(() =>
 {
     Log.Information("Initialization Phase 4: Application started, beginning background service initialization");
+
+    // Clear circuit breakers on startup to ensure clean state
+    // This prevents stale circuit breaker states from previous runs causing health check failures
+    _ = Task.Run(async () =>
+    {
+        try
+        {
+            Log.Information("Clearing circuit breakers on startup...");
+            var providerHealthService = app.Services.GetService<Aura.Core.Services.Health.ProviderHealthService>();
+            if (providerHealthService != null)
+            {
+                // Reset all provider circuit breakers
+                var providerNames = new[] { "RuleBased", "Ollama", "OpenAI", "Anthropic", "Gemini", 
+                                           "ElevenLabs", "PlayHT", "WindowsSAPI", "Piper", "Mimic3" };
+                foreach (var providerName in providerNames)
+                {
+                    try
+                    {
+                        await providerHealthService.ResetCircuitBreakerAsync(providerName, CancellationToken.None).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Warning(ex, "Failed to reset circuit breaker for provider: {ProviderName}", providerName);
+                    }
+                }
+                Log.Information("Circuit breakers cleared successfully");
+            }
+            else
+            {
+                Log.Warning("ProviderHealthService not available - circuit breaker reset skipped");
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Error clearing circuit breakers on startup - continuing anyway");
+        }
+    });
 
     // Start Engine Lifecycle Manager first (deterministic ordering)
     _ = Task.Run(async () =>
