@@ -126,8 +126,8 @@
   --color-border-subtle: var(--border-subtle);
   --color-border-strong: var(--border-strong);
   --color-bg-hover: var(--bg-panel-hover);
-  --color-bg-selected: #223a61;
-  --color-bg-active: #335283;
+  --color-bg-selected: var(--color-primary-700);
+  --color-bg-active: var(--color-primary-600);
   --color-bg-badge: var(--bg-elevated);
   --font-family-default: var(--font-family-primary);
   --space-xs: var(--space-1);
