@@ -210,18 +210,9 @@ Write-Host ""
 Write-Info "Step 3: Cleaning downloaded tools and engines..."
 Write-Host ""
 
-$toolsPath = "$env:LOCALAPPDATA\Aura\Tools"
-if (Remove-PathSafely $toolsPath "Downloaded tools (FFmpeg, TTS, etc.)") {
-    $cleanupStats.Removed++
-} else {
-    $cleanupStats.NotFound++
-}
-
-# Check for FFmpeg in alternative location
-$ffmpegPath = "$env:LOCALAPPDATA\Aura\ffmpeg"
-if (Remove-PathSafely $ffmpegPath "Downloaded FFmpeg") {
-    $cleanupStats.Removed++
-}
+# Note: The entire Aura data directory (including Tools, ffmpeg, etc.) 
+# will be cleaned in Step 7. This step is kept for clarity and logging.
+Write-Info "Tools cleanup will be performed in Step 7 (complete Aura data directory removal)"
 
 Write-Host ""
 
@@ -362,53 +353,24 @@ Write-Info "Step 7: Resetting first-run wizard state..."
 Write-Host ""
 
 function Reset-WizardState {
-    # Reset database
-    $databasePath = "$env:LOCALAPPDATA\Aura\aura.db"
-    if (Remove-PathSafely $databasePath "SQLite database (wizard state)") {
+    # Clean the entire Aura data directory to ensure complete reset
+    # This removes database, settings.json, provider-paths.json, context, analytics, jobs, etc.
+    $auraDataPath = "$env:LOCALAPPDATA\Aura"
+    if (Remove-PathSafely $auraDataPath "Aura data directory (database, settings, all state)") {
         $cleanupStats.Removed++
+        Write-Success "Complete Aura data directory removed - fresh state guaranteed"
     } else {
         $cleanupStats.NotFound++
+        Write-Info "Aura data directory not found - already clean"
     }
     
-    # Also check for alternative database location
-    $altDatabasePath = "$env:LOCALAPPDATA\Aura\data\aura.db"
-    if (Remove-PathSafely $altDatabasePath "SQLite database (alternate path)") {
+    # Also check for alternative Aura directory location (Roaming)
+    $auraRoamingPath = "$env:APPDATA\Aura"
+    if (Remove-PathSafely $auraRoamingPath "Aura roaming data directory") {
         $cleanupStats.Removed++
     }
     
-    # Clean database journal and WAL files
-    $dbJournalFiles = @(
-        "$env:LOCALAPPDATA\Aura\aura.db-shm",
-        "$env:LOCALAPPDATA\Aura\aura.db-wal",
-        "$env:LOCALAPPDATA\Aura\aura.db-journal",
-        "$env:LOCALAPPDATA\Aura\data\aura.db-shm",
-        "$env:LOCALAPPDATA\Aura\data\aura.db-wal",
-        "$env:LOCALAPPDATA\Aura\data\aura.db-journal"
-    )
-    
-    foreach ($journalFile in $dbJournalFiles) {
-        if (Test-Path $journalFile) {
-            if (Remove-PathSafely $journalFile "Database journal/WAL file") {
-                $cleanupStats.Removed++
-            }
-        }
-    }
-    
-    # Clean database lock files (explicit cleanup for potential lock issues)
-    $dbLockFiles = @(
-        "$env:LOCALAPPDATA\Aura\aura.db-lock",
-        "$env:LOCALAPPDATA\Aura\data\aura.db-lock"
-    )
-    
-    foreach ($lockFile in $dbLockFiles) {
-        if (Test-Path $lockFile) {
-            if (Remove-PathSafely $lockFile "Database lock file") {
-                $cleanupStats.Removed++
-            }
-        }
-    }
-    
-    Write-Info "Database state reset complete"
+    Write-Info "All Aura state reset complete"
 }
 
 function Reset-WizardBackendState {
