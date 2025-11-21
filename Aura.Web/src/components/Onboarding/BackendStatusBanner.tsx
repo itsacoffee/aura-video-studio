@@ -11,7 +11,6 @@ import {
 import { ArrowClockwise24Regular, Dismiss24Regular } from '@fluentui/react-icons';
 import { useState, useEffect, useCallback } from 'react';
 import { resetCircuitBreaker } from '../../services/api/apiClient';
-import { getSystemHealth } from '../../services/api/healthApi';
 
 const useStyles = makeStyles({
   banner: {
@@ -32,7 +31,7 @@ export interface BackendStatusBannerProps {
 interface BackendStatus {
   reachable: boolean;
   online: boolean;
-  error: 'unreachable' | 'http-error' | 'degraded' | null;
+  error: 'unreachable' | 'http-error' | null;
   message?: string;
 }
 
@@ -51,25 +50,33 @@ export function BackendStatusBanner({ onDismiss, showRetry = true }: BackendStat
     setIsChecking(true);
     try {
       resetCircuitBreaker();
-      const healthResponse = await getSystemHealth();
-
-      // Backend is reachable and responding
-      if (healthResponse.backendOnline) {
+      
+      // Use simple health check endpoint that doesn't require database or dependencies
+      // This ensures we can detect if backend is running even during first-run setup
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5005'}/healthz/simple`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Backend returned status ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Simple endpoint just returns { status: "ok" } if backend is running
+      if (data.status === 'ok') {
         setStatus({
           reachable: true,
           online: true,
-          error: healthResponse.overallStatus === 'degraded' ? 'degraded' : null,
-          message:
-            healthResponse.overallStatus === 'degraded'
-              ? 'Backend is running but some components are not fully operational'
-              : undefined,
+          error: null,
         });
       } else {
         setStatus({
           reachable: true,
           online: false,
           error: 'http-error',
-          message: 'Backend reports it is not online',
+          message: 'Backend returned unexpected response',
         });
       }
     } catch (error: unknown) {
@@ -121,28 +128,6 @@ export function BackendStatusBanner({ onDismiss, showRetry = true }: BackendStat
   // Don't show banner if everything is OK, dismissed, or not yet checked
   if (status.error === null || dismissed || !initialCheckComplete) {
     return null;
-  }
-
-  // Show degraded warning (less severe)
-  if (status.error === 'degraded') {
-    return (
-      <MessageBar intent="warning" className={styles.banner}>
-        <MessageBarBody>
-          <Text weight="semibold" block>
-            Backend Degraded
-          </Text>
-          <Text className={styles.helpText}>
-            The backend server is running but some components are not fully operational. Some
-            features may not work as expected.
-          </Text>
-        </MessageBarBody>
-        <MessageBarActions>
-          <Button appearance="transparent" icon={<Dismiss24Regular />} onClick={handleDismiss}>
-            Dismiss
-          </Button>
-        </MessageBarActions>
-      </MessageBar>
-    );
   }
 
   // Show unreachable error (network-level)

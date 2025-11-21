@@ -394,6 +394,67 @@ public class SetupController : ControllerBase
     }
 
     /// <summary>
+    /// Check FFmpeg installation status using FFmpegResolver
+    /// </summary>
+    [HttpGet("check-ffmpeg")]
+    public async Task<IActionResult> CheckFFmpeg(CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        try
+        {
+            _logger.LogInformation("[{CorrelationId}] Checking FFmpeg installation status", correlationId);
+            
+            // Get effective FFmpeg configuration (uses FFmpegResolver internally)
+            var config = await _ffmpegConfigService.GetEffectiveConfigurationAsync(cancellationToken).ConfigureAwait(false);
+            
+            if (config != null && config.LastValidationResult == FFmpegValidationResult.Ok && !string.IsNullOrEmpty(config.Path))
+            {
+                _logger.LogInformation("[{CorrelationId}] FFmpeg found at: {Path}, Version: {Version}", 
+                    correlationId, config.Path, config.Version ?? "unknown");
+                    
+                return Ok(new
+                {
+                    isInstalled = true,
+                    path = config.Path,
+                    version = config.Version,
+                    error = (string?)null,
+                    source = config.Source,
+                    correlationId
+                });
+            }
+            else
+            {
+                var errorMessage = config?.LastValidationError ?? "FFmpeg not found. Install FFmpeg or configure the path in Settings.";
+                _logger.LogWarning("[{CorrelationId}] FFmpeg not found or invalid: {Error}", correlationId, errorMessage);
+                
+                return Ok(new
+                {
+                    isInstalled = false,
+                    path = (string?)null,
+                    version = (string?)null,
+                    error = errorMessage,
+                    source = config?.Source ?? "None",
+                    correlationId
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Error checking FFmpeg status", correlationId);
+            return Ok(new
+            {
+                isInstalled = false,
+                path = (string?)null,
+                version = (string?)null,
+                error = $"Error checking FFmpeg: {ex.Message}",
+                source = "None",
+                correlationId
+            });
+        }
+    }
+
+    /// <summary>
     /// Complete the first-run setup wizard
     /// Idempotent - multiple calls with same configuration result in success
     /// </summary>
