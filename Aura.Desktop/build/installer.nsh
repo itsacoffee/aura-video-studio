@@ -66,12 +66,31 @@ RequestExecutionLevel admin
   ; Windows Firewall Rule
   ; ========================================
   DetailPrint "Configuring Windows Firewall..."
+  
+  ; Add firewall rule for main Electron executable
   nsExec::ExecToLog 'netsh advfirewall firewall add rule name="Aura Video Studio" dir=in action=allow program="$INSTDIR\${APP_EXECUTABLE_FILENAME}" enable=yes profile=any'
   Pop $0
   ${If} $0 == "0"
-    DetailPrint "Windows Firewall rule added successfully"
+    DetailPrint "Windows Firewall rule added for main app successfully"
   ${Else}
-    DetailPrint "Warning: Could not add Windows Firewall rule (may require manual configuration)"
+    DetailPrint "Warning: Could not add Windows Firewall rule for main app (may require manual configuration)"
+  ${EndIf}
+  
+  ; Add firewall rule for backend executable (Aura.Api.exe)
+  DetailPrint "Adding Windows Firewall exception for backend service..."
+  nsExec::ExecToLog 'netsh advfirewall firewall add rule name="Aura Video Studio Backend" dir=in action=allow program="$INSTDIR\resources\backend\win-x64\Aura.Api.exe" enable=yes profile=private,domain'
+  Pop $0
+  ${If} $0 == "0"
+    DetailPrint "Windows Firewall rule added for backend successfully"
+  ${Else}
+    DetailPrint "Warning: Could not add Windows Firewall rule for backend (may require manual configuration)"
+  ${EndIf}
+  
+  ; Also add for public profile (optional, requires admin)
+  nsExec::ExecToLog 'netsh advfirewall firewall add rule name="Aura Video Studio Backend (Public)" dir=in action=allow program="$INSTDIR\resources\backend\win-x64\Aura.Api.exe" enable=yes profile=public'
+  Pop $0
+  ${If} $0 == "0"
+    DetailPrint "Windows Firewall rule added for backend (public profile)"
   ${EndIf}
   
   ; ========================================
@@ -140,8 +159,10 @@ RequestExecutionLevel admin
   ; ========================================
   ; Remove Windows Firewall Rule
   ; ========================================
-  DetailPrint "Removing Windows Firewall rule..."
+  DetailPrint "Removing Windows Firewall rules..."
   nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="Aura Video Studio"'
+  nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="Aura Video Studio Backend"'
+  nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="Aura Video Studio Backend (Public)"'
   
   ; ========================================
   ; Remove Windows 11 Uninstall Registry

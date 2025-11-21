@@ -34,10 +34,9 @@ public class ProviderSettings
         }
         else
         {
-            // Determine portable root from assembly location
-            var assemblyLocation = Assembly.GetExecutingAssembly().Location;
-            var assemblyDir = Path.GetDirectoryName(assemblyLocation);
-            _portableRoot = AuraEnvironmentPaths.EnsureDirectory(DeterminePortableRoot(assemblyDir ?? Directory.GetCurrentDirectory()));
+            // Determine portable root from app directory (supports single-file publish)
+            var assemblyLocation = AppContext.BaseDirectory;
+            _portableRoot = AuraEnvironmentPaths.EnsureDirectory(DeterminePortableRoot(assemblyLocation ?? Directory.GetCurrentDirectory()));
         }
         
         // Store settings in AuraData subfolder

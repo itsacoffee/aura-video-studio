@@ -758,42 +758,33 @@ class BackendService {
    * Get the path to the backend executable
    */
   _getBackendPath() {
-    if (this.isDev) {
-      // In development, use the compiled backend from Aura.Api/bin
-      const platform = process.platform;
-      if (platform === "win32") {
-        return path.join(
-          __dirname,
-          "../../Aura.Api/bin/Debug/net8.0/Aura.Api.exe"
-        );
-      } else {
-        return path.join(__dirname, "../../Aura.Api/bin/Debug/net8.0/Aura.Api");
-      }
-    } else {
-      // In production, use the bundled backend from resources
-      if (process.platform === "win32") {
-        return path.join(
-          process.resourcesPath,
-          "backend",
-          "win-x64",
-          "Aura.Api.exe"
-        );
-      } else if (process.platform === "darwin") {
-        return path.join(
-          process.resourcesPath,
-          "backend",
-          "osx-x64",
-          "Aura.Api"
-        );
-      } else {
-        return path.join(
-          process.resourcesPath,
-          "backend",
-          "linux-x64",
-          "Aura.Api"
-        );
+    // Check production bundle location FIRST
+    const productionPath = path.join(
+      process.resourcesPath || '',
+      'backend',
+      'win-x64',
+      'Aura.Api.exe'
+    );
+    if (fs.existsSync(productionPath)) {
+      console.log(`[BackendService] Found production backend at: ${productionPath}`);
+      return productionPath;
+    }
+
+    // Then check development locations
+    const devPaths = [
+      path.join(__dirname, '..', '..', 'dist', 'backend', 'Aura.Api.exe'),
+      path.join(__dirname, '..', '..', 'Aura.Api', 'bin', 'Release', 'net8.0', 'win-x64', 'publish', 'Aura.Api.exe'),
+      path.join(__dirname, '..', '..', 'Aura.Api', 'bin', 'Debug', 'net8.0', 'Aura.Api.exe'),
+    ];
+
+    for (const devPath of devPaths) {
+      if (fs.existsSync(devPath)) {
+        console.log(`[BackendService] Found dev backend at: ${devPath}`);
+        return devPath;
       }
     }
+
+    throw new Error('Backend executable not found. Application may not be properly installed.');
   }
 
   /**
