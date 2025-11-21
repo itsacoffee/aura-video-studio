@@ -193,7 +193,24 @@ public class FFmpegDetectionService : IFFmpegDetectionService
             }
         }
         
-        // 2. Check application directory
+        // 2. Check managed FFmpeg locations (LocalApplicationData)
+        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var managedPaths = new[]
+        {
+            Path.Combine(localAppData, "Aura", "Tools", "ffmpeg", "win-x64", "bin", "ffmpeg.exe"),
+            Path.Combine(localAppData, "Programs", "Aura Video Studio", "resources", "ffmpeg", "win-x64", "bin", "ffmpeg.exe")
+        };
+
+        foreach (var managedPath in managedPaths)
+        {
+            if (File.Exists(managedPath))
+            {
+                _logger.LogInformation("Found FFmpeg in managed location: {Path}", managedPath);
+                return managedPath;
+            }
+        }
+        
+        // 3. Check application directory
         var appDir = AppDomain.CurrentDomain.BaseDirectory;
         var appDirFFmpeg = Path.Combine(appDir, "ffmpeg");
         if (File.Exists(appDirFFmpeg))
@@ -202,7 +219,7 @@ public class FFmpegDetectionService : IFFmpegDetectionService
             return appDirFFmpeg;
         }
 
-        // 2. Check system PATH using 'which' command (Unix) or 'where' (Windows)
+        // 4. Check system PATH using 'which' command (Unix) or 'where' (Windows)
         var pathResult = await FindInSystemPathAsync(cancellationToken).ConfigureAwait(false);
         if (!string.IsNullOrEmpty(pathResult))
         {
@@ -210,7 +227,7 @@ public class FFmpegDetectionService : IFFmpegDetectionService
             return pathResult;
         }
 
-        // 3. Check common Linux installation paths
+        // 5. Check common Linux installation paths
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
         {
             var commonPaths = new[]
@@ -231,7 +248,7 @@ public class FFmpegDetectionService : IFFmpegDetectionService
             }
         }
 
-        // 4. Check Windows Registry for FFmpeg installations
+        // 6. Check Windows Registry for FFmpeg installations
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
             var registryPath = FindFfmpegInWindowsRegistry();
@@ -242,7 +259,7 @@ public class FFmpegDetectionService : IFFmpegDetectionService
             }
         }
 
-        // 5. Check common Windows installation paths
+        // 7. Check common Windows installation paths
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
             var commonPaths = new[]
