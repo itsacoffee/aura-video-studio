@@ -5271,6 +5271,45 @@ static Aura.Core.Models.Voice.EmphasisLevel ParseEmphasis(string? emphasis)
     };
 }
 
+// Apply database migrations automatically on startup
+try
+{
+    Log.Information("=================================================================");
+    Log.Information("Checking for pending database migrations...");
+    Log.Information("=================================================================");
+    
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<Aura.Core.Data.AuraDbContext>();
+    
+    var pendingMigrations = await dbContext.Database.GetPendingMigrationsAsync().ConfigureAwait(false);
+    var pendingCount = pendingMigrations.Count();
+    
+    if (pendingCount > 0)
+    {
+        Log.Information("Found {PendingCount} pending migration(s). Applying migrations...", pendingCount);
+        
+        foreach (var migration in pendingMigrations)
+        {
+            Log.Information("  - {Migration}", migration);
+        }
+        
+        await dbContext.Database.MigrateAsync().ConfigureAwait(false);
+        
+        Log.Information("✓ Database migrations applied successfully");
+    }
+    else
+    {
+        Log.Information("✓ Database is up to date - no pending migrations");
+    }
+}
+catch (Exception ex)
+{
+    Log.Error(ex, "Failed to apply database migrations. Application startup will continue, but database operations may fail.");
+    Log.Error("Migration error details: {Message}", ex.Message);
+}
+
+Log.Information("=================================================================");
+
 // Mark application as ready to accept traffic EARLY
 // This allows the HTTP server to start accepting connections immediately
 // Background initialization will continue asynchronously

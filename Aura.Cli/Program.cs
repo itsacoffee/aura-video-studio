@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -48,6 +49,9 @@ namespace Aura.Cli
                         "render" => await services.GetRequiredService<RenderCommand>().ExecuteAsync(commandArgs).ConfigureAwait(false),
                         "quick" => await services.GetRequiredService<QuickCommand>().ExecuteAsync(commandArgs).ConfigureAwait(false),
                         "keys" => await services.GetRequiredService<KeysCommand>().ExecuteAsync(commandArgs).ConfigureAwait(false),
+                        "migrate" => await services.GetRequiredService<MigrateCommand>().ExecuteAsync(commandArgs).ConfigureAwait(false),
+                        "status" => await services.GetRequiredService<StatusCommand>().ExecuteAsync(commandArgs).ConfigureAwait(false),
+                        "reset" => await services.GetRequiredService<ResetCommand>().ExecuteAsync(commandArgs).ConfigureAwait(false),
                         "help" or "--help" or "-h" => ShowHelp(),
                         _ => ShowUnknownCommand(commandName)
                     };
@@ -102,6 +106,13 @@ namespace Aura.Cli
             Console.WriteLine("  render          Execute FFmpeg rendering to produce final video");
             Console.WriteLine("  quick           Quick end-to-end generation with defaults");
             Console.WriteLine("  keys            Manage API keys for external providers");
+            Console.WriteLine();
+            Console.WriteLine("Database Management:");
+            Console.WriteLine("  migrate         Apply pending database migrations");
+            Console.WriteLine("  status          Display current migration status");
+            Console.WriteLine("  reset           Drop and recreate database (WARNING: deletes all data)");
+            Console.WriteLine();
+            Console.WriteLine("General:");
             Console.WriteLine("  help            Show this help message");
             Console.WriteLine();
             Console.WriteLine("Options:");
@@ -116,6 +127,8 @@ namespace Aura.Cli
             Console.WriteLine("  aura-cli script -b brief.json -p plan.json -o script.txt");
             Console.WriteLine("  aura-cli compose -i timeline.json -o plan.json");
             Console.WriteLine("  aura-cli render -r plan.json -o output.mp4");
+            Console.WriteLine("  aura-cli migrate");
+            Console.WriteLine("  aura-cli status");
             Console.WriteLine("  aura-cli --demo");
             Console.WriteLine();
             Console.WriteLine("For command-specific help:");
@@ -142,6 +155,26 @@ namespace Aura.Cli
                 })
                 .ConfigureServices((context, services) =>
                 {
+                    // Database configuration
+                    var defaultDbPath = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                        "Aura",
+                        "aura.db"
+                    );
+                    
+                    // Ensure directory exists
+                    var dbDirectory = Path.GetDirectoryName(defaultDbPath);
+                    if (!string.IsNullOrEmpty(dbDirectory) && !Directory.Exists(dbDirectory))
+                    {
+                        Directory.CreateDirectory(dbDirectory);
+                    }
+                    
+                    var connectionString = $"Data Source={defaultDbPath}";
+                    
+                    services.AddDbContext<Aura.Core.Data.AuraDbContext>(options =>
+                        options.UseSqlite(connectionString,
+                            sqliteOptions => sqliteOptions.MigrationsAssembly("Aura.Api")));
+                    
                     // Core services
                     services.AddSingleton<HardwareDetector>();
                     services.AddSingleton<Aura.Core.Services.ISecureStorageService, Aura.Core.Services.SecureStorageService>();
@@ -178,6 +211,11 @@ namespace Aura.Cli
                     services.AddTransient<RenderCommand>();
                     services.AddTransient<QuickCommand>();
                     services.AddTransient<KeysCommand>();
+                    
+                    // Database management commands
+                    services.AddTransient<MigrateCommand>();
+                    services.AddTransient<StatusCommand>();
+                    services.AddTransient<ResetCommand>();
                     
                     // Demo service (legacy)
                     services.AddTransient<CliDemo>();
