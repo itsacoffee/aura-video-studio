@@ -892,10 +892,44 @@ class BackendService {
   }
 
   /**
+   * Get platform-specific FFmpeg directory name
+   */
+  _getPlatformFFmpegDir() {
+    const platform = process.platform;
+    return platform === "win32" ? "win-x64" : (platform === "darwin" ? "osx-x64" : "linux-x64");
+  }
+
+  /**
    * Prepare environment variables for backend
    */
   _prepareEnvironment() {
-    const ffmpegPath = this._getFFmpegPath();
+    // Determine FFmpeg path - check managed location first
+    const platformDir = this._getPlatformFFmpegDir();
+    
+    const ffmpegPaths = [
+      // Managed FFmpeg in resources (installed mode)
+      path.join(process.resourcesPath || '', 'ffmpeg', platformDir, 'bin'),
+      // Development mode FFmpeg
+      path.join(this.app.getAppPath(), '..', 'Aura.Desktop', 'resources', 'ffmpeg', platformDir, 'bin'),
+      // Bundled FFmpeg in app directory
+      path.join(this.app.getAppPath(), 'resources', 'ffmpeg', platformDir, 'bin'),
+    ];
+
+    let ffmpegPath = null;
+    const ffmpegExe = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
+    
+    for (const candidatePath of ffmpegPaths) {
+      const ffmpegFullPath = path.join(candidatePath, ffmpegExe);
+      if (fs.existsSync(ffmpegFullPath)) {
+        ffmpegPath = candidatePath;
+        console.log('[BackendService] Found FFmpeg at:', ffmpegPath);
+        break;
+      }
+    }
+
+    if (!ffmpegPath) {
+      console.warn('[BackendService] Managed FFmpeg not found, backend will search system');
+    }
 
     return {
       ...process.env,
@@ -907,11 +941,10 @@ class BackendService {
       AURA_DATA_PATH: this.app.getPath("userData"),
       AURA_LOGS_PATH: path.join(this.app.getPath("userData"), "logs"),
       AURA_TEMP_PATH: path.join(this.app.getPath("temp"), "aura-video-studio"),
-      // Primary hint for backend FFmpeg configuration pipeline
-      AURA_FFMPEG_PATH: ffmpegPath,
-      // Backwards-compatible env vars
-      FFMPEG_PATH: ffmpegPath,
-      FFMPEG_BINARIES_PATH: ffmpegPath,
+      // Set FFMPEG_PATH only if found
+      ...(ffmpegPath && { FFMPEG_PATH: ffmpegPath }),
+      ...(ffmpegPath && { AURA_FFMPEG_PATH: ffmpegPath }),
+      ...(ffmpegPath && { FFMPEG_BINARIES_PATH: ffmpegPath }),
     };
   }
 
