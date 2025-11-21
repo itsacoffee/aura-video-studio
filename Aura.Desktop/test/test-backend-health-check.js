@@ -109,12 +109,12 @@ test('BackendService initializes logger with fallback', () => {
     'BackendService should initialize logger with console fallback');
 });
 
-// Test 12: waitForReady uses getUrl() method
-test('waitForReady uses getUrl() method', () => {
+// Test 12: waitForReady uses _buildUrl() method
+test('waitForReady uses _buildUrl() method', () => {
   const BackendService = require('../electron/backend-service.js');
   const methodStr = BackendService.prototype.waitForReady.toString();
-  assert.ok(methodStr.includes('this.getUrl()') || methodStr.includes('getUrl()'), 
-    'waitForReady should use getUrl() method');
+  assert.ok(methodStr.includes('this._buildUrl(') || methodStr.includes('_buildUrl('), 
+    'waitForReady should use _buildUrl() method');
 });
 
 // Test 13: waitForReady builds health check URL correctly

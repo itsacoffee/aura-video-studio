@@ -470,7 +470,7 @@ class BackendService {
    */
   async waitForReady({ timeout = 90000, onProgress = null } = {}) {
     const startTime = Date.now();
-    const healthCheckUrl = `${this.getUrl()}/health`;
+    const healthCheckUrl = this._buildUrl('/health');
     let lastError = null;
     let attemptCount = 0;
     const maxAttempts = Math.floor(timeout / 1000); // One attempt per second
