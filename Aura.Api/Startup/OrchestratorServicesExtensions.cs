@@ -21,10 +21,11 @@ public static class OrchestratorServicesExtensions
             var mixer = sp.GetRequiredService<ProviderMixer>();
             var factory = sp.GetRequiredService<LlmProviderFactory>();
             var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+            var ollamaDetectionService = sp.GetRequiredService<Aura.Core.Services.Providers.OllamaDetectionService>();
 
             var providers = factory.CreateAvailableProviders(loggerFactory);
 
-            return new ScriptOrchestrator(logger, loggerFactory, mixer, providers);
+            return new ScriptOrchestrator(logger, loggerFactory, mixer, providers, ollamaDetectionService);
         });
 
         // Smart orchestration services

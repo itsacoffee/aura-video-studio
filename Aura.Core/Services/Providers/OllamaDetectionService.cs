@@ -23,6 +23,9 @@ public class OllamaDetectionService : IHostedService, IDisposable
     private Timer? _refreshTimer;
     private readonly TimeSpan _refreshInterval = TimeSpan.FromMinutes(5);
     private bool _disposed;
+    private volatile bool _isDetectionComplete;
+    private readonly SemaphoreSlim _detectionLock = new SemaphoreSlim(1, 1);
+    private Task? _initialDetectionTask;
 
     private const string StatusCacheKey = "ollama:status";
     private const string ModelsCacheKey = "ollama:models";
@@ -40,14 +43,19 @@ public class OllamaDetectionService : IHostedService, IDisposable
     }
 
     /// <summary>
+    /// Indicates whether the initial detection has completed
+    /// </summary>
+    public bool IsDetectionComplete => _isDetectionComplete;
+
+    /// <summary>
     /// Start the background detection service
     /// </summary>
     public Task StartAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("OllamaDetectionService starting background detection");
         
-        // Initial detection (fire and forget to not block startup)
-        _ = Task.Run(async () => await RefreshDetectionAsync(CancellationToken.None).ConfigureAwait(false), cancellationToken);
+        // Initial detection (fire and forget to not block startup, but save task for WaitForInitialDetectionAsync)
+        _initialDetectionTask = Task.Run(async () => await RefreshDetectionAsync(CancellationToken.None).ConfigureAwait(false), cancellationToken);
         
         // Setup periodic refresh every 5 minutes
         _refreshTimer = new Timer(
@@ -103,6 +111,10 @@ public class OllamaDetectionService : IHostedService, IDisposable
         {
             _logger.LogError(ex, "Error refreshing Ollama detection");
         }
+        finally
+        {
+            _isDetectionComplete = true;
+        }
     }
 
     /// <summary>
@@ -118,6 +130,47 @@ public class OllamaDetectionService : IHostedService, IDisposable
         var status = await DetectOllamaAsync(ct).ConfigureAwait(false);
         _cache.Set(StatusCacheKey, status, TimeSpan.FromMinutes(5));
         return status;
+    }
+
+    /// <summary>
+    /// Waits for the initial Ollama detection to complete, with optional timeout
+    /// </summary>
+    /// <param name="timeout">Maximum time to wait for detection. Default is 10 seconds.</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>True if detection completed within timeout, false otherwise</returns>
+    public async Task<bool> WaitForInitialDetectionAsync(TimeSpan? timeout = null, CancellationToken ct = default)
+    {
+        timeout ??= TimeSpan.FromSeconds(10);
+        
+        if (_isDetectionComplete)
+        {
+            return true;
+        }
+
+        if (_initialDetectionTask == null)
+        {
+            _logger.LogWarning("Initial detection task not started");
+            return false;
+        }
+
+        try
+        {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(timeout.Value);
+            
+            await _initialDetectionTask.WaitAsync(cts.Token).ConfigureAwait(false);
+            return _isDetectionComplete;
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Ollama detection did not complete within {Timeout}s timeout", timeout.Value.TotalSeconds);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error waiting for Ollama detection");
+            return false;
+        }
     }
 
     /// <summary>
@@ -444,6 +497,7 @@ public class OllamaDetectionService : IHostedService, IDisposable
         if (!_disposed)
         {
             _refreshTimer?.Dispose();
+            _detectionLock?.Dispose();
             _disposed = true;
         }
         GC.SuppressFinalize(this);
