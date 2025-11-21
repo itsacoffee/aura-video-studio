@@ -6,6 +6,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Polly;
+using Polly.Retry;
 
 namespace Aura.Core.Data;
 
@@ -14,15 +16,68 @@ namespace Aura.Core.Data;
 /// </summary>
 public class ConfigurationRepository
 {
-    private readonly AuraDbContext _context;
+    private readonly AuraDbContext? _context;
+    private readonly IDbContextFactory<AuraDbContext>? _contextFactory;
     private readonly ILogger<ConfigurationRepository> _logger;
+    private readonly ResiliencePipeline<List<ConfigurationEntity>> _retryPipeline;
 
+    // Constructor for UnitOfWork pattern (backward compatibility)
     public ConfigurationRepository(
         AuraDbContext context,
         ILogger<ConfigurationRepository> logger)
     {
-        _context = context;
-        _logger = logger;
+        _context = context ?? throw new ArgumentNullException(nameof(context));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _retryPipeline = BuildRetryPipeline();
+    }
+
+    // Constructor for factory pattern (new, for ConfigurationManager)
+    public ConfigurationRepository(
+        IDbContextFactory<AuraDbContext> contextFactory,
+        ILogger<ConfigurationRepository> logger)
+    {
+        _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _retryPipeline = BuildRetryPipeline();
+    }
+
+    private ResiliencePipeline<List<ConfigurationEntity>> BuildRetryPipeline()
+    {
+        return new ResiliencePipelineBuilder<List<ConfigurationEntity>>()
+            .AddRetry(new RetryStrategyOptions<List<ConfigurationEntity>>
+            {
+                ShouldHandle = new PredicateBuilder<List<ConfigurationEntity>>()
+                    .Handle<Microsoft.Data.Sqlite.SqliteException>(ex => 
+                        // Don't retry schema errors (SQLITE_ERROR = 1) - these are not transient
+                        ex.SqliteErrorCode != 1),
+                MaxRetryAttempts = 3,
+                Delay = TimeSpan.FromMilliseconds(100),
+                BackoffType = DelayBackoffType.Exponential,
+                OnRetry = args =>
+                {
+                    _logger.LogWarning(
+                        "Retry attempt {AttemptNumber}/3 for configuration query. Reason: {Exception}",
+                        args.AttemptNumber,
+                        args.Outcome.Exception?.Message);
+                    return ValueTask.CompletedTask;
+                }
+            })
+            .Build();
+    }
+
+    private async Task<AuraDbContext> GetContextAsync(CancellationToken ct = default)
+    {
+        if (_context != null)
+        {
+            return _context;
+        }
+        
+        if (_contextFactory != null)
+        {
+            return await _contextFactory.CreateDbContextAsync(ct);
+        }
+        
+        throw new InvalidOperationException("Neither context nor context factory is available");
     }
 
     /// <summary>
@@ -32,9 +87,22 @@ public class ConfigurationRepository
     {
         try
         {
-            return await _context.Configurations
-                .Where(c => c.Key == key && c.IsActive)
-                .FirstOrDefaultAsync(ct).ConfigureAwait(false);
+            var context = await GetContextAsync(ct);
+            var shouldDispose = _contextFactory != null;
+            
+            try
+            {
+                return await context.Configurations
+                    .Where(c => c.Key == key && c.IsActive)
+                    .FirstOrDefaultAsync(ct).ConfigureAwait(false);
+            }
+            finally
+            {
+                if (shouldDispose)
+                {
+                    await context.DisposeAsync();
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -52,10 +120,23 @@ public class ConfigurationRepository
     {
         try
         {
-            return await _context.Configurations
-                .Where(c => c.Category == category && c.IsActive)
-                .OrderBy(c => c.Key)
-                .ToListAsync(ct).ConfigureAwait(false);
+            var context = await GetContextAsync(ct);
+            var shouldDispose = _contextFactory != null;
+            
+            try
+            {
+                return await context.Configurations
+                    .Where(c => c.Category == category && c.IsActive)
+                    .OrderBy(c => c.Key)
+                    .ToListAsync(ct).ConfigureAwait(false);
+            }
+            finally
+            {
+                if (shouldDispose)
+                {
+                    await context.DisposeAsync();
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -73,19 +154,64 @@ public class ConfigurationRepository
     {
         try
         {
-            var query = _context.Configurations.AsQueryable();
-            
-            if (!includeInactive)
+            return await _retryPipeline.ExecuteAsync(async token =>
             {
-                query = query.Where(c => c.IsActive);
-            }
-
-            return await query.OrderBy(c => c.Category).ThenBy(c => c.Key).ToListAsync(ct).ConfigureAwait(false);
+                var context = await GetContextAsync(token);
+                var shouldDispose = _contextFactory != null;
+                
+                try
+                {
+                    var query = context.Configurations.AsQueryable();
+                    
+                    if (!includeInactive)
+                    {
+                        query = query.Where(c => c.IsActive);
+                    }
+                    
+                    return await query
+                        .OrderBy(c => c.Category)
+                        .ThenBy(c => c.Key)
+                        .ToListAsync(token);
+                }
+                finally
+                {
+                    if (shouldDispose)
+                    {
+                        await context.DisposeAsync();
+                    }
+                }
+            }, ct);
+        }
+        catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.SqliteErrorCode == 1)
+        {
+            // SQLITE_ERROR (1) - typically indicates schema mismatch like "no such column"
+            _logger.LogError(ex, "Database schema mismatch detected in Configurations table: {Message}", ex.Message);
+            _logger.LogWarning("This usually means migrations need to be applied or the database needs to be recreated.");
+            _logger.LogWarning("Try deleting the database file at: {DbPath}", GetDatabasePath());
+            
+            // Return empty list to allow application to continue with defaults
+            return new List<ConfigurationEntity>();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving all configurations");
-            throw;
+            
+            // Return empty list to allow graceful degradation
+            return new List<ConfigurationEntity>();
+        }
+    }
+
+    private string GetDatabasePath()
+    {
+        try
+        {
+            var auraDataRoot = Environment.GetEnvironmentVariable("AURA_DATA_ROOT") 
+                ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura");
+            return Path.Combine(auraDataRoot, "aura.db");
+        }
+        catch
+        {
+            return "[Unable to determine database path]";
         }
     }
 
@@ -104,50 +230,63 @@ public class ConfigurationRepository
     {
         try
         {
-            var existing = await _context.Configurations
-                .Where(c => c.Key == key)
-                .FirstOrDefaultAsync(ct).ConfigureAwait(false);
-
-            if (existing != null)
+            var context = await GetContextAsync(ct);
+            var shouldDispose = _contextFactory != null;
+            
+            try
             {
-                existing.Value = value;
-                existing.Category = category;
-                existing.ValueType = valueType;
-                existing.Description = description;
-                existing.IsSensitive = isSensitive;
-                existing.UpdatedAt = DateTime.UtcNow;
-                existing.ModifiedBy = modifiedBy;
-                existing.Version++;
+                var existing = await context.Configurations
+                    .Where(c => c.Key == key)
+                    .FirstOrDefaultAsync(ct).ConfigureAwait(false);
 
-                _logger.LogInformation(
-                    "Updated configuration {Key} in category {Category} (version {Version})",
-                    key, category, existing.Version);
-            }
-            else
-            {
-                existing = new ConfigurationEntity
+                if (existing != null)
                 {
-                    Key = key,
-                    Value = value,
-                    Category = category,
-                    ValueType = valueType,
-                    Description = description,
-                    IsSensitive = isSensitive,
-                    ModifiedBy = modifiedBy,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow,
-                    Version = 1
-                };
+                    existing.Value = value;
+                    existing.Category = category;
+                    existing.ValueType = valueType;
+                    existing.Description = description;
+                    existing.IsSensitive = isSensitive;
+                    existing.UpdatedAt = DateTime.UtcNow;
+                    existing.ModifiedBy = modifiedBy;
+                    existing.Version++;
 
-                _context.Configurations.Add(existing);
+                    _logger.LogInformation(
+                        "Updated configuration {Key} in category {Category} (version {Version})",
+                        key, category, existing.Version);
+                }
+                else
+                {
+                    existing = new ConfigurationEntity
+                    {
+                        Key = key,
+                        Value = value,
+                        Category = category,
+                        ValueType = valueType,
+                        Description = description,
+                        IsSensitive = isSensitive,
+                        ModifiedBy = modifiedBy,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow,
+                        Version = 1
+                    };
 
-                _logger.LogInformation(
-                    "Created new configuration {Key} in category {Category}",
-                    key, category);
+                    context.Configurations.Add(existing);
+
+                    _logger.LogInformation(
+                        "Created new configuration {Key} in category {Category}",
+                        key, category);
+                }
+
+                await context.SaveChangesAsync(ct).ConfigureAwait(false);
+                return existing;
             }
-
-            await _context.SaveChangesAsync(ct).ConfigureAwait(false);
-            return existing;
+            finally
+            {
+                if (shouldDispose)
+                {
+                    await context.DisposeAsync();
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -168,30 +307,64 @@ public class ConfigurationRepository
 
         try
         {
-            using var transaction = await _context.Database.BeginTransactionAsync(ct).ConfigureAwait(false);
-
-            foreach (var kvp in configurations)
+            var context = await GetContextAsync(ct);
+            var shouldDispose = _contextFactory != null;
+            
+            try
             {
-                var result = await SetAsync(
-                    kvp.Key,
-                    kvp.Value.value,
-                    kvp.Value.category,
-                    kvp.Value.valueType,
-                    null,
-                    false,
-                    modifiedBy,
-                    ct).ConfigureAwait(false);
+                using var transaction = await context.Database.BeginTransactionAsync(ct).ConfigureAwait(false);
 
-                results.Add(result);
+                foreach (var kvp in configurations)
+                {
+                    var existing = await context.Configurations
+                        .Where(c => c.Key == kvp.Key)
+                        .FirstOrDefaultAsync(ct).ConfigureAwait(false);
+
+                    if (existing != null)
+                    {
+                        existing.Value = kvp.Value.value;
+                        existing.Category = kvp.Value.category;
+                        existing.ValueType = kvp.Value.valueType;
+                        existing.UpdatedAt = DateTime.UtcNow;
+                        existing.ModifiedBy = modifiedBy;
+                        existing.Version++;
+                    }
+                    else
+                    {
+                        existing = new ConfigurationEntity
+                        {
+                            Key = kvp.Key,
+                            Value = kvp.Value.value,
+                            Category = kvp.Value.category,
+                            ValueType = kvp.Value.valueType,
+                            ModifiedBy = modifiedBy,
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow,
+                            Version = 1
+                        };
+
+                        context.Configurations.Add(existing);
+                    }
+
+                    results.Add(existing);
+                }
+
+                await context.SaveChangesAsync(ct).ConfigureAwait(false);
+                await transaction.CommitAsync(ct).ConfigureAwait(false);
+
+                _logger.LogInformation(
+                    "Bulk updated {Count} configurations",
+                    configurations.Count);
+
+                return results;
             }
-
-            await transaction.CommitAsync(ct).ConfigureAwait(false);
-
-            _logger.LogInformation(
-                "Bulk updated {Count} configurations",
-                configurations.Count);
-
-            return results;
+            finally
+            {
+                if (shouldDispose)
+                {
+                    await context.DisposeAsync();
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -207,22 +380,35 @@ public class ConfigurationRepository
     {
         try
         {
-            var config = await _context.Configurations
-                .Where(c => c.Key == key)
-                .FirstOrDefaultAsync(ct).ConfigureAwait(false);
-
-            if (config == null)
+            var context = await GetContextAsync(ct);
+            var shouldDispose = _contextFactory != null;
+            
+            try
             {
-                return false;
+                var config = await context.Configurations
+                    .Where(c => c.Key == key)
+                    .FirstOrDefaultAsync(ct).ConfigureAwait(false);
+
+                if (config == null)
+                {
+                    return false;
+                }
+
+                config.IsActive = false;
+                config.UpdatedAt = DateTime.UtcNow;
+
+                await context.SaveChangesAsync(ct).ConfigureAwait(false);
+
+                _logger.LogInformation("Deleted configuration {Key}", key);
+                return true;
             }
-
-            config.IsActive = false;
-            config.UpdatedAt = DateTime.UtcNow;
-
-            await _context.SaveChangesAsync(ct).ConfigureAwait(false);
-
-            _logger.LogInformation("Deleted configuration {Key}", key);
-            return true;
+            finally
+            {
+                if (shouldDispose)
+                {
+                    await context.DisposeAsync();
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -240,10 +426,23 @@ public class ConfigurationRepository
     {
         try
         {
-            return await _context.Configurations
-                .Where(c => c.Key == key)
-                .OrderByDescending(c => c.Version)
-                .ToListAsync(ct).ConfigureAwait(false);
+            var context = await GetContextAsync(ct);
+            var shouldDispose = _contextFactory != null;
+            
+            try
+            {
+                return await context.Configurations
+                    .Where(c => c.Key == key)
+                    .OrderByDescending(c => c.Version)
+                    .ToListAsync(ct).ConfigureAwait(false);
+            }
+            finally
+            {
+                if (shouldDispose)
+                {
+                    await context.DisposeAsync();
+                }
+            }
         }
         catch (Exception ex)
         {

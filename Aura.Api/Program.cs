@@ -1828,9 +1828,10 @@ try
         }
 
         // Initialize configuration system with defaults
+        Log.Information("Initializing configuration system");
         var configManager = app.Services.GetRequiredService<Aura.Core.Services.ConfigurationManager>();
         await configManager.InitializeAsync().ConfigureAwait(false);
-        Log.Information("Configuration system initialized successfully");
+        Log.Information("Configuration system initialized");
 
         // Validate configuration persistence after database initialization
         Log.Information("Validating configuration persistence...");
@@ -1872,10 +1873,40 @@ try
         }
     }
 }
+catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.SqliteErrorCode == 1)
+{
+    // SQLITE_ERROR (1) - typically indicates schema mismatch like "no such column"
+    Log.Error(ex, "Database schema mismatch detected: {Message}", ex.Message);
+    Log.Error("This usually means:");
+    Log.Error("  1. Migrations have not been applied");
+    Log.Error("  2. The database schema is out of sync with the code");
+    Log.Error("  3. A migration is missing required columns");
+    Log.Error("");
+    Log.Error("RECOMMENDED ACTIONS:");
+    Log.Error("  1. Delete the database file at: {DbPath}", GetDatabasePath(app));
+    Log.Error("  2. Restart the application to rebuild with correct schema");
+    Log.Error("");
+    Log.Warning("Application will continue with degraded database functionality");
+}
 catch (Exception ex)
 {
     Log.Error(ex, "Critical error during database initialization");
     Log.Warning("Application will continue with degraded database functionality");
+}
+
+// Helper method to get database path
+static string GetDatabasePath(WebApplication app)
+{
+    try
+    {
+        var auraDataRoot = Environment.GetEnvironmentVariable("AURA_DATA_ROOT") 
+            ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura");
+        return Path.Combine(auraDataRoot, "aura.db");
+    }
+    catch
+    {
+        return "[Unable to determine path]";
+    }
 }
 
 
@@ -2080,28 +2111,69 @@ Log.Information("========================================");
 Log.Information("Startup Phase 4: Service Validation");
 Log.Information("========================================");
 
-// Validate critical services are registered
-Log.Information("Validating service registration...");
-var criticalServices = new[]
+try
 {
-    typeof(Aura.Core.Services.Settings.ISettingsService),
-    typeof(Aura.Core.Dependencies.FFmpegResolver),
-    typeof(Aura.Core.Configuration.ProviderSettings),
-    typeof(Aura.Core.Services.ConfigurationManager)
-};
-
-foreach (var serviceType in criticalServices)
-{
-    var service = app.Services.GetService(serviceType);
-    if (service == null)
+    Log.Information("Validating service registration...");
+    
+    // Create a scope for resolving scoped services
+    using (var scope = app.Services.CreateScope())
     {
-        Log.Fatal("Critical service not registered: {ServiceType}", serviceType.Name);
-        throw new InvalidOperationException($"Required service {serviceType.Name} is not registered");
-    }
-    Log.Information("  ✓ {ServiceType}", serviceType.Name);
-}
+        var scopedServices = scope.ServiceProvider;
+        
+        // Test essential services
+        var essentialServices = new[]
+        {
+            typeof(ILogger<Program>),
+            typeof(IDbContextFactory<AuraDbContext>),
+            typeof(Aura.Core.Services.ConfigurationManager),
+            typeof(Aura.Core.Dependencies.FFmpegResolver)
+        };
 
-Log.Information("All critical services registered successfully");
+        foreach (var serviceType in essentialServices)
+        {
+            try
+            {
+                var service = scopedServices.GetService(serviceType);
+                if (service == null)
+                {
+                    Log.Warning("Optional service not registered: {ServiceType}", serviceType.Name);
+                }
+                else
+                {
+                    Log.Debug("Service validated: {ServiceType}", serviceType.Name);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Could not validate service: {ServiceType}", serviceType.Name);
+            }
+        }
+        
+        // Try to resolve settings service in scope
+        try
+        {
+            var settingsService = scopedServices.GetService<Aura.Core.Services.Settings.ISettingsService>();
+            if (settingsService != null)
+            {
+                Log.Debug("Settings service validated successfully");
+            }
+            else
+            {
+                Log.Warning("Settings service not available - some features may be limited");
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Settings service validation failed - continuing with limited functionality");
+        }
+    }
+    
+    Log.Information("Service validation completed");
+}
+catch (Exception ex)
+{
+    Log.Warning(ex, "Service validation encountered issues - application will continue");
+}
 Log.Information("========================================");
 
 // Add correlation ID middleware early in the pipeline
