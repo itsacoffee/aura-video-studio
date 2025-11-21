@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aura Controls Demo</title>
+  <style>
+    /* Import design tokens and controls */
+    @import url('./src/styles/editor-design-tokens.css');
+    @import url('./src/styles/controls.css');
+    
+    body {
+      margin: 0;
+      padding: 48px;
+      font-family: var(--font-family-default);
+      background-color: var(--color-bg-app);
+      color: var(--color-text-primary);
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    h1 {
+      font-size: 32px;
+      margin-bottom: 8px;
+    }
+    
+    .subtitle {
+      color: var(--color-text-secondary);
+      margin-bottom: 48px;
+    }
+    
+    section {
+      margin-bottom: 48px;
+    }
+    
+    h2 {
+      font-size: 20px;
+      margin-bottom: 16px;
+    }
+    
+    .controls-row {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+      align-items: center;
+    }
+    
+    .controls-column {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-top: 16px;
+      max-width: 400px;
+    }
+    
+    .form-field {
+      margin-bottom: 16px;
+    }
+    
+    .form-field label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: var(--font-size-sm);
+    }
+    
+    .toggle-field {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Aura Controls Demo</h1>
+  <p class="subtitle">Showcasing enhanced button and control styles with micro-interactions</p>
+
+  <!-- Button Variants Section -->
+  <section>
+    <h2>Button Variants</h2>
+    <div class="controls-row">
+      <button class="aura-btn aura-btn--primary">Primary Button</button>
+      <button class="aura-btn aura-btn--secondary">Secondary Button</button>
+      <button class="aura-btn aura-btn--ghost">Ghost Button</button>
+      <button class="aura-btn aura-btn--danger">Danger Button</button>
+      <button class="aura-btn aura-btn--success">Success Button</button>
+      <button class="aura-btn aura-btn--primary" disabled>Disabled Button</button>
+    </div>
+  </section>
+
+  <!-- Button Sizes Section -->
+  <section>
+    <h2>Button Sizes</h2>
+    <div class="controls-row">
+      <button class="aura-btn aura-btn--primary aura-btn--small">Small</button>
+      <button class="aura-btn aura-btn--primary">Default</button>
+      <button class="aura-btn aura-btn--primary aura-btn--large">Large</button>
+    </div>
+  </section>
+
+  <!-- Icon Buttons Section -->
+  <section>
+    <h2>Icon Buttons</h2>
+    <div class="controls-row">
+      <button class="aura-btn aura-btn--primary aura-btn--icon aura-btn--small">+</button>
+      <button class="aura-btn aura-btn--primary aura-btn--icon">⚙</button>
+      <button class="aura-btn aura-btn--primary aura-btn--icon aura-btn--large">✓</button>
+    </div>
+  </section>
+
+  <!-- Button Group Section -->
+  <section>
+    <h2>Button Group</h2>
+    <div class="aura-btn-group">
+      <button class="aura-btn aura-btn--secondary">Left</button>
+      <button class="aura-btn aura-btn--secondary">Center</button>
+      <button class="aura-btn aura-btn--secondary">Right</button>
+    </div>
+  </section>
+
+  <!-- Input Fields Section -->
+  <section>
+    <h2>Input Fields</h2>
+    <div class="controls-column">
+      <div class="form-field">
+        <label for="default-input">Default Input</label>
+        <input id="default-input" class="aura-input" type="text" placeholder="Enter text here...">
+      </div>
+      <div class="form-field">
+        <label for="error-input">Error State</label>
+        <input id="error-input" class="aura-input aura-input--error" type="text" placeholder="Error state">
+      </div>
+      <div class="form-field">
+        <label for="success-input">Success State</label>
+        <input id="success-input" class="aura-input aura-input--success" type="text" placeholder="Success state">
+      </div>
+      <div class="form-field">
+        <label for="disabled-input">Disabled Input</label>
+        <input id="disabled-input" class="aura-input" type="text" placeholder="Disabled" disabled>
+      </div>
+    </div>
+  </section>
+
+  <!-- Select Dropdown Section -->
+  <section>
+    <h2>Select Dropdown</h2>
+    <div style="max-width: 400px;">
+      <label for="demo-select">Choose an option</label>
+      <div class="aura-select">
+        <select id="demo-select">
+          <option value="option1">Option 1</option>
+          <option value="option2">Option 2</option>
+          <option value="option3">Option 3</option>
+          <option value="option4">Option 4</option>
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <!-- Toggle Switch Section -->
+  <section>
+    <h2>Toggle Switch</h2>
+    <label class="toggle-field">
+      <div class="aura-toggle">
+        <input type="checkbox">
+        <span class="aura-toggle__slider"></span>
+      </div>
+      <span>Toggle Switch</span>
+    </label>
+  </section>
+
+  <!-- Range Slider Section -->
+  <section>
+    <h2>Range Slider</h2>
+    <div style="max-width: 400px;">
+      <label for="demo-slider">Slider Value: <span id="slider-value">50</span></label>
+      <div class="aura-slider">
+        <input id="demo-slider" type="range" min="0" max="100" value="50" 
+               oninput="document.getElementById('slider-value').textContent = this.value">
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive Examples -->
+  <section>
+    <h2>Interactive Examples</h2>
+    <p style="color: var(--color-text-secondary); margin-bottom: 16px;">
+      Try clicking buttons to see the ripple effect
+    </p>
+    <div class="controls-row">
+      <button class="aura-btn aura-btn--primary" onclick="alert('Primary clicked!')">Click for Ripple</button>
+      <button class="aura-btn aura-btn--success" onclick="alert('Success!')">Success Action</button>
+      <button class="aura-btn aura-btn--danger" onclick="alert('Danger!')">Danger Action</button>
+    </div>
+  </section>
+</body>
+</html>
