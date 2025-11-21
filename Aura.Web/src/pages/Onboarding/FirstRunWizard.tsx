@@ -304,11 +304,24 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
     wizardAnalytics.stepViewed(state.step, stepLabels[state.step] || 'Unknown');
     setStepStartTime(currentTime);
 
-    // CRITICAL FIX: Trigger FFmpeg status check when entering Step 2
-    // This ensures the status is checked automatically, fixing the "Not Ready" issue
+    // CRITICAL FIX: Ping backend with retry before FFmpeg check in Step 2
+    // This ensures backend is reachable before attempting FFmpeg detection
     if (state.step === 2) {
-      console.info('[FirstRunWizard] Entering Step 2, triggering FFmpeg status check');
-      setFfmpegRefreshSignal((prev) => prev + 1);
+      console.info('[FirstRunWizard] Entering Step 2, pinging backend with retry');
+      const checkBackendAndFFmpeg = async () => {
+        for (let i = 0; i < 3; i++) {
+          const ping = await setupApi.pingBackend();
+          if (ping.ok) {
+            console.info('[FirstRunWizard] Backend is reachable, triggering FFmpeg check');
+            setFfmpegRefreshSignal((prev) => prev + 1);
+            return;
+          }
+          console.warn(`[FirstRunWizard] Backend ping attempt ${i + 1}/3 failed: ${ping.details}`);
+          await new Promise((resolve) => setTimeout(resolve, 1000 * (i + 1)));
+        }
+        console.error('[FirstRunWizard] Backend not reachable after 3 attempts');
+      };
+      void checkBackendAndFFmpeg();
     }
   }, [state.step]); // eslint-disable-line react-hooks/exhaustive-deps
 

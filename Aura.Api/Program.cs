@@ -5202,6 +5202,25 @@ Log.Information("===============================================================
 Log.Information("✓ Application marked as ready - HTTP server can accept connections");
 Log.Information("=================================================================");
 
+// Simple health endpoint (no dependencies)
+app.MapGet("/healthz/simple", () => Results.Ok(new
+{
+    status = "ok",
+    service = "Aura.Api",
+    version = typeof(Program).Assembly.GetName().Version?.ToString() ?? "unknown",
+    timestampUtc = DateTime.UtcNow.ToString("o")
+}))
+.WithName("SimpleHealthCheck")
+.WithOpenApi();
+
+// Deterministic startup message
+appLifetime.ApplicationStarted.Register(() =>
+{
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    var addresses = app.Urls.Count > 0 ? string.Join(", ", app.Urls) : "configured URLs";
+    logger.LogInformation("Application started. Press Ctrl+C to shut down. Listening on: {Addresses}", addresses);
+});
+
 // Run dependency scan on startup (non-blocking, runs in background)
 // This scans for dependencies on first launch and every program startup
 // The task respects the application lifetime token to ensure clean shutdown

@@ -251,4 +251,19 @@ export const setupApi = {
     }>('/api/setup/wizard/reset', request, config);
     return response.data;
   },
+
+  /**
+   * Ping backend to check if it's reachable
+   * Returns ok: true if backend responds successfully, false otherwise
+   */
+  async pingBackend(): Promise<{ ok: boolean; details?: string }> {
+    const config: ExtendedAxiosRequestConfig = { _skipCircuitBreaker: true };
+    try {
+      const response = await apiClient.get('/healthz/simple', config);
+      return { ok: response.status === 200, details: response.statusText };
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      return { ok: false, details: errorMessage };
+    }
+  },
 };
