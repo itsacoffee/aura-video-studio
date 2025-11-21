@@ -52,26 +52,39 @@ class FFmpegHandler {
 
     console.log(`[FFmpegHandler] Terminating ${this.ffmpegProcesses.size} FFmpeg process(es)...`);
 
+    const killPromises = [];
+    
     for (const proc of this.ffmpegProcesses) {
-      try {
-        if (proc && !proc.killed) {
-          proc.kill("SIGINT"); // Try graceful first
-          
-          // Give it a moment, then force kill if needed
-          setTimeout(() => {
-            if (proc && !proc.killed) {
-              try {
-                proc.kill("SIGKILL");
-              } catch (err) {
-                console.warn("[FFmpegHandler] Failed to force-kill ffmpeg process:", err.message);
-              }
-            }
-          }, 1000);
-        }
-      } catch (err) {
-        console.warn("[FFmpegHandler] Failed to kill ffmpeg process:", err.message);
+      if (!proc || proc.killed) {
+        continue;
       }
+      
+      const killPromise = (async () => {
+        try {
+          // Try graceful shutdown first
+          proc.kill("SIGINT");
+          
+          // Wait 1 second for graceful shutdown
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Force kill if still alive
+          if (proc && !proc.killed) {
+            try {
+              proc.kill("SIGKILL");
+            } catch (err) {
+              console.warn("[FFmpegHandler] Failed to force-kill ffmpeg process:", err.message);
+            }
+          }
+        } catch (err) {
+          console.warn("[FFmpegHandler] Failed to kill ffmpeg process:", err.message);
+        }
+      })();
+      
+      killPromises.push(killPromise);
     }
+    
+    // Wait for all kill operations to complete
+    await Promise.all(killPromises);
     
     this.ffmpegProcesses.clear();
     console.log("[FFmpegHandler] FFmpeg processes cleanup complete");
