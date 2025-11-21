@@ -385,7 +385,13 @@ Log.Information("Database context and factory registered successfully");
 builder.Services.AddScoped<Aura.Core.Data.ProjectStateRepository>();
 
 // Register configuration management services
-builder.Services.AddScoped<Aura.Core.Data.ConfigurationRepository>();
+// Explicitly use AuraDbContext constructor to avoid ambiguous constructor error
+builder.Services.AddScoped<Aura.Core.Data.ConfigurationRepository>(sp =>
+{
+    var context = sp.GetRequiredService<Aura.Core.Data.AuraDbContext>();
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Data.ConfigurationRepository>>();
+    return new Aura.Core.Data.ConfigurationRepository(context, logger);
+});
 builder.Services.AddSingleton<Aura.Core.Services.ConfigurationManager>();
 builder.Services.AddSingleton<Aura.Core.Services.DatabaseInitializationService>();
 builder.Services.AddSingleton<Aura.Core.Services.DatabaseConfigurationValidator>();
