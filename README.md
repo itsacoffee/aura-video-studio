@@ -152,6 +152,57 @@ cd Aura.Web && npm run dev
 
 📖 See [DEVELOPMENT.md](DEVELOPMENT.md) for backend/frontend component development.
 
+## Database Migrations
+
+Aura uses Entity Framework Core migrations to manage database schema. The database schema is automatically updated on API startup, and you can also manage migrations using the CLI.
+
+### Automatic Migrations
+
+When you start the Aura API, it automatically checks for and applies any pending database migrations. You'll see log messages like:
+
+```
+Checking for pending database migrations...
+Found 3 pending migration(s). Applying migrations...
+✓ Database migrations applied successfully
+```
+
+### CLI Commands
+
+Manage migrations manually using the Aura CLI:
+
+```bash
+# Check migration status
+aura-cli status
+
+# Apply pending migrations
+aura-cli migrate
+
+# Reset database (⚠️ deletes all data)
+aura-cli reset --force
+```
+
+### Documentation
+
+- **[User Guide](docs/DATABASE_MIGRATIONS_USER_GUIDE.md)** - How to use migration CLI commands
+- **[Developer Guide](docs/DATABASE_MIGRATIONS_DEVELOPER_GUIDE.md)** - How to create new migrations
+
+### Quick Reference
+
+```bash
+# After pulling new code
+aura-cli status              # Check for new migrations
+aura-cli migrate             # Apply them
+
+# Creating a new migration (developers)
+dotnet ef migrations add YourMigrationName \
+    --project Aura.Api/Aura.Api.csproj \
+    --context AuraDbContext
+
+# Troubleshooting
+aura-cli migrate -v          # Verbose output
+aura-cli reset --dry-run     # See what reset would do
+```
+
 ## Testing
 
 **Quick Start - All Tests:**
