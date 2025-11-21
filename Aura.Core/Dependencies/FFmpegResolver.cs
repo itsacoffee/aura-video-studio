@@ -531,29 +531,40 @@ public class FFmpegResolver
     {
         // Priority: AURA_FFMPEG_PATH (primary) > FFMPEG_PATH (backward compat) > FFMPEG_BINARIES_PATH (legacy)
         // This ensures compatibility with Electron's backend-service.js which sets all three variables
-        var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var paths = new List<string>();
         
+        // Priority 1: AURA_FFMPEG_PATH (primary)
         var auraPath = Environment.GetEnvironmentVariable("AURA_FFMPEG_PATH");
         if (!string.IsNullOrWhiteSpace(auraPath))
         {
             paths.Add(auraPath.Trim());
         }
         
-        // Check legacy FFMPEG_PATH for backward compatibility
+        // Priority 2: FFMPEG_PATH (backward compatibility)
         var ffmpegPath = Environment.GetEnvironmentVariable("FFMPEG_PATH");
         if (!string.IsNullOrWhiteSpace(ffmpegPath))
         {
-            paths.Add(ffmpegPath.Trim());
+            var trimmed = ffmpegPath.Trim();
+            // Only add if not already in the list (case-insensitive comparison)
+            if (!paths.Any(p => p.Equals(trimmed, StringComparison.OrdinalIgnoreCase)))
+            {
+                paths.Add(trimmed);
+            }
         }
         
-        // Check legacy FFMPEG_BINARIES_PATH as final fallback
+        // Priority 3: FFMPEG_BINARIES_PATH (legacy)
         var binariesPath = Environment.GetEnvironmentVariable("FFMPEG_BINARIES_PATH");
         if (!string.IsNullOrWhiteSpace(binariesPath))
         {
-            paths.Add(binariesPath.Trim());
+            var trimmed = binariesPath.Trim();
+            // Only add if not already in the list (case-insensitive comparison)
+            if (!paths.Any(p => p.Equals(trimmed, StringComparison.OrdinalIgnoreCase)))
+            {
+                paths.Add(trimmed);
+            }
         }
         
-        return paths.ToList();
+        return paths;
     }
 
     /// <summary>
