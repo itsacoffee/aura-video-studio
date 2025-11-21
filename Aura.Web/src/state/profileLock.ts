@@ -4,10 +4,7 @@
 
 import { create } from 'zustand';
 import * as profileLockApi from '../api/profileLockClient';
-import type {
-  ProviderProfileLock,
-  ProviderStatusInfo,
-} from '../types/profileLock';
+import type { ProviderProfileLock, ProviderStatusInfo } from '../types/profileLock';
 
 interface ProfileLockState {
   // Current active lock

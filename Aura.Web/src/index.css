@@ -1,4 +1,5 @@
 @import url('./styles/editor-design-tokens.css');
+@import url('./styles/controls.css');
 
 @tailwind base;
 @tailwind components;

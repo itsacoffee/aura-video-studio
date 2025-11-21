@@ -4,20 +4,20 @@
  * ⚠️ DEPRECATION NOTICE ⚠️
  * This component is NOT the active wizard used by the desktop app.
  * It was an early attempt at a desktop-specific setup flow.
- * 
+ *
  * The actual wizard used is FirstRunWizard (src/pages/Onboarding/FirstRunWizard.tsx).
  * That wizard is used by both web and desktop versions.
- * 
+ *
  * This file remains for:
  * - Historical reference
  * - Potential future desktop-specific features
  * - Dependencies mode selection wrapper (if needed)
- * 
+ *
  * When this component IS used, it delegates to FirstRunWizard for actual configuration.
  * See line 478: return <FirstRunWizard />;
- * 
+ *
  * DO NOT modify this file to fix wizard issues. Modify FirstRunWizard instead.
- * 
+ *
  * Original purpose:
  * Enhanced first-run wizard for Electron desktop app with:
  * - FFmpeg auto-installation
