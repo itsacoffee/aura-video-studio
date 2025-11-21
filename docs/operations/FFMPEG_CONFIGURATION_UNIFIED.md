@@ -23,10 +23,13 @@ The system applies configuration sources in the following priority (highest to l
    - Set by user through UI or API
    - Survives application restarts
 
-2. **Environment Hint** (`AURA_FFMPEG_PATH`)
+2. **Environment Hint** (`AURA_FFMPEG_PATH`, `FFMPEG_PATH`, `FFMPEG_BINARIES_PATH`)
    - Set by Electron based on detected FFmpeg installation
    - Applied only if no persisted configuration exists
    - Primary mechanism for Electron to communicate FFmpeg location to backend
+   - `AURA_FFMPEG_PATH` is preferred (primary)
+   - `FFMPEG_PATH` and `FFMPEG_BINARIES_PATH` are supported for backward compatibility
+   - Multiple variables are checked in priority order with deduplication
 
 3. **Appsettings** (`FFmpegOptions.ExecutablePath`)
    - Configured in `appsettings.json`
@@ -127,10 +130,13 @@ public string GetFfmpegPath()
 ### Startup Flow
 
 1. Electron detects FFmpeg on user's system (or uses bundled version)
-2. Electron sets `AURA_FFMPEG_PATH` environment variable
-3. Backend starts with `AURA_FFMPEG_PATH` in environment
+2. Electron sets `AURA_FFMPEG_PATH`, `FFMPEG_PATH`, and `FFMPEG_BINARIES_PATH` environment variables
+3. Backend starts with FFmpeg environment variables set
 4. `FfmpegConfigurationService` loads persisted config from disk
-5. If no persisted config, applies `AURA_FFMPEG_PATH` from environment
+5. If no persisted config, applies environment variables in priority order:
+   - `AURA_FFMPEG_PATH` (primary)
+   - `FFMPEG_PATH` (backward compatibility)
+   - `FFMPEG_BINARIES_PATH` (legacy)
 6. If no environment hint, applies `FFmpegOptions.ExecutablePath` from appsettings
 7. `FfmpegLocator` receives effective path and uses it for validation
 
