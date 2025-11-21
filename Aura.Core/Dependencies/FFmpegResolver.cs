@@ -531,6 +531,7 @@ public class FFmpegResolver
     {
         // Priority: AURA_FFMPEG_PATH (primary) > FFMPEG_PATH (backward compat) > FFMPEG_BINARIES_PATH (legacy)
         // This ensures compatibility with Electron's backend-service.js which sets all three variables
+        // Note: Using List with LINQ for guaranteed order preservation (max 3 items, O(n²) is acceptable)
         var paths = new List<string>();
         
         // Priority 1: AURA_FFMPEG_PATH (primary)
