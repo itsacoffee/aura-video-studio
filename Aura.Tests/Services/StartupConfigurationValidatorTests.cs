@@ -104,7 +104,7 @@ public class StartupConfigurationValidatorTests : IDisposable
     {
         // Arrange
         var testPath = "/usr/bin/ffmpeg";
-        Environment.SetEnvironmentVariable("FFMPEG_PATH", testPath);
+        Environment.SetEnvironmentVariable("AURA_FFMPEG_PATH", testPath);
         
         try
         {
@@ -127,7 +127,7 @@ public class StartupConfigurationValidatorTests : IDisposable
         }
         finally
         {
-            Environment.SetEnvironmentVariable("FFMPEG_PATH", null);
+            Environment.SetEnvironmentVariable("AURA_FFMPEG_PATH", null);
         }
     }
 

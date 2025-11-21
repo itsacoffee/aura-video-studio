@@ -16,15 +16,15 @@ namespace Aura.Api.HealthChecks;
 public class StartupHealthCheck : IHealthCheck
 {
     private readonly ILogger<StartupHealthCheck> _logger;
-    private readonly FFmpegConfigurationStore? _ffmpegConfigStore;
+    private readonly FFmpegConfigurationStore _ffmpegConfigStore;
     private bool _isReady;
 
     public StartupHealthCheck(
         ILogger<StartupHealthCheck> logger,
-        FFmpegConfigurationStore? ffmpegConfigStore = null)
+        FFmpegConfigurationStore ffmpegConfigStore)
     {
         _logger = logger;
-        _ffmpegConfigStore = ffmpegConfigStore;
+        _ffmpegConfigStore = ffmpegConfigStore ?? throw new ArgumentNullException(nameof(ffmpegConfigStore));
         _isReady = false;
     }
 
@@ -50,34 +50,31 @@ public class StartupHealthCheck : IHealthCheck
                 ["timestamp"] = DateTime.UtcNow
             };
 
-            // Check FFmpeg configuration status if available
-            if (_ffmpegConfigStore != null)
+            // Check FFmpeg configuration status
+            try
             {
-                try
+                var ffmpegConfig = await _ffmpegConfigStore.LoadAsync(cancellationToken).ConfigureAwait(false);
+                var ffmpegHealthy = ffmpegConfig != null && 
+                                    !string.IsNullOrEmpty(ffmpegConfig.Path) && 
+                                    File.Exists(ffmpegConfig.Path);
+                
+                data["ffmpeg_configured"] = ffmpegHealthy;
+                
+                if (ffmpegHealthy)
                 {
-                    var ffmpegConfig = await _ffmpegConfigStore.LoadAsync(cancellationToken).ConfigureAwait(false);
-                    var ffmpegHealthy = ffmpegConfig != null && 
-                                        !string.IsNullOrEmpty(ffmpegConfig.Path) && 
-                                        File.Exists(ffmpegConfig.Path);
-                    
-                    data["ffmpeg_configured"] = ffmpegHealthy;
-                    
-                    if (ffmpegHealthy)
-                    {
-                        data["ffmpeg_path"] = ffmpegConfig.Path!;
-                        data["ffmpeg_source"] = ffmpegConfig.Source ?? "Unknown";
-                    }
-                    else
-                    {
-                        data["ffmpeg_warning"] = "FFmpeg not configured or not found";
-                    }
+                    data["ffmpeg_path"] = ffmpegConfig.Path!;
+                    data["ffmpeg_source"] = ffmpegConfig.Source ?? "Unknown";
                 }
-                catch (Exception ex)
+                else
                 {
-                    _logger.LogWarning(ex, "Failed to check FFmpeg configuration during health check");
-                    data["ffmpeg_configured"] = false;
-                    data["ffmpeg_error"] = ex.Message;
+                    data["ffmpeg_warning"] = "FFmpeg not configured or not found";
                 }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to check FFmpeg configuration during health check");
+                data["ffmpeg_configured"] = false;
+                data["ffmpeg_error"] = ex.Message;
             }
 
             if (!_isReady)

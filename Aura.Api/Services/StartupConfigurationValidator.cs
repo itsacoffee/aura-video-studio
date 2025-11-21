@@ -102,15 +102,16 @@ public class StartupConfigurationValidator : IHostedService
         _logger.LogInformation("Ensuring FFmpeg configuration...");
 
         // Check environment variable first (Electron or external process)
-        var envPath = Environment.GetEnvironmentVariable("FFMPEG_PATH");
+        // Use AURA_FFMPEG_PATH as primary (consistent with rest of codebase)
+        var envPath = Environment.GetEnvironmentVariable("AURA_FFMPEG_PATH");
         if (!string.IsNullOrEmpty(envPath) && File.Exists(envPath))
         {
-            _logger.LogInformation("FFmpeg path from environment variable: {Path}", envPath);
+            _logger.LogInformation("FFmpeg path from AURA_FFMPEG_PATH environment variable: {Path}", envPath);
             await _configStore.SaveAsync(new FFmpegConfiguration
             {
                 Path = envPath,
                 Mode = FFmpegMode.System,
-                Source = "Environment",
+                Source = "Environment (AURA_FFMPEG_PATH)",
                 LastValidatedAt = DateTime.UtcNow,
                 LastValidationResult = FFmpegValidationResult.Ok
             }, ct).ConfigureAwait(false);
@@ -119,7 +120,7 @@ public class StartupConfigurationValidator : IHostedService
 
         // Check stored configuration
         var stored = await _configStore.LoadAsync(ct).ConfigureAwait(false);
-        if (stored != null && !string.IsNullOrEmpty(stored.Path) && File.Exists(stored.Path))
+        if (stored != null && stored.IsValid && !string.IsNullOrEmpty(stored.Path) && File.Exists(stored.Path))
         {
             _logger.LogInformation("FFmpeg configuration loaded from storage: {Path} (Source: {Source})", 
                 stored.Path, stored.Source ?? "Unknown");
@@ -134,6 +135,17 @@ public class StartupConfigurationValidator : IHostedService
         {
             _logger.LogInformation("FFmpeg auto-detected at: {Path}, Version: {Version}", 
                 detected.Path, detected.Version ?? "Unknown");
+            
+            // Persist the detected configuration for future startups
+            await _configStore.SaveAsync(new FFmpegConfiguration
+            {
+                Path = detected.Path,
+                Mode = FFmpegMode.System,
+                Source = "Auto-detected",
+                Version = detected.Version,
+                LastValidatedAt = DateTime.UtcNow,
+                LastValidationResult = FFmpegValidationResult.Ok
+            }, ct).ConfigureAwait(false);
         }
         else
         {
