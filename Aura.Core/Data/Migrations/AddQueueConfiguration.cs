@@ -50,7 +50,8 @@ namespace Aura.Core.Data.Migrations
                     "RetryMaxDelaySeconds", "EnableNotifications", "UpdatedAt" 
                 },
                 values: new object[] { 
-                    "default", 2, false, 90, 90, true, 5, 30, 90, 60, 3600, true, DateTime.UtcNow 
+                    "default", 2, false, 90, 90, true, 5, 30, 90, 60, 3600, true, 
+                    new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
                 }
             );
         }

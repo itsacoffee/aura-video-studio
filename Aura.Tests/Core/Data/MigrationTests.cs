@@ -56,13 +56,7 @@ public class MigrationTests : IDisposable
         // Act - Apply migrations
         await context.Database.MigrateAsync();
 
-        // Assert - Verify Settings table exists
-        var tableExists = await context.Database
-            .ExecuteSqlRawAsync("SELECT name FROM sqlite_master WHERE type='table' AND name='Settings'") >= 0;
-        
-        Assert.True(tableExists);
-
-        // Verify we can query the Settings table
+        // Assert - Verify Settings table exists by querying it
         var settings = await context.Settings.ToListAsync();
         Assert.NotNull(settings);
     }
@@ -230,13 +224,16 @@ public class MigrationTests : IDisposable
         var canConnect = await context.Database.CanConnectAsync();
         Assert.True(canConnect);
 
-        // Verify all critical tables exist
-        var settingsExists = await context.Settings.AnyAsync() || true; // Table exists even if empty
+        // Verify critical tables have expected data
         var queueConfigExists = await context.QueueConfiguration.AnyAsync();
         var analyticsSettingsExists = await context.AnalyticsRetentionSettings.AnyAsync();
 
         Assert.True(queueConfigExists); // Should have default entry
         Assert.True(analyticsSettingsExists); // Should have default entry
+        
+        // Verify Settings table is accessible (may be empty)
+        var settingsCount = await context.Settings.CountAsync();
+        Assert.True(settingsCount >= 0);
     }
 
     [Fact]

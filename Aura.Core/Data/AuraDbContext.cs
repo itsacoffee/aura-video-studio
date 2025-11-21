@@ -409,8 +409,8 @@ public class AuraDbContext : DbContext
                     "AuraVideoStudio",
                     "Output"
                 ),
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
             });
         });
 
@@ -615,7 +615,7 @@ public class AuraDbContext : DbContext
                 RetryBaseDelaySeconds = 60,
                 RetryMaxDelaySeconds = 3600,
                 EnableNotifications = true,
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
             });
         });
 
@@ -687,8 +687,8 @@ public class AuraDbContext : DbContext
                 AggregateOldData = true,
                 AggregationThresholdDays = 30,
                 MaxDatabaseSizeMB = 500,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
             });
         });
 

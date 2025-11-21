@@ -60,7 +60,9 @@ namespace Aura.Core.Data.Migrations
                 },
                 values: new object[] { 
                     "default", true, 90, 365, 30, true, 2, false, true, true, 30, 500, 
-                    DateTime.UtcNow, DateTime.UtcNow, null, null 
+                    new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                    new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                    null, null 
                 }
             );
         }
