@@ -111,6 +111,131 @@ public class FFmpegResolverTests : IDisposable
         Assert.NotNull(result);
     }
 
+    [Fact]
+    public async Task ResolveAsync_WithAuraFfmpegPathEnvVar_UsesEnvironmentPath()
+    {
+        // Arrange - Set AURA_FFMPEG_PATH environment variable
+        var testPath = Path.Combine(_testDir, "ffmpeg-aura");
+        Directory.CreateDirectory(testPath);
+        var originalValue = Environment.GetEnvironmentVariable("AURA_FFMPEG_PATH");
+        
+        try
+        {
+            Environment.SetEnvironmentVariable("AURA_FFMPEG_PATH", testPath);
+            
+            // Act
+            var result = await _resolver.ResolveAsync(null, forceRefresh: true, CancellationToken.None);
+            
+            // Assert - Environment path should be attempted
+            Assert.Contains(testPath, result.AttemptedPaths);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("AURA_FFMPEG_PATH", originalValue);
+        }
+    }
+
+    [Fact]
+    public async Task ResolveAsync_WithLegacyFfmpegPathEnvVar_UsesEnvironmentPath()
+    {
+        // Arrange - Set FFMPEG_PATH environment variable (legacy)
+        var testPath = Path.Combine(_testDir, "ffmpeg-legacy");
+        Directory.CreateDirectory(testPath);
+        var originalAuraValue = Environment.GetEnvironmentVariable("AURA_FFMPEG_PATH");
+        var originalFfmpegValue = Environment.GetEnvironmentVariable("FFMPEG_PATH");
+        
+        try
+        {
+            // Ensure AURA_FFMPEG_PATH is not set so FFMPEG_PATH is used
+            Environment.SetEnvironmentVariable("AURA_FFMPEG_PATH", null);
+            Environment.SetEnvironmentVariable("FFMPEG_PATH", testPath);
+            
+            // Act
+            var result = await _resolver.ResolveAsync(null, forceRefresh: true, CancellationToken.None);
+            
+            // Assert - Legacy environment path should be attempted
+            Assert.Contains(testPath, result.AttemptedPaths);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("AURA_FFMPEG_PATH", originalAuraValue);
+            Environment.SetEnvironmentVariable("FFMPEG_PATH", originalFfmpegValue);
+        }
+    }
+
+    [Fact]
+    public async Task ResolveAsync_WithFfmpegBinariesPathEnvVar_UsesEnvironmentPath()
+    {
+        // Arrange - Set FFMPEG_BINARIES_PATH environment variable (legacy)
+        var testPath = Path.Combine(_testDir, "ffmpeg-binaries");
+        Directory.CreateDirectory(testPath);
+        var originalAuraValue = Environment.GetEnvironmentVariable("AURA_FFMPEG_PATH");
+        var originalFfmpegValue = Environment.GetEnvironmentVariable("FFMPEG_PATH");
+        var originalBinariesValue = Environment.GetEnvironmentVariable("FFMPEG_BINARIES_PATH");
+        
+        try
+        {
+            // Ensure higher priority vars are not set
+            Environment.SetEnvironmentVariable("AURA_FFMPEG_PATH", null);
+            Environment.SetEnvironmentVariable("FFMPEG_PATH", null);
+            Environment.SetEnvironmentVariable("FFMPEG_BINARIES_PATH", testPath);
+            
+            // Act
+            var result = await _resolver.ResolveAsync(null, forceRefresh: true, CancellationToken.None);
+            
+            // Assert - Legacy binaries path should be attempted
+            Assert.Contains(testPath, result.AttemptedPaths);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("AURA_FFMPEG_PATH", originalAuraValue);
+            Environment.SetEnvironmentVariable("FFMPEG_PATH", originalFfmpegValue);
+            Environment.SetEnvironmentVariable("FFMPEG_BINARIES_PATH", originalBinariesValue);
+        }
+    }
+
+    [Fact]
+    public async Task ResolveAsync_WithMultipleEnvVars_PrioritizesAuraFfmpegPath()
+    {
+        // Arrange - Set all three environment variables
+        var auraPath = Path.Combine(_testDir, "ffmpeg-aura-priority");
+        var legacyPath = Path.Combine(_testDir, "ffmpeg-legacy-priority");
+        var binariesPath = Path.Combine(_testDir, "ffmpeg-binaries-priority");
+        Directory.CreateDirectory(auraPath);
+        Directory.CreateDirectory(legacyPath);
+        Directory.CreateDirectory(binariesPath);
+        
+        var originalAuraValue = Environment.GetEnvironmentVariable("AURA_FFMPEG_PATH");
+        var originalFfmpegValue = Environment.GetEnvironmentVariable("FFMPEG_PATH");
+        var originalBinariesValue = Environment.GetEnvironmentVariable("FFMPEG_BINARIES_PATH");
+        
+        try
+        {
+            Environment.SetEnvironmentVariable("AURA_FFMPEG_PATH", auraPath);
+            Environment.SetEnvironmentVariable("FFMPEG_PATH", legacyPath);
+            Environment.SetEnvironmentVariable("FFMPEG_BINARIES_PATH", binariesPath);
+            
+            // Act
+            var result = await _resolver.ResolveAsync(null, forceRefresh: true, CancellationToken.None);
+            
+            // Assert - AURA_FFMPEG_PATH should be tried first
+            var auraIndex = result.AttemptedPaths.IndexOf(auraPath);
+            var legacyIndex = result.AttemptedPaths.IndexOf(legacyPath);
+            
+            Assert.True(auraIndex >= 0, "AURA_FFMPEG_PATH should be in attempted paths");
+            if (legacyIndex >= 0)
+            {
+                Assert.True(auraIndex < legacyIndex, "AURA_FFMPEG_PATH should be tried before FFMPEG_PATH");
+            }
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("AURA_FFMPEG_PATH", originalAuraValue);
+            Environment.SetEnvironmentVariable("FFMPEG_PATH", originalFfmpegValue);
+            Environment.SetEnvironmentVariable("FFMPEG_BINARIES_PATH", originalBinariesValue);
+        }
+    }
+
     public void Dispose()
     {
         try
