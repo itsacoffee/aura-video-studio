@@ -114,7 +114,10 @@ public class FFmpegDetectionService : IFFmpegDetectionService
                         Version = version,
                         LastValidatedAt = DateTime.UtcNow,
                         LastValidationResult = Aura.Core.Configuration.FFmpegValidationResult.Ok,
-                        Source = DetermineFFmpegSource(ffmpegPath)
+                        Source = DetermineFFmpegSource(ffmpegPath),
+                        DetectionSourceType = DetermineDetectionSource(ffmpegPath),
+                        LastDetectedPath = ffmpegPath,
+                        LastDetectedAt = DateTime.UtcNow
                     };
                     
                     await _configStore.SaveAsync(config, cancellationToken).ConfigureAwait(false);
@@ -163,7 +166,34 @@ public class FFmpegDetectionService : IFFmpegDetectionService
 
     private async Task<string?> FindFFmpegPathAsync(CancellationToken cancellationToken)
     {
-        // 1. Check application directory first
+        // 1. Check FFMPEG_PATH environment variable FIRST (set by Electron or user)
+        var envPath = Environment.GetEnvironmentVariable("FFMPEG_PATH");
+        if (!string.IsNullOrEmpty(envPath))
+        {
+            // If it's a directory, look for ffmpeg executable within it
+            if (Directory.Exists(envPath))
+            {
+                var ffmpegExe = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "ffmpeg.exe" : "ffmpeg";
+                var fullPath = Path.Combine(envPath, ffmpegExe);
+                if (File.Exists(fullPath))
+                {
+                    _logger.LogInformation("Found FFmpeg via FFMPEG_PATH environment variable (directory): {Path}", fullPath);
+                    return fullPath;
+                }
+            }
+            // If it's a file, use it directly
+            else if (File.Exists(envPath))
+            {
+                _logger.LogInformation("Found FFmpeg via FFMPEG_PATH environment variable (file): {Path}", envPath);
+                return envPath;
+            }
+            else
+            {
+                _logger.LogWarning("FFMPEG_PATH environment variable set but path does not exist: {Path}", envPath);
+            }
+        }
+        
+        // 2. Check application directory
         var appDir = AppDomain.CurrentDomain.BaseDirectory;
         var appDirFFmpeg = Path.Combine(appDir, "ffmpeg");
         if (File.Exists(appDirFFmpeg))
@@ -481,6 +511,44 @@ public class FFmpegDetectionService : IFFmpegDetectionService
         else
         {
             return "System";
+        }
+    }
+    
+    /// <summary>
+    /// Determine detection source type based on the path and environment
+    /// </summary>
+    private Aura.Core.Configuration.DetectionSource DetermineDetectionSource(string ffmpegPath)
+    {
+        // Check if path came from environment variable
+        var envPath = Environment.GetEnvironmentVariable("FFMPEG_PATH");
+        if (!string.IsNullOrEmpty(envPath))
+        {
+            var normalizedEnvPath = Path.GetFullPath(envPath);
+            var normalizedFfmpegPath = Path.GetFullPath(ffmpegPath);
+            
+            // Check if ffmpegPath is within or matches the env path
+            if (normalizedFfmpegPath.Equals(normalizedEnvPath, StringComparison.OrdinalIgnoreCase) ||
+                normalizedFfmpegPath.StartsWith(normalizedEnvPath, StringComparison.OrdinalIgnoreCase))
+            {
+                return Aura.Core.Configuration.DetectionSource.Environment;
+            }
+        }
+        
+        var appDir = AppDomain.CurrentDomain.BaseDirectory;
+        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var toolsDir = Path.Combine(localAppData, "Aura", "Tools");
+        
+        if (ffmpegPath.StartsWith(toolsDir, StringComparison.OrdinalIgnoreCase))
+        {
+            return Aura.Core.Configuration.DetectionSource.Managed;
+        }
+        else if (IsInSystemPath(ffmpegPath))
+        {
+            return Aura.Core.Configuration.DetectionSource.System;
+        }
+        else
+        {
+            return Aura.Core.Configuration.DetectionSource.System;
         }
     }
     

@@ -136,6 +136,13 @@ class BackendService {
 
       console.log("Backend started successfully");
 
+      // Persist FFmpeg path to backend configuration if detected
+      if (ffmpegExists) {
+        await this._persistFFmpegPath(ffmpegPath).catch(err => {
+          console.warn('[Backend] Failed to persist FFmpeg path:', err.message);
+        });
+      }
+
       // Start periodic health checks
       this._startHealthChecks();
 
@@ -820,6 +827,39 @@ class BackendService {
 
     console.log("FFmpeg found at:", ffmpegFullPath);
     return true;
+  }
+
+  /**
+   * Persist FFmpeg path to backend configuration store
+   * Called after detecting FFmpeg on Electron startup
+   */
+  async _persistFFmpegPath(ffmpegPath) {
+    try {
+      const ffmpegExe = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
+      const ffmpegFullPath = path.join(ffmpegPath, ffmpegExe);
+      
+      console.log('[Backend] Persisting FFmpeg path:', ffmpegFullPath);
+      
+      const response = await axios.post(
+        `${this.baseUrl}/api/setup/configure-ffmpeg`,
+        {
+          path: ffmpegFullPath,
+          source: 'ElectronDetection'
+        },
+        {
+          timeout: 5000,
+          validateStatus: () => true
+        }
+      );
+
+      if (response.status === 200) {
+        console.log('[Backend] FFmpeg path persisted successfully');
+      } else {
+        console.warn('[Backend] Failed to persist FFmpeg path:', response.status, response.data);
+      }
+    } catch (error) {
+      console.warn('[Backend] Error persisting FFmpeg path:', error.message);
+    }
   }
 
   /**
