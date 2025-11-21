@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Aura.Api.Utilities;
 using Aura.Core.Models.Profiles;
 using Aura.Core.Services.Profiles;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using ProblemDetailsHelper = Aura.Api.Utilities.ProblemDetailsFactory;
 
 namespace Aura.Api.Controllers;
 
@@ -41,7 +41,7 @@ public class ProfilesController : ControllerBase
         {
             if (string.IsNullOrWhiteSpace(userId))
             {
-                return ProblemDetailsFactory.CreateBadRequest(
+                return ProblemDetailsHelper.CreateBadRequest(
                     detail: "UserId is required",
                     correlationId: HttpContext.TraceIdentifier,
                     field: "UserId");
@@ -69,7 +69,7 @@ public class ProfilesController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting profiles for user {UserId}", userId);
-            return ProblemDetailsFactory.CreateInternalServerError(
+            return ProblemDetailsHelper.CreateInternalServerError(
                 detail: "Failed to retrieve profiles",
                 correlationId: HttpContext.TraceIdentifier);
         }
@@ -87,7 +87,7 @@ public class ProfilesController : ControllerBase
         {
             if (string.IsNullOrWhiteSpace(request.UserId))
             {
-                return ProblemDetailsFactory.CreateBadRequest(
+                return ProblemDetailsHelper.CreateBadRequest(
                     detail: "UserId is required",
                     correlationId: HttpContext.TraceIdentifier,
                     field: "UserId");
@@ -95,7 +95,7 @@ public class ProfilesController : ControllerBase
 
             if (string.IsNullOrWhiteSpace(request.ProfileName))
             {
-                return ProblemDetailsFactory.CreateBadRequest(
+                return ProblemDetailsHelper.CreateBadRequest(
                     detail: "ProfileName is required",
                     correlationId: HttpContext.TraceIdentifier,
                     field: "ProfileName");
@@ -121,7 +121,7 @@ public class ProfilesController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating profile for user {UserId}", request.UserId);
-            return ProblemDetailsFactory.CreateInternalServerError(
+            return ProblemDetailsHelper.CreateInternalServerError(
                 detail: "Failed to create profile",
                 correlationId: HttpContext.TraceIdentifier);
         }
@@ -139,7 +139,7 @@ public class ProfilesController : ControllerBase
         {
             if (string.IsNullOrWhiteSpace(profileId))
             {
-                return ProblemDetailsFactory.CreateBadRequest(
+                return ProblemDetailsHelper.CreateBadRequest(
                     detail: "ProfileId is required",
                     correlationId: HttpContext.TraceIdentifier,
                     field: "ProfileId");
@@ -148,7 +148,7 @@ public class ProfilesController : ControllerBase
             var profile = await _profileService.GetProfileAsync(profileId, ct).ConfigureAwait(false);
             if (profile == null)
             {
-                return ProblemDetailsFactory.CreateNotFound(
+                return ProblemDetailsHelper.CreateNotFound(
                     detail: $"Profile {profileId} not found",
                     correlationId: HttpContext.TraceIdentifier,
                     resourceId: profileId,
@@ -186,7 +186,7 @@ public class ProfilesController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting profile {ProfileId}", profileId);
-            return ProblemDetailsFactory.CreateInternalServerError(
+            return ProblemDetailsHelper.CreateInternalServerError(
                 detail: "Failed to retrieve profile",
                 correlationId: HttpContext.TraceIdentifier);
         }
@@ -205,7 +205,7 @@ public class ProfilesController : ControllerBase
         {
             if (string.IsNullOrWhiteSpace(profileId))
             {
-                return ProblemDetailsFactory.CreateBadRequest(
+                return ProblemDetailsHelper.CreateBadRequest(
                     detail: "ProfileId is required",
                     correlationId: HttpContext.TraceIdentifier,
                     field: "ProfileId");
@@ -228,7 +228,7 @@ public class ProfilesController : ControllerBase
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Profile {ProfileId} not found", profileId);
-            return ProblemDetailsFactory.CreateNotFound(
+            return ProblemDetailsHelper.CreateNotFound(
                 detail: ex.Message,
                 correlationId: HttpContext.TraceIdentifier,
                 resourceId: profileId,
@@ -237,7 +237,7 @@ public class ProfilesController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating profile {ProfileId}", profileId);
-            return ProblemDetailsFactory.CreateInternalServerError(
+            return ProblemDetailsHelper.CreateInternalServerError(
                 detail: "Failed to update profile",
                 correlationId: HttpContext.TraceIdentifier);
         }
@@ -255,7 +255,7 @@ public class ProfilesController : ControllerBase
         {
             if (string.IsNullOrWhiteSpace(profileId))
             {
-                return ProblemDetailsFactory.CreateBadRequest(
+                return ProblemDetailsHelper.CreateBadRequest(
                     detail: "ProfileId is required",
                     correlationId: HttpContext.TraceIdentifier,
                     field: "ProfileId");
@@ -272,14 +272,14 @@ public class ProfilesController : ControllerBase
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Cannot delete profile {ProfileId}", profileId);
-            return ProblemDetailsFactory.CreateBadRequest(
+            return ProblemDetailsHelper.CreateBadRequest(
                 detail: ex.Message,
                 correlationId: HttpContext.TraceIdentifier);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error deleting profile {ProfileId}", profileId);
-            return ProblemDetailsFactory.CreateInternalServerError(
+            return ProblemDetailsHelper.CreateInternalServerError(
                 detail: "Failed to delete profile",
                 correlationId: HttpContext.TraceIdentifier);
         }
@@ -297,7 +297,7 @@ public class ProfilesController : ControllerBase
         {
             if (string.IsNullOrWhiteSpace(profileId))
             {
-                return ProblemDetailsFactory.CreateBadRequest(
+                return ProblemDetailsHelper.CreateBadRequest(
                     detail: "ProfileId is required",
                     correlationId: HttpContext.TraceIdentifier,
                     field: "ProfileId");
@@ -320,7 +320,7 @@ public class ProfilesController : ControllerBase
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Cannot activate profile {ProfileId}", profileId);
-            return ProblemDetailsFactory.CreateNotFound(
+            return ProblemDetailsHelper.CreateNotFound(
                 detail: ex.Message,
                 correlationId: HttpContext.TraceIdentifier,
                 resourceId: profileId,
@@ -329,7 +329,7 @@ public class ProfilesController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error activating profile {ProfileId}", profileId);
-            return ProblemDetailsFactory.CreateInternalServerError(
+            return ProblemDetailsHelper.CreateInternalServerError(
                 detail: "Failed to activate profile",
                 correlationId: HttpContext.TraceIdentifier);
         }
@@ -348,7 +348,7 @@ public class ProfilesController : ControllerBase
         {
             if (string.IsNullOrWhiteSpace(profileId))
             {
-                return ProblemDetailsFactory.CreateBadRequest(
+                return ProblemDetailsHelper.CreateBadRequest(
                     detail: "ProfileId is required",
                     correlationId: HttpContext.TraceIdentifier,
                     field: "ProfileId");
@@ -356,7 +356,7 @@ public class ProfilesController : ControllerBase
 
             if (string.IsNullOrWhiteSpace(request.NewProfileName))
             {
-                return ProblemDetailsFactory.CreateBadRequest(
+                return ProblemDetailsHelper.CreateBadRequest(
                     detail: "NewProfileName is required",
                     correlationId: HttpContext.TraceIdentifier,
                     field: "NewProfileName");
@@ -382,7 +382,7 @@ public class ProfilesController : ControllerBase
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Cannot duplicate profile {ProfileId}", profileId);
-            return ProblemDetailsFactory.CreateNotFound(
+            return ProblemDetailsHelper.CreateNotFound(
                 detail: ex.Message,
                 correlationId: HttpContext.TraceIdentifier,
                 resourceId: profileId,
@@ -391,7 +391,7 @@ public class ProfilesController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error duplicating profile {ProfileId}", profileId);
-            return ProblemDetailsFactory.CreateInternalServerError(
+            return ProblemDetailsHelper.CreateInternalServerError(
                 detail: "Failed to duplicate profile",
                 correlationId: HttpContext.TraceIdentifier);
         }
@@ -423,7 +423,7 @@ public class ProfilesController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting templates");
-            return ProblemDetailsFactory.CreateInternalServerError(
+            return ProblemDetailsHelper.CreateInternalServerError(
                 detail: "Failed to retrieve templates",
                 correlationId: HttpContext.TraceIdentifier);
         }
@@ -441,7 +441,7 @@ public class ProfilesController : ControllerBase
         {
             if (string.IsNullOrWhiteSpace(request.UserId))
             {
-                return ProblemDetailsFactory.CreateBadRequest(
+                return ProblemDetailsHelper.CreateBadRequest(
                     detail: "UserId is required",
                     correlationId: HttpContext.TraceIdentifier,
                     field: "UserId");
@@ -449,7 +449,7 @@ public class ProfilesController : ControllerBase
 
             if (string.IsNullOrWhiteSpace(request.ProfileName))
             {
-                return ProblemDetailsFactory.CreateBadRequest(
+                return ProblemDetailsHelper.CreateBadRequest(
                     detail: "ProfileName is required",
                     correlationId: HttpContext.TraceIdentifier,
                     field: "ProfileName");
@@ -457,7 +457,7 @@ public class ProfilesController : ControllerBase
 
             if (string.IsNullOrWhiteSpace(request.FromTemplateId))
             {
-                return ProblemDetailsFactory.CreateBadRequest(
+                return ProblemDetailsHelper.CreateBadRequest(
                     detail: "FromTemplateId is required",
                     correlationId: HttpContext.TraceIdentifier,
                     field: "FromTemplateId");
@@ -466,7 +466,7 @@ public class ProfilesController : ControllerBase
             var template = ProfileTemplateService.GetTemplate(request.FromTemplateId);
             if (template == null)
             {
-                return ProblemDetailsFactory.CreateNotFound(
+                return ProblemDetailsHelper.CreateNotFound(
                     detail: $"Template {request.FromTemplateId} not found",
                     correlationId: HttpContext.TraceIdentifier,
                     resourceId: request.FromTemplateId);
@@ -492,7 +492,7 @@ public class ProfilesController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating profile from template");
-            return ProblemDetailsFactory.CreateInternalServerError(
+            return ProblemDetailsHelper.CreateInternalServerError(
                 detail: "Failed to create profile from template",
                 correlationId: HttpContext.TraceIdentifier);
         }
@@ -511,7 +511,7 @@ public class ProfilesController : ControllerBase
         {
             if (string.IsNullOrWhiteSpace(profileId))
             {
-                return ProblemDetailsFactory.CreateBadRequest(
+                return ProblemDetailsHelper.CreateBadRequest(
                     detail: "ProfileId is required",
                     correlationId: HttpContext.TraceIdentifier,
                     field: "ProfileId");
@@ -538,7 +538,7 @@ public class ProfilesController : ControllerBase
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Cannot update preferences for profile {ProfileId}", profileId);
-            return ProblemDetailsFactory.CreateNotFound(
+            return ProblemDetailsHelper.CreateNotFound(
                 detail: ex.Message,
                 correlationId: HttpContext.TraceIdentifier,
                 resourceId: profileId,
@@ -547,7 +547,7 @@ public class ProfilesController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating preferences for profile {ProfileId}", profileId);
-            return ProblemDetailsFactory.CreateInternalServerError(
+            return ProblemDetailsHelper.CreateInternalServerError(
                 detail: "Failed to update preferences",
                 correlationId: HttpContext.TraceIdentifier);
         }
@@ -566,7 +566,7 @@ public class ProfilesController : ControllerBase
         {
             if (string.IsNullOrWhiteSpace(profileId))
             {
-                return ProblemDetailsFactory.CreateBadRequest(
+                return ProblemDetailsHelper.CreateBadRequest(
                     detail: "ProfileId is required",
                     correlationId: HttpContext.TraceIdentifier,
                     field: "ProfileId");
@@ -574,7 +574,7 @@ public class ProfilesController : ControllerBase
 
             if (string.IsNullOrWhiteSpace(request.SuggestionType))
             {
-                return ProblemDetailsFactory.CreateBadRequest(
+                return ProblemDetailsHelper.CreateBadRequest(
                     detail: "SuggestionType is required",
                     correlationId: HttpContext.TraceIdentifier,
                     field: "SuggestionType");
@@ -582,7 +582,7 @@ public class ProfilesController : ControllerBase
 
             if (string.IsNullOrWhiteSpace(request.Decision))
             {
-                return ProblemDetailsFactory.CreateBadRequest(
+                return ProblemDetailsHelper.CreateBadRequest(
                     detail: "Decision is required",
                     correlationId: HttpContext.TraceIdentifier,
                     field: "Decision");
@@ -606,7 +606,7 @@ public class ProfilesController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error recording decision for profile {ProfileId}", profileId);
-            return ProblemDetailsFactory.CreateInternalServerError(
+            return ProblemDetailsHelper.CreateInternalServerError(
                 detail: "Failed to record decision",
                 correlationId: HttpContext.TraceIdentifier);
         }
@@ -624,7 +624,7 @@ public class ProfilesController : ControllerBase
         {
             if (string.IsNullOrWhiteSpace(profileId))
             {
-                return ProblemDetailsFactory.CreateBadRequest(
+                return ProblemDetailsHelper.CreateBadRequest(
                     detail: "ProfileId is required",
                     correlationId: HttpContext.TraceIdentifier,
                     field: "ProfileId");
@@ -698,7 +698,7 @@ public class ProfilesController : ControllerBase
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Cannot get preferences summary for profile {ProfileId}", profileId);
-            return ProblemDetailsFactory.CreateNotFound(
+            return ProblemDetailsHelper.CreateNotFound(
                 detail: ex.Message,
                 correlationId: HttpContext.TraceIdentifier,
                 resourceId: profileId,
@@ -707,7 +707,7 @@ public class ProfilesController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting preferences summary for profile {ProfileId}", profileId);
-            return ProblemDetailsFactory.CreateInternalServerError(
+            return ProblemDetailsHelper.CreateInternalServerError(
                 detail: "Failed to get preferences summary",
                 correlationId: HttpContext.TraceIdentifier);
         }
