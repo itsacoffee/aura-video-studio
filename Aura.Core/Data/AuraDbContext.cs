@@ -409,8 +409,8 @@ public class AuraDbContext : DbContext
                     "AuraVideoStudio",
                     "Output"
                 ),
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
             });
         });
 
@@ -598,23 +598,24 @@ public class AuraDbContext : DbContext
         modelBuilder.Entity<QueueConfigurationEntity>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.UpdatedAt);
             
             // Seed default configuration
             entity.HasData(new QueueConfigurationEntity
             {
-                Id = 1,
+                Id = "default",
                 MaxConcurrentJobs = 2,
-                PauseOnBattery = true,
-                CpuThrottleThreshold = 85,
-                MemoryThrottleThreshold = 85,
+                PauseOnBattery = false,
+                CpuThrottleThreshold = 90,
+                MemoryThrottleThreshold = 90,
                 IsEnabled = true,
                 PollingIntervalSeconds = 5,
-                JobHistoryRetentionDays = 7,
-                FailedJobRetentionDays = 30,
-                RetryBaseDelaySeconds = 5,
-                RetryMaxDelaySeconds = 300,
+                JobHistoryRetentionDays = 30,
+                FailedJobRetentionDays = 90,
+                RetryBaseDelaySeconds = 60,
+                RetryMaxDelaySeconds = 3600,
                 EnableNotifications = true,
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
             });
         });
 
@@ -668,24 +669,26 @@ public class AuraDbContext : DbContext
         modelBuilder.Entity<AnalyticsRetentionSettingsEntity>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.IsEnabled);
+            entity.HasIndex(e => e.UpdatedAt);
             
             // Seed default settings
             entity.HasData(new AnalyticsRetentionSettingsEntity
             {
-                Id = 1,
+                Id = "default",
                 IsEnabled = true,
                 UsageStatisticsRetentionDays = 90,
                 CostTrackingRetentionDays = 365,
                 PerformanceMetricsRetentionDays = 30,
                 AutoCleanupEnabled = true,
-                CleanupHourUtc = 3,
+                CleanupHourUtc = 2,
                 TrackSuccessOnly = false,
                 CollectHardwareMetrics = true,
                 AggregateOldData = true,
                 AggregationThresholdDays = 30,
                 MaxDatabaseSizeMB = 500,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                UpdatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
             });
         });
 

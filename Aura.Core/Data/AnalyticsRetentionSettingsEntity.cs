@@ -12,7 +12,7 @@ namespace Aura.Core.Data;
 public class AnalyticsRetentionSettingsEntity : IAuditableEntity
 {
     [Key]
-    public int Id { get; set; }
+    public string Id { get; set; } = "default";
     
     /// <summary>
     /// Whether analytics collection is enabled
