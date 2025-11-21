@@ -1,6 +1,7 @@
 import ReactDOM from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+import './styles/component-overrides.css';
 import './styles/windows11.css';
 import { apiUrl } from './config/api';
 import { errorReportingService } from './services/errorReportingService';
