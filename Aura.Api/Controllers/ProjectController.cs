@@ -1,9 +1,9 @@
-using Aura.Api.Utilities;
 using Aura.Core.Models;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
 using System.Collections.Generic;
 using System.Text.Json;
+using ProblemDetailsHelper = Aura.Api.Utilities.ProblemDetailsFactory;
 
 namespace Aura.Api.Controllers;
 
@@ -54,7 +54,7 @@ public class ProjectController : ControllerBase
             var project = _projects.FirstOrDefault(p => p.Id == id);
             if (project == null)
             {
-                return ProblemDetailsFactory.CreateNotFound(
+                return ProblemDetailsHelper.CreateNotFound(
                     detail: $"Project with ID '{id}' was not found",
                     resourceId: id,
                     resourceType: "Project");
@@ -86,7 +86,7 @@ public class ProjectController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Name))
         {
             Log.Warning("[{CorrelationId}] Project save rejected: Name is required", correlationId);
-            return ProblemDetailsFactory.CreateBadRequest(
+            return ProblemDetailsHelper.CreateBadRequest(
                 detail: "Project name is required",
                 correlationId: correlationId,
                 field: "Name");
@@ -95,7 +95,7 @@ public class ProjectController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.ProjectData))
         {
             Log.Warning("[{CorrelationId}] Project save rejected: ProjectData is required", correlationId);
-            return ProblemDetailsFactory.CreateBadRequest(
+            return ProblemDetailsHelper.CreateBadRequest(
                 detail: "Project data is required",
                 correlationId: correlationId,
                 field: "ProjectData");
@@ -109,7 +109,7 @@ public class ProjectController : ControllerBase
         catch (JsonException ex)
         {
             Log.Warning("[{CorrelationId}] Project save rejected: Invalid JSON in ProjectData", correlationId);
-            return ProblemDetailsFactory.CreateBadRequest(
+            return ProblemDetailsHelper.CreateBadRequest(
                 detail: $"Project data must be valid JSON: {ex.Message}",
                 correlationId: correlationId,
                 field: "ProjectData");
@@ -164,7 +164,7 @@ public class ProjectController : ControllerBase
                 }
                 else
                 {
-                    return ProblemDetailsFactory.CreateNotFound(
+                    return ProblemDetailsHelper.CreateNotFound(
                         detail: $"Project with ID '{request.Id}' was not found",
                         correlationId: correlationId,
                         resourceId: request.Id,
@@ -213,7 +213,7 @@ public class ProjectController : ControllerBase
             var index = _projects.FindIndex(p => p.Id == id);
             if (index < 0)
             {
-                return ProblemDetailsFactory.CreateNotFound(
+                return ProblemDetailsHelper.CreateNotFound(
                     detail: $"Project with ID '{id}' was not found",
                     correlationId: correlationId,
                     resourceId: id,
@@ -243,7 +243,7 @@ public class ProjectController : ControllerBase
             var original = _projects.FirstOrDefault(p => p.Id == id);
             if (original == null)
             {
-                return ProblemDetailsFactory.CreateNotFound(
+                return ProblemDetailsHelper.CreateNotFound(
                     detail: $"Project with ID '{id}' was not found",
                     correlationId: correlationId,
                     resourceId: id,

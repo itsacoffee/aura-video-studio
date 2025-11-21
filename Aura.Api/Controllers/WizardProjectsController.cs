@@ -1,8 +1,8 @@
 using Aura.Api.Models.ApiModels.V1;
-using Aura.Api.Utilities;
 using Aura.Core.Services;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
+using ProblemDetailsHelper = Aura.Api.Utilities.ProblemDetailsFactory;
 
 namespace Aura.Api.Controllers;
 
@@ -32,7 +32,7 @@ public class WizardProjectsController : ControllerBase
         {
             if (string.IsNullOrWhiteSpace(request.Name))
             {
-                return ProblemDetailsFactory.CreateBadRequest(
+                return ProblemDetailsHelper.CreateBadRequest(
                     detail: "Project name is required",
                     correlationId: correlationId);
             }
@@ -59,7 +59,7 @@ public class WizardProjectsController : ControllerBase
         catch (Exception ex)
         {
             Log.Error(ex, "[{CorrelationId}] Failed to save wizard project", correlationId);
-            return ProblemDetailsFactory.CreateInternalServerError(
+            return ProblemDetailsHelper.CreateInternalServerError(
                 detail: "Failed to save project",
                 correlationId: correlationId);
         }
@@ -78,7 +78,7 @@ public class WizardProjectsController : ControllerBase
             var project = await _projectService.GetProjectAsync(id, ct).ConfigureAwait(false);
             if (project == null || project.IsDeleted)
             {
-                return ProblemDetailsFactory.CreateNotFound(
+                return ProblemDetailsHelper.CreateNotFound(
                     detail: $"Project {id} not found",
                     correlationId: correlationId);
             }
@@ -110,7 +110,7 @@ public class WizardProjectsController : ControllerBase
         catch (Exception ex)
         {
             Log.Error(ex, "[{CorrelationId}] Failed to get wizard project {ProjectId}", correlationId, id);
-            return ProblemDetailsFactory.CreateInternalServerError(
+            return ProblemDetailsHelper.CreateInternalServerError(
                 detail: "Failed to retrieve project",
                 correlationId: correlationId);
         }
@@ -145,7 +145,7 @@ public class WizardProjectsController : ControllerBase
         catch (Exception ex)
         {
             Log.Error(ex, "[{CorrelationId}] Failed to get wizard projects", correlationId);
-            return ProblemDetailsFactory.CreateInternalServerError(
+            return ProblemDetailsHelper.CreateInternalServerError(
                 detail: "Failed to retrieve projects",
                 correlationId: correlationId);
         }
@@ -180,7 +180,7 @@ public class WizardProjectsController : ControllerBase
         catch (Exception ex)
         {
             Log.Error(ex, "[{CorrelationId}] Failed to get recent wizard projects", correlationId);
-            return ProblemDetailsFactory.CreateInternalServerError(
+            return ProblemDetailsHelper.CreateInternalServerError(
                 detail: "Failed to retrieve recent projects",
                 correlationId: correlationId);
         }
@@ -198,7 +198,7 @@ public class WizardProjectsController : ControllerBase
         {
             if (string.IsNullOrWhiteSpace(request.NewName))
             {
-                return ProblemDetailsFactory.CreateBadRequest(
+                return ProblemDetailsHelper.CreateBadRequest(
                     detail: "New project name is required",
                     correlationId: correlationId);
             }
@@ -215,14 +215,14 @@ public class WizardProjectsController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return ProblemDetailsFactory.CreateNotFound(
+            return ProblemDetailsHelper.CreateNotFound(
                 detail: ex.Message,
                 correlationId: correlationId);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "[{CorrelationId}] Failed to duplicate wizard project {ProjectId}", correlationId, id);
-            return ProblemDetailsFactory.CreateInternalServerError(
+            return ProblemDetailsHelper.CreateInternalServerError(
                 detail: "Failed to duplicate project",
                 correlationId: correlationId);
         }
@@ -246,14 +246,14 @@ public class WizardProjectsController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return ProblemDetailsFactory.CreateNotFound(
+            return ProblemDetailsHelper.CreateNotFound(
                 detail: ex.Message,
                 correlationId: correlationId);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "[{CorrelationId}] Failed to delete wizard project {ProjectId}", correlationId, id);
-            return ProblemDetailsFactory.CreateInternalServerError(
+            return ProblemDetailsHelper.CreateInternalServerError(
                 detail: "Failed to delete project",
                 correlationId: correlationId);
         }
@@ -277,14 +277,14 @@ public class WizardProjectsController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return ProblemDetailsFactory.CreateNotFound(
+            return ProblemDetailsHelper.CreateNotFound(
                 detail: ex.Message,
                 correlationId: correlationId);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "[{CorrelationId}] Failed to export wizard project {ProjectId}", correlationId, id);
-            return ProblemDetailsFactory.CreateInternalServerError(
+            return ProblemDetailsHelper.CreateInternalServerError(
                 detail: "Failed to export project",
                 correlationId: correlationId);
         }
@@ -302,7 +302,7 @@ public class WizardProjectsController : ControllerBase
         {
             if (string.IsNullOrWhiteSpace(request.ProjectJson))
             {
-                return ProblemDetailsFactory.CreateBadRequest(
+                return ProblemDetailsHelper.CreateBadRequest(
                     detail: "Project JSON is required",
                     correlationId: correlationId);
             }
@@ -320,7 +320,7 @@ public class WizardProjectsController : ControllerBase
         catch (Exception ex)
         {
             Log.Error(ex, "[{CorrelationId}] Failed to import wizard project", correlationId);
-            return ProblemDetailsFactory.CreateInternalServerError(
+            return ProblemDetailsHelper.CreateInternalServerError(
                 detail: $"Failed to import project: {ex.Message}",
                 correlationId: correlationId);
         }
@@ -354,14 +354,14 @@ public class WizardProjectsController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return ProblemDetailsFactory.CreateNotFound(
+            return ProblemDetailsHelper.CreateNotFound(
                 detail: ex.Message,
                 correlationId: correlationId);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "[{CorrelationId}] Failed to clear content for wizard project {ProjectId}", correlationId, id);
-            return ProblemDetailsFactory.CreateInternalServerError(
+            return ProblemDetailsHelper.CreateInternalServerError(
                 detail: "Failed to clear generated content",
                 correlationId: correlationId);
         }
