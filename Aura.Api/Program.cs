@@ -501,6 +501,10 @@ builder.Services.AddSingleton<Aura.Core.Services.OllamaService>(sp =>
 // Register OllamaDetectionService as a hosted service for background detection
 builder.Services.AddHostedService(sp => sp.GetRequiredService<Aura.Core.Services.Providers.OllamaDetectionService>());
 
+// Register OllamaHealthCheckService for background availability checking
+builder.Services.AddSingleton<Aura.Api.HostedServices.OllamaHealthCheckService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<Aura.Api.HostedServices.OllamaHealthCheckService>());
+
 // Configure Circuit Breaker options from appsettings
 builder.Services.Configure<Aura.Core.Configuration.CircuitBreakerSettings>(
     builder.Configuration.GetSection("CircuitBreaker"));
