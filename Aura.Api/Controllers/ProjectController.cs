@@ -1,3 +1,4 @@
+using Aura.Api.Utilities;
 using Aura.Core.Models;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
@@ -53,14 +54,10 @@ public class ProjectController : ControllerBase
             var project = _projects.FirstOrDefault(p => p.Id == id);
             if (project == null)
             {
-                return NotFound(new
-                {
-                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
-                    title = "Project Not Found",
-                    status = 404,
-                    detail = $"Project with ID '{id}' was not found",
-                    projectId = id
-                });
+                return ProblemDetailsFactory.CreateNotFound(
+                    detail: $"Project with ID '{id}' was not found",
+                    resourceId: id,
+                    resourceType: "Project");
             }
 
             var response = new LoadProjectResponse
@@ -89,29 +86,19 @@ public class ProjectController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Name))
         {
             Log.Warning("[{CorrelationId}] Project save rejected: Name is required", correlationId);
-            return BadRequest(new
-            {
-                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
-                title = "Invalid Request",
-                status = 400,
-                detail = "Project name is required",
-                correlationId,
-                field = "Name"
-            });
+            return ProblemDetailsFactory.CreateBadRequest(
+                detail: "Project name is required",
+                correlationId: correlationId,
+                field: "Name");
         }
 
         if (string.IsNullOrWhiteSpace(request.ProjectData))
         {
             Log.Warning("[{CorrelationId}] Project save rejected: ProjectData is required", correlationId);
-            return BadRequest(new
-            {
-                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
-                title = "Invalid Request",
-                status = 400,
-                detail = "Project data is required",
-                correlationId,
-                field = "ProjectData"
-            });
+            return ProblemDetailsFactory.CreateBadRequest(
+                detail: "Project data is required",
+                correlationId: correlationId,
+                field: "ProjectData");
         }
 
         // Validate JSON format
@@ -122,15 +109,10 @@ public class ProjectController : ControllerBase
         catch (JsonException ex)
         {
             Log.Warning("[{CorrelationId}] Project save rejected: Invalid JSON in ProjectData", correlationId);
-            return BadRequest(new
-            {
-                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
-                title = "Invalid Request",
-                status = 400,
-                detail = $"Project data must be valid JSON: {ex.Message}",
-                correlationId,
-                field = "ProjectData"
-            });
+            return ProblemDetailsFactory.CreateBadRequest(
+                detail: $"Project data must be valid JSON: {ex.Message}",
+                correlationId: correlationId,
+                field: "ProjectData");
         }
 
         // Extract clip count from project data
@@ -182,15 +164,11 @@ public class ProjectController : ControllerBase
                 }
                 else
                 {
-                    return NotFound(new
-                    {
-                        type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
-                        title = "Project Not Found",
-                        status = 404,
-                        detail = $"Project with ID '{request.Id}' was not found",
-                        correlationId,
-                        projectId = request.Id
-                    });
+                    return ProblemDetailsFactory.CreateNotFound(
+                        detail: $"Project with ID '{request.Id}' was not found",
+                        correlationId: correlationId,
+                        resourceId: request.Id,
+                        resourceType: "Project");
                 }
             }
             // Create new project
@@ -235,15 +213,11 @@ public class ProjectController : ControllerBase
             var index = _projects.FindIndex(p => p.Id == id);
             if (index < 0)
             {
-                return NotFound(new
-                {
-                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
-                    title = "Project Not Found",
-                    status = 404,
-                    detail = $"Project with ID '{id}' was not found",
-                    correlationId,
-                    projectId = id
-                });
+                return ProblemDetailsFactory.CreateNotFound(
+                    detail: $"Project with ID '{id}' was not found",
+                    correlationId: correlationId,
+                    resourceId: id,
+                    resourceType: "Project");
             }
 
             var project = _projects[index];
@@ -269,15 +243,11 @@ public class ProjectController : ControllerBase
             var original = _projects.FirstOrDefault(p => p.Id == id);
             if (original == null)
             {
-                return NotFound(new
-                {
-                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
-                    title = "Project Not Found",
-                    status = 404,
-                    detail = $"Project with ID '{id}' was not found",
-                    correlationId,
-                    projectId = id
-                });
+                return ProblemDetailsFactory.CreateNotFound(
+                    detail: $"Project with ID '{id}' was not found",
+                    correlationId: correlationId,
+                    resourceId: id,
+                    resourceType: "Project");
             }
 
             var duplicate = original with
