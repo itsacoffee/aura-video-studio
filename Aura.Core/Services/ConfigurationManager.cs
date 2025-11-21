@@ -326,23 +326,27 @@ public class ConfigurationManager
 
     private void LoadDefaultConfigurations()
     {
-        // Load essential default configurations
-        var defaults = new Dictionary<string, string>
+        // Load essential default configurations from the same source as initialization
+        var defaults = GetDefaultConfigurations();
+        
+        var essentialKeys = new[]
         {
-            { "System:ApplicationName", "Aura Video Studio" },
-            { "System:Version", "1.0.0" },
-            { "System:Environment", "Development" },
-            { "Logging:MinimumLevel", "Information" },
-            { "Api:Port", "5005" },
-            { "Api:Host", "127.0.0.1" }
+            "System.ApplicationName",
+            "System.Version", 
+            "System.Environment",
+            "Logging.MinimumLevel",
+            "Api.Port",
+            "Api.Host"
         };
 
-        foreach (var kvp in defaults)
+        var loadedCount = 0;
+        foreach (var kvp in defaults.Where(d => essentialKeys.Any(k => d.Key.Replace('.', ':').Contains(k.Replace('.', ':')))))
         {
             try
             {
                 var cacheKey = $"config:{kvp.Key}";
-                _cache.Set(cacheKey, kvp.Value, _cacheExpiration);
+                _cache.Set(cacheKey, kvp.Value.value, _cacheExpiration);
+                loadedCount++;
             }
             catch (Exception ex)
             {
@@ -350,7 +354,7 @@ public class ConfigurationManager
             }
         }
 
-        _logger.LogInformation("Loaded {Count} default configurations", defaults.Count);
+        _logger.LogInformation("Loaded {Count} essential default configurations from GetDefaultConfigurations()", loadedCount);
     }
 
     private void InvalidateCache(string key, string? category)

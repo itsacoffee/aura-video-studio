@@ -1873,9 +1873,11 @@ try
         }
     }
 }
-catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.Message.Contains("no such column"))
+catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.SqliteErrorCode == 1)
 {
-    Log.Error(ex, "Database schema mismatch detected. This usually means:");
+    // SQLITE_ERROR (1) - typically indicates schema mismatch like "no such column"
+    Log.Error(ex, "Database schema mismatch detected: {Message}", ex.Message);
+    Log.Error("This usually means:");
     Log.Error("  1. Migrations have not been applied");
     Log.Error("  2. The database schema is out of sync with the code");
     Log.Error("  3. A migration is missing required columns");

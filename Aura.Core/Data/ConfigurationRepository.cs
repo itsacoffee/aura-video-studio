@@ -47,7 +47,9 @@ public class ConfigurationRepository
             .AddRetry(new RetryStrategyOptions<List<ConfigurationEntity>>
             {
                 ShouldHandle = new PredicateBuilder<List<ConfigurationEntity>>()
-                    .Handle<Microsoft.Data.Sqlite.SqliteException>(ex => !ex.Message.Contains("no such column")),
+                    .Handle<Microsoft.Data.Sqlite.SqliteException>(ex => 
+                        // Don't retry schema errors (SQLITE_ERROR = 1) - these are not transient
+                        ex.SqliteErrorCode != 1),
                 MaxRetryAttempts = 3,
                 Delay = TimeSpan.FromMilliseconds(100),
                 BackoffType = DelayBackoffType.Exponential,
@@ -180,9 +182,10 @@ public class ConfigurationRepository
                 }
             }, ct);
         }
-        catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.Message.Contains("no such column"))
+        catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.SqliteErrorCode == 1)
         {
-            _logger.LogError(ex, "Database schema mismatch detected in Configurations table. Column missing: {Message}", ex.Message);
+            // SQLITE_ERROR (1) - typically indicates schema mismatch like "no such column"
+            _logger.LogError(ex, "Database schema mismatch detected in Configurations table: {Message}", ex.Message);
             _logger.LogWarning("This usually means migrations need to be applied or the database needs to be recreated.");
             _logger.LogWarning("Try deleting the database file at: {DbPath}", GetDatabasePath());
             
