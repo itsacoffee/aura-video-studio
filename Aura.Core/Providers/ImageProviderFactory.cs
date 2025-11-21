@@ -190,6 +190,71 @@ public class ImageProviderFactory
     }
 
     /// <summary>
+    /// Gets the default stock provider with Pexels API key checking and graceful fallback
+    /// </summary>
+    public IStockProvider GetDefaultStockProvider()
+    {
+        // Check for Pexels API key
+        var pexelsApiKey = _providerSettings.GetPexelsApiKey();
+        
+        if (!string.IsNullOrEmpty(pexelsApiKey))
+        {
+            try
+            {
+                var httpClient = _httpClientFactory.CreateClient();
+                var loggerFactory = _serviceProvider.GetService<ILoggerFactory>();
+                if (loggerFactory != null)
+                {
+                    var pexelsLogger = loggerFactory.CreateLogger("Aura.Providers.Images.PexelsImageProvider");
+                    
+                    // Use reflection to avoid circular dependency on Aura.Providers
+                    var providerType = Type.GetType("Aura.Providers.Images.PexelsImageProvider, Aura.Providers");
+                    if (providerType != null)
+                    {
+                        var instance = Activator.CreateInstance(providerType, pexelsLogger, httpClient, pexelsApiKey);
+                        var stockProvider = instance as IStockProvider;
+                        if (stockProvider != null)
+                        {
+                            _logger.LogInformation("Using Pexels image provider with configured API key");
+                            return stockProvider;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to initialize Pexels provider, falling back to placeholder provider");
+            }
+        }
+        else
+        {
+            _logger.LogInformation("No Pexels API key configured. Get a free key at https://www.pexels.com/api/");
+        }
+
+        // Fallback: Return placeholder provider
+        _logger.LogInformation("No image API configured - using placeholder/color backgrounds");
+        var loggerFactory2 = _serviceProvider.GetService<ILoggerFactory>();
+        if (loggerFactory2 != null)
+        {
+            var placeholderLogger = loggerFactory2.CreateLogger("Aura.Providers.Images.PlaceholderImageProvider");
+            
+            // Use reflection to create placeholder provider
+            var providerType = Type.GetType("Aura.Providers.Images.PlaceholderImageProvider, Aura.Providers");
+            if (providerType != null)
+            {
+                var instance = Activator.CreateInstance(providerType, placeholderLogger, (string?)null);
+                var stockProvider = instance as IStockProvider;
+                if (stockProvider != null)
+                {
+                    return stockProvider;
+                }
+            }
+        }
+        
+        throw new InvalidOperationException("Unable to create fallback placeholder provider");
+    }
+
+    /// <summary>
     /// Checks if a provider is healthy and responding
     /// </summary>
     private bool CheckProviderHealth(IImageProvider provider, string providerName)
