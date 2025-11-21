@@ -263,13 +263,26 @@ public static class ServiceCollectionExtensions
             var piperPath = settings.PiperExecutablePath;
             var modelPath = settings.PiperVoiceModelPath;
 
-            // Only create if paths are configured
+            // Only register if both paths are configured AND files exist
             if (string.IsNullOrWhiteSpace(piperPath) || string.IsNullOrWhiteSpace(modelPath))
             {
-                logger.LogDebug("Piper TTS paths not configured, skipping provider registration");
+                logger.LogDebug("Piper TTS paths not configured - provider will not be available");
                 return null!;
             }
 
+            if (!File.Exists(piperPath))
+            {
+                logger.LogWarning("Piper executable not found at {Path} - provider will not be available", piperPath);
+                return null!;
+            }
+
+            if (!File.Exists(modelPath))
+            {
+                logger.LogWarning("Piper model not found at {Path} - provider will not be available", modelPath);
+                return null!;
+            }
+
+            logger.LogInformation("Registering Piper TTS provider with executable at {Executable}", piperPath);
             return new PiperTtsProvider(logger, silentWavGenerator, wavValidator, piperPath, modelPath);
         });
 
