@@ -259,16 +259,36 @@ if (-not $SkipBackend) {
     $efTools = dotnet tool list -g | Select-String "dotnet-ef"
     if (-not $efTools) {
         Write-Info "Installing Entity Framework tools..."
-        $installOutput = dotnet tool install --global dotnet-ef 2>&1
-        if ($LASTEXITCODE -ne 0) {
-            Show-Warning "  Could not install dotnet-ef tools. Database migration check skipped."
+        
+        # Clear NuGet cache to avoid corrupted package issues
+        Write-Info "Clearing NuGet cache to ensure clean installation..."
+        dotnet nuget locals all --clear 2>&1 | Out-Null
+        
+        # Try to install with retry logic (3 total attempts)
+        $maxAttempts = 3
+        $attemptCount = 0
+        $installSuccess = $false
+        
+        while ($attemptCount -lt $maxAttempts -and -not $installSuccess) {
+            $attemptCount++
+            if ($attemptCount -gt 1) {
+                Write-Info "Retry attempt $($attemptCount - 1) of $($maxAttempts - 1)..."
+                Start-Sleep -Seconds 2
+            }
+            
+            $installOutput = dotnet tool install --global dotnet-ef 2>&1
+            if ($LASTEXITCODE -eq 0) {
+                $installSuccess = $true
+                Write-Success "  ✓ Entity Framework tools installed"
+                # Refresh the check after installation
+                $efTools = dotnet tool list -g | Select-String "dotnet-ef"
+            }
+        }
+        
+        if (-not $installSuccess) {
+            Show-Warning "  Could not install dotnet-ef tools after $($maxAttempts - 1) retries. Database migration check skipped."
             Show-Warning "  Migrations will be applied automatically on first application start."
             Write-Host "  Installation error: $installOutput" -ForegroundColor Gray
-        }
-        else {
-            Write-Success "  ✓ Entity Framework tools installed"
-            # Refresh the check after installation
-            $efTools = dotnet tool list -g | Select-String "dotnet-ef"
         }
     }
     else {
@@ -277,19 +297,39 @@ if (-not $SkipBackend) {
         if ($LASTEXITCODE -ne 0) {
             Show-Warning "  Could not update dotnet-ef tools. Will attempt to reinstall..."
             Write-Host "  Update error: $updateOutput" -ForegroundColor Gray
+            
             # Try to uninstall first
             dotnet tool uninstall --global dotnet-ef 2>&1 | Out-Null
-            # Then install fresh
-            $reinstallOutput = dotnet tool install --global dotnet-ef 2>&1
-            if ($LASTEXITCODE -ne 0) {
-                Show-Warning "  Could not reinstall dotnet-ef tools. Database migration check skipped."
+            
+            # Clear cache before reinstall
+            Write-Info "Clearing NuGet cache before reinstall..."
+            dotnet nuget locals all --clear 2>&1 | Out-Null
+            
+            # Then install fresh with retry logic (3 total attempts)
+            $maxAttempts = 3
+            $attemptCount = 0
+            $reinstallSuccess = $false
+            
+            while ($attemptCount -lt $maxAttempts -and -not $reinstallSuccess) {
+                $attemptCount++
+                if ($attemptCount -gt 1) {
+                    Write-Info "Retry attempt $($attemptCount - 1) of $($maxAttempts - 1)..."
+                    Start-Sleep -Seconds 2
+                }
+                
+                $reinstallOutput = dotnet tool install --global dotnet-ef 2>&1
+                if ($LASTEXITCODE -eq 0) {
+                    $reinstallSuccess = $true
+                    Write-Success "  ✓ Entity Framework tools reinstalled"
+                    $efTools = dotnet tool list -g | Select-String "dotnet-ef"
+                }
+            }
+            
+            if (-not $reinstallSuccess) {
+                Show-Warning "  Could not reinstall dotnet-ef tools after $($maxAttempts - 1) retries. Database migration check skipped."
                 Show-Warning "  Migrations will be applied automatically on first application start."
                 Write-Host "  Reinstall error: $reinstallOutput" -ForegroundColor Gray
                 $efTools = $null
-            }
-            else {
-                Write-Success "  ✓ Entity Framework tools reinstalled"
-                $efTools = dotnet tool list -g | Select-String "dotnet-ef"
             }
         }
         else {

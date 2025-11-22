@@ -11,6 +11,7 @@ This guide covers common issues and solutions for local development of Aura Vide
 - [Database Issues](#database-issues)
 - [Network and Connectivity](#network-and-connectivity)
 - [Performance Issues](#performance-issues)
+- [Desktop App and Process Issues](#desktop-app-and-process-issues)
 - [Platform-Specific Issues](#platform-specific-issues)
 - [Getting Help](#getting-help)
 
@@ -730,6 +731,57 @@ If FFmpeg processes persist beyond these conditions, it indicates a bug. Please 
 - What operation was running (render, TTS, etc.)
 - How long before force quit was needed
 - Logs from the session
+
+### Issue: dotnet-ef tool installation fails during build
+
+**Symptom**: When building the desktop application, you see this error:
+```
+[WARNING]   Could not install dotnet-ef tools. Database migration check skipped.
+[WARNING]   Migrations will be applied automatically on first application start.
+Installation error: Tool 'dotnet-ef' failed to update due to the following: 
+The settings file in the tool's NuGet package is invalid: Settings file 
+'DotnetToolSettings.xml' was not found in the package.
+```
+
+**Cause**: Corrupted NuGet cache or incomplete package downloads can cause the dotnet-ef tool installation to fail.
+
+**Solution**:
+
+The build scripts now automatically handle this issue (as of latest version) by:
+1. Clearing the NuGet cache before installation attempts
+2. Retrying installation up to 2 times with delays
+3. Clearing cache before reinstall attempts
+
+**Manual fix** (if you're on an older version):
+
+1. **Clear NuGet cache manually**:
+   ```bash
+   # Clear all NuGet caches
+   dotnet nuget locals all --clear
+   ```
+
+2. **Uninstall existing dotnet-ef** (if present):
+   ```bash
+   dotnet tool uninstall --global dotnet-ef
+   ```
+
+3. **Install fresh**:
+   ```bash
+   dotnet tool install --global dotnet-ef
+   ```
+
+4. **Verify installation**:
+   ```bash
+   dotnet tool list -g | grep dotnet-ef
+   dotnet ef --version
+   ```
+
+**Alternative workaround**: If the tool still won't install, you can skip the build-time migration check:
+- The application will automatically apply database migrations on first startup
+- This is safe and the intended fallback behavior
+- Build will complete successfully without the tool
+
+**Note**: The warning message is informational and the build will continue. Database migrations will be applied when you first run the application.
 
 ## Platform-Specific Issues
 
