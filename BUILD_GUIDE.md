@@ -1091,6 +1091,44 @@ Verify installation:
 ffmpeg -version
 ```
 
+### dotnet-ef Tool Installation Fails
+
+**Error:**
+```
+[WARNING] Could not install dotnet-ef tools. Database migration check skipped.
+Installation error: Tool 'dotnet-ef' failed to update due to the following: 
+The settings file in the tool's NuGet package is invalid: Settings file 
+'DotnetToolSettings.xml' was not found in the package.
+```
+
+**Cause:** Corrupted NuGet cache or incomplete package downloads.
+
+**Automatic Fix:** As of the latest version, the build scripts automatically:
+- Clear the NuGet cache before installation attempts
+- Retry installation up to 2 times with delays
+- Clear cache before reinstall attempts
+
+**Manual Fix** (for older versions or persistent issues):
+
+1. **Clear NuGet cache:**
+   ```bash
+   dotnet nuget locals all --clear
+   ```
+
+2. **Uninstall and reinstall dotnet-ef:**
+   ```bash
+   dotnet tool uninstall --global dotnet-ef
+   dotnet tool install --global dotnet-ef
+   ```
+
+3. **Verify installation:**
+   ```bash
+   dotnet tool list -g | grep dotnet-ef
+   dotnet ef --version
+   ```
+
+**Note:** This warning is informational. The build will continue successfully, and database migrations will be applied automatically when you first run the application. The build-time migration check is optional.
+
 ### Build Fails on Windows with Long Paths
 
 **Error:** Files or paths too long
