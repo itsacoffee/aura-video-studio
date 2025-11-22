@@ -71,6 +71,7 @@ try {
     Copy-Item -Path (Join-Path $sourceBin "*") -Destination $ffmpegTargetDir -Recurse -Force
 
     Write-Step "Bundled FFmpeg is ready."
+    exit 0
 }
 catch {
     Write-Host "[ffmpeg] ERROR: $($_.Exception.Message)" -ForegroundColor Red
