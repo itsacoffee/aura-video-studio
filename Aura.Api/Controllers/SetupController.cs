@@ -609,7 +609,7 @@ public class SetupController : ControllerBase
     /// Check if a directory is valid and writable
     /// </summary>
     [HttpPost("check-directory")]
-    public async Task<IActionResult> CheckDirectory(
+    public IActionResult CheckDirectory(
         [FromBody] DirectoryCheckRequest request,
         CancellationToken cancellationToken)
     {
