@@ -282,11 +282,12 @@ if (-not $SkipBackend) {
             $migrationOutput = dotnet ef database update --configuration Release 2>&1
             if ($LASTEXITCODE -eq 0) {
                 Write-Success "  ✓ Database migrations applied successfully"
-            } else {
-                Show-Warning "  Database migration check skipped (will be created on first run)"
                 if ($VerbosePreference -eq 'Continue') {
                     Write-Host "  Migration output: $migrationOutput" -ForegroundColor Gray
                 }
+            } else {
+                Show-Warning "  Database migration check skipped (will be created on first run)"
+                Write-Host "  Migration output: $migrationOutput" -ForegroundColor Gray
             }
         } catch {
             Show-Warning "  Database migration check skipped (will be created on first run)"
