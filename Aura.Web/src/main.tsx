@@ -212,6 +212,12 @@ async function startReactApp(): Promise<void> {
   const root = ReactDOM.createRoot(rootElement);
 
   console.info('[Main] Rendering App component with ErrorBoundary...');
+  console.info('[Main] Current state:', {
+    rootElementExists: !!rootElement,
+    rootElementEmpty: rootElement?.innerHTML.length === 0,
+    timestamp: new Date().toISOString(),
+  });
+
   root.render(
     <ErrorBoundary>
       <App />
@@ -219,7 +225,7 @@ async function startReactApp(): Promise<void> {
   );
 
   console.info('[Main] ✓ React render call completed');
-  console.info('[Main] Waiting for React hydration to complete...');
+  console.info('[Main] React should now hydrate and call App component');
 
   // Clear initialization timeout - app has successfully hydrated
   if (window.__initTimeout) {

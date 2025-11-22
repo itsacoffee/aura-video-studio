@@ -152,70 +152,84 @@ function App() {
   // Check first-run status on app mount
   useEffect(() => {
     async function checkFirstRun() {
+      console.info('[App] 🚀 Starting first-run check...');
+      console.time('[App] First-run check duration');
+
       try {
-        // CRITICAL: Clear circuit breaker state BEFORE checking first run
-        // This prevents false "service unavailable" errors from stale circuit breaker state
+        // Before circuit breaker clear
+        console.info('[App] Step 1/6: Clearing circuit breaker state...');
         PersistentCircuitBreaker.clearState();
         resetCircuitBreaker();
-        console.info('[App] Circuit breaker state cleared before first-run check');
+        console.info('[App] ✓ Circuit breaker cleared');
 
-        // Migrate legacy first-run flag if needed
+        // Before migration
+        console.info('[App] Step 2/6: Migrating legacy first-run status...');
         migrateLegacyFirstRunStatus();
+        console.info('[App] ✓ Migration complete');
 
-        // Migrate settings if needed (e.g., placeholder paths)
+        // Before settings migration
+        console.info('[App] Step 3/6: Migrating settings...');
         await migrateSettingsIfNeeded();
+        console.info('[App] ✓ Settings migrated');
 
-        // Check system setup status from backend (primary source of truth)
+        // Before backend check
+        console.info('[App] Step 4/6: Checking backend system status...');
         try {
           const systemStatus = await setupApi.getSystemStatus();
+          console.info('[App] Backend response:', systemStatus);
+
           if (!systemStatus.isComplete) {
-            // Backend says setup is not complete - clear any stale localStorage flags
+            console.warn('[App] Backend reports setup incomplete');
             localStorage.removeItem('hasCompletedFirstRun');
             localStorage.removeItem('hasSeenOnboarding');
-
             setShouldShowOnboarding(true);
             setIsCheckingFirstRun(false);
+            console.timeEnd('[App] First-run check duration');
             return;
           } else {
-            // Backend says setup IS complete - ensure localStorage is synced
+            console.info('[App] ✓ Backend setup complete');
             localStorage.setItem('hasCompletedFirstRun', 'true');
           }
         } catch (error) {
-          console.warn(
-            'Could not check system setup status, falling back to user wizard status:',
-            error
-          );
+          console.error('[App] ❌ Backend check failed:', error);
+          console.warn('[App] Falling back to localStorage check');
 
-          // If backend check fails, fall back to localStorage but be cautious
-          // If we can't reach the backend, don't force the wizard unnecessarily
           const localStatus =
             localStorage.getItem('hasCompletedFirstRun') === 'true' ||
             localStorage.getItem('hasSeenOnboarding') === 'true';
+          console.info('[App] localStorage status:', localStatus);
 
           if (!localStatus) {
-            // No local completion flag and can't reach backend - assume first run
+            console.info('[App] No local completion flag, assuming first run');
             setShouldShowOnboarding(true);
             setIsCheckingFirstRun(false);
+            console.timeEnd('[App] First-run check duration');
             return;
           }
         }
 
-        // Check if user has completed first-run wizard (secondary check)
+        // Check user completion
+        console.info('[App] Step 5/6: Checking user completion status...');
         const completed = await hasCompletedFirstRun();
+        console.info('[App] User completed first run:', completed);
         setShouldShowOnboarding(!completed);
+
+        console.info('[App] Step 6/6: First-run check complete');
+        console.timeEnd('[App] First-run check duration');
       } catch (error) {
-        console.error('Error checking first-run status:', error);
-        // On error, check localStorage as fallback - if nothing is set, assume first run
+        console.error('[App] ❌ Fatal error in first-run check:', error);
+        console.timeEnd('[App] First-run check duration');
+
         const localStatus =
           localStorage.getItem('hasCompletedFirstRun') === 'true' ||
           localStorage.getItem('hasSeenOnboarding') === 'true';
+        console.info('[App] Emergency fallback to localStorage:', localStatus);
         setShouldShowOnboarding(!localStatus);
       } finally {
+        console.info('[App] ✓ Finalizing first-run check...');
         setIsCheckingFirstRun(false);
-        // CRITICAL FIX: Set isInitializing to false after first-run check completes
-        // This prevents the app from getting stuck on InitializationScreen
-        // The InitializationScreen will be shown separately if explicitly needed
         setIsInitializing(false);
+        console.info('[App] ✓ App ready to render');
       }
     }
 

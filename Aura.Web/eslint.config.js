@@ -161,7 +161,7 @@ export default [
   {
     files: ['**/*.{js,jsx,ts,tsx}'],
     rules: {
-      'no-console': ['warn', { allow: ['warn', 'error', 'info'] }],
+      'no-console': ['warn', { allow: ['warn', 'error', 'info', 'time', 'timeEnd'] }],
     },
   },
 
