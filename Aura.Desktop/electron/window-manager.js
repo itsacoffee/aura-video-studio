@@ -406,7 +406,7 @@ class WindowManager {
   /**
    * Handle window close event
    */
-  handleWindowClose(event, isQuitting, minimizeToTray = true) {
+  handleWindowClose(event, isQuitting, minimizeToTray = false) {
     if (!isQuitting && minimizeToTray && process.platform === "win32") {
       event.preventDefault();
       this.mainWindow.hide();
