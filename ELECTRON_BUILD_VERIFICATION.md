@@ -53,7 +53,7 @@ legacy-peer-deps=false
 ### Bundle Analysis ✓ VERIFIED
 
 #### Main Bundle
-- **File**: `index-CKH-3EbW.js`
+- **File**: `index-[hash].js`
 - **Size**: 3.5 MB (unminified)
 - **Expected**: ~3.6 MB
 - **Variance**: Within acceptable range
@@ -66,7 +66,7 @@ legacy-peer-deps=false
    
 2. **Single Main Bundle**: ✓ Confirmed
    - Only one script tag in index.html
-   - Script: `./assets/index-CKH-3EbW.js`
+   - Script: `./assets/index-[hash].js`
    
 3. **Lazy-Loaded Chunks**: ✓ Expected Behavior
    - 81 total JS files in assets/
@@ -117,7 +117,7 @@ legacy-peer-deps=false
 ## Code Analysis
 
 ### Verification of Unminified Output
-Examined first 20 lines of `index-CKH-3EbW.js`:
+Examined first 20 lines of `index-[hash].js`:
 ```javascript
 const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./AestheticsPage-2B9jgjXh.js",...])))=>i.map(i=>d[i]);
 function _mergeNamespaces(n, m) {

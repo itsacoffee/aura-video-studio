@@ -43,7 +43,7 @@ Success Rate: 100.0%
 - ✅ Assets folder exists
 
 #### Bundle Analysis Tests (6/6 passed) ✅
-- ✅ Main bundle found: `index-CKH-3EbW.js`
+- ✅ Main bundle found: `index-[hash].js`
 - ✅ Main bundle size: 3.46 MB (expected 3.5-3.7 MB)
 - ✅ Bundle has readable function names
 - ✅ Bundle has proper spacing
@@ -64,7 +64,7 @@ Success Rate: 100.0%
 ### Frontend Build ✅
 - **Status**: Successful
 - **Build Time**: ~17 seconds
-- **Main Bundle**: `index-CKH-3EbW.js` (3.46 MB unminified)
+- **Main Bundle**: `index-[hash].js` (3.46 MB unminified)
 - **Total Files**: 342
 - **Total Size**: 39.06 MB
 

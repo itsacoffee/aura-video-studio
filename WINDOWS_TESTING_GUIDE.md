@@ -51,7 +51,7 @@ npm run build
 
 **Expected Output:**
 - Build should complete successfully
-- Main bundle: `index-CKH-3EbW.js` or similar (3.5-3.7 MB)
+- Main bundle: `index-[hash].js` or similar (3.5-3.7 MB)
 - Message: "Build verification passed"
 
 #### Step 2: Build Backend
@@ -161,7 +161,7 @@ Array.from(document.querySelectorAll('script')).map(s => ({
 ```javascript
 [
   {
-    src: "file:///C:/path/to/Aura.Desktop/resources/app/dist/assets/index-CKH-3EbW.js",
+    src: "file:///C:/path/to/Aura.Desktop/resources/app/dist/assets/index-[hash].js",
     type: "module"
   }
 ]

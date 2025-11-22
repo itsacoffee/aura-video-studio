@@ -73,8 +73,8 @@ function test(name, condition, details = '') {
   }
 }
 
-// Paths
-const rootDir = __dirname;
+// Paths (using process.cwd() for better cross-platform compatibility)
+const rootDir = process.cwd();
 const viteConfigPath = path.join(rootDir, 'Aura.Web', 'vite.config.ts');
 const distPath = path.join(rootDir, 'Aura.Web', 'dist');
 const assetsPath = path.join(distPath, 'assets');
@@ -217,10 +217,11 @@ const bundleContent = fs.readFileSync(mainBundlePath, 'utf8');
 const firstLines = bundleContent.split('\n').slice(0, 50).join('\n');
 
 // Check for unminified characteristics
+const MAX_MINIFIED_LINE_LENGTH = 500; // Lines longer than this indicate minification
 const hasReadableFunctionNames = /function\s+[a-zA-Z_$][a-zA-Z0-9_$]*\s*\(/.test(firstLines);
 const hasProperSpacing = /{\s*\n\s+/.test(firstLines);
 const hasComments = /\/\*|\*\/|\/\//.test(firstLines);
-const noExtremelyLongLines = !firstLines.split('\n').some((line) => line.length > 500);
+const noExtremelyLongLines = !firstLines.split('\n').some((line) => line.length > MAX_MINIFIED_LINE_LENGTH);
 
 test(
   'Bundle has readable function names',
