@@ -1,0 +1,265 @@
+/**
+ * Elevation System - Shadow Depths for Premium Layering
+ * Inspired by Material Design with Aura brand enhancements
+ */
+
+:root {
+  /* Base elevation shadows */
+  --elevation-1: 0 1px 3px rgb(0 0 0 / 20%);
+  --elevation-2: 0 4px 12px rgb(0 0 0 / 15%);
+  --elevation-3: 0 8px 24px rgb(0 0 0 / 20%);
+  --elevation-4: 0 16px 48px rgb(0 0 0 / 25%);
+
+  /* Brand glow effects */
+  --glow-orange: 0 0 20px rgb(255 107 53 / 30%);
+  --glow-purple: 0 0 20px rgb(99 102 241 / 30%);
+  --glow-blue: 0 0 20px rgb(59 130 246 / 30%);
+  --glow-brand: 0 0 30px rgb(255 107 53 / 20%), 0 0 60px rgb(59 130 246 / 20%);
+
+  /* Combination: elevation + glow */
+  --elevation-glow-1: 0 1px 3px rgb(0 0 0 / 20%), 0 0 10px rgb(255 107 53 / 10%);
+  --elevation-glow-2: 0 4px 12px rgb(0 0 0 / 15%), 0 0 20px rgb(255 107 53 / 15%);
+  --elevation-glow-3: 0 8px 24px rgb(0 0 0 / 20%), 0 0 30px rgb(255 107 53 / 20%);
+  --elevation-glow-4: 0 16px 48px rgb(0 0 0 / 25%), 0 0 40px rgb(255 107 53 / 25%);
+}
+
+/* ==================== ELEVATION CLASSES ==================== */
+
+/* Level 1 - Subtle raise (buttons, inputs) */
+.elevation-1 {
+  box-shadow: var(--elevation-1);
+}
+
+.elevation-1-hover:hover {
+  box-shadow: var(--elevation-2);
+}
+
+/* Level 2 - Moderate raise (cards, modals) */
+.elevation-2 {
+  box-shadow: var(--elevation-2);
+}
+
+.elevation-2-hover:hover {
+  box-shadow: var(--elevation-3);
+}
+
+/* Level 3 - High raise (floating panels, tooltips) */
+.elevation-3 {
+  box-shadow: var(--elevation-3);
+}
+
+.elevation-3-hover:hover {
+  box-shadow: var(--elevation-4);
+}
+
+/* Level 4 - Maximum raise (dialogs, popups) */
+.elevation-4 {
+  box-shadow: var(--elevation-4);
+}
+
+/* ==================== GLOW CLASSES ==================== */
+
+.glow-orange {
+  box-shadow: var(--glow-orange);
+}
+
+.glow-purple {
+  box-shadow: var(--glow-purple);
+}
+
+.glow-blue {
+  box-shadow: var(--glow-blue);
+}
+
+.glow-brand {
+  box-shadow: var(--glow-brand);
+}
+
+/* ==================== COMBINATION CLASSES ==================== */
+
+.elevation-glow-1 {
+  box-shadow: var(--elevation-glow-1);
+}
+
+.elevation-glow-2 {
+  box-shadow: var(--elevation-glow-2);
+}
+
+.elevation-glow-3 {
+  box-shadow: var(--elevation-glow-3);
+}
+
+.elevation-glow-4 {
+  box-shadow: var(--elevation-glow-4);
+}
+
+/* ==================== INTERACTIVE ELEVATION ==================== */
+
+/* Cards that lift on hover */
+.card-elevated {
+  box-shadow: var(--elevation-1);
+  transition:
+    box-shadow 300ms cubic-bezier(0.4, 0, 0.2, 1),
+    transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-elevated:hover {
+  box-shadow: var(--elevation-3);
+  transform: translateY(-4px);
+}
+
+/* Buttons with elevation */
+.button-elevated {
+  box-shadow: var(--elevation-1);
+  transition:
+    box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1),
+    transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.button-elevated:hover:not(:disabled) {
+  box-shadow: var(--elevation-2);
+  transform: translateY(-2px);
+}
+
+.button-elevated:active:not(:disabled) {
+  box-shadow: var(--elevation-1);
+  transform: translateY(0);
+}
+
+/* Premium button with glow */
+.button-premium-elevated {
+  box-shadow: var(--elevation-glow-1);
+  transition:
+    box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1),
+    transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.button-premium-elevated:hover:not(:disabled) {
+  box-shadow: var(--elevation-glow-2);
+  transform: translateY(-2px);
+}
+
+.button-premium-elevated:active:not(:disabled) {
+  box-shadow: var(--elevation-glow-1);
+  transform: translateY(0);
+}
+
+/* ==================== DEPTH LAYERS ==================== */
+
+/* Background layer (furthest) */
+.layer-background {
+  z-index: 0;
+}
+
+/* Base content layer */
+.layer-base {
+  z-index: 1;
+}
+
+/* Elevated content (cards, panels) */
+.layer-elevated {
+  z-index: 10;
+  box-shadow: var(--elevation-2);
+}
+
+/* Floating UI (dropdowns, tooltips) */
+.layer-floating {
+  z-index: 100;
+  box-shadow: var(--elevation-3);
+}
+
+/* Overlays (modals, dialogs) */
+.layer-overlay {
+  z-index: 1000;
+  box-shadow: var(--elevation-4);
+}
+
+/* System UI (notifications, alerts) */
+.layer-system {
+  z-index: 10000;
+}
+
+/* ==================== INSET SHADOWS (DEPTH) ==================== */
+
+.inset-1 {
+  box-shadow: inset 0 1px 3px rgb(0 0 0 / 20%);
+}
+
+.inset-2 {
+  box-shadow: inset 0 2px 6px rgb(0 0 0 / 15%);
+}
+
+.inset-3 {
+  box-shadow: inset 0 4px 12px rgb(0 0 0 / 20%);
+}
+
+/* ==================== BORDER GLOW ==================== */
+
+.border-glow-orange {
+  border: 1px solid rgb(255 107 53 / 50%);
+  box-shadow:
+    0 0 10px rgb(255 107 53 / 20%),
+    inset 0 0 10px rgb(255 107 53 / 10%);
+}
+
+.border-glow-purple {
+  border: 1px solid rgb(99 102 241 / 50%);
+  box-shadow:
+    0 0 10px rgb(99 102 241 / 20%),
+    inset 0 0 10px rgb(99 102 241 / 10%);
+}
+
+.border-glow-blue {
+  border: 1px solid rgb(59 130 246 / 50%);
+  box-shadow:
+    0 0 10px rgb(59 130 246 / 20%),
+    inset 0 0 10px rgb(59 130 246 / 10%);
+}
+
+.border-glow-brand {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(#1a1a1a, #1a1a1a) padding-box,
+    linear-gradient(135deg, #ff6b35, #6366f1, #3b82f6) border-box;
+  box-shadow:
+    0 0 20px rgb(255 107 53 / 20%),
+    0 0 40px rgb(59 130 246 / 20%);
+}
+
+/* ==================== GLASS MORPHISM ==================== */
+
+.glass-elevated {
+  background: rgb(255 255 255 / 5%);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgb(255 255 255 / 10%);
+  box-shadow: var(--elevation-2);
+}
+
+.glass-elevated-strong {
+  background: rgb(255 255 255 / 10%);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgb(255 255 255 / 15%);
+  box-shadow: var(--elevation-3);
+}
+
+/* ==================== ACCESSIBILITY ==================== */
+
+/* Reduce shadows in reduced motion mode */
+@media (prefers-reduced-motion: reduce) {
+  .card-elevated:hover,
+  .button-elevated:hover,
+  .button-premium-elevated:hover {
+    transform: none;
+  }
+}
+
+/* Increase contrast in high contrast mode - commented out due to limited browser support */
+
+/* @media (prefers-contrast: high) {
+  .elevation-1,
+  .elevation-2,
+  .elevation-3,
+  .elevation-4 {
+    box-shadow: 0 2px 8px rgb(0 0 0 / 50%);
+  }
+} */

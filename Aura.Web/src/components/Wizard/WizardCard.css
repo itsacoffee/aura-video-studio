@@ -1,0 +1,106 @@
+/**
+ * Wizard Card Component Styles
+ * Premium card design with elevation and transitions
+ */
+
+.wizard-card {
+  background: var(--bg-surface, #2a2a2a);
+  border-radius: 16px;
+  padding: 48px;
+  transition:
+    transform 300ms cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.wizard-card--elevated {
+  box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
+}
+
+.wizard-card--elevated:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 20%);
+}
+
+.wizard-card--glow {
+  border: 1px solid rgb(255 107 53 / 20%);
+  box-shadow:
+    0 4px 12px rgb(0 0 0 / 15%),
+    0 0 20px rgb(255 107 53 / 15%);
+}
+
+.wizard-card--glow:hover {
+  box-shadow:
+    0 8px 24px rgb(0 0 0 / 20%),
+    0 0 30px rgb(255 107 53 / 20%);
+}
+
+.wizard-card__header {
+  margin-bottom: 32px;
+}
+
+.wizard-card__title {
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 0 0 8px;
+  color: var(--text-primary, #fff);
+}
+
+.wizard-card__subtitle {
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.6;
+  margin: 0;
+  color: var(--text-secondary, #999);
+}
+
+.wizard-card__content {
+  /* Content spacing handled by children */
+}
+
+/* Light theme adjustments */
+.light .wizard-card {
+  background: var(--bg-surface, #fff);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 8%);
+}
+
+.light .wizard-card--elevated:hover {
+  box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+}
+
+.light .wizard-card__title {
+  color: var(--text-primary, #000);
+}
+
+.light .wizard-card__subtitle {
+  color: var(--text-secondary, #666);
+}
+
+/* Responsive */
+@media (width <= 768px) {
+  .wizard-card {
+    padding: 32px 24px;
+  }
+
+  .wizard-card__header {
+    margin-bottom: 24px;
+  }
+
+  .wizard-card__title {
+    font-size: 20px;
+  }
+
+  .wizard-card__subtitle {
+    font-size: 14px;
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .wizard-card,
+  .wizard-card--elevated:hover,
+  .wizard-card--glow:hover {
+    transform: none;
+    transition: none;
+  }
+}
