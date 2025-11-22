@@ -174,7 +174,7 @@ class WindowManager {
         preload: preloadPath,
         contextIsolation: true,
         nodeIntegration: false,
-        sandbox: true,
+        sandbox: false, // Must be false for preload to access Node.js modules like 'os'
         webSecurity: !this.isDev,
         devTools: true, // Allow devtools but don't open by default
         enableRemoteModule: false, // Remote module is deprecated
