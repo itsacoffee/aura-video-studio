@@ -1,7 +1,7 @@
-import { FluentProvider, Spinner, webDarkTheme, webLightTheme } from '@fluentui/react-components';
+import { FluentProvider, Spinner, webDarkTheme, webLightTheme, Card, Title1, Body1, Button } from '@fluentui/react-components';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { queryClient } from './api/queryClient';
 import { AppRouterContent } from './components/AppRouterContent';
@@ -99,7 +99,11 @@ function App() {
 
   const [isInitializing, setIsInitializing] = useState(true);
   const [initializationError, setInitializationError] = useState<InitializationError | null>(null);
+  const [initializationTimeout, setInitializationTimeout] = useState(false);
   const [showCrashRecovery, setShowCrashRecovery] = useState(false);
+
+  // Track if user dismissed timeout to prevent race condition
+  const timeoutDismissedRef = useRef(false);
 
   const [showSplash, setShowSplash] = useState(() => {
     // Only show splash on first load or after crashes
@@ -151,6 +155,14 @@ function App() {
 
   // Check first-run status on app mount
   useEffect(() => {
+    // Set timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      console.error('[App] First-run check timed out after 30s');
+      setInitializationTimeout(true);
+      setIsCheckingFirstRun(false);
+      setIsInitializing(false);
+    }, 30000); // 30 second timeout
+
     async function checkFirstRun() {
       console.info('[App] 🚀 Starting first-run check...');
       console.time('[App] First-run check duration');
@@ -182,9 +194,12 @@ function App() {
             console.warn('[App] Backend reports setup incomplete');
             localStorage.removeItem('hasCompletedFirstRun');
             localStorage.removeItem('hasSeenOnboarding');
-            setShouldShowOnboarding(true);
+            if (!timeoutDismissedRef.current) {
+              setShouldShowOnboarding(true);
+            }
             setIsCheckingFirstRun(false);
             console.timeEnd('[App] First-run check duration');
+            clearTimeout(timeoutId); // Clear timeout on success
             return;
           } else {
             console.info('[App] ✓ Backend setup complete');
@@ -201,9 +216,12 @@ function App() {
 
           if (!localStatus) {
             console.info('[App] No local completion flag, assuming first run');
-            setShouldShowOnboarding(true);
+            if (!timeoutDismissedRef.current) {
+              setShouldShowOnboarding(true);
+            }
             setIsCheckingFirstRun(false);
             console.timeEnd('[App] First-run check duration');
+            clearTimeout(timeoutId); // Clear timeout on success
             return;
           }
         }
@@ -212,7 +230,9 @@ function App() {
         console.info('[App] Step 5/6: Checking user completion status...');
         const completed = await hasCompletedFirstRun();
         console.info('[App] User completed first run:', completed);
-        setShouldShowOnboarding(!completed);
+        if (!timeoutDismissedRef.current) {
+          setShouldShowOnboarding(!completed);
+        }
 
         console.info('[App] Step 6/6: First-run check complete');
         console.timeEnd('[App] First-run check duration');
@@ -224,9 +244,12 @@ function App() {
           localStorage.getItem('hasCompletedFirstRun') === 'true' ||
           localStorage.getItem('hasSeenOnboarding') === 'true';
         console.info('[App] Emergency fallback to localStorage:', localStatus);
-        setShouldShowOnboarding(!localStatus);
+        if (!timeoutDismissedRef.current) {
+          setShouldShowOnboarding(!localStatus);
+        }
       } finally {
         console.info('[App] ✓ Finalizing first-run check...');
+        clearTimeout(timeoutId); // Clear timeout on success
         setIsCheckingFirstRun(false);
         setIsInitializing(false);
         console.info('[App] ✓ App ready to render');
@@ -234,6 +257,8 @@ function App() {
     }
 
     checkFirstRun();
+
+    return () => clearTimeout(timeoutId);
   }, []);
 
   // Global error handlers for uncaught errors and promise rejections
@@ -621,6 +646,53 @@ function App() {
           </FluentProvider>
         </ThemeContext.Provider>
       </QueryClientProvider>
+    );
+  }
+
+  if (initializationTimeout) {
+    return (
+      <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
+        <FluentProvider theme={currentTheme}>
+          <div style={{
+            height: '100vh',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+            backgroundColor: 'var(--colorNeutralBackground1)'
+          }}>
+            <Card style={{ maxWidth: '600px', width: '100%', padding: '32px' }}>
+              <Title1 style={{ marginBottom: '16px' }}>Initialization Timeout</Title1>
+              <Body1 style={{ marginBottom: '20px' }}>
+                The application took too long to initialize. This may be caused by:
+                <ul style={{ marginTop: '12px' }}>
+                  <li>Backend server not responding</li>
+                  <li>Network connectivity issues</li>
+                  <li>Firewall blocking local connections</li>
+                </ul>
+              </Body1>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <Button
+                  appearance="primary"
+                  onClick={() => window.location.reload()}
+                >
+                  Retry
+                </Button>
+                <Button
+                  onClick={() => {
+                    timeoutDismissedRef.current = true;
+                    setInitializationTimeout(false);
+                    setIsInitializing(false);
+                    setShouldShowOnboarding(false);
+                  }}
+                >
+                  Continue Anyway
+                </Button>
+              </div>
+            </Card>
+          </div>
+        </FluentProvider>
+      </ThemeContext.Provider>
     );
   }
 
