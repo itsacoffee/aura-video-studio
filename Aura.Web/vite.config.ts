@@ -201,9 +201,9 @@ export default defineConfig(({ mode }) => {
       copyPublicDir: true,
       // Disable CSS code splitting for simpler Electron loading
       cssCodeSplit: false,
-      // Use esbuild minification for better compatibility with Electron
-      // terser was causing "Cannot access 'e' before initialization" errors
-      minify: 'esbuild',
+      // Disable minification for Electron to avoid variable hoisting issues
+      // The bundle size increase is acceptable for a desktop app
+      minify: false,
       // Keep console logs in production for debugging Electron app
       // terserOptions: {
       //   compress: {
@@ -223,62 +223,9 @@ export default defineConfig(({ mode }) => {
           entryFileNames: 'assets/[name]-[hash].js',
           chunkFileNames: 'assets/[name]-[hash].js',
           assetFileNames: 'assets/[name]-[hash].[ext]',
-          // Improved code splitting strategy with route-based chunks
-          manualChunks: (id) => {
-            // FFmpeg - large library, keep separate
-            if (id.includes('@ffmpeg')) {
-              return 'ffmpeg-vendor';
-            }
-            // Wavesurfer - audio visualization
-            if (id.includes('wavesurfer')) {
-              return 'audio-vendor';
-            }
-            // React core - separate chunk
-            if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) {
-              return 'react-vendor';
-            }
-            // Fluent UI Components - separate from icons to avoid circular dependencies
-            // This includes all @fluentui/react-* packages except react-icons
-            if (id.includes('@fluentui/react-') && !id.includes('@fluentui/react-icons')) {
-              return 'fluentui-components';
-            }
-            // Fluent UI Icons - separate chunk
-            if (id.includes('@fluentui/react-icons')) {
-              return 'fluentui-icons';
-            }
-            // Router - separate chunk
-            if (id.includes('react-router')) {
-              return 'router-vendor';
-            }
-            // State management
-            if (id.includes('zustand') || id.includes('@tanstack/react-query')) {
-              return 'state-vendor';
-            }
-            // Animation libraries - separate chunk for framer-motion
-            if (id.includes('framer-motion')) {
-              return 'animation-vendor';
-            }
-            // Chart/visualization libraries
-            if (id.includes('recharts') || id.includes('d3-')) {
-              return 'charts-vendor';
-            }
-            // Search and utility libraries
-            if (id.includes('fuse.js') || id.includes('date-fns')) {
-              return 'utils-vendor';
-            }
-            // Form handling
-            if (id.includes('react-hook-form') || id.includes('@hookform/') || id.includes('zod')) {
-              return 'forms-vendor';
-            }
-            // HTTP client and related
-            if (id.includes('axios')) {
-              return 'http-vendor';
-            }
-            // All other node_modules go to vendor chunk
-            if (id.includes('node_modules')) {
-              return 'vendor';
-            }
-          },
+          // DISABLE code splitting entirely for Electron to avoid circular dependencies
+          // This creates one large bundle but ensures correct module initialization order
+          manualChunks: undefined,
         },
         treeshake: {
           moduleSideEffects: 'no-external', // Enable aggressive tree shaking
