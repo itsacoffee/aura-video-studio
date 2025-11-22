@@ -1,6 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { FC } from 'react';
 import './SplashScreen.css';
+
+interface Particle {
+  x: number;
+  y: number;
+  size: number;
+  speedY: number;
+  speedX: number;
+  opacity: number;
+  color: string;
+}
 
 interface SplashScreenProps {
   onComplete: () => void;
@@ -14,6 +24,96 @@ export const SplashScreen: FC<SplashScreenProps> = ({
   const [progress, setProgress] = useState(0);
   const [stage, setStage] = useState<'loading' | 'complete' | 'fadeout'>('loading');
   const [statusMessage, setStatusMessage] = useState('Initializing Aura Video Studio');
+
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const particlesRef = useRef<Particle[]>([]);
+  const animationFrameRef = useRef<number>();
+  const prefersReducedMotion = useRef(
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+
+  // Initialize particles
+  useEffect(() => {
+    if (prefersReducedMotion.current) {
+      return;
+    }
+
+    const particleCount = 200;
+    const particles: Particle[] = [];
+    const colors = ['#FF6B35', '#FF8960', '#6366F1', '#818CF8', '#3B82F6', '#60A5FA'];
+
+    for (let i = 0; i < particleCount; i++) {
+      particles.push({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight + window.innerHeight,
+        size: Math.random() * 3 + 1,
+        speedY: -(Math.random() * 2 + 0.5),
+        speedX: (Math.random() - 0.5) * 0.5,
+        opacity: Math.random() * 0.5 + 0.3,
+        color: colors[Math.floor(Math.random() * colors.length)] || colors[0],
+      });
+    }
+
+    particlesRef.current = particles;
+  }, []);
+
+  // Animate particles
+  useEffect(() => {
+    if (prefersReducedMotion.current || !canvasRef.current) {
+      return;
+    }
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const updateCanvasSize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+
+    updateCanvasSize();
+    window.addEventListener('resize', updateCanvasSize);
+
+    const animate = () => {
+      if (!ctx) return;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      particlesRef.current.forEach((particle) => {
+        particle.y += particle.speedY;
+        particle.x += particle.speedX;
+
+        if (particle.y < -10) {
+          particle.y = canvas.height + 10;
+          particle.x = Math.random() * canvas.width;
+        }
+
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+        ctx.fillStyle = particle.color;
+        ctx.globalAlpha = particle.opacity;
+        ctx.fill();
+
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = particle.color;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1;
+      });
+
+      animationFrameRef.current = requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    return () => {
+      window.removeEventListener('resize', updateCanvasSize);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const stages = [
@@ -46,6 +146,11 @@ export const SplashScreen: FC<SplashScreenProps> = ({
 
   return (
     <div className={`splash-screen ${stage === 'fadeout' ? 'splash-screen--fadeout' : ''}`}>
+      {/* Particle canvas */}
+      {!prefersReducedMotion.current && (
+        <canvas ref={canvasRef} className="splash-particles-canvas" />
+      )}
+
       {/* Animated background gradient */}
       <div className="splash-background-gradient" />
 
@@ -56,7 +161,7 @@ export const SplashScreen: FC<SplashScreenProps> = ({
         {/* Logo with gradient animation */}
         <div className="splash-logo">
           <div className="splash-logo-icon">
-            <svg width="140" height="140" viewBox="0 0 120 120" fill="none">
+            <svg width="160" height="160" viewBox="0 0 120 120" fill="none">
               <defs>
                 <linearGradient id="auraGradient" x1="0%" y1="0%" x2="100%" y2="100%">
                   <stop offset="0%" stopColor="#ff6b35" />
@@ -65,13 +170,28 @@ export const SplashScreen: FC<SplashScreenProps> = ({
                 </linearGradient>
                 <linearGradient id="auraGradientAnimated" x1="0%" y1="0%" x2="100%" y2="100%">
                   <stop offset="0%" stopColor="#ff6b35">
-                    <animate attributeName="stop-color" values="#ff6b35;#3b82f6;#ff6b35" dur="4s" repeatCount="indefinite" />
+                    <animate
+                      attributeName="stop-color"
+                      values="#ff6b35;#3b82f6;#ff6b35"
+                      dur="4s"
+                      repeatCount="indefinite"
+                    />
                   </stop>
                   <stop offset="50%" stopColor="#f7931e">
-                    <animate attributeName="stop-color" values="#f7931e;#60a5fa;#f7931e" dur="4s" repeatCount="indefinite" />
+                    <animate
+                      attributeName="stop-color"
+                      values="#f7931e;#60a5fa;#f7931e"
+                      dur="4s"
+                      repeatCount="indefinite"
+                    />
                   </stop>
                   <stop offset="100%" stopColor="#3b82f6">
-                    <animate attributeName="stop-color" values="#3b82f6;#ff6b35;#3b82f6" dur="4s" repeatCount="indefinite" />
+                    <animate
+                      attributeName="stop-color"
+                      values="#3b82f6;#ff6b35;#3b82f6"
+                      dur="4s"
+                      repeatCount="indefinite"
+                    />
                   </stop>
                 </linearGradient>
                 <filter id="glow">
@@ -124,10 +244,7 @@ export const SplashScreen: FC<SplashScreenProps> = ({
         {/* Progress bar with orange to blue gradient */}
         <div className="splash-progress">
           <div className="splash-progress-track">
-            <div
-              className="splash-progress-fill"
-              style={{ width: `${progress}%` }}
-            >
+            <div className="splash-progress-fill" style={{ width: `${progress}%` }}>
               <div className="splash-progress-shine" />
             </div>
           </div>
@@ -138,21 +255,6 @@ export const SplashScreen: FC<SplashScreenProps> = ({
         <div className="splash-footer">
           <p className="splash-version">Version 1.0.0</p>
         </div>
-      </div>
-
-      {/* Animated particles background */}
-      <div className="splash-particles">
-        {Array.from({ length: 30 }).map((_, i) => (
-          <div
-            key={i}
-            className="splash-particle"
-            style={{
-              left: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 3}s`,
-              animationDuration: `${3 + Math.random() * 4}s`,
-            }}
-          />
-        ))}
       </div>
     </div>
   );
