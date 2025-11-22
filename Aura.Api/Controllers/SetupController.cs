@@ -1464,7 +1464,7 @@ public class SetupController : ControllerBase
             {
                 expandedPath = homeDir;
             }
-            else if (expandedPath.Length > 2)
+            else if (expandedPath.Length >= 2)
             {
                 expandedPath = Path.Combine(homeDir, expandedPath[2..]);
             }
