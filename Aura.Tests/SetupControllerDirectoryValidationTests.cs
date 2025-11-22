@@ -126,10 +126,10 @@ public class SetupControllerDirectoryValidationTests : IClassFixture<WebApplicat
     [Fact]
     public async Task CheckDirectory_WithInvalidPath_ReturnsError()
     {
-        // Arrange - use an invalid path (contains invalid characters)
+        // Arrange - use an invalid path (colon is invalid on Unix, angle brackets invalid on Windows)
         var invalidPath = OperatingSystem.IsWindows() 
             ? "C:\\Invalid<>Path" 
-            : "/invalid\0path";
+            : "/invalid:path";
         var request = new { Path = invalidPath };
 
         // Act

@@ -1464,9 +1464,9 @@ public class SetupController : ControllerBase
             {
                 expandedPath = homeDir;
             }
-            else
+            else if (expandedPath.Length > 2)
             {
-                expandedPath = Path.Combine(homeDir, expandedPath.Substring(2));
+                expandedPath = Path.Combine(homeDir, expandedPath[2..]);
             }
         }
 
@@ -1491,14 +1491,15 @@ public class SetupController : ControllerBase
     {
         error = null;
         expandedPath = path;
+        var correlationId = HttpContext.TraceIdentifier;
 
         try
         {
             // Expand environment variables
             expandedPath = ExpandEnvironmentVariables(path);
 
-            _logger.LogInformation("Validating directory path. Original: {OriginalPath}, Expanded: {ExpandedPath}", 
-                path, expandedPath);
+            _logger.LogInformation("[{CorrelationId}] Validating directory path. Original: {OriginalPath}, Expanded: {ExpandedPath}", 
+                correlationId, path, expandedPath);
 
             // Check if directory exists
             if (!Directory.Exists(expandedPath))
@@ -1509,12 +1510,12 @@ public class SetupController : ControllerBase
                     try
                     {
                         Directory.CreateDirectory(expandedPath);
-                        _logger.LogInformation("Created directory: {Path}", expandedPath);
+                        _logger.LogInformation("[{CorrelationId}] Created directory: {Path}", correlationId, expandedPath);
                     }
                     catch (Exception ex)
                     {
                         error = $"Failed to create directory '{expandedPath}': {ex.Message}";
-                        _logger.LogWarning(ex, "Failed to create directory: {Path}", expandedPath);
+                        _logger.LogWarning(ex, "[{CorrelationId}] Failed to create directory: {Path}", correlationId, expandedPath);
                         return false;
                     }
                 }
@@ -1535,12 +1536,12 @@ public class SetupController : ControllerBase
                 var testFile = Path.Combine(expandedPath, $".aura-test-{Guid.NewGuid()}.tmp");
                 System.IO.File.WriteAllText(testFile, "test");
                 System.IO.File.Delete(testFile);
-                _logger.LogInformation("Directory write test successful: {Path}", expandedPath);
+                _logger.LogInformation("[{CorrelationId}] Directory write test successful: {Path}", correlationId, expandedPath);
             }
             catch (Exception ex)
             {
                 error = $"Directory is not writable: {ex.Message}";
-                _logger.LogWarning(ex, "Directory write test failed: {Path}", expandedPath);
+                _logger.LogWarning(ex, "[{CorrelationId}] Directory write test failed: {Path}", correlationId, expandedPath);
                 return false;
             }
 
@@ -1549,7 +1550,7 @@ public class SetupController : ControllerBase
         catch (Exception ex)
         {
             error = $"Failed to validate directory: {ex.Message}";
-            _logger.LogError(ex, "Unexpected error validating directory: {Path}", path);
+            _logger.LogError(ex, "[{CorrelationId}] Unexpected error validating directory: {Path}", correlationId, path);
             return false;
         }
     }
