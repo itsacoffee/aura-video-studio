@@ -826,6 +826,102 @@ sudo setenforce 0
    make clean && make dev
    ```
 
+## Complete Application Reset
+
+### Desktop App Reset (Electron)
+
+If you're experiencing persistent issues with the desktop application (Electron version), you have several reset options:
+
+#### Option 1: UI-Based Reset (Recommended)
+
+1. Open Aura Video Studio
+2. Navigate to **Settings** → **Security** tab
+3. Scroll to the bottom to find **"Reset Application"** section
+4. Click **"Reset Application"** button
+5. Confirm the action in the dialog
+6. The application will clear all data and restart automatically
+
+This will clear:
+- All settings and preferences
+- Cached API keys and credentials
+- Recent projects and history
+- Downloaded models and assets
+- All browser storage (localStorage, sessionStorage, IndexedDB, cookies)
+
+#### Option 2: Command Line Reset
+
+Run the desktop app with the `--reset` flag:
+
+**Windows:**
+```powershell
+.\Aura.Desktop\Aura.exe --reset
+```
+
+**macOS/Linux:**
+```bash
+./Aura.Desktop/Aura.app/Contents/MacOS/Aura --reset
+```
+
+#### Option 3: Deep Clean Script (Development)
+
+For the most thorough cleanup during development:
+
+**Windows (PowerShell):**
+```powershell
+cd Aura.Desktop
+.\clean-desktop.ps1
+```
+
+This comprehensive script will:
+- Kill all running Aura processes
+- Clean all Electron/Chromium cache
+- Clean .NET application data
+- Clean build artifacts
+- Clear npm and NuGet caches
+- Clean Windows prefetch files (requires admin)
+- Verify cleanup completion
+
+After running, reinstall dependencies:
+```powershell
+npm install
+dotnet restore
+```
+
+### Backend API Reset
+
+If only the backend needs resetting:
+
+**Command line flag:**
+```bash
+dotnet run --project Aura.Api -- --reset
+```
+
+**Environment variable:**
+```bash
+export AURA_RESET=true
+dotnet run --project Aura.Api
+```
+
+This clears:
+- Temporary files in `%TEMP%\Aura`
+- Backend logs
+- Cached data in `%LOCALAPPDATA%\Aura`
+
+### When to Use Each Reset Option
+
+- **UI Reset**: For everyday issues, corrupted settings, or fresh start
+- **Command Line Reset**: When the UI is inaccessible or scripting automation
+- **Deep Clean Script**: During development, between major builds, or when testing fresh installs
+- **Backend Reset**: When backend-specific data is causing issues
+
+### What Gets Preserved
+
+During any reset:
+- ✅ Source code (your development files)
+- ✅ Git history and branches
+- ✅ User documents in `Documents\Aura Video Studio` (unless using `-IncludeUserContent` flag)
+- ✅ User videos in `Videos\Aura Studio`
+
 ### Reporting Issues
 
 When reporting issues, include:
