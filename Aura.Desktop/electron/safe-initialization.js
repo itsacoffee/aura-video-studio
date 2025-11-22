@@ -211,7 +211,7 @@ function initializeProtocolHandler(
 }
 
 /**
- * Initialize BackendService with detailed error reporting
+ * Initialize BackendService with detailed error reporting and retry logic
  */
 async function initializeBackendService(
   app,
@@ -244,7 +244,7 @@ async function initializeBackendService(
       );
     }
 
-    // Start backend with timeout
+    // Start backend with comprehensive timeout and retry
     const startPromise = backendService.start();
     const timeoutPromise = new Promise((_, reject) =>
       setTimeout(
@@ -295,12 +295,56 @@ async function initializeBackendService(
           "Port already in use",
           ".NET runtime not installed",
           "Backend crashed on startup",
+          "Firewall blocking connection",
         ],
       });
     }
 
     if (logger) {
       logger.error("BackendService", "Failed to start backend service", error);
+    }
+
+    // Classify error for better user guidance
+    let errorCategory = "UNKNOWN";
+    let userRecoveryAction =
+      "Check that .NET 8 runtime is installed and backend executable exists";
+    let technicalDetails = error.message;
+
+    if (error.message.includes("Backend executable not found")) {
+      errorCategory = "MISSING_EXECUTABLE";
+      userRecoveryAction =
+        "The application may not be properly installed. Try reinstalling Aura Video Studio.";
+    } else if (error.message.includes("Port") && error.message.includes("in use")) {
+      errorCategory = "PORT_CONFLICT";
+      userRecoveryAction =
+        `Close any other applications using port ${networkContract?.port || "5005"} and try again.`;
+    } else if (error.message.includes(".NET runtime")) {
+      errorCategory = "DOTNET_MISSING";
+      userRecoveryAction =
+        "Install .NET 8.0 Runtime from: https://dotnet.microsoft.com/download/dotnet/8.0";
+    } else if (error.message.includes("TIMEOUT") || error.message.includes("timeout")) {
+      errorCategory = "STARTUP_TIMEOUT";
+      userRecoveryAction =
+        "The backend is taking too long to start. Check system resources and try again.";
+    } else if (error.message.includes("BINDING_FAILED")) {
+      errorCategory = "BINDING_FAILED";
+      userRecoveryAction =
+        "The backend could not bind to the network port. Check Windows Firewall settings.";
+    } else if (error.message.includes("PROCESS_EXITED")) {
+      errorCategory = "PROCESS_CRASHED";
+      userRecoveryAction =
+        "The backend process crashed during startup. Check the error logs for details.";
+    }
+
+    // Extract diagnostics if available
+    if (error.diagnostics) {
+      technicalDetails += `\n\nDiagnostics:\n`;
+      technicalDetails += `- Port: ${error.diagnostics.port}\n`;
+      technicalDetails += `- Process PID: ${error.diagnostics.processPid || "N/A"}\n`;
+      technicalDetails += `- Process Exited: ${error.diagnostics.processExited ? "Yes" : "No"}\n`;
+      if (error.diagnostics.errorOutput && error.diagnostics.errorOutput !== "(none)") {
+        technicalDetails += `- Error Output:\n${error.diagnostics.errorOutput}\n`;
+      }
     }
 
     // Critical failure - cannot proceed without backend
@@ -310,9 +354,9 @@ async function initializeBackendService(
       degradedMode: false,
       error: error,
       criticalFailure: true,
-      recoveryAction:
-        "Check that .NET 8 runtime is installed and backend executable exists",
-      technicalDetails: error.message,
+      errorCategory: errorCategory,
+      recoveryAction: userRecoveryAction,
+      technicalDetails: technicalDetails,
     };
   }
 }
