@@ -14,6 +14,11 @@
 const fs = require('fs');
 const path = require('path');
 
+// Configuration constants
+const BUNDLE_SIZE_MIN_MB = 3.0; // Minimum expected bundle size (MB) for unminified code
+const BUNDLE_SIZE_MAX_MB = 4.5; // Maximum acceptable bundle size (MB)
+const MAX_MINIFIED_LINE_LENGTH = 500; // Lines longer than this indicate minification
+
 // ANSI color codes
 const colors = {
   reset: '\x1b[0m',
@@ -201,12 +206,12 @@ if (!mainBundle) {
   process.exit(1);
 }
 
-// Test 12: Check main bundle size (should be ~3.5-3.7 MB unminified)
+// Test 12: Check main bundle size (should be ~3.0-4.5 MB unminified)
 const mainBundlePath = path.join(assetsPath, mainBundle);
 const sizeMB = mainBundleSize / (1024 * 1024);
-const isInExpectedRange = sizeMB >= 3.0 && sizeMB <= 4.5;
+const isInExpectedRange = sizeMB >= BUNDLE_SIZE_MIN_MB && sizeMB <= BUNDLE_SIZE_MAX_MB;
 test(
-  'Main bundle size in expected range (3.0-4.5 MB)',
+  `Main bundle size in expected range (${BUNDLE_SIZE_MIN_MB}-${BUNDLE_SIZE_MAX_MB} MB)`,
   isInExpectedRange,
   `Actual: ${sizeMB.toFixed(2)} MB (${isInExpectedRange ? 'unminified' : 'unexpected'})`
 );
@@ -217,7 +222,6 @@ const bundleContent = fs.readFileSync(mainBundlePath, 'utf8');
 const firstLines = bundleContent.split('\n').slice(0, 50).join('\n');
 
 // Check for unminified characteristics
-const MAX_MINIFIED_LINE_LENGTH = 500; // Lines longer than this indicate minification
 const hasReadableFunctionNames = /function\s+[a-zA-Z_$][a-zA-Z0-9_$]*\s*\(/.test(firstLines);
 const hasProperSpacing = /{\s*\n\s+/.test(firstLines);
 const hasComments = /\/\*|\*\/|\/\//.test(firstLines);

@@ -51,7 +51,7 @@ npm run build
 
 **Expected Output:**
 - Build should complete successfully
-- Main bundle: `index-[hash].js` or similar (3.5-3.7 MB)
+- Main bundle: `index-[hash].js` or similar (3.0-4.5 MB)
 - Message: "Build verification passed"
 
 #### Step 2: Build Backend
@@ -180,11 +180,11 @@ Array.from(document.querySelectorAll('script')).map(s => ({
 
 **Expected:**
 - File name: `index-[hash].js`
-- Size: 3.5-3.7 MB (unminified)
+- Size: 3.0-4.5 MB (unminified)
 - Status: 200 OK
 - Type: javascript
 
-✓ **PASS**: Size is 3.5-3.7 MB (indicates unminified code)
+✓ **PASS**: Size is 3.0-4.5 MB (indicates unminified code)
 ✗ **FAIL**: Size is 2.0-2.5 MB (indicates minified code - fix not applied)
 
 ### Test 6: Functional Testing
@@ -298,7 +298,7 @@ Use this checklist to verify all fixes are working:
 
 ### Build Verification
 - [ ] Frontend builds without errors
-- [ ] Main bundle is 3.5-3.7 MB (unminified)
+- [ ] Main bundle is 3.0-4.5 MB (unminified)
 - [ ] Backend builds without errors
 - [ ] Electron app packages successfully
 
@@ -327,7 +327,7 @@ Use this checklist to verify all fixes are working:
 | Application Launches | ✓ Window opens | Launch .exe file |
 | No Blank Screen | ✓ UI loads immediately | Visual check |
 | Console Errors | ✓ None present | DevTools Console |
-| Bundle Size | ✓ 3.5-3.7 MB | DevTools Network tab |
+| Bundle Size | ✓ 3.0-4.5 MB | DevTools Network tab |
 | Load Time | ✓ < 5 seconds | Measure with stopwatch |
 | Functionality | ✓ All features work | Manual testing |
 

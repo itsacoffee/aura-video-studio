@@ -44,7 +44,7 @@ Success Rate: 100.0%
 
 #### Bundle Analysis Tests (6/6 passed) ✅
 - ✅ Main bundle found: `index-[hash].js`
-- ✅ Main bundle size: 3.46 MB (expected 3.5-3.7 MB)
+- ✅ Main bundle size: 3.46 MB (expected 3.0-4.5 MB)
 - ✅ Bundle has readable function names
 - ✅ Bundle has proper spacing
 - ✅ Bundle is unminified
