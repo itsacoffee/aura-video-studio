@@ -235,9 +235,8 @@
       }
       
       reset() {
-        const dpr = window.devicePixelRatio || 1;
-        this.x = Math.random() * (this.canvas.width / dpr);
-        this.y = (this.canvas.height / dpr) + Math.random() * 100;
+        this.x = Math.random() * window.innerWidth;
+        this.y = window.innerHeight + Math.random() * 100;
         this.size = Math.random() * 3 + 1;
         this.speedY = Math.random() * 0.5 + 0.2;
         this.speedX = (Math.random() - 0.5) * 0.3;
@@ -277,12 +276,12 @@
     canvas.height = window.innerHeight * dpr;
     canvas.style.width = window.innerWidth + 'px';
     canvas.style.height = window.innerHeight + 'px';
-    ctx.scale(dpr, dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     
     const particles = [];
     for (let i = 0; i < PARTICLE_COUNT; i++) {
       particles.push(new Particle(canvas));
-      particles[i].y = Math.random() * canvas.height / dpr;
+      particles[i].y = Math.random() * window.innerHeight;
     }
     
     function animate() {
@@ -307,7 +306,7 @@
         canvas.height = window.innerHeight * dpr;
         canvas.style.width = window.innerWidth + 'px';
         canvas.style.height = window.innerHeight + 'px';
-        ctx.scale(dpr, dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       }, RESIZE_DEBOUNCE_MS);
     });
     
