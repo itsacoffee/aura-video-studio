@@ -32,10 +32,11 @@ export class GlobalErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): Partial<State> {
-    // Use crypto.randomUUID for better uniqueness (or fallback to timestamp + random)
+    // Use crypto.randomUUID for better uniqueness (full UUID for maximum uniqueness)
+    // Format: ERR_{timestamp}_{uuid} or ERR_{timestamp}_{random} as fallback
     const errorId =
       typeof crypto !== 'undefined' && crypto.randomUUID
-        ? `ERR_${Date.now()}_${crypto.randomUUID().substring(0, 9)}`
+        ? `ERR_${Date.now()}_${crypto.randomUUID()}`
         : `ERR_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 
     // Log to console for immediate debugging

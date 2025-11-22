@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Hosting;
 using Aura.Core.Logging;
 using System.Text.Json;
 
@@ -12,6 +12,8 @@ namespace Aura.Api.Controllers;
 [Route("api/[controller]")]
 public class LogsController : ControllerBase
 {
+    private const int ErrorLogSeparatorLength = 80;
+    
     private readonly ILogger<LogsController> _logger;
     private readonly IWebHostEnvironment _environment;
 
@@ -108,7 +110,7 @@ public class LogsController : ControllerBase
             try
             {
                 var json = JsonSerializer.Serialize(errorEntry, new JsonSerializerOptions { WriteIndented = true });
-                await System.IO.File.AppendAllTextAsync(errorLogPath, json + Environment.NewLine + new string('-', 80) + Environment.NewLine);
+                await System.IO.File.AppendAllTextAsync(errorLogPath, json + Environment.NewLine + new string('-', ErrorLogSeparatorLength) + Environment.NewLine);
             }
             catch (Exception ex)
             {
