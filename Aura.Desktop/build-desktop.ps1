@@ -249,6 +249,58 @@ else {
 }
 
 # ========================================
+# Step 2b: Apply Database Migrations
+# ========================================
+if (-not $SkipBackend) {
+    Write-Info "Applying database migrations..."
+    Set-Location "$ProjectRoot\Aura.Api"
+    
+    # Check if EF tools are installed
+    $efTools = dotnet tool list -g | Select-String "dotnet-ef"
+    if (-not $efTools) {
+        Write-Info "Installing Entity Framework tools..."
+        dotnet tool install --global dotnet-ef
+        if ($LASTEXITCODE -ne 0) {
+            Show-Warning "  Could not install dotnet-ef tools. Database migration check skipped."
+        }
+        else {
+            Write-Success "  ✓ Entity Framework tools installed"
+            # Refresh the check after installation
+            $efTools = dotnet tool list -g | Select-String "dotnet-ef"
+        }
+    }
+    else {
+        Write-Info "Entity Framework tools already installed"
+    }
+    
+    # Only attempt migrations if dotnet-ef is available
+    if ($efTools) {
+        # Apply migrations (this will create database if missing)
+        Write-Info "Checking for pending migrations..."
+        try {
+            # Use --configuration Release to match the build configuration
+            $migrationOutput = dotnet ef database update --configuration Release 2>&1
+            if ($LASTEXITCODE -eq 0) {
+                Write-Success "  ✓ Database migrations applied successfully"
+                if ($VerbosePreference -eq 'Continue') {
+                    Write-Host "  Migration output: $migrationOutput" -ForegroundColor Gray
+                }
+            } else {
+                Show-Warning "  Database migration check skipped (will be created on first run)"
+                Write-Host "  Migration output: $migrationOutput" -ForegroundColor Gray
+            }
+        } catch {
+            Show-Warning "  Database migration check skipped (will be created on first run)"
+            Write-Host "  Error: $($_.Exception.Message)" -ForegroundColor Gray
+        }
+    }
+    
+    # Return to script directory
+    Set-Location $ScriptDir
+    Write-Host ""
+}
+
+# ========================================
 # Step 2a: Ensure bundled FFmpeg binaries
 # ========================================
 Write-Info "Ensuring bundled FFmpeg binaries are available..."
