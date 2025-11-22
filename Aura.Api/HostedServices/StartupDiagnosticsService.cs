@@ -4,6 +4,8 @@ namespace Aura.Api.HostedServices;
 
 public class StartupDiagnosticsService : IHostedService
 {
+    private const int FfmpegCheckTimeoutMs = 1000; // 1 second timeout for FFmpeg version check
+    
     private readonly ILogger<StartupDiagnosticsService> _logger;
     private readonly IConfiguration _configuration;
     private readonly IWebHostEnvironment _environment;
@@ -46,7 +48,7 @@ public class StartupDiagnosticsService : IHostedService
             
             if (process != null)
             {
-                process.WaitForExit(1000);
+                process.WaitForExit(FfmpegCheckTimeoutMs);
                 if (process.ExitCode == 0)
                 {
                     _logger.LogInformation("FFmpeg: Available at {Path}", ffmpegPath);

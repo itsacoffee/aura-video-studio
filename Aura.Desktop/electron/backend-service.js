@@ -1004,6 +1004,8 @@ class BackendService {
     // Track startup output for diagnostics using arrays for efficiency
     this.startupOutputLines = [];
     this.errorOutputLines = [];
+    this.startupOutputSize = 0;
+    this.errorOutputSize = 0;
     const MAX_OUTPUT_SIZE = 5000; // 5KB limit
     
     // Handle backend output
@@ -1013,9 +1015,10 @@ class BackendService {
         console.log(`[Backend] ${message}`);
         
         // Capture startup output for diagnostics (first 5KB only)
-        const currentSize = this.startupOutputLines.join('\n').length;
-        if (currentSize < MAX_OUTPUT_SIZE) {
+        // Track size incrementally for O(1) performance
+        if (this.startupOutputSize < MAX_OUTPUT_SIZE) {
           this.startupOutputLines.push(message);
+          this.startupOutputSize += message.length + 1; // +1 for newline
         }
         
         // Log important startup messages
@@ -1033,9 +1036,10 @@ class BackendService {
         console.error(`[Backend Error] ${message}`);
         
         // Capture error output for diagnostics (first 5KB only)
-        const currentSize = this.errorOutputLines.join('\n').length;
-        if (currentSize < MAX_OUTPUT_SIZE) {
+        // Track size incrementally for O(1) performance
+        if (this.errorOutputSize < MAX_OUTPUT_SIZE) {
           this.errorOutputLines.push(message);
+          this.errorOutputSize += message.length + 1; // +1 for newline
         }
       }
     });
