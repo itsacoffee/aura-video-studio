@@ -20,6 +20,7 @@ import {
 } from '@fluentui/react-icons';
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Logo } from '../../components/Logo';
 import { useNotifications } from '../../components/Notifications/Toasts';
 import { AutoSaveIndicator } from '../../components/Onboarding/AutoSaveIndicator';
 import type { AutoSaveStatus } from '../../components/Onboarding/AutoSaveIndicator';
@@ -1624,6 +1625,18 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
         className={styles.header}
         style={{ textAlign: 'center', paddingTop: tokens.spacingVerticalL }}
       >
+        {/* Logo component */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginBottom: tokens.spacingVerticalM,
+          }}
+        >
+          <Logo size={64} />
+        </div>
+
         <Title2>Welcome to Aura Video Studio - Let&apos;s get you set up!</Title2>
         <Text
           style={{
