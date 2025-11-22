@@ -16,6 +16,7 @@ interface State {
   hasError: boolean;
   error: Error | null;
   errorInfo: ErrorInfo | null;
+  errorId: string;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
@@ -25,6 +26,7 @@ export class ErrorBoundary extends Component<Props, State> {
       hasError: false,
       error: null,
       errorInfo: null,
+      errorId: '',
     };
   }
 
@@ -36,6 +38,9 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+    // Generate unique error ID for tracking
+    const errorId = `ERR-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
     // Log error to logging service
     loggingService.error(
       'React Error Boundary caught an error',
@@ -44,12 +49,14 @@ export class ErrorBoundary extends Component<Props, State> {
       'componentDidCatch',
       {
         componentStack: errorInfo.componentStack,
+        errorId,
       }
     );
 
     // Update state with error info
     this.setState({
       errorInfo,
+      errorId,
     });
 
     // Call custom error handler if provided
@@ -61,6 +68,7 @@ export class ErrorBoundary extends Component<Props, State> {
       hasError: false,
       error: null,
       errorInfo: null,
+      errorId: '',
     });
   };
 
@@ -71,76 +79,128 @@ export class ErrorBoundary extends Component<Props, State> {
         return this.props.fallback;
       }
 
-      // Default fallback UI
+      // Ensure we ALWAYS render something visible
       return (
         <div
           style={{
-            padding: '2rem',
-            maxWidth: '600px',
-            margin: '2rem auto',
-            backgroundColor: '#fee',
-            border: '1px solid #fcc',
-            borderRadius: '8px',
+            minHeight: '100vh',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+            backgroundColor: '#1e1e1e',
+            color: '#ffffff',
           }}
         >
-          <h1 style={{ color: '#c00', marginBottom: '1rem' }}>Oops! Something went wrong</h1>
-
-          <p style={{ marginBottom: '1rem', color: '#666' }}>
-            We're sorry for the inconvenience. The application encountered an unexpected error.
-          </p>
-
-          {this.state.error && (
-            <details style={{ marginBottom: '1rem' }}>
-              <summary style={{ cursor: 'pointer', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-                Error Details
-              </summary>
-              <pre
+          <div
+            style={{
+              maxWidth: '600px',
+              width: '100%',
+              background: '#2d2d2d',
+              border: '2px solid #ff4444',
+              borderRadius: '8px',
+              padding: '32px',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                marginBottom: '20px',
+              }}
+            >
+              <span style={{ fontSize: '32px' }}>⚠️</span>
+              <h1
                 style={{
-                  backgroundColor: '#f5f5f5',
-                  padding: '1rem',
-                  borderRadius: '4px',
-                  overflow: 'auto',
-                  fontSize: '0.875rem',
+                  margin: 0,
+                  fontSize: '24px',
+                  fontWeight: 600,
                 }}
               >
-                {this.state.error.toString()}
-                {this.state.errorInfo && (
-                  <>
-                    {'\n\n'}
-                    {this.state.errorInfo.componentStack}
-                  </>
-                )}
-              </pre>
-            </details>
-          )}
+                Application Error
+              </h1>
+            </div>
 
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            <button
-              onClick={this.handleReset}
+            <p style={{ marginBottom: '16px', lineHeight: '1.6' }}>
+              The application encountered an unexpected error during initialization.
+            </p>
+
+            <div
               style={{
-                padding: '0.5rem 1rem',
-                backgroundColor: '#007bff',
-                color: 'white',
-                border: 'none',
+                marginBottom: '16px',
+                padding: '12px',
+                backgroundColor: '#1a1a1a',
                 borderRadius: '4px',
-                cursor: 'pointer',
+                fontSize: '13px',
+                color: '#aaa',
               }}
             >
-              Try Again
-            </button>
-            <button
-              onClick={() => window.location.reload()}
-              style={{
-                padding: '0.5rem 1rem',
-                backgroundColor: '#6c757d',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-              }}
-            >
-              Reload Page
-            </button>
+              <strong>Error ID:</strong> {this.state.errorId}
+            </div>
+
+            {this.state.error && (
+              <details style={{ marginBottom: '20px' }}>
+                <summary
+                  style={{
+                    cursor: 'pointer',
+                    marginBottom: '8px',
+                    fontSize: '14px',
+                    color: '#888',
+                  }}
+                >
+                  Technical Details
+                </summary>
+                <pre
+                  style={{
+                    padding: '12px',
+                    backgroundColor: '#1a1a1a',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    overflow: 'auto',
+                    maxHeight: '200px',
+                    color: '#ff6b6b',
+                  }}
+                >
+                  {this.state.error.message}
+                  {'\n\n'}
+                  {this.state.error.stack}
+                </pre>
+              </details>
+            )}
+
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+              <button
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: '#0078d4',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                }}
+                onClick={() => window.location.reload()}
+              >
+                Reload Application
+              </button>
+              <button
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: '#444',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                }}
+                onClick={this.handleReset}
+              >
+                Try to Recover
+              </button>
+            </div>
           </div>
         </div>
       );
@@ -148,22 +208,6 @@ export class ErrorBoundary extends Component<Props, State> {
 
     return this.props.children;
   }
-}
-
-/**
- * Hook to manually throw errors to the nearest error boundary
- */
-export function useErrorHandler() {
-  const [, setError] = React.useState();
-
-  return React.useCallback(
-    (error: Error) => {
-      setError(() => {
-        throw error;
-      });
-    },
-    [setError]
-  );
 }
 
 // Re-export CrashRecoveryScreen for backwards compatibility
