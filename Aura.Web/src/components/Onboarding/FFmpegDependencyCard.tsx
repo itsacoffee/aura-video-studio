@@ -99,6 +99,7 @@ export function FFmpegDependencyCard({
   const [error, setError] = useState<string | null>(null);
   const [showDetails, setShowDetails] = useState(autoExpandDetails);
   const lastRefreshSignal = useRef<number | undefined>(refreshSignal);
+  const initialCheckDoneRef = useRef(false);
 
   const checkStatus = useCallback(async () => {
     setIsLoading(true);
@@ -262,7 +263,9 @@ export function FFmpegDependencyCard({
   }, [checkStatus, onInstallComplete, onStatusChange, showSuccessToast, showFailureToast]);
 
   useEffect(() => {
-    if (autoCheck) {
+    // Only auto-check once on mount if autoCheck is true
+    if (autoCheck && !initialCheckDoneRef.current) {
+      initialCheckDoneRef.current = true;
       void checkStatus();
     }
   }, [autoCheck, checkStatus]);

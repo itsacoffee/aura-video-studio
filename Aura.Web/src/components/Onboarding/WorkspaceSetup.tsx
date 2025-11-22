@@ -13,7 +13,7 @@ import {
   Field,
 } from '@fluentui/react-components';
 import { Folder24Regular, FolderOpen24Regular, Save24Regular } from '@fluentui/react-icons';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   getDefaultSaveLocation,
   getDefaultCacheLocation,
@@ -133,6 +133,21 @@ export function WorkspaceSetup({
   const styles = useStyles();
   const [isBrowsing, setIsBrowsing] = useState<'save' | 'cache' | null>(null);
 
+  // Save initial theme state for cleanup
+  const initialThemeRef = useRef<{ dark: boolean; light: boolean }>({
+    dark: false,
+    light: false,
+  });
+
+  // Store initial theme state on mount
+  useEffect(() => {
+    const root = document.documentElement;
+    initialThemeRef.current = {
+      dark: root.classList.contains('dark'),
+      light: root.classList.contains('light'),
+    };
+  }, []);
+
   // Initialize default paths if not set
   useEffect(() => {
     if (!preferences.defaultSaveLocation || !isValidPath(preferences.defaultSaveLocation)) {
@@ -188,6 +203,26 @@ export function WorkspaceSetup({
       ...preferences,
       theme,
     });
+
+    // Apply theme preview immediately to document root
+    const root = document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+      root.classList.remove('light');
+    } else if (theme === 'light') {
+      root.classList.remove('dark');
+      root.classList.add('light');
+    } else {
+      // Auto mode - follow system preference
+      const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (isDarkMode) {
+        root.classList.add('dark');
+        root.classList.remove('light');
+      } else {
+        root.classList.remove('dark');
+        root.classList.add('light');
+      }
+    }
   };
 
   const autosaveMinutes = preferences.autosaveInterval;
