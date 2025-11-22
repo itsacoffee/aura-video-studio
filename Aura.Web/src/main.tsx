@@ -3,6 +3,7 @@ import App from './App.tsx';
 import './index.css';
 import './styles/component-overrides.css';
 import './styles/windows11.css';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { apiUrl } from './config/api';
 import { errorReportingService } from './services/errorReportingService';
 import { loggingService } from './services/loggingService';
@@ -210,8 +211,12 @@ async function startReactApp(): Promise<void> {
   console.info('[Main] Calling ReactDOM.createRoot...');
   const root = ReactDOM.createRoot(rootElement);
 
-  console.info('[Main] Rendering App component...');
-  root.render(<App />);
+  console.info('[Main] Rendering App component with ErrorBoundary...');
+  root.render(
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
+  );
 
   console.info('[Main] ✓ React render call completed');
   console.info('[Main] Waiting for React hydration to complete...');

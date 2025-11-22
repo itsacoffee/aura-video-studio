@@ -12,10 +12,12 @@ namespace Aura.Api.Controllers;
 public class LogsController : ControllerBase
 {
     private readonly ILogger<LogsController> _logger;
+    private readonly IWebHostEnvironment _environment;
 
-    public LogsController(ILogger<LogsController> logger)
+    public LogsController(ILogger<LogsController> logger, IWebHostEnvironment environment)
     {
         _logger = logger;
+        _environment = environment;
     }
 
     /// <summary>
@@ -82,6 +84,36 @@ public class LogsController : ControllerBase
             new FrontendException(request.Error.Message, request.Error.Stack),
             $"Frontend error: {request.Error.Name}",
             context);
+
+        // In development, also write to a separate error log file
+        if (_environment.IsDevelopment())
+        {
+            var errorLogPath = Path.Combine(_environment.ContentRootPath, "logs", "client-errors.json");
+            Directory.CreateDirectory(Path.GetDirectoryName(errorLogPath)!);
+            
+            var errorEntry = new
+            {
+                ErrorId = request.Context?.TryGetValue("errorId", out var errId) == true ? errId?.ToString() : null,
+                request.Error.Name,
+                request.Error.Message,
+                request.Error.Stack,
+                ComponentStack = request.Context?.TryGetValue("componentStack", out var compStack) == true ? compStack?.ToString() : null,
+                request.Timestamp,
+                request.UserAgent,
+                request.Url,
+                ServerTime = DateTime.UtcNow
+            };
+            
+            try
+            {
+                var json = JsonSerializer.Serialize(errorEntry, new JsonSerializerOptions { WriteIndented = true });
+                System.IO.File.AppendAllText(errorLogPath, json + Environment.NewLine + new string('-', 80) + Environment.NewLine);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to write client error to file");
+            }
+        }
 
         return Ok(new { received = true });
     }
