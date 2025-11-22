@@ -5514,7 +5514,9 @@ appLifetime.ApplicationStarted.Register(() =>
             try
             {
                 var firewallUtility = scope.ServiceProvider.GetRequiredService<Aura.Core.Utils.FirewallUtility>();
-                var executablePath = Environment.ProcessPath ?? System.Reflection.Assembly.GetExecutingAssembly().Location;
+                // For single-file apps, Environment.ProcessPath is the recommended way to get the executable path.
+                // AppContext.BaseDirectory is used as fallback (points to the app directory)
+                var executablePath = Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "Aura.Api.exe");
 
                 if (Aura.Core.Utils.FirewallUtility.IsWindows())
                 {
