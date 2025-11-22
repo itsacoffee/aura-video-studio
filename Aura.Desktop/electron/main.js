@@ -1056,6 +1056,17 @@ async function startApplication() {
 
     backendService = backendResult.component;
     console.log("✓ Backend service started at:", backendService.getUrl());
+    console.log("✓ Backend port:", backendService.getPort());
+    console.log("✓ Network contract port:", backendContract.port);
+    
+    // Validate port consistency
+    if (backendService.getPort() !== backendContract.port) {
+      console.warn(
+        `⚠ WARNING: Port mismatch detected! Backend service port (${backendService.getPort()}) ` +
+        `does not match network contract port (${backendContract.port}). ` +
+        `This may cause connectivity issues.`
+      );
+    }
 
     // Step 10.5: Wait for backend to be fully ready
     if (splashWindow && !splashWindow.isDestroyed()) {
