@@ -388,6 +388,7 @@ Write-Info "Validating required resources..."
 $RequiredPaths = @(
     @{ Path = "$ProjectRoot\Aura.Web\dist\index.html"; Name = "Frontend build" },
     @{ Path = "$ScriptDir\resources\backend"; Name = "Backend binaries" },
+    @{ Path = "$ScriptDir\resources\backend\win-x64\Aura.Api.exe"; Name = "Backend executable (Aura.Api.exe)" },
     @{ Path = "$ScriptDir\resources\ffmpeg\win-x64\bin\ffmpeg.exe"; Name = "Bundled FFmpeg" }
 )
 
