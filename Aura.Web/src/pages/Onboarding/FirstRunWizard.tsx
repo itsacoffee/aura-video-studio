@@ -207,6 +207,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
   const [ffmpegRefreshSignal, setFfmpegRefreshSignal] = useState(0);
   const pendingRescanRef = useRef(false);
   const [ffmpegManualOverride, setFfmpegManualOverride] = useState(false);
+  const ffmpegCheckCompletedRef = useRef(false);
   const defaultFfmpegPlaceholder = useMemo(() => {
     if (typeof navigator === 'undefined' || !navigator.platform) {
       return '/usr/bin/ffmpeg';
@@ -308,8 +309,10 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
     // CRITICAL FIX: Ping backend with retry before FFmpeg check in Step 2
     // This ensures backend is reachable before attempting FFmpeg detection
-    if (state.step === 2) {
+    // Only trigger once per step entry to prevent spam checking
+    if (state.step === 2 && !ffmpegCheckCompletedRef.current) {
       console.info('[FirstRunWizard] Entering Step 2, pinging backend with retry');
+      ffmpegCheckCompletedRef.current = true;
       const checkBackendAndFFmpeg = async () => {
         for (let i = 0; i < 3; i++) {
           const ping = await setupApi.pingBackend();
@@ -324,16 +327,19 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
         console.error('[FirstRunWizard] Backend not reachable after 3 attempts');
       };
       void checkBackendAndFFmpeg();
+    } else if (state.step !== 2) {
+      // Reset the flag when leaving step 2
+      ffmpegCheckCompletedRef.current = false;
     }
   }, [state.step]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Save progress on state changes
+  // Save progress on state changes (with debouncing to prevent spam)
   useEffect(() => {
     if (state.step > 0 && state.step < totalSteps - 1) {
       saveWizardStateToStorage(state);
 
-      // Auto-save to backend
-      const autoSave = async () => {
+      // Auto-save to backend with debouncing
+      const autoSaveTimer = setTimeout(async () => {
         setAutoSaveStatus('saving');
         setAutoSaveError(null);
 
@@ -352,9 +358,9 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
           setAutoSaveStatus('error');
           setAutoSaveError(error instanceof Error ? error.message : 'Unknown error');
         }
-      };
+      }, 1000); // Debounce for 1 second
 
-      void autoSave();
+      return () => clearTimeout(autoSaveTimer);
     }
   }, [state, totalSteps]);
 
@@ -620,13 +626,13 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
       // Track completion
       const totalTime = (Date.now() - wizardStartTimeRef.current) / 1000;
-      const validApiKeys = Object.entries(state.apiKeyValidationStatus)
+      const validApiKeysForTracking = Object.entries(state.apiKeyValidationStatus)
         .filter(([_, status]) => status === 'valid')
         .map(([provider]) => provider);
 
       wizardAnalytics.completed(totalTime, {
         tier: state.selectedTier || 'free',
-        api_keys_count: validApiKeys.length,
+        api_keys_count: validApiKeysForTracking.length,
         components_installed: ffmpegReady ? 1 : 0,
         template_selected: false,
         tutorial_completed: false,
@@ -641,10 +647,20 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
       // Call the onComplete callback if provided
       if (onComplete) {
-        await onComplete();
+        try {
+          await onComplete();
+          console.info('[FirstRunWizard] onComplete callback executed successfully');
+        } catch (callbackError: unknown) {
+          const errorObj =
+            callbackError instanceof Error ? callbackError : new Error(String(callbackError));
+          console.error('[FirstRunWizard] onComplete callback failed:', errorObj);
+          // Even if callback fails, we should still navigate away from wizard
+          // The wizard is completed, we just log the error
+        }
       } else {
-        // Fallback to navigation
-        navigate('/');
+        // Fallback to navigation if no callback provided
+        console.info('[FirstRunWizard] No onComplete callback, navigating to dashboard');
+        navigate('/dashboard');
       }
     } catch (error: unknown) {
       const errorObj = error instanceof Error ? error : new Error(String(error));
@@ -692,8 +708,18 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
       // Navigate to main app (dashboard)
       if (onComplete) {
-        await onComplete();
+        try {
+          await onComplete();
+          console.info('[FirstRunWizard] Exit completed via onComplete callback');
+        } catch (callbackError: unknown) {
+          const errorObj =
+            callbackError instanceof Error ? callbackError : new Error(String(callbackError));
+          console.error('[FirstRunWizard] onComplete callback failed on exit:', errorObj);
+          // Fallback to direct navigation
+          navigate('/dashboard');
+        }
       } else {
+        console.info('[FirstRunWizard] Exit completed via navigation');
         navigate('/dashboard');
       }
     }
