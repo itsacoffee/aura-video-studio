@@ -152,6 +152,9 @@ builder.Host.UseSerilog();
 // Log the actual logs directory being used for troubleshooting
 Log.Information("Logging initialized. Logs directory: {LogsPath}", Path.GetFullPath(logsBasePath));
 
+// Register startup diagnostics service for enhanced startup logging
+builder.Services.AddHostedService<StartupDiagnosticsService>();
+
 // Add global exception handler and ProblemDetails support
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();

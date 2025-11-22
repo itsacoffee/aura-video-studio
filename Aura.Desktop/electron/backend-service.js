@@ -712,8 +712,21 @@ class BackendService {
     // /health/ready checks database and other services which may take time to initialize
     const readinessEndpoint = "/health/live";
     const readinessUrl = this._buildUrl(readinessEndpoint);
+    
+    let lastError = null;
 
     for (let i = 0; i < maxAttempts; i++) {
+      // Check if process has actually exited (not just if kill was called)
+      if (this.process && (this.process.exitCode !== null || this.process.signalCode !== null)) {
+        const startupOutput = this.startupOutputLines.join('\n') || '(no output captured)';
+        const errorOutput = this.errorOutputLines.join('\n') || '(no errors captured)';
+        const errorMessage = 
+          `Backend process exited during startup (exitCode: ${this.process.exitCode}, signal: ${this.process.signalCode}).\n` +
+          `Startup output: ${startupOutput}\n` +
+          `Error output: ${errorOutput}`;
+        throw new Error(errorMessage);
+      }
+
       try {
         const response = await axios.get(readinessUrl, {
           timeout: 2000,
@@ -721,11 +734,21 @@ class BackendService {
         });
 
         if (response.status === 200) {
-          console.log(`Backend is healthy at ${this.baseUrl}`);
+          console.log(`[Backend] Backend is healthy at ${this.baseUrl}`);
           return true;
+        } else {
+          console.log(`[Backend] Health check returned status ${response.status}`);
         }
       } catch (error) {
+        lastError = error;
         // Backend not ready yet, continue waiting
+        if (error.code === 'ECONNREFUSED') {
+          // Connection refused - backend not listening yet
+        } else if (error.code === 'ETIMEDOUT') {
+          console.log(`[Backend] Health check timeout (attempt ${i + 1}/${maxAttempts})`);
+        } else {
+          console.log(`[Backend] Health check error: ${error.message}`);
+        }
       }
 
       // Wait before next attempt
@@ -735,14 +758,24 @@ class BackendService {
 
       if (i % 10 === 0 && i > 0) {
         console.log(
-          `Still waiting for backend... (attempt ${i}/${maxAttempts})`
+          `[Backend] Still waiting for backend... (attempt ${i}/${maxAttempts})`
         );
       }
     }
 
-    throw new Error(
-      `Backend failed to start within ${this.BACKEND_STARTUP_TIMEOUT}ms`
-    );
+    // Provide detailed error message
+    const startupOutput = this.startupOutputLines.join('\n') || '(no output captured)';
+    const errorOutput = this.errorOutputLines.join('\n') || '(no errors captured)';
+    const processRunning = this.process && this.process.exitCode === null && this.process.signalCode === null;
+    const errorMessage = 
+      `Backend failed to start within ${this.BACKEND_STARTUP_TIMEOUT}ms\n` +
+      `Health check URL: ${readinessUrl}\n` +
+      `Last error: ${lastError ? lastError.message : 'None'}\n` +
+      `Process running: ${processRunning}\n` +
+      `Startup output: ${startupOutput}\n` +
+      `Error output: ${errorOutput}`;
+    
+    throw new Error(errorMessage);
   }
 
   /**
@@ -968,11 +1001,32 @@ class BackendService {
    * Setup process event handlers
    */
   _setupProcessHandlers() {
+    // Track startup output for diagnostics using arrays for efficiency
+    this.startupOutputLines = [];
+    this.errorOutputLines = [];
+    this.startupOutputSize = 0;
+    this.errorOutputSize = 0;
+    const MAX_OUTPUT_SIZE = 5000; // 5KB limit
+    
     // Handle backend output
     this.process.stdout.on("data", (data) => {
       const message = data.toString().trim();
       if (message) {
         console.log(`[Backend] ${message}`);
+        
+        // Capture startup output for diagnostics (first 5KB only)
+        // Track size incrementally for O(1) performance
+        if (this.startupOutputSize < MAX_OUTPUT_SIZE) {
+          this.startupOutputLines.push(message);
+          this.startupOutputSize += message.length + 1; // +1 for newline
+        }
+        
+        // Log important startup messages
+        if (message.includes('Now listening on:') || 
+            message.includes('Application started') ||
+            message.includes('Content root path:')) {
+          console.log('[Backend] Startup message detected:', message);
+        }
       }
     });
 
@@ -980,33 +1034,48 @@ class BackendService {
       const message = data.toString().trim();
       if (message) {
         console.error(`[Backend Error] ${message}`);
+        
+        // Capture error output for diagnostics (first 5KB only)
+        // Track size incrementally for O(1) performance
+        if (this.errorOutputSize < MAX_OUTPUT_SIZE) {
+          this.errorOutputLines.push(message);
+          this.errorOutputSize += message.length + 1; // +1 for newline
+        }
       }
     });
 
     // Handle backend exit
     this.process.on("exit", (code, signal) => {
-      console.log(`Backend exited with code ${code} and signal ${signal}`);
+      console.log(`[Backend] Process exited with code ${code} and signal ${signal}`);
+
+      // Log captured output if backend failed during startup
+      if (code !== 0 && code !== null) {
+        const startupOutput = this.startupOutputLines.join('\n') || '(no output captured)';
+        const errorOutput = this.errorOutputLines.join('\n') || '(no errors captured)';
+        console.error('[Backend] Startup output:', startupOutput);
+        console.error('[Backend] Error output:', errorOutput);
+      }
 
       // Don't restart if we're intentionally quitting or already restarting
       if (!this.isQuitting && !this.isRestarting && code !== 0) {
         // Backend crashed unexpectedly
-        console.error("Backend crashed unexpectedly!");
+        console.error("[Backend] Backend crashed unexpectedly!");
 
         // Attempt auto-restart
         if (this.restartAttempts < this.maxRestartAttempts) {
           this.restartAttempts++;
           console.log(
-            `Attempting to restart backend (${this.restartAttempts}/${this.maxRestartAttempts})...`
+            `[Backend] Attempting to restart backend (${this.restartAttempts}/${this.maxRestartAttempts})...`
           );
 
           setTimeout(() => {
             this.restart().catch((error) => {
-              console.error("Failed to restart backend:", error);
+              console.error("[Backend] Failed to restart backend:", error);
             });
           }, this.AUTO_RESTART_DELAY);
         } else {
           console.error(
-            "Max restart attempts reached. Backend will not auto-restart."
+            "[Backend] Max restart attempts reached. Backend will not auto-restart."
           );
           // Emit event for main process to handle
           if (this.app) {
@@ -1017,7 +1086,14 @@ class BackendService {
     });
 
     this.process.on("error", (error) => {
-      console.error("Backend process error:", error);
+      console.error("[Backend] Backend process error:", error);
+      console.error("[Backend] Error details:", {
+        message: error.message,
+        code: error.code,
+        errno: error.errno,
+        syscall: error.syscall,
+        path: error.path
+      });
     });
   }
 
