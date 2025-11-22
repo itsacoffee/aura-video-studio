@@ -1,0 +1,445 @@
+/**
+ * Premium Animations Library
+ * Aura Video Studio - Adobe/Apple Quality Standards
+ */
+
+/* ==================== ANIMATION CURVES ==================== */
+:root {
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-decelerate: cubic-bezier(0, 0, 0.2, 1);
+  --ease-accelerate: cubic-bezier(0.4, 0, 1, 1);
+  --ease-sharp: cubic-bezier(0.4, 0, 0.6, 1);
+  --duration-fast: 200ms;
+  --duration-normal: 300ms;
+  --duration-slow: 500ms;
+  --duration-very-slow: 800ms;
+}
+
+/* ==================== PAGE TRANSITIONS ==================== */
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.page-transition {
+  animation: page-fade-in var(--duration-normal) var(--ease-decelerate);
+}
+
+/* ==================== CARD ANIMATIONS ==================== */
+@keyframes card-hover-lift {
+  to {
+    transform: translateY(-4px);
+  }
+}
+
+.card-hover {
+  transition:
+    transform var(--duration-normal) var(--ease-standard),
+    box-shadow var(--duration-normal) var(--ease-standard);
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 20%);
+}
+
+/* ==================== BUTTON ANIMATIONS ==================== */
+@keyframes button-scale {
+  to {
+    transform: scale(1.02);
+  }
+}
+
+.button-premium {
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard),
+    filter var(--duration-fast) var(--ease-standard);
+}
+
+.button-premium:hover:not(:disabled) {
+  transform: scale(1.02);
+  filter: brightness(1.1);
+}
+
+.button-premium:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/* Ripple effect */
+@keyframes ripple {
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+.button-premium::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgb(255 255 255 / 30%);
+  border-radius: inherit;
+  transform: scale(0);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.button-premium:active::after {
+  animation: ripple 600ms var(--ease-decelerate);
+}
+
+/* ==================== LOADING ANIMATIONS ==================== */
+@keyframes pulse-glow {
+  0%,
+  100% {
+    opacity: 1;
+    filter: drop-shadow(0 0 15px rgb(255 107 53 / 50%));
+  }
+
+  50% {
+    opacity: 0.85;
+    filter: drop-shadow(0 0 25px rgb(59 130 246 / 50%));
+  }
+}
+
+.pulse-glow {
+  animation: pulse-glow 1.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, transparent 0%, rgb(255 255 255 / 10%) 50%, transparent 100%);
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite linear;
+}
+
+/* ==================== GRADIENT ANIMATIONS ==================== */
+@keyframes gradient-flow {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.gradient-animated {
+  background-size: 200% 200%;
+  animation: gradient-flow 4s ease infinite;
+}
+
+@keyframes gradient-rotate {
+  0% {
+    filter: hue-rotate(0deg);
+  }
+
+  100% {
+    filter: hue-rotate(360deg);
+  }
+}
+
+.gradient-rotate {
+  animation: gradient-rotate 8s linear infinite;
+}
+
+/* ==================== PARTICLE SYSTEM ==================== */
+@keyframes particle-float {
+  0% {
+    transform: translateY(100vh) translateX(0) scale(0);
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 1;
+  }
+
+  50% {
+    transform: translateY(50vh) translateX(20px) scale(1);
+  }
+
+  90% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(-10vh) translateX(-20px) scale(0);
+    opacity: 0;
+  }
+}
+
+.particle {
+  animation: particle-float linear infinite;
+}
+
+/* ==================== ENTRANCE ANIMATIONS ==================== */
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.slide-up {
+  animation: slide-up var(--duration-normal) var(--ease-decelerate);
+}
+
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.slide-down {
+  animation: slide-down var(--duration-normal) var(--ease-decelerate);
+}
+
+@keyframes slide-left {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.slide-left {
+  animation: slide-left var(--duration-normal) var(--ease-decelerate);
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.scale-in {
+  animation: scale-in var(--duration-normal) var(--ease-decelerate);
+}
+
+/* ==================== VALIDATION ANIMATIONS ==================== */
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  25% {
+    transform: translateX(-8px);
+  }
+
+  75% {
+    transform: translateX(8px);
+  }
+}
+
+.shake {
+  animation: shake 400ms var(--ease-sharp);
+}
+
+@keyframes bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.bounce {
+  animation: bounce 600ms var(--ease-standard);
+}
+
+/* ==================== PROGRESS ANIMATIONS ==================== */
+@keyframes progress-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+.progress-indeterminate {
+  animation: progress-indeterminate 1.5s ease-in-out infinite;
+}
+
+/* ==================== STEPPER ANIMATIONS ==================== */
+@keyframes step-fill {
+  from {
+    stroke-dashoffset: 100;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.step-progress-line {
+  stroke-dasharray: 100;
+  animation: step-fill 800ms var(--ease-decelerate) forwards;
+}
+
+@keyframes step-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+.step-active {
+  animation: step-pulse 1.5s ease-in-out infinite;
+}
+
+/* ==================== FLOATING ANIMATIONS ==================== */
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float-rotate {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  50% {
+    transform: translateY(-12px) rotate(5deg);
+  }
+}
+
+.float-rotate {
+  animation: float-rotate 4s ease-in-out infinite;
+}
+
+/* ==================== GLOW EFFECTS ==================== */
+@keyframes glow-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 10px rgb(255 107 53 / 30%),
+      0 0 20px rgb(59 130 246 / 20%);
+  }
+
+  50% {
+    box-shadow:
+      0 0 20px rgb(255 107 53 / 50%),
+      0 0 40px rgb(59 130 246 / 30%);
+  }
+}
+
+.glow-pulse {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+/* ==================== ACCESSIBILITY: REDUCED MOTION ==================== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .particle,
+  .float,
+  .float-rotate,
+  .pulse-glow,
+  .gradient-animated,
+  .shimmer {
+    animation: none !important;
+  }
+}
+
+/* ==================== UTILITY CLASSES ==================== */
+.transition-fast {
+  transition: all var(--duration-fast) var(--ease-standard);
+}
+
+.transition-normal {
+  transition: all var(--duration-normal) var(--ease-standard);
+}
+
+.transition-slow {
+  transition: all var(--duration-slow) var(--ease-standard);
+}
+
+.transition-transform {
+  transition: transform var(--duration-normal) var(--ease-standard);
+}
+
+.transition-opacity {
+  transition: opacity var(--duration-normal) var(--ease-standard);
+}
+
+/* GPU acceleration hints */
+.gpu-accelerated {
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+.gpu-accelerated-opacity {
+  transform: translateZ(0);
+  will-change: opacity, transform;
+}

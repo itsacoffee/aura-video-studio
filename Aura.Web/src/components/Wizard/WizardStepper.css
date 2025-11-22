@@ -1,0 +1,325 @@
+/**
+ * Premium Wizard Stepper Styles
+ * Circular indicators with animated progress
+ */
+
+.wizard-stepper {
+  width: 100%;
+  padding: 24px 0;
+}
+
+.wizard-stepper__track {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+  position: relative;
+}
+
+.wizard-stepper__step-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  flex: 1;
+  max-width: 180px;
+}
+
+/* ==================== PROGRESS LINE ==================== */
+.wizard-stepper__line-container {
+  position: absolute;
+  top: 24px;
+  right: 50%;
+  left: -50%;
+  height: 4px;
+  display: flex;
+  align-items: center;
+  z-index: 0;
+}
+
+.wizard-stepper__line {
+  width: 100%;
+  height: 2px;
+  background: rgb(255 255 255 / 10%);
+  position: relative;
+  transition: background 400ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.wizard-stepper__line--filled {
+  background: linear-gradient(90deg, #ff6b35 0%, #6366f1 50%, #3b82f6 100%);
+  animation: lineFill 800ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes lineFill {
+  from {
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* ==================== STEP INDICATOR ==================== */
+.wizard-stepper__step {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  cursor: default;
+  position: relative;
+  z-index: 1;
+  padding: 0;
+  transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.wizard-stepper__step-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgb(255 255 255 / 20%);
+  background: rgb(42 42 42 / 95%);
+  transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Upcoming state */
+.wizard-stepper__step--upcoming .wizard-stepper__step-inner {
+  border-color: rgb(255 255 255 / 10%);
+  background: rgb(42 42 42 / 50%);
+}
+
+/* Active state */
+.wizard-stepper__step--active .wizard-stepper__step-inner {
+  border-color: transparent;
+  background: linear-gradient(135deg, #ff6b35 0%, #6366f1 50%, #3b82f6 100%);
+  box-shadow:
+    0 0 20px rgb(255 107 53 / 40%),
+    0 0 40px rgb(59 130 246 / 30%);
+  animation: stepPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes stepPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow:
+      0 0 20px rgb(255 107 53 / 40%),
+      0 0 40px rgb(59 130 246 / 30%);
+  }
+
+  50% {
+    transform: scale(1.05);
+    box-shadow:
+      0 0 30px rgb(255 107 53 / 60%),
+      0 0 60px rgb(59 130 246 / 40%);
+  }
+}
+
+/* Completed state */
+.wizard-stepper__step--completed .wizard-stepper__step-inner {
+  border-color: transparent;
+  background: linear-gradient(135deg, #ff6b35 0%, #6366f1 50%, #3b82f6 100%);
+  box-shadow:
+    0 0 15px rgb(255 107 53 / 30%),
+    0 0 30px rgb(59 130 246 / 20%);
+}
+
+/* Clickable state */
+.wizard-stepper__step--clickable {
+  cursor: pointer;
+}
+
+.wizard-stepper__step--clickable:hover .wizard-stepper__step-inner {
+  transform: scale(1.1);
+  box-shadow:
+    0 0 20px rgb(255 107 53 / 40%),
+    0 0 40px rgb(59 130 246 / 30%);
+}
+
+.wizard-stepper__step--clickable:active .wizard-stepper__step-inner {
+  transform: scale(0.95);
+}
+
+/* Pulse ring for active step */
+.wizard-stepper__pulse-ring {
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 2px solid rgb(255 107 53 / 40%);
+  animation: pulseRing 1.5s ease-out infinite;
+}
+
+@keyframes pulseRing {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+
+/* Step number */
+.wizard-stepper__step-number {
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.wizard-stepper__step--upcoming .wizard-stepper__step-number {
+  color: rgb(255 255 255 / 50%);
+}
+
+/* Checkmark icon */
+.wizard-stepper__checkmark {
+  font-size: 28px;
+  color: #fff;
+}
+
+/* ==================== STEP LABEL ==================== */
+.wizard-stepper__label {
+  margin-top: 12px;
+  text-align: center;
+  max-width: 120px;
+}
+
+.wizard-stepper__label-text {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  display: block;
+  transition: color 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.wizard-stepper__label-text--upcoming {
+  color: rgb(255 255 255 / 40%);
+}
+
+.wizard-stepper__label-text--active {
+  color: #fff;
+  font-weight: 600;
+}
+
+.wizard-stepper__label-text--completed {
+  color: rgb(255 255 255 / 70%);
+}
+
+/* ==================== RESPONSIVE ==================== */
+@media (width <= 1024px) {
+  .wizard-stepper__step-container {
+    max-width: 140px;
+  }
+
+  .wizard-stepper__label {
+    max-width: 100px;
+  }
+
+  .wizard-stepper__label-text {
+    font-size: 12px;
+  }
+}
+
+@media (width <= 768px) {
+  .wizard-stepper__track {
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .wizard-stepper__step-container {
+    flex-direction: row;
+    max-width: none;
+    width: 100%;
+  }
+
+  .wizard-stepper__line-container {
+    inset: 50% auto -24px 24px;
+    width: 2px;
+    height: 24px;
+    transform: translateY(24px);
+  }
+
+  .wizard-stepper__line {
+    width: 2px;
+    height: 100%;
+  }
+
+  .wizard-stepper__label {
+    margin-top: 0;
+    margin-left: 16px;
+    text-align: left;
+    max-width: none;
+    flex: 1;
+  }
+
+  .wizard-stepper__label-text {
+    font-size: 14px;
+  }
+}
+
+/* ==================== LIGHT THEME ==================== */
+.light .wizard-stepper__step-inner {
+  background: rgb(255 255 255 / 95%);
+  border-color: rgb(0 0 0 / 10%);
+}
+
+.light .wizard-stepper__step--upcoming .wizard-stepper__step-inner {
+  background: rgb(255 255 255 / 50%);
+}
+
+.light .wizard-stepper__step--upcoming .wizard-stepper__step-number {
+  color: rgb(0 0 0 / 30%);
+}
+
+.light .wizard-stepper__label-text--upcoming {
+  color: rgb(0 0 0 / 40%);
+}
+
+.light .wizard-stepper__label-text--active {
+  color: #000;
+}
+
+.light .wizard-stepper__label-text--completed {
+  color: rgb(0 0 0 / 70%);
+}
+
+.light .wizard-stepper__line {
+  background: rgb(0 0 0 / 10%);
+}
+
+/* ==================== ACCESSIBILITY ==================== */
+@media (prefers-reduced-motion: reduce) {
+  .wizard-stepper__step,
+  .wizard-stepper__step-inner,
+  .wizard-stepper__line,
+  .wizard-stepper__pulse-ring,
+  .wizard-stepper__step--active .wizard-stepper__step-inner {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .wizard-stepper__step--clickable:hover .wizard-stepper__step-inner {
+    transform: none;
+  }
+}
+
+/* Increase contrast in high contrast mode - commented out due to limited browser support */
+
+/* @media (prefers-contrast: high) {
+  .wizard-stepper__step-inner {
+    border-width: 3px;
+  }
+
+  .wizard-stepper__line {
+    height: 3px;
+  }
+} */
