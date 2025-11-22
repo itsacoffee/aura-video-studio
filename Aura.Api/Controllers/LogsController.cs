@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Hosting;
 using Aura.Core.Logging;
 using System.Text.Json;
 
@@ -47,7 +48,7 @@ public class LogsController : ControllerBase
     [HttpPost("error")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public IActionResult ReceiveError([FromBody] FrontendErrorRequest request)
+    public async Task<IActionResult> ReceiveError([FromBody] FrontendErrorRequest request)
     {
         if (request?.Error == null)
         {
@@ -107,7 +108,7 @@ public class LogsController : ControllerBase
             try
             {
                 var json = JsonSerializer.Serialize(errorEntry, new JsonSerializerOptions { WriteIndented = true });
-                System.IO.File.AppendAllText(errorLogPath, json + Environment.NewLine + new string('-', 80) + Environment.NewLine);
+                await System.IO.File.AppendAllTextAsync(errorLogPath, json + Environment.NewLine + new string('-', 80) + Environment.NewLine);
             }
             catch (Exception ex)
             {

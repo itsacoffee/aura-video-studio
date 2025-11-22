@@ -4,6 +4,7 @@
  */
 
 import React, { Component, ReactNode } from 'react';
+import { apiUrl } from '../../config/api';
 import { loggingService } from '../../services/loggingService';
 import { EnhancedErrorFallback } from './EnhancedErrorFallback';
 
@@ -31,7 +32,11 @@ export class GlobalErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): Partial<State> {
-    const errorId = `ERR_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    // Use crypto.randomUUID for better uniqueness (or fallback to timestamp + random)
+    const errorId =
+      typeof crypto !== 'undefined' && crypto.randomUUID
+        ? `ERR_${Date.now()}_${crypto.randomUUID().substring(0, 9)}`
+        : `ERR_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 
     // Log to console for immediate debugging
     console.error(`[ErrorBoundary] ${errorId}:`, error);
@@ -66,7 +71,7 @@ export class GlobalErrorBoundary extends Component<Props, State> {
    */
   private logErrorToService = async (error: Error, errorInfo: React.ErrorInfo): Promise<void> => {
     try {
-      await fetch('/api/logs/error', {
+      await fetch(apiUrl('/api/logs/error'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

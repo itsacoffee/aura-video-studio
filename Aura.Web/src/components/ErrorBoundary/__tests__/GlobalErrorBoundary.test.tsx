@@ -8,6 +8,11 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { GlobalErrorBoundary } from '../GlobalErrorBoundary';
 
+// Mock the apiUrl function
+vi.mock('../../../config/api', () => ({
+  apiUrl: (path: string) => `http://localhost:5005${path}`,
+}));
+
 // Component that throws an error
 function ThrowError({ shouldThrow }: { shouldThrow: boolean }) {
   if (shouldThrow) {
@@ -81,7 +86,7 @@ describe('GlobalErrorBoundary', () => {
     // Wait for fetch to be called
     await vi.waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/logs/error',
+        'http://localhost:5005/api/logs/error',
         expect.objectContaining({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -101,7 +106,7 @@ describe('GlobalErrorBoundary', () => {
         stack: expect.any(String),
       },
       context: {
-        errorId: expect.stringMatching(/^ERR_\d+_[a-z0-9]+$/),
+        errorId: expect.stringMatching(/^ERR_\d+_[a-z0-9-]+$/), // Updated to allow hyphens from UUID
         componentStack: expect.any(String),
       },
       userAgent: expect.any(String),
@@ -125,8 +130,8 @@ describe('GlobalErrorBoundary', () => {
     const firstCallBody = JSON.parse(fetchMock.mock.calls[0][1].body);
     const firstErrorId = firstCallBody.context.errorId;
 
-    // Verify error ID format
-    expect(firstErrorId).toMatch(/^ERR_\d+_[a-z0-9]+$/);
+    // Verify error ID format (supports both crypto.randomUUID and Math.random formats)
+    expect(firstErrorId).toMatch(/^ERR_\d+_[a-z0-9-]+$/);
   });
 
   it('handles fetch errors gracefully', async () => {
@@ -166,8 +171,8 @@ describe('GlobalErrorBoundary', () => {
     const errorCodeElement = screen.getByText(/Error Code:/);
     expect(errorCodeElement).toBeInTheDocument();
 
-    // Error code should match format ERR_timestamp_random
+    // Error code should match format (supports both crypto.randomUUID and Math.random formats)
     const errorCodeText = errorCodeElement.textContent || '';
-    expect(errorCodeText).toMatch(/ERR_\d+_[a-z0-9]+/);
+    expect(errorCodeText).toMatch(/ERR_\d+_[a-z0-9-]+/);
   });
 });
