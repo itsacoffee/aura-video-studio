@@ -1,6 +1,4 @@
-using Aura.Core.Configuration;
 using System.Diagnostics;
-using System.Reflection;
 
 namespace Aura.Api.HostedServices;
 
@@ -37,7 +35,7 @@ public class StartupDiagnosticsService : IHostedService
         var ffmpegPath = _configuration["FFmpeg:BinaryPath"] ?? "ffmpeg";
         try
         {
-            var process = Process.Start(new ProcessStartInfo
+            using var process = Process.Start(new ProcessStartInfo
             {
                 FileName = ffmpegPath,
                 Arguments = "-version",
