@@ -97,7 +97,9 @@ function App() {
   const [isCheckingFirstRun, setIsCheckingFirstRun] = useState(true);
   const [shouldShowOnboarding, setShouldShowOnboarding] = useState(false);
 
-  const [isInitializing, setIsInitializing] = useState(true);
+  // isInitializing should only be true if we need to show InitializationScreen
+  // The first-run check handles its own loading state, so we start with false
+  const [isInitializing, setIsInitializing] = useState(false);
   const [initializationError, setInitializationError] = useState<InitializationError | null>(null);
   const [initializationTimeout, setInitializationTimeout] = useState(false);
   const [showCrashRecovery, setShowCrashRecovery] = useState(false);
@@ -251,7 +253,7 @@ function App() {
         console.info('[App] ✓ Finalizing first-run check...');
         clearTimeout(timeoutId); // Clear timeout on success
         setIsCheckingFirstRun(false);
-        setIsInitializing(false);
+        // isInitializing should remain false - first-run check handles its own loading
         console.info('[App] ✓ App ready to render');
       }
     }
