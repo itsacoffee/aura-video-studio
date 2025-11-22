@@ -259,9 +259,11 @@ if (-not $SkipBackend) {
     $efTools = dotnet tool list -g | Select-String "dotnet-ef"
     if (-not $efTools) {
         Write-Info "Installing Entity Framework tools..."
-        dotnet tool install --global dotnet-ef 2>&1 | Out-Null
+        $installOutput = dotnet tool install --global dotnet-ef 2>&1
         if ($LASTEXITCODE -ne 0) {
             Show-Warning "  Could not install dotnet-ef tools. Database migration check skipped."
+            Show-Warning "  Migrations will be applied automatically on first application start."
+            Write-Host "  Installation error: $installOutput" -ForegroundColor Gray
         }
         else {
             Write-Success "  ✓ Entity Framework tools installed"
@@ -271,15 +273,18 @@ if (-not $SkipBackend) {
     }
     else {
         Write-Info "Entity Framework tools already installed, attempting update..."
-        dotnet tool update --global dotnet-ef 2>&1 | Out-Null
+        $updateOutput = dotnet tool update --global dotnet-ef 2>&1
         if ($LASTEXITCODE -ne 0) {
             Show-Warning "  Could not update dotnet-ef tools. Will attempt to reinstall..."
+            Write-Host "  Update error: $updateOutput" -ForegroundColor Gray
             # Try to uninstall first
             dotnet tool uninstall --global dotnet-ef 2>&1 | Out-Null
             # Then install fresh
-            dotnet tool install --global dotnet-ef 2>&1 | Out-Null
+            $reinstallOutput = dotnet tool install --global dotnet-ef 2>&1
             if ($LASTEXITCODE -ne 0) {
                 Show-Warning "  Could not reinstall dotnet-ef tools. Database migration check skipped."
+                Show-Warning "  Migrations will be applied automatically on first application start."
+                Write-Host "  Reinstall error: $reinstallOutput" -ForegroundColor Gray
                 $efTools = $null
             }
             else {
@@ -305,13 +310,16 @@ if (-not $SkipBackend) {
                     Write-Host "  Migration output: $migrationOutput" -ForegroundColor Gray
                 }
             } else {
-                Show-Warning "  Database migration check skipped (will be created on first run)"
+                Show-Warning "  Could not apply migrations during build (will be applied on first app start)"
                 Write-Host "  Migration output: $migrationOutput" -ForegroundColor Gray
             }
         } catch {
-            Show-Warning "  Database migration check skipped (will be created on first run)"
+            Show-Warning "  Could not apply migrations during build (will be applied on first app start)"
             Write-Host "  Error: $($_.Exception.Message)" -ForegroundColor Gray
         }
+    }
+    else {
+        Write-Info "Skipping build-time migration check (migrations will run automatically on first app start)"
     }
     
     # Return to script directory
