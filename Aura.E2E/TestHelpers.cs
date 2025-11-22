@@ -1,18 +1,11 @@
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
-using System.Collections.Generic;
-using System.Runtime.CompilerServices;
 using Aura.Core.Models.Streaming;
 using Aura.Core.Models.Visual;
-using System.Collections.Generic;
-using System.Runtime.CompilerServices;
-using Aura.Core.Models.Streaming;
 using Aura.Core.Providers;
-using System.Collections.Generic;
-using System.Runtime.CompilerServices;
-using Aura.Core.Models.Streaming;
 
 namespace Aura.E2E;
 
