@@ -1,0 +1,380 @@
+/**
+ * Animated Icon Component Styles
+ * Fire/Ice/Energy effects inspired by ui2.png mock
+ */
+
+.animated-icon {
+  position: relative;
+  display: inline-block;
+  overflow: visible;
+}
+
+/* ==================== GLOW EFFECTS ==================== */
+.animated-icon__glow {
+  position: absolute;
+  inset: -20%;
+  border-radius: 50%;
+  pointer-events: none;
+  transition: opacity 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.animated-icon__glow--outer {
+  background: radial-gradient(
+    circle,
+    rgb(255 107 53 / 15%) 0%,
+    rgb(99 102 241 / 10%) 50%,
+    transparent 70%
+  );
+  animation: glowPulseOuter 3s ease-in-out infinite;
+}
+
+.animated-icon__glow--inner {
+  inset: -10%;
+  background: radial-gradient(
+    circle,
+    rgb(255 107 53 / 20%) 0%,
+    rgb(59 130 246 / 15%) 50%,
+    transparent 70%
+  );
+  animation: glowPulseInner 2s ease-in-out infinite;
+  animation-delay: 0.5s;
+}
+
+@keyframes glowPulseOuter {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.6;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes glowPulseInner {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.7;
+    transform: scale(1.15);
+  }
+}
+
+/* ==================== FIRE VARIANT ==================== */
+.animated-icon--fire .animated-icon__glow--outer {
+  background: radial-gradient(
+    circle,
+    rgb(255 107 53 / 25%) 0%,
+    rgb(255 137 96 / 15%) 40%,
+    rgb(232 93 47 / 10%) 60%,
+    transparent 80%
+  );
+}
+
+.animated-icon--fire .animated-icon__glow--inner {
+  background: radial-gradient(
+    circle,
+    rgb(255 107 53 / 35%) 0%,
+    rgb(255 137 96 / 20%) 50%,
+    transparent 70%
+  );
+}
+
+.animated-icon--fire .animated-icon__flame {
+  animation: flameFlicker 1.5s ease-in-out infinite;
+}
+
+@keyframes flameFlicker {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(1) translateY(0);
+  }
+
+  25% {
+    opacity: 0.6;
+    transform: scale(1.05) translateY(-2px);
+  }
+
+  50% {
+    opacity: 0.3;
+    transform: scale(0.95) translateY(-1px);
+  }
+
+  75% {
+    opacity: 0.5;
+    transform: scale(1.02) translateY(-3px);
+  }
+}
+
+/* Fire particles */
+.animated-icon__particles--fire {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.animated-icon__particles--fire .animated-icon__particle {
+  position: absolute;
+  bottom: 0;
+  width: 4px;
+  height: 4px;
+  background: radial-gradient(circle, #ff8960, #ff6b35);
+  border-radius: 50%;
+  opacity: 0;
+  animation: fireParticleRise 3s ease-out infinite;
+  box-shadow: 0 0 8px rgb(255 107 53 / 60%);
+}
+
+@keyframes fireParticleRise {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.5);
+  }
+
+  20% {
+    opacity: 1;
+  }
+
+  80% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-100px) translateX(15px) scale(0);
+  }
+}
+
+/* ==================== ICE VARIANT ==================== */
+.animated-icon--ice .animated-icon__glow--outer {
+  background: radial-gradient(
+    circle,
+    rgb(59 130 246 / 25%) 0%,
+    rgb(96 165 250 / 15%) 40%,
+    rgb(147 197 253 / 10%) 60%,
+    transparent 80%
+  );
+}
+
+.animated-icon--ice .animated-icon__glow--inner {
+  background: radial-gradient(
+    circle,
+    rgb(59 130 246 / 35%) 0%,
+    rgb(96 165 250 / 20%) 50%,
+    transparent 70%
+  );
+}
+
+.animated-icon--ice .animated-icon__crystal {
+  animation: crystalShimmer 2s ease-in-out infinite;
+}
+
+.animated-icon--ice .animated-icon__crystal--1 {
+  animation-delay: 0s;
+}
+
+.animated-icon--ice .animated-icon__crystal--2 {
+  animation-delay: 0.7s;
+}
+
+.animated-icon--ice .animated-icon__crystal--3 {
+  animation-delay: 1.4s;
+}
+
+@keyframes crystalShimmer {
+  0%,
+  100% {
+    opacity: 0.5;
+    filter: brightness(1);
+  }
+
+  50% {
+    opacity: 0.8;
+    filter: brightness(1.3);
+  }
+}
+
+/* Ice particles */
+.animated-icon__particles--ice {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.animated-icon__particle--ice {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: radial-gradient(circle, #93c5fd, #60a5fa);
+  border-radius: 50%;
+  opacity: 0;
+  animation: iceSparkle 4s ease-in-out infinite;
+  box-shadow: 0 0 10px rgb(59 130 246 / 60%);
+}
+
+@keyframes iceSparkle {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+/* ==================== ENERGY VARIANT ==================== */
+.animated-icon--energy .animated-icon__glow--outer {
+  background: radial-gradient(
+    circle,
+    rgb(99 102 241 / 30%) 0%,
+    rgb(129 140 248 / 20%) 40%,
+    rgb(167 139 250 / 15%) 60%,
+    transparent 80%
+  );
+}
+
+.animated-icon--energy .animated-icon__glow--inner {
+  background: radial-gradient(
+    circle,
+    rgb(99 102 241 / 40%) 0%,
+    rgb(129 140 248 / 25%) 50%,
+    transparent 70%
+  );
+}
+
+/* Lightning bolts */
+.animated-icon__lightning {
+  position: absolute;
+  width: 2px;
+  height: 40px;
+  background: linear-gradient(180deg, rgb(129 140 248 / 80%), transparent);
+  box-shadow: 0 0 8px rgb(99 102 241 / 80%);
+  opacity: 0;
+  animation: lightningStrike 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.animated-icon__lightning--1 {
+  top: 20%;
+  left: 30%;
+  transform: rotate(-15deg);
+  animation-delay: 0s;
+}
+
+.animated-icon__lightning--2 {
+  top: 30%;
+  left: 65%;
+  transform: rotate(20deg);
+  animation-delay: 1s;
+}
+
+.animated-icon__lightning--3 {
+  top: 60%;
+  left: 45%;
+  transform: rotate(-5deg);
+  animation-delay: 2s;
+}
+
+@keyframes lightningStrike {
+  0%,
+  10%,
+  100% {
+    opacity: 0;
+  }
+
+  5% {
+    opacity: 1;
+  }
+
+  8% {
+    opacity: 0;
+  }
+
+  9% {
+    opacity: 1;
+  }
+}
+
+/* ==================== SVG ANIMATIONS ==================== */
+.animated-icon__svg {
+  position: relative;
+  z-index: 2;
+  display: block;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 4px 12px rgb(0 0 0 / 30%));
+}
+
+.animated-icon--active .animated-icon__ring {
+  animation: ringRotate 12s linear infinite;
+  transform-origin: center;
+}
+
+@keyframes ringRotate {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animated-icon--active .animated-icon__shape {
+  animation: shapeFloat 4s ease-in-out infinite;
+}
+
+@keyframes shapeFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+/* ==================== HOVER EFFECTS ==================== */
+.animated-icon:hover .animated-icon__glow--outer {
+  opacity: 1.5;
+  transform: scale(1.2);
+}
+
+.animated-icon:hover .animated-icon__glow--inner {
+  opacity: 1.3;
+  transform: scale(1.25);
+}
+
+.animated-icon:hover .animated-icon__svg {
+  filter: drop-shadow(0 6px 16px rgb(0 0 0 / 40%));
+}
+
+/* ==================== ACCESSIBILITY ==================== */
+@media (prefers-reduced-motion: reduce) {
+  .animated-icon__glow,
+  .animated-icon__ring,
+  .animated-icon__shape,
+  .animated-icon__flame,
+  .animated-icon__crystal,
+  .animated-icon__particle,
+  .animated-icon__lightning {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .animated-icon:hover .animated-icon__glow--outer,
+  .animated-icon:hover .animated-icon__glow--inner {
+    transform: none;
+  }
+}

@@ -1,5 +1,7 @@
 @import url('./styles/editor-design-tokens.css');
 @import url('./styles/controls.css');
+@import url('./styles/animations.css');
+@import url('./styles/elevation.css');
 
 @tailwind base;
 @tailwind components;
