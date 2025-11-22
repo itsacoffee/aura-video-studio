@@ -664,7 +664,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
   const handleExitWizard = async () => {
     const confirmed = window.confirm(
       'Are you sure you want to exit the setup wizard?\n\n' +
-        'You can complete setup later from the Settings page.'
+        'Your progress will be saved and you can complete setup later from the Settings page.'
     );
 
     if (confirmed) {
@@ -674,16 +674,27 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
         await saveWizardProgressToBackend(state);
         localStorage.setItem('aura-setup-aborted', 'true');
         localStorage.setItem('aura-setup-aborted-step', state.step.toString());
+
+        // CRITICAL FIX: Mark first run as completed to prevent wizard loop
+        // This allows user to exit wizard and return to main app without being trapped in wizard loop
+        // The saved progress allows them to resume wizard later from Settings if they want to complete it
+        console.info('[FirstRunWizard] Marking first run as completed to allow exit to main app');
+        await markFirstRunCompleted();
       } catch (error: unknown) {
         const errorObj = error instanceof Error ? error : new Error(String(error));
         console.warn('[FirstRunWizard] Failed to save progress on exit:', errorObj);
       }
 
-      // Navigate to main app
+      showSuccessToast({
+        title: 'Setup Progress Saved',
+        message: 'You can resume setup anytime from Settings.',
+      });
+
+      // Navigate to main app (dashboard)
       if (onComplete) {
         await onComplete();
       } else {
-        navigate('/');
+        navigate('/dashboard');
       }
     }
   };
