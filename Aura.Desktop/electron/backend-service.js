@@ -716,12 +716,14 @@ class BackendService {
     let lastError = null;
 
     for (let i = 0; i < maxAttempts; i++) {
-      // Check if process is still running
-      if (this.process && this.process.killed) {
+      // Check if process has actually exited (not just if kill was called)
+      if (this.process && (this.process.exitCode !== null || this.process.signalCode !== null)) {
+        const startupOutput = this.startupOutputLines.join('\n') || '(no output captured)';
+        const errorOutput = this.errorOutputLines.join('\n') || '(no errors captured)';
         const errorMessage = 
-          `Backend process was killed during startup.\n` +
-          `Startup output: ${this.startupOutput || '(no output captured)'}\n` +
-          `Error output: ${this.errorOutput || '(no errors captured)'}`;
+          `Backend process exited during startup (exitCode: ${this.process.exitCode}, signal: ${this.process.signalCode}).\n` +
+          `Startup output: ${startupOutput}\n` +
+          `Error output: ${errorOutput}`;
         throw new Error(errorMessage);
       }
 
@@ -762,13 +764,16 @@ class BackendService {
     }
 
     // Provide detailed error message
+    const startupOutput = this.startupOutputLines.join('\n') || '(no output captured)';
+    const errorOutput = this.errorOutputLines.join('\n') || '(no errors captured)';
+    const processRunning = this.process && this.process.exitCode === null && this.process.signalCode === null;
     const errorMessage = 
       `Backend failed to start within ${this.BACKEND_STARTUP_TIMEOUT}ms\n` +
       `Health check URL: ${readinessUrl}\n` +
       `Last error: ${lastError ? lastError.message : 'None'}\n` +
-      `Process running: ${this.process && !this.process.killed}\n` +
-      `Startup output: ${this.startupOutput || '(no output captured)'}\n` +
-      `Error output: ${this.errorOutput || '(no errors captured)'}`;
+      `Process running: ${processRunning}\n` +
+      `Startup output: ${startupOutput}\n` +
+      `Error output: ${errorOutput}`;
     
     throw new Error(errorMessage);
   }
@@ -996,9 +1001,10 @@ class BackendService {
    * Setup process event handlers
    */
   _setupProcessHandlers() {
-    // Track startup output for diagnostics
-    this.startupOutput = '';
-    this.errorOutput = '';
+    // Track startup output for diagnostics using arrays for efficiency
+    this.startupOutputLines = [];
+    this.errorOutputLines = [];
+    const MAX_OUTPUT_SIZE = 5000; // 5KB limit
     
     // Handle backend output
     this.process.stdout.on("data", (data) => {
@@ -1007,8 +1013,9 @@ class BackendService {
         console.log(`[Backend] ${message}`);
         
         // Capture startup output for diagnostics (first 5KB only)
-        if (this.startupOutput.length < 5000) {
-          this.startupOutput += message + '\n';
+        const currentSize = this.startupOutputLines.join('\n').length;
+        if (currentSize < MAX_OUTPUT_SIZE) {
+          this.startupOutputLines.push(message);
         }
         
         // Log important startup messages
@@ -1026,8 +1033,9 @@ class BackendService {
         console.error(`[Backend Error] ${message}`);
         
         // Capture error output for diagnostics (first 5KB only)
-        if (this.errorOutput.length < 5000) {
-          this.errorOutput += message + '\n';
+        const currentSize = this.errorOutputLines.join('\n').length;
+        if (currentSize < MAX_OUTPUT_SIZE) {
+          this.errorOutputLines.push(message);
         }
       }
     });
@@ -1038,8 +1046,10 @@ class BackendService {
 
       // Log captured output if backend failed during startup
       if (code !== 0 && code !== null) {
-        console.error('[Backend] Startup output:', this.startupOutput || '(no output captured)');
-        console.error('[Backend] Error output:', this.errorOutput || '(no errors captured)');
+        const startupOutput = this.startupOutputLines.join('\n') || '(no output captured)';
+        const errorOutput = this.errorOutputLines.join('\n') || '(no errors captured)';
+        console.error('[Backend] Startup output:', startupOutput);
+        console.error('[Backend] Error output:', errorOutput);
       }
 
       // Don't restart if we're intentionally quitting or already restarting
