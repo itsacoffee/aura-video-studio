@@ -80,16 +80,89 @@ class BackendService {
   }
 
   /**
-   * Start the backend service
+   * Start the backend service with retry logic
    */
   async start() {
-    try {
-      console.log(`Starting backend on ${this.baseUrl}...`);
+    const maxRetries = 3;
+    let lastError = null;
 
-      // Check for orphaned backend processes from previous runs
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        if (attempt > 1) {
+          const backoffMs = Math.min(1000 * Math.pow(2, attempt - 2), 5000);
+          console.log(
+            `[BackendService] Retry attempt ${attempt}/${maxRetries} after ${backoffMs}ms backoff...`
+          );
+          await new Promise((resolve) => setTimeout(resolve, backoffMs));
+        }
+
+        await this._startInternal();
+        console.log(`[BackendService] Backend started successfully on attempt ${attempt}`);
+        return this.port;
+      } catch (error) {
+        lastError = error;
+        console.error(
+          `[BackendService] Startup attempt ${attempt}/${maxRetries} failed:`,
+          error.message
+        );
+
+        // Don't retry for certain unrecoverable errors
+        if (
+          error.message.includes("Backend executable not found") ||
+          error.message.includes(".NET runtime") ||
+          error.message.includes("missing required dependencies")
+        ) {
+          console.error(
+            "[BackendService] Unrecoverable error detected, skipping retries"
+          );
+          throw error;
+        }
+
+        // Clean up failed process if it exists
+        if (this.process && !this.process.killed) {
+          try {
+            this.process.kill("SIGKILL");
+          } catch (killErr) {
+            console.warn("[BackendService] Failed to kill failed process:", killErr.message);
+          }
+        }
+        this.process = null;
+        this.backendProcess = null;
+        this.pid = null;
+      }
+    }
+
+    // All retries failed
+    throw new Error(
+      `Backend failed to start after ${maxRetries} attempts. Last error: ${lastError.message}`
+    );
+  }
+
+  /**
+   * Internal startup implementation with comprehensive validation
+   */
+  async _startInternal() {
+    try {
+      console.log(`[BackendService] Starting backend on ${this.baseUrl}...`);
+
+      // PRE-STARTUP VALIDATION PHASE
+      console.log("[BackendService] Running pre-startup validation checks...");
+
+      // 1. Check for orphaned backend processes from previous runs
       await this._detectAndCleanupOrphanedBackend();
 
-      // Determine backend executable path
+      // 2. Validate .NET runtime availability
+      const dotnetValidation = await this._validateDotnetRuntime();
+      if (!dotnetValidation.available) {
+        throw new Error(
+          `Backend startup failed: .NET runtime not found or incompatible. ${dotnetValidation.error || ""}\n` +
+          `Required: .NET 8.0 SDK or Runtime\n` +
+          `Install from: https://dotnet.microsoft.com/download/dotnet/8.0`
+        );
+      }
+      console.log(`[BackendService] ✓ .NET runtime validated: ${dotnetValidation.version}`);
+
+      // 3. Determine backend executable path
       let backendPath = null;
       let useDotnetRun = false;
 
@@ -98,35 +171,68 @@ class BackendService {
       } catch (e) {
         if (this.isDev) {
           console.log(
-            "Backend executable not found, falling back to 'dotnet run'"
+            "[BackendService] Backend executable not found, falling back to 'dotnet run'"
           );
           useDotnetRun = true;
         } else {
-          throw e;
+          throw new Error(
+            `Backend executable not found: ${e.message}\n` +
+            `Expected location: ${this._getExpectedBackendPath()}\n` +
+            `This indicates the application was not properly installed or the backend build is missing.`
+          );
         }
       }
 
-      // Check if backend executable exists (if not using dotnet run)
-      if (!useDotnetRun && !fs.existsSync(backendPath)) {
-        throw new Error(`Backend executable not found at: ${backendPath}`);
+      // 4. Validate backend executable exists and is accessible
+      if (!useDotnetRun) {
+        const exeValidation = this._validateBackendExecutable(backendPath);
+        if (!exeValidation.valid) {
+          throw new Error(
+            `Backend executable validation failed: ${exeValidation.error}\n` +
+            `Path: ${backendPath}\n` +
+            `${exeValidation.suggestion || ""}`
+          );
+        }
+        console.log(`[BackendService] ✓ Backend executable validated: ${backendPath}`);
       }
 
-      // Make executable on Unix-like systems
+      // 5. Make executable on Unix-like systems
       if (!useDotnetRun && process.platform !== "win32") {
         try {
           fs.chmodSync(backendPath, 0o755);
+          console.log("[BackendService] ✓ Executable permissions set");
         } catch (error) {
-          console.warn("Failed to make backend executable:", error.message);
+          console.warn("[BackendService] ⚠ Failed to make backend executable:", error.message);
         }
       }
 
-      // Get FFmpeg path
+      // 6. Check port availability
+      const portCheck = await this._checkPortAvailability(this.port);
+      if (!portCheck.available) {
+        throw new Error(
+          `Backend startup failed: Port ${this.port} is already in use.\n` +
+          `${portCheck.conflictInfo || ""}\n` +
+          `Please close the application using this port and try again.`
+        );
+      }
+      console.log(`[BackendService] ✓ Port ${this.port} is available`);
+
+      // 7. Validate FFmpeg availability (warning only, not fatal)
       const ffmpegPath = this._getFFmpegPath();
       const ffmpegExists = this._verifyFFmpeg(ffmpegPath);
 
       if (!ffmpegExists) {
-        console.warn("FFmpeg not found - video rendering may not work");
+        console.warn(
+          "[BackendService] ⚠ FFmpeg not found - video rendering may not work\n" +
+          `  Expected: ${ffmpegPath}\n` +
+          "  Video generation features will be disabled until FFmpeg is installed."
+        );
+      } else {
+        console.log(`[BackendService] ✓ FFmpeg validated: ${ffmpegPath}`);
       }
+
+      // STARTUP PHASE
+      console.log("[BackendService] Pre-startup validation complete, starting backend process...");
 
       // Prepare environment variables
       const env = this._prepareEnvironment();
@@ -134,13 +240,14 @@ class BackendService {
       // Create necessary directories
       this._createDirectories(env);
 
-      console.log("Backend configuration:");
-      console.log("  - URL:", this.baseUrl);
-      console.log("  - Port:", this.port);
-      console.log("  - Environment:", env.DOTNET_ENVIRONMENT);
-      console.log("  - FFmpeg path:", ffmpegPath);
-      console.log("  - Health endpoint:", this.healthEndpoint);
-      console.log("  - ASPNETCORE_URLS:", env.ASPNETCORE_URLS);
+      console.log("[BackendService] Backend configuration:");
+      console.log("[BackendService]   URL:", this.baseUrl);
+      console.log("[BackendService]   Port:", this.port);
+      console.log("[BackendService]   Environment:", env.DOTNET_ENVIRONMENT);
+      console.log("[BackendService]   FFmpeg path:", ffmpegPath || "(not found)");
+      console.log("[BackendService]   Health endpoint:", this.healthEndpoint);
+      console.log("[BackendService]   ASPNETCORE_URLS:", env.ASPNETCORE_URLS);
+      console.log("[BackendService]   Command:", useDotnetRun ? "dotnet run" : backendPath);
 
       if (useDotnetRun) {
         // Run via dotnet run
@@ -148,7 +255,8 @@ class BackendService {
           __dirname,
           "../../Aura.Api/Aura.Api.csproj"
         );
-        console.log("Starting backend via dotnet run...");
+        console.log("[BackendService] Starting backend via dotnet run...");
+        console.log("[BackendService] Project:", apiProject);
 
         // Use --urls to explicitly set the listening address, bypassing launchSettings.json
         this.process = spawn(
@@ -170,7 +278,7 @@ class BackendService {
         );
       } else {
         // Spawn backend executable
-        console.log("Backend executable:", backendPath);
+        console.log("[BackendService] Spawning backend executable:", backendPath);
         this.process = spawn(backendPath, [], {
           env,
           stdio: ["ignore", "pipe", "pipe"],
@@ -179,9 +287,19 @@ class BackendService {
         });
       }
 
+      // Verify process spawned successfully
+      if (!this.process || !this.process.pid) {
+        throw new Error(
+          "Backend process failed to spawn. The process object is invalid.\n" +
+          "This may indicate a system-level issue preventing process creation."
+        );
+      }
+
       // Store both process reference and PID
       this.backendProcess = this.process; // Alias for consistency
       this.pid = this.process.pid;
+
+      console.log(`[BackendService] ✓ Backend process spawned (PID: ${this.pid})`);
 
       // Register with ProcessManager if available
       if (this.processManager) {
@@ -195,10 +313,13 @@ class BackendService {
       // Setup process handlers
       this._setupProcessHandlers();
 
+      // HEALTH CHECK PHASE
+      console.log("[BackendService] Waiting for backend to become healthy...");
+
       // Wait for backend to be ready
       await this._waitForBackend();
 
-      console.log("Backend started successfully");
+      console.log("[BackendService] ✓ Backend health check passed");
 
       // Persist FFmpeg path to backend configuration if detected
       if (ffmpegExists) {
@@ -210,9 +331,25 @@ class BackendService {
       // Start periodic health checks
       this._startHealthChecks();
 
-      return this.port;
+      console.log("[BackendService] ✓ Backend started successfully");
     } catch (error) {
-      console.error("Backend startup error:", error);
+      // Enhanced error logging with context
+      console.error("[BackendService] Backend startup failed:", error.message);
+
+      // Add diagnostic information to the error
+      if (error.diagnostics === undefined) {
+        error.diagnostics = {
+          port: this.port,
+          baseUrl: this.baseUrl,
+          isDev: this.isDev,
+          processSpawned: !!this.process,
+          processPid: this.process?.pid || null,
+          processExited: this.process?.exitCode !== null || this.process?.signalCode !== null,
+          startupOutput: this.startupOutputLines?.slice(0, 20).join("\n") || "(none)",
+          errorOutput: this.errorOutputLines?.slice(0, 20).join("\n") || "(none)",
+        };
+      }
+
       throw error;
     }
   }
@@ -896,22 +1033,49 @@ class BackendService {
       }
     }
 
-    // Provide detailed error message
+    // Provide detailed error message with classification
     const startupOutput =
-      this.startupOutputLines.join("\n") || "(no output captured)";
+      this.startupOutputLines?.join("\n") || "(no output captured)";
     const errorOutput =
-      this.errorOutputLines.join("\n") || "(no errors captured)";
+      this.errorOutputLines?.join("\n") || "(no errors captured)";
     const processRunning =
       this.process &&
       this.process.exitCode === null &&
       this.process.signalCode === null;
+
+    // Classify the failure type for better error messages
+    let failureType = "TIMEOUT";
+    let userGuidance = "The backend took too long to start.";
+
+    if (!processRunning) {
+      failureType = "PROCESS_EXITED";
+      userGuidance = "The backend process exited unexpectedly during startup.";
+    } else if (lastError && lastError.code === "ECONNREFUSED") {
+      failureType = "BINDING_FAILED";
+      userGuidance = "The backend process is running but failed to bind to the port.";
+    } else if (lastError && lastError.code === "ETIMEDOUT") {
+      failureType = "HEALTH_CHECK_TIMEOUT";
+      userGuidance = "The backend is not responding to health checks.";
+    }
+
+    // Build error message with clear sections
+    const logsPath = path.join(this.app.getPath("userData"), "logs");
     const errorMessage =
-      `Backend failed to start within ${this.BACKEND_STARTUP_TIMEOUT}ms\n` +
-      `Health check URL: ${readinessUrl}\n` +
-      `Last error: ${lastError ? lastError.message : "None"}\n` +
-      `Process running: ${processRunning}\n` +
-      `Startup output: ${startupOutput}\n` +
-      `Error output: ${errorOutput}`;
+      `Backend startup failed (${failureType})\n\n` +
+      `${userGuidance}\n\n` +
+      `Technical Details:\n` +
+      `- Health check URL: ${readinessUrl}\n` +
+      `- Timeout: ${this.BACKEND_STARTUP_TIMEOUT}ms\n` +
+      `- Last error: ${lastError ? lastError.message + (lastError.code ? ` (${lastError.code})` : '') : "None"}\n` +
+      `- Process running: ${processRunning}\n` +
+      `- Process PID: ${this.process?.pid || "N/A"}\n\n` +
+      `Startup output (last 500 chars):\n${startupOutput.slice(-500)}\n\n` +
+      `Error output (last 500 chars):\n${errorOutput.slice(-500)}\n\n` +
+      `Troubleshooting:\n` +
+      `1. Check if port ${this.port} is available\n` +
+      `2. Verify .NET 8.0 runtime is installed\n` +
+      `3. Check Windows Firewall settings\n` +
+      `4. Review logs in: ${logsPath}`;
 
     throw new Error(errorMessage);
   }
@@ -1512,6 +1676,206 @@ class BackendService {
         });
       }
     });
+  }
+
+  /**
+   * Validate .NET runtime availability
+   * @returns {Promise<{available: boolean, version?: string, error?: string}>}
+   */
+  async _validateDotnetRuntime() {
+    return new Promise((resolve) => {
+      exec("dotnet --version", { timeout: 5000 }, (error, stdout, stderr) => {
+        if (error) {
+          resolve({
+            available: false,
+            error: `.NET runtime not detected. Error: ${error.message}`,
+          });
+          return;
+        }
+
+        const version = stdout.trim();
+        // Check if version is 8.x.x or higher
+        const versionMatch = version.match(/^(\d+)\.(\d+)/);
+        if (!versionMatch) {
+          resolve({
+            available: false,
+            error: `Unable to parse .NET version: ${version}`,
+          });
+          return;
+        }
+
+        const majorVersion = parseInt(versionMatch[1], 10);
+        if (majorVersion < 8) {
+          resolve({
+            available: false,
+            error: `Incompatible .NET version: ${version}. Required: 8.0 or higher`,
+          });
+          return;
+        }
+
+        resolve({
+          available: true,
+          version: version,
+        });
+      });
+    });
+  }
+
+  /**
+   * Validate backend executable
+   * @param {string} backendPath - Path to backend executable
+   * @returns {{valid: boolean, error?: string, suggestion?: string}}
+   */
+  _validateBackendExecutable(backendPath) {
+    // Check if file exists
+    if (!fs.existsSync(backendPath)) {
+      return {
+        valid: false,
+        error: "Backend executable file not found",
+        suggestion:
+          "The application may not be properly installed. Try reinstalling Aura Video Studio.",
+      };
+    }
+
+    // Check if it's a file (not directory)
+    const stats = fs.statSync(backendPath);
+    if (!stats.isFile()) {
+      return {
+        valid: false,
+        error: "Backend path is not a file",
+        suggestion: `Expected a file but found ${stats.isDirectory() ? "a directory" : "something else"} at: ${backendPath}`,
+      };
+    }
+
+    // Check file permissions on Unix
+    if (process.platform !== "win32") {
+      try {
+        fs.accessSync(backendPath, fs.constants.X_OK);
+      } catch (err) {
+        return {
+          valid: false,
+          error: "Backend executable lacks execute permissions",
+          suggestion: `Run: chmod +x "${backendPath}"`,
+        };
+      }
+    }
+
+    // Check file size (should be > 1KB)
+    if (stats.size < 1024) {
+      return {
+        valid: false,
+        error: "Backend executable file is too small (possibly corrupted)",
+        suggestion: "Try reinstalling Aura Video Studio.",
+      };
+    }
+
+    return { valid: true };
+  }
+
+  /**
+   * Check if a port is available
+   * @param {number} port - Port to check
+   * @returns {Promise<{available: boolean, conflictInfo?: string}>}
+   */
+  async _checkPortAvailability(port) {
+    return new Promise((resolve) => {
+      const testServer = net.createServer();
+
+      testServer.once("error", (err) => {
+        if (err.code === "EADDRINUSE") {
+          // Port is in use - try to identify what's using it
+          this._identifyPortUser(port).then((info) => {
+            resolve({
+              available: false,
+              conflictInfo: info || `Another application is using port ${port}`,
+            });
+          });
+        } else {
+          resolve({
+            available: false,
+            conflictInfo: `Port check failed: ${err.message}`,
+          });
+        }
+      });
+
+      testServer.once("listening", () => {
+        testServer.close(() => {
+          resolve({ available: true });
+        });
+      });
+
+      testServer.listen(port, "127.0.0.1");
+    });
+  }
+
+  /**
+   * Try to identify what process is using a port
+   * @param {number} port - Port number
+   * @returns {Promise<string>}
+   */
+  async _identifyPortUser(port) {
+    return new Promise((resolve) => {
+      if (this.isWindows) {
+        exec(`netstat -ano | findstr :${port}`, (error, stdout) => {
+          if (error || !stdout) {
+            resolve(null);
+            return;
+          }
+
+          const lines = stdout.trim().split("\n");
+          const pidMatch = lines[0]?.match(/LISTENING\s+(\d+)/);
+          if (pidMatch) {
+            const pid = pidMatch[1];
+            exec(
+              `tasklist /FI "PID eq ${pid}" /FO CSV /NH`,
+              (err2, stdout2) => {
+                if (!err2 && stdout2) {
+                  const processName = stdout2.split(",")[0]?.replace(/"/g, "");
+                  resolve(
+                    `Port ${port} is in use by: ${processName} (PID: ${pid})`
+                  );
+                } else {
+                  resolve(`Port ${port} is in use by process PID: ${pid}`);
+                }
+              }
+            );
+          } else {
+            resolve(null);
+          }
+        });
+      } else {
+        exec(`lsof -i :${port} -sTCP:LISTEN`, (error, stdout) => {
+          if (error || !stdout) {
+            resolve(null);
+            return;
+          }
+
+          const lines = stdout.trim().split("\n");
+          if (lines.length > 1) {
+            const parts = lines[1].split(/\s+/);
+            const processName = parts[0];
+            const pid = parts[1];
+            resolve(`Port ${port} is in use by: ${processName} (PID: ${pid})`);
+          } else {
+            resolve(null);
+          }
+        });
+      }
+    });
+  }
+
+  /**
+   * Get expected backend path for error messages
+   * @returns {string}
+   */
+  _getExpectedBackendPath() {
+    const productionPath = path.join(
+      process.resourcesPath || "(unknown)",
+      "backend",
+      "win-x64",
+      "Aura.Api.exe"
+    );
+    return productionPath;
   }
 }
 

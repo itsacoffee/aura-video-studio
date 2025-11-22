@@ -1036,19 +1036,31 @@ async function startApplication() {
 
     if (!backendResult.success) {
       // Critical failure - show detailed error and exit
+      const errorTitle = backendResult.errorCategory
+        ? `Backend Error: ${backendResult.errorCategory.replace(/_/g, " ")}`
+        : "Backend Service Error";
+
       const errorMessage = [
         "The Aura Video Studio backend service failed to start.",
         "",
-        "Technical Details:",
-        backendResult.technicalDetails || backendResult.error.message,
+        "What went wrong:",
+        backendResult.errorCategory || "Unknown error",
         "",
         "Recovery Actions:",
         backendResult.recoveryAction || "Unknown",
         "",
-        `Logs: ${path.join(app.getPath("userData"), "logs")}`,
+        "Technical Details:",
+        backendResult.technicalDetails || backendResult.error.message,
+        "",
+        `Log files: ${path.join(app.getPath("userData"), "logs")}`,
+        "",
+        "If this problem persists:",
+        "1. Check the installation guide",
+        "2. Review the troubleshooting section",
+        "3. Report the issue on GitHub with log files",
       ].join("\n");
 
-      dialog.showErrorBox("Backend Service Error", errorMessage);
+      dialog.showErrorBox(errorTitle, errorMessage);
       throw new Error(
         `Critical: Backend service failed to start: ${backendResult.error.message}`
       );
