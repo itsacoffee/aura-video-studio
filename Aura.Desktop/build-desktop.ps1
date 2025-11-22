@@ -259,7 +259,7 @@ if (-not $SkipBackend) {
     $efTools = dotnet tool list -g | Select-String "dotnet-ef"
     if (-not $efTools) {
         Write-Info "Installing Entity Framework tools..."
-        dotnet tool install --global dotnet-ef
+        dotnet tool install --global dotnet-ef 2>&1 | Out-Null
         if ($LASTEXITCODE -ne 0) {
             Show-Warning "  Could not install dotnet-ef tools. Database migration check skipped."
         }
@@ -270,7 +270,26 @@ if (-not $SkipBackend) {
         }
     }
     else {
-        Write-Info "Entity Framework tools already installed"
+        Write-Info "Entity Framework tools already installed, attempting update..."
+        dotnet tool update --global dotnet-ef 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Show-Warning "  Could not update dotnet-ef tools. Will attempt to reinstall..."
+            # Try to uninstall first
+            dotnet tool uninstall --global dotnet-ef 2>&1 | Out-Null
+            # Then install fresh
+            dotnet tool install --global dotnet-ef 2>&1 | Out-Null
+            if ($LASTEXITCODE -ne 0) {
+                Show-Warning "  Could not reinstall dotnet-ef tools. Database migration check skipped."
+                $efTools = $null
+            }
+            else {
+                Write-Success "  ✓ Entity Framework tools reinstalled"
+                $efTools = dotnet tool list -g | Select-String "dotnet-ef"
+            }
+        }
+        else {
+            Write-Success "  ✓ Entity Framework tools updated"
+        }
     }
     
     # Only attempt migrations if dotnet-ef is available
