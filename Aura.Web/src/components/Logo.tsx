@@ -25,6 +25,10 @@ const useStyles = makeStyles({
   },
 });
 
+// Constants
+const ELECTRON_USER_AGENT_MARKER = 'electron';
+const FALLBACK_FONT_SIZE_RATIO = 0.5;
+
 export interface LogoProps {
   /**
    * Size of the logo in pixels
@@ -64,7 +68,9 @@ export const Logo = memo<LogoProps>(({ size = 64, className, alt = 'Aura Video S
       if (!sizeConfig) return '/logo512.png';
 
       // In Electron with file:// protocol, try relative paths first
-      const isElectron = window.navigator.userAgent.toLowerCase().includes('electron');
+      const isElectron = window.navigator.userAgent
+        .toLowerCase()
+        .includes(ELECTRON_USER_AGENT_MARKER);
       const isFileProtocol = window.location.protocol === 'file:';
 
       if (isElectron || isFileProtocol) {
@@ -89,7 +95,10 @@ export const Logo = memo<LogoProps>(({ size = 64, className, alt = 'Aura Video S
     // Fallback to gradient with "A" text
     return (
       <span className={className} style={{ width: size, height: size }}>
-        <div className={styles.fallback} style={{ fontSize: `${size * 0.5}px` }}>
+        <div
+          className={styles.fallback}
+          style={{ fontSize: `${size * FALLBACK_FONT_SIZE_RATIO}px` }}
+        >
           A
         </div>
       </span>
