@@ -65,6 +65,17 @@ declare global {
     electron?: ElectronAPI;
 
     /**
+     * Simplified Electron API for backward compatibility
+     * Available only when running in Electron desktop app
+     */
+    electronAPI?: {
+      getBackendUrl(): Promise<string>;
+      isBackendRunning(): Promise<boolean>;
+      restartBackend(): Promise<{ success: boolean; error?: string }>;
+      onBackendUrl(callback: (url: string) => void): void;
+    };
+
+    /**
      * Strongly-typed runtime bridge exposed by the preload script
      */
     desktopBridge?: DesktopBridge;
