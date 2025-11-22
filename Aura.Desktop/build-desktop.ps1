@@ -253,92 +253,27 @@ else {
 # ========================================
 if (-not $SkipBackend) {
     Write-Info "Applying database migrations..."
-    Set-Location "$ProjectRoot\Aura.Api"
+    Set-Location $ProjectRoot
     
-    # Check if EF tools are installed
-    $efTools = dotnet tool list -g | Select-String "dotnet-ef"
-    if (-not $efTools) {
-        Write-Info "Installing Entity Framework tools..."
-        
-        # Clear NuGet cache to avoid corrupted package issues
-        Write-Info "Clearing NuGet cache to ensure clean installation..."
-        dotnet nuget locals all --clear 2>&1 | Out-Null
-        
-        # Try to install with retry logic (3 total attempts)
-        $maxAttempts = 3
-        $attemptCount = 0
-        $installSuccess = $false
-        
-        while ($attemptCount -lt $maxAttempts -and -not $installSuccess) {
-            $attemptCount++
-            if ($attemptCount -gt 1) {
-                Write-Info "Retry attempt $($attemptCount - 1) of $($maxAttempts - 1)..."
-                Start-Sleep -Seconds 2
-            }
-            
-            $installOutput = dotnet tool install --global dotnet-ef 2>&1
-            if ($LASTEXITCODE -eq 0) {
-                $installSuccess = $true
-                Write-Success "  ✓ Entity Framework tools installed"
-                # Refresh the check after installation
-                $efTools = dotnet tool list -g | Select-String "dotnet-ef"
-            }
-        }
-        
-        if (-not $installSuccess) {
-            Show-Warning "  Could not install dotnet-ef tools after $($maxAttempts - 1) retries. Database migration check skipped."
-            Show-Warning "  Migrations will be applied automatically on first application start."
-            Write-Host "  Installation error: $installOutput" -ForegroundColor Gray
-        }
+    # Restore local dotnet tools (including dotnet-ef from manifest)
+    Write-Info "Restoring local dotnet tools from manifest..."
+    $restoreOutput = dotnet tool restore 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        Write-Success "  ✓ Dotnet tools restored successfully"
+        $efInstalled = $true
     }
     else {
-        Write-Info "Entity Framework tools already installed, attempting update..."
-        $updateOutput = dotnet tool update --global dotnet-ef 2>&1
-        if ($LASTEXITCODE -ne 0) {
-            Show-Warning "  Could not update dotnet-ef tools. Will attempt to reinstall..."
-            Write-Host "  Update error: $updateOutput" -ForegroundColor Gray
-            
-            # Try to uninstall first
-            dotnet tool uninstall --global dotnet-ef 2>&1 | Out-Null
-            
-            # Clear cache before reinstall
-            Write-Info "Clearing NuGet cache before reinstall..."
-            dotnet nuget locals all --clear 2>&1 | Out-Null
-            
-            # Then install fresh with retry logic (3 total attempts)
-            $maxAttempts = 3
-            $attemptCount = 0
-            $reinstallSuccess = $false
-            
-            while ($attemptCount -lt $maxAttempts -and -not $reinstallSuccess) {
-                $attemptCount++
-                if ($attemptCount -gt 1) {
-                    Write-Info "Retry attempt $($attemptCount - 1) of $($maxAttempts - 1)..."
-                    Start-Sleep -Seconds 2
-                }
-                
-                $reinstallOutput = dotnet tool install --global dotnet-ef 2>&1
-                if ($LASTEXITCODE -eq 0) {
-                    $reinstallSuccess = $true
-                    Write-Success "  ✓ Entity Framework tools reinstalled"
-                    $efTools = dotnet tool list -g | Select-String "dotnet-ef"
-                }
-            }
-            
-            if (-not $reinstallSuccess) {
-                Show-Warning "  Could not reinstall dotnet-ef tools after $($maxAttempts - 1) retries. Database migration check skipped."
-                Show-Warning "  Migrations will be applied automatically on first application start."
-                Write-Host "  Reinstall error: $reinstallOutput" -ForegroundColor Gray
-                $efTools = $null
-            }
-        }
-        else {
-            Write-Success "  ✓ Entity Framework tools updated"
-        }
+        Show-Warning "  Could not restore dotnet tools. Database migration check skipped."
+        Show-Warning "  Migrations will be applied automatically on first application start."
+        Write-Host "  Restore error: $restoreOutput" -ForegroundColor Gray
+        $efInstalled = $false
     }
     
     # Only attempt migrations if dotnet-ef is available
-    if ($efTools) {
+    if ($efInstalled) {
+        # Navigate to API project for migrations
+        Set-Location "$ProjectRoot\Aura.Api"
+        
         # Apply migrations (this will create database if missing)
         Write-Info "Checking for pending migrations..."
         try {

@@ -191,89 +191,26 @@ fi
 # ========================================
 if [ "$SKIP_BACKEND" = false ]; then
   print_info "Applying database migrations..."
-  cd "$PROJECT_ROOT/Aura.Api"
+  cd "$PROJECT_ROOT"
   
-  # Check if EF tools are installed
-  if dotnet tool list -g | grep -q "^dotnet-ef[[:space:]]"; then
+  # Restore local dotnet tools (including dotnet-ef from manifest)
+  print_info "Restoring local dotnet tools from manifest..."
+  RESTORE_OUTPUT=$(dotnet tool restore 2>&1)
+  if [ $? -eq 0 ]; then
+    print_success "  ✓ Dotnet tools restored successfully"
     EF_INSTALLED=true
-    print_info "Entity Framework tools already installed, attempting update..."
-    UPDATE_OUTPUT=$(dotnet tool update --global dotnet-ef 2>&1)
-    if [ $? -ne 0 ]; then
-      print_warning "  Could not update dotnet-ef tools. Will attempt to reinstall..."
-      echo "  Update error: $UPDATE_OUTPUT"
-      
-      # Try to uninstall first
-      dotnet tool uninstall --global dotnet-ef >/dev/null 2>&1
-      
-      # Clear cache before reinstall
-      print_info "Clearing NuGet cache before reinstall..."
-      dotnet nuget locals all --clear >/dev/null 2>&1
-      
-      # Then install fresh with retry logic (3 total attempts)
-      MAX_ATTEMPTS=3
-      ATTEMPT_COUNT=0
-      REINSTALL_SUCCESS=false
-      
-      while [ $ATTEMPT_COUNT -lt $MAX_ATTEMPTS ] && [ "$REINSTALL_SUCCESS" = false ]; do
-        ATTEMPT_COUNT=$((ATTEMPT_COUNT + 1))
-        if [ $ATTEMPT_COUNT -gt 1 ]; then
-          print_info "Retry attempt $((ATTEMPT_COUNT - 1)) of $((MAX_ATTEMPTS - 1))..."
-          sleep 2
-        fi
-        
-        REINSTALL_OUTPUT=$(dotnet tool install --global dotnet-ef 2>&1)
-        if [ $? -eq 0 ]; then
-          REINSTALL_SUCCESS=true
-          print_success "  ✓ Entity Framework tools reinstalled"
-        fi
-      done
-      
-      if [ "$REINSTALL_SUCCESS" = false ]; then
-        print_warning "  Could not reinstall dotnet-ef tools after $((MAX_ATTEMPTS - 1)) retries. Database migration check skipped."
-        print_warning "  Migrations will be applied automatically on first application start."
-        echo "  Reinstall error: $REINSTALL_OUTPUT"
-        EF_INSTALLED=false
-      fi
-    else
-      print_success "  ✓ Entity Framework tools updated"
-    fi
   else
-    print_info "Installing Entity Framework tools..."
-    
-    # Clear NuGet cache to avoid corrupted package issues
-    print_info "Clearing NuGet cache to ensure clean installation..."
-    dotnet nuget locals all --clear >/dev/null 2>&1
-    
-    # Try to install with retry logic (3 total attempts)
-    MAX_ATTEMPTS=3
-    ATTEMPT_COUNT=0
-    INSTALL_SUCCESS=false
-    
-    while [ $ATTEMPT_COUNT -lt $MAX_ATTEMPTS ] && [ "$INSTALL_SUCCESS" = false ]; do
-      ATTEMPT_COUNT=$((ATTEMPT_COUNT + 1))
-      if [ $ATTEMPT_COUNT -gt 1 ]; then
-        print_info "Retry attempt $((ATTEMPT_COUNT - 1)) of $((MAX_ATTEMPTS - 1))..."
-        sleep 2
-      fi
-      
-      INSTALL_OUTPUT=$(dotnet tool install --global dotnet-ef 2>&1)
-      if [ $? -eq 0 ]; then
-        INSTALL_SUCCESS=true
-        print_success "  ✓ Entity Framework tools installed"
-        EF_INSTALLED=true
-      fi
-    done
-    
-    if [ "$INSTALL_SUCCESS" = false ]; then
-      print_warning "  Could not install dotnet-ef tools after $((MAX_ATTEMPTS - 1)) retries. Database migration check skipped."
-      print_warning "  Migrations will be applied automatically on first application start."
-      echo "  Installation error: $INSTALL_OUTPUT"
-      EF_INSTALLED=false
-    fi
+    print_warning "  Could not restore dotnet tools. Database migration check skipped."
+    print_warning "  Migrations will be applied automatically on first application start."
+    echo "  Restore error: $RESTORE_OUTPUT"
+    EF_INSTALLED=false
   fi
   
   # Only attempt migrations if dotnet-ef is available
   if [ "$EF_INSTALLED" = true ]; then
+    # Navigate to API project for migrations
+    cd "$PROJECT_ROOT/Aura.Api"
+    
     # Apply migrations (this will create database if missing)
     print_info "Checking for pending migrations..."
     MIGRATION_OUTPUT=$(dotnet ef database update --configuration Release 2>&1)
