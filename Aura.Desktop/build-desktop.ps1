@@ -262,11 +262,11 @@ if (-not $SkipBackend) {
         dotnet tool install --global dotnet-ef
         if ($LASTEXITCODE -ne 0) {
             Show-Warning "  Could not install dotnet-ef tools. Database migration check skipped."
-            Set-Location $ScriptDir
-            Write-Host ""
         }
         else {
             Write-Success "  ✓ Entity Framework tools installed"
+            # Refresh the check after installation
+            $efTools = dotnet tool list -g | Select-String "dotnet-ef"
         }
     }
     else {
@@ -274,8 +274,7 @@ if (-not $SkipBackend) {
     }
     
     # Only attempt migrations if dotnet-ef is available
-    $efAvailable = dotnet tool list -g | Select-String "dotnet-ef"
-    if ($efAvailable) {
+    if ($efTools) {
         # Apply migrations (this will create database if missing)
         Write-Info "Checking for pending migrations..."
         try {
@@ -285,9 +284,13 @@ if (-not $SkipBackend) {
                 Write-Success "  ✓ Database migrations applied successfully"
             } else {
                 Show-Warning "  Database migration check skipped (will be created on first run)"
+                if ($VerbosePreference -eq 'Continue') {
+                    Write-Host "  Migration output: $migrationOutput" -ForegroundColor Gray
+                }
             }
         } catch {
             Show-Warning "  Database migration check skipped (will be created on first run)"
+            Write-Host "  Error: $($_.Exception.Message)" -ForegroundColor Gray
         }
     }
     
