@@ -37,15 +37,11 @@ async function main() {
     AURA_VITE_DEV_SERVER_URL: DEV_SERVER_URL,
   };
 
-  const electronProcess = startProcess(
-    getNpmCommand(),
-    ["run", "dev"],
-    {
-      cwd: ROOT_DESKTOP_DIR,
-      stdio: "inherit",
-      env: electronEnv,
-    }
-  );
+  const electronProcess = startProcess(getNpmCommand(), ["run", "dev"], {
+    cwd: ROOT_DESKTOP_DIR,
+    stdio: "inherit",
+    env: electronEnv,
+  });
 
   setupCleanup([viteProcess, electronProcess]);
 
@@ -67,13 +63,7 @@ async function main() {
 
 function runDotnetBuild() {
   return new Promise((resolve, reject) => {
-    const args = [
-      "build",
-      API_PROJECT,
-      "-c",
-      DOTNET_CONFIGURATION,
-      "--nologo",
-    ];
+    const args = ["build", API_PROJECT, "-c", DOTNET_CONFIGURATION, "--nologo"];
     const dotnet = startProcess("dotnet", args, {
       cwd: ROOT_DESKTOP_DIR,
       stdio: "inherit",
@@ -125,7 +115,7 @@ function waitForDevServer(url) {
 
 function startProcess(command, args, options) {
   const child = spawn(command, args, {
-    shell: false,
+    shell: true,
     ...options,
   });
 
@@ -163,4 +153,3 @@ main().catch((error) => {
   cleanupChildren([]);
   process.exit(1);
 });
-

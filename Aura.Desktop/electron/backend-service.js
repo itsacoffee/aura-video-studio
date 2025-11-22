@@ -146,12 +146,24 @@ class BackendService {
         );
         console.log("Starting backend via dotnet run...");
 
-        this.process = spawn("dotnet", ["run", "--project", apiProject], {
-          env,
-          stdio: ["ignore", "pipe", "pipe"],
-          windowsHide: true,
-          detached: false,
-        });
+        // Use --urls to explicitly set the listening address, bypassing launchSettings.json
+        this.process = spawn(
+          "dotnet",
+          [
+            "run",
+            "--no-launch-profile",
+            "--project",
+            apiProject,
+            "--urls",
+            this.baseUrl,
+          ],
+          {
+            env,
+            stdio: ["ignore", "pipe", "pipe"],
+            windowsHide: true,
+            detached: false,
+          }
+        );
       } else {
         // Spawn backend executable
         console.log("Backend executable:", backendPath);
