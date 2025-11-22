@@ -264,14 +264,15 @@ if (-not $SkipBackend) {
         Write-Info "Clearing NuGet cache to ensure clean installation..."
         dotnet nuget locals all --clear 2>&1 | Out-Null
         
-        # Try to install with retry logic
-        $maxRetries = 2
-        $retryCount = 0
+        # Try to install with retry logic (3 total attempts)
+        $maxAttempts = 3
+        $attemptCount = 0
         $installSuccess = $false
         
-        while ($retryCount -le $maxRetries -and -not $installSuccess) {
-            if ($retryCount -gt 0) {
-                Write-Info "Retry attempt $retryCount of $maxRetries..."
+        while ($attemptCount -lt $maxAttempts -and -not $installSuccess) {
+            $attemptCount++
+            if ($attemptCount -gt 1) {
+                Write-Info "Retry attempt $($attemptCount - 1) of $($maxAttempts - 1)..."
                 Start-Sleep -Seconds 2
             }
             
@@ -282,13 +283,10 @@ if (-not $SkipBackend) {
                 # Refresh the check after installation
                 $efTools = dotnet tool list -g | Select-String "dotnet-ef"
             }
-            else {
-                $retryCount++
-            }
         }
         
         if (-not $installSuccess) {
-            Show-Warning "  Could not install dotnet-ef tools after $maxRetries retries. Database migration check skipped."
+            Show-Warning "  Could not install dotnet-ef tools after $($maxAttempts - 1) retries. Database migration check skipped."
             Show-Warning "  Migrations will be applied automatically on first application start."
             Write-Host "  Installation error: $installOutput" -ForegroundColor Gray
         }
@@ -307,14 +305,15 @@ if (-not $SkipBackend) {
             Write-Info "Clearing NuGet cache before reinstall..."
             dotnet nuget locals all --clear 2>&1 | Out-Null
             
-            # Then install fresh with retry logic
-            $maxRetries = 2
-            $retryCount = 0
+            # Then install fresh with retry logic (3 total attempts)
+            $maxAttempts = 3
+            $attemptCount = 0
             $reinstallSuccess = $false
             
-            while ($retryCount -le $maxRetries -and -not $reinstallSuccess) {
-                if ($retryCount -gt 0) {
-                    Write-Info "Retry attempt $retryCount of $maxRetries..."
+            while ($attemptCount -lt $maxAttempts -and -not $reinstallSuccess) {
+                $attemptCount++
+                if ($attemptCount -gt 1) {
+                    Write-Info "Retry attempt $($attemptCount - 1) of $($maxAttempts - 1)..."
                     Start-Sleep -Seconds 2
                 }
                 
@@ -324,13 +323,10 @@ if (-not $SkipBackend) {
                     Write-Success "  ✓ Entity Framework tools reinstalled"
                     $efTools = dotnet tool list -g | Select-String "dotnet-ef"
                 }
-                else {
-                    $retryCount++
-                }
             }
             
             if (-not $reinstallSuccess) {
-                Show-Warning "  Could not reinstall dotnet-ef tools after $maxRetries retries. Database migration check skipped."
+                Show-Warning "  Could not reinstall dotnet-ef tools after $($maxAttempts - 1) retries. Database migration check skipped."
                 Show-Warning "  Migrations will be applied automatically on first application start."
                 Write-Host "  Reinstall error: $reinstallOutput" -ForegroundColor Gray
                 $efTools = $null

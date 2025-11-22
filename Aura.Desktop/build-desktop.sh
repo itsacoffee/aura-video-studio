@@ -209,14 +209,15 @@ if [ "$SKIP_BACKEND" = false ]; then
       print_info "Clearing NuGet cache before reinstall..."
       dotnet nuget locals all --clear >/dev/null 2>&1
       
-      # Then install fresh with retry logic
-      MAX_RETRIES=2
-      RETRY_COUNT=0
+      # Then install fresh with retry logic (3 total attempts)
+      MAX_ATTEMPTS=3
+      ATTEMPT_COUNT=0
       REINSTALL_SUCCESS=false
       
-      while [ $RETRY_COUNT -le $MAX_RETRIES ] && [ "$REINSTALL_SUCCESS" = false ]; do
-        if [ $RETRY_COUNT -gt 0 ]; then
-          print_info "Retry attempt $RETRY_COUNT of $MAX_RETRIES..."
+      while [ $ATTEMPT_COUNT -lt $MAX_ATTEMPTS ] && [ "$REINSTALL_SUCCESS" = false ]; do
+        ATTEMPT_COUNT=$((ATTEMPT_COUNT + 1))
+        if [ $ATTEMPT_COUNT -gt 1 ]; then
+          print_info "Retry attempt $((ATTEMPT_COUNT - 1)) of $((MAX_ATTEMPTS - 1))..."
           sleep 2
         fi
         
@@ -224,13 +225,11 @@ if [ "$SKIP_BACKEND" = false ]; then
         if [ $? -eq 0 ]; then
           REINSTALL_SUCCESS=true
           print_success "  ✓ Entity Framework tools reinstalled"
-        else
-          RETRY_COUNT=$((RETRY_COUNT + 1))
         fi
       done
       
       if [ "$REINSTALL_SUCCESS" = false ]; then
-        print_warning "  Could not reinstall dotnet-ef tools after $MAX_RETRIES retries. Database migration check skipped."
+        print_warning "  Could not reinstall dotnet-ef tools after $((MAX_ATTEMPTS - 1)) retries. Database migration check skipped."
         print_warning "  Migrations will be applied automatically on first application start."
         echo "  Reinstall error: $REINSTALL_OUTPUT"
         EF_INSTALLED=false
@@ -245,14 +244,15 @@ if [ "$SKIP_BACKEND" = false ]; then
     print_info "Clearing NuGet cache to ensure clean installation..."
     dotnet nuget locals all --clear >/dev/null 2>&1
     
-    # Try to install with retry logic
-    MAX_RETRIES=2
-    RETRY_COUNT=0
+    # Try to install with retry logic (3 total attempts)
+    MAX_ATTEMPTS=3
+    ATTEMPT_COUNT=0
     INSTALL_SUCCESS=false
     
-    while [ $RETRY_COUNT -le $MAX_RETRIES ] && [ "$INSTALL_SUCCESS" = false ]; do
-      if [ $RETRY_COUNT -gt 0 ]; then
-        print_info "Retry attempt $RETRY_COUNT of $MAX_RETRIES..."
+    while [ $ATTEMPT_COUNT -lt $MAX_ATTEMPTS ] && [ "$INSTALL_SUCCESS" = false ]; do
+      ATTEMPT_COUNT=$((ATTEMPT_COUNT + 1))
+      if [ $ATTEMPT_COUNT -gt 1 ]; then
+        print_info "Retry attempt $((ATTEMPT_COUNT - 1)) of $((MAX_ATTEMPTS - 1))..."
         sleep 2
       fi
       
@@ -261,13 +261,11 @@ if [ "$SKIP_BACKEND" = false ]; then
         INSTALL_SUCCESS=true
         print_success "  ✓ Entity Framework tools installed"
         EF_INSTALLED=true
-      else
-        RETRY_COUNT=$((RETRY_COUNT + 1))
       fi
     done
     
     if [ "$INSTALL_SUCCESS" = false ]; then
-      print_warning "  Could not install dotnet-ef tools after $MAX_RETRIES retries. Database migration check skipped."
+      print_warning "  Could not install dotnet-ef tools after $((MAX_ATTEMPTS - 1)) retries. Database migration check skipped."
       print_warning "  Migrations will be applied automatically on first application start."
       echo "  Installation error: $INSTALL_OUTPUT"
       EF_INSTALLED=false
