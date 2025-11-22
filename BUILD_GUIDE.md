@@ -1101,33 +1101,36 @@ The settings file in the tool's NuGet package is invalid: Settings file
 'DotnetToolSettings.xml' was not found in the package.
 ```
 
-**Cause:** Corrupted NuGet cache or incomplete package downloads.
+**Cause:** This error previously occurred with global tool installations due to corrupted NuGet cache or incomplete package downloads.
 
-**Automatic Fix:** As of the latest version, the build scripts automatically:
-- Clear the NuGet cache before installation attempts
-- Retry installation up to 2 times with delays
-- Clear cache before reinstall attempts
+**Solution:** As of the latest version, the project now uses a **local dotnet tool manifest** (`.config/dotnet-tools.json`) instead of global tools, which is more reliable and reproducible.
 
-**Manual Fix** (for older versions or persistent issues):
+**How It Works:**
+- The `dotnet-ef` tool is now defined in `.config/dotnet-tools.json`
+- Build scripts automatically run `dotnet tool restore` to install tools locally
+- No more global tool installation or NuGet cache issues
+- Tools are versioned and tracked in source control
 
-1. **Clear NuGet cache:**
-   ```bash
-   dotnet nuget locals all --clear
-   ```
+**Manual Restore** (if needed):
+```bash
+# From repository root
+dotnet tool restore
 
-2. **Uninstall and reinstall dotnet-ef:**
-   ```bash
-   dotnet tool uninstall --global dotnet-ef
-   dotnet tool install --global dotnet-ef
-   ```
+# Verify installation
+dotnet ef --version
+```
 
-3. **Verify installation:**
-   ```bash
-   dotnet tool list -g | grep dotnet-ef
-   dotnet ef --version
-   ```
+**For Developers:**
+If you need to update the dotnet-ef tool version:
+```bash
+# Update to latest version
+dotnet tool update dotnet-ef
 
-**Note:** This warning is informational. The build will continue successfully, and database migrations will be applied automatically when you first run the application. The build-time migration check is optional.
+# Or update to specific version
+dotnet tool update dotnet-ef --version 10.0.0
+```
+
+**Note:** Build-time migrations are optional. If they fail, migrations will be applied automatically when you first run the application.
 
 ### Build Fails on Windows with Long Paths
 

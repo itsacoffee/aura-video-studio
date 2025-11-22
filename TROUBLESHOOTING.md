@@ -743,45 +743,48 @@ The settings file in the tool's NuGet package is invalid: Settings file
 'DotnetToolSettings.xml' was not found in the package.
 ```
 
-**Cause**: Corrupted NuGet cache or incomplete package downloads can cause the dotnet-ef tool installation to fail.
+**Cause**: This error previously occurred with global tool installations due to corrupted NuGet cache or incomplete package downloads.
 
 **Solution**:
 
-The build scripts now automatically handle this issue (as of latest version) by:
-1. Clearing the NuGet cache before installation attempts
-2. Retrying installation up to 2 times with delays
-3. Clearing cache before reinstall attempts
+As of the latest version, the project now uses a **local dotnet tool manifest** (`.config/dotnet-tools.json`) instead of global tools. This eliminates the issue entirely by:
+1. Using a project-local tool manifest tracked in source control
+2. Automatically restoring tools with `dotnet tool restore`
+3. Providing version consistency across all developers
 
-**Manual fix** (if you're on an older version):
+**If You See This Error** (should no longer occur):
 
-1. **Clear NuGet cache manually**:
+The build scripts now automatically run `dotnet tool restore` which installs dotnet-ef locally from the manifest. If you still encounter issues:
+
+1. **Verify the manifest exists**:
    ```bash
-   # Clear all NuGet caches
-   dotnet nuget locals all --clear
+   # Check for .config/dotnet-tools.json
+   cat .config/dotnet-tools.json
    ```
 
-2. **Uninstall existing dotnet-ef** (if present):
+2. **Restore tools manually**:
    ```bash
-   dotnet tool uninstall --global dotnet-ef
+   # From repository root
+   dotnet tool restore
    ```
 
-3. **Install fresh**:
+3. **Verify installation**:
    ```bash
-   dotnet tool install --global dotnet-ef
-   ```
-
-4. **Verify installation**:
-   ```bash
-   dotnet tool list -g | grep dotnet-ef
    dotnet ef --version
+   # Should show: Entity Framework Core .NET Command-line Tools 10.0.0
    ```
 
-**Alternative workaround**: If the tool still won't install, you can skip the build-time migration check:
-- The application will automatically apply database migrations on first startup
-- This is safe and the intended fallback behavior
-- Build will complete successfully without the tool
+**For Developers**:
+If you need to update the dotnet-ef tool version:
+```bash
+# Update to latest version
+dotnet tool update dotnet-ef
 
-**Note**: The warning message is informational and the build will continue. Database migrations will be applied when you first run the application.
+# Or install specific version
+dotnet tool update dotnet-ef --version 10.0.0
+```
+
+**Fallback Behavior**: If tool restoration fails, the build will continue successfully and database migrations will be applied automatically when you first run the application.
 
 ## Platform-Specific Issues
 
