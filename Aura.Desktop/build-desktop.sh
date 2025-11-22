@@ -201,32 +201,76 @@ if [ "$SKIP_BACKEND" = false ]; then
     if [ $? -ne 0 ]; then
       print_warning "  Could not update dotnet-ef tools. Will attempt to reinstall..."
       echo "  Update error: $UPDATE_OUTPUT"
+      
       # Try to uninstall first
       dotnet tool uninstall --global dotnet-ef >/dev/null 2>&1
-      # Then install fresh
-      REINSTALL_OUTPUT=$(dotnet tool install --global dotnet-ef 2>&1)
-      if [ $? -ne 0 ]; then
-        print_warning "  Could not reinstall dotnet-ef tools. Database migration check skipped."
+      
+      # Clear cache before reinstall
+      print_info "Clearing NuGet cache before reinstall..."
+      dotnet nuget locals all --clear >/dev/null 2>&1
+      
+      # Then install fresh with retry logic
+      MAX_RETRIES=2
+      RETRY_COUNT=0
+      REINSTALL_SUCCESS=false
+      
+      while [ $RETRY_COUNT -le $MAX_RETRIES ] && [ "$REINSTALL_SUCCESS" = false ]; do
+        if [ $RETRY_COUNT -gt 0 ]; then
+          print_info "Retry attempt $RETRY_COUNT of $MAX_RETRIES..."
+          sleep 2
+        fi
+        
+        REINSTALL_OUTPUT=$(dotnet tool install --global dotnet-ef 2>&1)
+        if [ $? -eq 0 ]; then
+          REINSTALL_SUCCESS=true
+          print_success "  ✓ Entity Framework tools reinstalled"
+        else
+          RETRY_COUNT=$((RETRY_COUNT + 1))
+        fi
+      done
+      
+      if [ "$REINSTALL_SUCCESS" = false ]; then
+        print_warning "  Could not reinstall dotnet-ef tools after $MAX_RETRIES retries. Database migration check skipped."
         print_warning "  Migrations will be applied automatically on first application start."
         echo "  Reinstall error: $REINSTALL_OUTPUT"
         EF_INSTALLED=false
-      else
-        print_success "  ✓ Entity Framework tools reinstalled"
       fi
     else
       print_success "  ✓ Entity Framework tools updated"
     fi
   else
     print_info "Installing Entity Framework tools..."
-    INSTALL_OUTPUT=$(dotnet tool install --global dotnet-ef 2>&1)
-    if [ $? -ne 0 ]; then
-      print_warning "  Could not install dotnet-ef tools. Database migration check skipped."
+    
+    # Clear NuGet cache to avoid corrupted package issues
+    print_info "Clearing NuGet cache to ensure clean installation..."
+    dotnet nuget locals all --clear >/dev/null 2>&1
+    
+    # Try to install with retry logic
+    MAX_RETRIES=2
+    RETRY_COUNT=0
+    INSTALL_SUCCESS=false
+    
+    while [ $RETRY_COUNT -le $MAX_RETRIES ] && [ "$INSTALL_SUCCESS" = false ]; do
+      if [ $RETRY_COUNT -gt 0 ]; then
+        print_info "Retry attempt $RETRY_COUNT of $MAX_RETRIES..."
+        sleep 2
+      fi
+      
+      INSTALL_OUTPUT=$(dotnet tool install --global dotnet-ef 2>&1)
+      if [ $? -eq 0 ]; then
+        INSTALL_SUCCESS=true
+        print_success "  ✓ Entity Framework tools installed"
+        EF_INSTALLED=true
+      else
+        RETRY_COUNT=$((RETRY_COUNT + 1))
+      fi
+    done
+    
+    if [ "$INSTALL_SUCCESS" = false ]; then
+      print_warning "  Could not install dotnet-ef tools after $MAX_RETRIES retries. Database migration check skipped."
       print_warning "  Migrations will be applied automatically on first application start."
       echo "  Installation error: $INSTALL_OUTPUT"
       EF_INSTALLED=false
-    else
-      print_success "  ✓ Entity Framework tools installed"
-      EF_INSTALLED=true
     fi
   fi
   
