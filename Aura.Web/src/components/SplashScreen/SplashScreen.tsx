@@ -46,19 +46,43 @@ export const SplashScreen: FC<SplashScreenProps> = ({
 
   return (
     <div className={`splash-screen ${stage === 'fadeout' ? 'splash-screen--fadeout' : ''}`}>
+      {/* Animated background gradient */}
+      <div className="splash-background-gradient" />
+
+      {/* Animated grid overlay */}
+      <div className="splash-grid-overlay" />
+
       <div className="splash-content">
         {/* Logo with gradient animation */}
         <div className="splash-logo">
           <div className="splash-logo-icon">
-            <svg width="120" height="120" viewBox="0 0 120 120" fill="none">
+            <svg width="140" height="140" viewBox="0 0 120 120" fill="none">
               <defs>
                 <linearGradient id="auraGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#3b82f6" />
-                  <stop offset="50%" stopColor="#a855f7" />
-                  <stop offset="100%" stopColor="#ec4899" />
+                  <stop offset="0%" stopColor="#ff6b35" />
+                  <stop offset="50%" stopColor="#f7931e" />
+                  <stop offset="100%" stopColor="#3b82f6" />
+                </linearGradient>
+                <linearGradient id="auraGradientAnimated" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#ff6b35">
+                    <animate attributeName="stop-color" values="#ff6b35;#3b82f6;#ff6b35" dur="4s" repeatCount="indefinite" />
+                  </stop>
+                  <stop offset="50%" stopColor="#f7931e">
+                    <animate attributeName="stop-color" values="#f7931e;#60a5fa;#f7931e" dur="4s" repeatCount="indefinite" />
+                  </stop>
+                  <stop offset="100%" stopColor="#3b82f6">
+                    <animate attributeName="stop-color" values="#3b82f6;#ff6b35;#3b82f6" dur="4s" repeatCount="indefinite" />
+                  </stop>
                 </linearGradient>
                 <filter id="glow">
-                  <feGaussianBlur stdDeviation="4" result="coloredBlur" />
+                  <feGaussianBlur stdDeviation="6" result="coloredBlur" />
+                  <feMerge>
+                    <feMergeNode in="coloredBlur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+                <filter id="glowStrong">
+                  <feGaussianBlur stdDeviation="8" result="coloredBlur" />
                   <feMerge>
                     <feMergeNode in="coloredBlur" />
                     <feMergeNode in="SourceGraphic" />
@@ -66,16 +90,28 @@ export const SplashScreen: FC<SplashScreenProps> = ({
                 </filter>
               </defs>
 
+              {/* Outer glow ring */}
+              <circle
+                cx="60"
+                cy="60"
+                r="58"
+                fill="none"
+                stroke="url(#auraGradientAnimated)"
+                strokeWidth="2"
+                opacity="0.3"
+                className="splash-logo-ring"
+              />
+
               {/* Stylized "A" for Aura - video play button inspired */}
               <path
                 d="M 60 20 L 90 50 L 90 70 L 60 90 L 30 70 L 30 50 Z"
-                fill="url(#auraGradient)"
-                filter="url(#glow)"
+                fill="url(#auraGradientAnimated)"
+                filter="url(#glowStrong)"
                 className="splash-logo-path"
               />
               <path
                 d="M 45 55 L 60 45 L 75 55 L 75 65 L 60 75 L 45 65 Z"
-                fill="#0a0a0a"
+                fill="#050505"
                 className="splash-logo-cutout"
               />
             </svg>
@@ -85,10 +121,15 @@ export const SplashScreen: FC<SplashScreenProps> = ({
           <p className="splash-subtitle">Video Studio</p>
         </div>
 
-        {/* Progress bar */}
+        {/* Progress bar with orange to blue gradient */}
         <div className="splash-progress">
           <div className="splash-progress-track">
-            <div className="splash-progress-fill" style={{ width: `${progress}%` }} />
+            <div
+              className="splash-progress-fill"
+              style={{ width: `${progress}%` }}
+            >
+              <div className="splash-progress-shine" />
+            </div>
           </div>
           <p className="splash-status">{statusMessage}</p>
         </div>
@@ -101,7 +142,7 @@ export const SplashScreen: FC<SplashScreenProps> = ({
 
       {/* Animated particles background */}
       <div className="splash-particles">
-        {Array.from({ length: 20 }).map((_, i) => (
+        {Array.from({ length: 30 }).map((_, i) => (
           <div
             key={i}
             className="splash-particle"
