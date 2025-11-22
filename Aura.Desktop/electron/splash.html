@@ -232,8 +232,9 @@
       }
       
       reset() {
-        this.x = Math.random() * this.canvas.width;
-        this.y = this.canvas.height + Math.random() * 100;
+        const dpr = window.devicePixelRatio || 1;
+        this.x = Math.random() * (this.canvas.width / dpr);
+        this.y = (this.canvas.height / dpr) + Math.random() * 100;
         this.size = Math.random() * 3 + 1;
         this.speedY = Math.random() * 0.5 + 0.2;
         this.speedX = (Math.random() - 0.5) * 0.3;
@@ -268,13 +269,17 @@
     const canvas = document.getElementById('particles');
     const ctx = canvas.getContext('2d');
     
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = window.innerWidth * dpr;
+    canvas.height = window.innerHeight * dpr;
+    canvas.style.width = window.innerWidth + 'px';
+    canvas.style.height = window.innerHeight + 'px';
+    ctx.scale(dpr, dpr);
     
     const particles = [];
-    for (let i = 0; i < 200; i++) {
+    for (let i = 0; i < 150; i++) {
       particles.push(new Particle(canvas));
-      particles[i].y = Math.random() * canvas.height;
+      particles[i].y = Math.random() * canvas.height / dpr;
     }
     
     function animate() {
@@ -290,9 +295,17 @@
     
     animate();
     
+    let resizeTimeout;
     window.addEventListener('resize', () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = window.innerWidth * dpr;
+        canvas.height = window.innerHeight * dpr;
+        canvas.style.width = window.innerWidth + 'px';
+        canvas.style.height = window.innerHeight + 'px';
+        ctx.scale(dpr, dpr);
+      }, 100);
     });
     
     const { ipcRenderer } = require('electron');
