@@ -149,7 +149,7 @@ export function WelcomeScreen({ onGetStarted, onImportProject }: WelcomeScreenPr
 
       {/* Brand & Value Prop */}
       <div className={styles.brandContainer}>
-        <Title1 className={styles.title} block>Welcome to Aura Video Studio!</Title1>
+        <Title1 className={styles.title}>Welcome to Aura Video Studio!</Title1>
         <Text className={styles.subtitle} size={500} block>
           Complete your setup to start generating videos. Run the Setup Wizard now to configure AI
           providers, FFmpeg, and your workspace. You can update these settings later in Settings.

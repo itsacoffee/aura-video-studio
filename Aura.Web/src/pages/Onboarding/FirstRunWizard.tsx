@@ -1650,13 +1650,12 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
         onStartFresh={handleStartFresh}
       />
 
-      {state.step > 0 && state.step < totalSteps - 1 && (
-        <div style={{ marginBottom: tokens.spacingVerticalM, paddingLeft: tokens.spacingHorizontalL, paddingRight: tokens.spacingHorizontalL }}>
-          <BackendStatusBanner />
-        </div>
-      )}
-
       <div className={styles.content}>
+        {state.step > 0 && state.step < totalSteps - 1 && (
+          <div style={{ marginBottom: tokens.spacingVerticalM }}>
+            <BackendStatusBanner />
+          </div>
+        )}
         <div className={styles.stepContent} key={state.step}>
           {renderStepContent()}
         </div>
