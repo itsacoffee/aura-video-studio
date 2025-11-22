@@ -10,7 +10,13 @@ const net = require("net");
 const axios = require("axios");
 
 class BackendService {
-  constructor(app, isDev, processManager = null, networkContract = null, logger = null) {
+  constructor(
+    app,
+    isDev,
+    processManager = null,
+    networkContract = null,
+    logger = null
+  ) {
     this.app = app;
     this.isDev = isDev;
     this.process = null;
@@ -22,21 +28,28 @@ class BackendService {
     if (!networkContract) {
       throw new Error(
         "BackendService requires a valid networkContract. " +
-        "Contract must be resolved via resolveBackendContract() before initializing BackendService."
+          "Contract must be resolved via resolveBackendContract() before initializing BackendService."
       );
     }
 
-    if (!networkContract.baseUrl || typeof networkContract.baseUrl !== "string") {
+    if (
+      !networkContract.baseUrl ||
+      typeof networkContract.baseUrl !== "string"
+    ) {
       throw new Error(
         "BackendService networkContract missing baseUrl. " +
-        "Set AURA_BACKEND_URL or ASPNETCORE_URLS environment variable."
+          "Set AURA_BACKEND_URL or ASPNETCORE_URLS environment variable."
       );
     }
 
-    if (!networkContract.port || typeof networkContract.port !== "number" || networkContract.port <= 0) {
+    if (
+      !networkContract.port ||
+      typeof networkContract.port !== "number" ||
+      networkContract.port <= 0
+    ) {
       throw new Error(
         "BackendService networkContract missing valid port. " +
-        "Set AURA_BACKEND_URL or ASPNETCORE_URLS environment variable."
+          "Set AURA_BACKEND_URL or ASPNETCORE_URLS environment variable."
       );
     }
 
@@ -52,8 +65,10 @@ class BackendService {
     this.isWindows = process.platform === "win32";
     // Health endpoints from network contract (aligned with BackendEndpoints constants in Aura.Api)
     this.healthEndpoint = networkContract.healthEndpoint || "/health/live";
-    this.readinessEndpoint = networkContract.readinessEndpoint || "/health/ready";
-    this.sseJobEventsTemplate = networkContract.sseJobEventsTemplate || "/api/jobs/{id}/events";
+    this.readinessEndpoint =
+      networkContract.readinessEndpoint || "/health/ready";
+    this.sseJobEventsTemplate =
+      networkContract.sseJobEventsTemplate || "/api/jobs/{id}/events";
 
     // Constants
     this.BACKEND_STARTUP_TIMEOUT = networkContract.maxStartupMs ?? 60000; // 60 seconds
@@ -75,15 +90,29 @@ class BackendService {
       await this._detectAndCleanupOrphanedBackend();
 
       // Determine backend executable path
-      const backendPath = this._getBackendPath();
+      let backendPath = null;
+      let useDotnetRun = false;
 
-      // Check if backend executable exists
-      if (!fs.existsSync(backendPath)) {
+      try {
+        backendPath = this._getBackendPath();
+      } catch (e) {
+        if (this.isDev) {
+          console.log(
+            "Backend executable not found, falling back to 'dotnet run'"
+          );
+          useDotnetRun = true;
+        } else {
+          throw e;
+        }
+      }
+
+      // Check if backend executable exists (if not using dotnet run)
+      if (!useDotnetRun && !fs.existsSync(backendPath)) {
         throw new Error(`Backend executable not found at: ${backendPath}`);
       }
 
       // Make executable on Unix-like systems
-      if (process.platform !== "win32") {
+      if (!useDotnetRun && process.platform !== "win32") {
         try {
           fs.chmodSync(backendPath, 0o755);
         } catch (error) {
@@ -105,18 +134,34 @@ class BackendService {
       // Create necessary directories
       this._createDirectories(env);
 
-      console.log("Backend executable:", backendPath);
       console.log("Backend port:", this.port);
       console.log("Environment:", env.DOTNET_ENVIRONMENT);
       console.log("FFmpeg path:", ffmpegPath);
 
-      // Spawn backend process with detached flag on Windows to get proper process tree control
-      this.process = spawn(backendPath, [], {
-        env,
-        stdio: ["ignore", "pipe", "pipe"],
-        windowsHide: true, // Hide console window on Windows
-        detached: false, // Keep attached so we can control it, but we'll handle child processes separately
-      });
+      if (useDotnetRun) {
+        // Run via dotnet run
+        const apiProject = path.resolve(
+          __dirname,
+          "../../Aura.Api/Aura.Api.csproj"
+        );
+        console.log("Starting backend via dotnet run...");
+
+        this.process = spawn("dotnet", ["run", "--project", apiProject], {
+          env,
+          stdio: ["ignore", "pipe", "pipe"],
+          windowsHide: true,
+          detached: false,
+        });
+      } else {
+        // Spawn backend executable
+        console.log("Backend executable:", backendPath);
+        this.process = spawn(backendPath, [], {
+          env,
+          stdio: ["ignore", "pipe", "pipe"],
+          windowsHide: true, // Hide console window on Windows
+          detached: false, // Keep attached so we can control it, but we'll handle child processes separately
+        });
+      }
 
       // Store both process reference and PID
       this.backendProcess = this.process; // Alias for consistency
@@ -141,8 +186,8 @@ class BackendService {
 
       // Persist FFmpeg path to backend configuration if detected
       if (ffmpegExists) {
-        await this._persistFFmpegPath(ffmpegPath).catch(err => {
-          console.warn('[Backend] Failed to persist FFmpeg path:', err.message);
+        await this._persistFFmpegPath(ffmpegPath).catch((err) => {
+          console.warn("[Backend] Failed to persist FFmpeg path:", err.message);
         });
       }
 
@@ -180,11 +225,16 @@ class BackendService {
         const exited = await this._waitForExit(timeoutMs);
 
         if (!exited) {
-          console.warn("[BackendService] Backend did not exit within timeout. Forcing kill.");
+          console.warn(
+            "[BackendService] Backend did not exit within timeout. Forcing kill."
+          );
           try {
             this.backendProcess.kill("SIGKILL");
           } catch (err) {
-            console.error("[BackendService] Failed to force-kill backend:", err.message);
+            console.error(
+              "[BackendService] Failed to force-kill backend:",
+              err.message
+            );
           }
         }
       } catch (error) {
@@ -470,20 +520,23 @@ class BackendService {
    */
   async waitForReady({ timeout = 90000, onProgress = null } = {}) {
     const startTime = Date.now();
-    const healthCheckUrl = this._buildUrl('/health');
+    const healthCheckUrl = this._buildUrl("/health");
     let lastError = null;
     let attemptCount = 0;
     const maxAttempts = Math.floor(timeout / 1000); // One attempt per second
 
-    this.logger.info?.('BackendService', `Waiting for backend health check at: ${healthCheckUrl}`);
-    
+    this.logger.info?.(
+      "BackendService",
+      `Waiting for backend health check at: ${healthCheckUrl}`
+    );
+
     while (Date.now() - startTime < timeout) {
       attemptCount++;
-      
+
       try {
         // Check if process is still running
         if (this.process && this.process.killed) {
-          this.logger.error?.('BackendService', 'Backend process was killed');
+          this.logger.error?.("BackendService", "Backend process was killed");
           return false;
         }
 
@@ -494,32 +547,36 @@ class BackendService {
         });
 
         if (response.status === 200 && response.data) {
-          this.logger.info?.('BackendService', 'Backend health check passed', {
+          this.logger.info?.("BackendService", "Backend health check passed", {
             attemptCount,
             elapsedMs: Date.now() - startTime,
             healthData: response.data,
           });
-          
+
           // Call progress callback with success
           if (onProgress) {
             onProgress({
               percent: 100,
-              message: 'Backend ready',
-              phase: 'complete',
+              message: "Backend ready",
+              phase: "complete",
             });
           }
-          
+
           return true;
         }
       } catch (error) {
         lastError = error;
-        
+
         // Log every 10 attempts or on first attempt
         if (attemptCount === 1 || attemptCount % 10 === 0) {
-          this.logger.debug?.('BackendService', `Health check attempt ${attemptCount}/${maxAttempts}`, {
-            error: error.message,
-            elapsedMs: Date.now() - startTime,
-          });
+          this.logger.debug?.(
+            "BackendService",
+            `Health check attempt ${attemptCount}/${maxAttempts}`,
+            {
+              error: error.message,
+              elapsedMs: Date.now() - startTime,
+            }
+          );
         }
 
         // Call progress callback
@@ -528,7 +585,7 @@ class BackendService {
           onProgress({
             percent: progress,
             message: `Waiting for backend (attempt ${attemptCount})...`,
-            phase: 'health-check',
+            phase: "health-check",
           });
         }
       }
@@ -538,7 +595,7 @@ class BackendService {
     }
 
     // Timeout reached
-    this.logger.error?.('BackendService', 'Backend health check timeout', {
+    this.logger.error?.("BackendService", "Backend health check timeout", {
       attemptCount,
       timeoutMs: timeout,
       lastError: lastError?.message,
@@ -712,15 +769,20 @@ class BackendService {
     // /health/ready checks database and other services which may take time to initialize
     const readinessEndpoint = "/health/live";
     const readinessUrl = this._buildUrl(readinessEndpoint);
-    
+
     let lastError = null;
 
     for (let i = 0; i < maxAttempts; i++) {
       // Check if process has actually exited (not just if kill was called)
-      if (this.process && (this.process.exitCode !== null || this.process.signalCode !== null)) {
-        const startupOutput = this.startupOutputLines.join('\n') || '(no output captured)';
-        const errorOutput = this.errorOutputLines.join('\n') || '(no errors captured)';
-        const errorMessage = 
+      if (
+        this.process &&
+        (this.process.exitCode !== null || this.process.signalCode !== null)
+      ) {
+        const startupOutput =
+          this.startupOutputLines.join("\n") || "(no output captured)";
+        const errorOutput =
+          this.errorOutputLines.join("\n") || "(no errors captured)";
+        const errorMessage =
           `Backend process exited during startup (exitCode: ${this.process.exitCode}, signal: ${this.process.signalCode}).\n` +
           `Startup output: ${startupOutput}\n` +
           `Error output: ${errorOutput}`;
@@ -737,15 +799,19 @@ class BackendService {
           console.log(`[Backend] Backend is healthy at ${this.baseUrl}`);
           return true;
         } else {
-          console.log(`[Backend] Health check returned status ${response.status}`);
+          console.log(
+            `[Backend] Health check returned status ${response.status}`
+          );
         }
       } catch (error) {
         lastError = error;
         // Backend not ready yet, continue waiting
-        if (error.code === 'ECONNREFUSED') {
+        if (error.code === "ECONNREFUSED") {
           // Connection refused - backend not listening yet
-        } else if (error.code === 'ETIMEDOUT') {
-          console.log(`[Backend] Health check timeout (attempt ${i + 1}/${maxAttempts})`);
+        } else if (error.code === "ETIMEDOUT") {
+          console.log(
+            `[Backend] Health check timeout (attempt ${i + 1}/${maxAttempts})`
+          );
         } else {
           console.log(`[Backend] Health check error: ${error.message}`);
         }
@@ -764,17 +830,22 @@ class BackendService {
     }
 
     // Provide detailed error message
-    const startupOutput = this.startupOutputLines.join('\n') || '(no output captured)';
-    const errorOutput = this.errorOutputLines.join('\n') || '(no errors captured)';
-    const processRunning = this.process && this.process.exitCode === null && this.process.signalCode === null;
-    const errorMessage = 
+    const startupOutput =
+      this.startupOutputLines.join("\n") || "(no output captured)";
+    const errorOutput =
+      this.errorOutputLines.join("\n") || "(no errors captured)";
+    const processRunning =
+      this.process &&
+      this.process.exitCode === null &&
+      this.process.signalCode === null;
+    const errorMessage =
       `Backend failed to start within ${this.BACKEND_STARTUP_TIMEOUT}ms\n` +
       `Health check URL: ${readinessUrl}\n` +
-      `Last error: ${lastError ? lastError.message : 'None'}\n` +
+      `Last error: ${lastError ? lastError.message : "None"}\n` +
       `Process running: ${processRunning}\n` +
       `Startup output: ${startupOutput}\n` +
       `Error output: ${errorOutput}`;
-    
+
     throw new Error(errorMessage);
   }
 
@@ -784,21 +855,43 @@ class BackendService {
   _getBackendPath() {
     // Check production bundle location FIRST
     const productionPath = path.join(
-      process.resourcesPath || '',
-      'backend',
-      'win-x64',
-      'Aura.Api.exe'
+      process.resourcesPath || "",
+      "backend",
+      "win-x64",
+      "Aura.Api.exe"
     );
     if (fs.existsSync(productionPath)) {
-      console.log(`[BackendService] Found production backend at: ${productionPath}`);
+      console.log(
+        `[BackendService] Found production backend at: ${productionPath}`
+      );
       return productionPath;
     }
 
     // Then check development locations
     const devPaths = [
-      path.join(__dirname, '..', '..', 'dist', 'backend', 'Aura.Api.exe'),
-      path.join(__dirname, '..', '..', 'Aura.Api', 'bin', 'Release', 'net8.0', 'win-x64', 'publish', 'Aura.Api.exe'),
-      path.join(__dirname, '..', '..', 'Aura.Api', 'bin', 'Debug', 'net8.0', 'Aura.Api.exe'),
+      path.join(__dirname, "..", "..", "dist", "backend", "Aura.Api.exe"),
+      path.join(
+        __dirname,
+        "..",
+        "..",
+        "Aura.Api",
+        "bin",
+        "Release",
+        "net8.0",
+        "win-x64",
+        "publish",
+        "Aura.Api.exe"
+      ),
+      path.join(
+        __dirname,
+        "..",
+        "..",
+        "Aura.Api",
+        "bin",
+        "Debug",
+        "net8.0",
+        "Aura.Api.exe"
+      ),
     ];
 
     for (const devPath of devPaths) {
@@ -808,7 +901,9 @@ class BackendService {
       }
     }
 
-    throw new Error('Backend executable not found. Application may not be properly installed.');
+    throw new Error(
+      "Backend executable not found. Application may not be properly installed."
+    );
   }
 
   /**
@@ -899,28 +994,32 @@ class BackendService {
     try {
       const ffmpegExe = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
       const ffmpegFullPath = path.join(ffmpegPath, ffmpegExe);
-      
-      console.log('[Backend] Persisting FFmpeg path:', ffmpegFullPath);
-      
+
+      console.log("[Backend] Persisting FFmpeg path:", ffmpegFullPath);
+
       const response = await axios.post(
         `${this.baseUrl}/api/setup/configure-ffmpeg`,
         {
           path: ffmpegFullPath,
-          source: 'ElectronDetection'
+          source: "ElectronDetection",
         },
         {
           timeout: 5000,
-          validateStatus: () => true
+          validateStatus: () => true,
         }
       );
 
       if (response.status === 200) {
-        console.log('[Backend] FFmpeg path persisted successfully');
+        console.log("[Backend] FFmpeg path persisted successfully");
       } else {
-        console.warn('[Backend] Failed to persist FFmpeg path:', response.status, response.data);
+        console.warn(
+          "[Backend] Failed to persist FFmpeg path:",
+          response.status,
+          response.data
+        );
       }
     } catch (error) {
-      console.warn('[Backend] Error persisting FFmpeg path:', error.message);
+      console.warn("[Backend] Error persisting FFmpeg path:", error.message);
     }
   }
 
@@ -929,7 +1028,11 @@ class BackendService {
    */
   _getPlatformFFmpegDir() {
     const platform = process.platform;
-    return platform === "win32" ? "win-x64" : (platform === "darwin" ? "osx-x64" : "linux-x64");
+    return platform === "win32"
+      ? "win-x64"
+      : platform === "darwin"
+      ? "osx-x64"
+      : "linux-x64";
   }
 
   /**
@@ -938,30 +1041,46 @@ class BackendService {
   _prepareEnvironment() {
     // Determine FFmpeg path - check managed location first
     const platformDir = this._getPlatformFFmpegDir();
-    
+
     const ffmpegPaths = [
       // Managed FFmpeg in resources (installed mode)
-      path.join(process.resourcesPath || '', 'ffmpeg', platformDir, 'bin'),
+      path.join(process.resourcesPath || "", "ffmpeg", platformDir, "bin"),
       // Development mode FFmpeg
-      path.join(this.app.getAppPath(), '..', 'Aura.Desktop', 'resources', 'ffmpeg', platformDir, 'bin'),
+      path.join(
+        this.app.getAppPath(),
+        "..",
+        "Aura.Desktop",
+        "resources",
+        "ffmpeg",
+        platformDir,
+        "bin"
+      ),
       // Bundled FFmpeg in app directory
-      path.join(this.app.getAppPath(), 'resources', 'ffmpeg', platformDir, 'bin'),
+      path.join(
+        this.app.getAppPath(),
+        "resources",
+        "ffmpeg",
+        platformDir,
+        "bin"
+      ),
     ];
 
     let ffmpegPath = null;
     const ffmpegExe = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
-    
+
     for (const candidatePath of ffmpegPaths) {
       const ffmpegFullPath = path.join(candidatePath, ffmpegExe);
       if (fs.existsSync(ffmpegFullPath)) {
         ffmpegPath = candidatePath;
-        console.log('[BackendService] Found FFmpeg at:', ffmpegPath);
+        console.log("[BackendService] Found FFmpeg at:", ffmpegPath);
         break;
       }
     }
 
     if (!ffmpegPath) {
-      console.warn('[BackendService] Managed FFmpeg not found, backend will search system');
+      console.warn(
+        "[BackendService] Managed FFmpeg not found, backend will search system"
+      );
     }
 
     return {
@@ -1007,25 +1126,27 @@ class BackendService {
     this.startupOutputSize = 0;
     this.errorOutputSize = 0;
     const MAX_OUTPUT_SIZE = 5000; // 5KB limit
-    
+
     // Handle backend output
     this.process.stdout.on("data", (data) => {
       const message = data.toString().trim();
       if (message) {
         console.log(`[Backend] ${message}`);
-        
+
         // Capture startup output for diagnostics (first 5KB only)
         // Track size incrementally for O(1) performance
         if (this.startupOutputSize < MAX_OUTPUT_SIZE) {
           this.startupOutputLines.push(message);
           this.startupOutputSize += message.length + 1; // +1 for newline
         }
-        
+
         // Log important startup messages
-        if (message.includes('Now listening on:') || 
-            message.includes('Application started') ||
-            message.includes('Content root path:')) {
-          console.log('[Backend] Startup message detected:', message);
+        if (
+          message.includes("Now listening on:") ||
+          message.includes("Application started") ||
+          message.includes("Content root path:")
+        ) {
+          console.log("[Backend] Startup message detected:", message);
         }
       }
     });
@@ -1034,7 +1155,7 @@ class BackendService {
       const message = data.toString().trim();
       if (message) {
         console.error(`[Backend Error] ${message}`);
-        
+
         // Capture error output for diagnostics (first 5KB only)
         // Track size incrementally for O(1) performance
         if (this.errorOutputSize < MAX_OUTPUT_SIZE) {
@@ -1046,14 +1167,18 @@ class BackendService {
 
     // Handle backend exit
     this.process.on("exit", (code, signal) => {
-      console.log(`[Backend] Process exited with code ${code} and signal ${signal}`);
+      console.log(
+        `[Backend] Process exited with code ${code} and signal ${signal}`
+      );
 
       // Log captured output if backend failed during startup
       if (code !== 0 && code !== null) {
-        const startupOutput = this.startupOutputLines.join('\n') || '(no output captured)';
-        const errorOutput = this.errorOutputLines.join('\n') || '(no errors captured)';
-        console.error('[Backend] Startup output:', startupOutput);
-        console.error('[Backend] Error output:', errorOutput);
+        const startupOutput =
+          this.startupOutputLines.join("\n") || "(no output captured)";
+        const errorOutput =
+          this.errorOutputLines.join("\n") || "(no errors captured)";
+        console.error("[Backend] Startup output:", startupOutput);
+        console.error("[Backend] Error output:", errorOutput);
       }
 
       // Don't restart if we're intentionally quitting or already restarting
@@ -1092,7 +1217,7 @@ class BackendService {
         code: error.code,
         errno: error.errno,
         syscall: error.syscall,
-        path: error.path
+        path: error.path,
       });
     });
   }
@@ -1133,7 +1258,9 @@ class BackendService {
    * This prevents "port already in use" errors and ensures clean startup
    */
   async _detectAndCleanupOrphanedBackend() {
-    console.log(`[OrphanDetection] Checking for orphaned backend on port ${this.port}...`);
+    console.log(
+      `[OrphanDetection] Checking for orphaned backend on port ${this.port}...`
+    );
 
     let found = 0;
     let terminated = 0;
@@ -1143,12 +1270,16 @@ class BackendService {
     const portInUse = await this._isPortInUse(this.port);
 
     if (!portInUse) {
-      console.log('[OrphanDetection] Port is available, no cleanup needed');
-      console.log(`[OrphanDetection] Orphan cleanup: ${found} found, ${terminated} terminated, ${failed} failed`);
+      console.log("[OrphanDetection] Port is available, no cleanup needed");
+      console.log(
+        `[OrphanDetection] Orphan cleanup: ${found} found, ${terminated} terminated, ${failed} failed`
+      );
       return;
     }
 
-    console.warn(`[OrphanDetection] Port ${this.port} is already in use, attempting cleanup...`);
+    console.warn(
+      `[OrphanDetection] Port ${this.port} is already in use, attempting cleanup...`
+    );
     found = 1; // At least one process using the port
 
     // Try to find and kill orphaned Aura.Api processes
@@ -1157,18 +1288,28 @@ class BackendService {
     failed = cleanupResult.failed;
 
     // Wait a moment for port to be released
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
     // Verify port is now available
     const stillInUse = await this._isPortInUse(this.port);
     if (stillInUse) {
-      console.error(`[OrphanDetection] Failed to cleanup port ${this.port}. Manual intervention may be required.`);
-      console.log(`[OrphanDetection] Orphan cleanup: ${found} found, ${terminated} terminated, ${failed + 1} failed`);
-      throw new Error(`Port ${this.port} is still in use after cleanup. Please close any running Aura processes in Task Manager.`);
+      console.error(
+        `[OrphanDetection] Failed to cleanup port ${this.port}. Manual intervention may be required.`
+      );
+      console.log(
+        `[OrphanDetection] Orphan cleanup: ${found} found, ${terminated} terminated, ${
+          failed + 1
+        } failed`
+      );
+      throw new Error(
+        `Port ${this.port} is still in use after cleanup. Please close any running Aura processes in Task Manager.`
+      );
     }
 
-    console.log('[OrphanDetection] Cleanup successful, port is now available');
-    console.log(`[OrphanDetection] Orphan cleanup: ${found} found, ${terminated} terminated, ${failed} failed`);
+    console.log("[OrphanDetection] Cleanup successful, port is now available");
+    console.log(
+      `[OrphanDetection] Orphan cleanup: ${found} found, ${terminated} terminated, ${failed} failed`
+    );
   }
 
   /**
@@ -1176,14 +1317,14 @@ class BackendService {
    */
   async _isPortInUse(port) {
     return new Promise((resolve) => {
-      const testSocket = net.createConnection({ port, host: '127.0.0.1' });
+      const testSocket = net.createConnection({ port, host: "127.0.0.1" });
 
-      testSocket.on('connect', () => {
+      testSocket.on("connect", () => {
         testSocket.end();
         resolve(true); // Port is in use
       });
 
-      testSocket.on('error', (err) => {
+      testSocket.on("error", (err) => {
         resolve(false); // Port is available (connection refused)
       });
 
@@ -1210,11 +1351,11 @@ class BackendService {
         // SAFETY: Using exact image name match to avoid killing unrelated apps
         const commands = [
           'taskkill /F /IM "Aura.Api.exe" /T 2>nul',
-          'taskkill /F /IM "ffmpeg.exe" /FI "WINDOWTITLE eq Aura*" 2>nul'
+          'taskkill /F /IM "ffmpeg.exe" /FI "WINDOWTITLE eq Aura*" 2>nul',
         ];
-        
+
         let completed = 0;
-        commands.forEach(cmd => {
+        commands.forEach((cmd) => {
           console.log(`[OrphanDetection] Executing: ${cmd}`);
           exec(cmd, { timeout: 5000 }, (error, stdout, stderr) => {
             if (!error && stdout && stdout.trim()) {
@@ -1228,7 +1369,7 @@ class BackendService {
               // Only count non-"process not found" errors as failures
               failed++;
             }
-            
+
             completed++;
             if (completed === commands.length) {
               resolve({ terminated, failed });
@@ -1240,16 +1381,16 @@ class BackendService {
         // SAFETY: Using exact process name match
         exec('pkill -9 -f "Aura.Api"', (error1) => {
           if (!error1) {
-            console.log('[OrphanDetection] Killed orphaned backend processes');
+            console.log("[OrphanDetection] Killed orphaned backend processes");
             terminated++;
           }
-          
+
           exec('pkill -9 -f "ffmpeg.*aura"', (error2) => {
             if (!error2) {
-              console.log('[OrphanDetection] Killed orphaned FFmpeg processes');
+              console.log("[OrphanDetection] Killed orphaned FFmpeg processes");
               terminated++;
             }
-            
+
             resolve({ terminated, failed });
           });
         });
