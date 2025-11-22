@@ -201,19 +201,21 @@ export default defineConfig(({ mode }) => {
       copyPublicDir: true,
       // Disable CSS code splitting for simpler Electron loading
       cssCodeSplit: false,
-      // Enable minification with terser for better compression
-      minify: 'terser',
-      terserOptions: {
-        compress: {
-          drop_console: isProduction, // Remove console.logs in production
-          drop_debugger: isProduction, // Remove debugger statements in production
-          pure_funcs: isProduction ? ['console.log', 'console.info', 'console.debug'] : [],
-          passes: 2, // Multiple passes for better optimization
-        },
-        mangle: {
-          safari10: true, // Support Safari 10+
-        },
-      },
+      // Use esbuild minification for better compatibility with Electron
+      // terser was causing "Cannot access 'e' before initialization" errors
+      minify: 'esbuild',
+      // Keep console logs in production for debugging Electron app
+      // terserOptions: {
+      //   compress: {
+      //     drop_console: isProduction,
+      //     drop_debugger: isProduction,
+      //     pure_funcs: isProduction ? ['console.log', 'console.info', 'console.debug'] : [],
+      //     passes: 2,
+      //   },
+      //   mangle: {
+      //     safari10: true,
+      //   },
+      // },
       rollupOptions: {
         output: {
           // Use ES module format for better Electron compatibility
