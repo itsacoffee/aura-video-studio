@@ -528,7 +528,7 @@ class BackendService {
   }
 
   /**
-   * Wait for backend to be ready with enhanced health checks
+   * Wait for backend to be ready with enhanced health checks and exponential backoff
    * @param {Object} options - Wait options
    * @param {number} options.timeout - Maximum wait time in ms (default: 90000)
    * @param {Function} options.onProgress - Progress callback
@@ -539,6 +539,7 @@ class BackendService {
     const healthCheckUrl = this._buildUrl("/health");
     let lastError = null;
     let attemptCount = 0;
+    let consecutiveFailures = 0;
     const maxAttempts = Math.floor(timeout / 1000); // One attempt per second
 
     this.logger.info?.(
@@ -556,15 +557,17 @@ class BackendService {
           return false;
         }
 
-        // Try health check
+        // IMPROVED: Try health check with more lenient status validation during startup
+        // Accept any 2xx status code (200-299) not just 200, as backend may return 204 or other success codes
         const response = await axios.get(healthCheckUrl, {
           timeout: 5000,
-          validateStatus: (status) => status === 200,
+          validateStatus: (status) => status >= 200 && status < 300, // Accept all 2xx responses
         });
 
-        if (response.status === 200 && response.data) {
+        if (response.status >= 200 && response.status < 300) {
           this.logger.info?.("BackendService", "Backend health check passed", {
             attemptCount,
+            statusCode: response.status,
             elapsedMs: Date.now() - startTime,
             healthData: response.data,
           });
@@ -582,15 +585,19 @@ class BackendService {
         }
       } catch (error) {
         lastError = error;
+        consecutiveFailures++;
 
-        // Log every 10 attempts or on first attempt
+        // Log with more context on process state
         if (attemptCount === 1 || attemptCount % 10 === 0) {
           this.logger.debug?.(
             "BackendService",
             `Health check attempt ${attemptCount}/${maxAttempts}`,
             {
               error: error.message,
+              errorCode: error.code,
               elapsedMs: Date.now() - startTime,
+              processAlive: this.process && !this.process.killed,
+              consecutiveFailures,
             }
           );
         }
@@ -606,16 +613,36 @@ class BackendService {
         }
       }
 
-      // Wait 1 second before next attempt
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // IMPROVED: Exponential backoff with cap
+      // Use exponential backoff for first few attempts, then settle to 1 second intervals
+      // This reduces load on the backend during startup while still checking frequently enough
+      let delay = 1000; // Default 1 second
+      if (consecutiveFailures < 5) {
+        // First 5 failures: exponential backoff (500ms, 1s, 2s, 4s, 8s cap)
+        delay = Math.min(500 * Math.pow(2, consecutiveFailures), 8000);
+      }
+      
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      
+      // Reset consecutive failures if we've had a successful attempt recently
+      if (consecutiveFailures > 10) {
+        consecutiveFailures = Math.max(5, consecutiveFailures - 1);
+      }
     }
 
-    // Timeout reached
+    // Timeout reached - provide detailed diagnostics
+    const processAlive = this.process && !this.process.killed;
+    const startupOutput = this.startupOutputLines?.join("\n") || "(no output captured)";
+    const errorOutput = this.errorOutputLines?.join("\n") || "(no errors captured)";
+    
     this.logger.error?.("BackendService", "Backend health check timeout", {
       attemptCount,
       timeoutMs: timeout,
       lastError: lastError?.message,
-      processRunning: this.process && !this.process.killed,
+      lastErrorCode: lastError?.code,
+      processRunning: processAlive,
+      startupOutputPreview: startupOutput.substring(0, 500),
+      errorOutputPreview: errorOutput.substring(0, 500),
     });
 
     return false;
@@ -787,6 +814,7 @@ class BackendService {
     const readinessUrl = this._buildUrl(readinessEndpoint);
 
     let lastError = null;
+    let consecutiveFailures = 0;
 
     for (let i = 0; i < maxAttempts; i++) {
       // Check if process has actually exited (not just if kill was called)
@@ -808,12 +836,20 @@ class BackendService {
       try {
         const response = await axios.get(readinessUrl, {
           timeout: 2000,
-          validateStatus: () => true,
+          validateStatus: () => true, // Accept any status code
         });
 
-        if (response.status === 200) {
-          console.log(`[Backend] Backend is healthy at ${this.baseUrl}`);
+        // IMPROVED: Accept any 2xx status code, not just 200
+        // During startup, backend may return 204 or other success codes
+        if (response.status >= 200 && response.status < 300) {
+          console.log(`[Backend] Backend is healthy at ${this.baseUrl} (status: ${response.status})`);
           return true;
+        } else if (response.status >= 500 && response.status < 600) {
+          // 5xx errors indicate backend is running but having internal issues
+          console.warn(
+            `[Backend] Backend returned server error ${response.status} - may still be initializing`
+          );
+          consecutiveFailures++;
         } else {
           console.log(
             `[Backend] Health check returned status ${response.status}`
@@ -821,21 +857,36 @@ class BackendService {
         }
       } catch (error) {
         lastError = error;
+        consecutiveFailures++;
+        
         // Backend not ready yet, continue waiting
         if (error.code === "ECONNREFUSED") {
-          // Connection refused - backend not listening yet
+          // Connection refused - backend not listening yet (most common during startup)
+          if (i % 10 === 0 && i > 0) {
+            console.log(
+              `[Backend] Still waiting for backend to start listening (attempt ${i + 1}/${maxAttempts})`
+            );
+          }
         } else if (error.code === "ETIMEDOUT") {
           console.log(
             `[Backend] Health check timeout (attempt ${i + 1}/${maxAttempts})`
           );
         } else {
-          console.log(`[Backend] Health check error: ${error.message}`);
+          console.log(`[Backend] Health check error: ${error.message} (code: ${error.code || 'none'})`);
         }
+      }
+
+      // IMPROVED: Exponential backoff for first few attempts, then normal interval
+      let delay = this.HEALTH_CHECK_INTERVAL;
+      if (consecutiveFailures < 5) {
+        // First 5 failures: shorter delays with exponential backoff
+        // This allows faster detection when backend starts quickly
+        delay = Math.min(500 * Math.pow(1.5, consecutiveFailures), this.HEALTH_CHECK_INTERVAL);
       }
 
       // Wait before next attempt
       await new Promise((resolve) =>
-        setTimeout(resolve, this.HEALTH_CHECK_INTERVAL)
+        setTimeout(resolve, delay)
       );
 
       if (i % 10 === 0 && i > 0) {
