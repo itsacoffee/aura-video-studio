@@ -1058,6 +1058,8 @@ class BackendService {
       userGuidance = "The backend is not responding to health checks.";
     }
 
+    // Build error message with clear sections
+    const logsPath = path.join(this.app.getPath("userData"), "logs");
     const errorMessage =
       `Backend startup failed (${failureType})\n\n` +
       `${userGuidance}\n\n` +
@@ -1073,7 +1075,7 @@ class BackendService {
       `1. Check if port ${this.port} is available\n` +
       `2. Verify .NET 8.0 runtime is installed\n` +
       `3. Check Windows Firewall settings\n` +
-      `4. Review logs in: ${path.join(this.app.getPath("userData"), "logs")}`;
+      `4. Review logs in: ${logsPath}`;
 
     throw new Error(errorMessage);
   }

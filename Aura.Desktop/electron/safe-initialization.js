@@ -295,7 +295,6 @@ async function initializeBackendService(
           "Port already in use",
           ".NET runtime not installed",
           "Backend crashed on startup",
-          "Firewall blocking connection",
         ],
       });
     }
