@@ -134,9 +134,13 @@ class BackendService {
       // Create necessary directories
       this._createDirectories(env);
 
-      console.log("Backend port:", this.port);
-      console.log("Environment:", env.DOTNET_ENVIRONMENT);
-      console.log("FFmpeg path:", ffmpegPath);
+      console.log("Backend configuration:");
+      console.log("  - URL:", this.baseUrl);
+      console.log("  - Port:", this.port);
+      console.log("  - Environment:", env.DOTNET_ENVIRONMENT);
+      console.log("  - FFmpeg path:", ffmpegPath);
+      console.log("  - Health endpoint:", this.healthEndpoint);
+      console.log("  - ASPNETCORE_URLS:", env.ASPNETCORE_URLS);
 
       if (useDotnetRun) {
         // Run via dotnet run
