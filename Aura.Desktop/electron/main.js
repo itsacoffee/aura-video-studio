@@ -5,7 +5,7 @@
  * It orchestrates all modules and manages the application lifecycle.
  */
 
-const { app, dialog, protocol, ipcMain } = require("electron");
+const { app, dialog, protocol, ipcMain, session } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const { autoUpdater } = require("electron-updater");
@@ -103,6 +103,53 @@ ipcMain.on("runtime:getBootstrap", (event) => {
 
 ipcMain.handle("runtime:getDiagnostics", async () => {
   return refreshRuntimeBridgeState();
+});
+
+// ========================================
+// Storage Cleanup Functions
+// ========================================
+
+/**
+ * Clear all application storage data
+ */
+const clearAllApplicationData = async () => {
+  console.log('[Cleanup] Clearing all application data...');
+  
+  try {
+    // Clear all storage data
+    const ses = session.defaultSession;
+    
+    // Clear all cookies
+    await ses.clearStorageData({
+      storages: ['cookies']
+    });
+    
+    // Clear cache
+    await ses.clearCache();
+    
+    // Clear all storage
+    await ses.clearStorageData({
+      storages: ['appcache', 'filesystem', 'indexdb', 'localstorage', 'shadercache', 'websql', 'serviceworkers', 'cachestorage']
+    });
+    
+    // Clear auth cache
+    await ses.clearAuthCache();
+    
+    // Clear host resolver cache
+    await ses.clearHostResolverCache();
+    
+    console.log('[Cleanup] Successfully cleared all application data');
+  } catch (error) {
+    console.error('[Cleanup] Error clearing application data:', error);
+  }
+};
+
+// IPC handler for reset from renderer
+ipcMain.handle('reset-application', async () => {
+  console.log('[IPC] Reset application requested');
+  await clearAllApplicationData();
+  app.relaunch();
+  app.exit(0);
 });
 
 // ========================================
@@ -1437,7 +1484,7 @@ async function startApplication() {
 setupErrorHandling();
 
 // App is ready
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   if (contractResolutionError) {
     dialog.showErrorBox(
       "Backend Configuration Error",
@@ -1445,6 +1492,12 @@ app.whenReady().then(() => {
     );
     app.quit();
     return;
+  }
+
+  // Check for reset flag
+  if (process.argv.includes('--reset')) {
+    console.log('[Startup] Reset flag detected, clearing all data...');
+    await clearAllApplicationData();
   }
 
   startApplication();

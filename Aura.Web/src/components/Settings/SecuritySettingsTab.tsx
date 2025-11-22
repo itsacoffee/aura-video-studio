@@ -7,6 +7,7 @@ import {
   Card,
   Spinner,
   Badge,
+  Divider,
 } from '@fluentui/react-components';
 import {
   ShieldCheckmark24Regular,
@@ -16,6 +17,7 @@ import {
 } from '@fluentui/react-icons';
 import { useState, useEffect } from 'react';
 import { apiUrl } from '../../config/api';
+import { ResetButton } from './ResetButton';
 
 interface KeyVaultEncryptionInfo {
   platform: string;
@@ -444,6 +446,28 @@ export function SecuritySettingsTab() {
             All API keys are encrypted at rest and never stored in plain text. The redaction
             self-check verifies that keys are properly masked in logs and API responses.
           </Text>
+        </Card>
+
+        <Divider
+          style={{ marginTop: tokens.spacingVerticalXL, marginBottom: tokens.spacingVerticalL }}
+        />
+
+        <Card
+          style={{
+            padding: tokens.spacingVerticalL,
+            backgroundColor: tokens.colorNeutralBackground2,
+            marginTop: tokens.spacingVerticalL,
+          }}
+        >
+          <Text weight="semibold" size={400} style={{ marginBottom: tokens.spacingVerticalS }}>
+            ⚠️ Reset Application
+          </Text>
+          <Text size={200} style={{ marginBottom: tokens.spacingVerticalM }}>
+            Completely reset the application to its initial state. This will clear all settings,
+            cached data, API keys, and stored preferences. Use this if you&apos;re experiencing
+            persistent issues or want to start fresh.
+          </Text>
+          <ResetButton />
         </Card>
       </div>
     </Card>

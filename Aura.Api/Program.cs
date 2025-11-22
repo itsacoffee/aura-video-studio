@@ -59,6 +59,61 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
     WebRootPath = Path.Combine(AppContext.BaseDirectory, "wwwroot")
 });
 
+// Check for reset flag
+if (args.Contains("--reset") || Environment.GetEnvironmentVariable("AURA_RESET") == "true")
+{
+    Console.WriteLine("Reset flag detected, clearing application data...");
+    
+    var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+    
+    // Clear temp directory
+    var tempPath = Path.Combine(Path.GetTempPath(), "Aura");
+    if (Directory.Exists(tempPath))
+    {
+        try
+        {
+            Directory.Delete(tempPath, true);
+            Console.WriteLine($"Cleared temp directory: {tempPath}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Warning: Could not clear temp directory: {ex.Message}");
+        }
+    }
+    
+    // Clear logs
+    var logsPath = Path.Combine(Directory.GetCurrentDirectory(), "logs");
+    if (Directory.Exists(logsPath))
+    {
+        try
+        {
+            Directory.Delete(logsPath, true);
+            Console.WriteLine($"Cleared logs directory: {logsPath}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Warning: Could not clear logs directory: {ex.Message}");
+        }
+    }
+    
+    // Clear any cached data
+    var auraDataPath = Path.Combine(localAppData, "Aura");
+    if (Directory.Exists(auraDataPath))
+    {
+        try
+        {
+            Directory.Delete(auraDataPath, true);
+            Console.WriteLine($"Cleared Aura data directory: {auraDataPath}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Warning: Could not clear Aura data directory: {ex.Message}");
+        }
+    }
+    
+    Console.WriteLine("Application data cleared");
+}
+
 // Configure host shutdown timeout to allow graceful shutdown of all services
 // Default is 5 seconds, we extend to 30 seconds to ensure all background services,
 // FFmpeg processes, and hosted services have time to clean up properly
