@@ -473,27 +473,17 @@ public class SetupController : ControllerBase
             var errors = new List<string>();
 
             // Validate output directory if provided
+            string? expandedOutputDirectory = null;
             if (!string.IsNullOrEmpty(request.OutputDirectory))
             {
-                if (!Directory.Exists(request.OutputDirectory))
+                if (!ValidateAndCreateDirectory(request.OutputDirectory, createIfMissing: true, out expandedOutputDirectory, out var dirError))
                 {
-                    errors.Add($"Output directory does not exist: {request.OutputDirectory}");
-                    _logger.LogWarning("[{CorrelationId}] Output directory validation failed: directory not found", correlationId);
+                    errors.Add(dirError ?? "Output directory validation failed");
+                    _logger.LogWarning("[{CorrelationId}] Output directory validation failed: {Error}", correlationId, dirError);
                 }
                 else
                 {
-                    try
-                    {
-                        // Test write permissions
-                        var testFile = Path.Combine(request.OutputDirectory, $".aura-test-{Guid.NewGuid()}.tmp");
-                        await System.IO.File.WriteAllTextAsync(testFile, "test", cancellationToken).ConfigureAwait(false);
-                        System.IO.File.Delete(testFile);
-                    }
-                    catch (Exception ex)
-                    {
-                        errors.Add($"Output directory is not writable: {ex.Message}");
-                        _logger.LogWarning(ex, "[{CorrelationId}] Output directory validation failed: not writable", correlationId);
-                    }
+                    _logger.LogInformation("[{CorrelationId}] Output directory validated successfully: {Path}", correlationId, expandedOutputDirectory);
                 }
             }
 
@@ -585,15 +575,15 @@ public class SetupController : ControllerBase
                 _logger.LogInformation("[{CorrelationId}] Updating existing setup record for user 'default' (idempotent operation)", correlationId);
             }
 
-            // Store paths in wizard state JSON
+            // Store paths in wizard state JSON (use expanded paths)
             var wizardState = new Dictionary<string, object?>();
             if (!string.IsNullOrEmpty(request.FFmpegPath))
             {
                 wizardState["ffmpegPath"] = request.FFmpegPath;
             }
-            if (!string.IsNullOrEmpty(request.OutputDirectory))
+            if (!string.IsNullOrEmpty(expandedOutputDirectory))
             {
-                wizardState["outputDirectory"] = request.OutputDirectory;
+                wizardState["outputDirectory"] = expandedOutputDirectory;
             }
             userSetup.WizardState = System.Text.Json.JsonSerializer.Serialize(wizardState);
 
@@ -623,36 +613,31 @@ public class SetupController : ControllerBase
         [FromBody] DirectoryCheckRequest request,
         CancellationToken cancellationToken)
     {
+        var correlationId = HttpContext.TraceIdentifier;
+        
         try
         {
+            _logger.LogInformation("[{CorrelationId}] Checking directory: {Path}", correlationId, request.Path);
+            
             if (string.IsNullOrEmpty(request.Path))
             {
-                return Ok(new { isValid = false, error = "Path cannot be empty" });
+                return Ok(new { isValid = false, error = "Path cannot be empty", correlationId });
             }
 
-            if (!Directory.Exists(request.Path))
+            // Validate and create directory if needed
+            if (!ValidateAndCreateDirectory(request.Path, createIfMissing: true, out var expandedPath, out var error))
             {
-                return Ok(new { isValid = false, error = "Directory does not exist" });
+                _logger.LogWarning("[{CorrelationId}] Directory validation failed: {Error}", correlationId, error);
+                return Ok(new { isValid = false, error = error, expandedPath = (string?)null, correlationId });
             }
 
-            // Test write permissions
-            try
-            {
-                var testFile = Path.Combine(request.Path, $".aura-test-{Guid.NewGuid()}.tmp");
-                await System.IO.File.WriteAllTextAsync(testFile, "test", cancellationToken).ConfigureAwait(false);
-                System.IO.File.Delete(testFile);
-            }
-            catch (Exception ex)
-            {
-                return Ok(new { isValid = false, error = $"Directory is not writable: {ex.Message}" });
-            }
-
-            return Ok(new { isValid = true, error = (string?)null });
+            _logger.LogInformation("[{CorrelationId}] Directory validated successfully: {ExpandedPath}", correlationId, expandedPath);
+            return Ok(new { isValid = true, error = (string?)null, expandedPath = expandedPath, correlationId });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to check directory");
-            return Ok(new { isValid = false, error = $"Failed to check directory: {ex.Message}" });
+            _logger.LogError(ex, "[{CorrelationId}] Failed to check directory", correlationId);
+            return Ok(new { isValid = false, error = $"Failed to check directory: {ex.Message}", expandedPath = (string?)null, correlationId });
         }
     }
 
@@ -1457,6 +1442,117 @@ public class SetupController : ControllerBase
         var firstLine = output.Split('\n', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
         var versionMatch = System.Text.RegularExpressions.Regex.Match(firstLine, @"ffmpeg version ([\d.]+[\w-]*)");
         return versionMatch.Success ? versionMatch.Groups[1].Value : null;
+    }
+
+    /// <summary>
+    /// Expand environment variables in a path string, supporting both Windows (%VAR%) and Unix (~, $VAR) syntax
+    /// </summary>
+    private static string ExpandEnvironmentVariables(string path)
+    {
+        if (string.IsNullOrEmpty(path))
+        {
+            return path;
+        }
+
+        var expandedPath = path;
+
+        // Handle Unix home directory expansion (~)
+        if (expandedPath.StartsWith("~/") || expandedPath == "~")
+        {
+            var homeDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            if (expandedPath == "~")
+            {
+                expandedPath = homeDir;
+            }
+            else if (expandedPath.Length >= 2)
+            {
+                expandedPath = Path.Combine(homeDir, expandedPath[2..]);
+            }
+        }
+
+        // Expand Windows environment variables (%USERPROFILE%) and Unix variables ($HOME)
+        expandedPath = Environment.ExpandEnvironmentVariables(expandedPath);
+
+        // Normalize path separators for the current platform
+        expandedPath = Path.GetFullPath(expandedPath);
+
+        return expandedPath;
+    }
+
+    /// <summary>
+    /// Validate and optionally create a directory path
+    /// </summary>
+    /// <param name="path">The path to validate (may contain environment variables)</param>
+    /// <param name="createIfMissing">Whether to create the directory if it doesn't exist</param>
+    /// <param name="expandedPath">The expanded path that was validated</param>
+    /// <param name="error">Error message if validation fails</param>
+    /// <returns>True if path is valid and writable, false otherwise</returns>
+    private bool ValidateAndCreateDirectory(string path, bool createIfMissing, out string expandedPath, out string? error)
+    {
+        error = null;
+        expandedPath = path;
+        var correlationId = HttpContext.TraceIdentifier;
+
+        try
+        {
+            // Expand environment variables
+            expandedPath = ExpandEnvironmentVariables(path);
+
+            _logger.LogInformation("[{CorrelationId}] Validating directory path. Original: {OriginalPath}, Expanded: {ExpandedPath}", 
+                correlationId, path, expandedPath);
+
+            // Check if directory exists
+            if (!Directory.Exists(expandedPath))
+            {
+                if (createIfMissing)
+                {
+                    // Try to create the directory
+                    try
+                    {
+                        Directory.CreateDirectory(expandedPath);
+                        _logger.LogInformation("[{CorrelationId}] Created directory: {Path}", correlationId, expandedPath);
+                    }
+                    catch (Exception ex)
+                    {
+                        error = $"Failed to create directory '{expandedPath}': {ex.Message}";
+                        _logger.LogWarning(ex, "[{CorrelationId}] Failed to create directory: {Path}", correlationId, expandedPath);
+                        return false;
+                    }
+                }
+                else
+                {
+                    error = $"Directory does not exist: {expandedPath}";
+                    if (expandedPath != path)
+                    {
+                        error += $" (expanded from: {path})";
+                    }
+                    return false;
+                }
+            }
+
+            // Test write permissions
+            try
+            {
+                var testFile = Path.Combine(expandedPath, $".aura-test-{Guid.NewGuid()}.tmp");
+                System.IO.File.WriteAllText(testFile, "test");
+                System.IO.File.Delete(testFile);
+                _logger.LogInformation("[{CorrelationId}] Directory write test successful: {Path}", correlationId, expandedPath);
+            }
+            catch (Exception ex)
+            {
+                error = $"Directory is not writable: {ex.Message}";
+                _logger.LogWarning(ex, "[{CorrelationId}] Directory write test failed: {Path}", correlationId, expandedPath);
+                return false;
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to validate directory: {ex.Message}";
+            _logger.LogError(ex, "[{CorrelationId}] Unexpected error validating directory: {Path}", correlationId, path);
+            return false;
+        }
     }
 
     /// <summary>
