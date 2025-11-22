@@ -187,6 +187,70 @@ else
 fi
 
 # ========================================
+# Step 2b: Apply Database Migrations
+# ========================================
+if [ "$SKIP_BACKEND" = false ]; then
+  print_info "Applying database migrations..."
+  cd "$PROJECT_ROOT/Aura.Api"
+  
+  # Check if EF tools are installed
+  if dotnet tool list -g | grep -q "dotnet-ef"; then
+    EF_INSTALLED=true
+    print_info "Entity Framework tools already installed, attempting update..."
+    UPDATE_OUTPUT=$(dotnet tool update --global dotnet-ef 2>&1)
+    if [ $? -ne 0 ]; then
+      print_warning "  Could not update dotnet-ef tools. Will attempt to reinstall..."
+      echo "  Update error: $UPDATE_OUTPUT"
+      # Try to uninstall first
+      dotnet tool uninstall --global dotnet-ef >/dev/null 2>&1
+      # Then install fresh
+      REINSTALL_OUTPUT=$(dotnet tool install --global dotnet-ef 2>&1)
+      if [ $? -ne 0 ]; then
+        print_warning "  Could not reinstall dotnet-ef tools. Database migration check skipped."
+        print_warning "  Migrations will be applied automatically on first application start."
+        echo "  Reinstall error: $REINSTALL_OUTPUT"
+        EF_INSTALLED=false
+      else
+        print_success "  ✓ Entity Framework tools reinstalled"
+      fi
+    else
+      print_success "  ✓ Entity Framework tools updated"
+    fi
+  else
+    print_info "Installing Entity Framework tools..."
+    INSTALL_OUTPUT=$(dotnet tool install --global dotnet-ef 2>&1)
+    if [ $? -ne 0 ]; then
+      print_warning "  Could not install dotnet-ef tools. Database migration check skipped."
+      print_warning "  Migrations will be applied automatically on first application start."
+      echo "  Installation error: $INSTALL_OUTPUT"
+      EF_INSTALLED=false
+    else
+      print_success "  ✓ Entity Framework tools installed"
+      EF_INSTALLED=true
+    fi
+  fi
+  
+  # Only attempt migrations if dotnet-ef is available
+  if [ "$EF_INSTALLED" = true ]; then
+    # Apply migrations (this will create database if missing)
+    print_info "Checking for pending migrations..."
+    MIGRATION_OUTPUT=$(dotnet ef database update --configuration Release 2>&1)
+    if [ $? -eq 0 ]; then
+      print_success "  ✓ Database migrations applied successfully"
+    else
+      print_warning "  Could not apply migrations during build (will be applied on first app start)"
+      echo "  Migration output: $MIGRATION_OUTPUT"
+    fi
+  else
+    print_info "Skipping build-time migration check (migrations will run automatically on first app start)"
+  fi
+  
+  # Return to script directory
+  cd "$SCRIPT_DIR"
+  echo ""
+fi
+
+# ========================================
 # Step 3: Install Electron Dependencies
 # ========================================
 print_info "Installing Electron dependencies..."
