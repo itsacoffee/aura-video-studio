@@ -182,68 +182,8 @@ try {
   throw error;
 }
 
-let rootElement: HTMLElement | null = null;
-
-void startReactApp().catch((error) => {
-  console.error('[Main] ✗ Failed to bootstrap Aura UI:', error);
-  if (rootElement) {
-    showFatalBootstrapError(rootElement, error);
-  }
-});
-
-async function startReactApp(): Promise<void> {
-  console.info('[Main] Creating React root...');
-  rootElement = document.getElementById('root');
-  console.info('[Main] Root element exists:', rootElement !== null);
-
-  if (!rootElement) {
-    throw new Error('Root element #root not found in DOM');
-  }
-
-  console.info('[Main] Root element ready:', rootElement.innerHTML.length === 0);
-
-  if (shouldWaitForBackend()) {
-    await renderBackendWaitScreen(rootElement);
-  } else {
-    console.info('[Main] Backend wait skipped (non-Electron environment).');
-  }
-
-  console.info('[Main] Calling ReactDOM.createRoot...');
-  const root = ReactDOM.createRoot(rootElement);
-
-  console.info('[Main] Rendering App component with ErrorBoundary...');
-  console.info('[Main] Current state:', {
-    rootElementExists: !!rootElement,
-    rootElementEmpty: rootElement?.innerHTML.length === 0,
-    timestamp: new Date().toISOString(),
-  });
-
-  root.render(
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
-  );
-
-  console.info('[Main] ✓ React render call completed');
-  console.info('[Main] React should now hydrate and call App component');
-
-  // Clear initialization timeout - app has successfully hydrated
-  if (window.__initTimeout) {
-    clearTimeout(window.__initTimeout);
-  }
-}
-
-function shouldWaitForBackend(): boolean {
-  if (typeof window === 'undefined') {
-    return false;
-  }
-
-  if (import.meta.env.VITE_SKIP_BACKEND_WAIT === 'true') {
-    return false;
-  }
-
-  return Boolean(window.aura?.backend || window.desktopBridge);
-}
+// ===== BACKEND WAIT SCREEN HELPER FUNCTIONS (START) =====
+// These must be declared before startReactApp() to avoid TDZ issues
 
 const backendStatusContainerStyles = `
   font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -437,6 +377,71 @@ function showFatalBootstrapError(rootEl: HTMLElement, error: unknown): void {
       </button>
     </div>
   `;
+}
+
+function shouldWaitForBackend(): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  if (import.meta.env.VITE_SKIP_BACKEND_WAIT === 'true') {
+    return false;
+  }
+
+  return Boolean(window.aura?.backend || window.desktopBridge);
+}
+
+// ===== BACKEND WAIT SCREEN HELPER FUNCTIONS (END) =====
+
+let rootElement: HTMLElement | null = null;
+
+void startReactApp().catch((error) => {
+  console.error('[Main] ✗ Failed to bootstrap Aura UI:', error);
+  if (rootElement) {
+    showFatalBootstrapError(rootElement, error);
+  }
+});
+
+async function startReactApp(): Promise<void> {
+  console.info('[Main] Creating React root...');
+  rootElement = document.getElementById('root');
+  console.info('[Main] Root element exists:', rootElement !== null);
+
+  if (!rootElement) {
+    throw new Error('Root element #root not found in DOM');
+  }
+
+  console.info('[Main] Root element ready:', rootElement.innerHTML.length === 0);
+
+  if (shouldWaitForBackend()) {
+    await renderBackendWaitScreen(rootElement);
+  } else {
+    console.info('[Main] Backend wait skipped (non-Electron environment).');
+  }
+
+  console.info('[Main] Calling ReactDOM.createRoot...');
+  const root = ReactDOM.createRoot(rootElement);
+
+  console.info('[Main] Rendering App component with ErrorBoundary...');
+  console.info('[Main] Current state:', {
+    rootElementExists: !!rootElement,
+    rootElementEmpty: rootElement?.innerHTML.length === 0,
+    timestamp: new Date().toISOString(),
+  });
+
+  root.render(
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
+  );
+
+  console.info('[Main] ✓ React render call completed');
+  console.info('[Main] React should now hydrate and call App component');
+
+  // Clear initialization timeout - app has successfully hydrated
+  if (window.__initTimeout) {
+    clearTimeout(window.__initTimeout);
+  }
 }
 
 // ===== INITIALIZATION LOGGING (END) =====
