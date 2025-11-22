@@ -249,6 +249,54 @@ else {
 }
 
 # ========================================
+# Step 2b: Apply Database Migrations
+# ========================================
+if (-not $SkipBackend) {
+    Write-Info "Applying database migrations..."
+    Set-Location "$ProjectRoot\Aura.Api"
+    
+    # Check if EF tools are installed
+    $efTools = dotnet tool list -g | Select-String "dotnet-ef"
+    if (-not $efTools) {
+        Write-Info "Installing Entity Framework tools..."
+        dotnet tool install --global dotnet-ef
+        if ($LASTEXITCODE -ne 0) {
+            Show-Warning "  Could not install dotnet-ef tools. Database migration check skipped."
+            Set-Location $ScriptDir
+            Write-Host ""
+        }
+        else {
+            Write-Success "  ✓ Entity Framework tools installed"
+        }
+    }
+    else {
+        Write-Info "Entity Framework tools already installed"
+    }
+    
+    # Only attempt migrations if dotnet-ef is available
+    $efAvailable = dotnet tool list -g | Select-String "dotnet-ef"
+    if ($efAvailable) {
+        # Apply migrations (this will create database if missing)
+        Write-Info "Checking for pending migrations..."
+        try {
+            # Use --configuration Release to match the build configuration
+            $migrationOutput = dotnet ef database update --configuration Release 2>&1
+            if ($LASTEXITCODE -eq 0) {
+                Write-Success "  ✓ Database migrations applied successfully"
+            } else {
+                Show-Warning "  Database migration check skipped (will be created on first run)"
+            }
+        } catch {
+            Show-Warning "  Database migration check skipped (will be created on first run)"
+        }
+    }
+    
+    # Return to script directory
+    Set-Location $ScriptDir
+    Write-Host ""
+}
+
+# ========================================
 # Step 2a: Ensure bundled FFmpeg binaries
 # ========================================
 Write-Info "Ensuring bundled FFmpeg binaries are available..."
