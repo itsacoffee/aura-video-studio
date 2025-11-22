@@ -194,7 +194,7 @@ if [ "$SKIP_BACKEND" = false ]; then
   cd "$PROJECT_ROOT/Aura.Api"
   
   # Check if EF tools are installed
-  if dotnet tool list -g | grep -q "dotnet-ef"; then
+  if dotnet tool list -g | grep -q "^dotnet-ef[[:space:]]"; then
     EF_INSTALLED=true
     print_info "Entity Framework tools already installed, attempting update..."
     UPDATE_OUTPUT=$(dotnet tool update --global dotnet-ef 2>&1)
