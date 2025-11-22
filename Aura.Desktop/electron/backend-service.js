@@ -1007,7 +1007,19 @@ class BackendService {
       const ffmpegExe = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
       const ffmpegFullPath = path.join(ffmpegPath, ffmpegExe);
 
-      console.log("[Backend] Persisting FFmpeg path:", ffmpegFullPath);
+      console.log(
+        "[Backend] Persisting FFmpeg path to backend config:",
+        ffmpegFullPath
+      );
+
+      // Validate FFmpeg executable exists
+      if (!fs.existsSync(ffmpegFullPath)) {
+        console.error(
+          "[Backend] FFmpeg executable not found at:",
+          ffmpegFullPath
+        );
+        return;
+      }
 
       const response = await axios.post(
         `${this.baseUrl}/api/setup/configure-ffmpeg`,
@@ -1022,16 +1034,26 @@ class BackendService {
       );
 
       if (response.status === 200) {
-        console.log("[Backend] FFmpeg path persisted successfully");
+        console.log(
+          "[Backend] ✓ FFmpeg path persisted successfully to backend config"
+        );
+        console.log("[Backend] ✓ FFmpeg should now be detected in wizard");
       } else {
         console.warn(
-          "[Backend] Failed to persist FFmpeg path:",
+          "[Backend] ⚠ Failed to persist FFmpeg path (status:",
           response.status,
-          response.data
+          ")"
         );
+        if (response.data) {
+          console.warn("[Backend]   Response:", response.data);
+        }
       }
     } catch (error) {
-      console.warn("[Backend] Error persisting FFmpeg path:", error.message);
+      console.warn("[Backend] ⚠ Error persisting FFmpeg path:", error.message);
+      if (error.response) {
+        console.warn("[Backend]   Response status:", error.response.status);
+        console.warn("[Backend]   Response data:", error.response.data);
+      }
     }
   }
 
@@ -1055,7 +1077,7 @@ class BackendService {
     const platformDir = this._getPlatformFFmpegDir();
 
     const ffmpegPaths = [
-      // Managed FFmpeg in resources (installed mode)
+      // Managed FFmpeg in resources (installed/portable mode)
       path.join(process.resourcesPath || "", "ffmpeg", platformDir, "bin"),
       // Development mode FFmpeg
       path.join(
@@ -1080,22 +1102,33 @@ class BackendService {
     let ffmpegPath = null;
     const ffmpegExe = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
 
+    console.log("[BackendService] Searching for FFmpeg in candidate paths:");
     for (const candidatePath of ffmpegPaths) {
+      console.log("[BackendService]   Checking:", candidatePath);
       const ffmpegFullPath = path.join(candidatePath, ffmpegExe);
       if (fs.existsSync(ffmpegFullPath)) {
         ffmpegPath = candidatePath;
-        console.log("[BackendService] Found FFmpeg at:", ffmpegPath);
+        console.log("[BackendService] ✓ Found FFmpeg at:", ffmpegPath);
+        console.log("[BackendService] ✓ Full path:", ffmpegFullPath);
         break;
+      } else {
+        console.log("[BackendService] ✗ Not found at:", candidatePath);
       }
     }
 
     if (!ffmpegPath) {
       console.warn(
-        "[BackendService] Managed FFmpeg not found, backend will search system"
+        "[BackendService] Managed FFmpeg not found in any expected location."
+      );
+      console.warn(
+        "[BackendService] Backend will search system PATH for FFmpeg."
+      );
+      console.warn(
+        "[BackendService] To install managed FFmpeg, run build-desktop.ps1"
       );
     }
 
-    return {
+    const env = {
       ...process.env,
       ASPNETCORE_URLS: this.baseUrl,
       DOTNET_ENVIRONMENT: this.isDev ? "Development" : "Production",
@@ -1105,11 +1138,27 @@ class BackendService {
       AURA_DATA_PATH: this.app.getPath("userData"),
       AURA_LOGS_PATH: path.join(this.app.getPath("userData"), "logs"),
       AURA_TEMP_PATH: path.join(this.app.getPath("temp"), "aura-video-studio"),
-      // Set FFMPEG_PATH only if found
-      ...(ffmpegPath && { FFMPEG_PATH: ffmpegPath }),
-      ...(ffmpegPath && { AURA_FFMPEG_PATH: ffmpegPath }),
-      ...(ffmpegPath && { FFMPEG_BINARIES_PATH: ffmpegPath }),
+      // Set FFMPEG_PATH only if found (full path to ffmpeg.exe, not just bin directory)
+      ...(ffmpegPath && {
+        FFMPEG_PATH: path.join(ffmpegPath, ffmpegExe),
+        AURA_FFMPEG_PATH: path.join(ffmpegPath, ffmpegExe),
+        FFMPEG_BINARIES_PATH: ffmpegPath,
+      }),
     };
+
+    console.log("[BackendService] Environment variables configured:");
+    console.log("[BackendService]   ASPNETCORE_URLS:", env.ASPNETCORE_URLS);
+    console.log(
+      "[BackendService]   DOTNET_ENVIRONMENT:",
+      env.DOTNET_ENVIRONMENT
+    );
+    console.log("[BackendService]   AURA_DATA_PATH:", env.AURA_DATA_PATH);
+    console.log(
+      "[BackendService]   FFMPEG_PATH:",
+      env.FFMPEG_PATH || "(not set)"
+    );
+
+    return env;
   }
 
   /**

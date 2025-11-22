@@ -185,8 +185,9 @@ export function resolveApiBaseUrl(): ApiBaseUrlResolution {
     };
   }
 
-  // Priority 4: Current origin (when served from backend)
-  if (typeof window !== 'undefined' && window.location?.origin) {
+  // Priority 4: Current origin (when served from backend) - ONLY for browser, not Electron!
+  // In Electron, window.location.origin would be 'file://' which breaks API calls
+  if (!isElectron && typeof window !== 'undefined' && window.location?.origin) {
     return {
       value: window.location.origin,
       raw: window.location.origin,

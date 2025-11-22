@@ -8,9 +8,7 @@
 
 const { contextBridge, ipcRenderer } = require("electron");
 const os = require("os");
-const {
-  MENU_EVENT_CHANNELS,
-} = require("./menu-event-types");
+const { MENU_EVENT_CHANNELS } = require("./menu-event-types");
 const { createValidatedMenuAPI } = require("./menu-command-handler");
 
 // Event listener timeout in milliseconds (5 seconds)
@@ -149,8 +147,30 @@ let runtimeBootstrap = null;
 try {
   runtimeBootstrap = ipcRenderer.sendSync("runtime:getBootstrap");
   console.log("[Preload] Runtime bootstrap received:", runtimeBootstrap);
+
+  // CRITICAL: Validate that backend URL is present
+  if (
+    !runtimeBootstrap ||
+    !runtimeBootstrap.backend ||
+    !runtimeBootstrap.backend.baseUrl
+  ) {
+    console.error("[Preload] ERROR: Runtime bootstrap missing backend URL!");
+    console.error(
+      "[Preload] This will cause all API calls to fail with 'Network Error'"
+    );
+    console.error(
+      "[Preload] Bootstrap data:",
+      JSON.stringify(runtimeBootstrap, null, 2)
+    );
+  } else {
+    console.log(
+      "[Preload] ✓ Backend URL confirmed:",
+      runtimeBootstrap.backend.baseUrl
+    );
+  }
 } catch (error) {
   console.error("[Preload] Failed to read runtime bootstrap payload:", error);
+  console.error("[Preload] This will cause all API calls to fail!");
   runtimeBootstrap = null;
 }
 
@@ -403,7 +423,8 @@ function createAuraBridge() {
       safeInvoke("dialog:openMultipleFiles", options),
     saveFile: (options) => safeInvoke("dialog:saveFile", options),
     showMessage: (options) => safeInvoke("dialog:showMessage", options),
-    showError: (title, message) => safeInvoke("dialog:showError", title, message),
+    showError: (title, message) =>
+      safeInvoke("dialog:showError", title, message),
   };
 
   const shellApi = {

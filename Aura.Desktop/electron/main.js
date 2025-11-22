@@ -80,6 +80,7 @@ let degradedModeFeatures = [];
  */
 function refreshRuntimeBridgeState(extra = {}) {
   if (!backendContract) {
+    console.warn("[RuntimeBridge] Backend contract not available yet");
     runtimeBridgeState = {
       error: "backend-contract-unavailable",
       message: "Backend contract has not been resolved yet.",
@@ -94,11 +95,28 @@ function refreshRuntimeBridgeState(extra = {}) {
     backendContract,
     extra
   );
+
+  console.log("[RuntimeBridge] Runtime state refreshed:");
+  console.log(
+    "[RuntimeBridge]   Backend URL:",
+    runtimeBridgeState.backend?.baseUrl
+  );
+  console.log(
+    "[RuntimeBridge]   Backend Ready:",
+    runtimeBridgeState.backend?.ready
+  );
+
   return runtimeBridgeState;
 }
 
 ipcMain.on("runtime:getBootstrap", (event) => {
-  event.returnValue = refreshRuntimeBridgeState();
+  const state = refreshRuntimeBridgeState();
+  console.log("[RuntimeBridge] Bootstrap requested, returning:", {
+    hasBackend: !!state.backend,
+    backendUrl: state.backend?.baseUrl,
+    hasError: !!state.error,
+  });
+  event.returnValue = state;
 });
 
 ipcMain.handle("runtime:getDiagnostics", async () => {
@@ -113,40 +131,49 @@ ipcMain.handle("runtime:getDiagnostics", async () => {
  * Clear all application storage data
  */
 const clearAllApplicationData = async () => {
-  console.log('[Cleanup] Clearing all application data...');
-  
+  console.log("[Cleanup] Clearing all application data...");
+
   try {
     // Clear all storage data
     const ses = session.defaultSession;
-    
+
     // Clear all cookies
     await ses.clearStorageData({
-      storages: ['cookies']
+      storages: ["cookies"],
     });
-    
+
     // Clear cache
     await ses.clearCache();
-    
+
     // Clear all storage
     await ses.clearStorageData({
-      storages: ['appcache', 'filesystem', 'indexdb', 'localstorage', 'shadercache', 'websql', 'serviceworkers', 'cachestorage']
+      storages: [
+        "appcache",
+        "filesystem",
+        "indexdb",
+        "localstorage",
+        "shadercache",
+        "websql",
+        "serviceworkers",
+        "cachestorage",
+      ],
     });
-    
+
     // Clear auth cache
     await ses.clearAuthCache();
-    
+
     // Clear host resolver cache
     await ses.clearHostResolverCache();
-    
-    console.log('[Cleanup] Successfully cleared all application data');
+
+    console.log("[Cleanup] Successfully cleared all application data");
   } catch (error) {
-    console.error('[Cleanup] Error clearing application data:', error);
+    console.error("[Cleanup] Error clearing application data:", error);
   }
 };
 
 // IPC handler for reset from renderer
-ipcMain.handle('reset-application', async () => {
-  console.log('[IPC] Reset application requested');
+ipcMain.handle("reset-application", async () => {
+  console.log("[IPC] Reset application requested");
   await clearAllApplicationData();
   app.relaunch();
   app.exit(0);
@@ -318,13 +345,17 @@ function setupErrorHandling() {
 
     // For non-critical rejections, log and continue
     // Only show dialog for critical errors
-    const isCritical = error.message?.includes("ENOENT") === false && 
-                       error.message?.includes("ECONNREFUSED") === false &&
-                       error.message?.includes("timeout") === false;
+    const isCritical =
+      error.message?.includes("ENOENT") === false &&
+      error.message?.includes("ECONNREFUSED") === false &&
+      error.message?.includes("timeout") === false;
 
     if (isCritical && crashCount < MAX_CRASH_COUNT) {
       // Show non-blocking notification instead of error box for non-critical errors
-      console.warn("Non-critical unhandled rejection - application will continue:", error.message);
+      console.warn(
+        "Non-critical unhandled rejection - application will continue:",
+        error.message
+      );
     }
   });
 
@@ -937,17 +968,17 @@ async function startApplication() {
     try {
       windowManager.createSplashWindow();
       splashWindow = windowManager.getSplashWindow();
-      
+
       // Send initial status update
       if (splashWindow && !splashWindow.isDestroyed()) {
-        splashWindow.webContents.on('did-finish-load', () => {
-          splashWindow.webContents.send('status-update', {
-            message: 'Starting backend server...',
-            progress: 10
+        splashWindow.webContents.on("did-finish-load", () => {
+          splashWindow.webContents.send("status-update", {
+            message: "Starting backend server...",
+            progress: 10,
           });
         });
       }
-      
+
       console.log("✓ Splash screen displayed");
       initializationTracker.succeedStep(InitializationStep.SPLASH_SCREEN);
     } catch (error) {
@@ -987,12 +1018,12 @@ async function startApplication() {
 
     // Step 10: Start backend service
     if (splashWindow && !splashWindow.isDestroyed()) {
-      splashWindow.webContents.send('status-update', {
-        message: 'Starting backend server...',
-        progress: 15
+      splashWindow.webContents.send("status-update", {
+        message: "Starting backend server...",
+        progress: 15,
       });
     }
-    
+
     const backendResult = await SafeInit.initializeBackendService(
       app,
       IS_DEV,
@@ -1025,48 +1056,49 @@ async function startApplication() {
 
     backendService = backendResult.component;
     console.log("✓ Backend service started at:", backendService.getUrl());
-    
+
     // Step 10.5: Wait for backend to be fully ready
     if (splashWindow && !splashWindow.isDestroyed()) {
-      splashWindow.webContents.send('status-update', {
-        message: 'Waiting for backend to be ready...',
-        progress: 30
+      splashWindow.webContents.send("status-update", {
+        message: "Waiting for backend to be ready...",
+        progress: 30,
       });
     }
-    
+
     console.log("Waiting for backend to be fully ready...");
     const backendReady = await backendService.waitForReady({
       timeout: 90000, // 90 seconds
       onProgress: (progress) => {
         if (splashWindow && !splashWindow.isDestroyed()) {
           // More accurate progress mapping
-          const progressPercent = Math.min(95, 30 + (progress.percent * 60));
-          splashWindow.webContents.send('status-update', {
-            message: progress.message || 'Initializing backend...',
+          const progressPercent = Math.min(95, 30 + progress.percent * 60);
+          splashWindow.webContents.send("status-update", {
+            message: progress.message || "Initializing backend...",
             progress: progressPercent,
-            details: progress.phase || '' // Add phase info
+            details: progress.phase || "", // Add phase info
           });
         }
-      }
+      },
     });
 
     if (!backendReady) {
       // Backend failed to become ready - show error dialog with options
       console.error("Backend failed to become ready");
-      
+
       const choice = await dialog.showMessageBox({
-        type: 'error',
-        title: 'Backend Startup Failed',
-        message: 'The Aura backend server failed to start.',
-        detail: 'Would you like to:\n• View logs for troubleshooting\n• Retry starting the application\n• Exit',
-        buttons: ['View Logs', 'Retry', 'Exit'],
-        defaultId: 1
+        type: "error",
+        title: "Backend Startup Failed",
+        message: "The Aura backend server failed to start.",
+        detail:
+          "Would you like to:\n• View logs for troubleshooting\n• Retry starting the application\n• Exit",
+        buttons: ["View Logs", "Retry", "Exit"],
+        defaultId: 1,
       });
 
       if (choice.response === 0) {
         // Open logs folder
-        const { shell } = require('electron');
-        const logsPath = path.join(app.getPath('userData'), 'logs');
+        const { shell } = require("electron");
+        const logsPath = path.join(app.getPath("userData"), "logs");
         shell.openPath(logsPath);
         app.quit();
         return;
@@ -1129,12 +1161,12 @@ async function startApplication() {
 
     // Step 12: Create main window
     if (splashWindow && !splashWindow.isDestroyed()) {
-      splashWindow.webContents.send('status-update', {
-        message: 'Backend ready! Loading application...',
-        progress: 95
+      splashWindow.webContents.send("status-update", {
+        message: "Backend ready! Loading application...",
+        progress: 95,
       });
     }
-    
+
     initializationTracker.startStep(InitializationStep.MAIN_WINDOW);
     try {
       const preloadPath = path.join(__dirname, "preload.js");
@@ -1296,11 +1328,11 @@ async function startApplication() {
       // Close splash screen only after ALL critical steps complete or explicit failure
       if (initializationTracker.allCriticalStepsSucceeded()) {
         if (splashWindow && !splashWindow.isDestroyed()) {
-          splashWindow.webContents.send('status-update', {
-            message: 'Application loaded',
-            progress: 100
+          splashWindow.webContents.send("status-update", {
+            message: "Application loaded",
+            progress: 100,
           });
-          
+
           setTimeout(() => {
             splashWindow.close();
           }, 500);
@@ -1495,8 +1527,8 @@ app.whenReady().then(async () => {
   }
 
   // Check for reset flag
-  if (process.argv.includes('--reset')) {
-    console.log('[Startup] Reset flag detected, clearing all data...');
+  if (process.argv.includes("--reset")) {
+    console.log("[Startup] Reset flag detected, clearing all data...");
     await clearAllApplicationData();
   }
 

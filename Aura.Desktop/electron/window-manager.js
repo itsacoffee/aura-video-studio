@@ -54,7 +54,7 @@ class WindowManager {
     // Try the new splash.html first in electron directory
     const newSplashPath = path.join(__dirname, "splash.html");
     const assetsSplashPath = path.join(__dirname, "../assets", "splash.html");
-    
+
     if (fs.existsSync(newSplashPath)) {
       this.splashWindow.loadFile(newSplashPath);
     } else if (fs.existsSync(assetsSplashPath)) {
@@ -495,16 +495,19 @@ class WindowManager {
         "media-src 'self' blob: http://127.0.0.1:* file:",
       ].join("; ");
     } else {
-      // Strict CSP for production but compatible with file:// protocol
-      console.log("[WindowManager] Using production CSP");
+      // Permissive CSP for production Electron (file:// protocol requires more flexibility)
+      // Electron's sandboxed context provides security, so we can be more lenient with CSP
+      console.log("[WindowManager] Using production CSP (Electron)");
       return [
         "default-src 'self' file: data: blob:",
-        "script-src 'self' file:",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' file:", // Need unsafe-inline/eval for bundled React app
         "style-src 'self' 'unsafe-inline' file:", // Allow inline styles for React
-        "img-src 'self' data: blob: file:",
+        "img-src 'self' data: blob: file: https:",
         "font-src 'self' data: file:",
-        "connect-src 'self' http://127.0.0.1:*",
+        // CRITICAL: For file:// protocol, 'self' blocks HTTP. Must list HTTP origins explicitly BEFORE 'self'
+        "connect-src http://127.0.0.1:* http://localhost:* ws://127.0.0.1:* ws://localhost:* 'self'",
         "media-src 'self' blob: file:",
+        "worker-src 'self' blob:",
         "object-src 'none'",
         "base-uri 'self'",
         "form-action 'self'",
@@ -753,7 +756,35 @@ class WindowManager {
   _loadRendererTarget(target) {
     if (target.type === "url") {
       this._registerAllowedOrigin(target.value);
+      console.log("[WindowManager] Loading from URL:", target.value);
       return this.mainWindow.loadURL(target.value);
+    }
+
+    console.log("[WindowManager] Loading from file:", target.value);
+    console.log("[WindowManager] File exists:", fs.existsSync(target.value));
+
+    // Verify the HTML file contains the expected assets
+    if (fs.existsSync(target.value)) {
+      const htmlContent = fs.readFileSync(target.value, "utf-8");
+      const hasScriptTags = htmlContent.includes("<script");
+      const hasModuleSrc = htmlContent.includes('type="module"');
+      console.log("[WindowManager] HTML has script tags:", hasScriptTags);
+      console.log("[WindowManager] HTML has module scripts:", hasModuleSrc);
+
+      // Check if there are asset files in the same directory
+      const htmlDir = path.dirname(target.value);
+      const assetsDir = path.join(htmlDir, "assets");
+      if (fs.existsSync(assetsDir)) {
+        const assetFiles = fs.readdirSync(assetsDir);
+        const jsFiles = assetFiles.filter((f) => f.endsWith(".js"));
+        console.log(
+          "[WindowManager] Found",
+          jsFiles.length,
+          "JS files in assets/"
+        );
+      } else {
+        console.warn("[WindowManager] Assets directory not found:", assetsDir);
+      }
     }
 
     return this.mainWindow.loadFile(target.value);
