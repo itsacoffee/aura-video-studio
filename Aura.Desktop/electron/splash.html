@@ -2,8 +2,8 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline';">
-  <title>Aura Video Studio - Starting...</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self' 'unsafe-inline';">
+  <title>Aura Video Studio</title>
   <style>
     * {
       margin: 0;
@@ -13,65 +13,190 @@
     
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: #0A0A0F;
       color: white;
       display: flex;
       align-items: center;
       justify-content: center;
       height: 100vh;
       overflow: hidden;
+      position: relative;
+    }
+    
+    body::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(circle at 30% 50%, rgba(255, 107, 53, 0.15) 0%, transparent 70%);
+      animation: gradientShift 6s ease-in-out infinite alternate;
+      pointer-events: none;
+      z-index: 0;
+    }
+    
+    body::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(circle at 70% 50%, rgba(99, 102, 241, 0.12) 0%, transparent 70%);
+      animation: gradientShift 6s ease-in-out infinite alternate-reverse;
+      pointer-events: none;
+      z-index: 0;
+    }
+    
+    @keyframes gradientShift {
+      from { transform: translateX(-10%) translateY(-5%); }
+      to { transform: translateX(10%) translateY(5%); }
+    }
+    
+    #particles {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
     }
     
     .splash-container {
       text-align: center;
-      max-width: 400px;
+      max-width: 500px;
       padding: 40px;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .icon-container {
+      margin-bottom: 24px;
+      animation: fadeInScale 0.5s ease-out 0.2s both;
+    }
+    
+    .app-icon {
+      width: 128px;
+      height: 128px;
+      filter: drop-shadow(0 8px 32px rgba(99, 102, 241, 0.4))
+              drop-shadow(0 4px 16px rgba(255, 107, 53, 0.3));
+      animation: iconPulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes iconPulse {
+      0%, 100% { 
+        transform: scale(1); 
+        filter: drop-shadow(0 8px 32px rgba(99, 102, 241, 0.4))
+                drop-shadow(0 4px 16px rgba(255, 107, 53, 0.3))
+                brightness(1);
+      }
+      50% { 
+        transform: scale(1.05); 
+        filter: drop-shadow(0 10px 40px rgba(99, 102, 241, 0.5))
+                drop-shadow(0 6px 20px rgba(255, 107, 53, 0.4))
+                brightness(1.1);
+      }
+    }
+    
+    @keyframes fadeInScale {
+      from {
+        opacity: 0;
+        transform: scale(0.9);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
     }
     
     .logo {
-      font-size: 48px;
-      font-weight: bold;
+      font-size: 84px;
+      font-weight: 800;
       margin-bottom: 10px;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+      text-shadow: 
+        0 2px 4px rgba(0, 0, 0, 0.4),
+        0 8px 16px rgba(99, 102, 241, 0.3),
+        0 16px 32px rgba(255, 107, 53, 0.2);
+      animation: fadeIn 0.5s ease-out 0.7s both;
+      letter-spacing: -2px;
     }
     
     .tagline {
-      font-size: 14px;
-      opacity: 0.9;
-      margin-bottom: 40px;
+      font-size: 18px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      opacity: 0.7;
+      font-weight: 500;
+      margin-bottom: 60px;
+      animation: fadeIn 0.5s ease-out 1.0s both;
+    }
+    
+    @keyframes fadeIn {
+      from { 
+        opacity: 0; 
+        transform: translateY(10px); 
+      }
+      to { 
+        opacity: 1; 
+        transform: translateY(0); 
+      }
     }
     
     .status-message {
       font-size: 14px;
       margin-bottom: 20px;
       min-height: 20px;
+      opacity: 0.85;
     }
     
     .progress-bar {
-      width: 100%;
-      height: 4px;
-      background: rgba(255, 255, 255, 0.3);
-      border-radius: 2px;
+      width: 280px;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 3px;
       overflow: hidden;
-      margin-bottom: 20px;
+      margin: 0 auto 24px;
+      animation: fadeIn 0.3s ease-out 1.2s both;
     }
     
     .progress-fill {
       height: 100%;
-      background: white;
-      border-radius: 2px;
+      background: linear-gradient(90deg, #FF6B35 0%, #6366F1 50%, #3B82F6 100%);
+      border-radius: 3px;
       width: 0%;
       transition: width 0.3s ease;
+      box-shadow: 0 0 12px rgba(99, 102, 241, 0.5);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .progress-fill::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+      animation: shimmer 2s linear infinite;
+    }
+    
+    @keyframes shimmer {
+      to { left: 100%; }
     }
     
     .spinner {
       display: inline-block;
-      width: 20px;
-      height: 20px;
-      border: 2px solid rgba(255, 255, 255, 0.3);
-      border-top-color: white;
+      width: 48px;
+      height: 48px;
+      border: 3px solid transparent;
       border-radius: 50%;
-      animation: spin 1s linear infinite;
+      border-top-color: #FF6B35;
+      border-right-color: #6366F1;
+      border-bottom-color: #3B82F6;
+      animation: spin 1.5s linear infinite, fadeIn 0.3s ease-out 1.3s both;
     }
     
     @keyframes spin {
@@ -80,8 +205,14 @@
   </style>
 </head>
 <body>
+  <canvas id="particles"></canvas>
+  
   <div class="splash-container">
-    <div class="logo">✨ Aura</div>
+    <div class="icon-container">
+      <img src="./icon.png" class="app-icon" alt="Aura">
+    </div>
+    
+    <div class="logo">Aura</div>
     <div class="tagline">AI Video Generation Suite</div>
     
     <div class="status-message" id="status">Starting application...</div>
@@ -94,6 +225,76 @@
   </div>
   
   <script>
+    class Particle {
+      constructor(canvas) {
+        this.canvas = canvas;
+        this.reset();
+      }
+      
+      reset() {
+        this.x = Math.random() * this.canvas.width;
+        this.y = this.canvas.height + Math.random() * 100;
+        this.size = Math.random() * 3 + 1;
+        this.speedY = Math.random() * 0.5 + 0.2;
+        this.speedX = (Math.random() - 0.5) * 0.3;
+        this.opacity = Math.random() * 0.6 + 0.2;
+        
+        const colors = ['#FF6B35', '#6366F1', '#3B82F6'];
+        this.color = colors[Math.floor(Math.random() * colors.length)];
+      }
+      
+      update() {
+        this.y -= this.speedY;
+        this.x += this.speedX;
+        
+        if (this.y < -10) {
+          this.reset();
+        }
+      }
+      
+      draw(ctx) {
+        ctx.save();
+        ctx.globalAlpha = this.opacity;
+        ctx.fillStyle = this.color;
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+    
+    const canvas = document.getElementById('particles');
+    const ctx = canvas.getContext('2d');
+    
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    
+    const particles = [];
+    for (let i = 0; i < 200; i++) {
+      particles.push(new Particle(canvas));
+      particles[i].y = Math.random() * canvas.height;
+    }
+    
+    function animate() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      particles.forEach(particle => {
+        particle.update();
+        particle.draw(ctx);
+      });
+      
+      requestAnimationFrame(animate);
+    }
+    
+    animate();
+    
+    window.addEventListener('resize', () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    });
+    
     const { ipcRenderer } = require('electron');
     
     ipcRenderer.on('status-update', (event, data) => {
