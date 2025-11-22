@@ -245,6 +245,78 @@ function shouldWaitForBackend(): boolean {
   return Boolean(window.aura?.backend || window.desktopBridge);
 }
 
+const backendStatusContainerStyles = `
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at top, #0f172a, #020617);
+  color: white;
+  text-align: center;
+  padding: 0 32px;
+`;
+
+function getBackendStatusMarkup(state: 'waiting' | 'ready' | 'failed', error?: unknown): string {
+  const titleByState: Record<typeof state, string> = {
+    waiting: 'Starting Aura Services…',
+    ready: 'Aura Services Ready',
+    failed: 'Unable to Reach Local Backend',
+  };
+
+  const bodyByState: Record<typeof state, string> = {
+    waiting: 'Connecting to the local AI services. This usually takes a few seconds…',
+    ready: 'Launching the studio UI…',
+    failed:
+      'Aura could not connect to the local backend service. Please leave the app open while we retry or click the button below.',
+  };
+
+  const errorDetail =
+    state === 'failed' && error
+      ? `<pre style="
+            background: rgba(255,255,255,0.08);
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            max-width: 560px;
+            margin: 16px auto 0;
+            white-space: pre-wrap;
+          ">${error instanceof Error ? error.message : String(error)}</pre>`
+      : '';
+
+  const retryButton =
+    state === 'failed'
+      ? `<button
+          style="
+            margin-top: 24px;
+            padding: 10px 24px;
+            border-radius: 999px;
+            border: none;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            color: #0f172a;
+          "
+          onclick="window.location.reload()"
+        >
+          Retry Connection
+        </button>`
+      : '';
+
+  return `
+    <div>
+      <div style="font-size: 32px; font-weight: 600; margin-bottom: 16px;">
+        ${titleByState[state]}
+      </div>
+      <div style="font-size: 16px; color: rgba(255,255,255,0.85); max-width: 520px; margin: 0 auto;">
+        ${bodyByState[state]}
+      </div>
+      ${errorDetail}
+      ${retryButton}
+    </div>
+  `;
+}
+
 async function renderBackendWaitScreen(rootEl: HTMLElement): Promise<void> {
   const statusContainer = document.createElement('div');
   statusContainer.style.cssText = backendStatusContainerStyles;
@@ -324,78 +396,6 @@ async function probeBackendOnce(): Promise<boolean> {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-const backendStatusContainerStyles = `
-  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: radial-gradient(circle at top, #0f172a, #020617);
-  color: white;
-  text-align: center;
-  padding: 0 32px;
-`;
-
-function getBackendStatusMarkup(state: 'waiting' | 'ready' | 'failed', error?: unknown): string {
-  const titleByState: Record<typeof state, string> = {
-    waiting: 'Starting Aura Services…',
-    ready: 'Aura Services Ready',
-    failed: 'Unable to Reach Local Backend',
-  };
-
-  const bodyByState: Record<typeof state, string> = {
-    waiting: 'Connecting to the local AI services. This usually takes a few seconds…',
-    ready: 'Launching the studio UI…',
-    failed:
-      'Aura could not connect to the local backend service. Please leave the app open while we retry or click the button below.',
-  };
-
-  const errorDetail =
-    state === 'failed' && error
-      ? `<pre style="
-            background: rgba(255,255,255,0.08);
-            padding: 12px;
-            border-radius: 6px;
-            font-size: 13px;
-            max-width: 560px;
-            margin: 16px auto 0;
-            white-space: pre-wrap;
-          ">${error instanceof Error ? error.message : String(error)}</pre>`
-      : '';
-
-  const retryButton =
-    state === 'failed'
-      ? `<button
-          style="
-            margin-top: 24px;
-            padding: 10px 24px;
-            border-radius: 999px;
-            border: none;
-            cursor: pointer;
-            font-size: 15px;
-            font-weight: 600;
-            color: #0f172a;
-          "
-          onclick="window.location.reload()"
-        >
-          Retry Connection
-        </button>`
-      : '';
-
-  return `
-    <div>
-      <div style="font-size: 32px; font-weight: 600; margin-bottom: 16px;">
-        ${titleByState[state]}
-      </div>
-      <div style="font-size: 16px; color: rgba(255,255,255,0.85); max-width: 520px; margin: 0 auto;">
-        ${bodyByState[state]}
-      </div>
-      ${errorDetail}
-      ${retryButton}
-    </div>
-  `;
 }
 
 function showFatalBootstrapError(rootEl: HTMLElement, error: unknown): void {
