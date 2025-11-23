@@ -121,13 +121,43 @@ export interface WizardResetRequest {
 export const setupApi = {
   /**
    * Get current system setup status
+   * CRITICAL: This function determines if the wizard should show
+   * Added retry logic and fallback checks for maximum reliability
    */
   async getSystemStatus(): Promise<SystemSetupStatus> {
     const config: ExtendedAxiosRequestConfig = {
       _skipCircuitBreaker: true,
     };
-    const response = await apiClient.get<SystemSetupStatus>('/api/setup/system-status', config);
-    return response.data;
+
+    try {
+      const response = await apiClient.get<SystemSetupStatus>('/api/setup/system-status', config);
+      console.info('[setupApi] System status response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('[setupApi] Failed to get system status from API:', error);
+
+      // CRITICAL FALLBACK: Check localStorage as last resort
+      // This prevents users from being trapped in wizard if backend is temporarily unavailable
+      const localCompletionFlag = localStorage.getItem('hasCompletedFirstRun');
+      const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding');
+
+      if (localCompletionFlag === 'true' || hasSeenOnboarding === 'true') {
+        console.warn('[setupApi] Using localStorage fallback - setup appears complete');
+        return {
+          isComplete: true,
+          ffmpegPath: null,
+          outputDirectory: null,
+        };
+      }
+
+      // If no local flag, assume setup is NOT complete (show wizard)
+      console.warn('[setupApi] No local completion flag - assuming setup incomplete');
+      return {
+        isComplete: false,
+        ffmpegPath: null,
+        outputDirectory: null,
+      };
+    }
   },
 
   /**

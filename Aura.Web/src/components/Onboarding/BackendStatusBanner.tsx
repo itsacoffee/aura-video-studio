@@ -1,16 +1,16 @@
 import {
-  makeStyles,
-  tokens,
-  Text,
   Button,
-  MessageBar,
-  MessageBarBody,
-  MessageBarActions,
   Link,
+  makeStyles,
+  MessageBar,
+  MessageBarActions,
+  MessageBarBody,
   Spinner,
+  Text,
+  tokens,
 } from '@fluentui/react-components';
 import { ArrowClockwise24Regular, Dismiss24Regular } from '@fluentui/react-icons';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { resetCircuitBreaker } from '../../services/api/apiClient';
 import { backendHealthService } from '../../services/backendHealthService';
 import { loggingService } from '../../services/loggingService';
@@ -50,23 +50,32 @@ export function BackendStatusBanner({ onDismiss, showRetry = true }: BackendStat
   const [initialCheckComplete, setInitialCheckComplete] = useState(false);
 
   const retryCountRef = useRef(0);
-  const maxAutoRetries = 15; // Auto-retry for up to 15 seconds (backend startup time)
+  // CRITICAL FIX: Increase auto-retry timeout to match backend startup timeout (60 seconds)
+  // Backend can take 30-60 seconds to start on first run or slower machines
+  const maxAutoRetries = 60; // Auto-retry for up to 60 seconds (backend startup time)
 
   const checkBackend = useCallback(async (isAutoRetry = false) => {
     setIsChecking(true);
     try {
+      // CRITICAL FIX: Always reset circuit breaker before health check during wizard
+      // This prevents false negatives from previous failed attempts
       resetCircuitBreaker();
 
       // Use backend health service with retry logic
       // For initial check during startup, use aggressive retries
+      // CRITICAL FIX: Increase timeout for slower machines and first-run scenarios
       const healthStatus = await backendHealthService.checkHealth({
-        timeout: 3000,
+        timeout: 5000, // Increased from 3000ms to 5000ms for slower machines
         maxRetries: isAutoRetry ? 1 : 3,
         retryDelay: 500,
         exponentialBackoff: false,
       });
 
       if (healthStatus.healthy) {
+        console.info('[BackendStatusBanner] ✅ Backend health check passed', {
+          responseTime: healthStatus.responseTime,
+          attempt: retryCountRef.current + 1,
+        });
         setStatus({
           reachable: true,
           online: true,
@@ -74,6 +83,11 @@ export function BackendStatusBanner({ onDismiss, showRetry = true }: BackendStat
         });
         retryCountRef.current = 0;
       } else {
+        console.warn('[BackendStatusBanner] ⚠️ Backend health check failed', {
+          reachable: healthStatus.reachable,
+          error: healthStatus.error,
+          attempt: retryCountRef.current + 1,
+        });
         setStatus({
           reachable: healthStatus.reachable,
           online: false,
@@ -83,6 +97,7 @@ export function BackendStatusBanner({ onDismiss, showRetry = true }: BackendStat
       }
     } catch (error: unknown) {
       const errorObj = error instanceof Error ? error : new Error(String(error));
+      console.error('[BackendStatusBanner] ❌ Backend health check threw exception:', errorObj.message);
       setStatus({
         reachable: false,
         online: false,

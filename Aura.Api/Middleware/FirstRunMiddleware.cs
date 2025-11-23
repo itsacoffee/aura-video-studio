@@ -68,7 +68,7 @@ public class FirstRunMiddleware
 
         try
         {
-            const string userId = "default";
+            var userId = "default";
             var userSetup = await dbContext.UserSetups
                 .Where(s => s.UserId == userId)
                 .FirstOrDefaultAsync()

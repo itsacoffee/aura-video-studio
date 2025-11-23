@@ -2,9 +2,9 @@
 
 import { apiUrl } from '../config/api';
 import { resetCircuitBreaker } from '../services/api/apiClient';
-import { validateProviderEnhanced } from '../services/api/providersApi';
 import type { FieldValidationError } from '../services/api/providersApi';
-import { getDefaultSaveLocation, getDefaultCacheLocation } from '../utils/pathUtils';
+import { validateProviderEnhanced } from '../services/api/providersApi';
+import { getDefaultCacheLocation, getDefaultSaveLocation } from '../utils/pathUtils';
 import type { PreflightReport, StageCheck } from './providers';
 
 // Hardware configuration constants
@@ -640,7 +640,7 @@ export function onboardingReducer(
 // Thunks / async actions
 export async function runValidationThunk(
   state: OnboardingState,
-  dispatch: React.Dispatch<OnboardingAction>
+  dispatch: (action: OnboardingAction) => void
 ): Promise<void> {
   dispatch({ type: 'START_VALIDATION' });
 
@@ -693,7 +693,7 @@ export async function runValidationThunk(
 }
 
 export async function detectHardwareThunk(
-  dispatch: React.Dispatch<OnboardingAction>
+  dispatch: (action: OnboardingAction) => void
 ): Promise<void> {
   dispatch({ type: 'START_HARDWARE_DETECTION' });
 
@@ -852,7 +852,7 @@ async function executeInstallation(
 
 export async function installItemThunk(
   itemId: string,
-  dispatch: React.Dispatch<OnboardingAction>,
+  dispatch: (action: OnboardingAction) => void,
   retryAttempt = 0
 ): Promise<void> {
   const maxRetries = 3;
@@ -944,7 +944,7 @@ export function canAdvanceStep(status: WizardStatus): boolean {
 // Check installation status for an item using the dependency rescan API
 export async function checkInstallationStatusThunk(
   itemId: string,
-  dispatch: React.Dispatch<OnboardingAction>
+  dispatch: (action: OnboardingAction) => void
 ): Promise<void> {
   try {
     // For now, we'll use the old approach for FFmpeg and skip for others
@@ -966,7 +966,7 @@ export async function checkInstallationStatusThunk(
 
 // Check all installation statuses using the dependency rescan API
 export async function checkAllInstallationStatusesThunk(
-  dispatch: React.Dispatch<OnboardingAction>
+  dispatch: (action: OnboardingAction) => void
 ): Promise<void> {
   dispatch({ type: 'START_DEPENDENCY_SCAN' });
 
@@ -1008,7 +1008,7 @@ export async function checkAllInstallationStatusesThunk(
 export async function validateApiKeyThunk(
   provider: string,
   apiKey: string,
-  dispatch: React.Dispatch<OnboardingAction>
+  dispatch: (action: OnboardingAction) => void
 ): Promise<void> {
   dispatch({ type: 'START_API_KEY_VALIDATION', payload: provider });
 
@@ -1366,32 +1366,59 @@ export async function loadWizardProgressFromBackend(
 }
 
 /**
- * Mark wizard as complete in backend
+ * Mark wizard as complete in backend with retry logic
+ * CRITICAL: This function must succeed for the wizard to exit properly
  */
 export async function completeWizardInBackend(
   state: OnboardingState,
   correlationId?: string
 ): Promise<boolean> {
-  try {
-    const { setupApi } = await import('../services/api/setupApi');
+  const maxRetries = 3;
+  const retryDelay = 2000; // 2 seconds between retries
 
-    const result = await setupApi.completeWizard({
-      finalStep: state.step,
-      version: '1.0.0',
-      selectedTier: state.selectedTier || undefined,
-      finalState: {
-        mode: state.mode,
-        apiKeys: state.apiKeys,
-      },
-      correlationId: correlationId || `wizard-complete-${Date.now()}`,
-    });
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.info(`[Wizard Persistence] Completing wizard in backend (attempt ${attempt}/${maxRetries})`);
 
-    console.info('[Wizard Persistence] Wizard completed in backend:', result);
-    return result.success;
-  } catch (error) {
-    console.error('[Wizard Persistence] Failed to complete wizard in backend:', error);
-    return false;
+      const { setupApi } = await import('../services/api/setupApi');
+
+      const result = await setupApi.completeWizard({
+        finalStep: state.step,
+        version: '1.0.0',
+        selectedTier: state.selectedTier || undefined,
+        finalState: {
+          mode: state.mode,
+          apiKeys: state.apiKeys,
+          workspacePreferences: state.workspacePreferences,
+        },
+        correlationId: correlationId || `wizard-complete-${Date.now()}`,
+      });
+
+      if (result.success) {
+        console.info('[Wizard Persistence] ✅ Wizard completed successfully in backend');
+        return true;
+      } else {
+        console.error('[Wizard Persistence] ❌ Backend returned success=false:', result);
+        // If backend explicitly says failure, don't retry
+        return false;
+      }
+    } catch (error) {
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      console.error(`[Wizard Persistence] ❌ Attempt ${attempt}/${maxRetries} failed:`, errorObj.message);
+
+      // If this is the last attempt, return false
+      if (attempt === maxRetries) {
+        console.error('[Wizard Persistence] ❌ All retry attempts exhausted');
+        return false;
+      }
+
+      // Wait before retrying
+      console.info(`[Wizard Persistence] Retrying in ${retryDelay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, retryDelay));
+    }
   }
+
+  return false;
 }
 
 /**

@@ -1,4 +1,4 @@
-import { FluentProvider, Spinner, webDarkTheme, webLightTheme, Card, Title1, Body1, Button } from '@fluentui/react-components';
+import { Body1, Button, Card, FluentProvider, Spinner, Title1, webDarkTheme, webLightTheme } from '@fluentui/react-components';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
@@ -22,10 +22,10 @@ import { crashRecoveryService } from './services/crashRecoveryService';
 import { registerCustomEventHandlers } from './services/customEventHandlers';
 import { errorReportingService } from './services/errorReportingService';
 import {
+  clearFirstRunCache,
   hasCompletedFirstRun,
   markFirstRunCompleted,
   migrateLegacyFirstRunStatus,
-  clearFirstRunCache,
 } from './services/firstRunService';
 import { healthMonitorService } from './services/healthMonitorService';
 import { keyboardShortcutManager } from './services/keyboardShortcutManager';
@@ -157,13 +157,14 @@ function App() {
 
   // Check first-run status on app mount
   useEffect(() => {
-    // Set timeout to prevent infinite loading
+    // CRITICAL FIX: Increase timeout to 60 seconds to match backend startup timeout
+    // Backend can take 30-60 seconds to start on first run or slower machines
     const timeoutId = setTimeout(() => {
-      console.error('[App] First-run check timed out after 30s');
+      console.error('[App] First-run check timed out after 60s');
       setInitializationTimeout(true);
       setIsCheckingFirstRun(false);
       setIsInitializing(false);
-    }, 30000); // 30 second timeout
+    }, 60000); // 60 second timeout (matches backend startup timeout)
 
     async function checkFirstRun() {
       console.info('[App] 🚀 Starting first-run check...');

@@ -1,29 +1,29 @@
 import {
-  makeStyles,
-  tokens,
-  Title2,
-  Title3,
-  Text,
   Button,
   Card,
-  Spinner,
   Field,
   Input,
+  makeStyles,
+  Spinner,
+  Text,
+  Title2,
+  Title3,
+  tokens,
 } from '@fluentui/react-components';
 import {
-  Checkmark24Regular,
-  ChevronRight24Regular,
-  ChevronLeft24Regular,
-  Warning24Regular,
   ArrowClockwise24Regular,
+  Checkmark24Regular,
+  ChevronLeft24Regular,
+  ChevronRight24Regular,
   FolderOpen24Regular,
+  Warning24Regular,
 } from '@fluentui/react-icons';
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Logo } from '../../components/Logo';
 import { useNotifications } from '../../components/Notifications/Toasts';
-import { AutoSaveIndicator } from '../../components/Onboarding/AutoSaveIndicator';
 import type { AutoSaveStatus } from '../../components/Onboarding/AutoSaveIndicator';
+import { AutoSaveIndicator } from '../../components/Onboarding/AutoSaveIndicator';
 import { BackendStatusBanner } from '../../components/Onboarding/BackendStatusBanner';
 import { FFmpegDependencyCard } from '../../components/Onboarding/FFmpegDependencyCard';
 import { ResumeWizardDialog } from '../../components/Onboarding/ResumeWizardDialog';
@@ -36,19 +36,19 @@ import { resetCircuitBreaker } from '../../services/api/apiClient';
 import { PersistentCircuitBreaker } from '../../services/api/circuitBreakerPersistence';
 import type { FFmpegStatus } from '../../services/api/ffmpegClient';
 import { ffmpegClient } from '../../services/api/ffmpegClient';
-import { setupApi } from '../../services/api/setupApi';
 import type { WizardStatusResponse } from '../../services/api/setupApi';
+import { setupApi } from '../../services/api/setupApi';
 import { markFirstRunCompleted } from '../../services/firstRunService';
 import {
-  onboardingReducer,
-  initialOnboardingState,
-  validateApiKeyThunk,
-  saveWizardStateToStorage,
-  loadWizardStateFromStorage,
   clearWizardStateFromStorage,
-  loadWizardProgressFromBackend,
-  saveWizardProgressToBackend,
   completeWizardInBackend,
+  initialOnboardingState,
+  loadWizardProgressFromBackend,
+  loadWizardStateFromStorage,
+  onboardingReducer,
+  saveWizardProgressToBackend,
+  saveWizardStateToStorage,
+  validateApiKeyThunk,
 } from '../../state/onboarding';
 import { pickFolder } from '../../utils/pathUtils';
 import { ApiKeySetupStep } from './ApiKeySetupStep';
@@ -307,17 +307,19 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
     wizardAnalytics.stepViewed(state.step, stepLabels[state.step] || 'Unknown');
     setStepStartTime(currentTime);
 
-    // CRITICAL FIX: Ping backend with retry before FFmpeg check in Step 2
+    // CRITICAL FIX: Ping backend with retry before FFmpeg check in Step 3 (FFmpeg Install)
     // This ensures backend is reachable before attempting FFmpeg detection
     // Only trigger once per step entry to prevent spam checking
+    // NOTE: Step 3 is the FFmpeg Install step (index 2)
     if (state.step === 2 && !ffmpegCheckCompletedRef.current) {
-      console.info('[FirstRunWizard] Entering Step 2, pinging backend with retry');
+      console.info('[FirstRunWizard] Entering Step 3 (FFmpeg Install), pinging backend with retry');
       ffmpegCheckCompletedRef.current = true;
       const checkBackendAndFFmpeg = async () => {
         for (let i = 0; i < 3; i++) {
           const ping = await setupApi.pingBackend();
           if (ping.ok) {
-            console.info('[FirstRunWizard] Backend is reachable, triggering FFmpeg check');
+            console.info('[FirstRunWizard] Backend is reachable, triggering FFmpeg check once');
+            // Only increment the signal once to trigger a single FFmpeg check
             setFfmpegRefreshSignal((prev) => prev + 1);
             return;
           }
@@ -328,7 +330,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
       };
       void checkBackendAndFFmpeg();
     } else if (state.step !== 2) {
-      // Reset the flag when leaving step 2
+      // Reset the flag when leaving step 3
       ffmpegCheckCompletedRef.current = false;
     }
   }, [state.step]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -336,33 +338,39 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
   // Save progress on state changes (with debouncing to prevent spam)
   useEffect(() => {
     if (state.step > 0 && state.step < totalSteps - 1) {
+      // Save to localStorage immediately (fast, no visual indicator needed)
       saveWizardStateToStorage(state);
 
-      // Auto-save to backend with debouncing
+      // CRITICAL FIX: Only show auto-save indicator and save to backend on meaningful changes
+      // Use a longer debounce time (5 seconds) to prevent spam
       const autoSaveTimer = setTimeout(async () => {
-        setAutoSaveStatus('saving');
-        setAutoSaveError(null);
+        // Only save if we're still on a valid step and not completing setup
+        if (state.step > 0 && state.step < totalSteps - 1 && !isCompletingSetup) {
+          setAutoSaveStatus('saving');
+          setAutoSaveError(null);
 
-        try {
-          const success = await saveWizardProgressToBackend(state);
-          if (success) {
-            setAutoSaveStatus('saved');
-            setLastSaved(new Date());
-            setTimeout(() => setAutoSaveStatus('idle'), 3000);
-          } else {
+          try {
+            const success = await saveWizardProgressToBackend(state);
+            if (success) {
+              setAutoSaveStatus('saved');
+              setLastSaved(new Date());
+              // Show "saved" status for 2 seconds, then hide
+              setTimeout(() => setAutoSaveStatus('idle'), 2000);
+            } else {
+              setAutoSaveStatus('error');
+              setAutoSaveError('Failed to save progress');
+            }
+          } catch (error) {
+            console.error('[Auto-save] Failed:', error);
             setAutoSaveStatus('error');
-            setAutoSaveError('Failed to save progress');
+            setAutoSaveError(error instanceof Error ? error.message : 'Unknown error');
           }
-        } catch (error) {
-          console.error('[Auto-save] Failed:', error);
-          setAutoSaveStatus('error');
-          setAutoSaveError(error instanceof Error ? error.message : 'Unknown error');
         }
-      }, 1000); // Debounce for 1 second
+      }, 5000); // Increased debounce to 5 seconds to prevent spam
 
       return () => clearTimeout(autoSaveTimer);
     }
-  }, [state, totalSteps]);
+  }, [state, totalSteps, isCompletingSetup]);
 
   // Check if at least one provider is configured
   useEffect(() => {
@@ -581,18 +589,26 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
     setIsCompletingSetup(true);
     try {
-      console.info('[FirstRunWizard] Starting onboarding completion', {
-        ffmpegPath,
-        workspaceLocation: state.workspacePreferences?.defaultSaveLocation,
+      console.info('[FirstRunWizard] 🚀 Starting onboarding completion...');
+      console.info('[FirstRunWizard] Configuration:', {
+        ffmpegPath: ffmpegPath || '(not configured)',
+        workspaceLocation: state.workspacePreferences?.defaultSaveLocation || '(not configured)',
+        selectedTier: state.selectedTier || 'free',
+        apiKeysConfigured: Object.keys(state.apiKeys).filter(k => state.apiKeys[k]).length,
       });
 
-      // Call backend API to complete setup and persist to database
+      // Step 1: Complete setup validation and save paths
+      console.info('[FirstRunWizard] Step 1/3: Validating setup configuration...');
       const setupResult = await setupApi.completeSetup({
         ffmpegPath: ffmpegPath,
         outputDirectory: state.workspacePreferences?.defaultSaveLocation,
       });
 
-      console.info('[FirstRunWizard] Setup API response:', setupResult);
+      console.info('[FirstRunWizard] Setup validation response:', {
+        success: setupResult.success,
+        hasErrors: !!setupResult.errors?.length,
+        correlationId: setupResult.correlationId,
+      });
 
       if (!setupResult.success) {
         // Show errors inline on the page
@@ -601,7 +617,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
         ];
         setCompletionErrors(errors);
 
-        console.error('[FirstRunWizard] Setup validation failed:', {
+        console.error('[FirstRunWizard] ❌ Setup validation failed:', {
           errors,
           correlationId: setupResult.correlationId,
         });
@@ -611,18 +627,47 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
           message: errors.join('; '),
         });
 
-        // Don't proceed with completion
+        // CRITICAL FIX: Reset completion flag before early return
+        // This ensures auto-save continues to work if user retries
+        setIsCompletingSetup(false);
         return;
       }
 
-      // Mark wizard as complete in backend
-      await completeWizardInBackend(state);
+      console.info('[FirstRunWizard] ✅ Step 1/3 complete: Configuration validated');
 
-      // Clear wizard state and mark local completion
+      // CRITICAL FIX: Mark wizard as complete in backend first before local state changes
+      // This ensures the backend is updated before we clear local state
+      console.info('[FirstRunWizard] Step 2/3: Marking wizard as complete in backend...');
+
+      // Show progress indicator for backend completion
+      setAutoSaveStatus('saving');
+      setAutoSaveError(null);
+
+      const wizardCompleted = await completeWizardInBackend(state);
+
+      setAutoSaveStatus('idle');
+
+      if (!wizardCompleted) {
+        console.error('[FirstRunWizard] ❌ Step 2/3 FAILED: Backend completion failed after all retries');
+        showFailureToast({
+          title: 'Setup Completion Failed',
+          message: 'Failed to save completion status to backend after multiple attempts. Please check your connection and try again.',
+        });
+        // CRITICAL FIX: Reset completion flag before early return
+        // This ensures auto-save continues to work if user retries
+        setIsCompletingSetup(false);
+        return;
+      }
+
+      console.info('[FirstRunWizard] ✅ Step 2/3 complete: Backend wizard completion saved');
+
+      // Step 3: Clear wizard state and mark local completion
+      console.info('[FirstRunWizard] Step 3/3: Marking first run complete locally...');
       clearWizardStateFromStorage();
       await markFirstRunCompleted();
 
-      console.info('[FirstRunWizard] First run marked as completed');
+      console.info('[FirstRunWizard] ✅ Step 3/3 complete: Local first-run status updated');
+      console.info('[FirstRunWizard] 🎉 ALL STEPS COMPLETE - Wizard finished successfully!');
 
       // Track completion
       const totalTime = (Date.now() - wizardStartTimeRef.current) / 1000;

@@ -1,24 +1,24 @@
 import {
-  makeStyles,
-  tokens,
-  Title2,
-  Title3,
-  Text,
-  Card,
-  Input,
   Button,
-  Slider,
+  Card,
+  Field,
+  Input,
+  makeStyles,
   Radio,
   RadioGroup,
-  Field,
+  Slider,
+  Text,
+  Title2,
+  Title3,
+  tokens,
 } from '@fluentui/react-components';
 import { Folder24Regular, FolderOpen24Regular, Save24Regular } from '@fluentui/react-icons';
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  getDefaultSaveLocation,
   getDefaultCacheLocation,
-  pickFolder,
+  getDefaultSaveLocation,
   isValidPath,
+  pickFolder,
 } from '../../utils/pathUtils';
 
 const useStyles = makeStyles({
@@ -389,7 +389,11 @@ export function WorkspaceSetup({
             <div className={styles.themeOptions}>
               <Card
                 className={`${styles.themeCard} ${preferences.theme === 'light' ? styles.selectedTheme : ''}`}
-                onClick={() => handleThemeChange('light')}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleThemeChange('light');
+                }}
+                style={{ cursor: 'pointer' }}
               >
                 <div className={styles.themeIcon}>☀️</div>
                 <Radio value="light" label="Light" />
@@ -400,7 +404,11 @@ export function WorkspaceSetup({
 
               <Card
                 className={`${styles.themeCard} ${preferences.theme === 'dark' ? styles.selectedTheme : ''}`}
-                onClick={() => handleThemeChange('dark')}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleThemeChange('dark');
+                }}
+                style={{ cursor: 'pointer' }}
               >
                 <div className={styles.themeIcon}>🌙</div>
                 <Radio value="dark" label="Dark" />
@@ -411,7 +419,11 @@ export function WorkspaceSetup({
 
               <Card
                 className={`${styles.themeCard} ${preferences.theme === 'auto' ? styles.selectedTheme : ''}`}
-                onClick={() => handleThemeChange('auto')}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleThemeChange('auto');
+                }}
+                style={{ cursor: 'pointer' }}
               >
                 <div className={styles.themeIcon}>🔄</div>
                 <Radio value="auto" label="Auto" />
