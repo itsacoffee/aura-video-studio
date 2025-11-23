@@ -1677,7 +1677,7 @@ public class SetupController : ControllerBase
                     _logger.LogWarning(ex, "[{CorrelationId}] Attempt {Attempt}/3 to resolve Piper URL failed", correlationId, attempt);
                     if (attempt < 3)
                     {
-                        await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt)), cancellationToken).ConfigureAwait(false);
+                        await DelayWithExponentialBackoffAsync(attempt, cancellationToken).ConfigureAwait(false);
                     }
                 }
             }
@@ -1724,15 +1724,20 @@ public class SetupController : ControllerBase
                         var buffer = new byte[8192];
                         int bytesRead;
 
+                        var lastLoggedProgress = 0;
                         while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false)) > 0)
                         {
                             await fileStream.WriteAsync(buffer, 0, bytesRead, cancellationToken).ConfigureAwait(false);
                             bytesDownloaded += bytesRead;
 
-                            if (totalBytes > 0 && bytesDownloaded % (1024 * 1024) == 0)
+                            if (totalBytes > 0)
                             {
                                 var progress = (int)((bytesDownloaded * 100) / totalBytes);
-                                _logger.LogInformation("[{CorrelationId}] Download progress: {Progress}%", correlationId, progress);
+                                if (progress >= lastLoggedProgress + 10)
+                                {
+                                    _logger.LogInformation("[{CorrelationId}] Download progress: {Progress}%", correlationId, progress);
+                                    lastLoggedProgress = progress;
+                                }
                             }
                         }
                     }
@@ -1746,7 +1751,7 @@ public class SetupController : ControllerBase
                     _logger.LogWarning(ex, "[{CorrelationId}] Download attempt {Attempt}/3 failed", correlationId, attempt);
                     if (attempt < 3)
                     {
-                        await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt)), cancellationToken).ConfigureAwait(false);
+                        await DelayWithExponentialBackoffAsync(attempt, cancellationToken).ConfigureAwait(false);
                     }
                     else
                     {
@@ -1884,7 +1889,7 @@ public class SetupController : ControllerBase
                     _logger.LogWarning(ex, "[{CorrelationId}] Voice model download attempt {Attempt}/3 failed", correlationId, attempt);
                     if (attempt < 3)
                     {
-                        await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt)), cancellationToken).ConfigureAwait(false);
+                        await DelayWithExponentialBackoffAsync(attempt, cancellationToken).ConfigureAwait(false);
                     }
                 }
             }
@@ -1998,7 +2003,7 @@ public class SetupController : ControllerBase
     private async Task<string> ResolveVoiceModelUrlAsync(CancellationToken cancellationToken)
     {
         const string primaryUrl = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx";
-        const string fallbackUrl = "https://github.com/rhasspy/piper/releases/download/v1.2.0/voice-en-us-lessac-medium.tar.gz";
+        const string fallbackUrl = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/amy/low/en_US-amy-low.onnx";
 
         // Try HuggingFace primary URL with 5 second timeout
         try
@@ -2015,10 +2020,10 @@ public class SetupController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Primary voice model URL unreachable, using fallback");
+            _logger.LogWarning(ex, "Primary voice model URL unreachable, trying fallback");
         }
 
-        // Fallback to GitHub mirror
+        // Fallback to alternative HuggingFace model (also from main branch, no hardcoded version)
         _logger.LogInformation("Using fallback voice model URL: {Url}", fallbackUrl);
         return fallbackUrl;
     }
@@ -2059,6 +2064,15 @@ public class SetupController : ControllerBase
                 _logger.LogWarning(ex, "[{CorrelationId}] Failed to cleanup file: {Path}", correlationId, filePath);
             }
         }
+    }
+
+    /// <summary>
+    /// Delay with exponential backoff for retry operations (max 5 seconds per attempt)
+    /// </summary>
+    private static async Task DelayWithExponentialBackoffAsync(int attempt, CancellationToken cancellationToken)
+    {
+        var delaySeconds = Math.Min(Math.Pow(2, attempt), 5); // Cap at 5 seconds
+        await Task.Delay(TimeSpan.FromSeconds(delaySeconds), cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>

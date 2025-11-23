@@ -119,7 +119,7 @@
       "archiveType": "tar.gz",
       "resolveViaGitHubApi": true,
       "gitHubRepo": "rhasspy/piper",
-      "assetPattern": "*windows*amd64*.tar.gz",
+      "assetPattern": "*windows*amd64*",
       "extractDir": "piper",
       "entrypoint": "piper.exe",
       "licenseUrl": "https://github.com/rhasspy/piper/blob/master/LICENSE.md",
