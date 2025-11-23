@@ -11,6 +11,7 @@
 
 import axios, { type AxiosError } from 'axios';
 import { loggingService } from './loggingService';
+import { resolveApiBaseUrl } from '../config/apiBaseUrl';
 
 export interface BackendHealthStatus {
   reachable: boolean;
@@ -39,7 +40,24 @@ export class BackendHealthService {
   };
 
   constructor(baseUrl?: string) {
-    this.baseUrl = baseUrl || import.meta.env.VITE_API_BASE_URL || 'http://localhost:5005';
+    // Use provided baseUrl, or resolve from Electron/browser context
+    if (baseUrl) {
+      this.baseUrl = baseUrl;
+    } else {
+      // Resolve from Electron bridge, environment, or fallback
+      const resolved = resolveApiBaseUrl();
+      this.baseUrl = resolved.value;
+      loggingService.info(
+        'BackendHealthService',
+        'Backend URL resolved',
+        undefined,
+        {
+          url: this.baseUrl,
+          source: resolved.source,
+          isElectron: resolved.isElectron,
+        }
+      );
+    }
     // Use /health/live which is the fast startup endpoint (doesn't check database)
     // This matches the network contract healthEndpoint in Electron
     this.healthEndpoint = '/health/live';
@@ -73,7 +91,19 @@ export class BackendHealthService {
 
         const responseTime = Date.now() - startTime;
 
-        if (response.status === 200 && response.data?.status === 'ok') {
+        // Backend returns status as "Healthy", "healthy", or "ok" depending on endpoint
+        // Accept any of these as valid health indicators
+        const statusValue = response.data?.status?.toLowerCase();
+        const isHealthy =
+          response.status === 200 &&
+          (statusValue === 'ok' ||
+            statusValue === 'healthy' ||
+            // Also accept HealthCheckResponse format with Status field
+            response.data?.Status?.toLowerCase() === 'healthy' ||
+            // Accept simple liveness response with just status field
+            (response.data && 'status' in response.data && response.status === 200));
+
+        if (isHealthy) {
           this.status = {
             reachable: true,
             healthy: true,
@@ -86,11 +116,14 @@ export class BackendHealthService {
             attempt,
             responseTime,
             url: `${this.baseUrl}${this.healthEndpoint}`,
+            status: response.data?.status || response.data?.Status,
           });
 
           return this.status;
         } else {
-          throw new Error(`Backend returned status ${response.status}`);
+          throw new Error(
+            `Backend returned status ${response.status} with data: ${JSON.stringify(response.data)}`
+          );
         }
       } catch (error: unknown) {
         const errorObj = error instanceof Error ? error : new Error(String(error));

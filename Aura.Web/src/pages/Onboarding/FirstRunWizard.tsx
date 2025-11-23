@@ -185,6 +185,8 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
   const navigate = useNavigate();
   const [state, dispatch] = useReducer(onboardingReducer, initialOnboardingState);
   const [stepStartTime, setStepStartTime] = useState<number>(0);
+  // CRITICAL FIX: Track if wizard is completing/exiting to prevent step resets
+  const isExitingRef = useRef(false);
 
   // Auto-save state
   const [autoSaveStatus, setAutoSaveStatus] = useState<AutoSaveStatus>('idle');
@@ -460,6 +462,12 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
   }, []);
 
   const handleNext = async () => {
+    // CRITICAL FIX: Prevent navigation if wizard is exiting/completing
+    if (isExitingRef.current || isCompletingSetup) {
+      console.warn('[FirstRunWizard] Ignoring handleNext - wizard is exiting or completing');
+      return;
+    }
+
     // Step 0: Welcome -> Step 1: FFmpeg Installation
     if (state.step === 0) {
       dispatch({ type: 'SET_STEP', payload: 1 });
@@ -546,9 +554,12 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
   };
 
   const completeOnboarding = async () => {
-    if (isCompletingSetup) {
-      return; // Prevent double-clicks
+    if (isCompletingSetup || isExitingRef.current) {
+      return; // Prevent double-clicks and prevent execution if already exiting
     }
+
+    // CRITICAL FIX: Mark as exiting immediately to prevent any step resets
+    isExitingRef.current = true;
 
     // Clear any previous errors
     setCompletionErrors([]);
@@ -583,6 +594,9 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
       );
 
       if (!proceed) {
+        // CRITICAL FIX: Reset exiting flag if user cancels warnings dialog
+        // Otherwise the wizard will be stuck and "Complete Setup" button won't work
+        isExitingRef.current = false;
         return;
       }
     }
@@ -627,17 +641,26 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
           message: errors.join('; '),
         });
 
-        // CRITICAL FIX: Reset completion flag before early return
+        // CRITICAL FIX: Reset completion flag and exiting flag before early return
         // This ensures auto-save continues to work if user retries
         setIsCompletingSetup(false);
+        isExitingRef.current = false; // Reset exiting flag so user can retry
         return;
       }
 
       console.info('[FirstRunWizard] ✅ Step 1/3 complete: Configuration validated');
 
-      // CRITICAL FIX: Mark wizard as complete in backend first before local state changes
-      // This ensures the backend is updated before we clear local state
-      console.info('[FirstRunWizard] Step 2/3: Marking wizard as complete in backend...');
+      // CRITICAL FIX: Mark local completion IMMEDIATELY before backend save
+      // This prevents redirect loops if backend save fails or is delayed
+      // localStorage is set synchronously, so it's available immediately
+      console.info('[FirstRunWizard] Step 2/3: Marking first run complete locally (immediate)...');
+      clearWizardStateFromStorage();
+      await markFirstRunCompleted();
+      console.info('[FirstRunWizard] ✅ Local completion set - user won\'t be redirected even if backend fails');
+
+      // Step 3: Mark wizard as complete in backend (async, non-blocking)
+      // This ensures the backend is updated, but we don't block navigation on failure
+      console.info('[FirstRunWizard] Step 3/3: Marking wizard as complete in backend (async)...');
 
       // Show progress indicator for backend completion
       setAutoSaveStatus('saving');
@@ -648,23 +671,16 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
       setAutoSaveStatus('idle');
 
       if (!wizardCompleted) {
-        console.error('[FirstRunWizard] ❌ Step 2/3 FAILED: Backend completion failed after all retries');
+        console.warn('[FirstRunWizard] ⚠️ Backend completion failed, but local completion is set - continuing anyway');
+        // Don't block navigation - localStorage is already set, user can continue
+        // Show a warning but don't prevent completion
         showFailureToast({
-          title: 'Setup Completion Failed',
-          message: 'Failed to save completion status to backend after multiple attempts. Please check your connection and try again.',
+          title: 'Backend Sync Warning',
+          message: 'Setup completed locally, but failed to sync with backend. Your progress is saved locally.',
         });
-        // CRITICAL FIX: Reset completion flag before early return
-        // This ensures auto-save continues to work if user retries
-        setIsCompletingSetup(false);
-        return;
+      } else {
+        console.info('[FirstRunWizard] ✅ Step 3/3 complete: Backend wizard completion saved');
       }
-
-      console.info('[FirstRunWizard] ✅ Step 2/3 complete: Backend wizard completion saved');
-
-      // Step 3: Clear wizard state and mark local completion
-      console.info('[FirstRunWizard] Step 3/3: Marking first run complete locally...');
-      clearWizardStateFromStorage();
-      await markFirstRunCompleted();
 
       console.info('[FirstRunWizard] ✅ Step 3/3 complete: Local first-run status updated');
       console.info('[FirstRunWizard] 🎉 ALL STEPS COMPLETE - Wizard finished successfully!');
@@ -717,18 +733,31 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
         title: 'Setup Error',
         message: `Failed to complete setup: ${errorObj.message}. Please try again or exit to the main app.`,
       });
+
+      // CRITICAL FIX: Even on error, try to navigate away to prevent wizard loop
+      // Reset the exiting flag only if we're staying in the wizard
+      isExitingRef.current = false;
     } finally {
       setIsCompletingSetup(false);
+      // Don't reset isExitingRef here - let it stay true if navigation succeeded
     }
   };
 
   const handleExitWizard = async () => {
+    // CRITICAL FIX: Prevent exit if already exiting
+    if (isExitingRef.current) {
+      return;
+    }
+
     const confirmed = window.confirm(
       'Are you sure you want to exit the setup wizard?\n\n' +
         'Your progress will be saved and you can complete setup later from the Settings page.'
     );
 
     if (confirmed) {
+      // CRITICAL FIX: Mark as exiting immediately to prevent step resets
+      isExitingRef.current = true;
+
       console.info('[FirstRunWizard] User confirmed exit from wizard');
       // Save current progress
       try {
@@ -767,6 +796,9 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
         console.info('[FirstRunWizard] Exit completed via navigation');
         navigate('/dashboard');
       }
+    } else {
+      // User cancelled - reset exiting flag
+      isExitingRef.current = false;
     }
   };
 

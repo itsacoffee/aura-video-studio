@@ -10,7 +10,7 @@ import { Warning24Regular } from '@fluentui/react-icons';
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { setupApi } from '../services/api/setupApi';
-import { hasCompletedFirstRun } from '../services/firstRunService';
+import { hasCompletedFirstRun, getLocalFirstRunStatus } from '../services/firstRunService';
 import { validateRequiredSettings } from '../services/settingsValidationService';
 
 interface ConfigurationGateProps {
@@ -46,23 +46,43 @@ export function ConfigurationGate({ children }: ConfigurationGateProps) {
       }
 
       try {
+        // CRITICAL FIX: Check localStorage first - if user completed wizard, trust that
+        // This prevents redirect loops when backend reports incomplete due to provider health issues
+        const localFirstRunStatus = getLocalFirstRunStatus();
+        console.info('[ConfigurationGate] Local first-run status:', localFirstRunStatus);
+
         // Check system setup status from backend (primary check)
+        let backendReportsIncomplete = false;
         try {
           const systemStatus = await setupApi.getSystemStatus();
+          console.info('[ConfigurationGate] Backend system status:', systemStatus);
           if (!systemStatus.isComplete) {
-            // Redirect to setup wizard - system setup not complete
-            navigate('/setup', { replace: true });
-            return;
+            backendReportsIncomplete = true;
+            console.warn('[ConfigurationGate] Backend reports setup incomplete');
           }
         } catch (error) {
-          console.warn('Could not check system setup status, falling back to local check:', error);
+          console.warn('[ConfigurationGate] Could not check system setup status, falling back to local check:', error);
+          // If backend check fails, trust localStorage
+          backendReportsIncomplete = false;
+        }
+
+        // CRITICAL FIX: Only redirect if BOTH backend AND localStorage say incomplete
+        // If localStorage says completed, trust that (user completed wizard, backend may be out of sync)
+        if (backendReportsIncomplete && !localFirstRunStatus) {
+          console.warn('[ConfigurationGate] Both backend and localStorage indicate incomplete - redirecting to setup');
+          navigate('/setup', { replace: true });
+          return;
+        } else if (localFirstRunStatus) {
+          console.info('[ConfigurationGate] localStorage shows completed - trusting local state over backend');
+          // Continue to validate settings but don't redirect
         }
 
         // Check if first-run is complete (secondary check for backward compatibility)
         const firstRunComplete = await hasCompletedFirstRun();
 
-        if (!firstRunComplete) {
-          // Redirect to setup wizard
+        if (!firstRunComplete && !localFirstRunStatus) {
+          // Only redirect if both checks fail
+          console.warn('[ConfigurationGate] First-run check failed and no local status - redirecting to setup');
           navigate('/setup', { replace: true });
           return;
         }
