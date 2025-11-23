@@ -4,7 +4,7 @@
  */
 
 import { createContext, useContext, useEffect, type FC, type ReactNode } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { navigationService } from '../services/navigationService';
 
 interface NavigationContextValue {
@@ -26,17 +26,30 @@ interface NavigationProviderProps {
 /**
  * Navigation Provider
  * Must be rendered inside Router context
+ * CRITICAL FIX: Added error handling to prevent crashes during wizard-to-app transition
  */
 export const NavigationProvider: FC<NavigationProviderProps> = ({ children }) => {
+  // These hooks will throw if router context is not available
+  // React Router will handle this and ErrorBoundary will catch it
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    navigationService.setNavigate(navigate);
+    try {
+      navigationService.setNavigate(navigate);
+    } catch (error) {
+      console.error('[NavigationProvider] Failed to set navigate function:', error);
+      // Log but don't crash - navigation service will use fallback methods
+    }
   }, [navigate]);
 
   useEffect(() => {
-    navigationService.updateCurrentPath(location.pathname);
+    try {
+      navigationService.updateCurrentPath(location.pathname);
+    } catch (error) {
+      console.error('[NavigationProvider] Failed to update current path:', error);
+      // Log but don't crash - navigation service will use fallback methods
+    }
   }, [location.pathname]);
 
   const value: NavigationContextValue = {

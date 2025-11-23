@@ -796,22 +796,21 @@ function App() {
                     
                     // CRITICAL FIX: Defer state update to allow wizard to unmount cleanly
                     // This prevents errors during the router context transition
+                    // Increased delay to ensure router context is fully ready
                     // React state setters don't throw, so errors would be caught by ErrorBoundary
-                    // The setTimeout ensures clean unmounting before state change
-                    setTimeout(() => {
-                      // Update state to hide onboarding and show main app
-                      // If this causes an error, it will be caught by ErrorBoundary
-                      setShouldShowOnboarding(false);
-                      console.info('[App] Transitioning to main app');
-                    }, 50); // Small delay to ensure clean unmount
+                    await new Promise(resolve => setTimeout(resolve, 150)); // Increased delay for router readiness
+                    
+                    // Update state to hide onboarding and show main app
+                    // If this causes an error, it will be caught by ErrorBoundary
+                    setShouldShowOnboarding(false);
+                    console.info('[App] Transitioning to main app');
                   } catch (error) {
                     console.error('[App] Error in onComplete callback:', error);
                     // Even on error, try to transition to main app
                     // The wizard has already completed, so we should show the main app
                     // If markFirstRunCompleted or clearFirstRunCache failed, we still want to transition
-                    setTimeout(() => {
-                      setShouldShowOnboarding(false);
-                    }, 50);
+                    await new Promise(resolve => setTimeout(resolve, 150));
+                    setShouldShowOnboarding(false);
                   }
                 }}
               />

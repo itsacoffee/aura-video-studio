@@ -5,7 +5,7 @@
  */
 
 import { Spinner } from '@fluentui/react-components';
-import { lazy, useState, useEffect, type FC } from 'react';
+import { lazy, useEffect, useState, type FC } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { env } from '../config/env';
 import { NavigationProvider } from '../contexts/NavigationContext';
@@ -172,16 +172,39 @@ const StreamingScriptDemo = lazy(() =>
 /**
  * ProtectedRoute Component
  * Checks first-run status and redirects to setup if not completed
+ * CRITICAL FIX: Added error handling and localStorage check to prevent crashes during wizard-to-app transition
  */
 const ProtectedRoute: FC<{ children: React.ReactNode }> = ({ children }) => {
   const [setupComplete, setSetupComplete] = useState<boolean | null>(null);
 
   useEffect(() => {
+    // CRITICAL FIX: Check localStorage first for immediate check (synchronous)
+    // This prevents redirect loops when wizard just completed
+    const localStatus =
+      localStorage.getItem('hasCompletedFirstRun') === 'true' ||
+      localStorage.getItem('hasSeenOnboarding') === 'true';
+
+    if (localStatus) {
+      // If localStorage says complete, trust it immediately
+      // This prevents redirect loops during wizard-to-app transition
+      console.info('[ProtectedRoute] localStorage indicates setup complete, allowing access');
+      setSetupComplete(true);
+      return;
+    }
+
+    // If localStorage doesn't say complete, check async (backend/localStorage sync)
     hasCompletedFirstRun()
-      .then(setSetupComplete)
-      .catch(() => {
-        // On error, assume not complete (safer default)
-        setSetupComplete(false);
+      .then((completed) => {
+        console.info('[ProtectedRoute] First-run check result:', completed);
+        setSetupComplete(completed);
+      })
+      .catch((error) => {
+        console.error('[ProtectedRoute] Error checking first-run status:', error);
+        // On error, check localStorage again as fallback
+        const fallbackStatus =
+          localStorage.getItem('hasCompletedFirstRun') === 'true' ||
+          localStorage.getItem('hasSeenOnboarding') === 'true';
+        setSetupComplete(fallbackStatus);
       });
   }, []);
 
@@ -300,6 +323,8 @@ const AppRouterContentInner: FC<
   // Register enhanced menu command system (wires File, Edit, View, Tools, Help menus)
   // This MUST be inside Router context because it uses useNavigate()
   // New system includes validation, correlation IDs, context awareness, and user feedback
+  // CRITICAL FIX: Hook must be called unconditionally (Rules of Hooks)
+  // Error handling is done inside the hook's useEffect, not here
   useMenuCommandSystem();
 
   // Black screen prevention: Ensure we always render something visible

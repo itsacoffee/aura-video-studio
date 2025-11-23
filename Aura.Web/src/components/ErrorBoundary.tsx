@@ -41,6 +41,18 @@ export class ErrorBoundary extends Component<Props, State> {
     // Generate unique error ID for tracking
     const errorId = `ERR-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
+    // Enhanced error logging with more context
+    console.error('[ErrorBoundary] Caught error:', {
+      error,
+      errorMessage: error.message,
+      errorStack: error.stack,
+      componentStack: errorInfo.componentStack,
+      errorId,
+      timestamp: new Date().toISOString(),
+      userAgent: navigator.userAgent,
+      url: window.location.href,
+    });
+
     // Log error to logging service
     loggingService.error(
       'React Error Boundary caught an error',
@@ -50,6 +62,9 @@ export class ErrorBoundary extends Component<Props, State> {
       {
         componentStack: errorInfo.componentStack,
         errorId,
+        errorMessage: error.message,
+        errorStack: error.stack,
+        timestamp: new Date().toISOString(),
       }
     );
 
@@ -124,7 +139,9 @@ export class ErrorBoundary extends Component<Props, State> {
             </div>
 
             <p style={{ marginBottom: '16px', lineHeight: '1.6' }}>
-              The application encountered an unexpected error during initialization.
+              {this.state.error?.message 
+                ? `The application encountered an error: ${this.state.error.message}`
+                : 'The application encountered an unexpected error during initialization.'}
             </p>
 
             <div
