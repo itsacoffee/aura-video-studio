@@ -1,7 +1,9 @@
 using Aura.Api.Contracts;
 using Aura.Api.Services;
+using Aura.Core.Configuration;
 using Aura.Core.Dependencies;
 using Aura.Core.Downloads;
+using Aura.Core.Services.Providers;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
 
@@ -356,19 +358,114 @@ public static class HealthEndpoints
             .Produces<object>(200);
 
         // System check endpoint
-        group.MapGet("/health/system-check", () =>
+        group.MapGet("/health/system-check", async (
+            IServiceProvider services,
+            CancellationToken ct) =>
         {
             try
             {
-                var result = new
+                // Get FFmpeg status
+                var ffmpegResult = new
                 {
-                    ffmpeg = new
+                    installed = false,
+                    version = (string?)null,
+                    path = (string?)null,
+                    error = "Not checked"
+                };
+
+                try
+                {
+                    var ffmpegResolver = services.GetService<FFmpegResolver>();
+                    if (ffmpegResolver != null)
+                    {
+                        var resolution = await ffmpegResolver.ResolveAsync(null, false, ct).ConfigureAwait(false);
+                        ffmpegResult = new
+                        {
+                            installed = resolution.Found,
+                            version = resolution.Version,
+                            path = resolution.Path,
+                            error = resolution.Found ? (string?)null : "FFmpeg not found"
+                        };
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Error checking FFmpeg status");
+                    ffmpegResult = new
                     {
                         installed = false,
                         version = (string?)null,
                         path = (string?)null,
-                        error = "Not checked"
-                    },
+                        error = ex.Message
+                    };
+                }
+
+                // Get provider status
+                var configuredProviders = new List<string>();
+                var validatedProviders = new List<string>();
+                var providerErrors = new Dictionary<string, string>();
+
+                try
+                {
+                    var providerStatusService = services.GetService<ProviderStatusService>();
+
+                    if (providerStatusService != null)
+                    {
+                        try
+                        {
+                            var status = await providerStatusService.GetAllProviderStatusAsync(ct).ConfigureAwait(false);
+                            
+                            // Configured providers: those that are available (regardless of online status)
+                            configuredProviders = status.Providers
+                                .Where(p => p.IsAvailable)
+                                .Select(p => p.Name.ToLower())
+                                .ToList();
+                            
+                            // Validated providers: those that are both available and online (validated and reachable)
+                            validatedProviders = status.Providers
+                                .Where(p => p.IsOnline && p.IsAvailable)
+                                .Select(p => p.Name.ToLower())
+                                .ToList();
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Warning(ex, "Error getting provider status from ProviderStatusService");
+                            providerErrors["status"] = ex.Message;
+                        }
+                    }
+                    else
+                    {
+                        // Fallback: check API keys if ProviderStatusService is not available
+                        var keyStore = services.GetService<IKeyStore>();
+                        if (keyStore != null)
+                        {
+                            var allKeys = keyStore.GetAllKeys();
+                            var providerNames = new[] { "openai", "anthropic", "google", "ollama", "elevenlabs", "playht", "windows", "stabilityai", "stablediffusion", "pexels", "pixabay", "unsplash" };
+                            
+                            foreach (var providerName in providerNames)
+                            {
+                                var hasKey = allKeys.ContainsKey(providerName) && !string.IsNullOrWhiteSpace(allKeys[providerName]);
+                                var isLocalProvider = providerName.Equals("ollama", StringComparison.OrdinalIgnoreCase) ||
+                                                      providerName.Equals("windows", StringComparison.OrdinalIgnoreCase) ||
+                                                      providerName.Equals("stablediffusion", StringComparison.OrdinalIgnoreCase);
+                                
+                                if (hasKey || isLocalProvider)
+                                {
+                                    configuredProviders.Add(providerName);
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Error checking provider status");
+                    providerErrors["general"] = ex.Message;
+                }
+
+                var result = new
+                {
+                    ffmpeg = ffmpegResult,
                     diskSpace = new
                     {
                         available = 0,
@@ -384,9 +481,9 @@ public static class HealthEndpoints
                     },
                     providers = new
                     {
-                        configured = new List<string>(),
-                        validated = new List<string>(),
-                        errors = new Dictionary<string, string>()
+                        configured = configuredProviders,
+                        validated = validatedProviders,
+                        errors = providerErrors
                     }
                 };
 

@@ -1,6 +1,5 @@
 using System;
 using System.Diagnostics;
-using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
@@ -100,16 +99,11 @@ public class PexelsValidator : IProviderValidator
                 _logger.LogInformation("[{CorrelationId}] Pexels validation successful (response length: {Length} bytes, elapsed: {ElapsedMs}ms)", 
                     correlationId, responseBody.Length, sw.ElapsedMilliseconds);
                 
-                // Extract rate limit info from headers if available
-                var rateLimitRemaining = response.Headers.Contains("X-Ratelimit-Remaining") 
-                    ? response.Headers.GetValues("X-Ratelimit-Remaining").FirstOrDefault() 
-                    : "unknown";
-                
                 return new ProviderValidationResult
                 {
                     Name = ProviderName,
                     Ok = true,
-                    Details = $"Connected successfully (rate limit remaining: {rateLimitRemaining})",
+                    Details = "Connected successfully",
                     ElapsedMs = sw.ElapsedMilliseconds
                 };
             }

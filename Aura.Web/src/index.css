@@ -680,9 +680,10 @@ select:focus {
 input[type="radio"] {
   --fui-radio-checked-indicator-background: #ffffff !important;
   --fui-radio-checked-indicator-border: #ffffff !important;
-  --fui-radio-indicator-border: rgba(255, 255, 255, 0.6) !important;
-  --fui-radio-indicator-border-hover: rgba(255, 255, 255, 0.8) !important;
-  border-color: rgba(255, 255, 255, 0.6) !important;
+  --fui-radio-indicator-border: #ffffff !important;
+  --fui-radio-indicator-border-hover: #ffffff !important;
+  --fui-radio-indicator-background: transparent !important;
+  border-color: #ffffff !important;
 }
 
 .dark [class*="fui-Radio"],
@@ -691,9 +692,10 @@ input[type="radio"] {
 .dark input[type="radio"] {
   --fui-radio-checked-indicator-background: #ffffff !important;
   --fui-radio-checked-indicator-border: #ffffff !important;
-  --fui-radio-indicator-border: rgba(255, 255, 255, 0.7) !important;
-  --fui-radio-indicator-border-hover: rgba(255, 255, 255, 0.9) !important;
-  border-color: rgba(255, 255, 255, 0.7) !important;
+  --fui-radio-indicator-border: #ffffff !important;
+  --fui-radio-indicator-border-hover: #ffffff !important;
+  --fui-radio-indicator-background: transparent !important;
+  border-color: #ffffff !important;
 }
 
 /* Ensure dividers are visible with high contrast */

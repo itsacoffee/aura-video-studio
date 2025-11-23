@@ -13,6 +13,7 @@ using Aura.Core.Orchestrator;
 using Aura.Core.Providers;
 using Aura.Core.Services;
 using Aura.Core.Services.Generation;
+using Aura.Core.Services.Providers;
 using Aura.Providers.Llm;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
@@ -49,6 +50,8 @@ public class ScriptsController : ControllerBase
     private readonly Aura.Core.Services.RAG.VectorIndex? _vectorIndex;
     private readonly Aura.Core.Services.RAG.RagContextBuilder? _ragContextBuilder;
 
+    private readonly IServiceProvider? _serviceProvider;
+
     public ScriptsController(
         ILogger<ScriptsController> logger,
         ScriptOrchestrator scriptOrchestrator,
@@ -56,6 +59,7 @@ public class ScriptsController : ControllerBase
         ScriptCacheService cacheService,
         ProviderMixer providerMixer,
         StreamingOrchestrator streamingOrchestrator,
+        IServiceProvider? serviceProvider = null,
         Aura.Core.Services.RAG.VectorIndex? vectorIndex = null,
         Aura.Core.Services.RAG.RagContextBuilder? ragContextBuilder = null)
     {
@@ -65,6 +69,7 @@ public class ScriptsController : ControllerBase
         _cacheService = cacheService;
         _providerMixer = providerMixer;
         _streamingOrchestrator = streamingOrchestrator;
+        _serviceProvider = serviceProvider;
         _vectorIndex = vectorIndex;
         _ragContextBuilder = ragContextBuilder;
     }
@@ -587,11 +592,76 @@ public class ScriptsController : ControllerBase
     /// List available LLM providers and their status
     /// </summary>
     [HttpGet("providers")]
-    public Task<IActionResult> ListProviders(CancellationToken ct)
+    public async Task<IActionResult> ListProviders(CancellationToken ct)
     {
         var correlationId = HttpContext.TraceIdentifier;
 
         _logger.LogInformation("[{CorrelationId}] GET /api/scripts/providers", correlationId);
+
+        // Check Ollama availability and get model info
+        var ollamaAvailable = false;
+        var ollamaModelName = "llama2";
+        var ollamaModels = new List<string> { "llama2", "mistral", "codellama" };
+        
+        try
+        {
+            var ollamaDetectionService = _serviceProvider?.GetService<OllamaDetectionService>();
+            if (ollamaDetectionService != null)
+            {
+                var ollamaStatus = await ollamaDetectionService.GetStatusAsync(ct).ConfigureAwait(false);
+                ollamaAvailable = ollamaStatus.IsRunning;
+                
+                if (ollamaAvailable)
+                {
+                    var models = await ollamaDetectionService.GetModelsAsync(ct).ConfigureAwait(false);
+                    if (models.Count > 0)
+                    {
+                        ollamaModels = models.Select(m => m.Name).ToList();
+                        // Get the configured model from settings, or use the first available model
+                        var providerSettings = _serviceProvider?.GetService<Aura.Core.Configuration.ProviderSettings>();
+                        if (providerSettings != null)
+                        {
+                            var configuredModel = providerSettings.GetOllamaModel();
+                            if (!string.IsNullOrWhiteSpace(configuredModel) && ollamaModels.Contains(configuredModel))
+                            {
+                                ollamaModelName = configuredModel;
+                            }
+                            else
+                            {
+                                ollamaModelName = ollamaModels.First();
+                            }
+                        }
+                        else
+                        {
+                            ollamaModelName = ollamaModels.First();
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[{CorrelationId}] Error checking Ollama availability", correlationId);
+        }
+
+        // Check other providers availability
+        var openAiAvailable = false;
+        var geminiAvailable = false;
+        
+        try
+        {
+            var keyStore = _serviceProvider?.GetService<Aura.Core.Configuration.IKeyStore>();
+            if (keyStore != null)
+            {
+                var allKeys = keyStore.GetAllKeys();
+                openAiAvailable = allKeys.ContainsKey("openai") && !string.IsNullOrWhiteSpace(allKeys["openai"]);
+                geminiAvailable = allKeys.ContainsKey("google") && !string.IsNullOrWhiteSpace(allKeys["google"]);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[{CorrelationId}] Error checking API key availability", correlationId);
+        }
 
         var providers = new List<ProviderInfoDto>
         {
@@ -609,21 +679,21 @@ public class ScriptsController : ControllerBase
             },
             new()
             {
-                Name = "Ollama",
+                Name = ollamaAvailable ? $"Ollama ({ollamaModelName})" : "Ollama",
                 Tier = "Free",
-                IsAvailable = false,
+                IsAvailable = ollamaAvailable,
                 RequiresInternet = false,
                 RequiresApiKey = false,
                 Capabilities = new List<string> { "offline", "local", "customizable" },
-                DefaultModel = "llama2",
+                DefaultModel = ollamaModelName,
                 EstimatedCostPer1KTokens = 0,
-                AvailableModels = new List<string> { "llama2", "mistral", "codellama" }
+                AvailableModels = ollamaModels
             },
             new()
             {
                 Name = "OpenAI",
                 Tier = "Pro",
-                IsAvailable = false,
+                IsAvailable = openAiAvailable,
                 RequiresInternet = true,
                 RequiresApiKey = true,
                 Capabilities = new List<string> { "streaming", "function-calling", "json-mode" },
@@ -635,7 +705,7 @@ public class ScriptsController : ControllerBase
             {
                 Name = "Gemini",
                 Tier = "Pro",
-                IsAvailable = false,
+                IsAvailable = geminiAvailable,
                 RequiresInternet = true,
                 RequiresApiKey = true,
                 Capabilities = new List<string> { "streaming", "multimodal", "long-context" },
@@ -645,7 +715,7 @@ public class ScriptsController : ControllerBase
             }
         };
 
-        return Task.FromResult<IActionResult>(Ok(new { providers, correlationId }));
+        return Ok(new { providers, correlationId });
     }
 
     private Script ParseScriptFromText(string scriptText, PlanSpec planSpec, string provider)
