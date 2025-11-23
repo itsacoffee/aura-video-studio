@@ -33,14 +33,14 @@ public class ScriptsController : ControllerBase
     private readonly ScriptCacheService _cacheService;
     private readonly ProviderMixer _providerMixer;
     private readonly StreamingOrchestrator _streamingOrchestrator;
-    
+
     /// <summary>
     /// In-memory script storage for MVP/demo purposes.
     /// In production, this should be replaced with persistent storage (database, cache server, etc.)
     /// to support application restarts and load-balanced deployments.
     /// </summary>
     private static readonly ConcurrentDictionary<string, Script> _scriptStore = new();
-    
+
     /// <summary>
     /// In-memory version storage. Maps scriptId -> list of versions.
     /// </summary>
@@ -78,7 +78,7 @@ public class ScriptsController : ControllerBase
         CancellationToken ct)
     {
         var correlationId = HttpContext.TraceIdentifier;
-        
+
         // Validate request is not null
         if (request == null)
         {
@@ -109,7 +109,7 @@ public class ScriptsController : ControllerBase
 
         if (request.TargetDurationSeconds <= 0)
         {
-            _logger.LogWarning("[{CorrelationId}] GenerateScript request has invalid TargetDurationSeconds: {Duration}", 
+            _logger.LogWarning("[{CorrelationId}] GenerateScript request has invalid TargetDurationSeconds: {Duration}",
                 correlationId, request.TargetDurationSeconds);
             return BadRequest(new ProblemDetails
             {
@@ -120,7 +120,7 @@ public class ScriptsController : ControllerBase
                 Extensions = { ["correlationId"] = correlationId }
             });
         }
-        
+
         try
         {
             _logger.LogInformation(
@@ -128,7 +128,7 @@ public class ScriptsController : ControllerBase
                 correlationId, request.Topic, request.PreferredProvider ?? "auto", request.TargetDurationSeconds);
 
             // Enable RAG automatically if documents are available in the index
-            Aura.Core.Models.RAG.RagConfiguration? ragConfig = null;
+            Aura.Core.Models.RagConfiguration? ragConfig = null;
             if (_vectorIndex != null)
             {
                 try
@@ -139,7 +139,7 @@ public class ScriptsController : ControllerBase
                         _logger.LogInformation(
                             "[{CorrelationId}] RAG index contains {DocumentCount} documents, enabling RAG for script generation",
                             correlationId, stats.TotalDocuments);
-                        ragConfig = new Aura.Core.Models.RAG.RagConfiguration(
+                        ragConfig = new Aura.Core.Models.RagConfiguration(
                             Enabled: true,
                             TopK: 5,
                             MinimumScore: 0.6f,
@@ -164,8 +164,8 @@ public class ScriptsController : ControllerBase
 
             // Build LLM parameters if any are provided
             Aura.Core.Models.LlmParameters? llmParams = null;
-            if (request.Temperature.HasValue || request.TopP.HasValue || request.TopK.HasValue || 
-                request.MaxTokens.HasValue || request.FrequencyPenalty.HasValue || 
+            if (request.Temperature.HasValue || request.TopP.HasValue || request.TopK.HasValue ||
+                request.MaxTokens.HasValue || request.FrequencyPenalty.HasValue ||
                 request.PresencePenalty.HasValue || request.StopSequences != null)
             {
                 llmParams = new Aura.Core.Models.LlmParameters(
@@ -195,7 +195,7 @@ public class ScriptsController : ControllerBase
                 Style: request.Style);
 
             var preferredTier = request.PreferredProvider ?? "Free";
-            
+
             var result = await _scriptOrchestrator.GenerateScriptAsync(
                 brief, planSpec, preferredTier, offlineOnly: false, ct).ConfigureAwait(false);
 
@@ -221,9 +221,9 @@ public class ScriptsController : ControllerBase
 
             var scriptId = Guid.NewGuid().ToString();
             var script = ParseScriptFromText(result.Script, planSpec, result.ProviderUsed ?? "Unknown");
-            
+
             script = script with { CorrelationId = correlationId };
-            
+
             script = _scriptProcessor.ValidateSceneTiming(script, planSpec.TargetDuration);
             script = _scriptProcessor.OptimizeNarrationFlow(script);
             script = _scriptProcessor.ApplyTransitions(script, planSpec.Style);
@@ -240,7 +240,7 @@ public class ScriptsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "[{CorrelationId}] Error generating script", correlationId);
-            
+
             return StatusCode(500, new ProblemDetails
             {
                 Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
@@ -259,7 +259,7 @@ public class ScriptsController : ControllerBase
     public IActionResult GetScript(string id)
     {
         var correlationId = HttpContext.TraceIdentifier;
-        
+
         if (_scriptStore.TryGetValue(id, out var script))
         {
             _logger.LogInformation("[{CorrelationId}] Retrieved script {ScriptId}", correlationId, id);
@@ -268,7 +268,7 @@ public class ScriptsController : ControllerBase
         }
 
         _logger.LogWarning("[{CorrelationId}] Script {ScriptId} not found", correlationId, id);
-        
+
         return NotFound(new ProblemDetails
         {
             Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
@@ -289,7 +289,7 @@ public class ScriptsController : ControllerBase
         [FromBody] UpdateSceneRequest request)
     {
         var correlationId = HttpContext.TraceIdentifier;
-        
+
         if (!_scriptStore.TryGetValue(id, out var script))
         {
             return NotFound(new ProblemDetails
@@ -331,7 +331,7 @@ public class ScriptsController : ControllerBase
 
         var updatedScenes = script.Scenes.Select(s => s.Number == sceneNumber ? updatedScene : s).ToList();
         var updatedScript = script with { Scenes = updatedScenes };
-        
+
         _scriptStore[id] = updatedScript;
 
         _logger.LogInformation(
@@ -353,7 +353,7 @@ public class ScriptsController : ControllerBase
         CancellationToken ct)
     {
         var correlationId = HttpContext.TraceIdentifier;
-        
+
         if (!_scriptStore.TryGetValue(id, out var script))
         {
             return NotFound(new ProblemDetails
@@ -392,7 +392,7 @@ public class ScriptsController : ControllerBase
             {
                 var prevScene = script.Scenes.FirstOrDefault(s => s.Number == sceneNumber - 1);
                 var nextScene = script.Scenes.FirstOrDefault(s => s.Number == sceneNumber + 1);
-                
+
                 if (prevScene != null)
                 {
                     contextInfo += $"Previous scene: {prevScene.Narration.Substring(0, Math.Min(100, prevScene.Narration.Length))}... ";
@@ -410,8 +410,8 @@ public class ScriptsController : ControllerBase
             }
 
             var brief = new Brief(
-                Topic: scene.Narration.Length > 100 
-                    ? scene.Narration.Substring(0, 100) + "..." 
+                Topic: scene.Narration.Length > 100
+                    ? scene.Narration.Substring(0, 100) + "..."
                     : scene.Narration,
                 Audience: null,
                 Goal: goal,
@@ -451,15 +451,15 @@ public class ScriptsController : ControllerBase
             var lines = result.Script.Split('\n', StringSplitOptions.RemoveEmptyEntries);
             var newNarration = lines.FirstOrDefault(l => l.Length > 10)?.Trim() ?? scene.Narration;
 
-            var updatedScene = scene with 
-            { 
+            var updatedScene = scene with
+            {
                 Narration = newNarration,
                 VisualPrompt = $"Visual for: {newNarration.Substring(0, Math.Min(50, newNarration.Length))}"
             };
 
             var updatedScenes = script.Scenes.Select(s => s.Number == sceneNumber ? updatedScene : s).ToList();
             var updatedScript = script with { Scenes = updatedScenes };
-            
+
             _scriptStore[id] = updatedScript;
 
             _logger.LogInformation(
@@ -472,7 +472,7 @@ public class ScriptsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "[{CorrelationId}] Error regenerating scene", correlationId);
-            
+
             return StatusCode(500, new ProblemDetails
             {
                 Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
@@ -494,7 +494,7 @@ public class ScriptsController : ControllerBase
         CancellationToken ct)
     {
         var correlationId = HttpContext.TraceIdentifier;
-        
+
         if (!_scriptStore.TryGetValue(id, out var oldScript))
         {
             return NotFound(new ProblemDetails
@@ -528,7 +528,7 @@ public class ScriptsController : ControllerBase
                 Style: "Modern");
 
             var preferredTier = request.PreferredProvider ?? oldScript.Metadata.ProviderName;
-            
+
             var result = await _scriptOrchestrator.GenerateScriptAsync(
                 brief, planSpec, preferredTier, offlineOnly: false, ct).ConfigureAwait(false);
 
@@ -554,7 +554,7 @@ public class ScriptsController : ControllerBase
 
             var script = ParseScriptFromText(result.Script, planSpec, result.ProviderUsed ?? "Unknown");
             script = script with { CorrelationId = correlationId };
-            
+
             script = _scriptProcessor.ValidateSceneTiming(script, planSpec.TargetDuration);
             script = _scriptProcessor.OptimizeNarrationFlow(script);
             script = _scriptProcessor.ApplyTransitions(script, planSpec.Style);
@@ -571,7 +571,7 @@ public class ScriptsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "[{CorrelationId}] Error regenerating script", correlationId);
-            
+
             return StatusCode(500, new ProblemDetails
             {
                 Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
@@ -590,7 +590,7 @@ public class ScriptsController : ControllerBase
     public Task<IActionResult> ListProviders(CancellationToken ct)
     {
         var correlationId = HttpContext.TraceIdentifier;
-        
+
         _logger.LogInformation("[{CorrelationId}] GET /api/scripts/providers", correlationId);
 
         var providers = new List<ProviderInfoDto>
@@ -652,7 +652,7 @@ public class ScriptsController : ControllerBase
     {
         var lines = scriptText.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         var title = lines.FirstOrDefault()?.Trim() ?? "Untitled Script";
-        
+
         if (title.StartsWith("Title:", StringComparison.OrdinalIgnoreCase))
         {
             title = title.Substring(6).Trim();
@@ -776,7 +776,7 @@ public class ScriptsController : ControllerBase
     public IActionResult ExportScript(string id, [FromQuery] string format = "text")
     {
         var correlationId = HttpContext.TraceIdentifier;
-        
+
         if (!_scriptStore.TryGetValue(id, out var script))
         {
             return NotFound(new ProblemDetails
@@ -797,7 +797,7 @@ public class ScriptsController : ControllerBase
         };
 
         var filename = $"{script.Title.Replace(" ", "_")}_{DateTime.UtcNow:yyyyMMdd}.{(format == "markdown" ? "md" : "txt")}";
-        
+
         _logger.LogInformation(
             "[{CorrelationId}] Exporting script {ScriptId} as {Format}",
             correlationId, id, format);
@@ -880,7 +880,7 @@ public class ScriptsController : ControllerBase
         CancellationToken ct)
     {
         var correlationId = HttpContext.TraceIdentifier;
-        
+
         if (!_scriptStore.TryGetValue(id, out var script))
         {
             return Task.FromResult<IActionResult>(NotFound(new ProblemDetails
@@ -912,7 +912,7 @@ public class ScriptsController : ControllerBase
                     }
                     return scene with { Narration = narration };
                 }).ToList();
-                
+
                 enhancedScript = enhancedScript with { Scenes = adjustedScenes };
             }
 
@@ -925,12 +925,12 @@ public class ScriptsController : ControllerBase
                     var newDuration = TimeSpan.FromSeconds(duration.TotalSeconds * adjustmentFactor);
                     return scene with { Duration = newDuration };
                 }).ToList();
-                
+
                 enhancedScript = enhancedScript with { Scenes = adjustedScenes };
             }
 
             SaveVersion(id, script, "Before enhancement");
-            
+
             _scriptStore[id] = enhancedScript;
 
             _logger.LogInformation(
@@ -943,7 +943,7 @@ public class ScriptsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "[{CorrelationId}] Error enhancing script", correlationId);
-            
+
             return Task.FromResult<IActionResult>(StatusCode(500, new ProblemDetails
             {
                 Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
@@ -964,7 +964,7 @@ public class ScriptsController : ControllerBase
         [FromBody] ReorderScenesRequest request)
     {
         var correlationId = HttpContext.TraceIdentifier;
-        
+
         if (!_scriptStore.TryGetValue(id, out var script))
         {
             return NotFound(new ProblemDetails
@@ -993,7 +993,7 @@ public class ScriptsController : ControllerBase
 
         var reorderedScenes = new List<ScriptScene>();
         var sceneNumber = 1;
-        
+
         foreach (var oldNumber in request.SceneOrder)
         {
             var scene = script.Scenes.FirstOrDefault(s => s.Number == oldNumber);
@@ -1023,7 +1023,7 @@ public class ScriptsController : ControllerBase
         [FromBody] MergeScenesRequest request)
     {
         var correlationId = HttpContext.TraceIdentifier;
-        
+
         if (!_scriptStore.TryGetValue(id, out var script))
         {
             return NotFound(new ProblemDetails
@@ -1051,7 +1051,7 @@ public class ScriptsController : ControllerBase
         SaveVersion(id, script, "Before merging scenes");
 
         var scenesToMerge = script.Scenes.Where(s => request.SceneNumbers.Contains(s.Number)).OrderBy(s => s.Number).ToList();
-        
+
         if (scenesToMerge.Count != request.SceneNumbers.Count)
         {
             return BadRequest(new ProblemDetails
@@ -1102,7 +1102,7 @@ public class ScriptsController : ControllerBase
         [FromBody] SplitSceneRequest request)
     {
         var correlationId = HttpContext.TraceIdentifier;
-        
+
         if (!_scriptStore.TryGetValue(id, out var script))
         {
             return NotFound(new ProblemDetails
@@ -1152,14 +1152,14 @@ public class ScriptsController : ControllerBase
         var firstDuration = TimeSpan.FromSeconds(scene.Duration.TotalSeconds * durationRatio);
         var secondDuration = TimeSpan.FromSeconds(scene.Duration.TotalSeconds * (1 - durationRatio));
 
-        var firstScene = scene with 
-        { 
+        var firstScene = scene with
+        {
             Narration = firstPart,
             Duration = firstDuration
         };
 
-        var secondScene = scene with 
-        { 
+        var secondScene = scene with
+        {
             Number = sceneNumber + 1,
             Narration = secondPart,
             Duration = secondDuration
@@ -1201,7 +1201,7 @@ public class ScriptsController : ControllerBase
     public IActionResult DeleteScene(string id, int sceneNumber)
     {
         var correlationId = HttpContext.TraceIdentifier;
-        
+
         if (!_scriptStore.TryGetValue(id, out var script))
         {
             return NotFound(new ProblemDetails
@@ -1266,7 +1266,7 @@ public class ScriptsController : ControllerBase
         CancellationToken ct)
     {
         var correlationId = HttpContext.TraceIdentifier;
-        
+
         if (!_scriptStore.TryGetValue(id, out var script))
         {
             return NotFound(new ProblemDetails
@@ -1326,7 +1326,7 @@ public class ScriptsController : ControllerBase
 
             var newScript = ParseScriptFromText(result.Script, planSpec, result.ProviderUsed ?? "Unknown");
             newScript = newScript with { CorrelationId = correlationId };
-            
+
             newScript = _scriptProcessor.ValidateSceneTiming(newScript, planSpec.TargetDuration);
             newScript = _scriptProcessor.OptimizeNarrationFlow(newScript);
             newScript = _scriptProcessor.ApplyTransitions(newScript, planSpec.Style);
@@ -1343,7 +1343,7 @@ public class ScriptsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "[{CorrelationId}] Error regenerating all scenes", correlationId);
-            
+
             return StatusCode(500, new ProblemDetails
             {
                 Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
@@ -1362,7 +1362,7 @@ public class ScriptsController : ControllerBase
     public IActionResult GetVersionHistory(string id)
     {
         var correlationId = HttpContext.TraceIdentifier;
-        
+
         if (!_scriptStore.TryGetValue(id, out _))
         {
             return NotFound(new ProblemDetails
@@ -1400,7 +1400,7 @@ public class ScriptsController : ControllerBase
         [FromBody] RevertToVersionRequest request)
     {
         var correlationId = HttpContext.TraceIdentifier;
-        
+
         if (!_scriptStore.TryGetValue(id, out var currentScript))
         {
             return NotFound(new ProblemDetails
@@ -1444,7 +1444,7 @@ public class ScriptsController : ControllerBase
     private void SaveVersion(string scriptId, Script script, string notes)
     {
         var versions = _versionStore.GetOrAdd(scriptId, _ => new List<ScriptVersionDto>());
-        
+
         var versionNumber = versions.Count + 1;
         var versionId = Guid.NewGuid().ToString();
 
@@ -1458,7 +1458,7 @@ public class ScriptsController : ControllerBase
         };
 
         versions.Add(version);
-        
+
         if (versions.Count > 50)
         {
             versions.RemoveAt(0);
@@ -1473,8 +1473,8 @@ public class ScriptsController : ControllerBase
             Narration = s.Narration,
             VisualPrompt = s.VisualPrompt,
             Duration = TimeSpan.FromSeconds(s.DurationSeconds),
-            Transition = Enum.TryParse<TransitionType>(s.Transition, out var transition) 
-                ? transition 
+            Transition = Enum.TryParse<TransitionType>(s.Transition, out var transition)
+                ? transition
                 : TransitionType.Cut
         }).ToList();
 
@@ -1508,7 +1508,7 @@ public class ScriptsController : ControllerBase
         CancellationToken ct)
     {
         var correlationId = HttpContext.TraceIdentifier;
-        
+
         try
         {
             _logger.LogInformation(
@@ -1537,7 +1537,7 @@ public class ScriptsController : ControllerBase
             // Get provider using keyed services
             ILlmProvider? provider = null;
             string providerName = request.PreferredProvider ?? "Ollama"; // Default to Ollama for free users
-            
+
             // Try to get the requested provider
             if (!string.IsNullOrEmpty(request.PreferredProvider))
             {
@@ -1547,25 +1547,25 @@ public class ScriptsController : ControllerBase
                     _logger.LogWarning("Requested provider {Provider} not available, trying alternatives", request.PreferredProvider);
                 }
             }
-            
+
             // Fallback chain: try Ollama -> RuleBased
             if (provider == null)
             {
                 provider = HttpContext.RequestServices.GetKeyedService<ILlmProvider>("Ollama");
                 providerName = "Ollama";
             }
-            
+
             if (provider == null)
             {
                 provider = HttpContext.RequestServices.GetKeyedService<ILlmProvider>("RuleBased");
                 providerName = "RuleBased";
             }
-            
+
             if (provider == null)
             {
                 throw new InvalidOperationException("No LLM providers available. Please configure at least one provider.");
             }
-            
+
             // Send initial event with provider characteristics
             var characteristics = provider.GetCharacteristics();
             var initEvent = new
@@ -1578,7 +1578,7 @@ public class ScriptsController : ControllerBase
                 costPer1KTokens = characteristics.CostPer1KTokens,
                 supportsStreaming = characteristics.SupportsStreaming
             };
-            
+
             await WriteSSEEvent("init", initEvent, ct).ConfigureAwait(false);
 
             if (!characteristics.SupportsStreaming || !provider.SupportsStreaming)
@@ -1596,7 +1596,7 @@ public class ScriptsController : ControllerBase
                     await WriteSSEEvent("error", new { errorMessage = chunk.ErrorMessage }, ct).ConfigureAwait(false);
                     break;
                 }
-                
+
                 if (chunk.IsFinal)
                 {
                     // Final chunk with metadata
@@ -1618,9 +1618,9 @@ public class ScriptsController : ControllerBase
                             finishReason = chunk.Metadata?.FinishReason
                         }
                     };
-                    
+
                     await WriteSSEEvent("complete", finalEvent, ct).ConfigureAwait(false);
-                    
+
                     _logger.LogInformation(
                         "[{CorrelationId}] Streaming generation complete. Provider: {Provider}, Tokens: {Tokens}, Tokens/sec: {TokensPerSec:F2}, Cost: ${Cost:F4}",
                         correlationId,
@@ -1640,7 +1640,7 @@ public class ScriptsController : ControllerBase
                         accumulatedContent = chunk.AccumulatedContent,
                         tokenIndex = chunk.TokenIndex
                     };
-                    
+
                     await WriteSSEEvent("chunk", chunkEvent, ct).ConfigureAwait(false);
                 }
             }
@@ -1652,7 +1652,7 @@ public class ScriptsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "[{CorrelationId}] Error during streaming generation", correlationId);
-            
+
             try
             {
                 await WriteSSEEvent("error", new
@@ -1667,7 +1667,7 @@ public class ScriptsController : ControllerBase
             }
         }
     }
-    
+
     /// <summary>
     /// Helper method to write Server-Sent Events
     /// </summary>
@@ -1676,7 +1676,7 @@ public class ScriptsController : ControllerBase
         var json = System.Text.Json.JsonSerializer.Serialize(data);
         var message = $"event: {eventType}\ndata: {json}\n\n";
         var bytes = Encoding.UTF8.GetBytes(message);
-        
+
         await Response.Body.WriteAsync(bytes, 0, bytes.Length, ct).ConfigureAwait(false);
         await Response.Body.FlushAsync(ct).ConfigureAwait(false);
     }
@@ -1690,7 +1690,7 @@ public class ScriptsController : ControllerBase
         CancellationToken ct)
     {
         var correlationId = HttpContext.TraceIdentifier;
-        
+
         try
         {
             _logger.LogInformation(
@@ -1711,9 +1711,9 @@ public class ScriptsController : ControllerBase
                 Density: ParseDensity(request.Density),
                 Style: request.Style);
 
-            var loggerFactory = LoggerFactory.Create(builder => 
+            var loggerFactory = LoggerFactory.Create(builder =>
                 builder.SetMinimumLevel(LogLevel.Information));
-            
+
             var researchLogger = loggerFactory.CreateLogger<Core.AI.Tools.ScriptResearchTool>();
             var factCheckLogger = loggerFactory.CreateLogger<Core.AI.Tools.FactCheckTool>();
 
@@ -1760,9 +1760,9 @@ public class ScriptsController : ControllerBase
 
             var scriptId = Guid.NewGuid().ToString();
             var script = ParseScriptFromText(result.GeneratedScript, planSpec, "Ollama-Tools");
-            
+
             script = script with { CorrelationId = correlationId };
-            
+
             script = _scriptProcessor.ValidateSceneTiming(script, planSpec.TargetDuration);
             script = _scriptProcessor.OptimizeNarrationFlow(script);
             script = _scriptProcessor.ApplyTransitions(script, planSpec.Style);
@@ -1774,7 +1774,7 @@ public class ScriptsController : ControllerBase
                 correlationId, scriptId, result.TotalToolCalls, result.TotalIterations);
 
             var response = MapScriptToResponse(scriptId, script);
-            
+
             var enhancedResponse = new
             {
                 response.ScriptId,
@@ -1805,7 +1805,7 @@ public class ScriptsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "[{CorrelationId}] Error generating script with tools", correlationId);
-            
+
             return StatusCode(500, new ProblemDetails
             {
                 Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
