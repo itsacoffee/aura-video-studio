@@ -20,13 +20,15 @@ public class SetupController : ControllerBase
     private readonly HttpClient _httpClient;
     private readonly AuraDbContext _dbContext;
     private readonly IFfmpegConfigurationService _ffmpegConfigService;
+    private readonly ILoggerFactory _loggerFactory;
 
     public SetupController(
         ILogger<SetupController> logger,
         IWebHostEnvironment environment,
         IHttpClientFactory httpClientFactory,
         AuraDbContext dbContext,
-        IFfmpegConfigurationService ffmpegConfigService)
+        IFfmpegConfigurationService ffmpegConfigService,
+        ILoggerFactory loggerFactory)
     {
         _logger = logger;
         _environment = environment;
@@ -34,6 +36,7 @@ public class SetupController : ControllerBase
         _httpClient.Timeout = TimeSpan.FromMinutes(10); // Long timeout for downloads
         _dbContext = dbContext;
         _ffmpegConfigService = ffmpegConfigService;
+        _loggerFactory = loggerFactory;
     }
 
     /// <summary>
@@ -1790,7 +1793,7 @@ public class SetupController : ControllerBase
             }
 
             // Save configuration
-            var providerSettings = new ProviderSettings(_logger);
+            var providerSettings = new ProviderSettings(_loggerFactory.CreateLogger<ProviderSettings>());
             providerSettings.SetPiperPaths(targetPath, System.IO.File.Exists(voiceModelPath) ? voiceModelPath : null);
 
             _logger.LogInformation("[{CorrelationId}] Piper TTS installed successfully at {Path}", correlationId, targetPath);
@@ -1961,7 +1964,7 @@ public class SetupController : ControllerBase
                 if (startProcess.ExitCode == 0)
                 {
                     // Save configuration
-                    var providerSettings = new ProviderSettings(_logger);
+                    var providerSettings = new ProviderSettings(_loggerFactory.CreateLogger<ProviderSettings>());
                     providerSettings.SetMimic3BaseUrl("http://127.0.0.1:59125");
 
                     return Ok(new
@@ -2002,7 +2005,7 @@ public class SetupController : ControllerBase
             await Task.Delay(2000, cancellationToken).ConfigureAwait(false);
 
             // Save configuration
-            var settings = new ProviderSettings(_logger);
+            var settings = new ProviderSettings(_loggerFactory.CreateLogger<ProviderSettings>());
             settings.SetMimic3BaseUrl("http://127.0.0.1:59125");
 
             _logger.LogInformation("[{CorrelationId}] Mimic3 Docker container started successfully", correlationId);
@@ -2032,7 +2035,7 @@ public class SetupController : ControllerBase
 
         try
         {
-            var providerSettings = new ProviderSettings(_logger);
+            var providerSettings = new ProviderSettings(_loggerFactory.CreateLogger<ProviderSettings>());
             var piperPath = providerSettings.PiperExecutablePath;
             var voiceModelPath = providerSettings.PiperVoiceModelPath;
 
@@ -2083,7 +2086,7 @@ public class SetupController : ControllerBase
 
         try
         {
-            var providerSettings = new ProviderSettings(_logger);
+            var providerSettings = new ProviderSettings(_loggerFactory.CreateLogger<ProviderSettings>());
             var baseUrl = providerSettings.Mimic3BaseUrl ?? "http://127.0.0.1:59125";
 
             // Try to connect to Mimic3 server
