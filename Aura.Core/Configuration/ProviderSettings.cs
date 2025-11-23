@@ -26,7 +26,7 @@ public class ProviderSettings
     {
         _logger = logger;
         _ffmpegConfigService = ffmpegConfigService;
-        
+
         var envDataRoot = AuraEnvironmentPaths.TryGetDataRootFromEnvironment();
         if (!string.IsNullOrWhiteSpace(envDataRoot))
         {
@@ -38,25 +38,25 @@ public class ProviderSettings
             var assemblyLocation = AppContext.BaseDirectory;
             _portableRoot = AuraEnvironmentPaths.EnsureDirectory(DeterminePortableRoot(assemblyLocation ?? Directory.GetCurrentDirectory()));
         }
-        
+
         // Store settings in AuraData subfolder
         var auraDataDir = Path.Combine(_portableRoot, "AuraData");
         if (!Directory.Exists(auraDataDir))
         {
             Directory.CreateDirectory(auraDataDir);
         }
-        
+
         _configPath = Path.Combine(auraDataDir, "settings.json");
-        
+
         _logger.LogInformation("ProviderSettings initialized with portable root: {PortableRoot}", _portableRoot);
     }
-    
+
     private static string DeterminePortableRoot(string startPath)
     {
         var current = new DirectoryInfo(startPath);
-        
+
         // Check if we're in a bin folder (development scenario)
-        if (current.Name.Equals("bin", StringComparison.OrdinalIgnoreCase) || 
+        if (current.Name.Equals("bin", StringComparison.OrdinalIgnoreCase) ||
             current.Parent?.Name.Equals("bin", StringComparison.OrdinalIgnoreCase) == true)
         {
             // Go up to project root
@@ -64,14 +64,14 @@ public class ProviderSettings
             {
                 current = current.Parent;
             }
-            
+
             // If we found project folder, go up one more to solution root
             if (current != null && (current.Name == "Aura.Api" || current.Name == "Aura.Core"))
             {
                 current = current.Parent;
             }
         }
-        
+
         return current?.FullName ?? startPath;
     }
 
@@ -95,7 +95,7 @@ public class ProviderSettings
         }
         return toolsDir;
     }
-    
+
     /// <summary>
     /// Get the AuraData directory (for settings, manifests, logs)
     /// </summary>
@@ -108,7 +108,7 @@ public class ProviderSettings
         }
         return auraDataDir;
     }
-    
+
     /// <summary>
     /// Get the downloads directory (for in-progress downloads)
     /// </summary>
@@ -121,7 +121,7 @@ public class ProviderSettings
         }
         return downloadsDir;
     }
-    
+
     /// <summary>
     /// Get the logs directory
     /// </summary>
@@ -134,7 +134,7 @@ public class ProviderSettings
         }
         return logsDir;
     }
-    
+
     /// <summary>
     /// Get the projects directory (for user projects)
     /// </summary>
@@ -234,13 +234,13 @@ public class ProviderSettings
     {
         LoadSettings();
         var path = GetStringSetting("ollamaExecutablePath", "");
-        
+
         // If empty, try to find in common locations
         if (string.IsNullOrWhiteSpace(path))
         {
             return Aura.Core.Services.OllamaService.FindOllamaExecutable() ?? "";
         }
-        
+
         return path;
     }
 
@@ -286,7 +286,7 @@ public class ProviderSettings
             if (_ffmpegConfigService != null)
             {
                 // Use Task.Run to avoid deadlock - this is a synchronous method calling async
-                var config = Task.Run(async () => 
+                var config = Task.Run(async () =>
                     await _ffmpegConfigService.GetEffectiveConfigurationAsync().ConfigureAwait(false)).Result;
                 if (!string.IsNullOrWhiteSpace(config.Path))
                 {
@@ -294,11 +294,11 @@ public class ProviderSettings
                     return _cachedFfmpegPath;
                 }
             }
-            
+
             // Legacy fallback: settings.json (deprecated, kept for backward compatibility)
             LoadSettings();
             var path = GetStringSetting("ffmpegPath", "");
-            
+
             // If empty, default to system PATH
             if (string.IsNullOrWhiteSpace(path))
             {
@@ -308,7 +308,7 @@ public class ProviderSettings
             {
                 _cachedFfmpegPath = path;
             }
-            
+
             return _cachedFfmpegPath;
         }
     }
@@ -340,7 +340,7 @@ public class ProviderSettings
             if (_ffmpegConfigService != null)
             {
                 // Use Task.Run to avoid deadlock - this is a synchronous method calling async
-                var config = Task.Run(async () => 
+                var config = Task.Run(async () =>
                     await _ffmpegConfigService.GetEffectiveConfigurationAsync().ConfigureAwait(false)).Result;
                 if (!string.IsNullOrWhiteSpace(config.Path))
                 {
@@ -364,11 +364,11 @@ public class ProviderSettings
                     }
                 }
             }
-            
+
             // Legacy fallback: settings.json
             LoadSettings();
             var path = GetStringSetting("ffprobePath", "");
-            
+
             // If empty, default to system PATH
             if (string.IsNullOrWhiteSpace(path))
             {
@@ -378,7 +378,7 @@ public class ProviderSettings
             {
                 _cachedFfprobePath = path;
             }
-            
+
             return _cachedFfprobePath;
         }
     }
@@ -390,13 +390,13 @@ public class ProviderSettings
     {
         LoadSettings();
         var path = GetStringSetting("outputDirectory", "");
-        
+
         // If user has set custom path, use it; otherwise use Projects folder
         if (string.IsNullOrWhiteSpace(path))
         {
             return GetProjectsDirectory();
         }
-        
+
         return path;
     }
 
@@ -1080,7 +1080,7 @@ public class ProviderSettings
     {
         LoadSettings();
         var apiKey = GetStringSetting(key, "");
-        
+
         if (string.IsNullOrWhiteSpace(apiKey))
         {
             throw new InvalidOperationException(
@@ -1131,6 +1131,49 @@ public class ProviderSettings
         LoadSettings();
         var result = GetStringSetting("mimic3Url", string.Empty);
         return string.IsNullOrEmpty(result) ? null : result;
+    }
+
+    /// <summary>
+    /// Set Piper TTS executable and voice model paths
+    /// </summary>
+    public void SetPiperPaths(string? executablePath, string? voiceModelPath)
+    {
+        LoadSettings();
+        if (_settings == null)
+        {
+            _settings = new Dictionary<string, object>();
+        }
+
+        if (executablePath != null)
+        {
+            _settings["piperExecutablePath"] = executablePath;
+        }
+
+        if (voiceModelPath != null)
+        {
+            _settings["piperVoiceModelPath"] = voiceModelPath;
+        }
+
+        SaveSettings();
+    }
+
+    /// <summary>
+    /// Set Mimic3 TTS base URL
+    /// </summary>
+    public void SetMimic3BaseUrl(string? baseUrl)
+    {
+        LoadSettings();
+        if (_settings == null)
+        {
+            _settings = new Dictionary<string, object>();
+        }
+
+        if (baseUrl != null)
+        {
+            _settings["mimic3BaseUrl"] = baseUrl;
+        }
+
+        SaveSettings();
     }
 
     private void SaveSettings()

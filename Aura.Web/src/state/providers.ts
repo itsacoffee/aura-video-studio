@@ -108,26 +108,33 @@ export const TtsProviders = [
     value: 'Windows',
     label: 'Windows SAPI (Free)',
     description: 'Built-in Windows text-to-speech, always available',
+    isLocal: true,
   },
   {
     value: 'Piper',
     label: 'Piper (Local)',
     description: 'Fast local TTS, works offline, requires installation',
+    isLocal: true,
+    installable: true,
   },
   {
     value: 'Mimic3',
     label: 'Mimic3 (Local)',
     description: 'Neural TTS, works offline, requires installation',
+    isLocal: true,
+    installable: true,
   },
   {
     value: 'ElevenLabs',
     label: 'ElevenLabs (Pro)',
     description: 'Premium voice synthesis, requires API key',
+    isLocal: false,
   },
   {
     value: 'PlayHT',
     label: 'Play.ht (Pro)',
     description: 'Cloud voice synthesis, requires API key',
+    isLocal: false,
   },
 ] as const;
 

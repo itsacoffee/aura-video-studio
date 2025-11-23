@@ -27,6 +27,7 @@ import { AutoSaveIndicator } from '../../components/Onboarding/AutoSaveIndicator
 import { BackendStatusBanner } from '../../components/Onboarding/BackendStatusBanner';
 import { FFmpegDependencyCard } from '../../components/Onboarding/FFmpegDependencyCard';
 import { ResumeWizardDialog } from '../../components/Onboarding/ResumeWizardDialog';
+import { TtsDependencyCard } from '../../components/Onboarding/TtsDependencyCard';
 import { WelcomeScreen } from '../../components/Onboarding/WelcomeScreen';
 import type { WorkspacePreferences } from '../../components/Onboarding/WorkspaceSetup';
 import { WorkspaceSetup } from '../../components/Onboarding/WorkspaceSetup';
@@ -492,7 +493,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
     if (state.step === 3) {
       // Check if there are any configured (non-empty) API keys
       const configuredKeys = Object.entries(state.apiKeys).filter(
-        ([_, key]) => key && key.trim().length > 0
+        ([_, key]) => key && typeof key === 'string' && key.trim().length > 0
       );
       const hasInvalidKeys = configuredKeys.some(
         ([provider, _]) => state.apiKeyValidationStatus[provider] === 'invalid'
@@ -922,12 +923,12 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
     console.info('[Rescan FFmpeg] Circuit breaker reset, initiating rescan');
     pendingRescanRef.current = true;
     setIsRescanningFfmpeg(true);
-    
+
     try {
       // First trigger a rescan to detect managed version
       const rescanResult = await ffmpegClient.rescan();
       console.info('[Rescan FFmpeg] Rescan result:', rescanResult);
-      
+
       // Then get the updated status
       const status = await ffmpegClient.getStatusExtended();
       handleFfmpegStatusUpdate(status);
@@ -936,7 +937,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
       setIsRescanningFfmpeg(false);
       pendingRescanRef.current = false;
     }
-    
+
     setFfmpegRefreshSignal((prev) => prev + 1);
   }, [isRescanningFfmpeg, handleFfmpegStatusUpdate]);
 
@@ -1514,6 +1515,47 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
           </Text>
         </Card>
       )}
+
+      {/* Optional: Local TTS Providers */}
+      <div style={{ marginTop: tokens.spacingVerticalXL }}>
+        <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>
+          Optional: Local Text-to-Speech Providers
+        </Title3>
+        <Text size={300} style={{ marginBottom: tokens.spacingVerticalM, display: 'block' }}>
+          Install local TTS providers for offline, high-quality voice synthesis. These are optional
+          but recommended for better voice quality than Windows SAPI.
+        </Text>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
+          <TtsDependencyCard
+            provider="piper"
+            autoCheck={true}
+            autoExpandDetails={false}
+            onInstallComplete={(status) => {
+              if (status.installed) {
+                showSuccessToast({
+                  title: 'Piper TTS Ready',
+                  message: 'Piper TTS is now available for use in video generation.',
+                });
+              }
+            }}
+          />
+
+          <TtsDependencyCard
+            provider="mimic3"
+            autoCheck={true}
+            autoExpandDetails={false}
+            onInstallComplete={(status) => {
+              if (status.installed) {
+                showSuccessToast({
+                  title: 'Mimic3 TTS Ready',
+                  message: 'Mimic3 TTS is now available for use in video generation.',
+                });
+              }
+            }}
+          />
+        </div>
+      </div>
     </div>
   );
 

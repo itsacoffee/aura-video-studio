@@ -94,7 +94,7 @@ public class SetupController : ControllerBase
                 ? "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
                 : "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip";
 
-            var dataPath = Environment.GetEnvironmentVariable("AURA_DATA_PATH") ?? 
+            var dataPath = Environment.GetEnvironmentVariable("AURA_DATA_PATH") ??
                            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AuraVideoStudio");
             var ffmpegDir = Path.Combine(dataPath, "ffmpeg");
             var downloadPath = Path.Combine(Path.GetTempPath(), "ffmpeg.zip");
@@ -400,19 +400,19 @@ public class SetupController : ControllerBase
     public async Task<IActionResult> CheckFFmpeg(CancellationToken cancellationToken)
     {
         var correlationId = HttpContext.TraceIdentifier;
-        
+
         try
         {
             _logger.LogInformation("[{CorrelationId}] Checking FFmpeg installation status", correlationId);
-            
+
             // Get effective FFmpeg configuration (uses FFmpegResolver internally)
             var config = await _ffmpegConfigService.GetEffectiveConfigurationAsync(cancellationToken).ConfigureAwait(false);
-            
+
             if (config != null && config.LastValidationResult == FFmpegValidationResult.Ok && !string.IsNullOrEmpty(config.Path))
             {
-                _logger.LogInformation("[{CorrelationId}] FFmpeg found at: {Path}, Version: {Version}", 
+                _logger.LogInformation("[{CorrelationId}] FFmpeg found at: {Path}, Version: {Version}",
                     correlationId, config.Path, config.Version ?? "unknown");
-                    
+
                 return Ok(new
                 {
                     isInstalled = true,
@@ -427,7 +427,7 @@ public class SetupController : ControllerBase
             {
                 var errorMessage = config?.LastValidationError ?? "FFmpeg not found. Install FFmpeg or configure the path in Settings.";
                 _logger.LogWarning("[{CorrelationId}] FFmpeg not found or invalid: {Error}", correlationId, errorMessage);
-                
+
                 return Ok(new
                 {
                     isInstalled = false,
@@ -464,12 +464,12 @@ public class SetupController : ControllerBase
         CancellationToken cancellationToken)
     {
         var correlationId = HttpContext.TraceIdentifier;
-        
+
         try
         {
             _logger.LogInformation("[{CorrelationId}] Starting setup completion, FFmpegPath: {FFmpegPath}, OutputDirectory: {OutputDirectory}",
                 correlationId, request.FFmpegPath ?? "(none)", request.OutputDirectory ?? "(none)");
-            
+
             var errors = new List<string>();
 
             // Validate output directory if provided
@@ -514,7 +514,7 @@ public class SetupController : ControllerBase
                         };
                         process.Start();
                         await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
-                        
+
                         if (process.ExitCode != 0)
                         {
                             errors.Add("FFmpeg validation failed: executable returned error");
@@ -549,7 +549,7 @@ public class SetupController : ControllerBase
                 .FirstOrDefaultAsync(u => u.UserId == "default", cancellationToken).ConfigureAwait(false);
 
             var isNewSetup = userSetup == null;
-            
+
             if (userSetup == null)
             {
                 userSetup = new UserSetupEntity
@@ -597,10 +597,10 @@ public class SetupController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "[{CorrelationId}] Failed to complete setup", correlationId);
-            return StatusCode(500, new { 
+            return StatusCode(500, new {
                 success = false,
                 errors = new[] { "Failed to complete setup. Please try again or contact support if the problem persists." },
-                correlationId 
+                correlationId
             });
         }
     }
@@ -614,11 +614,11 @@ public class SetupController : ControllerBase
         CancellationToken cancellationToken)
     {
         var correlationId = HttpContext.TraceIdentifier;
-        
+
         try
         {
             _logger.LogInformation("[{CorrelationId}] Checking directory: {Path}", correlationId, request.Path);
-            
+
             if (string.IsNullOrEmpty(request.Path))
             {
                 return Ok(new { isValid = false, error = "Path cannot be empty", correlationId });
@@ -1001,7 +1001,7 @@ public class SetupController : ControllerBase
             if (apiKeyState.TryGetValue("apiKeys", out var existingKeysObj))
             {
                 var existingKeysJson = System.Text.Json.JsonSerializer.Serialize(existingKeysObj);
-                apiKeysData = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, object>>>(existingKeysJson) 
+                apiKeysData = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, object>>>(existingKeysJson)
                     ?? new Dictionary<string, Dictionary<string, object>>();
             }
 
@@ -1053,7 +1053,7 @@ public class SetupController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to save API keys, CorrelationId: {CorrelationId}", 
+            _logger.LogError(ex, "Failed to save API keys, CorrelationId: {CorrelationId}",
                 request.CorrelationId ?? HttpContext.TraceIdentifier);
             return StatusCode(500, new
             {
@@ -1125,32 +1125,32 @@ public class SetupController : ControllerBase
         CancellationToken cancellationToken)
     {
         var correlationId = HttpContext.TraceIdentifier;
-        
+
         try
         {
-            _logger.LogInformation("[{CorrelationId}] Checking FFmpeg path: {Path}", 
+            _logger.LogInformation("[{CorrelationId}] Checking FFmpeg path: {Path}",
                 correlationId, request.Path);
 
             if (string.IsNullOrWhiteSpace(request.Path))
             {
-                return Ok(new { 
-                    found = false, 
+                return Ok(new {
+                    found = false,
                     error = "Path cannot be empty",
-                    correlationId 
+                    correlationId
                 });
             }
 
             var path = request.Path.Trim();
-            
+
             // Check if file exists
             if (!System.IO.File.Exists(path))
             {
-                _logger.LogInformation("[{CorrelationId}] FFmpeg not found at path: {Path}", 
+                _logger.LogInformation("[{CorrelationId}] FFmpeg not found at path: {Path}",
                     correlationId, path);
-                return Ok(new { 
-                    found = false, 
+                return Ok(new {
+                    found = false,
                     error = $"File not found at: {path}",
-                    correlationId 
+                    correlationId
                 });
             }
 
@@ -1168,10 +1168,10 @@ public class SetupController : ControllerBase
             using var process = Process.Start(processStartInfo);
             if (process == null)
             {
-                return Ok(new { 
-                    found = false, 
+                return Ok(new {
+                    found = false,
                     error = "Failed to start FFmpeg process",
-                    correlationId 
+                    correlationId
                 });
             }
 
@@ -1181,35 +1181,35 @@ public class SetupController : ControllerBase
             if (process.ExitCode != 0)
             {
                 var errorOutput = await process.StandardError.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
-                _logger.LogWarning("[{CorrelationId}] FFmpeg execution failed with exit code {ExitCode}: {Error}", 
+                _logger.LogWarning("[{CorrelationId}] FFmpeg execution failed with exit code {ExitCode}: {Error}",
                     correlationId, process.ExitCode, errorOutput);
-                return Ok(new { 
-                    found = false, 
+                return Ok(new {
+                    found = false,
                     error = $"FFmpeg validation failed with exit code {process.ExitCode}",
-                    correlationId 
+                    correlationId
                 });
             }
 
             var version = ParseFFmpegVersionString(output);
-            
-            _logger.LogInformation("[{CorrelationId}] FFmpeg validated successfully: {Path} (version: {Version})", 
+
+            _logger.LogInformation("[{CorrelationId}] FFmpeg validated successfully: {Path} (version: {Version})",
                 correlationId, path, version);
 
-            return Ok(new { 
-                found = true, 
-                path = path, 
+            return Ok(new {
+                found = true,
+                path = path,
                 version = version ?? "unknown",
-                correlationId 
+                correlationId
             });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[{CorrelationId}] Failed to check FFmpeg path: {Path}", 
+            _logger.LogError(ex, "[{CorrelationId}] Failed to check FFmpeg path: {Path}",
                 correlationId, request.Path);
-            return Ok(new { 
-                found = false, 
+            return Ok(new {
+                found = false,
                 error = $"Error checking FFmpeg: {ex.Message}",
-                correlationId 
+                correlationId
             });
         }
     }
@@ -1223,28 +1223,28 @@ public class SetupController : ControllerBase
         CancellationToken cancellationToken)
     {
         var correlationId = HttpContext.TraceIdentifier;
-        
+
         try
         {
-            _logger.LogInformation("[{CorrelationId}] Saving FFmpeg path to configuration: {Path}", 
+            _logger.LogInformation("[{CorrelationId}] Saving FFmpeg path to configuration: {Path}",
                 correlationId, request.Path);
 
             if (string.IsNullOrWhiteSpace(request.Path))
             {
-                return BadRequest(new { 
-                    success = false, 
+                return BadRequest(new {
+                    success = false,
                     error = "Path cannot be empty",
-                    correlationId 
+                    correlationId
                 });
             }
 
             // Validate that the path exists and is executable
             if (!System.IO.File.Exists(request.Path))
             {
-                return BadRequest(new { 
-                    success = false, 
+                return BadRequest(new {
+                    success = false,
                     error = $"File not found at: {request.Path}",
-                    correlationId 
+                    correlationId
                 });
             }
 
@@ -1253,30 +1253,30 @@ public class SetupController : ControllerBase
             config.Path = request.Path;
             config.Mode = FFmpegMode.Custom;
             config.Source = "Configured";
-            
+
             // Update configuration
             await _ffmpegConfigService.UpdateConfigurationAsync(config, cancellationToken).ConfigureAwait(false);
-            
-            _logger.LogInformation("[{CorrelationId}] FFmpeg path saved successfully: {Path}", 
+
+            _logger.LogInformation("[{CorrelationId}] FFmpeg path saved successfully: {Path}",
                 correlationId, request.Path);
 
-            return Ok(new { 
-                success = true, 
+            return Ok(new {
+                success = true,
                 path = request.Path,
-                correlationId 
+                correlationId
             });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[{CorrelationId}] Failed to save FFmpeg path", correlationId);
-            return StatusCode(500, new { 
-                success = false, 
+            return StatusCode(500, new {
+                success = false,
                 error = $"Failed to save FFmpeg path: {ex.Message}",
-                correlationId 
+                correlationId
             });
         }
     }
-    
+
     /// <summary>
     /// Configure FFmpeg path with validation and persistence (called by Electron after detection)
     /// </summary>
@@ -1286,10 +1286,10 @@ public class SetupController : ControllerBase
         CancellationToken cancellationToken)
     {
         var correlationId = HttpContext.TraceIdentifier;
-        
+
         try
         {
-            _logger.LogInformation("[{CorrelationId}] Configuring FFmpeg path: {Path}, Source: {Source}", 
+            _logger.LogInformation("[{CorrelationId}] Configuring FFmpeg path: {Path}, Source: {Source}",
                 correlationId, request.Path, request.Source ?? "Unknown");
 
             if (string.IsNullOrWhiteSpace(request.Path))
@@ -1348,9 +1348,9 @@ public class SetupController : ControllerBase
                 if (process.ExitCode != 0)
                 {
                     var errorOutput = await process.StandardError.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
-                    _logger.LogWarning("[{CorrelationId}] FFmpeg validation failed with exit code {ExitCode}: {Error}", 
+                    _logger.LogWarning("[{CorrelationId}] FFmpeg validation failed with exit code {ExitCode}: {Error}",
                         correlationId, process.ExitCode, errorOutput);
-                    
+
                     return BadRequest(new ProblemDetails
                     {
                         Title = "FFmpeg Validation Failed",
@@ -1402,8 +1402,8 @@ public class SetupController : ControllerBase
 
             // Persist configuration
             await _ffmpegConfigService.UpdateConfigurationAsync(config, cancellationToken).ConfigureAwait(false);
-            
-            _logger.LogInformation("[{CorrelationId}] FFmpeg configured successfully: {Path} (version: {Version})", 
+
+            _logger.LogInformation("[{CorrelationId}] FFmpeg configured successfully: {Path} (version: {Version})",
                 correlationId, request.Path, version ?? "unknown");
 
             return Ok(new
@@ -1498,7 +1498,7 @@ public class SetupController : ControllerBase
             // Expand environment variables
             expandedPath = ExpandEnvironmentVariables(path);
 
-            _logger.LogInformation("[{CorrelationId}] Validating directory path. Original: {OriginalPath}, Expanded: {ExpandedPath}", 
+            _logger.LogInformation("[{CorrelationId}] Validating directory path. Original: {OriginalPath}, Expanded: {ExpandedPath}",
                 correlationId, path, expandedPath);
 
             // Check if directory exists
@@ -1567,10 +1567,565 @@ public class SetupController : ControllerBase
     {
         public required string Path { get; set; }
     }
-    
+
     public class ConfigureFFmpegRequest
     {
         public required string Path { get; set; }
         public string? Source { get; set; }
+    }
+
+    /// <summary>
+    /// Install Piper TTS for Windows
+    /// </summary>
+    [HttpPost("install-piper")]
+    public async Task<IActionResult> InstallPiper(CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+
+        try
+        {
+            _logger.LogInformation("[{CorrelationId}] Starting Piper TTS installation for platform: {Platform}",
+                correlationId, RuntimeInformation.OSDescription);
+
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                return Ok(new
+                {
+                    success = false,
+                    message = "Piper TTS managed installation is currently only available for Windows. Please install manually from https://github.com/rhasspy/piper/releases",
+                    url = "https://github.com/rhasspy/piper/releases"
+                });
+            }
+
+            return await InstallPiperWindows(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Failed to install Piper TTS", correlationId);
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    private async Task<IActionResult> InstallPiperWindows(CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+
+        try
+        {
+            // Piper TTS Windows releases: https://github.com/rhasspy/piper/releases
+            // Download the latest Windows x64 release
+            var downloadUrl = "https://github.com/rhasspy/piper/releases/latest/download/piper_windows_amd64.tar.gz";
+
+            var dataPath = Environment.GetEnvironmentVariable("AURA_DATA_PATH") ??
+                           Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AuraVideoStudio");
+            var piperDir = Path.Combine(dataPath, "piper");
+            var downloadPath = Path.Combine(Path.GetTempPath(), "piper.tar.gz");
+
+            Directory.CreateDirectory(piperDir);
+
+            _logger.LogInformation("[{CorrelationId}] Downloading Piper TTS from {Url}", correlationId, downloadUrl);
+
+            // Download Piper
+            using (var response = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false))
+            {
+                response.EnsureSuccessStatusCode();
+
+                var totalBytes = response.Content.Headers.ContentLength ?? 0;
+                var bytesDownloaded = 0L;
+
+                using (var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false))
+                using (var fileStream = new FileStream(downloadPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
+                {
+                    var buffer = new byte[8192];
+                    int bytesRead;
+
+                    while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false)) > 0)
+                    {
+                        await fileStream.WriteAsync(buffer, 0, bytesRead, cancellationToken).ConfigureAwait(false);
+                        bytesDownloaded += bytesRead;
+
+                        if (totalBytes > 0)
+                        {
+                            var progress = (int)((bytesDownloaded * 100) / totalBytes);
+                            _logger.LogInformation("[{CorrelationId}] Download progress: {Progress}%", correlationId, progress);
+                        }
+                    }
+                }
+            }
+
+            _logger.LogInformation("[{CorrelationId}] Extracting Piper TTS to {Path}", correlationId, piperDir);
+
+            // Extract TAR.GZ using SharpCompress (if available) or provide manual instructions
+            // For Windows 11, we'll try to use built-in PowerShell or provide clear instructions
+            string? piperExePath = null;
+
+            try
+            {
+                // Try using PowerShell to extract TAR.GZ (Windows 10 1803+ and Windows 11 have built-in tar)
+                using var tarProcess = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = "tar",
+                        Arguments = $"-xzf \"{downloadPath}\" -C \"{piperDir}\"",
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true,
+                        WorkingDirectory = piperDir
+                    }
+                };
+
+                tarProcess.Start();
+                var tarOutput = await tarProcess.StandardOutput.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+                var tarError = await tarProcess.StandardError.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+                await tarProcess.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+
+                if (tarProcess.ExitCode == 0)
+                {
+                    _logger.LogInformation("[{CorrelationId}] Successfully extracted using tar command", correlationId);
+                    piperExePath = Directory.GetFiles(piperDir, "piper.exe", SearchOption.AllDirectories).FirstOrDefault();
+                }
+                else
+                {
+                    _logger.LogWarning("[{CorrelationId}] tar command failed: {Error}", correlationId, tarError);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[{CorrelationId}] tar command not available, will provide manual instructions", correlationId);
+            }
+
+            // If extraction failed, provide manual instructions with download link
+            if (piperExePath == null)
+            {
+                // Cleanup failed extraction attempt and downloaded file
+                try
+                {
+                    if (Directory.Exists(piperDir))
+                    {
+                        Directory.Delete(piperDir, recursive: true);
+                    }
+                }
+                catch
+                {
+                    // Ignore cleanup errors
+                }
+
+                // Cleanup downloaded file
+                try
+                {
+                    if (System.IO.File.Exists(downloadPath))
+                    {
+                        System.IO.File.Delete(downloadPath);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "[{CorrelationId}] Failed to cleanup downloaded file: {Path}", correlationId, downloadPath);
+                }
+
+                return Ok(new
+                {
+                    success = false,
+                    message = "Automatic extraction is not available on this system. Please download and extract Piper manually.",
+                    requiresManualInstall = true,
+                    downloadUrl = "https://github.com/rhasspy/piper/releases/latest",
+                    instructions = new[]
+                    {
+                        "1. Download piper_windows_amd64.tar.gz from the GitHub releases page",
+                        "2. Extract the archive using 7-Zip, WinRAR, or Windows 11's built-in extraction",
+                        $"3. Copy piper.exe to: {piperDir}",
+                        "4. Click 'Re-scan' to detect the installation"
+                    },
+                    installPath = piperDir
+                });
+            }
+
+            // Find piper.exe
+            piperExePath = Directory.GetFiles(piperDir, "piper.exe", SearchOption.AllDirectories).FirstOrDefault();
+
+            if (piperExePath == null)
+            {
+                throw new FileNotFoundException("piper.exe not found in extracted files");
+            }
+
+            // Move piper.exe to root of piperDir for easier access
+            var targetPath = Path.Combine(piperDir, "piper.exe");
+            if (piperExePath != targetPath)
+            {
+                System.IO.File.Copy(piperExePath, targetPath, overwrite: true);
+            }
+
+            // Download a default voice model (en_US-lessac-medium is a good default)
+            var voiceModelUrl = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx";
+            var voiceModelDir = Path.Combine(piperDir, "voices");
+            Directory.CreateDirectory(voiceModelDir);
+            var voiceModelPath = Path.Combine(voiceModelDir, "en_US-lessac-medium.onnx");
+
+            _logger.LogInformation("[{CorrelationId}] Downloading default voice model", correlationId);
+
+            try
+            {
+                using (var response = await _httpClient.GetAsync(voiceModelUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false))
+                {
+                    response.EnsureSuccessStatusCode();
+                    using (var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false))
+                    using (var fileStream = new FileStream(voiceModelPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
+                    {
+                        await contentStream.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[{CorrelationId}] Failed to download voice model, user can download manually", correlationId);
+                // Continue without voice model - user can download it manually
+            }
+
+            // Cleanup
+            if (System.IO.File.Exists(downloadPath))
+            {
+                System.IO.File.Delete(downloadPath);
+            }
+
+            // Save configuration
+            var providerSettings = new ProviderSettings(_logger);
+            providerSettings.SetPiperPaths(targetPath, System.IO.File.Exists(voiceModelPath) ? voiceModelPath : null);
+
+            _logger.LogInformation("[{CorrelationId}] Piper TTS installed successfully at {Path}", correlationId, targetPath);
+
+            return Ok(new
+            {
+                success = true,
+                message = "Piper TTS installed successfully",
+                path = targetPath,
+                voiceModelPath = System.IO.File.Exists(voiceModelPath) ? voiceModelPath : null,
+                voiceModelDownloaded = System.IO.File.Exists(voiceModelPath)
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Failed to install Piper TTS on Windows", correlationId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Install Mimic3 TTS (Docker-based or guide user to install)
+    /// </summary>
+    [HttpPost("install-mimic3")]
+    public async Task<IActionResult> InstallMimic3(CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+
+        try
+        {
+            _logger.LogInformation("[{CorrelationId}] Starting Mimic3 TTS installation check", correlationId);
+
+            // Mimic3 is typically run via Docker or Python
+            // For Windows, we'll check if Docker is available and guide the user
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                // Check if Docker is available
+                try
+                {
+                    using var dockerProcess = new Process
+                    {
+                        StartInfo = new ProcessStartInfo
+                        {
+                            FileName = "docker",
+                            Arguments = "--version",
+                            RedirectStandardOutput = true,
+                            UseShellExecute = false,
+                            CreateNoWindow = true
+                        }
+                    };
+
+                    dockerProcess.Start();
+                    await dockerProcess.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+
+                    if (dockerProcess.ExitCode == 0)
+                    {
+                        // Docker is available - start Mimic3 container
+                        return await StartMimic3Docker(cancellationToken).ConfigureAwait(false);
+                    }
+                }
+                catch
+                {
+                    // Docker not found
+                }
+
+                // Docker not available - provide installation guide
+                return Ok(new
+                {
+                    success = false,
+                    message = "Docker is required for Mimic3 TTS on Windows. Please install Docker Desktop first.",
+                    requiresDocker = true,
+                    dockerUrl = "https://www.docker.com/products/docker-desktop",
+                    alternativeInstructions = "Alternatively, you can install Mimic3 via Python: pip install mycroft-mimic3-tts"
+                });
+            }
+            else
+            {
+                // Linux/macOS - try Docker first
+                try
+                {
+                    using var dockerProcess = new Process
+                    {
+                        StartInfo = new ProcessStartInfo
+                        {
+                            FileName = "docker",
+                            Arguments = "--version",
+                            RedirectStandardOutput = true,
+                            UseShellExecute = false,
+                            CreateNoWindow = true
+                        }
+                    };
+
+                    dockerProcess.Start();
+                    await dockerProcess.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+
+                    if (dockerProcess.ExitCode == 0)
+                    {
+                        return await StartMimic3Docker(cancellationToken).ConfigureAwait(false);
+                    }
+                }
+                catch
+                {
+                    // Docker not found
+                }
+
+                return Ok(new
+                {
+                    success = false,
+                    message = "Please install Mimic3 manually. Options:\n1. Docker: docker run -p 59125:59125 mycroftai/mimic3\n2. Python: pip install mycroft-mimic3-tts",
+                    requiresManualInstall = true
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Failed to install Mimic3 TTS", correlationId);
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    private async Task<IActionResult> StartMimic3Docker(CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+
+        try
+        {
+            _logger.LogInformation("[{CorrelationId}] Starting Mimic3 Docker container", correlationId);
+
+            // Check if container already exists
+            using var checkProcess = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "docker",
+                    Arguments = "ps -a --filter name=mimic3 --format {{.Names}}",
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                }
+            };
+
+            checkProcess.Start();
+            var output = await checkProcess.StandardOutput.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+            await checkProcess.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+
+            var containerExists = output.Contains("mimic3");
+
+            if (containerExists)
+            {
+                // Start existing container
+                using var startProcess = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = "docker",
+                        Arguments = "start mimic3",
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    }
+                };
+
+                startProcess.Start();
+                await startProcess.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+
+                if (startProcess.ExitCode == 0)
+                {
+                    // Save configuration
+                    var providerSettings = new ProviderSettings(_logger);
+                    providerSettings.SetMimic3BaseUrl("http://127.0.0.1:59125");
+
+                    return Ok(new
+                    {
+                        success = true,
+                        message = "Mimic3 container started successfully",
+                        baseUrl = "http://127.0.0.1:59125",
+                        wasExisting = true
+                    });
+                }
+            }
+
+            // Create and start new container
+            using var runProcess = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "docker",
+                    Arguments = "run -d --name mimic3 -p 59125:59125 --restart unless-stopped mycroftai/mimic3:latest",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                }
+            };
+
+            runProcess.Start();
+            var runOutput = await runProcess.StandardOutput.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+            var runError = await runProcess.StandardError.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+            await runProcess.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+
+            if (runProcess.ExitCode != 0)
+            {
+                throw new Exception($"Failed to start Mimic3 container: {runError}");
+            }
+
+            // Wait a moment for container to start
+            await Task.Delay(2000, cancellationToken).ConfigureAwait(false);
+
+            // Save configuration
+            var settings = new ProviderSettings(_logger);
+            settings.SetMimic3BaseUrl("http://127.0.0.1:59125");
+
+            _logger.LogInformation("[{CorrelationId}] Mimic3 Docker container started successfully", correlationId);
+
+            return Ok(new
+            {
+                success = true,
+                message = "Mimic3 TTS installed and started successfully",
+                baseUrl = "http://127.0.0.1:59125",
+                containerId = runOutput.Trim()
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Failed to start Mimic3 Docker container", correlationId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Check Piper TTS installation status
+    /// </summary>
+    [HttpGet("check-piper")]
+    public IActionResult CheckPiper()
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+
+        try
+        {
+            var providerSettings = new ProviderSettings(_logger);
+            var piperPath = providerSettings.PiperExecutablePath;
+            var voiceModelPath = providerSettings.PiperVoiceModelPath;
+
+            if (string.IsNullOrWhiteSpace(piperPath))
+            {
+                return Ok(new
+                {
+                    installed = false,
+                    path = (string?)null,
+                    voiceModelPath = (string?)null,
+                    error = "Piper TTS not configured"
+                });
+            }
+
+            var isInstalled = System.IO.File.Exists(piperPath);
+            var hasVoiceModel = !string.IsNullOrWhiteSpace(voiceModelPath) && System.IO.File.Exists(voiceModelPath);
+
+            return Ok(new
+            {
+                installed = isInstalled && hasVoiceModel,
+                path = piperPath,
+                voiceModelPath = voiceModelPath,
+                executableExists = isInstalled,
+                voiceModelExists = hasVoiceModel,
+                error = !isInstalled ? "Piper executable not found" : !hasVoiceModel ? "Voice model not found" : (string?)null
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Failed to check Piper TTS status", correlationId);
+            return Ok(new
+            {
+                installed = false,
+                path = (string?)null,
+                voiceModelPath = (string?)null,
+                error = $"Error checking status: {ex.Message}"
+            });
+        }
+    }
+
+    /// <summary>
+    /// Check Mimic3 TTS installation status
+    /// </summary>
+    [HttpGet("check-mimic3")]
+    public async Task<IActionResult> CheckMimic3(CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+
+        try
+        {
+            var providerSettings = new ProviderSettings(_logger);
+            var baseUrl = providerSettings.Mimic3BaseUrl ?? "http://127.0.0.1:59125";
+
+            // Try to connect to Mimic3 server
+            try
+            {
+                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
+                var response = await client.GetAsync($"{baseUrl}/api/voices", cancellationToken).ConfigureAwait(false);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    return Ok(new
+                    {
+                        installed = true,
+                        baseUrl = baseUrl,
+                        reachable = true,
+                        error = (string?)null
+                    });
+                }
+            }
+            catch
+            {
+                // Server not reachable
+            }
+
+            return Ok(new
+            {
+                installed = false,
+                baseUrl = baseUrl,
+                reachable = false,
+                error = "Mimic3 server is not reachable. Make sure it's running."
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Failed to check Mimic3 TTS status", correlationId);
+            return Ok(new
+            {
+                installed = false,
+                baseUrl = (string?)null,
+                reachable = false,
+                error = $"Error checking status: {ex.Message}"
+            });
+        }
     }
 }
