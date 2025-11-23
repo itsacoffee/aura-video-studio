@@ -602,7 +602,7 @@ public class ScriptsController : ControllerBase
         var ollamaAvailable = false;
         var ollamaModelName = "llama2";
         var ollamaModels = new List<string> { "llama2", "mistral", "codellama" };
-        
+
         try
         {
             var ollamaDetectionService = _serviceProvider?.GetService<OllamaDetectionService>();
@@ -610,7 +610,7 @@ public class ScriptsController : ControllerBase
             {
                 var ollamaStatus = await ollamaDetectionService.GetStatusAsync(ct).ConfigureAwait(false);
                 ollamaAvailable = ollamaStatus.IsRunning;
-                
+
                 if (ollamaAvailable)
                 {
                     var models = await ollamaDetectionService.GetModelsAsync(ct).ConfigureAwait(false);
@@ -647,7 +647,7 @@ public class ScriptsController : ControllerBase
         // Check other providers availability
         var openAiAvailable = false;
         var geminiAvailable = false;
-        
+
         try
         {
             var keyStore = _serviceProvider?.GetService<Aura.Core.Configuration.IKeyStore>();
@@ -772,7 +772,7 @@ public class ScriptsController : ControllerBase
                 ModelUsed = "default",
                 TokensUsed = scriptText.Length / 4,
                 EstimatedCost = 0,
-                Tier = provider == "RuleBased" ? ProviderTier.Free : ProviderTier.Pro
+                Tier = provider == "RuleBased" ? Aura.Core.Models.Generation.ProviderTier.Free : Aura.Core.Models.Generation.ProviderTier.Pro
             }
         };
     }
@@ -1560,9 +1560,9 @@ public class ScriptsController : ControllerBase
                 ModelUsed = response.Metadata.ModelUsed,
                 TokensUsed = response.Metadata.TokensUsed,
                 EstimatedCost = response.Metadata.EstimatedCost,
-                Tier = Enum.TryParse<ProviderTier>(response.Metadata.Tier, out var tier)
+                Tier = Enum.TryParse<Aura.Core.Models.Generation.ProviderTier>(response.Metadata.Tier, out var tier)
                     ? tier
-                    : ProviderTier.Free,
+                    : Aura.Core.Models.Generation.ProviderTier.Free,
                 GenerationTime = TimeSpan.FromSeconds(response.Metadata.GenerationTimeSeconds)
             },
             CorrelationId = response.CorrelationId
