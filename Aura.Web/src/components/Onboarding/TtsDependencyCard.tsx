@@ -282,9 +282,30 @@ export function TtsDependencyCard({
           message: result.message || `${providerName} has been installed and is ready to use.`,
         });
 
-        // Wait a moment for the backend to finalize, then check status
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        await checkStatus();
+        // Wait longer for the backend to finalize configuration and for services to be ready
+        // Piper needs time for file system to flush, Mimic3 needs time for Docker container to be ready
+        const waitTime = provider === 'mimic3' ? 3000 : 2000;
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
+
+        // Retry status check with multiple attempts
+        let statusChecked = false;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          await checkStatus();
+          // Check if status is now installed
+          if (status?.installed) {
+            statusChecked = true;
+            break;
+          }
+          if (attempt < 2) {
+            // Wait a bit more before retrying
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+          }
+        }
+
+        if (!statusChecked && !status?.installed) {
+          // Show a message that user should click Re-scan if needed
+          console.warn(`[TtsDependencyCard] ${providerName} installation completed but status check didn't confirm. User may need to click Re-scan.`);
+        }
       } else {
         // Installation not fully automated - show instructions
         if (result.requiresDocker) {

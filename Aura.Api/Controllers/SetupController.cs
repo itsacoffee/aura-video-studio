@@ -1823,6 +1823,21 @@ public class SetupController : ControllerBase
             var providerSettings = new ProviderSettings(_loggerFactory.CreateLogger<ProviderSettings>());
             providerSettings.SetPiperPaths(targetPath, System.IO.File.Exists(voiceModelPath) ? voiceModelPath : null);
 
+            // Force file system flush by reading back the settings file
+            // This ensures the write is committed to disk before the check endpoint is called
+            try
+            {
+                var settingsPath = Path.Combine(providerSettings.GetAuraDataDirectory(), "settings.json");
+                if (System.IO.File.Exists(settingsPath))
+                {
+                    System.IO.File.ReadAllText(settingsPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[{CorrelationId}] Failed to verify settings file write", correlationId);
+            }
+
             _logger.LogInformation("[{CorrelationId}] Piper TTS installed successfully at {Path}", correlationId, targetPath);
 
             return Ok(new
@@ -2028,8 +2043,37 @@ public class SetupController : ControllerBase
                 throw new Exception($"Failed to start Mimic3 container: {runError}");
             }
 
-            // Wait a moment for container to start
-            await Task.Delay(2000, cancellationToken).ConfigureAwait(false);
+            // Wait for container to start and become ready (with retries)
+            var maxRetries = 10;
+            var retryDelay = 1000; // 1 second
+            var isReady = false;
+
+            for (int i = 0; i < maxRetries; i++)
+            {
+                await Task.Delay(retryDelay, cancellationToken).ConfigureAwait(false);
+
+                try
+                {
+                    using var testClient = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
+                    var testResponse = await testClient.GetAsync("http://127.0.0.1:59125/api/voices", cancellationToken).ConfigureAwait(false);
+                    if (testResponse.IsSuccessStatusCode)
+                    {
+                        isReady = true;
+                        _logger.LogInformation("[{CorrelationId}] Mimic3 server is ready after {Attempts} attempts", correlationId, i + 1);
+                        break;
+                    }
+                }
+                catch
+                {
+                    // Server not ready yet, continue retrying
+                    _logger.LogInformation("[{CorrelationId}] Mimic3 server not ready yet, attempt {Attempt}/{MaxRetries}", correlationId, i + 1, maxRetries);
+                }
+            }
+
+            if (!isReady)
+            {
+                _logger.LogWarning("[{CorrelationId}] Mimic3 server did not become ready within {Timeout} seconds, but container is running", correlationId, maxRetries);
+            }
 
             // Save configuration
             var settings = new ProviderSettings(_loggerFactory.CreateLogger<ProviderSettings>());
@@ -2040,9 +2084,12 @@ public class SetupController : ControllerBase
             return Ok(new
             {
                 success = true,
-                message = "Mimic3 TTS installed and started successfully",
+                message = isReady
+                    ? "Mimic3 TTS installed and started successfully"
+                    : "Mimic3 TTS container started but server may still be initializing. Please wait a moment and click 'Re-scan'.",
                 baseUrl = "http://127.0.0.1:59125",
-                containerId = runOutput.Trim()
+                containerId = runOutput.Trim(),
+                isReady = isReady
             });
         }
         catch (Exception ex)

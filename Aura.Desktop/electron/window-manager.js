@@ -420,14 +420,34 @@ class WindowManager {
           );
           this._attemptLoad();
         } else {
-          // Force a repaint by sending a resize event
-          const bounds = this.mainWindow.getBounds();
-          this.mainWindow.setBounds({ ...bounds, height: bounds.height + 1 });
+          // Force a repaint by executing JavaScript that triggers visual updates
+          // This is less disruptive than a full reload
           setTimeout(() => {
             if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-              this.mainWindow.setBounds(bounds);
+              this.mainWindow.webContents
+                .executeJavaScript(
+                  `
+                (function() {
+                  // Force a repaint by triggering resize and focus events
+                  window.dispatchEvent(new Event('resize', { bubbles: true }));
+                  window.dispatchEvent(new Event('focus', { bubbles: true }));
+                  // Also trigger a visibility change to ensure React re-renders
+                  if (document.visibilityState === 'visible') {
+                    document.dispatchEvent(new Event('visibilitychange'));
+                  }
+                })();
+              `
+                )
+                .catch((err) => {
+                  // If JavaScript execution fails, reload the page as fallback
+                  console.log(
+                    "[WindowManager] JavaScript execution failed, reloading page to fix black screen:",
+                    err
+                  );
+                  this.mainWindow.webContents.reload();
+                });
             }
-          }, 10);
+          }, 100);
         }
       }
     });
@@ -439,14 +459,24 @@ class WindowManager {
         // Ensure webContents is properly displayed by forcing a repaint
         const currentURL = this.mainWindow.webContents.getURL();
         if (currentURL && currentURL !== "about:blank") {
-          // Force a repaint by temporarily resizing the window
-          const bounds = this.mainWindow.getBounds();
-          this.mainWindow.setBounds({ ...bounds, height: bounds.height + 1 });
+          // Use a small delay to ensure the window is fully visible before forcing repaint
           setTimeout(() => {
             if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-              this.mainWindow.setBounds(bounds);
+              // Force webContents to repaint by executing JavaScript that triggers visual updates
+              this.mainWindow.webContents
+                .executeJavaScript(
+                  `
+                (function() {
+                  window.dispatchEvent(new Event('resize'));
+                  window.dispatchEvent(new Event('focus'));
+                })();
+              `
+                )
+                .catch(() => {
+                  // Ignore errors if webContents is not ready
+                });
             }
-          }, 10);
+          }, 50);
         }
       }
     });
