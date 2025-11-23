@@ -173,8 +173,12 @@ public class ProviderMixer
         {
             // Normalize provider name
             var normalizedName = NormalizeProviderName(preferredTier);
+            _logger.LogInformation("Specific provider requested: {Requested} (normalized: {Normalized})", preferredTier, normalizedName);
+            _logger.LogInformation("Available providers: {Providers}", string.Join(", ", availableProviders.Keys));
+            
             if (availableProviders.ContainsKey(normalizedName))
             {
+                _logger.LogInformation("✓ Provider {Provider} is available and will be used", normalizedName);
                 return new ProviderSelection
                 {
                     Stage = stage,
@@ -184,7 +188,8 @@ public class ProviderMixer
                 };
             }
             
-            _logger.LogWarning("Requested provider {Provider} not available, falling back to tier logic", preferredTier);
+            _logger.LogWarning("✗ Requested provider {Provider} (normalized: {Normalized}) not available in registry. Available: {Available}. Falling back to tier logic", 
+                preferredTier, normalizedName, string.Join(", ", availableProviders.Keys));
         }
 
         // Try Pro providers first if requested

@@ -438,8 +438,10 @@ public class ScriptOrchestrator
 
         try
         {
-            _logger.LogInformation("Attempting script generation with {Provider}", providerName);
+            _logger.LogInformation("=== Attempting script generation with provider: {Provider} ===", providerName);
+            _logger.LogInformation("Provider type: {Type}, Brief topic: {Topic}", provider!.GetType().Name, brief.Topic);
             var script = await provider!.DraftScriptAsync(brief, spec, ct).ConfigureAwait(false);
+            _logger.LogInformation("=== Provider {Provider} completed script generation ===", providerName);
 
             if (string.IsNullOrWhiteSpace(script))
             {

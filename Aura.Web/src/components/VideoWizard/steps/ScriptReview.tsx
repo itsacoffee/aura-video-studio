@@ -1,63 +1,63 @@
 import {
-  makeStyles,
-  tokens,
-  Title2,
-  Title3,
-  Text,
-  Button,
-  Spinner,
-  Card,
-  Field,
-  Textarea,
   Badge,
-  Tooltip,
-  Divider,
-  MessageBar,
-  MessageBarBody,
+  Button,
+  Card,
+  Checkbox,
   Dialog,
+  DialogActions,
+  DialogBody,
+  DialogContent,
   DialogSurface,
   DialogTitle,
-  DialogBody,
-  DialogActions,
-  DialogContent,
-  Slider,
-  Label,
-  Checkbox,
-  Input,
+  Divider,
   Dropdown,
+  Field,
+  Input,
+  Label,
+  makeStyles,
+  MessageBar,
+  MessageBarBody,
   Option,
+  Slider,
+  Spinner,
+  Text,
+  Textarea,
+  Title2,
+  Title3,
+  tokens,
+  Tooltip,
 } from '@fluentui/react-components';
 import {
-  Sparkle24Regular,
   ArrowClockwise24Regular,
-  DocumentBulletList24Regular,
-  Clock24Regular,
-  TextGrammarCheckmark24Regular,
-  DocumentText24Regular,
   ArrowDownload24Regular,
-  Speaker224Regular,
+  Clock24Regular,
   Delete24Regular,
+  DocumentBulletList24Regular,
+  DocumentText24Regular,
   History24Regular,
-  Save24Regular,
   Merge24Regular,
+  Save24Regular,
+  Sparkle24Regular,
+  Speaker224Regular,
   SplitVertical24Regular,
+  TextGrammarCheckmark24Regular,
 } from '@fluentui/react-icons';
-import React, { useState, useEffect, useCallback, useRef, memo } from 'react';
 import type { FC } from 'react';
+import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import {
-  generateScript,
-  updateScene,
-  listProviders,
-  exportScript,
-  regenerateScene,
-  regenerateAllScenes,
   deleteScene,
   enhanceScript,
+  exportScript,
+  generateScript,
   getVersionHistory,
-  revertToVersion,
+  listProviders,
   mergeScenes,
-  splitScene,
+  regenerateAllScenes,
+  regenerateScene,
   reorderScenes,
+  revertToVersion,
+  splitScene,
+  updateScene,
   type GenerateScriptResponse,
   type ProviderInfoDto,
   type ScriptSceneDto,
@@ -65,7 +65,7 @@ import {
 } from '../../../services/api/scriptApi';
 import { ttsService } from '../../../services/ttsService';
 import { useNotifications } from '../../Notifications/Toasts';
-import type { ScriptData, BriefData, StyleData, StepValidation, ScriptScene } from '../types';
+import type { BriefData, ScriptData, ScriptScene, StepValidation, StyleData } from '../types';
 
 const useStyles = makeStyles({
   container: {
@@ -249,6 +249,8 @@ interface ScriptReviewProps {
   briefData: BriefData;
   styleData: StyleData;
   advancedMode: boolean;
+  selectedProvider?: string;
+  onProviderChange?: (provider: string | undefined) => void;
   onChange: (data: ScriptData) => void;
   onValidationChange: (validation: StepValidation) => void;
 }
@@ -258,6 +260,8 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
   briefData,
   styleData,
   advancedMode,
+  selectedProvider: externalSelectedProvider,
+  onProviderChange,
   onChange,
   onValidationChange,
 }) => {
@@ -265,7 +269,18 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
   const { showSuccessToast, showFailureToast } = useNotifications();
   const [isGenerating, setIsGenerating] = useState(false);
   const [providers, setProviders] = useState<ProviderInfoDto[]>([]);
-  const [selectedProvider, setSelectedProvider] = useState<string | undefined>();
+  const [internalSelectedProvider, setInternalSelectedProvider] = useState<string | undefined>();
+
+  // Use external provider if provided, otherwise use internal state
+  const selectedProvider = externalSelectedProvider !== undefined ? externalSelectedProvider : internalSelectedProvider;
+
+  const setSelectedProvider = (provider: string | undefined) => {
+    if (onProviderChange) {
+      onProviderChange(provider);
+    } else {
+      setInternalSelectedProvider(provider);
+    }
+  };
   const [generatedScript, setGeneratedScript] = useState<GenerateScriptResponse | null>(null);
   const [editingScenes, setEditingScenes] = useState<Record<number, string>>({});
   const [regeneratingScenes, setRegeneratingScenes] = useState<Record<number, boolean>>({});
@@ -311,7 +326,7 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
     }
 
     const name = providerName.toLowerCase();
-    
+
     // OpenAI and Azure OpenAI
     if (name.includes('openai') || name.includes('azure')) {
       return {
@@ -325,7 +340,7 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
         temperatureRange: { min: 0, max: 2 },
       };
     }
-    
+
     // Anthropic Claude
     if (name.includes('anthropic') || name.includes('claude')) {
       return {
@@ -339,7 +354,7 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
         temperatureRange: { min: 0, max: 1 },
       };
     }
-    
+
     // Google Gemini
     if (name.includes('gemini') || name.includes('google')) {
       return {
@@ -353,9 +368,9 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
         temperatureRange: { min: 0, max: 2 },
       };
     }
-    
-    // Ollama (local models)
-    if (name.includes('ollama') || name.includes('local')) {
+
+    // Ollama (exact match only)
+    if (name === 'ollama') {
       return {
         supportsTemperature: true,
         supportsTopP: true,
@@ -367,9 +382,9 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
         temperatureRange: { min: 0, max: 2 },
       };
     }
-    
-    // RuleBased (template-based, no real LLM)
-    if (name.includes('rule') || name.includes('template')) {
+
+    // RuleBased (exact match only)
+    if (name === 'rulebased' || name === 'rule-based') {
       return {
         supportsTemperature: false,
         supportsTopP: false,
@@ -381,7 +396,7 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
         temperatureRange: { min: 0, max: 0 },
       };
     }
-    
+
     // Default: support all parameters
     return {
       supportsTemperature: true,
@@ -424,9 +439,32 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
     try {
       const response = await listProviders();
       setProviders(response.providers);
-      const availableProvider = response.providers.find((p) => p.isAvailable);
-      if (availableProvider) {
-        setSelectedProvider(availableProvider.name);
+
+      // Only auto-select if no external provider is set
+      if (externalSelectedProvider === undefined) {
+        // Filter to only LLM providers (same list as VideoCreationWizard)
+        const llmProviders = response.providers.filter((p) =>
+          p.name === 'RuleBased' ||
+          p.name === 'Ollama' ||
+          p.name === 'OpenAI' ||
+          p.name === 'Gemini' ||
+          p.name === 'Anthropic'
+        );
+
+        // Prefer Ollama if available (exact name match), otherwise use first available provider
+        const ollamaProvider = llmProviders.find((p) => p.isAvailable && p.name === 'Ollama');
+        if (ollamaProvider) {
+          console.info('[ScriptReview] Ollama is available, selecting it as default');
+          setSelectedProvider(ollamaProvider.name);
+        } else {
+          const availableProvider = llmProviders.find((p) => p.isAvailable);
+          if (availableProvider) {
+            console.info('[ScriptReview] Ollama not available, selecting first available provider:', availableProvider.name);
+            setSelectedProvider(availableProvider.name);
+          }
+        }
+      } else {
+        console.info('[ScriptReview] Using external provider selection:', externalSelectedProvider);
       }
     } catch (error) {
       console.error('Failed to load providers:', error);
@@ -455,7 +493,7 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
         pacing: 'Conversational',
         density: 'Balanced',
         style: styleData?.visualStyle || 'Modern',
-        preferredProvider: selectedProvider,
+        preferredProvider: selectedProvider && selectedProvider !== 'Auto' ? selectedProvider : undefined,
         // Advanced LLM parameters (only include if explicitly set)
         ...(llmTemperature !== undefined && { temperature: llmTemperature }),
         ...(llmTopP !== undefined && { topP: llmTopP }),
@@ -489,15 +527,15 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
       });
     } catch (error) {
       console.error('Script generation failed:', error);
-      
+
       let errorTitle = 'Script Generation Failed';
       let errorMessage = 'Failed to generate script. Please check your provider configuration and try again.';
-      
+
       // Try to extract detailed error information from the response
       if (error && typeof error === 'object' && 'response' in error) {
         const axiosError = error as { response?: { data?: { detail?: string; errors?: Record<string, string[]>; message?: string } } };
         const responseData = axiosError.response?.data;
-        
+
         if (responseData) {
           // Check for validation errors
           if (responseData.errors && Object.keys(responseData.errors).length > 0) {
@@ -515,7 +553,7 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
       } else if (error instanceof Error) {
         errorMessage = error.message;
       }
-      
+
       showFailureToast({
         title: errorTitle,
         message: errorMessage,
@@ -1271,7 +1309,7 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
                   step={0.1}
                   value={llmTemperature ?? 0.7}
                   onChange={(_, data) => setLlmTemperature(data.value === 0.7 ? undefined : data.value)}
-                  style={{ 
+                  style={{
                     '--fui-slider-thumb-background': tokens.colorBrandForeground1,
                     '--fui-slider-rail-background': tokens.colorNeutralStroke1,
                     '--fui-slider-rail-background-hover': tokens.colorNeutralStroke2,
@@ -1298,7 +1336,7 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
                   step={0.05}
                   value={llmTopP ?? 0.9}
                   onChange={(_, data) => setLlmTopP(data.value === 0.9 ? undefined : data.value)}
-                  style={{ 
+                  style={{
                     '--fui-slider-thumb-background': tokens.colorBrandForeground1,
                     '--fui-slider-rail-background': tokens.colorNeutralStroke1,
                     '--fui-slider-rail-background-hover': tokens.colorNeutralStroke2,
@@ -1325,7 +1363,7 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
                   step={1}
                   value={llmTopK ?? 40}
                   onChange={(_, data) => setLlmTopK(data.value === 40 ? undefined : data.value)}
-                  style={{ 
+                  style={{
                     '--fui-slider-thumb-background': tokens.colorBrandForeground1,
                     '--fui-slider-rail-background': tokens.colorNeutralStroke1,
                     '--fui-slider-rail-background-hover': tokens.colorNeutralStroke2,
@@ -1355,7 +1393,7 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
                     const defaultValue = Math.min(2000, paramSupport.maxTokensLimit);
                     setLlmMaxTokens(data.value === defaultValue ? undefined : data.value);
                   }}
-                  style={{ 
+                  style={{
                     '--fui-slider-thumb-background': tokens.colorBrandForeground1,
                     '--fui-slider-rail-background': tokens.colorNeutralStroke1,
                     '--fui-slider-rail-background-hover': tokens.colorNeutralStroke2,
@@ -1382,7 +1420,7 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
                   step={0.1}
                   value={llmFrequencyPenalty ?? 0}
                   onChange={(_, data) => setLlmFrequencyPenalty(data.value === 0 ? undefined : data.value)}
-                  style={{ 
+                  style={{
                     '--fui-slider-thumb-background': tokens.colorBrandForeground1,
                     '--fui-slider-rail-background': tokens.colorNeutralStroke1,
                     '--fui-slider-rail-background-hover': tokens.colorNeutralStroke2,
@@ -1409,7 +1447,7 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
                   step={0.1}
                   value={llmPresencePenalty ?? 0}
                   onChange={(_, data) => setLlmPresencePenalty(data.value === 0 ? undefined : data.value)}
-                  style={{ 
+                  style={{
                     '--fui-slider-thumb-background': tokens.colorBrandForeground1,
                     '--fui-slider-rail-background': tokens.colorNeutralStroke1,
                     '--fui-slider-rail-background-hover': tokens.colorNeutralStroke2,
@@ -1425,7 +1463,7 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
             {!paramSupport.supportsTemperature && !paramSupport.supportsTopP && !paramSupport.supportsTopK && (
               <div style={{ gridColumn: '1 / -1', padding: tokens.spacingVerticalM, backgroundColor: tokens.colorNeutralBackground2, borderRadius: tokens.borderRadiusMedium }}>
                 <Text size={300} weight="semibold" style={{ color: tokens.colorNeutralForeground2 }}>
-                  {selectedProvider === 'RuleBased' || selectedProvider?.toLowerCase().includes('rule') 
+                  {selectedProvider === 'RuleBased' || selectedProvider?.toLowerCase().includes('rule')
                     ? 'Rule-based provider does not support LLM parameters. It uses template-based generation.'
                     : 'No advanced parameters available for this provider.'}
                 </Text>

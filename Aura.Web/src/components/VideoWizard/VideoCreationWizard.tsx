@@ -13,6 +13,9 @@ import {
   DialogBody,
   DialogContent,
   DialogActions,
+  Dropdown,
+  Option,
+  Badge,
 } from '@fluentui/react-components';
 import {
   ArrowLeft24Regular,
@@ -38,6 +41,7 @@ import { ScriptReview } from './steps/ScriptReview';
 import { StyleSelection } from './steps/StyleSelection';
 import type { WizardData, StepValidation, VideoTemplate, WizardDraft } from './types';
 import { VideoTemplates } from './VideoTemplates';
+import { listProviders, type ProviderInfoDto } from '../../services/api/scriptApi';
 
 const useStyles = makeStyles({
   container: {
@@ -147,6 +151,8 @@ export const VideoCreationWizard: FC = () => {
   const autoSaveTimerRef = useRef<number | null>(null);
   const [showTemplates, setShowTemplates] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [selectedLlmProvider, setSelectedLlmProvider] = useState<string | undefined>(undefined);
+  const [availableLlmProviders, setAvailableLlmProviders] = useState<Array<{ name: string; isAvailable: boolean; tier: string }>>([]);
   const [wizardData, setWizardData] = useState<WizardData>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -334,6 +340,44 @@ export const VideoCreationWizard: FC = () => {
     return `${minutes} minutes ago`;
   }, [lastSaved]);
 
+  // Load available LLM providers on mount
+  useEffect(() => {
+    const loadProviders = async () => {
+      try {
+        const response = await listProviders();
+        const llmProviders = response.providers.filter((p) => 
+          p.name === 'RuleBased' || 
+          p.name === 'Ollama' || 
+          p.name === 'OpenAI' || 
+          p.name === 'Gemini' ||
+          p.name === 'Anthropic'
+        );
+        setAvailableLlmProviders(llmProviders.map(p => ({
+          name: p.name,
+          isAvailable: p.isAvailable,
+          tier: p.tier,
+        })));
+        
+        // Prefer Ollama if available (exact name match), otherwise use first available
+        const ollamaProvider = llmProviders.find((p) => p.isAvailable && p.name === 'Ollama');
+        if (ollamaProvider) {
+          console.info('[VideoCreationWizard] Ollama is available, selecting it as default');
+          setSelectedLlmProvider(ollamaProvider.name);
+        } else {
+          const firstAvailable = llmProviders.find((p) => p.isAvailable);
+          if (firstAvailable) {
+            console.info('[VideoCreationWizard] Selecting first available provider:', firstAvailable.name);
+            setSelectedLlmProvider(firstAvailable.name);
+          }
+        }
+      } catch (error) {
+        console.error('[VideoCreationWizard] Failed to load providers:', error);
+      }
+    };
+    
+    void loadProviders();
+  }, []);
+
   const renderStepContent = () => {
     switch (currentStep) {
       case 0:
@@ -364,6 +408,8 @@ export const VideoCreationWizard: FC = () => {
             briefData={wizardData.brief}
             styleData={wizardData.style}
             advancedMode={advancedMode}
+            selectedProvider={selectedLlmProvider}
+            onProviderChange={setSelectedLlmProvider}
             onChange={(script) => updateWizardData({ script })}
             onValidationChange={(validation) => updateStepValidation(2, validation)}
           />
@@ -410,6 +456,50 @@ export const VideoCreationWizard: FC = () => {
           )}
         </div>
         <div className={styles.headerRight}>
+          {/* LLM Provider Selector - Always visible */}
+          {availableLlmProviders.length > 0 && (
+            <Tooltip 
+              content="Select which LLM to use for script generation" 
+              relationship="label"
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+                <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                  LLM:
+                </Text>
+                <Dropdown
+                  value={selectedLlmProvider || 'Auto'}
+                  onOptionSelect={(_, data) => {
+                    if (data.optionValue) {
+                      setSelectedLlmProvider(data.optionValue);
+                      console.info('[VideoCreationWizard] LLM provider changed to:', data.optionValue);
+                    }
+                  }}
+                  style={{ minWidth: '150px' }}
+                >
+                  <Option value="Auto" text="Auto (Best Available)">
+                    Auto (Best Available)
+                  </Option>
+                  {availableLlmProviders.map((provider) => (
+                    <Option
+                      key={provider.name}
+                      value={provider.name}
+                      disabled={!provider.isAvailable}
+                    >
+                      {provider.name}{!provider.isAvailable ? ' (Unavailable)' : ''}
+                    </Option>
+                  ))}
+                </Dropdown>
+                {selectedLlmProvider && selectedLlmProvider !== 'Auto' && (
+                  <Badge 
+                    color={availableLlmProviders.find(p => p.name === selectedLlmProvider)?.isAvailable ? 'success' : 'subtle'}
+                    size="small"
+                  >
+                    {availableLlmProviders.find(p => p.name === selectedLlmProvider)?.isAvailable ? 'Active' : 'Unavailable'}
+                  </Badge>
+                )}
+              </div>
+            </Tooltip>
+          )}
           <Tooltip content="Browse video templates" relationship="label">
             <Button
               appearance="secondary"

@@ -199,10 +199,22 @@ public class ScriptsController : ControllerBase
                 Density: ParseDensity(request.Density),
                 Style: request.Style);
 
-            var preferredTier = request.PreferredProvider ?? "Free";
+            // Use PreferredProvider directly - it can be a provider name (e.g., "Ollama") or a tier (e.g., "Free")
+            // ProviderMixer.SelectLlmProvider will handle both cases
+            // If PreferredProvider is null/empty/"Auto", default to "Free" tier
+            var preferredTier = !string.IsNullOrWhiteSpace(request.PreferredProvider) && 
+                                request.PreferredProvider != "Auto" 
+                                ? request.PreferredProvider 
+                                : "Free";
+            
+            _logger.LogInformation("[{CorrelationId}] Script generation requested. Topic: {Topic}, PreferredProvider: {Provider} (resolved to: {Resolved})", 
+                correlationId, request.Topic, request.PreferredProvider ?? "null", preferredTier);
 
             var result = await _scriptOrchestrator.GenerateScriptAsync(
                 brief, planSpec, preferredTier, offlineOnly: false, ct).ConfigureAwait(false);
+            
+            _logger.LogInformation("[{CorrelationId}] Script generation completed. Success: {Success}, ProviderUsed: {Provider}", 
+                correlationId, result.Success, result.ProviderUsed ?? "None");
 
             if (!result.Success || result.Script == null)
             {
