@@ -38,18 +38,18 @@ public class DependencyInstaller
         CancellationToken ct = default)
     {
         _logger.LogInformation("Starting FFmpeg installation");
-        
+
         try
         {
             var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             var installDir = Path.Combine(localAppData, "Aura", "ffmpeg");
-            
+
             progress?.Report(new InstallProgress(0, "Determining platform...", "", 0, 0));
 
             // Determine download URL based on OS
             string downloadUrl;
             string fileName;
-            
+
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 downloadUrl = "https://github.com/GyanD/codexffmpeg/releases/download/7.0.2/ffmpeg-7.0.2-full_build.zip";
@@ -123,13 +123,13 @@ public class DependencyInstaller
         }
     }
 
-    public async Task<bool> InstallPiperTtsAsync(
+    public Task<bool> InstallPiperTtsAsync(
         IProgress<InstallProgress>? progress = null,
         CancellationToken ct = default)
     {
         _logger.LogInformation("Piper TTS installation has been moved to the Setup Wizard API endpoint. This method is deprecated.");
         progress?.Report(new InstallProgress(0, "Please use the Setup Wizard to install Piper TTS", "", 0, 0));
-        return false;
+        return Task.FromResult(false);
     }
 
     public async Task<bool> DownloadStockAssetsAsync(
@@ -249,7 +249,7 @@ public class DependencyInstaller
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Download failed after {MaxRetries} attempts", MaxRetries);
-                
+
                 // Clean up partial download
                 try
                 {
@@ -262,7 +262,7 @@ public class DependencyInstaller
                 {
                     _logger.LogWarning(cleanupEx, "Failed to clean up partial download");
                 }
-                
+
                 throw;
             }
         }
@@ -281,7 +281,7 @@ public class DependencyInstaller
 
             var destinationPath = Path.Combine(destinationDirectory, entry.FullName);
             var destinationDir = Path.GetDirectoryName(destinationPath);
-            
+
             if (!string.IsNullOrEmpty(destinationDir))
             {
                 Directory.CreateDirectory(destinationDir);
@@ -353,7 +353,7 @@ public class DependencyInstaller
             {
                 var scope = EnvironmentVariableTarget.User;
                 var currentPath = Environment.GetEnvironmentVariable("PATH", scope) ?? "";
-                
+
                 // Check if directory is already in PATH
                 if (currentPath.Split(';').Any(p => p.Equals(directory, StringComparison.OrdinalIgnoreCase)))
                 {
@@ -361,8 +361,8 @@ public class DependencyInstaller
                     return;
                 }
 
-                var newPath = string.IsNullOrEmpty(currentPath) 
-                    ? directory 
+                var newPath = string.IsNullOrEmpty(currentPath)
+                    ? directory
                     : $"{currentPath};{directory}";
 
                 Environment.SetEnvironmentVariable("PATH", newPath, scope);
