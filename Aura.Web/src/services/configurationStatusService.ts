@@ -304,8 +304,8 @@ class ConfigurationStatusService {
       const rescanResponse = await fetch(apiUrl('/api/ffmpeg/rescan'), { method: 'POST' });
       if (rescanResponse.ok) {
         console.info('[configurationStatusService] FFmpeg rescan triggered to detect managed version');
-        // Wait a moment for rescan to complete
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        // Wait longer for rescan to complete and for file system to flush
+        await new Promise((resolve) => setTimeout(resolve, 2000));
       }
     } catch (error) {
       console.warn('[configurationStatusService] Failed to trigger FFmpeg rescan:', error);
@@ -334,9 +334,28 @@ class ConfigurationStatusService {
     };
 
     // CRITICAL FIX: If user completed wizard, only require FFmpeg (providers assumed configured)
-    const isConfigured = hasCompletedWizard
-      ? checks.ffmpegDetected // Only require FFmpeg if wizard completed
-      : checks.providerConfigured && checks.ffmpegDetected; // Require both if wizard not completed
+    // If FFmpeg check fails but wizard was completed, give it one more chance with a longer wait
+    let isConfigured: boolean;
+    if (hasCompletedWizard) {
+      if (!checks.ffmpegDetected) {
+        // Wizard was completed but FFmpeg not detected - wait a bit longer and retry once
+        console.warn('[configurationStatusService] Wizard completed but FFmpeg not detected, retrying...');
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        const retryFFmpeg = await this.checkFFmpeg();
+        checks.ffmpegDetected = retryFFmpeg.installed;
+        console.info('[configurationStatusService] FFmpeg retry result:', { installed: retryFFmpeg.installed, path: retryFFmpeg.path });
+      }
+      isConfigured = checks.ffmpegDetected; // Only require FFmpeg if wizard completed
+    } else {
+      isConfigured = checks.providerConfigured && checks.ffmpegDetected; // Require both if wizard not completed
+    }
+
+    console.info('[configurationStatusService] Configuration check result:', {
+      hasCompletedWizard,
+      isConfigured,
+      checks,
+      ffmpegResult: { installed: ffmpegResult.installed, path: ffmpegResult.path },
+    });
 
     return {
       isConfigured,

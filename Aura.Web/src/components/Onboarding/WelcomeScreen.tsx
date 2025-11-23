@@ -22,11 +22,12 @@ const useStyles = makeStyles({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: tokens.spacingVerticalXXL,
+    marginTop: tokens.spacingVerticalL,
     position: 'relative',
   },
   heroGraphic: {
-    width: '180px',
-    height: '180px',
+    width: '150px',
+    height: '150px',
     animation: 'heroAnimation 2s ease-in-out infinite',
     filter: `drop-shadow(0 0 40px ${tokens.colorBrandBackground2})`,
   },
@@ -144,7 +145,7 @@ export function WelcomeScreen({ onGetStarted, onImportProject }: WelcomeScreenPr
     <div className={styles.container}>
       {/* Hero Section */}
       <div className={styles.heroContainer}>
-        <Logo size={180} className={styles.heroGraphic} />
+        <Logo size={150} className={styles.heroGraphic} />
       </div>
 
       {/* Brand & Value Prop */}

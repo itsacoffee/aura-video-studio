@@ -67,16 +67,58 @@ public class ScriptsController : ControllerBase
     /// </summary>
     [HttpPost("generate")]
     public async Task<IActionResult> GenerateScript(
-        [FromBody] GenerateScriptRequest request,
+        [FromBody] GenerateScriptRequest? request,
         CancellationToken ct)
     {
         var correlationId = HttpContext.TraceIdentifier;
         
+        // Validate request is not null
+        if (request == null)
+        {
+            _logger.LogWarning("[{CorrelationId}] GenerateScript request is null", correlationId);
+            return BadRequest(new ProblemDetails
+            {
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
+                Title = "Invalid Request",
+                Status = 400,
+                Detail = "Request body is required and cannot be null",
+                Extensions = { ["correlationId"] = correlationId }
+            });
+        }
+
+        // Validate required fields
+        if (string.IsNullOrWhiteSpace(request.Topic))
+        {
+            _logger.LogWarning("[{CorrelationId}] GenerateScript request missing Topic", correlationId);
+            return BadRequest(new ProblemDetails
+            {
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
+                Title = "Invalid Request",
+                Status = 400,
+                Detail = "Topic is required and cannot be empty",
+                Extensions = { ["correlationId"] = correlationId }
+            });
+        }
+
+        if (request.TargetDurationSeconds <= 0)
+        {
+            _logger.LogWarning("[{CorrelationId}] GenerateScript request has invalid TargetDurationSeconds: {Duration}", 
+                correlationId, request.TargetDurationSeconds);
+            return BadRequest(new ProblemDetails
+            {
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
+                Title = "Invalid Request",
+                Status = 400,
+                Detail = "TargetDurationSeconds must be greater than 0",
+                Extensions = { ["correlationId"] = correlationId }
+            });
+        }
+        
         try
         {
             _logger.LogInformation(
-                "[{CorrelationId}] POST /api/scripts/generate - Topic: {Topic}, Provider: {Provider}",
-                correlationId, request.Topic, request.PreferredProvider ?? "auto");
+                "[{CorrelationId}] POST /api/scripts/generate - Topic: {Topic}, Provider: {Provider}, Duration: {Duration}s",
+                correlationId, request.Topic, request.PreferredProvider ?? "auto", request.TargetDurationSeconds);
 
             var brief = new Brief(
                 Topic: request.Topic,

@@ -24,7 +24,7 @@ export const DEFAULT_TIMEOUTS: TimeoutConfig = {
   default: 30000, // 30 seconds
   health: 5000, // 5 seconds
   auth: 10000, // 10 seconds
-  scriptGeneration: 120000, // 2 minutes
+  scriptGeneration: 300000, // 5 minutes - accounts for slow local Ollama models with variable response times
   tts: 60000, // 1 minute
   imageGeneration: 180000, // 3 minutes
   videoGeneration: 300000, // 5 minutes

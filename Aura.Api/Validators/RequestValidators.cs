@@ -1,5 +1,6 @@
 using Aura.Api.Models.ApiModels.V1;
 using FluentValidation;
+using System;
 
 namespace Aura.Api.Validators;
 
@@ -258,6 +259,87 @@ public class AssetGenerateRequestValidator : AbstractValidator<AssetGenerateRequ
             RuleFor(x => x.StableDiffusionUrl)
                 .Must(url => Aura.Api.Security.InputSanitizer.IsValidUrl(url!))
                 .WithMessage("Stable Diffusion URL must be a valid HTTP or HTTPS URL");
+        });
+    }
+}
+
+/// <summary>
+/// Validator for GenerateScriptRequest - ensures all required fields are present and valid
+/// </summary>
+public class GenerateScriptRequestValidator : AbstractValidator<GenerateScriptRequest>
+{
+    public GenerateScriptRequestValidator()
+    {
+        RuleFor(x => x.Topic)
+            .NotEmpty().WithMessage("Topic is required")
+            .MinimumLength(3).WithMessage("Topic must be at least 3 characters")
+            .MaximumLength(500).WithMessage("Topic must not exceed 500 characters")
+            .Must(text => !Aura.Api.Security.InputSanitizer.ContainsXssPattern(text))
+            .WithMessage("Topic contains potentially dangerous content");
+
+        RuleFor(x => x.TargetDurationSeconds)
+            .GreaterThan(0).WithMessage("Target duration must be greater than 0")
+            .LessThanOrEqualTo(7200).WithMessage("Target duration must not exceed 7200 seconds (2 hours)");
+
+        When(x => !string.IsNullOrWhiteSpace(x.Audience), () =>
+        {
+            RuleFor(x => x.Audience)
+                .MinimumLength(3).WithMessage("Audience must be at least 3 characters")
+                .MaximumLength(200).WithMessage("Audience must not exceed 200 characters")
+                .Must(text => !Aura.Api.Security.InputSanitizer.ContainsXssPattern(text!))
+                .WithMessage("Audience contains potentially dangerous content");
+        });
+
+        When(x => !string.IsNullOrWhiteSpace(x.Goal), () =>
+        {
+            RuleFor(x => x.Goal)
+                .MinimumLength(3).WithMessage("Goal must be at least 3 characters")
+                .MaximumLength(300).WithMessage("Goal must not exceed 300 characters")
+                .Must(text => !Aura.Api.Security.InputSanitizer.ContainsXssPattern(text!))
+                .WithMessage("Goal contains potentially dangerous content");
+        });
+
+        When(x => !string.IsNullOrWhiteSpace(x.Tone), () =>
+        {
+            RuleFor(x => x.Tone)
+                .MinimumLength(2).WithMessage("Tone must be at least 2 characters")
+                .MaximumLength(100).WithMessage("Tone must not exceed 100 characters")
+                .Must(text => !Aura.Api.Security.InputSanitizer.ContainsXssPattern(text!))
+                .WithMessage("Tone contains potentially dangerous content");
+        });
+
+        When(x => !string.IsNullOrWhiteSpace(x.Language), () =>
+        {
+            RuleFor(x => x.Language)
+                .MinimumLength(2).WithMessage("Language must be at least 2 characters")
+                .MaximumLength(50).WithMessage("Language must not exceed 50 characters");
+        });
+
+        When(x => !string.IsNullOrWhiteSpace(x.Aspect), () =>
+        {
+            RuleFor(x => x.Aspect)
+                .Must(aspect => aspect == "16:9" || aspect == "9:16" || aspect == "1:1")
+                .WithMessage("Aspect must be one of: 16:9, 9:16, 1:1");
+        });
+
+        When(x => !string.IsNullOrWhiteSpace(x.Pacing), () =>
+        {
+            RuleFor(x => x.Pacing)
+                .Must(pacing => 
+                    pacing.Equals("Chill", StringComparison.OrdinalIgnoreCase) ||
+                    pacing.Equals("Conversational", StringComparison.OrdinalIgnoreCase) ||
+                    pacing.Equals("Fast", StringComparison.OrdinalIgnoreCase))
+                .WithMessage("Pacing must be one of: Chill, Conversational, Fast");
+        });
+
+        When(x => !string.IsNullOrWhiteSpace(x.Density), () =>
+        {
+            RuleFor(x => x.Density)
+                .Must(density => 
+                    density.Equals("Sparse", StringComparison.OrdinalIgnoreCase) ||
+                    density.Equals("Balanced", StringComparison.OrdinalIgnoreCase) ||
+                    density.Equals("Dense", StringComparison.OrdinalIgnoreCase))
+                .WithMessage("Density must be one of: Sparse, Balanced, Dense");
         });
     }
 }

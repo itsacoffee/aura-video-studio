@@ -23,7 +23,7 @@ import {
   Warning24Regular,
 } from '@fluentui/react-icons';
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ConfigurationModal } from '../components/ConfigurationModal';
 import { ConfigurationStatusCard } from '../components/ConfigurationStatusCard';
 import { SystemCheckCard } from '../components/SystemCheckCard';
@@ -31,7 +31,7 @@ import { TooltipContent, TooltipWithLink } from '../components/Tooltips';
 import { apiUrl } from '../config/api';
 import { configurationStatusService } from '../services/configurationStatusService';
 import type { ConfigurationStatus } from '../services/configurationStatusService';
-import { hasCompletedFirstRun } from '../services/firstRunService';
+import { hasCompletedFirstRun, getLocalFirstRunStatus } from '../services/firstRunService';
 import type { HardwareCapabilities } from '../types';
 
 const useStyles = makeStyles({
@@ -199,6 +199,7 @@ interface HealthStatus {
 export function WelcomePage() {
   const styles = useStyles();
   const navigate = useNavigate();
+  const location = useLocation();
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [capabilities, setCapabilities] = useState<HardwareCapabilities | null>(null);
   const [loading, setLoading] = useState(true);
@@ -235,11 +236,16 @@ export function WelcomePage() {
   }, [navigate]);
 
   useEffect(() => {
-    // Load configuration status
+    // Load configuration status - force refresh on mount to get latest status
     const loadConfigStatus = async () => {
       try {
-        const status = await configurationStatusService.getStatus();
+        // Force refresh to ensure we get the latest status after setup completion
+        const status = await configurationStatusService.getStatus(true);
         setConfigStatus(status);
+        console.info('[WelcomePage] Configuration status loaded:', {
+          isConfigured: status.isConfigured,
+          checks: status.checks,
+        });
       } catch (error) {
         console.error('Error loading configuration status:', error);
       } finally {
@@ -253,6 +259,51 @@ export function WelcomePage() {
     const unsubscribe = configurationStatusService.subscribe(setConfigStatus);
     return () => unsubscribe();
   }, []);
+
+  // Refresh configuration status when page becomes visible (e.g., returning from setup wizard)
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && !isCheckingSetup) {
+        console.info('[WelcomePage] Page became visible, refreshing configuration status');
+        try {
+          const status = await configurationStatusService.getStatus(true);
+          setConfigStatus(status);
+          console.info('[WelcomePage] Configuration status refreshed:', {
+            isConfigured: status.isConfigured,
+            checks: status.checks,
+          });
+        } catch (error) {
+          console.error('[WelcomePage] Error refreshing configuration status:', error);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [isCheckingSetup]);
+
+  // Refresh configuration status when navigating to this page (e.g., after completing setup)
+  useEffect(() => {
+    if (location.pathname === '/welcome' || location.pathname === '/') {
+      console.info('[WelcomePage] Welcome page mounted/visited, refreshing configuration status');
+      const refreshStatus = async () => {
+        try {
+          const status = await configurationStatusService.getStatus(true);
+          setConfigStatus(status);
+          setLoadingConfig(false);
+          console.info('[WelcomePage] Configuration status refreshed on navigation:', {
+            isConfigured: status.isConfigured,
+            checks: status.checks,
+            hasCompletedWizard: getLocalFirstRunStatus(),
+          });
+        } catch (error) {
+          console.error('[WelcomePage] Error refreshing configuration status on navigation:', error);
+          setLoadingConfig(false);
+        }
+      };
+      refreshStatus();
+    }
+  }, [location.pathname]);
 
   useEffect(() => {
     // Fetch system info on mount

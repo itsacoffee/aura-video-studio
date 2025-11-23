@@ -7,9 +7,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
 using Aura.Core.Models.Ideation;
+using Aura.Core.Models.RAG;
 using Aura.Core.Orchestration;
 using Aura.Core.Providers;
 using Aura.Core.Services.Conversation;
+using Aura.Core.Services.RAG;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.Services.Ideation;
@@ -26,6 +28,7 @@ public class IdeationService
     private readonly ProjectContextManager _projectManager;
     private readonly ConversationContextManager _conversationManager;
     private readonly TrendingTopicsService _trendingTopicsService;
+    private readonly RagContextBuilder? _ragContextBuilder;
 
     private const int MinConceptCount = 3;
     private const int MaxConceptCount = 9;
@@ -36,7 +39,8 @@ public class IdeationService
         ProjectContextManager projectManager,
         ConversationContextManager conversationManager,
         TrendingTopicsService trendingTopicsService,
-        LlmStageAdapter? stageAdapter = null)
+        LlmStageAdapter? stageAdapter = null,
+        RagContextBuilder? ragContextBuilder = null)
     {
         _logger = logger;
         _llmProvider = llmProvider;
@@ -44,6 +48,7 @@ public class IdeationService
         _conversationManager = conversationManager;
         _trendingTopicsService = trendingTopicsService;
         _stageAdapter = stageAdapter;
+        _ragContextBuilder = ragContextBuilder;
     }
 
     /// <summary>
@@ -60,7 +65,33 @@ public class IdeationService
             MinConceptCount,
             MaxConceptCount);
 
-        var prompt = BuildBrainstormPrompt(request, desiredConceptCount);
+        // Try to retrieve RAG context for the topic to provide more specific information
+        RagContext? ragContext = null;
+        if (_ragContextBuilder != null)
+        {
+            try
+            {
+                var ragConfig = new RagConfig
+                {
+                    Enabled = true,
+                    TopK = 5,
+                    MinimumScore = 0.5f,
+                    MaxContextTokens = 2000,
+                    IncludeCitations = false
+                };
+                ragContext = await _ragContextBuilder.BuildContextAsync(request.Topic, ragConfig, ct).ConfigureAwait(false);
+                if (ragContext.Chunks.Count > 0)
+                {
+                    _logger.LogInformation("Retrieved {Count} RAG chunks for topic: {Topic}", ragContext.Chunks.Count, request.Topic);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to retrieve RAG context for ideation, continuing without RAG");
+            }
+        }
+
+        var prompt = BuildBrainstormPrompt(request, desiredConceptCount, ragContext);
 
         var brief = new Brief(
             Topic: prompt,
@@ -403,23 +434,37 @@ public class IdeationService
 
     // --- Prompt Building Methods ---
 
-    private string BuildBrainstormPrompt(BrainstormRequest request, int conceptCount)
+    private string BuildBrainstormPrompt(BrainstormRequest request, int conceptCount, RagContext? ragContext = null)
     {
         var sb = new StringBuilder();
         sb.AppendLine($"Generate exactly {conceptCount} unique, creative, and actionable video concept ideas for the topic: '{request.Topic}'");
         sb.AppendLine();
+        
+        // Include RAG context if available to provide specific information about the topic
+        if (ragContext != null && ragContext.Chunks.Count > 0)
+        {
+            sb.AppendLine("=== RELEVANT CONTEXT ABOUT THIS TOPIC ===");
+            foreach (var chunk in ragContext.Chunks.Take(5))
+            {
+                sb.AppendLine($"- {chunk.Content}");
+            }
+            sb.AppendLine();
+            sb.AppendLine("Use the above context to generate SPECIFIC, DETAILED information about this topic. Do NOT use generic placeholders.");
+            sb.AppendLine();
+        }
+
         sb.AppendLine("You must respond with ONLY valid JSON in this exact format:");
         sb.AppendLine("{");
         sb.AppendLine("  \"concepts\": [");
         sb.AppendLine("    {");
-        sb.AppendLine("      \"title\": \"Catchy, engaging title\",");
-        sb.AppendLine("      \"description\": \"Detailed 2-3 sentence description of the video concept\",");
+        sb.AppendLine("      \"title\": \"Catchy, engaging title SPECIFIC to the topic\",");
+        sb.AppendLine("      \"description\": \"Detailed 2-3 sentence description SPECIFIC to this topic and concept angle\",");
         sb.AppendLine("      \"angle\": \"One of: Tutorial, Narrative, Case Study, Comparison, Interview, Documentary, Behind-the-Scenes, Expert Analysis, Beginner's Guide, Deep Dive\",");
-        sb.AppendLine("      \"targetAudience\": \"Specific description of the intended audience\",");
-        sb.AppendLine("      \"pros\": [\"Pro 1\", \"Pro 2\", \"Pro 3\"],");
-        sb.AppendLine("      \"cons\": [\"Con 1\", \"Con 2\", \"Con 3\"],");
-        sb.AppendLine("      \"hook\": \"Compelling opening hook for the first 15 seconds\",");
-        sb.AppendLine("      \"talkingPoints\": [\"Key point 1\", \"Key point 2\", \"Key point 3\", \"Key point 4\", \"Key point 5\"],");
+        sb.AppendLine("      \"targetAudience\": \"Specific description of the intended audience for THIS topic\",");
+        sb.AppendLine("      \"pros\": [\"Specific advantage 1 related to THIS topic\", \"Specific advantage 2 related to THIS topic\", \"Specific advantage 3 related to THIS topic\"],");
+        sb.AppendLine("      \"cons\": [\"Specific challenge 1 related to THIS topic\", \"Specific challenge 2 related to THIS topic\", \"Specific challenge 3 related to THIS topic\"],");
+        sb.AppendLine("      \"hook\": \"Compelling opening hook SPECIFIC to this topic and concept (15 seconds max)\",");
+        sb.AppendLine("      \"talkingPoints\": [\"Specific talking point 1 about THIS topic\", \"Specific talking point 2 about THIS topic\", \"Specific talking point 3 about THIS topic\", \"Specific talking point 4 about THIS topic\", \"Specific talking point 5 about THIS topic\"],");
         sb.AppendLine("      \"appealScore\": 85");
         sb.AppendLine("    }");
         sb.AppendLine("  ]");
@@ -447,12 +492,31 @@ public class IdeationService
         }
 
         sb.AppendLine();
-        sb.AppendLine("Requirements:");
-        sb.AppendLine("- Make each concept genuinely unique with different angles and approaches");
-        sb.AppendLine("- Ensure talking points are specific, actionable, and relevant to the concept");
-        sb.AppendLine("- Focus on creative quality and practical value for video creators");
-        sb.AppendLine("- Appeal scores should realistically range from 65-95 based on concept viability");
-        sb.AppendLine("- Return ONLY the JSON object, no additional text or markdown formatting");
+        sb.AppendLine("CRITICAL REQUIREMENTS:");
+        sb.AppendLine();
+        sb.AppendLine($"1. TOPIC-SPECIFIC CONTENT: ALL fields must be SPECIFIC to the topic '{request.Topic}'. Do NOT use generic placeholders like:");
+        sb.AppendLine("   - ❌ BAD: \"Introduction\", \"Key concepts\", \"Practical examples\", \"Common mistakes\", \"Next steps\"");
+        sb.AppendLine("   - ✅ GOOD: For 'how to eat sushi': \"Proper use of chopsticks for picking up nigiri\", \"Understanding the difference between nigiri, sashimi, and maki\", \"Etiquette for using soy sauce and wasabi\", \"How to eat sushi in one bite\", \"Order of eating: start with lighter fish, end with heavier\"");
+        sb.AppendLine();
+        sb.AppendLine("2. TALKING POINTS: Must be SPECIFIC, ACTIONABLE points about the topic. Each point should:");
+        sb.AppendLine($"   - Be directly related to the topic '{request.Topic}'");
+        sb.AppendLine("   - Provide concrete, useful information");
+        sb.AppendLine("   - Be suitable for the chosen angle (Tutorial, Narrative, etc.)");
+        sb.AppendLine("   - Example for 'how to eat sushi' Tutorial: \"Demonstrate proper chopstick technique for picking up nigiri without breaking it\", \"Explain the purpose of ginger (cleansing palate) and when to eat it\", \"Show correct soy sauce application (dip fish side, not rice)\"");
+        sb.AppendLine();
+        sb.AppendLine("3. PROS AND CONS: Must be SPECIFIC to this topic and concept angle:");
+        sb.AppendLine("   - ❌ BAD: \"Engaging\", \"Accessible\", \"Clear value\", \"Suitable for platform\"");
+        sb.AppendLine("   - ✅ GOOD: For 'how to eat sushi' Tutorial: \"Visual demonstration makes complex techniques easy to understand\", \"Addresses common mistakes beginners make (over-soy saucing, wrong bite size)\", \"Builds confidence for first-time sushi eaters\"");
+        sb.AppendLine();
+        sb.AppendLine("4. HOOK: Must be SPECIFIC and compelling for THIS topic:");
+        sb.AppendLine("   - ❌ BAD: \"Discover the most tutorial way to understand [topic]\"");
+        sb.AppendLine("   - ✅ GOOD: For 'how to eat sushi': \"Did you know that 90% of people eat sushi wrong? In the next 5 minutes, I'll show you the proper way to enjoy sushi like a Japanese chef, and you'll never make these embarrassing mistakes again.\"");
+        sb.AppendLine();
+        sb.AppendLine("5. UNIQUENESS: Make each concept genuinely unique with different angles and approaches");
+        sb.AppendLine("6. APPEAL SCORES: Should realistically range from 65-95 based on concept viability");
+        sb.AppendLine("7. FORMAT: Return ONLY the JSON object, no additional text or markdown formatting");
+        sb.AppendLine();
+        sb.AppendLine($"Remember: Every field must contain SPECIFIC information about '{request.Topic}'. Generic placeholders are NOT acceptable.");
 
         return sb.ToString();
     }

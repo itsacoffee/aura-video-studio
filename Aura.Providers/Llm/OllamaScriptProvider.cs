@@ -32,7 +32,7 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
         string baseUrl = "http://127.0.0.1:11434",
         string model = "llama3.1:8b-q4_k_m",
         int maxRetries = 3,
-        int timeoutSeconds = 120)
+        int timeoutSeconds = 300) // 5 minutes - matches OllamaLlmProvider and accounts for slow local models
         : base(logger, maxRetries, baseRetryDelayMs: 1000)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
@@ -40,8 +40,8 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
         _model = model;
         _timeout = TimeSpan.FromSeconds(timeoutSeconds);
 
-        _logger.LogInformation("OllamaScriptProvider initialized with baseUrl={BaseUrl}, model={Model}", 
-            _baseUrl, _model);
+        _logger.LogInformation("OllamaScriptProvider initialized with baseUrl={BaseUrl}, model={Model}, timeout={Timeout}s",
+            _baseUrl, _model, timeoutSeconds);
     }
 
     /// <summary>
@@ -66,7 +66,7 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
     /// Core script generation logic using Ollama
     /// </summary>
     protected override async Task<Script> GenerateScriptCoreAsync(
-        ScriptGenerationRequest request, 
+        ScriptGenerationRequest request,
         CancellationToken cancellationToken)
     {
         _logger.LogInformation("Generating script with Ollama for topic: {Topic}", request.Brief.Topic);
@@ -82,71 +82,166 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
         var prompt = BuildPrompt(request);
         var model = request.ModelOverride ?? _model;
 
-        var requestBody = new
+        // Retry logic for handling variable Ollama response times
+        Exception? lastException = null;
+        for (int attempt = 0; attempt <= _maxRetries; attempt++)
         {
-            model = model,
-            prompt = prompt,
-            stream = false,
-            options = new
+            try
             {
-                temperature = request.TemperatureOverride ?? 0.7,
-                top_p = 0.9,
-                num_predict = 2048
+                if (attempt > 0)
+                {
+                    var backoffDelay = TimeSpan.FromSeconds(Math.Pow(2, attempt));
+                    _logger.LogInformation("Retrying Ollama script generation (attempt {Attempt}/{MaxRetries}) after {Delay}s delay",
+                        attempt + 1, _maxRetries + 1, backoffDelay.TotalSeconds);
+                    await Task.Delay(backoffDelay, cancellationToken).ConfigureAwait(false);
+                }
+
+                var requestBody = new
+                {
+                    model = model,
+                    prompt = prompt,
+                    stream = false,
+                    options = new
+                    {
+                        temperature = request.TemperatureOverride ?? 0.7,
+                        top_p = 0.9,
+                        num_predict = 2048
+                    }
+                };
+
+                var json = JsonSerializer.Serialize(requestBody);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                cts.CancelAfter(_timeout); // 5 minutes - allows for slow local models
+
+                _logger.LogInformation("Sending request to Ollama (attempt {Attempt}/{MaxRetries}, timeout: {Timeout}s)",
+                    attempt + 1, _maxRetries + 1, _timeout.TotalSeconds);
+
+                var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token)
+                    .ConfigureAwait(false);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                    if (errorContent.Contains("model") && errorContent.Contains("not found"))
+                    {
+                        throw new InvalidOperationException(
+                            $"Model '{model}' not found. Please pull the model first using: ollama pull {model}");
+                    }
+                    response.EnsureSuccessStatusCode();
+                }
+
+                var responseJson = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                var responseDoc = JsonDocument.Parse(responseJson);
+
+                if (!responseDoc.RootElement.TryGetProperty("response", out var responseText))
+                {
+                    throw new InvalidOperationException("Invalid response from Ollama: missing 'response' field");
+                }
+
+                var scriptText = responseText.GetString() ?? string.Empty;
+                var duration = DateTime.UtcNow - startTime;
+
+                _logger.LogInformation("Script generated successfully ({Length} characters) in {Duration:F1}s (attempt {Attempt})",
+                    scriptText.Length, duration.TotalSeconds, attempt + 1);
+
+                var scenes = ParseScriptIntoScenes(scriptText, request.PlanSpec);
+
+                return new Script
+                {
+                    Title = request.Brief.Topic,
+                    Scenes = scenes,
+                    TotalDuration = scenes.Count > 0
+                        ? TimeSpan.FromSeconds(scenes.Sum(s => s.Duration.TotalSeconds))
+                        : request.PlanSpec.TargetDuration,
+                    Metadata = new ScriptMetadata
+                    {
+                        ProviderName = "Ollama",
+                        ModelUsed = model,
+                        GenerationTime = duration,
+                        TokensUsed = EstimateTokens(scriptText),
+                        Tier = ProviderTier.Free
+                    }
+                };
             }
-        };
-
-        var json = JsonSerializer.Serialize(requestBody);
-        var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        cts.CancelAfter(_timeout);
-
-        var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token)
-            .ConfigureAwait(false);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            var errorContent = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            if (errorContent.Contains("model") && errorContent.Contains("not found"))
+            catch (TaskCanceledException ex) when (ex.CancellationToken.IsCancellationRequested)
             {
-                throw new InvalidOperationException(
-                    $"Model '{model}' not found. Please pull the model first using: ollama pull {model}");
+                lastException = ex;
+                var elapsed = DateTime.UtcNow - startTime;
+                _logger.LogWarning(ex,
+                    "Ollama request timed out after {Elapsed:F1}s (attempt {Attempt}/{MaxRetries}, timeout: {Timeout}s). " +
+                    "This may be normal for slow models or when Ollama is loading the model. Will retry if attempts remain.",
+                    elapsed.TotalSeconds, attempt + 1, _maxRetries + 1, _timeout.TotalSeconds);
+
+                if (attempt >= _maxRetries)
+                {
+                    throw new InvalidOperationException(
+                        $"Ollama request timed out after {_timeout.TotalSeconds}s. " +
+                        $"The model '{model}' may be slow, still loading, or Ollama may be overloaded. " +
+                        $"Try using a smaller/faster model or wait for Ollama to finish loading the model.", ex);
+                }
             }
-            response.EnsureSuccessStatusCode();
+            catch (InvalidOperationException ex)
+            {
+                // Non-retryable errors: model not found, invalid response format, etc.
+                // These should fail immediately without retrying
+                var isNonRetryable = ex.Message.Contains("not found") ||
+                                     ex.Message.Contains("missing 'response' field") ||
+                                     ex.Message.Contains("Invalid response");
+
+                if (isNonRetryable)
+                {
+                    _logger.LogError(ex,
+                        "Non-retryable error from Ollama (attempt {Attempt}): {Message}",
+                        attempt + 1, ex.Message);
+                    throw; // Fail immediately, don't retry
+                }
+
+                // For other InvalidOperationException, treat as retryable
+                lastException = ex;
+                _logger.LogWarning(ex,
+                    "InvalidOperationException from Ollama (attempt {Attempt}/{MaxRetries}): {Message}",
+                    attempt + 1, _maxRetries + 1, ex.Message);
+
+                if (attempt >= _maxRetries)
+                {
+                    throw;
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                lastException = ex;
+                _logger.LogWarning(ex,
+                    "Failed to connect to Ollama at {BaseUrl} (attempt {Attempt}/{MaxRetries})",
+                    _baseUrl, attempt + 1, _maxRetries + 1);
+
+                if (attempt >= _maxRetries)
+                {
+                    throw new InvalidOperationException(
+                        $"Cannot connect to Ollama at {_baseUrl}. Please ensure Ollama is running: 'ollama serve'", ex);
+                }
+            }
+            catch (Exception ex) when (attempt < _maxRetries)
+            {
+                lastException = ex;
+                _logger.LogWarning(ex,
+                    "Error generating script with Ollama (attempt {Attempt}/{MaxRetries}): {Message}",
+                    attempt + 1, _maxRetries + 1, ex.Message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating script with Ollama after all retries");
+                throw;
+            }
         }
 
-        var responseJson = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        var responseDoc = JsonDocument.Parse(responseJson);
-
-        if (!responseDoc.RootElement.TryGetProperty("response", out var responseText))
-        {
-            throw new InvalidOperationException("Invalid response from Ollama: missing 'response' field");
-        }
-
-        var scriptText = responseText.GetString() ?? string.Empty;
-        var duration = DateTime.UtcNow - startTime;
-
-        _logger.LogInformation("Script generated successfully ({Length} characters) in {Duration}s",
-            scriptText.Length, duration.TotalSeconds);
-
-        var scenes = ParseScriptIntoScenes(scriptText, request.PlanSpec);
-
-        return new Script
-        {
-            Title = request.Brief.Topic,
-            Scenes = scenes,
-            TotalDuration = scenes.Count > 0
-                ? TimeSpan.FromSeconds(scenes.Sum(s => s.Duration.TotalSeconds))
-                : request.PlanSpec.TargetDuration,
-            Metadata = new ScriptMetadata
-            {
-                ProviderName = "Ollama",
-                ModelUsed = model,
-                GenerationTime = duration,
-                TokensUsed = EstimateTokens(scriptText),
-                Tier = ProviderTier.Free
-            }
-        };
+        // Should not reach here, but handle it gracefully
+        var finalDuration = DateTime.UtcNow - startTime;
+        throw new InvalidOperationException(
+            $"Failed to generate script with Ollama after {_maxRetries + 1} attempts in {finalDuration.TotalSeconds:F1}s. " +
+            $"Last error: {lastException?.Message ?? "Unknown error"}. " +
+            $"Please verify Ollama is running and model '{model}' is available.", lastException);
     }
 
     /// <summary>
@@ -156,7 +251,7 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
         ScriptGenerationRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Starting streaming generation with Ollama for topic: {Topic}", 
+        _logger.LogInformation("Starting streaming generation with Ollama for topic: {Topic}",
             request.Brief.Topic);
 
         var isAvailable = await IsServiceAvailableAsync(cancellationToken).ConfigureAwait(false);
@@ -250,7 +345,7 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
                         Stage = "Generating",
                         PercentComplete = percentComplete,
                         PartialScript = buffer.ToString(),
-                        Message = chunk.Done 
+                        Message = chunk.Done
                             ? $"Generation complete ({tokenCount} tokens)"
                             : $"Generating... ({tokenCount} tokens)"
                     };
@@ -258,7 +353,7 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
 
                 if (chunk.Done)
                 {
-                    _logger.LogInformation("Streaming complete. Total tokens: {Tokens}", 
+                    _logger.LogInformation("Streaming complete. Total tokens: {Tokens}",
                         chunk.EvalCount ?? tokenCount);
                     break;
                 }

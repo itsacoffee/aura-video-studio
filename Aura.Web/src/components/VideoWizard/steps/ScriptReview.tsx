@@ -369,13 +369,35 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
       });
     } catch (error) {
       console.error('Script generation failed:', error);
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : 'Failed to generate script. Please check your provider configuration and try again.';
+      
+      let errorTitle = 'Script Generation Failed';
+      let errorMessage = 'Failed to generate script. Please check your provider configuration and try again.';
+      
+      // Try to extract detailed error information from the response
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: { detail?: string; errors?: Record<string, string[]>; message?: string } } };
+        const responseData = axiosError.response?.data;
+        
+        if (responseData) {
+          // Check for validation errors
+          if (responseData.errors && Object.keys(responseData.errors).length > 0) {
+            errorTitle = 'Validation Error';
+            const errorList = Object.entries(responseData.errors)
+              .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
+              .join('; ');
+            errorMessage = `Request validation failed: ${errorList}`;
+          } else if (responseData.detail) {
+            errorMessage = responseData.detail;
+          } else if (responseData.message) {
+            errorMessage = responseData.message;
+          }
+        }
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
       
       showFailureToast({
-        title: 'Script Generation Failed',
+        title: errorTitle,
         message: errorMessage,
       });
     } finally {

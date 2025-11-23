@@ -102,12 +102,19 @@ export interface ProvidersListResponse {
 
 /**
  * Generate a new script
+ * Uses extended timeout (5 minutes) to accommodate slow local Ollama models
  */
 export async function generateScript(
   request: GenerateScriptRequest,
   config?: ExtendedAxiosRequestConfig
 ): Promise<GenerateScriptResponse> {
-  return post<GenerateScriptResponse>('/api/scripts/generate', request, config);
+  // Use extended timeout for script generation, especially for Ollama/local models
+  // Ollama can take variable amounts of time depending on hardware and model size
+  const extendedConfig: ExtendedAxiosRequestConfig = {
+    ...config,
+    timeout: config?.timeout ?? 300000, // 5 minutes default - accounts for slow local models
+  };
+  return post<GenerateScriptResponse>('/api/scripts/generate', request, extendedConfig);
 }
 
 /**

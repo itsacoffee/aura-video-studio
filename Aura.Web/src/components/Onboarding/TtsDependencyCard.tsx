@@ -252,24 +252,29 @@ export function TtsDependencyCard({
       }, 500);
 
       const endpoint = provider === 'piper' ? '/api/setup/install-piper' : '/api/setup/install-mimic3';
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      clearInterval(progressInterval);
-      setInstallProgress(100);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || errorData.error || `Installation failed: ${response.statusText}`);
+      
+      let response: Response;
+      try {
+        response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+      } catch (networkError) {
+        clearInterval(progressInterval);
+        const errorMsg = networkError instanceof Error ? networkError.message : 'Network error';
+        console.error(`[TtsDependencyCard] Network error during ${providerName} installation:`, networkError);
+        throw new Error(`Failed to connect to server: ${errorMsg}. Please ensure the backend is running.`);
       }
 
-      const result = (await response.json()) as {
+      clearInterval(progressInterval);
+
+      // Try to parse response body first to get detailed error information
+      let result: {
         success: boolean;
         message?: string;
+        error?: string;
         path?: string;
         baseUrl?: string;
         voiceModelPath?: string;
@@ -278,7 +283,29 @@ export function TtsDependencyCard({
         requiresManualInstall?: boolean;
         dockerUrl?: string;
         alternativeInstructions?: string;
+        instructions?: string[];
       };
+
+      try {
+        const responseText = await response.text();
+        if (!responseText) {
+          throw new Error('Empty response from server');
+        }
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error(`[TtsDependencyCard] Failed to parse response:`, parseError);
+        if (!response.ok) {
+          throw new Error(`Installation failed: ${response.status} ${response.statusText}`);
+        }
+        throw new Error('Invalid response from server');
+      }
+
+      // Check for HTTP errors
+      if (!response.ok) {
+        const errorMessage = result.error || result.message || `Installation failed: ${response.statusText}`;
+        console.error(`[TtsDependencyCard] ${providerName} installation failed:`, errorMessage);
+        throw new Error(errorMessage);
+      }
 
       if (result.success) {
         showSuccessToast({
@@ -346,34 +373,27 @@ export function TtsDependencyCard({
       let errorTitle = 'Installation Failed';
       let errorMessage = 'Installation failed';
 
-      if (err && typeof err === 'object') {
-        const axiosError = err as {
-          code?: string;
-          response?: {
-            data?: {
-              message?: string;
-              detail?: string;
-              error?: string;
-              title?: string;
-            };
-            status?: number;
-          };
-          message?: string;
-          request?: unknown;
-        };
+      console.error(`[TtsDependencyCard] ${providerName} installation error:`, err);
 
-        if (axiosError.code === 'ERR_NETWORK' || axiosError.code === 'ECONNREFUSED') {
-          errorTitle = 'Backend Unreachable';
-          errorMessage = 'Unable to connect to the Aura backend. Please ensure it is running.';
-        } else if (axiosError.response?.data) {
-          const data = axiosError.response.data;
-          errorTitle = data.title || errorTitle;
-          errorMessage = data.message || data.detail || data.error || errorMessage;
-        } else if (axiosError.message) {
-          errorMessage = axiosError.message;
-        }
-      } else if (err instanceof Error) {
+      if (err instanceof Error) {
         errorMessage = err.message;
+        
+        // Provide more helpful error messages for common issues
+        if (errorMessage.includes('Network') || errorMessage.includes('Failed to connect')) {
+          errorTitle = 'Connection Error';
+          errorMessage = 'Unable to connect to the Aura backend. Please ensure the backend server is running and try again.';
+        } else if (errorMessage.includes('timeout') || errorMessage.includes('Timeout')) {
+          errorTitle = 'Timeout Error';
+          errorMessage = 'The installation request timed out. This may be due to a slow internet connection. Please try again.';
+        } else if (errorMessage.includes('Docker')) {
+          errorTitle = 'Docker Required';
+          errorMessage = 'Docker is required for Mimic3 TTS. Please install Docker Desktop first.';
+        } else if (errorMessage.includes('manual') || errorMessage.includes('Manual')) {
+          errorTitle = 'Manual Installation Required';
+        }
+      } else if (err && typeof err === 'object') {
+        const errorObj = err as { message?: string; error?: string; code?: string };
+        errorMessage = errorObj.message || errorObj.error || errorMessage;
       }
 
       setError(errorMessage);
