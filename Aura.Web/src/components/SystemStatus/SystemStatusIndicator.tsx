@@ -81,7 +81,7 @@ export function SystemStatusIndicator() {
       return 'Checking...';
     }
 
-    if (!health) {
+    if (!health || !health.overallStatus) {
       return 'Unknown';
     }
 
@@ -118,15 +118,15 @@ export function SystemStatusIndicator() {
     }
 
     const lines = [
-      `Status: ${health.overallStatus}`,
-      `Checks: ${health.passedChecks}/${health.totalChecks} passed`,
+      `Status: ${health.overallStatus ?? 'Unknown'}`,
+      `Checks: ${health.passedChecks ?? 0}/${health.totalChecks ?? 0} passed`,
     ];
 
-    if (health.warningChecks > 0) {
+    if ((health.warningChecks ?? 0) > 0) {
       lines.push(`⚠️ ${health.warningChecks} warning(s)`);
     }
 
-    if (health.failedChecks > 0) {
+    if ((health.failedChecks ?? 0) > 0) {
       lines.push(`❌ ${health.failedChecks} failed`);
     }
 

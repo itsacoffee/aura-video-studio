@@ -1144,6 +1144,10 @@ builder.Services.AddSingleton<Aura.Core.Services.Generation.ResourceMonitor>();
 builder.Services.AddSingleton<Aura.Core.Services.Generation.StrategySelector>();
 builder.Services.AddSingleton<Aura.Core.Services.Generation.VideoGenerationOrchestrator>();
 
+// Register script generation services (required by ScriptsController)
+builder.Services.AddSingleton<Aura.Core.Services.Generation.ScriptProcessor>();
+builder.Services.AddSingleton<Aura.Core.Services.Generation.ScriptCacheService>();
+
 // Register timeline and pacing services (required for VideoOrchestrator)
 builder.Services.AddSingleton<Aura.Core.Timeline.TimelineBuilder>();
 
