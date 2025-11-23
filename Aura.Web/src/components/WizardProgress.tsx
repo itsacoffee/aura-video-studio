@@ -1,4 +1,4 @@
-import { makeStyles, tokens, Button, Text } from '@fluentui/react-components';
+import { Button, makeStyles, Text, tokens } from '@fluentui/react-components';
 import { Checkmark16Regular, SaveRegular } from '@fluentui/react-icons';
 
 const useStyles = makeStyles({
@@ -8,6 +8,8 @@ const useStyles = makeStyles({
     gap: tokens.spacingVerticalM,
     alignItems: 'center',
     position: 'relative',
+    overflow: 'visible', // Ensure labels and checkmarks are visible
+    minHeight: '80px', // Ensure enough space for labels and checkmarks
   },
   header: {
     width: '100%',
@@ -22,6 +24,10 @@ const useStyles = makeStyles({
     alignItems: 'center',
     width: '100%',
     maxWidth: '600px',
+    paddingTop: '10px', // Space for checkmarks above
+    paddingBottom: '32px', // Space for labels below (12px top + ~20px for text)
+    position: 'relative',
+    overflow: 'visible', // Ensure labels and checkmarks are visible
   },
   step: {
     flex: 1,
@@ -31,6 +37,7 @@ const useStyles = makeStyles({
     position: 'relative',
     cursor: 'pointer',
     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    overflow: 'visible', // Ensure labels and checkmarks are visible
     '::after': {
       content: '""',
       position: 'absolute',
@@ -71,6 +78,8 @@ const useStyles = makeStyles({
     whiteSpace: 'nowrap',
     fontSize: tokens.fontSizeBase200,
     transition: 'all 0.2s ease',
+    zIndex: 10, // Ensure labels appear above other content
+    pointerEvents: 'none', // Prevent labels from blocking clicks on steps
   },
   stepLabelActive: {
     transform: 'translateX(-50%) scale(1.1)',

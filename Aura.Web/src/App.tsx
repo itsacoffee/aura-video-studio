@@ -787,14 +787,32 @@ function App() {
             <MemoryRouter initialEntries={['/']}>
               <FirstRunWizard
                 onComplete={async () => {
-                  console.info('[App] FirstRunWizard onComplete called');
-                  // Mark first run as completed
-                  await markFirstRunCompleted();
-                  // Clear cache to ensure fresh status check
-                  clearFirstRunCache();
-                  // Update state to hide onboarding and show main app
-                  setShouldShowOnboarding(false);
-                  console.info('[App] Transitioning to main app');
+                  try {
+                    console.info('[App] FirstRunWizard onComplete called');
+                    // Mark first run as completed (already done in wizard, but ensure it's set)
+                    await markFirstRunCompleted();
+                    // Clear cache to ensure fresh status check
+                    clearFirstRunCache();
+                    
+                    // CRITICAL FIX: Defer state update to allow wizard to unmount cleanly
+                    // This prevents errors during the router context transition
+                    // React state setters don't throw, so errors would be caught by ErrorBoundary
+                    // The setTimeout ensures clean unmounting before state change
+                    setTimeout(() => {
+                      // Update state to hide onboarding and show main app
+                      // If this causes an error, it will be caught by ErrorBoundary
+                      setShouldShowOnboarding(false);
+                      console.info('[App] Transitioning to main app');
+                    }, 50); // Small delay to ensure clean unmount
+                  } catch (error) {
+                    console.error('[App] Error in onComplete callback:', error);
+                    // Even on error, try to transition to main app
+                    // The wizard has already completed, so we should show the main app
+                    // If markFirstRunCompleted or clearFirstRunCache failed, we still want to transition
+                    setTimeout(() => {
+                      setShouldShowOnboarding(false);
+                    }, 50);
+                  }
                 }}
               />
             </MemoryRouter>

@@ -89,6 +89,10 @@ const useStyles = makeStyles({
   header: {
     textAlign: 'center',
     marginBottom: tokens.spacingVerticalL,
+    paddingBottom: tokens.spacingVerticalM,
+    position: 'relative',
+    overflow: 'visible', // Ensure progress bar labels are visible
+    zIndex: 1, // Ensure header stays above content when scrolling
   },
   content: {
     flex: 1,
@@ -708,20 +712,39 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
       // Call the onComplete callback if provided
       if (onComplete) {
-        try {
-          await onComplete();
-          console.info('[FirstRunWizard] onComplete callback executed successfully');
-        } catch (callbackError: unknown) {
-          const errorObj =
-            callbackError instanceof Error ? callbackError : new Error(String(callbackError));
-          console.error('[FirstRunWizard] onComplete callback failed:', errorObj);
-          // Even if callback fails, we should still navigate away from wizard
-          // The wizard is completed, we just log the error
-        }
+        // CRITICAL FIX: Defer callback execution to ensure wizard state is stable
+        // This prevents errors during state transitions from crashing the app
+        // The setTimeout allows the current render cycle to complete
+        await new Promise<void>((resolve) => {
+          setTimeout(async () => {
+            try {
+              await onComplete();
+              console.info('[FirstRunWizard] onComplete callback executed successfully');
+            } catch (callbackError: unknown) {
+              const errorObj =
+                callbackError instanceof Error ? callbackError : new Error(String(callbackError));
+              console.error('[FirstRunWizard] onComplete callback failed:', errorObj);
+              // Log to error reporting service if available
+              if (typeof window !== 'undefined' && (window as any).errorReportingService) {
+                (window as any).errorReportingService.reportError(errorObj, {
+                  context: 'wizard-completion',
+                  step: state.step,
+                });
+              }
+              // Continue even if callback fails - wizard is already completed
+            } finally {
+              resolve();
+            }
+          }, 100); // Small delay to ensure clean state transition
+        });
       } else {
         // Fallback to navigation if no callback provided
         console.info('[FirstRunWizard] No onComplete callback, navigating to dashboard');
-        navigate('/dashboard');
+        // Defer navigation to ensure clean transition
+        // React Router's navigate doesn't throw, but setTimeout ensures clean unmount
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 100);
       }
     } catch (error: unknown) {
       const errorObj = error instanceof Error ? error : new Error(String(error));
