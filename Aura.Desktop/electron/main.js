@@ -150,7 +150,7 @@ const clearAllApplicationData = async () => {
       storages: [
         "appcache",
         "filesystem",
-        "indexdb",
+        "indexdb", // Correct Electron API name (not 'indexeddb')
         "localstorage",
         "shadercache",
         "websql",
@@ -1070,13 +1070,13 @@ async function startApplication() {
     console.log("✓ Backend service started at:", backendService.getUrl());
     console.log("✓ Backend port:", backendService.getPort());
     console.log("✓ Network contract port:", backendContract.port);
-    
+
     // Validate port consistency
     if (backendService.getPort() !== backendContract.port) {
       console.warn(
         `⚠ WARNING: Port mismatch detected! Backend service port (${backendService.getPort()}) ` +
-        `does not match network contract port (${backendContract.port}). ` +
-        `This may cause connectivity issues.`
+          `does not match network contract port (${backendContract.port}). ` +
+          `This may cause connectivity issues.`
       );
     }
 

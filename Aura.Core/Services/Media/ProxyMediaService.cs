@@ -113,7 +113,19 @@ public class ProxyMediaService : IProxyMediaService
         Directory.CreateDirectory(_cacheDirectory);
         Directory.CreateDirectory(_metadataDirectory);
         
-        LoadProxyMetadataAsync().GetAwaiter().GetResult();
+        // Load proxy metadata asynchronously (fire-and-forget with error handling)
+        // This avoids blocking the constructor while still ensuring metadata is loaded
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await LoadProxyMetadataAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to load proxy metadata");
+            }
+        });
     }
 
     public async Task<ProxyMediaMetadata> GenerateProxyAsync(

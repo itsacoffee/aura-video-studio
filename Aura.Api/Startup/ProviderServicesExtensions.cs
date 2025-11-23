@@ -67,9 +67,11 @@ public static class ProviderServicesExtensions
         services.AddHttpClient();
 
         // Named HttpClient for Ollama with proper configuration
+        // Timeout set to 300 seconds (5 minutes) to match providerTimeoutProfiles.json local_llm deepWaitThresholdMs
+        // This ensures slow Ollama models have sufficient time to complete, especially for complex prompts
         services.AddHttpClient("OllamaClient", client =>
         {
-            client.Timeout = TimeSpan.FromSeconds(30);
+            client.Timeout = TimeSpan.FromSeconds(300); // 5 minutes - matches timeout profile for local_llm
             client.DefaultRequestHeaders.Add("User-Agent", "AuraVideoStudio/1.0");
             client.DefaultRequestHeaders.Add("Accept", "application/json");
         })

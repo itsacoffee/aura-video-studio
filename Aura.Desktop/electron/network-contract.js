@@ -127,6 +127,12 @@ function buildRuntimeDiagnostics(
 ) {
   const backendUrl = backendService?.getUrl?.() || contract.baseUrl;
   const backendPort = backendService?.getPort?.() || contract.port;
+  // Determine if backend is ready: service exists and has a PID (process is running)
+  const backendReady =
+    backendService !== null &&
+    backendService !== undefined &&
+    backendService.pid !== null &&
+    backendService.pid !== undefined;
 
   return {
     backend: {
@@ -138,6 +144,7 @@ function buildRuntimeDiagnostics(
       readinessEndpoint: contract.readinessEndpoint,
       sseJobEventsTemplate: contract.sseJobEventsTemplate,
       pid: backendService?.pid ?? null,
+      ready: backendReady,
     },
     environment: {
       mode: app.isPackaged ? "production" : "development",

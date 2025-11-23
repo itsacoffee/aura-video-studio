@@ -35,7 +35,20 @@ public class WaveformGenerator
         _ffmpegPath = ffmpegPath;
         _cacheDirectory = cacheDirectory ?? Path.Combine(Path.GetTempPath(), "aura-waveform-cache");
         Directory.CreateDirectory(_cacheDirectory);
-        LoadPersistentCacheAsync().GetAwaiter().GetResult();
+        
+        // Load persistent cache asynchronously (fire-and-forget with error handling)
+        // This avoids blocking the constructor while still ensuring cache is loaded
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await LoadPersistentCacheAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to load persistent cache");
+            }
+        });
     }
 
     /// <summary>

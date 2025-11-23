@@ -171,7 +171,7 @@ public class OllamaController : ControllerBase
         {
             Log.Information("Stopping Ollama, CorrelationId={CorrelationId}", HttpContext.TraceIdentifier);
 
-            var result = _ollamaService.StopAsync().Result;
+            var result = await _ollamaService.StopAsync().ConfigureAwait(false);
 
             var response = new OllamaStopResponse(
                 Success: result.Success,

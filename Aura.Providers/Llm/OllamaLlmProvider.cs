@@ -51,7 +51,7 @@ public class OllamaLlmProvider : ILlmProvider
         string baseUrl = "http://127.0.0.1:11434",
         string model = "llama3.1:8b-q4_k_m",
         int maxRetries = 2,
-        int timeoutSeconds = 120,
+        int timeoutSeconds = 300, // 5 minutes - matches providerTimeoutProfiles.json local_llm deepWaitThresholdMs for slow models
         PromptCustomizationService? promptCustomizationService = null)
     {
         _logger = logger;
@@ -1181,7 +1181,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            cts.CancelAfter(TimeSpan.FromSeconds(120)); // 120-second timeout for local models
+            cts.CancelAfter(_timeout); // Use configured timeout (default 300s for slow local models)
 
             var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token).ConfigureAwait(false);
             

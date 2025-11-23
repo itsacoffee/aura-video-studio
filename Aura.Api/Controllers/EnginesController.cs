@@ -362,17 +362,29 @@ public class EnginesController : ControllerBase
             }
 
             // Create progress handler
+            // Note: Progress<T> callbacks are synchronous, so we use Task.Run to avoid blocking
             var progress = new Progress<EngineInstallProgress>(p =>
             {
                 try
                 {
                     var json = System.Text.Json.JsonSerializer.Serialize(p);
-                    Response.WriteAsync($"event: progress\ndata: {json}\n\n", ct).GetAwaiter().GetResult();
-                    Response.Body.FlushAsync(ct).GetAwaiter().GetResult();
+                    // Fire-and-forget async operations to avoid blocking the progress callback
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await Response.WriteAsync($"event: progress\ndata: {json}\n\n", ct).ConfigureAwait(false);
+                            await Response.Body.FlushAsync(ct).ConfigureAwait(false);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to send progress update");
+                        }
+                    }, ct);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to send progress update");
+                    _logger.LogWarning(ex, "Failed to serialize progress update");
                 }
             });
 

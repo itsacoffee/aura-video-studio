@@ -84,11 +84,32 @@ public class EnhancedLocalStorageService : IEnhancedLocalStorageService
         _storageRoot = AuraEnvironmentPaths.EnsureDirectory(_config.StorageRoot);
         _cacheIndexPath = Path.Combine(_storageRoot, WorkspaceFolders.Cache, "index.json");
         
-        // Initialize workspace structure
-        Task.Run(async () => await EnsureWorkspaceStructureAsync().ConfigureAwait(false)).Wait();
+        // Initialize workspace structure asynchronously (fire-and-forget with error handling)
+        // This avoids blocking the constructor while still ensuring initialization happens
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await EnsureWorkspaceStructureAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to initialize workspace structure");
+            }
+        });
         
-        // Load cache index
-        Task.Run(async () => await LoadCacheIndexAsync().ConfigureAwait(false)).Wait();
+        // Load cache index asynchronously (fire-and-forget with error handling)
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await LoadCacheIndexAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to load cache index");
+            }
+        });
     }
 
     #region Workspace Management

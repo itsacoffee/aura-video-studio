@@ -258,6 +258,9 @@ public class ProviderSettings
         SaveSettings();
     }
 
+    private string? _cachedFfmpegPath;
+    private readonly object _ffmpegPathLock = new object();
+
     /// <summary>
     /// Get FFmpeg executable path from unified configuration.
     /// Delegates to IFfmpegConfigurationService for unified config resolution.
@@ -265,28 +268,53 @@ public class ProviderSettings
     /// </summary>
     public string GetFfmpegPath()
     {
-        // Primary: Use unified configuration service (PR #384)
-        if (_ffmpegConfigService != null)
+        // Use cached value if available (lazy initialization)
+        if (_cachedFfmpegPath != null)
         {
-            var config = _ffmpegConfigService.GetEffectiveConfigurationAsync().GetAwaiter().GetResult();
-            if (!string.IsNullOrWhiteSpace(config.Path))
+            return _cachedFfmpegPath;
+        }
+
+        lock (_ffmpegPathLock)
+        {
+            // Double-check after acquiring lock
+            if (_cachedFfmpegPath != null)
             {
-                return config.Path!;
+                return _cachedFfmpegPath;
             }
+
+            // Primary: Use unified configuration service (PR #384)
+            if (_ffmpegConfigService != null)
+            {
+                // Use Task.Run to avoid deadlock - this is a synchronous method calling async
+                var config = Task.Run(async () => 
+                    await _ffmpegConfigService.GetEffectiveConfigurationAsync().ConfigureAwait(false)).Result;
+                if (!string.IsNullOrWhiteSpace(config.Path))
+                {
+                    _cachedFfmpegPath = config.Path!;
+                    return _cachedFfmpegPath;
+                }
+            }
+            
+            // Legacy fallback: settings.json (deprecated, kept for backward compatibility)
+            LoadSettings();
+            var path = GetStringSetting("ffmpegPath", "");
+            
+            // If empty, default to system PATH
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                _cachedFfmpegPath = "ffmpeg";
+            }
+            else
+            {
+                _cachedFfmpegPath = path;
+            }
+            
+            return _cachedFfmpegPath;
         }
-        
-        // Legacy fallback: settings.json (deprecated, kept for backward compatibility)
-        LoadSettings();
-        var path = GetStringSetting("ffmpegPath", "");
-        
-        // If empty, default to system PATH
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            return "ffmpeg";
-        }
-        
-        return path;
     }
+
+    private string? _cachedFfprobePath;
+    private readonly object _ffprobePathLock = new object();
 
     /// <summary>
     /// Get FFprobe executable path.
@@ -294,42 +322,65 @@ public class ProviderSettings
     /// </summary>
     public string GetFfprobePath()
     {
-        // Derive from FFmpeg path when using unified configuration
-        if (_ffmpegConfigService != null)
+        // Use cached value if available (lazy initialization)
+        if (_cachedFfprobePath != null)
         {
-            var config = _ffmpegConfigService.GetEffectiveConfigurationAsync().GetAwaiter().GetResult();
-            if (!string.IsNullOrWhiteSpace(config.Path))
+            return _cachedFfprobePath;
+        }
+
+        lock (_ffprobePathLock)
+        {
+            // Double-check after acquiring lock
+            if (_cachedFfprobePath != null)
             {
-                // FFprobe is typically in same directory as FFmpeg
-                var ffmpegDir = Path.GetDirectoryName(config.Path);
-                if (!string.IsNullOrEmpty(ffmpegDir))
+                return _cachedFfprobePath;
+            }
+
+            // Derive from FFmpeg path when using unified configuration
+            if (_ffmpegConfigService != null)
+            {
+                // Use Task.Run to avoid deadlock - this is a synchronous method calling async
+                var config = Task.Run(async () => 
+                    await _ffmpegConfigService.GetEffectiveConfigurationAsync().ConfigureAwait(false)).Result;
+                if (!string.IsNullOrWhiteSpace(config.Path))
                 {
-                    var ffprobeExe = Path.Combine(ffmpegDir, "ffprobe.exe");
-                    if (File.Exists(ffprobeExe))
+                    // FFprobe is typically in same directory as FFmpeg
+                    var ffmpegDir = Path.GetDirectoryName(config.Path);
+                    if (!string.IsNullOrEmpty(ffmpegDir))
                     {
-                        return ffprobeExe;
-                    }
-                    // Try without .exe extension for non-Windows
-                    var ffprobe = Path.Combine(ffmpegDir, "ffprobe");
-                    if (File.Exists(ffprobe))
-                    {
-                        return ffprobe;
+                        var ffprobeExe = Path.Combine(ffmpegDir, "ffprobe.exe");
+                        if (File.Exists(ffprobeExe))
+                        {
+                            _cachedFfprobePath = ffprobeExe;
+                            return _cachedFfprobePath;
+                        }
+                        // Try without .exe extension for non-Windows
+                        var ffprobe = Path.Combine(ffmpegDir, "ffprobe");
+                        if (File.Exists(ffprobe))
+                        {
+                            _cachedFfprobePath = ffprobe;
+                            return _cachedFfprobePath;
+                        }
                     }
                 }
             }
+            
+            // Legacy fallback: settings.json
+            LoadSettings();
+            var path = GetStringSetting("ffprobePath", "");
+            
+            // If empty, default to system PATH
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                _cachedFfprobePath = "ffprobe";
+            }
+            else
+            {
+                _cachedFfprobePath = path;
+            }
+            
+            return _cachedFfprobePath;
         }
-        
-        // Legacy fallback: settings.json
-        LoadSettings();
-        var path = GetStringSetting("ffprobePath", "");
-        
-        // If empty, default to system PATH
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            return "ffprobe";
-        }
-        
-        return path;
     }
 
     /// <summary>
