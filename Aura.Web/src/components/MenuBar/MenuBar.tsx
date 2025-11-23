@@ -41,11 +41,12 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     gap: tokens.spacingHorizontalXS,
-    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalM}`,
+    padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalL}`,
     backgroundColor: tokens.colorNeutralBackground2,
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
-    minHeight: '40px',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+    minHeight: '48px',
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+    fontSize: tokens.fontSizeBase400,
   },
   menuButton: {
     minWidth: 'auto',
@@ -89,12 +90,15 @@ const useStyles = makeStyles({
   },
   projectName: {
     fontWeight: 600,
-    color: tokens.colorNeutralForeground2,
+    color: tokens.colorNeutralForeground1,
+    fontSize: tokens.fontSizeBase400,
   },
   statusText: {
     display: 'flex',
     alignItems: 'center',
     gap: tokens.spacingHorizontalXS,
+    fontSize: tokens.fontSizeBase300,
+    color: tokens.colorNeutralForeground2,
   },
   statusDot: {
     width: '8px',

@@ -22,6 +22,14 @@ export interface GenerateScriptRequest {
   style?: string;
   preferredProvider?: string;
   modelOverride?: string;
+  // Advanced LLM parameters
+  temperature?: number;
+  topP?: number;
+  topK?: number;
+  maxTokens?: number;
+  frequencyPenalty?: number;
+  presencePenalty?: number;
+  stopSequences?: string[];
 }
 
 /**

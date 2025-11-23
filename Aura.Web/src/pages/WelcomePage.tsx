@@ -358,10 +358,35 @@ export function WelcomePage() {
   };
 
   const handleConfigComplete = async () => {
-    // Refresh all statuses
-    await configurationStatusService.markConfigured();
+    // Force a complete refresh of configuration status after setup completion
+    console.info('[WelcomePage] Setup completed, refreshing configuration status...');
+    
+    // Clear any cached status
+    await configurationStatusService.resetConfiguration();
+    
+    // Wait a moment for backend to update
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    
+    // Get fresh status with force refresh
     const status = await configurationStatusService.getStatus(true);
     setConfigStatus(status);
+    
+    console.info('[WelcomePage] Configuration status after setup:', {
+      isConfigured: status.isConfigured,
+      checks: status.checks,
+    });
+    
+    // If still not configured, wait a bit longer and retry (backend might need time to update)
+    if (!status.isConfigured) {
+      console.warn('[WelcomePage] Status still shows not configured, retrying after delay...');
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const retryStatus = await configurationStatusService.getStatus(true);
+      setConfigStatus(retryStatus);
+      console.info('[WelcomePage] Configuration status after retry:', {
+        isConfigured: retryStatus.isConfigured,
+        checks: retryStatus.checks,
+      });
+    }
   };
 
   const isSystemReady = !loadingConfig && configStatus?.isConfigured;

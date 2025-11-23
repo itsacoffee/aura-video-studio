@@ -39,6 +39,7 @@ import { ffmpegClient } from '../../services/api/ffmpegClient';
 import type { WizardStatusResponse } from '../../services/api/setupApi';
 import { setupApi } from '../../services/api/setupApi';
 import { markFirstRunCompleted } from '../../services/firstRunService';
+import { configurationStatusService } from '../../services/configurationStatusService';
 import {
   clearWizardStateFromStorage,
   completeWizardInBackend,
@@ -734,6 +735,23 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
       }
 
       console.info('[FirstRunWizard] ✅ Step 3/3 complete: Local first-run status updated');
+      
+      // CRITICAL FIX: Refresh configuration status after setup completion
+      // This ensures the Welcome page banner disappears and status is accurate
+      console.info('[FirstRunWizard] Refreshing configuration status after setup completion...');
+      try {
+        // Clear cached status and force refresh
+        await configurationStatusService.resetConfiguration();
+        // Wait a moment for backend to update
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        // Force refresh to get latest status
+        await configurationStatusService.getStatus(true);
+        console.info('[FirstRunWizard] Configuration status refreshed successfully');
+      } catch (statusError) {
+        console.warn('[FirstRunWizard] Failed to refresh configuration status:', statusError);
+        // Don't block completion on status refresh failure
+      }
+      
       console.info('[FirstRunWizard] 🎉 ALL STEPS COMPLETE - Wizard finished successfully!');
 
       // Track completion

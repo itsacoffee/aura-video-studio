@@ -22,15 +22,21 @@ const useStyles = makeStyles({
   dialogSurface: {
     maxWidth: '95vw',
     maxHeight: '95vh',
-    width: '1000px',
-    height: '800px',
+    width: '1200px',
+    minHeight: '700px',
+    height: '90vh',
     padding: 0,
     overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
   },
   dialogBody: {
     padding: 0,
     overflow: 'hidden',
-    height: '100%',
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    minHeight: 0, // Critical for flexbox scrolling
   },
   dialogTitle: {
     padding: tokens.spacingVerticalL,
@@ -38,10 +44,13 @@ const useStyles = makeStyles({
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexShrink: 0, // Prevent title from shrinking
   },
   wizardContainer: {
-    height: 'calc(100% - 60px)', // Subtract title height
+    flex: 1,
     overflow: 'auto',
+    minHeight: 0, // Critical for flexbox scrolling
+    padding: `${tokens.spacingVerticalM} ${tokens.spacingHorizontalL}`,
   },
   closeButton: {
     marginLeft: 'auto',

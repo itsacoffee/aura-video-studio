@@ -213,7 +213,9 @@ export function ConfigurationStatusCard({
       label: 'API Keys Validated',
       detail: status.checks.providerValidated
         ? 'All configured providers tested successfully'
-        : 'API keys not validated',
+        : status.checks.providerConfigured
+          ? 'API keys not yet validated (optional)'
+          : 'API keys not validated',
       status: status.checks.apiKeysValid
         ? 'success'
         : status.checks.providerConfigured
@@ -277,7 +279,7 @@ export function ConfigurationStatusCard({
 
       <div className={styles.checklistContainer}>
         {checks.map((check) => (
-          <div key={check.id} className={styles.checkItem}>
+          <div key={check.id} className={styles.checkItem} title={check.detail}>
             {getIcon(check.status)}
             <div className={styles.checkContent}>
               <Text className={styles.checkLabel}>{check.label}</Text>

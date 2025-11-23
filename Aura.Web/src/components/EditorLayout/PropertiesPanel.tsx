@@ -38,19 +38,20 @@ const useStyles = makeStyles({
     overflow: 'auto',
   },
   header: {
-    padding: tokens.spacingVerticalM,
+    padding: tokens.spacingVerticalL,
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
     backgroundColor: tokens.colorNeutralBackground3,
   },
   title: {
-    fontSize: tokens.fontSizeBase400,
+    fontSize: tokens.fontSizeBase500,
     fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground1,
   },
   content: {
-    padding: `${tokens.spacingVerticalM} ${tokens.spacingVerticalL}`,
+    padding: `${tokens.spacingVerticalL} ${tokens.spacingVerticalXL}`,
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalM,
+    gap: tokens.spacingVerticalL,
   },
   section: {
     display: 'flex',
@@ -58,9 +59,10 @@ const useStyles = makeStyles({
     gap: tokens.spacingVerticalM,
   },
   sectionTitle: {
-    fontSize: tokens.fontSizeBase300,
+    fontSize: tokens.fontSizeBase400,
     fontWeight: tokens.fontWeightSemibold,
-    color: tokens.colorNeutralForeground2,
+    color: tokens.colorNeutralForeground1,
+    marginBottom: tokens.spacingVerticalXS,
   },
   emptyState: {
     padding: tokens.spacingVerticalXXL,
@@ -93,8 +95,12 @@ const useStyles = makeStyles({
   },
   effectName: {
     flex: 1,
-    fontSize: tokens.fontSizeBase300,
+    fontSize: tokens.fontSizeBase400,
     fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground1,
+    whiteSpace: 'nowrap',
+    overflow: 'visible',
+    textOverflow: 'clip',
   },
   effectControls: {
     display: 'flex',

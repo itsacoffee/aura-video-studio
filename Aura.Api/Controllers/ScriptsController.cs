@@ -46,13 +46,18 @@ public class ScriptsController : ControllerBase
     /// </summary>
     private static readonly ConcurrentDictionary<string, List<ScriptVersionDto>> _versionStore = new();
 
+    private readonly Aura.Core.Services.RAG.VectorIndex? _vectorIndex;
+    private readonly Aura.Core.Services.RAG.RagContextBuilder? _ragContextBuilder;
+
     public ScriptsController(
         ILogger<ScriptsController> logger,
         ScriptOrchestrator scriptOrchestrator,
         ScriptProcessor scriptProcessor,
         ScriptCacheService cacheService,
         ProviderMixer providerMixer,
-        StreamingOrchestrator streamingOrchestrator)
+        StreamingOrchestrator streamingOrchestrator,
+        Aura.Core.Services.RAG.VectorIndex? vectorIndex = null,
+        Aura.Core.Services.RAG.RagContextBuilder? ragContextBuilder = null)
     {
         _logger = logger;
         _scriptOrchestrator = scriptOrchestrator;
@@ -60,6 +65,8 @@ public class ScriptsController : ControllerBase
         _cacheService = cacheService;
         _providerMixer = providerMixer;
         _streamingOrchestrator = streamingOrchestrator;
+        _vectorIndex = vectorIndex;
+        _ragContextBuilder = ragContextBuilder;
     }
 
     /// <summary>
@@ -120,13 +127,66 @@ public class ScriptsController : ControllerBase
                 "[{CorrelationId}] POST /api/scripts/generate - Topic: {Topic}, Provider: {Provider}, Duration: {Duration}s",
                 correlationId, request.Topic, request.PreferredProvider ?? "auto", request.TargetDurationSeconds);
 
+            // Enable RAG automatically if documents are available in the index
+            Aura.Core.Models.RAG.RagConfiguration? ragConfig = null;
+            if (_vectorIndex != null)
+            {
+                try
+                {
+                    var stats = await _vectorIndex.GetStatisticsAsync(ct).ConfigureAwait(false);
+                    if (stats.TotalDocuments > 0)
+                    {
+                        _logger.LogInformation(
+                            "[{CorrelationId}] RAG index contains {DocumentCount} documents, enabling RAG for script generation",
+                            correlationId, stats.TotalDocuments);
+                        ragConfig = new Aura.Core.Models.RAG.RagConfiguration(
+                            Enabled: true,
+                            TopK: 5,
+                            MinimumScore: 0.6f,
+                            MaxContextTokens: 2000,
+                            IncludeCitations: true,
+                            TightenClaims: false);
+                    }
+                    else
+                    {
+                        _logger.LogDebug(
+                            "[{CorrelationId}] RAG index is empty, skipping RAG enhancement",
+                            correlationId);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex,
+                        "[{CorrelationId}] Failed to check RAG index status, continuing without RAG",
+                        correlationId);
+                }
+            }
+
+            // Build LLM parameters if any are provided
+            Aura.Core.Models.LlmParameters? llmParams = null;
+            if (request.Temperature.HasValue || request.TopP.HasValue || request.TopK.HasValue || 
+                request.MaxTokens.HasValue || request.FrequencyPenalty.HasValue || 
+                request.PresencePenalty.HasValue || request.StopSequences != null)
+            {
+                llmParams = new Aura.Core.Models.LlmParameters(
+                    Temperature: request.Temperature,
+                    TopP: request.TopP,
+                    TopK: request.TopK,
+                    MaxTokens: request.MaxTokens,
+                    FrequencyPenalty: request.FrequencyPenalty,
+                    PresencePenalty: request.PresencePenalty,
+                    StopSequences: request.StopSequences);
+            }
+
             var brief = new Brief(
                 Topic: request.Topic,
                 Audience: request.Audience,
                 Goal: request.Goal,
                 Tone: request.Tone,
                 Language: request.Language,
-                Aspect: ParseAspect(request.Aspect));
+                Aspect: ParseAspect(request.Aspect),
+                RagConfiguration: ragConfig,
+                LlmParameters: llmParams);
 
             var planSpec = new PlanSpec(
                 TargetDuration: TimeSpan.FromSeconds(request.TargetDurationSeconds),

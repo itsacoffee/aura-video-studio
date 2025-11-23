@@ -22,11 +22,14 @@ const useStyles = makeStyles({
     },
   },
   title: {
-    fontSize: 'var(--editor-font-size-sm)',
+    fontSize: 'var(--editor-font-size-base)',
     fontWeight: 'var(--editor-font-weight-semibold)',
     color: 'var(--editor-text-primary)',
-    letterSpacing: '0.3px',
-    textTransform: 'uppercase',
+    letterSpacing: '0.2px',
+    textTransform: 'none',
+    whiteSpace: 'nowrap',
+    overflow: 'visible',
+    textOverflow: 'clip',
   },
   collapseButton: {
     minWidth: '28px',

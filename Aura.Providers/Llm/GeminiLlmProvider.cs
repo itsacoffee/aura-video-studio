@@ -115,7 +115,28 @@ public class GeminiLlmProvider : ILlmProvider
                 string userPrompt = _promptCustomizationService.BuildCustomizedPrompt(brief, spec, brief.PromptModifiers);
                 string prompt = $"{systemPrompt}\n\n{userPrompt}";
 
-                // Call Gemini API
+                // Get LLM parameters from brief, with defaults
+                var llmParams = brief.LlmParameters;
+                var temperature = llmParams?.Temperature ?? 0.7;
+                var maxTokens = llmParams?.MaxTokens ?? 2048;
+                var topP = llmParams?.TopP ?? 0.9;
+                var topK = llmParams?.TopK;
+
+                // Call Gemini API with proper format
+                // Note: Gemini uses maxOutputTokens (not max_tokens), and supports topK
+                // Gemini doesn't support frequency_penalty or presence_penalty
+                var generationConfig = new Dictionary<string, object>
+                {
+                    { "temperature", temperature },
+                    { "maxOutputTokens", maxTokens },
+                    { "topP", topP }
+                };
+
+                if (topK.HasValue)
+                {
+                    generationConfig["topK"] = topK.Value;
+                }
+
                 var requestBody = new
                 {
                     contents = new[]
@@ -128,12 +149,7 @@ public class GeminiLlmProvider : ILlmProvider
                             }
                         }
                     },
-                    generationConfig = new
-                    {
-                        temperature = 0.7,
-                        maxOutputTokens = 2048,
-                        topP = 0.9
-                    }
+                    generationConfig = generationConfig
                 };
 
                 var json = JsonSerializer.Serialize(requestBody);
@@ -189,12 +205,71 @@ public class GeminiLlmProvider : ILlmProvider
                 }
 
                 var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-                var responseDoc = JsonDocument.Parse(responseJson);
+                
+                // Parse and validate response structure
+                JsonDocument? responseDoc = null;
+                try
+                {
+                    responseDoc = JsonDocument.Parse(responseJson);
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogError(ex, "Failed to parse Gemini JSON response: {Response}", responseJson.Substring(0, Math.Min(500, responseJson.Length)));
+                    throw new InvalidOperationException("Gemini returned invalid JSON response", ex);
+                }
+
+                // Check for API errors in response
+                if (responseDoc.RootElement.TryGetProperty("error", out var errorElement))
+                {
+                    var errorMessage = errorElement.TryGetProperty("message", out var msg) 
+                        ? msg.GetString() ?? "Unknown error" 
+                        : "API error";
+                    
+                    // Safely extract error code - Gemini may return code as int or string
+                    int errorCode = 0;
+                    if (errorElement.TryGetProperty("code", out var code))
+                    {
+                        if (code.ValueKind == JsonValueKind.Number)
+                        {
+                            errorCode = code.GetInt32();
+                        }
+                        else if (code.ValueKind == JsonValueKind.String)
+                        {
+                            // Gemini sometimes returns error codes as strings (e.g., "INVALID_ARGUMENT")
+                            var codeString = code.GetString() ?? "";
+                            _logger.LogWarning("Gemini error code is a string: {CodeString}", codeString);
+                            // Try to parse if it's a numeric string, otherwise use 0
+                            if (int.TryParse(codeString, out var parsedCode))
+                            {
+                                errorCode = parsedCode;
+                            }
+                        }
+                        // If code is neither number nor string, errorCode remains 0
+                    }
+                    
+                    _logger.LogError("Gemini API error: Code {Code} - {Message}", errorCode, errorMessage);
+                    throw new InvalidOperationException($"Gemini API error: {errorMessage}");
+                }
 
                 if (responseDoc.RootElement.TryGetProperty("candidates", out var candidates) &&
                     candidates.GetArrayLength() > 0)
                 {
                     var firstCandidate = candidates[0];
+                    
+                    // Check for finish reason (blocked content, etc.)
+                    if (firstCandidate.TryGetProperty("finishReason", out var finishReason))
+                    {
+                        var reason = finishReason.GetString();
+                        if (reason != "STOP" && reason != null)
+                        {
+                            _logger.LogWarning("Gemini generation finished with reason: {Reason}", reason);
+                            if (reason == "SAFETY" || reason == "RECITATION")
+                            {
+                                throw new InvalidOperationException($"Gemini blocked content generation. Reason: {reason}");
+                            }
+                        }
+                    }
+                    
                     if (firstCandidate.TryGetProperty("content", out var contentObj) &&
                         contentObj.TryGetProperty("parts", out var parts) &&
                         parts.GetArrayLength() > 0)
@@ -217,8 +292,9 @@ public class GeminiLlmProvider : ILlmProvider
                     }
                 }
 
-                _logger.LogWarning("Gemini response did not contain expected structure");
-                throw new InvalidOperationException("Invalid response structure from Gemini API");
+                _logger.LogWarning("Gemini response did not contain expected structure. Response: {Response}", 
+                    responseJson.Substring(0, Math.Min(500, responseJson.Length)));
+                throw new InvalidOperationException($"Invalid response structure from Gemini API. Expected 'candidates[0].content.parts[0].text' but got: {responseJson.Substring(0, Math.Min(200, responseJson.Length))}");
             }
             catch (TaskCanceledException ex)
             {

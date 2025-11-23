@@ -72,6 +72,41 @@ public record GenerateScriptRequest
     /// Model name for Ollama streaming (alias for ModelOverride)
     /// </summary>
     public string? Model => ModelOverride;
+
+    /// <summary>
+    /// Advanced LLM parameters - Temperature (0.0-2.0, controls randomness)
+    /// </summary>
+    public double? Temperature { get; init; }
+
+    /// <summary>
+    /// Advanced LLM parameters - Top P (0.0-1.0, nucleus sampling)
+    /// </summary>
+    public double? TopP { get; init; }
+
+    /// <summary>
+    /// Advanced LLM parameters - Top K (0-100, limits sampling to top K tokens)
+    /// </summary>
+    public int? TopK { get; init; }
+
+    /// <summary>
+    /// Advanced LLM parameters - Max tokens to generate
+    /// </summary>
+    public int? MaxTokens { get; init; }
+
+    /// <summary>
+    /// Advanced LLM parameters - Frequency penalty (-2.0 to 2.0, reduces repetition, OpenAI/Azure only)
+    /// </summary>
+    public double? FrequencyPenalty { get; init; }
+
+    /// <summary>
+    /// Advanced LLM parameters - Presence penalty (-2.0 to 2.0, encourages new topics, OpenAI/Azure only)
+    /// </summary>
+    public double? PresencePenalty { get; init; }
+
+    /// <summary>
+    /// Advanced LLM parameters - Stop sequences (provider-specific)
+    /// </summary>
+    public List<string>? StopSequences { get; init; }
 }
 
 /// <summary>

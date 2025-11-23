@@ -645,37 +645,43 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
         </div>
 
         {advancedMode && (
-          <div className={styles.formRow}>
-            <Field label="Aspect Ratio" className={styles.formField}>
-              <Dropdown
-                value={data.imageAspectRatio || '16:9'}
-                selectedOptions={[data.imageAspectRatio || '16:9']}
-                onOptionSelect={(_, option) => {
-                  if (option.optionValue) {
-                    handleStyleChange('imageAspectRatio', option.optionValue as string);
-                  }
-                }}
-              >
-                <Option value="16:9">16:9 (Widescreen)</Option>
-                <Option value="9:16">9:16 (Portrait)</Option>
-                <Option value="1:1">1:1 (Square)</Option>
-                <Option value="4:3">4:3 (Standard)</Option>
-              </Dropdown>
-            </Field>
+          <Card style={{ padding: tokens.spacingVerticalL, marginTop: tokens.spacingVerticalL }}>
+            <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>Advanced Visual Settings</Title3>
+            <div className={styles.formRow}>
+              <Field label="Aspect Ratio" className={styles.formField}>
+                <Dropdown
+                  value={data.imageAspectRatio || '16:9'}
+                  selectedOptions={[data.imageAspectRatio || '16:9']}
+                  onOptionSelect={(_, option) => {
+                    if (option.optionValue) {
+                      handleStyleChange('imageAspectRatio', option.optionValue as string);
+                    }
+                  }}
+                >
+                  <Option value="16:9">16:9 (Widescreen)</Option>
+                  <Option value="9:16">9:16 (Portrait)</Option>
+                  <Option value="1:1">1:1 (Square)</Option>
+                  <Option value="4:3">4:3 (Standard)</Option>
+                </Dropdown>
+              </Field>
 
-            <Field
-              label={`Image Quality: ${data.imageQuality || 80}%`}
-              className={styles.formField}
-            >
-              <Slider
-                value={data.imageQuality || 80}
-                min={50}
-                max={100}
-                step={10}
-                onChange={(_, sliderData) => handleStyleChange('imageQuality', sliderData.value)}
-              />
-            </Field>
-          </div>
+              <Field
+                label={`Image Quality: ${data.imageQuality || 80}%`}
+                className={styles.formField}
+              >
+                <Slider
+                  value={data.imageQuality || 80}
+                  min={50}
+                  max={100}
+                  step={10}
+                  onChange={(_, sliderData) => handleStyleChange('imageQuality', sliderData.value)}
+                />
+                <Text size={200} style={{ marginTop: tokens.spacingVerticalXS }}>
+                  Higher quality = better visuals but slower generation
+                </Text>
+              </Field>
+            </div>
+          </Card>
         )}
       </div>
 

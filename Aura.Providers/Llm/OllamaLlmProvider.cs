@@ -132,18 +132,34 @@ public class OllamaLlmProvider : ILlmProvider
                 
                 string prompt = $"{systemPrompt}\n\n{userPrompt}";
 
-                // Call Ollama API
+                // Get LLM parameters from brief, with defaults
+                var llmParams = brief.LlmParameters;
+                var temperature = llmParams?.Temperature ?? 0.7;
+                var maxTokens = llmParams?.MaxTokens ?? 2048;
+                var topP = llmParams?.TopP ?? 0.9;
+                var topK = llmParams?.TopK;
+
+                // Call Ollama API with proper format
+                // Ollama uses num_predict (not max_tokens) and supports top_k
+                // Ollama doesn't support frequency_penalty or presence_penalty
+                var options = new Dictionary<string, object>
+                {
+                    { "temperature", temperature },
+                    { "top_p", topP },
+                    { "num_predict", maxTokens }
+                };
+
+                if (topK.HasValue)
+                {
+                    options["top_k"] = topK.Value;
+                }
+
                 var requestBody = new
                 {
                     model = _model,
                     prompt = prompt,
                     stream = false,
-                    options = new
-                    {
-                        temperature = 0.7,
-                        top_p = 0.9,
-                        num_predict = 2048
-                    }
+                    options = options
                 };
 
                 var json = JsonSerializer.Serialize(requestBody);
@@ -156,14 +172,40 @@ public class OllamaLlmProvider : ILlmProvider
                 response.EnsureSuccessStatusCode();
 
                 var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-                var responseDoc = JsonDocument.Parse(responseJson);
+                
+                // Parse and validate response structure
+                JsonDocument? responseDoc = null;
+                try
+                {
+                    responseDoc = JsonDocument.Parse(responseJson);
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogError(ex, "Failed to parse Ollama JSON response: {Response}", responseJson.Substring(0, Math.Min(500, responseJson.Length)));
+                    throw new InvalidOperationException("Ollama returned invalid JSON response", ex);
+                }
+
+                // Check for errors in response
+                if (responseDoc.RootElement.TryGetProperty("error", out var errorElement))
+                {
+                    var errorMessage = errorElement.GetString() ?? "Unknown error";
+                    _logger.LogError("Ollama API error: {Error}", errorMessage);
+                    throw new InvalidOperationException($"Ollama API error: {errorMessage}");
+                }
 
                 if (responseDoc.RootElement.TryGetProperty("response", out var responseText))
                 {
                     string script = responseText.GetString() ?? string.Empty;
+                    
+                    if (string.IsNullOrWhiteSpace(script))
+                    {
+                        throw new InvalidOperationException("Ollama returned an empty response");
+                    }
+                    
                     var duration = DateTime.UtcNow - startTime;
                     
-                    _logger.LogInformation("Script generated successfully with Ollama ({Length} characters)", script.Length);
+                    _logger.LogInformation("Script generated successfully with Ollama ({Length} characters) in {Duration}s", 
+                        script.Length, duration.TotalSeconds);
                     
                     // Track performance if callback configured
                     PerformanceTrackingCallback?.Invoke(75.0, duration, true);
@@ -171,8 +213,9 @@ public class OllamaLlmProvider : ILlmProvider
                     return script;
                 }
 
-                _logger.LogWarning("Ollama response did not contain expected 'response' field");
-                throw new Exception("Invalid response from Ollama");
+                _logger.LogWarning("Ollama response did not contain expected 'response' field. Response: {Response}", 
+                    responseJson.Substring(0, Math.Min(500, responseJson.Length)));
+                throw new InvalidOperationException($"Invalid response structure from Ollama. Expected 'response' field but got: {responseJson.Substring(0, Math.Min(200, responseJson.Length))}");
             }
             catch (TaskCanceledException ex)
             {

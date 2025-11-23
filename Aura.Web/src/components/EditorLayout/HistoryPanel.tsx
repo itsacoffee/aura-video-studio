@@ -19,7 +19,7 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: tokens.spacingVerticalM,
+    padding: tokens.spacingVerticalL,
     gap: tokens.spacingHorizontalS,
   },
   title: {
@@ -40,7 +40,7 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     gap: tokens.spacingHorizontalS,
-    padding: tokens.spacingVerticalS,
+    padding: tokens.spacingVerticalM,
     cursor: 'pointer',
     borderRadius: tokens.borderRadiusMedium,
     transition: 'background-color 0.2s',
@@ -55,8 +55,9 @@ const useStyles = makeStyles({
     flex: 1,
   },
   historyItemTime: {
-    fontSize: tokens.fontSizeBase200,
-    color: tokens.colorNeutralForeground3,
+    fontSize: tokens.fontSizeBase300,
+    color: tokens.colorNeutralForeground2,
+    marginTop: tokens.spacingVerticalXXS,
   },
   emptyState: {
     display: 'flex',

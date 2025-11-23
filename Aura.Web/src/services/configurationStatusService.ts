@@ -281,7 +281,27 @@ class ConfigurationStatusService {
         throw new Error(`Status check failed: ${response.statusText}`);
       }
 
-      return await response.json();
+      const backendStatus = await response.json();
+
+      // CRITICAL FIX: Backend endpoint currently returns hardcoded false values
+      // Always use buildStatusFromChecks() which calls real endpoints to get actual status
+      // Only use backend response if it has real data (not all false)
+      const hasRealData = backendStatus.isConfigured ||
+                         backendStatus.checks?.ffmpegDetected ||
+                         backendStatus.checks?.providerConfigured ||
+                         (backendStatus.details?.configuredProviders?.length ?? 0) > 0;
+
+      if (!hasRealData) {
+        // Backend returned placeholder data, build from real checks
+        logger.info(
+          'Backend returned placeholder data, building status from real checks',
+          'configurationStatusService',
+          'fetchBackendStatus'
+        );
+        return await this.buildStatusFromChecks();
+      }
+
+      return backendStatus;
     } catch (error) {
       logger.warn(
         'Failed to fetch backend configuration status, building from checks',

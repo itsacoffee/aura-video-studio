@@ -20,18 +20,19 @@ const useStyles = makeStyles({
     overflow: 'hidden',
   },
   header: {
-    padding: tokens.spacingVerticalM,
+    padding: tokens.spacingVerticalL,
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
     backgroundColor: tokens.colorNeutralBackground1,
   },
   title: {
     fontWeight: tokens.fontWeightSemibold,
-    fontSize: tokens.fontSizeBase300,
+    fontSize: tokens.fontSizeBase500,
     marginBottom: tokens.spacingVerticalXS,
+    color: tokens.colorNeutralForeground1,
   },
   subtitle: {
-    fontSize: tokens.fontSizeBase200,
-    color: tokens.colorNeutralForeground3,
+    fontSize: tokens.fontSizeBase300,
+    color: tokens.colorNeutralForeground2,
   },
   tabContainer: {
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,

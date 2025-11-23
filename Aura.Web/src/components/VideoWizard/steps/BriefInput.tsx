@@ -465,7 +465,7 @@ export const BriefInput: FC<BriefInputProps> = ({
 
       {advancedMode && (
         <div className={styles.advancedSection}>
-          <Accordion collapsible>
+          <Accordion collapsible openItems={['advanced']}>
             <AccordionItem value="advanced">
               <AccordionHeader icon={<ChevronDown24Regular />} expandIconPosition="end">
                 <Title3>Advanced Options</Title3>

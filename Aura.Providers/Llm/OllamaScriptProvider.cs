@@ -96,17 +96,32 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
                     await Task.Delay(backoffDelay, cancellationToken).ConfigureAwait(false);
                 }
 
+                // Get LLM parameters from brief, with defaults
+                var llmParams = request.Brief.LlmParameters;
+                var temperature = request.TemperatureOverride ?? llmParams?.Temperature ?? 0.7;
+                var maxTokens = llmParams?.MaxTokens ?? 2048;
+                var topP = llmParams?.TopP ?? 0.9;
+                var topK = llmParams?.TopK;
+
+                // Ollama uses num_predict (not max_tokens) and supports top_k
+                var options = new Dictionary<string, object>
+                {
+                    { "temperature", temperature },
+                    { "top_p", topP },
+                    { "num_predict", maxTokens }
+                };
+
+                if (topK.HasValue)
+                {
+                    options["top_k"] = topK.Value;
+                }
+
                 var requestBody = new
                 {
                     model = model,
                     prompt = prompt,
                     stream = false,
-                    options = new
-                    {
-                        temperature = request.TemperatureOverride ?? 0.7,
-                        top_p = 0.9,
-                        num_predict = 2048
-                    }
+                    options = options
                 };
 
                 var json = JsonSerializer.Serialize(requestBody);

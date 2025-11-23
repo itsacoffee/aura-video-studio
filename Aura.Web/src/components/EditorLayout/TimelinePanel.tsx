@@ -54,16 +54,17 @@ const useStyles = makeStyles({
   toolbar: {
     display: 'flex',
     alignItems: 'center',
-    gap: 'var(--editor-space-md)',
-    padding: 'var(--editor-space-md)',
+    gap: 'var(--editor-space-lg)',
+    padding: 'var(--editor-space-md) var(--editor-space-lg)',
     borderBottom: `1px solid var(--editor-panel-border)`,
     backgroundColor: 'var(--editor-panel-header-bg)',
     flexWrap: 'wrap',
+    minHeight: '48px',
   },
   toolbarGroup: {
     display: 'flex',
     alignItems: 'center',
-    gap: 'var(--editor-space-sm)',
+    gap: 'var(--editor-space-md)',
   },
   timelineContainer: {
     flex: 1,
@@ -101,9 +102,12 @@ const useStyles = makeStyles({
     zIndex: 'var(--editor-z-panel)',
   },
   trackLabelText: {
-    fontSize: 'var(--editor-font-size-sm)',
+    fontSize: 'var(--editor-font-size-base)',
     fontWeight: 'var(--editor-font-weight-semibold)',
     color: 'var(--editor-text-primary)',
+    whiteSpace: 'nowrap',
+    overflow: 'visible',
+    textOverflow: 'clip',
   },
   trackControls: {
     display: 'flex',

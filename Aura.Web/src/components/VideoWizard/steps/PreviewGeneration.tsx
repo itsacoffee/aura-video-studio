@@ -857,12 +857,27 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
       </div>
 
       {advancedMode && (
-        <Card style={{ padding: tokens.spacingVerticalL }}>
-          <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>Advanced Options</Title3>
-          <Text size={300}>
-            Previews use lower quality settings for faster generation. Final video will use full
-            quality settings.
-          </Text>
+        <Card style={{ padding: tokens.spacingVerticalL, marginTop: tokens.spacingVerticalL }}>
+          <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>Advanced Preview Options</Title3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
+            <Text size={300}>
+              Previews use lower quality settings for faster generation. Final video will use full
+              quality settings.
+            </Text>
+            <Field label="Preview Quality" hint="Lower quality = faster preview generation">
+              <Dropdown value="standard" disabled>
+                <Option value="standard">Standard (Fast)</Option>
+                <Option value="high">High (Slower)</Option>
+              </Dropdown>
+            </Field>
+            <Field label="Preview Count" hint="Number of scenes to preview">
+              <Dropdown value="all" disabled>
+                <Option value="all">All Scenes</Option>
+                <Option value="first3">First 3 Scenes</Option>
+                <Option value="key">Key Scenes Only</Option>
+              </Dropdown>
+            </Field>
+          </div>
         </Card>
       )}
 

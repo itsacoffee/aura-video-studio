@@ -38,8 +38,9 @@ const useStyles = makeStyles({
     transition: 'transform 0.2s ease',
   },
   placeholder: {
-    color: tokens.colorNeutralForeground3,
-    fontSize: tokens.fontSizeBase500,
+    color: tokens.colorNeutralForeground2,
+    fontSize: tokens.fontSizeBase600,
+    fontWeight: tokens.fontWeightMedium,
   },
 });
 

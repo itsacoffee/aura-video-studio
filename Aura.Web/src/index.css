@@ -646,3 +646,97 @@ select:focus {
 .footer-enter {
   animation: slideUp var(--duration-normal) ease-out;
 }
+
+/* ==================== HIGH CONTRAST FIXES FOR SLIDERS, RADIO BUTTONS, AND DIVIDERS ==================== */
+/* Ensure all sliders are visible with high contrast */
+[class*="fui-Slider"],
+.fui-Slider,
+[role="slider"] {
+  --fui-slider-rail-background: rgba(255, 255, 255, 0.3) !important;
+  --fui-slider-rail-background-hover: rgba(255, 255, 255, 0.5) !important;
+  --fui-slider-thumb-background: #ffffff !important;
+  --fui-slider-thumb-border: #ffffff !important;
+  --fui-slider-thumb-background-hover: #ffffff !important;
+  --fui-slider-thumb-background-active: #ffffff !important;
+  --fui-slider-thumb-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3) !important;
+}
+
+.dark [class*="fui-Slider"],
+.dark .fui-Slider,
+.dark [role="slider"] {
+  --fui-slider-rail-background: rgba(255, 255, 255, 0.2) !important;
+  --fui-slider-rail-background-hover: rgba(255, 255, 255, 0.4) !important;
+  --fui-slider-thumb-background: #ffffff !important;
+  --fui-slider-thumb-border: #ffffff !important;
+  --fui-slider-thumb-background-hover: #ffffff !important;
+  --fui-slider-thumb-background-active: #ffffff !important;
+  --fui-slider-thumb-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Ensure radio buttons are visible with high contrast */
+[class*="fui-Radio"],
+.fui-Radio,
+[role="radio"],
+input[type="radio"] {
+  --fui-radio-checked-indicator-background: #ffffff !important;
+  --fui-radio-checked-indicator-border: #ffffff !important;
+  --fui-radio-indicator-border: rgba(255, 255, 255, 0.6) !important;
+  --fui-radio-indicator-border-hover: rgba(255, 255, 255, 0.8) !important;
+  border-color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.dark [class*="fui-Radio"],
+.dark .fui-Radio,
+.dark [role="radio"],
+.dark input[type="radio"] {
+  --fui-radio-checked-indicator-background: #ffffff !important;
+  --fui-radio-checked-indicator-border: #ffffff !important;
+  --fui-radio-indicator-border: rgba(255, 255, 255, 0.7) !important;
+  --fui-radio-indicator-border-hover: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Ensure dividers are visible with high contrast */
+[class*="fui-Divider"],
+.fui-Divider,
+hr {
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  background-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.dark [class*="fui-Divider"],
+.dark .fui-Divider,
+.dark hr {
+  border-color: rgba(255, 255, 255, 0.4) !important;
+  background-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* Additional slider rail visibility */
+[class*="fui-Slider"] [class*="rail"],
+.fui-Slider [class*="rail"] {
+  background-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.dark [class*="fui-Slider"] [class*="rail"],
+.dark .fui-Slider [class*="rail"] {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Slider thumb visibility */
+[class*="fui-Slider"] [class*="thumb"],
+.fui-Slider [class*="thumb"],
+[class*="fui-Slider"] [class*="slider-thumb"],
+.fui-Slider [class*="slider-thumb"] {
+  background-color: #ffffff !important;
+  border: 2px solid #ffffff !important;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3) !important;
+}
+
+.dark [class*="fui-Slider"] [class*="thumb"],
+.dark .fui-Slider [class*="thumb"],
+.dark [class*="fui-Slider"] [class*="slider-thumb"],
+.dark .fui-Slider [class*="slider-thumb"] {
+  background-color: #ffffff !important;
+  border: 2px solid #ffffff !important;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5) !important;
+}

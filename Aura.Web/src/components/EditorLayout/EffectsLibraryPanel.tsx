@@ -35,13 +35,14 @@ const useStyles = makeStyles({
     overflow: 'hidden',
   },
   header: {
-    padding: tokens.spacingVerticalM,
+    padding: tokens.spacingVerticalL,
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
     backgroundColor: tokens.colorNeutralBackground3,
   },
   title: {
-    fontSize: tokens.fontSizeBase400,
+    fontSize: tokens.fontSizeBase500,
     fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground1,
   },
   searchContainer: {
     padding: tokens.spacingVerticalM,
@@ -81,12 +82,17 @@ const useStyles = makeStyles({
     gap: tokens.spacingVerticalXXS,
   },
   effectName: {
-    fontSize: tokens.fontSizeBase300,
+    fontSize: tokens.fontSizeBase400,
     fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground1,
+    whiteSpace: 'nowrap',
+    overflow: 'visible',
+    textOverflow: 'clip',
   },
   effectDescription: {
-    fontSize: tokens.fontSizeBase200,
-    color: tokens.colorNeutralForeground3,
+    fontSize: tokens.fontSizeBase300,
+    color: tokens.colorNeutralForeground2,
+    lineHeight: 1.4,
   },
   presetItem: {
     display: 'flex',

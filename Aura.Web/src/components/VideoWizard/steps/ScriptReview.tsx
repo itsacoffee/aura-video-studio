@@ -24,6 +24,8 @@ import {
   Label,
   Checkbox,
   Input,
+  Dropdown,
+  Option,
 } from '@fluentui/react-components';
 import {
   Sparkle24Regular,
@@ -255,6 +257,7 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
   data,
   briefData,
   styleData,
+  advancedMode,
   onChange,
   onValidationChange,
 }) => {
@@ -283,6 +286,116 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
   const [showSplitDialog, setShowSplitDialog] = useState(false);
   const [splitSceneNumber, setSplitSceneNumber] = useState<number | null>(null);
   const [splitPosition, setSplitPosition] = useState('');
+  // Advanced LLM parameters
+  const [llmTemperature, setLlmTemperature] = useState<number | undefined>(undefined);
+  const [llmTopP, setLlmTopP] = useState<number | undefined>(undefined);
+  const [llmTopK, setLlmTopK] = useState<number | undefined>(undefined);
+  const [llmMaxTokens, setLlmMaxTokens] = useState<number | undefined>(undefined);
+  const [llmFrequencyPenalty, setLlmFrequencyPenalty] = useState<number | undefined>(undefined);
+  const [llmPresencePenalty, setLlmPresencePenalty] = useState<number | undefined>(undefined);
+
+  // Helper function to determine provider parameter support
+  const getProviderParameterSupport = (providerName: string | undefined) => {
+    if (!providerName || providerName === 'Auto') {
+      // Default to most permissive settings when Auto is selected
+      return {
+        supportsTemperature: true,
+        supportsTopP: true,
+        supportsTopK: true,
+        supportsMaxTokens: true,
+        supportsFrequencyPenalty: true,
+        supportsPresencePenalty: true,
+        maxTokensLimit: 4000,
+        temperatureRange: { min: 0, max: 2 },
+      };
+    }
+
+    const name = providerName.toLowerCase();
+    
+    // OpenAI and Azure OpenAI
+    if (name.includes('openai') || name.includes('azure')) {
+      return {
+        supportsTemperature: true,
+        supportsTopP: true,
+        supportsTopK: false,
+        supportsMaxTokens: true,
+        supportsFrequencyPenalty: true,
+        supportsPresencePenalty: true,
+        maxTokensLimit: 4096, // GPT-4 context window
+        temperatureRange: { min: 0, max: 2 },
+      };
+    }
+    
+    // Anthropic Claude
+    if (name.includes('anthropic') || name.includes('claude')) {
+      return {
+        supportsTemperature: true,
+        supportsTopP: true,
+        supportsTopK: false,
+        supportsMaxTokens: true,
+        supportsFrequencyPenalty: false,
+        supportsPresencePenalty: false,
+        maxTokensLimit: 4096, // Claude context window
+        temperatureRange: { min: 0, max: 1 },
+      };
+    }
+    
+    // Google Gemini
+    if (name.includes('gemini') || name.includes('google')) {
+      return {
+        supportsTemperature: true,
+        supportsTopP: true,
+        supportsTopK: true,
+        supportsMaxTokens: true,
+        supportsFrequencyPenalty: false,
+        supportsPresencePenalty: false,
+        maxTokensLimit: 8192, // Gemini context window
+        temperatureRange: { min: 0, max: 2 },
+      };
+    }
+    
+    // Ollama (local models)
+    if (name.includes('ollama') || name.includes('local')) {
+      return {
+        supportsTemperature: true,
+        supportsTopP: true,
+        supportsTopK: true,
+        supportsMaxTokens: true,
+        supportsFrequencyPenalty: false,
+        supportsPresencePenalty: false,
+        maxTokensLimit: 2048, // Conservative limit for local models
+        temperatureRange: { min: 0, max: 2 },
+      };
+    }
+    
+    // RuleBased (template-based, no real LLM)
+    if (name.includes('rule') || name.includes('template')) {
+      return {
+        supportsTemperature: false,
+        supportsTopP: false,
+        supportsTopK: false,
+        supportsMaxTokens: false,
+        supportsFrequencyPenalty: false,
+        supportsPresencePenalty: false,
+        maxTokensLimit: 0,
+        temperatureRange: { min: 0, max: 0 },
+      };
+    }
+    
+    // Default: support all parameters
+    return {
+      supportsTemperature: true,
+      supportsTopP: true,
+      supportsTopK: true,
+      supportsMaxTokens: true,
+      supportsFrequencyPenalty: true,
+      supportsPresencePenalty: true,
+      maxTokensLimit: 4000,
+      temperatureRange: { min: 0, max: 2 },
+    };
+  };
+
+  const paramSupport = getProviderParameterSupport(selectedProvider);
   const [draggedSceneIndex, setDraggedSceneIndex] = useState<number | null>(null);
   const [isMerging, setIsMerging] = useState(false);
   const [isSplitting, setIsSplitting] = useState(false);
@@ -343,6 +456,13 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
         density: 'Balanced',
         style: styleData?.visualStyle || 'Modern',
         preferredProvider: selectedProvider,
+        // Advanced LLM parameters (only include if explicitly set)
+        ...(llmTemperature !== undefined && { temperature: llmTemperature }),
+        ...(llmTopP !== undefined && { topP: llmTopP }),
+        ...(llmTopK !== undefined && { topK: llmTopK }),
+        ...(llmMaxTokens !== undefined && { maxTokens: llmMaxTokens }),
+        ...(llmFrequencyPenalty !== undefined && { frequencyPenalty: llmFrequencyPenalty }),
+        ...(llmPresencePenalty !== undefined && { presencePenalty: llmPresencePenalty }),
       });
 
       setGeneratedScript(response);
@@ -865,28 +985,58 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
         <div className={styles.header}>
           <Title2>Script Review</Title2>
           <div className={styles.headerActions}>
-            <div className={styles.providerSelect}>
-              <Text size={200}>Provider:</Text>
-              {providers.length > 0 && (
-                <Badge
-                  appearance="outline"
-                  color={
-                    providers.find((p) => p.name === selectedProvider)?.isAvailable
-                      ? 'success'
-                      : 'warning'
-                  }
+            <Field label="LLM Provider" className={styles.providerSelect}>
+              {providers.length > 0 ? (
+                <Dropdown
+                  value={selectedProvider || 'Auto'}
+                  onOptionSelect={(_, data) => {
+                    if (data.optionValue) {
+                      setSelectedProvider(data.optionValue);
+                    }
+                  }}
+                  className={styles.providerDropdown}
+                  placeholder="Select provider..."
                 >
-                  {selectedProvider || 'Auto'}
-                </Badge>
+                  <Option value="Auto" text="Auto (Best Available)">
+                    Auto (Best Available)
+                  </Option>
+                  {providers.map((provider) => (
+                    <Option
+                      key={provider.name}
+                      value={provider.name}
+                      text={`${provider.name}${provider.isAvailable ? '' : ' (Unavailable)'}`}
+                      disabled={!provider.isAvailable}
+                    >
+                      <div className={styles.providerInfo}>
+                        <Text weight="semibold">
+                          {provider.name}
+                          {!provider.isAvailable && (
+                            <Text size={200} style={{ color: tokens.colorPaletteRedForeground1 }}>
+                              {' '}
+                              (Unavailable)
+                            </Text>
+                          )}
+                        </Text>
+                        <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                          {provider.tier} • {provider.requiresInternet ? 'Cloud' : 'Local'}
+                          {provider.estimatedCostPer1KTokens > 0 &&
+                            ` • ~$${provider.estimatedCostPer1KTokens.toFixed(4)}/1K tokens`}
+                        </Text>
+                      </div>
+                    </Option>
+                  ))}
+                </Dropdown>
+              ) : (
+                <Spinner size="tiny" />
               )}
-            </div>
+            </Field>
             <Button
               appearance="primary"
               icon={<Sparkle24Regular />}
               onClick={handleGenerateScript}
-              disabled={!briefData.topic}
+              disabled={!briefData.topic || isGenerating}
             >
-              Generate Script
+              {isGenerating ? 'Generating...' : 'Generate Script'}
             </Button>
           </div>
         </div>
@@ -1062,7 +1212,245 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
             {generatedScript.metadata.providerName}
           </Badge>
         </div>
+        {advancedMode && generatedScript.metadata && (
+          <>
+            <div className={styles.stat}>
+              <Text className={styles.statLabel}>Model</Text>
+              <Text className={styles.statValue}>{generatedScript.metadata.modelUsed || 'N/A'}</Text>
+            </div>
+            <div className={styles.stat}>
+              <Text className={styles.statLabel}>Tokens</Text>
+              <Text className={styles.statValue}>
+                {generatedScript.metadata.tokensUsed?.toLocaleString() || 'N/A'}
+              </Text>
+            </div>
+            {generatedScript.metadata.estimatedCost !== undefined && (
+              <div className={styles.stat}>
+                <Text className={styles.statLabel}>Cost</Text>
+                <Text className={styles.statValue}>
+                  ${generatedScript.metadata.estimatedCost.toFixed(4)}
+                </Text>
+              </div>
+            )}
+            {generatedScript.metadata.generationTimeSeconds !== undefined && (
+              <div className={styles.stat}>
+                <Text className={styles.statLabel}>Generation Time</Text>
+                <Text className={styles.statValue}>
+                  {generatedScript.metadata.generationTimeSeconds.toFixed(1)}s
+                </Text>
+              </div>
+            )}
+          </>
+        )}
       </div>
+
+      {/* Advanced Mode: LLM Parameters */}
+      {advancedMode && (
+        <Card style={{ padding: tokens.spacingVerticalL, marginBottom: tokens.spacingVerticalL }}>
+          <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>Advanced LLM Parameters</Title3>
+          <Text size={300} style={{ marginBottom: tokens.spacingVerticalM, color: tokens.colorNeutralForeground3 }}>
+            Fine-tune LLM generation parameters for more dynamic and customized results. These settings override default values.
+            {selectedProvider && selectedProvider !== 'Auto' && (
+              <Text size={200} style={{ display: 'block', marginTop: tokens.spacingVerticalXS, color: tokens.colorNeutralForeground2 }}>
+                Provider: <Text weight="semibold">{selectedProvider}</Text> - Only supported parameters are shown below.
+              </Text>
+            )}
+          </Text>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: tokens.spacingVerticalL }}>
+            {paramSupport.supportsTemperature && (
+              <div className={styles.sliderGroup}>
+                <Label>
+                  Temperature: {llmTemperature !== undefined ? llmTemperature.toFixed(2) : 'Auto'}
+                </Label>
+                <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                  Controls randomness ({paramSupport.temperatureRange.min} = deterministic, {paramSupport.temperatureRange.max} = very creative)
+                </Text>
+                <Slider
+                  min={paramSupport.temperatureRange.min}
+                  max={paramSupport.temperatureRange.max}
+                  step={0.1}
+                  value={llmTemperature ?? 0.7}
+                  onChange={(_, data) => setLlmTemperature(data.value === 0.7 ? undefined : data.value)}
+                  style={{ 
+                    '--fui-slider-thumb-background': tokens.colorBrandForeground1,
+                    '--fui-slider-rail-background': tokens.colorNeutralStroke1,
+                    '--fui-slider-rail-background-hover': tokens.colorNeutralStroke2,
+                  } as React.CSSProperties}
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: tokens.spacingVerticalXS }}>
+                  <Text size={200}>{paramSupport.temperatureRange.min}</Text>
+                  <Text size={200}>{paramSupport.temperatureRange.max}</Text>
+                </div>
+              </div>
+            )}
+
+            {paramSupport.supportsTopP && (
+              <div className={styles.sliderGroup}>
+                <Label>
+                  Top P: {llmTopP !== undefined ? llmTopP.toFixed(2) : 'Auto'}
+                </Label>
+                <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                  Nucleus sampling - controls diversity of tokens considered
+                </Text>
+                <Slider
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={llmTopP ?? 0.9}
+                  onChange={(_, data) => setLlmTopP(data.value === 0.9 ? undefined : data.value)}
+                  style={{ 
+                    '--fui-slider-thumb-background': tokens.colorBrandForeground1,
+                    '--fui-slider-rail-background': tokens.colorNeutralStroke1,
+                    '--fui-slider-rail-background-hover': tokens.colorNeutralStroke2,
+                  } as React.CSSProperties}
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: tokens.spacingVerticalXS }}>
+                  <Text size={200}>0.0</Text>
+                  <Text size={200}>1.0</Text>
+                </div>
+              </div>
+            )}
+
+            {paramSupport.supportsTopK && (
+              <div className={styles.sliderGroup}>
+                <Label>
+                  Top K: {llmTopK !== undefined ? llmTopK : 'Auto'}
+                </Label>
+                <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                  Limits sampling to top K tokens (Gemini, Ollama only)
+                </Text>
+                <Slider
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={llmTopK ?? 40}
+                  onChange={(_, data) => setLlmTopK(data.value === 40 ? undefined : data.value)}
+                  style={{ 
+                    '--fui-slider-thumb-background': tokens.colorBrandForeground1,
+                    '--fui-slider-rail-background': tokens.colorNeutralStroke1,
+                    '--fui-slider-rail-background-hover': tokens.colorNeutralStroke2,
+                  } as React.CSSProperties}
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: tokens.spacingVerticalXS }}>
+                  <Text size={200}>0</Text>
+                  <Text size={200}>100</Text>
+                </div>
+              </div>
+            )}
+
+            {paramSupport.supportsMaxTokens && (
+              <div className={styles.sliderGroup}>
+                <Label>
+                  Max Tokens: {llmMaxTokens !== undefined ? llmMaxTokens.toLocaleString() : 'Auto'}
+                </Label>
+                <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                  Maximum tokens to generate (limit: {paramSupport.maxTokensLimit.toLocaleString()})
+                </Text>
+                <Slider
+                  min={100}
+                  max={paramSupport.maxTokensLimit}
+                  step={paramSupport.maxTokensLimit > 2000 ? 100 : 50}
+                  value={llmMaxTokens ?? Math.min(2000, paramSupport.maxTokensLimit)}
+                  onChange={(_, data) => {
+                    const defaultValue = Math.min(2000, paramSupport.maxTokensLimit);
+                    setLlmMaxTokens(data.value === defaultValue ? undefined : data.value);
+                  }}
+                  style={{ 
+                    '--fui-slider-thumb-background': tokens.colorBrandForeground1,
+                    '--fui-slider-rail-background': tokens.colorNeutralStroke1,
+                    '--fui-slider-rail-background-hover': tokens.colorNeutralStroke2,
+                  } as React.CSSProperties}
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: tokens.spacingVerticalXS }}>
+                  <Text size={200}>100</Text>
+                  <Text size={200}>{paramSupport.maxTokensLimit.toLocaleString()}</Text>
+                </div>
+              </div>
+            )}
+
+            {paramSupport.supportsFrequencyPenalty && (
+              <div className={styles.sliderGroup}>
+                <Label>
+                  Frequency Penalty: {llmFrequencyPenalty !== undefined ? llmFrequencyPenalty.toFixed(2) : 'Auto'}
+                </Label>
+                <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                  Reduces repetition (OpenAI/Azure only)
+                </Text>
+                <Slider
+                  min={-2}
+                  max={2}
+                  step={0.1}
+                  value={llmFrequencyPenalty ?? 0}
+                  onChange={(_, data) => setLlmFrequencyPenalty(data.value === 0 ? undefined : data.value)}
+                  style={{ 
+                    '--fui-slider-thumb-background': tokens.colorBrandForeground1,
+                    '--fui-slider-rail-background': tokens.colorNeutralStroke1,
+                    '--fui-slider-rail-background-hover': tokens.colorNeutralStroke2,
+                  } as React.CSSProperties}
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: tokens.spacingVerticalXS }}>
+                  <Text size={200}>-2.0</Text>
+                  <Text size={200}>2.0</Text>
+                </div>
+              </div>
+            )}
+
+            {paramSupport.supportsPresencePenalty && (
+              <div className={styles.sliderGroup}>
+                <Label>
+                  Presence Penalty: {llmPresencePenalty !== undefined ? llmPresencePenalty.toFixed(2) : 'Auto'}
+                </Label>
+                <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                  Encourages new topics (OpenAI/Azure only)
+                </Text>
+                <Slider
+                  min={-2}
+                  max={2}
+                  step={0.1}
+                  value={llmPresencePenalty ?? 0}
+                  onChange={(_, data) => setLlmPresencePenalty(data.value === 0 ? undefined : data.value)}
+                  style={{ 
+                    '--fui-slider-thumb-background': tokens.colorBrandForeground1,
+                    '--fui-slider-rail-background': tokens.colorNeutralStroke1,
+                    '--fui-slider-rail-background-hover': tokens.colorNeutralStroke2,
+                  } as React.CSSProperties}
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: tokens.spacingVerticalXS }}>
+                  <Text size={200}>-2.0</Text>
+                  <Text size={200}>2.0</Text>
+                </div>
+              </div>
+            )}
+
+            {!paramSupport.supportsTemperature && !paramSupport.supportsTopP && !paramSupport.supportsTopK && (
+              <div style={{ gridColumn: '1 / -1', padding: tokens.spacingVerticalM, backgroundColor: tokens.colorNeutralBackground2, borderRadius: tokens.borderRadiusMedium }}>
+                <Text size={300} weight="semibold" style={{ color: tokens.colorNeutralForeground2 }}>
+                  {selectedProvider === 'RuleBased' || selectedProvider?.toLowerCase().includes('rule') 
+                    ? 'Rule-based provider does not support LLM parameters. It uses template-based generation.'
+                    : 'No advanced parameters available for this provider.'}
+                </Text>
+              </div>
+            )}
+          </div>
+          {(paramSupport.supportsTemperature || paramSupport.supportsTopP || paramSupport.supportsTopK || paramSupport.supportsMaxTokens) && (
+            <Button
+              appearance="subtle"
+              size="small"
+              onClick={() => {
+                setLlmTemperature(undefined);
+                setLlmTopP(undefined);
+                setLlmTopK(undefined);
+                setLlmMaxTokens(undefined);
+                setLlmFrequencyPenalty(undefined);
+                setLlmPresencePenalty(undefined);
+              }}
+              style={{ marginTop: tokens.spacingVerticalM }}
+            >
+              Reset to Defaults
+            </Button>
+          )}
+        </Card>
+      )}
 
       {/* Bulk Actions Toolbar */}
       <div className={styles.bulkActions}>

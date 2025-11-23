@@ -114,19 +114,28 @@ public class AnthropicLlmProvider : ILlmProvider
                 string systemPrompt = EnhancedPromptTemplates.GetSystemPromptForScriptGeneration();
                 string userPrompt = _promptCustomizationService.BuildCustomizedPrompt(brief, spec, brief.PromptModifiers);
 
+                // Get LLM parameters from brief, with defaults
+                var llmParams = brief.LlmParameters;
+                var temperature = llmParams?.Temperature ?? 0.8;
+                var maxTokens = llmParams?.MaxTokens ?? 4096;
+                var topP = llmParams?.TopP ?? 0.95;
+                var stopSequences = llmParams?.StopSequences ?? new List<string> { "\n\nHuman:", "\n\nAssistant:" };
+
                 // Anthropic uses separate system parameter (not in messages)
-                var requestBody = new
+                // Note: Anthropic doesn't support frequency_penalty or presence_penalty
+                var requestBody = new Dictionary<string, object>
                 {
-                    model = _model,
-                    max_tokens = 4096,
-                    temperature = 0.8,
-                    top_p = 0.95,
-                    system = systemPrompt,
-                    messages = new[]
-                    {
-                        new { role = "user", content = userPrompt }
+                    { "model", _model },
+                    { "max_tokens", maxTokens },
+                    { "temperature", temperature },
+                    { "top_p", topP },
+                    { "system", systemPrompt },
+                    { "messages", new[]
+                        {
+                            new { role = "user", content = userPrompt }
+                        }
                     },
-                    stop_sequences = new[] { "\n\nHuman:", "\n\nAssistant:" }
+                    { "stop_sequences", stopSequences }
                 };
 
                 _httpClient.DefaultRequestHeaders.Clear();
@@ -190,7 +199,31 @@ public class AnthropicLlmProvider : ILlmProvider
                 }
 
                 var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-                var responseDoc = JsonDocument.Parse(responseJson);
+                
+                // Parse and validate response structure
+                JsonDocument? responseDoc = null;
+                try
+                {
+                    responseDoc = JsonDocument.Parse(responseJson);
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogError(ex, "Failed to parse Anthropic JSON response: {Response}", responseJson.Substring(0, Math.Min(500, responseJson.Length)));
+                    throw new InvalidOperationException("Anthropic returned invalid JSON response", ex);
+                }
+
+                // Check for API errors in response
+                if (responseDoc.RootElement.TryGetProperty("error", out var errorElement))
+                {
+                    var errorMessage = errorElement.TryGetProperty("message", out var msg) 
+                        ? msg.GetString() ?? "Unknown error" 
+                        : "API error";
+                    var errorType = errorElement.TryGetProperty("type", out var type) 
+                        ? type.GetString() ?? "unknown" 
+                        : "unknown";
+                    _logger.LogError("Anthropic API error: {Type} - {Message}", errorType, errorMessage);
+                    throw new InvalidOperationException($"Anthropic API error: {errorMessage}");
+                }
 
                 if (responseDoc.RootElement.TryGetProperty("content", out var contentArray) &&
                     contentArray.GetArrayLength() > 0)
@@ -214,8 +247,9 @@ public class AnthropicLlmProvider : ILlmProvider
                     }
                 }
 
-                _logger.LogWarning("Anthropic response did not contain expected structure");
-                throw new InvalidOperationException("Invalid response structure from Anthropic API");
+                _logger.LogWarning("Anthropic response did not contain expected structure. Response: {Response}", 
+                    responseJson.Substring(0, Math.Min(500, responseJson.Length)));
+                throw new InvalidOperationException($"Invalid response structure from Anthropic API. Expected 'content[0].text' but got: {responseJson.Substring(0, Math.Min(200, responseJson.Length))}");
             }
             catch (TaskCanceledException ex)
             {

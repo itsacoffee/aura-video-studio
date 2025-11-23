@@ -344,8 +344,12 @@ export const FinalExport: FC<FinalExportProps> = ({
       </Card>
 
       {advancedMode && (
-        <div className={styles.batchExportSection}>
-          <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>Batch Export</Title3>
+        <Card style={{ padding: tokens.spacingVerticalL, marginTop: tokens.spacingVerticalL }}>
+          <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>Advanced Export Options</Title3>
+          <div className={styles.batchExportSection}>
+            <Title3 style={{ marginBottom: tokens.spacingVerticalM, fontSize: tokens.fontSizeBase400 }}>
+              Batch Export
+            </Title3>
           <Checkbox
             label="Export to multiple formats"
             checked={batchExport}
@@ -368,7 +372,8 @@ export const FinalExport: FC<FinalExportProps> = ({
               ))}
             </div>
           )}
-        </div>
+          </div>
+        </Card>
       )}
 
       <div className={styles.estimateCard}>

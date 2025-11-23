@@ -6,6 +6,18 @@ using Aura.Core.Models.RAG;
 namespace Aura.Core.Models;
 
 /// <summary>
+/// LLM generation parameters for fine-tuning model behavior
+/// </summary>
+public record LlmParameters(
+    double? Temperature = null,
+    double? TopP = null,
+    int? TopK = null,
+    int? MaxTokens = null,
+    double? FrequencyPenalty = null,
+    double? PresencePenalty = null,
+    List<string>? StopSequences = null);
+
+/// <summary>
 /// Brief configuration for video generation with optional prompt customization
 /// Supports both simple string-based audience and rich structured AudienceProfile
 /// </summary>
@@ -18,7 +30,8 @@ public record Brief(
     Aspect Aspect,
     PromptModifiers? PromptModifiers = null,
     AudienceProfile? AudienceProfile = null,
-    RagConfiguration? RagConfiguration = null);
+    RagConfiguration? RagConfiguration = null,
+    LlmParameters? LlmParameters = null);
 
 /// <summary>
 /// User customization options for prompt engineering

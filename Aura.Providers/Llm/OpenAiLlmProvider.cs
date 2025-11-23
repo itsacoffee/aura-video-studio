@@ -133,18 +133,46 @@ public class OpenAiLlmProvider : ILlmProvider
                     userPrompt = await PromptEnhancementCallback(userPrompt, brief, spec).ConfigureAwait(false);
                 }
 
-                // Call OpenAI API
-                var requestBody = new
+                // Get LLM parameters from brief, with defaults
+                var llmParams = brief.LlmParameters;
+                var temperature = llmParams?.Temperature ?? 0.7;
+                var maxTokens = llmParams?.MaxTokens ?? 2048;
+                var topP = llmParams?.TopP;
+                var frequencyPenalty = llmParams?.FrequencyPenalty;
+                var presencePenalty = llmParams?.PresencePenalty;
+                var stopSequences = llmParams?.StopSequences;
+
+                // Call OpenAI API with proper format
+                var requestBody = new Dictionary<string, object>
                 {
-                    model = _model,
-                    messages = new[]
-                    {
-                        new { role = "system", content = systemPrompt },
-                        new { role = "user", content = userPrompt }
+                    { "model", _model },
+                    { "messages", new[]
+                        {
+                            new { role = "system", content = systemPrompt },
+                            new { role = "user", content = userPrompt }
+                        }
                     },
-                    temperature = 0.7,
-                    max_tokens = 2048
+                    { "temperature", temperature },
+                    { "max_tokens", maxTokens }
                 };
+
+                // Add optional parameters only if provided
+                if (topP.HasValue)
+                {
+                    requestBody["top_p"] = topP.Value;
+                }
+                if (frequencyPenalty.HasValue)
+                {
+                    requestBody["frequency_penalty"] = frequencyPenalty.Value;
+                }
+                if (presencePenalty.HasValue)
+                {
+                    requestBody["presence_penalty"] = presencePenalty.Value;
+                }
+                if (stopSequences != null && stopSequences.Count > 0)
+                {
+                    requestBody["stop"] = stopSequences;
+                }
 
                 _httpClient.DefaultRequestHeaders.Clear();
                 _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
@@ -194,7 +222,31 @@ public class OpenAiLlmProvider : ILlmProvider
                 }
 
                 var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-                var responseDoc = JsonDocument.Parse(responseJson);
+                
+                // Parse and validate response structure
+                JsonDocument? responseDoc = null;
+                try
+                {
+                    responseDoc = JsonDocument.Parse(responseJson);
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogError(ex, "Failed to parse OpenAI JSON response: {Response}", responseJson.Substring(0, Math.Min(500, responseJson.Length)));
+                    throw new InvalidOperationException("OpenAI returned invalid JSON response", ex);
+                }
+
+                // Check for API errors in response
+                if (responseDoc.RootElement.TryGetProperty("error", out var errorElement))
+                {
+                    var errorMessage = errorElement.TryGetProperty("message", out var msg) 
+                        ? msg.GetString() ?? "Unknown error" 
+                        : "API error";
+                    var errorType = errorElement.TryGetProperty("type", out var type) 
+                        ? type.GetString() ?? "unknown" 
+                        : "unknown";
+                    _logger.LogError("OpenAI API error: {Type} - {Message}", errorType, errorMessage);
+                    throw new InvalidOperationException($"OpenAI API error: {errorMessage}");
+                }
 
                 if (responseDoc.RootElement.TryGetProperty("choices", out var choices) &&
                     choices.GetArrayLength() > 0)
@@ -222,10 +274,11 @@ public class OpenAiLlmProvider : ILlmProvider
                     }
                 }
 
-                _logger.LogWarning("OpenAI response did not contain expected structure");
+                _logger.LogWarning("OpenAI response did not contain expected structure. Response: {Response}", 
+                    responseJson.Substring(0, Math.Min(500, responseJson.Length)));
                 var failureDuration = DateTime.UtcNow - startTime;
                 PerformanceTrackingCallback?.Invoke(0, failureDuration, false);
-                throw new InvalidOperationException("Invalid response structure from OpenAI API");
+                throw new InvalidOperationException($"Invalid response structure from OpenAI API. Expected 'choices[0].message.content' but got: {responseJson.Substring(0, Math.Min(200, responseJson.Length))}");
             }
             catch (TaskCanceledException ex)
             {

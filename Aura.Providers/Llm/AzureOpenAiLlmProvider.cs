@@ -130,17 +130,45 @@ public class AzureOpenAiLlmProvider : ILlmProvider
                 string systemPrompt = EnhancedPromptTemplates.GetSystemPromptForScriptGeneration();
                 string userPrompt = _promptCustomizationService.BuildCustomizedPrompt(brief, spec, brief.PromptModifiers);
 
-                // Call Azure OpenAI API
-                var requestBody = new
+                // Get LLM parameters from brief, with defaults
+                var llmParams = brief.LlmParameters;
+                var temperature = llmParams?.Temperature ?? 0.7;
+                var maxTokens = llmParams?.MaxTokens ?? 2048;
+                var topP = llmParams?.TopP;
+                var frequencyPenalty = llmParams?.FrequencyPenalty;
+                var presencePenalty = llmParams?.PresencePenalty;
+                var stopSequences = llmParams?.StopSequences;
+
+                // Call Azure OpenAI API with proper format (same as OpenAI)
+                var requestBody = new Dictionary<string, object>
                 {
-                    messages = new[]
-                    {
-                        new { role = "system", content = systemPrompt },
-                        new { role = "user", content = userPrompt }
+                    { "messages", new[]
+                        {
+                            new { role = "system", content = systemPrompt },
+                            new { role = "user", content = userPrompt }
+                        }
                     },
-                    temperature = 0.7,
-                    max_tokens = 2048
+                    { "temperature", temperature },
+                    { "max_tokens", maxTokens }
                 };
+
+                // Add optional parameters only if provided
+                if (topP.HasValue)
+                {
+                    requestBody["top_p"] = topP.Value;
+                }
+                if (frequencyPenalty.HasValue)
+                {
+                    requestBody["frequency_penalty"] = frequencyPenalty.Value;
+                }
+                if (presencePenalty.HasValue)
+                {
+                    requestBody["presence_penalty"] = presencePenalty.Value;
+                }
+                if (stopSequences != null && stopSequences.Count > 0)
+                {
+                    requestBody["stop"] = stopSequences;
+                }
 
                 _httpClient.DefaultRequestHeaders.Clear();
                 _httpClient.DefaultRequestHeaders.Add("api-key", _apiKey);
@@ -197,7 +225,31 @@ public class AzureOpenAiLlmProvider : ILlmProvider
                 }
 
                 var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-                var responseDoc = JsonDocument.Parse(responseJson);
+                
+                // Parse and validate response structure
+                JsonDocument? responseDoc = null;
+                try
+                {
+                    responseDoc = JsonDocument.Parse(responseJson);
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogError(ex, "Failed to parse Azure OpenAI JSON response: {Response}", responseJson.Substring(0, Math.Min(500, responseJson.Length)));
+                    throw new InvalidOperationException("Azure OpenAI returned invalid JSON response", ex);
+                }
+
+                // Check for API errors in response
+                if (responseDoc.RootElement.TryGetProperty("error", out var errorElement))
+                {
+                    var errorMessage = errorElement.TryGetProperty("message", out var msg) 
+                        ? msg.GetString() ?? "Unknown error" 
+                        : "API error";
+                    var errorCode = errorElement.TryGetProperty("code", out var code) 
+                        ? code.GetString() ?? "unknown" 
+                        : "unknown";
+                    _logger.LogError("Azure OpenAI API error: {Code} - {Message}", errorCode, errorMessage);
+                    throw new InvalidOperationException($"Azure OpenAI API error: {errorMessage}");
+                }
 
                 if (responseDoc.RootElement.TryGetProperty("choices", out var choices) &&
                     choices.GetArrayLength() > 0)
@@ -220,8 +272,9 @@ public class AzureOpenAiLlmProvider : ILlmProvider
                     }
                 }
 
-                _logger.LogWarning("Azure OpenAI response did not contain expected structure");
-                throw new InvalidOperationException("Invalid response structure from Azure OpenAI API");
+                _logger.LogWarning("Azure OpenAI response did not contain expected structure. Response: {Response}", 
+                    responseJson.Substring(0, Math.Min(500, responseJson.Length)));
+                throw new InvalidOperationException($"Invalid response structure from Azure OpenAI API. Expected 'choices[0].message.content' but got: {responseJson.Substring(0, Math.Min(200, responseJson.Length))}");
             }
             catch (TaskCanceledException ex)
             {
