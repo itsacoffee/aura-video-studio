@@ -5,7 +5,7 @@ import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { queryClient } from './api/queryClient';
 import { AppRouterContent } from './components/AppRouterContent';
-import { CrashRecoveryScreen } from './components/ErrorBoundary';
+import { CrashRecoveryScreen, ErrorBoundary } from './components/ErrorBoundary';
 import type { InitializationError } from './components/Initialization';
 import { InitializationScreen, StartupErrorScreen } from './components/Initialization';
 import { SplashScreen } from './components/SplashScreen/SplashScreen';
@@ -389,7 +389,14 @@ function App() {
         const themeName = localStorage.getItem('themeName') || 'aura';
         const theme =
           themeName === 'aura' ? getAuraTheme(isDarkMode) : isDarkMode ? webDarkTheme : webLightTheme;
-        document.body.style.backgroundColor = theme.colorNeutralBackground1;
+        const bgColor = theme.colorNeutralBackground1 || (isDarkMode ? '#1e1e1e' : '#ffffff');
+        document.body.style.backgroundColor = bgColor;
+        
+        // Ensure root element also has background
+        const rootElement = document.getElementById('root');
+        if (rootElement) {
+          rootElement.style.backgroundColor = bgColor;
+        }
 
         console.info('[App] Window became visible, forced repaint');
       }
@@ -399,9 +406,41 @@ function App() {
       // Force repaint on focus to fix black screen
       if (document.visibilityState === 'visible') {
         window.dispatchEvent(new Event('resize'));
+        
+        // Ensure backgrounds are set
+        const themeName = localStorage.getItem('themeName') || 'aura';
+        const theme =
+          themeName === 'aura' ? getAuraTheme(isDarkMode) : isDarkMode ? webDarkTheme : webLightTheme;
+        const bgColor = theme.colorNeutralBackground1 || (isDarkMode ? '#1e1e1e' : '#ffffff');
+        document.body.style.backgroundColor = bgColor;
+        
+        const rootElement = document.getElementById('root');
+        if (rootElement) {
+          rootElement.style.backgroundColor = bgColor;
+        }
+        
         console.info('[App] Window gained focus, forced repaint');
       }
     };
+
+    // Periodic check to prevent black screen (every 5 seconds)
+    const blackScreenCheck = setInterval(() => {
+      const rootElement = document.getElementById('root');
+      if (rootElement) {
+        const computedStyle = window.getComputedStyle(rootElement);
+        const bgColor = computedStyle.backgroundColor;
+        // If background is black or transparent, fix it
+        if (bgColor === 'rgba(0, 0, 0, 0)' || bgColor === 'transparent' || bgColor === 'rgb(0, 0, 0)') {
+          const themeName = localStorage.getItem('themeName') || 'aura';
+          const theme =
+            themeName === 'aura' ? getAuraTheme(isDarkMode) : isDarkMode ? webDarkTheme : webLightTheme;
+          const safeBgColor = theme.colorNeutralBackground1 || (isDarkMode ? '#1e1e1e' : '#ffffff');
+          rootElement.style.backgroundColor = safeBgColor;
+          document.body.style.backgroundColor = safeBgColor;
+          console.warn('[App] Black screen detected and fixed');
+        }
+      }
+    }, 5000);
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleFocus);
@@ -409,6 +448,7 @@ function App() {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
+      clearInterval(blackScreenCheck);
     };
   }, [isDarkMode]);
 
@@ -783,36 +823,103 @@ function App() {
   // Get initial route from navigation service (considers safe mode and persistence)
   const initialRoute = navigationService.getInitialRoute();
 
+  // Black screen prevention: Monitor for empty/black screens and auto-recover
+  useEffect(() => {
+    const checkForBlackScreen = () => {
+      const rootElement = document.getElementById('root');
+      if (!rootElement) return;
+
+      // Check if root is empty or has no visible content
+      const hasVisibleContent = rootElement.children.length > 0 || rootElement.textContent?.trim().length > 0;
+      const computedStyle = window.getComputedStyle(rootElement);
+      const bgColor = computedStyle.backgroundColor;
+      const isBlack = bgColor === 'rgb(0, 0, 0)' || bgColor === 'rgba(0, 0, 0, 0)' || bgColor === 'transparent';
+
+      // If root is empty or black, and we're not in a loading state, something is wrong
+      if ((!hasVisibleContent || isBlack) && !isCheckingFirstRun && !isInitializing && !showSplash && !showCrashRecovery) {
+        console.error('[App] Black screen detected! Root element is empty or black. Attempting recovery...');
+        
+        // Force a re-render by updating state
+        window.dispatchEvent(new Event('resize'));
+        
+        // If still black after a moment, reload
+        setTimeout(() => {
+          const stillBlack = !document.getElementById('root')?.children.length;
+          if (stillBlack) {
+            console.error('[App] Black screen persists, reloading page...');
+            window.location.reload();
+          }
+        }, 2000);
+      }
+    };
+
+    // Check immediately and periodically
+    checkForBlackScreen();
+    const interval = setInterval(checkForBlackScreen, 3000);
+
+    return () => clearInterval(interval);
+  }, [isCheckingFirstRun, isInitializing, showSplash, showCrashRecovery]);
+
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
-        <FluentProvider theme={currentTheme}>
-          <AccessibilityProvider>
-            <ActivityProvider>
-              <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
-                <MemoryRouter initialEntries={[initialRoute]}>
-                  <AppRouterContent
-                    showShortcuts={showShortcuts}
-                    showShortcutsPanel={showShortcutsPanel}
-                    showShortcutsCheatSheet={showShortcutsCheatSheet}
-                    showCommandPalette={showCommandPalette}
-                    setShowShortcuts={setShowShortcuts}
-                    setShowShortcutsPanel={setShowShortcutsPanel}
-                    setShowShortcutsCheatSheet={setShowShortcutsCheatSheet}
-                    setShowCommandPalette={setShowCommandPalette}
-                    toasterId={toasterId}
-                    showDiagnostics={_showDiagnostics}
-                    setShowDiagnostics={_setShowDiagnostics}
-                  />
-                </MemoryRouter>
-              </div>
-            </ActivityProvider>
-          </AccessibilityProvider>
-        </FluentProvider>
-        {/* React Query Devtools - only in development */}
-        {env.isDevelopment && <ReactQueryDevtools initialIsOpen={false} />}
-      </ThemeContext.Provider>
-    </QueryClientProvider>
+    <ErrorBoundary
+      fallback={
+        <div
+          style={{
+            minHeight: '100vh',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+            backgroundColor: isDarkMode ? '#1e1e1e' : '#ffffff',
+            color: isDarkMode ? '#ffffff' : '#000000',
+          }}
+        >
+          <Card style={{ maxWidth: '600px', padding: '32px' }}>
+            <Title1 style={{ marginBottom: '16px' }}>Application Error</Title1>
+            <Body1 style={{ marginBottom: '20px' }}>
+              The application encountered an error. Please reload the page.
+            </Body1>
+            <Button appearance="primary" onClick={() => window.location.reload()}>
+              Reload Page
+            </Button>
+          </Card>
+        </div>
+      }
+    >
+      <QueryClientProvider client={queryClient}>
+        <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
+          <FluentProvider theme={currentTheme}>
+            <AccessibilityProvider>
+              <ActivityProvider>
+                <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+                  <ErrorBoundary>
+                    <MemoryRouter initialEntries={[initialRoute]}>
+                      <ErrorBoundary>
+                        <AppRouterContent
+                          showShortcuts={showShortcuts}
+                          showShortcutsPanel={showShortcutsPanel}
+                          showShortcutsCheatSheet={showShortcutsCheatSheet}
+                          showCommandPalette={showCommandPalette}
+                          setShowShortcuts={setShowShortcuts}
+                          setShowShortcutsPanel={setShowShortcutsPanel}
+                          setShowShortcutsCheatSheet={setShowShortcutsCheatSheet}
+                          setShowCommandPalette={setShowCommandPalette}
+                          toasterId={toasterId}
+                          showDiagnostics={_showDiagnostics}
+                          setShowDiagnostics={_setShowDiagnostics}
+                        />
+                      </ErrorBoundary>
+                    </MemoryRouter>
+                  </ErrorBoundary>
+                </div>
+              </ActivityProvider>
+            </AccessibilityProvider>
+          </FluentProvider>
+          {/* React Query Devtools - only in development */}
+          {env.isDevelopment && <ReactQueryDevtools initialIsOpen={false} />}
+        </ThemeContext.Provider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

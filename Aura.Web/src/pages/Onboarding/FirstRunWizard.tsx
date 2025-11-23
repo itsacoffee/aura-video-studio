@@ -27,7 +27,6 @@ import { AutoSaveIndicator } from '../../components/Onboarding/AutoSaveIndicator
 import { BackendStatusBanner } from '../../components/Onboarding/BackendStatusBanner';
 import { FFmpegDependencyCard } from '../../components/Onboarding/FFmpegDependencyCard';
 import { ResumeWizardDialog } from '../../components/Onboarding/ResumeWizardDialog';
-import { TtsDependencyCard } from '../../components/Onboarding/TtsDependencyCard';
 import { WelcomeScreen } from '../../components/Onboarding/WelcomeScreen';
 import type { WorkspacePreferences } from '../../components/Onboarding/WorkspaceSetup';
 import { WorkspaceSetup } from '../../components/Onboarding/WorkspaceSetup';
@@ -1449,113 +1448,81 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
   // Step 3: Provider Configuration (At least one required)
   const renderStep3Providers = () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
-      <div style={{ textAlign: 'center', marginBottom: tokens.spacingVerticalM }}>
-        <Title2>Provider Configuration</Title2>
-        <Text style={{ display: 'block', marginTop: tokens.spacingVerticalS }}>
-          Configure at least ONE LLM provider to generate video scripts, or use offline mode.
-        </Text>
-        <Card
+    <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXL }}>
+      <div style={{ textAlign: 'center', marginBottom: tokens.spacingVerticalL }}>
+        <Title2 style={{ marginBottom: tokens.spacingVerticalXS }}>Provider Configuration</Title2>
+        <Text
+          size={400}
           style={{
-            marginTop: tokens.spacingVerticalM,
-            padding: tokens.spacingVerticalS,
-            backgroundColor: tokens.colorNeutralBackground3,
+            display: 'block',
+            color: tokens.colorNeutralForeground2,
+            maxWidth: '600px',
+            margin: '0 auto',
           }}
         >
-          <Text size={300}>
-            <strong>Why is this required?</strong>
-          </Text>
-          <Text style={{ display: 'block', marginTop: tokens.spacingVerticalXS }}>
-            LLM providers power the AI script generation. You need at least one configured to create
-            video scripts automatically. Premium providers (OpenAI, Anthropic) offer higher quality,
-            while offline mode provides basic functionality without API keys.
-          </Text>
-        </Card>
-      </div>
-
-      <ApiKeySetupStep
-        apiKeys={state.apiKeys}
-        validationStatus={state.apiKeyValidationStatus}
-        validationErrors={state.apiKeyErrors}
-        fieldErrors={state.apiKeyFieldErrors}
-        accountInfo={state.apiKeyAccountInfo}
-        onApiKeyChange={handleApiKeyChange}
-        onValidateApiKey={handleValidateApiKey}
-        onSkipValidation={handleSkipValidation}
-        onSkipAll={() => {
-          dispatch({ type: 'SET_MODE', payload: 'free' });
-          dispatch({ type: 'SET_TIER', payload: 'free' });
-          setHasAtLeastOneProvider(true);
-          showSuccessToast({
-            title: 'Offline Mode Enabled',
-            message: 'Using rule-based script generation. You can add API keys later in Settings.',
-          });
-        }}
-        onLocalProviderReady={handleLocalProviderReady}
-        allowInvalidKeys={allowInvalidKeys}
-        onAllowInvalidKeysChange={setAllowInvalidKeys}
-      />
-
-      {!hasAtLeastOneProvider && (
-        <Card
-          style={{
-            padding: tokens.spacingVerticalS,
-            backgroundColor: tokens.colorPaletteRedBackground1,
-          }}
-        >
-          <Text
-            weight="semibold"
-            style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}
-          >
-            <Warning24Regular /> At least one provider is required
-          </Text>
-          <Text style={{ display: 'block', marginTop: tokens.spacingVerticalXS }}>
-            Configure at least one API key and validate it, or click &quot;Skip All&quot; to use
-            offline mode.
-          </Text>
-        </Card>
-      )}
-
-      {/* Optional: Local TTS Providers */}
-      <div style={{ marginTop: tokens.spacingVerticalXL }}>
-        <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>
-          Optional: Local Text-to-Speech Providers
-        </Title3>
-        <Text size={300} style={{ marginBottom: tokens.spacingVerticalM, display: 'block' }}>
-          Install local TTS providers for offline, high-quality voice synthesis. These are optional
-          but recommended for better voice quality than Windows SAPI.
+          Configure at least one LLM provider for script generation, or use offline mode.
         </Text>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
-          <TtsDependencyCard
-            provider="piper"
-            autoCheck={true}
-            autoExpandDetails={false}
-            onInstallComplete={(status) => {
-              if (status.installed) {
-                showSuccessToast({
-                  title: 'Piper TTS Ready',
-                  message: 'Piper TTS is now available for use in video generation.',
-                });
-              }
-            }}
-          />
-
-          <TtsDependencyCard
-            provider="mimic3"
-            autoCheck={true}
-            autoExpandDetails={false}
-            onInstallComplete={(status) => {
-              if (status.installed) {
-                showSuccessToast({
-                  title: 'Mimic3 TTS Ready',
-                  message: 'Mimic3 TTS is now available for use in video generation.',
-                });
-              }
-            }}
-          />
-        </div>
       </div>
+
+      {(() => {
+        try {
+          return (
+            <ApiKeySetupStep
+              apiKeys={state.apiKeys}
+              validationStatus={state.apiKeyValidationStatus}
+              validationErrors={state.apiKeyErrors}
+              fieldErrors={state.apiKeyFieldErrors}
+              accountInfo={state.apiKeyAccountInfo}
+              onApiKeyChange={handleApiKeyChange}
+              onValidateApiKey={handleValidateApiKey}
+              onSkipValidation={handleSkipValidation}
+              onSkipAll={() => {
+                dispatch({ type: 'SET_MODE', payload: 'free' });
+                dispatch({ type: 'SET_TIER', payload: 'free' });
+                setHasAtLeastOneProvider(true);
+                showSuccessToast({
+                  title: 'Offline Mode Enabled',
+                  message: 'Using rule-based script generation. You can add API keys later in Settings.',
+                });
+              }}
+              onLocalProviderReady={handleLocalProviderReady}
+              allowInvalidKeys={allowInvalidKeys}
+              onAllowInvalidKeysChange={setAllowInvalidKeys}
+              hasAtLeastOneProvider={hasAtLeastOneProvider}
+            />
+          );
+        } catch (error) {
+          console.error('[FirstRunWizard] Error rendering ApiKeySetupStep:', error);
+          return (
+            <Card
+              style={{
+                padding: tokens.spacingVerticalXXL,
+                textAlign: 'center',
+                backgroundColor: tokens.colorNeutralBackground1 || '#1e1e1e',
+              }}
+            >
+              <Warning24Regular
+                style={{
+                  fontSize: '48px',
+                  color: tokens.colorPaletteRedForeground1,
+                  marginBottom: tokens.spacingVerticalM,
+                }}
+              />
+              <Title2>Error Loading Provider Configuration</Title2>
+              <Text style={{ display: 'block', marginTop: tokens.spacingVerticalS }}>
+                An error occurred while loading the provider configuration. Please try refreshing the page.
+              </Text>
+              <Button
+                appearance="primary"
+                onClick={() => window.location.reload()}
+                style={{ marginTop: tokens.spacingVerticalM }}
+              >
+                Reload Page
+              </Button>
+            </Card>
+          );
+        }
+      })()}
     </div>
   );
 
@@ -1800,8 +1767,11 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
         right: 0,
         bottom: 0,
         zIndex: 10000,
-        backgroundColor: tokens.colorNeutralBackground1,
+        backgroundColor: tokens.colorNeutralBackground1 || '#1e1e1e',
         overflow: 'auto',
+        minHeight: '100vh',
+        // Ensure content is always visible - prevent black screen
+        color: tokens.colorNeutralForeground1 || '#ffffff',
       }}
     >
       <div
@@ -1853,7 +1823,42 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
           </div>
         )}
         <div className={styles.stepContent} key={state.step}>
-          {renderStepContent()}
+          {(() => {
+            try {
+              return renderStepContent();
+            } catch (error) {
+              console.error('[FirstRunWizard] Error rendering step content:', error);
+              return (
+                <div
+                  style={{
+                    padding: tokens.spacingVerticalXXL,
+                    textAlign: 'center',
+                    backgroundColor: tokens.colorNeutralBackground1 || '#1e1e1e',
+                    color: tokens.colorNeutralForeground1 || '#ffffff',
+                  }}
+                >
+                  <Warning24Regular
+                    style={{
+                      fontSize: '48px',
+                      color: tokens.colorPaletteRedForeground1,
+                      marginBottom: tokens.spacingVerticalM,
+                    }}
+                  />
+                  <Title2>Error Loading Step</Title2>
+                  <Text style={{ display: 'block', marginTop: tokens.spacingVerticalS }}>
+                    An error occurred while loading this step. Please try refreshing the page.
+                  </Text>
+                  <Button
+                    appearance="primary"
+                    onClick={() => window.location.reload()}
+                    style={{ marginTop: tokens.spacingVerticalM }}
+                  >
+                    Reload Page
+                  </Button>
+                </div>
+              );
+            }
+          })()}
         </div>
       </div>
 

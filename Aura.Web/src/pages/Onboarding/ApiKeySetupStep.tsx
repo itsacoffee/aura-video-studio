@@ -5,20 +5,21 @@ import {
   Title3,
   Text,
   Button,
-  Accordion,
-  AccordionItem,
-  AccordionHeader,
-  AccordionPanel,
+  Card,
   Badge,
-  Divider,
   Checkbox,
   MessageBar,
   MessageBarBody,
   MessageBarTitle,
+  Spinner,
 } from '@fluentui/react-components';
 import { useState, useEffect, useCallback } from 'react';
-import { Spinner } from '@fluentui/react-components';
-import { Checkmark24Regular, Warning24Regular } from '@fluentui/react-icons';
+import {
+  Checkmark24Regular,
+  Warning24Regular,
+  ChevronDown24Regular,
+  ChevronUp24Regular,
+} from '@fluentui/react-icons';
 import { EnhancedApiKeyInput } from '../../components/Onboarding/EnhancedApiKeyInput';
 import type { FieldValidationError } from '../../components/Onboarding/FieldValidationErrors';
 import { ProviderHelpPanel } from '../../components/ProviderHelpPanel';
@@ -29,100 +30,133 @@ const useStyles = makeStyles({
   container: {
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalL,
+    gap: tokens.spacingVerticalXL,
+    maxWidth: '900px',
+    margin: '0 auto',
   },
-  header: {
-    textAlign: 'center',
+  quickStartSection: {
+    padding: tokens.spacingVerticalL,
+    backgroundColor: tokens.colorNeutralBackground2,
+    borderRadius: tokens.borderRadiusLarge,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
   },
-  section: {
+  quickStartHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: tokens.spacingVerticalM,
+  },
+  quickStartContent: {
     display: 'flex',
     flexDirection: 'column',
     gap: tokens.spacingVerticalM,
   },
-  sectionHeader: {
+  quickStartActions: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalM,
+    flexWrap: 'wrap',
+  },
+  section: {
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalXS,
-    marginBottom: tokens.spacingVerticalS,
+    gap: tokens.spacingVerticalL,
+  },
+  sectionHeader: {
+    marginBottom: tokens.spacingVerticalM,
   },
   sectionTitle: {
-    marginTop: tokens.spacingVerticalL,
+    marginBottom: tokens.spacingVerticalXXS,
   },
   sectionDescription: {
     color: tokens.colorNeutralForeground3,
+    fontSize: tokens.fontSizeBase300,
   },
-  providerAccordion: {
-    width: '100%',
+  providersGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+    gap: tokens.spacingVerticalM,
   },
-  providerHeader: {
+  providerCard: {
+    padding: tokens.spacingVerticalL,
+    borderRadius: tokens.borderRadiusLarge,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    backgroundColor: tokens.colorNeutralBackground1,
+    transition: 'all 0.2s ease',
+    cursor: 'pointer',
+    ':hover': {
+      borderColor: tokens.colorNeutralStroke1,
+      boxShadow: tokens.shadow4,
+    },
+  },
+  providerCardExpanded: {
+    borderColor: tokens.colorBrandStroke1,
+    boxShadow: tokens.shadow8,
+  },
+  providerCardHeader: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: tokens.spacingVerticalS,
+  },
+  providerCardTitle: {
     display: 'flex',
     alignItems: 'center',
-    gap: tokens.spacingHorizontalM,
-    width: '100%',
+    gap: tokens.spacingHorizontalS,
   },
   providerLogo: {
-    fontSize: '24px',
+    fontSize: '28px',
+    lineHeight: 1,
   },
-  providerInfo: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: tokens.spacingVerticalXS,
+  providerName: {
+    fontWeight: tokens.fontWeightSemibold,
+  },
+  providerDescription: {
+    color: tokens.colorNeutralForeground3,
+    fontSize: tokens.fontSizeBase300,
+    marginBottom: tokens.spacingVerticalM,
+    lineHeight: tokens.lineHeightBase300,
   },
   providerContent: {
     display: 'flex',
     flexDirection: 'column',
     gap: tokens.spacingVerticalM,
-    padding: tokens.spacingVerticalM,
+    marginTop: tokens.spacingVerticalM,
+    paddingTop: tokens.spacingVerticalM,
+    borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
   },
-  buttonRow: {
+  statusBadge: {
+    marginLeft: 'auto',
+  },
+  localProviderStatus: {
     display: 'flex',
-    justifyContent: 'space-between',
-    marginTop: tokens.spacingVerticalL,
-  },
-  infoCard: {
-    padding: tokens.spacingVerticalM,
-    backgroundColor: tokens.colorNeutralBackground3,
-    borderRadius: tokens.borderRadiusMedium,
-  },
-  quickStartCard: {
-    padding: tokens.spacingVerticalM,
-    backgroundColor: tokens.colorNeutralBackground2,
-    borderRadius: tokens.borderRadiusMedium,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: tokens.spacingVerticalS,
-  },
-  quickStartActions: {
-    display: 'flex',
-    flexWrap: 'wrap',
+    alignItems: 'center',
     gap: tokens.spacingHorizontalS,
-  },
-  quickStartHint: {
-    color: tokens.colorNeutralForeground4,
-  },
-  localProviderCard: {
-    padding: tokens.spacingVerticalM,
-    backgroundColor: tokens.colorNeutralBackground3,
-    borderRadius: tokens.borderRadiusMedium,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: tokens.spacingVerticalS,
-  },
-  localInstructions: {
-    marginLeft: tokens.spacingHorizontalL,
-    color: tokens.colorNeutralForeground3,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: tokens.spacingVerticalXXS,
+    padding: tokens.spacingVerticalS,
+    backgroundColor: tokens.colorNeutralBackground2,
+    borderRadius: tokens.borderRadiusSmall,
+    marginBottom: tokens.spacingVerticalM,
   },
   localActions: {
     display: 'flex',
     gap: tokens.spacingHorizontalS,
     flexWrap: 'wrap',
   },
-  successText: {
-    color: tokens.colorPaletteGreenForeground1,
+  footer: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: tokens.spacingVerticalL,
+    borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
+  },
+  footerText: {
+    color: tokens.colorNeutralForeground2,
+    fontSize: tokens.fontSizeBase300,
+  },
+  warningMessage: {
+    marginTop: tokens.spacingVerticalL,
+  },
+  collapseButton: {
+    marginTop: tokens.spacingVerticalS,
   },
 });
 
@@ -139,6 +173,7 @@ export interface ApiKeySetupStepProps {
   onLocalProviderReady?: (provider: string) => void;
   allowInvalidKeys?: boolean;
   onAllowInvalidKeysChange?: (allow: boolean) => void;
+  hasAtLeastOneProvider?: boolean;
 }
 
 interface ProviderConfig {
@@ -499,9 +534,12 @@ export function ApiKeySetupStep({
   onLocalProviderReady,
   allowInvalidKeys = false,
   onAllowInvalidKeysChange,
+  hasAtLeastOneProvider = false,
 }: ApiKeySetupStepProps) {
   const styles = useStyles();
   const [rateLimit, setRateLimit] = useState<Record<string, number>>({});
+  const [expandedProviders, setExpandedProviders] = useState<Set<string>>(new Set());
+  const [showQuickStart, setShowQuickStart] = useState(true);
   const [localTtsStatus, setLocalTtsStatus] = useState<{
     windows: OfflineProviderStatus | null;
     piper: OfflineProviderStatus | null;
@@ -605,6 +643,18 @@ export function ApiKeySetupStep({
     onValidateApiKey(providerId);
   };
 
+  const toggleProvider = (providerId: string) => {
+    setExpandedProviders((prev) => {
+      const next = new Set(prev);
+      if (next.has(providerId)) {
+        next.delete(providerId);
+      } else {
+        next.add(providerId);
+      }
+      return next;
+    });
+  };
+
   const hasAtLeastOneValidKey = Object.values(validationStatus).some(
     (status) => status === 'valid'
   );
@@ -615,277 +665,394 @@ export function ApiKeySetupStep({
   );
   const hasInvalidKeys = invalidKeys.length > 0;
 
+  // Prioritize LLM providers for the main view
+  const llmProviders = providers.filter((p) => p.category === 'llm');
+  const otherProviders = providers.filter((p) => p.category !== 'llm');
+
+  // Safety check: Ensure we always render something visible
+  if (!styles || !styles.container) {
+    console.error('[ApiKeySetupStep] Styles not loaded, rendering fallback');
+    return (
+      <div
+        style={{
+          padding: '2rem',
+          backgroundColor: '#1e1e1e',
+          color: '#ffffff',
+          minHeight: '100vh',
+        }}
+      >
+        <Text>Loading provider configuration...</Text>
+      </div>
+    );
+  }
+
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <Title2>Configure API Keys (Optional)</Title2>
-        <Text>
-          Add API keys for any premium services you want to use. Pick and choose - add only what you
-          have!
-        </Text>
-      </div>
-
-      <div className={styles.infoCard}>
-        <Text size={200}>
-          💡 <strong>Mix and Match Freely:</strong> You don&apos;t need all of these, or even any!
-          You can use OpenAI for scripts with local TTS for voices, or Ollama for scripts with
-          ElevenLabs for voices - any combination works. The app will use what you configure and
-          fall back to free tools for anything else. All changes can be made in Settings later.
-        </Text>
-      </div>
-
-      <div className={styles.quickStartCard}>
-        <Title3>Quick start options</Title3>
-        <Text size={200}>
-          Don&apos;t have anything configured yet? Grab an OpenAI key or install Ollama locally,
-          then return here to validate.
-        </Text>
-        <div className={styles.quickStartActions}>
-          <Button
-            appearance="secondary"
-            onClick={() => openExternalLink('https://platform.openai.com/signup')}
-          >
-            Get an OpenAI Key
-          </Button>
-          <Button
-            appearance="secondary"
-            onClick={() => openExternalLink('https://ollama.ai/download')}
-          >
-            Install Ollama
-          </Button>
-        </div>
-        <Text size={200} className={styles.quickStartHint}>
-          Tip: if you plan to use Ollama, make sure the Ollama service is running before clicking
-          &quot;Validate&quot;.
-        </Text>
-      </div>
-
-      {sections.map((section, index) => {
-        const sectionProviders = providers.filter((p) => p.category === section.category);
-        if (sectionProviders.length === 0) return null;
-
-        return (
-          <div key={section.id} className={styles.section}>
-            {index > 0 && <Divider />}
-            <div className={styles.sectionHeader}>
-              <Title3 className={styles.sectionTitle}>{section.title}</Title3>
-              <Text size={200} className={styles.sectionDescription}>
-                {section.description}
+    <div
+      className={styles.container}
+      style={{
+        // Ensure background is always set to prevent black screen
+        backgroundColor: tokens.colorNeutralBackground1 || '#1e1e1e',
+        minHeight: '400px',
+      }}
+    >
+      {showQuickStart && (
+        <Card className={styles.quickStartSection}>
+          <div className={styles.quickStartHeader}>
+            <div>
+              <Title3 style={{ marginBottom: tokens.spacingVerticalXXS }}>Quick Start</Title3>
+              <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
+                Don&apos;t have API keys? Get started with one of these options.
               </Text>
             </div>
+            <Button
+              appearance="subtle"
+              icon={<ChevronUp24Regular />}
+              onClick={() => setShowQuickStart(false)}
+            />
+          </div>
+          {showQuickStart && (
+            <div className={styles.quickStartContent}>
+              <div className={styles.quickStartActions}>
+                <Button
+                  appearance="primary"
+                  onClick={() => openExternalLink('https://platform.openai.com/signup')}
+                >
+                  Get OpenAI Key
+                </Button>
+                <Button
+                  appearance="secondary"
+                  onClick={() => openExternalLink('https://ollama.ai/download')}
+                >
+                  Install Ollama
+                </Button>
+                <Button appearance="subtle" onClick={onSkipAll}>
+                  Use Offline Mode
+                </Button>
+              </div>
+            </div>
+          )}
+        </Card>
+      )}
 
-            <Accordion className={styles.providerAccordion} collapsible multiple>
-              {sectionProviders.map((provider) => (
-                <AccordionItem key={provider.id} value={provider.id}>
-                  <AccordionHeader>
-                    <div className={styles.providerHeader}>
-                      <span className={styles.providerLogo}>{provider.logo}</span>
-                      <div className={styles.providerInfo}>
-                        <Text weight="semibold">{provider.name}</Text>
-                        <Text size={200}>{provider.description}</Text>
-                      </div>
-                      <Badge
-                        appearance="filled"
-                        color={
-                          validationStatus[provider.id] === 'valid'
-                            ? 'success'
-                            : validationStatus[provider.id] === 'invalid'
-                              ? 'danger'
-                              : 'informative'
-                        }
-                      >
-                        {validationStatus[provider.id] === 'valid'
-                          ? 'Valid'
-                          : validationStatus[provider.id] === 'validating'
-                            ? 'Validating...'
-                            : validationStatus[provider.id] === 'invalid'
-                              ? 'Invalid'
-                              : 'Not Set'}
-                      </Badge>
+      {/* LLM Providers - Main Focus */}
+      <div className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <Title3 className={styles.sectionTitle}>LLM Providers</Title3>
+          <Text className={styles.sectionDescription}>
+            Choose at least one provider for script generation
+          </Text>
+        </div>
+
+        <div className={styles.providersGrid}>
+          {llmProviders.map((provider) => {
+            const isExpanded = expandedProviders.has(provider.id);
+            const status = validationStatus[provider.id] || 'idle';
+
+            return (
+              <Card
+                key={provider.id}
+                className={`${styles.providerCard} ${isExpanded ? styles.providerCardExpanded : ''}`}
+                onClick={() => toggleProvider(provider.id)}
+              >
+                <div className={styles.providerCardHeader}>
+                  <div className={styles.providerCardTitle}>
+                    <span className={styles.providerLogo}>{provider.logo}</span>
+                    <div>
+                      <Text className={styles.providerName}>{provider.name}</Text>
                     </div>
-                  </AccordionHeader>
-                  <AccordionPanel>
-                    <div className={styles.providerContent}>
-                      <ProviderHelpPanel
-                        providerName={provider.name}
-                        signupUrl={provider.signupUrl}
-                        steps={provider.steps}
-                        usedFor={provider.usedFor}
-                        pricingInfo={provider.pricingInfo}
-                        keyFormat={provider.keyFormat}
-                      />
+                  </div>
+                  <Badge
+                    appearance="filled"
+                    color={
+                      status === 'valid'
+                        ? 'success'
+                        : status === 'invalid'
+                          ? 'danger'
+                          : status === 'validating'
+                            ? 'informative'
+                            : 'informative'
+                    }
+                    className={styles.statusBadge}
+                  >
+                    {status === 'valid'
+                      ? 'Valid'
+                      : status === 'validating'
+                        ? 'Validating...'
+                        : status === 'invalid'
+                          ? 'Invalid'
+                          : 'Not Set'}
+                  </Badge>
+                </div>
 
-                      {provider.requiresApiKey === false ? (
-                        <div className={styles.localProviderCard}>
-                          <Text size={200} style={{ marginBottom: tokens.spacingVerticalS }}>
-                            {provider.localSetup?.readyHint ??
-                              'This provider runs locally and does not require an API key.'}
-                          </Text>
+                <Text className={styles.providerDescription}>{provider.description}</Text>
 
-                          {provider.localSetup?.instructions && (
-                            <ul className={styles.localInstructions}>
-                              {provider.localSetup.instructions.map((instruction) => (
-                                <li key={instruction}>
-                                  <Text size={200}>{instruction}</Text>
-                                </li>
-                              ))}
-                            </ul>
+                {isExpanded && (
+                  <div className={styles.providerContent}>
+                    {provider.requiresApiKey === false ? (
+                      <>
+                        {provider.localSetup?.instructions && (
+                          <div className={styles.localProviderStatus}>
+                            {checkingTts[provider.id as 'windows' | 'piper' | 'mimic3'] ? (
+                              <>
+                                <Spinner size="tiny" />
+                                <Text size={300}>Checking...</Text>
+                              </>
+                            ) : provider.id === 'ollama' ? (
+                              <>
+                                <Checkmark24Regular
+                                  style={{ color: tokens.colorPaletteGreenForeground1 }}
+                                />
+                                <Text size={300}>Install and run Ollama locally</Text>
+                              </>
+                            ) : null}
+                          </div>
+                        )}
+
+                        <div className={styles.localActions}>
+                          <Button
+                            appearance="primary"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onLocalProviderReady?.(provider.id);
+                            }}
+                          >
+                            Mark as Ready
+                          </Button>
+                          {provider.localSetup?.downloadUrl && (
+                            <Button
+                              appearance="secondary"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openExternalLink(provider.localSetup!.downloadUrl!);
+                              }}
+                            >
+                              Download
+                            </Button>
                           )}
+                        </div>
 
-                          {/* Status check for local providers */}
+                        {provider.localSetup?.instructions && (
+                          <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
+                            {provider.localSetup.instructions.join(' ')}
+                          </Text>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <ProviderHelpPanel
+                          providerName={provider.name}
+                          signupUrl={provider.signupUrl}
+                          steps={provider.steps}
+                          usedFor={provider.usedFor}
+                          pricingInfo={provider.pricingInfo}
+                          keyFormat={provider.keyFormat}
+                        />
+                        <EnhancedApiKeyInput
+                          providerDisplayName={provider.name}
+                          value={apiKeys[provider.id] || ''}
+                          onChange={(value) => onApiKeyChange(provider.id, value)}
+                          onValidate={() => handleValidate(provider.id)}
+                          validationStatus={status}
+                          fieldErrors={fieldErrors[provider.id]}
+                          accountInfo={accountInfo[provider.id]}
+                          onSkipValidation={
+                            onSkipValidation ? () => onSkipValidation(provider.id) : undefined
+                          }
+                        />
+                      </>
+                    )}
+                  </div>
+                )}
+
+                <Button
+                  appearance="subtle"
+                  icon={isExpanded ? <ChevronUp24Regular /> : <ChevronDown24Regular />}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleProvider(provider.id);
+                  }}
+                  className={styles.collapseButton}
+                >
+                  {isExpanded ? 'Less' : 'Configure'}
+                </Button>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Other Providers - Collapsible */}
+      {otherProviders.length > 0 && (
+        <div className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <Title3 className={styles.sectionTitle}>Additional Providers</Title3>
+            <Text className={styles.sectionDescription}>
+              Optional TTS and image providers (can be configured later)
+            </Text>
+          </div>
+
+          <div className={styles.providersGrid}>
+            {otherProviders.map((provider) => {
+              const isExpanded = expandedProviders.has(provider.id);
+              const status = validationStatus[provider.id] || 'idle';
+
+              return (
+                <Card
+                  key={provider.id}
+                  className={`${styles.providerCard} ${isExpanded ? styles.providerCardExpanded : ''}`}
+                  onClick={() => toggleProvider(provider.id)}
+                >
+                  <div className={styles.providerCardHeader}>
+                    <div className={styles.providerCardTitle}>
+                      <span className={styles.providerLogo}>{provider.logo}</span>
+                      <div>
+                        <Text className={styles.providerName}>{provider.name}</Text>
+                      </div>
+                    </div>
+                    <Badge
+                      appearance="filled"
+                      color={
+                        status === 'valid'
+                          ? 'success'
+                          : status === 'invalid'
+                            ? 'danger'
+                            : 'informative'
+                      }
+                      className={styles.statusBadge}
+                    >
+                      {status === 'valid'
+                        ? 'Valid'
+                        : status === 'validating'
+                          ? 'Validating...'
+                          : status === 'invalid'
+                            ? 'Invalid'
+                            : 'Not Set'}
+                    </Badge>
+                  </div>
+
+                  <Text className={styles.providerDescription}>{provider.description}</Text>
+
+                  {isExpanded && (
+                    <div className={styles.providerContent}>
+                      {provider.requiresApiKey === false ? (
+                        <>
                           {(provider.id === 'windows' ||
                             provider.id === 'piper' ||
                             provider.id === 'mimic3' ||
                             provider.id === 'placeholder') && (
-                            <div
-                              style={{
-                                marginTop: tokens.spacingVerticalM,
-                                padding: tokens.spacingVerticalS,
-                                backgroundColor: tokens.colorNeutralBackground2,
-                                borderRadius: tokens.borderRadiusSmall,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: tokens.spacingHorizontalS,
-                              }}
-                            >
-                              {checkingTts[
-                                provider.id as 'windows' | 'piper' | 'mimic3'
-                              ] ? (
+                            <div className={styles.localProviderStatus}>
+                              {checkingTts[provider.id as 'windows' | 'piper' | 'mimic3'] ? (
                                 <>
                                   <Spinner size="tiny" />
-                                  <Text size={200}>Checking status...</Text>
+                                  <Text size={300}>Checking...</Text>
                                 </>
                               ) : provider.id === 'placeholder' ? (
                                 <>
                                   <Checkmark24Regular
                                     style={{ color: tokens.colorPaletteGreenForeground1 }}
                                   />
-                                  <Text size={200} className={styles.successText}>
-                                    Always available - generates solid color backgrounds
+                                  <Text size={300}>Always available</Text>
+                                </>
+                              ) : localTtsStatus[provider.id as 'windows' | 'piper' | 'mimic3']
+                                  ?.isAvailable ? (
+                                <>
+                                  <Checkmark24Regular
+                                    style={{ color: tokens.colorPaletteGreenForeground1 }}
+                                  />
+                                  <Text size={300}>
+                                    {localTtsStatus[provider.id as 'windows' | 'piper' | 'mimic3']
+                                      ?.message || 'Available'}
                                   </Text>
                                 </>
-                              ) : localTtsStatus[provider.id as 'windows' | 'piper' | 'mimic3'] ? (
+                              ) : (
                                 <>
-                                  {localTtsStatus[provider.id as 'windows' | 'piper' | 'mimic3']
-                                    ?.isAvailable ? (
-                                    <>
-                                      <Checkmark24Regular
-                                        style={{ color: tokens.colorPaletteGreenForeground1 }}
-                                      />
-                                      <Text size={200} className={styles.successText}>
-                                        {localTtsStatus[provider.id as 'windows' | 'piper' | 'mimic3']
-                                          ?.message || 'Available'}
-                                      </Text>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Warning24Regular
-                                        style={{ color: tokens.colorPaletteYellowForeground1 }}
-                                      />
-                                      <Text size={200}>
-                                        {localTtsStatus[provider.id as 'windows' | 'piper' | 'mimic3']
-                                          ?.message || 'Not detected'}
-                                      </Text>
-                                    </>
-                                  )}
-                                  {provider.id !== 'windows' && (
-                                    <Button
-                                      appearance="subtle"
-                                      size="small"
-                                      onClick={() =>
-                                        checkLocalTtsStatus(
-                                          provider.id as 'windows' | 'piper' | 'mimic3'
-                                        )
-                                      }
-                                    >
-                                      Refresh
-                                    </Button>
-                                  )}
+                                  <Warning24Regular
+                                    style={{ color: tokens.colorPaletteYellowForeground1 }}
+                                  />
+                                  <Text size={300}>
+                                    {localTtsStatus[provider.id as 'windows' | 'piper' | 'mimic3']
+                                      ?.message || 'Not detected'}
+                                  </Text>
                                 </>
-                              ) : null}
+                              )}
                             </div>
                           )}
 
                           <div className={styles.localActions}>
                             <Button
                               appearance="primary"
-                              onClick={() => onLocalProviderReady?.(provider.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onLocalProviderReady?.(provider.id);
+                              }}
                               disabled={
                                 (provider.id === 'piper' || provider.id === 'mimic3') &&
                                 !localTtsStatus[provider.id as 'piper' | 'mimic3']?.isAvailable &&
                                 !checkingTts[provider.id as 'piper' | 'mimic3']
                               }
                             >
-                              {provider.id === 'windows' || provider.id === 'placeholder'
-                                ? 'Mark as Ready (Always Available)'
-                                : 'Mark as Ready'}
+                              Mark as Ready
                             </Button>
                             {provider.localSetup?.downloadUrl && (
                               <Button
                                 appearance="secondary"
-                                onClick={() => openExternalLink(provider.localSetup!.downloadUrl!)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openExternalLink(provider.localSetup!.downloadUrl!);
+                                }}
                               >
-                                {provider.id === 'piper'
-                                  ? 'View Piper Releases'
-                                  : provider.id === 'mimic3'
-                                    ? 'View Mimic3 GitHub'
-                                    : 'Download Ollama'}
+                                Download
                               </Button>
                             )}
                           </div>
-
-                          {validationStatus[provider.id] === 'valid' ? (
-                            <Text size={200} className={styles.successText}>
-                              ✓ {provider.name} marked as ready
-                            </Text>
-                          ) : (
-                            <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                              {provider.id === 'windows'
-                                ? 'Windows TTS is built into Windows and always available. Click "Mark as Ready" to confirm.'
-                                : provider.id === 'placeholder'
-                                  ? 'Placeholder images are built into Aura and always available. Click "Mark as Ready" to confirm.'
-                                  : provider.id === 'piper' || provider.id === 'mimic3'
-                                    ? 'Install the provider locally and ensure it is detected, then mark as ready.'
-                                    : 'No API key required. Install the provider locally and mark it as ready.'}
-                            </Text>
-                          )}
-                        </div>
+                        </>
                       ) : (
-                        <div style={{ marginTop: tokens.spacingVerticalM }}>
-                          <Title3 style={{ marginBottom: tokens.spacingVerticalS }}>
-                            Enter API Key
-                          </Title3>
+                        <>
+                          <ProviderHelpPanel
+                            providerName={provider.name}
+                            signupUrl={provider.signupUrl}
+                            steps={provider.steps}
+                            usedFor={provider.usedFor}
+                            pricingInfo={provider.pricingInfo}
+                            keyFormat={provider.keyFormat}
+                          />
                           <EnhancedApiKeyInput
                             providerDisplayName={provider.name}
                             value={apiKeys[provider.id] || ''}
                             onChange={(value) => onApiKeyChange(provider.id, value)}
                             onValidate={() => handleValidate(provider.id)}
-                            validationStatus={validationStatus[provider.id] || 'idle'}
+                            validationStatus={status}
                             fieldErrors={fieldErrors[provider.id]}
                             accountInfo={accountInfo[provider.id]}
                             onSkipValidation={
                               onSkipValidation ? () => onSkipValidation(provider.id) : undefined
                             }
                           />
-                          {provider.requiresMultipleKeys && (
-                            <Text size={200} style={{ marginTop: tokens.spacingVerticalS }}>
-                              Note: {provider.name} requires both User ID and Secret Key (enter as
-                              &quot;userId:secretKey&quot;)
-                            </Text>
-                          )}
-                        </div>
+                        </>
                       )}
                     </div>
-                  </AccordionPanel>
-                </AccordionItem>
-              ))}
-            </Accordion>
+                  )}
+
+                  <Button
+                    appearance="subtle"
+                    icon={isExpanded ? <ChevronUp24Regular /> : <ChevronDown24Regular />}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleProvider(provider.id);
+                    }}
+                    className={styles.collapseButton}
+                  >
+                    {isExpanded ? 'Less' : 'Configure'}
+                  </Button>
+                </Card>
+              );
+            })}
           </div>
-        );
-      })}
+        </div>
+      )}
 
       {hasInvalidKeys && (
-        <MessageBar intent="warning">
+        <MessageBar intent="warning" className={styles.warningMessage}>
           <MessageBarBody>
             <MessageBarTitle>Some API keys are invalid</MessageBarTitle>
             <Text style={{ display: 'block', marginBottom: tokens.spacingVerticalS }}>
@@ -904,14 +1071,25 @@ export function ApiKeySetupStep({
         </MessageBar>
       )}
 
-      <div className={styles.buttonRow}>
+      {!hasAtLeastOneProvider && (
+        <MessageBar intent="error" className={styles.warningMessage}>
+          <MessageBarBody>
+            <MessageBarTitle>Provider Required</MessageBarTitle>
+            <Text style={{ display: 'block', marginBottom: tokens.spacingVerticalS }}>
+              Configure at least one LLM provider or use offline mode to continue.
+            </Text>
+          </MessageBarBody>
+        </MessageBar>
+      )}
+
+      <div className={styles.footer}>
         <Button appearance="subtle" onClick={onSkipAll}>
-          Skip All (Add Later)
+          Use Offline Mode
         </Button>
-        <Text>
+        <Text className={styles.footerText}>
           {hasAtLeastOneValidKey
             ? '✓ Ready to continue'
-            : 'Add at least one API key or skip to continue'}
+            : 'Configure at least one provider or use offline mode'}
         </Text>
       </div>
     </div>

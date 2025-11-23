@@ -1,12 +1,14 @@
+import { webDarkTheme, webLightTheme } from '@fluentui/react-components';
 import ReactDOM from 'react-dom/client';
 import App from './App.tsx';
-import './index.css';
-import './styles/component-overrides.css';
-import './styles/windows11.css';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { apiUrl } from './config/api';
+import './index.css';
 import { errorReportingService } from './services/errorReportingService';
 import { loggingService } from './services/loggingService';
+import './styles/component-overrides.css';
+import './styles/windows11.css';
+import { getAuraTheme } from './themes/auraTheme';
 import { validateEnvironment } from './utils/validateEnv';
 import { logWindowsEnvironment } from './utils/windowsUtils';
 
@@ -437,6 +439,88 @@ async function startReactApp(): Promise<void> {
 
   console.info('[Main] ✓ React render call completed');
   console.info('[Main] React should now hydrate and call App component');
+
+  // Black screen prevention: Comprehensive monitoring and recovery
+  // Respects user's theme preference from localStorage
+  const ensureRootBackground = () => {
+    if (rootElement) {
+      const computedStyle = window.getComputedStyle(rootElement);
+      const bgColor = computedStyle.backgroundColor;
+      // If background is black, transparent, or not set, apply a safe default
+      if (
+        bgColor === 'rgba(0, 0, 0, 0)' ||
+        bgColor === 'transparent' ||
+        bgColor === 'rgb(0, 0, 0)' ||
+        !bgColor ||
+        bgColor === 'initial'
+      ) {
+        // Get user's theme preference from localStorage
+        const savedDarkMode = localStorage.getItem('darkMode');
+        const isDarkMode =
+          savedDarkMode !== null
+            ? JSON.parse(savedDarkMode)
+            : window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+        // Get theme name preference (defaults to 'aura')
+        const themeName = localStorage.getItem('themeName') || 'aura';
+
+        // Get the appropriate theme based on user preference
+        const theme =
+          themeName === 'aura'
+            ? getAuraTheme(isDarkMode)
+            : isDarkMode
+              ? webDarkTheme
+              : webLightTheme;
+
+        // Use theme background color with fallback
+        const safeBgColor =
+          theme.colorNeutralBackground1 || (isDarkMode ? '#1e1e1e' : '#ffffff');
+
+        rootElement.style.backgroundColor = safeBgColor;
+        document.body.style.backgroundColor = safeBgColor;
+        console.warn(
+          `[Main] Applied fallback background (${isDarkMode ? 'dark' : 'light'} theme) to prevent black screen`
+        );
+      }
+    }
+  };
+
+  // Black screen detection: Check if the app has rendered content
+  const detectBlackScreen = () => {
+    if (!rootElement) return;
+
+    // Wait a bit for React to render
+    setTimeout(() => {
+      const hasChildren = rootElement!.children.length > 0;
+      const hasTextContent = rootElement!.textContent && rootElement!.textContent.trim().length > 0;
+      const computedStyle = window.getComputedStyle(rootElement!);
+      const bgColor = computedStyle.backgroundColor;
+      const isCompletelyBlack = bgColor === 'rgb(0, 0, 0)';
+
+      // If root has no children, no text, and is black - we have a black screen
+      if (!hasChildren && !hasTextContent && isCompletelyBlack) {
+        console.error('[Main] ⚠️ BLACK SCREEN DETECTED: Root element is empty and black!');
+        console.error('[Main] Root element state:', {
+          childrenCount: rootElement!.children.length,
+          textContent: rootElement!.textContent?.substring(0, 100),
+          backgroundColor: bgColor,
+          innerHTML: rootElement!.innerHTML.substring(0, 200),
+        });
+
+        // Try to recover by forcing a reload
+        console.warn('[Main] Attempting recovery by reloading page...');
+        window.location.reload();
+      }
+    }, 5000); // Wait 5 seconds for app to render
+  };
+
+  // Check immediately and after delays
+  ensureRootBackground();
+  setTimeout(ensureRootBackground, 1000);
+  setTimeout(ensureRootBackground, 3000);
+
+  // Detect black screens after React has had time to render
+  detectBlackScreen();
 
   // Clear initialization timeout - app has successfully hydrated
   if (window.__initTimeout) {

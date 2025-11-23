@@ -302,21 +302,24 @@ const AppRouterContentInner: FC<
   // New system includes validation, correlation IDs, context awareness, and user feedback
   useMenuCommandSystem();
 
-  return (
-    <>
-      <SafeModeBanner onOpenDiagnostics={() => setShowDiagnostics(!showDiagnostics)} />
+  // Black screen prevention: Ensure we always render something visible
+  // This prevents the app from going completely black if Routes fails
+  try {
+    return (
+      <>
+        <SafeModeBanner onOpenDiagnostics={() => setShowDiagnostics(!showDiagnostics)} />
 
-      {/* Status bar for job progress */}
-      <JobStatusBar
-        status={status}
-        progress={progress}
-        message={message}
-        onViewDetails={() => setShowDrawer(true)}
-      />
+        {/* Status bar for job progress */}
+        <JobStatusBar
+          status={status}
+          progress={progress}
+          message={message}
+          onViewDetails={() => setShowDrawer(true)}
+        />
 
-      <ErrorBoundary>
-        <ConfigurationGate>
-          <Routes>
+        <ErrorBoundary>
+          <ConfigurationGate>
+            <Routes>
             {/* Setup wizard - unified entry point for first-run and reconfiguration */}
             <Route path="/setup" element={<FirstRunWizard />} />
             {/* Legacy route redirect for backward compatibility */}
@@ -760,4 +763,43 @@ const AppRouterContentInner: FC<
       </footer>
     </>
   );
+  } catch (error) {
+    // Critical error: Render fallback UI to prevent black screen
+    console.error('[AppRouterContent] Critical error rendering routes:', error);
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px',
+          backgroundColor: '#1e1e1e',
+          color: '#ffffff',
+        }}
+      >
+        <div style={{ maxWidth: '600px', textAlign: 'center' }}>
+          <h1 style={{ fontSize: '24px', marginBottom: '16px' }}>Application Error</h1>
+          <p style={{ marginBottom: '20px' }}>
+            The application encountered a critical error. Please reload the page.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: '#0078d4',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: 600,
+            }}
+          >
+            Reload Page
+          </button>
+        </div>
+      </div>
+    );
+  }
 };
