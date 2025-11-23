@@ -1254,6 +1254,14 @@ async function startApplication() {
       // Handle window close event
       mainWindow.on("close", (event) => {
         const minimizeToTray = appConfig.get("minimizeToTray", false); // Default to false
+        
+        // If user explicitly clicked the X button and minimizeToTray is disabled, allow close
+        // Set isQuitting BEFORE calling handleWindowClose so it knows we want to quit
+        if (!isQuitting && !minimizeToTray) {
+          console.log("[Main] User clicked close button, minimizeToTray is disabled - allowing close");
+          isQuitting = true;
+        }
+        
         const prevented = windowManager.handleWindowClose(
           event,
           isQuitting,
@@ -1267,6 +1275,9 @@ async function startApplication() {
               "Application is minimized to the system tray. Click the tray icon to restore, or right-click to quit."
             );
           }
+        } else if (!prevented && isQuitting) {
+          // Window will close - ensure isQuitting is set for cleanup handlers
+          console.log("[Main] Window closing, isQuitting set to true");
         }
       });
     } catch (error) {

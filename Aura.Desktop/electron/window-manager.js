@@ -425,6 +425,26 @@ class WindowManager {
                   }
                   // Force layout recalculation
                   void document.body.offsetHeight;
+                  
+                  // Check for black screen and fix it
+                  const root = document.getElementById('root');
+                  if (root) {
+                    const hasChildren = root.children.length > 0;
+                    const hasText = root.textContent && root.textContent.trim().length > 0;
+                    const style = window.getComputedStyle(root);
+                    const bgColor = style.backgroundColor;
+                    const isBlack = bgColor === 'rgb(0, 0, 0)' || bgColor === 'rgba(0, 0, 0, 0)' || bgColor === 'transparent';
+                    
+                    if ((!hasChildren && !hasText) || isBlack) {
+                      console.warn('[WindowManager] Black screen detected on focus, fixing...');
+                      // Get theme from localStorage
+                      const darkMode = localStorage.getItem('darkMode') === 'true' || 
+                        (localStorage.getItem('darkMode') === null && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                      const safeBg = darkMode ? '#1e1e1e' : '#ffffff';
+                      root.style.backgroundColor = safeBg;
+                      document.body.style.backgroundColor = safeBg;
+                    }
+                  }
                 })();
               `
                 )
@@ -438,6 +458,13 @@ class WindowManager {
           }, 10);
         }
       }
+    });
+
+    // Handle window blur event to prevent black screen when app loses focus
+    this.mainWindow.on("blur", () => {
+      console.log("[WindowManager] Window lost focus");
+      // Don't do anything destructive - just ensure content stays visible
+      // The focus handler will fix any issues when focus returns
     });
 
     // Handle window restore event to prevent black screen

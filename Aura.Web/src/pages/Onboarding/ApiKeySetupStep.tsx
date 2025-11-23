@@ -665,9 +665,10 @@ export function ApiKeySetupStep({
   );
   const hasInvalidKeys = invalidKeys.length > 0;
 
-  // Prioritize LLM providers for the main view
+  // Organize providers by category
   const llmProviders = providers.filter((p) => p.category === 'llm');
-  const otherProviders = providers.filter((p) => p.category !== 'llm');
+  const ttsProviders = providers.filter((p) => p.category === 'tts');
+  const imageProviders = providers.filter((p) => p.category === 'image');
 
   // Safety check: Ensure we always render something visible
   if (!styles || !styles.container) {
@@ -752,9 +753,12 @@ export function ApiKeySetupStep({
               <Card
                 key={provider.id}
                 className={`${styles.providerCard} ${isExpanded ? styles.providerCardExpanded : ''}`}
-                onClick={() => toggleProvider(provider.id)}
               >
-                <div className={styles.providerCardHeader}>
+                <div
+                  className={styles.providerCardHeader}
+                  onClick={() => toggleProvider(provider.id)}
+                  style={{ cursor: 'pointer' }}
+                >
                   <div className={styles.providerCardTitle}>
                     <span className={styles.providerLogo}>{provider.logo}</span>
                     <div>
@@ -784,7 +788,13 @@ export function ApiKeySetupStep({
                   </Badge>
                 </div>
 
-                <Text className={styles.providerDescription}>{provider.description}</Text>
+                <Text
+                  className={styles.providerDescription}
+                  onClick={() => toggleProvider(provider.id)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  {provider.description}
+                </Text>
 
                 {isExpanded && (
                   <div className={styles.providerContent}>
@@ -838,7 +848,7 @@ export function ApiKeySetupStep({
                         )}
                       </>
                     ) : (
-                      <>
+                      <div onClick={(e) => e.stopPropagation()}>
                         <ProviderHelpPanel
                           providerName={provider.name}
                           signupUrl={provider.signupUrl}
@@ -859,7 +869,7 @@ export function ApiKeySetupStep({
                             onSkipValidation ? () => onSkipValidation(provider.id) : undefined
                           }
                         />
-                      </>
+                      </div>
                     )}
                   </div>
                 )}
@@ -881,18 +891,18 @@ export function ApiKeySetupStep({
         </div>
       </div>
 
-      {/* Other Providers - Collapsible */}
-      {otherProviders.length > 0 && (
+      {/* TTS Providers */}
+      {ttsProviders.length > 0 && (
         <div className={styles.section}>
           <div className={styles.sectionHeader}>
-            <Title3 className={styles.sectionTitle}>Additional Providers</Title3>
+            <Title3 className={styles.sectionTitle}>Text-to-Speech Providers</Title3>
             <Text className={styles.sectionDescription}>
-              Optional TTS and image providers (can be configured later)
+              Optional TTS providers for voice synthesis (can be configured later)
             </Text>
           </div>
 
           <div className={styles.providersGrid}>
-            {otherProviders.map((provider) => {
+            {ttsProviders.map((provider) => {
               const isExpanded = expandedProviders.has(provider.id);
               const status = validationStatus[provider.id] || 'idle';
 
@@ -900,9 +910,12 @@ export function ApiKeySetupStep({
                 <Card
                   key={provider.id}
                   className={`${styles.providerCard} ${isExpanded ? styles.providerCardExpanded : ''}`}
-                  onClick={() => toggleProvider(provider.id)}
                 >
-                  <div className={styles.providerCardHeader}>
+                  <div
+                    className={styles.providerCardHeader}
+                    onClick={() => toggleProvider(provider.id)}
+                    style={{ cursor: 'pointer' }}
+                  >
                     <div className={styles.providerCardTitle}>
                       <span className={styles.providerLogo}>{provider.logo}</span>
                       <div>
@@ -930,7 +943,13 @@ export function ApiKeySetupStep({
                     </Badge>
                   </div>
 
-                  <Text className={styles.providerDescription}>{provider.description}</Text>
+                  <Text
+                    className={styles.providerDescription}
+                    onClick={() => toggleProvider(provider.id)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    {provider.description}
+                  </Text>
 
                   {isExpanded && (
                     <div className={styles.providerContent}>
@@ -1016,18 +1035,163 @@ export function ApiKeySetupStep({
                             pricingInfo={provider.pricingInfo}
                             keyFormat={provider.keyFormat}
                           />
-                          <EnhancedApiKeyInput
-                            providerDisplayName={provider.name}
-                            value={apiKeys[provider.id] || ''}
-                            onChange={(value) => onApiKeyChange(provider.id, value)}
-                            onValidate={() => handleValidate(provider.id)}
-                            validationStatus={status}
-                            fieldErrors={fieldErrors[provider.id]}
-                            accountInfo={accountInfo[provider.id]}
-                            onSkipValidation={
-                              onSkipValidation ? () => onSkipValidation(provider.id) : undefined
-                            }
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <EnhancedApiKeyInput
+                              providerDisplayName={provider.name}
+                              value={apiKeys[provider.id] || ''}
+                              onChange={(value) => onApiKeyChange(provider.id, value)}
+                              onValidate={() => handleValidate(provider.id)}
+                              validationStatus={status}
+                              fieldErrors={fieldErrors[provider.id]}
+                              accountInfo={accountInfo[provider.id]}
+                              onSkipValidation={
+                                onSkipValidation ? () => onSkipValidation(provider.id) : undefined
+                              }
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  <Button
+                    appearance="subtle"
+                    icon={isExpanded ? <ChevronUp24Regular /> : <ChevronDown24Regular />}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleProvider(provider.id);
+                    }}
+                    className={styles.collapseButton}
+                  >
+                    {isExpanded ? 'Less' : 'Configure'}
+                  </Button>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Image/Visual Providers */}
+      {imageProviders.length > 0 && (
+        <div className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <Title3 className={styles.sectionTitle}>Image & Visual Providers</Title3>
+            <Text className={styles.sectionDescription}>
+              Optional image providers for visuals and backgrounds (can be configured later)
+            </Text>
+          </div>
+
+          <div className={styles.providersGrid}>
+            {imageProviders.map((provider) => {
+              const isExpanded = expandedProviders.has(provider.id);
+              const status = validationStatus[provider.id] || 'idle';
+
+              return (
+                <Card
+                  key={provider.id}
+                  className={`${styles.providerCard} ${isExpanded ? styles.providerCardExpanded : ''}`}
+                >
+                  <div
+                    className={styles.providerCardHeader}
+                    onClick={() => toggleProvider(provider.id)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <div className={styles.providerCardTitle}>
+                      <span className={styles.providerLogo}>{provider.logo}</span>
+                      <div>
+                        <Text className={styles.providerName}>{provider.name}</Text>
+                      </div>
+                    </div>
+                    <Badge
+                      appearance="filled"
+                      color={
+                        status === 'valid'
+                          ? 'success'
+                          : status === 'invalid'
+                            ? 'danger'
+                            : 'informative'
+                      }
+                      className={styles.statusBadge}
+                    >
+                      {status === 'valid'
+                        ? 'Valid'
+                        : status === 'validating'
+                          ? 'Validating...'
+                          : status === 'invalid'
+                            ? 'Invalid'
+                            : 'Not Set'}
+                    </Badge>
+                  </div>
+
+                  <Text
+                    className={styles.providerDescription}
+                    onClick={() => toggleProvider(provider.id)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    {provider.description}
+                  </Text>
+
+                  {isExpanded && (
+                    <div className={styles.providerContent}>
+                      {provider.requiresApiKey === false ? (
+                        <>
+                          {provider.id === 'placeholder' && (
+                            <div className={styles.localProviderStatus}>
+                              <Checkmark24Regular
+                                style={{ color: tokens.colorPaletteGreenForeground1 }}
+                              />
+                              <Text size={300}>Always available</Text>
+                            </div>
+                          )}
+
+                          <div className={styles.localActions}>
+                            <Button
+                              appearance="primary"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onLocalProviderReady?.(provider.id);
+                              }}
+                            >
+                              Mark as Ready
+                            </Button>
+                            {provider.localSetup?.downloadUrl && (
+                              <Button
+                                appearance="secondary"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openExternalLink(provider.localSetup!.downloadUrl!);
+                                }}
+                              >
+                                Download
+                              </Button>
+                            )}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <ProviderHelpPanel
+                            providerName={provider.name}
+                            signupUrl={provider.signupUrl}
+                            steps={provider.steps}
+                            usedFor={provider.usedFor}
+                            pricingInfo={provider.pricingInfo}
+                            keyFormat={provider.keyFormat}
                           />
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <EnhancedApiKeyInput
+                              providerDisplayName={provider.name}
+                              value={apiKeys[provider.id] || ''}
+                              onChange={(value) => onApiKeyChange(provider.id, value)}
+                              onValidate={() => handleValidate(provider.id)}
+                              validationStatus={status}
+                              fieldErrors={fieldErrors[provider.id]}
+                              accountInfo={accountInfo[provider.id]}
+                              onSkipValidation={
+                                onSkipValidation ? () => onSkipValidation(provider.id) : undefined
+                              }
+                            />
+                          </div>
                         </>
                       )}
                     </div>

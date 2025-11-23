@@ -405,22 +405,33 @@ function App() {
     const handleFocus = () => {
       // Force repaint on focus to fix black screen
       if (document.visibilityState === 'visible') {
-        window.dispatchEvent(new Event('resize'));
-        
-        // Ensure backgrounds are set
-        const themeName = localStorage.getItem('themeName') || 'aura';
-        const theme =
-          themeName === 'aura' ? getAuraTheme(isDarkMode) : isDarkMode ? webDarkTheme : webLightTheme;
-        const bgColor = theme.colorNeutralBackground1 || (isDarkMode ? '#1e1e1e' : '#ffffff');
-        document.body.style.backgroundColor = bgColor;
-        
-        const rootElement = document.getElementById('root');
-        if (rootElement) {
-          rootElement.style.backgroundColor = bgColor;
-        }
-        
-        console.info('[App] Window gained focus, forced repaint');
+        // Use requestAnimationFrame to ensure DOM is ready
+        requestAnimationFrame(() => {
+          window.dispatchEvent(new Event('resize'));
+          
+          // Ensure backgrounds are set
+          const themeName = localStorage.getItem('themeName') || 'aura';
+          const theme =
+            themeName === 'aura' ? getAuraTheme(isDarkMode) : isDarkMode ? webDarkTheme : webLightTheme;
+          const bgColor = theme.colorNeutralBackground1 || (isDarkMode ? '#1e1e1e' : '#ffffff');
+          document.body.style.backgroundColor = bgColor;
+          
+          const rootElement = document.getElementById('root');
+          if (rootElement) {
+            rootElement.style.backgroundColor = bgColor;
+            // Force a re-render by accessing layout properties
+            void rootElement.offsetHeight;
+          }
+          
+          console.info('[App] Window gained focus, forced repaint');
+        });
       }
+    };
+
+    const handleBlur = () => {
+      // When window loses focus, ensure content stays visible
+      // Don't do anything destructive - just ensure we maintain state
+      console.info('[App] Window lost focus');
     };
 
     // Periodic check to prevent black screen (every 5 seconds)
@@ -442,12 +453,64 @@ function App() {
       }
     }, 5000);
 
+    // Enhanced black screen detection on focus/blur
+    // Use a flag to prevent recursive calls
+    let isFixingBlackScreen = false;
+    const handleWindowFocus = () => {
+      // Prevent recursive calls
+      if (isFixingBlackScreen) {
+        return;
+      }
+
+      // When window regains focus, check for black screen and fix it
+      setTimeout(() => {
+        const rootElement = document.getElementById('root');
+        if (rootElement) {
+          const hasChildren = rootElement.children.length > 0;
+          const hasText = rootElement.textContent && rootElement.textContent.trim().length > 0;
+          const computedStyle = window.getComputedStyle(rootElement);
+          const bgColor = computedStyle.backgroundColor;
+          const isBlack = bgColor === 'rgb(0, 0, 0)' || bgColor === 'rgba(0, 0, 0, 0)' || bgColor === 'transparent';
+
+          // If we have a black screen when window regains focus, fix it immediately
+          if ((!hasChildren && !hasText) || isBlack) {
+            isFixingBlackScreen = true;
+            console.warn('[App] Black screen detected on focus regain, fixing...');
+            
+            // Force a complete re-render without triggering focus event again
+            window.dispatchEvent(new Event('resize'));
+            window.dispatchEvent(new Event('visibilitychange'));
+            
+            // Set proper background
+            const themeName = localStorage.getItem('themeName') || 'aura';
+            const theme =
+              themeName === 'aura' ? getAuraTheme(isDarkMode) : isDarkMode ? webDarkTheme : webLightTheme;
+            const safeBgColor = theme.colorNeutralBackground1 || (isDarkMode ? '#1e1e1e' : '#ffffff');
+            rootElement.style.backgroundColor = safeBgColor;
+            document.body.style.backgroundColor = safeBgColor;
+            
+            // Force layout recalculation without triggering events
+            void rootElement.offsetHeight;
+            
+            // Reset flag after a delay to allow normal focus handling to resume
+            setTimeout(() => {
+              isFixingBlackScreen = false;
+            }, 500);
+          }
+        }
+      }, 100);
+    };
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleFocus);
+    window.addEventListener('focus', handleWindowFocus);
+    window.addEventListener('blur', handleBlur);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('focus', handleWindowFocus);
+      window.removeEventListener('blur', handleBlur);
       clearInterval(blackScreenCheck);
     };
   }, [isDarkMode]);
