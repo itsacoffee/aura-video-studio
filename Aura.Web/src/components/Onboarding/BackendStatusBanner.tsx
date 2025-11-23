@@ -50,9 +50,10 @@ export function BackendStatusBanner({ onDismiss, showRetry = true }: BackendStat
   const [initialCheckComplete, setInitialCheckComplete] = useState(false);
 
   const retryCountRef = useRef(0);
-  // CRITICAL FIX: Increase auto-retry timeout to match backend startup timeout (60 seconds)
-  // Backend can take 30-60 seconds to start on first run or slower machines
-  const maxAutoRetries = 60; // Auto-retry for up to 60 seconds (backend startup time)
+  // Auto-retry for up to 20 seconds to allow backend to start
+  // Electron backend service has its own 60-second timeout with more aggressive retry logic
+  // Frontend doesn't need to wait as long since it's just checking if backend is up
+  const maxAutoRetries = 20; // 20 attempts * 1 second = 20 seconds max wait
 
   const checkBackend = useCallback(async (isAutoRetry = false) => {
     setIsChecking(true);

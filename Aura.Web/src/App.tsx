@@ -195,15 +195,29 @@ function App() {
 
           if (!systemStatus.isComplete) {
             console.warn('[App] Backend reports setup incomplete');
-            localStorage.removeItem('hasCompletedFirstRun');
-            localStorage.removeItem('hasSeenOnboarding');
-            if (!timeoutDismissedRef.current) {
-              setShouldShowOnboarding(true);
+            // CRITICAL FIX: Don't clear localStorage based on backend status alone
+            // Check localStorage first - if user completed wizard, respect that
+            const localStatus =
+              localStorage.getItem('hasCompletedFirstRun') === 'true' ||
+              localStorage.getItem('hasSeenOnboarding') === 'true';
+            console.info('[App] localStorage status:', localStatus);
+
+            // Only show wizard if BOTH backend AND localStorage say incomplete
+            if (!localStatus) {
+              console.info('[App] Both backend and localStorage indicate first run');
+              if (!timeoutDismissedRef.current) {
+                setShouldShowOnboarding(true);
+              }
+              setIsCheckingFirstRun(false);
+              console.timeEnd('[App] First-run check duration');
+              clearTimeout(timeoutId);
+              return;
+            } else {
+              console.info(
+                '[App] localStorage shows completed - trusting local state over backend (may be sync delay)'
+              );
+              // Continue to check user completion status below
             }
-            setIsCheckingFirstRun(false);
-            console.timeEnd('[App] First-run check duration');
-            clearTimeout(timeoutId); // Clear timeout on success
-            return;
           } else {
             console.info('[App] ✓ Backend setup complete');
             localStorage.setItem('hasCompletedFirstRun', 'true');
