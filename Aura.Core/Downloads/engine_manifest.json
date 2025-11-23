@@ -39,15 +39,14 @@
     {
       "id": "ollama",
       "name": "Ollama",
-      "version": "0.1.19",
+      "version": "latest",
       "description": "Local LLM engine for script generation and AI narration without cloud APIs",
       "sizeBytes": 524288000,
       "sha256": "",
       "archiveType": "zip",
-      "urls": {
-        "windows": "https://github.com/ollama/ollama/releases/download/v0.1.19/ollama-windows-amd64.zip",
-        "linux": "https://github.com/ollama/ollama/releases/download/v0.1.19/ollama-linux-amd64.tar.gz"
-      },
+      "resolveViaGitHubApi": true,
+      "gitHubRepo": "ollama/ollama",
+      "assetPattern": "ollama-windows-amd64.zip",
       "extractDir": "ollama",
       "entrypoint": "ollama.exe",
       "defaultPort": 11434,
@@ -113,15 +112,14 @@
     {
       "id": "piper",
       "name": "Piper TTS",
-      "version": "1.2.0",
+      "version": "latest",
       "description": "Fast, local neural text-to-speech system with high-quality voices",
       "sizeBytes": 50000000,
       "sha256": "",
-      "archiveType": "zip",
-      "urls": {
-        "windows": "https://github.com/rhasspy/piper/releases/download/v1.2.0/piper_windows_amd64.zip",
-        "linux": "https://github.com/rhasspy/piper/releases/download/v1.2.0/piper_linux_x86_64.tar.gz"
-      },
+      "archiveType": "tar.gz",
+      "resolveViaGitHubApi": true,
+      "gitHubRepo": "rhasspy/piper",
+      "assetPattern": "*windows*amd64*",
       "extractDir": "piper",
       "entrypoint": "piper.exe",
       "licenseUrl": "https://github.com/rhasspy/piper/blob/master/LICENSE.md",

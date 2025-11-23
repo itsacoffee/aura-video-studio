@@ -1616,19 +1616,75 @@ public class SetupController : ControllerBase
     private async Task<IActionResult> InstallPiperWindows(CancellationToken cancellationToken)
     {
         var correlationId = HttpContext.TraceIdentifier;
+        var dataPath = Environment.GetEnvironmentVariable("AURA_DATA_PATH") ??
+                       Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AuraVideoStudio");
+        var piperDir = Path.Combine(dataPath, "piper");
+        var downloadPath = Path.Combine(Path.GetTempPath(), $"piper_{Guid.NewGuid():N}.tar.gz");
 
         try
         {
-            // Resolve latest Piper TTS release URL dynamically using GitHub API
-            var downloadUrl = await _releaseResolver.ResolveLatestAssetUrlAsync(
-                "rhasspy/piper",
-                "*windows*amd64*.tar.gz",
-                cancellationToken).ConfigureAwait(false);
+            _logger.LogInformation("[{CorrelationId}] Starting Piper TTS installation for Windows", correlationId);
+
+            // 1. Pre-flight connectivity check
+            _logger.LogInformation("[{CorrelationId}] Performing pre-flight connectivity check", correlationId);
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                using var testClient = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+                var testResponse = await testClient.GetAsync("https://api.github.com", HttpCompletionOption.ResponseHeadersRead, cts.Token).ConfigureAwait(false);
+                _logger.LogInformation("[{CorrelationId}] GitHub API connectivity check: {StatusCode}", correlationId, testResponse.StatusCode);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[{CorrelationId}] Pre-flight connectivity check failed", correlationId);
+                return Ok(new
+                {
+                    success = false,
+                    message = "Unable to connect to GitHub. Please check your internet connection.",
+                    requiresManualInstall = true,
+                    downloadUrl = "https://github.com/rhasspy/piper/releases/latest",
+                    instructions = new[]
+                    {
+                        "1. Visit https://github.com/rhasspy/piper/releases/latest",
+                        "2. Download piper_windows_amd64.tar.gz (or the latest Windows x64 release)",
+                        "3. Extract the archive using 7-Zip, WinRAR, or Windows 11's built-in extraction",
+                        $"4. Copy piper.exe to: {piperDir}",
+                        "5. Click 'Re-scan' to detect the installation"
+                    }
+                });
+            }
+
+            // 2. Resolve latest release URL using _releaseResolver with 3 retries
+            string? downloadUrl = null;
+            for (int attempt = 1; attempt <= 3; attempt++)
+            {
+                try
+                {
+                    _logger.LogInformation("[{CorrelationId}] Resolving latest Piper release (attempt {Attempt}/3)", correlationId, attempt);
+                    downloadUrl = await _releaseResolver.ResolveLatestAssetUrlAsync(
+                        "rhasspy/piper",
+                        "*windows*amd64*.tar.gz",
+                        cancellationToken).ConfigureAwait(false);
+                    
+                    if (!string.IsNullOrEmpty(downloadUrl))
+                    {
+                        _logger.LogInformation("[{CorrelationId}] Resolved Piper TTS download URL: {Url}", correlationId, downloadUrl);
+                        break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "[{CorrelationId}] Attempt {Attempt}/3 to resolve Piper URL failed", correlationId, attempt);
+                    if (attempt < 3)
+                    {
+                        await DelayWithExponentialBackoffAsync(attempt, cancellationToken).ConfigureAwait(false);
+                    }
+                }
+            }
 
             if (string.IsNullOrEmpty(downloadUrl))
             {
-                // Fallback to manual instructions if API resolution fails
-                _logger.LogWarning("[{CorrelationId}] Failed to resolve Piper TTS download URL from GitHub API, providing manual instructions", correlationId);
+                _logger.LogWarning("[{CorrelationId}] Failed to resolve Piper TTS download URL after 3 attempts", correlationId);
                 return Ok(new
                 {
                     success = false,
@@ -1640,58 +1696,93 @@ public class SetupController : ControllerBase
                         "1. Visit https://github.com/rhasspy/piper/releases/latest",
                         "2. Download piper_windows_amd64.tar.gz (or the latest Windows x64 release)",
                         "3. Extract the archive using 7-Zip, WinRAR, or Windows 11's built-in extraction",
-                        "4. Copy piper.exe to the installation directory",
+                        $"4. Copy piper.exe to: {piperDir}",
                         "5. Click 'Re-scan' to detect the installation"
                     }
                 });
             }
 
-            var dataPath = Environment.GetEnvironmentVariable("AURA_DATA_PATH") ??
-                           Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AuraVideoStudio");
-            var piperDir = Path.Combine(dataPath, "piper");
-            var downloadPath = Path.Combine(Path.GetTempPath(), "piper.tar.gz");
-
             Directory.CreateDirectory(piperDir);
 
-            _logger.LogInformation("[{CorrelationId}] Resolved Piper TTS download URL: {Url}", correlationId, downloadUrl);
-
-            // Download Piper
-            using (var response = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false))
+            // 3. Download with retry logic (3 attempts with exponential backoff)
+            bool downloadSuccess = false;
+            for (int attempt = 1; attempt <= 3; attempt++)
             {
-                response.EnsureSuccessStatusCode();
-
-                var totalBytes = response.Content.Headers.ContentLength ?? 0;
-                var bytesDownloaded = 0L;
-
-                using (var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false))
-                using (var fileStream = new FileStream(downloadPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
+                try
                 {
-                    var buffer = new byte[8192];
-                    int bytesRead;
+                    _logger.LogInformation("[{CorrelationId}] Downloading Piper TTS (attempt {Attempt}/3) from {Url}", correlationId, attempt, downloadUrl);
+                    
+                    using var response = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    response.EnsureSuccessStatusCode();
 
-                    while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false)) > 0)
+                    var totalBytes = response.Content.Headers.ContentLength ?? 0;
+                    var bytesDownloaded = 0L;
+
+                    using (var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false))
+                    using (var fileStream = new FileStream(downloadPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
                     {
-                        await fileStream.WriteAsync(buffer, 0, bytesRead, cancellationToken).ConfigureAwait(false);
-                        bytesDownloaded += bytesRead;
+                        var buffer = new byte[8192];
+                        int bytesRead;
 
-                        if (totalBytes > 0)
+                        var lastLoggedProgress = 0;
+                        while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false)) > 0)
                         {
-                            var progress = (int)((bytesDownloaded * 100) / totalBytes);
-                            _logger.LogInformation("[{CorrelationId}] Download progress: {Progress}%", correlationId, progress);
+                            await fileStream.WriteAsync(buffer, 0, bytesRead, cancellationToken).ConfigureAwait(false);
+                            bytesDownloaded += bytesRead;
+
+                            if (totalBytes > 0)
+                            {
+                                var progress = (int)((bytesDownloaded * 100) / totalBytes);
+                                if (progress >= lastLoggedProgress + 10)
+                                {
+                                    _logger.LogInformation("[{CorrelationId}] Download progress: {Progress}%", correlationId, progress);
+                                    lastLoggedProgress = progress;
+                                }
+                            }
                         }
+                    }
+
+                    _logger.LogInformation("[{CorrelationId}] Download completed successfully: {Size} bytes", correlationId, bytesDownloaded);
+                    downloadSuccess = true;
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "[{CorrelationId}] Download attempt {Attempt}/3 failed", correlationId, attempt);
+                    if (attempt < 3)
+                    {
+                        await DelayWithExponentialBackoffAsync(attempt, cancellationToken).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        return Ok(new
+                        {
+                            success = false,
+                            message = $"Failed to download Piper TTS after 3 attempts. Last error: {ex.Message}",
+                            requiresManualInstall = true,
+                            downloadUrl = "https://github.com/rhasspy/piper/releases/latest",
+                            downloadFilePath = downloadPath,
+                            instructions = new[]
+                            {
+                                "1. Visit https://github.com/rhasspy/piper/releases/latest",
+                                "2. Download piper_windows_amd64.tar.gz manually",
+                                $"3. Extract to: {piperDir}",
+                                "4. Click 'Re-scan' to detect the installation"
+                            }
+                        });
                     }
                 }
             }
 
+            // 4. Extract with timeout handling (2 minute timeout)
             _logger.LogInformation("[{CorrelationId}] Extracting Piper TTS to {Path}", correlationId, piperDir);
-
-            // Extract TAR.GZ using SharpCompress (if available) or provide manual instructions
-            // For Windows 11, we'll try to use built-in PowerShell or provide clear instructions
+            
             string? piperExePath = null;
+            using var extractCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            extractCts.CancelAfter(TimeSpan.FromMinutes(2));
 
             try
             {
-                // Try using PowerShell to extract TAR.GZ (Windows 10 1803+ and Windows 11 have built-in tar)
                 using var tarProcess = new Process
                 {
                     StartInfo = new ProcessStartInfo
@@ -1707,9 +1798,13 @@ public class SetupController : ControllerBase
                 };
 
                 tarProcess.Start();
-                var tarOutput = await tarProcess.StandardOutput.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
-                var tarError = await tarProcess.StandardError.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
-                await tarProcess.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+                
+                var tarOutputTask = tarProcess.StandardOutput.ReadToEndAsync(extractCts.Token);
+                var tarErrorTask = tarProcess.StandardError.ReadToEndAsync(extractCts.Token);
+                await tarProcess.WaitForExitAsync(extractCts.Token).ConfigureAwait(false);
+
+                var tarOutput = await tarOutputTask.ConfigureAwait(false);
+                var tarError = await tarErrorTask.ConfigureAwait(false);
 
                 if (tarProcess.ExitCode == 0)
                 {
@@ -1718,52 +1813,32 @@ public class SetupController : ControllerBase
                 }
                 else
                 {
-                    _logger.LogWarning("[{CorrelationId}] tar command failed: {Error}", correlationId, tarError);
+                    _logger.LogWarning("[{CorrelationId}] tar command failed with exit code {ExitCode}: {Error}", correlationId, tarProcess.ExitCode, tarError);
                 }
+            }
+            catch (OperationCanceledException) when (extractCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogWarning("[{CorrelationId}] Extraction timed out after 2 minutes", correlationId);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "[{CorrelationId}] tar command not available, will provide manual instructions", correlationId);
+                _logger.LogWarning(ex, "[{CorrelationId}] tar command not available or failed", correlationId);
             }
 
-            // If extraction failed, provide manual instructions with download link
             if (piperExePath == null)
             {
-                // Cleanup failed extraction attempt and downloaded file
-                try
-                {
-                    if (Directory.Exists(piperDir))
-                    {
-                        Directory.Delete(piperDir, recursive: true);
-                    }
-                }
-                catch
-                {
-                    // Ignore cleanup errors
-                }
-
-                // Cleanup downloaded file
-                try
-                {
-                    if (System.IO.File.Exists(downloadPath))
-                    {
-                        System.IO.File.Delete(downloadPath);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "[{CorrelationId}] Failed to cleanup downloaded file: {Path}", correlationId, downloadPath);
-                }
-
+                CleanupFiles(piperDir, downloadPath, correlationId);
+                
                 return Ok(new
                 {
                     success = false,
-                    message = "Automatic extraction is not available on this system. Please download and extract Piper manually.",
+                    message = "Automatic extraction failed. The archive has been downloaded to your temp folder.",
                     requiresManualInstall = true,
+                    downloadFilePath = downloadPath,
                     downloadUrl = "https://github.com/rhasspy/piper/releases/latest",
                     instructions = new[]
                     {
-                        "1. Download piper_windows_amd64.tar.gz from the GitHub releases page",
+                        $"1. The file was downloaded to: {downloadPath}",
                         "2. Extract the archive using 7-Zip, WinRAR, or Windows 11's built-in extraction",
                         $"3. Copy piper.exe to: {piperDir}",
                         "4. Click 'Re-scan' to detect the installation"
@@ -1772,108 +1847,116 @@ public class SetupController : ControllerBase
                 });
             }
 
-            // Find piper.exe
-            piperExePath = Directory.GetFiles(piperDir, "piper.exe", SearchOption.AllDirectories).FirstOrDefault();
-
-            if (piperExePath == null)
-            {
-                throw new FileNotFoundException("piper.exe not found in extracted files");
-            }
-
             // Move piper.exe to root of piperDir for easier access
             var targetPath = Path.Combine(piperDir, "piper.exe");
             if (piperExePath != targetPath)
             {
                 System.IO.File.Copy(piperExePath, targetPath, overwrite: true);
+                _logger.LogInformation("[{CorrelationId}] Moved piper.exe to {TargetPath}", correlationId, targetPath);
             }
 
-            // Download a default voice model (en_US-lessac-medium is a good default)
-            var voiceModelUrl = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx";
+            // 5. Resolve voice model URL dynamically
+            var voiceModelUrl = await ResolveVoiceModelUrlAsync(cancellationToken).ConfigureAwait(false);
             var voiceModelDir = Path.Combine(piperDir, "voices");
             Directory.CreateDirectory(voiceModelDir);
             var voiceModelPath = Path.Combine(voiceModelDir, "en_US-lessac-medium.onnx");
 
-            _logger.LogInformation("[{CorrelationId}] Downloading default voice model", correlationId);
-
-            try
+            // 6. Download voice model with retry logic
+            _logger.LogInformation("[{CorrelationId}] Downloading default voice model from {Url}", correlationId, voiceModelUrl);
+            
+            bool voiceModelDownloaded = false;
+            for (int attempt = 1; attempt <= 3; attempt++)
             {
-                using (var response = await _httpClient.GetAsync(voiceModelUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false))
+                try
                 {
+                    _logger.LogInformation("[{CorrelationId}] Downloading voice model (attempt {Attempt}/3)", correlationId, attempt);
+                    
+                    using var response = await _httpClient.GetAsync(voiceModelUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
                     response.EnsureSuccessStatusCode();
+                    
                     using (var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false))
                     using (var fileStream = new FileStream(voiceModelPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
                     {
                         await contentStream.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
                     }
+                    
+                    voiceModelDownloaded = true;
+                    _logger.LogInformation("[{CorrelationId}] Voice model downloaded successfully", correlationId);
+                    break;
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "[{CorrelationId}] Failed to download voice model, user can download manually", correlationId);
-                // Continue without voice model - user can download it manually
-            }
-
-            // Cleanup
-            if (System.IO.File.Exists(downloadPath))
-            {
-                System.IO.File.Delete(downloadPath);
-            }
-
-            // Save configuration
-            var providerSettings = new ProviderSettings(_loggerFactory.CreateLogger<ProviderSettings>());
-            providerSettings.SetPiperPaths(targetPath, System.IO.File.Exists(voiceModelPath) ? voiceModelPath : null);
-
-            // Force file system flush by ensuring the file is written and readable
-            // This ensures the write is committed to disk before the check endpoint is called
-            try
-            {
-                var settingsPath = Path.Combine(providerSettings.GetAuraDataDirectory(), "settings.json");
-                // Force a flush by reading the file back and verifying the content
-                if (System.IO.File.Exists(settingsPath))
+                catch (Exception ex)
                 {
-                    var content = System.IO.File.ReadAllText(settingsPath);
-                    _logger.LogInformation("[{CorrelationId}] Verified settings file write - Size: {Size} bytes",
-                        correlationId, content.Length);
-
-                    // Verify the settings were actually saved by checking the JSON content
-                    if (!content.Contains("piperExecutablePath") || !content.Contains(targetPath))
+                    _logger.LogWarning(ex, "[{CorrelationId}] Voice model download attempt {Attempt}/3 failed", correlationId, attempt);
+                    if (attempt < 3)
                     {
-                        _logger.LogWarning("[{CorrelationId}] Settings file doesn't contain Piper path, retrying save", correlationId);
-                        // Retry saving
-                        providerSettings.Reload();
-                        providerSettings.SetPiperPaths(targetPath, System.IO.File.Exists(voiceModelPath) ? voiceModelPath : null);
-
-                        // Wait for file system flush
-                        await Task.Delay(100, cancellationToken).ConfigureAwait(false);
-
-                        // Read again to verify retry succeeded
-                        var retryContent = System.IO.File.ReadAllText(settingsPath);
-                        _logger.LogInformation("[{CorrelationId}] After retry - Settings file size: {Size} bytes", correlationId, retryContent.Length);
-
-                        // Verify the retry actually worked
-                        if (!retryContent.Contains("piperExecutablePath") || !retryContent.Contains(targetPath))
-                        {
-                            _logger.LogError("[{CorrelationId}] Settings save retry failed - configuration not persisted", correlationId);
-                            return StatusCode(500, new
-                            {
-                                success = false,
-                                error = "Failed to save Piper TTS configuration. Please try again or configure manually in Settings.",
-                                message = "Piper TTS was installed but configuration could not be saved. You may need to configure the path manually."
-                            });
-                        }
-
-                        _logger.LogInformation("[{CorrelationId}] Settings save retry succeeded - configuration verified", correlationId);
+                        await DelayWithExponentialBackoffAsync(attempt, cancellationToken).ConfigureAwait(false);
                     }
                 }
-                else
+            }
+
+            if (!voiceModelDownloaded)
+            {
+                _logger.LogWarning("[{CorrelationId}] Failed to download voice model after 3 attempts, continuing without it", correlationId);
+            }
+
+            // Cleanup downloaded file
+            CleanupFiles(null, downloadPath, correlationId);
+
+            // 7. Save configuration with verification (3 retry attempts)
+            var providerSettings = new ProviderSettings(_loggerFactory.CreateLogger<ProviderSettings>());
+            bool configSaved = false;
+            
+            for (int attempt = 1; attempt <= 3; attempt++)
+            {
+                _logger.LogInformation("[{CorrelationId}] Saving Piper configuration (attempt {Attempt}/3)", correlationId, attempt);
+                
+                providerSettings.SetPiperPaths(targetPath, voiceModelDownloaded ? voiceModelPath : null);
+                
+                // 8. Verify saved config by reading file and checking content
+                await Task.Delay(200, cancellationToken).ConfigureAwait(false);
+                
+                try
                 {
-                    _logger.LogWarning("[{CorrelationId}] Settings file not found after write at {Path}",
-                        correlationId, settingsPath);
+                    var settingsPath = Path.Combine(providerSettings.GetAuraDataDirectory(), "settings.json");
+                    if (System.IO.File.Exists(settingsPath))
+                    {
+                        var content = System.IO.File.ReadAllText(settingsPath);
+                        _logger.LogInformation("[{CorrelationId}] Verified settings file - Size: {Size} bytes", correlationId, content.Length);
+                        
+                        if (content.Contains("piperExecutablePath") && content.Contains(targetPath))
+                        {
+                            configSaved = true;
+                            _logger.LogInformation("[{CorrelationId}] Settings save verification succeeded on attempt {Attempt}", correlationId, attempt);
+                            break;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "[{CorrelationId}] Failed to verify settings file on attempt {Attempt}", correlationId, attempt);
+                }
+                
+                if (attempt < 3)
+                {
+                    providerSettings.Reload();
                 }
             }
-            catch (Exception ex)
+
+            if (!configSaved)
             {
-                _logger.LogWarning(ex, "[{CorrelationId}] Failed to verify settings file write", correlationId);
+                _logger.LogError("[{CorrelationId}] Failed to save and verify Piper configuration after 3 attempts", correlationId);
+                return Ok(new
+                {
+                    success = false,
+                    message = "Piper TTS was installed but configuration could not be saved. Please configure manually in Settings.",
+                    path = targetPath,
+                    installPath = piperDir,
+                    instructions = new[]
+                    {
+                        $"Piper was installed to: {targetPath}",
+                        "Please configure the path manually in Settings → Providers"
+                    }
+                });
             }
 
             // Small delay to ensure file system has fully flushed
@@ -1881,20 +1964,115 @@ public class SetupController : ControllerBase
 
             _logger.LogInformation("[{CorrelationId}] Piper TTS installed successfully at {Path}", correlationId, targetPath);
 
+            // 9. Return detailed success/error messages
             return Ok(new
             {
                 success = true,
                 message = "Piper TTS installed successfully",
                 path = targetPath,
-                voiceModelPath = System.IO.File.Exists(voiceModelPath) ? voiceModelPath : null,
-                voiceModelDownloaded = System.IO.File.Exists(voiceModelPath)
+                voiceModelPath = voiceModelDownloaded ? voiceModelPath : null,
+                voiceModelDownloaded = voiceModelDownloaded
             });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[{CorrelationId}] Failed to install Piper TTS on Windows", correlationId);
-            throw;
+            CleanupFiles(piperDir, downloadPath, correlationId);
+            
+            return Ok(new
+            {
+                success = false,
+                message = $"Installation failed: {ex.Message}",
+                requiresManualInstall = true,
+                downloadUrl = "https://github.com/rhasspy/piper/releases/latest",
+                installPath = piperDir,
+                instructions = new[]
+                {
+                    "1. Visit https://github.com/rhasspy/piper/releases/latest",
+                    "2. Download piper_windows_amd64.tar.gz manually",
+                    $"3. Extract to: {piperDir}",
+                    "4. Click 'Re-scan' to detect the installation"
+                }
+            });
         }
+    }
+
+    /// <summary>
+    /// Resolve voice model URL dynamically with fallback
+    /// </summary>
+    private async Task<string> ResolveVoiceModelUrlAsync(CancellationToken cancellationToken)
+    {
+        const string primaryUrl = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx";
+        const string fallbackUrl = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/amy/low/en_US-amy-low.onnx";
+
+        // Try HuggingFace primary URL with 5 second timeout
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            using var testClient = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+            var testResponse = await testClient.GetAsync(primaryUrl, HttpCompletionOption.ResponseHeadersRead, cts.Token).ConfigureAwait(false);
+            
+            if (testResponse.IsSuccessStatusCode)
+            {
+                _logger.LogInformation("Voice model URL resolved to primary: {Url}", primaryUrl);
+                return primaryUrl;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Primary voice model URL unreachable, trying fallback");
+        }
+
+        // Fallback to alternative HuggingFace model (also from main branch, no hardcoded version)
+        _logger.LogInformation("Using fallback voice model URL: {Url}", fallbackUrl);
+        return fallbackUrl;
+    }
+
+    /// <summary>
+    /// Cleanup temporary files and directories
+    /// </summary>
+    private void CleanupFiles(string? directoryPath, string? filePath, string correlationId)
+    {
+        if (directoryPath != null)
+        {
+            try
+            {
+                if (Directory.Exists(directoryPath))
+                {
+                    Directory.Delete(directoryPath, recursive: true);
+                    _logger.LogInformation("[{CorrelationId}] Cleaned up directory: {Path}", correlationId, directoryPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[{CorrelationId}] Failed to cleanup directory: {Path}", correlationId, directoryPath);
+            }
+        }
+
+        if (filePath != null)
+        {
+            try
+            {
+                if (System.IO.File.Exists(filePath))
+                {
+                    System.IO.File.Delete(filePath);
+                    _logger.LogInformation("[{CorrelationId}] Cleaned up file: {Path}", correlationId, filePath);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[{CorrelationId}] Failed to cleanup file: {Path}", correlationId, filePath);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Delay with exponential backoff for retry operations (max 5 seconds per attempt)
+    /// </summary>
+    private static async Task DelayWithExponentialBackoffAsync(int attempt, CancellationToken cancellationToken)
+    {
+        var delaySeconds = Math.Min(Math.Pow(2, attempt), 5); // Cap at 5 seconds
+        await Task.Delay(TimeSpan.FromSeconds(delaySeconds), cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -1909,87 +2087,117 @@ public class SetupController : ControllerBase
         {
             _logger.LogInformation("[{CorrelationId}] Starting Mimic3 TTS installation check", correlationId);
 
-            // Mimic3 is typically run via Docker or Python
-            // For Windows, we'll check if Docker is available and guide the user
-
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            // 1. Check Docker is installed
+            bool dockerInstalled = false;
+            try
             {
-                // Check if Docker is available
-                try
+                using var dockerVersionProcess = new Process
                 {
-                    using var dockerProcess = new Process
+                    StartInfo = new ProcessStartInfo
                     {
-                        StartInfo = new ProcessStartInfo
-                        {
-                            FileName = "docker",
-                            Arguments = "--version",
-                            RedirectStandardOutput = true,
-                            UseShellExecute = false,
-                            CreateNoWindow = true
-                        }
-                    };
-
-                    dockerProcess.Start();
-                    await dockerProcess.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
-
-                    if (dockerProcess.ExitCode == 0)
-                    {
-                        // Docker is available - start Mimic3 container
-                        return await StartMimic3Docker(cancellationToken).ConfigureAwait(false);
+                        FileName = "docker",
+                        Arguments = "--version",
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
                     }
-                }
-                catch
-                {
-                    // Docker not found
-                }
+                };
 
-                // Docker not available - provide installation guide
+                dockerVersionProcess.Start();
+                var versionOutput = await dockerVersionProcess.StandardOutput.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+                await dockerVersionProcess.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+
+                if (dockerVersionProcess.ExitCode == 0)
+                {
+                    dockerInstalled = true;
+                    _logger.LogInformation("[{CorrelationId}] Docker is installed: {Version}", correlationId, versionOutput.Trim());
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogInformation(ex, "[{CorrelationId}] Docker command not found", correlationId);
+            }
+
+            if (!dockerInstalled)
+            {
+                _logger.LogWarning("[{CorrelationId}] Docker is not installed", correlationId);
                 return Ok(new
                 {
                     success = false,
-                    message = "Docker is required for Mimic3 TTS on Windows. Please install Docker Desktop first.",
+                    message = "Docker is required for Mimic3 TTS. Please install Docker Desktop first.",
                     requiresDocker = true,
-                    dockerUrl = "https://www.docker.com/products/docker-desktop",
+                    dockerUrl = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) 
+                        ? "https://www.docker.com/products/docker-desktop" 
+                        : "https://docs.docker.com/engine/install/",
                     alternativeInstructions = "Alternatively, you can install Mimic3 via Python: pip install mycroft-mimic3-tts"
                 });
             }
-            else
+
+            // 2. Check Docker daemon is running (not just installed)
+            bool dockerRunning = false;
+            try
             {
-                // Linux/macOS - try Docker first
-                try
+                using var dockerPsProcess = new Process
                 {
-                    using var dockerProcess = new Process
+                    StartInfo = new ProcessStartInfo
                     {
-                        StartInfo = new ProcessStartInfo
-                        {
-                            FileName = "docker",
-                            Arguments = "--version",
-                            RedirectStandardOutput = true,
-                            UseShellExecute = false,
-                            CreateNoWindow = true
-                        }
-                    };
-
-                    dockerProcess.Start();
-                    await dockerProcess.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
-
-                    if (dockerProcess.ExitCode == 0)
-                    {
-                        return await StartMimic3Docker(cancellationToken).ConfigureAwait(false);
+                        FileName = "docker",
+                        Arguments = "ps",
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
                     }
-                }
-                catch
-                {
-                    // Docker not found
-                }
+                };
 
+                dockerPsProcess.Start();
+                await dockerPsProcess.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+                var psError = await dockerPsProcess.StandardError.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+
+                if (dockerPsProcess.ExitCode == 0)
+                {
+                    dockerRunning = true;
+                    _logger.LogInformation("[{CorrelationId}] Docker daemon is running", correlationId);
+                }
+                else
+                {
+                    _logger.LogWarning("[{CorrelationId}] Docker daemon not running. Error: {Error}", correlationId, psError);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[{CorrelationId}] Failed to check Docker daemon status", correlationId);
+            }
+
+            // 3. Return appropriate error messages for each failure case
+            if (!dockerRunning)
+            {
+                _logger.LogWarning("[{CorrelationId}] Docker is installed but daemon is not running", correlationId);
                 return Ok(new
                 {
                     success = false,
-                    message = "Please install Mimic3 manually. Options:\n1. Docker: docker run -p 59125:59125 mycroftai/mimic3\n2. Python: pip install mycroft-mimic3-tts",
-                    requiresManualInstall = true
+                    message = "Docker is installed but the Docker daemon is not running. Please start Docker Desktop.",
+                    dockerInstalled = true,
+                    dockerRunning = false,
+                    instructions = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+                        ? new[] 
+                        {
+                            "1. Start Docker Desktop from the Start Menu",
+                            "2. Wait for Docker to fully start (check system tray icon)",
+                            "3. Return to this wizard and try again"
+                        }
+                        : new[]
+                        {
+                            "1. Start the Docker daemon: sudo systemctl start docker",
+                            "2. Enable Docker to start on boot: sudo systemctl enable docker",
+                            "3. Return to this wizard and try again"
+                        }
                 });
             }
+
+            // Docker is installed and running - proceed with container setup
+            return await StartMimic3Docker(cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -2006,13 +2214,16 @@ public class SetupController : ControllerBase
         {
             _logger.LogInformation("[{CorrelationId}] Starting Mimic3 Docker container", correlationId);
 
-            // Check if container already exists
+            // 1. Use container name "aura-mimic3"
+            const string containerName = "aura-mimic3";
+
+            // 2. Check if container exists before creating new one
             using var checkProcess = new Process
             {
                 StartInfo = new ProcessStartInfo
                 {
                     FileName = "docker",
-                    Arguments = "ps -a --filter name=mimic3 --format {{.Names}}",
+                    Arguments = $"ps -a --filter name={containerName} --format {{{{.Names}}}}",
                     RedirectStandardOutput = true,
                     UseShellExecute = false,
                     CreateNoWindow = true
@@ -2023,17 +2234,18 @@ public class SetupController : ControllerBase
             var output = await checkProcess.StandardOutput.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
             await checkProcess.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
 
-            var containerExists = output.Contains("mimic3");
+            var containerExists = output.Contains(containerName);
 
             if (containerExists)
             {
-                // Start existing container
+                _logger.LogInformation("[{CorrelationId}] Container {ContainerName} already exists, starting it", correlationId, containerName);
+                
                 using var startProcess = new Process
                 {
                     StartInfo = new ProcessStartInfo
                     {
                         FileName = "docker",
-                        Arguments = "start mimic3",
+                        Arguments = $"start {containerName}",
                         RedirectStandardOutput = true,
                         RedirectStandardError = true,
                         UseShellExecute = false,
@@ -2046,68 +2258,31 @@ public class SetupController : ControllerBase
 
                 if (startProcess.ExitCode == 0)
                 {
-                    // Save configuration
-                    var providerSettings = new ProviderSettings(_loggerFactory.CreateLogger<ProviderSettings>());
-                    providerSettings.SetMimic3BaseUrl("http://127.0.0.1:59125");
-
-                    // Verify settings were saved
-                    try
-                    {
-                        var settingsPath = Path.Combine(providerSettings.GetAuraDataDirectory(), "settings.json");
-                        if (System.IO.File.Exists(settingsPath))
-                        {
-                            var content = System.IO.File.ReadAllText(settingsPath);
-                            if (!content.Contains("mimic3BaseUrl") || !content.Contains("127.0.0.1:59125"))
-                            {
-                                _logger.LogWarning("[{CorrelationId}] Settings file doesn't contain Mimic3 URL, retrying save", correlationId);
-                                providerSettings.Reload();
-                                providerSettings.SetMimic3BaseUrl("http://127.0.0.1:59125");
-
-                                // Wait for file system flush
-                                await Task.Delay(100, cancellationToken).ConfigureAwait(false);
-
-                                // Verify retry succeeded
-                                var retryContent = System.IO.File.ReadAllText(settingsPath);
-                                if (!retryContent.Contains("mimic3BaseUrl") || !retryContent.Contains("127.0.0.1:59125"))
-                                {
-                                    _logger.LogError("[{CorrelationId}] Settings save retry failed - configuration not persisted", correlationId);
-                                    return Ok(new
-                                    {
-                                        success = false,
-                                        error = "Failed to save Mimic3 TTS configuration. Please try again or configure manually in Settings.",
-                                        message = "Mimic3 container started but configuration could not be saved. You may need to configure the URL manually."
-                                    });
-                                }
-
-                                _logger.LogInformation("[{CorrelationId}] Settings save retry succeeded - configuration verified", correlationId);
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "[{CorrelationId}] Failed to verify Mimic3 settings file write", correlationId);
-                    }
-
-                    // Small delay to ensure file system has fully flushed
-                    await Task.Delay(200, cancellationToken).ConfigureAwait(false);
-
+                    _logger.LogInformation("[{CorrelationId}] Container {ContainerName} started successfully", correlationId, containerName);
+                    
+                    // Save configuration with verification
+                    var success = await SaveMimic3ConfigurationAsync(correlationId, cancellationToken).ConfigureAwait(false);
+                    
                     return Ok(new
                     {
                         success = true,
                         message = "Mimic3 container started successfully",
                         baseUrl = "http://127.0.0.1:59125",
-                        wasExisting = true
+                        wasExisting = true,
+                        configSaved = success
                     });
                 }
             }
 
             // Create and start new container
+            _logger.LogInformation("[{CorrelationId}] Creating new container {ContainerName}", correlationId, containerName);
+            
             using var runProcess = new Process
             {
                 StartInfo = new ProcessStartInfo
                 {
                     FileName = "docker",
-                    Arguments = "run -d --name mimic3 -p 59125:59125 --restart unless-stopped mycroftai/mimic3:latest",
+                    Arguments = $"run -d --name {containerName} -p 59125:59125 --restart unless-stopped mycroftai/mimic3:latest",
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
@@ -2122,87 +2297,80 @@ public class SetupController : ControllerBase
 
             if (runProcess.ExitCode != 0)
             {
-                throw new Exception($"Failed to start Mimic3 container: {runError}");
+                _logger.LogError("[{CorrelationId}] Failed to start Mimic3 container: {Error}", correlationId, runError);
+                return Ok(new
+                {
+                    success = false,
+                    message = $"Failed to start Mimic3 container: {runError}",
+                    instructions = new[]
+                    {
+                        "1. Ensure Docker Desktop is running",
+                        "2. Check if port 59125 is already in use",
+                        "3. Try running manually: docker run -p 59125:59125 mycroftai/mimic3:latest"
+                    }
+                });
             }
 
-            // Wait for container to start and become ready (with retries)
-            var maxRetries = 10;
-            var retryDelay = 1000; // 1 second
+            // 3. Extended health check: 60 retries × 3 seconds = 3 minutes timeout
+            var maxRetries = 60;
+            var retryDelay = 3000; // 3 seconds
             var isReady = false;
+            var lastLogTime = DateTime.UtcNow;
+
+            _logger.LogInformation("[{CorrelationId}] Waiting for Mimic3 server to become ready (up to {Minutes} minutes)...", 
+                correlationId, maxRetries * retryDelay / 60000);
 
             for (int i = 0; i < maxRetries; i++)
             {
                 await Task.Delay(retryDelay, cancellationToken).ConfigureAwait(false);
 
+                // 4. Log progress every 30 seconds during health checks
+                if ((DateTime.UtcNow - lastLogTime).TotalSeconds >= 30)
+                {
+                    _logger.LogInformation("[{CorrelationId}] Still waiting for Mimic3... Attempt {Attempt}/{MaxRetries} ({Elapsed}s elapsed)", 
+                        correlationId, i + 1, maxRetries, (i + 1) * (retryDelay / 1000));
+                    lastLogTime = DateTime.UtcNow;
+                }
+
                 try
                 {
-                    using var testClient = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
+                    using var testClient = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
                     var testResponse = await testClient.GetAsync("http://127.0.0.1:59125/api/voices", cancellationToken).ConfigureAwait(false);
                     if (testResponse.IsSuccessStatusCode)
                     {
                         isReady = true;
-                        _logger.LogInformation("[{CorrelationId}] Mimic3 server is ready after {Attempts} attempts", correlationId, i + 1);
+                        _logger.LogInformation("[{CorrelationId}] Mimic3 server is ready after {Attempts} attempts ({Elapsed}s)", 
+                            correlationId, i + 1, (i + 1) * (retryDelay / 1000));
                         break;
                     }
                 }
                 catch
                 {
                     // Server not ready yet, continue retrying
-                    _logger.LogInformation("[{CorrelationId}] Mimic3 server not ready yet, attempt {Attempt}/{MaxRetries}", correlationId, i + 1, maxRetries);
+                    if (i % 10 == 0 && i > 0)
+                    {
+                        _logger.LogInformation("[{CorrelationId}] Mimic3 server not ready yet, attempt {Attempt}/{MaxRetries}", 
+                            correlationId, i + 1, maxRetries);
+                    }
                 }
             }
 
             if (!isReady)
             {
-                _logger.LogWarning("[{CorrelationId}] Mimic3 server did not become ready within {Timeout} seconds, but container is running", correlationId, maxRetries);
+                _logger.LogWarning("[{CorrelationId}] Mimic3 server did not become ready within {Timeout} seconds, but container is running", 
+                    correlationId, maxRetries * (retryDelay / 1000));
             }
 
-            // Save configuration
-            var settings = new ProviderSettings(_loggerFactory.CreateLogger<ProviderSettings>());
-            settings.SetMimic3BaseUrl("http://127.0.0.1:59125");
+            // 5. Save configuration with verification (3 retry attempts)
+            var configSuccess = await SaveMimic3ConfigurationAsync(correlationId, cancellationToken).ConfigureAwait(false);
 
-            // Verify settings were saved
-            try
+            if (!configSuccess)
             {
-                var settingsPath = Path.Combine(settings.GetAuraDataDirectory(), "settings.json");
-                if (System.IO.File.Exists(settingsPath))
-                {
-                    var content = System.IO.File.ReadAllText(settingsPath);
-                    if (!content.Contains("mimic3BaseUrl") || !content.Contains("127.0.0.1:59125"))
-                    {
-                        _logger.LogWarning("[{CorrelationId}] Settings file doesn't contain Mimic3 URL, retrying save", correlationId);
-                        settings.Reload();
-                        settings.SetMimic3BaseUrl("http://127.0.0.1:59125");
-
-                        // Wait for file system flush
-                        await Task.Delay(100, cancellationToken).ConfigureAwait(false);
-
-                        // Verify retry succeeded
-                        var retryContent = System.IO.File.ReadAllText(settingsPath);
-                        if (!retryContent.Contains("mimic3BaseUrl") || !retryContent.Contains("127.0.0.1:59125"))
-                        {
-                            _logger.LogError("[{CorrelationId}] Settings save retry failed - configuration not persisted", correlationId);
-                            return StatusCode(500, new
-                            {
-                                success = false,
-                                error = "Failed to save Mimic3 TTS configuration. Please try again or configure manually in Settings.",
-                                message = "Mimic3 container started but configuration could not be saved. You may need to configure the URL manually."
-                            });
-                        }
-
-                        _logger.LogInformation("[{CorrelationId}] Settings save retry succeeded - configuration verified", correlationId);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "[{CorrelationId}] Failed to verify Mimic3 settings file write", correlationId);
+                _logger.LogError("[{CorrelationId}] Mimic3 container started but configuration save failed", correlationId);
             }
 
-            // Small delay to ensure file system has fully flushed
-            await Task.Delay(200, cancellationToken).ConfigureAwait(false);
-
-            _logger.LogInformation("[{CorrelationId}] Mimic3 Docker container started successfully", correlationId);
+            // 6. Return success even if health check incomplete (with warning message)
+            _logger.LogInformation("[{CorrelationId}] Mimic3 Docker container started successfully (ready: {IsReady})", correlationId, isReady);
 
             return Ok(new
             {
@@ -2212,14 +2380,70 @@ public class SetupController : ControllerBase
                     : "Mimic3 TTS container started but server may still be initializing. Please wait a moment and click 'Re-scan'.",
                 baseUrl = "http://127.0.0.1:59125",
                 containerId = runOutput.Trim(),
-                isReady = isReady
+                isReady = isReady,
+                configSaved = configSuccess
             });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[{CorrelationId}] Failed to start Mimic3 Docker container", correlationId);
-            throw;
+            return Ok(new
+            {
+                success = false,
+                message = $"Failed to start Mimic3 container: {ex.Message}",
+                instructions = new[]
+                {
+                    "1. Ensure Docker Desktop is running",
+                    "2. Try running manually: docker run -p 59125:59125 mycroftai/mimic3:latest",
+                    "3. Check Docker logs for more details"
+                }
+            });
         }
+    }
+
+    /// <summary>
+    /// Save Mimic3 configuration with verification and retries
+    /// </summary>
+    private async Task<bool> SaveMimic3ConfigurationAsync(string correlationId, CancellationToken cancellationToken)
+    {
+        var providerSettings = new ProviderSettings(_loggerFactory.CreateLogger<ProviderSettings>());
+        
+        for (int attempt = 1; attempt <= 3; attempt++)
+        {
+            _logger.LogInformation("[{CorrelationId}] Saving Mimic3 configuration (attempt {Attempt}/3)", correlationId, attempt);
+            
+            providerSettings.SetMimic3BaseUrl("http://127.0.0.1:59125");
+            
+            await Task.Delay(200, cancellationToken).ConfigureAwait(false);
+            
+            try
+            {
+                var settingsPath = Path.Combine(providerSettings.GetAuraDataDirectory(), "settings.json");
+                if (System.IO.File.Exists(settingsPath))
+                {
+                    var content = System.IO.File.ReadAllText(settingsPath);
+                    _logger.LogInformation("[{CorrelationId}] Verified settings file - Size: {Size} bytes", correlationId, content.Length);
+                    
+                    if (content.Contains("mimic3BaseUrl") && content.Contains("127.0.0.1:59125"))
+                    {
+                        _logger.LogInformation("[{CorrelationId}] Settings save verification succeeded on attempt {Attempt}", correlationId, attempt);
+                        return true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[{CorrelationId}] Failed to verify settings file on attempt {Attempt}", correlationId, attempt);
+            }
+            
+            if (attempt < 3)
+            {
+                providerSettings.Reload();
+            }
+        }
+        
+        _logger.LogError("[{CorrelationId}] Failed to save and verify Mimic3 configuration after 3 attempts", correlationId);
+        return false;
     }
 
     /// <summary>
