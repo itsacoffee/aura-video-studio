@@ -2,6 +2,8 @@
  * Ideation API service for AI-powered brainstorming and concept generation
  */
 
+import { apiUrl } from '../config/api';
+
 export interface ConceptIdea {
   conceptId: string;
   title: string;
@@ -183,6 +185,21 @@ export interface QuestionsResponse {
   count: number;
 }
 
+export interface EnhanceTopicRequest {
+  topic: string;
+  videoType?: string;
+  targetAudience?: string;
+  keyMessage?: string;
+}
+
+export interface EnhanceTopicResponse {
+  success: boolean;
+  enhancedTopic: string;
+  originalTopic: string;
+  improvements?: string;
+  generatedAt: string;
+}
+
 const API_BASE = '/api/ideation';
 
 export const ideationService = {
@@ -190,154 +207,308 @@ export const ideationService = {
    * Generate creative concept variations from a topic
    */
   async brainstorm(request: BrainstormRequest): Promise<BrainstormResponse> {
-    const response = await fetch(`${API_BASE}/brainstorm`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(request),
-    });
+    try {
+      const response = await fetch(apiUrl(`${API_BASE}/brainstorm`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
 
-    if (!response.ok) {
-      throw new Error('Failed to brainstorm concepts');
+      if (!response.ok) {
+        // Try to get error details from response
+        let errorMessage = 'Failed to brainstorm concepts';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch {
+          // If response isn't JSON, use status text
+          errorMessage = response.statusText || errorMessage;
+        }
+        console.error('[ideationService] Brainstorm failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorMessage,
+        });
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      // Re-throw if it's already an Error with a message
+      if (error instanceof Error) {
+        throw error;
+      }
+      // Otherwise wrap in Error
+      throw new Error(`Failed to brainstorm concepts: ${String(error)}`);
     }
-
-    return response.json();
   },
 
   /**
    * Expand brief with AI clarifying questions
    */
   async expandBrief(request: ExpandBriefRequest): Promise<ExpandBriefResponse> {
-    const response = await fetch(`${API_BASE}/expand-brief`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(request),
-    });
+    try {
+      const response = await fetch(apiUrl(`${API_BASE}/expand-brief`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
 
-    if (!response.ok) {
-      throw new Error('Failed to expand brief');
+      if (!response.ok) {
+        let errorMessage = 'Failed to expand brief';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch {
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error(`Failed to expand brief: ${String(error)}`);
     }
-
-    return response.json();
   },
 
   /**
    * Get trending topics for a niche
    */
   async getTrending(niche?: string, maxResults?: number): Promise<TrendingTopicsResponse> {
-    const params = new URLSearchParams();
-    if (niche) {
-      params.append('niche', niche);
-    }
-    if (maxResults) {
-      params.append('maxResults', maxResults.toString());
-    }
+    try {
+      const params = new URLSearchParams();
+      if (niche) {
+        params.append('niche', niche);
+      }
+      if (maxResults) {
+        params.append('maxResults', maxResults.toString());
+      }
 
-    const response = await fetch(`${API_BASE}/trending?${params}`);
+      const response = await fetch(apiUrl(`${API_BASE}/trending?${params}`));
 
-    if (!response.ok) {
-      throw new Error('Failed to get trending topics');
+      if (!response.ok) {
+        let errorMessage = 'Failed to get trending topics';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch {
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error(`Failed to get trending topics: ${String(error)}`);
     }
-
-    return response.json();
   },
 
   /**
    * Analyze content gaps and opportunities
    */
   async analyzeGaps(request: GapAnalysisRequest): Promise<GapAnalysisResponse> {
-    const response = await fetch(`${API_BASE}/gap-analysis`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(request),
-    });
+    try {
+      const response = await fetch(apiUrl(`${API_BASE}/gap-analysis`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
 
-    if (!response.ok) {
-      throw new Error('Failed to analyze content gaps');
+      if (!response.ok) {
+        let errorMessage = 'Failed to analyze content gaps';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch {
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error(`Failed to analyze content gaps: ${String(error)}`);
     }
-
-    return response.json();
   },
 
   /**
    * Gather research and facts for a topic
    */
   async gatherResearch(request: ResearchRequest): Promise<ResearchResponse> {
-    const response = await fetch(`${API_BASE}/research`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(request),
-    });
+    try {
+      const response = await fetch(apiUrl(`${API_BASE}/research`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
 
-    if (!response.ok) {
-      throw new Error('Failed to gather research');
+      if (!response.ok) {
+        let errorMessage = 'Failed to gather research';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch {
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error(`Failed to gather research: ${String(error)}`);
     }
-
-    return response.json();
   },
 
   /**
    * Generate visual storyboard for a concept
    */
   async generateStoryboard(request: StoryboardRequest): Promise<StoryboardResponse> {
-    const response = await fetch(`${API_BASE}/storyboard`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(request),
-    });
+    try {
+      const response = await fetch(apiUrl(`${API_BASE}/storyboard`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
 
-    if (!response.ok) {
-      throw new Error('Failed to generate storyboard');
+      if (!response.ok) {
+        let errorMessage = 'Failed to generate storyboard';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch {
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error(`Failed to generate storyboard: ${String(error)}`);
     }
-
-    return response.json();
   },
 
   /**
    * Refine a selected concept
    */
   async refineConcept(request: RefineConceptRequest): Promise<RefineConceptResponse> {
-    const response = await fetch(`${API_BASE}/refine`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(request),
-    });
+    try {
+      const response = await fetch(apiUrl(`${API_BASE}/refine`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
 
-    if (!response.ok) {
-      throw new Error('Failed to refine concept');
+      if (!response.ok) {
+        let errorMessage = 'Failed to refine concept';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch {
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error(`Failed to refine concept: ${String(error)}`);
     }
+  },
 
-    return response.json();
+  /**
+   * Enhance/improve a video topic description using AI
+   */
+  async enhanceTopic(request: EnhanceTopicRequest): Promise<EnhanceTopicResponse> {
+    try {
+      const response = await fetch(apiUrl(`${API_BASE}/enhance-topic`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Failed to enhance topic';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch {
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error(`Failed to enhance topic: ${String(error)}`);
+    }
   },
 
   /**
    * Get clarifying questions from AI
    */
   async getQuestions(request: QuestionsRequest): Promise<QuestionsResponse> {
-    const response = await fetch(`${API_BASE}/questions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(request),
-    });
+    try {
+      const response = await fetch(apiUrl(`${API_BASE}/questions`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
 
-    if (!response.ok) {
-      throw new Error('Failed to get clarifying questions');
+      if (!response.ok) {
+        let errorMessage = 'Failed to get clarifying questions';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch {
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error(`Failed to get clarifying questions: ${String(error)}`);
     }
-
-    return response.json();
   },
 
   /**

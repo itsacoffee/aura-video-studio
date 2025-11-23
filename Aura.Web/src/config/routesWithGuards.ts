@@ -212,14 +212,6 @@ export const ROUTE_METADATA_ENHANCED: RouteMetadata[] = [
     guards: [firstRunGuard],
   },
   {
-    path: '/content-planning',
-    title: 'Content Planning',
-    description: 'Plan and schedule content',
-    requiresFirstRun: true,
-    requiresSettings: true,
-    guards: [firstRunGuard, settingsGuard],
-  },
-  {
     path: '/downloads',
     title: 'Program Dependencies',
     description: 'Download and manage program dependencies',

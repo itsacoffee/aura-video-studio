@@ -3,6 +3,7 @@
  */
 
 import { AxiosError } from 'axios';
+import { apiUrl } from '../../config/api';
 import { loggingService } from '../loggingService';
 
 /**
@@ -705,7 +706,7 @@ export function isAuthenticationError(error: unknown): boolean {
  */
 export function openLogsFolder(): void {
   // Call API endpoint to open logs folder
-  fetch('/api/logs/open-folder', {
+  fetch(apiUrl('/api/logs/open-folder'), {
     method: 'POST',
   }).catch(async (error) => {
     loggingService.error(

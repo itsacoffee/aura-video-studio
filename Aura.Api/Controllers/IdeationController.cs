@@ -331,4 +331,37 @@ public class IdeationController : ControllerBase
             return StatusCode(500, new { error = "Failed to convert idea to brief" });
         }
     }
+
+    /// <summary>
+    /// Enhance/improve a video topic description using AI
+    /// </summary>
+    [HttpPost("enhance-topic")]
+    public async Task<IActionResult> EnhanceTopic(
+        [FromBody] EnhanceTopicRequest request,
+        CancellationToken ct)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.Topic))
+            {
+                return BadRequest(new { error = "Topic is required" });
+            }
+
+            var response = await _ideationService.EnhanceTopicAsync(request, ct).ConfigureAwait(false);
+
+            return Ok(new
+            {
+                success = true,
+                enhancedTopic = response.EnhancedTopic,
+                originalTopic = response.OriginalTopic,
+                improvements = response.Improvements,
+                generatedAt = response.GeneratedAt
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error enhancing topic: {Topic}", request.Topic);
+            return StatusCode(500, new { error = "Failed to enhance topic" });
+        }
+    }
 }

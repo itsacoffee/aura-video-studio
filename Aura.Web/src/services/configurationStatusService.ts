@@ -6,6 +6,7 @@
  */
 
 import { apiUrl } from '../config/api';
+import { getLocalFirstRunStatus } from './firstRunService';
 import { loggingService as logger } from './loggingService';
 
 const CONFIG_STATUS_KEY = 'configurationStatus';
@@ -293,6 +294,10 @@ class ConfigurationStatusService {
   }
 
   private async buildStatusFromChecks(): Promise<Partial<ConfigurationStatus>> {
+    // CRITICAL FIX: Check if user has completed wizard - if so, be lenient with checks
+    const hasCompletedWizard = getLocalFirstRunStatus();
+    console.info('[configurationStatusService] User has completed wizard:', hasCompletedWizard);
+
     const [ffmpeg, systemCheck] = await Promise.allSettled([
       this.checkFFmpeg(),
       this.runSystemChecks(),
@@ -301,15 +306,23 @@ class ConfigurationStatusService {
     const ffmpegResult = ffmpeg.status === 'fulfilled' ? ffmpeg.value : { installed: false };
     const systemCheckResult = systemCheck.status === 'fulfilled' ? systemCheck.value : null;
 
+    // CRITICAL FIX: If user completed wizard, assume providers are configured even if API check fails
+    // This prevents false "not configured" errors when API is temporarily unavailable
+    const providersConfiguredFromCheck = (systemCheckResult?.providers.configured.length ?? 0) > 0;
+    const providerConfigured = hasCompletedWizard || providersConfiguredFromCheck;
+
     const checks = {
-      providerConfigured: (systemCheckResult?.providers.configured.length ?? 0) > 0,
+      providerConfigured,
       providerValidated: (systemCheckResult?.providers.validated.length ?? 0) > 0,
       workspaceCreated: true, // Assume workspace exists if no error
       ffmpegDetected: ffmpegResult.installed,
       apiKeysValid: (systemCheckResult?.providers.validated.length ?? 0) > 0,
     };
 
-    const isConfigured = checks.providerConfigured && checks.ffmpegDetected;
+    // CRITICAL FIX: If user completed wizard, only require FFmpeg (providers assumed configured)
+    const isConfigured = hasCompletedWizard
+      ? checks.ffmpegDetected // Only require FFmpeg if wizard completed
+      : checks.providerConfigured && checks.ffmpegDetected; // Require both if wizard not completed
 
     return {
       isConfigured,

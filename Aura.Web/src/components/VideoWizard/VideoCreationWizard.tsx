@@ -481,7 +481,7 @@ export const VideoCreationWizard: FC = () => {
               content={
                 !stepValidation[currentStep].isValid
                   ? `Please complete all required fields: ${stepValidation[currentStep].errors.join(', ')}`
-                  : ''
+                  : 'Continue to next step (Ctrl+Enter)'
               }
               relationship="label"
             >

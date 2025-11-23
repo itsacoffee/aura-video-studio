@@ -187,7 +187,7 @@ export function Sidebar({
   const homeItems = navItems.filter((item) => ['home', 'dashboard'].includes(item.key));
 
   const creationItems = navItems.filter((item) =>
-    ['ideation', 'trending', 'content-planning', 'create', 'templates'].includes(item.key)
+    ['ideation', 'trending', 'create', 'templates'].includes(item.key)
   );
 
   const editingItems = navItems.filter((item) =>

@@ -23,9 +23,11 @@ import {
   Mic24Regular,
   ChevronDown24Regular,
   Info24Regular,
+  Sparkle24Regular,
 } from '@fluentui/react-icons';
 import { useState, useEffect, useCallback } from 'react';
 import type { FC } from 'react';
+import { ideationService } from '../../../services/ideationService';
 import { PromptQualityAnalyzer } from '../PromptQualityAnalyzer';
 import type { BriefData, AdvancedData, StepValidation } from '../types';
 
@@ -187,6 +189,7 @@ export const BriefInput: FC<BriefInputProps> = ({
 }) => {
   const styles = useStyles();
   const [isListening, setIsListening] = useState(false);
+  const [isEnhancing, setIsEnhancing] = useState(false);
 
   const validateBrief = useCallback((briefData: BriefData): StepValidation => {
     const errors: string[] = [];
@@ -276,6 +279,38 @@ export const BriefInput: FC<BriefInputProps> = ({
     recognition.start();
   };
 
+  const handleAiEnhance = async () => {
+    if (!data.topic || data.topic.trim().length < 5) {
+      alert('Please enter a topic first (at least 5 characters) before enhancing.');
+      return;
+    }
+
+    setIsEnhancing(true);
+    try {
+      const response = await ideationService.enhanceTopic({
+        topic: data.topic,
+        videoType: data.videoType,
+        targetAudience: data.targetAudience,
+        keyMessage: data.keyMessage,
+      });
+
+      if (response.success && response.enhancedTopic) {
+        onChange({ ...data, topic: response.enhancedTopic });
+      } else {
+        throw new Error('Failed to enhance topic');
+      }
+    } catch (error) {
+      console.error('Error enhancing topic:', error);
+      alert(
+        error instanceof Error
+          ? `Failed to enhance topic: ${error.message}`
+          : 'Failed to enhance topic. Please try again.'
+      );
+    } finally {
+      setIsEnhancing(false);
+    }
+  };
+
   const handleExampleClick = (example: (typeof EXAMPLE_PROMPTS)[0]) => {
     onChange({
       ...data,
@@ -348,6 +383,16 @@ export const BriefInput: FC<BriefInputProps> = ({
               disabled={isListening}
             >
               {isListening ? 'Listening...' : 'Voice Input'}
+            </Button>
+          </Tooltip>
+          <Tooltip content="Use AI to enhance and improve your topic description" relationship="label">
+            <Button
+              appearance="primary"
+              icon={<Sparkle24Regular />}
+              onClick={handleAiEnhance}
+              disabled={isEnhancing || !data.topic || data.topic.trim().length < 5}
+            >
+              {isEnhancing ? 'Enhancing...' : 'AI Enhance'}
             </Button>
           </Tooltip>
         </div>

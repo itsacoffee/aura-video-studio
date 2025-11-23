@@ -88,14 +88,23 @@ export function ConfigurationGate({ children }: ConfigurationGateProps) {
         }
 
         // Validate required settings
+        // CRITICAL FIX: Only validate if user hasn't completed wizard
+        // If they completed wizard, allow access even if validation fails (they can fix in Settings)
         const validation = await validateRequiredSettings();
 
-        if (!validation.valid) {
+        if (!validation.valid && !localFirstRunStatus) {
+          // Only show error if user hasn't completed wizard
           setSettingsValid(false);
           setValidationError(validation.error || 'Required settings are missing or invalid');
         } else {
+          // User completed wizard OR validation passed - allow access
           setSettingsValid(true);
           setValidationError(null);
+          
+          if (!validation.valid && localFirstRunStatus) {
+            // Log warning but don't block - user can fix in Settings
+            console.warn('[ConfigurationGate] Validation failed but user completed wizard - allowing access');
+          }
         }
       } catch (error: unknown) {
         console.error('Configuration check failed:', error);

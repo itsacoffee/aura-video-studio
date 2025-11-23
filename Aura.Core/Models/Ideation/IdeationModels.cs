@@ -230,6 +230,26 @@ public record RefineConceptResponse(
 );
 
 /// <summary>
+/// Request to enhance/improve a video topic description
+/// </summary>
+public record EnhanceTopicRequest(
+    string Topic,
+    string? VideoType = null,
+    string? TargetAudience = null,
+    string? KeyMessage = null
+);
+
+/// <summary>
+/// Response with enhanced topic description
+/// </summary>
+public record EnhanceTopicResponse(
+    string EnhancedTopic,
+    string OriginalTopic,
+    string? Improvements = null,
+    DateTime GeneratedAt
+);
+
+/// <summary>
 /// Request for clarifying questions
 /// </summary>
 public record QuestionsRequest(

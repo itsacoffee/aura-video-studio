@@ -9,6 +9,8 @@
  * - OS compatibility
  */
 
+import { apiUrl } from '../config/api';
+
 export interface SystemRequirements {
   diskSpace: DiskSpaceInfo;
   gpu: GPUInfo;
@@ -101,7 +103,7 @@ export async function checkSystemRequirements(): Promise<SystemRequirements> {
 async function checkDiskSpace(): Promise<DiskSpaceInfo> {
   try {
     // Try to get disk space from backend API
-    const response = await fetch('/api/system/disk-space');
+    const response = await fetch(apiUrl('/api/system/disk-space'));
     if (response.ok) {
       const data = await response.json();
       return analyzeDiskSpace(data.availableGB, data.totalGB);
@@ -166,7 +168,7 @@ async function checkGPU(): Promise<GPUInfo> {
 
   try {
     // Try to get GPU info from backend API
-    const response = await fetch('/api/system/gpu');
+    const response = await fetch(apiUrl('/api/system/gpu'));
     if (response.ok) {
       const data = await response.json();
 
@@ -256,7 +258,7 @@ async function checkGPU(): Promise<GPUInfo> {
 async function checkMemory(): Promise<MemoryInfo> {
   try {
     // Try to get memory info from backend API
-    const response = await fetch('/api/system/memory');
+    const response = await fetch(apiUrl('/api/system/memory'));
     if (response.ok) {
       const data = await response.json();
       return analyzeMemory(data.totalGB, data.availableGB);

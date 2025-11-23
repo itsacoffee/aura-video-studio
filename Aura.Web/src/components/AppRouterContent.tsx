@@ -19,7 +19,6 @@ import { useJobState, type JobStatus } from '../state/jobState';
 import { KeyboardShortcutsCheatSheet } from './Accessibility/KeyboardShortcutsCheatSheet';
 import { CommandPalette } from './CommandPalette';
 import { ConfigurationGate } from './ConfigurationGate';
-import { ContentPlanningDashboard } from './contentPlanning/ContentPlanningDashboard';
 import { QualityDashboard } from './dashboard';
 import { ErrorBoundary } from './ErrorBoundary';
 import { GlobalStatusFooter } from './GlobalStatusFooter';
@@ -374,7 +373,6 @@ const AppRouterContentInner: FC<
                   </LazyRoute>
                 }
               />
-              <Route path="content-planning" element={<ContentPlanningDashboard />} />
               <Route path="create" element={<VideoCreationWizard />} />
               <Route path="generate" element={<VideoCreationWizard />} />
               <Route

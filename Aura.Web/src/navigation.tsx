@@ -45,12 +45,6 @@ export const navItems: NavItem[] = [
   { key: 'ideation', name: 'Ideation', icon: Lightbulb24Regular, path: '/ideation' },
   { key: 'trending', name: 'Trending Topics', icon: ChartMultiple24Regular, path: '/trending' },
   {
-    key: 'content-planning',
-    name: 'Content Planning',
-    icon: CalendarLtr24Regular,
-    path: '/content-planning',
-  },
-  {
     key: 'usage-analytics',
     name: 'Usage Analytics',
     icon: DataUsage24Regular,

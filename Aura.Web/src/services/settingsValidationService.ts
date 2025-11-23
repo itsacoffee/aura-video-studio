@@ -7,6 +7,7 @@
 
 import { apiUrl } from '../config/api';
 import { isValidPath, migrateLegacyPath } from '../utils/pathUtils';
+import { getLocalFirstRunStatus } from './firstRunService';
 import { ffmpegClient } from './api/ffmpegClient';
 
 export interface SettingsValidation {
@@ -28,10 +29,15 @@ interface ProviderStatusResponse {
 
 /**
  * Validate that all required settings are configured
+ * CRITICAL: If user has completed wizard, be lenient with validation failures
  */
 export async function validateRequiredSettings(): Promise<SettingsValidation> {
   const missingSettings: string[] = [];
   let ffmpegMissing = false;
+
+  // CRITICAL FIX: Check if user has completed wizard - if so, be lenient with validation
+  const hasCompletedWizard = getLocalFirstRunStatus();
+  console.info('[validateRequiredSettings] User has completed wizard:', hasCompletedWizard);
 
   try {
     // Check FFmpeg availability (required for video generation)
@@ -41,7 +47,7 @@ export async function validateRequiredSettings(): Promise<SettingsValidation> {
       ffmpegMissing = true;
     }
 
-    const llmStatus = await hasReadyLlmProvider();
+    const llmStatus = await hasReadyLlmProvider(hasCompletedWizard);
     if (!llmStatus.ready) {
       missingSettings.push('LLM Provider');
     }
@@ -52,12 +58,24 @@ export async function validateRequiredSettings(): Promise<SettingsValidation> {
       console.warn('Could not determine default save location');
     }
 
-    // If FFmpeg is missing, return invalid (save location has defaults)
+    // CRITICAL FIX: If user has completed wizard, don't block them on validation failures
+    // Show warnings but allow access - they can fix issues in Settings
     if (missingSettings.length > 0) {
       let errorMessage = `Required software missing: ${missingSettings.join(', ')}`;
       if (!ffmpegMissing && missingSettings.length === 1 && !llmStatus.ready && llmStatus.message) {
         errorMessage = llmStatus.message;
       }
+
+      // If user completed wizard, allow access but log warning
+      if (hasCompletedWizard) {
+        console.warn('[validateRequiredSettings] User completed wizard but validation failed - allowing access:', {
+          missingSettings,
+          errorMessage,
+        });
+        // Return valid but with a warning - don't block access
+        return { valid: true };
+      }
+
       return {
         valid: false,
         error: errorMessage,
@@ -68,6 +86,13 @@ export async function validateRequiredSettings(): Promise<SettingsValidation> {
     return { valid: true };
   } catch (error: unknown) {
     console.error('Settings validation error:', error);
+
+    // CRITICAL FIX: If user completed wizard, don't block on validation errors
+    if (hasCompletedWizard) {
+      console.warn('[validateRequiredSettings] Validation error but user completed wizard - allowing access');
+      return { valid: true };
+    }
+
     return {
       valid: false,
       error: error instanceof Error ? error.message : 'Settings validation failed',
@@ -108,10 +133,17 @@ async function checkFFmpegStatus(): Promise<{ available: boolean; path?: string 
   }
 }
 
-async function hasReadyLlmProvider(): Promise<{ ready: boolean; message?: string }> {
+async function hasReadyLlmProvider(hasCompletedWizard: boolean = false): Promise<{ ready: boolean; message?: string }> {
   try {
     const response = await fetch(apiUrl('/api/provider-status'));
     if (!response.ok) {
+      // CRITICAL FIX: If user completed wizard, be lenient - assume providers are configured
+      // The API might be temporarily unavailable or having issues, but don't block the user
+      if (hasCompletedWizard) {
+        console.warn('[hasReadyLlmProvider] Provider status API failed but user completed wizard - assuming providers configured');
+        return { ready: true };
+      }
+
       return {
         ready: false,
         message: 'Unable to verify provider status. Complete setup in Settings > Providers.',
@@ -153,6 +185,14 @@ async function hasReadyLlmProvider(): Promise<{ ready: boolean; message?: string
     };
   } catch (error) {
     console.error('Provider status check failed:', error);
+
+    // CRITICAL FIX: If user completed wizard, be lenient on API failures
+    // Don't block them if the API is temporarily unavailable
+    if (hasCompletedWizard) {
+      console.warn('[hasReadyLlmProvider] Provider status check error but user completed wizard - assuming providers configured');
+      return { ready: true };
+    }
+
     return {
       ready: false,
       message: 'Could not verify provider status. Ensure at least one provider is configured.',

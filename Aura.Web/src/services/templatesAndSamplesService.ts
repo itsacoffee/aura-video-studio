@@ -5,6 +5,8 @@
  * the first-run wizard to help them get started quickly.
  */
 
+import { apiUrl } from '../config/api';
+
 export interface VideoTemplate {
   id: string;
   name: string;
@@ -385,7 +387,7 @@ export async function createProjectFromTemplate(
   request: CreateProjectFromTemplateRequest
 ): Promise<{ success: boolean; projectId?: string; message: string }> {
   try {
-    const response = await fetch('/api/templates/create-project', {
+    const response = await fetch(apiUrl('/api/templates/create-project'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -3,6 +3,7 @@
  * Manages error severity levels, user-friendly notifications, and error reporting
  */
 
+import { apiUrl } from '../config/api';
 import { loggingService, LogEntry } from './loggingService';
 
 export type ErrorSeverity = 'info' | 'warning' | 'error' | 'critical';
@@ -299,7 +300,7 @@ class ErrorReportingService {
       // Get correlation ID from session storage
       const correlationId = sessionStorage.getItem('lastCorrelationId');
 
-      const response = await fetch('/api/error-report', {
+      const response = await fetch(apiUrl('/api/error-report'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

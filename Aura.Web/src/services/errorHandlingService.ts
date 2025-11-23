@@ -1,3 +1,4 @@
+import { apiUrl } from '../config/api';
 import type { ErrorInfo } from '../components/Errors/ErrorDialog';
 
 /**
@@ -137,7 +138,7 @@ class ErrorHandlingService {
    */
   private async reportToBackend(queuedError: QueuedError): Promise<void> {
     try {
-      await fetch('/api/error-report', {
+      await fetch(apiUrl('/api/error-report'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

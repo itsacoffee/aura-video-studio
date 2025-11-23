@@ -7,6 +7,7 @@
  * PR 1: Enhanced with proper error classification instead of generic failures
  */
 
+import { apiUrl } from '../config/api';
 import { classifyError, type ClassifiedError } from '../utils/errorClassification';
 import { ollamaClient } from './api/ollamaClient';
 
@@ -208,7 +209,7 @@ export async function pullModel(modelName: string): Promise<{
   error?: ClassifiedError;
 }> {
   try {
-    const response = await fetch('/api/ollama/pull', {
+    const response = await fetch(apiUrl('/api/ollama/pull'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -61,7 +61,7 @@ public class IdeationService
             MaxConceptCount);
 
         var prompt = BuildBrainstormPrompt(request, desiredConceptCount);
-        
+
         var brief = new Brief(
             Topic: prompt,
             Audience: request.Audience ?? "General",
@@ -79,7 +79,7 @@ public class IdeationService
         );
 
         var response = await GenerateWithLlmAsync(brief, planSpec, ct).ConfigureAwait(false);
-        
+
         // Parse the response into structured concepts
         var concepts = ParseBrainstormResponse(response, request.Topic, desiredConceptCount);
 
@@ -100,7 +100,7 @@ public class IdeationService
         _logger.LogInformation("Expanding brief for project: {ProjectId}", request.ProjectId);
 
         var prompt = BuildExpandBriefPrompt(request);
-        
+
         var brief = new Brief(
             Topic: prompt,
             Audience: request.CurrentBrief.Audience ?? "General",
@@ -176,7 +176,7 @@ public class IdeationService
         _logger.LogInformation("Analyzing content gaps for niche: {Niche}", request.Niche ?? "general");
 
         var prompt = BuildGapAnalysisPrompt(request);
-        
+
         var brief = new Brief(
             Topic: prompt,
             Audience: "Content Creators",
@@ -195,7 +195,7 @@ public class IdeationService
 
         var response = await GenerateWithLlmAsync(brief, planSpec, ct).ConfigureAwait(false);
 
-        var (missingTopics, opportunities, oversaturated, uniqueAngles) = 
+        var (missingTopics, opportunities, oversaturated, uniqueAngles) =
             ParseGapAnalysisResponse(response);
 
         return new GapAnalysisResponse(
@@ -216,7 +216,7 @@ public class IdeationService
         _logger.LogInformation("Gathering research for topic: {Topic}", request.Topic);
 
         var prompt = BuildResearchPrompt(request);
-        
+
         var brief = new Brief(
             Topic: prompt,
             Audience: "Researchers",
@@ -254,7 +254,7 @@ public class IdeationService
         _logger.LogInformation("Generating storyboard for concept: {ConceptTitle}", request.Concept.Title);
 
         var prompt = BuildStoryboardPrompt(request);
-        
+
         var brief = new Brief(
             Topic: prompt,
             Audience: request.Concept.TargetAudience,
@@ -290,11 +290,11 @@ public class IdeationService
         RefineConceptRequest request,
         CancellationToken ct = default)
     {
-        _logger.LogInformation("Refining concept: {ConceptTitle} with direction: {Direction}", 
+        _logger.LogInformation("Refining concept: {ConceptTitle} with direction: {Direction}",
             request.Concept.Title, request.RefinementDirection);
 
         var prompt = BuildRefineConceptPrompt(request);
-        
+
         var brief = new Brief(
             Topic: prompt,
             Audience: request.TargetAudience ?? request.Concept.TargetAudience,
@@ -314,8 +314,8 @@ public class IdeationService
         var response = await GenerateWithLlmAsync(brief, planSpec, ct).ConfigureAwait(false);
 
         var (refinedConcept, changesSummary) = ParseRefineConceptResponse(
-            response, 
-            request.Concept, 
+            response,
+            request.Concept,
             request.RefinementDirection);
 
         return new RefineConceptResponse(
@@ -334,7 +334,7 @@ public class IdeationService
         _logger.LogInformation("Generating clarifying questions for project: {ProjectId}", request.ProjectId);
 
         var prompt = BuildQuestionsPrompt(request);
-        
+
         var brief = new Brief(
             Topic: prompt,
             Audience: "Content Creator",
@@ -372,7 +372,7 @@ public class IdeationService
 
         var variantCount = Math.Clamp(request.VariantCount ?? 3, 2, 4);
         var prompt = BuildIdeaToBriefPrompt(request, variantCount);
-        
+
         var brief = new Brief(
             Topic: prompt,
             Audience: request.Audience ?? "General",
@@ -390,7 +390,7 @@ public class IdeationService
         );
 
         var response = await GenerateWithLlmAsync(brief, planSpec, ct).ConfigureAwait(false);
-        
+
         // Parse the response into structured brief variants
         var variants = ParseIdeaToBriefResponse(response, request);
 
@@ -425,22 +425,22 @@ public class IdeationService
         sb.AppendLine("  ]");
         sb.AppendLine("}");
         sb.AppendLine();
-        
+
         if (!string.IsNullOrEmpty(request.Audience))
         {
             sb.AppendLine($"Target Audience Preference: {request.Audience}");
         }
-        
+
         if (!string.IsNullOrEmpty(request.Tone))
         {
             sb.AppendLine($"Tone Preference: {request.Tone}");
         }
-        
+
         if (request.TargetDuration.HasValue)
         {
             sb.AppendLine($"Target Duration: {request.TargetDuration} seconds");
         }
-        
+
         if (!string.IsNullOrEmpty(request.Platform))
         {
             sb.AppendLine($"Platform: {request.Platform}");
@@ -463,18 +463,18 @@ public class IdeationService
         sb.AppendLine("You are helping a creator develop their video brief.");
         sb.AppendLine();
         sb.AppendLine($"Current Topic: {request.CurrentBrief.Topic}");
-        
+
         if (!string.IsNullOrEmpty(request.CurrentBrief.Goal))
             sb.AppendLine($"Goal: {request.CurrentBrief.Goal}");
-        
+
         if (!string.IsNullOrEmpty(request.CurrentBrief.Audience))
             sb.AppendLine($"Audience: {request.CurrentBrief.Audience}");
-        
+
         if (!string.IsNullOrEmpty(request.CurrentBrief.Tone))
             sb.AppendLine($"Tone: {request.CurrentBrief.Tone}");
 
         sb.AppendLine();
-        
+
         if (!string.IsNullOrEmpty(request.UserMessage))
         {
             sb.AppendLine($"User's message: {request.UserMessage}");
@@ -492,17 +492,17 @@ public class IdeationService
         var sb = new StringBuilder();
         sb.AppendLine("Analyze content gaps and opportunities.");
         sb.AppendLine();
-        
+
         if (!string.IsNullOrEmpty(request.Niche))
         {
             sb.AppendLine($"Niche: {request.Niche}");
         }
-        
+
         if (request.ExistingTopics?.Any() == true)
         {
             sb.AppendLine($"Existing topics covered: {string.Join(", ", request.ExistingTopics)}");
         }
-        
+
         if (request.CompetitorTopics?.Any() == true)
         {
             sb.AppendLine($"Competitor topics: {string.Join(", ", request.CompetitorTopics)}");
@@ -562,7 +562,7 @@ public class IdeationService
         sb.AppendLine($"Original Description: {request.Concept.Description}");
         sb.AppendLine($"Angle: {request.Concept.Angle}");
         sb.AppendLine();
-        
+
         switch (request.RefinementDirection.ToLowerInvariant())
         {
             case "expand":
@@ -594,11 +594,11 @@ public class IdeationService
         var sb = new StringBuilder();
         sb.AppendLine("You are helping a creator develop their video idea.");
         sb.AppendLine();
-        
+
         if (request.CurrentBrief != null)
         {
             sb.AppendLine($"Topic: {request.CurrentBrief.Topic}");
-            
+
             if (!string.IsNullOrEmpty(request.CurrentBrief.Audience))
                 sb.AppendLine($"Audience: {request.CurrentBrief.Audience}");
         }
@@ -622,22 +622,22 @@ public class IdeationService
         sb.AppendLine();
         sb.AppendLine($"Idea: {request.Idea}");
         sb.AppendLine();
-        
+
         if (!string.IsNullOrEmpty(request.TargetPlatform))
         {
             sb.AppendLine($"Target Platform: {request.TargetPlatform}");
         }
-        
+
         if (!string.IsNullOrEmpty(request.Audience))
         {
             sb.AppendLine($"Target Audience: {request.Audience}");
         }
-        
+
         if (!string.IsNullOrEmpty(request.PreferredApproaches))
         {
             sb.AppendLine($"User's Creative Direction: {request.PreferredApproaches}");
         }
-        
+
         sb.AppendLine();
         sb.AppendLine("You must respond with ONLY valid JSON in this exact format:");
         sb.AppendLine("{");
@@ -679,7 +679,7 @@ public class IdeationService
     private List<ConceptIdea> ParseBrainstormResponse(string response, string originalTopic, int desiredConceptCount)
     {
         var concepts = new List<ConceptIdea>();
-        
+
         try
         {
             // Clean the response - remove markdown code blocks if present
@@ -775,9 +775,9 @@ public class IdeationService
         if (concepts.Count == 0)
         {
             _logger.LogWarning("No concepts parsed from LLM response, generating fallback concepts");
-            
+
             var angles = new[] { "Tutorial", "Narrative", "Case Study" };
-            
+
             for (int i = 0; i < desiredConceptCount; i++)
             {
                 var angle = angles[i % angles.Length];
@@ -851,7 +851,7 @@ public class IdeationService
     }
 
 
-    private (List<string>, List<TrendingTopic>, List<string>, Dictionary<string, List<string>>) 
+    private (List<string>, List<TrendingTopic>, List<string>, Dictionary<string, List<string>>)
         ParseGapAnalysisResponse(string response)
     {
         // Simplified parsing
@@ -900,7 +900,7 @@ public class IdeationService
     {
         // Simplified parsing
         var findings = new List<ResearchFinding>();
-        
+
         for (int i = 0; i < 5; i++)
         {
             findings.Add(new ResearchFinding(
@@ -925,7 +925,7 @@ public class IdeationService
         var sceneDuration = targetDuration / sceneCount;
 
         var scenePurposes = new[] { "Hook", "Context", "Main Content", "Example", "Deep Dive", "Call to Action" };
-        
+
         for (int i = 0; i < sceneCount; i++)
         {
             scenes.Add(new StoryboardScene(
@@ -949,8 +949,8 @@ public class IdeationService
     }
 
     private (ConceptIdea, string) ParseRefineConceptResponse(
-        string response, 
-        ConceptIdea originalConcept, 
+        string response,
+        ConceptIdea originalConcept,
         string direction)
     {
         // Simplified parsing - create refined version
@@ -999,7 +999,7 @@ public class IdeationService
     private List<BriefVariant> ParseIdeaToBriefResponse(string response, IdeaToBriefRequest request)
     {
         var variants = new List<BriefVariant>();
-        
+
         try
         {
             // Clean the response - remove markdown code blocks if present
@@ -1055,9 +1055,9 @@ public class IdeationService
                     }
 
                     // Convert pacing and density strings to enums
-                    var pacing = Enum.TryParse<Pacing>(pacingStr, ignoreCase: true, out var pacingEnum) 
+                    var pacing = Enum.TryParse<Pacing>(pacingStr, ignoreCase: true, out var pacingEnum)
                         ? pacingEnum : Pacing.Conversational;
-                    var density = Enum.TryParse<Density>(densityStr, ignoreCase: true, out var densityEnum) 
+                    var density = Enum.TryParse<Density>(densityStr, ignoreCase: true, out var densityEnum)
                         ? densityEnum : Density.Balanced;
 
                     var brief = new Brief(
@@ -1148,18 +1148,215 @@ public class IdeationService
             PlanSpec: planSpec,
             Explanation: $"This {approachDescription} presents the concept in a way that resonates with the target audience while remaining true to the core idea.",
             SuitabilityScore: 80,
-            Strengths: new List<string> 
-            { 
+            Strengths: new List<string>
+            {
                 $"Matches the {approach} creative direction",
                 "Appropriate pacing for the platform",
                 "Accessible to target audience"
             },
-            Considerations: new List<string> 
-            { 
+            Considerations: new List<string>
+            {
                 "Consider adding specific examples relevant to your audience",
                 "Visual aids can enhance understanding"
             }
         );
+    }
+
+    /// <summary>
+    /// Enhance/improve a video topic description using AI
+    /// </summary>
+    public async Task<EnhanceTopicResponse> EnhanceTopicAsync(
+        EnhanceTopicRequest request,
+        CancellationToken ct = default)
+    {
+        _logger.LogInformation("Enhancing topic: {Topic}", request.Topic);
+
+        if (string.IsNullOrWhiteSpace(request.Topic))
+        {
+            throw new ArgumentException("Topic cannot be empty", nameof(request));
+        }
+
+        var prompt = BuildEnhanceTopicPrompt(request);
+
+        var brief = new Brief(
+            Topic: prompt,
+            Audience: request.TargetAudience ?? "General video audience",
+            Goal: "Enhance and improve video topic description",
+            Tone: "Professional and engaging",
+            Language: "en-US",
+            Aspect: Aspect.Widescreen16x9
+        );
+
+        var planSpec = new PlanSpec(
+            TargetDuration: TimeSpan.FromSeconds(30),
+            Pacing: Pacing.Conversational,
+            Density: Density.Balanced,
+            Style: "Clear and descriptive"
+        );
+
+        var response = await GenerateWithLlmAsync(brief, planSpec, ct).ConfigureAwait(false);
+
+        // Extract enhanced topic from response
+        var enhancedTopic = ExtractEnhancedTopic(response, request.Topic);
+        var improvements = ExtractImprovements(response);
+
+        return new EnhanceTopicResponse(
+            EnhancedTopic: enhancedTopic,
+            OriginalTopic: request.Topic,
+            Improvements: improvements,
+            GeneratedAt: DateTime.UtcNow
+        );
+    }
+
+    private string BuildEnhanceTopicPrompt(EnhanceTopicRequest request)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("You are an expert video content strategist. Your task is to enhance and improve the following video topic description to make it more specific, engaging, and effective for video creation.");
+        sb.AppendLine();
+        sb.AppendLine($"Original topic: {request.Topic}");
+
+        if (!string.IsNullOrWhiteSpace(request.VideoType))
+        {
+            sb.AppendLine($"Video type: {request.VideoType}");
+        }
+        if (!string.IsNullOrWhiteSpace(request.TargetAudience))
+        {
+            sb.AppendLine($"Target audience: {request.TargetAudience}");
+        }
+        if (!string.IsNullOrWhiteSpace(request.KeyMessage))
+        {
+            sb.AppendLine($"Key message: {request.KeyMessage}");
+        }
+
+        sb.AppendLine();
+        sb.AppendLine("Please provide an enhanced version of the topic that:");
+        sb.AppendLine("1. Is more specific and detailed");
+        sb.AppendLine("2. Includes actionable elements");
+        sb.AppendLine("3. Is engaging and clear");
+        sb.AppendLine("4. Maintains the original intent");
+        sb.AppendLine("5. Is optimized for video content creation");
+        sb.AppendLine();
+        sb.AppendLine("Respond with ONLY the enhanced topic description (no explanations, no markdown, just the improved text). Keep it between 50-500 characters.");
+
+        return sb.ToString();
+    }
+
+    private string ExtractEnhancedTopic(string llmResponse, string originalTopic)
+    {
+        // Try to extract the enhanced topic from the LLM response
+        // Remove markdown formatting, quotes, and extra whitespace
+        var cleaned = llmResponse
+            .Replace("```", "")
+            .Replace("**", "")
+            .Replace("*", "")
+            .Trim();
+
+        // Remove common prefixes
+        var prefixes = new[] { "Enhanced topic:", "Topic:", "Here's the enhanced version:", "Enhanced:" };
+        foreach (var prefix in prefixes)
+        {
+            if (cleaned.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                cleaned = cleaned.Substring(prefix.Length).Trim();
+            }
+        }
+
+        // Remove quotes if present
+        if (cleaned.StartsWith("\"") && cleaned.EndsWith("\""))
+        {
+            cleaned = cleaned.Substring(1, cleaned.Length - 2).Trim();
+        }
+
+        // If the response is too long or seems to contain explanations, try to extract just the topic
+        if (cleaned.Length > 500 || cleaned.Contains("\n\n"))
+        {
+            // Take first paragraph or first 500 chars
+            var firstLine = cleaned.Split('\n')[0].Trim();
+            if (firstLine.Length <= 500 && firstLine.Length > 10)
+            {
+                return firstLine;
+            }
+            return cleaned.Substring(0, Math.Min(500, cleaned.Length));
+        }
+
+        // If cleaned response is too short or same as original, return original
+        if (cleaned.Length < 10 || cleaned.Equals(originalTopic, StringComparison.OrdinalIgnoreCase))
+        {
+            return originalTopic;
+        }
+
+        return cleaned;
+    }
+
+    private string? ExtractImprovements(string llmResponse)
+    {
+        // Try to extract improvement notes if present
+        if (llmResponse.Contains("Improvements:") || llmResponse.Contains("Changes:"))
+        {
+            var lines = llmResponse.Split('\n');
+            var improvements = new List<string>();
+            bool capturing = false;
+            bool foundEmptyLineAfterCapture = false;
+
+            foreach (var line in lines)
+            {
+                var trimmedLine = line.Trim();
+
+                // Check if this line starts a new section (common section markers)
+                if (capturing && !string.IsNullOrWhiteSpace(trimmedLine))
+                {
+                    // Stop capturing if we encounter a new section header
+                    var lowerLine = trimmedLine.ToLowerInvariant();
+                    if (lowerLine.StartsWith("note:") ||
+                        lowerLine.StartsWith("summary:") ||
+                        lowerLine.StartsWith("conclusion:") ||
+                        lowerLine.StartsWith("next steps:") ||
+                        lowerLine.StartsWith("additional") ||
+                        (trimmedLine.Length > 0 && char.IsUpper(trimmedLine[0]) && trimmedLine.EndsWith(":")))
+                    {
+                        break; // Stop capturing at section boundary
+                    }
+                }
+
+                if (trimmedLine.Contains("Improvements:") || trimmedLine.Contains("Changes:"))
+                {
+                    capturing = true;
+                    foundEmptyLineAfterCapture = false;
+                    continue;
+                }
+
+                if (capturing)
+                {
+                    if (string.IsNullOrWhiteSpace(trimmedLine))
+                    {
+                        // If we've already captured some improvements and hit an empty line,
+                        // stop capturing to avoid including unrelated content
+                        if (improvements.Count > 0)
+                        {
+                            foundEmptyLineAfterCapture = true;
+                        }
+                    }
+                    else if (foundEmptyLineAfterCapture)
+                    {
+                        // We hit an empty line after capturing, and now we have content again
+                        // This likely means we've moved to a new section, so stop capturing
+                        break;
+                    }
+                    else
+                    {
+                        // Capture this improvement line
+                        improvements.Add(trimmedLine);
+                    }
+                }
+            }
+
+            if (improvements.Count > 0)
+            {
+                return string.Join("; ", improvements);
+            }
+        }
+
+        return null;
     }
 
     /// <summary>
