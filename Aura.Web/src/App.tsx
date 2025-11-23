@@ -1,4 +1,13 @@
-import { Body1, Button, Card, FluentProvider, Spinner, Title1, webDarkTheme, webLightTheme } from '@fluentui/react-components';
+import {
+  Body1,
+  Button,
+  Card,
+  FluentProvider,
+  Spinner,
+  Title1,
+  webDarkTheme,
+  webLightTheme,
+} from '@fluentui/react-components';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
@@ -388,10 +397,14 @@ function App() {
         // Also ensure the body background is set correctly
         const themeName = localStorage.getItem('themeName') || 'aura';
         const theme =
-          themeName === 'aura' ? getAuraTheme(isDarkMode) : isDarkMode ? webDarkTheme : webLightTheme;
+          themeName === 'aura'
+            ? getAuraTheme(isDarkMode)
+            : isDarkMode
+              ? webDarkTheme
+              : webLightTheme;
         const bgColor = theme.colorNeutralBackground1 || (isDarkMode ? '#1e1e1e' : '#ffffff');
         document.body.style.backgroundColor = bgColor;
-        
+
         // Ensure root element also has background
         const rootElement = document.getElementById('root');
         if (rootElement) {
@@ -408,21 +421,25 @@ function App() {
         // Use requestAnimationFrame to ensure DOM is ready
         requestAnimationFrame(() => {
           window.dispatchEvent(new Event('resize'));
-          
+
           // Ensure backgrounds are set
           const themeName = localStorage.getItem('themeName') || 'aura';
           const theme =
-            themeName === 'aura' ? getAuraTheme(isDarkMode) : isDarkMode ? webDarkTheme : webLightTheme;
+            themeName === 'aura'
+              ? getAuraTheme(isDarkMode)
+              : isDarkMode
+                ? webDarkTheme
+                : webLightTheme;
           const bgColor = theme.colorNeutralBackground1 || (isDarkMode ? '#1e1e1e' : '#ffffff');
           document.body.style.backgroundColor = bgColor;
-          
+
           const rootElement = document.getElementById('root');
           if (rootElement) {
             rootElement.style.backgroundColor = bgColor;
             // Force a re-render by accessing layout properties
             void rootElement.offsetHeight;
           }
-          
+
           console.info('[App] Window gained focus, forced repaint');
         });
       }
@@ -441,10 +458,18 @@ function App() {
         const computedStyle = window.getComputedStyle(rootElement);
         const bgColor = computedStyle.backgroundColor;
         // If background is black or transparent, fix it
-        if (bgColor === 'rgba(0, 0, 0, 0)' || bgColor === 'transparent' || bgColor === 'rgb(0, 0, 0)') {
+        if (
+          bgColor === 'rgba(0, 0, 0, 0)' ||
+          bgColor === 'transparent' ||
+          bgColor === 'rgb(0, 0, 0)'
+        ) {
           const themeName = localStorage.getItem('themeName') || 'aura';
           const theme =
-            themeName === 'aura' ? getAuraTheme(isDarkMode) : isDarkMode ? webDarkTheme : webLightTheme;
+            themeName === 'aura'
+              ? getAuraTheme(isDarkMode)
+              : isDarkMode
+                ? webDarkTheme
+                : webLightTheme;
           const safeBgColor = theme.colorNeutralBackground1 || (isDarkMode ? '#1e1e1e' : '#ffffff');
           rootElement.style.backgroundColor = safeBgColor;
           document.body.style.backgroundColor = safeBgColor;
@@ -470,28 +495,36 @@ function App() {
           const hasText = rootElement.textContent && rootElement.textContent.trim().length > 0;
           const computedStyle = window.getComputedStyle(rootElement);
           const bgColor = computedStyle.backgroundColor;
-          const isBlack = bgColor === 'rgb(0, 0, 0)' || bgColor === 'rgba(0, 0, 0, 0)' || bgColor === 'transparent';
+          const isBlack =
+            bgColor === 'rgb(0, 0, 0)' ||
+            bgColor === 'rgba(0, 0, 0, 0)' ||
+            bgColor === 'transparent';
 
           // If we have a black screen when window regains focus, fix it immediately
           if ((!hasChildren && !hasText) || isBlack) {
             isFixingBlackScreen = true;
             console.warn('[App] Black screen detected on focus regain, fixing...');
-            
+
             // Force a complete re-render without triggering focus event again
             window.dispatchEvent(new Event('resize'));
             window.dispatchEvent(new Event('visibilitychange'));
-            
+
             // Set proper background
             const themeName = localStorage.getItem('themeName') || 'aura';
             const theme =
-              themeName === 'aura' ? getAuraTheme(isDarkMode) : isDarkMode ? webDarkTheme : webLightTheme;
-            const safeBgColor = theme.colorNeutralBackground1 || (isDarkMode ? '#1e1e1e' : '#ffffff');
+              themeName === 'aura'
+                ? getAuraTheme(isDarkMode)
+                : isDarkMode
+                  ? webDarkTheme
+                  : webLightTheme;
+            const safeBgColor =
+              theme.colorNeutralBackground1 || (isDarkMode ? '#1e1e1e' : '#ffffff');
             rootElement.style.backgroundColor = safeBgColor;
             document.body.style.backgroundColor = safeBgColor;
-            
+
             // Force layout recalculation without triggering events
             void rootElement.offsetHeight;
-            
+
             // Reset flag after a delay to allow normal focus handling to resume
             setTimeout(() => {
               isFixingBlackScreen = false;
@@ -723,6 +756,53 @@ function App() {
     document.body.style.backgroundColor = theme.colorNeutralBackground1;
   }, [isDarkMode]);
 
+  // Black screen prevention: Monitor for empty/black screens and auto-recover
+  useEffect(() => {
+    const checkForBlackScreen = () => {
+      const rootElement = document.getElementById('root');
+      if (!rootElement) return;
+
+      // Check if root is empty or has no visible content
+      const hasVisibleContent =
+        rootElement.children.length > 0 || rootElement.textContent?.trim().length > 0;
+      const computedStyle = window.getComputedStyle(rootElement);
+      const bgColor = computedStyle.backgroundColor;
+      const isBlack =
+        bgColor === 'rgb(0, 0, 0)' || bgColor === 'rgba(0, 0, 0, 0)' || bgColor === 'transparent';
+
+      // If root is empty or black, and we're not in a loading state, something is wrong
+      if (
+        (!hasVisibleContent || isBlack) &&
+        !isCheckingFirstRun &&
+        !isInitializing &&
+        !showSplash &&
+        !showCrashRecovery
+      ) {
+        console.error(
+          '[App] Black screen detected! Root element is empty or black. Attempting recovery...'
+        );
+
+        // Force a re-render by updating state
+        window.dispatchEvent(new Event('resize'));
+
+        // If still black after a moment, reload
+        setTimeout(() => {
+          const stillBlack = !document.getElementById('root')?.children.length;
+          if (stillBlack) {
+            console.error('[App] Black screen persists, reloading page...');
+            window.location.reload();
+          }
+        }, 2000);
+      }
+    };
+
+    // Check immediately and periodically
+    checkForBlackScreen();
+    const interval = setInterval(checkForBlackScreen, 3000);
+
+    return () => clearInterval(interval);
+  }, [isCheckingFirstRun, isInitializing, showSplash, showCrashRecovery]);
+
   // Get current theme
   const themeName = localStorage.getItem('themeName') || 'aura';
   const currentTheme =
@@ -784,37 +864,62 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
           <FluentProvider theme={currentTheme}>
-            <MemoryRouter initialEntries={['/']}>
-              <FirstRunWizard
-                onComplete={async () => {
-                  try {
-                    console.info('[App] FirstRunWizard onComplete called');
-                    // Mark first run as completed (already done in wizard, but ensure it's set)
-                    await markFirstRunCompleted();
-                    // Clear cache to ensure fresh status check
-                    clearFirstRunCache();
-                    
-                    // CRITICAL FIX: Defer state update to allow wizard to unmount cleanly
-                    // This prevents errors during the router context transition
-                    // Increased delay to ensure router context is fully ready
-                    // React state setters don't throw, so errors would be caught by ErrorBoundary
-                    await new Promise(resolve => setTimeout(resolve, 150)); // Increased delay for router readiness
-                    
-                    // Update state to hide onboarding and show main app
-                    // If this causes an error, it will be caught by ErrorBoundary
-                    setShouldShowOnboarding(false);
-                    console.info('[App] Transitioning to main app');
-                  } catch (error) {
-                    console.error('[App] Error in onComplete callback:', error);
-                    // Even on error, try to transition to main app
-                    // The wizard has already completed, so we should show the main app
-                    // If markFirstRunCompleted or clearFirstRunCache failed, we still want to transition
-                    await new Promise(resolve => setTimeout(resolve, 150));
-                    setShouldShowOnboarding(false);
-                  }
-                }}
-              />
-            </MemoryRouter>
+            <ErrorBoundary
+              fallback={
+                <div
+                  style={{
+                    minHeight: '100vh',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '20px',
+                    backgroundColor: isDarkMode ? '#1e1e1e' : '#ffffff',
+                  }}
+                >
+                  <Card style={{ maxWidth: '600px', padding: '32px' }}>
+                    <Title1 style={{ marginBottom: '16px' }}>Setup Wizard Error</Title1>
+                    <Body1 style={{ marginBottom: '20px' }}>
+                      The setup wizard encountered an error. You can continue to the main
+                      application.
+                    </Body1>
+                    <Button
+                      appearance="primary"
+                      onClick={() => {
+                        // Force navigate to main app even on wizard error
+                        markFirstRunCompleted();
+                        setShouldShowOnboarding(false);
+                      }}
+                    >
+                      Continue to Application
+                    </Button>
+                  </Card>
+                </div>
+              }
+            >
+              <MemoryRouter initialEntries={['/']}>
+                <FirstRunWizard
+                  onComplete={async () => {
+                    try {
+                      console.info('[App] FirstRunWizard onComplete called');
+                      // Mark first run as completed (already done in wizard, but ensure it's set)
+                      await markFirstRunCompleted();
+                      // Clear cache to ensure fresh status check
+                      clearFirstRunCache();
+
+                      // Update state immediately to hide onboarding and show main app
+                      // The wizard has already completed its cleanup, so it's safe to transition
+                      setShouldShowOnboarding(false);
+                      console.info('[App] Transitioning to main app');
+                    } catch (error) {
+                      console.error('[App] Error in onComplete callback:', error);
+                      // Even on error, transition to main app
+                      // The wizard has already completed, so we should show the main app
+                      setShouldShowOnboarding(false);
+                    }
+                  }}
+                />
+              </MemoryRouter>
+            </ErrorBoundary>
           </FluentProvider>
         </ThemeContext.Provider>
       </QueryClientProvider>
@@ -825,14 +930,16 @@ function App() {
     return (
       <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
         <FluentProvider theme={currentTheme}>
-          <div style={{
-            height: '100vh',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '20px',
-            backgroundColor: 'var(--colorNeutralBackground1)'
-          }}>
+          <div
+            style={{
+              height: '100vh',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '20px',
+              backgroundColor: 'var(--colorNeutralBackground1)',
+            }}
+          >
             <Card style={{ maxWidth: '600px', width: '100%', padding: '32px' }}>
               <Title1 style={{ marginBottom: '16px' }}>Initialization Timeout</Title1>
               <Body1 style={{ marginBottom: '20px' }}>
@@ -844,10 +951,7 @@ function App() {
                 </ul>
               </Body1>
               <div style={{ display: 'flex', gap: '12px' }}>
-                <Button
-                  appearance="primary"
-                  onClick={() => window.location.reload()}
-                >
+                <Button appearance="primary" onClick={() => window.location.reload()}>
                   Retry
                 </Button>
                 <Button
@@ -902,43 +1006,6 @@ function App() {
 
   // Get initial route from navigation service (considers safe mode and persistence)
   const initialRoute = navigationService.getInitialRoute();
-
-  // Black screen prevention: Monitor for empty/black screens and auto-recover
-  useEffect(() => {
-    const checkForBlackScreen = () => {
-      const rootElement = document.getElementById('root');
-      if (!rootElement) return;
-
-      // Check if root is empty or has no visible content
-      const hasVisibleContent = rootElement.children.length > 0 || rootElement.textContent?.trim().length > 0;
-      const computedStyle = window.getComputedStyle(rootElement);
-      const bgColor = computedStyle.backgroundColor;
-      const isBlack = bgColor === 'rgb(0, 0, 0)' || bgColor === 'rgba(0, 0, 0, 0)' || bgColor === 'transparent';
-
-      // If root is empty or black, and we're not in a loading state, something is wrong
-      if ((!hasVisibleContent || isBlack) && !isCheckingFirstRun && !isInitializing && !showSplash && !showCrashRecovery) {
-        console.error('[App] Black screen detected! Root element is empty or black. Attempting recovery...');
-        
-        // Force a re-render by updating state
-        window.dispatchEvent(new Event('resize'));
-        
-        // If still black after a moment, reload
-        setTimeout(() => {
-          const stillBlack = !document.getElementById('root')?.children.length;
-          if (stillBlack) {
-            console.error('[App] Black screen persists, reloading page...');
-            window.location.reload();
-          }
-        }, 2000);
-      }
-    };
-
-    // Check immediately and periodically
-    checkForBlackScreen();
-    const interval = setInterval(checkForBlackScreen, 3000);
-
-    return () => clearInterval(interval);
-  }, [isCheckingFirstRun, isInitializing, showSplash, showCrashRecovery]);
 
   return (
     <ErrorBoundary

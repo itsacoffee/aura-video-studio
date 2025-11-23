@@ -557,18 +557,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
     }
   };
 
-  const completeOnboarding = async () => {
-    if (isCompletingSetup || isExitingRef.current) {
-      return; // Prevent double-clicks and prevent execution if already exiting
-    }
-
-    // CRITICAL FIX: Mark as exiting immediately to prevent any step resets
-    isExitingRef.current = true;
-
-    // Clear any previous errors
-    setCompletionErrors([]);
-
-    // Validate setup and show warnings if needed
+  const validateSetupWarnings = (): boolean => {
     const warnings: string[] = [];
 
     if (!ffmpegReady) {
@@ -591,18 +580,71 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
     // Show warnings dialog if there are any
     if (warnings.length > 0) {
-      const proceed = window.confirm(
+      return window.confirm(
         'Setup has some warnings:\n\n' +
           warnings.map((w, i) => `${i + 1}. ${w}`).join('\n') +
           '\n\nDo you want to complete setup anyway?'
       );
+    }
 
-      if (!proceed) {
-        // CRITICAL FIX: Reset exiting flag if user cancels warnings dialog
-        // Otherwise the wizard will be stuck and "Complete Setup" button won't work
-        isExitingRef.current = false;
-        return;
+    return true;
+  };
+
+  const executeCompletionCallback = async () => {
+    if (onComplete) {
+      // Execute callback immediately without artificial delays
+      // The wizard state is already stable at this point
+      try {
+        await onComplete();
+        console.info('[FirstRunWizard] onComplete callback executed successfully');
+      } catch (callbackError: unknown) {
+        const errorObj =
+          callbackError instanceof Error ? callbackError : new Error(String(callbackError));
+        console.error('[FirstRunWizard] onComplete callback failed:', errorObj);
+        // Log to error reporting service if available
+        if (typeof window !== 'undefined') {
+          const globalWindow = window as Window & {
+            errorReportingService?: {
+              reportError: (error: Error, context: Record<string, unknown>) => void;
+            };
+          };
+          if (globalWindow.errorReportingService) {
+            globalWindow.errorReportingService.reportError(errorObj, {
+              context: 'wizard-completion',
+              step: state.step,
+            });
+          }
+        }
+        // Continue even if callback fails - wizard is already completed
+        // Navigate to dashboard as fallback
+        console.info('[FirstRunWizard] Fallback navigation to dashboard after callback error');
+        navigate('/dashboard');
       }
+    } else {
+      // Fallback to navigation if no callback provided
+      console.info('[FirstRunWizard] No onComplete callback, navigating to dashboard');
+      navigate('/dashboard');
+    }
+  };
+
+  const completeOnboarding = async () => {
+    if (isCompletingSetup || isExitingRef.current) {
+      return; // Prevent double-clicks and prevent execution if already exiting
+    }
+
+    // CRITICAL FIX: Mark as exiting immediately to prevent any step resets
+    isExitingRef.current = true;
+
+    // Clear any previous errors
+    setCompletionErrors([]);
+
+    // Validate setup and show warnings if needed
+    const shouldProceed = validateSetupWarnings();
+    if (!shouldProceed) {
+      // CRITICAL FIX: Reset exiting flag if user cancels warnings dialog
+      // Otherwise the wizard will be stuck and "Complete Setup" button won't work
+      isExitingRef.current = false;
+      return;
     }
 
     setIsCompletingSetup(true);
@@ -612,7 +654,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
         ffmpegPath: ffmpegPath || '(not configured)',
         workspaceLocation: state.workspacePreferences?.defaultSaveLocation || '(not configured)',
         selectedTier: state.selectedTier || 'free',
-        apiKeysConfigured: Object.keys(state.apiKeys).filter(k => state.apiKeys[k]).length,
+        apiKeysConfigured: Object.keys(state.apiKeys).filter((k) => state.apiKeys[k]).length,
       });
 
       // Step 1: Complete setup validation and save paths
@@ -660,7 +702,9 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
       console.info('[FirstRunWizard] Step 2/3: Marking first run complete locally (immediate)...');
       clearWizardStateFromStorage();
       await markFirstRunCompleted();
-      console.info('[FirstRunWizard] ✅ Local completion set - user won\'t be redirected even if backend fails');
+      console.info(
+        "[FirstRunWizard] ✅ Local completion set - user won't be redirected even if backend fails"
+      );
 
       // Step 3: Mark wizard as complete in backend (async, non-blocking)
       // This ensures the backend is updated, but we don't block navigation on failure
@@ -675,12 +719,15 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
       setAutoSaveStatus('idle');
 
       if (!wizardCompleted) {
-        console.warn('[FirstRunWizard] ⚠️ Backend completion failed, but local completion is set - continuing anyway');
+        console.warn(
+          '[FirstRunWizard] ⚠️ Backend completion failed, but local completion is set - continuing anyway'
+        );
         // Don't block navigation - localStorage is already set, user can continue
         // Show a warning but don't prevent completion
         showFailureToast({
           title: 'Backend Sync Warning',
-          message: 'Setup completed locally, but failed to sync with backend. Your progress is saved locally.',
+          message:
+            'Setup completed locally, but failed to sync with backend. Your progress is saved locally.',
         });
       } else {
         console.info('[FirstRunWizard] ✅ Step 3/3 complete: Backend wizard completion saved');
@@ -711,41 +758,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
       console.info('[FirstRunWizard] Navigating to completion destination');
 
       // Call the onComplete callback if provided
-      if (onComplete) {
-        // CRITICAL FIX: Defer callback execution to ensure wizard state is stable
-        // This prevents errors during state transitions from crashing the app
-        // The setTimeout allows the current render cycle to complete
-        await new Promise<void>((resolve) => {
-          setTimeout(async () => {
-            try {
-              await onComplete();
-              console.info('[FirstRunWizard] onComplete callback executed successfully');
-            } catch (callbackError: unknown) {
-              const errorObj =
-                callbackError instanceof Error ? callbackError : new Error(String(callbackError));
-              console.error('[FirstRunWizard] onComplete callback failed:', errorObj);
-              // Log to error reporting service if available
-              if (typeof window !== 'undefined' && (window as any).errorReportingService) {
-                (window as any).errorReportingService.reportError(errorObj, {
-                  context: 'wizard-completion',
-                  step: state.step,
-                });
-              }
-              // Continue even if callback fails - wizard is already completed
-            } finally {
-              resolve();
-            }
-          }, 100); // Small delay to ensure clean state transition
-        });
-      } else {
-        // Fallback to navigation if no callback provided
-        console.info('[FirstRunWizard] No onComplete callback, navigating to dashboard');
-        // Defer navigation to ensure clean transition
-        // React Router's navigate doesn't throw, but setTimeout ensures clean unmount
-        setTimeout(() => {
-          navigate('/dashboard');
-        }, 100);
-      }
+      await executeCompletionCallback();
     } catch (error: unknown) {
       const errorObj = error instanceof Error ? error : new Error(String(error));
       console.error('[FirstRunWizard] Error completing setup:', errorObj);
@@ -754,15 +767,18 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
       showFailureToast({
         title: 'Setup Error',
-        message: `Failed to complete setup: ${errorObj.message}. Please try again or exit to the main app.`,
+        message: `Failed to complete setup: ${errorObj.message}. Navigating to dashboard anyway.`,
       });
 
-      // CRITICAL FIX: Even on error, try to navigate away to prevent wizard loop
-      // Reset the exiting flag only if we're staying in the wizard
-      isExitingRef.current = false;
+      // CRITICAL FIX: Always navigate away even on error to prevent wizard loop
+      // Never reset isExitingRef - keep it true to prevent re-render loops
+      console.info('[FirstRunWizard] Forcing navigation to dashboard after error');
+      navigate('/dashboard');
     } finally {
       setIsCompletingSetup(false);
-      // Don't reset isExitingRef here - let it stay true if navigation succeeded
+      // CRITICAL: Never reset isExitingRef here - keep it true to prevent re-render loops
+      // The component will unmount after navigation, so this flag prevents any
+      // state updates during unmount that could cause React error #310
     }
   };
 
@@ -1505,7 +1521,8 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
                 setHasAtLeastOneProvider(true);
                 showSuccessToast({
                   title: 'Offline Mode Enabled',
-                  message: 'Using rule-based script generation. You can add API keys later in Settings.',
+                  message:
+                    'Using rule-based script generation. You can add API keys later in Settings.',
                 });
               }}
               onLocalProviderReady={handleLocalProviderReady}
@@ -1533,7 +1550,8 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
               />
               <Title2>Error Loading Provider Configuration</Title2>
               <Text style={{ display: 'block', marginTop: tokens.spacingVerticalS }}>
-                An error occurred while loading the provider configuration. Please try refreshing the page.
+                An error occurred while loading the provider configuration. Please try refreshing
+                the page.
               </Text>
               <Button
                 appearance="primary"
