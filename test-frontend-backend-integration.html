@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontend-Backend Integration Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+        h1 { color: #4ec9b0; }
+        h2 { color: #569cd6; margin-top: 30px; }
+        .test-section {
+            background: #252526;
+            padding: 15px;
+            margin: 15px 0;
+            border-left: 4px solid #569cd6;
+            border-radius: 4px;
+        }
+        .result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 13px;
+        }
+        .success { background: #1e3a1e; border-left: 4px solid #4ec9b0; }
+        .error { background: #3a1e1e; border-left: 4px solid #f48771; }
+        .warning { background: #3a3a1e; border-left: 4px solid #dcdcaa; }
+        .info { background: #1e2a3a; border-left: 4px solid #569cd6; }
+        button {
+            background: #0e639c;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button:hover { background: #1177bb; }
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        code {
+            background: #1e1e1e;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #ce9178;
+        }
+        pre {
+            background: #1e1e1e;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .metric {
+            display: inline-block;
+            background: #2d2d30;
+            padding: 5px 10px;
+            margin: 5px;
+            border-radius: 4px;
+        }
+        .metric strong { color: #4ec9b0; }
+    </style>
+</head>
+<body>
+    <h1>🔬 Frontend-Backend Integration Test</h1>
+    <p>This page tests the actual frontend-backend connectivity as it would work in Electron.</p>
+
+    <div class="test-section">
+        <h2>Configuration</h2>
+        <div>
+            <label>Backend URL: <input type="text" id="backendUrl" value="http://127.0.0.1:5005" style="width: 300px; background: #3c3c3c; border: 1px solid #555; color: #d4d4d4; padding: 5px;"></label>
+        </div>
+        <div class="result info" id="config-info">
+            <strong>Test Environment:</strong><br>
+            Origin: <code id="origin"></code><br>
+            User Agent: <code id="userAgent"></code>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 1: Basic Connectivity</h2>
+        <button onclick="testBasicConnectivity()">Run Test</button>
+        <div id="test1-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 2: Health Endpoint Response Format</h2>
+        <button onclick="testHealthEndpoint()">Run Test</button>
+        <div id="test2-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 3: CORS Headers</h2>
+        <button onclick="testCorsHeaders()">Run Test</button>
+        <div id="test3-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 4: Error Response Format</h2>
+        <button onclick="testErrorResponse()">Run Test</button>
+        <div id="test4-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 5: Response Times</h2>
+        <button onclick="testResponseTimes()">Run Test</button>
+        <div id="test5-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 6: Concurrent Requests</h2>
+        <button onclick="testConcurrentRequests()">Run Test</button>
+        <div id="test6-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 7: Circuit Breaker Simulation</h2>
+        <button onclick="testCircuitBreaker()">Run Test</button>
+        <div id="test7-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 8: Frontend URL Resolution (Simulated)</h2>
+        <button onclick="testUrlResolution()">Run Test</button>
+        <div id="test8-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Run All Tests</h2>
+        <button onclick="runAllTests()" style="background: #0e7a0e;">Run All Tests</button>
+        <button onclick="clearResults()">Clear Results</button>
+    </div>
+
+    <script>
+        // Initialize
+        document.getElementById('origin').textContent = window.location.origin;
+        document.getElementById('userAgent').textContent = navigator.userAgent;
+
+        function getBackendUrl() {
+            return document.getElementById('backendUrl').value;
+        }
+
+        function log(containerId, type, message, details = '') {
+            const container = document.getElementById(containerId);
+            const result = document.createElement('div');
+            result.className = `result ${type}`;
+            result.innerHTML = `<strong>${message}</strong>${details ? '<br>' + details : ''}`;
+            container.appendChild(result);
+        }
+
+        async function testBasicConnectivity() {
+            const container = 'test1-results';
+            document.getElementById(container).innerHTML = '';
+            
+            try {
+                const start = performance.now();
+                const response = await fetch(`${getBackendUrl()}/health/live`);
+                const duration = performance.now() - start;
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(container, 'success', '✓ Backend is reachable', 
+                        `Status: ${response.status}<br>Duration: ${duration.toFixed(2)}ms<br>Response: <code>${JSON.stringify(data)}</code>`);
+                } else {
+                    log(container, 'error', '✗ Backend returned error', 
+                        `Status: ${response.status}<br>Status Text: ${response.statusText}`);
+                }
+            } catch (error) {
+                log(container, 'error', '✗ Connection failed', 
+                    `Error: ${error.message}<br>This indicates a network-level failure (CORS, connection refused, etc.)`);
+            }
+        }
+
+        async function testHealthEndpoint() {
+            const container = 'test2-results';
+            document.getElementById(container).innerHTML = '';
+            
+            const endpoints = [
+                { path: '/health/live', expectedFields: ['status'] },
+                { path: '/health/ready', expectedFields: ['status', 'checks'] },
+                { path: '/healthz/simple', expectedFields: ['status'] }
+            ];
+
+            for (const endpoint of endpoints) {
+                try {
+                    const response = await fetch(`${getBackendUrl()}${endpoint.path}`);
+                    const data = await response.json();
+                    
+                    const missingFields = endpoint.expectedFields.filter(field => !(field in data));
+                    
+                    if (missingFields.length === 0) {
+                        log(container, 'success', `✓ ${endpoint.path}`, 
+                            `All expected fields present: ${endpoint.expectedFields.join(', ')}<br>Response: <code>${JSON.stringify(data).substring(0, 100)}...</code>`);
+                    } else {
+                        log(container, 'warning', `⚠ ${endpoint.path}`, 
+                            `Missing fields: ${missingFields.join(', ')}<br>Response: <code>${JSON.stringify(data)}</code>`);
+                    }
+                } catch (error) {
+                    log(container, 'error', `✗ ${endpoint.path}`, error.message);
+                }
+            }
+        }
+
+        async function testCorsHeaders() {
+            const container = 'test3-results';
+            document.getElementById(container).innerHTML = '';
+            
+            try {
+                const response = await fetch(`${getBackendUrl()}/health/live`);
+                
+                const corsHeaders = {
+                    'access-control-allow-origin': response.headers.get('access-control-allow-origin'),
+                    'access-control-allow-methods': response.headers.get('access-control-allow-methods'),
+                    'access-control-allow-headers': response.headers.get('access-control-allow-headers'),
+                    'access-control-allow-credentials': response.headers.get('access-control-allow-credentials'),
+                };
+                
+                let hasAllCorsHeaders = Object.values(corsHeaders).every(v => v !== null);
+                
+                if (hasAllCorsHeaders) {
+                    log(container, 'success', '✓ CORS headers present', 
+                        Object.entries(corsHeaders).map(([k, v]) => `${k}: <code>${v}</code>`).join('<br>'));
+                } else {
+                    const missing = Object.entries(corsHeaders).filter(([k, v]) => v === null).map(([k]) => k);
+                    log(container, 'warning', '⚠ Some CORS headers missing', 
+                        `Missing: ${missing.join(', ')}<br>Present: ${Object.entries(corsHeaders).filter(([k, v]) => v !== null).map(([k, v]) => `${k}: <code>${v}</code>`).join('<br>')}`);
+                }
+                
+                log(container, 'info', 'ℹ Test Origin', 
+                    `Current origin: <code>${window.location.origin}</code><br>` +
+                    `Electron would use: <code>file://</code> or <code>null</code>`);
+                    
+            } catch (error) {
+                log(container, 'error', '✗ CORS test failed', error.message);
+            }
+        }
+
+        async function testErrorResponse() {
+            const container = 'test4-results';
+            document.getElementById(container).innerHTML = '';
+            
+            // Test 404 endpoint
+            try {
+                const response = await fetch(`${getBackendUrl()}/api/nonexistent-endpoint-test-404`);
+                const contentType = response.headers.get('content-type');
+                
+                if (response.status === 404) {
+                    log(container, 'success', '✓ 404 error works', 
+                        `Status: ${response.status}<br>Content-Type: <code>${contentType}</code>`);
+                        
+                    if (contentType && contentType.includes('application/json')) {
+                        const data = await response.json();
+                        log(container, 'info', 'ℹ 404 response format', 
+                            `<pre>${JSON.stringify(data, null, 2)}</pre>`);
+                    }
+                } else {
+                    log(container, 'warning', '⚠ Unexpected status', 
+                        `Expected 404, got ${response.status}`);
+                }
+            } catch (error) {
+                log(container, 'error', '✗ Error test failed', error.message);
+            }
+        }
+
+        async function testResponseTimes() {
+            const container = 'test5-results';
+            document.getElementById(container).innerHTML = '';
+            
+            const times = [];
+            const iterations = 10;
+            
+            for (let i = 0; i < iterations; i++) {
+                try {
+                    const start = performance.now();
+                    await fetch(`${getBackendUrl()}/health/live`);
+                    const duration = performance.now() - start;
+                    times.push(duration);
+                } catch (error) {
+                    log(container, 'error', `✗ Request ${i + 1} failed`, error.message);
+                }
+            }
+            
+            if (times.length > 0) {
+                const avg = times.reduce((a, b) => a + b, 0) / times.length;
+                const min = Math.min(...times);
+                const max = Math.max(...times);
+                const p95 = times.sort((a, b) => a - b)[Math.floor(times.length * 0.95)];
+                
+                log(container, 'success', `✓ Completed ${times.length}/${iterations} requests`, 
+                    `<div class="metric"><strong>Avg:</strong> ${avg.toFixed(2)}ms</div>` +
+                    `<div class="metric"><strong>Min:</strong> ${min.toFixed(2)}ms</div>` +
+                    `<div class="metric"><strong>Max:</strong> ${max.toFixed(2)}ms</div>` +
+                    `<div class="metric"><strong>P95:</strong> ${p95.toFixed(2)}ms</div>`);
+                    
+                if (avg > 100) {
+                    log(container, 'warning', '⚠ Slow response times', 
+                        `Average response time is ${avg.toFixed(2)}ms (>100ms threshold)`);
+                }
+            }
+        }
+
+        async function testConcurrentRequests() {
+            const container = 'test6-results';
+            document.getElementById(container).innerHTML = '';
+            
+            const concurrency = 10;
+            const start = performance.now();
+            
+            try {
+                const promises = Array.from({ length: concurrency }, () => 
+                    fetch(`${getBackendUrl()}/health/live`)
+                );
+                
+                const results = await Promise.allSettled(promises);
+                const duration = performance.now() - start;
+                
+                const successful = results.filter(r => r.status === 'fulfilled').length;
+                const failed = results.filter(r => r.status === 'rejected').length;
+                
+                log(container, 'success', `✓ Concurrent requests completed`, 
+                    `<div class="metric"><strong>Total:</strong> ${concurrency}</div>` +
+                    `<div class="metric"><strong>Successful:</strong> ${successful}</div>` +
+                    `<div class="metric"><strong>Failed:</strong> ${failed}</div>` +
+                    `<div class="metric"><strong>Duration:</strong> ${duration.toFixed(2)}ms</div>` +
+                    `<div class="metric"><strong>Requests/sec:</strong> ${(concurrency / (duration / 1000)).toFixed(2)}</div>`);
+                    
+                if (failed > 0) {
+                    log(container, 'warning', '⚠ Some requests failed', 
+                        `${failed} out of ${concurrency} requests failed`);
+                }
+            } catch (error) {
+                log(container, 'error', '✗ Concurrent test failed', error.message);
+            }
+        }
+
+        async function testCircuitBreaker() {
+            const container = 'test7-results';
+            document.getElementById(container).innerHTML = '';
+            
+            log(container, 'info', 'ℹ Circuit breaker simulation', 
+                'This tests how the frontend would behave with rapid failures');
+            
+            // Simulate rapid failures by requesting a non-existent endpoint
+            const failureCount = 15;
+            let failures = 0;
+            let successes = 0;
+            
+            for (let i = 0; i < failureCount; i++) {
+                try {
+                    const response = await fetch(`${getBackendUrl()}/api/force-error-test-${i}`);
+                    if (response.ok) {
+                        successes++;
+                    } else {
+                        failures++;
+                    }
+                } catch (error) {
+                    failures++;
+                }
+            }
+            
+            log(container, 'warning', '⚠ Failure simulation complete', 
+                `<div class="metric"><strong>Failures:</strong> ${failures}</div>` +
+                `<div class="metric"><strong>Successes:</strong> ${successes}</div>` +
+                `<br><strong>Note:</strong> The frontend circuit breaker should open after 10 consecutive failures to prevent cascading failures.`);
+                
+            // Test if backend is still responsive
+            try {
+                const response = await fetch(`${getBackendUrl()}/health/live`);
+                if (response.ok) {
+                    log(container, 'success', '✓ Backend still responsive', 
+                        'Health endpoint works after simulated failures');
+                }
+            } catch (error) {
+                log(container, 'error', '✗ Backend not responsive', error.message);
+            }
+        }
+
+        async function testUrlResolution() {
+            const container = 'test8-results';
+            document.getElementById(container).innerHTML = '';
+            
+            // Simulate frontend URL resolution logic
+            const scenarios = [
+                {
+                    name: 'Electron with preload',
+                    window: { AURA_BACKEND_URL: 'http://127.0.0.1:5005', AURA_IS_ELECTRON: true },
+                    expected: 'http://127.0.0.1:5005'
+                },
+                {
+                    name: 'Electron with desktopBridge',
+                    desktopBridge: { getBackendBaseUrl: () => 'http://127.0.0.1:5005' },
+                    expected: 'http://127.0.0.1:5005'
+                },
+                {
+                    name: 'Browser (development)',
+                    import_meta_env: { VITE_API_BASE_URL: '' },
+                    location: { origin: 'http://localhost:5173' },
+                    expected: 'http://localhost:5173'
+                },
+                {
+                    name: 'Fallback',
+                    import_meta_env: { VITE_API_BASE_URL: '' },
+                    expected: 'http://127.0.0.1:5005'
+                }
+            ];
+            
+            for (const scenario of scenarios) {
+                const resolved = scenario.window?.AURA_BACKEND_URL ||
+                               scenario.desktopBridge?.getBackendBaseUrl() ||
+                               scenario.import_meta_env?.VITE_API_BASE_URL ||
+                               scenario.location?.origin ||
+                               'http://127.0.0.1:5005';
+                               
+                const matches = resolved === scenario.expected;
+                
+                log(container, matches ? 'success' : 'error', 
+                    `${matches ? '✓' : '✗'} ${scenario.name}`, 
+                    `Resolved: <code>${resolved}</code><br>Expected: <code>${scenario.expected}</code>`);
+            }
+            
+            log(container, 'info', 'ℹ Current environment', 
+                `window.AURA_BACKEND_URL: <code>${window.AURA_BACKEND_URL || 'not set'}</code><br>` +
+                `window.AURA_IS_ELECTRON: <code>${window.AURA_IS_ELECTRON || false}</code><br>` +
+                `window.location.origin: <code>${window.location.origin}</code>`);
+        }
+
+        async function runAllTests() {
+            clearResults();
+            await testBasicConnectivity();
+            await testHealthEndpoint();
+            await testCorsHeaders();
+            await testErrorResponse();
+            await testResponseTimes();
+            await testConcurrentRequests();
+            await testCircuitBreaker();
+            await testUrlResolution();
+        }
+
+        function clearResults() {
+            for (let i = 1; i <= 8; i++) {
+                const container = document.getElementById(`test${i}-results`);
+                if (container) container.innerHTML = '';
+            }
+        }
+    </script>
+</body>
+</html>
+

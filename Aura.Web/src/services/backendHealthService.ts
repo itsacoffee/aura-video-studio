@@ -40,7 +40,9 @@ export class BackendHealthService {
 
   constructor(baseUrl?: string) {
     this.baseUrl = baseUrl || import.meta.env.VITE_API_BASE_URL || 'http://localhost:5005';
-    this.healthEndpoint = '/healthz/simple';
+    // Use /health/live which is the fast startup endpoint (doesn't check database)
+    // This matches the network contract healthEndpoint in Electron
+    this.healthEndpoint = '/health/live';
   }
 
   /**

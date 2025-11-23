@@ -1127,7 +1127,7 @@ If you need to update the dotnet-ef tool version:
 dotnet tool update dotnet-ef
 
 # Or update to specific version
-dotnet tool update dotnet-ef --version 10.0.0
+dotnet tool update dotnet-ef --version 8.0.11
 ```
 
 **Note:** Build-time migrations are optional. If they fail, migrations will be applied automatically when you first run the application.

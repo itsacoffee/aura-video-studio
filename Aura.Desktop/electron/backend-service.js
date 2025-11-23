@@ -240,14 +240,21 @@ class BackendService {
       // Create necessary directories
       this._createDirectories(env);
 
-      console.log("[BackendService] Backend configuration:");
+      console.log("[BackendService] =".repeat(30));
+      console.log("[BackendService] BACKEND STARTUP CONFIGURATION");
+      console.log("[BackendService] =".repeat(30));
       console.log("[BackendService]   URL:", this.baseUrl);
       console.log("[BackendService]   Port:", this.port);
       console.log("[BackendService]   Environment:", env.DOTNET_ENVIRONMENT);
-      console.log("[BackendService]   FFmpeg path:", ffmpegPath || "(not found)");
+      console.log("[BackendService]   Is Packaged:", !this.isDev);
+      console.log("[BackendService]   FFmpeg path:", ffmpegPath || "(not found - video features disabled)");
       console.log("[BackendService]   Health endpoint:", this.healthEndpoint);
+      console.log("[BackendService]   Readiness endpoint:", this.readinessEndpoint);
       console.log("[BackendService]   ASPNETCORE_URLS:", env.ASPNETCORE_URLS);
       console.log("[BackendService]   Command:", useDotnetRun ? "dotnet run" : backendPath);
+      console.log("[BackendService]   Data Path:", env.AURA_DATA_PATH);
+      console.log("[BackendService]   Logs Path:", env.AURA_LOGS_PATH);
+      console.log("[BackendService] =".repeat(30));
 
       if (useDotnetRun) {
         // Run via dotnet run
@@ -300,6 +307,9 @@ class BackendService {
       this.pid = this.process.pid;
 
       console.log(`[BackendService] ✓ Backend process spawned (PID: ${this.pid})`);
+      console.log(`[BackendService] ℹ Backend will be available at: ${this.baseUrl}`);
+      console.log(`[BackendService] ℹ Frontend should connect to: ${this.baseUrl}/health/live for health checks`);
+      console.log(`[BackendService] ℹ Waiting for backend to start listening... (max ${this.BACKEND_STARTUP_TIMEOUT/1000}s)`);
 
       // Register with ProcessManager if available
       if (this.processManager) {

@@ -84,6 +84,11 @@ function refreshRuntimeBridgeState(extra = {}) {
     runtimeBridgeState = {
       error: "backend-contract-unavailable",
       message: "Backend contract has not been resolved yet.",
+      backend: {
+        baseUrl: null,
+        port: null,
+        ready: false,
+      },
       ...extra,
     };
     return runtimeBridgeState;
@@ -105,15 +110,60 @@ function refreshRuntimeBridgeState(extra = {}) {
     "[RuntimeBridge]   Backend Ready:",
     runtimeBridgeState.backend?.ready
   );
+  console.log(
+    "[RuntimeBridge]   Backend PID:",
+    runtimeBridgeState.backend?.pid || "not started"
+  );
 
   return runtimeBridgeState;
 }
 
 ipcMain.on("runtime:getBootstrap", (event) => {
-  const state = refreshRuntimeBridgeState();
+  // CRITICAL FIX: Always return a valid state even if backend isn't started yet
+  // The frontend needs the URL immediately to configure axios
+  let state = runtimeBridgeState;
+  
+  if (!state && backendContract) {
+    // Initialize state with contract data if not yet available
+    state = {
+      backend: {
+        baseUrl: backendContract.baseUrl,
+        port: backendContract.port,
+        protocol: backendContract.protocol,
+        managedByElectron: backendContract.shouldSelfHost,
+        healthEndpoint: backendContract.healthEndpoint,
+        readinessEndpoint: backendContract.readinessEndpoint,
+        sseJobEventsTemplate: backendContract.sseJobEventsTemplate,
+        pid: null,
+        ready: false, // Not ready yet, but URL is available
+      },
+      environment: {
+        mode: IS_DEV ? "development" : "production",
+        isPackaged: app.isPackaged,
+        version: app.getVersion(),
+      },
+    };
+    console.log("[RuntimeBridge] Bootstrap: Backend starting, providing contract URL early");
+  } else if (!state) {
+    // Fallback: Contract not resolved yet (very early in startup)
+    state = {
+      error: "backend-contract-unavailable",
+      message: "Backend is initializing...",
+      backend: {
+        baseUrl: "http://127.0.0.1:5005", // Fallback default
+        port: 5005,
+        ready: false,
+      },
+    };
+    console.warn("[RuntimeBridge] Bootstrap: Contract not available, using fallback URL");
+  } else {
+    state = refreshRuntimeBridgeState();
+  }
+  
   console.log("[RuntimeBridge] Bootstrap requested, returning:", {
     hasBackend: !!state.backend,
     backendUrl: state.backend?.baseUrl,
+    backendReady: state.backend?.ready,
     hasError: !!state.error,
   });
   event.returnValue = state;

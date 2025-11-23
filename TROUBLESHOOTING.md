@@ -771,7 +771,7 @@ The build scripts now automatically run `dotnet tool restore` which installs dot
 3. **Verify installation**:
    ```bash
    dotnet ef --version
-   # Should show: Entity Framework Core .NET Command-line Tools 10.0.0
+   # Should show: Entity Framework Core .NET Command-line Tools 8.0.11
    ```
 
 **For Developers**:
@@ -781,7 +781,7 @@ If you need to update the dotnet-ef tool version:
 dotnet tool update dotnet-ef
 
 # Or install specific version
-dotnet tool update dotnet-ef --version 10.0.0
+dotnet tool update dotnet-ef --version 8.0.11
 ```
 
 **Fallback Behavior**: If tool restoration fails, the build will continue successfully and database migrations will be applied automatically when you first run the application.

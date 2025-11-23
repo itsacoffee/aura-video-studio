@@ -63,9 +63,9 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 if (args.Contains("--reset") || Environment.GetEnvironmentVariable("AURA_RESET") == "true")
 {
     Console.WriteLine("Reset flag detected, clearing application data...");
-    
+
     var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-    
+
     // Clear temp directory
     var tempPath = Path.Combine(Path.GetTempPath(), "Aura");
     if (Directory.Exists(tempPath))
@@ -80,7 +80,7 @@ if (args.Contains("--reset") || Environment.GetEnvironmentVariable("AURA_RESET")
             Console.WriteLine($"Warning: Could not clear temp directory: {ex.Message}");
         }
     }
-    
+
     // Clear logs
     var logsPath = Path.Combine(Directory.GetCurrentDirectory(), "logs");
     if (Directory.Exists(logsPath))
@@ -95,7 +95,7 @@ if (args.Contains("--reset") || Environment.GetEnvironmentVariable("AURA_RESET")
             Console.WriteLine($"Warning: Could not clear logs directory: {ex.Message}");
         }
     }
-    
+
     // Clear any cached data
     var auraDataPath = Path.Combine(localAppData, "Aura");
     if (Directory.Exists(auraDataPath))
@@ -110,7 +110,7 @@ if (args.Contains("--reset") || Environment.GetEnvironmentVariable("AURA_RESET")
             Console.WriteLine($"Warning: Could not clear Aura data directory: {ex.Message}");
         }
     }
-    
+
     Console.WriteLine("Application data cleared");
 }
 
@@ -502,12 +502,22 @@ builder.Services.AddCors(options =>
 
         policy.SetIsOriginAllowed(origin =>
         {
-            if (string.IsNullOrWhiteSpace(origin) || origin == "null")
+            // Allow Electron's file:// protocol (can be "file://", "null", or empty)
+            if (string.IsNullOrWhiteSpace(origin) ||
+                origin == "null" ||
+                origin.StartsWith("file://", StringComparison.OrdinalIgnoreCase))
             {
-                // Allow Electron's file:// origin
                 return true;
             }
 
+            // Allow localhost and 127.0.0.1 on any port for development
+            if (origin.Contains("://localhost", StringComparison.OrdinalIgnoreCase) ||
+                origin.Contains("://127.0.0.1", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            // Check against explicitly allowed origins from configuration
             return allowedOrigins.Any(allowed =>
                 string.Equals(allowed, origin, StringComparison.OrdinalIgnoreCase));
         });
@@ -1857,7 +1867,7 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
     serverOptions.Limits.MaxRequestBodySize = 100L * 1024L * 1024L * 1024L; // 100GB max request size
     serverOptions.Limits.RequestHeadersTimeout = TimeSpan.FromMinutes(10); // Increased timeout for large uploads
     serverOptions.Limits.KeepAliveTimeout = TimeSpan.FromSeconds(30); // Reduced from 10 minutes to prevent lingering connections
-    
+
     // Configure server to properly close connections on shutdown
     serverOptions.AddServerHeader = false; // Reduce attack surface
 });
@@ -1966,7 +1976,7 @@ static string GetDatabasePath(WebApplication app)
 {
     try
     {
-        var auraDataRoot = Environment.GetEnvironmentVariable("AURA_DATA_ROOT") 
+        var auraDataRoot = Environment.GetEnvironmentVariable("AURA_DATA_ROOT")
             ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura");
         return Path.Combine(auraDataRoot, "aura.db");
     }
@@ -2098,7 +2108,7 @@ try
         forceRefresh: true,
         ct: CancellationToken.None
     ).ConfigureAwait(false);
-    
+
     // Log resolution results
     Log.Information("FFmpeg Resolution Results:");
     Log.Information("  Found: {Found}", resolution.Found);
@@ -2106,7 +2116,7 @@ try
     Log.Information("  Resolved Path: {Path}", resolution.Path ?? "NOT FOUND");
     Log.Information("  Version: {Version}", resolution.Version ?? "Unknown");
     Log.Information("  Source: {Source}", resolution.Source ?? "N/A");
-    
+
     if (resolution.AttemptedPaths.Count > 0)
     {
         Log.Information("  Attempted Paths ({Count}):", resolution.AttemptedPaths.Count);
@@ -2119,7 +2129,7 @@ try
     if (resolution.Found && resolution.IsValid)
     {
         Log.Information("✓ FFmpeg detected and validated successfully");
-        
+
         // Persist configuration if not already saved
         try
         {
@@ -2146,7 +2156,7 @@ try
         {
             Log.Error("  Attempted paths: {Paths}", string.Join(", ", resolution.AttemptedPaths.Take(5)));
         }
-        
+
         if (app.Environment.IsProduction())
         {
             Log.Warning("═══════════════════════════════════════════════════════════════");
@@ -2181,12 +2191,12 @@ Log.Information("========================================");
 try
 {
     Log.Information("Validating service registration...");
-    
+
     // Create a scope for resolving scoped services
     using (var scope = app.Services.CreateScope())
     {
         var scopedServices = scope.ServiceProvider;
-        
+
         // Test essential services
         var essentialServices = new[]
         {
@@ -2215,7 +2225,7 @@ try
                 Log.Warning(ex, "Could not validate service: {ServiceType}", serviceType.Name);
             }
         }
-        
+
         // Try to resolve settings service in scope
         try
         {
@@ -2234,7 +2244,7 @@ try
             Log.Warning(ex, "Settings service validation failed - continuing with limited functionality");
         }
     }
-    
+
     Log.Information("Service validation completed");
 }
 catch (Exception ex)
@@ -2299,6 +2309,12 @@ if (!string.IsNullOrEmpty(hangfireConnectionString))
 }
 */
 
+// CRITICAL FIX: In ASP.NET Core 6+, routing must come BEFORE CORS
+// See: https://learn.microsoft.com/en-us/aspnet/core/fundamentals/middleware/
+app.UseRouting();
+
+// CORS middleware MUST be after UseRouting() and before UseAuthentication()
+// This ensures CORS policies are applied to endpoints correctly
 app.UseCors(AuraCorsPolicy);
 
 app.Use(async (context, next) =>
@@ -2315,10 +2331,7 @@ app.Use(async (context, next) =>
     }
 });
 
-// Add routing BEFORE static files (API routes take precedence)
-app.UseRouting();
-
-// Authentication middleware (after routing)
+// Authentication middleware (after CORS)
 app.UseApiAuthentication();
 
 // Add first-run wizard check middleware (checks if setup is completed)
@@ -3190,7 +3203,7 @@ apiGroup.MapPost("/system/firewall/add", async (
     try
     {
         var result = await firewallUtility.AddFirewallRuleAsync(executablePath, includePublic);
-        
+
         if (result.Success)
         {
             return Results.Ok(new { message = result.Message });
@@ -4338,7 +4351,7 @@ if (builder.Environment.IsDevelopment())
             var aspnetcoreUrls = Environment.GetEnvironmentVariable("ASPNETCORE_URLS");
             var auraBackendUrl = Environment.GetEnvironmentVariable("AURA_BACKEND_URL");
             var requestUrl = $"{context.Request.Scheme}://{context.Request.Host}";
-            
+
             return Results.Ok(new
             {
                 activeBaseUrl = requestUrl,
@@ -5143,7 +5156,7 @@ lifetime.ApplicationStarted.Register(() =>
             if (providerHealthService != null)
             {
                 // Reset all provider circuit breakers
-                var providerNames = new[] { "RuleBased", "Ollama", "OpenAI", "Anthropic", "Gemini", 
+                var providerNames = new[] { "RuleBased", "Ollama", "OpenAI", "Anthropic", "Gemini",
                                            "ElevenLabs", "PlayHT", "WindowsSAPI", "Piper", "Mimic3" };
                 foreach (var providerName in providerNames)
                 {
@@ -5291,10 +5304,10 @@ lifetime.ApplicationStopped.Register(() =>
     Log.Information("=================================================================");
     Log.Information("All hosted services have been stopped");
     Log.Information("Process should exit momentarily...");
-    
+
     // Flush logs to ensure all shutdown messages are written
     Log.CloseAndFlush();
-    
+
     // Give a small delay to ensure logs are flushed before process exits
     System.Threading.Thread.Sleep(100);
 });
@@ -5399,24 +5412,24 @@ try
     Log.Information("=================================================================");
     Log.Information("Checking for pending database migrations...");
     Log.Information("=================================================================");
-    
+
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<Aura.Core.Data.AuraDbContext>();
-    
+
     var pendingMigrations = await dbContext.Database.GetPendingMigrationsAsync().ConfigureAwait(false);
     var pendingCount = pendingMigrations.Count();
-    
+
     if (pendingCount > 0)
     {
         Log.Information("Found {PendingCount} pending migration(s). Applying migrations...", pendingCount);
-        
+
         foreach (var migration in pendingMigrations)
         {
             Log.Information("  - {Migration}", migration);
         }
-        
+
         await dbContext.Database.MigrateAsync().ConfigureAwait(false);
-        
+
         Log.Information("✓ Database migrations applied successfully");
     }
     else

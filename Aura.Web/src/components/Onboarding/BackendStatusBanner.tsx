@@ -50,10 +50,13 @@ export function BackendStatusBanner({ onDismiss, showRetry = true }: BackendStat
   const [initialCheckComplete, setInitialCheckComplete] = useState(false);
 
   const retryCountRef = useRef(0);
-  // Auto-retry for up to 20 seconds to allow backend to start
-  // Electron backend service has its own 60-second timeout with more aggressive retry logic
-  // Frontend doesn't need to wait as long since it's just checking if backend is up
-  const maxAutoRetries = 20; // 20 attempts * 1 second = 20 seconds max wait
+  // IMPROVED: Auto-retry for up to 90 seconds to allow backend to start on slow systems
+  // Portable apps on Windows 11 may take longer on first run due to:
+  // - Windows Defender scanning
+  // - .NET JIT compilation
+  // - Database initialization
+  // Electron backend service has its own 90-second timeout with health checks
+  const maxAutoRetries = 90; // 90 attempts * 1 second = 90 seconds max wait
 
   const checkBackend = useCallback(async (isAutoRetry = false) => {
     setIsChecking(true);
@@ -65,10 +68,11 @@ export function BackendStatusBanner({ onDismiss, showRetry = true }: BackendStat
       // Use backend health service with retry logic
       // For initial check during startup, use aggressive retries
       // CRITICAL FIX: Increase timeout for slower machines and first-run scenarios
+      // Portable apps need even more time on first launch
       const healthStatus = await backendHealthService.checkHealth({
-        timeout: 5000, // Increased from 3000ms to 5000ms for slower machines
+        timeout: 8000, // Increased to 8000ms for portable app first-run scenarios
         maxRetries: isAutoRetry ? 1 : 3,
-        retryDelay: 500,
+        retryDelay: 1000, // Increased to 1000ms between retries
         exponentialBackoff: false,
       });
 
@@ -191,10 +195,18 @@ export function BackendStatusBanner({ onDismiss, showRetry = true }: BackendStat
                 The backend server is starting up. Attempt {retryCountRef.current} of{' '}
                 {maxAutoRetries}.
               </Text>
-              <Text className={styles.helpText}>
-                If you&apos;re running Aura in Electron, the backend should auto-start
-                automatically.
-              </Text>
+              {retryCountRef.current > 30 && (
+                <Text className={styles.helpText}>
+                  <strong>This is taking longer than usual.</strong> On first launch, Windows Defender
+                  scanning and .NET compilation may slow startup. Please wait...
+                </Text>
+              )}
+              {retryCountRef.current <= 30 && (
+                <Text className={styles.helpText}>
+                  If you&apos;re running Aura in Electron, the backend should auto-start
+                  automatically.
+                </Text>
+              )}
             </div>
           </div>
         </MessageBarBody>
