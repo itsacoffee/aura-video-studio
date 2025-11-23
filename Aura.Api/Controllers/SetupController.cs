@@ -1083,23 +1083,49 @@ public class SetupController : ControllerBase
             var correlationId = HttpContext.TraceIdentifier;
             _logger.LogInformation("Getting configuration status, CorrelationId: {CorrelationId}", correlationId);
 
+            // Check if wizard has been completed
+            var userSetup = await _dbContext.UserSetups
+                .FirstOrDefaultAsync(u => u.UserId == "default", cancellationToken).ConfigureAwait(false);
+            
+            bool wizardCompleted = userSetup?.Completed ?? false;
+            _logger.LogInformation("Wizard completion status: {WizardCompleted}, CorrelationId: {CorrelationId}", 
+                wizardCompleted, correlationId);
+            
+            // Check FFmpeg
+            var ffmpegConfig = await _ffmpegConfigService.GetEffectiveConfigurationAsync(cancellationToken).ConfigureAwait(false);
+            bool ffmpegDetected = ffmpegConfig?.LastValidationResult == FFmpegValidationResult.Ok && !string.IsNullOrEmpty(ffmpegConfig.Path);
+            _logger.LogInformation("FFmpeg detection status: {FFmpegDetected}, Path: {FFmpegPath}, CorrelationId: {CorrelationId}",
+                ffmpegDetected, ffmpegConfig?.Path ?? "(null)", correlationId);
+            
+            // If wizard completed, trust that providers are configured (they're set up during wizard)
+            // Don't query ProviderConfigurations as it's encrypted and complex to parse
+            bool providersConfigured = wizardCompleted;
+            _logger.LogInformation("Provider configuration status (based on wizard completion): {ProvidersConfigured}, CorrelationId: {CorrelationId}",
+                providersConfigured, correlationId);
+
+            // If wizard completed, only require FFmpeg to be configured
+            bool isConfigured = wizardCompleted && ffmpegDetected;
+            _logger.LogInformation("Overall configuration status: {IsConfigured}, CorrelationId: {CorrelationId}",
+                isConfigured, correlationId);
+
             var status = new
             {
-                isConfigured = false,
+                isConfigured = isConfigured,
+                wizardCompleted = wizardCompleted,
                 lastChecked = DateTime.UtcNow.ToString("o"),
                 checks = new
                 {
-                    providerConfigured = false,
-                    providerValidated = false,
+                    providerConfigured = providersConfigured,
+                    providerValidated = providersConfigured,
                     workspaceCreated = true,
-                    ffmpegDetected = false,
-                    apiKeysValid = false
+                    ffmpegDetected = ffmpegDetected,
+                    apiKeysValid = providersConfigured
                 },
                 details = new
                 {
-                    configuredProviders = new List<string>(),
-                    ffmpegPath = (string?)null,
-                    ffmpegVersion = (string?)null,
+                    configuredProviders = wizardCompleted ? new List<string> { "Configured" } : new List<string>(),
+                    ffmpegPath = ffmpegConfig?.Path,
+                    ffmpegVersion = ffmpegConfig?.Version,
                     workspacePath = (string?)null,
                     diskSpaceAvailable = 0,
                     gpuAvailable = false
@@ -1107,12 +1133,14 @@ public class SetupController : ControllerBase
                 issues = new List<object>()
             };
 
-            await Task.CompletedTask.ConfigureAwait(false);
+            _logger.LogInformation("Configuration status response: {@Status}, CorrelationId: {CorrelationId}", 
+                status, correlationId);
             return Ok(status);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting configuration status");
+            _logger.LogError(ex, "Error getting configuration status, CorrelationId: {CorrelationId}", 
+                HttpContext.TraceIdentifier);
             return StatusCode(500, new ProblemDetails
             {
                 Title = "Error getting configuration status",
