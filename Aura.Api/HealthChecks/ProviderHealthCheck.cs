@@ -97,29 +97,29 @@ public class ProviderHealthCheck : IHealthCheck
 
             if (_videoComposer == null)
             {
-                return Task.FromResult(HealthCheckResult.Unhealthy(
+                return HealthCheckResult.Unhealthy(
                     "Video composer not available - critical for rendering",
-                    data: data));
+                    data: data);
             }
 
             if (warnings.Count > 0)
             {
                 data["warnings"] = warnings.ToArray();
-                return Task.FromResult(HealthCheckResult.Degraded(
+                return HealthCheckResult.Degraded(
                     $"Provider configuration has {warnings.Count} warning(s)",
-                    data: data));
+                    data: data);
             }
 
-            return Task.FromResult(HealthCheckResult.Healthy(
+            return HealthCheckResult.Healthy(
                 "All provider types are properly configured",
-                data: data));
+                data: data);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error checking provider health");
-            return Task.FromResult(HealthCheckResult.Unhealthy(
+            return HealthCheckResult.Unhealthy(
                 "Error checking provider configuration",
-                exception: ex));
+                exception: ex);
         }
     }
 

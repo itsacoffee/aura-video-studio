@@ -47,7 +47,7 @@ public class OllamaController : ControllerBase
 
             // Check if Ollama is installed
             var executablePath = _settings.GetOllamaExecutablePath();
-            var installed = !string.IsNullOrWhiteSpace(executablePath) || 
+            var installed = !string.IsNullOrWhiteSpace(executablePath) ||
                            !string.IsNullOrWhiteSpace(OllamaService.FindOllamaExecutable());
             var installPath = executablePath ?? OllamaService.FindOllamaExecutable();
 
@@ -100,16 +100,16 @@ public class OllamaController : ControllerBase
         try
         {
             var executablePath = _settings.GetOllamaExecutablePath();
-            
+
             if (string.IsNullOrWhiteSpace(executablePath))
             {
                 var autoDetectPath = OllamaService.FindOllamaExecutable();
-                
+
                 if (string.IsNullOrWhiteSpace(autoDetectPath))
                 {
                     Log.Warning("Ollama executable path not configured and auto-detection failed, CorrelationId={CorrelationId}",
                         HttpContext.TraceIdentifier);
-                    
+
                     return BadRequest(new ProblemDetails
                     {
                         Title = "Ollama path not configured",
@@ -118,13 +118,13 @@ public class OllamaController : ControllerBase
                         Instance = HttpContext.TraceIdentifier
                     });
                 }
-                
+
                 executablePath = autoDetectPath;
             }
 
             var baseUrl = _settings.GetOllamaUrl();
-            
-            Log.Information("Starting Ollama from {Path}, CorrelationId={CorrelationId}", 
+
+            Log.Information("Starting Ollama from {Path}, CorrelationId={CorrelationId}",
                 executablePath, HttpContext.TraceIdentifier);
 
             var result = await _ollamaService.StartAsync(executablePath, baseUrl, ct).ConfigureAwait(false);
@@ -165,7 +165,7 @@ public class OllamaController : ControllerBase
     /// </summary>
     /// <returns>Stop operation result</returns>
     [HttpPost("stop")]
-    public ActionResult<OllamaStopResponse> Stop()
+    public async Task<ActionResult<OllamaStopResponse>> Stop()
     {
         try
         {
@@ -257,7 +257,7 @@ public class OllamaController : ControllerBase
             {
                 Log.Warning("Ollama models endpoint returned {StatusCode}, CorrelationId={CorrelationId}",
                     response.StatusCode, HttpContext.TraceIdentifier);
-                
+
                 return Problem(
                     title: "Failed to retrieve models",
                     detail: $"Ollama API returned {response.StatusCode}",
@@ -305,7 +305,7 @@ public class OllamaController : ControllerBase
         {
             Log.Warning(ex, "Cannot connect to Ollama for models list, CorrelationId={CorrelationId}",
                 HttpContext.TraceIdentifier);
-            
+
             return Problem(
                 title: "Cannot connect to Ollama",
                 detail: "Please ensure Ollama is running",
@@ -339,7 +339,7 @@ public class OllamaController : ControllerBase
         try
         {
             var info = await _detectionService.GetModelInfoAsync(modelName, ct).ConfigureAwait(false);
-            
+
             if (info == null)
             {
                 return NotFound(new { message = $"Model '{modelName}' not found or info unavailable" });
@@ -355,7 +355,7 @@ public class OllamaController : ControllerBase
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Error getting model info for {ModelName}, CorrelationId={CorrelationId}", 
+            Log.Error(ex, "Error getting model info for {ModelName}, CorrelationId={CorrelationId}",
                 modelName, HttpContext.TraceIdentifier);
             return Problem($"Error getting model info for {modelName}", statusCode: 500);
         }
@@ -375,12 +375,12 @@ public class OllamaController : ControllerBase
         try
         {
             var isAvailable = await _detectionService.IsModelAvailableAsync(modelName, ct).ConfigureAwait(false);
-            
+
             return Ok(new { modelName, isAvailable });
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Error checking model availability for {ModelName}, CorrelationId={CorrelationId}", 
+            Log.Error(ex, "Error checking model availability for {ModelName}, CorrelationId={CorrelationId}",
                 modelName, HttpContext.TraceIdentifier);
             return Problem($"Error checking model availability for {modelName}", statusCode: 500);
         }
@@ -399,9 +399,9 @@ public class OllamaController : ControllerBase
 
         try
         {
-            Log.Information("Initiating pull for Ollama model: {ModelName}, CorrelationId={CorrelationId}", 
+            Log.Information("Initiating pull for Ollama model: {ModelName}, CorrelationId={CorrelationId}",
                 modelName, HttpContext.TraceIdentifier);
-            
+
             var pullProgress = new Progress<OllamaPullProgress>(p =>
             {
                 Log.Debug("Pull progress for {ModelName}: {Status} - {Percent:F1}%",
@@ -412,14 +412,14 @@ public class OllamaController : ControllerBase
 
             if (success)
             {
-                return Ok(new { 
+                return Ok(new {
                     message = $"Model '{modelName}' pulled successfully",
                     modelName,
                     success = true
                 });
             }
 
-            return BadRequest(new { 
+            return BadRequest(new {
                 message = $"Failed to pull model '{modelName}'",
                 modelName,
                 success = false
@@ -427,7 +427,7 @@ public class OllamaController : ControllerBase
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Error pulling Ollama model: {ModelName}, CorrelationId={CorrelationId}", 
+            Log.Error(ex, "Error pulling Ollama model: {ModelName}, CorrelationId={CorrelationId}",
                 modelName, HttpContext.TraceIdentifier);
             return Problem($"Error pulling model {modelName}", statusCode: 500);
         }
@@ -438,13 +438,13 @@ public class OllamaController : ControllerBase
         string[] sizes = { "B", "KB", "MB", "GB", "TB" };
         double len = bytes;
         int order = 0;
-        
+
         while (len >= 1024 && order < sizes.Length - 1)
         {
             order++;
             len = len / 1024;
         }
-        
+
         return $"{len:0.##} {sizes[order]}";
     }
 }
