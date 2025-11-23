@@ -245,8 +245,8 @@ public record EnhanceTopicRequest(
 public record EnhanceTopicResponse(
     string EnhancedTopic,
     string OriginalTopic,
-    string? Improvements = null,
-    DateTime GeneratedAt
+    DateTime GeneratedAt,
+    string? Improvements = null
 );
 
 /// <summary>
