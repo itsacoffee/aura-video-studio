@@ -385,6 +385,17 @@ public class ScriptOrchestrator
                         else
                         {
                             _logger.LogError("CreateLogger<T> method not found");
+                            return new ScriptResult
+                            {
+                                Success = false,
+                                ErrorCode = "E305",
+                                ErrorMessage = "CreateLogger<T> method not found for RuleBased provider",
+                                Script = null,
+                                ProviderUsed = providerName,
+                                IsFallback = isFallback,
+                                RequestedProvider = requestedProvider,
+                                DowngradeReason = downgradeReason
+                            };
                         }
                     }
                     else
@@ -436,11 +447,28 @@ public class ScriptOrchestrator
             }
         }
 
+        // Ensure provider is not null before proceeding
+        if (provider == null)
+        {
+            _logger.LogError("Provider {Provider} is null after initialization", providerName);
+            return new ScriptResult
+            {
+                Success = false,
+                ErrorCode = "E305",
+                ErrorMessage = $"Provider {providerName} failed to initialize",
+                Script = null,
+                ProviderUsed = providerName,
+                IsFallback = isFallback,
+                RequestedProvider = requestedProvider,
+                DowngradeReason = downgradeReason
+            };
+        }
+
         try
         {
             _logger.LogInformation("=== Attempting script generation with provider: {Provider} ===", providerName);
-            _logger.LogInformation("Provider type: {Type}, Brief topic: {Topic}", provider!.GetType().Name, brief.Topic);
-            var script = await provider!.DraftScriptAsync(brief, spec, ct).ConfigureAwait(false);
+            _logger.LogInformation("Provider type: {Type}, Brief topic: {Topic}", provider.GetType().Name, brief.Topic);
+            var script = await provider.DraftScriptAsync(brief, spec, ct).ConfigureAwait(false);
             _logger.LogInformation("=== Provider {Provider} completed script generation ===", providerName);
 
             if (string.IsNullOrWhiteSpace(script))

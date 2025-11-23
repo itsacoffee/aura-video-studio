@@ -416,26 +416,7 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
   const [isSplitting, setIsSplitting] = useState(false);
   const autoSaveTimeouts = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
 
-  useEffect(() => {
-    loadProviders();
-  }, []);
-
-  useEffect(() => {
-    if (generatedScript && generatedScript.scenes.length > 0) {
-      onValidationChange({ isValid: true, errors: [] });
-    } else if (data && data.scenes.length > 0) {
-      const hasEmptyScene = data.scenes.some((scene) => !scene.text || scene.text.trim() === '');
-      if (hasEmptyScene) {
-        onValidationChange({ isValid: false, errors: ['All scenes must have text'] });
-      } else {
-        onValidationChange({ isValid: true, errors: [] });
-      }
-    } else {
-      onValidationChange({ isValid: false, errors: ['No script scenes available'] });
-    }
-  }, [generatedScript, data, onValidationChange]);
-
-  const loadProviders = async () => {
+  const loadProviders = useCallback(async () => {
     try {
       const response = await listProviders();
       setProviders(response.providers);
@@ -469,7 +450,26 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
     } catch (error) {
       console.error('Failed to load providers:', error);
     }
-  };
+  }, [externalSelectedProvider, setSelectedProvider]);
+
+  useEffect(() => {
+    loadProviders();
+  }, [loadProviders]);
+
+  useEffect(() => {
+    if (generatedScript && generatedScript.scenes.length > 0) {
+      onValidationChange({ isValid: true, errors: [] });
+    } else if (data && data.scenes.length > 0) {
+      const hasEmptyScene = data.scenes.some((scene) => !scene.text || scene.text.trim() === '');
+      if (hasEmptyScene) {
+        onValidationChange({ isValid: false, errors: ['All scenes must have text'] });
+      } else {
+        onValidationChange({ isValid: true, errors: [] });
+      }
+    } else {
+      onValidationChange({ isValid: false, errors: ['No script scenes available'] });
+    }
+  }, [generatedScript, data, onValidationChange]);
 
   const handleGenerateScript = async () => {
     if (!briefData.topic || briefData.topic.trim().length < 3) {
