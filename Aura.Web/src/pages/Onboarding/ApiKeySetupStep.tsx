@@ -328,6 +328,35 @@ const providers: ProviderConfig[] = [
     category: 'tts',
   },
   {
+    id: 'windows',
+    name: 'Windows TTS',
+    logo: '🪟',
+    description: 'Built-in Windows text-to-speech',
+    usedFor: 'Native Windows speech synthesis - always available, no setup required',
+    signupUrl: '',
+    steps: [
+      'No setup required - uses Windows built-in TTS',
+      'Available on all Windows 10+ systems',
+      'No API key needed - completely free',
+    ],
+    pricingInfo: {
+      freeTier: 'Completely free - built into Windows',
+      costEstimate: 'Free (no costs, no limits)',
+    },
+    keyFormat: 'No API key needed - built into Windows',
+    requiresApiKey: false,
+    localSetup: {
+      downloadUrl: '',
+      instructions: [
+        'Windows TTS is built into Windows 10 and later',
+        'No installation or configuration needed',
+        'Automatically available and ready to use',
+      ],
+      readyHint: 'Windows TTS is always ready - click "Mark as Ready" to confirm.',
+    },
+    category: 'tts',
+  },
+  {
     id: 'piper',
     name: 'Piper TTS',
     logo: '🎤',
@@ -384,6 +413,35 @@ const providers: ProviderConfig[] = [
       readyHint: 'Click "Mark as Ready" once Mimic3 is installed and the service is running.',
     },
     category: 'tts',
+  },
+  {
+    id: 'placeholder',
+    name: 'Placeholder Images',
+    logo: '🎨',
+    description: 'Solid color backgrounds with text - always available',
+    usedFor: 'Guaranteed fallback image provider - generates solid color backgrounds with text overlays',
+    signupUrl: '',
+    steps: [
+      'No setup required - always available',
+      'Generates solid color backgrounds automatically',
+      'No API key needed - built-in fallback',
+    ],
+    pricingInfo: {
+      freeTier: 'Completely free - built into Aura',
+      costEstimate: 'Free (no costs, no limits)',
+    },
+    keyFormat: 'No API key needed - always available',
+    requiresApiKey: false,
+    localSetup: {
+      downloadUrl: '',
+      instructions: [
+        'Placeholder images are built into Aura',
+        'No installation or configuration needed',
+        'Automatically available as fallback when other providers fail',
+      ],
+      readyHint: 'Placeholder images are always ready - click "Mark as Ready" to confirm.',
+    },
+    category: 'image',
   },
   {
     id: 'replicate',
@@ -445,30 +503,61 @@ export function ApiKeySetupStep({
   const styles = useStyles();
   const [rateLimit, setRateLimit] = useState<Record<string, number>>({});
   const [localTtsStatus, setLocalTtsStatus] = useState<{
+    windows: OfflineProviderStatus | null;
     piper: OfflineProviderStatus | null;
     mimic3: OfflineProviderStatus | null;
-  }>({ piper: null, mimic3: null });
-  const [checkingTts, setCheckingTts] = useState<{ piper: boolean; mimic3: boolean }>({
+  }>({
+    windows: { name: 'Windows TTS', isAvailable: true, message: 'Built into Windows - always available' },
+    piper: null,
+    mimic3: null,
+  });
+  const [checkingTts, setCheckingTts] = useState<{
+    windows: boolean;
+    piper: boolean;
+    mimic3: boolean;
+  }>({
+    windows: false,
     piper: false,
     mimic3: false,
   });
 
-  const checkLocalTtsStatus = useCallback(async (provider: 'piper' | 'mimic3') => {
+  const checkLocalTtsStatus = useCallback(async (provider: 'windows' | 'piper' | 'mimic3') => {
     setCheckingTts((prev) => ({ ...prev, [provider]: true }));
     try {
-      const status =
-        provider === 'piper'
-          ? await offlineProvidersApi.checkPiper()
-          : await offlineProvidersApi.checkMimic3();
+      let status: OfflineProviderStatus;
+      if (provider === 'windows') {
+        // Check Windows TTS via API (handles platform detection)
+        try {
+          status = await offlineProvidersApi.checkWindowsTts();
+        } catch (error) {
+          // If API fails, assume available on Windows (graceful degradation)
+          console.warn('Windows TTS API check failed, assuming available:', error);
+          status = {
+            name: 'Windows TTS',
+            isAvailable: true,
+            message: 'Built into Windows - always available',
+          };
+        }
+      } else {
+        status =
+          provider === 'piper'
+            ? await offlineProvidersApi.checkPiper()
+            : await offlineProvidersApi.checkMimic3();
+      }
       setLocalTtsStatus((prev) => ({ ...prev, [provider]: status }));
     } catch (error) {
       console.error(`Failed to check ${provider} status:`, error);
       setLocalTtsStatus((prev) => ({
         ...prev,
         [provider]: {
-          name: provider === 'piper' ? 'Piper TTS' : 'Mimic3 TTS',
-          isAvailable: false,
-          message: 'Status check failed',
+          name:
+            provider === 'windows'
+              ? 'Windows TTS'
+              : provider === 'piper'
+                ? 'Piper TTS'
+                : 'Mimic3 TTS',
+          isAvailable: provider === 'windows', // Windows is always available on Windows
+          message: provider === 'windows' ? 'Built into Windows' : 'Status check failed',
         },
       }));
     } finally {
@@ -478,9 +567,20 @@ export function ApiKeySetupStep({
 
   // Check local TTS status on mount
   useEffect(() => {
+    checkLocalTtsStatus('windows');
     checkLocalTtsStatus('piper');
     checkLocalTtsStatus('mimic3');
   }, [checkLocalTtsStatus]);
+
+  // Auto-mark Windows TTS and Placeholder as ready on mount (they're always available)
+  useEffect(() => {
+    if (onLocalProviderReady) {
+      // Windows TTS is always available
+      onLocalProviderReady('windows');
+      // Placeholder images are always available
+      onLocalProviderReady('placeholder');
+    }
+  }, [onLocalProviderReady]);
 
   const openExternalLink = (url: string) => {
     if (typeof window === 'undefined') {
@@ -632,8 +732,11 @@ export function ApiKeySetupStep({
                             </ul>
                           )}
 
-                          {/* Status check for local TTS providers */}
-                          {(provider.id === 'piper' || provider.id === 'mimic3') && (
+                          {/* Status check for local providers */}
+                          {(provider.id === 'windows' ||
+                            provider.id === 'piper' ||
+                            provider.id === 'mimic3' ||
+                            provider.id === 'placeholder') && (
                             <div
                               style={{
                                 marginTop: tokens.spacingVerticalM,
@@ -645,21 +748,33 @@ export function ApiKeySetupStep({
                                 gap: tokens.spacingHorizontalS,
                               }}
                             >
-                              {checkingTts[provider.id as 'piper' | 'mimic3'] ? (
+                              {checkingTts[
+                                provider.id as 'windows' | 'piper' | 'mimic3'
+                              ] ? (
                                 <>
                                   <Spinner size="tiny" />
                                   <Text size={200}>Checking status...</Text>
                                 </>
-                              ) : localTtsStatus[provider.id as 'piper' | 'mimic3'] ? (
+                              ) : provider.id === 'placeholder' ? (
                                 <>
-                                  {localTtsStatus[provider.id as 'piper' | 'mimic3']?.isAvailable ? (
+                                  <Checkmark24Regular
+                                    style={{ color: tokens.colorPaletteGreenForeground1 }}
+                                  />
+                                  <Text size={200} className={styles.successText}>
+                                    Always available - generates solid color backgrounds
+                                  </Text>
+                                </>
+                              ) : localTtsStatus[provider.id as 'windows' | 'piper' | 'mimic3'] ? (
+                                <>
+                                  {localTtsStatus[provider.id as 'windows' | 'piper' | 'mimic3']
+                                    ?.isAvailable ? (
                                     <>
                                       <Checkmark24Regular
                                         style={{ color: tokens.colorPaletteGreenForeground1 }}
                                       />
                                       <Text size={200} className={styles.successText}>
-                                        {localTtsStatus[provider.id as 'piper' | 'mimic3']?.message ||
-                                          'Available'}
+                                        {localTtsStatus[provider.id as 'windows' | 'piper' | 'mimic3']
+                                          ?.message || 'Available'}
                                       </Text>
                                     </>
                                   ) : (
@@ -668,20 +783,24 @@ export function ApiKeySetupStep({
                                         style={{ color: tokens.colorPaletteYellowForeground1 }}
                                       />
                                       <Text size={200}>
-                                        {localTtsStatus[provider.id as 'piper' | 'mimic3']?.message ||
-                                          'Not detected'}
+                                        {localTtsStatus[provider.id as 'windows' | 'piper' | 'mimic3']
+                                          ?.message || 'Not detected'}
                                       </Text>
                                     </>
                                   )}
-                                  <Button
-                                    appearance="subtle"
-                                    size="small"
-                                    onClick={() =>
-                                      checkLocalTtsStatus(provider.id as 'piper' | 'mimic3')
-                                    }
-                                  >
-                                    Refresh
-                                  </Button>
+                                  {provider.id !== 'windows' && (
+                                    <Button
+                                      appearance="subtle"
+                                      size="small"
+                                      onClick={() =>
+                                        checkLocalTtsStatus(
+                                          provider.id as 'windows' | 'piper' | 'mimic3'
+                                        )
+                                      }
+                                    >
+                                      Refresh
+                                    </Button>
+                                  )}
                                 </>
                               ) : null}
                             </div>
@@ -697,7 +816,9 @@ export function ApiKeySetupStep({
                                 !checkingTts[provider.id as 'piper' | 'mimic3']
                               }
                             >
-                              Mark as Ready
+                              {provider.id === 'windows' || provider.id === 'placeholder'
+                                ? 'Mark as Ready (Always Available)'
+                                : 'Mark as Ready'}
                             </Button>
                             {provider.localSetup?.downloadUrl && (
                               <Button
@@ -719,9 +840,13 @@ export function ApiKeySetupStep({
                             </Text>
                           ) : (
                             <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                              {provider.id === 'piper' || provider.id === 'mimic3'
-                                ? 'Install the provider locally and ensure it is detected, then mark as ready.'
-                                : 'No API key required. Install the provider locally and mark it as ready.'}
+                              {provider.id === 'windows'
+                                ? 'Windows TTS is built into Windows and always available. Click "Mark as Ready" to confirm.'
+                                : provider.id === 'placeholder'
+                                  ? 'Placeholder images are built into Aura and always available. Click "Mark as Ready" to confirm.'
+                                  : provider.id === 'piper' || provider.id === 'mimic3'
+                                    ? 'Install the provider locally and ensure it is detected, then mark as ready.'
+                                    : 'No API key required. Install the provider locally and mark it as ready.'}
                             </Text>
                           )}
                         </div>

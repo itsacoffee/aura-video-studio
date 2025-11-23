@@ -1236,13 +1236,62 @@ public class IdeationService
         sb.AppendLine("4. Maintains the original intent");
         sb.AppendLine("5. Is optimized for video content creation");
         sb.AppendLine();
-        sb.AppendLine("Respond with ONLY the enhanced topic description (no explanations, no markdown, just the improved text). Keep it between 50-500 characters.");
+        sb.AppendLine("IMPORTANT: Respond with ONLY the enhanced topic description. Do NOT include:");
+        sb.AppendLine("- The system prompt or instructions");
+        sb.AppendLine("- Explanations or commentary");
+        sb.AppendLine("- Markdown formatting");
+        sb.AppendLine("- The phrase 'Original topic:' or 'Enhanced topic:'");
+        sb.AppendLine();
+        sb.AppendLine("Just return the improved topic text, keeping it between 50-500 characters.");
 
         return sb.ToString();
     }
 
     private string ExtractEnhancedTopic(string llmResponse, string originalTopic)
     {
+        if (string.IsNullOrWhiteSpace(llmResponse))
+        {
+            return originalTopic;
+        }
+
+        // CRITICAL FIX: Remove the system prompt if it was included in the response
+        // The LLM sometimes echoes back the prompt, so we need to strip it out
+        var systemPromptMarker = "You are an expert video content strategist";
+        var originalTopicMarker = $"Original topic: {originalTopic}";
+        
+        // If the response contains the system prompt, extract everything after it
+        if (llmResponse.Contains(systemPromptMarker))
+        {
+            // Find where the actual response starts (after the prompt)
+            var promptEndMarkers = new[]
+            {
+                "Respond with ONLY the enhanced topic description",
+                "Keep it between 50-500 characters",
+                originalTopicMarker
+            };
+
+            int startIndex = 0;
+            foreach (var marker in promptEndMarkers)
+            {
+                var markerIndex = llmResponse.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+                if (markerIndex >= 0)
+                {
+                    // Find the end of this line and start from the next line
+                    var lineEnd = llmResponse.IndexOf('\n', markerIndex);
+                    if (lineEnd >= 0 && lineEnd < llmResponse.Length - 1)
+                    {
+                        startIndex = lineEnd + 1;
+                        break;
+                    }
+                }
+            }
+
+            if (startIndex > 0)
+            {
+                llmResponse = llmResponse.Substring(startIndex).Trim();
+            }
+        }
+
         // Try to extract the enhanced topic from the LLM response
         // Remove markdown formatting, quotes, and extra whitespace
         var cleaned = llmResponse
@@ -1252,7 +1301,14 @@ public class IdeationService
             .Trim();
 
         // Remove common prefixes
-        var prefixes = new[] { "Enhanced topic:", "Topic:", "Here's the enhanced version:", "Enhanced:" };
+        var prefixes = new[] { 
+            "Enhanced topic:", 
+            "Topic:", 
+            "Here's the enhanced version:", 
+            "Enhanced:",
+            "Here is the enhanced topic:",
+            "The enhanced topic is:"
+        };
         foreach (var prefix in prefixes)
         {
             if (cleaned.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
@@ -1267,21 +1323,61 @@ public class IdeationService
             cleaned = cleaned.Substring(1, cleaned.Length - 2).Trim();
         }
 
+        // If the response contains the original prompt text, try to find just the enhanced part
+        if (cleaned.Contains("You are an expert") || cleaned.Contains("Original topic:"))
+        {
+            // Try to find the last sentence or paragraph that doesn't contain prompt markers
+            var lines = cleaned.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            var validLines = lines
+                .Where(line => 
+                    !line.Contains("You are an expert") &&
+                    !line.Contains("Original topic:") &&
+                    !line.Contains("Please provide") &&
+                    !line.Contains("Respond with") &&
+                    line.Trim().Length > 10)
+                .ToList();
+
+            if (validLines.Any())
+            {
+                cleaned = string.Join(" ", validLines).Trim();
+            }
+        }
+
         // If the response is too long or seems to contain explanations, try to extract just the topic
         if (cleaned.Length > 500 || cleaned.Contains("\n\n"))
         {
             // Take first paragraph or first 500 chars
-            var firstLine = cleaned.Split('\n')[0].Trim();
-            if (firstLine.Length <= 500 && firstLine.Length > 10)
+            var paragraphs = cleaned.Split(new[] { "\n\n", "\r\n\r\n" }, StringSplitOptions.RemoveEmptyEntries);
+            if (paragraphs.Length > 0)
             {
-                return firstLine;
+                var firstParagraph = paragraphs[0].Trim();
+                if (firstParagraph.Length <= 500 && firstParagraph.Length > 10)
+                {
+                    cleaned = firstParagraph;
+                }
+                else
+                {
+                    // Take first line if paragraph is too long
+                    var firstLine = cleaned.Split('\n')[0].Trim();
+                    if (firstLine.Length <= 500 && firstLine.Length > 10)
+                    {
+                        cleaned = firstLine;
+                    }
+                    else
+                    {
+                        cleaned = cleaned.Substring(0, Math.Min(500, cleaned.Length));
+                    }
+                }
             }
-            return cleaned.Substring(0, Math.Min(500, cleaned.Length));
         }
 
-        // If cleaned response is too short or same as original, return original
-        if (cleaned.Length < 10 || cleaned.Equals(originalTopic, StringComparison.OrdinalIgnoreCase))
+        // If cleaned response is too short, same as original, or still contains prompt markers, return original
+        if (cleaned.Length < 10 || 
+            cleaned.Equals(originalTopic, StringComparison.OrdinalIgnoreCase) ||
+            cleaned.Contains("You are an expert") ||
+            cleaned.Contains("Original topic:"))
         {
+            _logger.LogWarning("Failed to extract enhanced topic from response, returning original. Response: {Response}", llmResponse);
             return originalTopic;
         }
 

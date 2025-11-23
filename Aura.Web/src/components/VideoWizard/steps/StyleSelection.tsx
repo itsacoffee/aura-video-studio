@@ -206,7 +206,27 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
       console.error('Failed to load providers:', error);
       // CRITICAL FIX: Add fallback providers if API fails
       // This ensures users can still select providers even if the API is blocked or unavailable
+      // Placeholder is always available as the ultimate fallback
       const fallbackProviders: VisualProvider[] = [
+        {
+          name: 'Placeholder',
+          isAvailable: true,
+          requiresApiKey: false,
+          capabilities: {
+            providerName: 'Placeholder',
+            supportsNegativePrompts: false,
+            supportsBatchGeneration: true,
+            supportsStylePresets: false,
+            supportedAspectRatios: ['16:9', '9:16', '1:1', '4:3'],
+            supportedStyles: ['solid-color', 'gradient', 'text-overlay'],
+            maxWidth: 1920,
+            maxHeight: 1080,
+            isLocal: true,
+            isFree: true,
+            costPerImage: 0,
+            tier: 'Free - Always Available',
+          },
+        },
         {
           name: 'Stock',
           isAvailable: true,
@@ -247,12 +267,12 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
         },
       ];
       setProviders(fallbackProviders);
-
-      // Auto-select Stock if no provider is selected
+      
+      // Auto-select Placeholder if no provider is selected (guaranteed fallback)
       if (!data.imageProvider) {
         onChange({
           ...data,
-          imageProvider: 'Stock',
+          imageProvider: 'Placeholder',
         });
       }
     } finally {
@@ -298,7 +318,7 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
         ...data,
         voiceProvider: data.voiceProvider || 'Windows',
         visualStyle: data.visualStyle || 'modern',
-        imageProvider: data.imageProvider || 'Stock',
+        imageProvider: data.imageProvider || 'Placeholder',
       });
     } else {
       defaultsSetRef.current = true;
@@ -359,8 +379,8 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
         // CRITICAL FIX: Ensure imageProvider is set when using presets
         // If not already set and providers are available, auto-select first available
         imageProvider: data.imageProvider || (providers.length > 0
-          ? providers.find(p => p.isAvailable)?.name || 'Stock'
-          : 'Stock'),
+          ? providers.find(p => p.isAvailable)?.name || 'Placeholder'
+          : 'Placeholder'),
       });
     },
     [data, onChange, providers]
@@ -480,7 +500,7 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
             }}
           >
             <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-              No providers available. Using default Stock provider.
+              No providers available. Using default Placeholder provider (solid colors).
             </Text>
           </div>
         )}
@@ -549,14 +569,14 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
             !loading && (
               <Card
                 className={`${styles.providerCard} ${
-                  data.imageProvider === 'Stock' ? styles.selectedCard : ''
+                  data.imageProvider === 'Placeholder' ? styles.selectedCard : ''
                 }`}
-                onClick={() => handleProviderSelect('Stock')}
+                onClick={() => handleProviderSelect('Placeholder')}
                 style={{ cursor: 'pointer' }}
               >
                 <div className={styles.providerHeader}>
-                  <Title3>Stock</Title3>
-                  {data.imageProvider === 'Stock' && (
+                  <Title3>Placeholder</Title3>
+                  {data.imageProvider === 'Placeholder' && (
                     <Badge appearance="filled" color="success">
                       Selected
                     </Badge>
@@ -569,10 +589,10 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
                     <CheckmarkCircle24Regular
                       style={{ color: tokens.colorPaletteGreenForeground1, fontSize: '16px' }}
                     />
-                    <Text size={200}>Available</Text>
+                    <Text size={200}>Always Available</Text>
                   </div>
                   <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                    Free • Stock images from Pexels, Pixabay, Unsplash
+                    Free • Solid color backgrounds with text - guaranteed fallback
                   </Text>
                 </div>
               </Card>

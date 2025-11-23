@@ -56,6 +56,13 @@ public class VisualsController : ControllerBase
                 });
             }
 
+            // CRITICAL: Sort providers so Placeholder (guaranteed fallback) appears first
+            // This ensures it's always visible and selectable
+            providerInfos = providerInfos
+                .OrderBy(p => p.Name == "Placeholder" ? 0 : 1)
+                .ThenBy(p => p.Name)
+                .ToList();
+
             return Ok(new
             {
                 providers = providerInfos,
@@ -99,9 +106,19 @@ public class VisualsController : ControllerBase
             var providers = CreateAllProviders();
             string? imagePath = null;
             string? usedProvider = null;
+            BaseVisualProvider? placeholderProvider = null;
 
+            // CRITICAL: Try providers in order, but Placeholder is always last as guaranteed fallback
+            // This ensures generation never fails - Placeholder will always succeed
             foreach (var provider in providers)
             {
+                // Save Placeholder for last resort
+                if (provider.ProviderName == "Placeholder")
+                {
+                    placeholderProvider = provider;
+                    continue;
+                }
+
                 var isAvailable = await provider.IsAvailableAsync(ct).ConfigureAwait(false);
                 if (!isAvailable)
                 {
@@ -119,9 +136,17 @@ public class VisualsController : ControllerBase
                 }
             }
 
+            // If no other provider succeeded, use Placeholder (guaranteed to work)
+            if (imagePath == null && placeholderProvider != null)
+            {
+                _logger.LogInformation("All other providers failed, using Placeholder as guaranteed fallback");
+                imagePath = await placeholderProvider.GenerateImageAsync(request.Prompt, options, ct).ConfigureAwait(false);
+                usedProvider = "Placeholder";
+            }
+
             if (imagePath == null)
             {
-                return Problem("All visual providers failed to generate image", statusCode: 500);
+                return Problem("All visual providers failed to generate image (including Placeholder fallback)", statusCode: 500);
             }
 
             return Ok(new
@@ -310,6 +335,11 @@ public class VisualsController : ControllerBase
         var httpClient = _httpClientFactory.CreateClient();
         var providers = new List<BaseVisualProvider>();
 
+        // CRITICAL: Placeholder provider is always added first as guaranteed fallback
+        // This ensures generations never fail due to lack of image providers
+        providers.Add(new PlaceholderProvider(
+            _loggerFactory.CreateLogger<PlaceholderProvider>()));
+
         var apiKeys = LoadApiKeys();
 
         if (apiKeys.TryGetValue("openai", out var openaiKey) && !string.IsNullOrWhiteSpace(openaiKey))
@@ -347,9 +377,6 @@ public class VisualsController : ControllerBase
                 httpClient,
                 unsplashKey));
         }
-
-        providers.Add(new PlaceholderProvider(
-            _loggerFactory.CreateLogger<PlaceholderProvider>()));
 
         return providers;
     }

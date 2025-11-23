@@ -133,6 +133,11 @@ export const TtsProviders = [
 
 export const VisualsProviders = [
   {
+    value: 'Placeholder',
+    label: 'Placeholder (Always Available)',
+    description: 'Solid color backgrounds with text - guaranteed fallback, no dependencies',
+  },
+  {
     value: 'Stock',
     label: 'Stock Images (Free)',
     description: 'Curated stock photos from Pexels/Pixabay/Unsplash',

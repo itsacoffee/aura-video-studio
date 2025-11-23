@@ -62,6 +62,7 @@ import {
   type ScriptVersionHistoryResponse,
 } from '../../../services/api/scriptApi';
 import { ttsService } from '../../../services/ttsService';
+import { useNotifications } from '../../Notifications/Toasts';
 import type { ScriptData, BriefData, StyleData, StepValidation, ScriptScene } from '../types';
 
 const useStyles = makeStyles({
@@ -258,6 +259,7 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
   onValidationChange,
 }) => {
   const styles = useStyles();
+  const { showSuccessToast, showFailureToast } = useNotifications();
   const [isGenerating, setIsGenerating] = useState(false);
   const [providers, setProviders] = useState<ProviderInfoDto[]>([]);
   const [selectedProvider, setSelectedProvider] = useState<string | undefined>();
@@ -319,19 +321,27 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
   };
 
   const handleGenerateScript = async () => {
+    if (!briefData.topic || briefData.topic.trim().length < 3) {
+      showFailureToast({
+        title: 'Invalid Topic',
+        message: 'Please enter a valid topic (at least 3 characters) before generating a script.',
+      });
+      return;
+    }
+
     setIsGenerating(true);
     try {
       const response = await generateScript({
         topic: briefData.topic,
-        audience: briefData.targetAudience,
-        goal: briefData.keyMessage,
-        tone: 'Conversational',
+        audience: briefData.targetAudience || 'General audience',
+        goal: briefData.keyMessage || 'Create an engaging video',
+        tone: styleData?.tone || 'Conversational',
         language: 'en',
         aspect: '16:9',
-        targetDurationSeconds: briefData.duration,
+        targetDurationSeconds: briefData.duration || 60,
         pacing: 'Conversational',
         density: 'Balanced',
-        style: 'Modern',
+        style: styleData?.visualStyle || 'Modern',
         preferredProvider: selectedProvider,
       });
 
@@ -352,8 +362,22 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
         scenes: scriptScenes,
         generatedAt: new Date(),
       });
+
+      showSuccessToast({
+        title: 'Script Generated Successfully',
+        message: `Generated ${response.scenes.length} scenes using ${response.metadata.providerName}. Total duration: ${Math.floor(response.totalDurationSeconds / 60)}:${String(response.totalDurationSeconds % 60).padStart(2, '0')}`,
+      });
     } catch (error) {
       console.error('Script generation failed:', error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Failed to generate script. Please check your provider configuration and try again.';
+      
+      showFailureToast({
+        title: 'Script Generation Failed',
+        message: errorMessage,
+      });
     } finally {
       setIsGenerating(false);
     }
