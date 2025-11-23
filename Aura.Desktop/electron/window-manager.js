@@ -400,6 +400,57 @@ class WindowManager {
       this.mainWindow = null;
     });
 
+    // Handle window restore event to prevent black screen
+    this.mainWindow.on("restore", () => {
+      console.log("[WindowManager] Window restored from minimized state");
+      // Ensure window is visible and webContents is properly displayed
+      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+        // Force a repaint by showing the window again
+        this.mainWindow.show();
+        this.mainWindow.focus();
+
+        // If webContents is not loading and URL is empty or failed, reload
+        const currentURL = this.mainWindow.webContents.getURL();
+        if (!currentURL || currentURL === "about:blank") {
+          console.log("[WindowManager] WebContents URL is empty, reloading...");
+          this._attemptLoad();
+        } else if (!this.loadingState.didFinishLoad) {
+          console.log(
+            "[WindowManager] Previous load didn't finish, reloading..."
+          );
+          this._attemptLoad();
+        } else {
+          // Force a repaint by sending a resize event
+          const bounds = this.mainWindow.getBounds();
+          this.mainWindow.setBounds({ ...bounds, height: bounds.height + 1 });
+          setTimeout(() => {
+            if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+              this.mainWindow.setBounds(bounds);
+            }
+          }, 10);
+        }
+      }
+    });
+
+    // Handle window show event to ensure content is visible
+    this.mainWindow.on("show", () => {
+      console.log("[WindowManager] Window shown");
+      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+        // Ensure webContents is properly displayed by forcing a repaint
+        const currentURL = this.mainWindow.webContents.getURL();
+        if (currentURL && currentURL !== "about:blank") {
+          // Force a repaint by temporarily resizing the window
+          const bounds = this.mainWindow.getBounds();
+          this.mainWindow.setBounds({ ...bounds, height: bounds.height + 1 });
+          setTimeout(() => {
+            if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+              this.mainWindow.setBounds(bounds);
+            }
+          }, 10);
+        }
+      }
+    });
+
     return this.mainWindow;
   }
 

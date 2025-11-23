@@ -5,6 +5,7 @@ using System.IO.Compression;
 using System.Runtime.InteropServices;
 using Aura.Core.Data;
 using Aura.Core.Configuration;
+using Aura.Core.Dependencies;
 
 namespace Aura.Api.Controllers;
 
@@ -21,6 +22,7 @@ public class SetupController : ControllerBase
     private readonly AuraDbContext _dbContext;
     private readonly IFfmpegConfigurationService _ffmpegConfigService;
     private readonly ILoggerFactory _loggerFactory;
+    private readonly GitHubReleaseResolver _releaseResolver;
 
     public SetupController(
         ILogger<SetupController> logger,
@@ -28,7 +30,8 @@ public class SetupController : ControllerBase
         IHttpClientFactory httpClientFactory,
         AuraDbContext dbContext,
         IFfmpegConfigurationService ffmpegConfigService,
-        ILoggerFactory loggerFactory)
+        ILoggerFactory loggerFactory,
+        GitHubReleaseResolver releaseResolver)
     {
         _logger = logger;
         _environment = environment;
@@ -37,6 +40,7 @@ public class SetupController : ControllerBase
         _dbContext = dbContext;
         _ffmpegConfigService = ffmpegConfigService;
         _loggerFactory = loggerFactory;
+        _releaseResolver = releaseResolver;
     }
 
     /// <summary>
@@ -1615,9 +1619,32 @@ public class SetupController : ControllerBase
 
         try
         {
-            // Piper TTS Windows releases: https://github.com/rhasspy/piper/releases
-            // Download the latest Windows x64 release
-            var downloadUrl = "https://github.com/rhasspy/piper/releases/latest/download/piper_windows_amd64.tar.gz";
+            // Resolve latest Piper TTS release URL dynamically using GitHub API
+            var downloadUrl = await _releaseResolver.ResolveLatestAssetUrlAsync(
+                "rhasspy/piper",
+                "*windows*amd64*.tar.gz",
+                cancellationToken).ConfigureAwait(false);
+
+            if (string.IsNullOrEmpty(downloadUrl))
+            {
+                // Fallback to manual instructions if API resolution fails
+                _logger.LogWarning("[{CorrelationId}] Failed to resolve Piper TTS download URL from GitHub API, providing manual instructions", correlationId);
+                return Ok(new
+                {
+                    success = false,
+                    message = "Unable to automatically resolve the latest Piper TTS download URL. Please download manually.",
+                    requiresManualInstall = true,
+                    downloadUrl = "https://github.com/rhasspy/piper/releases/latest",
+                    instructions = new[]
+                    {
+                        "1. Visit https://github.com/rhasspy/piper/releases/latest",
+                        "2. Download piper_windows_amd64.tar.gz (or the latest Windows x64 release)",
+                        "3. Extract the archive using 7-Zip, WinRAR, or Windows 11's built-in extraction",
+                        "4. Copy piper.exe to the installation directory",
+                        "5. Click 'Re-scan' to detect the installation"
+                    }
+                });
+            }
 
             var dataPath = Environment.GetEnvironmentVariable("AURA_DATA_PATH") ??
                            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AuraVideoStudio");
@@ -1626,7 +1653,7 @@ public class SetupController : ControllerBase
 
             Directory.CreateDirectory(piperDir);
 
-            _logger.LogInformation("[{CorrelationId}] Downloading Piper TTS from {Url}", correlationId, downloadUrl);
+            _logger.LogInformation("[{CorrelationId}] Resolved Piper TTS download URL: {Url}", correlationId, downloadUrl);
 
             // Download Piper
             using (var response = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false))
