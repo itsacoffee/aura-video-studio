@@ -1823,14 +1823,22 @@ public class SetupController : ControllerBase
             var providerSettings = new ProviderSettings(_loggerFactory.CreateLogger<ProviderSettings>());
             providerSettings.SetPiperPaths(targetPath, System.IO.File.Exists(voiceModelPath) ? voiceModelPath : null);
 
-            // Force file system flush by reading back the settings file
+            // Force file system flush by ensuring the file is written and readable
             // This ensures the write is committed to disk before the check endpoint is called
             try
             {
                 var settingsPath = Path.Combine(providerSettings.GetAuraDataDirectory(), "settings.json");
+                // Force a flush by reading the file back
                 if (System.IO.File.Exists(settingsPath))
                 {
-                    System.IO.File.ReadAllText(settingsPath);
+                    var content = System.IO.File.ReadAllText(settingsPath);
+                    _logger.LogInformation("[{CorrelationId}] Verified settings file write - Size: {Size} bytes",
+                        correlationId, content.Length);
+                }
+                else
+                {
+                    _logger.LogWarning("[{CorrelationId}] Settings file not found after write at {Path}",
+                        correlationId, settingsPath);
                 }
             }
             catch (Exception ex)
@@ -2110,8 +2118,13 @@ public class SetupController : ControllerBase
         try
         {
             var providerSettings = new ProviderSettings(_loggerFactory.CreateLogger<ProviderSettings>());
+            // Force reload to ensure we get the latest settings from disk
+            providerSettings.Reload();
             var piperPath = providerSettings.PiperExecutablePath;
             var voiceModelPath = providerSettings.PiperVoiceModelPath;
+
+            _logger.LogInformation("[{CorrelationId}] Checking Piper TTS - Path: {Path}, VoiceModel: {VoiceModel}",
+                correlationId, piperPath ?? "(null)", voiceModelPath ?? "(null)");
 
             if (string.IsNullOrWhiteSpace(piperPath))
             {
@@ -2126,6 +2139,9 @@ public class SetupController : ControllerBase
 
             var isInstalled = System.IO.File.Exists(piperPath);
             var hasVoiceModel = !string.IsNullOrWhiteSpace(voiceModelPath) && System.IO.File.Exists(voiceModelPath);
+
+            _logger.LogInformation("[{CorrelationId}] Piper TTS check result - Executable exists: {ExecExists}, Voice model exists: {ModelExists}",
+                correlationId, isInstalled, hasVoiceModel);
 
             return Ok(new
             {
@@ -2161,30 +2177,60 @@ public class SetupController : ControllerBase
         try
         {
             var providerSettings = new ProviderSettings(_loggerFactory.CreateLogger<ProviderSettings>());
+            // Force reload to ensure we get the latest settings from disk
+            providerSettings.Reload();
             var baseUrl = providerSettings.Mimic3BaseUrl ?? "http://127.0.0.1:59125";
 
-            // Try to connect to Mimic3 server
-            try
-            {
-                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
-                var response = await client.GetAsync($"{baseUrl}/api/voices", cancellationToken).ConfigureAwait(false);
+            _logger.LogInformation("[{CorrelationId}] Checking Mimic3 TTS - BaseUrl: {BaseUrl}", correlationId, baseUrl);
 
-                if (response.IsSuccessStatusCode)
+            // Try to connect to Mimic3 server with retries
+            var maxRetries = 3;
+            for (int attempt = 0; attempt < maxRetries; attempt++)
+            {
+                try
                 {
-                    return Ok(new
+                    using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(3) };
+                    var response = await client.GetAsync($"{baseUrl}/api/voices", cancellationToken).ConfigureAwait(false);
+
+                    if (response.IsSuccessStatusCode)
                     {
-                        installed = true,
-                        baseUrl = baseUrl,
-                        reachable = true,
-                        error = (string?)null
-                    });
+                        _logger.LogInformation("[{CorrelationId}] Mimic3 server is reachable", correlationId);
+                        return Ok(new
+                        {
+                            installed = true,
+                            baseUrl = baseUrl,
+                            reachable = true,
+                            error = (string?)null
+                        });
+                    }
+                    else
+                    {
+                        // Handle non-success status codes (e.g., 500, 404, 503)
+                        var statusCode = (int)response.StatusCode;
+                        var statusText = response.ReasonPhrase ?? "Unknown";
+                        _logger.LogInformation(
+                            "[{CorrelationId}] Mimic3 connection attempt {Attempt}/{MaxRetries} returned non-success status: {StatusCode} {StatusText}",
+                            correlationId, attempt + 1, maxRetries, statusCode, statusText);
+
+                        // Add delay before retrying (unless it's the last attempt)
+                        if (attempt < maxRetries - 1)
+                        {
+                            await Task.Delay(500, cancellationToken).ConfigureAwait(false);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogInformation("[{CorrelationId}] Mimic3 connection attempt {Attempt}/{MaxRetries} failed: {Error}",
+                        correlationId, attempt + 1, maxRetries, ex.Message);
+                    if (attempt < maxRetries - 1)
+                    {
+                        await Task.Delay(500, cancellationToken).ConfigureAwait(false);
+                    }
                 }
             }
-            catch
-            {
-                // Server not reachable
-            }
 
+            _logger.LogWarning("[{CorrelationId}] Mimic3 server is not reachable after {MaxRetries} attempts", correlationId, maxRetries);
             return Ok(new
             {
                 installed = false,

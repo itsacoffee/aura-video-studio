@@ -400,6 +400,44 @@ class WindowManager {
       this.mainWindow = null;
     });
 
+    // Handle window focus event to prevent black screen when clicking on unfocused window
+    this.mainWindow.on("focus", () => {
+      console.log("[WindowManager] Window focused");
+      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+        const currentURL = this.mainWindow.webContents.getURL();
+        if (
+          currentURL &&
+          currentURL !== "about:blank" &&
+          this.loadingState.didFinishLoad
+        ) {
+          // Force a repaint when window regains focus
+          setTimeout(() => {
+            if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+              this.mainWindow.webContents
+                .executeJavaScript(
+                  `
+                (function() {
+                  // Force a repaint by triggering events
+                  window.dispatchEvent(new Event('focus', { bubbles: true }));
+                  window.dispatchEvent(new Event('resize', { bubbles: true }));
+                  if (document.visibilityState === 'visible') {
+                    document.dispatchEvent(new Event('visibilitychange'));
+                  }
+                })();
+              `
+                )
+                .catch((err) => {
+                  console.log(
+                    "[WindowManager] Failed to execute repaint script on focus:",
+                    err
+                  );
+                });
+            }
+          }, 50);
+        }
+      }
+    });
+
     // Handle window restore event to prevent black screen
     this.mainWindow.on("restore", () => {
       console.log("[WindowManager] Window restored from minimized state");

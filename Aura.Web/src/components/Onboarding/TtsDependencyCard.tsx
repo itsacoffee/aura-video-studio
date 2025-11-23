@@ -119,7 +119,7 @@ export function TtsDependencyCard({
       ? 'Fast, lightweight offline text-to-speech. High quality voices with low resource usage.'
       : 'Neural TTS server with natural-sounding voices. Runs via Docker or Python.';
 
-  const checkStatus = useCallback(async () => {
+  const checkStatus = useCallback(async (): Promise<TtsStatus | null> => {
     setIsLoading(true);
     setError(null);
     try {
@@ -141,6 +141,9 @@ export function TtsDependencyCard({
       }
 
       onStatusChange?.(data);
+
+      // Return the status data so callers can use it immediately without waiting for state update
+      return data;
     } catch (err: unknown) {
       let errorMessage = `Failed to check ${providerName} status`;
 
@@ -178,6 +181,7 @@ export function TtsDependencyCard({
 
       setError(errorMessage);
       onStatusChange?.(null);
+      return null;
     } finally {
       setIsLoading(false);
     }
@@ -284,27 +288,43 @@ export function TtsDependencyCard({
 
         // Wait longer for the backend to finalize configuration and for services to be ready
         // Piper needs time for file system to flush, Mimic3 needs time for Docker container to be ready
-        const waitTime = provider === 'mimic3' ? 3000 : 2000;
+        const waitTime = provider === 'mimic3' ? 4000 : 2500;
         await new Promise((resolve) => setTimeout(resolve, waitTime));
 
-        // Retry status check with multiple attempts
+        // Retry status check with multiple attempts and increasing delays
+        // Use the return value from checkStatus() instead of the state variable
+        // because React state updates are asynchronous
         let statusChecked = false;
-        for (let attempt = 0; attempt < 3; attempt++) {
-          await checkStatus();
-          // Check if status is now installed
-          if (status?.installed) {
+        let lastStatus: TtsStatus | null = null;
+
+        for (let attempt = 0; attempt < 5; attempt++) {
+          const currentStatus = await checkStatus();
+          lastStatus = currentStatus;
+
+          // Check if status is now installed using the returned value
+          if (currentStatus?.installed) {
             statusChecked = true;
+            console.info(`[TtsDependencyCard] ${providerName} status confirmed as installed on attempt ${attempt + 1}`);
             break;
           }
-          if (attempt < 2) {
-            // Wait a bit more before retrying
-            await new Promise((resolve) => setTimeout(resolve, 1000));
+
+          if (attempt < 4) {
+            // Wait progressively longer before retrying (exponential backoff)
+            const retryDelay = 1000 * (attempt + 1);
+            const errorMsg = currentStatus?.error || 'Not ready yet';
+            console.info(`[TtsDependencyCard] ${providerName} not ready yet (${errorMsg}), retrying in ${retryDelay}ms (attempt ${attempt + 2}/5)`);
+            await new Promise((resolve) => setTimeout(resolve, retryDelay));
           }
         }
 
-        if (!statusChecked && !status?.installed) {
-          // Show a message that user should click Re-scan if needed
-          console.warn(`[TtsDependencyCard] ${providerName} installation completed but status check didn't confirm. User may need to click Re-scan.`);
+        if (!statusChecked && lastStatus && !lastStatus.installed) {
+          // Show a helpful message
+          const errorMsg = lastStatus.error || 'Installation may still be in progress';
+          console.warn(`[TtsDependencyCard] ${providerName} installation completed but status check didn't confirm after 5 attempts. Error: ${errorMsg}`);
+          showFailureToast({
+            title: `${providerName} Installation Pending`,
+            message: `Installation completed, but ${providerName} is not ready yet. Please click 'Re-scan' in a few moments. ${errorMsg}`,
+          });
         }
       } else {
         // Installation not fully automated - show instructions

@@ -1178,6 +1178,7 @@ public class ProviderSettings
 
     private void SaveSettings()
     {
+        string? tempPath = null;
         try
         {
             var directory = Path.GetDirectoryName(_configPath);
@@ -1190,12 +1191,41 @@ public class ProviderSettings
             {
                 WriteIndented = true
             });
-            File.WriteAllText(_configPath, json);
+
+            // Write to a temporary file first, then move to final location
+            // This ensures atomic writes and prevents corruption
+            tempPath = _configPath + ".tmp";
+            File.WriteAllText(tempPath, json);
+
+            // Move the temp file to the final location (atomic on most file systems)
+            File.Move(tempPath, _configPath, overwrite: true);
+
+            // Clear tempPath since move succeeded - no cleanup needed
+            tempPath = null;
+
+            // Force file system flush by reading the file back
+            File.ReadAllText(_configPath);
+
             _logger.LogInformation("Saved provider settings to {Path}", _configPath);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to save provider settings");
+
+            // Clean up temporary file if it exists and move failed
+            if (tempPath != null && File.Exists(tempPath))
+            {
+                try
+                {
+                    File.Delete(tempPath);
+                    _logger.LogInformation("Cleaned up temporary settings file: {TempPath}", tempPath);
+                }
+                catch (Exception cleanupEx)
+                {
+                    _logger.LogWarning(cleanupEx, "Failed to clean up temporary settings file: {TempPath}", tempPath);
+                }
+            }
+
             throw;
         }
     }
