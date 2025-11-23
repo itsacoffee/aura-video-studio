@@ -428,16 +428,6 @@ export function WelcomePage() {
                 Complete the quick setup to start creating videos. Configure AI providers, install
                 FFmpeg, and set up your workspace.
               </Text>
-              <div className={styles.setupBannerActions}>
-                <Button
-                  appearance="primary"
-                  size="large"
-                  icon={<Rocket24Regular />}
-                  onClick={handleOpenConfigModal}
-                >
-                  Start Setup Wizard
-                </Button>
-              </div>
             </MessageBarBody>
           </MessageBar>
         </div>

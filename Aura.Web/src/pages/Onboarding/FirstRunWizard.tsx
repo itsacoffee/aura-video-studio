@@ -38,8 +38,8 @@ import type { FFmpegStatus } from '../../services/api/ffmpegClient';
 import { ffmpegClient } from '../../services/api/ffmpegClient';
 import type { WizardStatusResponse } from '../../services/api/setupApi';
 import { setupApi } from '../../services/api/setupApi';
-import { markFirstRunCompleted } from '../../services/firstRunService';
 import { configurationStatusService } from '../../services/configurationStatusService';
+import { markFirstRunCompleted } from '../../services/firstRunService';
 import {
   clearWizardStateFromStorage,
   completeWizardInBackend,
@@ -617,14 +617,14 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
           }
         }
         // Continue even if callback fails - wizard is already completed
-        // Navigate to dashboard as fallback
-        console.info('[FirstRunWizard] Fallback navigation to dashboard after callback error');
-        navigate('/dashboard');
+        // Navigate to welcome page as fallback
+        console.info('[FirstRunWizard] Fallback navigation to welcome page after callback error');
+        navigate('/');
       }
     } else {
       // Fallback to navigation if no callback provided
-      console.info('[FirstRunWizard] No onComplete callback, navigating to dashboard');
-      navigate('/dashboard');
+      console.info('[FirstRunWizard] No onComplete callback, navigating to welcome page');
+      navigate('/');
     }
   };
 
@@ -735,7 +735,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
       }
 
       console.info('[FirstRunWizard] ✅ Step 3/3 complete: Local first-run status updated');
-      
+
       // CRITICAL FIX: Refresh configuration status after setup completion
       // This ensures the Welcome page banner disappears and status is accurate
       console.info('[FirstRunWizard] Refreshing configuration status after setup completion...');
@@ -751,7 +751,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
         console.warn('[FirstRunWizard] Failed to refresh configuration status:', statusError);
         // Don't block completion on status refresh failure
       }
-      
+
       console.info('[FirstRunWizard] 🎉 ALL STEPS COMPLETE - Wizard finished successfully!');
 
       // Track completion
@@ -785,13 +785,13 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
       showFailureToast({
         title: 'Setup Error',
-        message: `Failed to complete setup: ${errorObj.message}. Navigating to dashboard anyway.`,
+        message: `Failed to complete setup: ${errorObj.message}. Navigating to welcome page anyway.`,
       });
 
       // CRITICAL FIX: Always navigate away even on error to prevent wizard loop
       // Never reset isExitingRef - keep it true to prevent re-render loops
-      console.info('[FirstRunWizard] Forcing navigation to dashboard after error');
-      navigate('/dashboard');
+      console.info('[FirstRunWizard] Forcing navigation to welcome page after error');
+      navigate('/');
     } finally {
       setIsCompletingSetup(false);
       // CRITICAL: Never reset isExitingRef here - keep it true to prevent re-render loops
@@ -837,21 +837,23 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
         message: 'You can resume setup anytime from Settings.',
       });
 
-      // Navigate to main app (dashboard)
+      // Close modal or navigate to main app
       if (onComplete) {
         try {
           await onComplete();
-          console.info('[FirstRunWizard] Exit completed via onComplete callback');
+          console.info('[FirstRunWizard] Exit completed via onComplete callback - modal should close');
+          // Don't navigate if we're in a modal - onComplete will handle closing it
+          return;
         } catch (callbackError: unknown) {
           const errorObj =
             callbackError instanceof Error ? callbackError : new Error(String(callbackError));
           console.error('[FirstRunWizard] onComplete callback failed on exit:', errorObj);
-          // Fallback to direct navigation
-          navigate('/dashboard');
+          // Fallback to direct navigation only if callback fails
+          navigate('/');
         }
       } else {
         console.info('[FirstRunWizard] Exit completed via navigation');
-        navigate('/dashboard');
+        navigate('/');
       }
     } else {
       // User cancelled - reset exiting flag

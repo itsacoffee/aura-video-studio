@@ -6,6 +6,8 @@ using System.Runtime.InteropServices;
 using Aura.Core.Data;
 using Aura.Core.Configuration;
 using Aura.Core.Dependencies;
+using Aura.Core.Services.Providers;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Aura.Api.Controllers;
 
@@ -23,6 +25,7 @@ public class SetupController : ControllerBase
     private readonly IFfmpegConfigurationService _ffmpegConfigService;
     private readonly ILoggerFactory _loggerFactory;
     private readonly GitHubReleaseResolver _releaseResolver;
+    private readonly IServiceProvider _serviceProvider;
 
     public SetupController(
         ILogger<SetupController> logger,
@@ -31,7 +34,8 @@ public class SetupController : ControllerBase
         AuraDbContext dbContext,
         IFfmpegConfigurationService ffmpegConfigService,
         ILoggerFactory loggerFactory,
-        GitHubReleaseResolver releaseResolver)
+        GitHubReleaseResolver releaseResolver,
+        IServiceProvider serviceProvider)
     {
         _logger = logger;
         _environment = environment;
@@ -41,6 +45,7 @@ public class SetupController : ControllerBase
         _ffmpegConfigService = ffmpegConfigService;
         _loggerFactory = loggerFactory;
         _releaseResolver = releaseResolver;
+        _serviceProvider = serviceProvider;
     }
 
     /// <summary>
@@ -1097,16 +1102,58 @@ public class SetupController : ControllerBase
             _logger.LogInformation("FFmpeg detection status: {FFmpegDetected}, Path: {FFmpegPath}, CorrelationId: {CorrelationId}",
                 ffmpegDetected, ffmpegConfig?.Path ?? "(null)", correlationId);
             
-            // If wizard completed, trust that providers are configured (they're set up during wizard)
-            // Don't query ProviderConfigurations as it's encrypted and complex to parse
-            bool providersConfigured = wizardCompleted;
-            _logger.LogInformation("Provider configuration status (based on wizard completion): {ProvidersConfigured}, CorrelationId: {CorrelationId}",
-                providersConfigured, correlationId);
+            // Check actual provider availability using ProviderStatusService
+            var configuredProviders = new List<string>();
+            var validatedProviders = new List<string>();
+            bool providersConfigured = false;
+            bool providersValidated = false;
+            
+            try
+            {
+                var providerStatusService = _serviceProvider.GetService<ProviderStatusService>();
+                if (providerStatusService != null)
+                {
+                    var providerStatus = await providerStatusService.GetAllProviderStatusAsync(cancellationToken).ConfigureAwait(false);
+                    
+                    // Configured providers: those that are available (regardless of online status)
+                    configuredProviders = providerStatus.Providers
+                        .Where(p => p.IsAvailable)
+                        .Select(p => p.Name)
+                        .ToList();
+                    
+                    // Validated providers: those that are both available and online (validated and reachable)
+                    validatedProviders = providerStatus.Providers
+                        .Where(p => p.IsOnline && p.IsAvailable)
+                        .Select(p => p.Name)
+                        .ToList();
+                    
+                    providersConfigured = configuredProviders.Count > 0;
+                    providersValidated = validatedProviders.Count > 0;
+                    
+                    _logger.LogInformation("Provider status check: {ConfiguredCount} configured, {ValidatedCount} validated, CorrelationId: {CorrelationId}",
+                        configuredProviders.Count, validatedProviders.Count, correlationId);
+                }
+                else
+                {
+                    // Fallback: if wizard completed, assume providers are configured
+                    providersConfigured = wizardCompleted;
+                    providersValidated = wizardCompleted;
+                    _logger.LogWarning("ProviderStatusService not available, falling back to wizard completion status, CorrelationId: {CorrelationId}", correlationId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error checking provider status, falling back to wizard completion, CorrelationId: {CorrelationId}", correlationId);
+                // Fallback: if wizard completed, assume providers are configured
+                providersConfigured = wizardCompleted;
+                providersValidated = wizardCompleted;
+            }
 
-            // If wizard completed, only require FFmpeg to be configured
-            bool isConfigured = wizardCompleted && ffmpegDetected;
-            _logger.LogInformation("Overall configuration status: {IsConfigured}, CorrelationId: {CorrelationId}",
-                isConfigured, correlationId);
+            // If wizard completed OR providers are actually configured, system is ready
+            // Only require FFmpeg to be configured
+            bool isConfigured = (wizardCompleted || providersConfigured) && ffmpegDetected;
+            _logger.LogInformation("Overall configuration status: {IsConfigured} (wizard: {WizardCompleted}, providers: {ProvidersConfigured}, ffmpeg: {FFmpegDetected}), CorrelationId: {CorrelationId}",
+                isConfigured, wizardCompleted, providersConfigured, ffmpegDetected, correlationId);
 
             var status = new
             {
@@ -1115,15 +1162,15 @@ public class SetupController : ControllerBase
                 lastChecked = DateTime.UtcNow.ToString("o"),
                 checks = new
                 {
-                    providerConfigured = providersConfigured,
-                    providerValidated = providersConfigured,
+                    providerConfigured = providersConfigured || wizardCompleted,
+                    providerValidated = providersValidated || wizardCompleted,
                     workspaceCreated = true,
                     ffmpegDetected = ffmpegDetected,
-                    apiKeysValid = providersConfigured
+                    apiKeysValid = providersValidated || wizardCompleted
                 },
                 details = new
                 {
-                    configuredProviders = wizardCompleted ? new List<string> { "Configured" } : new List<string>(),
+                    configuredProviders = configuredProviders.Count > 0 ? configuredProviders : (wizardCompleted ? new List<string> { "Configured" } : new List<string>()),
                     ffmpegPath = ffmpegConfig?.Path,
                     ffmpegVersion = ffmpegConfig?.Version,
                     workspacePath = (string?)null,
