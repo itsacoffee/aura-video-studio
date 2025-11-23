@@ -377,6 +377,41 @@ function App() {
     }
   }, [windowsUI.systemTheme, windowsUI.isWindows]);
 
+  // Handle visibility changes to fix black screen when app regains focus
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // Force a re-render by triggering a resize event
+        // This helps fix black screen issues when the window regains focus
+        window.dispatchEvent(new Event('resize'));
+
+        // Also ensure the body background is set correctly
+        const themeName = localStorage.getItem('themeName') || 'aura';
+        const theme =
+          themeName === 'aura' ? getAuraTheme(isDarkMode) : isDarkMode ? webDarkTheme : webLightTheme;
+        document.body.style.backgroundColor = theme.colorNeutralBackground1;
+
+        console.info('[App] Window became visible, forced repaint');
+      }
+    };
+
+    const handleFocus = () => {
+      // Force repaint on focus to fix black screen
+      if (document.visibilityState === 'visible') {
+        window.dispatchEvent(new Event('resize'));
+        console.info('[App] Window gained focus, forced repaint');
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [isDarkMode]);
+
   // Register global shortcuts
   useEffect(() => {
     // Register global shortcuts that are always available

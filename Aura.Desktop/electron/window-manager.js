@@ -417,12 +417,14 @@ class WindowManager {
                 .executeJavaScript(
                   `
                 (function() {
-                  // Force a repaint by triggering events
-                  window.dispatchEvent(new Event('focus', { bubbles: true }));
+                  // Force repaint on focus to fix black screen
                   window.dispatchEvent(new Event('resize', { bubbles: true }));
+                  window.dispatchEvent(new Event('focus', { bubbles: true }));
                   if (document.visibilityState === 'visible') {
                     document.dispatchEvent(new Event('visibilitychange'));
                   }
+                  // Force layout recalculation
+                  void document.body.offsetHeight;
                 })();
               `
                 )
@@ -433,7 +435,7 @@ class WindowManager {
                   );
                 });
             }
-          }, 50);
+          }, 10);
         }
       }
     });
@@ -505,8 +507,15 @@ class WindowManager {
                 .executeJavaScript(
                   `
                 (function() {
-                  window.dispatchEvent(new Event('resize'));
-                  window.dispatchEvent(new Event('focus'));
+                  // Force multiple repaint triggers to ensure content is visible
+                  window.dispatchEvent(new Event('resize', { bubbles: true }));
+                  window.dispatchEvent(new Event('focus', { bubbles: true }));
+                  // Trigger visibility change to ensure React re-renders
+                  if (document.visibilityState === 'visible') {
+                    document.dispatchEvent(new Event('visibilitychange'));
+                  }
+                  // Force a repaint by accessing layout properties
+                  void document.body.offsetHeight;
                 })();
               `
                 )

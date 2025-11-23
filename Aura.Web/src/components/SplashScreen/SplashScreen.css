@@ -110,6 +110,8 @@
   z-index: 2;
   text-align: center;
   animation: contentSlideUp 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: visible;
+  padding: 0 20px;
 }
 
 @keyframes contentSlideUp {
@@ -127,6 +129,8 @@
 /* ==================== LOGO ==================== */
 .splash-logo {
   margin-bottom: 48px;
+  padding: 0 20px;
+  overflow: visible;
 }
 
 .splash-logo-icon {
@@ -205,11 +209,15 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   margin: 0;
+  padding: 8px 16px;
   letter-spacing: -2px;
   animation: titleGradient 4s ease infinite;
   background-size: 200% 200%;
   filter: drop-shadow(0 2px 4px rgb(0 0 0 / 30%)) drop-shadow(0 8px 16px rgb(99 102 241 / 40%));
   position: relative;
+  display: inline-block;
+  overflow: visible;
+  line-height: 1.1;
 }
 
 @keyframes titleGradient {
@@ -350,6 +358,7 @@
   .splash-title {
     font-size: 48px;
     letter-spacing: -1px;
+    padding: 6px 12px;
   }
 
   .splash-subtitle {
@@ -364,6 +373,14 @@
 
   .splash-progress {
     max-width: 300px;
+  }
+
+  .splash-logo {
+    padding: 0 16px;
+  }
+
+  .splash-content {
+    padding: 0 16px;
   }
 }
 

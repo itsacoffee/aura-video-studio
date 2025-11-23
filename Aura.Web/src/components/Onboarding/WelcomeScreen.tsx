@@ -1,10 +1,10 @@
-import { makeStyles, tokens, Title1, Title3, Text, Card, Button } from '@fluentui/react-components';
+import { Button, Card, makeStyles, Text, Title1, Title3, tokens } from '@fluentui/react-components';
 import {
-  VideoClip24Regular,
-  Sparkle24Regular,
   Clock24Regular,
-  Play24Regular,
   FolderOpen24Regular,
+  Play24Regular,
+  Sparkle24Regular,
+  VideoClip24Regular,
 } from '@fluentui/react-icons';
 import { Logo } from '../Logo';
 
@@ -21,7 +21,7 @@ const useStyles = makeStyles({
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: tokens.spacingVerticalL,
+    marginBottom: tokens.spacingVerticalXXL,
     position: 'relative',
   },
   heroGraphic: {

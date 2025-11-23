@@ -1828,12 +1828,42 @@ public class SetupController : ControllerBase
             try
             {
                 var settingsPath = Path.Combine(providerSettings.GetAuraDataDirectory(), "settings.json");
-                // Force a flush by reading the file back
+                // Force a flush by reading the file back and verifying the content
                 if (System.IO.File.Exists(settingsPath))
                 {
                     var content = System.IO.File.ReadAllText(settingsPath);
                     _logger.LogInformation("[{CorrelationId}] Verified settings file write - Size: {Size} bytes",
                         correlationId, content.Length);
+
+                    // Verify the settings were actually saved by checking the JSON content
+                    if (!content.Contains("piperExecutablePath") || !content.Contains(targetPath))
+                    {
+                        _logger.LogWarning("[{CorrelationId}] Settings file doesn't contain Piper path, retrying save", correlationId);
+                        // Retry saving
+                        providerSettings.Reload();
+                        providerSettings.SetPiperPaths(targetPath, System.IO.File.Exists(voiceModelPath) ? voiceModelPath : null);
+
+                        // Wait for file system flush
+                        await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+
+                        // Read again to verify retry succeeded
+                        var retryContent = System.IO.File.ReadAllText(settingsPath);
+                        _logger.LogInformation("[{CorrelationId}] After retry - Settings file size: {Size} bytes", correlationId, retryContent.Length);
+
+                        // Verify the retry actually worked
+                        if (!retryContent.Contains("piperExecutablePath") || !retryContent.Contains(targetPath))
+                        {
+                            _logger.LogError("[{CorrelationId}] Settings save retry failed - configuration not persisted", correlationId);
+                            return StatusCode(500, new
+                            {
+                                success = false,
+                                error = "Failed to save Piper TTS configuration. Please try again or configure manually in Settings.",
+                                message = "Piper TTS was installed but configuration could not be saved. You may need to configure the path manually."
+                            });
+                        }
+
+                        _logger.LogInformation("[{CorrelationId}] Settings save retry succeeded - configuration verified", correlationId);
+                    }
                 }
                 else
                 {
@@ -1845,6 +1875,9 @@ public class SetupController : ControllerBase
             {
                 _logger.LogWarning(ex, "[{CorrelationId}] Failed to verify settings file write", correlationId);
             }
+
+            // Small delay to ensure file system has fully flushed
+            await Task.Delay(200, cancellationToken).ConfigureAwait(false);
 
             _logger.LogInformation("[{CorrelationId}] Piper TTS installed successfully at {Path}", correlationId, targetPath);
 
@@ -2017,6 +2050,47 @@ public class SetupController : ControllerBase
                     var providerSettings = new ProviderSettings(_loggerFactory.CreateLogger<ProviderSettings>());
                     providerSettings.SetMimic3BaseUrl("http://127.0.0.1:59125");
 
+                    // Verify settings were saved
+                    try
+                    {
+                        var settingsPath = Path.Combine(providerSettings.GetAuraDataDirectory(), "settings.json");
+                        if (System.IO.File.Exists(settingsPath))
+                        {
+                            var content = System.IO.File.ReadAllText(settingsPath);
+                            if (!content.Contains("mimic3BaseUrl") || !content.Contains("127.0.0.1:59125"))
+                            {
+                                _logger.LogWarning("[{CorrelationId}] Settings file doesn't contain Mimic3 URL, retrying save", correlationId);
+                                providerSettings.Reload();
+                                providerSettings.SetMimic3BaseUrl("http://127.0.0.1:59125");
+
+                                // Wait for file system flush
+                                await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+
+                                // Verify retry succeeded
+                                var retryContent = System.IO.File.ReadAllText(settingsPath);
+                                if (!retryContent.Contains("mimic3BaseUrl") || !retryContent.Contains("127.0.0.1:59125"))
+                                {
+                                    _logger.LogError("[{CorrelationId}] Settings save retry failed - configuration not persisted", correlationId);
+                                    return Ok(new
+                                    {
+                                        success = false,
+                                        error = "Failed to save Mimic3 TTS configuration. Please try again or configure manually in Settings.",
+                                        message = "Mimic3 container started but configuration could not be saved. You may need to configure the URL manually."
+                                    });
+                                }
+
+                                _logger.LogInformation("[{CorrelationId}] Settings save retry succeeded - configuration verified", correlationId);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "[{CorrelationId}] Failed to verify Mimic3 settings file write", correlationId);
+                    }
+
+                    // Small delay to ensure file system has fully flushed
+                    await Task.Delay(200, cancellationToken).ConfigureAwait(false);
+
                     return Ok(new
                     {
                         success = true,
@@ -2086,6 +2160,47 @@ public class SetupController : ControllerBase
             // Save configuration
             var settings = new ProviderSettings(_loggerFactory.CreateLogger<ProviderSettings>());
             settings.SetMimic3BaseUrl("http://127.0.0.1:59125");
+
+            // Verify settings were saved
+            try
+            {
+                var settingsPath = Path.Combine(settings.GetAuraDataDirectory(), "settings.json");
+                if (System.IO.File.Exists(settingsPath))
+                {
+                    var content = System.IO.File.ReadAllText(settingsPath);
+                    if (!content.Contains("mimic3BaseUrl") || !content.Contains("127.0.0.1:59125"))
+                    {
+                        _logger.LogWarning("[{CorrelationId}] Settings file doesn't contain Mimic3 URL, retrying save", correlationId);
+                        settings.Reload();
+                        settings.SetMimic3BaseUrl("http://127.0.0.1:59125");
+
+                        // Wait for file system flush
+                        await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+
+                        // Verify retry succeeded
+                        var retryContent = System.IO.File.ReadAllText(settingsPath);
+                        if (!retryContent.Contains("mimic3BaseUrl") || !retryContent.Contains("127.0.0.1:59125"))
+                        {
+                            _logger.LogError("[{CorrelationId}] Settings save retry failed - configuration not persisted", correlationId);
+                            return StatusCode(500, new
+                            {
+                                success = false,
+                                error = "Failed to save Mimic3 TTS configuration. Please try again or configure manually in Settings.",
+                                message = "Mimic3 container started but configuration could not be saved. You may need to configure the URL manually."
+                            });
+                        }
+
+                        _logger.LogInformation("[{CorrelationId}] Settings save retry succeeded - configuration verified", correlationId);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[{CorrelationId}] Failed to verify Mimic3 settings file write", correlationId);
+            }
+
+            // Small delay to ensure file system has fully flushed
+            await Task.Delay(200, cancellationToken).ConfigureAwait(false);
 
             _logger.LogInformation("[{CorrelationId}] Mimic3 Docker container started successfully", correlationId);
 
