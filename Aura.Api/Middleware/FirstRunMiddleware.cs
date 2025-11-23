@@ -42,6 +42,12 @@ public class FirstRunMiddleware
             path.StartsWith("/api/jobs/recent-artifacts", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/system", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/ffmpeg", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/api/ideation", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/api/offline-providers", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/api/visuals", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/api/wizard-projects", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/api/templates", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/api/template-management", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/onboarding", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/setup", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/assets", StringComparison.OrdinalIgnoreCase) ||

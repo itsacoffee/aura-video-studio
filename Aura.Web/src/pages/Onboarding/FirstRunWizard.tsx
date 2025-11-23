@@ -913,7 +913,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
     [dispatch, ffmpegManualOverride, showFailureToast, showSuccessToast]
   );
 
-  const handleRescanFfmpeg = () => {
+  const handleRescanFfmpeg = useCallback(async () => {
     if (isRescanningFfmpeg) {
       return;
     }
@@ -922,8 +922,35 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
     console.info('[Rescan FFmpeg] Circuit breaker reset, initiating rescan');
     pendingRescanRef.current = true;
     setIsRescanningFfmpeg(true);
+    
+    try {
+      // First trigger a rescan to detect managed version
+      const rescanResult = await ffmpegClient.rescan();
+      console.info('[Rescan FFmpeg] Rescan result:', rescanResult);
+      
+      // Then get the updated status
+      const status = await ffmpegClient.getStatusExtended();
+      handleFfmpegStatusUpdate(status);
+    } catch (error) {
+      console.error('[Rescan FFmpeg] Failed to rescan:', error);
+      setIsRescanningFfmpeg(false);
+      pendingRescanRef.current = false;
+    }
+    
     setFfmpegRefreshSignal((prev) => prev + 1);
-  };
+  }, [isRescanningFfmpeg, handleFfmpegStatusUpdate]);
+
+  // Auto-check FFmpeg when entering step 1 (FFmpeg Check)
+  useEffect(() => {
+    if (state.step === 1 && !isRescanningFfmpeg && !ffmpegReady) {
+      console.info('[FirstRunWizard] Entering Step 1 (FFmpeg Check), auto-checking FFmpeg');
+      // Small delay to ensure backend is ready
+      const timer = setTimeout(() => {
+        void handleRescanFfmpeg();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [state.step, isRescanningFfmpeg, ffmpegReady, handleRescanFfmpeg]);
 
   const openExternalLink = useCallback((url: string) => {
     if (typeof window === 'undefined') {

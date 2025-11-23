@@ -16,10 +16,14 @@ import {
   MessageBarBody,
   MessageBarTitle,
 } from '@fluentui/react-components';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { Spinner } from '@fluentui/react-components';
+import { Checkmark24Regular, Warning24Regular } from '@fluentui/react-icons';
 import { EnhancedApiKeyInput } from '../../components/Onboarding/EnhancedApiKeyInput';
 import type { FieldValidationError } from '../../components/Onboarding/FieldValidationErrors';
 import { ProviderHelpPanel } from '../../components/ProviderHelpPanel';
+import { offlineProvidersApi } from '../../services/api/offlineProvidersApi';
+import type { OfflineProviderStatus } from '@/types/offlineProviders';
 
 const useStyles = makeStyles({
   container: {
@@ -324,6 +328,64 @@ const providers: ProviderConfig[] = [
     category: 'tts',
   },
   {
+    id: 'piper',
+    name: 'Piper TTS',
+    logo: '🎤',
+    description: 'Fast local TTS, works offline',
+    usedFor: 'High-quality offline text-to-speech without API costs',
+    signupUrl: 'https://github.com/rhasspy/piper',
+    steps: [
+      'Install Piper via Download Center in Settings',
+      'Download voice models (50+ voices available)',
+      'No API key required - runs locally',
+    ],
+    pricingInfo: {
+      freeTier: 'Completely free - runs on your hardware',
+      costEstimate: 'Free (requires local installation)',
+    },
+    keyFormat: 'No API key needed for local Piper',
+    requiresApiKey: false,
+    localSetup: {
+      downloadUrl: 'https://github.com/rhasspy/piper/releases',
+      instructions: [
+        'Install Piper via Settings → Download Center → Engines',
+        'Download at least one voice model',
+        'Piper will be automatically detected when installed',
+      ],
+      readyHint: 'Click "Mark as Ready" once Piper is installed and voice models are downloaded.',
+    },
+    category: 'tts',
+  },
+  {
+    id: 'mimic3',
+    name: 'Mimic3 TTS',
+    logo: '🎭',
+    description: 'Neural TTS, works offline',
+    usedFor: 'High-quality neural text-to-speech with natural voices',
+    signupUrl: 'https://github.com/MycroftAI/mimic3',
+    steps: [
+      'Install Mimic3 server (runs on port 59125)',
+      'Ensure the Mimic3 service is running',
+      'No API key required - runs locally',
+    ],
+    pricingInfo: {
+      freeTier: 'Completely free - runs on your hardware',
+      costEstimate: 'Free (requires local installation)',
+    },
+    keyFormat: 'No API key needed for local Mimic3',
+    requiresApiKey: false,
+    localSetup: {
+      downloadUrl: 'https://github.com/MycroftAI/mimic3',
+      instructions: [
+        'Install Mimic3 server (see Download Center in Settings)',
+        'Start the Mimic3 service (runs on port 59125)',
+        'Leave the Mimic3 service running while Aura is open',
+      ],
+      readyHint: 'Click "Mark as Ready" once Mimic3 is installed and the service is running.',
+    },
+    category: 'tts',
+  },
+  {
     id: 'replicate',
     name: 'Replicate',
     logo: '🎨',
@@ -382,6 +444,44 @@ export function ApiKeySetupStep({
 }: ApiKeySetupStepProps) {
   const styles = useStyles();
   const [rateLimit, setRateLimit] = useState<Record<string, number>>({});
+  const [localTtsStatus, setLocalTtsStatus] = useState<{
+    piper: OfflineProviderStatus | null;
+    mimic3: OfflineProviderStatus | null;
+  }>({ piper: null, mimic3: null });
+  const [checkingTts, setCheckingTts] = useState<{ piper: boolean; mimic3: boolean }>({
+    piper: false,
+    mimic3: false,
+  });
+
+  const checkLocalTtsStatus = useCallback(async (provider: 'piper' | 'mimic3') => {
+    setCheckingTts((prev) => ({ ...prev, [provider]: true }));
+    try {
+      const status =
+        provider === 'piper'
+          ? await offlineProvidersApi.checkPiper()
+          : await offlineProvidersApi.checkMimic3();
+      setLocalTtsStatus((prev) => ({ ...prev, [provider]: status }));
+    } catch (error) {
+      console.error(`Failed to check ${provider} status:`, error);
+      setLocalTtsStatus((prev) => ({
+        ...prev,
+        [provider]: {
+          name: provider === 'piper' ? 'Piper TTS' : 'Mimic3 TTS',
+          isAvailable: false,
+          message: 'Status check failed',
+        },
+      }));
+    } finally {
+      setCheckingTts((prev) => ({ ...prev, [provider]: false }));
+    }
+  }, []);
+
+  // Check local TTS status on mount
+  useEffect(() => {
+    checkLocalTtsStatus('piper');
+    checkLocalTtsStatus('mimic3');
+  }, [checkLocalTtsStatus]);
+
   const openExternalLink = (url: string) => {
     if (typeof window === 'undefined') {
       return;
@@ -532,10 +632,70 @@ export function ApiKeySetupStep({
                             </ul>
                           )}
 
+                          {/* Status check for local TTS providers */}
+                          {(provider.id === 'piper' || provider.id === 'mimic3') && (
+                            <div
+                              style={{
+                                marginTop: tokens.spacingVerticalM,
+                                padding: tokens.spacingVerticalS,
+                                backgroundColor: tokens.colorNeutralBackground2,
+                                borderRadius: tokens.borderRadiusSmall,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: tokens.spacingHorizontalS,
+                              }}
+                            >
+                              {checkingTts[provider.id as 'piper' | 'mimic3'] ? (
+                                <>
+                                  <Spinner size="tiny" />
+                                  <Text size={200}>Checking status...</Text>
+                                </>
+                              ) : localTtsStatus[provider.id as 'piper' | 'mimic3'] ? (
+                                <>
+                                  {localTtsStatus[provider.id as 'piper' | 'mimic3']?.isAvailable ? (
+                                    <>
+                                      <Checkmark24Regular
+                                        style={{ color: tokens.colorPaletteGreenForeground1 }}
+                                      />
+                                      <Text size={200} className={styles.successText}>
+                                        {localTtsStatus[provider.id as 'piper' | 'mimic3']?.message ||
+                                          'Available'}
+                                      </Text>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Warning24Regular
+                                        style={{ color: tokens.colorPaletteYellowForeground1 }}
+                                      />
+                                      <Text size={200}>
+                                        {localTtsStatus[provider.id as 'piper' | 'mimic3']?.message ||
+                                          'Not detected'}
+                                      </Text>
+                                    </>
+                                  )}
+                                  <Button
+                                    appearance="subtle"
+                                    size="small"
+                                    onClick={() =>
+                                      checkLocalTtsStatus(provider.id as 'piper' | 'mimic3')
+                                    }
+                                  >
+                                    Refresh
+                                  </Button>
+                                </>
+                              ) : null}
+                            </div>
+                          )}
+
                           <div className={styles.localActions}>
                             <Button
                               appearance="primary"
                               onClick={() => onLocalProviderReady?.(provider.id)}
+                              disabled={
+                                (provider.id === 'piper' || provider.id === 'mimic3') &&
+                                !localTtsStatus[provider.id as 'piper' | 'mimic3']?.isAvailable &&
+                                !checkingTts[provider.id as 'piper' | 'mimic3']
+                              }
                             >
                               Mark as Ready
                             </Button>
@@ -544,7 +704,11 @@ export function ApiKeySetupStep({
                                 appearance="secondary"
                                 onClick={() => openExternalLink(provider.localSetup!.downloadUrl!)}
                               >
-                                Download Ollama
+                                {provider.id === 'piper'
+                                  ? 'View Piper Releases'
+                                  : provider.id === 'mimic3'
+                                    ? 'View Mimic3 GitHub'
+                                    : 'Download Ollama'}
                               </Button>
                             )}
                           </div>
@@ -555,8 +719,9 @@ export function ApiKeySetupStep({
                             </Text>
                           ) : (
                             <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                              No API key required. Install the provider locally and mark it as
-                              ready.
+                              {provider.id === 'piper' || provider.id === 'mimic3'
+                                ? 'Install the provider locally and ensure it is detected, then mark as ready.'
+                                : 'No API key required. Install the provider locally and mark it as ready.'}
                             </Text>
                           )}
                         </div>

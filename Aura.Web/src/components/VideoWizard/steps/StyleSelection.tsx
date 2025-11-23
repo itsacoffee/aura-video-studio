@@ -13,7 +13,7 @@ import {
   Spinner,
 } from '@fluentui/react-components';
 import { CheckmarkCircle24Regular, ErrorCircle24Regular } from '@fluentui/react-icons';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import type { FC } from 'react';
 import type { StyleData, BriefData, StepValidation } from '../types';
 import { getVisualsClient } from '@/api/visualsClient';
@@ -204,6 +204,57 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
       }
     } catch (error) {
       console.error('Failed to load providers:', error);
+      // CRITICAL FIX: Add fallback providers if API fails
+      // This ensures users can still select providers even if the API is blocked or unavailable
+      const fallbackProviders: VisualProvider[] = [
+        {
+          name: 'Stock',
+          isAvailable: true,
+          requiresApiKey: false,
+          capabilities: {
+            providerName: 'Stock',
+            supportsNegativePrompts: false,
+            supportsBatchGeneration: false,
+            supportsStylePresets: false,
+            supportedAspectRatios: ['16:9', '9:16', '1:1', '4:3'],
+            supportedStyles: ['photorealistic', 'artistic', 'cinematic'],
+            maxWidth: 1920,
+            maxHeight: 1080,
+            isLocal: false,
+            isFree: true,
+            costPerImage: 0,
+            tier: 'Free',
+          },
+        },
+        {
+          name: 'LocalSD',
+          isAvailable: false,
+          requiresApiKey: false,
+          capabilities: {
+            providerName: 'LocalSD',
+            supportsNegativePrompts: true,
+            supportsBatchGeneration: true,
+            supportsStylePresets: true,
+            supportedAspectRatios: ['16:9', '9:16', '1:1', '4:3'],
+            supportedStyles: ['photorealistic', 'artistic', 'cinematic', 'minimalist'],
+            maxWidth: 2048,
+            maxHeight: 2048,
+            isLocal: true,
+            isFree: true,
+            costPerImage: 0,
+            tier: 'Free',
+          },
+        },
+      ];
+      setProviders(fallbackProviders);
+
+      // Auto-select Stock if no provider is selected
+      if (!data.imageProvider) {
+        onChange({
+          ...data,
+          imageProvider: 'Stock',
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -231,14 +282,49 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
     loadStyles();
   }, [loadProviders, loadStyles]);
 
+  // CRITICAL FIX: Ensure default values are set on mount if not present
+  // Use ref to track if defaults have been set to avoid stale closures
+  const defaultsSetRef = useRef(false);
   useEffect(() => {
-    const isValid = !!data.voiceProvider && !!data.visualStyle && !!data.imageProvider;
+    // Only set defaults once on mount
+    if (defaultsSetRef.current) {
+      return;
+    }
+
+    const needsDefaults = !data.voiceProvider || !data.visualStyle || !data.imageProvider;
+    if (needsDefaults) {
+      defaultsSetRef.current = true;
+      onChange({
+        ...data,
+        voiceProvider: data.voiceProvider || 'Windows',
+        visualStyle: data.visualStyle || 'modern',
+        imageProvider: data.imageProvider || 'Stock',
+      });
+    } else {
+      defaultsSetRef.current = true;
+    }
+  }, [data, onChange]);
+
+  useEffect(() => {
+    // CRITICAL FIX: Allow validation to pass if imageProvider is set, even if providers list is empty
+    // This prevents blocking when API fails but user has already selected a provider
+    const hasVoiceProvider = !!data.voiceProvider;
+    const hasVisualStyle = !!data.visualStyle;
+    const hasImageProvider = !!data.imageProvider;
+
+    // If providers haven't loaded yet but we have a provider selected, still allow validation
+    const isValid = hasVoiceProvider && hasVisualStyle && (hasImageProvider || providers.length === 0);
+
+    const errors: string[] = [];
+    if (!hasVoiceProvider) errors.push('Voice provider');
+    if (!hasVisualStyle) errors.push('Visual style');
+    if (!hasImageProvider && providers.length > 0) errors.push('Image provider');
 
     onValidationChange({
       isValid,
-      errors: isValid ? [] : ['Please select voice and image providers'],
+      errors: isValid ? [] : [`Please select: ${errors.join(', ')}`],
     });
-  }, [data, onValidationChange]);
+  }, [data, onValidationChange, providers.length]);
 
   const handleProviderSelect = useCallback(
     (providerName: string) => {
@@ -267,9 +353,17 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
         visualStyle: preset.visualStyle,
         musicGenre: preset.musicGenre,
         musicEnabled: preset.musicGenre !== 'none',
+        // CRITICAL FIX: Ensure voiceProvider is set when using presets
+        // If not already set, use a default
+        voiceProvider: data.voiceProvider || 'Windows',
+        // CRITICAL FIX: Ensure imageProvider is set when using presets
+        // If not already set and providers are available, auto-select first available
+        imageProvider: data.imageProvider || (providers.length > 0
+          ? providers.find(p => p.isAvailable)?.name || 'Stock'
+          : 'Stock'),
       });
     },
-    [data, onChange]
+    [data, onChange, providers]
   );
 
   if (loading) {
@@ -376,65 +470,114 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
         <Title3>Image Generation Provider</Title3>
         <Text>Select the AI provider for generating scene images</Text>
 
-        <div className={styles.grid}>
-          {providers.map((provider) => (
-            <Card
-              key={provider.name}
-              className={`${styles.providerCard} ${
-                data.imageProvider === provider.name ? styles.selectedCard : ''
-              }`}
-              onClick={() => provider.isAvailable && handleProviderSelect(provider.name)}
-              style={{
-                opacity: provider.isAvailable ? 1 : 0.5,
-                cursor: provider.isAvailable ? 'pointer' : 'not-allowed',
-              }}
-            >
-              <div className={styles.providerHeader}>
-                <Title3>{provider.name}</Title3>
-                {data.imageProvider === provider.name && (
-                  <Badge appearance="filled" color="success">
-                    Selected
-                  </Badge>
-                )}
-              </div>
+        {providers.length === 0 && !loading && (
+          <div
+            style={{
+              padding: tokens.spacingVerticalM,
+              backgroundColor: tokens.colorNeutralBackground3,
+              borderRadius: tokens.borderRadiusMedium,
+              marginTop: tokens.spacingVerticalM,
+            }}
+          >
+            <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+              No providers available. Using default Stock provider.
+            </Text>
+          </div>
+        )}
 
-              <div className={styles.providerDetails}>
-                <div
-                  style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS }}
-                >
-                  {provider.isAvailable ? (
+        <div className={styles.grid}>
+          {providers.length > 0 ? (
+            providers.map((provider) => (
+              <Card
+                key={provider.name}
+                className={`${styles.providerCard} ${
+                  data.imageProvider === provider.name ? styles.selectedCard : ''
+                }`}
+                onClick={() => provider.isAvailable && handleProviderSelect(provider.name)}
+                style={{
+                  opacity: provider.isAvailable ? 1 : 0.5,
+                  cursor: provider.isAvailable ? 'pointer' : 'not-allowed',
+                }}
+              >
+                <div className={styles.providerHeader}>
+                  <Title3>{provider.name}</Title3>
+                  {data.imageProvider === provider.name && (
+                    <Badge appearance="filled" color="success">
+                      Selected
+                    </Badge>
+                  )}
+                </div>
+
+                <div className={styles.providerDetails}>
+                  <div
+                    style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS }}
+                  >
+                    {provider.isAvailable ? (
+                      <CheckmarkCircle24Regular
+                        style={{ color: tokens.colorPaletteGreenForeground1, fontSize: '16px' }}
+                      />
+                    ) : (
+                      <ErrorCircle24Regular
+                        style={{ color: tokens.colorPaletteRedForeground1, fontSize: '16px' }}
+                      />
+                    )}
+                    <Text size={200}>{provider.isAvailable ? 'Available' : 'Not Available'}</Text>
+                  </div>
+
+                  {provider.capabilities && (
+                    <>
+                      <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                        {provider.capabilities.tier} •{' '}
+                        {provider.capabilities.isFree
+                          ? 'Free'
+                          : `$${provider.capabilities.costPerImage}/image`}
+                      </Text>
+                      <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                        Max: {provider.capabilities.maxWidth}x{provider.capabilities.maxHeight}
+                      </Text>
+                      {provider.capabilities.supportedStyles.length > 0 && (
+                        <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                          {provider.capabilities.supportedStyles.length} styles supported
+                        </Text>
+                      )}
+                    </>
+                  )}
+                </div>
+              </Card>
+            ))
+          ) : (
+            !loading && (
+              <Card
+                className={`${styles.providerCard} ${
+                  data.imageProvider === 'Stock' ? styles.selectedCard : ''
+                }`}
+                onClick={() => handleProviderSelect('Stock')}
+                style={{ cursor: 'pointer' }}
+              >
+                <div className={styles.providerHeader}>
+                  <Title3>Stock</Title3>
+                  {data.imageProvider === 'Stock' && (
+                    <Badge appearance="filled" color="success">
+                      Selected
+                    </Badge>
+                  )}
+                </div>
+                <div className={styles.providerDetails}>
+                  <div
+                    style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS }}
+                  >
                     <CheckmarkCircle24Regular
                       style={{ color: tokens.colorPaletteGreenForeground1, fontSize: '16px' }}
                     />
-                  ) : (
-                    <ErrorCircle24Regular
-                      style={{ color: tokens.colorPaletteRedForeground1, fontSize: '16px' }}
-                    />
-                  )}
-                  <Text size={200}>{provider.isAvailable ? 'Available' : 'Not Available'}</Text>
+                    <Text size={200}>Available</Text>
+                  </div>
+                  <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                    Free • Stock images from Pexels, Pixabay, Unsplash
+                  </Text>
                 </div>
-
-                {provider.capabilities && (
-                  <>
-                    <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                      {provider.capabilities.tier} •{' '}
-                      {provider.capabilities.isFree
-                        ? 'Free'
-                        : `$${provider.capabilities.costPerImage}/image`}
-                    </Text>
-                    <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                      Max: {provider.capabilities.maxWidth}x{provider.capabilities.maxHeight}
-                    </Text>
-                    {provider.capabilities.supportedStyles.length > 0 && (
-                      <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                        {provider.capabilities.supportedStyles.length} styles supported
-                      </Text>
-                    )}
-                  </>
-                )}
-              </div>
-            </Card>
-          ))}
+              </Card>
+            )
+          )}
         </div>
       </div>
 

@@ -298,6 +298,20 @@ class ConfigurationStatusService {
     const hasCompletedWizard = getLocalFirstRunStatus();
     console.info('[configurationStatusService] User has completed wizard:', hasCompletedWizard);
 
+    // CRITICAL FIX: Trigger a rescan before checking FFmpeg to ensure managed version is detected
+    // The managed version is always installed on build but may not be detected on first check
+    try {
+      const rescanResponse = await fetch(apiUrl('/api/ffmpeg/rescan'), { method: 'POST' });
+      if (rescanResponse.ok) {
+        console.info('[configurationStatusService] FFmpeg rescan triggered to detect managed version');
+        // Wait a moment for rescan to complete
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+    } catch (error) {
+      console.warn('[configurationStatusService] Failed to trigger FFmpeg rescan:', error);
+      // Continue with normal check even if rescan fails
+    }
+
     const [ffmpeg, systemCheck] = await Promise.allSettled([
       this.checkFFmpeg(),
       this.runSystemChecks(),
