@@ -489,9 +489,9 @@ public class ScriptOrchestrator
                 {
                     var task = (Task<bool>)healthCheckMethod.Invoke(provider, new object[] { ct })!;
                     var isAvailable = await task.ConfigureAwait(false);
-                    if (!isAvailable)
-                    {
-                        _logger.LogWarning("Ollama provider is not available (service not running)");
+                if (!isAvailable)
+                {
+                    _logger.LogWarning("Ollama provider is not available (service not running)");
                     return new ScriptResult
                     {
                         Success = false,
