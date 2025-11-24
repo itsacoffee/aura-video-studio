@@ -250,6 +250,10 @@ if (process.env.DISABLE_HARDWARE_ACCELERATION === "true") {
   app.disableHardwareAcceleration();
 }
 
+// Add Chromium command line switches to prevent rendering issues
+app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
+app.commandLine.appendSwitch('disable-renderer-backgrounding');
+
 // ========================================
 // Protocol Registration (MUST BE BEFORE app.ready)
 // ========================================

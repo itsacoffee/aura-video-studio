@@ -179,6 +179,8 @@ class WindowManager {
         devTools: true, // Allow devtools but don't open by default
         enableRemoteModule: false, // Remote module is deprecated
         spellcheck: true,
+        backgroundThrottling: false, // Don't throttle when backgrounded
+        offscreen: false, // Use normal rendering
       },
       titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
       frame: true,
@@ -400,160 +402,55 @@ class WindowManager {
       this.mainWindow = null;
     });
 
-    // Handle window focus event to prevent black screen when clicking on unfocused window
-    this.mainWindow.on("focus", () => {
-      console.log("[WindowManager] Window focused");
-      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-        const currentURL = this.mainWindow.webContents.getURL();
-        if (
-          currentURL &&
-          currentURL !== "about:blank" &&
-          this.loadingState.didFinishLoad
-        ) {
-          // Force a repaint when window regains focus
-          setTimeout(() => {
-            if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-              this.mainWindow.webContents
-                .executeJavaScript(
-                  `
-                (function() {
-                  // Force repaint on focus to fix black screen
-                  window.dispatchEvent(new Event('resize', { bubbles: true }));
-                  window.dispatchEvent(new Event('focus', { bubbles: true }));
-                  if (document.visibilityState === 'visible') {
-                    document.dispatchEvent(new Event('visibilitychange'));
-                  }
-                  // Force layout recalculation
-                  void document.body.offsetHeight;
-                  
-                  // Check for black screen and fix it
-                  const root = document.getElementById('root');
-                  if (root) {
-                    const hasChildren = root.children.length > 0;
-                    const hasText = root.textContent && root.textContent.trim().length > 0;
-                    const style = window.getComputedStyle(root);
-                    const bgColor = style.backgroundColor;
-                    const isBlack = bgColor === 'rgb(0, 0, 0)' || bgColor === 'rgba(0, 0, 0, 0)' || bgColor === 'transparent';
-                    
-                    if ((!hasChildren && !hasText) || isBlack) {
-                      console.warn('[WindowManager] Black screen detected on focus, fixing...');
-                      // Get theme from localStorage
-                      const darkMode = localStorage.getItem('darkMode') === 'true' || 
-                        (localStorage.getItem('darkMode') === null && window.matchMedia('(prefers-color-scheme: dark)').matches);
-                      const safeBg = darkMode ? '#1e1e1e' : '#ffffff';
-                      root.style.backgroundColor = safeBg;
-                      document.body.style.backgroundColor = safeBg;
-                    }
-                  }
-                })();
-              `
-                )
-                .catch((err) => {
-                  console.log(
-                    "[WindowManager] Failed to execute repaint script on focus:",
-                    err
-                  );
-                });
-            }
-          }, 10);
-        }
+    // Debounced visibility state handler - single coordinated approach
+    let visibilityDebounceTimer = null;
+    let lastVisibilityState = null;
+
+    const handleVisibilityChange = (eventType) => {
+      // Track window state to avoid unnecessary operations
+      const currentState = `${eventType}-${this.mainWindow.isVisible()}-${this.mainWindow.isMinimized()}`;
+      
+      // Skip if state hasn't changed
+      if (currentState === lastVisibilityState) {
+        return;
       }
-    });
+      
+      lastVisibilityState = currentState;
+      console.log(`[WindowManager] Window visibility changed: ${eventType}`);
+      
+      // Clear any pending debounce
+      if (visibilityDebounceTimer) {
+        clearTimeout(visibilityDebounceTimer);
+      }
+      
+      // Debounce to avoid rapid-fire repaints (300ms)
+      visibilityDebounceTimer = setTimeout(() => {
+        if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+          const currentURL = this.mainWindow.webContents.getURL();
+          
+          // Only invalidate if page is loaded and not blank
+          if (currentURL && currentURL !== "about:blank" && this.loadingState.didFinishLoad) {
+            // Use Electron's proper API for rendering refresh
+            this.mainWindow.webContents.invalidate();
+            console.log("[WindowManager] WebContents invalidated for repaint");
+          }
+        }
+        visibilityDebounceTimer = null;
+      }, 300);
+    };
 
-    // Handle window blur event to prevent black screen when app loses focus
-    this.mainWindow.on("blur", () => {
-      console.log("[WindowManager] Window lost focus");
-      // Don't do anything destructive - just ensure content stays visible
-      // The focus handler will fix any issues when focus returns
-    });
-
-    // Handle window restore event to prevent black screen
+    // Single set of coordinated event handlers
+    this.mainWindow.on("focus", () => handleVisibilityChange("focus"));
+    this.mainWindow.on("blur", () => console.log("[WindowManager] Window lost focus"));
     this.mainWindow.on("restore", () => {
       console.log("[WindowManager] Window restored from minimized state");
-      // Ensure window is visible and webContents is properly displayed
       if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-        // Force a repaint by showing the window again
         this.mainWindow.show();
         this.mainWindow.focus();
-
-        // If webContents is not loading and URL is empty or failed, reload
-        const currentURL = this.mainWindow.webContents.getURL();
-        if (!currentURL || currentURL === "about:blank") {
-          console.log("[WindowManager] WebContents URL is empty, reloading...");
-          this._attemptLoad();
-        } else if (!this.loadingState.didFinishLoad) {
-          console.log(
-            "[WindowManager] Previous load didn't finish, reloading..."
-          );
-          this._attemptLoad();
-        } else {
-          // Force a repaint by executing JavaScript that triggers visual updates
-          // This is less disruptive than a full reload
-          setTimeout(() => {
-            if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-              this.mainWindow.webContents
-                .executeJavaScript(
-                  `
-                (function() {
-                  // Force a repaint by triggering resize and focus events
-                  window.dispatchEvent(new Event('resize', { bubbles: true }));
-                  window.dispatchEvent(new Event('focus', { bubbles: true }));
-                  // Also trigger a visibility change to ensure React re-renders
-                  if (document.visibilityState === 'visible') {
-                    document.dispatchEvent(new Event('visibilitychange'));
-                  }
-                })();
-              `
-                )
-                .catch((err) => {
-                  // If JavaScript execution fails, reload the page as fallback
-                  console.log(
-                    "[WindowManager] JavaScript execution failed, reloading page to fix black screen:",
-                    err
-                  );
-                  this.mainWindow.webContents.reload();
-                });
-            }
-          }, 100);
-        }
+        handleVisibilityChange("restore");
       }
     });
-
-    // Handle window show event to ensure content is visible
-    this.mainWindow.on("show", () => {
-      console.log("[WindowManager] Window shown");
-      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-        // Ensure webContents is properly displayed by forcing a repaint
-        const currentURL = this.mainWindow.webContents.getURL();
-        if (currentURL && currentURL !== "about:blank") {
-          // Use a small delay to ensure the window is fully visible before forcing repaint
-          setTimeout(() => {
-            if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-              // Force webContents to repaint by executing JavaScript that triggers visual updates
-              this.mainWindow.webContents
-                .executeJavaScript(
-                  `
-                (function() {
-                  // Force multiple repaint triggers to ensure content is visible
-                  window.dispatchEvent(new Event('resize', { bubbles: true }));
-                  window.dispatchEvent(new Event('focus', { bubbles: true }));
-                  // Trigger visibility change to ensure React re-renders
-                  if (document.visibilityState === 'visible') {
-                    document.dispatchEvent(new Event('visibilitychange'));
-                  }
-                  // Force a repaint by accessing layout properties
-                  void document.body.offsetHeight;
-                })();
-              `
-                )
-                .catch(() => {
-                  // Ignore errors if webContents is not ready
-                });
-            }
-          }, 50);
-        }
-      }
-    });
+    this.mainWindow.on("show", () => handleVisibilityChange("show"));
 
     return this.mainWindow;
   }
