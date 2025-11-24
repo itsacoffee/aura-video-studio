@@ -102,20 +102,42 @@ public class JobsController : ControllerBase
                 );
             }
 
+            LlmParameters? llmParams = null;
+            if (request.Brief.LlmParameters != null)
+            {
+                llmParams = new LlmParameters(
+                    Temperature: request.Brief.LlmParameters.Temperature,
+                    TopP: request.Brief.LlmParameters.TopP,
+                    TopK: request.Brief.LlmParameters.TopK,
+                    MaxTokens: request.Brief.LlmParameters.MaxTokens,
+                    FrequencyPenalty: request.Brief.LlmParameters.FrequencyPenalty,
+                    PresencePenalty: request.Brief.LlmParameters.PresencePenalty,
+                    StopSequences: request.Brief.LlmParameters.StopSequences,
+                    ModelOverride: request.Brief.LlmParameters.ModelOverride
+                );
+            }
+
             var brief = new Brief(
                 Topic: request.Brief.Topic,
                 Audience: request.Brief.Audience,
                 Goal: request.Brief.Goal,
                 Tone: request.Brief.Tone,
                 Language: request.Brief.Language,
-                Aspect: request.Brief.Aspect,
-                RagConfiguration: ragConfig
+                Aspect: ParseAspect(request.Brief.Aspect),
+                RagConfiguration: ragConfig,
+                LlmParameters: llmParams
             );
+
+            // Parse enums consistently - convert to string first, then parse for robustness
+            // This ensures consistent handling even if ASP.NET Core deserializer converts strings to enums
+            var pacing = ParsePacing(request.PlanSpec.Pacing.ToString());
+            var density = ParseDensity(request.PlanSpec.Density.ToString());
+            var pause = ParsePauseStyle(request.VoiceSpec.Pause.ToString());
 
             var planSpec = new PlanSpec(
                 TargetDuration: request.PlanSpec.TargetDuration,
-                Pacing: request.PlanSpec.Pacing,
-                Density: request.PlanSpec.Density,
+                Pacing: pacing,
+                Density: density,
                 Style: request.PlanSpec.Style
             );
 
@@ -123,7 +145,7 @@ public class JobsController : ControllerBase
                 VoiceName: request.VoiceSpec.VoiceName,
                 Rate: request.VoiceSpec.Rate,
                 Pitch: request.VoiceSpec.Pitch,
-                Pause: request.VoiceSpec.Pause
+                Pause: pause
             );
 
             var renderSpec = new RenderSpec(
@@ -959,13 +981,70 @@ public class JobsController : ControllerBase
             });
         }
     }
+
+    /// <summary>
+    /// Parse aspect ratio string to enum
+    /// </summary>
+    private static Core.Models.Aspect ParseAspect(string aspect)
+    {
+        return aspect switch
+        {
+            "Widescreen16x9" or "16:9" or "widescreen" => Core.Models.Aspect.Widescreen16x9,
+            "Vertical9x16" or "9:16" or "portrait" => Core.Models.Aspect.Vertical9x16,
+            "Square1x1" or "1:1" or "square" => Core.Models.Aspect.Square1x1,
+            _ => Core.Models.Aspect.Widescreen16x9
+        };
+    }
+
+    /// <summary>
+    /// Parse pacing string to enum
+    /// </summary>
+    private static Core.Models.Pacing ParsePacing(string pacing)
+    {
+        return pacing.ToLowerInvariant() switch
+        {
+            "chill" => Core.Models.Pacing.Chill,
+            "conversational" => Core.Models.Pacing.Conversational,
+            "fast" => Core.Models.Pacing.Fast,
+            _ => Core.Models.Pacing.Conversational
+        };
+    }
+
+    /// <summary>
+    /// Parse density string to enum
+    /// </summary>
+    private static Core.Models.Density ParseDensity(string density)
+    {
+        return density.ToLowerInvariant() switch
+        {
+            "sparse" => Core.Models.Density.Sparse,
+            "balanced" => Core.Models.Density.Balanced,
+            "dense" => Core.Models.Density.Dense,
+            _ => Core.Models.Density.Balanced
+        };
+    }
+
+    /// <summary>
+    /// Parse pause style string to enum
+    /// </summary>
+    private static Core.Models.PauseStyle ParsePauseStyle(string pause)
+    {
+        return pause.ToLowerInvariant() switch
+        {
+            "natural" => Core.Models.PauseStyle.Natural,
+            "short" => Core.Models.PauseStyle.Short,
+            "long" => Core.Models.PauseStyle.Long,
+            "dramatic" => Core.Models.PauseStyle.Dramatic,
+            _ => Core.Models.PauseStyle.Natural
+        };
+    }
 }
 
 /// <summary>
 /// Request model for creating a new job
 /// </summary>
 public record CreateJobRequest(
-    Brief Brief,
+    BriefDto Brief,
     PlanSpec PlanSpec,
     VoiceSpec VoiceSpec,
     RenderSpec RenderSpec

@@ -871,6 +871,19 @@ public record SceneDto(
     List<CitationDto>? Citations = null);
 
 /// <summary>
+/// LLM generation parameters for fine-tuning model behavior
+/// </summary>
+public record LlmParametersDto(
+    double? Temperature = null,
+    double? TopP = null,
+    int? TopK = null,
+    int? MaxTokens = null,
+    double? FrequencyPenalty = null,
+    double? PresencePenalty = null,
+    List<string>? StopSequences = null,
+    string? ModelOverride = null);
+
+/// <summary>
 /// Brief configuration
 /// </summary>
 public record BriefDto(
@@ -880,7 +893,8 @@ public record BriefDto(
     string Tone,
     string Language,
     string Aspect,
-    RagConfigurationDto? RagConfiguration = null);
+    RagConfigurationDto? RagConfiguration = null,
+    LlmParametersDto? LlmParameters = null);
 
 /// <summary>
 /// A change made during conversion

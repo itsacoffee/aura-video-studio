@@ -58,6 +58,7 @@ import { loggingService as logger } from '../../services/loggingService';
 import { useJobState } from '../../state/jobState';
 import type { PreflightReport, PerStageProviderSelection } from '../../state/providers';
 import { useWizardProjectStore, deserializeWizardState } from '../../state/wizardProject';
+import { listProviders, type ProviderInfoDto } from '../../services/api/scriptApi';
 import type {
   Brief,
   PlanSpec,
@@ -211,6 +212,11 @@ export function CreateWizard() {
   const [overridePreflightGate, setOverridePreflightGate] = useState(false);
   const [perStageSelection, setPerStageSelection] = useState<PerStageProviderSelection>({});
 
+  // Ollama model selection state
+  const [providers, setProviders] = useState<ProviderInfoDto[]>([]);
+  const [selectedOllamaModel, setSelectedOllamaModel] = useState<string | undefined>(undefined);
+  const [loadingProviders, setLoadingProviders] = useState(false);
+
   // Generation panel state
   const [showGenerationPanel, setShowGenerationPanel] = useState(false);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
@@ -257,12 +263,67 @@ export function CreateWizard() {
     },
   });
 
+  // Load providers on mount
+  useEffect(() => {
+    const loadProviders = async () => {
+      setLoadingProviders(true);
+      try {
+        const response = await listProviders();
+        setProviders(response.providers);
+        
+        // Find Ollama provider and set default model
+        const ollamaProvider = response.providers.find((p) => {
+          const normalized = p.name.toLowerCase();
+          return normalized.includes('ollama') && p.isAvailable;
+        });
+        if (ollamaProvider && ollamaProvider.availableModels.length > 0) {
+          setSelectedOllamaModel(ollamaProvider.defaultModel || ollamaProvider.availableModels[0]);
+        }
+      } catch (error) {
+        console.error('Failed to load providers:', error);
+      } finally {
+        setLoadingProviders(false);
+      }
+    };
+    loadProviders();
+  }, []);
+
+  // Secondary initialization: When providers finish loading, check if Ollama is already selected
+  // This handles the race condition where user selects Ollama before providers load
+  useEffect(() => {
+    if (!loadingProviders && providers.length > 0 && perStageSelection.script === 'Ollama') {
+      const ollamaProvider = providers.find((p) => {
+        const normalized = p.name.toLowerCase();
+        return normalized.includes('ollama') && p.isAvailable;
+      });
+      if (ollamaProvider && ollamaProvider.availableModels.length > 0) {
+        // Only set if not already set or if current selection is invalid
+        if (!selectedOllamaModel || !ollamaProvider.availableModels.includes(selectedOllamaModel)) {
+          setSelectedOllamaModel(ollamaProvider.defaultModel || ollamaProvider.availableModels[0]);
+        }
+      }
+    }
+  }, [loadingProviders, providers, perStageSelection.script, selectedOllamaModel]);
+
   // Update provider selection
   const updateProviderSelection = (selection: PerStageProviderSelection) => {
     setPerStageSelection(selection);
     setSettings({ ...settings, providerSelection: selection });
     // Reset preflight when selection changes
     setPreflightReport(null);
+    
+    // Update Ollama model when Ollama is selected
+    if (selection.script === 'Ollama') {
+      const ollamaProvider = providers.find((p) => {
+        const normalized = p.name.toLowerCase();
+        return normalized.includes('ollama') && p.isAvailable;
+      });
+      if (ollamaProvider && ollamaProvider.availableModels.length > 0) {
+        if (!selectedOllamaModel || !ollamaProvider.availableModels.includes(selectedOllamaModel)) {
+          setSelectedOllamaModel(ollamaProvider.defaultModel || ollamaProvider.availableModels[0]);
+        }
+      }
+    }
   };
 
   // Save settings to localStorage whenever they change
@@ -465,6 +526,14 @@ export function CreateWizard() {
       );
 
       // Create job with full specs
+      // Include LlmParameters if Ollama is selected and a model is chosen
+      const llmParameters =
+        perStageSelection.script === 'Ollama' && selectedOllamaModel
+          ? {
+              modelOverride: selectedOllamaModel,
+            }
+          : undefined;
+
       const brief = {
         topic: normalizedBrief.topic,
         audience: normalizedBrief.audience,
@@ -472,6 +541,7 @@ export function CreateWizard() {
         tone: normalizedBrief.tone,
         language: normalizedBrief.language,
         aspect: normalizedBrief.aspect,
+        ...(llmParameters && { llmParameters }),
       };
 
       const planSpec = {
@@ -1700,6 +1770,55 @@ export function CreateWizard() {
               selection={perStageSelection}
               onSelectionChange={updateProviderSelection}
             />
+
+            {/* Ollama Model Selection */}
+            {perStageSelection.script === 'Ollama' && (
+              <Card className={styles.section}>
+                <Title3>
+                  Ollama Model Selection
+                  <Tooltip
+                    content="Select which Ollama model to use for script generation. The model must be installed in Ollama."
+                    relationship="label"
+                  >
+                    <Info24Regular className={styles.infoIcon} />
+                  </Tooltip>
+                </Title3>
+                <Text size={200} style={{ marginBottom: tokens.spacingVerticalM }}>
+                  Choose the specific Ollama model to use for generating your video script
+                </Text>
+                {loadingProviders ? (
+                  <Spinner size="small" />
+                ) : (
+                  <Field label="Ollama Model">
+                    <Dropdown
+                      value={selectedOllamaModel || ''}
+                      onOptionSelect={(_, data) => setSelectedOllamaModel(data.optionValue)}
+                    >
+                      {(() => {
+                        const ollamaProvider = providers.find((p) => {
+                          const normalized = p.name.toLowerCase();
+                          return normalized.includes('ollama') && p.isAvailable;
+                        });
+                        const models = ollamaProvider?.availableModels || [];
+                        if (models.length === 0) {
+                          return <Option value="">No models available</Option>;
+                        }
+                        return models.map((model) => (
+                          <Option key={model} value={model}>
+                            {model}
+                          </Option>
+                        ));
+                      })()}
+                    </Dropdown>
+                  </Field>
+                )}
+                {selectedOllamaModel && (
+                  <Text size={200} style={{ marginTop: tokens.spacingVerticalS, color: tokens.colorNeutralForeground3 }}>
+                    Selected model: <strong>{selectedOllamaModel}</strong>
+                  </Text>
+                )}
+              </Card>
+            )}
 
             <Card className={styles.section}>
               <PreflightPanel
