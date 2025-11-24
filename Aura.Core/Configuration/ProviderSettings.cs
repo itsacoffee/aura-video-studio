@@ -1176,6 +1176,39 @@ public class ProviderSettings
         SaveSettings();
     }
 
+    /// <summary>
+    /// Get the preferred LLM provider name from settings
+    /// Returns null if not configured, which means use default fallback chain
+    /// </summary>
+    public string? GetPreferredLlmProvider()
+    {
+        LoadSettings();
+        return GetStringSetting("preferredLlmProvider", "");
+    }
+
+    /// <summary>
+    /// Set the preferred LLM provider name
+    /// </summary>
+    public void SetPreferredLlmProvider(string? providerName)
+    {
+        LoadSettings();
+        if (_settings == null)
+        {
+            _settings = new Dictionary<string, object>();
+        }
+
+        if (string.IsNullOrWhiteSpace(providerName))
+        {
+            _settings.Remove("preferredLlmProvider");
+        }
+        else
+        {
+            _settings["preferredLlmProvider"] = providerName;
+        }
+
+        SaveSettings();
+    }
+
     private void SaveSettings()
     {
         string? tempPath = null;

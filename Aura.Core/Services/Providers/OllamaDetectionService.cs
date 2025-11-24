@@ -21,14 +21,20 @@ public class OllamaDetectionService : IHostedService, IDisposable
     private readonly IMemoryCache _cache;
     private readonly string _baseUrl;
     private Timer? _refreshTimer;
-    private readonly TimeSpan _refreshInterval = TimeSpan.FromMinutes(5);
+    private readonly TimeSpan _refreshInterval = TimeSpan.FromSeconds(15);
     private bool _disposed;
     private volatile bool _isDetectionComplete;
     private readonly SemaphoreSlim _detectionLock = new SemaphoreSlim(1, 1);
     private Task? _initialDetectionTask;
+    private bool _lastKnownStatus = false;
 
     private const string StatusCacheKey = "ollama:status";
     private const string ModelsCacheKey = "ollama:models";
+
+    /// <summary>
+    /// Event raised when Ollama availability status changes
+    /// </summary>
+    public event EventHandler<OllamaAvailabilityChangedEventArgs>? AvailabilityChanged;
 
     public OllamaDetectionService(
         ILogger<OllamaDetectionService> logger,
@@ -53,11 +59,11 @@ public class OllamaDetectionService : IHostedService, IDisposable
     public Task StartAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("OllamaDetectionService starting background detection");
-        
+
         // Initial detection (fire and forget to not block startup, but save task for WaitForInitialDetectionAsync)
         _initialDetectionTask = Task.Run(async () => await RefreshDetectionAsync(CancellationToken.None).ConfigureAwait(false), cancellationToken);
-        
-        // Setup periodic refresh every 5 minutes
+
+        // Setup periodic refresh every 15 seconds to detect status changes quickly
         _refreshTimer = new Timer(
             async _ => await RefreshDetectionAsync(CancellationToken.None).ConfigureAwait(false),
             null,
@@ -85,13 +91,17 @@ public class OllamaDetectionService : IHostedService, IDisposable
         try
         {
             var status = await DetectOllamaAsync(ct).ConfigureAwait(false);
-            _cache.Set(StatusCacheKey, status, TimeSpan.FromMinutes(5));
+            var previousStatus = _lastKnownStatus;
+            _lastKnownStatus = status.IsRunning;
+
+            // Update cache with shorter duration for faster invalidation
+            _cache.Set(StatusCacheKey, status, TimeSpan.FromSeconds(20));
 
             if (status.IsRunning)
             {
                 var models = await ListModelsAsync(ct).ConfigureAwait(false);
-                _cache.Set(ModelsCacheKey, models, TimeSpan.FromMinutes(5));
-                
+                _cache.Set(ModelsCacheKey, models, TimeSpan.FromSeconds(20));
+
                 if (models.Count > 0)
                 {
                     _logger.LogInformation("Ollama: {Count} models available", models.Count);
@@ -103,8 +113,24 @@ public class OllamaDetectionService : IHostedService, IDisposable
             }
             else
             {
-                _cache.Set(ModelsCacheKey, new List<OllamaModel>(), TimeSpan.FromMinutes(5));
+                _cache.Set(ModelsCacheKey, new List<OllamaModel>(), TimeSpan.FromSeconds(20));
                 _logger.LogInformation("Ollama: service not running");
+            }
+
+            // Emit event if availability status changed
+            if (previousStatus != _lastKnownStatus)
+            {
+                _logger.LogInformation("Ollama availability changed: {PreviousStatus} -> {CurrentStatus}",
+                    previousStatus ? "Available" : "Unavailable",
+                    _lastKnownStatus ? "Available" : "Unavailable");
+
+                AvailabilityChanged?.Invoke(this, new OllamaAvailabilityChangedEventArgs
+                {
+                    IsAvailable = _lastKnownStatus,
+                    PreviousStatus = previousStatus,
+                    Status = status,
+                    Timestamp = DateTime.UtcNow
+                });
             }
         }
         catch (Exception ex)
@@ -141,7 +167,7 @@ public class OllamaDetectionService : IHostedService, IDisposable
     public async Task<bool> WaitForInitialDetectionAsync(TimeSpan? timeout = null, CancellationToken ct = default)
     {
         timeout ??= TimeSpan.FromSeconds(10);
-        
+
         if (_isDetectionComplete)
         {
             return true;
@@ -157,7 +183,7 @@ public class OllamaDetectionService : IHostedService, IDisposable
         {
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(timeout.Value);
-            
+
             await _initialDetectionTask.WaitAsync(cts.Token).ConfigureAwait(false);
             return _isDetectionComplete;
         }
@@ -194,7 +220,7 @@ public class OllamaDetectionService : IHostedService, IDisposable
     public async Task<OllamaStatus> DetectOllamaAsync(CancellationToken ct = default)
     {
         var endpoints = GetDetectionEndpoints();
-        
+
         foreach (var endpoint in endpoints)
         {
             try
@@ -205,7 +231,7 @@ public class OllamaDetectionService : IHostedService, IDisposable
                 cts.CancelAfter(TimeSpan.FromSeconds(5));
 
                 var response = await _httpClient.GetAsync($"{endpoint}/api/version", cts.Token).ConfigureAwait(false);
-                
+
                 if (response.IsSuccessStatusCode)
                 {
                     var content = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
@@ -215,7 +241,7 @@ public class OllamaDetectionService : IHostedService, IDisposable
                         : "unknown";
 
                     _logger.LogInformation("Ollama is running at {Endpoint}, version: {Version}", endpoint, version);
-                    
+
                     return new OllamaStatus(
                         IsRunning: true,
                         IsInstalled: true,
@@ -257,22 +283,22 @@ public class OllamaDetectionService : IHostedService, IDisposable
     private List<string> GetDetectionEndpoints()
     {
         var endpoints = new List<string>();
-        
+
         if (!string.IsNullOrEmpty(_baseUrl))
         {
             endpoints.Add(_baseUrl);
         }
-        
+
         if (!endpoints.Contains("http://localhost:11434"))
         {
             endpoints.Add("http://localhost:11434");
         }
-        
+
         if (!endpoints.Contains("http://127.0.0.1:11434"))
         {
             endpoints.Add("http://127.0.0.1:11434");
         }
-        
+
         return endpoints;
     }
 
@@ -304,7 +330,7 @@ public class OllamaDetectionService : IHostedService, IDisposable
                     var name = modelElement.TryGetProperty("name", out var nameProp)
                         ? nameProp.GetString() ?? ""
                         : "";
-                    
+
                     var size = modelElement.TryGetProperty("size", out var sizeProp)
                         ? sizeProp.GetInt64()
                         : 0;
@@ -353,7 +379,7 @@ public class OllamaDetectionService : IHostedService, IDisposable
     /// Pulls a model from the Ollama library (streaming operation)
     /// </summary>
     public async Task<bool> PullModelAsync(
-        string modelName, 
+        string modelName,
         IProgress<OllamaPullProgress>? progress = null,
         CancellationToken ct = default)
     {
@@ -544,3 +570,14 @@ public record OllamaPullProgress(
     long Total,
     double PercentComplete
 );
+
+/// <summary>
+/// Event arguments for Ollama availability change events
+/// </summary>
+public class OllamaAvailabilityChangedEventArgs : EventArgs
+{
+    public required bool IsAvailable { get; init; }
+    public required bool PreviousStatus { get; init; }
+    public required OllamaStatus Status { get; init; }
+    public required DateTime Timestamp { get; init; }
+}

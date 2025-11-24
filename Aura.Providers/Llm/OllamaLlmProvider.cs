@@ -38,7 +38,7 @@ public class OllamaLlmProvider : ILlmProvider
     // Cache for availability check to avoid repeated calls
     private DateTime _lastAvailabilityCheck = DateTime.MinValue;
     private bool _lastAvailabilityResult = false;
-    private readonly TimeSpan _availabilityCacheDuration = TimeSpan.FromSeconds(30);
+    private readonly TimeSpan _availabilityCacheDuration = TimeSpan.FromSeconds(10);
     private readonly object _availabilityCacheLock = new object();
 
     /// <summary>
@@ -106,7 +106,7 @@ public class OllamaLlmProvider : ILlmProvider
         var modelToUse = !string.IsNullOrWhiteSpace(brief.LlmParameters?.ModelOverride)
             ? brief.LlmParameters.ModelOverride
             : _model;
-        _logger.LogInformation("Generating script with Ollama (model: {Model}) at {BaseUrl} for topic: {Topic}. ModelOverride: {ModelOverride}, DefaultModel: {DefaultModel}", 
+        _logger.LogInformation("Generating script with Ollama (model: {Model}) at {BaseUrl} for topic: {Topic}. ModelOverride: {ModelOverride}, DefaultModel: {DefaultModel}",
             modelToUse, _baseUrl, brief.Topic, brief.LlmParameters?.ModelOverride ?? "null", _model);
 
         // Pre-check: Validate Ollama is available before attempting generation
@@ -1034,9 +1034,11 @@ Return ONLY the transition text, no explanations or additional commentary:";
 
     /// <summary>
     /// Check if Ollama service is available at the configured base URL
-    /// Results are cached for 30 seconds to avoid repeated checks
+    /// Results are cached for 10 seconds to avoid repeated checks
     /// </summary>
-    public async Task<bool> IsServiceAvailableAsync(CancellationToken ct = default)
+    /// <param name="ct">Cancellation token</param>
+    /// <param name="forceRefresh">If true, bypasses cache and performs a fresh check</param>
+    public async Task<bool> IsServiceAvailableAsync(CancellationToken ct = default, bool forceRefresh = false)
     {
         // Check if parent token is already cancelled before proceeding
         if (ct.IsCancellationRequested)
@@ -1045,16 +1047,23 @@ Return ONLY the transition text, no explanations or additional commentary:";
             return false;
         }
 
-        // Check cache first to avoid repeated availability checks
-        lock (_availabilityCacheLock)
+        // Check cache first to avoid repeated availability checks (unless force refresh is requested)
+        if (!forceRefresh)
         {
-            var cacheAge = DateTime.UtcNow - _lastAvailabilityCheck;
-            if (cacheAge < _availabilityCacheDuration)
+            lock (_availabilityCacheLock)
             {
-                _logger.LogDebug("Using cached Ollama availability result: {Result} (age: {Age}s)", 
-                    _lastAvailabilityResult, cacheAge.TotalSeconds);
-                return _lastAvailabilityResult;
+                var cacheAge = DateTime.UtcNow - _lastAvailabilityCheck;
+                if (cacheAge < _availabilityCacheDuration)
+                {
+                    _logger.LogDebug("Using cached Ollama availability result: {Result} (age: {Age}s)",
+                        _lastAvailabilityResult, cacheAge.TotalSeconds);
+                    return _lastAvailabilityResult;
+                }
             }
+        }
+        else
+        {
+            _logger.LogDebug("Force refresh requested, bypassing availability cache");
         }
 
         try
@@ -1101,14 +1110,16 @@ Return ONLY the transition text, no explanations or additional commentary:";
             }
             catch (HttpRequestException ex)
             {
-                // Log detailed connection error information
+                // Log detailed connection error information with improved categorization
                 var innerException = ex.InnerException;
+                var errorCategory = CategorizeConnectionError(ex, innerException);
                 var errorDetails = $"HttpRequestException: {ex.Message}";
                 if (innerException != null)
                 {
                     errorDetails += $", InnerException: {innerException.GetType().Name} - {innerException.Message}";
                 }
-                _logger.LogInformation("Ollama /api/version endpoint failed: {ErrorDetails}, trying /api/tags as fallback", errorDetails);
+                _logger.LogInformation("Ollama /api/version endpoint failed ({Category}): {ErrorDetails}, trying /api/tags as fallback",
+                    errorCategory, errorDetails);
             }
             catch (Exception ex)
             {
@@ -1148,21 +1159,16 @@ Return ONLY the transition text, no explanations or additional commentary:";
             }
             catch (HttpRequestException ex)
             {
-                // Log detailed connection error information
+                // Log detailed connection error information with improved categorization
                 var innerException = ex.InnerException;
+                var errorCategory = CategorizeConnectionError(ex, innerException);
                 var errorDetails = $"HttpRequestException: {ex.Message}";
                 if (innerException != null)
                 {
                     errorDetails += $", InnerException: {innerException.GetType().Name} - {innerException.Message}";
-                    // Check for specific connection errors
-                    if (innerException.Message.Contains("No connection could be made") ||
-                        innerException.Message.Contains("Connection refused") ||
-                        innerException.Message.Contains("actively refused"))
-                    {
-                        _logger.LogWarning("Ollama connection refused at {BaseUrl}. Ensure Ollama is running: 'ollama serve'", _baseUrl);
-                    }
                 }
-                _logger.LogWarning("Ollama /api/tags fallback endpoint failed: {ErrorDetails}", errorDetails);
+                _logger.LogWarning("Ollama /api/tags fallback endpoint failed ({Category}): {ErrorDetails}",
+                    errorCategory, errorDetails);
             }
             catch (Exception ex)
             {
@@ -1203,6 +1209,55 @@ Return ONLY the transition text, no explanations or additional commentary:";
             }
             return false;
         }
+    }
+
+    /// <summary>
+    /// Invalidates the availability cache, forcing the next check to perform a fresh availability test
+    /// </summary>
+    public void InvalidateAvailabilityCache()
+    {
+        lock (_availabilityCacheLock)
+        {
+            _lastAvailabilityCheck = DateTime.MinValue;
+            _lastAvailabilityResult = false;
+            _logger.LogDebug("Ollama availability cache invalidated");
+        }
+    }
+
+    /// <summary>
+    /// Categorizes connection errors for better diagnostics
+    /// </summary>
+    private static string CategorizeConnectionError(HttpRequestException ex, Exception? innerException)
+    {
+        if (innerException != null)
+        {
+            var innerMessage = innerException.Message;
+            if (innerMessage.Contains("No connection could be made", StringComparison.OrdinalIgnoreCase) ||
+                innerMessage.Contains("Connection refused", StringComparison.OrdinalIgnoreCase) ||
+                innerMessage.Contains("actively refused", StringComparison.OrdinalIgnoreCase))
+            {
+                return "ConnectionRefused";
+            }
+
+            if (innerMessage.Contains("timeout", StringComparison.OrdinalIgnoreCase) ||
+                innerMessage.Contains("timed out", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Timeout";
+            }
+
+            if (innerMessage.Contains("name resolution", StringComparison.OrdinalIgnoreCase) ||
+                innerMessage.Contains("DNS", StringComparison.OrdinalIgnoreCase))
+            {
+                return "DnsResolution";
+            }
+        }
+
+        if (ex.Message.Contains("timeout", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Timeout";
+        }
+
+        return "Unknown";
     }
 
     /// <summary>

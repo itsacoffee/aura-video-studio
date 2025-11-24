@@ -51,6 +51,7 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<ProviderMixer>();
         services.TryAddSingleton<LlmProviderFactory>();
         services.TryAddSingleton<IKeyStore, KeyStore>();
+        services.TryAddSingleton<Aura.Core.Services.Providers.LlmProviderSelector>();
 
         // Register individual LLM providers as keyed services
         // This allows direct resolution by provider name: sp.GetKeyedService<ILlmProvider>("OpenAI")
