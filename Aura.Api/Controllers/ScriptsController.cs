@@ -259,7 +259,8 @@ public class ScriptsController : ControllerBase
 
             var scriptId = Guid.NewGuid().ToString();
             // Extract model used from the Brief LlmParameters if available
-            var modelUsed = llmParams?.ModelOverride ?? "default";
+            // Use "provider-default" as fallback to distinguish from explicit "default" model selection
+            var modelUsed = llmParams?.ModelOverride ?? "provider-default";
             var script = ParseScriptFromText(result.Script, planSpec, result.ProviderUsed ?? "Unknown", modelUsed);
 
             script = script with { CorrelationId = correlationId };
@@ -753,7 +754,7 @@ public class ScriptsController : ControllerBase
         return Ok(new { providers, correlationId });
     }
 
-    private Script ParseScriptFromText(string scriptText, PlanSpec planSpec, string provider, string modelUsed = "default")
+    private Script ParseScriptFromText(string scriptText, PlanSpec planSpec, string provider, string modelUsed = "provider-default")
     {
         var lines = scriptText.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         var title = lines.FirstOrDefault()?.Trim() ?? "Untitled Script";
