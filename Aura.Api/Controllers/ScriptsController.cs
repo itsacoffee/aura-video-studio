@@ -209,8 +209,9 @@ public class ScriptsController : ControllerBase
                                 ? request.PreferredProvider 
                                 : "Free";
             
-            _logger.LogInformation("[{CorrelationId}] Script generation requested. Topic: {Topic}, PreferredProvider: {Provider} (resolved to: {Resolved})", 
-                correlationId, request.Topic, request.PreferredProvider ?? "null", preferredTier);
+            _logger.LogInformation(
+                "[{CorrelationId}] Script generation requested. Topic: {Topic}, PreferredProvider: {Provider} (resolved to: {Resolved}), ModelOverride: {ModelOverride}", 
+                correlationId, request.Topic, request.PreferredProvider ?? "null", preferredTier, request.ModelOverride ?? "null");
 
             var result = await _scriptOrchestrator.GenerateScriptAsync(
                 brief, planSpec, preferredTier, offlineOnly: false, ct).ConfigureAwait(false);
@@ -257,7 +258,9 @@ public class ScriptsController : ControllerBase
             }
 
             var scriptId = Guid.NewGuid().ToString();
-            var script = ParseScriptFromText(result.Script, planSpec, result.ProviderUsed ?? "Unknown");
+            // Extract model used from the Brief LlmParameters if available
+            var modelUsed = llmParams?.ModelOverride ?? "default";
+            var script = ParseScriptFromText(result.Script, planSpec, result.ProviderUsed ?? "Unknown", modelUsed);
 
             script = script with { CorrelationId = correlationId };
 
@@ -750,7 +753,7 @@ public class ScriptsController : ControllerBase
         return Ok(new { providers, correlationId });
     }
 
-    private Script ParseScriptFromText(string scriptText, PlanSpec planSpec, string provider)
+    private Script ParseScriptFromText(string scriptText, PlanSpec planSpec, string provider, string modelUsed = "default")
     {
         var lines = scriptText.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         var title = lines.FirstOrDefault()?.Trim() ?? "Untitled Script";
@@ -801,7 +804,7 @@ public class ScriptsController : ControllerBase
             {
                 GeneratedAt = DateTime.UtcNow,
                 ProviderName = provider,
-                ModelUsed = "default",
+                ModelUsed = modelUsed,
                 TokensUsed = scriptText.Length / 4,
                 EstimatedCost = 0,
                 Tier = provider == "RuleBased" ? Aura.Core.Models.Generation.ProviderTier.Free : Aura.Core.Models.Generation.ProviderTier.Pro

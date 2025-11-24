@@ -584,14 +584,9 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
         return normalized === selectedNormalized;
       });
 
-      // Only include modelOverride if:
-      // 1. A model is selected
-      // 2. The provider supports multiple models (has more than 1 available model)
-      // 3. The selected model is different from the default
-      const shouldIncludeModel = selectedModel && 
-        currentProvider && 
-        currentProvider.availableModels.length > 1 &&
-        selectedModel !== currentProvider.defaultModel;
+      // Always include modelOverride when a user explicitly selects a model
+      // This ensures the backend uses the exact model the user requested
+      const shouldIncludeModel = selectedModel && currentProvider;
 
       const response = await generateScript({
         topic: briefData.topic,

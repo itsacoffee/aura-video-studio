@@ -106,7 +106,8 @@ public class OllamaLlmProvider : ILlmProvider
         var modelToUse = !string.IsNullOrWhiteSpace(brief.LlmParameters?.ModelOverride)
             ? brief.LlmParameters.ModelOverride
             : _model;
-        _logger.LogInformation("Generating script with Ollama (model: {Model}) at {BaseUrl} for topic: {Topic}", modelToUse, _baseUrl, brief.Topic);
+        _logger.LogInformation("Generating script with Ollama (model: {Model}) at {BaseUrl} for topic: {Topic}. ModelOverride: {ModelOverride}, DefaultModel: {DefaultModel}", 
+            modelToUse, _baseUrl, brief.Topic, brief.LlmParameters?.ModelOverride ?? "null", _model);
 
         // Pre-check: Validate Ollama is available before attempting generation
         var isAvailable = await IsServiceAvailableAsync(ct).ConfigureAwait(false);
