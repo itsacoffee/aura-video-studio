@@ -35,6 +35,12 @@ public class OllamaLlmProvider : ILlmProvider
     private readonly TimeSpan _timeout;
     private readonly PromptCustomizationService _promptCustomizationService;
 
+    // Cache for availability check to avoid repeated calls
+    private DateTime _lastAvailabilityCheck = DateTime.MinValue;
+    private bool _lastAvailabilityResult = false;
+    private readonly TimeSpan _availabilityCacheDuration = TimeSpan.FromSeconds(30);
+    private readonly object _availabilityCacheLock = new object();
+
     /// <summary>
     /// Optional callback to enhance prompts before generation
     /// </summary>
@@ -1027,28 +1033,62 @@ Return ONLY the transition text, no explanations or additional commentary:";
 
     /// <summary>
     /// Check if Ollama service is available at the configured base URL
+    /// Results are cached for 30 seconds to avoid repeated checks
     /// </summary>
     public async Task<bool> IsServiceAvailableAsync(CancellationToken ct = default)
     {
+        // Check if parent token is already cancelled before proceeding
+        if (ct.IsCancellationRequested)
+        {
+            _logger.LogDebug("Availability check cancelled before starting (parent token already cancelled)");
+            return false;
+        }
+
+        // Check cache first to avoid repeated availability checks
+        lock (_availabilityCacheLock)
+        {
+            var cacheAge = DateTime.UtcNow - _lastAvailabilityCheck;
+            if (cacheAge < _availabilityCacheDuration)
+            {
+                _logger.LogDebug("Using cached Ollama availability result: {Result} (age: {Age}s)", 
+                    _lastAvailabilityResult, cacheAge.TotalSeconds);
+                return _lastAvailabilityResult;
+            }
+        }
+
         try
         {
             _logger.LogInformation("Checking Ollama service availability at {BaseUrl}", _baseUrl);
 
-            // Use HttpCompletionOption.ResponseHeadersRead to avoid waiting for full response body
-            // This makes the check faster and more reliable
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            // Create a new CancellationTokenSource that is NOT linked to the parent ct
+            // This prevents premature cancellation if the parent token has a short timeout
+            // The availability check needs its own independent timeout
+            // However, we still monitor the parent token and exit early if it's cancelled
+            using var cts = new CancellationTokenSource();
             // Increased timeout to 15 seconds to account for slow startup or model loading
             cts.CancelAfter(TimeSpan.FromSeconds(15));
 
             // Try /api/version first (lightweight endpoint)
             try
             {
+                // Check parent cancellation before making request
+                if (ct.IsCancellationRequested)
+                {
+                    _logger.LogDebug("Availability check cancelled by parent token during /api/version attempt");
+                    return false;
+                }
+
                 using var request = new HttpRequestMessage(HttpMethod.Get, $"{_baseUrl}/api/version");
                 using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cts.Token).ConfigureAwait(false);
 
                 if (response.IsSuccessStatusCode)
                 {
                     _logger.LogInformation("Ollama service detected at {BaseUrl} via /api/version", _baseUrl);
+                    lock (_availabilityCacheLock)
+                    {
+                        _lastAvailabilityCheck = DateTime.UtcNow;
+                        _lastAvailabilityResult = true;
+                    }
                     return true;
                 }
 
@@ -1077,7 +1117,14 @@ Return ONLY the transition text, no explanations or additional commentary:";
             // Fallback to /api/tags if version endpoint failed for any reason (timeout, error status, or exception)
             try
             {
-                using var fallbackCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                // Check parent cancellation before fallback attempt
+                if (ct.IsCancellationRequested)
+                {
+                    _logger.LogDebug("Availability check cancelled by parent token before /api/tags fallback");
+                    return false;
+                }
+
+                using var fallbackCts = new CancellationTokenSource();
                 fallbackCts.CancelAfter(TimeSpan.FromSeconds(10));
                 using var fallbackRequest = new HttpRequestMessage(HttpMethod.Get, $"{_baseUrl}/api/tags");
                 using var tagsResponse = await _httpClient.SendAsync(fallbackRequest, HttpCompletionOption.ResponseHeadersRead, fallbackCts.Token).ConfigureAwait(false);
@@ -1085,6 +1132,11 @@ Return ONLY the transition text, no explanations or additional commentary:";
                 if (tagsResponse.IsSuccessStatusCode)
                 {
                     _logger.LogInformation("Ollama service detected at {BaseUrl} via /api/tags fallback", _baseUrl);
+                    lock (_availabilityCacheLock)
+                    {
+                        _lastAvailabilityCheck = DateTime.UtcNow;
+                        _lastAvailabilityResult = true;
+                    }
                     return true;
                 }
                 _logger.LogWarning("Ollama /api/tags fallback endpoint returned status code {StatusCode}", tagsResponse.StatusCode);
@@ -1117,6 +1169,11 @@ Return ONLY the transition text, no explanations or additional commentary:";
             }
 
             _logger.LogWarning("Ollama service not available at {BaseUrl} after checking both /api/version and /api/tags", _baseUrl);
+            lock (_availabilityCacheLock)
+            {
+                _lastAvailabilityCheck = DateTime.UtcNow;
+                _lastAvailabilityResult = false;
+            }
             return false;
         }
         catch (HttpRequestException ex)
@@ -1128,11 +1185,21 @@ Return ONLY the transition text, no explanations or additional commentary:";
                 errorDetails += $", InnerException: {innerException.GetType().Name} - {innerException.Message}";
             }
             _logger.LogWarning("Ollama service not available at {BaseUrl}: {ErrorDetails}", _baseUrl, errorDetails);
+            lock (_availabilityCacheLock)
+            {
+                _lastAvailabilityCheck = DateTime.UtcNow;
+                _lastAvailabilityResult = false;
+            }
             return false;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error checking Ollama service availability at {BaseUrl}: {ExceptionType} - {Message}", _baseUrl, ex.GetType().Name, ex.Message);
+            lock (_availabilityCacheLock)
+            {
+                _lastAvailabilityCheck = DateTime.UtcNow;
+                _lastAvailabilityResult = false;
+            }
             return false;
         }
     }
