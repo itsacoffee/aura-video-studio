@@ -514,6 +514,13 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
     /// </summary>
     private async Task<bool> IsServiceAvailableAsync(CancellationToken cancellationToken)
     {
+        // Check if parent token is already cancelled before proceeding
+        if (cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogDebug("Availability check cancelled before starting (parent token already cancelled)");
+            return false;
+        }
+
         // Check cache first to avoid repeated availability checks
         lock (_availabilityCacheLock)
         {
@@ -533,6 +540,7 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
             // Create a new CancellationTokenSource that is NOT linked to the parent cancellationToken
             // This prevents premature cancellation if the parent token has a short timeout
             // The availability check needs its own independent timeout
+            // However, we still monitor the parent token and exit early if it's cancelled
             using var cts = new CancellationTokenSource();
             // Increased timeout to 15 seconds to account for slow startup or model loading
             cts.CancelAfter(TimeSpan.FromSeconds(15));
@@ -540,6 +548,13 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
             // Try /api/version first (lightweight endpoint)
             try
             {
+                // Check parent cancellation before making request
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    _logger.LogDebug("Availability check cancelled by parent token during /api/version attempt");
+                    return false;
+                }
+
                 using var request = new HttpRequestMessage(HttpMethod.Get, $"{_baseUrl}/api/version");
                 using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cts.Token).ConfigureAwait(false);
                 
@@ -577,6 +592,13 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
             // Fallback to /api/tags if version endpoint failed for any reason (timeout, error status, or exception)
             try
             {
+                // Check parent cancellation before fallback attempt
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    _logger.LogDebug("Availability check cancelled by parent token before /api/tags fallback");
+                    return false;
+                }
+
                 using var fallbackCts = new CancellationTokenSource();
                 fallbackCts.CancelAfter(TimeSpan.FromSeconds(10));
                 using var fallbackRequest = new HttpRequestMessage(HttpMethod.Get, $"{_baseUrl}/api/tags");
