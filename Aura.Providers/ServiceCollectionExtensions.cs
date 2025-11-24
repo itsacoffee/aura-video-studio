@@ -66,7 +66,9 @@ public static class ServiceCollectionExtensions
         services.AddKeyedSingleton<ILlmProvider>("Ollama", (sp, key) =>
         {
             var logger = sp.GetRequiredService<ILogger<OllamaLlmProvider>>();
-            var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+            // Use the configured "OllamaClient" with proper timeout and handler settings
+            var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+            var httpClient = httpClientFactory.CreateClient("OllamaClient");
             var providerSettings = sp.GetRequiredService<ProviderSettings>();
             var baseUrl = providerSettings.GetOllamaUrl();
             var model = providerSettings.GetOllamaModel();

@@ -49,6 +49,8 @@ public class DiagnosticsController : ControllerBase
     private readonly Aura.Core.Services.Providers.OpenAIKeyValidationService? _openAIValidation;
     private readonly FFmpegConfigurationStore? _ffmpegConfigStore;
     private readonly IConfiguration _configuration;
+    private readonly Aura.Core.Configuration.ProviderSettings? _providerSettings;
+    private readonly Aura.Core.Services.Providers.OllamaHealthCheckService? _ollamaHealthCheck;
 
     public DiagnosticsController(
         ILogger<DiagnosticsController> logger,
@@ -70,7 +72,9 @@ public class DiagnosticsController : ControllerBase
         FailureAnalysisService? failureAnalysisService = null,
         IHttpClientFactory? httpClientFactory = null,
         Aura.Core.Services.Providers.OpenAIKeyValidationService? openAIValidation = null,
-        FFmpegConfigurationStore? ffmpegConfigStore = null)
+        FFmpegConfigurationStore? ffmpegConfigStore = null,
+        Aura.Core.Configuration.ProviderSettings? providerSettings = null,
+        Aura.Core.Services.Providers.OllamaHealthCheckService? ollamaHealthCheck = null)
     {
         _logger = logger;
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
@@ -92,6 +96,8 @@ public class DiagnosticsController : ControllerBase
         _httpClientFactory = httpClientFactory;
         _openAIValidation = openAIValidation;
         _ffmpegConfigStore = ffmpegConfigStore;
+        _providerSettings = providerSettings;
+        _ollamaHealthCheck = ollamaHealthCheck;
     }
 
     /// <summary>
@@ -1315,6 +1321,341 @@ public class DiagnosticsController : ControllerBase
     }
 
     /// <summary>
+    /// Verify Ollama connectivity with comprehensive diagnostics
+    /// Tests multiple endpoints, checks models, and validates configuration
+    /// </summary>
+    [HttpGet("ollama/verify")]
+    public async Task<IActionResult> VerifyOllamaConnectivity(CancellationToken ct = default)
+    {
+        _logger.LogInformation("Ollama connectivity verification requested");
+
+        var startTime = DateTime.UtcNow;
+        var results = new Dictionary<string, object>();
+        var diagnostics = new List<string>();
+
+        try
+        {
+            // Get configured Ollama URL
+            var ollamaUrl = _providerSettings?.GetOllamaUrl() ?? "http://127.0.0.1:11434";
+            var configuredModel = _providerSettings?.GetOllamaModel() ?? "llama3.1:8b-q4_k_m";
+
+            results["configuredUrl"] = ollamaUrl;
+            results["configuredModel"] = configuredModel;
+
+            if (_httpClientFactory == null)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    error = "HttpClientFactory not configured",
+                    timestamp = DateTime.UtcNow
+                });
+            }
+
+            // Use the configured OllamaClient with proper timeout
+            var httpClient = _httpClientFactory.CreateClient("OllamaClient");
+
+            // Test 1: Version endpoint (/api/version)
+            var versionTest = await TestOllamaEndpointAsync(
+                httpClient,
+                ollamaUrl,
+                "/api/version",
+                "Version",
+                ct
+            ).ConfigureAwait(false);
+            results["versionCheck"] = versionTest;
+
+            if (!versionTest.Success)
+            {
+                diagnostics.Add($"Version endpoint failed: {versionTest.ErrorMessage}");
+            }
+            else
+            {
+                diagnostics.Add($"Version endpoint successful: {versionTest.Version ?? "unknown"}");
+            }
+
+            // Test 2: Tags endpoint (/api/tags) - lists available models
+            var tagsTest = await TestOllamaEndpointAsync(
+                httpClient,
+                ollamaUrl,
+                "/api/tags",
+                "Tags",
+                ct
+            ).ConfigureAwait(false);
+            results["modelsCheck"] = tagsTest;
+
+            if (tagsTest.Success && tagsTest.Models != null)
+            {
+                diagnostics.Add($"Found {tagsTest.Models.Count} available model(s)");
+                if (tagsTest.Models.Count == 0)
+                {
+                    diagnostics.Add("Warning: No models found. Run 'ollama pull <model>' to install a model.");
+                }
+                else if (!tagsTest.Models.Contains(configuredModel))
+                {
+                    diagnostics.Add($"Warning: Configured model '{configuredModel}' not found. Available models: {string.Join(", ", tagsTest.Models)}");
+                }
+                else
+                {
+                    diagnostics.Add($"Configured model '{configuredModel}' is available");
+                }
+            }
+            else
+            {
+                diagnostics.Add($"Models endpoint failed: {tagsTest.ErrorMessage}");
+            }
+
+            // Test 3: Provider availability check (using IsServiceAvailableAsync if available)
+            var providerAvailable = false;
+            if (_llmProviderFactory != null && _loggerFactory != null)
+            {
+                try
+                {
+                    var providers = _llmProviderFactory.CreateAvailableProviders(_loggerFactory);
+                    if (providers.TryGetValue("Ollama", out var ollamaProvider))
+                    {
+                        // Try to use IsServiceAvailableAsync via reflection
+                        var method = ollamaProvider.GetType().GetMethod("IsServiceAvailableAsync");
+                        if (method != null)
+                        {
+                            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                            cts.CancelAfter(TimeSpan.FromSeconds(10));
+                            var task = (Task<bool>)method.Invoke(ollamaProvider, new object[] { cts.Token })!;
+                            providerAvailable = await task.ConfigureAwait(false);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to check provider availability via reflection");
+                }
+            }
+            results["providerAvailable"] = providerAvailable;
+
+            // Test 4: Use OllamaHealthCheckService if available
+            if (_ollamaHealthCheck != null)
+            {
+                try
+                {
+                    var healthStatus = await _ollamaHealthCheck.PerformHealthCheckAsync(ct).ConfigureAwait(false);
+                    results["healthCheck"] = new
+                    {
+                        isHealthy = healthStatus.IsHealthy,
+                        version = healthStatus.Version,
+                        availableModels = healthStatus.AvailableModels,
+                        runningModels = healthStatus.RunningModels,
+                        responseTimeMs = healthStatus.ResponseTimeMs,
+                        errorMessage = healthStatus.ErrorMessage,
+                        lastChecked = healthStatus.LastChecked
+                    };
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Health check service failed");
+                    results["healthCheck"] = new { error = ex.Message };
+                }
+            }
+
+            // Test 5: Alternative endpoint check (localhost vs 127.0.0.1)
+            var alternativeEndpoints = new List<string>();
+            if (ollamaUrl.Contains("127.0.0.1"))
+            {
+                alternativeEndpoints.Add("http://localhost:11434");
+            }
+            else if (ollamaUrl.Contains("localhost"))
+            {
+                alternativeEndpoints.Add("http://127.0.0.1:11434");
+            }
+
+            if (alternativeEndpoints.Count > 0)
+            {
+                var alternativeResults = new List<object>();
+                foreach (var altUrl in alternativeEndpoints)
+                {
+                    var altTest = await TestOllamaEndpointAsync(
+                        httpClient,
+                        altUrl,
+                        "/api/version",
+                        "Alternative",
+                        ct
+                    ).ConfigureAwait(false);
+                    alternativeResults.Add(new { url = altUrl, success = altTest.Success, error = altTest.ErrorMessage });
+                }
+                results["alternativeEndpoints"] = alternativeResults;
+            }
+
+            var totalElapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
+            var overallSuccess = versionTest.Success && tagsTest.Success;
+
+            return Ok(new
+            {
+                success = overallSuccess,
+                status = overallSuccess ? "Connected" : "ConnectionFailed",
+                timestamp = DateTime.UtcNow,
+                totalElapsedMs = totalElapsed,
+                configuration = new
+                {
+                    url = ollamaUrl,
+                    model = configuredModel,
+                    httpClientConfigured = true,
+                    healthCheckServiceAvailable = _ollamaHealthCheck != null
+                },
+                tests = results,
+                diagnostics = diagnostics,
+                recommendations = overallSuccess
+                    ? new List<string> { "Ollama is properly configured and accessible" }
+                    : new List<string>
+                    {
+                        "Ensure Ollama is running: 'ollama serve'",
+                        $"Verify Ollama is accessible at {ollamaUrl}",
+                        "Check firewall settings if connection is refused",
+                        "Try accessing Ollama in a browser: http://127.0.0.1:11434"
+                    }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during Ollama connectivity verification");
+            return StatusCode(500, new
+            {
+                success = false,
+                error = ex.Message,
+                timestamp = DateTime.UtcNow,
+                totalElapsedMs = (DateTime.UtcNow - startTime).TotalMilliseconds
+            });
+        }
+    }
+
+    private async Task<OllamaEndpointTestResult> TestOllamaEndpointAsync(
+        HttpClient httpClient,
+        string baseUrl,
+        string endpoint,
+        string testName,
+        CancellationToken ct)
+    {
+        var startTime = DateTime.UtcNow;
+        var fullUrl = $"{baseUrl.TrimEnd('/')}{endpoint}";
+
+        try
+        {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(10));
+
+            var response = await httpClient.GetAsync(fullUrl, cts.Token).ConfigureAwait(false);
+            var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return new OllamaEndpointTestResult
+                {
+                    Success = false,
+                    TestName = testName,
+                    Endpoint = endpoint,
+                    StatusCode = (int)response.StatusCode,
+                    ElapsedMs = elapsed,
+                    ErrorMessage = $"HTTP {response.StatusCode}",
+                    Version = null,
+                    Models = null
+                };
+            }
+
+            var content = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
+            string? version = null;
+            List<string>? models = null;
+
+            try
+            {
+                var doc = System.Text.Json.JsonDocument.Parse(content);
+
+                // Extract version if present
+                if (doc.RootElement.TryGetProperty("version", out var versionProp))
+                {
+                    version = versionProp.GetString();
+                }
+
+                // Extract models if present
+                if (doc.RootElement.TryGetProperty("models", out var modelsArray) &&
+                    modelsArray.ValueKind == System.Text.Json.JsonValueKind.Array)
+                {
+                    models = new List<string>();
+                    foreach (var modelElement in modelsArray.EnumerateArray())
+                    {
+                        if (modelElement.TryGetProperty("name", out var nameProp))
+                        {
+                            var name = nameProp.GetString();
+                            if (!string.IsNullOrEmpty(name))
+                            {
+                                models.Add(name);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                // Not JSON or invalid JSON, that's okay
+            }
+
+            return new OllamaEndpointTestResult
+            {
+                Success = true,
+                TestName = testName,
+                Endpoint = endpoint,
+                StatusCode = (int)response.StatusCode,
+                ElapsedMs = elapsed,
+                ErrorMessage = null,
+                Version = version,
+                Models = models
+            };
+        }
+        catch (TaskCanceledException)
+        {
+            var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
+            return new OllamaEndpointTestResult
+            {
+                Success = false,
+                TestName = testName,
+                Endpoint = endpoint,
+                StatusCode = null,
+                ElapsedMs = elapsed,
+                ErrorMessage = $"Request timed out after {elapsed:F0}ms",
+                Version = null,
+                Models = null
+            };
+        }
+        catch (HttpRequestException ex)
+        {
+            var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
+            return new OllamaEndpointTestResult
+            {
+                Success = false,
+                TestName = testName,
+                Endpoint = endpoint,
+                StatusCode = null,
+                ElapsedMs = elapsed,
+                ErrorMessage = ex.Message,
+                Version = null,
+                Models = null
+            };
+        }
+        catch (Exception ex)
+        {
+            var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
+            return new OllamaEndpointTestResult
+            {
+                Success = false,
+                TestName = testName,
+                Endpoint = endpoint,
+                StatusCode = null,
+                ElapsedMs = elapsed,
+                ErrorMessage = ex.Message,
+                Version = null,
+                Models = null
+            };
+        }
+    }
+
+    /// <summary>
     /// Get auto-configuration recommendations based on system capabilities
     /// </summary>
     [HttpGet("auto-config")]
@@ -1390,4 +1731,19 @@ public class QualityTestRequest
     public string? Audience { get; set; }
     public string? Goal { get; set; }
     public string? Tone { get; set; }
+}
+
+/// <summary>
+/// Result of an Ollama endpoint test
+/// </summary>
+public class OllamaEndpointTestResult
+{
+    public bool Success { get; set; }
+    public string TestName { get; set; } = string.Empty;
+    public string Endpoint { get; set; } = string.Empty;
+    public int? StatusCode { get; set; }
+    public double ElapsedMs { get; set; }
+    public string? ErrorMessage { get; set; }
+    public string? Version { get; set; }
+    public List<string>? Models { get; set; }
 }

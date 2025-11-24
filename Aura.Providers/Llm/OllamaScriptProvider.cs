@@ -508,10 +508,45 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
         try
         {
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            cts.CancelAfter(TimeSpan.FromSeconds(5));
+            // Increased timeout to 10 seconds to account for slow startup or model loading
+            cts.CancelAfter(TimeSpan.FromSeconds(10));
 
-            var response = await _httpClient.GetAsync($"{_baseUrl}/api/version", cts.Token).ConfigureAwait(false);
-            return response.IsSuccessStatusCode;
+            // Try /api/version first (lightweight endpoint)
+            try
+            {
+                var response = await _httpClient.GetAsync($"{_baseUrl}/api/version", cts.Token).ConfigureAwait(false);
+                if (response.IsSuccessStatusCode)
+                {
+                    return true;
+                }
+                // Non-success status code - will try fallback below
+            }
+            catch (TaskCanceledException)
+            {
+                // Timeout - will try fallback below
+            }
+            catch (HttpRequestException)
+            {
+                // Connection error - will try fallback below
+            }
+            catch
+            {
+                // Any other error - will try fallback below
+            }
+
+            // Fallback to /api/tags if version endpoint failed for any reason (timeout, error status, or exception)
+            try
+            {
+                using var fallbackCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                fallbackCts.CancelAfter(TimeSpan.FromSeconds(5));
+                var tagsResponse = await _httpClient.GetAsync($"{_baseUrl}/api/tags", fallbackCts.Token).ConfigureAwait(false);
+                return tagsResponse.IsSuccessStatusCode;
+            }
+            catch
+            {
+                // Both endpoints failed
+                return false;
+            }
         }
         catch
         {

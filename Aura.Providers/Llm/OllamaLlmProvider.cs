@@ -1034,22 +1034,53 @@ Return ONLY the transition text, no explanations or additional commentary:";
             _logger.LogInformation("Checking Ollama service availability at {BaseUrl}", _baseUrl);
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            cts.CancelAfter(TimeSpan.FromSeconds(5));
+            // Increased timeout to 10 seconds to account for slow startup or model loading
+            cts.CancelAfter(TimeSpan.FromSeconds(10));
 
-            var response = await _httpClient.GetAsync($"{_baseUrl}/api/version", cts.Token).ConfigureAwait(false);
-            
-            if (response.IsSuccessStatusCode)
+            // Try /api/version first (lightweight endpoint)
+            try
             {
-                _logger.LogInformation("Ollama service detected at {BaseUrl}", _baseUrl);
-                return true;
+                var response = await _httpClient.GetAsync($"{_baseUrl}/api/version", cts.Token).ConfigureAwait(false);
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    _logger.LogInformation("Ollama service detected at {BaseUrl}", _baseUrl);
+                    return true;
+                }
+
+                _logger.LogWarning("Ollama /api/version endpoint returned status code {StatusCode}, trying /api/tags as fallback", response.StatusCode);
+            }
+            catch (TaskCanceledException)
+            {
+                _logger.LogInformation("Ollama /api/version endpoint timed out, trying /api/tags as fallback");
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogInformation("Ollama /api/version endpoint failed: {Message}, trying /api/tags as fallback", ex.Message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogInformation("Ollama /api/version endpoint error: {Message}, trying /api/tags as fallback", ex.Message);
             }
 
-            _logger.LogWarning("Ollama service responded but with status code {StatusCode}", response.StatusCode);
-            return false;
-        }
-        catch (TaskCanceledException)
-        {
-            _logger.LogInformation("Ollama service not available at {BaseUrl} (timeout)", _baseUrl);
+            // Fallback to /api/tags if version endpoint failed for any reason (timeout, error status, or exception)
+            try
+            {
+                using var fallbackCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                fallbackCts.CancelAfter(TimeSpan.FromSeconds(5));
+                var tagsResponse = await _httpClient.GetAsync($"{_baseUrl}/api/tags", fallbackCts.Token).ConfigureAwait(false);
+                if (tagsResponse.IsSuccessStatusCode)
+                {
+                    _logger.LogInformation("Ollama service detected at {BaseUrl} via /api/tags fallback", _baseUrl);
+                    return true;
+                }
+                _logger.LogWarning("Ollama /api/tags fallback endpoint returned status code {StatusCode}", tagsResponse.StatusCode);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Ollama /api/tags fallback endpoint also failed");
+            }
+
             return false;
         }
         catch (HttpRequestException ex)
