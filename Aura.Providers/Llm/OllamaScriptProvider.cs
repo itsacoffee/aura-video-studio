@@ -75,7 +75,9 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
         ScriptGenerationRequest request,
         CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Generating script with Ollama for topic: {Topic}", request.Brief.Topic);
+        var modelToUse = request.ModelOverride ?? _model;
+        _logger.LogInformation("Generating script with Ollama for topic: {Topic}. ModelOverride: {ModelOverride}, DefaultModel: {DefaultModel}, UsingModel: {UsingModel}", 
+            request.Brief.Topic, request.ModelOverride ?? "null", _model, modelToUse);
 
         var isAvailable = await IsServiceAvailableAsync(cancellationToken).ConfigureAwait(false);
         if (!isAvailable)
