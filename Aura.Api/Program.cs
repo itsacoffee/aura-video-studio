@@ -688,18 +688,23 @@ builder.Services.AddSingleton<Aura.Core.Services.Providers.LlmProviderRecommenda
 // Register system health checker
 builder.Services.AddSingleton<Aura.Core.Services.Health.SystemHealthChecker>();
 
-// Script orchestrator with lazy provider creation
+// Script orchestrator with lazy provider creation and Ollama detection support
 builder.Services.AddSingleton<Aura.Core.Orchestrator.ScriptOrchestrator>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<Aura.Core.Orchestrator.ScriptOrchestrator>>();
     var mixer = sp.GetRequiredService<Aura.Core.Orchestrator.ProviderMixer>();
     var factory = sp.GetRequiredService<Aura.Core.Orchestrator.LlmProviderFactory>();
     var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+    var ollamaDetectionService = sp.GetService<Aura.Core.Services.Providers.OllamaDetectionService>();
 
-    // Create available providers
-    var providers = factory.CreateAvailableProviders(loggerFactory);
+    // Use factory delegate to allow dynamic provider refresh (e.g., when Ollama becomes available)
+    // This ensures providers are re-evaluated on each use, not just at startup
+    Dictionary<string, Aura.Core.Providers.ILlmProvider> ProviderFactory()
+    {
+        return factory.CreateAvailableProviders(loggerFactory);
+    }
 
-    return new Aura.Core.Orchestrator.ScriptOrchestrator(logger, loggerFactory, mixer, providers);
+    return new Aura.Core.Orchestrator.ScriptOrchestrator(logger, loggerFactory, mixer, ProviderFactory, ollamaDetectionService);
 });
 
 // Register streaming orchestrator for SSE support
@@ -756,7 +761,13 @@ builder.Services.AddSingleton<Aura.Core.Services.Conversation.ProjectContextMana
 builder.Services.AddSingleton<Aura.Core.Services.Conversation.ConversationalLlmService>();
 
 // Add Prompt Engineering services
-builder.Services.AddSingleton<Aura.Core.Services.AI.PromptCustomizationService>();
+builder.Services.AddSingleton<Aura.Core.Services.AI.PromptCustomizationService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.AI.PromptCustomizationService>>();
+    var webSearchService = sp.GetService<Aura.Core.Services.Ideation.WebSearchService>();
+    var trendingTopicsService = sp.GetService<Aura.Core.Services.Ideation.TrendingTopicsService>();
+    return new Aura.Core.Services.AI.PromptCustomizationService(logger, webSearchService, trendingTopicsService);
+});
 builder.Services.AddScoped<Aura.Core.Services.AI.ChainOfThoughtOrchestrator>();
 
 // Add LLM Orchestration services with schema validation
@@ -842,8 +853,38 @@ builder.Services.AddSingleton<Aura.Core.Services.Learning.LearningService>();
 
 // Register Ideation service
 // Note: MemoryCache already registered above for shared use across services
-builder.Services.AddSingleton<Aura.Core.Services.Ideation.TrendingTopicsService>();
-builder.Services.AddSingleton<Aura.Core.Services.Ideation.IdeationService>();
+// Register WebSearchService for real-time web intelligence
+builder.Services.AddSingleton<Aura.Core.Services.Ideation.WebSearchService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Ideation.WebSearchService>>();
+    var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+    var configuration = sp.GetRequiredService<IConfiguration>();
+    return new Aura.Core.Services.Ideation.WebSearchService(logger, httpClientFactory, configuration);
+});
+
+builder.Services.AddSingleton<Aura.Core.Services.Ideation.TrendingTopicsService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Ideation.TrendingTopicsService>>();
+    var llmProvider = sp.GetRequiredService<ILlmProvider>();
+    var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+    var cache = sp.GetRequiredService<IMemoryCache>();
+    var stageAdapter = sp.GetService<Aura.Core.Orchestration.LlmStageAdapter>();
+    var webSearchService = sp.GetService<Aura.Core.Services.Ideation.WebSearchService>();
+    return new Aura.Core.Services.Ideation.TrendingTopicsService(logger, llmProvider, httpClientFactory, cache, stageAdapter, webSearchService);
+});
+
+builder.Services.AddSingleton<Aura.Core.Services.Ideation.IdeationService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Ideation.IdeationService>>();
+    var llmProvider = sp.GetRequiredService<ILlmProvider>();
+    var projectManager = sp.GetRequiredService<Aura.Core.Services.Conversation.ProjectContextManager>();
+    var conversationManager = sp.GetRequiredService<Aura.Core.Services.Conversation.ConversationContextManager>();
+    var trendingTopicsService = sp.GetRequiredService<Aura.Core.Services.Ideation.TrendingTopicsService>();
+    var stageAdapter = sp.GetService<Aura.Core.Orchestration.LlmStageAdapter>();
+    var ragContextBuilder = sp.GetService<Aura.Core.Services.RAG.RagContextBuilder>();
+    var webSearchService = sp.GetService<Aura.Core.Services.Ideation.WebSearchService>();
+    return new Aura.Core.Services.Ideation.IdeationService(logger, llmProvider, projectManager, conversationManager, trendingTopicsService, stageAdapter, ragContextBuilder, webSearchService);
+});
 
 // Register Audience Profile services
 builder.Services.AddSingleton<Aura.Core.Services.Audience.AudienceProfileStore>();
@@ -926,7 +967,13 @@ builder.Services.AddSingleton<Aura.Core.Services.ContentSafety.SafetyIntegration
 // Register Audio services
 builder.Services.AddSingleton<Aura.Core.Audio.WavValidator>();
 builder.Services.AddSingleton<Aura.Core.Audio.SilentWavGenerator>();
-builder.Services.AddSingleton<Aura.Core.Services.Audio.NarrationOptimizationService>();
+builder.Services.AddSingleton<Aura.Core.Services.Audio.NarrationOptimizationService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Audio.NarrationOptimizationService>>();
+    var llmProvider = sp.GetRequiredService<ILlmProvider>();
+    var stageAdapter = sp.GetService<Aura.Core.Orchestration.LlmStageAdapter>();
+    return new Aura.Core.Services.Audio.NarrationOptimizationService(logger, llmProvider, stageAdapter);
+});
 builder.Services.AddSingleton<Aura.Core.Services.AudioIntelligence.LicensingService>();
 
 // Register AI Editing services
@@ -1420,7 +1467,8 @@ builder.Services.AddSingleton<Aura.Core.Services.ScriptEnhancement.AdvancedScrip
     var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.ScriptEnhancement.AdvancedScriptEnhancer>>();
     var llmProvider = sp.GetRequiredService<ILlmProvider>();
     var analysisService = sp.GetRequiredService<Aura.Core.Services.ScriptEnhancement.ScriptAnalysisService>();
-    return new Aura.Core.Services.ScriptEnhancement.AdvancedScriptEnhancer(logger, llmProvider, analysisService);
+    var stageAdapter = sp.GetService<Aura.Core.Orchestration.LlmStageAdapter>();
+    return new Aura.Core.Services.ScriptEnhancement.AdvancedScriptEnhancer(logger, llmProvider, analysisService, stageAdapter);
 });
 
 builder.Services.AddSingleton<Aura.Core.Services.Content.VisualAssetSuggester>(sp =>

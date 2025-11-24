@@ -25,7 +25,7 @@ public class ProviderMixer
     /// <summary>
     /// Resolves the best available LLM provider based on tier, availability, and offline mode.
     /// This method is deterministic and never throws - always returns a valid ProviderDecision.
-    /// 
+    ///
     /// Fallback chain:
     /// - Pro tier (online): OpenAI → Azure → Gemini → Ollama → RuleBased (guaranteed)
     /// - ProIfAvailable (online): OpenAI → Azure → Gemini → Ollama → RuleBased (guaranteed)
@@ -40,7 +40,7 @@ public class ProviderMixer
         bool offlineOnly = false)
     {
         var stage = "Script";
-        _logger.LogInformation("Resolving LLM provider for {Stage} stage (tier: {Tier}, offlineOnly: {OfflineOnly})", 
+        _logger.LogInformation("Resolving LLM provider for {Stage} stage (tier: {Tier}, offlineOnly: {OfflineOnly})",
             stage, preferredTier, offlineOnly);
 
         // Build the complete downgrade chain based on tier and offline mode
@@ -66,20 +66,20 @@ public class ProviderMixer
         for (int i = 0; i < downgradeChain.Length; i++)
         {
             var providerName = downgradeChain[i];
-            
+
             // Check if provider is available
             if (availableProviders.ContainsKey(providerName))
             {
                 var isFallback = i > 0; // It's a fallback if not the first in chain
                 var fallbackFrom = isFallback ? string.Join(" → ", downgradeChain[0..i]) : null;
-                
+
                 return new ProviderDecision
                 {
                     Stage = stage,
                     ProviderName = providerName,
                     PriorityRank = i + 1, // 1-based ranking
                     DowngradeChain = downgradeChain,
-                    Reason = isFallback 
+                    Reason = isFallback
                         ? $"Fallback to {providerName} (higher-tier providers unavailable)"
                         : $"{providerName} available and preferred",
                     IsFallback = isFallback,
@@ -151,7 +151,7 @@ public class ProviderMixer
 
     /// <summary>
     /// Selects the best available LLM provider based on profile and availability
-    /// 
+    ///
     /// Fallback chain:
     /// - Pro tier: OpenAI → Azure → Gemini → Ollama → RuleBased (guaranteed)
     /// - ProIfAvailable: OpenAI → Azure → Gemini → Ollama → RuleBased (guaranteed)
@@ -166,16 +166,16 @@ public class ProviderMixer
         _logger.LogInformation("Selecting LLM provider for {Stage} stage (preferred: {Tier})", stage, preferredTier);
 
         // If specific provider is requested (not a tier), try to use it directly
-        if (!string.IsNullOrWhiteSpace(preferredTier) && 
-            preferredTier != "Pro" && 
-            preferredTier != "ProIfAvailable" && 
+        if (!string.IsNullOrWhiteSpace(preferredTier) &&
+            preferredTier != "Pro" &&
+            preferredTier != "ProIfAvailable" &&
             preferredTier != "Free")
         {
             // Normalize provider name
             var normalizedName = NormalizeProviderName(preferredTier);
             _logger.LogInformation("Specific provider requested: {Requested} (normalized: {Normalized})", preferredTier, normalizedName);
             _logger.LogInformation("Available providers: {Providers}", string.Join(", ", availableProviders.Keys));
-            
+
             if (availableProviders.ContainsKey(normalizedName))
             {
                 _logger.LogInformation("✓ Provider {Provider} is available and will be used", normalizedName);
@@ -187,8 +187,8 @@ public class ProviderMixer
                     IsFallback = false
                 };
             }
-            
-            _logger.LogWarning("✗ Requested provider {Provider} (normalized: {Normalized}) not available in registry. Available: {Available}. Falling back to tier logic", 
+
+            _logger.LogWarning("✗ Requested provider {Provider} (normalized: {Normalized}) not available in registry. Available: {Available}. Falling back to tier logic",
                 preferredTier, normalizedName, string.Join(", ", availableProviders.Keys));
         }
 
@@ -280,7 +280,7 @@ public class ProviderMixer
 
     /// <summary>
     /// Selects the best available TTS provider based on profile and availability
-    /// 
+    ///
     /// Fallback chain:
     /// - Pro tier: ElevenLabs → OpenAI → PlayHT → Azure → EdgeTTS → Mimic3 → Piper → Windows (guaranteed)
     /// - ProIfAvailable: ElevenLabs → OpenAI → PlayHT → Azure → EdgeTTS → Mimic3 → Piper → Windows (guaranteed)
@@ -295,9 +295,9 @@ public class ProviderMixer
         _logger.LogInformation("Selecting TTS provider for {Stage} stage (preferred: {Tier})", stage, preferredTier);
 
         // If specific provider is requested (not a tier), try to use it directly
-        if (!string.IsNullOrWhiteSpace(preferredTier) && 
-            preferredTier != "Pro" && 
-            preferredTier != "ProIfAvailable" && 
+        if (!string.IsNullOrWhiteSpace(preferredTier) &&
+            preferredTier != "Pro" &&
+            preferredTier != "ProIfAvailable" &&
             preferredTier != "Free")
         {
             var normalizedName = NormalizeProviderName(preferredTier);
@@ -311,7 +311,7 @@ public class ProviderMixer
                     IsFallback = false
                 };
             }
-            
+
             _logger.LogWarning("Requested TTS provider {Provider} not available, falling back to tier logic", preferredTier);
         }
 
@@ -441,7 +441,7 @@ public class ProviderMixer
 
     /// <summary>
     /// Selects the best available image/visual provider based on profile and availability
-    /// 
+    ///
     /// Fallback chain:
     /// - Pro tier: DALL-E 3 → StabilityAI → Midjourney → LocalSD (if NVIDIA 6GB+) → Unsplash → Placeholder (guaranteed)
     /// - ProIfAvailable: DALL-E 3 → StabilityAI → Midjourney → LocalSD (if NVIDIA 6GB+) → Unsplash → Placeholder (guaranteed)
@@ -459,9 +459,9 @@ public class ProviderMixer
         _logger.LogInformation("Selecting visual provider for {Stage} stage (preferred: {Tier})", stage, preferredTier);
 
         // If specific provider is requested (not a tier), try to use it directly
-        if (!string.IsNullOrWhiteSpace(preferredTier) && 
-            preferredTier != "Pro" && 
-            preferredTier != "ProIfAvailable" && 
+        if (!string.IsNullOrWhiteSpace(preferredTier) &&
+            preferredTier != "Pro" &&
+            preferredTier != "ProIfAvailable" &&
             preferredTier != "Free" &&
             preferredTier != "StockOrLocal")
         {
@@ -476,7 +476,7 @@ public class ProviderMixer
                     IsFallback = false
                 };
             }
-            
+
             _logger.LogWarning("Requested visual provider {Provider} not available, falling back to tier logic", preferredTier);
         }
 
@@ -685,10 +685,25 @@ public class ProviderMixer
 
     /// <summary>
     /// Normalizes provider names to match DI registration keys
+    /// Handles provider names with model info in parentheses (e.g., "Ollama (qwen3:4b)" -> "Ollama")
     /// </summary>
     private static string NormalizeProviderName(string name)
     {
-        return name switch
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return name ?? string.Empty;
+        }
+
+        // Strip model information from provider names (e.g., "Ollama (qwen3:4b)" -> "Ollama")
+        // Pattern: ProviderName (model) -> ProviderName
+        var trimmedName = name.Trim();
+        var parenIndex = trimmedName.IndexOf('(');
+        if (parenIndex > 0)
+        {
+            trimmedName = trimmedName.Substring(0, parenIndex).Trim();
+        }
+
+        return trimmedName switch
         {
             // LLM providers
             "RuleBased" or "rulebased" or "Rule-Based" or "rule-based" => "RuleBased",
@@ -696,16 +711,16 @@ public class ProviderMixer
             "OpenAI" or "openai" or "OpenAi" => "OpenAI",
             "AzureOpenAI" or "Azure" or "azure" or "AzureOpenAi" or "azureopenai" => "Azure",
             "Gemini" or "gemini" => "Gemini",
-            
+
             // TTS providers
             "Windows" or "windows" or "Windows SAPI" or "WindowsSAPI" or "SAPI" or "System" or "system" => "Windows",
             "ElevenLabs" or "elevenlabs" or "Eleven" or "eleven" => "ElevenLabs",
-            "OpenAI" or "openai" or "OpenAI-TTS" or "OpenAiTts" => "OpenAI",
+            "OpenAI-TTS" or "OpenAiTts" or "openai-tts" => "OpenAI",
             "PlayHT" or "playht" or "Play.ht" or "PlayHt" => "PlayHT",
             "EdgeTTS" or "edgetts" or "Edge" or "edge" or "EdgeTts" => "EdgeTTS",
             "Piper" or "piper" => "Piper",
             "Mimic3" or "mimic3" or "Mimic" or "mimic" => "Mimic3",
-            
+
             // Visual providers
             "Stock" or "stock" => "Stock",
             "LocalSD" or "localsd" or "StableDiffusion" or "stablediffusion" or "SD" => "LocalSD",
@@ -717,9 +732,9 @@ public class ProviderMixer
             "Midjourney" or "midjourney" or "MJ" or "mj" => "Midjourney",
             "Unsplash" or "unsplash" => "Unsplash",
             "Placeholder" or "placeholder" => "Placeholder",
-            
-            // Default: return as-is
-            _ => name
+
+            // Default: return normalized name (without model info)
+            _ => trimmedName
         };
     }
 }

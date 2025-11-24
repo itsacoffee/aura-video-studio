@@ -941,12 +941,31 @@ Maintain the core content but reorganize it to follow the framework structure cl
         PlanSpec planSpec,
         CancellationToken ct)
     {
+        // Try orchestrator first (has built-in fallback)
         if (_stageAdapter != null)
         {
-            var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct).ConfigureAwait(false);
-            if (result.IsSuccess && result.Data != null) return result.Data;
-            _logger.LogWarning("Orchestrator generation failed, falling back to direct provider: {Error}", result.ErrorMessage);
+            try
+            {
+                var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct).ConfigureAwait(false);
+                if (result.IsSuccess && result.Data != null) return result.Data;
+                _logger.LogWarning("Orchestrator generation failed, falling back to direct provider: {Error}", result.ErrorMessage);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Orchestrator generation threw exception, falling back to direct provider");
+            }
         }
-        return await _llmProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
+        
+        // Fallback to direct provider with error handling
+        try
+        {
+            return await _llmProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Direct provider also failed for script generation");
+            throw new InvalidOperationException(
+                "All LLM providers failed. Please ensure at least one provider (Ollama, OpenAI, Gemini, or RuleBased) is available.", ex);
+        }
     }
 }

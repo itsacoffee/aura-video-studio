@@ -79,7 +79,7 @@ public class NarrationOptimizationService
             {
                 var optimizedLine = await OptimizeSingleLineAsync(
                     line, voiceSpec, voiceDescriptor, config, ct).ConfigureAwait(false);
-                
+
                 optimizedLines.Add(optimizedLine);
                 totalOptimizations += optimizedLine.ActionsApplied.Count;
 
@@ -140,10 +140,10 @@ public class NarrationOptimizationService
         {
             var rewriteResult = await RewriteForTtsAsync(
                 optimizedText, voiceSpec, voiceDescriptor, issues, config, ct).ConfigureAwait(false);
-            
+
             optimizedText = rewriteResult.OptimizedText;
             actions.AddRange(rewriteResult.ActionsApplied);
-            
+
             foreach (var hint in rewriteResult.PronunciationHints)
             {
                 pronunciationHints[hint.Key] = hint.Value;
@@ -200,7 +200,7 @@ public class NarrationOptimizationService
         CancellationToken ct)
     {
         var prompt = BuildOptimizationPrompt(text, voiceSpec, voiceDescriptor, issues, config);
-        
+
         try
         {
             var brief = new Brief(
@@ -219,8 +219,8 @@ public class NarrationOptimizationService
                 Style: "natural-speech"
             );
 
-            var llmResponse = await GenerateWithLlmAsync(brief, spec, ct).ConfigureAwait(false);
-            
+            var llmResponse = await GenerateWithLlmAsync(brief, spec, text, ct).ConfigureAwait(false);
+
             return ParseLlmResponse(llmResponse, text);
         }
         catch (Exception ex)
@@ -236,15 +236,36 @@ public class NarrationOptimizationService
     private async Task<string> GenerateWithLlmAsync(
         Brief brief,
         PlanSpec planSpec,
+        string originalText,
         CancellationToken ct)
     {
+        // Try orchestrator first (has built-in fallback)
         if (_stageAdapter != null)
         {
-            var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct).ConfigureAwait(false);
-            if (result.IsSuccess && result.Data != null) return result.Data;
-            _logger.LogWarning("Orchestrator generation failed, falling back to direct provider: {Error}", result.ErrorMessage);
+            try
+            {
+                var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct).ConfigureAwait(false);
+                if (result.IsSuccess && result.Data != null) return result.Data;
+                _logger.LogWarning("Orchestrator generation failed, falling back to direct provider: {Error}", result.ErrorMessage);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Orchestrator generation threw exception, falling back to direct provider");
+            }
         }
-        return await _llmProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
+
+        // Fallback to direct provider with error handling
+        try
+        {
+            return await _llmProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Direct provider also failed for narration optimization");
+            // Return original text if LLM fails - this ensures we don't return a placeholder like "TTS Optimization"
+            _logger.LogWarning("LLM optimization failed, returning original text");
+            return originalText;
+        }
     }
 
     /// <summary>
@@ -261,7 +282,7 @@ public class NarrationOptimizationService
         sb.AppendLine("Optimize this text for Text-to-Speech synthesis. Make it natural, easy to speak, and engaging.");
         sb.AppendLine();
         sb.AppendLine($"Voice: {voiceSpec.VoiceName}");
-        
+
         if (voiceDescriptor != null)
         {
             sb.AppendLine($"Voice Type: {voiceDescriptor.VoiceType}");
@@ -283,7 +304,7 @@ public class NarrationOptimizationService
         sb.AppendLine("- Use conversational vocabulary suitable for speech");
         sb.AppendLine("- Preserve 100% of the semantic meaning");
         sb.AppendLine("- Keep the same overall message and information");
-        
+
         if (issues.Count != 0)
         {
             sb.AppendLine();
@@ -312,7 +333,7 @@ public class NarrationOptimizationService
         var actions = new List<OptimizationAction>();
         var pronunciationHints = new Dictionary<string, string>();
 
-        if (optimizedText.Length < originalText.Length * MinResponseLengthRatio || 
+        if (optimizedText.Length < originalText.Length * MinResponseLengthRatio ||
             optimizedText.Length > originalText.Length * MaxResponseLengthRatio)
         {
             _logger.LogWarning("LLM response length suspicious, using original");
@@ -491,7 +512,7 @@ public class NarrationOptimizationService
     private List<TtsCompatibilityIssue> DetectTongueTwisters(string text)
     {
         var issues = new List<TtsCompatibilityIssue>();
-        
+
         var patterns = new[]
         {
             @"(\b\w*sh\w*\s+){3,}",
@@ -527,7 +548,7 @@ public class NarrationOptimizationService
     private List<TtsCompatibilityIssue> DetectNumberSpellingNeeds(string text)
     {
         var issues = new List<TtsCompatibilityIssue>();
-        
+
         var phonePattern = new Regex(@"\b\d{3}[-.]?\d{3}[-.]?\d{4}\b");
         var matches = phonePattern.Matches(text);
         foreach (Match match in matches)
@@ -566,7 +587,7 @@ public class NarrationOptimizationService
     private (NarrationTone Tone, double Confidence) DetectEmotionalTone(string text)
     {
         var lowerText = text.ToLowerInvariant();
-        
+
         var excitedKeywords = new[] { "amazing", "incredible", "fantastic", "wow", "great", "awesome", "exciting" };
         var somberKeywords = new[] { "sadly", "unfortunately", "tragic", "difficult", "challenging", "serious" };
         var urgentKeywords = new[] { "important", "critical", "urgent", "immediately", "now", "must", "vital" };
@@ -652,7 +673,7 @@ public class NarrationOptimizationService
     {
         var technicalTermPattern = new Regex(@"\b[A-Z][a-z]+[A-Z][a-zA-Z]*\b");
         var matches = technicalTermPattern.Matches(text);
-        
+
         foreach (Match match in matches)
         {
             if (!hints.ContainsKey(match.Value))
@@ -713,7 +734,7 @@ public class NarrationOptimizationService
     private string AddNaturalPauses(string text)
     {
         var clauseConnectors = new[] { " and ", " but ", " or ", " so ", " yet " };
-        
+
         foreach (var connector in clauseConnectors)
         {
             var pattern = $@"(?<!,){Regex.Escape(connector)}";
@@ -763,10 +784,10 @@ public class NarrationOptimizationService
 
         var modifiedCount = optimizedLines.Count(l => l.WasModified);
         var modificationRate = (double)modifiedCount / originalLines.Count;
-        
+
         score += modificationRate * 10;
 
-        var emotionalTaggingRate = optimizedLines.Count(l => l.EmotionalTone != null && 
+        var emotionalTaggingRate = optimizedLines.Count(l => l.EmotionalTone != null &&
             l.EmotionConfidence >= config.MinEmotionConfidence) / (double)optimizedLines.Count;
         score += emotionalTaggingRate * 10;
 

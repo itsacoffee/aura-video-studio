@@ -128,7 +128,7 @@ public class AzureOpenAiLlmProvider : ILlmProvider
 
                 // Build enhanced prompts for quality content with user customizations
                 string systemPrompt = EnhancedPromptTemplates.GetSystemPromptForScriptGeneration();
-                string userPrompt = _promptCustomizationService.BuildCustomizedPrompt(brief, spec, brief.PromptModifiers);
+                string userPrompt = await _promptCustomizationService.BuildCustomizedPromptAsync(brief, spec, brief.PromptModifiers, ct).ConfigureAwait(false);
 
                 // Get LLM parameters from brief, with defaults
                 var llmParams = brief.LlmParameters;
@@ -1223,7 +1223,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
 
         // Build enhanced prompts
         string systemPrompt = EnhancedPromptTemplates.GetSystemPromptForScriptGeneration();
-        string userPrompt = _promptCustomizationService.BuildCustomizedPrompt(brief, spec, brief.PromptModifiers);
+        string userPrompt = await _promptCustomizationService.BuildCustomizedPromptAsync(brief, spec, brief.PromptModifiers, ct).ConfigureAwait(false);
 
         // Create streaming request - Azure OpenAI uses same format as OpenAI
         var requestBody = new

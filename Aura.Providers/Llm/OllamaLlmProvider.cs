@@ -96,7 +96,11 @@ public class OllamaLlmProvider : ILlmProvider
 
     public async Task<string> DraftScriptAsync(Brief brief, PlanSpec spec, CancellationToken ct)
     {
-        _logger.LogInformation("Generating script with Ollama (model: {Model}) at {BaseUrl} for topic: {Topic}", _model, _baseUrl, brief.Topic);
+        // Use model override from LlmParameters if provided, otherwise use default model
+        var modelToUse = !string.IsNullOrWhiteSpace(brief.LlmParameters?.ModelOverride) 
+            ? brief.LlmParameters.ModelOverride 
+            : _model;
+        _logger.LogInformation("Generating script with Ollama (model: {Model}) at {BaseUrl} for topic: {Topic}", modelToUse, _baseUrl, brief.Topic);
 
         // Pre-check: Validate Ollama is available before attempting generation
         var isAvailable = await IsServiceAvailableAsync(ct).ConfigureAwait(false);
@@ -122,7 +126,7 @@ public class OllamaLlmProvider : ILlmProvider
 
                 // Build enhanced prompt for quality content with user customizations
                 string systemPrompt = EnhancedPromptTemplates.GetSystemPromptForScriptGeneration();
-                string userPrompt = _promptCustomizationService.BuildCustomizedPrompt(brief, spec, brief.PromptModifiers);
+                string userPrompt = await _promptCustomizationService.BuildCustomizedPromptAsync(brief, spec, brief.PromptModifiers, ct).ConfigureAwait(false);
                 
                 // Apply enhancement callback if configured
                 if (PromptEnhancementCallback != null)
@@ -156,7 +160,7 @@ public class OllamaLlmProvider : ILlmProvider
 
                 var requestBody = new
                 {
-                    model = _model,
+                    model = modelToUse,
                     prompt = prompt,
                     stream = false,
                     options = options
@@ -1195,7 +1199,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
         {
             // Build enhanced prompt for quality content with user customizations
             string systemPrompt = EnhancedPromptTemplates.GetSystemPromptForScriptGeneration();
-            string userPrompt = _promptCustomizationService.BuildCustomizedPrompt(brief, spec, brief.PromptModifiers);
+            string userPrompt = await _promptCustomizationService.BuildCustomizedPromptAsync(brief, spec, brief.PromptModifiers, ct).ConfigureAwait(false);
             
             // Apply enhancement callback if configured
             if (PromptEnhancementCallback != null)
@@ -1360,7 +1364,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
         }
 
         string systemPrompt = EnhancedPromptTemplates.GetSystemPromptForScriptGeneration();
-        string userPrompt = _promptCustomizationService.BuildCustomizedPrompt(brief, spec, brief.PromptModifiers);
+        string userPrompt = await _promptCustomizationService.BuildCustomizedPromptAsync(brief, spec, brief.PromptModifiers, ct).ConfigureAwait(false);
         
         if (PromptEnhancementCallback != null)
         {
@@ -1549,7 +1553,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
         try
         {
             string systemPrompt = EnhancedPromptTemplates.GetSystemPromptForScriptGeneration();
-            string userPrompt = _promptCustomizationService.BuildCustomizedPrompt(brief, spec, brief.PromptModifiers);
+            string userPrompt = await _promptCustomizationService.BuildCustomizedPromptAsync(brief, spec, brief.PromptModifiers, ct).ConfigureAwait(false);
             
             if (PromptEnhancementCallback != null)
             {

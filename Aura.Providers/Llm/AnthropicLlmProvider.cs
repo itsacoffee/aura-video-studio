@@ -112,7 +112,7 @@ public class AnthropicLlmProvider : ILlmProvider
 
                 // Build enhanced prompts for quality content with user customizations
                 string systemPrompt = EnhancedPromptTemplates.GetSystemPromptForScriptGeneration();
-                string userPrompt = _promptCustomizationService.BuildCustomizedPrompt(brief, spec, brief.PromptModifiers);
+                string userPrompt = await _promptCustomizationService.BuildCustomizedPromptAsync(brief, spec, brief.PromptModifiers, ct).ConfigureAwait(false);
 
                 // Get LLM parameters from brief, with defaults
                 var llmParams = brief.LlmParameters;
@@ -1204,7 +1204,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
 
         // Build enhanced prompts
         string systemPrompt = EnhancedPromptTemplates.GetSystemPromptForScriptGeneration();
-        string userPrompt = _promptCustomizationService.BuildCustomizedPrompt(brief, spec, brief.PromptModifiers);
+        string userPrompt = await _promptCustomizationService.BuildCustomizedPromptAsync(brief, spec, brief.PromptModifiers, ct).ConfigureAwait(false);
 
         // Create streaming request
         var requestBody = new

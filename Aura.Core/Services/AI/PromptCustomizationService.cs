@@ -2,9 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.AI;
 using Aura.Core.Models;
+using Aura.Core.Services.Ideation;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.Services.AI;
@@ -18,24 +20,34 @@ public class PromptCustomizationService
     private readonly ILogger<PromptCustomizationService> _logger;
     private readonly PromptLibrary _promptLibrary;
     private readonly Dictionary<string, PromptVersion> _promptVersions;
+    private readonly WebSearchService? _webSearchService;
+    private readonly TrendingTopicsService? _trendingTopicsService;
 
-    public PromptCustomizationService(ILogger<PromptCustomizationService> logger)
+    public PromptCustomizationService(
+        ILogger<PromptCustomizationService> logger,
+        WebSearchService? webSearchService = null,
+        TrendingTopicsService? trendingTopicsService = null)
     {
         _logger = logger;
         _promptLibrary = new PromptLibrary();
         _promptVersions = InitializePromptVersions();
+        _webSearchService = webSearchService;
+        _trendingTopicsService = trendingTopicsService;
     }
 
     /// <summary>
-    /// Build customized prompt with user modifications
+    /// Build customized prompt with user modifications and dynamic context injection
     /// </summary>
-    public string BuildCustomizedPrompt(
+    public async Task<string> BuildCustomizedPromptAsync(
         Brief brief,
         PlanSpec spec,
-        PromptModifiers? modifiers = null)
+        PromptModifiers? modifiers = null,
+        CancellationToken ct = default)
     {
         var basePrompt = EnhancedPromptTemplates.BuildScriptGenerationPrompt(brief, spec);
 
+        // Preserve original behavior: if modifiers is null, return base prompt immediately
+        // Service injection only occurs when modifiers are provided
         if (modifiers == null)
         {
             return basePrompt;
@@ -43,30 +55,92 @@ public class PromptCustomizationService
 
         var sb = new StringBuilder(basePrompt);
 
-        if (!string.IsNullOrWhiteSpace(modifiers.AdditionalInstructions))
+        // Inject dynamic context from web intelligence if available
+        if (_webSearchService != null && !string.IsNullOrWhiteSpace(brief.Topic))
         {
-            var sanitizedInstructions = SanitizeUserInstructions(modifiers.AdditionalInstructions);
-            sb.AppendLine();
-            sb.AppendLine("USER INSTRUCTIONS:");
-            sb.AppendLine(sanitizedInstructions);
-            sb.AppendLine();
+            try
+            {
+                var competitiveIntel = await _webSearchService.GetCompetitiveIntelligenceAsync(
+                    brief.Topic, maxResults: 10, ct).ConfigureAwait(false);
+
+                if (competitiveIntel.TopDomains.Any())
+                {
+                    sb.AppendLine();
+                    sb.AppendLine("=== MARKET INTELLIGENCE ===");
+                    sb.AppendLine($"Content Saturation: {competitiveIntel.SaturationLevel}");
+                    sb.AppendLine($"Average Relevance: {competitiveIntel.AverageRelevance:F1}%");
+                    sb.AppendLine();
+                    sb.AppendLine("Top Competitors:");
+                    foreach (var domain in competitiveIntel.TopDomains.Take(3))
+                    {
+                        sb.AppendLine($"- {domain.Domain} ({domain.ContentCount} pieces)");
+                    }
+                    sb.AppendLine();
+                    sb.AppendLine("Use this intelligence to identify unique angles and avoid oversaturated approaches.");
+                    sb.AppendLine();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to inject competitive intelligence into prompt");
+            }
         }
 
-        if (!string.IsNullOrWhiteSpace(modifiers.ExampleStyle))
+        // Inject trending context if available
+        if (_trendingTopicsService != null && !string.IsNullOrWhiteSpace(brief.Topic))
         {
-            var example = _promptLibrary.GetExampleByName(modifiers.ExampleStyle);
-            if (example != null)
+            try
             {
-                sb.AppendLine();
-                sb.AppendLine($"EXAMPLE STYLE REFERENCE ({example.VideoType} - {example.ExampleName}):");
-                sb.AppendLine($"Description: {example.Description}");
-                sb.AppendLine();
-                sb.AppendLine("Key techniques from example:");
-                foreach (var technique in example.KeyTechniques)
+                var trendingTopics = await _trendingTopicsService.GetTrendingTopicsAsync(
+                    brief.Topic, maxResults: 3, forceRefresh: false, ct).ConfigureAwait(false);
+
+                if (trendingTopics.Count > 0)
                 {
-                    sb.AppendLine($"- {technique}");
+                    sb.AppendLine("=== TRENDING CONTEXT ===");
+                    sb.AppendLine("Current trending topics related to this content:");
+                    foreach (var topic in trendingTopics)
+                    {
+                        sb.AppendLine($"- {topic.Topic} (Trend Score: {topic.TrendScore:F1}/100)");
+                    }
+                    sb.AppendLine();
+                    sb.AppendLine("Consider how to leverage or relate to these trends for better engagement.");
+                    sb.AppendLine();
                 }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to inject trending topics into prompt");
+            }
+        }
+
+        // Apply modifiers (guaranteed to be non-null at this point due to early return above)
+        if (modifiers != null)
+        {
+            if (!string.IsNullOrWhiteSpace(modifiers.AdditionalInstructions))
+            {
+                var sanitizedInstructions = SanitizeUserInstructions(modifiers.AdditionalInstructions);
                 sb.AppendLine();
+                sb.AppendLine("USER INSTRUCTIONS:");
+                sb.AppendLine(sanitizedInstructions);
+                sb.AppendLine();
+            }
+
+            if (!string.IsNullOrWhiteSpace(modifiers.ExampleStyle))
+            {
+                var example = _promptLibrary.GetExampleByName(modifiers.ExampleStyle);
+                if (example != null)
+                {
+                    sb.AppendLine();
+                    sb.AppendLine($"EXAMPLE STYLE REFERENCE ({example.VideoType} - {example.ExampleName}):");
+                    sb.AppendLine($"Description: {example.Description}");
+                    sb.AppendLine();
+                    sb.AppendLine("Key techniques from example:");
+                    foreach (var technique in example.KeyTechniques)
+                    {
+                        sb.AppendLine($"- {technique}");
+                    }
+                    sb.AppendLine();
+                }
             }
         }
 
@@ -76,13 +150,14 @@ public class PromptCustomizationService
     /// <summary>
     /// Generate prompt preview with variable substitutions visible
     /// </summary>
-    public PromptPreview GeneratePreview(
+    public async Task<PromptPreview> GeneratePreviewAsync(
         Brief brief,
         PlanSpec spec,
-        PromptModifiers? modifiers = null)
+        PromptModifiers? modifiers = null,
+        CancellationToken ct = default)
     {
         var systemPrompt = EnhancedPromptTemplates.GetSystemPromptForScriptGeneration();
-        var userPrompt = BuildCustomizedPrompt(brief, spec, modifiers);
+        var userPrompt = await BuildCustomizedPromptAsync(brief, spec, modifiers, ct).ConfigureAwait(false);
         var finalPrompt = $"{systemPrompt}\n\n{userPrompt}";
 
         var substitutions = new Dictionary<string, string>
@@ -123,8 +198,8 @@ public class PromptCustomizationService
     /// </summary>
     public PromptVersion? GetPromptVersion(string version)
     {
-        return _promptVersions.TryGetValue(version, out var promptVersion) 
-            ? promptVersion 
+        return _promptVersions.TryGetValue(version, out var promptVersion)
+            ? promptVersion
             : null;
     }
 

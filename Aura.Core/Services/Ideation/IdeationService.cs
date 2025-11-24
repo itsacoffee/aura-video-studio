@@ -29,6 +29,7 @@ public class IdeationService
     private readonly ConversationContextManager _conversationManager;
     private readonly TrendingTopicsService _trendingTopicsService;
     private readonly RagContextBuilder? _ragContextBuilder;
+    private readonly WebSearchService? _webSearchService;
 
     private const int MinConceptCount = 3;
     private const int MaxConceptCount = 9;
@@ -40,7 +41,8 @@ public class IdeationService
         ConversationContextManager conversationManager,
         TrendingTopicsService trendingTopicsService,
         LlmStageAdapter? stageAdapter = null,
-        RagContextBuilder? ragContextBuilder = null)
+        RagContextBuilder? ragContextBuilder = null,
+        WebSearchService? webSearchService = null)
     {
         _logger = logger;
         _llmProvider = llmProvider;
@@ -49,6 +51,7 @@ public class IdeationService
         _trendingTopicsService = trendingTopicsService;
         _stageAdapter = stageAdapter;
         _ragContextBuilder = ragContextBuilder;
+        _webSearchService = webSearchService;
     }
 
     /// <summary>
@@ -91,7 +94,7 @@ public class IdeationService
             }
         }
 
-        var prompt = BuildBrainstormPrompt(request, desiredConceptCount, ragContext);
+        var prompt = await BuildBrainstormPromptAsync(request, desiredConceptCount, ragContext, ct).ConfigureAwait(false);
 
         var brief = new Brief(
             Topic: prompt,
@@ -198,7 +201,7 @@ public class IdeationService
     }
 
     /// <summary>
-    /// Analyze content gaps and opportunities
+    /// Analyze content gaps and opportunities with real-time web intelligence
     /// </summary>
     public async Task<GapAnalysisResponse> AnalyzeContentGapsAsync(
         GapAnalysisRequest request,
@@ -206,7 +209,30 @@ public class IdeationService
     {
         _logger.LogInformation("Analyzing content gaps for niche: {Niche}", request.Niche ?? "general");
 
-        var prompt = BuildGapAnalysisPrompt(request);
+        // Gather real-time competitive intelligence if web search is available
+        ContentGapAnalysisResult? webGapAnalysis = null;
+        if (_webSearchService != null && !string.IsNullOrWhiteSpace(request.Niche))
+        {
+            try
+            {
+                _logger.LogInformation("Gathering real-time web intelligence for content gap analysis");
+                webGapAnalysis = await _webSearchService.AnalyzeContentGapsAsync(
+                    request.Niche,
+                    request.RelatedTopics?.ToList(),
+                    maxResults: 20,
+                    ct).ConfigureAwait(false);
+                
+                _logger.LogInformation("Found {GapCount} content gaps and {OversaturatedCount} oversaturated topics from web search",
+                    webGapAnalysis.GapKeywords.Count, webGapAnalysis.OversaturatedTopics.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to gather web intelligence for gap analysis, continuing with LLM-only analysis");
+            }
+        }
+
+        // Build enhanced prompt with web intelligence if available
+        var prompt = BuildGapAnalysisPrompt(request, webGapAnalysis);
 
         var brief = new Brief(
             Topic: prompt,
@@ -228,6 +254,25 @@ public class IdeationService
 
         var (missingTopics, opportunities, oversaturated, uniqueAngles) =
             ParseGapAnalysisResponse(response);
+
+        // Merge web intelligence results with LLM analysis
+        if (webGapAnalysis != null)
+        {
+            missingTopics = missingTopics
+                .Concat(webGapAnalysis.GapKeywords)
+                .Distinct()
+                .ToList();
+            
+            oversaturated = oversaturated
+                .Concat(webGapAnalysis.OversaturatedTopics)
+                .Distinct()
+                .ToList();
+            
+            uniqueAngles = uniqueAngles
+                .Concat(webGapAnalysis.UniqueAngles)
+                .Distinct()
+                .ToList();
+        }
 
         return new GapAnalysisResponse(
             MissingTopics: missingTopics,
@@ -434,7 +479,7 @@ public class IdeationService
 
     // --- Prompt Building Methods ---
 
-    private string BuildBrainstormPrompt(BrainstormRequest request, int conceptCount, RagContext? ragContext = null)
+    private async Task<string> BuildBrainstormPromptAsync(BrainstormRequest request, int conceptCount, RagContext? ragContext, CancellationToken ct)
     {
         var sb = new StringBuilder();
         sb.AppendLine($"Generate exactly {conceptCount} unique, creative, and actionable video concept ideas for the topic: '{request.Topic}'");
@@ -444,13 +489,107 @@ public class IdeationService
         if (ragContext != null && ragContext.Chunks.Count > 0)
         {
             sb.AppendLine("=== RELEVANT CONTEXT ABOUT THIS TOPIC ===");
+            sb.AppendLine("The following information has been retrieved from project documents and should inform your concept generation:");
+            sb.AppendLine();
             foreach (var chunk in ragContext.Chunks.Take(5))
             {
                 sb.AppendLine($"- {chunk.Content}");
+                if (ragContext.IncludeCitations && chunk.CitationNumber > 0)
+                {
+                    sb.AppendLine($"  [Source: {chunk.Source}]");
+                }
             }
             sb.AppendLine();
-            sb.AppendLine("Use the above context to generate SPECIFIC, DETAILED information about this topic. Do NOT use generic placeholders.");
+            sb.AppendLine("CRITICAL: Use the above context to generate SPECIFIC, DETAILED, FACTUALLY-GROUNDED concepts. Do NOT use generic placeholders.");
+            sb.AppendLine("Every concept must be directly relevant to the actual information provided above.");
             sb.AppendLine();
+        }
+        
+        // Add intelligent context about trending topics and content opportunities
+        if (_trendingTopicsService != null)
+        {
+            try
+            {
+                var trendingTopics = await _trendingTopicsService.GetTrendingTopicsAsync(
+                    request.Topic, 
+                    maxResults: 5, 
+                    forceRefresh: false, 
+                    ct).ConfigureAwait(false);
+                
+                if (trendingTopics.Count > 0)
+                {
+                    sb.AppendLine("=== TRENDING CONTEXT ===");
+                    sb.AppendLine("The following topics are currently trending (from real-time web data) and may inform your concept generation:");
+                    foreach (var topic in trendingTopics.Take(3))
+                    {
+                        var trendInfo = $"Trend Score: {topic.TrendScore:F1}/100";
+                        if (topic.TrendVelocity.HasValue)
+                        {
+                            trendInfo += $" (Velocity: {topic.TrendVelocity.Value:+#.0;-#.0})";
+                        }
+                        if (topic.EstimatedAudience.HasValue)
+                        {
+                            trendInfo += $" | Est. Audience: {FormatNumber(topic.EstimatedAudience.Value)}";
+                        }
+                        sb.AppendLine($"- {topic.Topic}: {trendInfo}");
+                        if (!string.IsNullOrWhiteSpace(topic.SearchVolume))
+                        {
+                            sb.AppendLine($"  Search Volume: {topic.SearchVolume} | Competition: {topic.Competition ?? "Unknown"}");
+                        }
+                    }
+                    sb.AppendLine();
+                    sb.AppendLine("Consider how your concepts can leverage or relate to these trending topics for better engagement.");
+                    sb.AppendLine();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to retrieve trending topics for ideation, continuing without trend data");
+            }
+        }
+
+        // Add competitive intelligence if web search is available
+        if (_webSearchService != null && !string.IsNullOrWhiteSpace(request.Topic))
+        {
+            try
+            {
+                var competitiveIntel = await _webSearchService.GetCompetitiveIntelligenceAsync(
+                    request.Topic,
+                    maxResults: 15,
+                    ct).ConfigureAwait(false);
+                
+                if (competitiveIntel.TopDomains.Any())
+                {
+                    sb.AppendLine("=== COMPETITIVE INTELLIGENCE ===");
+                    sb.AppendLine($"Market Saturation: {competitiveIntel.SaturationLevel}");
+                    sb.AppendLine($"Average Content Relevance: {competitiveIntel.AverageRelevance:F1}%");
+                    sb.AppendLine();
+                    sb.AppendLine("Top Content Creators in this space:");
+                    foreach (var domain in competitiveIntel.TopDomains.Take(5))
+                    {
+                        sb.AppendLine($"- {domain.Domain}: {domain.ContentCount} pieces (Avg Relevance: {domain.AverageRelevance:F1}%)");
+                    }
+                    sb.AppendLine();
+                    sb.AppendLine("Content Type Distribution:");
+                    foreach (var type in competitiveIntel.ContentTypeDistribution.OrderByDescending(kv => kv.Value).Take(5))
+                    {
+                        sb.AppendLine($"- {type.Key}: {type.Value} pieces");
+                    }
+                    sb.AppendLine();
+                    if (competitiveIntel.CommonKeywords.Any())
+                    {
+                        sb.AppendLine("Common Keywords (consider for SEO):");
+                        sb.AppendLine(string.Join(", ", competitiveIntel.CommonKeywords.Take(10).Select(kv => $"{kv.Key} ({kv.Value})")));
+                        sb.AppendLine();
+                    }
+                    sb.AppendLine("Use this intelligence to identify unique angles and avoid oversaturated approaches.");
+                    sb.AppendLine();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to gather competitive intelligence, continuing without competitive data");
+            }
         }
 
         sb.AppendLine("You must respond with ONLY valid JSON in this exact format:");
@@ -551,7 +690,7 @@ public class IdeationService
         return sb.ToString();
     }
 
-    private string BuildGapAnalysisPrompt(GapAnalysisRequest request)
+    private string BuildGapAnalysisPrompt(GapAnalysisRequest request, ContentGapAnalysisResult? webGapAnalysis = null)
     {
         var sb = new StringBuilder();
         sb.AppendLine("Analyze content gaps and opportunities.");
@@ -572,8 +711,53 @@ public class IdeationService
             sb.AppendLine($"Competitor topics: {string.Join(", ", request.CompetitorTopics)}");
         }
 
+        // Include real-time web intelligence if available
+        if (webGapAnalysis != null)
+        {
+            sb.AppendLine();
+            sb.AppendLine("=== REAL-TIME WEB INTELLIGENCE ===");
+            sb.AppendLine($"Content Gap Opportunity Score: {webGapAnalysis.OpportunityScore:F1}/100");
+            sb.AppendLine();
+            
+            if (webGapAnalysis.GapKeywords.Any())
+            {
+                sb.AppendLine("Identified Content Gaps (from current web search):");
+                foreach (var gap in webGapAnalysis.GapKeywords.Take(10))
+                {
+                    sb.AppendLine($"- {gap}");
+                }
+                sb.AppendLine();
+            }
+            
+            if (webGapAnalysis.OversaturatedTopics.Any())
+            {
+                sb.AppendLine("Oversaturated Topics (high competition, consider avoiding):");
+                foreach (var topic in webGapAnalysis.OversaturatedTopics.Take(10))
+                {
+                    sb.AppendLine($"- {topic}");
+                }
+                sb.AppendLine();
+            }
+            
+            if (webGapAnalysis.UniqueAngles.Any())
+            {
+                sb.AppendLine("Unique Content Angles (less explored approaches):");
+                foreach (var angle in webGapAnalysis.UniqueAngles.Take(5))
+                {
+                    sb.AppendLine($"- {angle}");
+                }
+                sb.AppendLine();
+            }
+            
+            if (webGapAnalysis.RecommendedFocus.Any())
+            {
+                sb.AppendLine($"Recommended Focus Areas: {string.Join(", ", webGapAnalysis.RecommendedFocus)}");
+                sb.AppendLine();
+            }
+        }
+
         sb.AppendLine();
-        sb.AppendLine("Identify:");
+        sb.AppendLine("Based on the above information, identify:");
         sb.AppendLine("1. Missing topics that should be covered");
         sb.AppendLine("2. High-opportunity topics with low competition");
         sb.AppendLine("3. Oversaturated topics to avoid");
@@ -1541,5 +1725,19 @@ public class IdeationService
         {
             return await _llmProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
         }
+    }
+
+    /// <summary>
+    /// Format a number with K/M/B suffixes for readability
+    /// </summary>
+    private static string FormatNumber(long number)
+    {
+        if (number >= 1_000_000_000)
+            return $"{number / 1_000_000_000.0:F1}B";
+        if (number >= 1_000_000)
+            return $"{number / 1_000_000.0:F1}M";
+        if (number >= 1_000)
+            return $"{number / 1_000.0:F1}K";
+        return number.ToString();
     }
 }

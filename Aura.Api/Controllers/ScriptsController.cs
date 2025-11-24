@@ -171,7 +171,8 @@ public class ScriptsController : ControllerBase
             Aura.Core.Models.LlmParameters? llmParams = null;
             if (request.Temperature.HasValue || request.TopP.HasValue || request.TopK.HasValue ||
                 request.MaxTokens.HasValue || request.FrequencyPenalty.HasValue ||
-                request.PresencePenalty.HasValue || request.StopSequences != null)
+                request.PresencePenalty.HasValue || request.StopSequences != null ||
+                !string.IsNullOrWhiteSpace(request.ModelOverride))
             {
                 llmParams = new Aura.Core.Models.LlmParameters(
                     Temperature: request.Temperature,
@@ -180,7 +181,8 @@ public class ScriptsController : ControllerBase
                     MaxTokens: request.MaxTokens,
                     FrequencyPenalty: request.FrequencyPenalty,
                     PresencePenalty: request.PresencePenalty,
-                    StopSequences: request.StopSequences);
+                    StopSequences: request.StopSequences,
+                    ModelOverride: request.ModelOverride);
             }
 
             var brief = new Brief(
@@ -219,19 +221,37 @@ public class ScriptsController : ControllerBase
             if (!result.Success || result.Script == null)
             {
                 _logger.LogWarning(
-                    "[{CorrelationId}] Script generation failed: {ErrorCode} - {ErrorMessage}",
-                    correlationId, result.ErrorCode, result.ErrorMessage);
+                    "[{CorrelationId}] Script generation failed: {ErrorCode} - {ErrorMessage}, ProviderUsed: {Provider}, IsFallback: {IsFallback}",
+                    correlationId, result.ErrorCode, result.ErrorMessage, result.ProviderUsed ?? "None", result.IsFallback);
+
+                // Provide more helpful error messages based on error code
+                var errorDetail = result.ErrorMessage ?? "Failed to generate script";
+                if (result.ErrorCode == "E306")
+                {
+                    errorDetail = "Ollama service is not running. Please start Ollama or select a different provider.";
+                }
+                else if (result.ErrorCode == "E300" && result.ProviderUsed == null)
+                {
+                    errorDetail = "All LLM providers failed. Please ensure at least one provider (Ollama, OpenAI, Gemini, or RuleBased) is available and configured.";
+                }
+                else if (result.IsFallback)
+                {
+                    errorDetail = $"{errorDetail} (Fell back from {result.RequestedProvider ?? "requested provider"})";
+                }
 
                 return StatusCode(500, new ProblemDetails
                 {
                     Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E300",
                     Title = "Script Generation Failed",
                     Status = 500,
-                    Detail = result.ErrorMessage ?? "Failed to generate script",
+                    Detail = errorDetail,
                     Extensions =
                     {
                         ["correlationId"] = correlationId,
-                        ["errorCode"] = result.ErrorCode
+                        ["errorCode"] = result.ErrorCode,
+                        ["providerUsed"] = result.ProviderUsed ?? "None",
+                        ["isFallback"] = result.IsFallback,
+                        ["requestedProvider"] = result.RequestedProvider ?? "None"
                     }
                 });
             }

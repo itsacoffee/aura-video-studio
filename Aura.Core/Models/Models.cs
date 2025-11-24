@@ -15,7 +15,8 @@ public record LlmParameters(
     int? MaxTokens = null,
     double? FrequencyPenalty = null,
     double? PresencePenalty = null,
-    List<string>? StopSequences = null);
+    List<string>? StopSequences = null,
+    string? ModelOverride = null);
 
 /// <summary>
 /// Brief configuration for video generation with optional prompt customization

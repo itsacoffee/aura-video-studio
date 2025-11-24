@@ -345,21 +345,31 @@ export const VideoCreationWizard: FC = () => {
     const loadProviders = async () => {
       try {
         const response = await listProviders();
-        const llmProviders = response.providers.filter((p) => 
-          p.name === 'RuleBased' || 
-          p.name === 'Ollama' || 
-          p.name === 'OpenAI' || 
-          p.name === 'Gemini' ||
-          p.name === 'Anthropic'
-        );
+        // Normalize provider names to handle "Ollama (model)" format
+        const normalizeProviderName = (name: string) => {
+          const parenIndex = name.indexOf('(');
+          return parenIndex > 0 ? name.substring(0, parenIndex).trim() : name.trim();
+        };
+
+        const llmProviders = response.providers.filter((p) => {
+          const normalized = normalizeProviderName(p.name);
+          return normalized === 'RuleBased' || 
+            normalized === 'Ollama' || 
+            normalized === 'OpenAI' || 
+            normalized === 'Gemini' ||
+            normalized === 'Anthropic';
+        });
         setAvailableLlmProviders(llmProviders.map(p => ({
           name: p.name,
           isAvailable: p.isAvailable,
           tier: p.tier,
         })));
         
-        // Prefer Ollama if available (exact name match), otherwise use first available
-        const ollamaProvider = llmProviders.find((p) => p.isAvailable && p.name === 'Ollama');
+        // Prefer Ollama if available (check normalized name), otherwise use first available
+        const ollamaProvider = llmProviders.find((p) => {
+          const normalized = normalizeProviderName(p.name);
+          return p.isAvailable && normalized === 'Ollama';
+        });
         if (ollamaProvider) {
           console.info('[VideoCreationWizard] Ollama is available, selecting it as default');
           setSelectedLlmProvider(ollamaProvider.name);
@@ -489,14 +499,24 @@ export const VideoCreationWizard: FC = () => {
                     </Option>
                   ))}
                 </Dropdown>
-                {selectedLlmProvider && selectedLlmProvider !== 'Auto' && (
-                  <Badge 
-                    color={availableLlmProviders.find(p => p.name === selectedLlmProvider)?.isAvailable ? 'success' : 'subtle'}
-                    size="small"
-                  >
-                    {availableLlmProviders.find(p => p.name === selectedLlmProvider)?.isAvailable ? 'Active' : 'Unavailable'}
-                  </Badge>
-                )}
+                {selectedLlmProvider && selectedLlmProvider !== 'Auto' && (() => {
+                  // Normalize provider name for comparison (handle "Ollama (model)" format)
+                  const normalizeProviderName = (name: string) => {
+                    const parenIndex = name.indexOf('(');
+                    return parenIndex > 0 ? name.substring(0, parenIndex).trim() : name.trim();
+                  };
+                  const selectedNormalized = normalizeProviderName(selectedLlmProvider);
+                  const provider = availableLlmProviders.find(p => normalizeProviderName(p.name) === selectedNormalized);
+                  const isAvailable = provider?.isAvailable ?? false;
+                  return (
+                    <Badge 
+                      color={isAvailable ? 'success' : 'subtle'}
+                      size="small"
+                    >
+                      {isAvailable ? 'Active' : 'Unavailable'}
+                    </Badge>
+                  );
+                })()}
               </div>
             </Tooltip>
           )}

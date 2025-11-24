@@ -122,14 +122,26 @@ public class AdaptiveContentGenerator
                         "Generated content quality ({Score:F1}) below threshold ({Threshold})",
                         qualityAnalysis.OverallScore, settings.MinimumQualityThreshold);
                     
+                    // Generate improvement suggestions based on quality analysis
+                    var improvementSuggestions = GenerateImprovementSuggestions(qualityAnalysis, workingBrief);
+                    
                     result.Success = false;
                     result.Message = $"Quality score {qualityAnalysis.OverallScore:F1} below threshold {settings.MinimumQualityThreshold}";
                     result.SuggestRegeneration = true;
+                    result.ImprovementSuggestions = improvementSuggestions;
+                    result.QualityIssues = qualityAnalysis.Issues;
                     
                     // Record failure for learning
                     await RecordOutcomeAsync(false, result.QualityScore, stopwatch.Elapsed, settings, ct).ConfigureAwait(false);
                     
                     return result;
+                }
+                
+                // Even if quality passes, provide improvement suggestions for optimization
+                if (qualityAnalysis.OverallScore < 85.0 && qualityAnalysis.Issues.Any())
+                {
+                    result.ImprovementSuggestions = GenerateImprovementSuggestions(qualityAnalysis, workingBrief);
+                    _logger.LogInformation("Quality passed but improvement suggestions available for optimization");
                 }
             }
             else
@@ -222,6 +234,67 @@ public class AdaptiveContentGenerator
             return await _llmProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
         }
     }
+
+    /// <summary>
+    /// Generate intelligent improvement suggestions based on quality analysis
+    /// </summary>
+    private List<string> GenerateImprovementSuggestions(
+        ContentQualityAnalysis analysis,
+        Brief brief)
+    {
+        var suggestions = new List<string>();
+
+        // Prioritize suggestions based on score gaps
+        if (analysis.AuthenticityScore < 70)
+        {
+            suggestions.Add($"Improve authenticity (current: {analysis.AuthenticityScore:F1}/100): " +
+                          "Rewrite flagged sections to sound more natural, use varied sentence structures, " +
+                          "and include personal touches or relatable examples.");
+        }
+
+        if (analysis.EngagementScore < 70)
+        {
+            suggestions.Add($"Enhance engagement (current: {analysis.EngagementScore:F1}/100): " +
+                          "Strengthen the hook, add pattern interrupts, include emotional peaks, " +
+                          "and ensure clear value propositions throughout.");
+        }
+
+        if (analysis.ValueScore < 70)
+        {
+            suggestions.Add($"Increase value (current: {analysis.ValueScore:F1}/100): " +
+                          "Add more specific examples, concrete data points, actionable takeaways, " +
+                          "and deeper insights relevant to the topic.");
+        }
+
+        if (analysis.PacingScore < 70)
+        {
+            suggestions.Add($"Improve pacing (current: {analysis.PacingScore:F1}/100): " +
+                          "Vary sentence length, adjust rhythm, add strategic pauses, " +
+                          "and ensure natural flow between sections.");
+        }
+
+        if (analysis.OriginalityScore < 70)
+        {
+            suggestions.Add($"Enhance originality (current: {analysis.OriginalityScore:F1}/100): " +
+                          "Replace generic phrases with specific, unique language. " +
+                          "Avoid clichés and add fresh perspectives or unique angles.");
+        }
+
+        // Add specific suggestions from analysis
+        if (analysis.Suggestions.Any())
+        {
+            suggestions.AddRange(analysis.Suggestions.Take(3));
+        }
+
+        // Add topic-specific suggestions
+        if (!string.IsNullOrWhiteSpace(brief.Topic))
+        {
+            suggestions.Add($"Consider adding more specific examples related to '{brief.Topic}' " +
+                          "to make the content more concrete and valuable.");
+        }
+
+        return suggestions.Distinct().ToList();
+    }
 }
 
 /// <summary>
@@ -235,6 +308,8 @@ public record AdaptiveGenerationResult
     public string? Message { get; set; }
     public string? GeneratedContent { get; set; }
     public bool OptimizationApplied { get; set; }
+    public List<string>? ImprovementSuggestions { get; set; }
+    public List<string>? QualityIssues { get; set; }
     public PredictionResult? Prediction { get; set; }
     public List<string>? PromptEnhancements { get; set; }
     public ContentQualityAnalysis? QualityAnalysis { get; set; }

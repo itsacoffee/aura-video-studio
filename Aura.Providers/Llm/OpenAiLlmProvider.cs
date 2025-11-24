@@ -106,7 +106,11 @@ public class OpenAiLlmProvider : ILlmProvider
 
     public async Task<string> DraftScriptAsync(Brief brief, PlanSpec spec, CancellationToken ct)
     {
-        _logger.LogInformation("Generating high-quality script with OpenAI (model: {Model}) for topic: {Topic}", _model, brief.Topic);
+        // Use model override from LlmParameters if provided, otherwise use default model
+        var modelToUse = !string.IsNullOrWhiteSpace(brief.LlmParameters?.ModelOverride) 
+            ? brief.LlmParameters.ModelOverride 
+            : _model;
+        _logger.LogInformation("Generating high-quality script with OpenAI (model: {Model}) for topic: {Topic}", modelToUse, brief.Topic);
 
         var startTime = DateTime.UtcNow;
         Exception? lastException = null;
@@ -125,7 +129,7 @@ public class OpenAiLlmProvider : ILlmProvider
 
                 // Build enhanced prompts for quality content with user customizations
                 string systemPrompt = EnhancedPromptTemplates.GetSystemPromptForScriptGeneration();
-                string userPrompt = _promptCustomizationService.BuildCustomizedPrompt(brief, spec, brief.PromptModifiers);
+                string userPrompt = await _promptCustomizationService.BuildCustomizedPromptAsync(brief, spec, brief.PromptModifiers, ct).ConfigureAwait(false);
 
                 // Apply enhancement callback if configured
                 if (PromptEnhancementCallback != null)
@@ -145,7 +149,7 @@ public class OpenAiLlmProvider : ILlmProvider
                 // Call OpenAI API with proper format
                 var requestBody = new Dictionary<string, object>
                 {
-                    { "model", _model },
+                    { "model", modelToUse },
                     { "messages", new[]
                         {
                             new { role = "system", content = systemPrompt },
@@ -357,7 +361,7 @@ public class OpenAiLlmProvider : ILlmProvider
 
                 // Build enhanced prompts for quality content with user customizations
                 string systemPrompt = EnhancedPromptTemplates.GetSystemPromptForScriptGeneration();
-                string userPrompt = _promptCustomizationService.BuildCustomizedPrompt(brief, spec, brief.PromptModifiers);
+                string userPrompt = await _promptCustomizationService.BuildCustomizedPromptAsync(brief, spec, brief.PromptModifiers, ct).ConfigureAwait(false);
 
                 // Apply enhancement callback if configured
                 if (PromptEnhancementCallback != null)
@@ -1818,7 +1822,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
 
         // Build enhanced prompts
         string systemPrompt = EnhancedPromptTemplates.GetSystemPromptForScriptGeneration();
-        string userPrompt = _promptCustomizationService.BuildCustomizedPrompt(brief, spec, brief.PromptModifiers);
+        string userPrompt = await _promptCustomizationService.BuildCustomizedPromptAsync(brief, spec, brief.PromptModifiers, ct).ConfigureAwait(false);
 
         // Apply enhancement callback if configured
         if (PromptEnhancementCallback != null)

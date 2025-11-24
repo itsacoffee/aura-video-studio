@@ -65,27 +65,21 @@ public class ScriptOrchestrator
 
     private Dictionary<string, ILlmProvider> GetProviders()
     {
+        // If using factory delegate pattern, always call it to get fresh providers
+        // This enables dynamic provider refresh (e.g., when Ollama becomes available)
+        if (_providerFactory != null)
+        {
+            _logger.LogDebug("Refreshing LLM providers from factory (supports dynamic Ollama detection)");
+            return _providerFactory();
+        }
+
+        // If using pre-created providers pattern (backward compatibility), return cached value
         if (_providers != null)
         {
             return _providers;
         }
 
-        if (_providerFactory == null)
-        {
-            throw new InvalidOperationException("No providers or provider factory configured");
-        }
-
-        lock (_lock)
-        {
-            if (_providers != null)
-            {
-                return _providers;
-            }
-
-            _logger.LogDebug("Lazily initializing LLM providers on first use");
-            _providers = _providerFactory();
-            return _providers;
-        }
+        throw new InvalidOperationException("No providers or provider factory configured");
     }
 
     /// <summary>
@@ -125,13 +119,13 @@ public class ScriptOrchestrator
     /// Uses the deterministic ResolveLlm method for provider selection.
     /// </summary>
     public async Task<ScriptResult> GenerateScriptDeterministicAsync(
-        Brief brief, 
-        PlanSpec spec, 
+        Brief brief,
+        PlanSpec spec,
         string preferredTier,
         bool offlineOnly,
         CancellationToken ct)
     {
-        _logger.LogInformation("Starting deterministic script generation for topic: {Topic}, preferredTier: {Tier}, offlineOnly: {OfflineOnly}", 
+        _logger.LogInformation("Starting deterministic script generation for topic: {Topic}, preferredTier: {Tier}, offlineOnly: {OfflineOnly}",
             brief.Topic, preferredTier, offlineOnly);
 
         // Wait for Ollama detection to complete before selecting providers
@@ -159,9 +153,9 @@ public class ScriptOrchestrator
 
         // Try the selected provider
         var result = await TryGenerateWithProviderAsync(
-            brief, 
-            spec, 
-            decision.ProviderName, 
+            brief,
+            spec,
+            decision.ProviderName,
             decision.IsFallback,
             requestedProvider,
             decision.FallbackFrom,
@@ -177,23 +171,23 @@ public class ScriptOrchestrator
         if (currentIndex >= 0 && currentIndex < decision.DowngradeChain.Length - 1)
         {
             var primaryFailureReason = result.ErrorMessage ?? "Provider failed";
-            _logger.LogWarning("Primary provider {Provider} failed, attempting fallback chain: {Reason}", 
+            _logger.LogWarning("Primary provider {Provider} failed, attempting fallback chain: {Reason}",
                 decision.ProviderName, primaryFailureReason);
-            
+
             // Try remaining providers in chain
             for (int i = currentIndex + 1; i < decision.DowngradeChain.Length; i++)
             {
                 var fallbackProvider = decision.DowngradeChain[i];
                 _logger.LogInformation("Falling back to {Provider}", fallbackProvider);
-                
+
                 result = await TryGenerateWithProviderAsync(
-                    brief, spec, fallbackProvider, true, requestedProvider, 
-                    $"Primary provider {decision.ProviderName} failed: {primaryFailureReason}", 
+                    brief, spec, fallbackProvider, true, requestedProvider,
+                    $"Primary provider {decision.ProviderName} failed: {primaryFailureReason}",
                     ct).ConfigureAwait(false);
-                    
+
                 if (result.Success)
                 {
-                    _logger.LogWarning("Successfully downgraded from {Requested} to {Actual}", 
+                    _logger.LogWarning("Successfully downgraded from {Requested} to {Actual}",
                         requestedProvider, result.ProviderUsed);
                     return result;
                 }
@@ -210,7 +204,7 @@ public class ScriptOrchestrator
                 ct).ConfigureAwait(false);
             if (result.Success)
             {
-                _logger.LogWarning("Successfully downgraded from {Requested} to {Actual} (final fallback)", 
+                _logger.LogWarning("Successfully downgraded from {Requested} to {Actual} (final fallback)",
                     requestedProvider, result.ProviderUsed);
                 return result;
             }
@@ -220,15 +214,28 @@ public class ScriptOrchestrator
             }
         }
 
-        // All providers failed
+        // All providers failed - provide detailed error message
+        var providers = GetProviders();
+        var errorMessage = "All LLM providers failed to generate script. ";
+        if (providers.Count == 0)
+        {
+            errorMessage += "No LLM providers are available. Please configure at least one provider (Ollama, OpenAI, Gemini, or RuleBased).";
+        }
+        else
+        {
+            var availableProviders = string.Join(", ", providers.Keys);
+            errorMessage += $"Available providers ({providers.Count}): {availableProviders}. All attempts failed.";
+        }
+
         return new ScriptResult
         {
             Success = false,
             ErrorCode = "E300",
-            ErrorMessage = "All LLM providers failed to generate script",
+            ErrorMessage = errorMessage,
             Script = null,
             ProviderUsed = null,
-            IsFallback = false
+            IsFallback = false,
+            RequestedProvider = requestedProvider
         };
     }
 
@@ -236,13 +243,13 @@ public class ScriptOrchestrator
     /// Generate a script using the appropriate provider based on tier and availability
     /// </summary>
     public async Task<ScriptResult> GenerateScriptAsync(
-        Brief brief, 
-        PlanSpec spec, 
+        Brief brief,
+        PlanSpec spec,
         string preferredTier,
         bool offlineOnly,
         CancellationToken ct)
     {
-        _logger.LogInformation("Starting script generation for topic: {Topic}, preferredTier: {Tier}, offlineOnly: {OfflineOnly}", 
+        _logger.LogInformation("Starting script generation for topic: {Topic}, preferredTier: {Tier}, offlineOnly: {OfflineOnly}",
             brief.Topic, preferredTier, offlineOnly);
 
         // Wait for Ollama detection to complete before selecting providers
@@ -252,7 +259,7 @@ public class ScriptOrchestrator
         if (offlineOnly && (preferredTier == "Pro" || preferredTier == "ProIfAvailable"))
         {
             _logger.LogWarning("Pro providers requested but system is in OfflineOnly mode (E307)");
-            
+
             if (preferredTier == "Pro")
             {
                 return new ScriptResult
@@ -265,23 +272,26 @@ public class ScriptOrchestrator
                     IsFallback = false
                 };
             }
-            
+
             // ProIfAvailable downgrades gracefully
             _logger.LogInformation("ProIfAvailable downgrading to Free providers due to OfflineOnly mode");
             preferredTier = "Free";
         }
 
+        // Get fresh provider list (factory delegate ensures we get latest providers)
+        var providers = GetProviders();
+
         // Select provider
-        var selection = _providerMixer.SelectLlmProvider(GetProviders(), preferredTier);
+        var selection = _providerMixer.SelectLlmProvider(providers, preferredTier);
         _providerMixer.LogSelection(selection);
 
         var requestedProvider = selection.SelectedProvider;
 
         // Try primary provider
         var result = await TryGenerateWithProviderAsync(
-            brief, 
-            spec, 
-            selection.SelectedProvider, 
+            brief,
+            spec,
+            selection.SelectedProvider,
             selection.IsFallback,
             requestedProvider,
             null,
@@ -295,20 +305,23 @@ public class ScriptOrchestrator
         // If primary provider failed, try fallback chain (always enabled for now)
         {
             var primaryFailureReason = result.ErrorMessage ?? "Provider failed";
-            _logger.LogWarning("Primary provider {Provider} failed, attempting fallback: {Reason}", 
+            _logger.LogWarning("Primary provider {Provider} failed, attempting fallback: {Reason}",
                 selection.SelectedProvider, primaryFailureReason);
-            
+
+            // Refresh providers in case Ollama became available
+            providers = GetProviders();
+
             // Try Ollama if not already tried
-            if (selection.SelectedProvider != "Ollama" && GetProviders().ContainsKey("Ollama"))
+            if (selection.SelectedProvider != "Ollama" && providers.ContainsKey("Ollama"))
             {
                 _logger.LogInformation("Falling back to Ollama");
                 result = await TryGenerateWithProviderAsync(
-                    brief, spec, "Ollama", true, requestedProvider, 
-                    $"Primary provider {requestedProvider} failed: {primaryFailureReason}", 
+                    brief, spec, "Ollama", true, requestedProvider,
+                    $"Primary provider {requestedProvider} failed: {primaryFailureReason}",
                     ct).ConfigureAwait(false);
                 if (result.Success)
                 {
-                    _logger.LogWarning("Successfully downgraded from {Requested} to {Actual}", 
+                    _logger.LogWarning("Successfully downgraded from {Requested} to {Actual}",
                         requestedProvider, result.ProviderUsed);
                     return result;
                 }
@@ -325,7 +338,7 @@ public class ScriptOrchestrator
                     ct).ConfigureAwait(false);
                 if (result.Success)
                 {
-                    _logger.LogWarning("Successfully downgraded from {Requested} to {Actual} (final fallback)", 
+                    _logger.LogWarning("Successfully downgraded from {Requested} to {Actual} (final fallback)",
                         requestedProvider, result.ProviderUsed);
                     return result;
                 }
@@ -374,7 +387,7 @@ public class ScriptOrchestrator
                         var createLoggerMethod = typeof(LoggerFactoryExtensions)
                             .GetMethods()
                             .FirstOrDefault(m => m.Name == "CreateLogger" && m.IsGenericMethod && m.GetParameters().Length == 1);
-                        
+
                         if (createLoggerMethod != null)
                         {
                             var genericMethod = createLoggerMethod.MakeGenericMethod(type);
@@ -464,6 +477,36 @@ public class ScriptOrchestrator
             };
         }
 
+        // For Ollama, check availability before attempting generation
+        // This prevents wasting time on a provider that's not actually running
+        if (providerName == "Ollama" && provider is Aura.Providers.Llm.OllamaLlmProvider ollamaProvider)
+        {
+            try
+            {
+                var isAvailable = await ollamaProvider.IsServiceAvailableAsync(ct).ConfigureAwait(false);
+                if (!isAvailable)
+                {
+                    _logger.LogWarning("Ollama provider is not available (service not running)");
+                    return new ScriptResult
+                    {
+                        Success = false,
+                        ErrorCode = "E306",
+                        ErrorMessage = "Ollama service is not running. Please start Ollama or use another provider.",
+                        Script = null,
+                        ProviderUsed = providerName,
+                        IsFallback = isFallback,
+                        RequestedProvider = requestedProvider,
+                        DowngradeReason = downgradeReason
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to check Ollama availability, proceeding anyway");
+                // Continue - the provider's DraftScriptAsync will handle the error
+            }
+        }
+
         try
         {
             _logger.LogInformation("=== Attempting script generation with provider: {Provider} ===", providerName);
@@ -487,7 +530,7 @@ public class ScriptOrchestrator
                 };
             }
 
-            _logger.LogInformation("Successfully generated script with {Provider} ({Length} chars)", 
+            _logger.LogInformation("Successfully generated script with {Provider} ({Length} chars)",
                 providerName, script.Length);
 
             return new ScriptResult
@@ -585,7 +628,7 @@ public class ScriptOrchestrator
 
 /// <summary>
 /// Result of script generation attempt
-/// 
+///
 /// Error Codes:
 /// - E300: General script provider failure
 /// - E301: Request timeout or cancellation
@@ -603,12 +646,12 @@ public record ScriptResult
     public string? Script { get; init; }
     public string? ProviderUsed { get; init; }
     public bool IsFallback { get; init; }
-    
+
     /// <summary>
     /// The provider that was originally requested (if different from ProviderUsed due to fallback)
     /// </summary>
     public string? RequestedProvider { get; init; }
-    
+
     /// <summary>
     /// Reason for downgrade/fallback if one occurred
     /// </summary>

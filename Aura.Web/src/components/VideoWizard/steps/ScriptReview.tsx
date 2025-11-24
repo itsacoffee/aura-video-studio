@@ -308,6 +308,9 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
   const [llmMaxTokens, setLlmMaxTokens] = useState<number | undefined>(undefined);
   const [llmFrequencyPenalty, setLlmFrequencyPenalty] = useState<number | undefined>(undefined);
   const [llmPresencePenalty, setLlmPresencePenalty] = useState<number | undefined>(undefined);
+  // Model selection
+  const [selectedModel, setSelectedModel] = useState<string | undefined>(undefined);
+  const [isRefreshingModels, setIsRefreshingModels] = useState(false);
 
   // Helper function to determine provider parameter support
   const getProviderParameterSupport = (providerName: string | undefined) => {
@@ -423,29 +426,58 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
 
       // Only auto-select if no external provider is set
       if (externalSelectedProvider === undefined) {
-        // Filter to only LLM providers (same list as VideoCreationWizard)
-        const llmProviders = response.providers.filter((p) =>
-          p.name === 'RuleBased' ||
-          p.name === 'Ollama' ||
-          p.name === 'OpenAI' ||
-          p.name === 'Gemini' ||
-          p.name === 'Anthropic'
-        );
+          // Filter to only LLM providers (same list as VideoCreationWizard)
+          // Normalize provider names to handle "Ollama (model)" format
+          const normalizeProviderName = (name: string) => {
+            const parenIndex = name.indexOf('(');
+            return parenIndex > 0 ? name.substring(0, parenIndex).trim() : name.trim();
+          };
 
-        // Prefer Ollama if available (exact name match), otherwise use first available provider
-        const ollamaProvider = llmProviders.find((p) => p.isAvailable && p.name === 'Ollama');
-        if (ollamaProvider) {
-          console.info('[ScriptReview] Ollama is available, selecting it as default');
-          setSelectedProvider(ollamaProvider.name);
-        } else {
-          const availableProvider = llmProviders.find((p) => p.isAvailable);
-          if (availableProvider) {
-            console.info('[ScriptReview] Ollama not available, selecting first available provider:', availableProvider.name);
-            setSelectedProvider(availableProvider.name);
+          const llmProviders = response.providers.filter((p) => {
+            const normalized = normalizeProviderName(p.name);
+            return normalized === 'RuleBased' ||
+              normalized === 'Ollama' ||
+              normalized === 'OpenAI' ||
+              normalized === 'Gemini' ||
+              normalized === 'Anthropic';
+          });
+
+          // Prefer Ollama if available (check normalized name), otherwise use first available provider
+          const ollamaProvider = llmProviders.find((p) => {
+            const normalized = normalizeProviderName(p.name);
+            return p.isAvailable && normalized === 'Ollama';
+          });
+          if (ollamaProvider) {
+            console.info('[ScriptReview] Ollama is available, selecting it as default');
+            setSelectedProvider(ollamaProvider.name);
+            // Set default model from provider
+            if (ollamaProvider.defaultModel) {
+              setSelectedModel(ollamaProvider.defaultModel);
+            }
+          } else {
+            const availableProvider = llmProviders.find((p) => p.isAvailable);
+            if (availableProvider) {
+              console.info('[ScriptReview] Ollama not available, selecting first available provider:', availableProvider.name);
+              setSelectedProvider(availableProvider.name);
+              // Set default model from provider
+              if (availableProvider.defaultModel) {
+                setSelectedModel(availableProvider.defaultModel);
+              }
+            }
           }
-        }
       } else {
         console.info('[ScriptReview] Using external provider selection:', externalSelectedProvider);
+        // Set model for external provider
+        const provider = response.providers.find((p) => {
+          const normalizeProviderName = (name: string) => {
+            const parenIndex = name.indexOf('(');
+            return parenIndex > 0 ? name.substring(0, parenIndex).trim() : name.trim();
+          };
+          return normalizeProviderName(p.name) === normalizeProviderName(externalSelectedProvider);
+        });
+        if (provider?.defaultModel) {
+          setSelectedModel(provider.defaultModel);
+        }
       }
     } catch (error) {
       console.error('Failed to load providers:', error);
@@ -455,6 +487,63 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
   useEffect(() => {
     loadProviders();
   }, [loadProviders]);
+
+  // Update selected model when provider changes
+  useEffect(() => {
+    if (selectedProvider && selectedProvider !== 'Auto') {
+      const normalizeProviderName = (name: string) => {
+        const parenIndex = name.indexOf('(');
+        return parenIndex > 0 ? name.substring(0, parenIndex).trim() : name.trim();
+      };
+      const provider = providers.find((p) => {
+        const normalized = normalizeProviderName(p.name);
+        const selectedNormalized = normalizeProviderName(selectedProvider);
+        return normalized === selectedNormalized;
+      });
+      if (provider) {
+        // If model is not set or current model is not in available models, use default
+        if (!selectedModel || (provider.availableModels.length > 0 && !provider.availableModels.includes(selectedModel))) {
+          setSelectedModel(provider.defaultModel);
+        }
+      }
+    }
+  }, [selectedProvider, providers, selectedModel]);
+
+  // Refresh Ollama models
+  const handleRefreshOllamaModels = useCallback(async () => {
+    const normalizeProviderName = (name: string) => {
+      const parenIndex = name.indexOf('(');
+      return parenIndex > 0 ? name.substring(0, parenIndex).trim() : name.trim();
+    };
+    const isOllama = selectedProvider && normalizeProviderName(selectedProvider) === 'Ollama';
+    
+    if (!isOllama) return;
+
+    setIsRefreshingModels(true);
+    try {
+      // Reload providers to get fresh Ollama model list
+      const response = await listProviders();
+      setProviders(response.providers);
+      
+      // Update selected model if current one is no longer available
+      const ollamaProvider = response.providers.find((p) => {
+        const normalized = normalizeProviderName(p.name);
+        return normalized === 'Ollama';
+      });
+      
+      if (ollamaProvider) {
+        if (!ollamaProvider.availableModels.includes(selectedModel || '')) {
+          setSelectedModel(ollamaProvider.defaultModel);
+        }
+      }
+      
+      console.info('[ScriptReview] Ollama models refreshed');
+    } catch (error) {
+      console.error('Failed to refresh Ollama models:', error);
+    } finally {
+      setIsRefreshingModels(false);
+    }
+  }, [selectedProvider, selectedModel]);
 
   useEffect(() => {
     if (generatedScript && generatedScript.scenes.length > 0) {
@@ -482,6 +571,28 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
 
     setIsGenerating(true);
     try {
+      // Normalize provider name to strip model info before sending to API
+      const normalizeProviderName = (name: string | undefined): string | undefined => {
+        if (!name || name === 'Auto') return undefined;
+        const parenIndex = name.indexOf('(');
+        return parenIndex > 0 ? name.substring(0, parenIndex).trim() : name.trim();
+      };
+
+      const currentProvider = providers.find((p) => {
+        const normalized = normalizeProviderName(p.name);
+        const selectedNormalized = normalizeProviderName(selectedProvider);
+        return normalized === selectedNormalized;
+      });
+
+      // Only include modelOverride if:
+      // 1. A model is selected
+      // 2. The provider supports multiple models (has more than 1 available model)
+      // 3. The selected model is different from the default
+      const shouldIncludeModel = selectedModel && 
+        currentProvider && 
+        currentProvider.availableModels.length > 1 &&
+        selectedModel !== currentProvider.defaultModel;
+
       const response = await generateScript({
         topic: briefData.topic,
         audience: briefData.targetAudience || 'General audience',
@@ -493,7 +604,8 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
         pacing: 'Conversational',
         density: 'Balanced',
         style: styleData?.visualStyle || 'Modern',
-        preferredProvider: selectedProvider && selectedProvider !== 'Auto' ? selectedProvider : undefined,
+        preferredProvider: normalizeProviderName(selectedProvider),
+        ...(shouldIncludeModel && { modelOverride: selectedModel }),
         // Advanced LLM parameters (only include if explicitly set)
         ...(llmTemperature !== undefined && { temperature: llmTemperature }),
         ...(llmTopP !== undefined && { topP: llmTopP }),
@@ -1068,6 +1180,71 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
                 <Spinner size="tiny" />
               )}
             </Field>
+            {/* Model Selection - Show if provider supports multiple models */}
+            {selectedProvider && selectedProvider !== 'Auto' && (() => {
+              const normalizeProviderName = (name: string) => {
+                const parenIndex = name.indexOf('(');
+                return parenIndex > 0 ? name.substring(0, parenIndex).trim() : name.trim();
+              };
+              const currentProvider = providers.find((p) => {
+                const normalized = normalizeProviderName(p.name);
+                const selectedNormalized = normalizeProviderName(selectedProvider);
+                return normalized === selectedNormalized;
+              });
+              const isOllama = currentProvider && normalizeProviderName(currentProvider.name) === 'Ollama';
+              const hasMultipleModels = currentProvider && currentProvider.availableModels.length > 1;
+
+              if (!hasMultipleModels) {
+                // Show current model even if only one available
+                return currentProvider ? (
+                  <Field label="Model">
+                    <Text size={300} style={{ color: tokens.colorNeutralForeground2 }}>
+                      {currentProvider.defaultModel}
+                    </Text>
+                  </Field>
+                ) : null;
+              }
+
+              return (
+                <Field label="Model">
+                  <div style={{ display: 'flex', gap: tokens.spacingHorizontalXS, alignItems: 'center' }}>
+                    <Dropdown
+                      value={selectedModel || currentProvider?.defaultModel || ''}
+                      onOptionSelect={(_, data) => {
+                        if (data.optionValue) {
+                          setSelectedModel(data.optionValue);
+                        }
+                      }}
+                      style={{ minWidth: '180px' }}
+                    >
+                      {currentProvider?.availableModels.map((model) => (
+                        <Option key={model} value={model} text={model}>
+                          {model}
+                          {model === currentProvider.defaultModel && (
+                            <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                              {' '}(default)
+                            </Text>
+                          )}
+                        </Option>
+                      ))}
+                    </Dropdown>
+                    {isOllama && (
+                      <Tooltip content="Refresh Ollama models list" relationship="label">
+                        <Button
+                          appearance="subtle"
+                          icon={<ArrowClockwise24Regular />}
+                          onClick={handleRefreshOllamaModels}
+                          disabled={isRefreshingModels}
+                          size="small"
+                        >
+                          {isRefreshingModels ? 'Refreshing...' : 'Refresh'}
+                        </Button>
+                      </Tooltip>
+                    )}
+                  </div>
+                </Field>
+              );
+            })()}
             <Button
               appearance="primary"
               icon={<Sparkle24Regular />}

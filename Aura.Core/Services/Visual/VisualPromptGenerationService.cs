@@ -250,6 +250,24 @@ public class VisualPromptGenerationService
         ILlmProvider llmProvider,
         CancellationToken ct)
     {
+        // Check if provider is available before attempting
+        if (llmProvider is Aura.Providers.Llm.OllamaLlmProvider ollamaProvider)
+        {
+            try
+            {
+                var isAvailable = await ollamaProvider.IsServiceAvailableAsync(ct).ConfigureAwait(false);
+                if (!isAvailable)
+                {
+                    _logger.LogWarning("Ollama provider is not available for visual prompt generation, using fallback");
+                    return null;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to check Ollama availability, proceeding anyway");
+            }
+        }
+
         for (int attempt = 0; attempt < _maxRetries; attempt++)
         {
             try
@@ -285,16 +303,25 @@ public class VisualPromptGenerationService
             {
                 _logger.LogWarning("Visual prompt generation timed out for scene {SceneIndex} (attempt {Attempt})",
                     scene.Index, attempt + 1);
+                if (attempt >= _maxRetries - 1)
+                {
+                    _logger.LogWarning("All retry attempts exhausted for visual prompt generation");
+                }
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Error generating visual prompt for scene {SceneIndex} (attempt {Attempt})",
                     scene.Index, attempt + 1);
+                if (attempt >= _maxRetries - 1)
+                {
+                    _logger.LogError(ex, "All retry attempts failed for visual prompt generation on scene {SceneIndex}",
+                        scene.Index);
+                }
             }
         }
 
-        _logger.LogWarning("Failed to generate visual prompt with LLM for scene {SceneIndex}, using fallback",
-            scene.Index);
+        _logger.LogWarning("Failed to generate visual prompt with LLM for scene {SceneIndex} after {MaxRetries} attempts, using fallback",
+            scene.Index, _maxRetries);
         return null;
     }
 

@@ -47,7 +47,7 @@ public class GeminiLlmProvider : ILlmProvider
         _model = model;
         _maxRetries = maxRetries;
         _timeout = TimeSpan.FromSeconds(timeoutSeconds);
-        
+
         // Create PromptCustomizationService if not provided (using logger factory pattern)
         if (promptCustomizationService == null)
         {
@@ -93,7 +93,11 @@ public class GeminiLlmProvider : ILlmProvider
 
     public async Task<string> DraftScriptAsync(Brief brief, PlanSpec spec, CancellationToken ct)
     {
-        _logger.LogInformation("Generating script with Gemini (model: {Model}) for topic: {Topic}", _model, brief.Topic);
+        // Use model override from LlmParameters if provided, otherwise use default model
+        var modelToUse = !string.IsNullOrWhiteSpace(brief.LlmParameters?.ModelOverride)
+            ? brief.LlmParameters.ModelOverride
+            : _model;
+        _logger.LogInformation("Generating script with Gemini (model: {Model}) for topic: {Topic}", modelToUse, brief.Topic);
 
         var startTime = DateTime.UtcNow;
         Exception? lastException = null;
@@ -112,7 +116,7 @@ public class GeminiLlmProvider : ILlmProvider
 
                 // Build enhanced prompt for quality content with user customizations
                 string systemPrompt = EnhancedPromptTemplates.GetSystemPromptForScriptGeneration();
-                string userPrompt = _promptCustomizationService.BuildCustomizedPrompt(brief, spec, brief.PromptModifiers);
+                string userPrompt = await _promptCustomizationService.BuildCustomizedPromptAsync(brief, spec, brief.PromptModifiers, ct).ConfigureAwait(false);
                 string prompt = $"{systemPrompt}\n\n{userPrompt}";
 
                 // Get LLM parameters from brief, with defaults
@@ -158,14 +162,14 @@ public class GeminiLlmProvider : ILlmProvider
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                 cts.CancelAfter(_timeout);
 
-                var url = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:generateContent?key={_apiKey}";
+                var url = $"https://generativelanguage.googleapis.com/v1beta/models/{modelToUse}:generateContent?key={_apiKey}";
                 var response = await _httpClient.PostAsync(url, content, cts.Token).ConfigureAwait(false);
-                
+
                 // Handle specific HTTP error codes
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-                    if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized || 
+                    if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized ||
                         response.StatusCode == System.Net.HttpStatusCode.Forbidden)
                     {
                         throw new InvalidOperationException(
@@ -205,7 +209,7 @@ public class GeminiLlmProvider : ILlmProvider
                 }
 
                 var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-                
+
                 // Parse and validate response structure
                 JsonDocument? responseDoc = null;
                 try
@@ -221,10 +225,10 @@ public class GeminiLlmProvider : ILlmProvider
                 // Check for API errors in response
                 if (responseDoc.RootElement.TryGetProperty("error", out var errorElement))
                 {
-                    var errorMessage = errorElement.TryGetProperty("message", out var msg) 
-                        ? msg.GetString() ?? "Unknown error" 
+                    var errorMessage = errorElement.TryGetProperty("message", out var msg)
+                        ? msg.GetString() ?? "Unknown error"
                         : "API error";
-                    
+
                     // Safely extract error code - Gemini may return code as int or string
                     int errorCode = 0;
                     if (errorElement.TryGetProperty("code", out var code))
@@ -246,7 +250,7 @@ public class GeminiLlmProvider : ILlmProvider
                         }
                         // If code is neither number nor string, errorCode remains 0
                     }
-                    
+
                     _logger.LogError("Gemini API error: Code {Code} - {Message}", errorCode, errorMessage);
                     throw new InvalidOperationException($"Gemini API error: {errorMessage}");
                 }
@@ -255,7 +259,7 @@ public class GeminiLlmProvider : ILlmProvider
                     candidates.GetArrayLength() > 0)
                 {
                     var firstCandidate = candidates[0];
-                    
+
                     // Check for finish reason (blocked content, etc.)
                     if (firstCandidate.TryGetProperty("finishReason", out var finishReason))
                     {
@@ -269,7 +273,7 @@ public class GeminiLlmProvider : ILlmProvider
                             }
                         }
                     }
-                    
+
                     if (firstCandidate.TryGetProperty("content", out var contentObj) &&
                         contentObj.TryGetProperty("parts", out var parts) &&
                         parts.GetArrayLength() > 0)
@@ -278,7 +282,7 @@ public class GeminiLlmProvider : ILlmProvider
                         if (firstPart.TryGetProperty("text", out var textProp))
                         {
                             string script = textProp.GetString() ?? string.Empty;
-                            
+
                             if (string.IsNullOrWhiteSpace(script))
                             {
                                 throw new InvalidOperationException("Gemini returned an empty response");
@@ -292,7 +296,7 @@ public class GeminiLlmProvider : ILlmProvider
                     }
                 }
 
-                _logger.LogWarning("Gemini response did not contain expected structure. Response: {Response}", 
+                _logger.LogWarning("Gemini response did not contain expected structure. Response: {Response}",
                     responseJson.Substring(0, Math.Min(500, responseJson.Length)));
                 throw new InvalidOperationException($"Invalid response structure from Gemini API. Expected 'candidates[0].content.parts[0].text' but got: {responseJson.Substring(0, Math.Min(200, responseJson.Length))}");
             }
@@ -417,7 +421,7 @@ public class GeminiLlmProvider : ILlmProvider
         {
             var systemPrompt = "You are a video pacing expert. Analyze scenes for optimal timing. " +
                               "Return your response ONLY as valid JSON with no additional text.";
-            
+
             var userPrompt = $@"Analyze this scene and return JSON with:
 - importance (0-100): How critical is this scene to the video's message
 - complexity (0-100): How complex is the information presented
@@ -480,7 +484,7 @@ Respond with ONLY the JSON object, no other text:";
                     if (firstPart.TryGetProperty("text", out var textProp))
                     {
                         var analysisText = textProp.GetString() ?? string.Empty;
-                        
+
                         try
                         {
                             // Clean up potential markdown code blocks
@@ -512,9 +516,9 @@ Respond with ONLY the JSON object, no other text:";
                                 Reasoning: root.TryGetProperty("reasoning", out var reas) ? reas.GetString() ?? "" : ""
                             );
 
-                            _logger.LogInformation("Scene analysis complete. Importance: {Importance}, Complexity: {Complexity}", 
+                            _logger.LogInformation("Scene analysis complete. Importance: {Importance}, Complexity: {Complexity}",
                                 result.Importance, result.Complexity);
-                            
+
                             return result;
                         }
                         catch (JsonException ex)
@@ -560,7 +564,7 @@ Respond with ONLY the JSON object, no other text:";
             var systemPrompt = "You are a professional cinematographer and visual director. " +
                               "Create detailed visual prompts for image generation. " +
                               "Return your response ONLY as valid JSON with no additional text.";
-            
+
             var userPrompt = $@"Create a detailed visual prompt for this scene and return JSON with:
 - detailedDescription (string): Detailed visual description (100-200 tokens) of what should be shown
 - compositionGuidelines (string): Composition rules (e.g., ""rule of thirds, leading lines"")
@@ -613,11 +617,11 @@ Respond with ONLY the JSON object, no other text:";
 
             var url = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:generateContent?key={_apiKey}";
             var response = await _httpClient.PostAsync(url, content, cts.Token).ConfigureAwait(false);
-            
+
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-                _logger.LogWarning("Gemini visual prompt generation failed: {StatusCode} - {Error}", 
+                _logger.LogWarning("Gemini visual prompt generation failed: {StatusCode} - {Error}",
                     response.StatusCode, errorContent);
                 return null;
             }
@@ -637,7 +641,7 @@ Respond with ONLY the JSON object, no other text:";
                     if (firstPart.TryGetProperty("text", out var textProp))
                     {
                         var promptText = textProp.GetString() ?? string.Empty;
-                        
+
                         try
                         {
                             var promptDoc = JsonDocument.Parse(promptText);
@@ -723,7 +727,7 @@ Respond with ONLY the JSON object, no other text:";
             var systemPrompt = "You are an expert in cognitive science and educational content analysis. " +
                               "Analyze the complexity of video content to optimize pacing for viewer comprehension. " +
                               "Return your response ONLY as valid JSON with no additional text.";
-            
+
             var userPrompt = $@"Analyze the cognitive complexity of this video scene content to optimize viewer comprehension and pacing.
 
 VIDEO GOAL: {videoGoal}
@@ -776,11 +780,11 @@ Respond with ONLY the JSON object, no other text:";
 
             var url = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:generateContent?key={_apiKey}";
             var response = await _httpClient.PostAsync(url, content, cts.Token).ConfigureAwait(false);
-            
+
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-                _logger.LogWarning("Gemini complexity analysis failed: {StatusCode} - {Error}", 
+                _logger.LogWarning("Gemini complexity analysis failed: {StatusCode} - {Error}",
                     response.StatusCode, errorContent);
                 return null;
             }
@@ -800,7 +804,7 @@ Respond with ONLY the JSON object, no other text:";
                     if (firstPart.TryGetProperty("text", out var textProp))
                     {
                         var analysisText = textProp.GetString() ?? string.Empty;
-                        
+
                         try
                         {
                             var analysisDoc = JsonDocument.Parse(analysisText);
@@ -898,7 +902,7 @@ Respond with ONLY the JSON object, no other text:";
         {
             var systemPrompt = "You are a narrative flow expert analyzing video scene transitions. " +
                               "Return your response ONLY as valid JSON with no additional text.";
-            
+
             var userPrompt = $@"Analyze the narrative coherence between these two consecutive scenes and return JSON with:
 - coherenceScore (0-100): How well scene B flows from scene A (0=no connection, 100=perfect flow)
 - connectionTypes (array of strings): Types of connections (choose from: ""causal"", ""thematic"", ""prerequisite"", ""callback"", ""sequential"", ""contrast"")
@@ -942,11 +946,11 @@ Respond with ONLY the JSON object, no other text:";
 
             var url = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:generateContent?key={_apiKey}";
             var response = await _httpClient.PostAsync(url, content, cts.Token).ConfigureAwait(false);
-            
+
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-                _logger.LogWarning("Gemini coherence analysis failed: {StatusCode} - {Error}", 
+                _logger.LogWarning("Gemini coherence analysis failed: {StatusCode} - {Error}",
                     response.StatusCode, errorContent);
                 return null;
             }
@@ -966,14 +970,14 @@ Respond with ONLY the JSON object, no other text:";
                     if (firstPart.TryGetProperty("text", out var textProp))
                     {
                         var analysisText = textProp.GetString() ?? string.Empty;
-                        
+
                         try
                         {
                             var analysisDoc = JsonDocument.Parse(analysisText);
                             var root = analysisDoc.RootElement;
 
                             var connectionTypes = new List<string>();
-                            if (root.TryGetProperty("connectionTypes", out var connTypes) && 
+                            if (root.TryGetProperty("connectionTypes", out var connTypes) &&
                                 connTypes.ValueKind == JsonValueKind.Array)
                             {
                                 connectionTypes = connTypes.EnumerateArray()
@@ -990,7 +994,7 @@ Respond with ONLY the JSON object, no other text:";
                             );
 
                             _logger.LogInformation("Scene coherence analysis complete. Score: {Score}", result.CoherenceScore);
-                            
+
                             return result;
                         }
                         catch (JsonException ex)
@@ -1034,9 +1038,9 @@ Respond with ONLY the JSON object, no other text:";
         {
             var systemPrompt = "You are a narrative structure expert analyzing video story arcs. " +
                               "Return your response ONLY as valid JSON with no additional text.";
-            
+
             var scenesText = string.Join("\n\n", sceneTexts.Select((s, i) => $"Scene {i + 1}: {s}"));
-            
+
             var expectedStructures = new Dictionary<string, string>
             {
                 { "educational", "problem → explanation → solution" },
@@ -1047,7 +1051,7 @@ Respond with ONLY the JSON object, no other text:";
             };
 
             var expectedStructure = expectedStructures.GetValueOrDefault(
-                videoType.ToLowerInvariant(), 
+                videoType.ToLowerInvariant(),
                 expectedStructures["general"]);
 
             var userPrompt = $@"Analyze the narrative arc of this {videoType} video and return JSON with:
@@ -1093,11 +1097,11 @@ Respond with ONLY the JSON object, no other text:";
 
             var url = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:generateContent?key={_apiKey}";
             var response = await _httpClient.PostAsync(url, content, cts.Token).ConfigureAwait(false);
-            
+
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-                _logger.LogWarning("Gemini narrative arc validation failed: {StatusCode} - {Error}", 
+                _logger.LogWarning("Gemini narrative arc validation failed: {StatusCode} - {Error}",
                     response.StatusCode, errorContent);
                 return null;
             }
@@ -1117,14 +1121,14 @@ Respond with ONLY the JSON object, no other text:";
                     if (firstPart.TryGetProperty("text", out var textProp))
                     {
                         var analysisText = textProp.GetString() ?? string.Empty;
-                        
+
                         try
                         {
                             var analysisDoc = JsonDocument.Parse(analysisText);
                             var root = analysisDoc.RootElement;
 
                             var structuralIssues = new List<string>();
-                            if (root.TryGetProperty("structuralIssues", out var issues) && 
+                            if (root.TryGetProperty("structuralIssues", out var issues) &&
                                 issues.ValueKind == JsonValueKind.Array)
                             {
                                 structuralIssues = issues.EnumerateArray()
@@ -1135,7 +1139,7 @@ Respond with ONLY the JSON object, no other text:";
                             }
 
                             var recommendations = new List<string>();
-                            if (root.TryGetProperty("recommendations", out var recs) && 
+                            if (root.TryGetProperty("recommendations", out var recs) &&
                                 recs.ValueKind == JsonValueKind.Array)
                             {
                                 recommendations = recs.EnumerateArray()
@@ -1155,7 +1159,7 @@ Respond with ONLY the JSON object, no other text:";
                             );
 
                             _logger.LogInformation("Narrative arc validation complete. Valid: {IsValid}", result.IsValid);
-                            
+
                             return result;
                         }
                         catch (JsonException ex)
@@ -1198,7 +1202,7 @@ Respond with ONLY the JSON object, no other text:";
         try
         {
             var systemPrompt = "You are a professional scriptwriter specializing in smooth scene transitions.";
-            
+
             var userPrompt = $@"Create a brief transition sentence or phrase (1-2 sentences maximum) to smoothly connect these two scenes:
 
 Scene A: {fromSceneText}
@@ -1207,7 +1211,7 @@ Scene B: {toSceneText}
 
 Video goal: {videoGoal}
 
-The transition should feel natural and help the viewer understand the connection between these scenes. 
+The transition should feel natural and help the viewer understand the connection between these scenes.
 Return ONLY the transition text, no explanations or additional commentary:";
 
             var prompt = $"{systemPrompt}\n\n{userPrompt}";
@@ -1239,11 +1243,11 @@ Return ONLY the transition text, no explanations or additional commentary:";
 
             var url = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:generateContent?key={_apiKey}";
             var response = await _httpClient.PostAsync(url, content, cts.Token).ConfigureAwait(false);
-            
+
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-                _logger.LogWarning("Gemini transition text generation failed: {StatusCode} - {Error}", 
+                _logger.LogWarning("Gemini transition text generation failed: {StatusCode} - {Error}",
                     response.StatusCode, errorContent);
                 return null;
             }
@@ -1263,7 +1267,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
                     if (firstPart.TryGetProperty("text", out var textProp))
                     {
                         var transitionText = textProp.GetString()?.Trim() ?? string.Empty;
-                        
+
                         if (!string.IsNullOrWhiteSpace(transitionText))
                         {
                             _logger.LogInformation("Generated transition text: {Text}", transitionText);
@@ -1320,11 +1324,11 @@ Return ONLY the transition text, no explanations or additional commentary:";
     /// Gemini streaming not yet implemented. Falls back to non-streaming DraftScriptAsync.
     /// </summary>
     public async IAsyncEnumerable<LlmStreamChunk> DraftScriptStreamAsync(
-        Brief brief, 
-        PlanSpec spec, 
+        Brief brief,
+        PlanSpec spec,
         [EnumeratorCancellation] CancellationToken ct = default)
     {
-        _logger.LogInformation("Starting streaming script generation with Gemini (model: {Model}) for topic: {Topic}", 
+        _logger.LogInformation("Starting streaming script generation with Gemini (model: {Model}) for topic: {Topic}",
             _model, brief.Topic);
 
         var startTime = DateTime.UtcNow;
@@ -1332,7 +1336,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
 
         // Build enhanced prompt
         string systemPrompt = EnhancedPromptTemplates.GetSystemPromptForScriptGeneration();
-        string userPrompt = _promptCustomizationService.BuildCustomizedPrompt(brief, spec, brief.PromptModifiers);
+        string userPrompt = await _promptCustomizationService.BuildCustomizedPromptAsync(brief, spec, brief.PromptModifiers, ct).ConfigureAwait(false);
         string prompt = $"{systemPrompt}\n\n{userPrompt}";
 
         // Create streaming request
@@ -1413,7 +1417,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
             while (!reader.EndOfStream && !ct.IsCancellationRequested)
             {
                 var line = await reader.ReadLineAsync().ConfigureAwait(false);
-                
+
                 if (string.IsNullOrWhiteSpace(line) || !line.StartsWith("data: "))
                 {
                     continue;
@@ -1440,16 +1444,16 @@ Return ONLY the transition text, no explanations or additional commentary:";
                         candidates.GetArrayLength() > 0)
                     {
                         var firstCandidate = candidates[0];
-                        
+
                         // Check finish reason
                         if (firstCandidate.TryGetProperty("finishReason", out var finishReasonElement))
                         {
                             finishReason = finishReasonElement.GetString();
-                            
+
                             // Final chunk
                             var duration = DateTime.UtcNow - startTime;
-                            var timeToFirstToken = firstTokenTime.HasValue 
-                                ? (firstTokenTime.Value - startTime).TotalMilliseconds 
+                            var timeToFirstToken = firstTokenTime.HasValue
+                                ? (firstTokenTime.Value - startTime).TotalMilliseconds
                                 : 0;
                             var tokensPerSec = tokenIndex > 0 && duration.TotalSeconds > 0
                                 ? tokenIndex / duration.TotalSeconds
@@ -1476,7 +1480,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
                             };
                             break;
                         }
-                        
+
                         // Extract text from content parts
                         if (firstCandidate.TryGetProperty("content", out var contentObj) &&
                             contentObj.TryGetProperty("parts", out var parts) &&

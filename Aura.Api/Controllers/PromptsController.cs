@@ -38,7 +38,9 @@ public class PromptsController : ControllerBase
     [HttpPost("preview")]
     [ProducesResponseType(typeof(PromptPreviewResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public ActionResult<PromptPreviewResponse> GetPromptPreview([FromBody] PromptPreviewRequest request)
+    public async Task<ActionResult<PromptPreviewResponse>> GetPromptPreview(
+        [FromBody] PromptPreviewRequest request,
+        CancellationToken ct = default)
     {
         _logger.LogInformation("Generating prompt preview for topic: {Topic}, CorrelationId: {CorrelationId}",
             request.Topic, HttpContext.TraceIdentifier);
@@ -60,7 +62,7 @@ public class PromptsController : ControllerBase
                 Density: MapDensity(request.Density),
                 Style: request.Style);
 
-            var preview = _promptService.GeneratePreview(brief, planSpec, brief.PromptModifiers);
+            var preview = await _promptService.GeneratePreviewAsync(brief, planSpec, brief.PromptModifiers, ct).ConfigureAwait(false);
 
             var response = new PromptPreviewResponse(
                 SystemPrompt: preview.SystemPrompt,

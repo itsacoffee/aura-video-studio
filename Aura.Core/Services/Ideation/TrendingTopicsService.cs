@@ -26,6 +26,7 @@ public class TrendingTopicsService
     private readonly LlmStageAdapter? _stageAdapter;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IMemoryCache _cache;
+    private readonly WebSearchService? _webSearchService;
 
     private const string CacheKeyPrefix = "trending_topics_";
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(30);
@@ -50,13 +51,15 @@ public class TrendingTopicsService
         ILlmProvider llmProvider,
         IHttpClientFactory httpClientFactory,
         IMemoryCache cache,
-        LlmStageAdapter? stageAdapter = null)
+        LlmStageAdapter? stageAdapter = null,
+        WebSearchService? webSearchService = null)
     {
         _logger = logger;
         _llmProvider = llmProvider;
         _stageAdapter = stageAdapter;
         _httpClientFactory = httpClientFactory;
         _cache = cache;
+        _webSearchService = webSearchService;
     }
 
     /// <summary>
@@ -92,40 +95,85 @@ public class TrendingTopicsService
     }
 
     /// <summary>
-    /// Fetch trending topics from multiple data sources
+    /// Fetch trending topics from multiple data sources with real-time web search
     /// </summary>
     private async Task<List<TrendingTopic>> FetchTrendingTopicsFromSourcesAsync(
         string? niche,
         int maxResults,
         CancellationToken ct)
     {
-        await Task.CompletedTask;
         var topics = new List<TrendingTopic>();
 
-        // For this implementation, we'll use a combination of approaches:
-        // 1. Generate intelligent trending topics based on niche
-        // 2. In production, this would integrate with:
-        //    - Google Trends API (requires API key)
-        //    - YouTube Data API (requires API key)
-        //    - Twitter/X API (requires API key)
-        //    - Reddit API (free, no key needed)
-        //    - NewsAPI (free tier available)
-
-        // Generate contextual trending topics based on niche
+        // Generate contextual trending topics based on niche (fallback)
         topics.AddRange(GenerateNicheSpecificTopics(niche, maxResults));
 
-        // Simulate fetching from external sources (placeholder for real API integration)
-        // In production, uncomment and implement:
-        // var redditTopics = await FetchFromRedditAsync(niche, ct);
-        // var newsTopics = await FetchFromNewsApiAsync(niche, ct);
-        // topics.AddRange(redditTopics);
-        // topics.AddRange(newsTopics);
+        // Fetch real-time trending data from web search if available
+        if (_webSearchService != null)
+        {
+            try
+            {
+                var searchQuery = niche != null ? $"trending {niche} topics" : "trending topics";
+                var trendingResults = await _webSearchService.SearchTrendsAsync(searchQuery, maxResults, ct).ConfigureAwait(false);
+                
+                if (trendingResults.Count > 0)
+                {
+                    _logger.LogInformation("Retrieved {Count} trending topics from web search", trendingResults.Count);
+                    
+                    // Convert web search results to trending topics
+                    var webTopics = trendingResults.Select((result, index) => new TrendingTopic(
+                        TopicId: Guid.NewGuid().ToString(),
+                        Topic: result.Title,
+                        TrendScore: result.TrendScore,
+                        SearchVolume: "High", // Web search results indicate high search volume
+                        Competition: "Medium",
+                        Seasonality: "Current",
+                        Lifecycle: "Rising",
+                        RelatedTopics: ExtractRelatedTopics(result.Snippet),
+                        DetectedAt: DateTime.UtcNow,
+                        TrendVelocity: result.TrendScore - 50, // Normalize trend score
+                        EstimatedAudience: (long)(result.TrendScore * 10000) // Rough estimate
+                    )).ToList();
+                    
+                    // Merge with generated topics, prioritizing web search results
+                    topics = webTopics
+                        .Concat(topics.Where(t => !webTopics.Any(wt => wt.Topic.Equals(t.Topic, StringComparison.OrdinalIgnoreCase))))
+                        .OrderByDescending(t => t.TrendScore)
+                        .Take(maxResults)
+                        .ToList();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to fetch trending topics from web search, using generated topics");
+            }
+        }
 
         // Sort by trend score and take top results
         return topics
             .OrderByDescending(t => t.TrendScore)
             .Take(maxResults)
             .ToList();
+    }
+
+    /// <summary>
+    /// Extract related topics from snippet text
+    /// </summary>
+    private List<string> ExtractRelatedTopics(string snippet)
+    {
+        // Simple extraction - look for capitalized words and common topic patterns
+        var words = snippet.Split(new[] { ' ', '.', ',', '!', '?', ':', ';' }, StringSplitOptions.RemoveEmptyEntries);
+        var topics = new List<string>();
+        
+        foreach (var word in words)
+        {
+            var cleanWord = word.Trim();
+            if (cleanWord.Length > 4 && char.IsUpper(cleanWord[0]))
+            {
+                topics.Add(cleanWord);
+            }
+        }
+        
+        return topics.Distinct().Take(5).ToList();
     }
 
     /// <summary>

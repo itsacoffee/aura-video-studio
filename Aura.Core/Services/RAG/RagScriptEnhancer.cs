@@ -45,7 +45,9 @@ public class RagScriptEnhancer
                 "Enhancing brief with RAG context: Topic={Topic}, TopK={TopK}, MinScore={MinScore}",
                 brief.Topic, brief.RagConfiguration.TopK, brief.RagConfiguration.MinimumScore);
 
-            var query = BuildRagQuery(brief);
+            // Use query expansion for better retrieval
+            var queryVariations = BuildRagQueryVariations(brief);
+            _logger.LogInformation("Using {Count} query variations for RAG retrieval", queryVariations.Count);
 
             var ragConfig = new RagConfig
             {
@@ -56,11 +58,77 @@ public class RagScriptEnhancer
                 IncludeCitations = brief.RagConfiguration.IncludeCitations
             };
 
-            var ragContext = await _contextBuilder.BuildContextAsync(query, ragConfig, ct).ConfigureAwait(false);
+            // Build context from multiple query variations and merge results for better coverage
+            var allChunks = new System.Collections.Generic.Dictionary<string, Aura.Core.Models.RAG.ContextChunk>();
+            var allCitations = new System.Collections.Generic.Dictionary<string, Aura.Core.Models.RAG.Citation>();
+            var citationNumber = 1;
+
+            foreach (var query in queryVariations)
+            {
+                try
+                {
+                    var context = await _contextBuilder.BuildContextAsync(query, ragConfig, ct).ConfigureAwait(false);
+                    
+                    // Merge chunks, avoiding duplicates by content hash
+                    foreach (var chunk in context.Chunks)
+                    {
+                        var chunkKey = $"{chunk.Source}_{chunk.Section}_{chunk.PageNumber}_{chunk.Content.GetHashCode()}";
+                        if (!allChunks.ContainsKey(chunkKey))
+                        {
+                            allChunks[chunkKey] = chunk;
+                            
+                            // Map citations
+                            var citationKey = $"{chunk.Source}_{chunk.Section}_{chunk.PageNumber}";
+                            if (!allCitations.ContainsKey(citationKey))
+                            {
+                                allCitations[citationKey] = new Aura.Core.Models.RAG.Citation
+                                {
+                                    Number = citationNumber++,
+                                    Source = chunk.Source,
+                                    Section = chunk.Section,
+                                    PageNumber = chunk.PageNumber
+                                };
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to retrieve context for query variation: {Query}", query);
+                }
+            }
+
+            // Re-rank chunks by relevance score and take top K
+            var topChunks = allChunks.Values
+                .OrderByDescending(c => c.RelevanceScore)
+                .Take(brief.RagConfiguration.TopK)
+                .ToList();
+
+            // Update citation numbers in chunks
+            var citationMap = allCitations.ToDictionary(c => $"{c.Value.Source}_{c.Value.Section}_{c.Value.PageNumber}", c => c.Value.Number);
+            var updatedChunks = topChunks.Select(chunk =>
+            {
+                var citationKey = $"{chunk.Source}_{chunk.Section}_{chunk.PageNumber}";
+                var newCitationNumber = citationMap.ContainsKey(citationKey) ? citationMap[citationKey] : 1;
+                return chunk with { CitationNumber = newCitationNumber };
+            }).ToList();
+
+            // Build merged RAG context
+            var formattedContext = FormatMergedContext(updatedChunks, allCitations.Values.ToList(), ragConfig.IncludeCitations);
+            var totalTokens = EstimateTokenCount(formattedContext);
+
+            var ragContext = new Aura.Core.Models.RAG.RagContext
+            {
+                Query = BuildRagQuery(brief),
+                Chunks = updatedChunks,
+                Citations = allCitations.Values.OrderBy(c => c.Number).ToList(),
+                FormattedContext = formattedContext,
+                TotalTokens = totalTokens
+            };
 
             if (ragContext.Chunks.Count == 0)
             {
-                _logger.LogWarning("No relevant RAG context found for query: {Query}", query);
+                _logger.LogWarning("No relevant RAG context found for query: {Query}", ragContext.Query);
                 return (brief, ragContext);
             }
 
@@ -80,7 +148,7 @@ public class RagScriptEnhancer
     }
 
     /// <summary>
-    /// Builds a search query from the brief for RAG retrieval
+    /// Builds a search query from the brief for RAG retrieval with intelligent expansion
     /// </summary>
     private string BuildRagQuery(Brief brief)
     {
@@ -96,7 +164,53 @@ public class RagScriptEnhancer
             queryParts.Add($"for {brief.Audience}");
         }
 
+        // Add key terms from topic for better retrieval
+        var topicWords = brief.Topic.Split(new[] { ' ', ',', '.', '!', '?' }, StringSplitOptions.RemoveEmptyEntries)
+            .Where(w => w.Length > 3) // Filter out short words
+            .Take(5); // Take top 5 meaningful words
+        
+        queryParts.AddRange(topicWords);
+
         return string.Join(" ", queryParts);
+    }
+
+    /// <summary>
+    /// Builds multiple query variations for better RAG retrieval (query expansion)
+    /// </summary>
+    private System.Collections.Generic.List<string> BuildRagQueryVariations(Brief brief)
+    {
+        var queries = new System.Collections.Generic.List<string>();
+        
+        // Base query
+        queries.Add(BuildRagQuery(brief));
+        
+        // Topic-focused query
+        queries.Add(brief.Topic);
+        
+        // Goal-focused query
+        if (!string.IsNullOrWhiteSpace(brief.Goal))
+        {
+            queries.Add($"{brief.Topic} {brief.Goal}");
+        }
+        
+        // Audience-specific query
+        if (!string.IsNullOrWhiteSpace(brief.Audience))
+        {
+            queries.Add($"{brief.Topic} {brief.Audience}");
+        }
+        
+        // Extract key concepts from topic
+        var topicWords = brief.Topic.Split(new[] { ' ', ',', '.', '!', '?' }, StringSplitOptions.RemoveEmptyEntries)
+            .Where(w => w.Length > 4)
+            .Distinct()
+            .Take(3);
+        
+        if (topicWords.Any())
+        {
+            queries.Add(string.Join(" ", topicWords));
+        }
+
+        return queries.Distinct().ToList();
     }
 
     /// <summary>
@@ -205,5 +319,61 @@ public class RagScriptEnhancer
         }
 
         return (script, warnings);
+    }
+
+    /// <summary>
+    /// Formats merged context from multiple query variations
+    /// </summary>
+    private string FormatMergedContext(
+        System.Collections.Generic.List<Aura.Core.Models.RAG.ContextChunk> chunks,
+        System.Collections.Generic.List<Aura.Core.Models.RAG.Citation> citations,
+        bool includeCitations)
+    {
+        var instructions = new System.Text.StringBuilder();
+
+        instructions.AppendLine("# Reference Material");
+        instructions.AppendLine();
+        instructions.AppendLine("The following information has been retrieved from project documents using multiple query variations for comprehensive coverage. " +
+                              "Use this material to ground your script. Ensure all factual claims are supported by these sources and include citations.");
+        instructions.AppendLine();
+
+        for (int i = 0; i < chunks.Count; i++)
+        {
+            var chunk = chunks[i];
+
+            instructions.AppendLine($"## Reference {i + 1}");
+
+            if (includeCitations)
+            {
+                instructions.Append($"Source: {chunk.Source}");
+
+                if (!string.IsNullOrEmpty(chunk.Section))
+                {
+                    instructions.Append($" - Section: {chunk.Section}");
+                }
+
+                if (chunk.PageNumber.HasValue)
+                {
+                    instructions.Append($" - Page: {chunk.PageNumber}");
+                }
+
+                instructions.AppendLine($" [Citation {chunk.CitationNumber}]");
+            }
+
+            instructions.AppendLine();
+            instructions.AppendLine(chunk.Content);
+            instructions.AppendLine();
+        }
+
+        return instructions.ToString();
+    }
+
+    /// <summary>
+    /// Estimate token count for chunks
+    /// </summary>
+    private int EstimateTokenCount(System.Collections.Generic.List<Aura.Core.Models.RAG.ContextChunk> chunks)
+    {
+        var totalChars = chunks.Sum(c => c.Content.Length);
+        return totalChars / 4; // Rough approximation: 4 chars per token
     }
 }
