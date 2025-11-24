@@ -280,10 +280,47 @@ public class ScriptOrchestrator
 
         // Get fresh provider list (factory delegate ensures we get latest providers)
         var providers = GetProviders();
+        
+        // Log available providers for debugging
+        _logger.LogInformation("Available LLM providers: {Providers}", string.Join(", ", providers.Keys));
+        
+        // If Ollama was specifically requested, verify it's in the dictionary
+        if (preferredTier == "Ollama" && !providers.ContainsKey("Ollama"))
+        {
+            _logger.LogError("Ollama was requested but is not in the providers dictionary. Available: {Providers}", 
+                string.Join(", ", providers.Keys));
+            return new ScriptResult
+            {
+                Success = false,
+                ErrorCode = "E308",
+                ErrorMessage = "Ollama provider is not registered. Please ensure Ollama is properly configured.",
+                Script = null,
+                ProviderUsed = null,
+                IsFallback = false,
+                RequestedProvider = preferredTier
+            };
+        }
 
         // Select provider
         var selection = _providerMixer.SelectLlmProvider(providers, preferredTier);
         _providerMixer.LogSelection(selection);
+
+        // If provider selection returned "None", it means the requested provider isn't available
+        if (selection.SelectedProvider == "None")
+        {
+            _logger.LogError("Requested provider '{Provider}' is not available. Reason: {Reason}", 
+                preferredTier, selection.Reason);
+            return new ScriptResult
+            {
+                Success = false,
+                ErrorCode = "E308",
+                ErrorMessage = selection.Reason ?? $"Requested provider '{preferredTier}' is not available. Please ensure the provider is properly configured and running.",
+                Script = null,
+                ProviderUsed = null,
+                IsFallback = false,
+                RequestedProvider = preferredTier
+            };
+        }
 
         var requestedProvider = selection.SelectedProvider;
 
@@ -302,7 +339,21 @@ public class ScriptOrchestrator
             return result;
         }
 
-        // If primary provider failed, try fallback chain (always enabled for now)
+        // If a specific provider was explicitly requested (not a tier), don't fall back
+        // Return the error so user knows their requested provider isn't available
+        var isSpecificProviderRequest = preferredTier != "Pro" && 
+                                       preferredTier != "ProIfAvailable" && 
+                                       preferredTier != "Free" &&
+                                       !string.IsNullOrWhiteSpace(preferredTier);
+        
+        if (isSpecificProviderRequest)
+        {
+            _logger.LogError("Requested provider '{Provider}' failed and will not fall back. Error: {Error}", 
+                preferredTier, result.ErrorMessage);
+            return result; // Return the error instead of falling back
+        }
+
+        // If primary provider failed, try fallback chain (only for tier-based requests)
         {
             var primaryFailureReason = result.ErrorMessage ?? "Provider failed";
             _logger.LogWarning("Primary provider {Provider} failed, attempting fallback: {Reason}",

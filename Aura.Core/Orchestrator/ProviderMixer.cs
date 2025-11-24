@@ -188,8 +188,18 @@ public class ProviderMixer
                 };
             }
 
-            _logger.LogWarning("✗ Requested provider {Provider} (normalized: {Normalized}) not available in registry. Available: {Available}. Falling back to tier logic",
+            // For specific provider requests, don't silently fall back - return error selection
+            // This ensures users know when their requested provider isn't available
+            _logger.LogError("✗ CRITICAL: Requested provider {Provider} (normalized: {Normalized}) not available in registry. Available: {Available}",
                 preferredTier, normalizedName, string.Join(", ", availableProviders.Keys));
+            
+            return new ProviderSelection
+            {
+                Stage = stage,
+                SelectedProvider = "None",
+                Reason = $"Requested provider '{normalizedName}' is not available. Available providers: {string.Join(", ", availableProviders.Keys)}",
+                IsFallback = false
+            };
         }
 
         // Try Pro providers first if requested

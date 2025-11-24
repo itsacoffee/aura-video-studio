@@ -546,7 +546,7 @@ export const VideoCreationWizard: FC = () => {
               label="Advanced Mode"
             />
           </div>
-          <CostEstimator wizardData={wizardData} />
+          <CostEstimator wizardData={wizardData} selectedLlmProvider={selectedLlmProvider} />
           <Tooltip content="Save progress and exit" relationship="label">
             <Button
               appearance="subtle"

@@ -1,19 +1,19 @@
 import {
-  makeStyles,
-  tokens,
-  Text,
   Badge,
-  Popover,
-  PopoverTrigger,
-  PopoverSurface,
   Button,
-  Title3,
   Divider,
+  makeStyles,
+  Popover,
+  PopoverSurface,
+  PopoverTrigger,
+  Text,
+  Title3,
+  tokens,
 } from '@fluentui/react-components';
 import { Money24Regular, Warning24Regular } from '@fluentui/react-icons';
-import { useMemo } from 'react';
 import type { FC } from 'react';
-import type { WizardData, CostBreakdown } from './types';
+import { useMemo } from 'react';
+import type { CostBreakdown, WizardData } from './types';
 
 const useStyles = makeStyles({
   trigger: {
@@ -69,6 +69,7 @@ const useStyles = makeStyles({
 
 interface CostEstimatorProps {
   wizardData: WizardData;
+  selectedLlmProvider?: string;
   budgetLimit?: number;
 }
 
@@ -76,23 +77,33 @@ const COST_RATES = {
   llm: {
     OpenAI: { inputTokens: 0.0015 / 1000, outputTokens: 0.002 / 1000 },
     Claude: { inputTokens: 0.008 / 1000, outputTokens: 0.024 / 1000 },
+    Anthropic: { inputTokens: 0.008 / 1000, outputTokens: 0.024 / 1000 },
+    Gemini: { inputTokens: 0.0005 / 1000, outputTokens: 0.0015 / 1000 },
+    Azure: { inputTokens: 0.0015 / 1000, outputTokens: 0.002 / 1000 },
     Ollama: { inputTokens: 0, outputTokens: 0 },
+    RuleBased: { inputTokens: 0, outputTokens: 0 },
   },
   tts: {
     ElevenLabs: 0.00018,
     PlayHT: 0.00012,
     Windows: 0,
     Piper: 0,
+    Mimic3: 0,
   },
   images: {
     StableDiffusion: 0,
     DALLE: 0.02,
+    'DALL-E3': 0.02,
     Midjourney: 0.04,
     Stock: 0,
+    Pexels: 0,
+    Pixabay: 0,
+    Unsplash: 0,
+    PlaceholderImages: 0,
   },
 };
 
-export const CostEstimator: FC<CostEstimatorProps> = ({ wizardData, budgetLimit = 5.0 }) => {
+export const CostEstimator: FC<CostEstimatorProps> = ({ wizardData, selectedLlmProvider, budgetLimit = 5.0 }) => {
   const styles = useStyles();
 
   const costBreakdown = useMemo((): CostBreakdown => {
@@ -103,18 +114,40 @@ export const CostEstimator: FC<CostEstimatorProps> = ({ wizardData, budgetLimit 
     const sceneCount = wizardData.script.scenes.length || Math.ceil(wizardData.brief.duration / 10);
     const audioCharacters = scriptLength || 500;
 
-    const llmCost = (estimatedTokens * 0.002) / 1000;
+    // Determine which LLM provider is being used
+    // Check script metadata first (from actual generation), then selected provider, then default to free
+    // Script metadata is the most accurate as it reflects what was actually used
+    const scriptMetadata = (wizardData.script as any)?.metadata;
+    const llmProviderName = scriptMetadata?.providerName ||
+                           selectedLlmProvider?.split('(')[0]?.trim() ||
+                           'Ollama';
+
+    // Normalize provider name (handle "Ollama (qwen3:4b)" -> "Ollama")
+    const normalizedProvider = llmProviderName.split('(')[0].trim();
+    const llmRates = COST_RATES.llm[normalizedProvider as keyof typeof COST_RATES.llm] ||
+                    COST_RATES.llm.Ollama; // Default to free if unknown
+
+    // Calculate LLM cost based on actual provider rates
+    // Assume 50/50 input/output token split
+    const llmInputCost = (estimatedTokens * 0.5) * (llmRates.inputTokens || 0);
+    const llmOutputCost = (estimatedTokens * 0.5) * (llmRates.outputTokens || 0);
+    const llmCost = llmInputCost + llmOutputCost;
+
     if (llmCost > 0) {
+      // Calculate average cost per token accounting for 50/50 split
+      // This ensures units * costPerUnit = actual cost
+      const averageCostPerToken = 0.5 * ((llmRates.inputTokens || 0) + (llmRates.outputTokens || 0));
+
       breakdown.push({
-        provider: 'LLM',
+        provider: normalizedProvider,
         service: 'Script Generation',
         units: estimatedTokens,
-        costPerUnit: 0.002 / 1000,
+        costPerUnit: averageCostPerToken,
         subtotal: llmCost,
       });
     }
 
-    const ttsRate = COST_RATES.tts[wizardData.style.voiceProvider] || 0;
+    const ttsRate = COST_RATES.tts[wizardData.style.voiceProvider as keyof typeof COST_RATES.tts] || 0;
     const ttsCost = audioCharacters * ttsRate;
     if (ttsCost > 0) {
       breakdown.push({
@@ -126,7 +159,12 @@ export const CostEstimator: FC<CostEstimatorProps> = ({ wizardData, budgetLimit 
       });
     }
 
-    const imageGenerationCost = sceneCount * 0.02;
+    // Only charge for image generation if using paid services (not stock/placeholder)
+    // Check visual style to determine if using stock images (free) or AI generation (paid)
+    const usesStockImages = wizardData.style.visualStyle === 'stock' ||
+                           wizardData.style.visualStyle === 'placeholder' ||
+                           !wizardData.style.visualStyle; // Default to free
+    const imageGenerationCost = usesStockImages ? 0 : sceneCount * 0.02;
     if (imageGenerationCost > 0) {
       breakdown.push({
         provider: 'Image Generation',
@@ -146,7 +184,7 @@ export const CostEstimator: FC<CostEstimatorProps> = ({ wizardData, budgetLimit 
       totalCost,
       breakdown,
     };
-  }, [wizardData]);
+  }, [wizardData, selectedLlmProvider]);
 
   const exceedsBudget = costBreakdown.totalCost > budgetLimit;
 

@@ -5,20 +5,20 @@
  */
 
 import {
-  makeStyles,
-  tokens,
-  Card,
-  Title3,
-  Text,
   Button,
+  Card,
+  makeStyles,
   Spinner,
+  Text,
+  Title3,
+  tokens,
 } from '@fluentui/react-components';
 import {
+  ArrowSync24Regular,
   CheckmarkCircle24Filled,
   DismissCircle24Filled,
-  Warning24Filled,
   Settings24Regular,
-  ArrowSync24Regular,
+  Warning24Filled,
 } from '@fluentui/react-icons';
 import { useEffect, useState } from 'react';
 import type { ConfigurationStatus } from '../services/configurationStatusService';
@@ -210,12 +210,20 @@ export function ConfigurationStatusCard({
     },
     {
       id: 'apiKeys',
-      label: 'API Keys Validated',
-      detail: status.checks.providerValidated
-        ? 'All configured providers tested successfully'
+      label: status.checks.apiKeysValid
+        ? 'API Keys Validated'
         : status.checks.providerConfigured
-          ? 'API keys not yet validated (optional)'
-          : 'API keys not validated',
+          ? 'API Key Validation'
+          : 'API Keys',
+      detail: status.checks.apiKeysValid
+        ? status.details.configuredProviders.length > 0
+          ? `Validated: ${status.details.configuredProviders.join(', ')}`
+          : 'All configured providers tested successfully'
+        : status.checks.providerConfigured
+          ? status.details.configuredProviders.length > 0
+            ? `Configured but not validated: ${status.details.configuredProviders.join(', ')}. Validation is optional but recommended.`
+            : 'API keys configured but not yet validated (optional)'
+          : 'No API keys configured',
       status: status.checks.apiKeysValid
         ? 'success'
         : status.checks.providerConfigured
