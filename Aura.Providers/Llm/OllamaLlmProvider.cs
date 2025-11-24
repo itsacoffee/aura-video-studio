@@ -60,7 +60,7 @@ public class OllamaLlmProvider : ILlmProvider
         _model = model;
         _maxRetries = maxRetries;
         _timeout = TimeSpan.FromSeconds(timeoutSeconds);
-        
+
         // Create PromptCustomizationService if not provided (using logger factory pattern)
         if (promptCustomizationService == null)
         {
@@ -97,8 +97,8 @@ public class OllamaLlmProvider : ILlmProvider
     public async Task<string> DraftScriptAsync(Brief brief, PlanSpec spec, CancellationToken ct)
     {
         // Use model override from LlmParameters if provided, otherwise use default model
-        var modelToUse = !string.IsNullOrWhiteSpace(brief.LlmParameters?.ModelOverride) 
-            ? brief.LlmParameters.ModelOverride 
+        var modelToUse = !string.IsNullOrWhiteSpace(brief.LlmParameters?.ModelOverride)
+            ? brief.LlmParameters.ModelOverride
             : _model;
         _logger.LogInformation("Generating script with Ollama (model: {Model}) at {BaseUrl} for topic: {Topic}", modelToUse, _baseUrl, brief.Topic);
 
@@ -107,13 +107,14 @@ public class OllamaLlmProvider : ILlmProvider
         if (!isAvailable)
         {
             var diagnosticMessage = await GetConnectionDiagnosticsAsync(ct).ConfigureAwait(false);
-            throw new InvalidOperationException(
-                $"Cannot connect to Ollama at {_baseUrl}. {diagnosticMessage}");
+            var errorMessage = $"Cannot connect to Ollama at {_baseUrl}. {diagnosticMessage}";
+            _logger.LogError("Ollama availability check failed. {ErrorMessage}", errorMessage);
+            throw new InvalidOperationException(errorMessage);
         }
 
         var startTime = DateTime.UtcNow;
         Exception? lastException = null;
-        
+
         for (int attempt = 0; attempt <= _maxRetries; attempt++)
         {
             try
@@ -127,13 +128,13 @@ public class OllamaLlmProvider : ILlmProvider
                 // Build enhanced prompt for quality content with user customizations
                 string systemPrompt = EnhancedPromptTemplates.GetSystemPromptForScriptGeneration();
                 string userPrompt = await _promptCustomizationService.BuildCustomizedPromptAsync(brief, spec, brief.PromptModifiers, ct).ConfigureAwait(false);
-                
+
                 // Apply enhancement callback if configured
                 if (PromptEnhancementCallback != null)
                 {
                     userPrompt = await PromptEnhancementCallback(userPrompt, brief, spec).ConfigureAwait(false);
                 }
-                
+
                 string prompt = $"{systemPrompt}\n\n{userPrompt}";
 
                 // Get LLM parameters from brief, with defaults
@@ -176,7 +177,7 @@ public class OllamaLlmProvider : ILlmProvider
                 response.EnsureSuccessStatusCode();
 
                 var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-                
+
                 // Parse and validate response structure
                 JsonDocument? responseDoc = null;
                 try
@@ -200,24 +201,24 @@ public class OllamaLlmProvider : ILlmProvider
                 if (responseDoc.RootElement.TryGetProperty("response", out var responseText))
                 {
                     string script = responseText.GetString() ?? string.Empty;
-                    
+
                     if (string.IsNullOrWhiteSpace(script))
                     {
                         throw new InvalidOperationException("Ollama returned an empty response");
                     }
-                    
+
                     var duration = DateTime.UtcNow - startTime;
-                    
-                    _logger.LogInformation("Script generated successfully with Ollama ({Length} characters) in {Duration}s", 
+
+                    _logger.LogInformation("Script generated successfully with Ollama ({Length} characters) in {Duration}s",
                         script.Length, duration.TotalSeconds);
-                    
+
                     // Track performance if callback configured
                     PerformanceTrackingCallback?.Invoke(75.0, duration, true);
-                    
+
                     return script;
                 }
 
-                _logger.LogWarning("Ollama response did not contain expected 'response' field. Response: {Response}", 
+                _logger.LogWarning("Ollama response did not contain expected 'response' field. Response: {Response}",
                     responseJson.Substring(0, Math.Min(500, responseJson.Length)));
                 throw new InvalidOperationException($"Invalid response structure from Ollama. Expected 'response' field but got: {responseJson.Substring(0, Math.Min(200, responseJson.Length))}");
             }
@@ -263,7 +264,7 @@ public class OllamaLlmProvider : ILlmProvider
         var finalDuration = DateTime.UtcNow - startTime;
         PerformanceTrackingCallback?.Invoke(0, finalDuration, false);
         throw new InvalidOperationException(
-            $"Failed to generate script with Ollama at {_baseUrl} after {_maxRetries + 1} attempts. Please verify Ollama is running and model '{_model}' is available.", 
+            $"Failed to generate script with Ollama at {_baseUrl} after {_maxRetries + 1} attempts. Please verify Ollama is running and model '{_model}' is available.",
             lastException);
     }
 
@@ -330,7 +331,7 @@ public class OllamaLlmProvider : ILlmProvider
             // Build prompt for scene analysis
             var systemPrompt = "You are a video pacing expert. Analyze scenes for optimal timing. " +
                               "Return your response ONLY as valid JSON with no additional text.";
-            
+
             var userPrompt = $@"Analyze this scene and return JSON with:
 - importance (0-100): How critical is this scene to the video's message
 - complexity (0-100): How complex is the information presented
@@ -376,7 +377,7 @@ Respond with ONLY the JSON object, no other text:";
             if (responseDoc.RootElement.TryGetProperty("response", out var responseText))
             {
                 var analysisText = responseText.GetString() ?? string.Empty;
-                
+
                 // Try to parse the JSON response
                 try
                 {
@@ -393,9 +394,9 @@ Respond with ONLY the JSON object, no other text:";
                         Reasoning: root.TryGetProperty("reasoning", out var reas) ? reas.GetString() ?? "" : ""
                     );
 
-                    _logger.LogInformation("Scene analysis complete. Importance: {Importance}, Complexity: {Complexity}", 
+                    _logger.LogInformation("Scene analysis complete. Importance: {Importance}, Complexity: {Complexity}",
                         result.Importance, result.Complexity);
-                    
+
                     return result;
                 }
                 catch (JsonException ex)
@@ -439,7 +440,7 @@ Respond with ONLY the JSON object, no other text:";
             var systemPrompt = "You are a professional cinematographer and visual director. " +
                               "Create detailed visual prompts for image generation. " +
                               "Return your response ONLY as valid JSON with no additional text.";
-            
+
             var userPrompt = $@"Create a detailed visual prompt for this scene and return JSON with:
 - detailedDescription (string): Detailed visual description (100-200 tokens) of what should be shown
 - compositionGuidelines (string): Composition rules (e.g., ""rule of thirds, leading lines"")
@@ -493,7 +494,7 @@ Respond with ONLY the JSON object, no other text:";
             if (responseDoc.RootElement.TryGetProperty("response", out var responseText))
             {
                 var promptText = responseText.GetString() ?? string.Empty;
-                
+
                 try
                 {
                     var promptDoc = JsonDocument.Parse(promptText);
@@ -610,7 +611,7 @@ Respond with ONLY the JSON object, no other text:";
             if (responseDoc.RootElement.TryGetProperty("response", out var responseText))
             {
                 var messageContent = responseText.GetString();
-                
+
                 if (string.IsNullOrEmpty(messageContent))
                 {
                     _logger.LogWarning("Ollama returned empty complexity analysis");
@@ -661,7 +662,7 @@ Respond with ONLY the JSON object, no other text:";
         prompt.AppendLine();
         prompt.AppendLine("SCENE CONTENT:");
         prompt.AppendLine(sceneText);
-        
+
         if (!string.IsNullOrEmpty(previousSceneText))
         {
             prompt.AppendLine();
@@ -732,7 +733,7 @@ Respond with ONLY the JSON object, no other text:";
         {
             var systemPrompt = "You are a narrative flow expert analyzing video scene transitions. " +
                               "Return your response ONLY as valid JSON with no additional text.";
-            
+
             var userPrompt = $@"Analyze the narrative coherence between these two consecutive scenes and return JSON with:
 - coherenceScore (0-100): How well scene B flows from scene A (0=no connection, 100=perfect flow)
 - connectionTypes (array of strings): Types of connections (choose from: ""causal"", ""thematic"", ""prerequisite"", ""callback"", ""sequential"", ""contrast"")
@@ -777,14 +778,14 @@ Respond with ONLY the JSON object, no other text:";
             if (responseDoc.RootElement.TryGetProperty("response", out var responseText))
             {
                 var analysisText = responseText.GetString() ?? string.Empty;
-                
+
                 try
                 {
                     var analysisDoc = JsonDocument.Parse(analysisText);
                     var root = analysisDoc.RootElement;
 
                     var connectionTypes = new List<string>();
-                    if (root.TryGetProperty("connectionTypes", out var connTypes) && 
+                    if (root.TryGetProperty("connectionTypes", out var connTypes) &&
                         connTypes.ValueKind == JsonValueKind.Array)
                     {
                         connectionTypes = connTypes.EnumerateArray()
@@ -801,7 +802,7 @@ Respond with ONLY the JSON object, no other text:";
                     );
 
                     _logger.LogInformation("Scene coherence analysis complete. Score: {Score}", result.CoherenceScore);
-                    
+
                     return result;
                 }
                 catch (JsonException ex)
@@ -833,9 +834,9 @@ Respond with ONLY the JSON object, no other text:";
         {
             var systemPrompt = "You are a narrative structure expert analyzing video story arcs. " +
                               "Return your response ONLY as valid JSON with no additional text.";
-            
+
             var scenesText = string.Join("\n\n", sceneTexts.Select((s, i) => $"Scene {i + 1}: {s}"));
-            
+
             var expectedStructures = new Dictionary<string, string>
             {
                 { "educational", "problem → explanation → solution" },
@@ -846,7 +847,7 @@ Respond with ONLY the JSON object, no other text:";
             };
 
             var expectedStructure = expectedStructures.GetValueOrDefault(
-                videoType.ToLowerInvariant(), 
+                videoType.ToLowerInvariant(),
                 expectedStructures["general"]);
 
             var userPrompt = $@"Analyze the narrative arc of this {videoType} video and return JSON with:
@@ -893,14 +894,14 @@ Respond with ONLY the JSON object, no other text:";
             if (responseDoc.RootElement.TryGetProperty("response", out var responseText))
             {
                 var analysisText = responseText.GetString() ?? string.Empty;
-                
+
                 try
                 {
                     var analysisDoc = JsonDocument.Parse(analysisText);
                     var root = analysisDoc.RootElement;
 
                     var structuralIssues = new List<string>();
-                    if (root.TryGetProperty("structuralIssues", out var issues) && 
+                    if (root.TryGetProperty("structuralIssues", out var issues) &&
                         issues.ValueKind == JsonValueKind.Array)
                     {
                         structuralIssues = issues.EnumerateArray()
@@ -911,7 +912,7 @@ Respond with ONLY the JSON object, no other text:";
                     }
 
                     var recommendations = new List<string>();
-                    if (root.TryGetProperty("recommendations", out var recs) && 
+                    if (root.TryGetProperty("recommendations", out var recs) &&
                         recs.ValueKind == JsonValueKind.Array)
                     {
                         recommendations = recs.EnumerateArray()
@@ -931,7 +932,7 @@ Respond with ONLY the JSON object, no other text:";
                     );
 
                     _logger.LogInformation("Narrative arc validation complete. Valid: {IsValid}", result.IsValid);
-                    
+
                     return result;
                 }
                 catch (JsonException ex)
@@ -962,7 +963,7 @@ Respond with ONLY the JSON object, no other text:";
         try
         {
             var systemPrompt = "You are a professional scriptwriter specializing in smooth scene transitions.";
-            
+
             var userPrompt = $@"Create a brief transition sentence or phrase (1-2 sentences maximum) to smoothly connect these two scenes:
 
 Scene A: {fromSceneText}
@@ -971,7 +972,7 @@ Scene B: {toSceneText}
 
 Video goal: {videoGoal}
 
-The transition should feel natural and help the viewer understand the connection between these scenes. 
+The transition should feel natural and help the viewer understand the connection between these scenes.
 Return ONLY the transition text, no explanations or additional commentary:";
 
             var prompt = $"{systemPrompt}\n\n{userPrompt}";
@@ -1004,7 +1005,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
             if (responseDoc.RootElement.TryGetProperty("response", out var responseText))
             {
                 var transitionText = responseText.GetString()?.Trim() ?? string.Empty;
-                
+
                 if (!string.IsNullOrWhiteSpace(transitionText))
                 {
                     _logger.LogInformation("Generated transition text: {Text}", transitionText);
@@ -1033,42 +1034,54 @@ Return ONLY the transition text, no explanations or additional commentary:";
         {
             _logger.LogInformation("Checking Ollama service availability at {BaseUrl}", _baseUrl);
 
+            // Use HttpCompletionOption.ResponseHeadersRead to avoid waiting for full response body
+            // This makes the check faster and more reliable
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            // Increased timeout to 10 seconds to account for slow startup or model loading
-            cts.CancelAfter(TimeSpan.FromSeconds(10));
+            // Increased timeout to 15 seconds to account for slow startup or model loading
+            cts.CancelAfter(TimeSpan.FromSeconds(15));
 
             // Try /api/version first (lightweight endpoint)
             try
             {
-                var response = await _httpClient.GetAsync($"{_baseUrl}/api/version", cts.Token).ConfigureAwait(false);
-                
+                using var request = new HttpRequestMessage(HttpMethod.Get, $"{_baseUrl}/api/version");
+                using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cts.Token).ConfigureAwait(false);
+
                 if (response.IsSuccessStatusCode)
                 {
-                    _logger.LogInformation("Ollama service detected at {BaseUrl}", _baseUrl);
+                    _logger.LogInformation("Ollama service detected at {BaseUrl} via /api/version", _baseUrl);
                     return true;
                 }
 
                 _logger.LogWarning("Ollama /api/version endpoint returned status code {StatusCode}, trying /api/tags as fallback", response.StatusCode);
             }
-            catch (TaskCanceledException)
+            catch (TaskCanceledException ex)
             {
-                _logger.LogInformation("Ollama /api/version endpoint timed out, trying /api/tags as fallback");
+                _logger.LogInformation("Ollama /api/version endpoint timed out after 15s, trying /api/tags as fallback. Inner exception: {InnerException}", ex.InnerException?.Message);
             }
             catch (HttpRequestException ex)
             {
-                _logger.LogInformation("Ollama /api/version endpoint failed: {Message}, trying /api/tags as fallback", ex.Message);
+                // Log detailed connection error information
+                var innerException = ex.InnerException;
+                var errorDetails = $"HttpRequestException: {ex.Message}";
+                if (innerException != null)
+                {
+                    errorDetails += $", InnerException: {innerException.GetType().Name} - {innerException.Message}";
+                }
+                _logger.LogInformation("Ollama /api/version endpoint failed: {ErrorDetails}, trying /api/tags as fallback", errorDetails);
             }
             catch (Exception ex)
             {
-                _logger.LogInformation("Ollama /api/version endpoint error: {Message}, trying /api/tags as fallback", ex.Message);
+                _logger.LogInformation("Ollama /api/version endpoint error: {ExceptionType} - {Message}, trying /api/tags as fallback", ex.GetType().Name, ex.Message);
             }
 
             // Fallback to /api/tags if version endpoint failed for any reason (timeout, error status, or exception)
             try
             {
                 using var fallbackCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                fallbackCts.CancelAfter(TimeSpan.FromSeconds(5));
-                var tagsResponse = await _httpClient.GetAsync($"{_baseUrl}/api/tags", fallbackCts.Token).ConfigureAwait(false);
+                fallbackCts.CancelAfter(TimeSpan.FromSeconds(10));
+                using var fallbackRequest = new HttpRequestMessage(HttpMethod.Get, $"{_baseUrl}/api/tags");
+                using var tagsResponse = await _httpClient.SendAsync(fallbackRequest, HttpCompletionOption.ResponseHeadersRead, fallbackCts.Token).ConfigureAwait(false);
+
                 if (tagsResponse.IsSuccessStatusCode)
                 {
                     _logger.LogInformation("Ollama service detected at {BaseUrl} via /api/tags fallback", _baseUrl);
@@ -1076,21 +1089,50 @@ Return ONLY the transition text, no explanations or additional commentary:";
                 }
                 _logger.LogWarning("Ollama /api/tags fallback endpoint returned status code {StatusCode}", tagsResponse.StatusCode);
             }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogWarning("Ollama /api/tags fallback endpoint timed out after 10s. Inner exception: {InnerException}", ex.InnerException?.Message);
+            }
+            catch (HttpRequestException ex)
+            {
+                // Log detailed connection error information
+                var innerException = ex.InnerException;
+                var errorDetails = $"HttpRequestException: {ex.Message}";
+                if (innerException != null)
+                {
+                    errorDetails += $", InnerException: {innerException.GetType().Name} - {innerException.Message}";
+                    // Check for specific connection errors
+                    if (innerException.Message.Contains("No connection could be made") ||
+                        innerException.Message.Contains("Connection refused") ||
+                        innerException.Message.Contains("actively refused"))
+                    {
+                        _logger.LogWarning("Ollama connection refused at {BaseUrl}. Ensure Ollama is running: 'ollama serve'", _baseUrl);
+                    }
+                }
+                _logger.LogWarning("Ollama /api/tags fallback endpoint failed: {ErrorDetails}", errorDetails);
+            }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Ollama /api/tags fallback endpoint also failed");
+                _logger.LogWarning(ex, "Ollama /api/tags fallback endpoint error: {ExceptionType} - {Message}", ex.GetType().Name, ex.Message);
             }
 
+            _logger.LogWarning("Ollama service not available at {BaseUrl} after checking both /api/version and /api/tags", _baseUrl);
             return false;
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogInformation("Ollama service not available at {BaseUrl}: {Message}", _baseUrl, ex.Message);
+            var innerException = ex.InnerException;
+            var errorDetails = $"HttpRequestException: {ex.Message}";
+            if (innerException != null)
+            {
+                errorDetails += $", InnerException: {innerException.GetType().Name} - {innerException.Message}";
+            }
+            _logger.LogWarning("Ollama service not available at {BaseUrl}: {ErrorDetails}", _baseUrl, errorDetails);
             return false;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error checking Ollama service availability at {BaseUrl}", _baseUrl);
+            _logger.LogError(ex, "Error checking Ollama service availability at {BaseUrl}: {ExceptionType} - {Message}", _baseUrl, ex.GetType().Name, ex.Message);
             return false;
         }
     }
@@ -1123,7 +1165,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
                     var name = modelElement.TryGetProperty("name", out var nameProp)
                         ? nameProp.GetString() ?? ""
                         : "";
-                    
+
                     var size = modelElement.TryGetProperty("size", out var sizeProp)
                         ? sizeProp.GetInt64()
                         : 0;
@@ -1188,7 +1230,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
                 {
                     using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                     cts.CancelAfter(TimeSpan.FromSeconds(2));
-                    
+
                     var response = await _httpClient.GetAsync($"{endpoint}/api/version", cts.Token).ConfigureAwait(false);
                     if (response.IsSuccessStatusCode)
                     {
@@ -1221,7 +1263,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
     /// </summary>
     public async Task<Script> GenerateScriptAsync(Brief brief, PlanSpec spec, CancellationToken ct)
     {
-        _logger.LogInformation("Generating script with Ollama (model: {Model}) at {BaseUrl} for topic: {Topic}", 
+        _logger.LogInformation("Generating script with Ollama (model: {Model}) at {BaseUrl} for topic: {Topic}",
             _model, _baseUrl, brief.Topic);
 
         var startTime = DateTime.UtcNow;
@@ -1231,13 +1273,13 @@ Return ONLY the transition text, no explanations or additional commentary:";
             // Build enhanced prompt for quality content with user customizations
             string systemPrompt = EnhancedPromptTemplates.GetSystemPromptForScriptGeneration();
             string userPrompt = await _promptCustomizationService.BuildCustomizedPromptAsync(brief, spec, brief.PromptModifiers, ct).ConfigureAwait(false);
-            
+
             // Apply enhancement callback if configured
             if (PromptEnhancementCallback != null)
             {
                 userPrompt = await PromptEnhancementCallback(userPrompt, brief, spec).ConfigureAwait(false);
             }
-            
+
             string prompt = $"{systemPrompt}\n\n{userPrompt}";
 
             // Call Ollama API with JSON format
@@ -1262,7 +1304,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
             cts.CancelAfter(_timeout); // Use configured timeout (default 300s for slow local models)
 
             var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token).ConfigureAwait(false);
-            
+
             // Check for model not found error
             if (!response.IsSuccessStatusCode)
             {
@@ -1282,22 +1324,22 @@ Return ONLY the transition text, no explanations or additional commentary:";
             {
                 string scriptText = responseText.GetString() ?? string.Empty;
                 var duration = DateTime.UtcNow - startTime;
-                
-                _logger.LogInformation("Script generated successfully with Ollama ({Length} characters) in {Duration}s", 
+
+                _logger.LogInformation("Script generated successfully with Ollama ({Length} characters) in {Duration}s",
                     scriptText.Length, duration.TotalSeconds);
-                
+
                 // Track performance if callback configured
                 PerformanceTrackingCallback?.Invoke(75.0, duration, true);
-                
+
                 // Parse script into structured scenes
                 var scenes = ParseScriptIntoScenes(scriptText, spec);
-                
+
                 return new Script
                 {
                     Title = brief.Topic,
                     Scenes = scenes,
-                    TotalDuration = scenes.Count > 0 
-                        ? TimeSpan.FromSeconds(scenes.Sum(s => s.Duration.TotalSeconds)) 
+                    TotalDuration = scenes.Count > 0
+                        ? TimeSpan.FromSeconds(scenes.Sum(s => s.Duration.TotalSeconds))
                         : spec.TargetDuration,
                     Metadata = new ScriptMetadata
                     {
@@ -1336,7 +1378,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
         // Simple scene parsing - split by newlines and create scenes
         var scenes = new List<ScriptScene>();
         var lines = scriptText.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
-        
+
         int sceneNumber = 1;
         foreach (var line in lines)
         {
@@ -1351,7 +1393,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
                 });
             }
         }
-        
+
         if (scenes.Count == 0)
         {
             scenes.Add(new ScriptScene
@@ -1362,7 +1404,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
                 Transition = TransitionType.Cut
             });
         }
-        
+
         return scenes;
     }
 
@@ -1383,7 +1425,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
         PlanSpec spec,
         [EnumeratorCancellation] CancellationToken ct = default)
     {
-        _logger.LogInformation("Starting streaming generation with Ollama (model: {Model}) for topic: {Topic}", 
+        _logger.LogInformation("Starting streaming generation with Ollama (model: {Model}) for topic: {Topic}",
             _model, brief.Topic);
 
         var isAvailable = await IsServiceAvailableAsync(ct).ConfigureAwait(false);
@@ -1396,12 +1438,12 @@ Return ONLY the transition text, no explanations or additional commentary:";
 
         string systemPrompt = EnhancedPromptTemplates.GetSystemPromptForScriptGeneration();
         string userPrompt = await _promptCustomizationService.BuildCustomizedPromptAsync(brief, spec, brief.PromptModifiers, ct).ConfigureAwait(false);
-        
+
         if (PromptEnhancementCallback != null)
         {
             userPrompt = await PromptEnhancementCallback(userPrompt, brief, spec).ConfigureAwait(false);
         }
-        
+
         string prompt = $"{systemPrompt}\n\n{userPrompt}";
 
         var requestBody = new
@@ -1453,7 +1495,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
             while (!reader.EndOfStream && !ct.IsCancellationRequested)
             {
                 var line = await reader.ReadLineAsync().ConfigureAwait(false);
-                
+
                 if (string.IsNullOrWhiteSpace(line))
                 {
                     continue;
@@ -1465,8 +1507,8 @@ Return ONLY the transition text, no explanations or additional commentary:";
                     using var doc = JsonDocument.Parse(line);
                     var root = doc.RootElement;
 
-                    var model = root.TryGetProperty("model", out var modelProp) 
-                        ? modelProp.GetString() ?? _model 
+                    var model = root.TryGetProperty("model", out var modelProp)
+                        ? modelProp.GetString() ?? _model
                         : _model;
 
                     var createdAt = root.TryGetProperty("created_at", out var createdAtProp)
@@ -1585,7 +1627,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
         {
             string systemPrompt = EnhancedPromptTemplates.GetSystemPromptForScriptGeneration();
             string userPrompt = await _promptCustomizationService.BuildCustomizedPromptAsync(brief, spec, brief.PromptModifiers, ct).ConfigureAwait(false);
-            
+
             if (PromptEnhancementCallback != null)
             {
                 userPrompt = await PromptEnhancementCallback(userPrompt, brief, spec).ConfigureAwait(false);
@@ -1602,7 +1644,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
                 _logger.LogInformation("Tool iteration {Iteration}/{MaxIterations}", iteration + 1, maxToolIterations);
 
                 var toolDefinitions = tools.Select(t => t.GetToolDefinition()).ToList();
-                
+
                 var requestBody = new
                 {
                     model = _model,
@@ -1652,10 +1694,10 @@ Return ONLY the transition text, no explanations or additional commentary:";
                 if (assistantMessage.ToolCalls == null || assistantMessage.ToolCalls.Count == 0)
                 {
                     _logger.LogInformation("No tool calls requested. Generation complete.");
-                    
+
                     var finalScript = assistantMessage.Content ?? string.Empty;
                     var duration = DateTime.UtcNow - startTime;
-                    
+
                     PerformanceTrackingCallback?.Invoke(85.0, duration, true);
 
                     return new ToolCallingResult
@@ -1675,7 +1717,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
                 foreach (var toolCall in assistantMessage.ToolCalls)
                 {
                     var tool = tools.FirstOrDefault(t => t.Name == toolCall.Function.Name);
-                    
+
                     if (tool == null)
                     {
                         _logger.LogWarning("Unknown tool requested: {ToolName}", toolCall.Function.Name);
@@ -1731,7 +1773,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
             var duration = DateTime.UtcNow - startTime;
             PerformanceTrackingCallback?.Invoke(0, duration, false);
             _logger.LogError(ex, "Tool-enabled generation timed out");
-            
+
             return new ToolCallingResult
             {
                 Success = false,
@@ -1746,7 +1788,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
             var duration = DateTime.UtcNow - startTime;
             PerformanceTrackingCallback?.Invoke(0, duration, false);
             _logger.LogError(ex, "Failed to connect to Ollama for tool-enabled generation");
-            
+
             return new ToolCallingResult
             {
                 Success = false,
@@ -1761,7 +1803,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
             var duration = DateTime.UtcNow - startTime;
             PerformanceTrackingCallback?.Invoke(0, duration, false);
             _logger.LogError(ex, "Error during tool-enabled generation");
-            
+
             return new ToolCallingResult
             {
                 Success = false,
@@ -1798,8 +1840,8 @@ Return ONLY the transition text, no explanations or additional commentary:";
     /// Stream script generation with unified interface (wraps existing GenerateStreamingAsync)
     /// </summary>
     public async IAsyncEnumerable<LlmStreamChunk> DraftScriptStreamAsync(
-        Brief brief, 
-        PlanSpec spec, 
+        Brief brief,
+        PlanSpec spec,
         [EnumeratorCancellation] CancellationToken ct = default)
     {
         _logger.LogInformation("Starting unified streaming script generation with Ollama for topic: {Topic}", brief.Topic);
@@ -1862,8 +1904,8 @@ Return ONLY the transition text, no explanations or additional commentary:";
                 if (ollamaChunk.Done)
                 {
                     var duration = DateTime.UtcNow - startTime;
-                    var timeToFirstToken = firstTokenTime.HasValue 
-                        ? (firstTokenTime.Value - startTime).TotalMilliseconds 
+                    var timeToFirstToken = firstTokenTime.HasValue
+                        ? (firstTokenTime.Value - startTime).TotalMilliseconds
                         : 0;
                     var tokensPerSec = ollamaChunk.GetTokensPerSecond() ?? 0.0;
 
@@ -1882,8 +1924,8 @@ Return ONLY the transition text, no explanations or additional commentary:";
                             IsLocalModel = true,
                             ModelName = _model,
                             TimeToFirstTokenMs = timeToFirstToken,
-                            TotalDurationMs = ollamaChunk.TotalDuration.HasValue 
-                                ? ollamaChunk.TotalDuration.Value / 1_000_000.0 
+                            TotalDurationMs = ollamaChunk.TotalDuration.HasValue
+                                ? ollamaChunk.TotalDuration.Value / 1_000_000.0
                                 : duration.TotalMilliseconds,
                             FinishReason = "stop"
                         }

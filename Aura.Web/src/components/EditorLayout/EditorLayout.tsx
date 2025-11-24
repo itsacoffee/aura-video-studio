@@ -89,10 +89,10 @@ const useStyles = makeStyles({
     overflow: 'hidden',
     transition: 'flex var(--editor-transition-base)',
   },
-  // Right sidebar panel
+  // Right sidebar panel - Increased min width to prevent text cutoff
   rightSidebarPanel: {
-    minWidth: '280px',
-    maxWidth: '400px',
+    minWidth: '320px',
+    maxWidth: '450px',
     borderLeft: `1px solid var(--editor-panel-border-subtle)`,
     backgroundColor: 'var(--editor-panel-bg)',
     overflow: 'auto',
@@ -100,10 +100,10 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     transition: 'width var(--editor-transition-base)',
   },
-  // Left sidebar panel
+  // Left sidebar panel - Increased min width for better readability
   leftSidebarPanel: {
-    minWidth: '240px',
-    maxWidth: '350px',
+    minWidth: '280px',
+    maxWidth: '400px',
     borderRight: `1px solid var(--editor-panel-border-subtle)`,
     backgroundColor: 'var(--editor-panel-bg)',
     overflow: 'hidden',
@@ -274,12 +274,12 @@ export function EditorLayout({
   // State for panel sizes - keyed by panel ID
   const [panelSizes, setPanelSizes] = useState<Record<string, number>>(() => {
     const sizes: Record<string, number> = {};
-    panels.forEach((panel) => {
-      const layoutSize =
-        currentLayout?.panelSizes[`${panel.id}Width` as keyof typeof currentLayout.panelSizes];
-      const defaultSize = panel.defaultSize ?? (panel.region === 'right' ? 320 : 60);
-      sizes[panel.id] = loadPanelSize(panel.id, (layoutSize as number) ?? defaultSize);
-    });
+      panels.forEach((panel) => {
+        const layoutSize =
+          currentLayout?.panelSizes[`${panel.id}Width` as keyof typeof currentLayout.panelSizes];
+        const defaultSize = panel.defaultSize ?? (panel.region === 'right' ? 340 : 60);
+        sizes[panel.id] = loadPanelSize(panel.id, (layoutSize as number) ?? defaultSize);
+      });
     return sizes;
   });
 
@@ -290,10 +290,10 @@ export function EditorLayout({
   // Get current panel sizes for saving workspace
   const getCurrentPanelSizes = useCallback(() => {
     return {
-      propertiesWidth: panelSizes['properties'] ?? 320,
-      mediaLibraryWidth: panelSizes['mediaLibrary'] ?? 280,
-      effectsLibraryWidth: panelSizes['effects'] ?? 280,
-      historyWidth: panelSizes['history'] ?? 320,
+      propertiesWidth: panelSizes['properties'] ?? 340,
+      mediaLibraryWidth: panelSizes['mediaLibrary'] ?? 300,
+      effectsLibraryWidth: panelSizes['effects'] ?? 300,
+      historyWidth: panelSizes['history'] ?? 340,
       previewHeight: panelSizes['preview'] ?? 60,
     };
   }, [panelSizes]);
@@ -425,7 +425,7 @@ export function EditorLayout({
         e.preventDefault();
         const delta = (e.key === 'ArrowLeft') === (direction === 'left') ? -10 : 10;
         setPanelSizes((prev) => {
-          const currentSize = prev[panelId] ?? 320;
+          const currentSize = prev[panelId] ?? 340;
           const newSize = Math.max(minSize, Math.min(maxSize, currentSize + delta));
           savePanelSize(panelId, newSize);
           return { ...prev, [panelId]: newSize };
@@ -644,9 +644,9 @@ export function EditorLayout({
             {rightSidebarPanels.map((panel, index) => {
               const isCollapsed =
                 collapsedPanels[panel.id as keyof typeof collapsedPanels] ?? false;
-              const minSize = panel.minSize ?? 280;
-              const maxSize = panel.maxSize ?? 400;
-              const panelWidth = panelSizes[panel.id] ?? panel.defaultSize ?? 320;
+              const minSize = panel.minSize ?? 320;
+              const maxSize = panel.maxSize ?? 450;
+              const panelWidth = panelSizes[panel.id] ?? panel.defaultSize ?? 340;
 
               return (
                 <React.Fragment key={panel.id}>

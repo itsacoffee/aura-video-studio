@@ -54,17 +54,19 @@ const useStyles = makeStyles({
   toolbar: {
     display: 'flex',
     alignItems: 'center',
-    gap: 'var(--editor-space-lg)',
-    padding: 'var(--editor-space-md) var(--editor-space-lg)',
+    gap: 'var(--editor-space-xl)',
+    padding: 'var(--editor-space-md) var(--editor-space-xl)',
     borderBottom: `1px solid var(--editor-panel-border)`,
     backgroundColor: 'var(--editor-panel-header-bg)',
     flexWrap: 'wrap',
-    minHeight: '48px',
+    minHeight: '56px',
+    rowGap: 'var(--editor-space-md)',
   },
   toolbarGroup: {
     display: 'flex',
     alignItems: 'center',
-    gap: 'var(--editor-space-md)',
+    gap: 'var(--editor-space-lg)',
+    flexWrap: 'nowrap',
   },
   timelineContainer: {
     flex: 1,
@@ -88,15 +90,16 @@ const useStyles = makeStyles({
     borderColor: 'var(--editor-accent)',
   } as GriffelStyle,
   trackLabel: {
-    width: '120px',
-    padding: 'var(--editor-space-sm)',
+    width: '140px',
+    minWidth: '140px',
+    padding: 'var(--editor-space-md)',
     borderRight: `1px solid var(--editor-panel-border)`,
     backgroundColor: 'var(--editor-panel-header-bg)',
     fontWeight: 'var(--editor-font-weight-semibold)',
-    fontSize: 'var(--editor-font-size-sm)',
+    fontSize: 'var(--editor-font-size-base)',
     display: 'flex',
     flexDirection: 'column',
-    gap: 'var(--editor-space-xs)',
+    gap: 'var(--editor-space-sm)',
     position: 'sticky',
     left: 0,
     zIndex: 'var(--editor-z-panel)',
@@ -119,10 +122,13 @@ const useStyles = makeStyles({
     minWidth: '2000px',
   },
   zoomSlider: {
-    width: '120px',
+    width: '140px',
+    minWidth: '120px',
   },
   toolButton: {
-    minWidth: '80px',
+    minWidth: '100px',
+    paddingLeft: 'var(--editor-space-md)',
+    paddingRight: 'var(--editor-space-md)',
   },
   activeToolButton: {
     backgroundColor: tokens.colorBrandBackground2,
@@ -384,7 +390,7 @@ export function TimelinePanel({
 
   const handleFitToWindow = useCallback(() => {
     if (timelineRef.current) {
-      const containerWidth = timelineRef.current.clientWidth - 100; // Account for track labels
+      const containerWidth = timelineRef.current.clientWidth - 140; // Account for track labels (updated width)
       const newZoom = containerWidth / maxTime;
       setZoom(Math.max(10, Math.min(100, newZoom)));
     }
@@ -443,7 +449,7 @@ export function TimelinePanel({
       // Calculate drop position based on mouse position
       const rect = (e.target as HTMLElement).getBoundingClientRect();
       const x = e.clientX - rect.left;
-      let dropTime = Math.max(0, (x - 100) / pixelsPerSecond);
+      let dropTime = Math.max(0, (x - 140) / pixelsPerSecond); // Updated to match new track label width
 
       if (snapping) {
         dropTime = snapToFrame(dropTime, frameRate);
@@ -623,10 +629,10 @@ export function TimelinePanel({
               onDragLeave={handleTrackDragLeave}
               onDrop={(e) => handleTrackDrop(e, track.id)}
               onClick={(e) => {
-                const rect = e.currentTarget.getBoundingClientRect();
-                const x = e.clientX - rect.left - 100;
-                const time = Math.max(0, x / pixelsPerSecond);
-                handleTimelineClick(time);
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = e.clientX - rect.left - 140; // Updated to match new track label width
+      const time = Math.max(0, x / pixelsPerSecond);
+      handleTimelineClick(time);
               }}
             >
               <div className={styles.trackLabel}>
@@ -690,7 +696,7 @@ export function TimelinePanel({
           <SnapGuides
             activeSnapPoint={activeSnapPoint}
             pixelsPerSecond={pixelsPerSecond}
-            trackLabelWidth={100}
+            trackLabelWidth={140}
           />
 
           {/* Playhead */}

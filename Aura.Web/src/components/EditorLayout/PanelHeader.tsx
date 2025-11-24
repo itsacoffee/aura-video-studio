@@ -30,6 +30,9 @@ const useStyles = makeStyles({
     whiteSpace: 'nowrap',
     overflow: 'visible',
     textOverflow: 'clip',
+    flex: 1,
+    minWidth: 0,
+    marginRight: 'var(--editor-space-md)',
   },
   collapseButton: {
     minWidth: '28px',
@@ -67,7 +70,9 @@ export function PanelHeader({
 
   return (
     <div className={`${styles.header} aura-editor-panel__header`}>
-      <span className={styles.title}>{title}</span>
+      <span className={`${styles.title} aura-editor-panel__header-title`} title={title}>
+        {title}
+      </span>
       <Button
         appearance="subtle"
         icon={getIcon()}

@@ -74,8 +74,9 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
         var isAvailable = await IsServiceAvailableAsync(cancellationToken).ConfigureAwait(false);
         if (!isAvailable)
         {
-            throw new InvalidOperationException(
-                $"Cannot connect to Ollama at {_baseUrl}. Please ensure Ollama is running: 'ollama serve'");
+            var errorMessage = $"Cannot connect to Ollama at {_baseUrl}. Please ensure Ollama is running: 'ollama serve'";
+            _logger.LogError("Ollama availability check failed. {ErrorMessage}", errorMessage);
+            throw new InvalidOperationException(errorMessage);
         }
 
         var startTime = DateTime.UtcNow;
@@ -272,8 +273,9 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
         var isAvailable = await IsServiceAvailableAsync(cancellationToken).ConfigureAwait(false);
         if (!isAvailable)
         {
-            throw new InvalidOperationException(
-                $"Cannot connect to Ollama at {_baseUrl}. Please ensure Ollama is running: 'ollama serve'");
+            var errorMessage = $"Cannot connect to Ollama at {_baseUrl}. Please ensure Ollama is running: 'ollama serve'";
+            _logger.LogError("Ollama availability check failed. {ErrorMessage}", errorMessage);
+            throw new InvalidOperationException(errorMessage);
         }
 
         var prompt = BuildPrompt(request);
@@ -507,49 +509,103 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
     {
         try
         {
+            _logger.LogInformation("Checking Ollama service availability at {BaseUrl}", _baseUrl);
+
+            // Use HttpCompletionOption.ResponseHeadersRead to avoid waiting for full response body
+            // This makes the check faster and more reliable
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            // Increased timeout to 10 seconds to account for slow startup or model loading
-            cts.CancelAfter(TimeSpan.FromSeconds(10));
+            // Increased timeout to 15 seconds to account for slow startup or model loading
+            cts.CancelAfter(TimeSpan.FromSeconds(15));
 
             // Try /api/version first (lightweight endpoint)
             try
             {
-                var response = await _httpClient.GetAsync($"{_baseUrl}/api/version", cts.Token).ConfigureAwait(false);
+                using var request = new HttpRequestMessage(HttpMethod.Get, $"{_baseUrl}/api/version");
+                using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cts.Token).ConfigureAwait(false);
+                
                 if (response.IsSuccessStatusCode)
                 {
+                    _logger.LogInformation("Ollama service detected at {BaseUrl} via /api/version", _baseUrl);
                     return true;
                 }
-                // Non-success status code - will try fallback below
+                _logger.LogWarning("Ollama /api/version endpoint returned status code {StatusCode}, trying /api/tags as fallback", response.StatusCode);
             }
-            catch (TaskCanceledException)
+            catch (TaskCanceledException ex)
             {
-                // Timeout - will try fallback below
+                _logger.LogInformation("Ollama /api/version endpoint timed out after 15s, trying /api/tags as fallback. Inner exception: {InnerException}", ex.InnerException?.Message);
             }
-            catch (HttpRequestException)
+            catch (HttpRequestException ex)
             {
-                // Connection error - will try fallback below
+                var innerException = ex.InnerException;
+                var errorDetails = $"HttpRequestException: {ex.Message}";
+                if (innerException != null)
+                {
+                    errorDetails += $", InnerException: {innerException.GetType().Name} - {innerException.Message}";
+                }
+                _logger.LogInformation("Ollama /api/version endpoint failed: {ErrorDetails}, trying /api/tags as fallback", errorDetails);
             }
-            catch
+            catch (Exception ex)
             {
-                // Any other error - will try fallback below
+                _logger.LogInformation("Ollama /api/version endpoint error: {ExceptionType} - {Message}, trying /api/tags as fallback", ex.GetType().Name, ex.Message);
             }
 
             // Fallback to /api/tags if version endpoint failed for any reason (timeout, error status, or exception)
             try
             {
                 using var fallbackCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                fallbackCts.CancelAfter(TimeSpan.FromSeconds(5));
-                var tagsResponse = await _httpClient.GetAsync($"{_baseUrl}/api/tags", fallbackCts.Token).ConfigureAwait(false);
-                return tagsResponse.IsSuccessStatusCode;
+                fallbackCts.CancelAfter(TimeSpan.FromSeconds(10));
+                using var fallbackRequest = new HttpRequestMessage(HttpMethod.Get, $"{_baseUrl}/api/tags");
+                using var tagsResponse = await _httpClient.SendAsync(fallbackRequest, HttpCompletionOption.ResponseHeadersRead, fallbackCts.Token).ConfigureAwait(false);
+                
+                if (tagsResponse.IsSuccessStatusCode)
+                {
+                    _logger.LogInformation("Ollama service detected at {BaseUrl} via /api/tags fallback", _baseUrl);
+                    return true;
+                }
+                _logger.LogWarning("Ollama /api/tags fallback endpoint returned status code {StatusCode}", tagsResponse.StatusCode);
             }
-            catch
+            catch (TaskCanceledException ex)
             {
-                // Both endpoints failed
-                return false;
+                _logger.LogWarning("Ollama /api/tags fallback endpoint timed out after 10s. Inner exception: {InnerException}", ex.InnerException?.Message);
             }
+            catch (HttpRequestException ex)
+            {
+                var innerException = ex.InnerException;
+                var errorDetails = $"HttpRequestException: {ex.Message}";
+                if (innerException != null)
+                {
+                    errorDetails += $", InnerException: {innerException.GetType().Name} - {innerException.Message}";
+                    if (innerException.Message.Contains("No connection could be made") || 
+                        innerException.Message.Contains("Connection refused") ||
+                        innerException.Message.Contains("actively refused"))
+                    {
+                        _logger.LogWarning("Ollama connection refused at {BaseUrl}. Ensure Ollama is running: 'ollama serve'", _baseUrl);
+                    }
+                }
+                _logger.LogWarning("Ollama /api/tags fallback endpoint failed: {ErrorDetails}", errorDetails);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Ollama /api/tags fallback endpoint error: {ExceptionType} - {Message}", ex.GetType().Name, ex.Message);
+            }
+
+            _logger.LogWarning("Ollama service not available at {BaseUrl} after checking both /api/version and /api/tags", _baseUrl);
+            return false;
         }
-        catch
+        catch (HttpRequestException ex)
         {
+            var innerException = ex.InnerException;
+            var errorDetails = $"HttpRequestException: {ex.Message}";
+            if (innerException != null)
+            {
+                errorDetails += $", InnerException: {innerException.GetType().Name} - {innerException.Message}";
+            }
+            _logger.LogWarning("Ollama service not available at {BaseUrl}: {ErrorDetails}", _baseUrl, errorDetails);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking Ollama service availability at {BaseUrl}: {ExceptionType} - {Message}", _baseUrl, ex.GetType().Name, ex.Message);
             return false;
         }
     }

@@ -147,11 +147,13 @@ export const CostEstimator: FC<CostEstimatorProps> = ({ wizardData, selectedLlmP
       });
     }
 
-    const ttsRate = COST_RATES.tts[wizardData.style.voiceProvider as keyof typeof COST_RATES.tts] || 0;
+    // Calculate TTS cost - only if provider is configured and not free
+    const voiceProvider = wizardData.style.voiceProvider;
+    const ttsRate = COST_RATES.tts[voiceProvider as keyof typeof COST_RATES.tts] ?? 0;
     const ttsCost = audioCharacters * ttsRate;
-    if (ttsCost > 0) {
+    if (ttsCost > 0 && voiceProvider) {
       breakdown.push({
-        provider: wizardData.style.voiceProvider,
+        provider: voiceProvider,
         service: 'Text-to-Speech',
         units: audioCharacters,
         costPerUnit: ttsRate,
@@ -159,18 +161,17 @@ export const CostEstimator: FC<CostEstimatorProps> = ({ wizardData, selectedLlmP
       });
     }
 
-    // Only charge for image generation if using paid services (not stock/placeholder)
-    // Check visual style to determine if using stock images (free) or AI generation (paid)
-    const usesStockImages = wizardData.style.visualStyle === 'stock' ||
-                           wizardData.style.visualStyle === 'placeholder' ||
-                           !wizardData.style.visualStyle; // Default to free
-    const imageGenerationCost = usesStockImages ? 0 : sceneCount * 0.02;
-    if (imageGenerationCost > 0) {
+    // Calculate image generation cost - check actual image provider, not visual style
+    // Only charge if using a paid image provider (not free stock/placeholder services)
+    const imageProvider = wizardData.style.imageProvider || 'Placeholder';
+    const imageRate = COST_RATES.images[imageProvider as keyof typeof COST_RATES.images] ?? 0;
+    const imageGenerationCost = sceneCount * imageRate;
+    if (imageGenerationCost > 0 && imageProvider) {
       breakdown.push({
-        provider: 'Image Generation',
+        provider: imageProvider === 'Stock' ? 'Stock Images' : imageProvider,
         service: 'Scene Visuals',
         units: sceneCount,
-        costPerUnit: 0.02,
+        costPerUnit: imageRate,
         subtotal: imageGenerationCost,
       });
     }
@@ -194,13 +195,16 @@ export const CostEstimator: FC<CostEstimatorProps> = ({ wizardData, selectedLlmP
       suggestions.push('Use Windows TTS (free) instead of premium voices');
     }
     if (costBreakdown.imageGenerationCost > 0) {
-      suggestions.push('Use stock images instead of AI generation');
+      const imageProvider = wizardData.style.imageProvider || 'Placeholder';
+      if (imageProvider !== 'Pexels' && imageProvider !== 'Pixabay' && imageProvider !== 'Unsplash' && imageProvider !== 'Placeholder') {
+        suggestions.push('Use Pexels, Pixabay, or Unsplash (free) instead of AI image generation');
+      }
     }
     if (costBreakdown.llmCost > 0) {
       suggestions.push('Use Ollama (free, local) for script generation');
     }
     return suggestions;
-  }, [costBreakdown]);
+  }, [costBreakdown, wizardData.style.imageProvider]);
 
   return (
     <Popover trapFocus positioning="below-end">
@@ -228,11 +232,13 @@ export const CostEstimator: FC<CostEstimatorProps> = ({ wizardData, selectedLlmP
                 </Text>
                 <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
                   {item.units}{' '}
-                  {item.service.includes('Token')
+                  {item.service === 'Script Generation'
                     ? 'tokens'
-                    : item.service.includes('TTS')
+                    : item.service === 'Text-to-Speech'
                       ? 'characters'
-                      : 'images'}
+                      : item.service === 'Scene Visuals'
+                        ? 'images'
+                        : 'units'}
                 </Text>
               </div>
               <Text weight="semibold">${item.subtotal.toFixed(3)}</Text>
