@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Core.AI;
 using Aura.Core.Models;
 using Aura.Core.Providers;
 using Aura.Core.Services;
@@ -13,25 +14,23 @@ namespace Aura.Core.Orchestrator.Stages;
 /// <summary>
 /// Stage 2: Script generation and validation
 /// Generates the video script using LLM and validates quality
+/// Uses ScriptGenerationPipeline for hardened generation with retry and fallback
 /// </summary>
 public class ScriptStage : PipelineStage
 {
-    private readonly ILlmProvider _llmProvider;
-    private readonly ScriptValidator _scriptValidator;
-    private readonly LlmOutputValidator _llmValidator;
-    private readonly ProviderRetryWrapper _retryWrapper;
+    private readonly ScriptGenerationPipeline _pipeline;
+    private readonly ScriptValidator _scriptValidator; // Kept for backward compatibility
+    private readonly LlmOutputValidator _llmValidator; // Kept for backward compatibility
 
     public ScriptStage(
         ILogger<ScriptStage> logger,
-        ILlmProvider llmProvider,
+        ScriptGenerationPipeline pipeline,
         ScriptValidator scriptValidator,
-        LlmOutputValidator llmValidator,
-        ProviderRetryWrapper retryWrapper) : base(logger)
+        LlmOutputValidator llmValidator) : base(logger)
     {
-        _llmProvider = llmProvider ?? throw new ArgumentNullException(nameof(llmProvider));
+        _pipeline = pipeline ?? throw new ArgumentNullException(nameof(pipeline));
         _scriptValidator = scriptValidator ?? throw new ArgumentNullException(nameof(scriptValidator));
         _llmValidator = llmValidator ?? throw new ArgumentNullException(nameof(llmValidator));
-        _retryWrapper = retryWrapper ?? throw new ArgumentNullException(nameof(retryWrapper));
     }
 
     public override string StageName => "Script";
@@ -51,63 +50,72 @@ public class ScriptStage : PipelineStage
             context.CorrelationId,
             context.Brief.Topic);
 
-        // Generate script with retry logic
-        var script = await _retryWrapper.ExecuteWithRetryAsync(
-            async (ctRetry) =>
+        // Generate script using hardened pipeline with validation, retry, and fallback
+        ReportProgress(progress, 30, "Calling script generation pipeline...");
+        
+        var result = await _pipeline.GenerateAsync(
+            context.Brief,
+            context.PlanSpec,
+            ct).ConfigureAwait(false);
+
+        ReportProgress(progress, 80, result.UsedFallback ? "Using fallback template..." : "Script generated successfully");
+
+        // Log generation details
+        if (result.Success)
+        {
+            Logger.LogInformation(
+                "[{CorrelationId}] Script generated successfully on attempt {Attempt} with quality {Quality:F2}",
+                context.CorrelationId,
+                result.Attempts.Count,
+                result.QualityScore);
+        }
+        else if (result.UsedFallback)
+        {
+            Logger.LogWarning(
+                "[{CorrelationId}] All LLM attempts failed, used template fallback. Attempts: {Attempts}",
+                context.CorrelationId,
+                result.Attempts.Count);
+        }
+
+        // Log attempt details for observability
+        foreach (var attempt in result.Attempts)
+        {
+            if (attempt.Error != null)
             {
-                ReportProgress(progress, 40, "Calling LLM provider...");
-                
-                var generatedScript = await _llmProvider.DraftScriptAsync(
-                    context.Brief,
-                    context.PlanSpec,
-                    ctRetry).ConfigureAwait(false);
-
-                ReportProgress(progress, 60, "Validating script structure...");
-
-                // Validate script structure and content
-                var structuralValidation = _scriptValidator.Validate(generatedScript, context.PlanSpec);
-                var contentValidation = _llmValidator.ValidateScriptContent(generatedScript, context.PlanSpec);
-
-                if (!structuralValidation.IsValid || !contentValidation.IsValid)
-                {
-                    var allIssues = structuralValidation.Issues
-                        .Concat(contentValidation.Issues)
-                        .ToList();
-                    
-                    Logger.LogWarning(
-                        "[{CorrelationId}] Script validation failed: {Issues}",
-                        context.CorrelationId,
-                        string.Join(", ", allIssues));
-                    
-                    throw new Validation.ValidationException("Script quality validation failed", allIssues);
-                }
-
-                return generatedScript;
-            },
-            "Script Generation",
-            ct,
-            maxRetries: 2
-        ).ConfigureAwait(false);
-
-        ReportProgress(progress, 80, "Script generated successfully");
-
-        Logger.LogInformation(
-            "[{CorrelationId}] Script generated and validated: {Length} characters",
-            context.CorrelationId,
-            script.Length);
+                Logger.LogWarning(
+                    "[{CorrelationId}] Attempt {Attempt} failed: {Error} (Duration: {Duration}ms)",
+                    context.CorrelationId,
+                    attempt.AttemptNumber,
+                    attempt.Error,
+                    attempt.Duration.TotalMilliseconds);
+            }
+            else if (attempt.Validation != null && !attempt.Validation.IsValid)
+            {
+                Logger.LogWarning(
+                    "[{CorrelationId}] Attempt {Attempt} validation failed: {Errors} (Quality: {Quality:F2})",
+                    context.CorrelationId,
+                    attempt.AttemptNumber,
+                    string.Join(", ", attempt.Validation.Errors),
+                    attempt.Validation.QualityScore);
+            }
+        }
 
         // Store script in context
-        context.GeneratedScript = script;
+        context.GeneratedScript = result.Script;
         context.SetStageOutput(StageName, new ScriptStageOutput
         {
-            Script = script,
+            Script = result.Script,
             GeneratedAt = DateTime.UtcNow,
-            Provider = _llmProvider.GetType().Name,
-            CharacterCount = script.Length
+            Provider = result.UsedFallback ? "TemplateFallback" : "LLM",
+            CharacterCount = result.Script.Length,
+            QualityScore = result.QualityScore,
+            Metrics = result.Metrics,
+            Attempts = result.Attempts.Count,
+            UsedFallback = result.UsedFallback
         });
 
         // Write to channel for downstream consumers
-        await context.ScriptChannel.Writer.WriteAsync(script, ct).ConfigureAwait(false);
+        await context.ScriptChannel.Writer.WriteAsync(result.Script, ct).ConfigureAwait(false);
         context.ScriptChannel.Writer.Complete();
 
         ReportProgress(progress, 100, "Script stage completed");
@@ -133,4 +141,8 @@ public record ScriptStageOutput
     public required DateTime GeneratedAt { get; init; }
     public required string Provider { get; init; }
     public required int CharacterCount { get; init; }
+    public double? QualityScore { get; init; }
+    public Aura.Core.AI.Validation.ScriptSchemaValidator.ScriptMetrics? Metrics { get; init; }
+    public int Attempts { get; init; }
+    public bool UsedFallback { get; init; }
 }

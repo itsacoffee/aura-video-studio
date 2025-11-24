@@ -34,10 +34,11 @@ import {
   Stop24Regular,
 } from '@fluentui/react-icons';
 import type { FC } from 'react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { apiUrl } from '@/config/api';
 import { useSSEConnection } from '@/hooks/useSSEConnection';
 import { loggingService } from '@/services/loggingService';
+import { useProviderStatus } from '@/hooks/useProviderStatus';
 
 const useStyles = makeStyles({
   container: {
@@ -402,6 +403,52 @@ export const VideoGenerationProgress: FC<VideoGenerationProgressProps> = ({
   });
   const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
   const [warningMessages, setWarningMessages] = useState<string[]>([]);
+
+  // Get provider status to show which providers are being used
+  const { llmProviders, ttsProviders, imageProviders } = useProviderStatus(30000); // Poll every 30s during generation
+
+  // Determine active provider based on current stage
+  const activeProvider = useMemo(() => {
+    const currentPhase = phaseState.current;
+    
+    // Script generation stage - show LLM provider
+    if (currentPhase === 'plan' || currentPhase === 'script') {
+      const availableLlm = llmProviders.find(p => p.available);
+      if (availableLlm) {
+        return {
+          name: availableLlm.name,
+          tier: availableLlm.tier,
+          type: 'LLM' as const,
+        };
+      }
+    }
+    
+    // TTS stage - show TTS provider
+    if (currentPhase === 'tts' || currentPhase === 'audio') {
+      const availableTts = ttsProviders.find(p => p.available);
+      if (availableTts) {
+        return {
+          name: availableTts.name,
+          tier: availableTts.tier,
+          type: 'TTS' as const,
+        };
+      }
+    }
+    
+    // Image generation stage - show image provider
+    if (currentPhase === 'visuals' || currentPhase === 'images') {
+      const availableImage = imageProviders.find(p => p.available);
+      if (availableImage) {
+        return {
+          name: availableImage.name,
+          tier: availableImage.tier,
+          type: 'Image' as const,
+        };
+      }
+    }
+    
+    return null;
+  }, [phaseState.current, llmProviders, ttsProviders, imageProviders]);
 
   const resetState = useCallback(() => {
     setOverallProgress(0);
@@ -775,7 +822,37 @@ export const VideoGenerationProgress: FC<VideoGenerationProgressProps> = ({
 
       <div className={styles.mainProgress}>
         <div className={styles.progressHeader}>
-          <Text weight="semibold">{overallProgress}% Complete</Text>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXXS }}>
+            <Text weight="semibold">{overallProgress}% Complete</Text>
+            {activeProvider && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS }}>
+                <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                  Using {activeProvider.type}:
+                </Text>
+                <Badge
+                  appearance="filled"
+                  color={
+                    activeProvider.tier === 'paid'
+                      ? 'brand'
+                      : activeProvider.tier === 'local'
+                        ? 'success'
+                        : activeProvider.tier === 'free'
+                          ? 'informative'
+                          : 'subtle'
+                  }
+                >
+                  {activeProvider.name}
+                  {activeProvider.tier === 'paid'
+                    ? ' (Paid)'
+                    : activeProvider.tier === 'local'
+                      ? ' (Local)'
+                      : activeProvider.tier === 'free'
+                        ? ' (Free)'
+                        : ''}
+                </Badge>
+              </div>
+            )}
+          </div>
           {currentMessage && <Text size={300}>{currentMessage}</Text>}
         </div>
         <ProgressBar value={overallProgress / 100} thickness="large" />

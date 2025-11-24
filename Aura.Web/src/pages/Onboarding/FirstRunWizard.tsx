@@ -53,6 +53,7 @@ import {
 } from '../../state/onboarding';
 import { pickFolder } from '../../utils/pathUtils';
 import { ApiKeySetupStep } from './ApiKeySetupStep';
+import { ProviderStatusPanel } from '../../components/ProviderStatusPanel';
 
 /**
  * FirstRunWizard - The primary onboarding wizard for new users
@@ -1522,6 +1523,9 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
           Configure at least one LLM provider for script generation, or use offline mode.
         </Text>
       </div>
+
+      {/* Provider Status Panel - Real-time status updates */}
+      <ProviderStatusPanel showRecommendations={true} compact={false} />
 
       {(() => {
         try {

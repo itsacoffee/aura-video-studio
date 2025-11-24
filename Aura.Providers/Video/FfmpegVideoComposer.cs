@@ -10,6 +10,7 @@ using Aura.Core.Errors;
 using Aura.Core.Models;
 using Aura.Core.Models.Export;
 using Aura.Core.Providers;
+using Aura.Core.Runtime;
 using Aura.Core.Services.FFmpeg;
 using Aura.Core.Services.Render;
 using Microsoft.Extensions.Logging;
@@ -25,12 +26,19 @@ public class FfmpegVideoComposer : IVideoComposer
     private string _outputDirectory;
     private readonly string _logsDirectory;
     private readonly HardwareEncoder _hardwareEncoder;
+    private readonly ProcessRegistry? _processRegistry;
 
-    public FfmpegVideoComposer(ILogger<FfmpegVideoComposer> logger, IFfmpegLocator ffmpegLocator, string? configuredFfmpegPath = null, string? outputDirectory = null)
+    public FfmpegVideoComposer(
+        ILogger<FfmpegVideoComposer> logger,
+        IFfmpegLocator ffmpegLocator,
+        string? configuredFfmpegPath = null,
+        string? outputDirectory = null,
+        ProcessRegistry? processRegistry = null)
     {
         _logger = logger;
         _ffmpegLocator = ffmpegLocator;
         _configuredFfmpegPath = configuredFfmpegPath;
+        _processRegistry = processRegistry;
         _workingDirectory = Path.Combine(Path.GetTempPath(), "AuraVideoStudio", "Render");
         _outputDirectory = outputDirectory ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.MyVideos),
@@ -38,28 +46,28 @@ public class FfmpegVideoComposer : IVideoComposer
         _logsDirectory = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "Aura", "Logs", "ffmpeg");
-        
+
         // Ensure working directory exists
         if (!Directory.Exists(_workingDirectory))
         {
             Directory.CreateDirectory(_workingDirectory);
         }
-        
+
         // Ensure output directory exists
         if (!Directory.Exists(_outputDirectory))
         {
             Directory.CreateDirectory(_outputDirectory);
         }
-        
+
         // Ensure logs directory exists
         if (!Directory.Exists(_logsDirectory))
         {
             Directory.CreateDirectory(_logsDirectory);
         }
-        
+
         // Initialize placeholder - actual hardware encoder will be created at render time with proper path
         _hardwareEncoder = new HardwareEncoder(
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<HardwareEncoder>.Instance, 
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<HardwareEncoder>.Instance,
             "ffmpeg");
     }
 
@@ -67,14 +75,14 @@ public class FfmpegVideoComposer : IVideoComposer
     {
         var jobId = Guid.NewGuid().ToString("N");
         var correlationId = System.Diagnostics.Activity.Current?.Id ?? jobId;
-        
-        _logger.LogInformation("Starting FFmpeg render (JobId={JobId}, CorrelationId={CorrelationId}) at {Resolution}p", 
+
+        _logger.LogInformation("Starting FFmpeg render (JobId={JobId}, CorrelationId={CorrelationId}) at {Resolution}p",
             jobId, correlationId, spec.Res.Height);
-        
+
         // Set up FFmpeg log file path
         var ffmpegLogPath = Path.Combine(_logsDirectory, $"{jobId}.log");
         StreamWriter? logWriter = null;
-        
+
         // Resolve FFmpeg path once at the start - this is the single source of truth for this render job
         string ffmpegPath;
         try
@@ -87,28 +95,28 @@ public class FfmpegVideoComposer : IVideoComposer
             _logger.LogError(ex, "Failed to resolve FFmpeg path for job {JobId}", jobId);
             throw FfmpegException.NotFound(correlationId: correlationId);
         }
-        
+
         // Validate FFmpeg binary before starting
         await ValidateFfmpegBinaryAsync(ffmpegPath, jobId, correlationId, ct).ConfigureAwait(false);
-        
+
         // Pre-validate audio files - pass the resolved ffmpeg path
         await PreValidateAudioAsync(timeline, ffmpegPath, jobId, correlationId, ct).ConfigureAwait(false);
-        
+
         // Create output file path using configured output directory
         string outputFilePath = Path.Combine(
             _outputDirectory,
             $"AuraVideoStudio_{DateTime.Now:yyyyMMddHHmmss}.{spec.Container}");
-        
+
         // Build the FFmpeg command with hardware acceleration support
         string ffmpegCommand = await BuildFfmpegCommandAsync(timeline, spec, outputFilePath, ffmpegPath, ct).ConfigureAwait(false);
-        
-        _logger.LogInformation("FFmpeg command (JobId={JobId}): {FFmpegPath} {Command}", 
+
+        _logger.LogInformation("FFmpeg command (JobId={JobId}): {FFmpegPath} {Command}",
             jobId, ffmpegPath, ffmpegCommand);
-        
+
         // Create process to run FFmpeg with stderr/stdout capture
         var stderrBuilder = new StringBuilder();
         var stdoutBuilder = new StringBuilder();
-        
+
         var process = new Process
         {
             StartInfo = new ProcessStartInfo
@@ -122,15 +130,15 @@ public class FfmpegVideoComposer : IVideoComposer
             },
             EnableRaisingEvents = true
         };
-        
+
         // Track progress
-        var totalDuration = timeline.Scenes.Count > 0 
-            ? timeline.Scenes[^1].Start + timeline.Scenes[^1].Duration 
+        var totalDuration = timeline.Scenes.Count > 0
+            ? timeline.Scenes[^1].Start + timeline.Scenes[^1].Duration
             : TimeSpan.FromMinutes(1);
-        
+
         var startTime = DateTime.Now;
         var lastReportTime = DateTime.Now;
-        
+
         // Initialize log writer for FFmpeg output
         try
         {
@@ -155,10 +163,10 @@ public class FfmpegVideoComposer : IVideoComposer
         process.ErrorDataReceived += (sender, args) =>
         {
             if (string.IsNullOrEmpty(args.Data)) return;
-            
+
             // Capture for error reporting
             stderrBuilder.AppendLine(args.Data);
-            
+
             // Write to log file
             try
             {
@@ -168,10 +176,10 @@ public class FfmpegVideoComposer : IVideoComposer
             {
                 // Ignore log write errors
             }
-            
+
             // Log the output
             _logger.LogTrace("FFmpeg stderr: {Output}", args.Data);
-            
+
             // Parse progress if it contains time information
             if (args.Data.Contains("time="))
             {
@@ -183,22 +191,22 @@ public class FfmpegVideoComposer : IVideoComposer
                     if (TimeSpan.TryParse(timeStr, out var currentTime))
                     {
                         var now = DateTime.Now;
-                        
+
                         // Report progress at most once per second
                         if ((now - lastReportTime).TotalSeconds >= 1)
                         {
                             lastReportTime = now;
-                            
+
                             // Calculate progress percentage
                             float percentage = (float)(currentTime.TotalSeconds / totalDuration.TotalSeconds * 100);
                             percentage = Math.Clamp(percentage, 0, 100);
-                            
+
                             // Calculate time remaining
                             var elapsed = now - startTime;
                             var estimatedTotal = TimeSpan.FromSeconds(
                                 elapsed.TotalSeconds / (percentage / 100));
                             var remaining = estimatedTotal - elapsed;
-                            
+
                             // Report progress
                             progress.Report(new RenderProgress(
                                 percentage,
@@ -210,14 +218,14 @@ public class FfmpegVideoComposer : IVideoComposer
                 }
             }
         };
-        
+
         // Capture stdout as well
         process.OutputDataReceived += (sender, args) =>
         {
             if (!string.IsNullOrEmpty(args.Data))
             {
                 stdoutBuilder.AppendLine(args.Data);
-                
+
                 // Write to log file
                 try
                 {
@@ -227,14 +235,14 @@ public class FfmpegVideoComposer : IVideoComposer
                 {
                     // Ignore log write errors
                 }
-                
+
                 _logger.LogTrace("FFmpeg stdout: {Output}", args.Data);
             }
         };
-        
+
         // Set up task to wait for process completion
         var tcs = new TaskCompletionSource<bool>();
-        
+
         process.Exited += (sender, args) =>
         {
             if (process.ExitCode == 0)
@@ -245,19 +253,25 @@ public class FfmpegVideoComposer : IVideoComposer
             {
                 var stderr = stderrBuilder.ToString();
                 var exception = FfmpegException.FromProcessFailure(
-                    process.ExitCode, 
-                    stderr, 
-                    jobId, 
+                    process.ExitCode,
+                    stderr,
+                    jobId,
                     correlationId);
                 tcs.SetException(exception);
             }
         };
-        
+
         // Start the process
         process.Start();
         process.BeginErrorReadLine();
         process.BeginOutputReadLine();
-        
+
+        // Register with process registry for tracking
+        if (_processRegistry != null)
+        {
+            _processRegistry.Register(process, jobId);
+        }
+
         // Register cancellation with graceful termination
         var cancellationRegistration = ct.Register(() =>
         {
@@ -266,13 +280,13 @@ public class FfmpegVideoComposer : IVideoComposer
                 if (!process.HasExited)
                 {
                     _logger.LogWarning("Cancelling FFmpeg render (JobId={JobId})", jobId);
-                    
+
                     // Try graceful termination first (send 'q' to stdin if possible)
                     try
                     {
                         process.StandardInput?.Write('q');
                         process.StandardInput?.Flush();
-                        
+
                         // Give it 2 seconds to exit gracefully
                         if (!process.WaitForExit(2000))
                         {
@@ -292,18 +306,18 @@ public class FfmpegVideoComposer : IVideoComposer
                 _logger.LogWarning(ex, "Failed to terminate FFmpeg process during cancellation");
             }
         });
-        
+
         // Wait for completion or cancellation with timeout
         try
         {
             // Set a reasonable timeout (30 minutes for renders)
             var timeoutTask = Task.Delay(TimeSpan.FromMinutes(30), ct);
             var completedTask = await Task.WhenAny(tcs.Task, timeoutTask).ConfigureAwait(false);
-            
+
             if (completedTask == timeoutTask)
             {
                 _logger.LogError("FFmpeg render timeout after 30 minutes (JobId={JobId})", jobId);
-                
+
                 // Kill the process
                 try
                 {
@@ -316,7 +330,7 @@ public class FfmpegVideoComposer : IVideoComposer
                 {
                     _logger.LogWarning(killEx, "Failed to kill timed-out FFmpeg process");
                 }
-                
+
                 throw new FfmpegException(
                     "FFmpeg render operation timed out after 30 minutes",
                     FfmpegErrorCategory.Timeout,
@@ -329,7 +343,7 @@ public class FfmpegVideoComposer : IVideoComposer
                         "Ensure FFmpeg is not hanging on a corrupted input file"
                     });
             }
-            
+
             await tcs.Task.ConfigureAwait(false); // This will throw if the process failed
         }
         catch (FfmpegException)
@@ -347,7 +361,7 @@ public class FfmpegVideoComposer : IVideoComposer
         {
             // Dispose cancellation registration
             cancellationRegistration.Dispose();
-            
+
             // Ensure process is cleaned up
             try
             {
@@ -360,7 +374,7 @@ public class FfmpegVideoComposer : IVideoComposer
             {
                 // Ignore cleanup errors
             }
-            
+
             // Close log file
             try
             {
@@ -373,21 +387,21 @@ public class FfmpegVideoComposer : IVideoComposer
             {
                 // Ignore cleanup errors
             }
-            
+
             // Dispose process
             process.Dispose();
         }
-        
+
         _logger.LogInformation("Render completed successfully (JobId={JobId}): {OutputPath}", jobId, outputFilePath);
         _logger.LogInformation("FFmpeg log written to: {LogPath}", ffmpegLogPath);
-        
+
         // Report 100% completion
         progress.Report(new RenderProgress(
             100,
             DateTime.Now - startTime,
             TimeSpan.Zero,
             "Render complete"));
-        
+
         return outputFilePath;
     }
     /// <summary>
@@ -395,25 +409,25 @@ public class FfmpegVideoComposer : IVideoComposer
     /// </summary>
     private async Task<string> BuildFfmpegCommandAsync(Timeline timeline, RenderSpec spec, string outputPath, string ffmpegPath, CancellationToken ct)
     {
-        _logger.LogInformation("Building FFmpeg command for render spec: {Codec} @ {Width}x{Height}, {Fps}fps, {VideoBitrate}kbps", 
+        _logger.LogInformation("Building FFmpeg command for render spec: {Codec} @ {Width}x{Height}, {Fps}fps, {VideoBitrate}kbps",
             spec.Codec, spec.Res.Width, spec.Res.Height, spec.Fps, spec.VideoBitrateK);
-        
+
         // Validate input files
         if (string.IsNullOrEmpty(timeline.NarrationPath) || !File.Exists(timeline.NarrationPath))
         {
             throw new ArgumentException($"Narration file not found: {timeline.NarrationPath}", nameof(timeline));
         }
-        
+
         if (!string.IsNullOrEmpty(timeline.MusicPath) && !File.Exists(timeline.MusicPath))
         {
             _logger.LogWarning("Music file not found, will skip music: {Path}", timeline.MusicPath);
         }
-        
+
         // Determine aspect ratio from resolution
         var aspectRatio = spec.Res.Width == spec.Res.Height ? AspectRatio.OneByOne :
                          spec.Res.Width > spec.Res.Height ? AspectRatio.SixteenByNine :
                          AspectRatio.NineBySixteen;
-        
+
         // Create export preset from render spec
         var exportPreset = new ExportPreset(
             Name: "Custom",
@@ -441,18 +455,18 @@ public class FfmpegVideoComposer : IVideoComposer
                      spec.QualityLevel >= 50 ? QualityLevel.Good :
                      QualityLevel.Draft
         );
-        
+
         // Detect hardware capabilities and select best encoder
         // Create hardware encoder with ffmpeg path (use NullLogger since we log from FfmpegVideoComposer)
         var hardwareEncoderWithPath = new HardwareEncoder(
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<HardwareEncoder>.Instance, 
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<HardwareEncoder>.Instance,
             ffmpegPath);
         EncoderConfig encoderConfig;
-        
+
         try
         {
             encoderConfig = await hardwareEncoderWithPath.SelectBestEncoderAsync(exportPreset, preferHardware: true).ConfigureAwait(false);
-            _logger.LogInformation("Selected encoder: {Encoder} (Hardware: {IsHardware})", 
+            _logger.LogInformation("Selected encoder: {Encoder} (Hardware: {IsHardware})",
                 encoderConfig.EncoderName, encoderConfig.IsHardwareAccelerated);
         }
         catch (Exception ex)
@@ -464,11 +478,11 @@ public class FfmpegVideoComposer : IVideoComposer
                 false,
                 new Dictionary<string, string>());
         }
-        
+
         // Build command using FFmpegCommandBuilder
         var builder = new FFmpegCommandBuilder()
             .SetOverwrite(true);
-        
+
         // Add hardware acceleration if available
         if (encoderConfig.IsHardwareAccelerated)
         {
@@ -486,26 +500,26 @@ public class FfmpegVideoComposer : IVideoComposer
                 builder.SetHardwareAcceleration("d3d11va");
             }
         }
-        
+
         // Add input files
         builder.AddInput(timeline.NarrationPath);
-        
+
         bool hasMusicInput = !string.IsNullOrEmpty(timeline.MusicPath) && File.Exists(timeline.MusicPath);
         if (hasMusicInput)
         {
             builder.AddInput(timeline.MusicPath);
         }
-        
+
         // Set video codec (use hardware encoder if available)
         builder.SetVideoCodec(encoderConfig.EncoderName);
-        
+
         // Apply encoder-specific parameters
         foreach (var param in encoderConfig.Parameters)
         {
             // These would need to be added as options to the command
             _logger.LogDebug("Encoder parameter: {Key}={Value}", param.Key, param.Value);
         }
-        
+
         // Set encoding preset based on quality
         var preset = exportPreset.Quality switch
         {
@@ -516,63 +530,63 @@ public class FfmpegVideoComposer : IVideoComposer
             _ => "medium"
         };
         builder.SetPreset(preset);
-        
+
         // Set CRF for quality (lower is better, 18-28 is good range)
         var crf = spec.QualityLevel >= 90 ? 18 :
                  spec.QualityLevel >= 75 ? 23 :
                  spec.QualityLevel >= 50 ? 28 :
                  33;
         builder.SetCRF(crf);
-        
+
         // Set resolution and frame rate
         builder.SetResolution(spec.Res.Width, spec.Res.Height);
         builder.SetFrameRate(spec.Fps);
-        
+
         // Set pixel format
         builder.SetPixelFormat(exportPreset.PixelFormat);
-        
+
         // Set audio codec and bitrate
         builder.SetAudioCodec(exportPreset.AudioCodec);
         builder.SetAudioBitrate(spec.AudioBitrateK);
-        
+
         // Set video bitrate
         builder.SetVideoBitrate(spec.VideoBitrateK);
-        
+
         // Set audio settings for better quality
         builder.SetAudioSampleRate(48000); // Standard sample rate
         builder.SetAudioChannels(2); // Stereo
-        
+
         // Add metadata
         builder.AddMetadata("title", "Generated by Aura Video Studio");
         builder.AddMetadata("encoder", "Aura Video Studio");
         builder.AddMetadata("creation_time", DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"));
-        
+
         // Set output file
         builder.SetOutput(outputPath);
-        
+
         // Build the command
         var command = builder.Build();
-        
+
         _logger.LogInformation("FFmpeg command built successfully: {Length} characters", command.Length);
         _logger.LogDebug("Full command: ffmpeg {Command}", command);
-        
+
         return command;
     }
-    
+
     /// <summary>
     /// Validate FFmpeg binary before use
     /// </summary>
     private async Task ValidateFfmpegBinaryAsync(string ffmpegPath, string jobId, string correlationId, CancellationToken ct)
     {
         _logger.LogInformation("Validating FFmpeg binary: {Path}", ffmpegPath);
-        
+
         // For executables in PATH (like "ffmpeg"), File.Exists() will return false
         // So we skip the file existence check and go straight to running the command
         // The command execution will fail if FFmpeg is not found, giving us better error info
-        bool isPathExecutable = !Path.IsPathRooted(ffmpegPath) && 
+        bool isPathExecutable = !Path.IsPathRooted(ffmpegPath) &&
                                 !ffmpegPath.Contains(Path.DirectorySeparatorChar) &&
                                 !ffmpegPath.Contains(Path.AltDirectorySeparatorChar);
-        
+
         // Check file exists only if it's an absolute or relative path (not just an executable name)
         if (!isPathExecutable && !File.Exists(ffmpegPath))
         {
@@ -590,12 +604,12 @@ public class FfmpegVideoComposer : IVideoComposer
                     "Add FFmpeg to system PATH"
                 }
             };
-            
+
             _logger.LogError("FFmpeg validation failed: {Error}", System.Text.Json.JsonSerializer.Serialize(error));
             throw new InvalidOperationException($"FFmpeg binary not found at {ffmpegPath}. " +
                 $"Install FFmpeg via Download Center or attach an existing installation. (CorrelationId: {correlationId})");
         }
-        
+
         try
         {
             var psi = new ProcessStartInfo
@@ -607,18 +621,18 @@ public class FfmpegVideoComposer : IVideoComposer
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
-            
+
             using var process = Process.Start(psi);
             if (process == null)
             {
                 throw new InvalidOperationException("Failed to start FFmpeg process for validation");
             }
-            
+
             await process.WaitForExitAsync(ct).ConfigureAwait(false);
-            
+
             var output = await process.StandardOutput.ReadToEndAsync(ct).ConfigureAwait(false);
             var stderr = await process.StandardError.ReadToEndAsync(ct).ConfigureAwait(false);
-            
+
             if (process.ExitCode != 0)
             {
                 var error = new
@@ -635,13 +649,13 @@ public class FfmpegVideoComposer : IVideoComposer
                         "Use 'Repair' option in Download Center"
                     }
                 };
-                
+
                 _logger.LogError("FFmpeg validation failed: {Error}", System.Text.Json.JsonSerializer.Serialize(error));
                 throw new InvalidOperationException($"FFmpeg validation failed with exit code {process.ExitCode}. " +
                     $"See logs for details. (CorrelationId: {correlationId})");
             }
-            
-            _logger.LogInformation("FFmpeg validation successful: {Version}", 
+
+            _logger.LogInformation("FFmpeg validation successful: {Version}",
                 output.Split('\n').FirstOrDefault(l => l.Contains("ffmpeg version")) ?? "version unknown");
         }
         catch (Exception ex) when (ex is not InvalidOperationException)
@@ -659,19 +673,19 @@ public class FfmpegVideoComposer : IVideoComposer
                     "Try attaching a different FFmpeg installation"
                 }
             };
-            
+
             _logger.LogError(ex, "FFmpeg validation exception: {Error}", System.Text.Json.JsonSerializer.Serialize(error));
             throw new InvalidOperationException($"FFmpeg validation failed: {ex.Message} (CorrelationId: {correlationId})", ex);
         }
     }
-    
+
     /// <summary>
     /// Pre-validate audio files before rendering and attempt remediation if needed
     /// </summary>
     private async Task PreValidateAudioAsync(Timeline timeline, string ffmpegPath, string jobId, string correlationId, CancellationToken ct)
     {
         _logger.LogInformation("Pre-validating audio files (JobId={JobId})", jobId);
-        
+
         // Get ffprobe path (same directory as ffmpeg)
         var ffmpegDir = Path.GetDirectoryName(ffmpegPath);
         var ffprobePath = ffmpegDir != null ? Path.Combine(ffmpegDir, "ffprobe.exe") : null;
@@ -679,39 +693,39 @@ public class FfmpegVideoComposer : IVideoComposer
         {
             ffprobePath = null;
         }
-        
+
         var validator = new Aura.Core.Audio.AudioValidator(
             Microsoft.Extensions.Logging.Abstractions.NullLogger<Aura.Core.Audio.AudioValidator>.Instance,
             ffmpegPath,
             ffprobePath);
-        
+
         // Validate narration
         if (!string.IsNullOrEmpty(timeline.NarrationPath))
         {
             await ValidateAndRemediateAudioFileAsync(
-                validator, 
-                timeline.NarrationPath, 
-                "narration", 
-                jobId, 
-                correlationId, 
+                validator,
+                timeline.NarrationPath,
+                "narration",
+                jobId,
+                correlationId,
                 ct).ConfigureAwait(false);
         }
-        
+
         // Validate music if present
         if (!string.IsNullOrEmpty(timeline.MusicPath))
         {
             await ValidateAndRemediateAudioFileAsync(
-                validator, 
-                timeline.MusicPath, 
-                "music", 
-                jobId, 
-                correlationId, 
+                validator,
+                timeline.MusicPath,
+                "music",
+                jobId,
+                correlationId,
                 ct).ConfigureAwait(false);
         }
-        
+
         _logger.LogInformation("Audio pre-validation complete (JobId={JobId})", jobId);
     }
-    
+
     /// <summary>
     /// Validate a single audio file and attempt remediation if corrupted
     /// </summary>
@@ -723,66 +737,66 @@ public class FfmpegVideoComposer : IVideoComposer
         string correlationId,
         CancellationToken ct)
     {
-        _logger.LogInformation("Validating {AudioType} audio: {Path} (JobId={JobId})", 
+        _logger.LogInformation("Validating {AudioType} audio: {Path} (JobId={JobId})",
             audioType, audioPath, jobId);
-        
+
         var validation = await validator.ValidateAsync(audioPath, ct).ConfigureAwait(false);
-        
+
         if (validation.IsValid)
         {
             _logger.LogInformation("{AudioType} audio validation passed (JobId={JobId})", audioType, jobId);
             return;
         }
-        
+
         // Audio is invalid - attempt remediation
-        _logger.LogWarning("{AudioType} audio validation failed: {Error} (JobId={JobId})", 
+        _logger.LogWarning("{AudioType} audio validation failed: {Error} (JobId={JobId})",
             audioType, validation.ErrorMessage, jobId);
-        
+
         if (validation.IsCorrupted)
         {
-            _logger.LogInformation("Attempting to re-encode corrupted {AudioType} audio (JobId={JobId})", 
+            _logger.LogInformation("Attempting to re-encode corrupted {AudioType} audio (JobId={JobId})",
                 audioType, jobId);
-            
+
             // Try re-encoding to a clean WAV
             var reEncodedPath = Path.Combine(
                 Path.GetDirectoryName(audioPath) ?? Path.GetTempPath(),
                 $"{Path.GetFileNameWithoutExtension(audioPath)}_reencoded.wav");
-            
+
             var (success, errorMessage) = await validator.ReencodeAsync(audioPath, reEncodedPath, ct).ConfigureAwait(false);
-            
+
             if (success)
             {
-                _logger.LogInformation("Successfully re-encoded {AudioType} audio (JobId={JobId})", 
+                _logger.LogInformation("Successfully re-encoded {AudioType} audio (JobId={JobId})",
                     audioType, jobId);
-                
+
                 // Replace the original file with the re-encoded version
                 File.Delete(audioPath);
                 File.Move(reEncodedPath, audioPath);
-                
-                _logger.LogInformation("Replaced corrupted {AudioType} with re-encoded version (JobId={JobId})", 
+
+                _logger.LogInformation("Replaced corrupted {AudioType} with re-encoded version (JobId={JobId})",
                     audioType, jobId);
                 return;
             }
-            
-            _logger.LogError("Re-encoding failed: {Error}. Attempting to generate silent fallback (JobId={JobId})", 
+
+            _logger.LogError("Re-encoding failed: {Error}. Attempting to generate silent fallback (JobId={JobId})",
                 errorMessage, jobId);
-            
+
             // Re-encoding failed - generate silent WAV as fallback
             var (silentSuccess, silentError) = await validator.GenerateSilentWavAsync(
-                audioPath + ".silent.wav", 
+                audioPath + ".silent.wav",
                 10.0, // 10 seconds default
                 ct).ConfigureAwait(false);
-            
+
             if (silentSuccess)
             {
                 _logger.LogWarning("Generated silent {AudioType} fallback (JobId={JobId})", audioType, jobId);
-                
+
                 // Replace with silent version
                 File.Delete(audioPath);
                 File.Move(audioPath + ".silent.wav", audioPath);
                 return;
             }
-            
+
             // All remediation attempts failed
             var error = new
             {
@@ -802,20 +816,20 @@ public class FfmpegVideoComposer : IVideoComposer
                     "Try using a different TTS provider"
                 }
             };
-            
-            _logger.LogError("All audio remediation attempts failed: {Error}", 
+
+            _logger.LogError("All audio remediation attempts failed: {Error}",
                 System.Text.Json.JsonSerializer.Serialize(error));
-            
+
             throw new InvalidOperationException(
                 $"{audioType} audio validation failed and remediation unsuccessful: {validation.ErrorMessage}. " +
                 $"CorrelationId: {correlationId}, JobId: {jobId}");
         }
-        
+
         // Not corrupted but still invalid (e.g., file not found)
         throw new InvalidOperationException(
             $"{audioType} audio validation failed: {validation.ErrorMessage}. " +
             $"CorrelationId: {correlationId}, JobId: {jobId}");
     }
-    
+
 
 }

@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Aura.Core.Audio;
 using Aura.Core.Models;
 using Aura.Core.Providers;
+using Aura.Core.Runtime;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Providers.Tts;
@@ -25,19 +26,25 @@ public class PiperTtsProvider : ITtsProvider
     private readonly string _piperExecutable;
     private readonly string _voiceModelPath;
     private readonly string _outputDirectory;
+    private readonly ProcessRegistry? _processRegistry;
+    private readonly ManagedProcessRunner? _processRunner;
 
     public PiperTtsProvider(
         ILogger<PiperTtsProvider> logger,
         SilentWavGenerator silentWavGenerator,
         WavValidator wavValidator,
         string piperExecutable,
-        string voiceModelPath)
+        string voiceModelPath,
+        ProcessRegistry? processRegistry = null,
+        ManagedProcessRunner? processRunner = null)
     {
         _logger = logger;
         _silentWavGenerator = silentWavGenerator;
         _wavValidator = wavValidator;
         _piperExecutable = piperExecutable;
         _voiceModelPath = voiceModelPath;
+        _processRegistry = processRegistry;
+        _processRunner = processRunner;
         _outputDirectory = Path.Combine(Path.GetTempPath(), "AuraVideoStudio", "TTS", "Piper");
 
         if (!Directory.Exists(_outputDirectory))
@@ -75,14 +82,12 @@ public class PiperTtsProvider : ITtsProvider
     {
         _logger.LogInformation("Synthesizing speech with Piper TTS using voice model {Model}", _voiceModelPath);
 
-        if (!File.Exists(_piperExecutable))
+        // Health check before synthesis
+        if (!await IsHealthyAsync(ct).ConfigureAwait(false))
         {
-            throw new FileNotFoundException($"Piper executable not found at {_piperExecutable}. Please install Piper from https://github.com/rhasspy/piper and configure the path in settings.");
-        }
-
-        if (!File.Exists(_voiceModelPath))
-        {
-            throw new FileNotFoundException($"Voice model not found at {_voiceModelPath}. Please download a voice model from https://github.com/rhasspy/piper/releases and configure the path in settings.");
+            throw new InvalidOperationException(
+                "Piper TTS provider is not healthy. " +
+                "Please verify that the Piper executable and voice model are correctly configured.");
         }
 
         var linesList = lines.ToList();
@@ -170,6 +175,28 @@ public class PiperTtsProvider : ITtsProvider
         }
     }
 
+    /// <summary>
+    /// Check if Piper TTS provider is healthy (executable and model exist)
+    /// </summary>
+    public async Task<bool> IsHealthyAsync(CancellationToken ct = default)
+    {
+        await Task.CompletedTask.ConfigureAwait(false);
+
+        if (!File.Exists(_piperExecutable))
+        {
+            _logger.LogWarning("Piper executable not found at {Path}", _piperExecutable);
+            return false;
+        }
+
+        if (!File.Exists(_voiceModelPath))
+        {
+            _logger.LogWarning("Piper voice model not found at {Path}", _voiceModelPath);
+            return false;
+        }
+
+        return true;
+    }
+
     private async Task<bool> RunPiperAsync(string text, string outputPath, CancellationToken ct)
     {
         try
@@ -185,31 +212,87 @@ public class PiperTtsProvider : ITtsProvider
                 CreateNoWindow = true
             };
 
-            using var process = new Process { StartInfo = processStartInfo };
-            
-            process.Start();
-
-            // Write text to stdin
-            await process.StandardInput.WriteLineAsync(text).ConfigureAwait(false);
-            process.StandardInput.Close();
-
-            // Wait for completion with cancellation support
-            await process.WaitForExitAsync(ct).ConfigureAwait(false);
-
-            if (process.ExitCode == 0 && File.Exists(outputPath))
+            // Use ManagedProcessRunner if available, otherwise fall back to manual process management
+            if (_processRunner != null)
             {
-                return true;
+                return await RunPiperWithManagedRunnerAsync(processStartInfo, text, outputPath, ct).ConfigureAwait(false);
             }
 
-            var error = await process.StandardError.ReadToEndAsync(ct).ConfigureAwait(false);
-            _logger.LogWarning("Piper process failed with exit code {ExitCode}: {Error}", process.ExitCode, error);
-            return false;
+            // Fallback to manual process management
+            return await RunPiperManuallyAsync(processStartInfo, text, outputPath, ct).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error running Piper process");
             return false;
         }
+    }
+
+    /// <summary>
+    /// Run Piper using ManagedProcessRunner (preferred method)
+    /// Note: ManagedProcessRunner doesn't support stdin, so we use manual process management
+    /// but with improved timeout handling (60s instead of 5 minutes)
+    /// </summary>
+    private async Task<bool> RunPiperWithManagedRunnerAsync(
+        ProcessStartInfo startInfo,
+        string text,
+        string outputPath,
+        CancellationToken ct)
+    {
+        // Since ManagedProcessRunner doesn't support stdin, we fall back to manual management
+        // but use the improved timeout (60s) pattern
+        return await RunPiperManuallyAsync(startInfo, text, outputPath, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Run Piper manually (fallback method)
+    /// </summary>
+    private async Task<bool> RunPiperManuallyAsync(
+        ProcessStartInfo startInfo,
+        string text,
+        string outputPath,
+        CancellationToken ct)
+    {
+        using var process = new Process { StartInfo = startInfo };
+        
+        process.Start();
+
+        // Register with process registry for tracking if available
+        if (_processRegistry != null)
+        {
+            _processRegistry.Register(process);
+        }
+
+        // Write text to stdin
+        await process.StandardInput.WriteLineAsync(text).ConfigureAwait(false);
+        process.StandardInput.Close();
+
+        // Wait for completion with cancellation support and timeout (60s per synthesis call)
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeoutCts.CancelAfter(TimeSpan.FromSeconds(60));
+
+        try
+        {
+            await process.WaitForExitAsync(timeoutCts.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (timeoutCts.Token.IsCancellationRequested && !ct.IsCancellationRequested)
+        {
+            _logger.LogWarning("Piper process timed out after 60 seconds");
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+            }
+            return false;
+        }
+
+        if (process.ExitCode == 0 && File.Exists(outputPath))
+        {
+            return true;
+        }
+
+        var error = await process.StandardError.ReadToEndAsync(ct).ConfigureAwait(false);
+        _logger.LogWarning("Piper process failed with exit code {ExitCode}: {Error}", process.ExitCode, error);
+        return false;
     }
 
 

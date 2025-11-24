@@ -286,7 +286,9 @@ public static class ServiceCollectionExtensions
             }
 
             logger.LogInformation("Registering Piper TTS provider with executable at {Executable}", piperPath);
-            return new PiperTtsProvider(logger, silentWavGenerator, wavValidator, piperPath, modelPath);
+            var processRegistry = sp.GetService<Aura.Core.Runtime.ProcessRegistry>();
+            var processRunner = sp.GetService<Aura.Core.Runtime.ManagedProcessRunner>();
+            return new PiperTtsProvider(logger, silentWavGenerator, wavValidator, piperPath, modelPath, processRegistry, processRunner);
         });
 
         // Register Mimic3 provider (requires base URL)
@@ -542,7 +544,8 @@ public static class ServiceCollectionExtensions
         {
             var logger = sp.GetRequiredService<ILogger<Rendering.FFmpegProvider>>();
             var ffmpegLocator = sp.GetRequiredService<Aura.Core.Dependencies.IFfmpegLocator>();
-            return new Rendering.FFmpegProvider(logger, ffmpegLocator);
+            var processRegistry = sp.GetService<Aura.Core.Runtime.ProcessRegistry>();
+            return new Rendering.FFmpegProvider(logger, ffmpegLocator, processRegistry: processRegistry);
         });
 
         services.AddSingleton<Rendering.IRenderingProvider>(sp =>

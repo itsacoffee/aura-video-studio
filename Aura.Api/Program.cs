@@ -1,4 +1,5 @@
 using Aura.Api.Contracts;
+using Aura.Api.Endpoints;
 using Aura.Api.Filters;
 using Aura.Api.Helpers;
 using Aura.Api.HostedServices;
@@ -1163,6 +1164,24 @@ builder.Services.AddSingleton<Aura.Core.Validation.TtsOutputValidator>();
 builder.Services.AddSingleton<Aura.Core.Validation.ImageOutputValidator>();
 builder.Services.AddSingleton<Aura.Core.Validation.LlmOutputValidator>();
 
+// Register PR-004: Script Generation Pipeline Hardening services
+builder.Services.AddSingleton<Aura.Core.AI.Validation.ScriptSchemaValidator>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.AI.Validation.ScriptSchemaValidator>>();
+    return new Aura.Core.AI.Validation.ScriptSchemaValidator(logger);
+});
+
+builder.Services.AddSingleton<Aura.Core.AI.Templates.FallbackScriptGenerator>();
+
+builder.Services.AddSingleton<Aura.Core.AI.ScriptGenerationPipeline>(sp =>
+{
+    var llmProvider = sp.GetRequiredService<Aura.Core.Providers.ILlmProvider>();
+    var validator = sp.GetRequiredService<Aura.Core.AI.Validation.ScriptSchemaValidator>();
+    var fallbackGenerator = sp.GetRequiredService<Aura.Core.AI.Templates.FallbackScriptGenerator>();
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.AI.ScriptGenerationPipeline>>();
+    return new Aura.Core.AI.ScriptGenerationPipeline(llmProvider, validator, fallbackGenerator, logger);
+});
+
 // Register Model Selection services
 builder.Services.AddSingleton<Aura.Core.AI.Adapters.ModelCatalog>();
 builder.Services.AddSingleton<Aura.Core.Services.ModelSelection.ModelSelectionStore>();
@@ -1566,6 +1585,7 @@ builder.Services.AddSingleton<Aura.Api.Services.HealthDiagnosticsService>();
 builder.Services.AddSingleton<Aura.Api.Services.StartupValidator>();
 builder.Services.AddSingleton<Aura.Api.Services.FirstRunDiagnostics>();
 builder.Services.AddSingleton<ConfigurationValidator>();
+builder.Services.AddSingleton<Aura.Core.Configuration.SettingsValidationService>();
 
 // Register diagnostic and error aggregation services
 builder.Services.AddSingleton<Aura.Core.Services.Diagnostics.ErrorAggregationService>();
@@ -1778,6 +1798,21 @@ builder.Services.AddSingleton<Aura.Api.Services.ShutdownOrchestrator>();
 // Register FFmpeg ProcessManager for tracking FFmpeg processes during shutdown
 builder.Services.AddSingleton<Aura.Core.Services.FFmpeg.IProcessManager, Aura.Core.Services.FFmpeg.ProcessManager>();
 
+// Register ProcessRegistry for centralized process tracking and zombie prevention
+builder.Services.AddSingleton<Aura.Core.Runtime.ProcessRegistry>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Runtime.ProcessRegistry>>();
+    return new Aura.Core.Runtime.ProcessRegistry(logger);
+});
+
+// Register ManagedProcessRunner for managed process execution
+builder.Services.AddSingleton<Aura.Core.Runtime.ManagedProcessRunner>(sp =>
+{
+    var registry = sp.GetRequiredService<Aura.Core.Runtime.ProcessRegistry>();
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Runtime.ManagedProcessRunner>>();
+    return new Aura.Core.Runtime.ManagedProcessRunner(registry, logger);
+});
+
 // Register Audio/Caption services
 builder.Services.AddSingleton<Aura.Core.Audio.AudioProcessor>();
 builder.Services.AddSingleton<Aura.Core.Audio.DspChain>();
@@ -1932,6 +1967,22 @@ var appLifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
 appLifetime.ApplicationStopping.Register(() =>
 {
     Log.Information("Application stopping - shutting down gracefully");
+    
+    // Dispose ProcessRegistry to kill all tracked processes
+    var processRegistry = app.Services.GetService<Aura.Core.Runtime.ProcessRegistry>();
+    if (processRegistry != null)
+    {
+        try
+        {
+            // Use GetAwaiter().GetResult() since Register callback doesn't support async
+            processRegistry.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            Log.Information("ProcessRegistry disposed - all tracked processes terminated");
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Error disposing ProcessRegistry during shutdown");
+        }
+    }
 });
 appLifetime.ApplicationStopped.Register(() =>
 {
@@ -2043,10 +2094,11 @@ static string GetDatabasePath(WebApplication app)
 Log.Information("=== Aura Video Studio API Starting ===");
 Log.Information("Initialization Phase 1: Service Registration Complete");
 
-// Perform configuration validation
+// Perform comprehensive configuration validation
 Log.Information("Initialization Phase 2: Configuration Validation");
 try
 {
+    // First, run existing ConfigurationValidator for basic checks
     var configValidator = app.Services.GetRequiredService<ConfigurationValidator>();
     var configResult = configValidator.Validate();
     if (!configResult.IsValid)
@@ -2064,6 +2116,56 @@ try
         Log.Information("Shutting down application due to configuration errors");
         await app.StopAsync().ConfigureAwait(false);
         return;
+    }
+
+    // Then run comprehensive SettingsValidationService for dependency checks
+    using var validationScope = app.Services.CreateScope();
+    var settingsValidator = validationScope.ServiceProvider.GetService<Aura.Core.Configuration.SettingsValidationService>();
+    if (settingsValidator != null)
+    {
+        var validationResult = await settingsValidator.ValidateAllAsync(CancellationToken.None).ConfigureAwait(false);
+        
+        if (!validationResult.CanStart)
+        {
+            Log.Error("=== Configuration Validation Failed ===");
+            Log.Error("Critical dependencies are missing. Application cannot start.");
+            Log.Error("");
+            Log.Error("Critical Issues:");
+            foreach (var issue in validationResult.CriticalIssues)
+            {
+                Log.Error("  [{Code}] {Message}", issue.Code, issue.Message);
+                if (!string.IsNullOrWhiteSpace(issue.Resolution))
+                {
+                    Log.Error("    Resolution: {Resolution}", issue.Resolution);
+                }
+            }
+            Log.Error("");
+            Log.Error("Please fix the issues above and restart the application.");
+            
+            // Exit gracefully with proper cleanup
+            Log.Information("Shutting down application due to configuration errors");
+            await app.StopAsync().ConfigureAwait(false);
+            return;
+        }
+
+        // Log warnings if any
+        if (validationResult.Warnings.Count > 0)
+        {
+            Log.Warning("Configuration validation completed with {Count} warnings (non-critical):", validationResult.Warnings.Count);
+            foreach (var warning in validationResult.Warnings)
+            {
+                Log.Warning("  [{Code}] {Message}", warning.Code, warning.Message);
+                if (!string.IsNullOrWhiteSpace(warning.Resolution))
+                {
+                    Log.Warning("    Suggestion: {Resolution}", warning.Resolution);
+                }
+            }
+        }
+        else
+        {
+            Log.Information("Configuration validation passed successfully (completed in {Duration}ms)",
+                validationResult.ValidationDuration.TotalMilliseconds);
+        }
     }
 }
 catch (Exception ex)
@@ -2642,6 +2744,15 @@ apiGroup.MapGet("/health/ready", async (Aura.Api.Services.HealthCheckService hea
 })
 .WithName("HealthReady")
 .WithOpenApi();
+
+// Configuration endpoints
+app.MapConfigurationEndpoints();
+
+// Process management debug endpoints
+app.MapProcessEndpoints();
+
+// Provider status endpoints
+app.MapProviderStatusEndpoints();
 
 // Health summary endpoint - high-level system status
 apiGroup.MapGet("/health/summary", async (Aura.Api.Services.HealthDiagnosticsService healthDiagnostics, CancellationToken ct) =>

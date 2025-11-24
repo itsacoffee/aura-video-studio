@@ -207,6 +207,93 @@ class ConfigurationStatusService {
   }
 
   /**
+   * Get comprehensive configuration validation status from backend
+   * Uses the new unified SettingsValidationService endpoint
+   */
+  async getConfigurationStatus(): Promise<{
+    isValid: boolean;
+    canStart: boolean;
+    criticalIssues: Array<{
+      category: string;
+      code: string;
+      message: string;
+      resolution?: string;
+    }>;
+    warnings: Array<{
+      category: string;
+      code: string;
+      message: string;
+      resolution?: string;
+    }>;
+    validationDurationMs: number;
+    timestamp: string;
+  }> {
+    try {
+      const response = await fetch(apiUrl('/api/config/status'));
+
+      if (!response.ok) {
+        throw new Error(`Configuration status check failed: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      logger.error(
+        'Failed to get configuration status',
+        error instanceof Error ? error : new Error(String(error)),
+        'configurationStatusService',
+        'getConfigurationStatus'
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Get individual dependency status from backend
+   * Uses the new unified SettingsValidationService endpoint
+   */
+  async getDependencyStatus(): Promise<{
+    ffmpeg: {
+      isAvailable: boolean;
+      message: string;
+      version?: string;
+    };
+    ollama: {
+      isAvailable: boolean;
+      message: string;
+      details?: string;
+    };
+    database: {
+      isAvailable: boolean;
+      message: string;
+      path?: string;
+    };
+    outputDirectory: {
+      isAvailable: boolean;
+      message: string;
+      path?: string;
+    };
+    timestamp: string;
+  }> {
+    try {
+      const response = await fetch(apiUrl('/api/config/dependencies'));
+
+      if (!response.ok) {
+        throw new Error(`Dependency status check failed: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      logger.error(
+        'Failed to get dependency status',
+        error instanceof Error ? error : new Error(String(error)),
+        'configurationStatusService',
+        'getDependencyStatus'
+      );
+      throw error;
+    }
+  }
+
+  /**
    * Subscribe to configuration status changes
    */
   subscribe(listener: (status: ConfigurationStatus) => void): () => void {
