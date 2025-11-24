@@ -115,7 +115,7 @@ public class RagScriptEnhancer
 
             // Build merged RAG context
             var formattedContext = FormatMergedContext(updatedChunks, allCitations.Values.ToList(), ragConfig.IncludeCitations);
-            var totalTokens = EstimateTokenCount(formattedContext);
+            var totalTokens = EstimateTokenCount(updatedChunks);
 
             var ragContext = new Aura.Core.Models.RAG.RagContext
             {

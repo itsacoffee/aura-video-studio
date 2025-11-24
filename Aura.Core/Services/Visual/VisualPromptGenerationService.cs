@@ -251,15 +251,21 @@ public class VisualPromptGenerationService
         CancellationToken ct)
     {
         // Check if provider is available before attempting
-        if (llmProvider is Aura.Providers.Llm.OllamaLlmProvider ollamaProvider)
+        var providerType = llmProvider.GetType();
+        if (providerType.Name == "OllamaLlmProvider")
         {
             try
             {
-                var isAvailable = await ollamaProvider.IsServiceAvailableAsync(ct).ConfigureAwait(false);
-                if (!isAvailable)
+                var healthCheckMethod = providerType.GetMethod("IsServiceAvailableAsync");
+                if (healthCheckMethod != null)
                 {
-                    _logger.LogWarning("Ollama provider is not available for visual prompt generation, using fallback");
+                    var task = (Task<bool>)healthCheckMethod.Invoke(llmProvider, new object[] { ct })!;
+                    var isAvailable = await task.ConfigureAwait(false);
+                    if (!isAvailable)
+                    {
+                        _logger.LogWarning("Ollama provider is not available for visual prompt generation, using fallback");
                     return null;
+                    }
                 }
             }
             catch (Exception ex)

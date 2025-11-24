@@ -479,14 +479,19 @@ public class ScriptOrchestrator
 
         // For Ollama, check availability before attempting generation
         // This prevents wasting time on a provider that's not actually running
-        if (providerName == "Ollama" && provider is Aura.Providers.Llm.OllamaLlmProvider ollamaProvider)
+        if (providerName == "Ollama")
         {
             try
             {
-                var isAvailable = await ollamaProvider.IsServiceAvailableAsync(ct).ConfigureAwait(false);
-                if (!isAvailable)
+                var providerType = provider.GetType();
+                var healthCheckMethod = providerType.GetMethod("IsServiceAvailableAsync");
+                if (healthCheckMethod != null)
                 {
-                    _logger.LogWarning("Ollama provider is not available (service not running)");
+                    var task = (Task<bool>)healthCheckMethod.Invoke(provider, new object[] { ct })!;
+                    var isAvailable = await task.ConfigureAwait(false);
+                    if (!isAvailable)
+                    {
+                        _logger.LogWarning("Ollama provider is not available (service not running)");
                     return new ScriptResult
                     {
                         Success = false,
@@ -498,6 +503,7 @@ public class ScriptOrchestrator
                         RequestedProvider = requestedProvider,
                         DowngradeReason = downgradeReason
                     };
+                    }
                 }
             }
             catch (Exception ex)

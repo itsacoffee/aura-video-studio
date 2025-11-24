@@ -537,7 +537,7 @@ public class WebSearchService
         var relatedKeywords = ExtractKeywords(relatedResults);
         
         var gapKeywords = relatedKeywords
-            .Where(k => !mainKeywords.Contains(k.Key))
+            .Where(k => !mainKeywords.ContainsKey(k.Key))
             .OrderByDescending(k => k.Value)
             .Take(10)
             .Select(k => k.Key)

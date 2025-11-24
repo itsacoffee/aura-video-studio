@@ -216,9 +216,14 @@ public class IdeationService
             try
             {
                 _logger.LogInformation("Gathering real-time web intelligence for content gap analysis");
+                var relatedTopics = new List<string>();
+                if (request.ExistingTopics != null)
+                    relatedTopics.AddRange(request.ExistingTopics);
+                if (request.CompetitorTopics != null)
+                    relatedTopics.AddRange(request.CompetitorTopics);
                 webGapAnalysis = await _webSearchService.AnalyzeContentGapsAsync(
                     request.Niche,
-                    request.RelatedTopics?.ToList(),
+                    relatedTopics.Count > 0 ? relatedTopics : null,
                     maxResults: 20,
                     ct).ConfigureAwait(false);
                 
@@ -268,10 +273,18 @@ public class IdeationService
                 .Distinct()
                 .ToList();
             
-            uniqueAngles = uniqueAngles
-                .Concat(webGapAnalysis.UniqueAngles)
-                .Distinct()
-                .ToList();
+            // Merge unique angles - webGapAnalysis.UniqueAngles is List<string>, uniqueAngles is Dictionary<string, List<string>>
+            foreach (var angle in webGapAnalysis.UniqueAngles)
+            {
+                if (!uniqueAngles.ContainsKey("Web Intelligence"))
+                {
+                    uniqueAngles["Web Intelligence"] = new List<string>();
+                }
+                if (!uniqueAngles["Web Intelligence"].Contains(angle))
+                {
+                    uniqueAngles["Web Intelligence"].Add(angle);
+                }
+            }
         }
 
         return new GapAnalysisResponse(
@@ -494,7 +507,7 @@ public class IdeationService
             foreach (var chunk in ragContext.Chunks.Take(5))
             {
                 sb.AppendLine($"- {chunk.Content}");
-                if (ragContext.IncludeCitations && chunk.CitationNumber > 0)
+                if (chunk.CitationNumber > 0)
                 {
                     sb.AppendLine($"  [Source: {chunk.Source}]");
                 }
