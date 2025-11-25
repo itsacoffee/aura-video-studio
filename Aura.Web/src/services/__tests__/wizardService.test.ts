@@ -36,6 +36,11 @@ vi.mock('../loggingService', () => ({
   },
 }));
 
+// Mock ollamaService
+vi.mock('../api/ollamaService', () => ({
+  streamGeneration: vi.fn(),
+}));
+
 describe('wizardService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -393,10 +398,6 @@ describe('wizardService', () => {
   describe('generateScriptWithProgress', () => {
     beforeEach(() => {
       vi.clearAllMocks();
-      // Mock ollamaService.streamGeneration
-      vi.mock('../api/ollamaService', () => ({
-        streamGeneration: vi.fn(),
-      }));
     });
 
     it('should stream script generation with progress events', async () => {

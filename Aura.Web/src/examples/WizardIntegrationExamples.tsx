@@ -13,7 +13,6 @@ import { loggingService as logger } from '@/services/loggingService';
 import {
   storeBrief,
   fetchAvailableVoices,
-  generateScript,
   generateScriptWithProgress,
   startFinalRendering,
   type WizardBriefData,
@@ -146,6 +145,9 @@ export const StyleStepExample: FC = () => {
   );
 };
 
+/** Maximum number of characters to show in the live preview */
+const MAX_PREVIEW_LENGTH = 500;
+
 /**
  * Example: Step 3 - Generating Script with SSE Streaming
  */
@@ -199,38 +201,6 @@ export const ScriptStepExample: FC = () => {
     []
   );
 
-  // Keep old non-streaming function for reference/fallback
-  const handleGenerateScriptNonStreaming = useCallback(
-    async (briefData: WizardBriefData, styleData: WizardStyleData) => {
-      setLoading(true);
-      setError(null);
-      setScript(null);
-
-      try {
-        const result = await generateScript(briefData, styleData);
-
-        logger.info('Script generated', 'ScriptStep', 'handleGenerateScript', {
-          jobId: result.jobId,
-          sceneCount: result.scenes.length,
-        });
-
-        setScript(result.script);
-      } catch (error: unknown) {
-        const errorObj = error instanceof Error ? error : new Error(String(error));
-        const errorMessage = errorObj.message || 'Failed to generate script';
-
-        logger.error('Failed to generate script', errorObj, 'ScriptStep', 'handleGenerateScript');
-        setError(errorMessage);
-      } finally {
-        setLoading(false);
-      }
-    },
-    []
-  );
-
-  // Make non-streaming function available for potential fallback usage
-  void handleGenerateScriptNonStreaming;
-
   return (
     <div>
       {error && <MessageBar intent="error">{error}</MessageBar>}
@@ -268,7 +238,7 @@ export const ScriptStepExample: FC = () => {
           {script && (
             <div className="live-preview">
               <h4>Live Preview:</h4>
-              <pre>{script.substring(0, 500)}...</pre>
+              <pre>{script.substring(0, MAX_PREVIEW_LENGTH)}...</pre>
             </div>
           )}
         </div>

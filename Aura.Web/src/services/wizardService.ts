@@ -510,11 +510,17 @@ export async function generateScriptWithProgress(
       // Forward progress events to caller
       onProgress(event);
 
-      // Accumulate script content
+      // Accumulate script content - prefer accumulatedContent from event when available
       if (event.eventType === 'chunk') {
-        accumulatedScript = event.accumulatedContent || accumulatedScript + (event.content || '');
+        if (event.accumulatedContent) {
+          accumulatedScript = event.accumulatedContent;
+        } else if (event.content) {
+          accumulatedScript += event.content;
+        }
       } else if (event.eventType === 'complete') {
-        accumulatedScript = event.accumulatedContent || accumulatedScript;
+        if (event.accumulatedContent) {
+          accumulatedScript = event.accumulatedContent;
+        }
       }
     });
 
