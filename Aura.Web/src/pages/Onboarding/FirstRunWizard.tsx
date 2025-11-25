@@ -30,6 +30,7 @@ import { ResumeWizardDialog } from '../../components/Onboarding/ResumeWizardDial
 import { WelcomeScreen } from '../../components/Onboarding/WelcomeScreen';
 import type { WorkspacePreferences } from '../../components/Onboarding/WorkspaceSetup';
 import { WorkspaceSetup } from '../../components/Onboarding/WorkspaceSetup';
+import { ProviderStatusPanel } from '../../components/ProviderStatusPanel';
 import { WizardProgress } from '../../components/WizardProgress';
 import { wizardAnalytics } from '../../services/analytics';
 import { resetCircuitBreaker } from '../../services/api/apiClient';
@@ -53,7 +54,6 @@ import {
 } from '../../state/onboarding';
 import { pickFolder } from '../../utils/pathUtils';
 import { ApiKeySetupStep } from './ApiKeySetupStep';
-import { ProviderStatusPanel } from '../../components/ProviderStatusPanel';
 
 /**
  * FirstRunWizard - The primary onboarding wizard for new users
@@ -297,8 +297,24 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
     void checkSavedProgress();
   }, []);
 
+  // Safety check: Ensure step is always valid
+  useEffect(() => {
+    if (state.step < 0 || state.step >= totalSteps) {
+      console.warn(
+        `[FirstRunWizard] Invalid step ${state.step} detected, resetting to step 0. Valid range: 0-${totalSteps - 1}`
+      );
+      dispatch({ type: 'SET_STEP', payload: 0 });
+      return;
+    }
+  }, [state.step, totalSteps]);
+
   // Track step changes
   useEffect(() => {
+    // Skip if step is invalid
+    if (state.step < 0 || state.step >= totalSteps) {
+      return;
+    }
+
     const currentTime = Date.now();
     const timeSpent = (currentTime - stepStartTime) / 1000; // Convert to seconds
 
@@ -1798,21 +1814,65 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
   };
 
   const renderStepContent = () => {
-    switch (state.step) {
-      case 0:
-        return renderStep0(); // Welcome
-      case 1:
-        return renderStep1FFmpeg(); // FFmpeg Check
-      case 2:
-        return renderStep2FFmpeg(); // FFmpeg Install
-      case 3:
-        return renderStep3Providers(); // Provider Configuration
-      case 4:
-        return renderStep3Workspace(); // Workspace Setup
-      case 5:
-        return renderStep4Complete(); // Complete
-      default:
-        return null;
+    try {
+      switch (state.step) {
+        case 0:
+          return renderStep0(); // Welcome
+        case 1:
+          return renderStep1FFmpeg(); // FFmpeg Check
+        case 2:
+          return renderStep2FFmpeg(); // FFmpeg Install
+        case 3:
+          return renderStep3Providers(); // Provider Configuration
+        case 4:
+          return renderStep3Workspace(); // Workspace Setup
+        case 5:
+          return renderStep4Complete(); // Complete
+        default:
+          // Fallback for invalid step - reset to step 0
+          console.warn(`[FirstRunWizard] Invalid step ${state.step}, resetting to step 0`);
+          if (state.step < 0 || state.step >= totalSteps) {
+            dispatch({ type: 'SET_STEP', payload: 0 });
+          }
+          return renderStep0();
+      }
+    } catch (error) {
+      console.error('[FirstRunWizard] Error in renderStepContent:', error);
+      // Return error UI instead of null to prevent black screen
+      return (
+        <div
+          style={{
+            padding: tokens.spacingVerticalXXL,
+            textAlign: 'center',
+            backgroundColor: tokens.colorNeutralBackground1 || '#1e1e1e',
+            color: tokens.colorNeutralForeground1 || '#ffffff',
+            minHeight: '400px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <Warning24Regular
+            style={{
+              fontSize: '48px',
+              color: tokens.colorPaletteRedForeground1,
+              marginBottom: tokens.spacingVerticalM,
+            }}
+          />
+          <Title2>Error Loading Step</Title2>
+          <Text style={{ display: 'block', marginTop: tokens.spacingVerticalS }}>
+            An error occurred while loading this step. Please try refreshing the page.
+          </Text>
+          <Button
+            appearance="primary"
+            onClick={() => window.location.reload()}
+            style={{ marginTop: tokens.spacingVerticalM }}
+          >
+            Reload Page
+          </Button>
+        </div>
+      );
     }
   };
 
@@ -1870,7 +1930,6 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
           totalSteps={totalSteps}
           stepLabels={stepLabels}
           onStepClick={handleStepClick}
-          onSaveAndExit={handleExitWizard}
         />
       </div>
 
@@ -1881,16 +1940,62 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
         onStartFresh={handleStartFresh}
       />
 
-      <div className={styles.content}>
+      <div
+        className={styles.content}
+        style={{
+          minHeight: '400px', // Ensure minimum height to prevent black screen
+          backgroundColor: tokens.colorNeutralBackground1 || '#1e1e1e', // Ensure background is set
+        }}
+      >
         {state.step > 0 && state.step < totalSteps - 1 && (
           <div style={{ marginBottom: tokens.spacingVerticalM }}>
             <BackendStatusBanner />
           </div>
         )}
-        <div className={styles.stepContent} key={state.step}>
+        <div
+          className={styles.stepContent}
+          key={state.step}
+          style={{
+            minHeight: '300px', // Ensure minimum height for content
+            backgroundColor: tokens.colorNeutralBackground1 || '#1e1e1e', // Ensure background
+          }}
+        >
           {(() => {
             try {
-              return renderStepContent();
+              const content = renderStepContent();
+              // Ensure we never render null - always show something
+              if (!content) {
+                console.warn('[FirstRunWizard] renderStepContent returned null, showing fallback');
+                return (
+                  <div
+                    style={{
+                      padding: tokens.spacingVerticalXXL,
+                      textAlign: 'center',
+                      backgroundColor: tokens.colorNeutralBackground1 || '#1e1e1e',
+                      color: tokens.colorNeutralForeground1 || '#ffffff',
+                      minHeight: '400px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Warning24Regular
+                      style={{
+                        fontSize: '48px',
+                        color: tokens.colorPaletteYellowForeground1,
+                        marginBottom: tokens.spacingVerticalM,
+                      }}
+                    />
+                    <Title2>Loading Step...</Title2>
+                    <Text style={{ display: 'block', marginTop: tokens.spacingVerticalS }}>
+                      Please wait while we load the step content.
+                    </Text>
+                    <Spinner size="large" style={{ marginTop: tokens.spacingVerticalM }} />
+                  </div>
+                );
+              }
+              return content;
             } catch (error) {
               console.error('[FirstRunWizard] Error rendering step content:', error);
               return (
@@ -1900,6 +2005,11 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
                     textAlign: 'center',
                     backgroundColor: tokens.colorNeutralBackground1 || '#1e1e1e',
                     color: tokens.colorNeutralForeground1 || '#ffffff',
+                    minHeight: '400px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
                   }}
                 >
                   <Warning24Regular
