@@ -72,7 +72,7 @@ public static class ServiceCollectionExtensions
                 // Disable proxy for localhost connections
                 UseProxy = false,
                 UseDefaultCredentials = false,
-                AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate,
+                AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
                 AllowAutoRedirect = true,
                 MaxAutomaticRedirections = 5
             };
