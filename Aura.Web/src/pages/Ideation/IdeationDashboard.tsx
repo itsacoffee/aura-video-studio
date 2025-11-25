@@ -192,8 +192,34 @@ export const IdeationDashboard: React.FC = () => {
 
         const response = await ideationService.brainstorm(request);
         setConcepts(response.concepts);
+        setError(null);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to generate concepts');
+        console.error('Brainstorm error:', err);
+        
+        let errorMessage = 'Failed to generate concepts';
+        let suggestions: string[] = [];
+        
+        if (err instanceof Error) {
+          errorMessage = err.message;
+        }
+        
+        // Try to extract suggestions from API response
+        if (typeof err === 'object' && err !== null) {
+          const apiError = err as any;
+          if (apiError.response?.data?.suggestions) {
+            suggestions = apiError.response.data.suggestions;
+          }
+          if (apiError.response?.data?.error) {
+            errorMessage = apiError.response.data.error;
+          }
+        }
+        
+        // Build comprehensive error message
+        const fullError = suggestions.length > 0
+          ? `${errorMessage}\n\nSuggestions:\n${suggestions.map((s, i) => `${i + 1}. ${s}`).join('\n')}`
+          : errorMessage;
+        
+        setError(fullError);
       } finally {
         setLoading(false);
       }

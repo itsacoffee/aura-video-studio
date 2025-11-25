@@ -30,6 +30,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiUrl } from '../../../config/api';
 import { openFile, openFolder } from '../../../utils/fileSystemUtils';
 import { getDefaultSaveLocation, pickFolder, resolvePathOnBackend, validatePathWritable } from '../../../utils/pathUtils';
+import { startFinalRendering } from '../../../services/wizardService';
 import type { ExportData, StepValidation, WizardData } from '../types';
 
 const useStyles = makeStyles({
@@ -310,55 +311,196 @@ export const FinalExport: FC<FinalExportProps> = ({
 
       for (let i = 0; i < formatsToExport.length; i++) {
         const format = formatsToExport[i];
-        setExportStage(
-          `Exporting ${format.toUpperCase()} format (${i + 1} of ${formatsToExport.length})...`
-        );
+        setExportStage(`Preparing export for ${format.toUpperCase()} format...`);
 
-        for (let progress = 0; progress <= 100; progress += 5) {
-          await new Promise((resolve) => setTimeout(resolve, 100));
-          setExportProgress((i * 100 + progress) / formatsToExport.length);
-        }
-
-        const fileSize = estimatedFileSize * (format === 'mov' ? 3 : format === 'webm' ? 0.7 : 1);
-
-        // Generate actual file path
-        const fileName = `video-${Date.now()}.${format}`;
-        const basePath = saveLocation || getDefaultSaveLocation();
-
-        // Resolve base path first to expand environment variables
-        const resolvedFolder = await resolvePathOnBackend(basePath);
-
-        // Construct full path using platform-appropriate separator
-        const pathSeparator = resolvedFolder.includes('\\') ? '\\' : '/';
-        const fullPath = `${resolvedFolder}${pathSeparator}${fileName}`;
-
-        // Resolve the full path to ensure it's properly expanded
-        const resolvedPath = await resolvePathOnBackend(fullPath);
-
-        // Ensure the directory exists
-        try {
-          const validation = await validatePathWritable(resolvedFolder);
-          if (!validation.valid) {
-            console.warn('Directory validation failed:', validation.error);
-            // Still continue, but log the warning
-          }
-        } catch (error) {
-          console.warn('Failed to validate directory:', error);
-        }
-
-        const result: ExportResult = {
-          format: format.toUpperCase(),
-          resolution: data.resolution,
-          filePath: fileName,
-          fullPath: resolvedPath, // Store the fully resolved path
-          fileSize: Math.round(fileSize * 1024),
+        // Map quality to video bitrate
+        const qualityBitrateMap: Record<string, number> = {
+          low: 1500,
+          medium: 2500,
+          high: 5000,
+          ultra: 15000,
         };
 
-        newExportResults.push(result);
-        setResolvedPaths((prev) => ({
-          ...prev,
-          [resolvedPath]: resolvedFolder,
-        }));
+        // Map resolution string to backend format
+        const resolutionMap: Record<string, string> = {
+          '480p': '480p',
+          '720p': '720p',
+          '1080p': '1080p',
+          '4k': '4K',
+        };
+
+        // Map format to container
+        const formatContainerMap: Record<string, string> = {
+          mp4: 'mp4',
+          webm: 'webm',
+          mov: 'mov',
+        };
+
+        // Map quality to codec
+        const qualityCodecMap: Record<string, string> = {
+          low: 'h264',
+          medium: 'h264',
+          high: 'h264',
+          ultra: 'h265',
+        };
+
+        try {
+          // ✅ REAL API CALL - Start video generation
+          const { jobId } = await startFinalRendering(
+            {
+              topic: wizardData.brief.topic,
+              audience: wizardData.brief.targetAudience || 'General',
+              goal: wizardData.brief.keyMessage || 'Inform',
+              tone: wizardData.style.tone || 'Professional',
+              language: 'English', // Default, could be extracted from wizardData if available
+              duration: wizardData.brief.duration,
+              videoType: wizardData.brief.videoType || 'educational',
+            },
+            {
+              voiceProvider: wizardData.style.voiceProvider || 'Windows',
+              voiceName: wizardData.style.voiceName || 'default',
+              visualStyle: wizardData.style.visualStyle || 'modern',
+              musicGenre: wizardData.style.musicGenre || 'none',
+              musicEnabled: wizardData.style.musicEnabled || false,
+            },
+            {
+              generatedScript: wizardData.script.content || '',
+              scenes: wizardData.script.scenes || [],
+              totalDuration: wizardData.brief.duration,
+            },
+            {
+              resolution: resolutionMap[data.resolution] || '1080p',
+              fps: 30, // Default FPS
+              codec: qualityCodecMap[data.quality] || 'h264',
+              quality: qualityBitrateMap[data.quality] || 5000,
+              includeSubs: data.includeCaptions,
+              outputFormat: formatContainerMap[format] || 'mp4',
+            }
+          );
+
+          setExportStage(`Rendering ${format.toUpperCase()} video...`);
+
+          // ✅ REAL PROGRESS - Poll job status
+          let jobCompleted = false;
+          let jobData: any = null;
+          const maxPollAttempts = 600; // 10 minutes max (600 * 1 second)
+          let pollAttempts = 0;
+
+          while (!jobCompleted && pollAttempts < maxPollAttempts) {
+            await new Promise((resolve) => setTimeout(resolve, 1000)); // Poll every 1 second
+            pollAttempts++;
+
+            try {
+              const statusResponse = await fetch(apiUrl(`/api/jobs/${jobId}`));
+
+              if (!statusResponse.ok) {
+                if (statusResponse.status === 404) {
+                  // Job not found yet, continue polling
+                  continue;
+                }
+                throw new Error(`Failed to check job status: ${statusResponse.status}`);
+              }
+
+              jobData = await statusResponse.json();
+
+              // Update progress based on job percent
+              const jobProgress = jobData.percent || 0;
+              const overallProgress = (i * 100 + jobProgress) / formatsToExport.length;
+              setExportProgress(overallProgress);
+
+              // Update stage message
+              const stageMessage = jobData.stage || 'Rendering...';
+              setExportStage(`${stageMessage} - ${jobProgress}%`);
+
+              // Check if job is complete
+              const jobStatus = jobData.status?.toLowerCase() || '';
+              if (jobStatus === 'done' || jobStatus === 'succeeded' || jobStatus === 'completed') {
+                jobCompleted = true;
+              } else if (jobStatus === 'failed') {
+                throw new Error(jobData.errorMessage || jobData.error || 'Video generation failed');
+              } else if (jobStatus === 'canceled' || jobStatus === 'cancelled') {
+                throw new Error('Video generation was cancelled');
+              }
+              // Continue polling for 'queued' or 'running' status
+            } catch (error) {
+              // If it's a network error, continue polling
+              if (error instanceof TypeError && error.message.includes('fetch')) {
+                console.warn('Network error while polling job status, retrying...');
+                continue;
+              }
+              throw error;
+            }
+          }
+
+          if (!jobCompleted) {
+            throw new Error('Job did not complete within the expected time');
+          }
+
+          // ✅ REAL FILE PATH - From job artifacts or output path
+          let outputPath = jobData.outputPath;
+          if (!outputPath && jobData.artifacts && jobData.artifacts.length > 0) {
+            // Find video artifact
+            const videoArtifact = jobData.artifacts.find(
+              (a: any) => a.type === 'video' || a.type === 'video/mp4' || a.path?.endsWith('.mp4') || a.path?.endsWith('.webm') || a.path?.endsWith('.mov')
+            );
+            if (videoArtifact) {
+              outputPath = videoArtifact.path;
+            }
+          }
+
+          if (!outputPath) {
+            throw new Error('No output path returned from video generation');
+          }
+
+          // Resolve path for display
+          const resolvedPath = await resolvePathOnBackend(outputPath);
+          const pathSeparator = resolvedPath.includes('\\') ? '\\' : '/';
+          const lastSeparatorIndex = Math.max(
+            resolvedPath.lastIndexOf('/'),
+            resolvedPath.lastIndexOf('\\')
+          );
+          const resolvedFolder = lastSeparatorIndex >= 0 ? resolvedPath.substring(0, lastSeparatorIndex) : resolvedPath;
+          const fileName = lastSeparatorIndex >= 0 ? resolvedPath.substring(lastSeparatorIndex + 1) : outputPath;
+
+          // ✅ REAL FILE SIZE - Get from file system
+          let actualFileSize = 0;
+          try {
+            const fileStatResponse = await fetch(
+              apiUrl(`/api/files/stat?path=${encodeURIComponent(resolvedPath)}`)
+            );
+            if (fileStatResponse.ok) {
+              const statData = await fileStatResponse.json();
+              actualFileSize = statData.size || 0;
+            }
+          } catch (error) {
+            console.warn('Could not get file size:', error);
+            // Fallback to estimate
+            actualFileSize = Math.round(estimatedFileSize * 1024 * 1024);
+          }
+
+          // If we still don't have a file size, use estimate
+          if (actualFileSize === 0) {
+            const formatMultiplier = format === 'mov' ? 3 : format === 'webm' ? 0.7 : 1;
+            actualFileSize = Math.round(estimatedFileSize * 1024 * 1024 * formatMultiplier);
+          }
+
+          const result: ExportResult = {
+            format: format.toUpperCase(),
+            resolution: data.resolution,
+            filePath: fileName,
+            fullPath: resolvedPath,
+            fileSize: actualFileSize,
+          };
+
+          newExportResults.push(result);
+          setResolvedPaths((prev) => ({
+            ...prev,
+            [resolvedPath]: resolvedFolder,
+          }));
+        } catch (error) {
+          console.error(`Export failed for format ${format}:`, error);
+          throw error; // Re-throw to be caught by outer try-catch
+        }
       }
 
       setExportResults(newExportResults);
@@ -368,15 +510,19 @@ export const FinalExport: FC<FinalExportProps> = ({
     } catch (error) {
       console.error('Export failed:', error);
       setExportStatus('error');
-      setExportStage('Export failed. Please try again.');
+      setExportStage(
+        error instanceof Error
+          ? `Export failed: ${error.message}`
+          : 'Export failed. Please try again.'
+      );
     }
   }, [
     batchExport,
     selectedFormats,
-    data.format,
-    data.resolution,
+    data,
+    wizardData,
     estimatedFileSize,
-    saveLocation, // Add saveLocation to dependencies
+    saveLocation,
   ]);
 
   const cancelExport = useCallback(() => {

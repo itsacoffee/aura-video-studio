@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
 import type { FC } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import './SplashScreen.css';
 
 interface Particle {
@@ -287,7 +287,7 @@ export const SplashScreen: FC<SplashScreenProps> = ({
           </div>
 
           <h1 className="splash-title">Aura</h1>
-          <p className="splash-subtitle">AI VIDEO GENERATION SUITE</p>
+          <p className="splash-subtitle">AI Video Generation Suite</p>
         </div>
 
         {/* Progress bar */}

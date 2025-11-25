@@ -262,9 +262,13 @@ export const ideationService = {
       if (!response.ok) {
         // Try to get error details from response
         let errorMessage = 'Failed to brainstorm concepts';
+        let suggestions: string[] = [];
         try {
           const errorData = await response.json();
           errorMessage = errorData.message || errorData.error || errorMessage;
+          if (errorData.suggestions && Array.isArray(errorData.suggestions)) {
+            suggestions = errorData.suggestions;
+          }
         } catch {
           // If response isn't JSON, use status text
           errorMessage = response.statusText || errorMessage;
@@ -273,8 +277,15 @@ export const ideationService = {
           status: response.status,
           statusText: response.statusText,
           errorMessage,
+          suggestions,
         });
-        throw new Error(errorMessage);
+        
+        // Create error with suggestions attached
+        const error = new Error(errorMessage) as Error & { response?: { data?: { suggestions?: string[] } } };
+        if (suggestions.length > 0) {
+          error.response = { data: { suggestions } };
+        }
+        throw error;
       }
 
       return await response.json();

@@ -17,19 +17,40 @@
         sans-serif;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
-      background: linear-gradient(135deg, #0F0F0F 0%, #1a1a2e 100%);
+      /* Deep gradient: dark navy → deep violet, with orange/blue bloom around icon */
+      background: linear-gradient(180deg, #0a0f1a 0%, #1a1f2e 25%, #1a1626 50%, #0f0f1a 75%, #050510 100%);
       display: flex;
       align-items: center;
       justify-content: center;
       height: 100vh;
       overflow: hidden;
       color: #ffffff;
+      position: relative;
+    }
+    
+    /* Orange/blue bloom gradient overlay */
+    body::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(
+        ellipse at 50% 42%,
+        rgba(255, 107, 53, 0.15) 0%,
+        rgba(59, 130, 246, 0.12) 20%,
+        rgba(255, 107, 53, 0.08) 35%,
+        rgba(59, 130, 246, 0.06) 50%,
+        transparent 100%
+      );
+      pointer-events: none;
+      z-index: 1;
     }
 
     .splash-container {
       text-align: center;
       padding: 40px;
       max-width: 500px;
+      position: relative;
+      z-index: 2;
     }
 
     .logo {
@@ -40,18 +61,22 @@
     .logo-text {
       font-size: 48px;
       font-weight: 700;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #ff6b35 0%, #6366f1 50%, #3b82f6 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
       margin-bottom: 10px;
+      text-shadow: 0 0 30px rgba(255, 107, 53, 0.3), 0 0 20px rgba(59, 130, 246, 0.3);
     }
 
     .tagline {
-      font-size: 16px;
-      color: #a0a0a0;
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.75);
       margin-bottom: 40px;
       animation: fadeIn 1s ease-out 0.3s both;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      font-weight: 400;
     }
 
     .loading {
@@ -70,9 +95,11 @@
       top: 0;
       left: 0;
       height: 100%;
-      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      /* Refined progress bar with orange/blue gradient */
+      background: linear-gradient(90deg, #ff6b35 0%, #6366f1 50%, #3b82f6 100%);
       border-radius: 2px;
       animation: loading 2s ease-in-out infinite;
+      box-shadow: 0 0 10px rgba(255, 107, 53, 0.4), 0 0 20px rgba(59, 130, 246, 0.3);
     }
 
     .status {
@@ -165,9 +192,19 @@
 
     .particle {
       position: absolute;
-      background: rgba(102, 126, 234, 0.3);
       border-radius: 50%;
       animation: float 6s ease-in-out infinite;
+      box-shadow: 0 0 10px currentColor;
+    }
+    
+    .particle:nth-child(odd) {
+      background: rgba(255, 107, 53, 0.4);
+      color: rgba(255, 107, 53, 0.6);
+    }
+    
+    .particle:nth-child(even) {
+      background: rgba(59, 130, 246, 0.4);
+      color: rgba(59, 130, 246, 0.6);
     }
 
     .particle:nth-child(1) {
@@ -232,10 +269,10 @@
   </div>
 
   <div class="splash-container">
-    <div class="logo">
-      <div class="logo-text">Aura</div>
-      <div class="tagline">AI-Powered Video Studio</div>
-    </div>
+      <div class="logo">
+        <div class="logo-text">Aura</div>
+        <div class="tagline">AI Video Generation Suite</div>
+      </div>
 
     <div class="loading">
       <div class="loading-bar"></div>

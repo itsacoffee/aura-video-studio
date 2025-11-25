@@ -26,6 +26,7 @@ const useStyles = makeStyles({
     fontSize: tokens.fontSizeBase300,
     color: tokens.colorNeutralForeground3,
     maxWidth: '500px',
+    whiteSpace: 'pre-line', // Support multiline messages
   },
   actions: {
     display: 'flex',
@@ -83,9 +84,13 @@ export function ErrorState({
       <ErrorCircle24Regular className={styles.icon} aria-hidden="true" />
       <div>
         <Text className={styles.title}>{title}</Text>
-        <Text className={styles.message} as="p">
-          {message}
-        </Text>
+        <div className={styles.message}>
+          {message.split('\n').map((line, index) => (
+            <Text key={index} as="p" style={{ margin: index > 0 ? tokens.spacingVerticalXS : 0 }}>
+              {line}
+            </Text>
+          ))}
+        </div>
       </div>
       {(onRetry || actionButton) && (
         <div className={styles.actions}>

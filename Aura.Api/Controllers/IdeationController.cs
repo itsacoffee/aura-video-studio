@@ -118,22 +118,65 @@ public class IdeationController : ControllerBase
         }
         catch (InvalidOperationException invOpEx)
         {
-            _logger.LogError(invOpEx, "[{CorrelationId}] Operation failed for brainstorming topic: {Topic}", correlationId, request?.Topic ?? "unknown");
-            return StatusCode(500, new { error = invOpEx.Message });
+            _logger.LogError(invOpEx, "[{CorrelationId}] Ideation operation failed: {Message}", 
+                correlationId, invOpEx.Message);
+            
+            // Provide detailed error message to help user diagnose
+            var errorMessage = invOpEx.Message;
+            
+            // Add helpful context based on error type
+            if (errorMessage.Contains("JSON", StringComparison.OrdinalIgnoreCase))
+            {
+                errorMessage += " The LLM provider may not be configured to return JSON format. " +
+                               "Try using a different model or provider.";
+            }
+            else if (errorMessage.Contains("empty response", StringComparison.OrdinalIgnoreCase))
+            {
+                errorMessage += " The LLM provider may be unavailable or rate-limited. " +
+                               "Please check your API key and quota.";
+            }
+            
+            return StatusCode(500, new { 
+                error = errorMessage,
+                correlationId,
+                suggestions = new[] {
+                    "Verify your LLM provider is configured correctly in Settings",
+                    "Check that your API key has sufficient quota",
+                    "Try using a different LLM model",
+                    "Simplify your topic description"
+                }
+            });
         }
         catch (TimeoutException timeoutEx)
         {
             _logger.LogError(timeoutEx, "[{CorrelationId}] Timeout during brainstorming for topic: {Topic}", correlationId, request?.Topic ?? "unknown");
-            return StatusCode(504, new { error = timeoutEx.Message });
+            return StatusCode(504, new { 
+                error = timeoutEx.Message,
+                correlationId,
+                suggestions = new[] {
+                    "The request took too long. Try simplifying your topic",
+                    "Check your network connection",
+                    "Try using a faster LLM model"
+                }
+            });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[{CorrelationId}] Unexpected error brainstorming concepts for topic: {Topic}", correlationId, request?.Topic ?? "unknown");
-            // Include the exception message for debugging, but sanitize if it contains sensitive info
-            var errorMessage = ex.Message.Contains("API key", StringComparison.OrdinalIgnoreCase)
-                ? "Failed to generate concepts. Please check your LLM provider configuration."
-                : $"Failed to generate concepts: {ex.Message}";
-            return StatusCode(500, new { error = errorMessage });
+            _logger.LogError(ex, "[{CorrelationId}] Unexpected error in ideation", correlationId);
+            
+            var errorMessage = $"An unexpected error occurred: {ex.Message}";
+            
+            return StatusCode(500, new { 
+                error = errorMessage,
+                correlationId,
+                type = ex.GetType().Name,
+                suggestions = new[] {
+                    "Verify your LLM provider is configured correctly in Settings",
+                    "Check that your API key has sufficient quota",
+                    "Try using a different LLM model",
+                    "Simplify your topic description"
+                }
+            });
         }
     }
 

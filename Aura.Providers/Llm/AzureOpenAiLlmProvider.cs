@@ -50,7 +50,7 @@ public class AzureOpenAiLlmProvider : ILlmProvider
         _deploymentName = deploymentName;
         _maxRetries = maxRetries;
         _timeout = TimeSpan.FromSeconds(timeoutSeconds);
-        
+
         // Create PromptCustomizationService if not provided (using logger factory pattern)
         if (promptCustomizationService == null)
         {
@@ -181,12 +181,12 @@ public class AzureOpenAiLlmProvider : ILlmProvider
 
                 var url = $"{_endpoint}/openai/deployments/{_deploymentName}/chat/completions?api-version=2024-02-15-preview";
                 var response = await _httpClient.PostAsync(url, content, cts.Token).ConfigureAwait(false);
-                
+
                 // Handle specific HTTP error codes
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-                    if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized || 
+                    if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized ||
                         response.StatusCode == System.Net.HttpStatusCode.Forbidden)
                     {
                         throw new InvalidOperationException(
@@ -225,7 +225,7 @@ public class AzureOpenAiLlmProvider : ILlmProvider
                 }
 
                 var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-                
+
                 // Parse and validate response structure
                 JsonDocument? responseDoc = null;
                 try
@@ -241,11 +241,11 @@ public class AzureOpenAiLlmProvider : ILlmProvider
                 // Check for API errors in response
                 if (responseDoc.RootElement.TryGetProperty("error", out var errorElement))
                 {
-                    var errorMessage = errorElement.TryGetProperty("message", out var msg) 
-                        ? msg.GetString() ?? "Unknown error" 
+                    var errorMessage = errorElement.TryGetProperty("message", out var msg)
+                        ? msg.GetString() ?? "Unknown error"
                         : "API error";
-                    var errorCode = errorElement.TryGetProperty("code", out var code) 
-                        ? code.GetString() ?? "unknown" 
+                    var errorCode = errorElement.TryGetProperty("code", out var code)
+                        ? code.GetString() ?? "unknown"
                         : "unknown";
                     _logger.LogError("Azure OpenAI API error: {Code} - {Message}", errorCode, errorMessage);
                     throw new InvalidOperationException($"Azure OpenAI API error: {errorMessage}");
@@ -259,7 +259,7 @@ public class AzureOpenAiLlmProvider : ILlmProvider
                         message.TryGetProperty("content", out var contentProp))
                     {
                         string script = contentProp.GetString() ?? string.Empty;
-                        
+
                         if (string.IsNullOrWhiteSpace(script))
                         {
                             throw new InvalidOperationException("Azure OpenAI returned an empty response");
@@ -272,7 +272,7 @@ public class AzureOpenAiLlmProvider : ILlmProvider
                     }
                 }
 
-                _logger.LogWarning("Azure OpenAI response did not contain expected structure. Response: {Response}", 
+                _logger.LogWarning("Azure OpenAI response did not contain expected structure. Response: {Response}",
                     responseJson.Substring(0, Math.Min(500, responseJson.Length)));
                 throw new InvalidOperationException($"Invalid response structure from Azure OpenAI API. Expected 'choices[0].message.content' but got: {responseJson.Substring(0, Math.Min(200, responseJson.Length))}");
             }
@@ -324,7 +324,7 @@ public class AzureOpenAiLlmProvider : ILlmProvider
 
         // Use similar implementation to DraftScriptAsync but with raw prompt
         var systemPrompt = "You are a helpful assistant that generates structured JSON responses. Follow the instructions precisely and return only valid JSON.";
-        
+
         for (int attempt = 0; attempt <= _maxRetries; attempt++)
         {
             try
@@ -381,6 +381,192 @@ public class AzureOpenAiLlmProvider : ILlmProvider
         throw new InvalidOperationException($"Failed to complete prompt with Azure OpenAI after {_maxRetries + 1} attempts.");
     }
 
+    public async Task<string> GenerateChatCompletionAsync(
+        string systemPrompt,
+        string userPrompt,
+        LlmParameters? parameters = null,
+        CancellationToken ct = default)
+    {
+        _logger.LogInformation("Generating chat completion with Azure OpenAI (deployment: {Deployment})", _deploymentName);
+
+        var startTime = DateTime.UtcNow;
+        Exception? lastException = null;
+
+        // Use model override from parameters if provided, otherwise use deployment name
+        var deploymentToUse = !string.IsNullOrWhiteSpace(parameters?.ModelOverride)
+            ? parameters.ModelOverride
+            : _deploymentName;
+
+        // Get LLM parameters with defaults
+        var temperature = parameters?.Temperature ?? 0.7;
+        var maxTokens = parameters?.MaxTokens ?? 2000;
+        var topP = parameters?.TopP;
+        var frequencyPenalty = parameters?.FrequencyPenalty;
+        var presencePenalty = parameters?.PresencePenalty;
+        var stopSequences = parameters?.StopSequences;
+
+        for (int attempt = 0; attempt <= _maxRetries; attempt++)
+        {
+            try
+            {
+                if (attempt > 0)
+                {
+                    var backoffDelay = TimeSpan.FromSeconds(Math.Pow(2, attempt));
+                    _logger.LogInformation("Retry attempt {Attempt}/{MaxRetries} after {Delay}s delay",
+                        attempt, _maxRetries, backoffDelay.TotalSeconds);
+                    await Task.Delay(backoffDelay, ct).ConfigureAwait(false);
+                }
+
+                var requestBody = new Dictionary<string, object>
+                {
+                    { "messages", new[]
+                        {
+                            new { role = "system", content = systemPrompt },
+                            new { role = "user", content = userPrompt }
+                        }
+                    },
+                    { "temperature", temperature },
+                    { "max_tokens", maxTokens },
+                    { "response_format", new { type = "json_object" } } // Force JSON for ideation
+                };
+
+                // Add optional parameters only if provided
+                if (topP.HasValue)
+                {
+                    requestBody["top_p"] = topP.Value;
+                }
+                if (frequencyPenalty.HasValue)
+                {
+                    requestBody["frequency_penalty"] = frequencyPenalty.Value;
+                }
+                if (presencePenalty.HasValue)
+                {
+                    requestBody["presence_penalty"] = presencePenalty.Value;
+                }
+                if (stopSequences != null && stopSequences.Count > 0)
+                {
+                    requestBody["stop"] = stopSequences;
+                }
+
+                _httpClient.DefaultRequestHeaders.Clear();
+                _httpClient.DefaultRequestHeaders.Add("api-key", _apiKey);
+
+                var json = JsonSerializer.Serialize(requestBody);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                cts.CancelAfter(_timeout);
+
+                var url = $"{_endpoint}/openai/deployments/{deploymentToUse}/chat/completions?api-version=2024-02-15-preview";
+                var response = await _httpClient.PostAsync(url, content, cts.Token).ConfigureAwait(false);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                    if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized ||
+                        response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                    {
+                        throw new InvalidOperationException(
+                            "Azure OpenAI authentication failed. Please verify your API key and endpoint in Settings → Providers → Azure OpenAI");
+                    }
+                    else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                    {
+                        throw new InvalidOperationException(
+                            $"Azure OpenAI deployment '{deploymentToUse}' not found. Please verify the deployment name in your Azure portal.");
+                    }
+                    else if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                    {
+                        _logger.LogWarning("Azure OpenAI rate limit exceeded (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
+                        if (attempt >= _maxRetries)
+                        {
+                            throw new InvalidOperationException(
+                                "Azure OpenAI rate limit exceeded. Please wait a moment and try again.");
+                        }
+                        lastException = new Exception($"Rate limit exceeded: {errorContent}");
+                        continue;
+                    }
+                    else if ((int)response.StatusCode >= 500)
+                    {
+                        _logger.LogWarning("Azure OpenAI server error (attempt {Attempt}/{MaxRetries}): {StatusCode}",
+                            attempt + 1, _maxRetries + 1, response.StatusCode);
+                        if (attempt >= _maxRetries)
+                        {
+                            throw new InvalidOperationException(
+                                $"Azure OpenAI service is experiencing issues (HTTP {response.StatusCode}). Please try again later.");
+                        }
+                        lastException = new Exception($"Server error: {errorContent}");
+                        continue;
+                    }
+
+                    response.EnsureSuccessStatusCode();
+                }
+
+                var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                var responseDoc = JsonDocument.Parse(responseJson);
+
+                if (responseDoc.RootElement.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
+                {
+                    var firstChoice = choices[0];
+                    if (firstChoice.TryGetProperty("message", out var message) &&
+                        message.TryGetProperty("content", out var contentProp))
+                    {
+                        string result = contentProp.GetString() ?? string.Empty;
+
+                        if (string.IsNullOrWhiteSpace(result))
+                        {
+                            throw new InvalidOperationException("Azure OpenAI returned an empty response");
+                        }
+
+                        var duration = DateTime.UtcNow - startTime;
+                        _logger.LogInformation("Chat completion generated successfully ({Length} characters) in {Duration}s",
+                            result.Length, duration.TotalSeconds);
+                        return result;
+                    }
+                }
+
+                _logger.LogWarning("Azure OpenAI response did not contain expected structure");
+                throw new InvalidOperationException("Invalid response structure from Azure OpenAI API");
+            }
+            catch (TaskCanceledException ex)
+            {
+                lastException = ex;
+                _logger.LogWarning(ex, "Azure OpenAI request timed out (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
+                if (attempt >= _maxRetries)
+                {
+                    throw new InvalidOperationException(
+                        $"Azure OpenAI request timed out after {_timeout.TotalSeconds}s. Please check your internet connection or try again later.", ex);
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                lastException = ex;
+                _logger.LogWarning(ex, "Failed to connect to Azure OpenAI (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
+                if (attempt >= _maxRetries)
+                {
+                    throw new InvalidOperationException(
+                        $"Cannot connect to Azure OpenAI at {_endpoint}. Please verify your endpoint URL and internet connection.", ex);
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                throw;
+            }
+            catch (Exception ex) when (attempt < _maxRetries)
+            {
+                lastException = ex;
+                _logger.LogWarning(ex, "Error generating chat completion with Azure OpenAI (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating chat completion with Azure OpenAI after all retries");
+                throw;
+            }
+        }
+
+        throw new InvalidOperationException(
+            $"Failed to generate chat completion with Azure OpenAI after {_maxRetries + 1} attempts. Please try again later.", lastException);
+    }
+
     public async Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
         string sceneText,
         string? previousSceneText,
@@ -393,7 +579,7 @@ public class AzureOpenAiLlmProvider : ILlmProvider
         {
             var systemPrompt = "You are a video pacing expert. Analyze scenes for optimal timing. " +
                               "Return your response ONLY as valid JSON with no additional text.";
-            
+
             var userPrompt = $@"Analyze this scene and return JSON with:
 - importance (0-100): How critical is this scene to the video's message
 - complexity (0-100): How complex is the information presented
@@ -444,7 +630,7 @@ Respond with ONLY the JSON object, no other text:";
                     message.TryGetProperty("content", out var contentProp))
                 {
                     var analysisText = contentProp.GetString() ?? string.Empty;
-                    
+
                     try
                     {
                         var analysisDoc = JsonDocument.Parse(analysisText);
@@ -460,9 +646,9 @@ Respond with ONLY the JSON object, no other text:";
                             Reasoning: root.TryGetProperty("reasoning", out var reas) ? reas.GetString() ?? "" : ""
                         );
 
-                        _logger.LogInformation("Scene analysis complete. Importance: {Importance}, Complexity: {Complexity}", 
+                        _logger.LogInformation("Scene analysis complete. Importance: {Importance}, Complexity: {Complexity}",
                             result.Importance, result.Complexity);
-                        
+
                         return result;
                     }
                     catch (JsonException ex)
@@ -507,7 +693,7 @@ Respond with ONLY the JSON object, no other text:";
             var systemPrompt = "You are a professional cinematographer and visual director. " +
                               "Create detailed visual prompts for image generation. " +
                               "Return your response ONLY as valid JSON with no additional text.";
-            
+
             var userPrompt = $@"Create a detailed visual prompt for this scene and return JSON with:
 - detailedDescription (string): Detailed visual description (100-200 tokens) of what should be shown
 - compositionGuidelines (string): Composition rules (e.g., ""rule of thirds, leading lines"")
@@ -554,11 +740,11 @@ Respond with ONLY the JSON object, no other text:";
 
             var url = $"{_endpoint}/openai/deployments/{_deploymentName}/chat/completions?api-version=2024-02-15-preview";
             var response = await _httpClient.PostAsync(url, content, cts.Token).ConfigureAwait(false);
-            
+
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-                _logger.LogWarning("Azure OpenAI visual prompt generation failed: {StatusCode} - {Error}", 
+                _logger.LogWarning("Azure OpenAI visual prompt generation failed: {StatusCode} - {Error}",
                     response.StatusCode, errorContent);
                 return null;
             }
@@ -574,7 +760,7 @@ Respond with ONLY the JSON object, no other text:";
                     message.TryGetProperty("content", out var contentProp))
                 {
                     var promptText = contentProp.GetString() ?? string.Empty;
-                    
+
                     try
                     {
                         var promptDoc = JsonDocument.Parse(promptText);
@@ -659,7 +845,7 @@ Respond with ONLY the JSON object, no other text:";
             var systemPrompt = "You are an expert in cognitive science and educational content analysis. " +
                               "Analyze the complexity of video content to optimize pacing for viewer comprehension. " +
                               "Return your response ONLY as valid JSON with no additional text.";
-            
+
             var userPrompt = $@"Analyze the cognitive complexity of this video scene content to optimize viewer comprehension and pacing.
 
 VIDEO GOAL: {videoGoal}
@@ -706,11 +892,11 @@ Respond with ONLY the JSON object, no other text:";
 
             var url = $"{_endpoint}/openai/deployments/{_deploymentName}/chat/completions?api-version=2024-02-15-preview";
             var response = await _httpClient.PostAsync(url, content, cts.Token).ConfigureAwait(false);
-            
+
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-                _logger.LogWarning("Azure OpenAI complexity analysis failed: {StatusCode} - {Error}", 
+                _logger.LogWarning("Azure OpenAI complexity analysis failed: {StatusCode} - {Error}",
                     response.StatusCode, errorContent);
                 return null;
             }
@@ -726,7 +912,7 @@ Respond with ONLY the JSON object, no other text:";
                     message.TryGetProperty("content", out var contentProp))
                 {
                     var analysisText = contentProp.GetString() ?? string.Empty;
-                    
+
                     try
                     {
                         var analysisDoc = JsonDocument.Parse(analysisText);
@@ -823,7 +1009,7 @@ Respond with ONLY the JSON object, no other text:";
         {
             var systemPrompt = "You are a narrative flow expert analyzing video scene transitions. " +
                               "Return your response ONLY as valid JSON with no additional text.";
-            
+
             var userPrompt = $@"Analyze the narrative coherence between these two consecutive scenes and return JSON with:
 - coherenceScore (0-100): How well scene B flows from scene A (0=no connection, 100=perfect flow)
 - connectionTypes (array of strings): Types of connections (choose from: ""causal"", ""thematic"", ""prerequisite"", ""callback"", ""sequential"", ""contrast"")
@@ -861,11 +1047,11 @@ Respond with ONLY the JSON object, no other text:";
 
             var url = $"{_endpoint}/openai/deployments/{_deploymentName}/chat/completions?api-version=2024-02-15-preview";
             var response = await _httpClient.PostAsync(url, content, cts.Token).ConfigureAwait(false);
-            
+
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-                _logger.LogWarning("Azure OpenAI coherence analysis failed: {StatusCode} - {Error}", 
+                _logger.LogWarning("Azure OpenAI coherence analysis failed: {StatusCode} - {Error}",
                     response.StatusCode, errorContent);
                 return null;
             }
@@ -881,14 +1067,14 @@ Respond with ONLY the JSON object, no other text:";
                     message.TryGetProperty("content", out var contentProp))
                 {
                     var analysisText = contentProp.GetString() ?? string.Empty;
-                    
+
                     try
                     {
                         var analysisDoc = JsonDocument.Parse(analysisText);
                         var root = analysisDoc.RootElement;
 
                         var connectionTypes = new List<string>();
-                        if (root.TryGetProperty("connectionTypes", out var connTypes) && 
+                        if (root.TryGetProperty("connectionTypes", out var connTypes) &&
                             connTypes.ValueKind == JsonValueKind.Array)
                         {
                             connectionTypes = connTypes.EnumerateArray()
@@ -905,7 +1091,7 @@ Respond with ONLY the JSON object, no other text:";
                         );
 
                         _logger.LogInformation("Scene coherence analysis complete. Score: {Score}", result.CoherenceScore);
-                        
+
                         return result;
                     }
                     catch (JsonException ex)
@@ -948,9 +1134,9 @@ Respond with ONLY the JSON object, no other text:";
         {
             var systemPrompt = "You are a narrative structure expert analyzing video story arcs. " +
                               "Return your response ONLY as valid JSON with no additional text.";
-            
+
             var scenesText = string.Join("\n\n", sceneTexts.Select((s, i) => $"Scene {i + 1}: {s}"));
-            
+
             var expectedStructures = new Dictionary<string, string>
             {
                 { "educational", "problem → explanation → solution" },
@@ -961,7 +1147,7 @@ Respond with ONLY the JSON object, no other text:";
             };
 
             var expectedStructure = expectedStructures.GetValueOrDefault(
-                videoType.ToLowerInvariant(), 
+                videoType.ToLowerInvariant(),
                 expectedStructures["general"]);
 
             var userPrompt = $@"Analyze the narrative arc of this {videoType} video and return JSON with:
@@ -1001,11 +1187,11 @@ Respond with ONLY the JSON object, no other text:";
 
             var url = $"{_endpoint}/openai/deployments/{_deploymentName}/chat/completions?api-version=2024-02-15-preview";
             var response = await _httpClient.PostAsync(url, content, cts.Token).ConfigureAwait(false);
-            
+
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-                _logger.LogWarning("Azure OpenAI narrative arc validation failed: {StatusCode} - {Error}", 
+                _logger.LogWarning("Azure OpenAI narrative arc validation failed: {StatusCode} - {Error}",
                     response.StatusCode, errorContent);
                 return null;
             }
@@ -1021,14 +1207,14 @@ Respond with ONLY the JSON object, no other text:";
                     message.TryGetProperty("content", out var contentProp))
                 {
                     var analysisText = contentProp.GetString() ?? string.Empty;
-                    
+
                     try
                     {
                         var analysisDoc = JsonDocument.Parse(analysisText);
                         var root = analysisDoc.RootElement;
 
                         var structuralIssues = new List<string>();
-                        if (root.TryGetProperty("structuralIssues", out var issues) && 
+                        if (root.TryGetProperty("structuralIssues", out var issues) &&
                             issues.ValueKind == JsonValueKind.Array)
                         {
                             structuralIssues = issues.EnumerateArray()
@@ -1039,7 +1225,7 @@ Respond with ONLY the JSON object, no other text:";
                         }
 
                         var recommendations = new List<string>();
-                        if (root.TryGetProperty("recommendations", out var recs) && 
+                        if (root.TryGetProperty("recommendations", out var recs) &&
                             recs.ValueKind == JsonValueKind.Array)
                         {
                             recommendations = recs.EnumerateArray()
@@ -1059,7 +1245,7 @@ Respond with ONLY the JSON object, no other text:";
                         );
 
                         _logger.LogInformation("Narrative arc validation complete. Valid: {IsValid}", result.IsValid);
-                        
+
                         return result;
                     }
                     catch (JsonException ex)
@@ -1101,7 +1287,7 @@ Respond with ONLY the JSON object, no other text:";
         try
         {
             var systemPrompt = "You are a professional scriptwriter specializing in smooth scene transitions.";
-            
+
             var userPrompt = $@"Create a brief transition sentence or phrase (1-2 sentences maximum) to smoothly connect these two scenes:
 
 Scene A: {fromSceneText}
@@ -1110,7 +1296,7 @@ Scene B: {toSceneText}
 
 Video goal: {videoGoal}
 
-The transition should feel natural and help the viewer understand the connection between these scenes. 
+The transition should feel natural and help the viewer understand the connection between these scenes.
 Return ONLY the transition text, no explanations or additional commentary:";
 
             var requestBody = new
@@ -1135,11 +1321,11 @@ Return ONLY the transition text, no explanations or additional commentary:";
 
             var url = $"{_endpoint}/openai/deployments/{_deploymentName}/chat/completions?api-version=2024-02-15-preview";
             var response = await _httpClient.PostAsync(url, content, cts.Token).ConfigureAwait(false);
-            
+
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-                _logger.LogWarning("Azure OpenAI transition text generation failed: {StatusCode} - {Error}", 
+                _logger.LogWarning("Azure OpenAI transition text generation failed: {StatusCode} - {Error}",
                     response.StatusCode, errorContent);
                 return null;
             }
@@ -1155,7 +1341,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
                     message.TryGetProperty("content", out var contentProp))
                 {
                     var transitionText = contentProp.GetString()?.Trim() ?? string.Empty;
-                    
+
                     if (!string.IsNullOrWhiteSpace(transitionText))
                     {
                         _logger.LogInformation("Generated transition text: {Text}", transitionText);
@@ -1211,11 +1397,11 @@ Return ONLY the transition text, no explanations or additional commentary:";
     /// Azure OpenAI streaming not yet implemented. Falls back to non-streaming DraftScriptAsync.
     /// </summary>
     public async IAsyncEnumerable<LlmStreamChunk> DraftScriptStreamAsync(
-        Brief brief, 
-        PlanSpec spec, 
+        Brief brief,
+        PlanSpec spec,
         [EnumeratorCancellation] CancellationToken ct = default)
     {
-        _logger.LogInformation("Starting streaming script generation with Azure OpenAI (deployment: {Deployment}) for topic: {Topic}", 
+        _logger.LogInformation("Starting streaming script generation with Azure OpenAI (deployment: {Deployment}) for topic: {Topic}",
             _deploymentName, brief.Topic);
 
         var startTime = DateTime.UtcNow;
@@ -1300,20 +1486,20 @@ Return ONLY the transition text, no explanations or additional commentary:";
             while (!reader.EndOfStream && !ct.IsCancellationRequested)
             {
                 var line = await reader.ReadLineAsync().ConfigureAwait(false);
-                
+
                 if (string.IsNullOrWhiteSpace(line) || !line.StartsWith("data: "))
                 {
                     continue;
                 }
 
                 var data = line.Substring(6); // Remove "data: " prefix
-                
+
                 if (data == "[DONE]")
                 {
                     // Final chunk
                     var duration = DateTime.UtcNow - startTime;
-                    var timeToFirstToken = firstTokenTime.HasValue 
-                        ? (firstTokenTime.Value - startTime).TotalMilliseconds 
+                    var timeToFirstToken = firstTokenTime.HasValue
+                        ? (firstTokenTime.Value - startTime).TotalMilliseconds
                         : 0;
                     var tokensPerSec = tokenIndex > 0 && duration.TotalSeconds > 0
                         ? tokenIndex / duration.TotalSeconds

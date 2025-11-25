@@ -12,27 +12,41 @@ namespace Aura.Core.Providers;
 public interface ILlmProvider
 {
     Task<string> DraftScriptAsync(Brief brief, PlanSpec spec, CancellationToken ct);
-    
+
     /// <summary>
     /// Draft script with real-time streaming support for token-by-token generation
     /// </summary>
     IAsyncEnumerable<LlmStreamChunk> DraftScriptStreamAsync(Brief brief, PlanSpec spec, CancellationToken ct);
-    
+
     /// <summary>
     /// Whether this provider supports streaming
     /// </summary>
     bool SupportsStreaming { get; }
-    
+
     /// <summary>
     /// Get provider characteristics for adaptive UI (expected latency, throughput, cost)
     /// </summary>
     LlmProviderCharacteristics GetCharacteristics();
-    
+
     /// <summary>
     /// Executes a raw prompt completion for structured output generation (used by orchestration layer)
     /// </summary>
     Task<string> CompleteAsync(string prompt, CancellationToken ct);
-    
+
+    /// <summary>
+    /// Generate a chat completion response for ideation, brainstorming, and other conversational tasks
+    /// </summary>
+    /// <param name="systemPrompt">System prompt defining the assistant's role and behavior</param>
+    /// <param name="userPrompt">User's message or prompt</param>
+    /// <param name="parameters">Optional LLM parameters (temperature, max tokens, etc.)</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>Generated response text</returns>
+    Task<string> GenerateChatCompletionAsync(
+        string systemPrompt,
+        string userPrompt,
+        LlmParameters? parameters = null,
+        CancellationToken ct = default);
+
     Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
         string sceneText,
         string? previousSceneText,
@@ -161,7 +175,7 @@ public record VisualSpec(string Style, Aspect Aspect, string[] Keywords);
 
 public record Timeline(
     IReadOnlyList<Scene> Scenes,
-    IReadOnlyDictionary<int, IReadOnlyList<Asset>> SceneAssets, 
-    string NarrationPath, 
+    IReadOnlyDictionary<int, IReadOnlyList<Asset>> SceneAssets,
+    string NarrationPath,
     string MusicPath,
     string? SubtitlesPath);

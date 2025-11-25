@@ -17,7 +17,7 @@ describe('SplashScreen', () => {
     render(<SplashScreen onComplete={onComplete} />);
 
     expect(screen.getByText('Aura')).toBeInTheDocument();
-    expect(screen.getByText('AI VIDEO GENERATION SUITE')).toBeInTheDocument();
+    expect(screen.getByText('AI Video Generation Suite')).toBeInTheDocument();
     expect(screen.getByText('Starting backend server...')).toBeInTheDocument();
   });
 

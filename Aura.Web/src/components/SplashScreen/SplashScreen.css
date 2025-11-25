@@ -6,7 +6,8 @@
 .splash-screen {
   position: fixed;
   inset: 0;
-  background: linear-gradient(180deg, #1a0f2e 0%, #2d1b3d 30%, #1a1a2e 70%, #0f0f1a 100%);
+  /* Deep gradient: dark navy → deep violet, with orange/blue bloom around icon */
+  background: linear-gradient(180deg, #0a0f1a 0%, #1a1f2e 25%, #1a1626 50%, #0f0f1a 75%, #050510 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -48,10 +49,12 @@
 .splash-background-gradient {
   position: absolute;
   inset: 0;
+  /* Orange/blue bloom around the app icon at 40-45% vertical height */
   background: radial-gradient(
-    ellipse at 50% 30%,
-    rgb(99 102 241 / 12%) 0%,
-    rgb(139 92 246 / 8%) 30%,
+    ellipse at 50% 42%,
+    rgb(255 107 53 / 15%) 0%,
+    rgb(59 130 246 / 12%) 20%,
+    rgb(255 107 53 / 8%) 35%,
     rgb(59 130 246 / 6%) 50%,
     transparent 100%
   );
@@ -85,9 +88,10 @@
 .splash-grid-overlay {
   position: absolute;
   inset: 0;
+  /* Subtle grid using orange/blue palette */
   background-image:
-    linear-gradient(rgb(99 102 241 / 3%) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(99 102 241 / 3%) 1px, transparent 1px);
+    linear-gradient(rgb(255 107 53 / 2%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(59 130 246 / 2%) 1px, transparent 1px);
   background-size: 50px 50px;
   opacity: 0.3;
   z-index: 1;
@@ -105,6 +109,7 @@
 }
 
 /* ==================== CONTENT ==================== */
+/* Content positioned so icon center is at 40-45% vertical height */
 .splash-content {
   position: relative;
   z-index: 2;
@@ -112,6 +117,7 @@
   animation: contentSlideUp 1s cubic-bezier(0.34, 1.56, 0.64, 1);
   overflow: visible;
   padding: 0 20px;
+  transform: translateY(-10%);
 }
 
 @keyframes contentSlideUp {
@@ -127,6 +133,7 @@
 }
 
 /* ==================== LOGO ==================== */
+/* Logo positioned at 40-45% of vertical height (via padding-top: 12% on container) */
 .splash-logo {
   margin-bottom: 48px;
   padding: 0 20px;
@@ -241,7 +248,8 @@
   50% {
     text-shadow:
       0 0 30px rgb(255 255 255 / 40%),
-      0 0 15px rgb(99 102 241 / 30%),
+      0 0 20px rgb(255 107 53 / 30%),
+      0 0 15px rgb(59 130 246 / 30%),
       0 2px 4px rgb(0 0 0 / 30%),
       0 4px 8px rgb(0 0 0 / 20%);
   }
@@ -249,10 +257,10 @@
 
 .splash-subtitle {
   font-size: 14px;
-  color: rgb(255 255 255 / 90%);
+  color: rgb(255 255 255 / 75%);
   margin: 16px 0 0;
   font-weight: 400;
-  letter-spacing: 2px;
+  letter-spacing: 3px;
   text-transform: uppercase;
   opacity: 0.9;
   animation: subtitleFade 1.5s ease-out 0.5s both;
@@ -297,10 +305,14 @@
 
 .splash-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #3b82f6 0%, #6366f1 50%, #a855f7 100%);
+  /* Refined progress bar with orange/blue gradient */
+  background: linear-gradient(90deg, #ff6b35 0%, #6366f1 50%, #3b82f6 100%);
   border-radius: 2px;
   transition: width 0.3s ease;
   position: relative;
+  box-shadow:
+    0 0 10px rgb(255 107 53 / 40%),
+    0 0 20px rgb(59 130 246 / 30%);
 }
 
 @keyframes statusFade {

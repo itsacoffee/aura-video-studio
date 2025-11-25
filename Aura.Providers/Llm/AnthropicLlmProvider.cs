@@ -47,7 +47,7 @@ public class AnthropicLlmProvider : ILlmProvider
         _model = model;
         _maxRetries = maxRetries;
         _timeout = TimeSpan.FromSeconds(timeoutSeconds);
-        
+
         // Create PromptCustomizationService if not provided
         if (promptCustomizationService == null)
         {
@@ -97,7 +97,7 @@ public class AnthropicLlmProvider : ILlmProvider
 
         var startTime = DateTime.UtcNow;
         Exception? lastException = null;
-        
+
         for (int attempt = 0; attempt <= _maxRetries; attempt++)
         {
             try
@@ -105,7 +105,7 @@ public class AnthropicLlmProvider : ILlmProvider
                 if (attempt > 0)
                 {
                     var backoffDelay = TimeSpan.FromSeconds(Math.Pow(2, attempt));
-                    _logger.LogInformation("Retry attempt {Attempt}/{MaxRetries} after {Delay}s delay", 
+                    _logger.LogInformation("Retry attempt {Attempt}/{MaxRetries} after {Delay}s delay",
                         attempt, _maxRetries, backoffDelay.TotalSeconds);
                     await Task.Delay(backoffDelay, ct).ConfigureAwait(false);
                 }
@@ -149,12 +149,12 @@ public class AnthropicLlmProvider : ILlmProvider
                 cts.CancelAfter(_timeout);
 
                 var response = await _httpClient.PostAsync("https://api.anthropic.com/v1/messages", content, cts.Token).ConfigureAwait(false);
-                
+
                 // Handle specific HTTP error codes
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-                    if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized || 
+                    if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized ||
                         response.StatusCode == System.Net.HttpStatusCode.Forbidden)
                     {
                         throw new InvalidOperationException(
@@ -184,7 +184,7 @@ public class AnthropicLlmProvider : ILlmProvider
                     }
                     else if ((int)response.StatusCode >= 500)
                     {
-                        _logger.LogWarning("Anthropic server error (attempt {Attempt}/{MaxRetries}): {StatusCode}", 
+                        _logger.LogWarning("Anthropic server error (attempt {Attempt}/{MaxRetries}): {StatusCode}",
                             attempt + 1, _maxRetries + 1, response.StatusCode);
                         if (attempt >= _maxRetries)
                         {
@@ -194,12 +194,12 @@ public class AnthropicLlmProvider : ILlmProvider
                         lastException = new Exception($"Server error: {errorContent}");
                         continue; // Retry
                     }
-                    
+
                     response.EnsureSuccessStatusCode();
                 }
 
                 var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-                
+
                 // Parse and validate response structure
                 JsonDocument? responseDoc = null;
                 try
@@ -215,11 +215,11 @@ public class AnthropicLlmProvider : ILlmProvider
                 // Check for API errors in response
                 if (responseDoc.RootElement.TryGetProperty("error", out var errorElement))
                 {
-                    var errorMessage = errorElement.TryGetProperty("message", out var msg) 
-                        ? msg.GetString() ?? "Unknown error" 
+                    var errorMessage = errorElement.TryGetProperty("message", out var msg)
+                        ? msg.GetString() ?? "Unknown error"
                         : "API error";
-                    var errorType = errorElement.TryGetProperty("type", out var type) 
-                        ? type.GetString() ?? "unknown" 
+                    var errorType = errorElement.TryGetProperty("type", out var type)
+                        ? type.GetString() ?? "unknown"
                         : "unknown";
                     _logger.LogError("Anthropic API error: {Type} - {Message}", errorType, errorMessage);
                     throw new InvalidOperationException($"Anthropic API error: {errorMessage}");
@@ -232,22 +232,22 @@ public class AnthropicLlmProvider : ILlmProvider
                     if (firstContent.TryGetProperty("text", out var textProp))
                     {
                         string script = textProp.GetString() ?? string.Empty;
-                        
+
                         if (string.IsNullOrWhiteSpace(script))
                         {
                             throw new InvalidOperationException("Anthropic returned an empty response");
                         }
-                        
+
                         var duration = DateTime.UtcNow - startTime;
-                        
-                        _logger.LogInformation("Script generated successfully ({Length} characters) in {Duration}s", 
+
+                        _logger.LogInformation("Script generated successfully ({Length} characters) in {Duration}s",
                             script.Length, duration.TotalSeconds);
-                        
+
                         return script;
                     }
                 }
 
-                _logger.LogWarning("Anthropic response did not contain expected structure. Response: {Response}", 
+                _logger.LogWarning("Anthropic response did not contain expected structure. Response: {Response}",
                     responseJson.Substring(0, Math.Min(500, responseJson.Length)));
                 throw new InvalidOperationException($"Invalid response structure from Anthropic API. Expected 'content[0].text' but got: {responseJson.Substring(0, Math.Min(200, responseJson.Length))}");
             }
@@ -298,7 +298,7 @@ public class AnthropicLlmProvider : ILlmProvider
         _logger.LogInformation("Executing raw prompt completion with Anthropic Claude (model: {Model})", _model);
 
         Exception? lastException = null;
-        
+
         for (int attempt = 0; attempt <= _maxRetries; attempt++)
         {
             try
@@ -306,7 +306,7 @@ public class AnthropicLlmProvider : ILlmProvider
                 if (attempt > 0)
                 {
                     var backoffDelay = TimeSpan.FromSeconds(Math.Pow(2, attempt));
-                    _logger.LogInformation("Retry attempt {Attempt}/{MaxRetries} after {Delay}s delay", 
+                    _logger.LogInformation("Retry attempt {Attempt}/{MaxRetries} after {Delay}s delay",
                         attempt, _maxRetries, backoffDelay.TotalSeconds);
                     await Task.Delay(backoffDelay, ct).ConfigureAwait(false);
                 }
@@ -333,7 +333,7 @@ public class AnthropicLlmProvider : ILlmProvider
                 cts.CancelAfter(_timeout);
 
                 var response = await _httpClient.PostAsync("https://api.anthropic.com/v1/messages", content, cts.Token).ConfigureAwait(false);
-                
+
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
@@ -360,7 +360,7 @@ public class AnthropicLlmProvider : ILlmProvider
                         lastException = new Exception($"Server error: {errorContent}");
                         continue;
                     }
-                    
+
                     response.EnsureSuccessStatusCode();
                 }
 
@@ -373,12 +373,12 @@ public class AnthropicLlmProvider : ILlmProvider
                     if (firstContent.TryGetProperty("text", out var textProp))
                     {
                         string result = textProp.GetString() ?? string.Empty;
-                        
+
                         if (string.IsNullOrWhiteSpace(result))
                         {
                             throw new InvalidOperationException("Anthropic returned an empty response");
                         }
-                        
+
                         _logger.LogInformation("Completion generated successfully ({Length} characters)", result.Length);
                         return result;
                     }
@@ -422,6 +422,174 @@ public class AnthropicLlmProvider : ILlmProvider
             $"Failed to complete prompt with Anthropic after {_maxRetries + 1} attempts. Please try again later.", lastException);
     }
 
+    public async Task<string> GenerateChatCompletionAsync(
+        string systemPrompt,
+        string userPrompt,
+        LlmParameters? parameters = null,
+        CancellationToken ct = default)
+    {
+        _logger.LogInformation("Generating chat completion with Anthropic Claude (model: {Model})", _model);
+
+        Exception? lastException = null;
+
+        // Use model override from parameters if provided
+        var modelToUse = !string.IsNullOrWhiteSpace(parameters?.ModelOverride)
+            ? parameters.ModelOverride
+            : _model;
+
+        // Get LLM parameters with defaults
+        var temperature = parameters?.Temperature ?? 0.7;
+        var maxTokens = parameters?.MaxTokens ?? 2000;
+        var topP = parameters?.TopP ?? 0.95;
+        var stopSequences = parameters?.StopSequences ?? new List<string> { "\n\nHuman:", "\n\nAssistant:" };
+
+        for (int attempt = 0; attempt <= _maxRetries; attempt++)
+        {
+            try
+            {
+                if (attempt > 0)
+                {
+                    var backoffDelay = TimeSpan.FromSeconds(Math.Pow(2, attempt));
+                    _logger.LogInformation("Retry attempt {Attempt}/{MaxRetries} after {Delay}s delay",
+                        attempt, _maxRetries, backoffDelay.TotalSeconds);
+                    await Task.Delay(backoffDelay, ct).ConfigureAwait(false);
+                }
+
+                // Anthropic uses separate system parameter (not in messages)
+                var requestBody = new Dictionary<string, object>
+                {
+                    { "model", modelToUse },
+                    { "max_tokens", maxTokens },
+                    { "temperature", temperature },
+                    { "top_p", topP },
+                    { "system", systemPrompt },
+                    { "messages", new[]
+                        {
+                            new { role = "user", content = userPrompt }
+                        }
+                    },
+                    { "stop_sequences", stopSequences }
+                };
+
+                _httpClient.DefaultRequestHeaders.Clear();
+                _httpClient.DefaultRequestHeaders.Add("x-api-key", _apiKey);
+                _httpClient.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
+
+                var json = JsonSerializer.Serialize(requestBody);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                cts.CancelAfter(_timeout);
+
+                var response = await _httpClient.PostAsync("https://api.anthropic.com/v1/messages", content, cts.Token).ConfigureAwait(false);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                    if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized ||
+                        response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                    {
+                        throw new InvalidOperationException(
+                            "Anthropic API key is invalid or has been revoked. Please check your API key in Settings → Providers → Anthropic");
+                    }
+                    else if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                    {
+                        _logger.LogWarning("Anthropic rate limit exceeded (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
+                        if (attempt >= _maxRetries)
+                        {
+                            throw new InvalidOperationException(
+                                "Anthropic rate limit exceeded. Please wait a moment and try again, or upgrade your Anthropic plan.");
+                        }
+                        lastException = new Exception($"Rate limit exceeded: {errorContent}");
+                        continue;
+                    }
+                    else if ((int)response.StatusCode == 529)
+                    {
+                        _logger.LogWarning("Anthropic service overloaded (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
+                        if (attempt >= _maxRetries)
+                        {
+                            throw new InvalidOperationException(
+                                "Anthropic service is currently overloaded. Please try again in a few minutes.");
+                        }
+                        lastException = new Exception($"Service overloaded: {errorContent}");
+                        continue;
+                    }
+                    else if ((int)response.StatusCode >= 500)
+                    {
+                        _logger.LogWarning("Anthropic server error (attempt {Attempt}/{MaxRetries}): {StatusCode}",
+                            attempt + 1, _maxRetries + 1, response.StatusCode);
+                        if (attempt >= _maxRetries)
+                        {
+                            throw new InvalidOperationException(
+                                $"Anthropic service is experiencing issues (HTTP {response.StatusCode}). Please try again later.");
+                        }
+                        lastException = new Exception($"Server error: {errorContent}");
+                        continue;
+                    }
+
+                    response.EnsureSuccessStatusCode();
+                }
+
+                var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                var responseDoc = JsonDocument.Parse(responseJson);
+
+                if (responseDoc.RootElement.TryGetProperty("content", out var content2) && content2.GetArrayLength() > 0)
+                {
+                    var firstContent = content2[0];
+                    if (firstContent.TryGetProperty("text", out var textProp))
+                    {
+                        string result = textProp.GetString() ?? string.Empty;
+
+                        if (string.IsNullOrWhiteSpace(result))
+                        {
+                            throw new InvalidOperationException("Anthropic returned an empty response");
+                        }
+
+                        _logger.LogInformation("Chat completion generated successfully ({Length} characters)", result.Length);
+                        return result;
+                    }
+                }
+
+                throw new InvalidOperationException("Invalid response structure from Anthropic API");
+            }
+            catch (TaskCanceledException ex)
+            {
+                lastException = ex;
+                if (attempt >= _maxRetries)
+                {
+                    throw new InvalidOperationException(
+                        $"Anthropic request timed out after {_timeout.TotalSeconds}s. Please check your internet connection or try again later.", ex);
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                lastException = ex;
+                if (attempt >= _maxRetries)
+                {
+                    throw new InvalidOperationException(
+                        "Cannot connect to Anthropic API. Please check your internet connection and try again.", ex);
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                throw;
+            }
+            catch (Exception ex) when (attempt < _maxRetries)
+            {
+                lastException = ex;
+                _logger.LogWarning(ex, "Error generating chat completion with Anthropic (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating chat completion with Anthropic after all retries");
+                throw;
+            }
+        }
+
+        throw new InvalidOperationException(
+            $"Failed to generate chat completion with Anthropic after {_maxRetries + 1} attempts. Please try again later.", lastException);
+    }
+
     public async Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
         string sceneText,
         string? previousSceneText,
@@ -434,7 +602,7 @@ public class AnthropicLlmProvider : ILlmProvider
         {
             var systemPrompt = "You are a video pacing expert. Analyze scenes for optimal timing. " +
                               "Return your response ONLY as valid JSON with no additional text or explanation.";
-            
+
             var userPrompt = $@"Analyze this scene and return JSON with:
 - importance (0-100): How critical is this scene to the video's message
 - complexity (0-100): How complex is the information presented
@@ -486,7 +654,7 @@ Respond with ONLY the JSON object, no other text:";
                 if (firstContent.TryGetProperty("text", out var textProp))
                 {
                     var analysisText = textProp.GetString() ?? string.Empty;
-                    
+
                     try
                     {
                         var analysisDoc = JsonDocument.Parse(analysisText);
@@ -502,9 +670,9 @@ Respond with ONLY the JSON object, no other text:";
                             Reasoning: root.TryGetProperty("reasoning", out var reas) ? reas.GetString() ?? "" : ""
                         );
 
-                        _logger.LogInformation("Scene analysis complete. Importance: {Importance}, Complexity: {Complexity}", 
+                        _logger.LogInformation("Scene analysis complete. Importance: {Importance}, Complexity: {Complexity}",
                             result.Importance, result.Complexity);
-                        
+
                         return result;
                     }
                     catch (JsonException ex)
@@ -549,7 +717,7 @@ Respond with ONLY the JSON object, no other text:";
             var systemPrompt = "You are a professional cinematographer and visual director. " +
                               "Create detailed visual prompts for image generation. " +
                               "Return your response ONLY as valid JSON with no additional text.";
-            
+
             var userPrompt = $@"Create a detailed visual prompt for this scene and return JSON with:
 - detailedDescription (string): Detailed visual description (100-200 words) of what should be shown
 - compositionGuidelines (string): Composition rules (e.g., ""rule of thirds, leading lines"")
@@ -609,7 +777,7 @@ Respond with ONLY the JSON object, no other text:";
                 if (firstContent.TryGetProperty("text", out var textProp))
                 {
                     var promptText = textProp.GetString() ?? string.Empty;
-                    
+
                     try
                     {
                         var promptDoc = JsonDocument.Parse(promptText);
@@ -733,7 +901,7 @@ Respond with ONLY the JSON object, no other text:";
                 if (firstContent.TryGetProperty("text", out var textProp))
                 {
                     var messageContent = textProp.GetString();
-                    
+
                     if (string.IsNullOrEmpty(messageContent))
                     {
                         _logger.LogWarning("Anthropic returned empty complexity analysis");
@@ -785,7 +953,7 @@ Respond with ONLY the JSON object, no other text:";
         prompt.AppendLine();
         prompt.AppendLine("SCENE CONTENT:");
         prompt.AppendLine(sceneText);
-        
+
         if (!string.IsNullOrEmpty(previousSceneText))
         {
             prompt.AppendLine();
@@ -856,7 +1024,7 @@ Respond with ONLY the JSON object, no other text:";
         {
             var systemPrompt = "You are a narrative flow expert analyzing video scene transitions. " +
                               "Return your response ONLY as valid JSON with no additional text.";
-            
+
             var userPrompt = $@"Analyze the narrative coherence between these two consecutive scenes and return JSON with:
 - coherenceScore (0-100): How well scene B flows from scene A (0=no connection, 100=perfect flow)
 - connectionTypes (array of strings): Types of connections (choose from: ""causal"", ""thematic"", ""prerequisite"", ""callback"", ""sequential"", ""contrast"")
@@ -907,14 +1075,14 @@ Respond with ONLY the JSON object, no other text:";
                 if (firstContent.TryGetProperty("text", out var textProp))
                 {
                     var analysisText = textProp.GetString() ?? string.Empty;
-                    
+
                     try
                     {
                         var analysisDoc = JsonDocument.Parse(analysisText);
                         var root = analysisDoc.RootElement;
 
                         var connectionTypes = new List<string>();
-                        if (root.TryGetProperty("connectionTypes", out var connTypes) && 
+                        if (root.TryGetProperty("connectionTypes", out var connTypes) &&
                             connTypes.ValueKind == JsonValueKind.Array)
                         {
                             connectionTypes = connTypes.EnumerateArray()
@@ -931,7 +1099,7 @@ Respond with ONLY the JSON object, no other text:";
                         );
 
                         _logger.LogInformation("Scene coherence analysis complete. Score: {Score}", result.CoherenceScore);
-                        
+
                         return result;
                     }
                     catch (JsonException ex)
@@ -964,9 +1132,9 @@ Respond with ONLY the JSON object, no other text:";
         {
             var systemPrompt = "You are a narrative structure expert analyzing video story arcs. " +
                               "Return your response ONLY as valid JSON with no additional text.";
-            
+
             var scenesText = string.Join("\n\n", sceneTexts.Select((s, i) => $"Scene {i + 1}: {s}"));
-            
+
             var expectedStructures = new Dictionary<string, string>
             {
                 { "educational", "problem → explanation → solution" },
@@ -977,7 +1145,7 @@ Respond with ONLY the JSON object, no other text:";
             };
 
             var expectedStructure = expectedStructures.GetValueOrDefault(
-                videoType.ToLowerInvariant(), 
+                videoType.ToLowerInvariant(),
                 expectedStructures["general"]);
 
             var userPrompt = $@"Analyze the narrative arc of this {videoType} video and return JSON with:
@@ -1030,14 +1198,14 @@ Respond with ONLY the JSON object, no other text:";
                 if (firstContent.TryGetProperty("text", out var textProp))
                 {
                     var analysisText = textProp.GetString() ?? string.Empty;
-                    
+
                     try
                     {
                         var analysisDoc = JsonDocument.Parse(analysisText);
                         var root = analysisDoc.RootElement;
 
                         var structuralIssues = new List<string>();
-                        if (root.TryGetProperty("structuralIssues", out var issues) && 
+                        if (root.TryGetProperty("structuralIssues", out var issues) &&
                             issues.ValueKind == JsonValueKind.Array)
                         {
                             structuralIssues = issues.EnumerateArray()
@@ -1048,7 +1216,7 @@ Respond with ONLY the JSON object, no other text:";
                         }
 
                         var recommendations = new List<string>();
-                        if (root.TryGetProperty("recommendations", out var recs) && 
+                        if (root.TryGetProperty("recommendations", out var recs) &&
                             recs.ValueKind == JsonValueKind.Array)
                         {
                             recommendations = recs.EnumerateArray()
@@ -1068,7 +1236,7 @@ Respond with ONLY the JSON object, no other text:";
                         );
 
                         _logger.LogInformation("Narrative arc validation complete. Valid: {IsValid}", result.IsValid);
-                        
+
                         return result;
                     }
                     catch (JsonException ex)
@@ -1100,7 +1268,7 @@ Respond with ONLY the JSON object, no other text:";
         try
         {
             var systemPrompt = "You are a professional scriptwriter specializing in smooth scene transitions.";
-            
+
             var userPrompt = $@"Create a brief transition sentence or phrase (1-2 sentences maximum) to smoothly connect these two scenes:
 
 Scene A: {fromSceneText}
@@ -1109,7 +1277,7 @@ Scene B: {toSceneText}
 
 Video goal: {videoGoal}
 
-The transition should feel natural and help the viewer understand the connection between these scenes. 
+The transition should feel natural and help the viewer understand the connection between these scenes.
 Return ONLY the transition text, no explanations or additional commentary:";
 
             var requestBody = new
@@ -1148,7 +1316,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
                 if (firstContent.TryGetProperty("text", out var textProp))
                 {
                     var transitionText = textProp.GetString()?.Trim() ?? string.Empty;
-                    
+
                     if (!string.IsNullOrWhiteSpace(transitionText))
                     {
                         _logger.LogInformation("Generated transition text: {Text}", transitionText);
@@ -1192,11 +1360,11 @@ Return ONLY the transition text, no explanations or additional commentary:";
     /// Anthropic streaming not yet implemented. Falls back to non-streaming DraftScriptAsync.
     /// </summary>
     public async IAsyncEnumerable<LlmStreamChunk> DraftScriptStreamAsync(
-        Brief brief, 
-        PlanSpec spec, 
+        Brief brief,
+        PlanSpec spec,
         [EnumeratorCancellation] CancellationToken ct = default)
     {
-        _logger.LogInformation("Starting streaming script generation with Anthropic Claude (model: {Model}) for topic: {Topic}", 
+        _logger.LogInformation("Starting streaming script generation with Anthropic Claude (model: {Model}) for topic: {Topic}",
             _model, brief.Topic);
 
         var startTime = DateTime.UtcNow;
@@ -1284,20 +1452,20 @@ Return ONLY the transition text, no explanations or additional commentary:";
             while (!reader.EndOfStream && !ct.IsCancellationRequested)
             {
                 var line = await reader.ReadLineAsync().ConfigureAwait(false);
-                
+
                 if (string.IsNullOrWhiteSpace(line) || !line.StartsWith("data: "))
                 {
                     continue;
                 }
 
                 var data = line.Substring(6); // Remove "data: " prefix
-                
+
                 if (data == "[DONE]" || data.Contains("\"type\":\"message_stop\""))
                 {
                     // Final chunk
                     var duration = DateTime.UtcNow - startTime;
-                    var timeToFirstToken = firstTokenTime.HasValue 
-                        ? (firstTokenTime.Value - startTime).TotalMilliseconds 
+                    var timeToFirstToken = firstTokenTime.HasValue
+                        ? (firstTokenTime.Value - startTime).TotalMilliseconds
                         : 0;
                     var tokensPerSec = tokenIndex > 0 && duration.TotalSeconds > 0
                         ? tokenIndex / duration.TotalSeconds
@@ -1343,7 +1511,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
                     if (doc.RootElement.TryGetProperty("type", out var typeElement))
                     {
                         var eventType = typeElement.GetString();
-                        
+
                         if (eventType == "content_block_delta")
                         {
                             if (doc.RootElement.TryGetProperty("delta", out var delta) &&

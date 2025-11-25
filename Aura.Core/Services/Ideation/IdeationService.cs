@@ -122,19 +122,114 @@ public class IdeationService
 
         try
         {
-            var prompt = await BuildBrainstormPromptAsync(request, desiredConceptCount, ragContext, ct).ConfigureAwait(false);
+            // Build system prompt for structured JSON output
+            var systemPrompt = @"You are an expert video content strategist specializing in creating engaging video concept variations.
+Your task is to generate diverse, creative video concept variations based on the user's topic.
 
-            // Validate prompt length
-            if (prompt.Length > MaxPromptLength)
+You MUST respond with ONLY valid JSON in the following format (no markdown, no code blocks):
+{
+  ""concepts"": [
+    {
+      ""title"": ""Engaging title specific to the topic"",
+      ""description"": ""Detailed 2-3 sentence description"",
+      ""angle"": ""Unique perspective (e.g., Tutorial, Story, Comparison, Behind-the-Scenes)"",
+      ""targetAudience"": ""Specific audience description"",
+      ""estimatedDuration"": ""30-60 seconds"",
+      ""appealScore"": 85,
+      ""talkingPoints"": [""Point 1"", ""Point 2"", ""Point 3""],
+      ""pros"": [""Advantage 1"", ""Advantage 2""],
+      ""cons"": [""Challenge 1"", ""Challenge 2""],
+      ""productionNotes"": ""Brief notes on how to produce this""
+    }
+  ]
+}";
+
+            // Build user prompt with topic and context
+            var userPromptBuilder = new StringBuilder();
+            userPromptBuilder.AppendLine($"Generate {desiredConceptCount} unique video concept variations for the following topic:");
+            userPromptBuilder.AppendLine();
+            userPromptBuilder.AppendLine($"Topic: {request.Topic}");
+            if (!string.IsNullOrEmpty(request.Audience))
             {
-                _logger.LogWarning("Generated prompt exceeds maximum length ({Length} > {MaxLength}), truncating",
-                    prompt.Length, MaxPromptLength);
-                prompt = prompt.Substring(0, MaxPromptLength);
+                userPromptBuilder.AppendLine($"Target Audience: {request.Audience}");
+            }
+            if (!string.IsNullOrEmpty(request.Tone))
+            {
+                userPromptBuilder.AppendLine($"Desired Tone: {request.Tone}");
+            }
+            userPromptBuilder.AppendLine();
+
+            // Include RAG context if available
+            if (ragContext != null && ragContext.Chunks.Count > 0)
+            {
+                userPromptBuilder.AppendLine("Additional Context from Knowledge Base:");
+                foreach (var chunk in ragContext.Chunks.Take(5))
+                {
+                    userPromptBuilder.AppendLine(chunk.Content);
+                    if (chunk.CitationNumber > 0)
+                    {
+                        userPromptBuilder.AppendLine($"[Source: {chunk.Source}]");
+                    }
+                    userPromptBuilder.AppendLine();
+                }
             }
 
-            // Retry logic for incomplete responses
-            const int maxRetries = 2;
-            string? response = null;
+            // Add trending topics if available
+            if (_trendingTopicsService != null)
+            {
+                try
+                {
+                    var trendingTopics = await _trendingTopicsService.GetTrendingTopicsAsync(
+                        request.Topic,
+                        maxResults: 5,
+                        forceRefresh: false,
+                        ct).ConfigureAwait(false);
+
+                    if (trendingTopics.Count > 0)
+                    {
+                        userPromptBuilder.AppendLine("Trending Topics (for reference):");
+                        foreach (var topic in trendingTopics.Take(3))
+                        {
+                            userPromptBuilder.AppendLine($"- {topic.Topic} (Trend Score: {topic.TrendScore:F1}/100)");
+                        }
+                        userPromptBuilder.AppendLine();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to retrieve trending topics for ideation, continuing without trend data");
+                }
+            }
+
+            userPromptBuilder.AppendLine("Requirements:");
+            userPromptBuilder.AppendLine("- Each concept must have a DIFFERENT angle/approach");
+            userPromptBuilder.AppendLine("- Make titles catchy and specific to the topic");
+            userPromptBuilder.AppendLine("- Ensure descriptions are detailed and actionable");
+            userPromptBuilder.AppendLine("- Appeal scores should vary (60-95 range)");
+            userPromptBuilder.AppendLine("- Include 3-5 talking points per concept");
+            userPromptBuilder.AppendLine("- List 2-3 pros and cons for each");
+            userPromptBuilder.AppendLine("- Add production notes for each concept");
+            userPromptBuilder.AppendLine();
+            userPromptBuilder.AppendLine($"Generate {desiredConceptCount} concepts now.");
+
+            var userPrompt = userPromptBuilder.ToString();
+
+            // Validate prompt length
+            var totalPromptLength = systemPrompt.Length + userPrompt.Length;
+            if (totalPromptLength > MaxPromptLength)
+            {
+                _logger.LogWarning("Generated prompt exceeds maximum length ({Length} > {MaxLength}), truncating",
+                    totalPromptLength, MaxPromptLength);
+                var maxUserPromptLength = MaxPromptLength - systemPrompt.Length - 100; // Leave buffer
+                if (maxUserPromptLength > 0)
+                {
+                    userPrompt = userPrompt.Substring(0, Math.Min(maxUserPromptLength, userPrompt.Length));
+                }
+            }
+
+            // Call with retry logic
+            const int maxRetries = 3;
+            string? jsonResponse = null;
             Exception? lastException = null;
 
             for (int attempt = 0; attempt <= maxRetries; attempt++)
@@ -143,106 +238,64 @@ public class IdeationService
                 {
                     if (attempt > 0)
                     {
-                        _logger.LogInformation("Retrying LLM generation (attempt {Attempt}/{MaxAttempts}) for topic: {Topic}",
+                        _logger.LogInformation("Retrying ideation (attempt {Attempt}/{Max}) for topic: {Topic}",
                             attempt + 1, maxRetries + 1, request.Topic);
-                        await Task.Delay(TimeSpan.FromSeconds(1), ct).ConfigureAwait(false);
+                        await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt)), ct); // Exponential backoff
                     }
 
-                    response = await GenerateWithLlmAsync(prompt, request, ct).ConfigureAwait(false);
+                    jsonResponse = await _llmProvider.GenerateChatCompletionAsync(
+                        systemPrompt,
+                        userPrompt,
+                        request.LlmParameters,
+                        ct);
 
-                    if (string.IsNullOrWhiteSpace(response))
+                    if (string.IsNullOrWhiteSpace(jsonResponse))
                     {
-                        _logger.LogWarning("LLM returned empty response (attempt {Attempt}/{MaxAttempts}) for topic: {Topic}",
-                            attempt + 1, maxRetries + 1, request.Topic);
-                        if (attempt < maxRetries)
-                            continue;
-                        throw new InvalidOperationException("LLM provider returned an empty response. Please try again.");
+                        throw new InvalidOperationException("LLM returned empty response");
                     }
 
-                    // Validate response quality before parsing
-                    var trimmedResponse = response.Trim();
-
-                    // More lenient validation - check for minimum viable JSON structure
-                    // A minimal valid JSON with one concept would be at least ~50-80 chars
-                    // But we'll be more lenient and check for actual JSON structure
-                    var hasJsonStructure = trimmedResponse.Contains("{") && trimmedResponse.Contains("}");
-                    var hasConceptsKey = trimmedResponse.Contains("\"concepts\"") || trimmedResponse.Contains("'concepts'");
-
-                    if (trimmedResponse.Length < 50)
+                    // Validate JSON structure before breaking
+                    var testDoc = JsonDocument.Parse(jsonResponse);
+                    if (testDoc.RootElement.TryGetProperty("concepts", out var conceptsArray) &&
+                        conceptsArray.ValueKind == JsonValueKind.Array &&
+                        conceptsArray.GetArrayLength() > 0)
                     {
-                        _logger.LogWarning("LLM returned very short response ({Length} chars) for topic: {Topic}. Response: {Response}",
-                            trimmedResponse.Length, request.Topic, trimmedResponse);
-                        if (attempt < maxRetries)
-                        {
-                            lastException = new InvalidOperationException("Response too short, retrying...");
-                            continue;
-                        }
-                        throw new InvalidOperationException(
-                            $"LLM returned an incomplete response ({trimmedResponse.Length} characters). " +
-                            $"Please try again or check your LLM provider configuration. Response: {trimmedResponse}");
+                        _logger.LogInformation("Successfully generated {Count} concepts for topic: {Topic}",
+                            conceptsArray.GetArrayLength(), request.Topic);
+                        break; // Valid response
                     }
-
-                    // Check if response looks like JSON (should start with { or [)
-                    var startsWithJson = trimmedResponse.TrimStart().StartsWith("{") || trimmedResponse.TrimStart().StartsWith("[");
-                    if (!startsWithJson && !hasJsonStructure)
+                    else
                     {
-                        _logger.LogWarning("LLM response doesn't appear to be JSON. First 200 chars: {Preview}",
-                            trimmedResponse.Substring(0, Math.Min(200, trimmedResponse.Length)));
-                        if (attempt < maxRetries)
-                        {
-                            lastException = new InvalidOperationException("Response doesn't appear to be JSON, retrying...");
-                            continue;
-                        }
-                        // Continue anyway - CleanJsonResponse might be able to extract JSON
+                        throw new InvalidOperationException("Response missing 'concepts' array or array is empty");
                     }
-
-                    // Try parsing to validate JSON structure early
-                    try
-                    {
-                        var cleanedResponse = CleanJsonResponse(response);
-                        if (!string.IsNullOrWhiteSpace(cleanedResponse))
-                        {
-                            var testDoc = JsonDocument.Parse(cleanedResponse);
-                            if (testDoc.RootElement.TryGetProperty("concepts", out var testConcepts) &&
-                                testConcepts.ValueKind == JsonValueKind.Array)
-                            {
-                                // Response looks valid, break out of retry loop
-                                break;
-                            }
-                        }
-                    }
-                    catch (JsonException)
-                    {
-                        // JSON parsing failed, might retry
-                        if (attempt < maxRetries)
-                        {
-                            _logger.LogWarning("JSON validation failed (attempt {Attempt}/{MaxAttempts}), will retry",
-                                attempt + 1, maxRetries + 1);
-                            lastException = new InvalidOperationException("Response is not valid JSON, retrying...");
-                            continue;
-                        }
-                    }
-
-                    // If we get here, response passed basic validation
-                    break;
                 }
-                catch (InvalidOperationException ex) when (attempt < maxRetries &&
-                    (ex.Message.Contains("incomplete") || ex.Message.Contains("empty") || ex.Message.Contains("too short")))
+                catch (JsonException jsonEx)
+                {
+                    lastException = jsonEx;
+                    _logger.LogWarning(jsonEx, "JSON parsing failed (attempt {Attempt}/{Max})", attempt + 1, maxRetries + 1);
+
+                    if (attempt == maxRetries)
+                    {
+                        throw new InvalidOperationException(
+                            $"LLM returned invalid JSON after {maxRetries + 1} attempts. " +
+                            $"Response preview: {jsonResponse?.Substring(0, Math.Min(200, jsonResponse?.Length ?? 0))}",
+                            jsonEx);
+                    }
+                }
+                catch (Exception ex) when (attempt < maxRetries)
                 {
                     lastException = ex;
-                    _logger.LogWarning(ex, "LLM generation failed validation (attempt {Attempt}/{MaxAttempts}), will retry",
-                        attempt + 1, maxRetries + 1);
-                    continue;
+                    _logger.LogWarning(ex, "Ideation attempt {Attempt} failed", attempt + 1);
                 }
             }
 
-            if (response == null || string.IsNullOrWhiteSpace(response))
+            if (jsonResponse == null)
             {
-                _logger.LogError("LLM failed to generate valid response after {MaxAttempts} attempts for topic: {Topic}",
-                    maxRetries + 1, request.Topic);
                 throw lastException ?? new InvalidOperationException(
-                    "LLM provider failed to generate a valid response after multiple attempts. Please try again or check your LLM provider configuration.");
+                    $"Failed to generate concepts after {maxRetries + 1} attempts");
             }
+
+            var response = jsonResponse;
 
             // Parse the response into structured concepts
             var concepts = ParseBrainstormResponse(response, request.Topic, desiredConceptCount);
