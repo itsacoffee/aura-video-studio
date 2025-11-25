@@ -1299,34 +1299,29 @@ public class IdeationService
 
         try
         {
-            // Clean the response - remove markdown code blocks if present
-            var cleanedResponse = response.Trim();
-            if (cleanedResponse.StartsWith("```json"))
+            // Clean the response - remove markdown code blocks and other LLM formatting artifacts
+            var cleanedResponse = CleanJsonResponse(response);
+            
+            if (string.IsNullOrWhiteSpace(cleanedResponse))
             {
-                cleanedResponse = cleanedResponse.Substring(7);
+                _logger.LogWarning("Cleaned response is empty, falling back to fallback concepts");
             }
-            if (cleanedResponse.StartsWith("```"))
+            else
             {
-                cleanedResponse = cleanedResponse.Substring(3);
-            }
-            if (cleanedResponse.EndsWith("```"))
-            {
-                cleanedResponse = cleanedResponse.Substring(0, cleanedResponse.Length - 3);
-            }
-            cleanedResponse = cleanedResponse.Trim();
-
-            // Parse JSON response
-            var jsonDoc = JsonDocument.Parse(cleanedResponse);
-            if (jsonDoc.RootElement.TryGetProperty("concepts", out var conceptsArray))
-            {
-                foreach (var conceptElement in conceptsArray.EnumerateArray())
+                // Parse JSON response
+                var jsonDoc = JsonDocument.Parse(cleanedResponse);
+                if (jsonDoc.RootElement.TryGetProperty("concepts", out var conceptsArray))
                 {
-                    var title = conceptElement.GetProperty("title").GetString() ?? "Untitled Concept";
-                    var description = conceptElement.GetProperty("description").GetString() ?? "";
-                    var angle = conceptElement.GetProperty("angle").GetString() ?? "Tutorial";
-                    var targetAudience = conceptElement.GetProperty("targetAudience").GetString() ?? "General audience";
-                    var hook = conceptElement.GetProperty("hook").GetString() ?? "";
-                    var appealScore = conceptElement.GetProperty("appealScore").GetDouble();
+                    foreach (var conceptElement in conceptsArray.EnumerateArray())
+                    {
+                        try
+                        {
+                            var title = GetStringPropertySafe(conceptElement, "title", "Untitled Concept");
+                            var description = GetStringPropertySafe(conceptElement, "description", "");
+                            var angle = GetStringPropertySafe(conceptElement, "angle", "Tutorial");
+                            var targetAudience = GetStringPropertySafe(conceptElement, "targetAudience", "General audience");
+                            var hook = GetStringPropertySafe(conceptElement, "hook", "");
+                            var appealScore = GetDoublePropertySafe(conceptElement, "appealScore", 75.0);
 
                     var pros = new List<string>();
                     if (conceptElement.TryGetProperty("pros", out var prosArray))
@@ -1380,12 +1375,23 @@ public class IdeationService
                         TalkingPoints: talkingPoints.Count > 0 ? talkingPoints : null,
                         CreatedAt: DateTime.UtcNow
                     ));
+                        }
+                        catch (Exception elementEx)
+                        {
+                            _logger.LogWarning(elementEx, "Failed to parse one concept element, skipping");
+                            continue;
+                        }
+                    }
                 }
             }
         }
         catch (JsonException ex)
         {
             _logger.LogWarning(ex, "Failed to parse JSON response from LLM, falling back to generic concepts");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Unexpected error parsing LLM response, falling back to generic concepts");
         }
 
         // Fallback: If parsing failed or no concepts were generated, create generic concepts
@@ -2638,6 +2644,97 @@ public class IdeationService
         if (number >= 1_000)
             return $"{number / 1_000.0:F1}K";
         return number.ToString();
+    }
+
+    /// <summary>
+    /// Clean JSON response by removing markdown code blocks and other LLM formatting artifacts
+    /// </summary>
+    private static string CleanJsonResponse(string response)
+    {
+        if (string.IsNullOrWhiteSpace(response))
+            return string.Empty;
+
+        var cleanedResponse = response.Trim();
+        
+        // Remove markdown code block markers with language specifier
+        if (cleanedResponse.StartsWith("```json", StringComparison.OrdinalIgnoreCase))
+        {
+            cleanedResponse = cleanedResponse.Substring(7);
+        }
+        else if (cleanedResponse.StartsWith("```JSON", StringComparison.OrdinalIgnoreCase))
+        {
+            cleanedResponse = cleanedResponse.Substring(7);
+        }
+        else if (cleanedResponse.StartsWith("```"))
+        {
+            cleanedResponse = cleanedResponse.Substring(3);
+        }
+        
+        if (cleanedResponse.EndsWith("```"))
+        {
+            cleanedResponse = cleanedResponse.Substring(0, cleanedResponse.Length - 3);
+        }
+        
+        cleanedResponse = cleanedResponse.Trim();
+        
+        // Try to extract JSON if there's text before/after
+        var firstBrace = cleanedResponse.IndexOf('{');
+        var lastBrace = cleanedResponse.LastIndexOf('}');
+        
+        if (firstBrace >= 0 && lastBrace > firstBrace)
+        {
+            cleanedResponse = cleanedResponse.Substring(firstBrace, lastBrace - firstBrace + 1);
+        }
+        
+        return cleanedResponse;
+    }
+
+    /// <summary>
+    /// Safely get a string property from a JSON element
+    /// </summary>
+    private static string GetStringPropertySafe(JsonElement element, string propertyName, string defaultValue)
+    {
+        try
+        {
+            if (element.TryGetProperty(propertyName, out var prop))
+            {
+                return prop.GetString() ?? defaultValue;
+            }
+        }
+        catch
+        {
+            // Ignore exceptions during property access
+        }
+        return defaultValue;
+    }
+
+    /// <summary>
+    /// Safely get a double property from a JSON element
+    /// </summary>
+    private static double GetDoublePropertySafe(JsonElement element, string propertyName, double defaultValue)
+    {
+        try
+        {
+            if (element.TryGetProperty(propertyName, out var prop))
+            {
+                if (prop.ValueKind == JsonValueKind.Number)
+                {
+                    return prop.GetDouble();
+                }
+                if (prop.ValueKind == JsonValueKind.String)
+                {
+                    if (double.TryParse(prop.GetString(), out var parsed))
+                    {
+                        return parsed;
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // Ignore exceptions during property access
+        }
+        return defaultValue;
     }
 }
 
