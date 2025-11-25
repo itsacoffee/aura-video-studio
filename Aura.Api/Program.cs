@@ -263,6 +263,16 @@ builder.Services.AddControllers(options =>
 builder.Services.AddValidatorsFromAssemblyContaining<ScriptRequestValidator>();
 builder.Services.AddScoped<ValidationFilter>();
 
+// Configure request timeouts
+// Default timeout for all requests is 2 minutes
+// Script generation endpoints can override with RequestTimeout attribute (6 minutes) to accommodate slow Ollama models
+builder.Services.AddRequestTimeouts(options =>
+{
+    options.DefaultPolicy = Microsoft.AspNetCore.Http.Timeouts.RequestTimeoutPolicy.Create(
+        TimeSpan.FromMinutes(2), 
+        timeoutStatusCode: StatusCodes.Status408RequestTimeout);
+});
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -2435,6 +2445,11 @@ app.UseRequestLogging();
 // Add new global exception handler (ASP.NET Core IExceptionHandler pattern)
 // This replaces the legacy ExceptionHandlingMiddleware
 app.UseExceptionHandler();
+
+// Configure request timeouts
+// Default timeout for all requests is 2 minutes
+// Script generation endpoints need longer timeout (6 minutes) to accommodate slow Ollama models
+app.UseRequestTimeouts();
 
 // Configure the HTTP request pipeline
 // Enable Swagger in all environments for contract testing

@@ -30,7 +30,6 @@ import { ResumeWizardDialog } from '../../components/Onboarding/ResumeWizardDial
 import { WelcomeScreen } from '../../components/Onboarding/WelcomeScreen';
 import type { WorkspacePreferences } from '../../components/Onboarding/WorkspaceSetup';
 import { WorkspaceSetup } from '../../components/Onboarding/WorkspaceSetup';
-import { ProviderStatusPanel } from '../../components/ProviderStatusPanel';
 import { WizardProgress } from '../../components/WizardProgress';
 import { wizardAnalytics } from '../../services/analytics';
 import { resetCircuitBreaker } from '../../services/api/apiClient';
@@ -1539,9 +1538,6 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
           Configure at least one LLM provider for script generation, or use offline mode.
         </Text>
       </div>
-
-      {/* Provider Status Panel - Real-time status updates */}
-      <ProviderStatusPanel showRecommendations={true} compact={false} />
 
       {(() => {
         try {

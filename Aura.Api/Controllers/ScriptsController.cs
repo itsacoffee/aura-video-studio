@@ -78,6 +78,7 @@ public class ScriptsController : ControllerBase
     /// Generate a new script using provider selection
     /// </summary>
     [HttpPost("generate")]
+    [Microsoft.AspNetCore.Http.Timeouts.RequestTimeout(360000)] // 6 minutes - allows for slow Ollama models (5 min + buffer)
     public async Task<IActionResult> GenerateScript(
         [FromBody] GenerateScriptRequest? request,
         CancellationToken ct)
@@ -278,17 +279,76 @@ public class ScriptsController : ControllerBase
             var response = MapScriptToResponse(scriptId, script);
             return Ok(response);
         }
+        catch (TaskCanceledException ex) when (ct.IsCancellationRequested)
+        {
+            // Check if it was a timeout cancellation
+            var isTimeout = ex.InnerException is TimeoutException || 
+                           ex.Message.Contains("timeout", StringComparison.OrdinalIgnoreCase) ||
+                           ex.Message.Contains("canceled", StringComparison.OrdinalIgnoreCase);
+            
+            _logger.LogWarning(ex, 
+                "[{CorrelationId}] Script generation was canceled. IsTimeout: {IsTimeout}, TimeElapsed: {TimeElapsed}ms",
+                correlationId, isTimeout, ex.Data.Contains("TimeElapsed") ? ex.Data["TimeElapsed"] : "unknown");
+
+            var errorDetail = isTimeout
+                ? "Script generation timed out after 6 minutes. The model may be processing a large request. Please try again with a shorter topic or simpler prompt, or check if Ollama is responding."
+                : "Script generation was canceled. Please try again.";
+
+            return StatusCode(408, new ProblemDetails
+            {
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E408",
+                Title = "Request Timeout",
+                Status = 408,
+                Detail = errorDetail,
+                Extensions = 
+                { 
+                    ["correlationId"] = correlationId,
+                    ["errorCode"] = "E408",
+                    ["suggestion"] = "Try a shorter topic or simpler prompt, or check Ollama status"
+                }
+            });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[{CorrelationId}] Error generating script", correlationId);
+            // Log the full exception details including inner exceptions
+            _logger.LogError(ex, 
+                "[{CorrelationId}] Error generating script. ExceptionType: {ExceptionType}, Message: {Message}, InnerException: {InnerException}",
+                correlationId, 
+                ex.GetType().Name, 
+                ex.Message,
+                ex.InnerException?.Message ?? "none");
+
+            // Extract more detailed error information
+            var errorDetail = "An error occurred while generating the script";
+            if (ex is TimeoutException timeoutEx)
+            {
+                errorDetail = $"Request timed out: {timeoutEx.Message}. The model may be processing a large request. Please try again.";
+            }
+            else if (ex is HttpRequestException httpEx)
+            {
+                errorDetail = $"HTTP error during script generation: {httpEx.Message}. Please check your provider configuration.";
+            }
+            else if (ex is InvalidOperationException invalidOpEx)
+            {
+                errorDetail = invalidOpEx.Message;
+            }
+            else if (!string.IsNullOrWhiteSpace(ex.Message))
+            {
+                errorDetail = ex.Message;
+            }
 
             return StatusCode(500, new ProblemDetails
             {
                 Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 Title = "Internal Server Error",
                 Status = 500,
-                Detail = "An error occurred while generating the script",
-                Extensions = { ["correlationId"] = correlationId }
+                Detail = errorDetail,
+                Extensions = 
+                { 
+                    ["correlationId"] = correlationId,
+                    ["exceptionType"] = ex.GetType().Name,
+                    ["errorCode"] = "E500"
+                }
             });
         }
     }
