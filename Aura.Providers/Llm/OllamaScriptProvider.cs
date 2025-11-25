@@ -11,6 +11,8 @@ using Aura.Core.Interfaces;
 using Aura.Core.Models;
 using Aura.Core.Models.Generation;
 using Aura.Core.Models.Ollama;
+using Aura.Core.Models.RAG;
+using Aura.Core.Services.RAG;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Providers.Llm;
@@ -25,6 +27,10 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
     private readonly string _baseUrl;
     private readonly string _model;
     private readonly TimeSpan _timeout;
+    private readonly RagContextBuilder? _ragContextBuilder;
+
+    // Citation format constant for consistency
+    private const string CitationFormat = "[Citation X]";
 
     // Cache for availability check to avoid repeated calls
     private DateTime _lastAvailabilityCheck = DateTime.MinValue;
@@ -35,6 +41,7 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
     public OllamaScriptProvider(
         ILogger<OllamaScriptProvider> logger,
         HttpClient httpClient,
+        RagContextBuilder? ragContextBuilder = null,
         string baseUrl = "http://127.0.0.1:11434",
         string model = "llama3.1:8b-q4_k_m",
         int maxRetries = 3,
@@ -42,6 +49,7 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
         : base(logger, maxRetries, baseRetryDelayMs: 1000)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+        _ragContextBuilder = ragContextBuilder;
         _baseUrl = ValidateBaseUrl(baseUrl);
         _model = model;
         _timeout = TimeSpan.FromSeconds(timeoutSeconds);
@@ -58,8 +66,8 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
             _httpClient.Timeout = TimeSpan.FromSeconds(timeoutSeconds + 300); // Add 5-minute buffer
         }
 
-        _logger.LogInformation("OllamaScriptProvider initialized with baseUrl={BaseUrl}, model={Model}, timeout={Timeout}s (lenient for slow systems), httpClientTimeout={HttpClientTimeout}s",
-            _baseUrl, _model, timeoutSeconds, _httpClient.Timeout.TotalSeconds);
+        _logger.LogInformation("OllamaScriptProvider initialized with baseUrl={BaseUrl}, model={Model}, timeout={Timeout}s (lenient for slow systems), httpClientTimeout={HttpClientTimeout}s, ragEnabled={RagEnabled}",
+            _baseUrl, _model, timeoutSeconds, _httpClient.Timeout.TotalSeconds, _ragContextBuilder != null);
     }
 
     /// <summary>
@@ -99,8 +107,11 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
             throw new InvalidOperationException(errorMessage);
         }
 
+        // RAG Context Retrieval using helper method
+        var ragContext = await RetrieveRagContextAsync(request, cancellationToken).ConfigureAwait(false);
+
         var startTime = DateTime.UtcNow;
-        var prompt = BuildPrompt(request);
+        var prompt = BuildPrompt(request, ragContext);
         var model = request.ModelOverride ?? _model;
 
         // Retry logic for handling variable Ollama response times
@@ -368,7 +379,10 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
             throw new InvalidOperationException(errorMessage);
         }
 
-        var prompt = BuildPrompt(request);
+        // RAG Context Retrieval using helper method
+        var ragContext = await RetrieveRagContextAsync(request, cancellationToken).ConfigureAwait(false);
+
+        var prompt = BuildPrompt(request, ragContext);
         var model = request.ModelOverride ?? _model;
 
         var requestBody = new
@@ -763,12 +777,74 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
     }
 
     /// <summary>
-    /// Build prompt from request
+    /// Retrieves RAG context for a request if enabled and available
     /// </summary>
-    private string BuildPrompt(ScriptGenerationRequest request)
+    private async Task<string> RetrieveRagContextAsync(
+        ScriptGenerationRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (_ragContextBuilder == null || request.Brief.RagConfiguration?.Enabled != true)
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            var ragConfig = new RagConfig
+            {
+                Enabled = true,
+                TopK = request.Brief.RagConfiguration.TopK,
+                MinimumScore = request.Brief.RagConfiguration.MinimumScore,
+                MaxContextTokens = request.Brief.RagConfiguration.MaxContextTokens,
+                IncludeCitations = request.Brief.RagConfiguration.IncludeCitations
+            };
+
+            var ragResult = await _ragContextBuilder.BuildContextAsync(
+                request.Brief.Topic,
+                ragConfig,
+                cancellationToken).ConfigureAwait(false);
+
+            if (ragResult.Chunks.Count > 0)
+            {
+                _logger.LogInformation("RAG context retrieved: {ChunkCount} chunks, {TokenCount} tokens",
+                    ragResult.Chunks.Count, ragResult.TotalTokens);
+                return ragResult.FormattedContext;
+            }
+            else
+            {
+                _logger.LogInformation("No relevant RAG context found for topic: {Topic}", request.Brief.Topic);
+                return string.Empty;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to retrieve RAG context, continuing without it");
+            return string.Empty;
+        }
+    }
+
+    /// <summary>
+    /// Build prompt from request with optional RAG context
+    /// </summary>
+    private string BuildPrompt(ScriptGenerationRequest request, string ragContext = "")
     {
         var brief = request.Brief;
         var spec = request.PlanSpec;
+        var promptBuilder = new StringBuilder();
+
+        // Add RAG context first if available
+        if (!string.IsNullOrEmpty(ragContext))
+        {
+            promptBuilder.AppendLine("# Reference Context");
+            promptBuilder.AppendLine();
+            promptBuilder.AppendLine(ragContext);
+            promptBuilder.AppendLine();
+            promptBuilder.AppendLine("---");
+            promptBuilder.AppendLine();
+            promptBuilder.AppendLine("Use the above reference context to inform your script generation.");
+            promptBuilder.AppendLine($"Cite sources using {CitationFormat} format where appropriate.");
+            promptBuilder.AppendLine();
+        }
 
         var systemPrompt = @"You are a professional scriptwriter creating engaging video scripts.
 Follow these guidelines:
@@ -777,6 +853,13 @@ Follow these guidelines:
 - Match the requested tone and style
 - Consider the target audience
 - Keep scenes focused and digestible";
+
+        if (!string.IsNullOrEmpty(ragContext))
+        {
+            systemPrompt += $@"
+- Use information from the reference context when relevant
+- Cite sources appropriately using {CitationFormat} format";
+        }
 
         var userPrompt = $@"Create a video script for the following:
 
@@ -789,6 +872,11 @@ Style: {spec.Style}
 
 Please provide a well-structured script with clear narration for each scene.";
 
-        return $"{systemPrompt}\n\n{userPrompt}";
+        promptBuilder.Append(systemPrompt);
+        promptBuilder.AppendLine();
+        promptBuilder.AppendLine();
+        promptBuilder.Append(userPrompt);
+
+        return promptBuilder.ToString();
     }
 }

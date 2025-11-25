@@ -107,6 +107,12 @@ public record GenerateScriptRequest
     /// Advanced LLM parameters - Stop sequences (provider-specific)
     /// </summary>
     public List<string>? StopSequences { get; init; }
+
+    /// <summary>
+    /// RAG (Retrieval-Augmented Generation) configuration for script grounding.
+    /// Uses existing RagConfigurationDto from Dtos.cs which has default values.
+    /// </summary>
+    public RagConfigurationDto? RagConfiguration { get; init; }
 }
 
 /// <summary>

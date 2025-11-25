@@ -7,6 +7,19 @@ import type { ExtendedAxiosRequestConfig } from './apiClient';
 import { get, post, put } from './apiClient';
 
 /**
+ * RAG (Retrieval-Augmented Generation) configuration
+ * Matches the RagConfigurationDto in the backend with default values
+ */
+export interface RagConfigurationDto {
+  enabled: boolean;
+  topK?: number; // Default: 5
+  minimumScore?: number; // Default: 0.6
+  maxContextTokens?: number; // Default: 2000
+  includeCitations?: boolean; // Default: true
+  tightenClaims?: boolean; // Default: false
+}
+
+/**
  * Script generation request
  */
 export interface GenerateScriptRequest {
@@ -30,6 +43,8 @@ export interface GenerateScriptRequest {
   frequencyPenalty?: number;
   presencePenalty?: number;
   stopSequences?: string[];
+  // RAG configuration for script grounding
+  ragConfiguration?: RagConfigurationDto;
 }
 
 /**
