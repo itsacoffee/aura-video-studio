@@ -13,7 +13,22 @@ interface OfflineModeCardProps {
   onModeChange: (isOffline: boolean) => void;
 }
 
+/**
+ * Format provider list for user-friendly display
+ * Consolidates Windows/WindowsSAPI into single entry
+ */
+function formatProviderList(providers: string[]): string {
+  // Consolidate Windows/WindowsSAPI into single "Windows SAPI"
+  const displayProviders = providers
+    .filter((p) => p !== 'WindowsSAPI') // Remove duplicate
+    .map((p) => (p === 'Windows' ? 'Windows SAPI' : p));
+  return displayProviders.join(', ');
+}
+
 export const OfflineModeCard: React.FC<OfflineModeCardProps> = ({ offlineMode, onModeChange }) => {
+  // Use provider lists from the settings store (synced from backend)
+  const { allowedLlmProviders, allowedTtsProviders, allowedImageProviders } = useSettingsStore();
+
   const handleToggle = (checked: boolean) => {
     onModeChange(checked);
     // Also update the settings store for global access
@@ -73,7 +88,7 @@ export const OfflineModeCard: React.FC<OfflineModeCardProps> = ({ offlineMode, o
         />
       </div>
 
-      {/* Provider availability in current mode */}
+      {/* Provider availability in current mode - uses store values synced from backend */}
       <div
         style={{
           display: 'grid',
@@ -95,7 +110,7 @@ export const OfflineModeCard: React.FC<OfflineModeCardProps> = ({ offlineMode, o
               color: tokens.colorNeutralForeground3,
             }}
           >
-            {offlineMode ? 'Ollama, RuleBased' : 'All configured'}
+            {offlineMode ? formatProviderList(allowedLlmProviders) : 'All configured'}
           </Text>
         </div>
         <div>
@@ -109,7 +124,7 @@ export const OfflineModeCard: React.FC<OfflineModeCardProps> = ({ offlineMode, o
               color: tokens.colorNeutralForeground3,
             }}
           >
-            {offlineMode ? 'Windows SAPI, Piper, Mimic3' : 'All configured'}
+            {offlineMode ? formatProviderList(allowedTtsProviders) : 'All configured'}
           </Text>
         </div>
         <div>
@@ -123,7 +138,7 @@ export const OfflineModeCard: React.FC<OfflineModeCardProps> = ({ offlineMode, o
               color: tokens.colorNeutralForeground3,
             }}
           >
-            {offlineMode ? 'Placeholder colors only' : 'All configured'}
+            {offlineMode ? formatProviderList(allowedImageProviders) : 'All configured'}
           </Text>
         </div>
       </div>
