@@ -364,35 +364,35 @@ public class CompositeLlmProvider : ILlmProvider
                     "Using configured preferred provider {Provider} as primary for {Operation}",
                     normalizedPreferred, operationName);
 
-                var chain = new List<string> { normalizedPreferred };
+                var preferredChain = new List<string> { normalizedPreferred };
 
                 // Add fallback chain after preferred provider
                 // Build a fallback chain that excludes the preferred provider
-                var decision = _providerMixer.ResolveLlm(providers, preferredTier, offlineOnly, normalizedPreferred);
+                var preferredDecision = _providerMixer.ResolveLlm(providers, preferredTier, offlineOnly, normalizedPreferred);
 
-                if (decision.DowngradeChain?.Length > 0)
+                if (preferredDecision.DowngradeChain?.Length > 0)
                 {
-                    foreach (var providerName in decision.DowngradeChain)
+                    foreach (var providerName in preferredDecision.DowngradeChain)
                     {
-                        if (providerName != normalizedPreferred && !chain.Contains(providerName))
+                        if (providerName != normalizedPreferred && !preferredChain.Contains(providerName))
                         {
-                            chain.Add(providerName);
+                            preferredChain.Add(providerName);
                         }
                     }
                 }
 
                 // Always add RuleBased as final fallback if not already present
-                if (!chain.Contains("RuleBased") && providers.ContainsKey("RuleBased"))
+                if (!preferredChain.Contains("RuleBased") && providers.ContainsKey("RuleBased"))
                 {
-                    chain.Add("RuleBased");
+                    preferredChain.Add("RuleBased");
                 }
 
                 _logger.LogInformation(
                     "Provider chain for {Operation} (preferred provider first): {Chain}",
                     operationName,
-                    string.Join(" → ", chain));
+                    string.Join(" → ", preferredChain));
 
-                return chain;
+                return preferredChain;
             }
             else
             {
@@ -576,7 +576,7 @@ public class CompositeLlmProvider : ILlmProvider
                 {
                     throw;
                 }
-                catch (NotSupportedException ex)
+                catch (NotSupportedException)
                 {
                     // NotSupportedException is expected for providers that don't support certain operations
                     // (e.g., RuleBased doesn't support chat completion)
