@@ -48,7 +48,7 @@ public static class PathValidator
     /// </summary>
     /// <param name="userPath">The user-provided path to validate</param>
     /// <param name="baseDirectory">The base directory that the path must stay within</param>
-    /// <exception cref="SecurityException">Thrown if the path is unsafe</exception>
+    /// <exception cref="System.Security.SecurityException">Thrown if the path is unsafe</exception>
     public static void ValidatePath(string userPath, string baseDirectory)
     {
         if (!IsPathSafe(userPath, baseDirectory))
@@ -64,7 +64,7 @@ public static class PathValidator
     /// <param name="userPath">The user-provided path to validate</param>
     /// <param name="baseDirectory">The base directory that the path must stay within</param>
     /// <returns>A safe, canonical path</returns>
-    /// <exception cref="SecurityException">Thrown if the path is unsafe</exception>
+    /// <exception cref="System.Security.SecurityException">Thrown if the path is unsafe</exception>
     /// <exception cref="ArgumentException">Thrown if the path is null or empty</exception>
     public static string GetSafePath(string userPath, string baseDirectory)
     {
@@ -92,7 +92,7 @@ public static class PathValidator
 
         // Check for common path traversal patterns
         var normalized = path.Replace('\\', '/');
-        
+
         return normalized.Contains("../") ||
                normalized.Contains("..\\") ||
                normalized.StartsWith("../", StringComparison.Ordinal) ||
