@@ -3,6 +3,7 @@ import React, { ReactNode, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useTheme } from '../App';
 import { useSwipeGesture } from '../hooks/useSwipeGesture';
+import { pageLayout, spacing, gaps } from '../themes/layout';
 import { SkipLinks } from './Accessibility/SkipLinks';
 import { Breadcrumbs } from './Breadcrumbs';
 import { NotificationCenter } from './dashboard/NotificationCenter';
@@ -13,6 +14,11 @@ import { ResultsTray } from './ResultsTray';
 import { Sidebar } from './Sidebar';
 import { SystemStatusIndicator } from './SystemStatus';
 import { UndoRedoButtons } from './UndoRedo/UndoRedoButtons';
+
+/**
+ * Standard toolbar height for consistent vertical rhythm.
+ */
+const TOOLBAR_HEIGHT = '48px';
 
 const useStyles = makeStyles({
   container: {
@@ -28,36 +34,47 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
+    minWidth: 0, // Prevents flex item from overflowing
   },
   topBar: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: tokens.spacingVerticalM,
-    paddingLeft: tokens.spacingHorizontalL,
-    paddingRight: tokens.spacingHorizontalL,
+    height: TOOLBAR_HEIGHT,
+    minHeight: TOOLBAR_HEIGHT,
+    paddingLeft: spacing.xl,
+    paddingRight: spacing.xl,
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
     backgroundColor: tokens.colorNeutralBackground1,
     boxShadow: '0 1px 3px rgba(0, 0, 0, 0.06)',
+    flexShrink: 0,
     '@media (max-width: 768px)': {
-      padding: tokens.spacingVerticalS,
+      paddingLeft: spacing.lg,
+      paddingRight: spacing.lg,
     },
   },
   topBarActions: {
     display: 'flex',
     alignItems: 'center',
-    gap: tokens.spacingHorizontalM,
+    gap: gaps.standard,
   },
   content: {
     flex: 1,
     overflow: 'auto',
     minHeight: 0, // Critical: Allows flex child to shrink and enable scrolling
-    padding: tokens.spacingVerticalXXL,
+    padding: pageLayout.pagePadding,
     backgroundColor: tokens.colorNeutralBackground1,
     '@media (max-width: 768px)': {
-      padding: tokens.spacingVerticalL,
-      paddingBottom: '80px',
+      padding: pageLayout.pagePaddingMobile,
+      paddingBottom: '80px', // Space for mobile nav
     },
+  },
+  /** Inner content wrapper for max-width constraint */
+  contentInner: {
+    maxWidth: pageLayout.maxContentWidth,
+    marginLeft: 'auto',
+    marginRight: 'auto',
+    width: '100%',
   },
   sidebarOverlay: {
     position: 'fixed',
@@ -166,7 +183,9 @@ export function Layout({ children, showBreadcrumbs = true, statusBadge }: Layout
           </div>
         </div>
         <main id="main-content" className={styles.content} tabIndex={-1} aria-label="Main content">
-          <ErrorBoundary>{children || <Outlet />}</ErrorBoundary>
+          <div className={styles.contentInner}>
+            <ErrorBoundary>{children || <Outlet />}</ErrorBoundary>
+          </div>
         </main>
       </div>
 

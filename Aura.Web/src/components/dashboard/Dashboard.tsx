@@ -19,6 +19,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDashboardStore } from '../../state/dashboard';
 import type { ProjectSummary } from '../../state/dashboard';
+import { container, spacing, gaps } from '../../themes/layout';
 import RecentProjectsList from '../RecentProjectsList';
 import { DashboardCustomizationButton } from './DashboardCustomization';
 import { DashboardWidgets } from './DashboardWidgets';
@@ -27,39 +28,46 @@ import { ProjectCard } from './ProjectCard';
 
 const useStyles = makeStyles({
   container: {
-    maxWidth: '1400px',
+    maxWidth: container.wideMaxWidth,
     margin: '0 auto',
-    padding: `${tokens.spacingVerticalXXL} ${tokens.spacingHorizontalXXL}`,
     animation: 'fadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
   },
   hero: {
-    marginBottom: tokens.spacingVerticalXXL,
-    paddingBottom: tokens.spacingVerticalXL,
+    marginBottom: spacing.xxl,
+    paddingBottom: spacing.xl,
+  },
+  heroHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: spacing.sm,
+    flexWrap: 'wrap',
+    gap: spacing.md,
   },
   greeting: {
-    marginBottom: tokens.spacingVerticalM,
+    marginBottom: spacing.sm,
     fontSize: tokens.fontSizeHero900,
     fontWeight: tokens.fontWeightBold,
     letterSpacing: '-0.02em',
-    lineHeight: '1.1',
+    lineHeight: '1.2',
   },
   subtitle: {
     color: tokens.colorNeutralForeground2,
-    marginBottom: tokens.spacingVerticalXL,
+    marginBottom: spacing.xl,
     fontSize: tokens.fontSizeBase400,
     lineHeight: '1.5',
     maxWidth: '600px',
   },
   ctaSection: {
     display: 'flex',
-    gap: tokens.spacingHorizontalM,
-    marginBottom: tokens.spacingVerticalXL,
+    gap: gaps.standard,
+    marginBottom: spacing.xl,
     flexWrap: 'wrap',
   },
   statsBar: {
     display: 'flex',
-    gap: tokens.spacingHorizontalXXL,
-    padding: `${tokens.spacingVerticalXL} ${tokens.spacingHorizontalXXL}`,
+    gap: gaps.extraWide,
+    padding: spacing.xl,
     backgroundColor: tokens.colorNeutralBackground2,
     borderRadius: tokens.borderRadiusLarge,
     boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.1)',
@@ -70,7 +78,7 @@ const useStyles = makeStyles({
   statItem: {
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalXS,
+    gap: spacing.xs,
     flex: '1 1 auto',
     minWidth: '120px',
   },
@@ -78,7 +86,7 @@ const useStyles = makeStyles({
     color: tokens.colorNeutralForeground3,
     fontSize: tokens.fontSizeBase200,
     fontWeight: tokens.fontWeightMedium,
-    letterSpacing: '0.01em',
+    letterSpacing: '0.02em',
     textTransform: 'uppercase',
   },
   statValue: {
@@ -90,31 +98,31 @@ const useStyles = makeStyles({
   mainContent: {
     display: 'grid',
     gridTemplateColumns: '1fr 380px',
-    gap: tokens.spacingHorizontalXXL,
+    gap: gaps.extraWide,
     '@media (max-width: 1024px)': {
       gridTemplateColumns: '1fr',
-      gap: tokens.spacingVerticalXXL,
+      gap: spacing.xxl,
     },
   },
   projectsSection: {
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalXXL,
+    gap: spacing.xxl,
   },
   sectionHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: tokens.spacingVerticalL,
-    paddingBottom: tokens.spacingVerticalM,
+    marginBottom: spacing.lg,
+    paddingBottom: spacing.md,
     borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
   },
   projectGrid: {
     display: 'grid',
-    gap: tokens.spacingHorizontalXL,
+    gap: spacing.xl,
     '@media (max-width: 768px)': {
       gridTemplateColumns: '1fr',
-      gap: tokens.spacingVerticalL,
+      gap: spacing.lg,
     },
   },
   projectGrid2Cols: {
@@ -127,17 +135,17 @@ const useStyles = makeStyles({
     gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
   },
   quickStartSection: {
-    marginTop: tokens.spacingVerticalXXL,
-    paddingTop: tokens.spacingVerticalXXL,
+    marginTop: spacing.xxl,
+    paddingTop: spacing.xxl,
     borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
   },
   quickStartGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-    gap: tokens.spacingHorizontalL,
+    gap: spacing.lg,
   },
   quickStartCard: {
-    padding: tokens.spacingVerticalXXL,
+    padding: spacing.xxl,
     textAlign: 'center',
     cursor: 'pointer',
     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -154,8 +162,8 @@ const useStyles = makeStyles({
     },
   },
   quickStartIcon: {
-    fontSize: '56px',
-    marginBottom: tokens.spacingVerticalL,
+    fontSize: '48px',
+    marginBottom: spacing.lg,
     color: tokens.colorBrandForeground1,
     transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
     ':hover': {
@@ -164,11 +172,11 @@ const useStyles = makeStyles({
   },
   emptyState: {
     textAlign: 'center',
-    padding: tokens.spacingVerticalXXXL,
+    padding: spacing.xxl,
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: tokens.spacingVerticalXL,
+    gap: spacing.xl,
     borderRadius: tokens.borderRadiusLarge,
     backgroundColor: tokens.colorNeutralBackground2,
     border: `1px solid ${tokens.colorNeutralStroke2}`,
@@ -176,18 +184,18 @@ const useStyles = makeStyles({
   sidebar: {
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalXL,
+    gap: spacing.xl,
   },
   recentBriefsSection: {
-    marginTop: tokens.spacingVerticalXL,
-    paddingTop: tokens.spacingVerticalXL,
+    marginTop: spacing.xl,
+    paddingTop: spacing.xl,
     borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
   },
   briefButton: {
     width: '100%',
-    marginBottom: tokens.spacingVerticalM,
+    marginBottom: spacing.md,
     justifyContent: 'flex-start',
-    padding: tokens.spacingVerticalM,
+    padding: spacing.md,
     borderRadius: tokens.borderRadiusMedium,
     transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
     ':hover': {
@@ -308,9 +316,7 @@ export function Dashboard() {
   if (loading && projects.length === 0) {
     return (
       <div className={styles.container}>
-        <div
-          style={{ display: 'flex', justifyContent: 'center', padding: tokens.spacingVerticalXXXL }}
-        >
+        <div style={{ display: 'flex', justifyContent: 'center', padding: spacing.xxl }}>
           <Spinner size="huge" label="Loading dashboard..." />
         </div>
       </div>
@@ -322,14 +328,7 @@ export function Dashboard() {
       <NotificationToaster />
       {/* Hero Section */}
       <div className={styles.hero}>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: tokens.spacingVerticalS,
-          }}
-        >
+        <div className={styles.heroHeader}>
           <Title1 className={styles.greeting}>{getGreeting()}, welcome back!</Title1>
           <DashboardCustomizationButton />
         </div>
@@ -422,7 +421,7 @@ export function Dashboard() {
 
             {/* Quick Start Section */}
             <div className={styles.quickStartSection}>
-              <Title2 style={{ marginBottom: tokens.spacingVerticalM }}>Quick Start</Title2>
+              <Title2 style={{ marginBottom: spacing.md }}>Quick Start</Title2>
               <div className={styles.quickStartGrid}>
                 {quickStartOptions.map((option) => (
                   <Card
@@ -442,7 +441,7 @@ export function Dashboard() {
 
             {/* Recent Projects Section */}
             <div className={styles.recentBriefsSection}>
-              <Title2 style={{ marginBottom: tokens.spacingVerticalM }}>Recent Projects</Title2>
+              <Title2 style={{ marginBottom: spacing.md }}>Recent Projects</Title2>
               <RecentProjectsList
                 maxItems={5}
                 onOpenProject={(project) => {
@@ -454,7 +453,7 @@ export function Dashboard() {
             {/* Recent Briefs Section */}
             {layout.showRecentBriefs && recentBriefs.length > 0 && (
               <div className={styles.recentBriefsSection}>
-                <Title2 style={{ marginBottom: tokens.spacingVerticalM }}>Recent Briefs</Title2>
+                <Title2 style={{ marginBottom: spacing.md }}>Recent Briefs</Title2>
                 {recentBriefs.map((brief) => (
                   <Button
                     key={brief.id}
