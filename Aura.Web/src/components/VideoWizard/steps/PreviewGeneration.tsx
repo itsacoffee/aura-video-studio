@@ -873,7 +873,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
                 sampleText: scene.text,
               },
               {
-                params: { returnFile: 'true' }, // Properly send as query param via axios config
+                params: { returnFile: true }, // Properly send as query param via axios config
                 responseType: 'blob',
                 validateStatus: (status) => status < 500, // Don't throw on 4xx, we'll handle it
               }
@@ -1639,7 +1639,8 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
                   const currentProvider = selectedTtsProvider || styleData.voiceProvider;
                   const providerStatus = currentProvider ? ttsProviderStatus[currentProvider] : null;
                   const isTtsAvailable = !currentProvider || (providerStatus?.isAvailable !== false);
-                  const isPending = audioSample.status === 'pending' || audioSample.audioUrl === null;
+                  // Check both status and audioUrl for backward compatibility with existing audio samples
+                  const isPending = audioSample.status === 'pending' || audioSample.status === undefined;
                   
                   return (
                     <div className={styles.audioPreview}>
