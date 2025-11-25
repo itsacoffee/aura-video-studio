@@ -486,11 +486,26 @@ async function startReactApp(): Promise<void> {
   };
 
   // Black screen detection: Check if the app has rendered content
+  // CRITICAL: Do not trigger during setup wizard - it may take time to render
   const detectBlackScreen = () => {
     if (!rootElement) return;
 
     // Wait a bit for React to render
     setTimeout(() => {
+      // Check if we're in the setup wizard - if so, skip black screen detection
+      // The wizard may take time to render, especially during step transitions
+      const isWizardActive =
+        rootElement!.querySelector('[data-wizard-active]') !== null ||
+        rootElement!.textContent?.includes('Welcome to Aura Video Studio') ||
+        rootElement!.textContent?.includes('Let\'s get you set up') ||
+        window.location.hash.includes('onboarding') ||
+        document.body.getAttribute('data-wizard-active') === 'true';
+
+      if (isWizardActive) {
+        console.info('[Main] Setup wizard detected - skipping black screen detection');
+        return;
+      }
+
       const hasChildren = rootElement!.children.length > 0;
       const hasTextContent = rootElement!.textContent && rootElement!.textContent.trim().length > 0;
       const computedStyle = window.getComputedStyle(rootElement!);
@@ -498,6 +513,7 @@ async function startReactApp(): Promise<void> {
       const isCompletelyBlack = bgColor === 'rgb(0, 0, 0)';
 
       // If root has no children, no text, and is black - we have a black screen
+      // But only if we're NOT in the wizard
       if (!hasChildren && !hasTextContent && isCompletelyBlack) {
         console.error('[Main] ⚠️ BLACK SCREEN DETECTED: Root element is empty and black!');
         console.error('[Main] Root element state:', {
@@ -511,7 +527,7 @@ async function startReactApp(): Promise<void> {
         console.warn('[Main] Attempting recovery by reloading page...');
         window.location.reload();
       }
-    }, 5000); // Wait 5 seconds for app to render
+    }, 10000); // Increased to 10 seconds to give wizard more time to render
   };
 
   // Check immediately and after delays

@@ -17,9 +17,8 @@ describe('SplashScreen', () => {
     render(<SplashScreen onComplete={onComplete} />);
 
     expect(screen.getByText('Aura')).toBeInTheDocument();
-    expect(screen.getByText('Video Studio')).toBeInTheDocument();
-    expect(screen.getByText('Initializing Aura Video Studio')).toBeInTheDocument();
-    expect(screen.getByText('Version 1.0.0')).toBeInTheDocument();
+    expect(screen.getByText('AI VIDEO GENERATION SUITE')).toBeInTheDocument();
+    expect(screen.getByText('Starting backend server...')).toBeInTheDocument();
   });
 
   it('calls onComplete after animation sequence', () => {
@@ -43,15 +42,15 @@ describe('SplashScreen', () => {
     expect(progressFill).toBeInTheDocument();
   });
 
-  it('renders animated particles', () => {
+  it('renders animated particles canvas', () => {
     const onComplete = vi.fn();
     render(<SplashScreen onComplete={onComplete} />);
 
-    const particles = document.querySelectorAll('.splash-particle');
-    expect(particles.length).toBe(20);
+    const canvas = document.querySelector('.splash-particles-canvas');
+    expect(canvas).toBeInTheDocument();
   });
 
-  it('renders logo with gradient', () => {
+  it('renders logo with white text', () => {
     const onComplete = vi.fn();
     render(<SplashScreen onComplete={onComplete} />);
 
@@ -71,9 +70,5 @@ describe('SplashScreen', () => {
     expect(document.querySelector('.splash-progress')).toBeInTheDocument();
     expect(document.querySelector('.splash-progress-track')).toBeInTheDocument();
     expect(document.querySelector('.splash-progress-fill')).toBeInTheDocument();
-
-    // Check footer
-    expect(document.querySelector('.splash-footer')).toBeInTheDocument();
-    expect(document.querySelector('.splash-version')).toBeInTheDocument();
   });
 });

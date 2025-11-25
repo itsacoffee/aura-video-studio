@@ -430,9 +430,40 @@ class WindowManager {
           
           // Only invalidate if page is loaded and not blank
           if (currentURL && currentURL !== "about:blank" && this.loadingState.didFinishLoad) {
-            // Use Electron's proper API for rendering refresh
-            this.mainWindow.webContents.invalidate();
-            console.log("[WindowManager] WebContents invalidated for repaint");
+            // CRITICAL: Don't invalidate during setup wizard - it can cause black screens
+            // Check if wizard is active by querying the renderer
+            this.mainWindow.webContents.executeJavaScript(`
+              (function() {
+                const bodyText = document.body.textContent || '';
+                const isWizardActive = 
+                  document.body.getAttribute('data-wizard-active') === 'true' ||
+                  document.querySelector('[data-wizard-active]') !== null ||
+                  bodyText.includes('Welcome to Aura Video Studio');
+                return isWizardActive;
+              })();
+            `).then((isWizardActive) => {
+              // Check if window still exists before accessing (async callback safety)
+              if (!this.mainWindow || this.mainWindow.isDestroyed()) {
+                console.log("[WindowManager] Window destroyed, skipping invalidation");
+                return;
+              }
+              if (!isWizardActive) {
+                // Use Electron's proper API for rendering refresh
+                this.mainWindow.webContents.invalidate();
+                console.log("[WindowManager] WebContents invalidated for repaint");
+              } else {
+                console.log("[WindowManager] Skipping invalidation - setup wizard is active");
+              }
+            }).catch((error) => {
+              // Check if window still exists before accessing (async callback safety)
+              if (!this.mainWindow || this.mainWindow.isDestroyed()) {
+                console.log("[WindowManager] Window destroyed, skipping invalidation");
+                return;
+              }
+              // If check fails, still invalidate (safer to repaint than leave black)
+              console.warn("[WindowManager] Failed to check wizard status, invalidating anyway:", error);
+              this.mainWindow.webContents.invalidate();
+            });
           }
         }
         visibilityDebounceTimer = null;

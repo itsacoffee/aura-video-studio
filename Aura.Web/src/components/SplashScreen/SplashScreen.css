@@ -6,7 +6,7 @@
 .splash-screen {
   position: fixed;
   inset: 0;
-  background: #0a0a0f;
+  background: linear-gradient(180deg, #1a0f2e 0%, #2d1b3d 30%, #1a1a2e 70%, #0f0f1a 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -49,10 +49,10 @@
   position: absolute;
   inset: 0;
   background: radial-gradient(
-    ellipse at 30% 50%,
-    rgb(255 107 53 / 15%) 0%,
-    rgb(99 102 241 / 10%) 40%,
-    rgb(59 130 246 / 8%) 60%,
+    ellipse at 50% 30%,
+    rgb(99 102 241 / 12%) 0%,
+    rgb(139 92 246 / 8%) 30%,
+    rgb(59 130 246 / 6%) 50%,
     transparent 100%
   );
   animation: backgroundPulse 8s ease-in-out infinite;
@@ -64,7 +64,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at center, transparent 0%, rgb(10 10 15 / 80%) 100%);
+  background: radial-gradient(ellipse at center, transparent 0%, rgb(10 10 15 / 60%) 100%);
   pointer-events: none;
 }
 
@@ -86,10 +86,10 @@
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgb(255 107 53 / 4%) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(255 107 53 / 4%) 1px, transparent 1px);
+    linear-gradient(rgb(99 102 241 / 3%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(99 102 241 / 3%) 1px, transparent 1px);
   background-size: 50px 50px;
-  opacity: 0.5;
+  opacity: 0.3;
   z-index: 1;
   animation: gridMove 20s linear infinite;
 }
@@ -137,7 +137,57 @@
   display: inline-block;
   margin-bottom: 32px;
   animation: logoFloat 4s ease-in-out infinite;
-  filter: drop-shadow(0 0 40px rgb(255 107 53 / 50%)) drop-shadow(0 20px 60px rgb(0 0 0 / 50%));
+  filter: drop-shadow(0 0 30px rgb(99 102 241 / 40%)) drop-shadow(0 0 20px rgb(255 107 53 / 30%)) drop-shadow(0 20px 60px rgb(0 0 0 / 50%));
+}
+
+/* Flame animations */
+.splash-flames-blue {
+  animation: flameFlickerBlue 2s ease-in-out infinite;
+  transform-origin: center top;
+}
+
+.splash-flames-orange {
+  animation: flameFlickerOrange 1.5s ease-in-out infinite;
+  transform-origin: center top;
+  animation-delay: 0.3s;
+}
+
+@keyframes flameFlickerBlue {
+  0%, 100% {
+    opacity: 0.8;
+    transform: translateY(0) scaleY(1);
+  }
+  25% {
+    opacity: 0.9;
+    transform: translateY(-2px) scaleY(1.1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: translateY(0) scaleY(0.95);
+  }
+  75% {
+    opacity: 0.85;
+    transform: translateY(-1px) scaleY(1.05);
+  }
+}
+
+@keyframes flameFlickerOrange {
+  0%, 100% {
+    opacity: 0.7;
+    transform: translateY(0) scaleY(1);
+  }
+  25% {
+    opacity: 0.85;
+    transform: translateY(-1px) scaleY(1.08);
+  }
+  50% {
+    opacity: 0.6;
+    transform: translateY(0) scaleY(0.92);
+  }
+  75% {
+    opacity: 0.75;
+    transform: translateY(-1.5px) scaleY(1.03);
+  }
 }
 
 @keyframes logoFloat {
@@ -151,92 +201,48 @@
   }
 }
 
-.splash-logo-ring {
-  animation: ringRotate 10s linear infinite;
-  transform-origin: center;
-}
-
-@keyframes ringRotate {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.splash-logo-path {
-  animation: logoPulse 3s ease-in-out infinite;
-  transform-origin: center;
-}
-
-@keyframes logoPulse {
-  0%,
-  100% {
-    opacity: 1;
-    filter: drop-shadow(0 0 25px rgb(255 107 53 / 70%));
-  }
-
-  50% {
-    opacity: 0.85;
-    filter: drop-shadow(0 0 35px rgb(59 130 246 / 70%));
-  }
-}
-
-.splash-logo-cutout {
-  animation: cutoutRotate 12s linear infinite;
-  transform-origin: center;
-}
-
-@keyframes cutoutRotate {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
-}
 
 /* ==================== TYPOGRAPHY ==================== */
 .splash-title {
-  font-size: 78px;
-  font-weight: 800;
-  background: linear-gradient(135deg, #ff6b35 0%, #f7931e 30%, #6366f1 60%, #3b82f6 100%);
-  background-clip: text;
-  /* stylelint-disable-next-line property-no-vendor-prefix -- Required for text gradient effect */
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  font-size: 72px;
+  font-weight: 700;
+  color: #ffffff;
   margin: 0;
   padding: 8px 16px;
-  letter-spacing: -2px;
-  animation: titleGradient 4s ease infinite;
-  background-size: 200% 200%;
-  filter: drop-shadow(0 2px 4px rgb(0 0 0 / 30%)) drop-shadow(0 8px 16px rgb(99 102 241 / 40%));
+  letter-spacing: 2px;
+  text-shadow:
+    0 0 20px rgb(255 255 255 / 30%),
+    0 2px 4px rgb(0 0 0 / 30%),
+    0 4px 8px rgb(0 0 0 / 20%);
   position: relative;
   display: inline-block;
   overflow: visible;
   line-height: 1.1;
+  animation: titleGlow 3s ease-in-out infinite;
 }
 
-@keyframes titleGradient {
-  0%,
-  100% {
-    background-position: 0% 50%;
+@keyframes titleGlow {
+  0%, 100% {
+    text-shadow:
+      0 0 20px rgb(255 255 255 / 30%),
+      0 2px 4px rgb(0 0 0 / 30%),
+      0 4px 8px rgb(0 0 0 / 20%);
   }
-
   50% {
-    background-position: 100% 50%;
+    text-shadow:
+      0 0 30px rgb(255 255 255 / 40%),
+      0 0 15px rgb(99 102 241 / 30%),
+      0 2px 4px rgb(0 0 0 / 30%),
+      0 4px 8px rgb(0 0 0 / 20%);
   }
 }
 
 .splash-subtitle {
-  font-size: 20px;
-  color: rgb(255 255 255 / 70%);
-  margin: 20px 0 0;
-  font-weight: 500;
-  letter-spacing: 4px;
+  font-size: 14px;
+  color: rgb(255 255 255 / 90%);
+  margin: 16px 0 0;
+  font-weight: 400;
+  letter-spacing: 2px;
   text-transform: uppercase;
   opacity: 0.9;
   animation: subtitleFade 1.5s ease-out 0.5s both;
@@ -261,71 +267,30 @@
   padding: 0 24px;
 }
 
+.splash-status {
+  font-size: 14px;
+  color: rgb(255 255 255 / 90%);
+  margin: 0 0 16px 0;
+  min-height: 20px;
+  animation: statusFade 0.4s ease-in-out;
+  font-weight: 400;
+  letter-spacing: 0.5px;
+}
+
 .splash-progress-track {
   height: 4px;
-  background: rgb(255 255 255 / 8%);
-  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
   overflow: hidden;
-  margin-bottom: 16px;
   position: relative;
-  box-shadow: inset 0 1px 3px rgb(0 0 0 / 50%);
 }
 
 .splash-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #ff6b35 0%, #f7931e 30%, #6366f1 60%, #3b82f6 100%);
-  border-radius: 9999px;
-  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  background: linear-gradient(90deg, #3B82F6 0%, #6366F1 50%, #A855F7 100%);
+  border-radius: 2px;
+  transition: width 0.3s ease;
   position: relative;
-  box-shadow:
-    0 0 25px rgb(255 107 53 / 70%),
-    0 0 50px rgb(59 130 246 / 50%),
-    inset 0 1px 0 rgb(255 255 255 / 30%);
-  animation: progressGradient 3s ease infinite;
-  background-size: 200% 100%;
-}
-
-@keyframes progressGradient {
-  0% {
-    background-position: 0% 50%;
-  }
-
-  50% {
-    background-position: 100% 50%;
-  }
-
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-.splash-progress-shine {
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 50%), transparent);
-  animation: progressShine 2s ease-in-out infinite;
-}
-
-@keyframes progressShine {
-  0% {
-    left: -100%;
-  }
-
-  100% {
-    left: 100%;
-  }
-}
-
-.splash-status {
-  font-size: 15px;
-  color: rgb(255 255 255 / 60%);
-  margin: 0;
-  animation: statusFade 0.4s ease-in-out;
-  font-weight: 400;
-  letter-spacing: 0.5px;
 }
 
 @keyframes statusFade {
@@ -340,18 +305,6 @@
   }
 }
 
-/* ==================== FOOTER ==================== */
-.splash-footer {
-  margin-top: 48px;
-}
-
-.splash-version {
-  font-size: 12px;
-  color: rgb(255 255 255 / 40%);
-  margin: 0;
-  opacity: 0.7;
-  letter-spacing: 0.5px;
-}
 
 /* ==================== RESPONSIVE ==================== */
 @media (width <= 768px) {
@@ -367,8 +320,8 @@
   }
 
   .splash-logo-icon svg {
-    width: 100px;
-    height: 100px;
+    width: 90px;
+    height: 90px;
   }
 
   .splash-progress {
@@ -392,13 +345,11 @@
   .splash-grid-overlay,
   .splash-content,
   .splash-logo-icon,
-  .splash-logo-ring,
-  .splash-logo-path,
-  .splash-logo-cutout,
+  .splash-flames-blue,
+  .splash-flames-orange,
   .splash-title,
   .splash-subtitle,
   .splash-progress-fill,
-  .splash-progress-shine,
   .splash-status {
     animation: none !important;
     transition: none !important;

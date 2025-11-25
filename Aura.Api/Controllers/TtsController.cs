@@ -206,6 +206,21 @@ public class TtsController : ControllerBase
 
             var audioPath = await ttsProvider.SynthesizeAsync(new[] { scriptLine }, voiceSpec, ct).ConfigureAwait(false);
 
+            // Check if client wants the file directly (for streaming/preview)
+            var returnFile = Request.Query.ContainsKey("returnFile") && 
+                            bool.TryParse(Request.Query["returnFile"], out var returnFileValue) && 
+                            returnFileValue;
+
+            if (returnFile && System.IO.File.Exists(audioPath))
+            {
+                var audioBytes = await System.IO.File.ReadAllBytesAsync(audioPath, ct).ConfigureAwait(false);
+                var contentType = audioPath.EndsWith(".wav", StringComparison.OrdinalIgnoreCase) ? "audio/wav" :
+                                 audioPath.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase) ? "audio/mpeg" :
+                                 audioPath.EndsWith(".opus", StringComparison.OrdinalIgnoreCase) ? "audio/opus" :
+                                 "application/octet-stream";
+                return File(audioBytes, contentType, System.IO.Path.GetFileName(audioPath));
+            }
+
             return Ok(new
             {
                 success = true,

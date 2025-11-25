@@ -49,6 +49,7 @@ public class FirstRunMiddleware
             path.StartsWith("/api/templates", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/template-management", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/scripts", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/api/localization", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/onboarding", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/setup", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/assets", StringComparison.OrdinalIgnoreCase) ||

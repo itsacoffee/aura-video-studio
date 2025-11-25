@@ -261,6 +261,9 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
     // Track wizard start
     wizardAnalytics.started();
 
+    // CRITICAL: Mark wizard as active to prevent black screen detection from triggering
+    document.body.setAttribute('data-wizard-active', 'true');
+
     // CRITICAL FIX: Clear all circuit breaker state on wizard mount
     // This prevents false "service unavailable" errors from persisted circuit breaker state
     PersistentCircuitBreaker.clearState();
@@ -294,6 +297,11 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
     };
 
     void checkSavedProgress();
+
+    // Cleanup: Remove wizard marker on unmount
+    return () => {
+      document.body.removeAttribute('data-wizard-active');
+    };
   }, []);
 
   // Safety check: Ensure step is always valid
@@ -1944,6 +1952,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
   return (
     <div
       className={styles.container}
+      data-wizard-active="true"
       style={{
         position: 'fixed',
         top: 0,
@@ -1956,6 +1965,8 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
         minHeight: '100vh',
         // Ensure content is always visible - prevent black screen
         color: tokens.colorNeutralForeground1 || '#ffffff',
+        // Force background to prevent black screen during transitions
+        background: tokens.colorNeutralBackground1 || '#1e1e1e',
       }}
     >
       <div

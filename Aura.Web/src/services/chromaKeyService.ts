@@ -321,6 +321,7 @@ export class WebGLChromaKeyProcessor {
   private gl: WebGLRenderingContext | null = null;
   private program: WebGLProgram | null = null;
   private canvas: HTMLCanvasElement;
+  private texture: WebGLTexture | null = null; // Reuse texture to prevent memory leaks
 
   constructor() {
     this.canvas = document.createElement('canvas');
@@ -330,26 +331,41 @@ export class WebGLChromaKeyProcessor {
 
     if (this.gl) {
       this.initShaders();
+      // Create reusable texture
+      this.texture = this.gl.createTexture();
     }
   }
 
   private initShaders(): void {
     if (!this.gl) return;
 
-    const vertexShader = this.compileShader(this.gl.VERTEX_SHADER, chromaKeyVertexShader);
-    const fragmentShader = this.compileShader(this.gl.FRAGMENT_SHADER, chromaKeyFragmentShader);
+    try {
+      const vertexShader = this.compileShader(this.gl.VERTEX_SHADER, chromaKeyVertexShader);
+      const fragmentShader = this.compileShader(this.gl.FRAGMENT_SHADER, chromaKeyFragmentShader);
 
-    if (!vertexShader || !fragmentShader) return;
+      if (!vertexShader || !fragmentShader) {
+        console.warn('[WebGLChromaKeyProcessor] Failed to compile shaders, falling back to CPU');
+        return;
+      }
 
-    this.program = this.gl.createProgram();
-    if (!this.program) return;
+      this.program = this.gl.createProgram();
+      if (!this.program) {
+        console.warn('[WebGLChromaKeyProcessor] Failed to create shader program');
+        return;
+      }
 
-    this.gl.attachShader(this.program, vertexShader);
-    this.gl.attachShader(this.program, fragmentShader);
-    this.gl.linkProgram(this.program);
+      this.gl.attachShader(this.program, vertexShader);
+      this.gl.attachShader(this.program, fragmentShader);
+      this.gl.linkProgram(this.program);
 
-    if (!this.gl.getProgramParameter(this.program, this.gl.LINK_STATUS)) {
-      console.error('Shader program failed to link');
+      if (!this.gl.getProgramParameter(this.program, this.gl.LINK_STATUS)) {
+        const errorLog = this.gl.getProgramInfoLog(this.program);
+        console.error('[WebGLChromaKeyProcessor] Shader program failed to link:', errorLog);
+        this.gl.deleteProgram(this.program);
+        this.program = null;
+      }
+    } catch (error) {
+      console.error('[WebGLChromaKeyProcessor] Error initializing shaders:', error);
       this.program = null;
     }
   }
@@ -379,37 +395,59 @@ export class WebGLChromaKeyProcessor {
     smoothness: number,
     spillSuppression: number
   ): HTMLCanvasElement {
-    if (!this.gl || !this.program) {
+    if (!this.gl || !this.program || !this.texture) {
       // Fallback to canvas if WebGL not available
       return this.processCPU(sourceImage, keyColor, similarity, smoothness, spillSuppression);
     }
 
-    this.canvas.width = sourceImage.width;
-    this.canvas.height = sourceImage.height;
+    try {
+      this.canvas.width = sourceImage.width;
+      this.canvas.height = sourceImage.height;
 
-    const gl = this.gl;
-    gl.useProgram(this.program);
+      const gl = this.gl;
+      gl.useProgram(this.program);
 
-    // Set up texture
-    const texture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, sourceImage);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      // Reuse existing texture instead of creating a new one each frame
+      // This prevents GPU memory leaks that cause renderer crashes
+      gl.bindTexture(gl.TEXTURE_2D, this.texture);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, sourceImage);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 
-    // Set uniforms
-    const keyRgb = hexToRgb(keyColor);
-    gl.uniform3f(gl.getUniformLocation(this.program, 'u_keyColor'), keyRgb.r, keyRgb.g, keyRgb.b);
-    gl.uniform1f(gl.getUniformLocation(this.program, 'u_similarity'), similarity / 100);
-    gl.uniform1f(gl.getUniformLocation(this.program, 'u_smoothness'), smoothness / 100);
-    gl.uniform1f(gl.getUniformLocation(this.program, 'u_spillSuppression'), spillSuppression / 100);
+      // Set uniforms
+      const keyRgb = hexToRgb(keyColor);
+      const keyColorLoc = gl.getUniformLocation(this.program, 'u_keyColor');
+      const similarityLoc = gl.getUniformLocation(this.program, 'u_similarity');
+      const smoothnessLoc = gl.getUniformLocation(this.program, 'u_smoothness');
+      const spillSuppressionLoc = gl.getUniformLocation(this.program, 'u_spillSuppression');
 
-    // Draw
-    gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      if (keyColorLoc) gl.uniform3f(keyColorLoc, keyRgb.r, keyRgb.g, keyRgb.b);
+      if (similarityLoc) gl.uniform1f(similarityLoc, similarity / 100);
+      if (smoothnessLoc) gl.uniform1f(smoothnessLoc, smoothness / 100);
+      if (spillSuppressionLoc) gl.uniform1f(spillSuppressionLoc, spillSuppression / 100);
 
-    return this.canvas;
+      // Draw
+      gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+      // Unbind texture to prevent resource conflicts
+      gl.bindTexture(gl.TEXTURE_2D, null);
+
+      // Check for WebGL errors
+      const error = gl.getError();
+      if (error !== gl.NO_ERROR) {
+        console.warn('[WebGLChromaKeyProcessor] WebGL error during processing:', error);
+        // Fall back to CPU processing on error
+        return this.processCPU(sourceImage, keyColor, similarity, smoothness, spillSuppression);
+      }
+
+      return this.canvas;
+    } catch (error) {
+      console.error('[WebGLChromaKeyProcessor] Error processing frame:', error);
+      // Fall back to CPU processing on exception
+      return this.processCPU(sourceImage, keyColor, similarity, smoothness, spillSuppression);
+    }
   }
 
   private processCPU(
@@ -435,8 +473,23 @@ export class WebGLChromaKeyProcessor {
   }
 
   public destroy(): void {
-    if (this.gl && this.program) {
-      this.gl.deleteProgram(this.program);
+    if (this.gl) {
+      // Clean up texture
+      if (this.texture) {
+        this.gl.deleteTexture(this.texture);
+        this.texture = null;
+      }
+      // Clean up shader program
+      if (this.program) {
+        this.gl.deleteProgram(this.program);
+        this.program = null;
+      }
+      // Lose WebGL context to free all resources
+      const loseContext = this.gl.getExtension('WEBGL_lose_context');
+      if (loseContext) {
+        loseContext.loseContext();
+      }
+      this.gl = null;
     }
   }
 }

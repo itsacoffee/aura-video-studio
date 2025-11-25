@@ -52,6 +52,8 @@ import type {
 } from '../types';
 import { getVisualsClient, VisualsClient } from '@/api/visualsClient';
 import type { VisualProvider, BatchGenerateProgress } from '@/api/visualsClient';
+import { ttsService } from '@/services/ttsService';
+import apiClient from '@/services/api/apiClient';
 
 const useStyles = makeStyles({
   container: {
@@ -284,6 +286,9 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
   } | null>(null);
   const [providerLoadError, setProviderLoadError] = useState<string | null>(null);
   const [isLoadingProviders, setIsLoadingProviders] = useState(true);
+  const [playingSceneId, setPlayingSceneId] = useState<string | null>(null);
+  const [audioError, setAudioError] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Use ref to track if providers have been selected to avoid stale closure issues
   const hasSelectedProviderRef = useRef(false);
@@ -425,6 +430,19 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
     void loadProviders();
     void loadStyles();
   }, [loadProviders, loadStyles]);
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        if (audioRef.current.src.startsWith('blob:')) {
+          URL.revokeObjectURL(audioRef.current.src);
+        }
+        audioRef.current = null;
+      }
+    };
+  }, []);
 
   // Update ref when selectedProvider changes
   useEffect(() => {
@@ -668,9 +686,140 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
     console.info('Search fallback for scene:', sceneId);
   }, []);
 
-  const playScenePreview = useCallback((sceneId: string) => {
-    console.info('Playing preview for scene:', sceneId);
-  }, []);
+  const playScenePreview = useCallback(
+    async (sceneId: string) => {
+      try {
+        // Prevent multiple simultaneous plays
+        if (playingSceneId === sceneId) {
+          // If already playing this scene, stop it
+          if (audioRef.current) {
+            audioRef.current.pause();
+            if (audioRef.current.src.startsWith('blob:')) {
+              URL.revokeObjectURL(audioRef.current.src);
+            }
+            audioRef.current = null;
+          }
+          setPlayingSceneId(null);
+          return;
+        }
+
+        // Stop any currently playing audio
+        if (audioRef.current) {
+          audioRef.current.pause();
+          if (audioRef.current.src.startsWith('blob:')) {
+            URL.revokeObjectURL(audioRef.current.src);
+          }
+          audioRef.current = null;
+        }
+
+        setPlayingSceneId(sceneId);
+        setAudioError(null);
+
+        // Find the scene
+        const scene = scriptData.scenes.find((s) => s.id === sceneId);
+        if (!scene) {
+          throw new Error('Scene not found');
+        }
+
+        // Use the provider name as-is (API expects exact names like "Windows", "ElevenLabs", etc.)
+        const apiProvider = styleData.voiceProvider;
+        const voiceName = styleData.voiceName || 'default';
+
+        // Generate audio preview and get the file directly
+        const previewResponse = await ttsService.generatePreview({
+          provider: apiProvider,
+          voice: voiceName,
+          sampleText: scene.text,
+        });
+
+        if (!previewResponse.success || !previewResponse.audioPath) {
+          throw new Error('Failed to generate audio preview');
+        }
+
+        // Fetch the audio file - try to get it as a blob from the server
+        let audioUrl: string;
+        if (previewResponse.audioPath.startsWith('http://') || previewResponse.audioPath.startsWith('https://')) {
+          // Already a URL
+          audioUrl = previewResponse.audioPath;
+        } else {
+          // Server file path - fetch it as a blob using returnFile parameter
+          try {
+            const response = await apiClient.post(
+              '/api/tts/preview?returnFile=true',
+              {
+                provider: apiProvider,
+                voice: voiceName,
+                sampleText: scene.text,
+              },
+              {
+                responseType: 'blob',
+              }
+            );
+            const blob = new Blob([response.data], { type: 'audio/wav' });
+            audioUrl = URL.createObjectURL(blob);
+          } catch (fetchError) {
+            // Fallback: try to construct a file URL
+            console.warn('Failed to fetch audio as blob, trying direct path:', fetchError);
+            // Try using the audioPath directly - might work if it's accessible
+            audioUrl = previewResponse.audioPath;
+          }
+        }
+
+        // Create and play audio element
+        if (audioRef.current) {
+          audioRef.current.pause();
+          if (audioRef.current.src.startsWith('blob:')) {
+            URL.revokeObjectURL(audioRef.current.src);
+          }
+          audioRef.current = null;
+        }
+
+        const audio = new Audio(audioUrl);
+        audioRef.current = audio;
+
+        // Handle audio events with once: true to prevent multiple calls
+        const handleEnded = () => {
+          setPlayingSceneId(null);
+          if (audio.src.startsWith('blob:')) {
+            URL.revokeObjectURL(audio.src);
+          }
+          if (audioRef.current === audio) {
+            audioRef.current = null;
+          }
+        };
+
+        const handleError = (e: Event) => {
+          console.error('Audio playback error:', e);
+          setAudioError('Failed to play audio preview');
+          setPlayingSceneId(null);
+          if (audio.src.startsWith('blob:')) {
+            URL.revokeObjectURL(audio.src);
+          }
+          if (audioRef.current === audio) {
+            audioRef.current = null;
+          }
+        };
+
+        audio.addEventListener('ended', handleEnded, { once: true });
+        audio.addEventListener('error', handleError, { once: true });
+
+        // Try to play the audio
+        await audio.play();
+      } catch (error) {
+        console.error('Error playing scene preview:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Failed to play audio preview';
+        setAudioError(errorMessage);
+        setPlayingSceneId(null);
+        if (audioRef.current) {
+          if (audioRef.current.src.startsWith('blob:')) {
+            URL.revokeObjectURL(audioRef.current.src);
+          }
+          audioRef.current = null;
+        }
+      }
+    },
+    [scriptData.scenes, styleData.voiceProvider, styleData.voiceName, playingSceneId]
+  );
 
   const renderProviderSettings = () => (
     <Card className={styles.providerCard}>
@@ -1002,11 +1151,16 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
                   <Button
                     appearance="secondary"
                     icon={<Play24Regular />}
-                    onClick={() => playScenePreview(scene.id)}
-                    disabled={!thumbnail || !audioSample}
+                    onClick={() => void playScenePreview(scene.id)}
+                    disabled={!thumbnail || !audioSample || playingSceneId === scene.id}
                   >
-                    Preview
+                    {playingSceneId === scene.id ? 'Playing...' : 'Preview'}
                   </Button>
+                  {audioError && playingSceneId === scene.id && (
+                    <Text size={200} style={{ color: tokens.colorPaletteRedForeground1 }}>
+                      {audioError}
+                    </Text>
+                  )}
 
                   <Menu>
                     <MenuTrigger>

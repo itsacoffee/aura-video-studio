@@ -375,9 +375,31 @@ export const TranslationPage: React.FC = () => {
       setSourceLanguage(sourceLangDescription);
       setTargetLanguage(targetLangDescription);
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Translation failed';
-      setError(errorMsg);
-      console.error('Translation error:', err);
+      // Handle 428 Precondition Required (setup not completed)
+      if (
+        err &&
+        typeof err === 'object' &&
+        'response' in err &&
+        err.response &&
+        typeof err.response === 'object' &&
+        'status' in err.response &&
+        err.response.status === 428
+      ) {
+        const responseData = err.response.data as { message?: string; redirectTo?: string } | undefined;
+        const message = responseData?.message || 'Please complete the first-run wizard before using this feature.';
+        setError(message);
+        console.error('Translation blocked - setup not completed:', err);
+        // Optionally redirect to onboarding if redirectTo is provided
+        if (responseData?.redirectTo) {
+          setTimeout(() => {
+            window.location.href = responseData.redirectTo;
+          }, 2000);
+        }
+      } else {
+        const errorMsg = err instanceof Error ? err.message : 'Translation failed';
+        setError(errorMsg);
+        console.error('Translation error:', err);
+      }
     } finally {
       setLoading(false);
     }

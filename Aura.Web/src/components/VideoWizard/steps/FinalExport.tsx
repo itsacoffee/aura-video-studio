@@ -22,10 +22,15 @@ import {
   Dismiss24Regular,
   DocumentMultiple24Regular,
   Info24Regular,
+  Folder24Regular,
+  Open24Regular,
 } from '@fluentui/react-icons';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { FC } from 'react';
 import type { ExportData, WizardData, StepValidation } from '../types';
+import { openFile, openFolder } from '../../../utils/fileSystemUtils';
+import { pickFolder } from '../../../utils/pathUtils';
+import { getDefaultSaveLocation } from '../../../utils/pathUtils';
 
 const useStyles = makeStyles({
   container: {
@@ -125,6 +130,7 @@ interface ExportResult {
   resolution: string;
   filePath: string;
   fileSize: number;
+  fullPath?: string;
 }
 
 const QUALITY_OPTIONS = [
@@ -161,6 +167,14 @@ export const FinalExport: FC<FinalExportProps> = ({
   const [batchExport, setBatchExport] = useState(false);
   const [selectedFormats, setSelectedFormats] = useState<string[]>([data.format]);
   const [exportResults, setExportResults] = useState<ExportResult[]>([]);
+  const [saveLocation, setSaveLocation] = useState<string>(() => {
+    // Get default save location
+    try {
+      return getDefaultSaveLocation();
+    } catch {
+      return '';
+    }
+  });
 
   useEffect(() => {
     onValidationChange({ isValid: true, errors: [] });
@@ -228,11 +242,17 @@ export const FinalExport: FC<FinalExportProps> = ({
         }
 
         const fileSize = estimatedFileSize * (format === 'mov' ? 3 : format === 'webm' ? 0.7 : 1);
+        
+        // Generate actual file path
+        const fileName = `video-${Date.now()}.${format}`;
+        const basePath = saveLocation || getDefaultSaveLocation();
+        const fullPath = `${basePath.replace(/\\/g, '/').replace(/\/$/, '')}/${fileName}`;
 
         exportResults.push({
           format: format.toUpperCase(),
           resolution: data.resolution,
-          filePath: `/exports/video-${Date.now()}.${format}`,
+          filePath: fileName,
+          fullPath: fullPath,
           fileSize: Math.round(fileSize * 1024),
         });
 
@@ -262,9 +282,47 @@ export const FinalExport: FC<FinalExportProps> = ({
     setExportStage('');
   }, []);
 
-  const downloadFile = useCallback((filePath: string) => {
-    console.info('Downloading file:', filePath);
-    window.open(filePath, '_blank');
+  const handleBrowseSaveLocation = useCallback(async () => {
+    try {
+      const selectedPath = await pickFolder();
+      if (selectedPath) {
+        setSaveLocation(selectedPath);
+      }
+    } catch (error) {
+      console.error('Failed to pick folder:', error);
+    }
+  }, []);
+
+  const handleOpenFile = useCallback(async (filePath: string, fullPath?: string) => {
+    try {
+      const pathToOpen = fullPath || filePath;
+      const success = await openFile(pathToOpen);
+      if (!success) {
+        console.warn('Failed to open file, trying folder instead');
+        // Use Math.max to correctly handle zero values (when separator is at beginning)
+        const lastSlash = pathToOpen.lastIndexOf('/');
+        const lastBackslash = pathToOpen.lastIndexOf('\\');
+        const lastSeparator = Math.max(lastSlash, lastBackslash);
+        const folderPath = lastSeparator >= 0 ? pathToOpen.substring(0, lastSeparator) : pathToOpen;
+        await openFolder(folderPath);
+      }
+    } catch (error) {
+      console.error('Failed to open file:', error);
+    }
+  }, []);
+
+  const handleOpenFolder = useCallback(async (filePath: string, fullPath?: string) => {
+    try {
+      const pathToOpen = fullPath || filePath;
+      // Use Math.max to correctly handle zero values (when separator is at beginning)
+      const lastSlash = pathToOpen.lastIndexOf('/');
+      const lastBackslash = pathToOpen.lastIndexOf('\\');
+      const lastSeparator = Math.max(lastSlash, lastBackslash);
+      const folderPath = lastSeparator >= 0 ? pathToOpen.substring(0, lastSeparator) : pathToOpen;
+      await openFolder(folderPath);
+    } catch (error) {
+      console.error('Failed to open folder:', error);
+    }
   }, []);
 
   const renderSettingsView = () => (
@@ -341,6 +399,36 @@ export const FinalExport: FC<FinalExportProps> = ({
           checked={data.includeCaptions}
           onChange={(_, { checked }) => onChange({ ...data, includeCaptions: !!checked })}
         />
+      </Card>
+
+      <Card className={styles.settingsCard}>
+        <Field label="Save Location">
+          <div style={{ display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'center' }}>
+            <Text
+              style={{
+                flex: 1,
+                padding: tokens.spacingVerticalS,
+                backgroundColor: tokens.colorNeutralBackground2,
+                borderRadius: tokens.borderRadiusSmall,
+                fontFamily: 'monospace',
+                fontSize: tokens.fontSizeBase200,
+                wordBreak: 'break-all',
+              }}
+            >
+              {saveLocation || 'Default location will be used'}
+            </Text>
+            <Button
+              appearance="secondary"
+              icon={<Folder24Regular />}
+              onClick={handleBrowseSaveLocation}
+            >
+              Browse
+            </Button>
+          </div>
+          <Text size={200} style={{ marginTop: tokens.spacingVerticalXS, color: tokens.colorNeutralForeground3 }}>
+            Choose where to save your exported video file
+          </Text>
+        </Field>
       </Card>
 
       {advancedMode && (
@@ -436,26 +524,48 @@ export const FinalExport: FC<FinalExportProps> = ({
         style={{ fontSize: '64px', color: tokens.colorPaletteGreenForeground1 }}
       />
       <Title2>Export Completed!</Title2>
-      <Text>Your video has been successfully exported and is ready to download.</Text>
+      <Text>Your video has been successfully exported and saved to your computer.</Text>
 
       <div className={styles.downloadList}>
         {exportResults.map((result, index) => (
           <div key={index} className={styles.downloadItem}>
-            <div style={{ textAlign: 'left' }}>
+            <div style={{ textAlign: 'left', flex: 1 }}>
               <Text weight="semibold">
                 {result.format} - {result.resolution}
               </Text>
               <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
                 {(result.fileSize / 1024).toFixed(1)} MB
               </Text>
+              {result.fullPath && (
+                <Text
+                  size={200}
+                  style={{
+                    color: tokens.colorNeutralForeground2,
+                    marginTop: tokens.spacingVerticalXS,
+                    fontFamily: 'monospace',
+                    wordBreak: 'break-all',
+                  }}
+                >
+                  Saved to: {result.fullPath}
+                </Text>
+              )}
             </div>
-            <Button
-              appearance="primary"
-              icon={<ArrowDownload24Regular />}
-              onClick={() => downloadFile(result.filePath)}
-            >
-              Download
-            </Button>
+            <div style={{ display: 'flex', gap: tokens.spacingHorizontalS }}>
+              <Button
+                appearance="primary"
+                icon={<Open24Regular />}
+                onClick={() => handleOpenFile(result.filePath, result.fullPath)}
+              >
+                Open File
+              </Button>
+              <Button
+                appearance="secondary"
+                icon={<Folder24Regular />}
+                onClick={() => handleOpenFolder(result.filePath, result.fullPath)}
+              >
+                Open Folder
+              </Button>
+            </div>
           </div>
         ))}
       </div>
