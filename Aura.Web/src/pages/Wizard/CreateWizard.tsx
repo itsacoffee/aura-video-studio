@@ -54,11 +54,12 @@ import { apiUrl } from '../../config/api';
 import { useWizardAutoSave } from '../../hooks/useWizardAutoSave';
 import { postCancellable, isAbortError } from '../../services/api/cancellableRequests';
 import { parseApiError, openLogsFolder } from '../../services/api/errorHandler';
+import { listProviders, type ProviderInfoDto } from '../../services/api/scriptApi';
 import { loggingService as logger } from '../../services/loggingService';
 import { useJobState } from '../../state/jobState';
 import type { PreflightReport, PerStageProviderSelection } from '../../state/providers';
 import { useWizardProjectStore, deserializeWizardState } from '../../state/wizardProject';
-import { listProviders, type ProviderInfoDto } from '../../services/api/scriptApi';
+import { spacing, gaps, formLayout } from '../../themes/layout';
 import type {
   Brief,
   PlanSpec,
@@ -75,55 +76,58 @@ const useStyles = makeStyles({
   container: {
     maxWidth: '900px',
     margin: '0 auto',
-    padding: tokens.spacingVerticalL,
+    padding: spacing.lg,
   },
   header: {
-    marginBottom: tokens.spacingVerticalXXL,
+    marginBottom: spacing.xxl,
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalS,
+    gap: spacing.sm,
   },
   headerRow: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: spacing.md,
   },
   subtitle: {
     color: tokens.colorNeutralForeground3,
+    fontSize: tokens.fontSizeBase400,
   },
   form: {
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalL,
+    gap: spacing.lg,
   },
   section: {
-    padding: tokens.spacingVerticalXL,
+    padding: spacing.xl,
   },
   actions: {
     display: 'flex',
-    gap: tokens.spacingHorizontalM,
+    gap: gaps.standard,
     justifyContent: 'flex-end',
-    marginTop: tokens.spacingVerticalXL,
+    marginTop: spacing.xl,
   },
   fieldGroup: {
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalL,
+    gap: formLayout.fieldGap,
   },
   advancedSection: {
-    marginTop: tokens.spacingVerticalL,
+    marginTop: spacing.lg,
   },
   resetButton: {
-    marginTop: tokens.spacingVerticalM,
+    marginTop: spacing.md,
   },
   infoIcon: {
     color: tokens.colorNeutralForeground3,
-    marginLeft: tokens.spacingHorizontalXS,
+    marginLeft: spacing.xs,
   },
   gridLayout: {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
-    gap: tokens.spacingVerticalM,
+    gap: spacing.md,
     '@media (max-width: 768px)': {
       gridTemplateColumns: '1fr',
     },
@@ -131,7 +135,7 @@ const useStyles = makeStyles({
   keyboardHint: {
     fontSize: tokens.fontSizeBase200,
     color: tokens.colorNeutralForeground3,
-    marginTop: tokens.spacingVerticalXS,
+    marginTop: spacing.xs,
   },
 });
 
@@ -270,7 +274,7 @@ export function CreateWizard() {
       try {
         const response = await listProviders();
         setProviders(response.providers);
-        
+
         // Find Ollama provider and set default model
         const ollamaProvider = response.providers.find((p) => {
           const normalized = p.name.toLowerCase();
@@ -311,7 +315,7 @@ export function CreateWizard() {
     setSettings({ ...settings, providerSelection: selection });
     // Reset preflight when selection changes
     setPreflightReport(null);
-    
+
     // Update Ollama model when Ollama is selected
     if (selection.script === 'Ollama') {
       const ollamaProvider = providers.find((p) => {
@@ -1813,7 +1817,13 @@ export function CreateWizard() {
                   </Field>
                 )}
                 {selectedOllamaModel && (
-                  <Text size={200} style={{ marginTop: tokens.spacingVerticalS, color: tokens.colorNeutralForeground3 }}>
+                  <Text
+                    size={200}
+                    style={{
+                      marginTop: tokens.spacingVerticalS,
+                      color: tokens.colorNeutralForeground3,
+                    }}
+                  >
                     Selected model: <strong>{selectedOllamaModel}</strong>
                   </Text>
                 )}
