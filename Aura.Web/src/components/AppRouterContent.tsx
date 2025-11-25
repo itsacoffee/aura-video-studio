@@ -168,6 +168,9 @@ const ErrorHandlingDemoPage = lazy(() =>
 const StreamingScriptDemo = lazy(() =>
   import('../pages/Demo/StreamingScriptDemo').then((m) => ({ default: m.StreamingScriptDemo }))
 );
+const ButtonDemoPage = lazy(() =>
+  import('../pages/Demo/ButtonDemoPage').then((m) => ({ default: m.ButtonDemoPage }))
+);
 
 /**
  * ProtectedRoute Component
@@ -345,449 +348,457 @@ const AppRouterContentInner: FC<
         <ErrorBoundary>
           <ConfigurationGate>
             <Routes>
-            {/* Setup wizard - unified entry point for first-run and reconfiguration */}
-            <Route path="/setup" element={<FirstRunWizard />} />
-            {/* Legacy route redirect for backward compatibility */}
-            <Route path="/onboarding" element={<Navigate to="/setup" replace />} />
+              {/* Setup wizard - unified entry point for first-run and reconfiguration */}
+              <Route path="/setup" element={<FirstRunWizard />} />
+              {/* Legacy route redirect for backward compatibility */}
+              <Route path="/onboarding" element={<Navigate to="/setup" replace />} />
 
-            {/* Main routes with Layout wrapper - Protected by first-run check */}
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
-                  <Layout />
-                </ProtectedRoute>
-              }
-            >
-              <Route index element={<WelcomePage />} />
-              <Route path="dashboard" element={<DashboardPage />} />
+              {/* Main routes with Layout wrapper - Protected by first-run check */}
               <Route
-                path="ideation"
+                path="/"
                 element={
-                  <LazyRoute routePath="/ideation">
-                    <IdeationDashboard />
-                  </LazyRoute>
+                  <ProtectedRoute>
+                    <Layout />
+                  </ProtectedRoute>
                 }
-              />
-              <Route
-                path="ideation/concept/:conceptId"
-                element={
-                  <LazyRoute routePath="/ideation/concept/:conceptId">
-                    <ConceptExplorer />
-                  </LazyRoute>
-                }
-              />
-              <Route
-                path="ideation/brief-builder"
-                element={
-                  <LazyRoute routePath="/ideation/brief-builder">
-                    <BriefBuilder />
-                  </LazyRoute>
-                }
-              />
-              <Route
-                path="ideation/storyboard/:conceptId"
-                element={
-                  <LazyRoute routePath="/ideation/storyboard/:conceptId">
-                    <StoryboardVisualizer />
-                  </LazyRoute>
-                }
-              />
-              <Route
-                path="trending"
-                element={
-                  <LazyRoute routePath="/trending">
-                    <TrendingTopicsExplorer />
-                  </LazyRoute>
-                }
-              />
-              <Route path="create" element={<VideoCreationWizard />} />
-              <Route path="generate" element={<VideoCreationWizard />} />
-              <Route
-                path="create/advanced"
-                element={
-                  <LazyRoute routePath="/create/advanced">
-                    <CreateWizard />
-                  </LazyRoute>
-                }
-              />
-              <Route
-                path="create/legacy"
-                element={
-                  <LazyRoute routePath="/create/legacy">
-                    <CreatePage />
-                  </LazyRoute>
-                }
-              />
-              <Route
-                path="templates"
-                element={
-                  <LazyRoute routePath="/templates">
-                    <TemplatesLibrary />
-                  </LazyRoute>
-                }
-              />
-              <Route
-                path="templates/custom"
-                element={
-                  <LazyRoute routePath="/templates/custom">
-                    <CustomTemplatesPage />
-                  </LazyRoute>
-                }
-              />
-              <Route
-                path="editor/:jobId"
-                element={
-                  <LazyRoute routePath="/editor/:jobId">
-                    <TimelineEditor />
-                  </LazyRoute>
-                }
-              />
-              <Route
-                path="editor"
-                element={
-                  <LazyRoute routePath="/editor">
-                    <VideoEditorPage />
-                  </LazyRoute>
-                }
-              />
-              <Route
-                path="pacing"
-                element={
-                  <LazyRoute routePath="/pacing">
-                    <PacingAnalyzerPage />
-                  </LazyRoute>
-                }
-              />
-              <Route
-                path="render"
-                element={
-                  <LazyRoute routePath="/render">
-                    <RenderPage />
-                  </LazyRoute>
-                }
-              />
-              <Route path="platform" element={<PlatformDashboard />} />
-              <Route path="quality" element={<QualityDashboard />} />
+              >
+                <Route index element={<WelcomePage />} />
+                <Route path="dashboard" element={<DashboardPage />} />
+                <Route
+                  path="ideation"
+                  element={
+                    <LazyRoute routePath="/ideation">
+                      <IdeationDashboard />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="ideation/concept/:conceptId"
+                  element={
+                    <LazyRoute routePath="/ideation/concept/:conceptId">
+                      <ConceptExplorer />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="ideation/brief-builder"
+                  element={
+                    <LazyRoute routePath="/ideation/brief-builder">
+                      <BriefBuilder />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="ideation/storyboard/:conceptId"
+                  element={
+                    <LazyRoute routePath="/ideation/storyboard/:conceptId">
+                      <StoryboardVisualizer />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="trending"
+                  element={
+                    <LazyRoute routePath="/trending">
+                      <TrendingTopicsExplorer />
+                    </LazyRoute>
+                  }
+                />
+                <Route path="create" element={<VideoCreationWizard />} />
+                <Route path="generate" element={<VideoCreationWizard />} />
+                <Route
+                  path="create/advanced"
+                  element={
+                    <LazyRoute routePath="/create/advanced">
+                      <CreateWizard />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="create/legacy"
+                  element={
+                    <LazyRoute routePath="/create/legacy">
+                      <CreatePage />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="templates"
+                  element={
+                    <LazyRoute routePath="/templates">
+                      <TemplatesLibrary />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="templates/custom"
+                  element={
+                    <LazyRoute routePath="/templates/custom">
+                      <CustomTemplatesPage />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="editor/:jobId"
+                  element={
+                    <LazyRoute routePath="/editor/:jobId">
+                      <TimelineEditor />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="editor"
+                  element={
+                    <LazyRoute routePath="/editor">
+                      <VideoEditorPage />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="pacing"
+                  element={
+                    <LazyRoute routePath="/pacing">
+                      <PacingAnalyzerPage />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="render"
+                  element={
+                    <LazyRoute routePath="/render">
+                      <RenderPage />
+                    </LazyRoute>
+                  }
+                />
+                <Route path="platform" element={<PlatformDashboard />} />
+                <Route path="quality" element={<QualityDashboard />} />
 
-              <Route
-                path="projects"
-                element={
-                  <LazyRoute routePath="/projects">
-                    <ProjectsPage />
-                  </LazyRoute>
-                }
-              />
-              <Route
-                path="export-history"
-                element={
-                  <LazyRoute routePath="/export-history">
-                    <ExportHistoryPage />
-                  </LazyRoute>
-                }
-              />
-              <Route
-                path="assets"
-                element={
-                  <LazyRoute routePath="/assets">
-                    <AssetLibrary />
-                  </LazyRoute>
-                }
-              />
-              <Route
-                path="cost-history"
-                element={
-                  <LazyRoute routePath="/cost-history">
-                    <CostHistoryPage />
-                  </LazyRoute>
-                }
-              />
-              <Route
-                path="jobs"
-                element={
-                  <LazyRoute routePath="/jobs">
-                    <RecentJobsPage />
-                  </LazyRoute>
-                }
-              />
-              <Route
-                path="jobs/:jobId/telemetry"
-                element={
-                  <LazyRoute routePath="/jobs/:jobId/telemetry">
-                    <RunDetailsPage />
-                  </LazyRoute>
-                }
-              />
-              <Route
-                path="downloads"
-                element={
-                  <LazyRoute routePath="/downloads">
-                    <DownloadsPage />
-                  </LazyRoute>
-                }
-              />
-              <Route
-                path="health"
-                element={
-                  <LazyRoute routePath="/health">
-                    <SystemHealthDashboard />
-                  </LazyRoute>
-                }
-              />
-              <Route
-                path="health/providers"
-                element={
-                  <LazyRoute routePath="/health/providers">
-                    <ProviderHealthDashboard />
-                  </LazyRoute>
-                }
-              />
-              <Route
-                path="ai-editing"
-                element={
-                  <LazyRoute routePath="/ai-editing">
-                    <AIEditingPage />
-                  </LazyRoute>
-                }
-              />
-              <Route
-                path="aesthetics"
-                element={
-                  <LazyRoute routePath="/aesthetics">
-                    <AestheticsPage />
-                  </LazyRoute>
-                }
-              />
-              <Route
-                path="localization"
-                element={
-                  <LazyRoute routePath="/localization">
-                    <TranslationPage />
-                  </LazyRoute>
-                }
-              />
-              <Route
-                path="prompt-management"
-                element={
-                  <LazyRoute routePath="/prompt-management">
-                    <PromptManagementPage />
-                  </LazyRoute>
-                }
-              />
-              <Route
-                path="rag"
-                element={
-                  <LazyRoute routePath="/rag">
-                    <RagDocumentManager />
-                  </LazyRoute>
-                }
-              />
-              <Route
-                path="voice-enhancement"
-                element={
-                  <LazyRoute routePath="/voice-enhancement">
-                    <VoiceEnhancementPage />
-                  </LazyRoute>
-                }
-              />
-              <Route
-                path="performance-analytics"
-                element={
-                  <LazyRoute routePath="/performance-analytics">
-                    <PerformanceAnalyticsPage />
-                  </LazyRoute>
-                }
-              />
-              <Route
-                path="usage-analytics"
-                element={
-                  <LazyRoute routePath="/usage-analytics">
-                    <UsageAnalyticsPage />
-                  </LazyRoute>
-                }
-              />
-              <Route
-                path="ml-lab"
-                element={
-                  <LazyRoute routePath="/ml-lab">
-                    <MLLabPage />
-                  </LazyRoute>
-                }
-              />
-              <Route
-                path="ab-tests"
-                element={
-                  <LazyRoute routePath="/ab-tests">
-                    <ABTestManagementPage />
-                  </LazyRoute>
-                }
-              />
-              <Route
-                path="audience"
-                element={
-                  <LazyRoute routePath="/audience">
-                    <AudienceManagementPage />
-                  </LazyRoute>
-                }
-              />
-              <Route
-                path="learning"
-                element={
-                  <LazyRoute routePath="/learning">
-                    <LearningPage />
-                  </LazyRoute>
-                }
-              />
-              <Route
-                path="quality-validation"
-                element={
-                  <LazyRoute routePath="/quality-validation">
-                    <QualityValidationPage />
-                  </LazyRoute>
-                }
-              />
-              <Route
-                path="validation"
-                element={
-                  <LazyRoute routePath="/validation">
-                    <ValidationPage />
-                  </LazyRoute>
-                }
-              />
-              <Route
-                path="verification"
-                element={
-                  <LazyRoute routePath="/verification">
-                    <VerificationPage />
-                  </LazyRoute>
-                }
-              />
+                <Route
+                  path="projects"
+                  element={
+                    <LazyRoute routePath="/projects">
+                      <ProjectsPage />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="export-history"
+                  element={
+                    <LazyRoute routePath="/export-history">
+                      <ExportHistoryPage />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="assets"
+                  element={
+                    <LazyRoute routePath="/assets">
+                      <AssetLibrary />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="cost-history"
+                  element={
+                    <LazyRoute routePath="/cost-history">
+                      <CostHistoryPage />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="jobs"
+                  element={
+                    <LazyRoute routePath="/jobs">
+                      <RecentJobsPage />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="jobs/:jobId/telemetry"
+                  element={
+                    <LazyRoute routePath="/jobs/:jobId/telemetry">
+                      <RunDetailsPage />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="downloads"
+                  element={
+                    <LazyRoute routePath="/downloads">
+                      <DownloadsPage />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="health"
+                  element={
+                    <LazyRoute routePath="/health">
+                      <SystemHealthDashboard />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="health/providers"
+                  element={
+                    <LazyRoute routePath="/health/providers">
+                      <ProviderHealthDashboard />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="ai-editing"
+                  element={
+                    <LazyRoute routePath="/ai-editing">
+                      <AIEditingPage />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="aesthetics"
+                  element={
+                    <LazyRoute routePath="/aesthetics">
+                      <AestheticsPage />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="localization"
+                  element={
+                    <LazyRoute routePath="/localization">
+                      <TranslationPage />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="prompt-management"
+                  element={
+                    <LazyRoute routePath="/prompt-management">
+                      <PromptManagementPage />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="rag"
+                  element={
+                    <LazyRoute routePath="/rag">
+                      <RagDocumentManager />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="voice-enhancement"
+                  element={
+                    <LazyRoute routePath="/voice-enhancement">
+                      <VoiceEnhancementPage />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="performance-analytics"
+                  element={
+                    <LazyRoute routePath="/performance-analytics">
+                      <PerformanceAnalyticsPage />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="usage-analytics"
+                  element={
+                    <LazyRoute routePath="/usage-analytics">
+                      <UsageAnalyticsPage />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="ml-lab"
+                  element={
+                    <LazyRoute routePath="/ml-lab">
+                      <MLLabPage />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="ab-tests"
+                  element={
+                    <LazyRoute routePath="/ab-tests">
+                      <ABTestManagementPage />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="audience"
+                  element={
+                    <LazyRoute routePath="/audience">
+                      <AudienceManagementPage />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="learning"
+                  element={
+                    <LazyRoute routePath="/learning">
+                      <LearningPage />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="quality-validation"
+                  element={
+                    <LazyRoute routePath="/quality-validation">
+                      <QualityValidationPage />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="validation"
+                  element={
+                    <LazyRoute routePath="/validation">
+                      <ValidationPage />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="verification"
+                  element={
+                    <LazyRoute routePath="/verification">
+                      <VerificationPage />
+                    </LazyRoute>
+                  }
+                />
 
-              {/* Diagnostics and system information */}
-              <Route
-                path="diagnostics"
-                element={
-                  <LazyRoute routePath="/diagnostics">
-                    <DiagnosticDashboardPage />
-                  </LazyRoute>
-                }
-              />
+                {/* Diagnostics and system information */}
+                <Route
+                  path="diagnostics"
+                  element={
+                    <LazyRoute routePath="/diagnostics">
+                      <DiagnosticDashboardPage />
+                    </LazyRoute>
+                  }
+                />
 
-              {/* Logs page - always available for diagnostics */}
-              <Route
-                path="logs"
-                element={
-                  <LazyRoute routePath="/logs">
-                    <LogViewerPage />
-                  </LazyRoute>
-                }
-              />
+                {/* Logs page - always available for diagnostics */}
+                <Route
+                  path="logs"
+                  element={
+                    <LazyRoute routePath="/logs">
+                      <LogViewerPage />
+                    </LazyRoute>
+                  }
+                />
 
-              {/* Development-only routes - lazy loaded */}
-              {env.enableDevTools && (
-                <>
-                  <Route
-                    path="streaming-demo"
-                    element={
-                      <LazyRoute routePath="/streaming-demo">
-                        <StreamingScriptDemo />
-                      </LazyRoute>
-                    }
-                  />
-                  <Route
-                    path="error-handling-demo"
-                    element={
-                      <LazyRoute routePath="/error-handling-demo">
-                        <ErrorHandlingDemoPage />
-                      </LazyRoute>
-                    }
-                  />
-                  <Route
-                    path="activity-demo"
-                    element={
-                      <LazyRoute routePath="/activity-demo">
-                        <ActivityDemoPage />
-                      </LazyRoute>
-                    }
-                  />
-                  <Route
-                    path="layout-demo"
-                    element={
-                      <LazyRoute routePath="/layout-demo">
-                        <LayoutDemoPage />
-                      </LazyRoute>
-                    }
-                  />
-                  <Route
-                    path="windows11-demo"
-                    element={
-                      <LazyRoute routePath="/windows11-demo">
-                        <Windows11DemoPage />
-                      </LazyRoute>
-                    }
-                  />
-                </>
-              )}
-              <Route
-                path="admin"
-                element={
-                  <LazyRoute routePath="/admin">
-                    <AdminDashboardPage />
-                  </LazyRoute>
-                }
-              />
-              <Route
-                path="settings"
-                element={
-                  <LazyRoute routePath="/settings">
-                    <SettingsPage />
-                  </LazyRoute>
-                }
-              />
-              <Route
-                path="settings/accessibility"
-                element={
-                  <LazyRoute routePath="/settings/accessibility">
-                    <AccessibilitySettingsPage />
-                  </LazyRoute>
-                }
-              />
-              <Route path="models" element={<Navigate to="/settings" replace />} />
-              <Route path="*" element={<NotFoundPage />} />
-            </Route>
-          </Routes>
-        </ConfigurationGate>
-      </ErrorBoundary>
+                {/* Development-only routes - lazy loaded */}
+                {env.enableDevTools && (
+                  <>
+                    <Route
+                      path="streaming-demo"
+                      element={
+                        <LazyRoute routePath="/streaming-demo">
+                          <StreamingScriptDemo />
+                        </LazyRoute>
+                      }
+                    />
+                    <Route
+                      path="button-demo"
+                      element={
+                        <LazyRoute routePath="/button-demo">
+                          <ButtonDemoPage />
+                        </LazyRoute>
+                      }
+                    />
+                    <Route
+                      path="error-handling-demo"
+                      element={
+                        <LazyRoute routePath="/error-handling-demo">
+                          <ErrorHandlingDemoPage />
+                        </LazyRoute>
+                      }
+                    />
+                    <Route
+                      path="activity-demo"
+                      element={
+                        <LazyRoute routePath="/activity-demo">
+                          <ActivityDemoPage />
+                        </LazyRoute>
+                      }
+                    />
+                    <Route
+                      path="layout-demo"
+                      element={
+                        <LazyRoute routePath="/layout-demo">
+                          <LayoutDemoPage />
+                        </LazyRoute>
+                      }
+                    />
+                    <Route
+                      path="windows11-demo"
+                      element={
+                        <LazyRoute routePath="/windows11-demo">
+                          <Windows11DemoPage />
+                        </LazyRoute>
+                      }
+                    />
+                  </>
+                )}
+                <Route
+                  path="admin"
+                  element={
+                    <LazyRoute routePath="/admin">
+                      <AdminDashboardPage />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="settings"
+                  element={
+                    <LazyRoute routePath="/settings">
+                      <SettingsPage />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="settings/accessibility"
+                  element={
+                    <LazyRoute routePath="/settings/accessibility">
+                      <AccessibilitySettingsPage />
+                    </LazyRoute>
+                  }
+                />
+                <Route path="models" element={<Navigate to="/settings" replace />} />
+                <Route path="*" element={<NotFoundPage />} />
+              </Route>
+            </Routes>
+          </ConfigurationGate>
+        </ErrorBoundary>
 
-      {/* These components need to be inside Router for navigation hooks */}
-      <KeyboardShortcutsModal isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
-      <KeyboardShortcutsPanel
-        isOpen={showShortcutsPanel}
-        onClose={() => setShowShortcutsPanel(false)}
-      />
-      <KeyboardShortcutsCheatSheet
-        open={showShortcutsCheatSheet}
-        onClose={() => setShowShortcutsCheatSheet(false)}
-      />
-      <CommandPalette isOpen={showCommandPalette} onClose={() => setShowCommandPalette(false)} />
-      <NotificationsToaster toasterId={toasterId} />
+        {/* These components need to be inside Router for navigation hooks */}
+        <KeyboardShortcutsModal isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
+        <KeyboardShortcutsPanel
+          isOpen={showShortcutsPanel}
+          onClose={() => setShowShortcutsPanel(false)}
+        />
+        <KeyboardShortcutsCheatSheet
+          open={showShortcutsCheatSheet}
+          onClose={() => setShowShortcutsCheatSheet(false)}
+        />
+        <CommandPalette isOpen={showCommandPalette} onClose={() => setShowCommandPalette(false)} />
+        <NotificationsToaster toasterId={toasterId} />
 
-      {/* Job progress drawer */}
-      <JobProgressDrawer
-        isOpen={showDrawer}
-        onClose={() => setShowDrawer(false)}
-        jobId={currentJobId || ''}
-      />
+        {/* Job progress drawer */}
+        <JobProgressDrawer
+          isOpen={showDrawer}
+          onClose={() => setShowDrawer(false)}
+          jobId={currentJobId || ''}
+        />
 
-      {/* Action history panel for undo/redo */}
-      <ActionHistoryPanel />
+        {/* Action history panel for undo/redo */}
+        <ActionHistoryPanel />
 
-      {/* Global activity status footer */}
-      <footer id="global-footer">
-        <GlobalStatusFooter />
-      </footer>
-    </>
-  );
+        {/* Global activity status footer */}
+        <footer id="global-footer">
+          <GlobalStatusFooter />
+        </footer>
+      </>
+    );
   } catch (error) {
     // Critical error: Render fallback UI to prevent black screen
     console.error('[AppRouterContent] Critical error rendering routes:', error);
