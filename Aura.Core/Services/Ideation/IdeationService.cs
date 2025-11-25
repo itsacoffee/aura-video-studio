@@ -77,7 +77,7 @@ public class IdeationService
             throw new ArgumentException($"Topic length exceeds maximum of {MaxTopicLength} characters", nameof(request));
         }
 
-        _logger.LogInformation("Brainstorming concepts for topic: {Topic} (length: {Length})", 
+        _logger.LogInformation("Brainstorming concepts for topic: {Topic} (length: {Length})",
             request.Topic, request.Topic.Length);
 
         var desiredConceptCount = Math.Clamp(
@@ -102,7 +102,7 @@ public class IdeationService
                 ragContext = await _ragContextBuilder.BuildContextAsync(request.Topic, ragConfig, ct).ConfigureAwait(false);
                 if (ragContext.Chunks.Count > 0)
                 {
-                    _logger.LogInformation("Retrieved {Count} RAG chunks for topic: {Topic} (TopK={TopK}, MinScore={MinScore})", 
+                    _logger.LogInformation("Retrieved {Count} RAG chunks for topic: {Topic} (TopK={TopK}, MinScore={MinScore})",
                         ragContext.Chunks.Count, request.Topic, ragConfig.TopK, ragConfig.MinimumScore);
                 }
                 else
@@ -123,11 +123,11 @@ public class IdeationService
         try
         {
             var prompt = await BuildBrainstormPromptAsync(request, desiredConceptCount, ragContext, ct).ConfigureAwait(false);
-            
+
             // Validate prompt length
             if (prompt.Length > MaxPromptLength)
             {
-                _logger.LogWarning("Generated prompt exceeds maximum length ({Length} > {MaxLength}), truncating", 
+                _logger.LogWarning("Generated prompt exceeds maximum length ({Length} > {MaxLength}), truncating",
                     prompt.Length, MaxPromptLength);
                 prompt = prompt.Substring(0, MaxPromptLength);
             }
@@ -160,7 +160,7 @@ public class IdeationService
 
             // Parse the response into structured concepts
             var concepts = ParseBrainstormResponse(response, request.Topic, desiredConceptCount);
-            
+
             // Validate parsed concepts are meaningful (not just fallback placeholders)
             if (concepts.Count == 0)
             {
@@ -169,13 +169,13 @@ public class IdeationService
                 throw new InvalidOperationException(
                     "Failed to generate concepts. The LLM response could not be parsed. Please try again.");
             }
-            
+
             // Check if concepts are too generic (likely fallback)
-            var hasGenericContent = concepts.Any(c => 
+            var hasGenericContent = concepts.Any(c =>
                 c.Description.Contains("This approach provides unique value through its specific perspective") ||
                 c.TalkingPoints?.Any(tp => tp == "Introduction to the topic") == true ||
                 c.Pros.Any(p => p == "Engaging and accessible format"));
-            
+
             if (hasGenericContent && concepts.Count == desiredConceptCount)
             {
                 _logger.LogWarning("Parsed concepts appear to be generic fallback data. LLM may not have returned valid JSON. " +
@@ -184,7 +184,7 @@ public class IdeationService
                 // Don't throw - at least we have something, but log the issue
             }
 
-            _logger.LogInformation("Successfully generated {Count} concepts for topic: {Topic}", 
+            _logger.LogInformation("Successfully generated {Count} concepts for topic: {Topic}",
                 concepts.Count, request.Topic);
 
             return new BrainstormResponse(
@@ -229,10 +229,10 @@ public class IdeationService
         try
         {
             var prompt = BuildExpandBriefPrompt(request);
-            
+
             if (prompt.Length > MaxPromptLength)
             {
-                _logger.LogWarning("Generated prompt exceeds maximum length ({Length} > {MaxLength}), truncating", 
+                _logger.LogWarning("Generated prompt exceeds maximum length ({Length} > {MaxLength}), truncating",
                     prompt.Length, MaxPromptLength);
                 prompt = prompt.Substring(0, MaxPromptLength);
             }
@@ -278,7 +278,7 @@ public class IdeationService
             // Parse response for questions or updated brief
             var (questions, aiResponse) = ParseExpandBriefResponse(response);
 
-            _logger.LogInformation("Successfully expanded brief for project: {ProjectId}, generated {QuestionCount} questions", 
+            _logger.LogInformation("Successfully expanded brief for project: {ProjectId}, generated {QuestionCount} questions",
                 request.ProjectId, questions?.Count ?? 0);
 
             return new ExpandBriefResponse(
@@ -318,7 +318,7 @@ public class IdeationService
         // Validate MaxResults
         var maxResults = Math.Clamp(request.MaxResults ?? 10, 1, 100);
 
-        _logger.LogInformation("Analyzing trending topics for niche: {Niche} (max results: {MaxResults})", 
+        _logger.LogInformation("Analyzing trending topics for niche: {Niche} (max results: {MaxResults})",
             request.Niche ?? "general", maxResults);
 
         try
@@ -329,7 +329,7 @@ public class IdeationService
                 forceRefresh: false,
                 ct).ConfigureAwait(false);
 
-            _logger.LogInformation("Successfully retrieved {Count} trending topics for niche: {Niche}", 
+            _logger.LogInformation("Successfully retrieved {Count} trending topics for niche: {Niche}",
                 topics.Count, request.Niche ?? "general");
 
             return new TrendingTopicsResponse(
@@ -387,7 +387,7 @@ public class IdeationService
                     relatedTopics.Count > 0 ? relatedTopics : null,
                     maxResults: 20,
                     ct).ConfigureAwait(false);
-                
+
                 _logger.LogInformation("Found {GapCount} content gaps and {OversaturatedCount} oversaturated topics from web search",
                     webGapAnalysis.GapKeywords.Count, webGapAnalysis.OversaturatedTopics.Count);
             }
@@ -399,10 +399,10 @@ public class IdeationService
 
             // Build enhanced prompt with web intelligence if available
             var prompt = BuildGapAnalysisPrompt(request, webGapAnalysis);
-            
+
             if (prompt.Length > MaxPromptLength)
             {
-                _logger.LogWarning("Generated prompt exceeds maximum length ({Length} > {MaxLength}), truncating", 
+                _logger.LogWarning("Generated prompt exceeds maximum length ({Length} > {MaxLength}), truncating",
                     prompt.Length, MaxPromptLength);
                 prompt = prompt.Substring(0, MaxPromptLength);
             }
@@ -425,12 +425,12 @@ public class IdeationService
                     .Concat(webGapAnalysis.GapKeywords)
                     .Distinct()
                     .ToList();
-                
+
                 oversaturated = oversaturated
                     .Concat(webGapAnalysis.OversaturatedTopics)
                     .Distinct()
                     .ToList();
-                
+
                 // Merge unique angles - webGapAnalysis.UniqueAngles is List<string>, uniqueAngles is Dictionary<string, List<string>>
                 foreach (var angle in webGapAnalysis.UniqueAngles)
                 {
@@ -445,7 +445,7 @@ public class IdeationService
                 }
             }
 
-            _logger.LogInformation("Successfully analyzed content gaps for niche: {Niche}, found {MissingCount} missing topics, {OpportunityCount} opportunities", 
+            _logger.LogInformation("Successfully analyzed content gaps for niche: {Niche}, found {MissingCount} missing topics, {OpportunityCount} opportunities",
                 request.Niche ?? "general", missingTopics.Count, opportunities.Count);
 
             return new GapAnalysisResponse(
@@ -489,16 +489,16 @@ public class IdeationService
         // Validate MaxFindings
         var maxFindings = Math.Clamp(request.MaxFindings ?? 10, 1, 50);
 
-        _logger.LogInformation("Gathering research for topic: {Topic} (max findings: {MaxFindings})", 
+        _logger.LogInformation("Gathering research for topic: {Topic} (max findings: {MaxFindings})",
             request.Topic, maxFindings);
 
         try
         {
             var prompt = BuildResearchPrompt(request);
-            
+
             if (prompt.Length > MaxPromptLength)
             {
-                _logger.LogWarning("Generated prompt exceeds maximum length ({Length} > {MaxLength}), truncating", 
+                _logger.LogWarning("Generated prompt exceeds maximum length ({Length} > {MaxLength}), truncating",
                     prompt.Length, MaxPromptLength);
                 prompt = prompt.Substring(0, MaxPromptLength);
             }
@@ -513,7 +513,7 @@ public class IdeationService
 
             var findings = ParseResearchResponse(response, request.Topic);
 
-            _logger.LogInformation("Successfully gathered {Count} research findings for topic: {Topic}", 
+            _logger.LogInformation("Successfully gathered {Count} research findings for topic: {Topic}",
                 findings.Count, request.Topic);
 
             return new ResearchResponse(
@@ -544,7 +544,7 @@ public class IdeationService
         // Input validation
         ArgumentNullException.ThrowIfNull(request, nameof(request));
         ArgumentNullException.ThrowIfNull(request.Concept, nameof(request.Concept));
-        
+
         if (string.IsNullOrWhiteSpace(request.Concept.Title))
         {
             throw new ArgumentException("Concept.Title cannot be null or empty", nameof(request));
@@ -560,16 +560,16 @@ public class IdeationService
             throw new ArgumentException("TargetDurationSeconds cannot exceed 3600 seconds (1 hour)", nameof(request));
         }
 
-        _logger.LogInformation("Generating storyboard for concept: {ConceptTitle} (duration: {Duration}s)", 
+        _logger.LogInformation("Generating storyboard for concept: {ConceptTitle} (duration: {Duration}s)",
             request.Concept.Title, request.TargetDurationSeconds);
 
         try
         {
             var prompt = BuildStoryboardPrompt(request);
-            
+
             if (prompt.Length > MaxPromptLength)
             {
-                _logger.LogWarning("Generated prompt exceeds maximum length ({Length} > {MaxLength}), truncating", 
+                _logger.LogWarning("Generated prompt exceeds maximum length ({Length} > {MaxLength}), truncating",
                     prompt.Length, MaxPromptLength);
                 prompt = prompt.Substring(0, MaxPromptLength);
             }
@@ -584,7 +584,7 @@ public class IdeationService
 
             var scenes = ParseStoryboardResponse(response, request.TargetDurationSeconds);
 
-            _logger.LogInformation("Successfully generated {Count} storyboard scenes for concept: {ConceptTitle}", 
+            _logger.LogInformation("Successfully generated {Count} storyboard scenes for concept: {ConceptTitle}",
                 scenes.Count, request.Concept.Title);
 
             return new StoryboardResponse(
@@ -616,7 +616,7 @@ public class IdeationService
         // Input validation
         ArgumentNullException.ThrowIfNull(request, nameof(request));
         ArgumentNullException.ThrowIfNull(request.Concept, nameof(request.Concept));
-        
+
         if (string.IsNullOrWhiteSpace(request.RefinementDirection))
         {
             throw new ArgumentException("RefinementDirection cannot be null or empty", nameof(request));
@@ -634,10 +634,10 @@ public class IdeationService
         try
         {
             var prompt = BuildRefineConceptPrompt(request);
-            
+
             if (prompt.Length > MaxPromptLength)
             {
-                _logger.LogWarning("Generated prompt exceeds maximum length ({Length} > {MaxLength}), truncating", 
+                _logger.LogWarning("Generated prompt exceeds maximum length ({Length} > {MaxLength}), truncating",
                     prompt.Length, MaxPromptLength);
                 prompt = prompt.Substring(0, MaxPromptLength);
             }
@@ -693,10 +693,10 @@ public class IdeationService
         try
         {
             var prompt = BuildQuestionsPrompt(request);
-            
+
             if (prompt.Length > MaxPromptLength)
             {
-                _logger.LogWarning("Generated prompt exceeds maximum length ({Length} > {MaxLength}), truncating", 
+                _logger.LogWarning("Generated prompt exceeds maximum length ({Length} > {MaxLength}), truncating",
                     prompt.Length, MaxPromptLength);
                 prompt = prompt.Substring(0, MaxPromptLength);
             }
@@ -711,7 +711,7 @@ public class IdeationService
 
             var questions = ParseQuestionsResponse(response);
 
-            _logger.LogInformation("Successfully generated {Count} clarifying questions for project: {ProjectId}", 
+            _logger.LogInformation("Successfully generated {Count} clarifying questions for project: {ProjectId}",
                 questions.Count, request.ProjectId);
 
             return new QuestionsResponse(
@@ -752,16 +752,16 @@ public class IdeationService
 
         var variantCount = Math.Clamp(request.VariantCount ?? 3, 2, 4);
 
-        _logger.LogInformation("Converting idea to brief: {Idea} (variant count: {VariantCount})", 
+        _logger.LogInformation("Converting idea to brief: {Idea} (variant count: {VariantCount})",
             request.Idea, variantCount);
 
         try
         {
             var prompt = BuildIdeaToBriefPrompt(request, variantCount);
-            
+
             if (prompt.Length > MaxPromptLength)
             {
-                _logger.LogWarning("Generated prompt exceeds maximum length ({Length} > {MaxLength}), truncating", 
+                _logger.LogWarning("Generated prompt exceeds maximum length ({Length} > {MaxLength}), truncating",
                     prompt.Length, MaxPromptLength);
                 prompt = prompt.Substring(0, MaxPromptLength);
             }
@@ -804,7 +804,7 @@ public class IdeationService
         var sb = new StringBuilder();
         sb.AppendLine($"Generate exactly {conceptCount} unique, creative, and actionable video concept ideas for the topic: '{request.Topic}'");
         sb.AppendLine();
-        
+
         // Include RAG context if available to provide specific information about the topic
         if (ragContext != null && ragContext.Chunks.Count > 0)
         {
@@ -824,18 +824,18 @@ public class IdeationService
             sb.AppendLine("Every concept must be directly relevant to the actual information provided above.");
             sb.AppendLine();
         }
-        
+
         // Add intelligent context about trending topics and content opportunities
         if (_trendingTopicsService != null)
         {
             try
             {
                 var trendingTopics = await _trendingTopicsService.GetTrendingTopicsAsync(
-                    request.Topic, 
-                    maxResults: 5, 
-                    forceRefresh: false, 
+                    request.Topic,
+                    maxResults: 5,
+                    forceRefresh: false,
                     ct).ConfigureAwait(false);
-                
+
                 if (trendingTopics.Count > 0)
                 {
                     sb.AppendLine("=== TRENDING CONTEXT ===");
@@ -877,7 +877,7 @@ public class IdeationService
                     request.Topic,
                     maxResults: 15,
                     ct).ConfigureAwait(false);
-                
+
                 if (competitiveIntel.TopDomains.Any())
                 {
                     sb.AppendLine("=== COMPETITIVE INTELLIGENCE ===");
@@ -1053,7 +1053,7 @@ public class IdeationService
             sb.AppendLine("=== REAL-TIME WEB INTELLIGENCE ===");
             sb.AppendLine($"Content Gap Opportunity Score: {webGapAnalysis.OpportunityScore:F1}/100");
             sb.AppendLine();
-            
+
             if (webGapAnalysis.GapKeywords.Any())
             {
                 sb.AppendLine("Identified Content Gaps (from current web search):");
@@ -1063,7 +1063,7 @@ public class IdeationService
                 }
                 sb.AppendLine();
             }
-            
+
             if (webGapAnalysis.OversaturatedTopics.Any())
             {
                 sb.AppendLine("Oversaturated Topics (high competition, consider avoiding):");
@@ -1073,7 +1073,7 @@ public class IdeationService
                 }
                 sb.AppendLine();
             }
-            
+
             if (webGapAnalysis.UniqueAngles.Any())
             {
                 sb.AppendLine("Unique Content Angles (less explored approaches):");
@@ -1083,7 +1083,7 @@ public class IdeationService
                 }
                 sb.AppendLine();
             }
-            
+
             if (webGapAnalysis.RecommendedFocus.Any())
             {
                 sb.AppendLine($"Recommended Focus Areas: {string.Join(", ", webGapAnalysis.RecommendedFocus)}");
@@ -1352,7 +1352,7 @@ public class IdeationService
         {
             // Clean the response - remove markdown code blocks and other LLM formatting artifacts
             var cleanedResponse = CleanJsonResponse(response);
-            
+
             if (string.IsNullOrWhiteSpace(cleanedResponse))
             {
                 _logger.LogWarning("Cleaned response is empty, falling back to fallback concepts");
@@ -1449,7 +1449,7 @@ public class IdeationService
         if (concepts.Count == 0)
         {
             _logger.LogError("No concepts parsed from LLM response. Attempting to extract meaningful content from raw response.");
-            
+
             // Try to extract concepts from non-JSON response using pattern matching
             var extractedConcepts = TryExtractConceptsFromText(response, originalTopic, desiredConceptCount);
             if (extractedConcepts.Count > 0)
@@ -1463,9 +1463,9 @@ public class IdeationService
                 _logger.LogError(
                     "Failed to parse or extract concepts from LLM response for topic: {Topic}. " +
                     "Response length: {Length}. First 1000 chars: {Preview}",
-                    originalTopic, response.Length, 
+                    originalTopic, response.Length,
                     response.Substring(0, Math.Min(1000, response.Length)));
-                
+
                 throw new InvalidOperationException(
                     $"Failed to generate concepts from LLM response. The response could not be parsed as JSON and no meaningful content could be extracted. " +
                     $"Please check your LLM provider configuration and try again. " +
@@ -1502,7 +1502,7 @@ public class IdeationService
 
             // Parse JSON response
             var jsonDoc = JsonDocument.Parse(cleanedResponse);
-            
+
             // Extract AI response if present
             if (jsonDoc.RootElement.TryGetProperty("aiResponse", out var aiResponseElement))
             {
@@ -1517,7 +1517,7 @@ public class IdeationService
                     var questionText = questionElement.GetProperty("question").GetString() ?? "";
                     var context = questionElement.GetProperty("context").GetString() ?? "";
                     var questionType = questionElement.GetProperty("questionType").GetString() ?? "open-ended";
-                    
+
                     List<string>? suggestedAnswers = null;
                     if (questionElement.TryGetProperty("suggestedAnswers", out var answersArray) && answersArray.ValueKind == JsonValueKind.Array)
                     {
@@ -2062,7 +2062,7 @@ public class IdeationService
                     var questionText = questionElement.GetProperty("question").GetString() ?? "";
                     var context = questionElement.GetProperty("context").GetString() ?? "";
                     var questionType = questionElement.GetProperty("questionType").GetString() ?? "open-ended";
-                    
+
                     List<string>? suggestedAnswers = null;
                     if (questionElement.TryGetProperty("suggestedAnswers", out var answersArray) && answersArray.ValueKind == JsonValueKind.Array)
                     {
@@ -2320,10 +2320,10 @@ public class IdeationService
         {
 
             var prompt = BuildEnhanceTopicPrompt(request);
-            
+
             if (prompt.Length > MaxPromptLength)
             {
-                _logger.LogWarning("Generated prompt exceeds maximum length ({Length} > {MaxLength}), truncating", 
+                _logger.LogWarning("Generated prompt exceeds maximum length ({Length} > {MaxLength}), truncating",
                     prompt.Length, MaxPromptLength);
                 prompt = prompt.Substring(0, MaxPromptLength);
             }
@@ -2340,7 +2340,7 @@ public class IdeationService
             var enhancedTopic = ExtractEnhancedTopic(response, request.Topic);
             var improvements = ExtractImprovements(response);
 
-            _logger.LogInformation("Successfully enhanced topic: {OriginalTopic} -> {EnhancedTopic}", 
+            _logger.LogInformation("Successfully enhanced topic: {OriginalTopic} -> {EnhancedTopic}",
                 request.Topic, enhancedTopic);
 
             return new EnhanceTopicResponse(
@@ -2412,7 +2412,7 @@ public class IdeationService
         // The LLM sometimes echoes back the prompt, so we need to strip it out
         var systemPromptMarker = "You are an expert video content strategist";
         var originalTopicMarker = $"Original topic: {originalTopic}";
-        
+
         // If the response contains the system prompt, extract everything after it
         if (llmResponse.Contains(systemPromptMarker))
         {
@@ -2455,10 +2455,10 @@ public class IdeationService
             .Trim();
 
         // Remove common prefixes
-        var prefixes = new[] { 
-            "Enhanced topic:", 
-            "Topic:", 
-            "Here's the enhanced version:", 
+        var prefixes = new[] {
+            "Enhanced topic:",
+            "Topic:",
+            "Here's the enhanced version:",
             "Enhanced:",
             "Here is the enhanced topic:",
             "The enhanced topic is:"
@@ -2483,7 +2483,7 @@ public class IdeationService
             // Try to find the last sentence or paragraph that doesn't contain prompt markers
             var lines = cleaned.Split('\n', StringSplitOptions.RemoveEmptyEntries);
             var validLines = lines
-                .Where(line => 
+                .Where(line =>
                     !line.Contains("You are an expert") &&
                     !line.Contains("Original topic:") &&
                     !line.Contains("Please provide") &&
@@ -2526,7 +2526,7 @@ public class IdeationService
         }
 
         // If cleaned response is too short, same as original, or still contains prompt markers, return original
-        if (cleaned.Length < 10 || 
+        if (cleaned.Length < 10 ||
             cleaned.Equals(originalTopic, StringComparison.OrdinalIgnoreCase) ||
             cleaned.Contains("You are an expert") ||
             cleaned.Contains("Original topic:"))
@@ -2622,7 +2622,7 @@ public class IdeationService
             throw new ArgumentException("Topic cannot be null or empty", nameof(request));
         }
 
-        _logger.LogInformation("Analyzing prompt quality for topic: {Topic} (length: {Length})", 
+        _logger.LogInformation("Analyzing prompt quality for topic: {Topic} (length: {Length})",
             request.Topic, request.Topic.Length);
 
         // Try to retrieve RAG context if enabled
@@ -2654,10 +2654,10 @@ public class IdeationService
         try
         {
             var prompt = BuildPromptQualityAnalysisPrompt(request, ragContext);
-            
+
             if (prompt.Length > MaxPromptLength)
             {
-                _logger.LogWarning("Generated prompt exceeds maximum length ({Length} > {MaxLength}), truncating", 
+                _logger.LogWarning("Generated prompt exceeds maximum length ({Length} > {MaxLength}), truncating",
                     prompt.Length, MaxPromptLength);
                 prompt = prompt.Substring(0, MaxPromptLength);
             }
@@ -2672,7 +2672,7 @@ public class IdeationService
 
             var analysis = ParsePromptQualityAnalysisResponse(response, request);
 
-            _logger.LogInformation("Successfully analyzed prompt quality. Score: {Score}, Level: {Level}", 
+            _logger.LogInformation("Successfully analyzed prompt quality. Score: {Score}, Level: {Level}",
                 analysis.Score, analysis.Level);
 
             return analysis;
@@ -2696,7 +2696,7 @@ public class IdeationService
         sb.AppendLine();
         sb.AppendLine("VIDEO PROMPT TO ANALYZE:");
         sb.AppendLine($"Topic: {request.Topic}");
-        
+
         if (!string.IsNullOrWhiteSpace(request.VideoType))
         {
             sb.AppendLine($"Video Type: {request.VideoType}");
@@ -2773,7 +2773,7 @@ public class IdeationService
         {
             // Try to extract JSON from response (might have markdown code blocks)
             var jsonText = llmResponse;
-            
+
             // Remove markdown code blocks if present
             if (jsonText.Contains("```json"))
             {
@@ -2798,8 +2798,8 @@ public class IdeationService
             using var jsonDoc = JsonDocument.Parse(jsonText);
             var root = jsonDoc.RootElement;
 
-            var score = root.TryGetProperty("score", out var scoreElement) 
-                ? scoreElement.GetInt32() 
+            var score = root.TryGetProperty("score", out var scoreElement)
+                ? scoreElement.GetInt32()
                 : CalculateFallbackScore(request);
 
             var level = root.TryGetProperty("level", out var levelElement)
@@ -2818,7 +2818,7 @@ public class IdeationService
                     }
                 }
             }
-            
+
             // Ensure all required metrics are present with fallback values
             var requiredMetrics = new[] { "length", "specificity", "clarity", "actionability", "engagement", "alignment" };
             foreach (var metric in requiredMetrics)
@@ -2831,7 +2831,7 @@ public class IdeationService
 
             // Parse suggestions
             var suggestions = new List<QualitySuggestion>();
-            if (root.TryGetProperty("suggestions", out var suggestionsElement) && 
+            if (root.TryGetProperty("suggestions", out var suggestionsElement) &&
                 suggestionsElement.ValueKind == JsonValueKind.Array)
             {
                 foreach (var suggestionElement in suggestionsElement.EnumerateArray())
@@ -2904,7 +2904,7 @@ public class IdeationService
         var hasVideoType = !string.IsNullOrWhiteSpace(request.VideoType);
 
         var score = 0;
-        score += Math.Min((wordCount / 30.0) * 20, 20); // Length
+        score += (int)Math.Min((wordCount / 30.0) * 20, 20); // Length
         score += wordCount > 15 ? 15 : 5; // Specificity
         score += (hasAudience && hasKeyMessage) ? 20 : 10; // Clarity
         score += wordCount > 20 ? 15 : 8; // Actionability
@@ -3002,7 +3002,7 @@ public class IdeationService
 
         if (prompt.Length > MaxPromptLength)
         {
-            _logger.LogWarning("Prompt length ({Length}) exceeds maximum ({MaxLength}), truncating", 
+            _logger.LogWarning("Prompt length ({Length}) exceeds maximum ({MaxLength}), truncating",
                 prompt.Length, MaxPromptLength);
             prompt = prompt.Substring(0, MaxPromptLength);
         }
@@ -3022,10 +3022,10 @@ public class IdeationService
             // Use provider-specific parameter handling if LLM parameters are provided
             if (request != null && llmParams != null)
             {
-                
+
                 // Use DraftScriptAsync for proper parameter support if any parameters are specified
                 if (!string.IsNullOrWhiteSpace(llmParams.ModelOverride) ||
-                    llmParams.Temperature.HasValue || llmParams.TopP.HasValue || 
+                    llmParams.Temperature.HasValue || llmParams.TopP.HasValue ||
                     llmParams.TopK.HasValue || llmParams.MaxTokens.HasValue)
                 {
                     // LLM parameters specified - use provider-specific handling
@@ -3044,24 +3044,24 @@ public class IdeationService
                 _logger.LogDebug("Using CompleteAsync (no LLM parameters provided)");
                 response = await _llmProvider.CompleteAsync(prompt, ct).ConfigureAwait(false);
             }
-            
+
             var duration = DateTime.UtcNow - startTime;
             _logger.LogDebug("LLM provider completed in {Duration}ms", duration.TotalMilliseconds);
-            
+
             if (string.IsNullOrWhiteSpace(response))
             {
                 _logger.LogWarning("LLM provider returned empty response");
                 throw new InvalidOperationException("LLM provider returned an empty response. Please try again.");
             }
-            
+
             // Validate response quality - check for common error patterns
             var trimmedResponse = response.Trim();
             if (trimmedResponse.Length < 50)
             {
-                _logger.LogWarning("LLM response is suspiciously short ({Length} chars). Response: {Response}", 
+                _logger.LogWarning("LLM response is suspiciously short ({Length} chars). Response: {Response}",
                     trimmedResponse.Length, trimmedResponse.Substring(0, Math.Min(100, trimmedResponse.Length)));
             }
-            
+
             _logger.LogDebug("LLM provider returned response of length {Length}", response.Length);
             return response;
         }
@@ -3078,7 +3078,7 @@ public class IdeationService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error calling LLM provider {Provider}: {ErrorMessage}", providerType, ex.Message);
-            
+
             // Provide helpful error message based on provider type
             var errorMessage = providerType switch
             {
@@ -3087,7 +3087,7 @@ public class IdeationService
                 "GeminiLlmProvider" => "Failed to generate concepts with Gemini. Please check your API key and network connection.",
                 _ => "Failed to generate concepts. Please try again or check your LLM provider configuration."
             };
-            
+
             throw new InvalidOperationException(errorMessage, ex);
         }
     }
@@ -3118,7 +3118,7 @@ public class IdeationService
             "Model override: {ModelOverride}, Temperature: {Temperature}. " +
             "For full parameter support, consider using Ollama provider.",
             providerType, llmParams?.ModelOverride ?? "default", llmParams?.Temperature?.ToString() ?? "default");
-        
+
         // Fallback to CompleteAsync - parameters may not be applied
         return await _llmProvider.CompleteAsync(prompt, ct).ConfigureAwait(false);
     }
@@ -3135,7 +3135,7 @@ public class IdeationService
         // Use reflection to access Ollama provider's internal HttpClient and configuration
         // This allows us to call Ollama API directly with proper parameters
         var providerType = _llmProvider.GetType();
-        
+
         if (providerType.Name != "OllamaLlmProvider")
         {
             throw new InvalidOperationException("GenerateWithOllamaDirectAsync can only be used with OllamaLlmProvider");
@@ -3167,8 +3167,8 @@ public class IdeationService
 
         // Get LLM parameters with defaults
         var llmParams = request.LlmParameters;
-        var modelToUse = !string.IsNullOrWhiteSpace(llmParams?.ModelOverride) 
-            ? llmParams.ModelOverride 
+        var modelToUse = !string.IsNullOrWhiteSpace(llmParams?.ModelOverride)
+            ? llmParams.ModelOverride
             : defaultModel;
         var temperature = llmParams?.Temperature ?? 0.7;
         var maxTokens = llmParams?.MaxTokens ?? 2048;
@@ -3228,13 +3228,13 @@ public class IdeationService
                 if (responseDoc.RootElement.TryGetProperty("response", out var responseProp))
                 {
                     var result = responseProp.GetString() ?? string.Empty;
-                    
+
                     if (string.IsNullOrWhiteSpace(result))
                     {
                         _logger.LogWarning("Ollama returned empty response for ideation");
                         throw new InvalidOperationException("Ollama returned an empty response");
                     }
-                    
+
                     _logger.LogDebug("Ollama ideation succeeded with {Length} characters", result.Length);
                     return result;
                 }
@@ -3287,7 +3287,7 @@ public class IdeationService
             return string.Empty;
 
         var cleanedResponse = response.Trim();
-        
+
         // Remove markdown code block markers with language specifier
         if (cleanedResponse.StartsWith("```json", StringComparison.OrdinalIgnoreCase))
         {
@@ -3301,23 +3301,23 @@ public class IdeationService
         {
             cleanedResponse = cleanedResponse.Substring(3);
         }
-        
+
         if (cleanedResponse.EndsWith("```"))
         {
             cleanedResponse = cleanedResponse.Substring(0, cleanedResponse.Length - 3);
         }
-        
+
         cleanedResponse = cleanedResponse.Trim();
-        
+
         // Try to extract JSON if there's text before/after
         var firstBrace = cleanedResponse.IndexOf('{');
         var lastBrace = cleanedResponse.LastIndexOf('}');
-        
+
         if (firstBrace >= 0 && lastBrace > firstBrace)
         {
             cleanedResponse = cleanedResponse.Substring(firstBrace, lastBrace - firstBrace + 1);
         }
-        
+
         return cleanedResponse;
     }
 
@@ -3328,18 +3328,18 @@ public class IdeationService
     private List<ConceptIdea> TryExtractConceptsFromText(string response, string originalTopic, int desiredConceptCount)
     {
         var concepts = new List<ConceptIdea>();
-        
+
         try
         {
             // Look for numbered lists or concept patterns in the text
             var lines = response.Split('\n', StringSplitOptions.RemoveEmptyEntries);
             var currentConcept = new Dictionary<string, string>();
             var conceptNumber = 1;
-            
+
             foreach (var line in lines)
             {
                 var trimmedLine = line.Trim();
-                
+
                 // Look for concept indicators
                 if (trimmedLine.StartsWith("Concept", StringComparison.OrdinalIgnoreCase) ||
                     trimmedLine.StartsWith($"{conceptNumber}.", StringComparison.OrdinalIgnoreCase) ||
@@ -3355,9 +3355,9 @@ public class IdeationService
                         }
                         currentConcept.Clear();
                     }
-                    
+
                     // Extract title from the line
-                    var titleMatch = System.Text.RegularExpressions.Regex.Match(trimmedLine, @"(?:Concept\s*\d*:?\s*|^\d+\.\s*)(.+)", 
+                    var titleMatch = System.Text.RegularExpressions.Regex.Match(trimmedLine, @"(?:Concept\s*\d*:?\s*|^\d+\.\s*)(.+)",
                         System.Text.RegularExpressions.RegexOptions.IgnoreCase);
                     if (titleMatch.Success)
                     {
@@ -3391,7 +3391,7 @@ public class IdeationService
                     currentConcept["description"] = trimmedLine;
                 }
             }
-            
+
             // Add the last concept
             if (currentConcept.Count > 0)
             {
@@ -3406,7 +3406,7 @@ public class IdeationService
         {
             _logger.LogWarning(ex, "Failed to extract concepts from text response");
         }
-        
+
         return concepts;
     }
 
@@ -3419,14 +3419,14 @@ public class IdeationService
         {
             return null;
         }
-        
+
         var title = fields["title"];
-        var description = fields.GetValueOrDefault("description", 
+        var description = fields.GetValueOrDefault("description",
             $"A video concept about {originalTopic}.");
         var angle = fields.GetValueOrDefault("angle", "Tutorial");
-        var hook = fields.GetValueOrDefault("hook", 
+        var hook = fields.GetValueOrDefault("hook",
             $"Discover insights about {originalTopic}");
-        
+
         return new ConceptIdea(
             ConceptId: Guid.NewGuid().ToString(),
             Title: title,
