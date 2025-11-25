@@ -258,25 +258,127 @@ public class ScriptsController : ControllerBase
                 });
             }
 
+            // Validate the script text before parsing
+            if (string.IsNullOrWhiteSpace(result.Script))
+            {
+                _logger.LogError(
+                    "[{CorrelationId}] Script generation returned empty or null script text. Provider: {Provider}",
+                    correlationId, result.ProviderUsed ?? "Unknown");
+                
+                return StatusCode(500, new ProblemDetails
+                {
+                    Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E302",
+                    Title = "Script Generation Failed",
+                    Status = 500,
+                    Detail = $"Provider {result.ProviderUsed ?? "Unknown"} returned an empty script. The model may not have generated any content. Please try again with a different prompt or provider.",
+                    Extensions =
+                    {
+                        ["correlationId"] = correlationId,
+                        ["errorCode"] = "E302",
+                        ["providerUsed"] = result.ProviderUsed ?? "None"
+                    }
+                });
+            }
+
             var scriptId = Guid.NewGuid().ToString();
             // Extract model used from the Brief LlmParameters if available
             // Use "provider-default" as fallback to distinguish from explicit "default" model selection
             var modelUsed = llmParams?.ModelOverride ?? "provider-default";
-            var script = ParseScriptFromText(result.Script, planSpec, result.ProviderUsed ?? "Unknown", modelUsed);
+            
+            Script script;
+            try
+            {
+                script = ParseScriptFromText(result.Script, planSpec, result.ProviderUsed ?? "Unknown", modelUsed);
+            }
+            catch (Exception parseEx)
+            {
+                _logger.LogError(parseEx,
+                    "[{CorrelationId}] Failed to parse script text. Script length: {Length}, Provider: {Provider}",
+                    correlationId, result.Script?.Length ?? 0, result.ProviderUsed ?? "Unknown");
+                
+                return StatusCode(500, new ProblemDetails
+                {
+                    Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E303",
+                    Title = "Script Parsing Failed",
+                    Status = 500,
+                    Detail = "The generated script could not be parsed into scenes. This may indicate an issue with the model output format. Please try again.",
+                    Extensions =
+                    {
+                        ["correlationId"] = correlationId,
+                        ["errorCode"] = "E303",
+                        ["providerUsed"] = result.ProviderUsed ?? "None",
+                        ["scriptLength"] = result.Script?.Length ?? 0
+                    }
+                });
+            }
+
+            // Validate parsed script has scenes
+            if (script.Scenes == null || script.Scenes.Count == 0)
+            {
+                _logger.LogError(
+                    "[{CorrelationId}] Parsed script has no scenes. Script text length: {Length}, Provider: {Provider}",
+                    correlationId, result.Script?.Length ?? 0, result.ProviderUsed ?? "Unknown");
+                
+                return StatusCode(500, new ProblemDetails
+                {
+                    Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E304",
+                    Title = "Invalid Script Structure",
+                    Status = 500,
+                    Detail = "The generated script could not be parsed into scenes. The model output may not be in the expected format. Please try again with a different prompt or provider.",
+                    Extensions =
+                    {
+                        ["correlationId"] = correlationId,
+                        ["errorCode"] = "E304",
+                        ["providerUsed"] = result.ProviderUsed ?? "None"
+                    }
+                });
+            }
 
             script = script with { CorrelationId = correlationId };
 
-            script = _scriptProcessor.ValidateSceneTiming(script, planSpec.TargetDuration);
-            script = _scriptProcessor.OptimizeNarrationFlow(script);
-            script = _scriptProcessor.ApplyTransitions(script, planSpec.Style);
+            try
+            {
+                script = _scriptProcessor.ValidateSceneTiming(script, planSpec.TargetDuration);
+                script = _scriptProcessor.OptimizeNarrationFlow(script);
+                script = _scriptProcessor.ApplyTransitions(script, planSpec.Style);
+            }
+            catch (Exception processingEx)
+            {
+                _logger.LogWarning(processingEx,
+                    "[{CorrelationId}] Error during script post-processing, using unprocessed script",
+                    correlationId);
+                // Continue with unprocessed script rather than failing
+            }
 
             _scriptStore[scriptId] = script;
 
             _logger.LogInformation(
-                "[{CorrelationId}] Script generated successfully with provider {Provider}, ID: {ScriptId}",
-                correlationId, result.ProviderUsed, scriptId);
+                "[{CorrelationId}] Script generated successfully with provider {Provider}, ID: {ScriptId}, Scenes: {SceneCount}",
+                correlationId, result.ProviderUsed, scriptId, script.Scenes.Count);
 
             var response = MapScriptToResponse(scriptId, script);
+            
+            // Final validation of response
+            if (response.Scenes == null || response.Scenes.Count == 0)
+            {
+                _logger.LogError(
+                    "[{CorrelationId}] MapScriptToResponse produced empty scenes. Original script had {SceneCount} scenes",
+                    correlationId, script.Scenes.Count);
+                
+                return StatusCode(500, new ProblemDetails
+                {
+                    Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E305",
+                    Title = "Script Mapping Failed",
+                    Status = 500,
+                    Detail = "An error occurred while mapping the script to the response format. Please try again.",
+                    Extensions =
+                    {
+                        ["correlationId"] = correlationId,
+                        ["errorCode"] = "E305"
+                    }
+                });
+            }
+            
             return Ok(response);
         }
         catch (TaskCanceledException ex) when (ct.IsCancellationRequested)
@@ -834,7 +936,18 @@ public class ScriptsController : ControllerBase
 
     private Script ParseScriptFromText(string scriptText, PlanSpec planSpec, string provider, string modelUsed = "provider-default")
     {
+        if (string.IsNullOrWhiteSpace(scriptText))
+        {
+            throw new ArgumentException("Script text cannot be null or empty", nameof(scriptText));
+        }
+
         var lines = scriptText.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        
+        if (lines.Length == 0)
+        {
+            throw new ArgumentException("Script text contains no valid lines", nameof(scriptText));
+        }
+        
         var title = lines.FirstOrDefault()?.Trim() ?? "Untitled Script";
 
         if (title.StartsWith("Title:", StringComparison.OrdinalIgnoreCase))
@@ -893,30 +1006,40 @@ public class ScriptsController : ControllerBase
 
     private GenerateScriptResponse MapScriptToResponse(string scriptId, Script script)
     {
+        if (script == null)
+        {
+            throw new ArgumentNullException(nameof(script), "Script cannot be null");
+        }
+
+        if (script.Scenes == null || script.Scenes.Count == 0)
+        {
+            throw new InvalidOperationException($"Script {scriptId} has no scenes to map");
+        }
+
         return new GenerateScriptResponse
         {
             ScriptId = scriptId,
-            Title = script.Title,
+            Title = script.Title ?? "Untitled Script",
             Scenes = script.Scenes.Select(s => new ScriptSceneDto
             {
                 Number = s.Number,
-                Narration = s.Narration,
-                VisualPrompt = s.VisualPrompt,
+                Narration = s.Narration ?? string.Empty,
+                VisualPrompt = s.VisualPrompt ?? string.Empty,
                 DurationSeconds = s.Duration.TotalSeconds,
                 Transition = s.Transition.ToString()
             }).ToList(),
             TotalDurationSeconds = script.TotalDuration.TotalSeconds,
             Metadata = new ScriptMetadataDto
             {
-                GeneratedAt = script.Metadata.GeneratedAt,
-                ProviderName = script.Metadata.ProviderName,
-                ModelUsed = script.Metadata.ModelUsed,
-                TokensUsed = script.Metadata.TokensUsed,
-                EstimatedCost = script.Metadata.EstimatedCost,
-                Tier = script.Metadata.Tier.ToString(),
-                GenerationTimeSeconds = script.Metadata.GenerationTime.TotalSeconds
+                GeneratedAt = script.Metadata?.GeneratedAt ?? DateTime.UtcNow,
+                ProviderName = script.Metadata?.ProviderName ?? "Unknown",
+                ModelUsed = script.Metadata?.ModelUsed ?? "unknown",
+                TokensUsed = script.Metadata?.TokensUsed ?? 0,
+                EstimatedCost = script.Metadata?.EstimatedCost ?? 0,
+                Tier = script.Metadata?.Tier.ToString() ?? "Free",
+                GenerationTimeSeconds = script.Metadata?.GenerationTime.TotalSeconds ?? 0
             },
-            CorrelationId = script.CorrelationId
+            CorrelationId = script.CorrelationId ?? string.Empty
         };
     }
 

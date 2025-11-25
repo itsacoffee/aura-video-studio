@@ -209,15 +209,24 @@ public class OllamaLlmProvider : ILlmProvider
                 {
                     string script = responseText.GetString() ?? string.Empty;
 
+                    _logger.LogInformation("Ollama returned response with {Length} characters (attempt {Attempt}/{MaxRetries})",
+                        script.Length, attempt + 1, _maxRetries + 1);
+
                     if (string.IsNullOrWhiteSpace(script))
                     {
+                        _logger.LogError("Ollama returned an empty response. Response JSON: {Response}",
+                            responseJson.Substring(0, Math.Min(1000, responseJson.Length)));
                         throw new InvalidOperationException("Ollama returned an empty response");
                     }
 
+                    // Log a preview of the response for debugging
+                    var preview = script.Substring(0, Math.Min(200, script.Length));
+                    _logger.LogDebug("Ollama response preview: {Preview}...", preview);
+
                     var duration = DateTime.UtcNow - startTime;
 
-                    _logger.LogInformation("Script generated successfully with Ollama ({Length} characters) in {Duration}s",
-                        script.Length, duration.TotalSeconds);
+                    _logger.LogInformation("Script generated successfully with Ollama ({Length} characters) in {Duration:F1}s using model {Model}",
+                        script.Length, duration.TotalSeconds, modelToUse);
 
                     // Track performance if callback configured
                     PerformanceTrackingCallback?.Invoke(75.0, duration, true);
@@ -225,7 +234,16 @@ public class OllamaLlmProvider : ILlmProvider
                     return script;
                 }
 
-                _logger.LogWarning("Ollama response did not contain expected 'response' field. Response: {Response}",
+                // Check for other response fields that might indicate an issue
+                if (responseDoc.RootElement.TryGetProperty("done", out var doneElement))
+                {
+                    var isDone = doneElement.GetBoolean();
+                    _logger.LogWarning("Ollama response has 'done' field: {Done}, but no 'response' field. Full response: {Response}",
+                        isDone, responseJson.Substring(0, Math.Min(500, responseJson.Length)));
+                }
+
+                _logger.LogError("Ollama response did not contain expected 'response' field. Available fields: {Fields}. Response: {Response}",
+                    string.Join(", ", responseDoc.RootElement.EnumerateObject().Select(p => p.Name)),
                     responseJson.Substring(0, Math.Min(500, responseJson.Length)));
                 throw new InvalidOperationException($"Invalid response structure from Ollama. Expected 'response' field but got: {responseJson.Substring(0, Math.Min(200, responseJson.Length))}");
             }

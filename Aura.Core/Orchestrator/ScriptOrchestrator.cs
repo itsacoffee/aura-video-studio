@@ -400,15 +400,20 @@ public class ScriptOrchestrator
             }
         }
 
-        // All providers failed
+        // All providers failed - log comprehensive error summary
+        _logger.LogError(
+            "All LLM providers failed to generate script for topic: {Topic}. Requested tier: {Tier}, Available providers: {Providers}",
+            brief.Topic, preferredTier, string.Join(", ", providers.Keys));
+        
         return new ScriptResult
         {
             Success = false,
             ErrorCode = "E300",
-            ErrorMessage = "All LLM providers failed to generate script",
+            ErrorMessage = $"All LLM providers failed to generate script. Tried: {requestedProvider}. Please check provider logs for details.",
             Script = null,
             ProviderUsed = null,
-            IsFallback = false
+            IsFallback = false,
+            RequestedProvider = requestedProvider
         };
     }
 
@@ -567,13 +572,42 @@ public class ScriptOrchestrator
         try
         {
             _logger.LogInformation("=== Attempting script generation with provider: {Provider} ===", providerName);
-            _logger.LogInformation("Provider type: {Type}, Brief topic: {Topic}", provider.GetType().Name, brief.Topic);
-            var script = await provider.DraftScriptAsync(brief, spec, ct).ConfigureAwait(false);
-            _logger.LogInformation("=== Provider {Provider} completed script generation ===", providerName);
+            _logger.LogInformation("Provider type: {Type}, Brief topic: {Topic}, Model: {Model}",
+                provider.GetType().Name, brief.Topic, brief.LlmParameters?.ModelOverride ?? "default");
+            
+            string? script = null;
+            try
+            {
+                script = await provider.DraftScriptAsync(brief, spec, ct).ConfigureAwait(false);
+                _logger.LogInformation("=== Provider {Provider} completed script generation ===", providerName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Provider {Provider} threw exception during DraftScriptAsync. Exception type: {ExceptionType}",
+                    providerName, ex.GetType().Name);
+                throw; // Re-throw to be caught by outer catch block
+            }
+
+            if (script == null)
+            {
+                _logger.LogError("Provider {Provider} returned null script (not empty string, but null)", providerName);
+                return new ScriptResult
+                {
+                    Success = false,
+                    ErrorCode = "E302",
+                    ErrorMessage = $"Provider {providerName} returned null script",
+                    Script = null,
+                    ProviderUsed = providerName,
+                    IsFallback = isFallback,
+                    RequestedProvider = requestedProvider,
+                    DowngradeReason = downgradeReason
+                };
+            }
 
             if (string.IsNullOrWhiteSpace(script))
             {
-                _logger.LogWarning("Provider {Provider} returned empty script", providerName);
+                _logger.LogWarning("Provider {Provider} returned empty or whitespace-only script (length: {Length})",
+                    providerName, script.Length);
                 return new ScriptResult
                 {
                     Success = false,
@@ -587,8 +621,10 @@ public class ScriptOrchestrator
                 };
             }
 
-            _logger.LogInformation("Successfully generated script with {Provider} ({Length} chars)",
-                providerName, script.Length);
+            // Log preview of generated script for debugging
+            var preview = script.Substring(0, Math.Min(300, script.Length));
+            _logger.LogInformation("Successfully generated script with {Provider} ({Length} chars). Preview: {Preview}...",
+                providerName, script.Length, preview.Replace('\n', ' ').Replace('\r', ' '));
 
             return new ScriptResult
             {
@@ -604,12 +640,34 @@ public class ScriptOrchestrator
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Provider {Provider} failed: {Message}", providerName, ex.Message);
+            _logger.LogError(ex, 
+                "Provider {Provider} failed with exception. Type: {ExceptionType}, Message: {Message}, InnerException: {InnerException}",
+                providerName, ex.GetType().Name, ex.Message, ex.InnerException?.Message ?? "none");
+            
+            // Extract more detailed error message based on exception type
+            var errorMessage = $"Provider {providerName} failed";
+            if (ex is InvalidOperationException)
+            {
+                errorMessage = ex.Message;
+            }
+            else if (ex is HttpRequestException httpEx)
+            {
+                errorMessage = $"HTTP error with {providerName}: {httpEx.Message}";
+            }
+            else if (ex is TaskCanceledException)
+            {
+                errorMessage = $"Provider {providerName} request timed out or was canceled";
+            }
+            else if (!string.IsNullOrWhiteSpace(ex.Message))
+            {
+                errorMessage = $"{providerName} error: {ex.Message}";
+            }
+            
             return new ScriptResult
             {
                 Success = false,
                 ErrorCode = "E300",
-                ErrorMessage = $"Provider {providerName} failed: {ex.Message}",
+                ErrorMessage = errorMessage,
                 Script = null,
                 ProviderUsed = providerName,
                 IsFallback = isFallback,

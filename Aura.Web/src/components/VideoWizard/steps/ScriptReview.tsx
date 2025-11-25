@@ -610,6 +610,15 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
         ...(llmPresencePenalty !== undefined && { presencePenalty: llmPresencePenalty }),
       });
 
+      // Validate response structure
+      if (!response || !response.scenes || !Array.isArray(response.scenes) || response.scenes.length === 0) {
+        throw new Error('Invalid response from server: Script was generated but contains no scenes. Please try again.');
+      }
+
+      if (!response.metadata || !response.metadata.providerName) {
+        console.warn('Script response missing metadata:', response);
+      }
+
       setGeneratedScript(response);
 
       const scriptScenes = response.scenes.map((scene) => ({
@@ -630,7 +639,7 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
 
       showSuccessToast({
         title: 'Script Generated Successfully',
-        message: `Generated ${response.scenes.length} scenes using ${response.metadata.providerName}. Total duration: ${Math.floor(response.totalDurationSeconds / 60)}:${String(response.totalDurationSeconds % 60).padStart(2, '0')}`,
+        message: `Generated ${response.scenes.length} scenes using ${response.metadata?.providerName || 'AI'}. Total duration: ${Math.floor(response.totalDurationSeconds / 60)}:${String(response.totalDurationSeconds % 60).padStart(2, '0')}`,
       });
     } catch (error) {
       console.error('Script generation failed:', error);
@@ -638,28 +647,47 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
       let errorTitle = 'Script Generation Failed';
       let errorMessage = 'Failed to generate script. Please check your provider configuration and try again.';
 
-      // Try to extract detailed error information from the response
-      if (error && typeof error === 'object' && 'response' in error) {
-        const axiosError = error as { response?: { data?: { detail?: string; errors?: Record<string, string[]>; message?: string } } };
-        const responseData = axiosError.response?.data;
+      // Check for timeout errors specifically
+      if (error && typeof error === 'object') {
+        // Check if it's an Axios timeout error
+        const axiosError = error as { code?: string; message?: string; response?: { status?: number; data?: { detail?: string; errors?: Record<string, string[]>; message?: string } } };
+        
+        if (axiosError.code === 'ECONNABORTED' || axiosError.message?.toLowerCase()?.includes('timeout')) {
+          errorTitle = 'Request Timeout';
+          errorMessage = 'Script generation took too long (over 6 minutes). The model may be processing a complex request. Please try again with a shorter topic or simpler prompt, or check if Ollama is responding properly.';
+        } else if (axiosError.response) {
+          // Handle HTTP error responses
+          const responseData = axiosError.response.data;
+          const status = axiosError.response.status;
 
-        if (responseData) {
-          // Check for validation errors
-          if (responseData.errors && Object.keys(responseData.errors).length > 0) {
-            errorTitle = 'Validation Error';
-            const errorList = Object.entries(responseData.errors)
-              .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
-              .join('; ');
-            errorMessage = `Request validation failed: ${errorList}`;
-          } else if (responseData.detail) {
-            errorMessage = responseData.detail;
-          } else if (responseData.message) {
-            errorMessage = responseData.message;
+          if (status === 408) {
+            errorTitle = 'Request Timeout';
+            errorMessage = responseData?.detail || 'The request timed out after 6 minutes. Please try again with a shorter topic.';
+          } else if (responseData) {
+            // Check for validation errors
+            if (responseData.errors && Object.keys(responseData.errors).length > 0) {
+              errorTitle = 'Validation Error';
+              const errorList = Object.entries(responseData.errors)
+                .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
+                .join('; ');
+              errorMessage = `Request validation failed: ${errorList}`;
+            } else if (responseData.detail) {
+              errorMessage = responseData.detail;
+            } else if (responseData.message) {
+              errorMessage = responseData.message;
+            }
           }
         }
       } else if (error instanceof Error) {
         errorMessage = error.message;
       }
+
+      // Log additional details for debugging
+      console.error('Script generation error details:', {
+        error,
+        errorType: error?.constructor?.name,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
 
       showFailureToast({
         title: errorTitle,
