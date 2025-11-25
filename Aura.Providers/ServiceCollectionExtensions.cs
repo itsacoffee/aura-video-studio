@@ -12,6 +12,7 @@ using Aura.Providers.Tts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Aura.Providers;
 
@@ -413,10 +414,10 @@ public static class ServiceCollectionExtensions
             return new Images.EnhancedUnsplashProvider(logger, httpClient, apiKey);
         });
 
-        // Pexels provider (requires API key)
+        // Pexels provider - using consolidated PexelsProvider (requires API key)
         services.AddSingleton<Aura.Core.Providers.IEnhancedStockProvider>(sp =>
         {
-            var logger = sp.GetRequiredService<ILogger<Images.EnhancedPexelsProvider>>();
+            var logger = sp.GetRequiredService<ILogger<Images.PexelsProvider>>();
             var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
             var keyStore = sp.GetRequiredService<IKeyStore>();
 
@@ -429,7 +430,7 @@ public static class ServiceCollectionExtensions
                 return null!;
             }
 
-            return new Images.EnhancedPexelsProvider(logger, httpClient, apiKey);
+            return new Images.PexelsProvider(logger, httpClient, apiKey);
         });
 
         // Pixabay provider (requires API key)
@@ -460,6 +461,23 @@ public static class ServiceCollectionExtensions
 
             return new Images.PlaceholderImageProvider(logger, outputDirectory);
         });
+
+        // Register PlaceholderColorGenerator for fallback frame generation
+        services.AddSingleton<Images.PlaceholderColorGenerator>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<Images.PlaceholderColorGenerator>>();
+            var settings = sp.GetRequiredService<ProviderSettings>();
+            var outputDirectory = Path.Combine(settings.GetAuraDataDirectory(), "placeholders");
+
+            // Get configuration from options if available
+            var options = sp.GetService<IOptions<Images.UnifiedStockMediaOptions>>();
+            var placeholderConfig = options?.Value?.PlaceholderConfig;
+
+            return new Images.PlaceholderColorGenerator(logger, outputDirectory, placeholderConfig);
+        });
+
+        // Register UnifiedStockProviderService with fallback chain support
+        services.AddSingleton<IUnifiedStockProvider, Images.UnifiedStockProviderService>();
 
         return services;
     }
