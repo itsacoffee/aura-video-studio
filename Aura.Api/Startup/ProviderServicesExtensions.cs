@@ -107,6 +107,105 @@ public static class ProviderServicesExtensions
         // Model catalog for dynamic model discovery
         services.AddSingleton<Aura.Core.AI.Adapters.ModelCatalog>();
 
+        // Register individual LLM providers as keyed services
+        // This allows direct resolution by provider name: sp.GetKeyedService<ILlmProvider>("Ollama")
+        
+        // RuleBased provider (ALWAYS AVAILABLE - offline fallback)
+        services.AddKeyedSingleton<ILlmProvider>("RuleBased", (sp, key) =>
+        {
+            var logger = sp.GetRequiredService<ILogger<RuleBasedLlmProvider>>();
+            return new RuleBasedLlmProvider(logger);
+        });
+
+        // Ollama provider (local, checks availability at runtime)
+        services.AddKeyedSingleton<ILlmProvider>("Ollama", (sp, key) =>
+        {
+            var logger = sp.GetRequiredService<ILogger<OllamaLlmProvider>>();
+            // Use the configured "OllamaClient" with proper timeout and handler settings
+            var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+            var httpClient = httpClientFactory.CreateClient("OllamaClient");
+            var providerSettings = sp.GetRequiredService<ProviderSettings>();
+            var baseUrl = providerSettings.GetOllamaUrl();
+            var model = providerSettings.GetOllamaModel();
+
+            return new OllamaLlmProvider(logger, httpClient, baseUrl, model);
+        });
+
+        // OpenAI provider (requires API key)
+        services.AddKeyedSingleton<ILlmProvider>("OpenAI", (sp, key) =>
+        {
+            var logger = sp.GetRequiredService<ILogger<OpenAiLlmProvider>>();
+            var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+            var keyStore = sp.GetRequiredService<IKeyStore>();
+
+            // Try to get API key from secure storage
+            var apiKeys = keyStore.GetAllKeys();
+            if (!apiKeys.TryGetValue("openai", out var apiKey) || string.IsNullOrWhiteSpace(apiKey))
+            {
+                logger.LogDebug("OpenAI API key not configured, provider unavailable");
+                return null!;
+            }
+
+            return new OpenAiLlmProvider(logger, httpClient, apiKey, "gpt-4o-mini");
+        });
+
+        // Azure OpenAI provider (requires API key and endpoint)
+        services.AddKeyedSingleton<ILlmProvider>("Azure", (sp, key) =>
+        {
+            var logger = sp.GetRequiredService<ILogger<AzureOpenAiLlmProvider>>();
+            var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+            var keyStore = sp.GetRequiredService<IKeyStore>();
+
+            // Try to get credentials from secure storage
+            var apiKeys = keyStore.GetAllKeys();
+            if (!apiKeys.TryGetValue("azure_openai_key", out var apiKey) ||
+                !apiKeys.TryGetValue("azure_openai_endpoint", out var endpoint) ||
+                string.IsNullOrWhiteSpace(apiKey) ||
+                string.IsNullOrWhiteSpace(endpoint))
+            {
+                logger.LogDebug("Azure OpenAI credentials not configured, provider unavailable");
+                return null!;
+            }
+
+            return new AzureOpenAiLlmProvider(logger, httpClient, apiKey, endpoint, "gpt-4");
+        });
+
+        // Gemini provider (requires API key)
+        services.AddKeyedSingleton<ILlmProvider>("Gemini", (sp, key) =>
+        {
+            var logger = sp.GetRequiredService<ILogger<GeminiLlmProvider>>();
+            var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+            var keyStore = sp.GetRequiredService<IKeyStore>();
+
+            // Try to get API key from secure storage
+            var apiKeys = keyStore.GetAllKeys();
+            if (!apiKeys.TryGetValue("gemini", out var apiKey) || string.IsNullOrWhiteSpace(apiKey))
+            {
+                logger.LogDebug("Gemini API key not configured, provider unavailable");
+                return null!;
+            }
+
+            return new GeminiLlmProvider(logger, httpClient, apiKey, "gemini-pro");
+        });
+
+        // Anthropic provider (requires API key)
+        services.AddKeyedSingleton<ILlmProvider>("Anthropic", (sp, key) =>
+        {
+            var logger = sp.GetRequiredService<ILogger<AnthropicLlmProvider>>();
+            var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+            var keyStore = sp.GetRequiredService<IKeyStore>();
+
+            // Try to get API key from secure storage
+            var apiKeys = keyStore.GetAllKeys();
+            if (!apiKeys.TryGetValue("anthropic", out var apiKey) || string.IsNullOrWhiteSpace(apiKey))
+            {
+                logger.LogDebug("Anthropic API key not configured, provider unavailable");
+                return null!;
+            }
+
+            return new AnthropicLlmProvider(logger, httpClient, apiKey);
+        });
+
         // LLM providers
         services.AddSingleton<LlmProviderFactory>();
         services.AddSingleton<ILlmProvider, CompositeLlmProvider>();
