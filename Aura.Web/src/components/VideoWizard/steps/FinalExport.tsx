@@ -15,6 +15,7 @@ import {
   ProgressBar,
   Spinner,
   Tooltip,
+  Badge,
 } from '@fluentui/react-components';
 import {
   ArrowDownload24Regular,
@@ -29,8 +30,8 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { FC } from 'react';
 import type { ExportData, WizardData, StepValidation } from '../types';
 import { openFile, openFolder } from '../../../utils/fileSystemUtils';
-import { pickFolder } from '../../../utils/pathUtils';
-import { getDefaultSaveLocation } from '../../../utils/pathUtils';
+import { pickFolder, resolvePathOnBackend, getDefaultSaveLocation, validatePathWritable } from '../../../utils/pathUtils';
+import { apiUrl } from '../../../config/api';
 
 const useStyles = makeStyles({
   container: {
@@ -107,11 +108,39 @@ const useStyles = makeStyles({
   },
   downloadItem: {
     display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: tokens.spacingVerticalM,
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalM,
+    padding: tokens.spacingVerticalL,
     backgroundColor: tokens.colorNeutralBackground1,
     borderRadius: tokens.borderRadiusMedium,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+  },
+  downloadItemHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: tokens.spacingHorizontalM,
+  },
+  downloadItemInfo: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalXS,
+    flex: 1,
+  },
+  downloadItemActions: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalS,
+    flexShrink: 0,
+  },
+  filePath: {
+    fontFamily: 'monospace',
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground3,
+    wordBreak: 'break-all',
+    padding: tokens.spacingVerticalS,
+    backgroundColor: tokens.colorNeutralBackground2,
+    borderRadius: tokens.borderRadiusSmall,
+    marginTop: tokens.spacingVerticalXS,
   },
 });
 
@@ -167,14 +196,62 @@ export const FinalExport: FC<FinalExportProps> = ({
   const [batchExport, setBatchExport] = useState(false);
   const [selectedFormats, setSelectedFormats] = useState<string[]>([data.format]);
   const [exportResults, setExportResults] = useState<ExportResult[]>([]);
-  const [saveLocation, setSaveLocation] = useState<string>(() => {
-    // Get default save location
-    try {
-      return getDefaultSaveLocation();
-    } catch {
-      return '';
-    }
-  });
+  const [resolvedPaths, setResolvedPaths] = useState<Record<string, string>>({});
+  const [saveLocation, setSaveLocation] = useState<string>('');
+  const [isLoadingSaveLocation, setIsLoadingSaveLocation] = useState(true);
+
+  // Load default save location from backend on mount
+  useEffect(() => {
+    const loadDefaultSaveLocation = async () => {
+      setIsLoadingSaveLocation(true);
+      try {
+        // Try to get from portable settings first (for portable mode)
+        try {
+          const portableResponse = await fetch(apiUrl('/api/settings/portable'));
+          if (portableResponse.ok) {
+            const portableData = await portableResponse.json();
+            if (portableData.downloadsDirectory) {
+              const resolved = await resolvePathOnBackend(portableData.downloadsDirectory);
+              setSaveLocation(resolved);
+              setIsLoadingSaveLocation(false);
+              return;
+            }
+          }
+        } catch (e) {
+          // Fall through to next method
+        }
+
+        // Try to get from provider paths
+        try {
+          const pathsResponse = await fetch(apiUrl('/api/providers/paths/load'));
+          if (pathsResponse.ok) {
+            const pathsData = await pathsResponse.json();
+            if (pathsData.outputDirectory && pathsData.outputDirectory.trim()) {
+              const resolved = await resolvePathOnBackend(pathsData.outputDirectory);
+              setSaveLocation(resolved);
+              setIsLoadingSaveLocation(false);
+              return;
+            }
+          }
+        } catch (e) {
+          // Fall through to default
+        }
+
+        // Fall back to frontend default and resolve it
+        const defaultPath = getDefaultSaveLocation();
+        const resolved = await resolvePathOnBackend(defaultPath);
+        setSaveLocation(resolved);
+      } catch (error) {
+        console.error('Failed to load default save location:', error);
+        // Use frontend default as last resort
+        setSaveLocation(getDefaultSaveLocation());
+      } finally {
+        setIsLoadingSaveLocation(false);
+      }
+    };
+
+    void loadDefaultSaveLocation();
+  }, []);
 
   useEffect(() => {
     onValidationChange({ isValid: true, errors: [] });
@@ -248,13 +325,34 @@ export const FinalExport: FC<FinalExportProps> = ({
         const basePath = saveLocation || getDefaultSaveLocation();
         const fullPath = `${basePath.replace(/\\/g, '/').replace(/\/$/, '')}/${fileName}`;
 
-        exportResults.push({
+        // Resolve the path to expand environment variables
+        const resolvedPath = await resolvePathOnBackend(fullPath);
+        const resolvedFolder = await resolvePathOnBackend(basePath);
+
+        // Ensure the directory exists
+        try {
+          const validation = await validatePathWritable(resolvedFolder);
+          if (!validation.valid) {
+            console.warn('Directory validation failed:', validation.error);
+            // Still continue, but log the warning
+          }
+        } catch (error) {
+          console.warn('Failed to validate directory:', error);
+        }
+
+        const result: ExportResult = {
           format: format.toUpperCase(),
           resolution: data.resolution,
           filePath: fileName,
-          fullPath: fullPath,
+          fullPath: resolvedPath,
           fileSize: Math.round(fileSize * 1024),
-        });
+        };
+
+        exportResults.push(result);
+        setResolvedPaths((prev) => ({
+          ...prev,
+          [result.fullPath]: resolvedFolder,
+        }));
 
         setExportResults([...exportResults]);
       }
@@ -296,34 +394,51 @@ export const FinalExport: FC<FinalExportProps> = ({
   const handleOpenFile = useCallback(async (filePath: string, fullPath?: string) => {
     try {
       const pathToOpen = fullPath || filePath;
+      if (!pathToOpen) {
+        console.warn('No file path provided');
+        return;
+      }
+      
       const success = await openFile(pathToOpen);
       if (!success) {
         console.warn('Failed to open file, trying folder instead');
-        // Use Math.max to correctly handle zero values (when separator is at beginning)
-        const lastSlash = pathToOpen.lastIndexOf('/');
-        const lastBackslash = pathToOpen.lastIndexOf('\\');
-        const lastSeparator = Math.max(lastSlash, lastBackslash);
-        const folderPath = lastSeparator >= 0 ? pathToOpen.substring(0, lastSeparator) : pathToOpen;
+        // Try to open the folder containing the file
+        const folderPath = resolvedPaths[pathToOpen] || pathToOpen.substring(0, Math.max(
+          pathToOpen.lastIndexOf('/'),
+          pathToOpen.lastIndexOf('\\')
+        ));
+        if (folderPath) {
         await openFolder(folderPath);
+        }
       }
     } catch (error) {
       console.error('Failed to open file:', error);
     }
-  }, []);
+  }, [resolvedPaths]);
 
   const handleOpenFolder = useCallback(async (filePath: string, fullPath?: string) => {
     try {
       const pathToOpen = fullPath || filePath;
-      // Use Math.max to correctly handle zero values (when separator is at beginning)
-      const lastSlash = pathToOpen.lastIndexOf('/');
-      const lastBackslash = pathToOpen.lastIndexOf('\\');
-      const lastSeparator = Math.max(lastSlash, lastBackslash);
-      const folderPath = lastSeparator >= 0 ? pathToOpen.substring(0, lastSeparator) : pathToOpen;
+      if (!pathToOpen) {
+        console.warn('No file path provided');
+        return;
+      }
+      
+      // Get the folder path - either from resolved paths or extract from file path
+      const folderPath = resolvedPaths[pathToOpen] || pathToOpen.substring(0, Math.max(
+        pathToOpen.lastIndexOf('/'),
+        pathToOpen.lastIndexOf('\\')
+      ));
+      
+      if (folderPath) {
       await openFolder(folderPath);
+      } else {
+        console.warn('Could not determine folder path');
+      }
     } catch (error) {
       console.error('Failed to open folder:', error);
     }
-  }, []);
+  }, [resolvedPaths]);
 
   const renderSettingsView = () => (
     <div className={styles.container}>
@@ -403,31 +518,42 @@ export const FinalExport: FC<FinalExportProps> = ({
 
       <Card className={styles.settingsCard}>
         <Field label="Save Location">
-          <div style={{ display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'center' }}>
-            <Text
-              style={{
-                flex: 1,
-                padding: tokens.spacingVerticalS,
-                backgroundColor: tokens.colorNeutralBackground2,
-                borderRadius: tokens.borderRadiusSmall,
-                fontFamily: 'monospace',
-                fontSize: tokens.fontSizeBase200,
-                wordBreak: 'break-all',
-              }}
-            >
-              {saveLocation || 'Default location will be used'}
-            </Text>
-            <Button
-              appearance="secondary"
-              icon={<Folder24Regular />}
-              onClick={handleBrowseSaveLocation}
-            >
-              Browse
-            </Button>
-          </div>
-          <Text size={200} style={{ marginTop: tokens.spacingVerticalXS, color: tokens.colorNeutralForeground3 }}>
-            Choose where to save your exported video file
-          </Text>
+          {isLoadingSaveLocation ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+              <Spinner size="small" />
+              <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                Loading default save location...
+              </Text>
+            </div>
+          ) : (
+            <>
+              <div style={{ display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'center' }}>
+                <Text
+                  style={{
+                    flex: 1,
+                    padding: tokens.spacingVerticalS,
+                    backgroundColor: tokens.colorNeutralBackground2,
+                    borderRadius: tokens.borderRadiusSmall,
+                    fontFamily: 'monospace',
+                    fontSize: tokens.fontSizeBase200,
+                    wordBreak: 'break-all',
+                  }}
+                >
+                  {saveLocation || 'Default location will be used'}
+                </Text>
+                <Button
+                  appearance="secondary"
+                  icon={<Folder24Regular />}
+                  onClick={handleBrowseSaveLocation}
+                >
+                  Browse
+                </Button>
+              </div>
+              <Text size={200} style={{ marginTop: tokens.spacingVerticalXS, color: tokens.colorNeutralForeground3 }}>
+                Choose where to save your exported video file
+              </Text>
+            </>
+          )}
         </Field>
       </Card>
 
@@ -524,33 +650,35 @@ export const FinalExport: FC<FinalExportProps> = ({
         style={{ fontSize: '64px', color: tokens.colorPaletteGreenForeground1 }}
       />
       <Title2>Export Completed!</Title2>
-      <Text>Your video has been successfully exported and saved to your computer.</Text>
+      <Text style={{ marginBottom: tokens.spacingVerticalL }}>
+        Your video has been successfully exported and saved to your computer.
+      </Text>
 
       <div className={styles.downloadList}>
         {exportResults.map((result, index) => (
-          <div key={index} className={styles.downloadItem}>
-            <div style={{ textAlign: 'left', flex: 1 }}>
-              <Text weight="semibold">
+          <Card key={index} className={styles.downloadItem}>
+            <div className={styles.downloadItemHeader}>
+              <div className={styles.downloadItemInfo}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM }}>
+                  <Text weight="semibold" size={400}>
                 {result.format} - {result.resolution}
               </Text>
-              <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                  <Badge appearance="filled" color="success">
                 {(result.fileSize / 1024).toFixed(1)} MB
+                  </Badge>
+                </div>
+                {result.fullPath && (
+                  <div className={styles.filePath}>
+                    <Text size={200} weight="semibold" style={{ marginBottom: tokens.spacingVerticalXXS }}>
+                      File Location:
               </Text>
-              {result.fullPath && (
-                <Text
-                  size={200}
-                  style={{
-                    color: tokens.colorNeutralForeground2,
-                    marginTop: tokens.spacingVerticalXS,
-                    fontFamily: 'monospace',
-                    wordBreak: 'break-all',
-                  }}
-                >
-                  Saved to: {result.fullPath}
+                    <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>
+                      {result.fullPath}
                 </Text>
+                  </div>
               )}
             </div>
-            <div style={{ display: 'flex', gap: tokens.spacingHorizontalS }}>
+              <div className={styles.downloadItemActions}>
               <Button
                 appearance="primary"
                 icon={<Open24Regular />}
@@ -567,6 +695,7 @@ export const FinalExport: FC<FinalExportProps> = ({
               </Button>
             </div>
           </div>
+          </Card>
         ))}
       </div>
 
@@ -574,7 +703,11 @@ export const FinalExport: FC<FinalExportProps> = ({
         <Button
           appearance="secondary"
           icon={<DocumentMultiple24Regular />}
-          onClick={() => setExportStatus('idle')}
+          onClick={() => {
+            setExportStatus('idle');
+            setExportResults([]);
+            setResolvedPaths({});
+          }}
         >
           Export Another Version
         </Button>

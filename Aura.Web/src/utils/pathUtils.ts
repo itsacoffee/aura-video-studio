@@ -195,7 +195,20 @@ export function migrateLegacyPath(path: string): string {
  */
 export async function resolvePathOnBackend(path: string): Promise<string> {
   try {
-    const response = await fetch('/api/paths/resolve', {
+    // Try to use apiUrl if available, otherwise use relative path
+    let url = '/api/paths/resolve';
+    if (typeof window !== 'undefined') {
+      // Check if we're in Electron/desktop app
+      const apiBase = (window as any).__API_BASE_URL__;
+      if (apiBase) {
+        url = `${apiBase}${url}`;
+      } else {
+        // Use current origin for web
+        url = `${window.location.origin}${url}`;
+      }
+    }
+    
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -204,13 +217,18 @@ export async function resolvePathOnBackend(path: string): Promise<string> {
     });
 
     if (!response.ok) {
+      // If endpoint doesn't exist, just return the path as-is (backend will handle expansion)
+      if (response.status === 404) {
+        return path;
+      }
       throw new Error(`Failed to resolve path: ${response.statusText}`);
     }
 
     const data = await response.json();
     return data.resolvedPath || path;
   } catch (error: unknown) {
-    console.error('Failed to resolve path on backend:', error);
+    // If path resolution fails, return path as-is - backend will handle expansion when needed
+    console.debug('Path resolution not available, using path as-is:', error);
     return path;
   }
 }

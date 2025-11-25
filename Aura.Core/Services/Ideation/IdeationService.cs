@@ -1355,7 +1355,8 @@ public class IdeationService
 
             if (string.IsNullOrWhiteSpace(cleanedResponse))
             {
-                _logger.LogWarning("Cleaned response is empty, falling back to fallback concepts");
+                _logger.LogWarning("Cleaned response is empty for topic: {Topic}. Original response length: {Length}", 
+                    originalTopic, response.Length);
             }
             else
             {
@@ -1438,11 +1439,13 @@ public class IdeationService
         }
         catch (JsonException ex)
         {
-            _logger.LogWarning(ex, "Failed to parse JSON response from LLM, falling back to generic concepts");
+            _logger.LogWarning(ex, "Failed to parse JSON response from LLM for topic: {Topic}. Response preview: {Preview}", 
+                originalTopic, response.Substring(0, Math.Min(500, response.Length)));
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Unexpected error parsing LLM response, falling back to generic concepts");
+            _logger.LogWarning(ex, "Unexpected error parsing LLM response for topic: {Topic}. Response preview: {Preview}", 
+                originalTopic, response.Substring(0, Math.Min(500, response.Length)));
         }
 
         // Fallback: If parsing failed or no concepts were generated, try to extract meaningful data from raw response

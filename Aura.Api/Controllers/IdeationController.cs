@@ -38,7 +38,7 @@ public class IdeationController : ControllerBase
         CancellationToken ct)
     {
         var correlationId = HttpContext.TraceIdentifier;
-        
+
         try
         {
             if (string.IsNullOrWhiteSpace(request.Topic))
@@ -52,7 +52,7 @@ public class IdeationController : ControllerBase
 
             // Handle RAG configuration: use from request, or auto-enable if documents exist
             Aura.Core.Models.RagConfiguration? ragConfig = request.RagConfiguration;
-            
+
             // If no explicit configuration, auto-enable if documents exist in the index
             if (ragConfig == null && _vectorIndex != null)
             {
@@ -111,10 +111,29 @@ public class IdeationController : ControllerBase
                 count = response.Concepts.Count
             });
         }
+        catch (ArgumentException argEx)
+        {
+            _logger.LogWarning(argEx, "[{CorrelationId}] Invalid argument for brainstorming: {Message}", correlationId, argEx.Message);
+            return BadRequest(new { error = argEx.Message });
+        }
+        catch (InvalidOperationException invOpEx)
+        {
+            _logger.LogError(invOpEx, "[{CorrelationId}] Operation failed for brainstorming topic: {Topic}", correlationId, request?.Topic ?? "unknown");
+            return StatusCode(500, new { error = invOpEx.Message });
+        }
+        catch (TimeoutException timeoutEx)
+        {
+            _logger.LogError(timeoutEx, "[{CorrelationId}] Timeout during brainstorming for topic: {Topic}", correlationId, request?.Topic ?? "unknown");
+            return StatusCode(504, new { error = timeoutEx.Message });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[{CorrelationId}] Error brainstorming concepts for topic: {Topic}", correlationId, request.Topic);
-            return StatusCode(500, new { error = "Failed to generate concepts" });
+            _logger.LogError(ex, "[{CorrelationId}] Unexpected error brainstorming concepts for topic: {Topic}", correlationId, request?.Topic ?? "unknown");
+            // Include the exception message for debugging, but sanitize if it contains sensitive info
+            var errorMessage = ex.Message.Contains("API key", StringComparison.OrdinalIgnoreCase)
+                ? "Failed to generate concepts. Please check your LLM provider configuration."
+                : $"Failed to generate concepts: {ex.Message}";
+            return StatusCode(500, new { error = errorMessage });
         }
     }
 
@@ -283,7 +302,7 @@ public class IdeationController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error generating storyboard for concept: {ConceptTitle}", 
+            _logger.LogError(ex, "Error generating storyboard for concept: {ConceptTitle}",
                 request.Concept?.Title);
             return StatusCode(500, new { error = "Failed to generate storyboard" });
         }
@@ -320,7 +339,7 @@ public class IdeationController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error refining concept: {ConceptTitle} with direction: {Direction}", 
+            _logger.LogError(ex, "Error refining concept: {ConceptTitle} with direction: {Direction}",
                 request.Concept?.Title, request.RefinementDirection);
             return StatusCode(500, new { error = "Failed to refine concept" });
         }

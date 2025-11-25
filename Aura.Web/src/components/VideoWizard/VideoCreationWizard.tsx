@@ -715,7 +715,7 @@ export const VideoCreationWizard: FC = () => {
           )}
         </div>
         <div className={styles.navigationButtons}>
-          {currentStep < STEP_LABELS.length - 1 ? (
+          {currentStep < STEP_LABELS.length - 1 && (
             <Tooltip
               content={
                 !stepValidation[currentStep].isValid
@@ -734,24 +734,8 @@ export const VideoCreationWizard: FC = () => {
                 Next
               </Button>
             </Tooltip>
-          ) : (
-            <Tooltip
-              content={
-                !stepValidation[currentStep].isValid
-                  ? 'Please complete all required fields before generating'
-                  : 'Ready to generate your video!'
-              }
-              relationship="label"
-            >
-              <Button
-                appearance="primary"
-                onClick={handleSaveAndExit}
-                disabled={!stepValidation[currentStep].isValid}
-              >
-                Generate Video
-              </Button>
-            </Tooltip>
           )}
+          {/* Final step (Export) has its own "Start Export" button in the FinalExport component */}
         </div>
       </div>
 

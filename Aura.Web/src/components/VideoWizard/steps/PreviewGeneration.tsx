@@ -52,7 +52,7 @@ import type {
 } from '../types';
 import { getVisualsClient, VisualsClient } from '@/api/visualsClient';
 import type { VisualProvider, BatchGenerateProgress } from '@/api/visualsClient';
-import { ttsService } from '@/services/ttsService';
+import { ttsService, type TtsProvider, type TtsVoice } from '@/services/ttsService';
 import apiClient from '@/services/api/apiClient';
 
 const useStyles = makeStyles({
@@ -289,6 +289,15 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
   const [playingSceneId, setPlayingSceneId] = useState<string | null>(null);
   const [audioError, setAudioError] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  
+  // TTS provider state
+  const [ttsProviders, setTtsProviders] = useState<TtsProvider[]>([]);
+  const [selectedTtsProvider, setSelectedTtsProvider] = useState<string>(styleData.voiceProvider || '');
+  const [ttsVoices, setTtsVoices] = useState<TtsVoice[]>([]);
+  const [selectedTtsVoice, setSelectedTtsVoice] = useState<string>(styleData.voiceName || '');
+  const [isLoadingTtsProviders, setIsLoadingTtsProviders] = useState(true);
+  const [isLoadingTtsVoices, setIsLoadingTtsVoices] = useState(false);
+  const [ttsProviderStatus, setTtsProviderStatus] = useState<Record<string, { isAvailable: boolean; error?: string }>>({});
 
   // Use ref to track if providers have been selected to avoid stale closure issues
   const hasSelectedProviderRef = useRef(false);
@@ -425,11 +434,101 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
     }
   }, [visualsClient]);
 
+  // Load TTS providers
+  const loadTtsProviders = useCallback(async () => {
+    setIsLoadingTtsProviders(true);
+    try {
+      const providers = await ttsService.getAvailableProviders();
+      setTtsProviders(providers);
+      
+      // Initialize selected provider if not set
+      if (!selectedTtsProvider && providers.length > 0) {
+        // Prefer Windows (free) or first available
+        const windowsProvider = providers.find(p => p.name === 'Windows');
+        const firstAvailable = providers[0];
+        const initialProvider = windowsProvider || firstAvailable;
+        if (initialProvider) {
+          setSelectedTtsProvider(initialProvider.name);
+        }
+      }
+      
+      // Check status of all providers
+      try {
+        const statusResponse = await apiClient.get<{
+          success: boolean;
+          providers: Array<{ name: string; isAvailable: boolean; error?: string }>;
+        }>('/api/tts/status');
+        
+        if (statusResponse.data.success) {
+          const statusMap: Record<string, { isAvailable: boolean; error?: string }> = {};
+          statusResponse.data.providers.forEach((p: { name: string; isAvailable: boolean; error?: string }) => {
+            statusMap[p.name] = { isAvailable: p.isAvailable, error: p.error };
+          });
+          setTtsProviderStatus(statusMap);
+        }
+      } catch (statusError) {
+        console.warn('Failed to check TTS provider status:', statusError);
+      }
+    } catch (error) {
+      console.error('Failed to load TTS providers:', error);
+    } finally {
+      setIsLoadingTtsProviders(false);
+    }
+  }, [selectedTtsProvider]);
+
+  // Load voices for selected TTS provider
+  const loadTtsVoices = useCallback(async (provider: string) => {
+    if (!provider) {
+      setTtsVoices([]);
+      setSelectedTtsVoice('');
+      return;
+    }
+    
+    setIsLoadingTtsVoices(true);
+    try {
+      const voices = await ttsService.getVoicesForProvider(provider);
+      setTtsVoices(voices);
+      
+      // Set first voice if none selected or current voice not available
+      if (voices.length > 0) {
+        const currentVoiceExists = voices.some(v => v.name === selectedTtsVoice);
+        if (!selectedTtsVoice || !currentVoiceExists) {
+          setSelectedTtsVoice(voices[0].name);
+        }
+      } else {
+        setSelectedTtsVoice('');
+      }
+    } catch (error) {
+      console.error(`Failed to load voices for provider ${provider}:`, error);
+      setTtsVoices([]);
+      setSelectedTtsVoice('');
+    } finally {
+      setIsLoadingTtsVoices(false);
+    }
+  }, [selectedTtsVoice]);
+
+  // Load voices when provider changes
+  useEffect(() => {
+    if (selectedTtsProvider) {
+      void loadTtsVoices(selectedTtsProvider);
+      // Clear audio errors when provider changes
+      setAudioError(null);
+    }
+  }, [selectedTtsProvider, loadTtsVoices]);
+  
+  // Clear audio error when voice changes
+  useEffect(() => {
+    if (selectedTtsVoice) {
+      setAudioError(null);
+    }
+  }, [selectedTtsVoice]);
+
   // Effect to load providers and styles on mount - properly includes dependencies
   useEffect(() => {
     void loadProviders();
     void loadStyles();
-  }, [loadProviders, loadStyles]);
+    void loadTtsProviders();
+  }, [loadProviders, loadStyles, loadTtsProviders]);
 
   // Cleanup audio on unmount
   useEffect(() => {
@@ -721,9 +820,21 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
           throw new Error('Scene not found');
         }
 
-        // Use the provider name as-is (API expects exact names like "Windows", "ElevenLabs", etc.)
-        const apiProvider = styleData.voiceProvider;
-        const voiceName = styleData.voiceName || 'default';
+        // Use the selected TTS provider, fallback to styleData if not set
+        const apiProvider = selectedTtsProvider || styleData.voiceProvider;
+        const voiceName = selectedTtsVoice || styleData.voiceName || 'default';
+        
+        if (!apiProvider) {
+          throw new Error('No TTS provider selected. Please select a TTS provider in the settings.');
+        }
+        
+        // Verify provider is available
+        const providerStatus = ttsProviderStatus[apiProvider];
+        if (providerStatus && !providerStatus.isAvailable) {
+          throw new Error(
+            `TTS provider "${apiProvider}" is not available. ${providerStatus.error || 'Please select a different provider.'}`
+          );
+        }
 
         // Generate audio preview and get the file directly
         const previewResponse = await ttsService.generatePreview({
@@ -804,10 +915,33 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
         audio.addEventListener('error', handleError, { once: true });
 
         // Try to play the audio
-        await audio.play();
+        try {
+          await audio.play();
+        } catch (playError) {
+          console.error('Audio playback failed:', playError);
+          throw new Error('Failed to play audio. Your browser may have blocked autoplay or the audio file is corrupted.');
+        }
       } catch (error) {
         console.error('Error playing scene preview:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Failed to play audio preview';
+        let errorMessage = 'Failed to play audio preview';
+        
+        if (error instanceof Error) {
+          errorMessage = error.message;
+          
+          // Provide more helpful error messages
+          if (errorMessage.includes('not found') || errorMessage.includes('not available')) {
+            errorMessage = `TTS provider "${apiProvider}" is not available. Please select a different provider in the TTS settings.`;
+          } else if (errorMessage.includes('No TTS provider')) {
+            errorMessage = 'No TTS provider selected. Please select a TTS provider in the settings above.';
+          } else if (errorMessage.includes('Failed to generate')) {
+            errorMessage = `Failed to generate audio. ${errorMessage}`;
+          } else if (errorMessage.includes('Failed to play audio')) {
+            errorMessage = errorMessage; // Already user-friendly
+          } else {
+            errorMessage = `Audio preview error: ${errorMessage}`;
+          }
+        }
+        
         setAudioError(errorMessage);
         setPlayingSceneId(null);
         if (audioRef.current) {
@@ -818,7 +952,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
         }
       }
     },
-    [scriptData.scenes, styleData.voiceProvider, styleData.voiceName, playingSceneId]
+    [scriptData.scenes, selectedTtsProvider, selectedTtsVoice, styleData.voiceProvider, styleData.voiceName, playingSceneId, ttsProviderStatus]
   );
 
   const renderProviderSettings = () => (
@@ -957,6 +1091,125 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
               />
             </Field>
           </div>
+
+          <div style={{ marginTop: tokens.spacingVerticalXL, paddingTop: tokens.spacingVerticalL, borderTop: `1px solid ${tokens.colorNeutralStroke2}` }}>
+            <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>Text-to-Speech Settings</Title3>
+            <Text size={300} style={{ marginBottom: tokens.spacingVerticalM, color: tokens.colorNeutralForeground3 }}>
+              Select a TTS provider and voice for audio previews
+            </Text>
+            
+            <div className={styles.settingsRow}>
+              <Field 
+                label="TTS Provider" 
+                className={styles.settingItem}
+                validationState={selectedTtsProvider && ttsProviderStatus[selectedTtsProvider]?.isAvailable === false ? 'error' : undefined}
+                validationMessage={selectedTtsProvider && ttsProviderStatus[selectedTtsProvider]?.isAvailable === false 
+                  ? ttsProviderStatus[selectedTtsProvider].error || 'Provider is not available'
+                  : undefined}
+              >
+                {isLoadingTtsProviders ? (
+                  <Spinner size="small" />
+                ) : (
+                  <Dropdown
+                    value={selectedTtsProvider}
+                    selectedOptions={selectedTtsProvider ? [selectedTtsProvider] : []}
+                    onOptionSelect={(_, data) => {
+                      if (data.optionValue) {
+                        setSelectedTtsProvider(data.optionValue as string);
+                        setSelectedTtsVoice(''); // Reset voice when provider changes
+                      }
+                    }}
+                    placeholder="Select TTS provider"
+                  >
+                    {ttsProviders.map((provider) => {
+                      const status = ttsProviderStatus[provider.name];
+                      const isAvailable = status?.isAvailable !== false;
+                      return (
+                        <Option 
+                          key={provider.name} 
+                          value={provider.name}
+                          disabled={!isAvailable}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+                            {isAvailable ? (
+                              <CheckmarkCircle24Regular style={{ fontSize: '14px', color: tokens.colorPaletteGreenForeground1 }} />
+                            ) : (
+                              <ErrorCircle24Regular style={{ fontSize: '14px', color: tokens.colorPaletteRedForeground1 }} />
+                            )}
+                            <span>{provider.name}</span>
+                            <span style={{ marginLeft: 'auto', fontSize: '12px', color: tokens.colorNeutralForeground3 }}>
+                              {provider.tier}
+                            </span>
+                          </div>
+                        </Option>
+                      );
+                    })}
+                  </Dropdown>
+                )}
+              </Field>
+
+              <Field 
+                label="Voice" 
+                className={styles.settingItem}
+                validationState={selectedTtsProvider && !selectedTtsVoice ? 'warning' : undefined}
+                validationMessage={selectedTtsProvider && !selectedTtsVoice ? 'Please select a voice' : undefined}
+              >
+                {isLoadingTtsVoices ? (
+                  <Spinner size="small" />
+                ) : (
+                  <Dropdown
+                    value={selectedTtsVoice}
+                    selectedOptions={selectedTtsVoice ? [selectedTtsVoice] : []}
+                    onOptionSelect={(_, data) => {
+                      if (data.optionValue) {
+                        setSelectedTtsVoice(data.optionValue as string);
+                      }
+                    }}
+                    placeholder={selectedTtsProvider ? "Select voice" : "Select provider first"}
+                    disabled={!selectedTtsProvider || ttsVoices.length === 0}
+                  >
+                    {ttsVoices.map((voice) => (
+                      <Option key={voice.name} value={voice.name}>
+                        {voice.name}
+                        {voice.gender && ` (${voice.gender})`}
+                        {voice.languageCode && ` - ${voice.languageCode}`}
+                      </Option>
+                    ))}
+                  </Dropdown>
+                )}
+              </Field>
+            </div>
+
+            {selectedTtsProvider && ttsProviderStatus[selectedTtsProvider] && (
+              <div style={{ 
+                marginTop: tokens.spacingVerticalM, 
+                padding: tokens.spacingVerticalM, 
+                backgroundColor: ttsProviderStatus[selectedTtsProvider].isAvailable 
+                  ? tokens.colorPaletteGreenBackground2 
+                  : tokens.colorPaletteRedBackground2,
+                borderRadius: tokens.borderRadiusMedium,
+                display: 'flex',
+                alignItems: 'center',
+                gap: tokens.spacingHorizontalS
+              }}>
+                {ttsProviderStatus[selectedTtsProvider].isAvailable ? (
+                  <>
+                    <CheckmarkCircle24Regular style={{ color: tokens.colorPaletteGreenForeground1 }} />
+                    <Text size={200} style={{ color: tokens.colorPaletteGreenForeground1 }}>
+                      TTS provider "{selectedTtsProvider}" is available and ready
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <ErrorCircle24Regular style={{ color: tokens.colorPaletteRedForeground1 }} />
+                    <Text size={200} style={{ color: tokens.colorPaletteRedForeground1 }}>
+                      TTS provider "{selectedTtsProvider}" is not available. {ttsProviderStatus[selectedTtsProvider].error || 'Please select a different provider.'}
+                    </Text>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </>
       )}
     </Card>
@@ -981,8 +1234,13 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
           </div>
           <div className={styles.statItem}>
             <Speaker224Regular style={{ fontSize: '32px', color: tokens.colorBrandForeground1 }} />
-            <Text weight="semibold">{styleData.voiceProvider}</Text>
-            <Text size={200}>Voice</Text>
+            <Text weight="semibold">{selectedTtsProvider || styleData.voiceProvider || 'Not selected'}</Text>
+            <Text size={200}>TTS Provider</Text>
+            {selectedTtsVoice && (
+              <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                Voice: {selectedTtsVoice}
+              </Text>
+            )}
           </div>
           {selectedProvider && (
             <div className={styles.statItem}>
@@ -1140,26 +1398,74 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
                   </Text>
                 )}
 
-                {audioSample && (
-                  <div className={styles.audioPreview}>
-                    <Speaker224Regular style={{ marginRight: tokens.spacingHorizontalS }} />
-                    <Text size={200}>Audio ready</Text>
-                  </div>
-                )}
+                {audioSample && (() => {
+                  const currentProvider = selectedTtsProvider || styleData.voiceProvider;
+                  const providerStatus = currentProvider ? ttsProviderStatus[currentProvider] : null;
+                  const isTtsAvailable = !currentProvider || (providerStatus?.isAvailable !== false);
+                  
+                  return (
+                    <div className={styles.audioPreview}>
+                      {isTtsAvailable ? (
+                        <>
+                          <CheckmarkCircle24Regular 
+                            style={{ 
+                              marginRight: tokens.spacingHorizontalS, 
+                              color: tokens.colorPaletteGreenForeground1 
+                            }} 
+                          />
+                          <Text size={200}>Audio ready</Text>
+                          {currentProvider && (
+                            <Text size={200} style={{ marginLeft: tokens.spacingHorizontalS, color: tokens.colorNeutralForeground3 }}>
+                              ({currentProvider})
+                            </Text>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <ErrorCircle24Regular 
+                            style={{ 
+                              marginRight: tokens.spacingHorizontalS, 
+                              color: tokens.colorPaletteRedForeground1 
+                            }} 
+                          />
+                          <Text size={200} style={{ color: tokens.colorPaletteRedForeground1 }}>
+                            TTS not available
+                          </Text>
+                        </>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 <div className={styles.sceneActions}>
                   <Button
                     appearance="secondary"
                     icon={<Play24Regular />}
                     onClick={() => void playScenePreview(scene.id)}
-                    disabled={!thumbnail || !audioSample || playingSceneId === scene.id}
+                    disabled={
+                      !thumbnail || 
+                      !audioSample || 
+                      playingSceneId === scene.id ||
+                      !selectedTtsProvider ||
+                      (ttsProviderStatus[selectedTtsProvider]?.isAvailable === false)
+                    }
                   >
                     {playingSceneId === scene.id ? 'Playing...' : 'Preview'}
                   </Button>
                   {audioError && playingSceneId === scene.id && (
-                    <Text size={200} style={{ color: tokens.colorPaletteRedForeground1 }}>
-                      {audioError}
-                    </Text>
+                    <Tooltip content={audioError} relationship="label">
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: tokens.spacingHorizontalXS,
+                        color: tokens.colorPaletteRedForeground1 
+                      }}>
+                        <ErrorCircle24Regular style={{ fontSize: '16px' }} />
+                        <Text size={200} style={{ color: tokens.colorPaletteRedForeground1 }}>
+                          {audioError.length > 50 ? `${audioError.substring(0, 50)}...` : audioError}
+                        </Text>
+                      </div>
+                    </Tooltip>
                   )}
 
                   <Menu>
