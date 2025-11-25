@@ -11,7 +11,7 @@ import {
   ArrowRight24Regular,
 } from '@fluentui/react-icons';
 import { useState } from 'react';
-import { AuraButton } from '../components/ui';
+import { AuraButton } from '../../components/ui';
 
 const useStyles = makeStyles({
   container: {
