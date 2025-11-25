@@ -22,6 +22,10 @@ public class AssetLibraryService
 
     private readonly Dictionary<Guid, Asset> _assets = new();
     private readonly Dictionary<Guid, AssetCollection> _collections = new();
+    private readonly Task _initializationTask;
+    private volatile bool _isInitialized;
+    private volatile bool _initializationFailed;
+    private Exception? _initializationException;
 
     public AssetLibraryService(
         ILogger<AssetLibraryService> logger,
@@ -39,15 +43,57 @@ public class AssetLibraryService
         Directory.CreateDirectory(_assetsDirectory);
         Directory.CreateDirectory(_thumbnailsDirectory);
 
-        // Load library from disk
-        LoadLibraryAsync().Wait();
+        // Load library from disk asynchronously in background
+        // Store the task so callers can await initialization if needed
+        _initializationTask = Task.Run(async () =>
+        {
+            try
+            {
+                await LoadLibraryAsync().ConfigureAwait(false);
+                _isInitialized = true;
+                _initializationFailed = false;
+                _logger.LogInformation("Asset library initialization completed");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to load asset library in background during initialization");
+                _isInitialized = true; // Mark as initialized even on error to prevent infinite waiting
+                _initializationFailed = true;
+                _initializationException = ex;
+            }
+        });
     }
+
+    /// <summary>
+    /// Wait for initialization to complete. Call this before accessing assets if you need guaranteed initialization.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">Thrown if initialization failed</exception>
+    public async Task WaitForInitializationAsync(CancellationToken ct = default)
+    {
+        await _initializationTask.WaitAsync(ct).ConfigureAwait(false);
+        
+        // Check if initialization failed and throw if so
+        if (_initializationFailed)
+        {
+            throw new InvalidOperationException(
+                "Asset library initialization failed. Cannot access assets.",
+                _initializationException);
+        }
+    }
+
+    /// <summary>
+    /// Check if initialization is complete
+    /// </summary>
+    public bool IsInitialized => _isInitialized;
 
     /// <summary>
     /// Add an asset to the library
     /// </summary>
     public async Task<Asset> AddAssetAsync(string filePathOrUrl, AssetType type, AssetSource source = AssetSource.Uploaded)
     {
+        // Ensure initialization is complete before modifying assets
+        await WaitForInitializationAsync().ConfigureAwait(false);
+        
         _logger.LogInformation("Adding asset: {Path}, Type: {Type}", filePathOrUrl, type);
 
         var assetId = Guid.NewGuid();
@@ -101,16 +147,19 @@ public class AssetLibraryService
     /// <summary>
     /// Get asset by ID
     /// </summary>
-    public Task<Asset?> GetAssetAsync(Guid assetId)
+    public async Task<Asset?> GetAssetAsync(Guid assetId)
     {
+        // Ensure initialization is complete before accessing assets
+        await WaitForInitializationAsync().ConfigureAwait(false);
+        
         _assets.TryGetValue(assetId, out var asset);
-        return Task.FromResult(asset);
+        return asset;
     }
 
     /// <summary>
     /// Search assets with filters
     /// </summary>
-    public Task<AssetSearchResult> SearchAssetsAsync(
+    public async Task<AssetSearchResult> SearchAssetsAsync(
         string? query = null,
         AssetSearchFilters? filters = null,
         int page = 1,
@@ -118,6 +167,9 @@ public class AssetLibraryService
         string sortBy = "dateAdded",
         bool sortDescending = true)
     {
+        // Ensure initialization is complete before accessing assets
+        await WaitForInitializationAsync().ConfigureAwait(false);
+        
         _logger.LogInformation("Searching assets: Query={Query}, Page={Page}", query, page);
 
         var assets = _assets.Values.AsQueryable();
@@ -202,6 +254,9 @@ public class AssetLibraryService
     /// </summary>
     public async Task TagAssetAsync(Guid assetId, List<string> tags)
     {
+        // Ensure initialization is complete before accessing assets
+        await WaitForInitializationAsync().ConfigureAwait(false);
+        
         if (!_assets.TryGetValue(assetId, out var asset))
         {
             throw new ArgumentException($"Asset {assetId} not found");
@@ -230,6 +285,9 @@ public class AssetLibraryService
     /// </summary>
     public async Task<AssetCollection> CreateCollectionAsync(string name, string? description = null, string color = "#0078D4")
     {
+        // Ensure initialization is complete before modifying collections
+        await WaitForInitializationAsync().ConfigureAwait(false);
+        
         var collection = new AssetCollection
         {
             Id = Guid.NewGuid(),
@@ -250,6 +308,9 @@ public class AssetLibraryService
     /// </summary>
     public async Task AddToCollectionAsync(Guid assetId, Guid collectionId)
     {
+        // Ensure initialization is complete before accessing assets/collections
+        await WaitForInitializationAsync().ConfigureAwait(false);
+        
         if (!_assets.TryGetValue(assetId, out var asset))
             throw new ArgumentException($"Asset {assetId} not found");
 
@@ -281,9 +342,12 @@ public class AssetLibraryService
     /// <summary>
     /// Get all collections
     /// </summary>
-    public Task<List<AssetCollection>> GetCollectionsAsync()
+    public async Task<List<AssetCollection>> GetCollectionsAsync()
     {
-        return Task.FromResult(_collections.Values.ToList());
+        // Ensure initialization is complete before accessing collections
+        await WaitForInitializationAsync().ConfigureAwait(false);
+        
+        return _collections.Values.ToList();
     }
 
     /// <summary>
@@ -291,6 +355,9 @@ public class AssetLibraryService
     /// </summary>
     public async Task<bool> DeleteAssetAsync(Guid assetId, bool deleteFromDisk = false)
     {
+        // Ensure initialization is complete before accessing assets/collections
+        await WaitForInitializationAsync().ConfigureAwait(false);
+        
         if (!_assets.TryGetValue(assetId, out var asset))
             return false;
 

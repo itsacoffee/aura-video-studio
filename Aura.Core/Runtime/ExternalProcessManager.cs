@@ -314,10 +314,38 @@ public class ExternalProcessManager : IDisposable
 
     public void Dispose()
     {
-        foreach (var processId in _processes.Keys.ToList())
+        // Use Task.Run with timeout to avoid deadlocks during disposal
+        // StopAsync doesn't accept CancellationToken, so we use a timeout wrapper
+        // Use a single timeout (10 seconds) for all disposal operations
+        var disposeTasks = _processes.Keys.Select(processId =>
+            Task.Run(async () =>
+            {
+                try
+                {
+                    // StopAsync has its own gracefulTimeoutSeconds parameter (default 10s)
+                    // We'll let it use its default timeout
+                    await StopAsync(processId).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    // Log but don't throw - we want to dispose all processes
+                    // Logging is handled by StopAsync internally
+                }
+            })
+        ).ToArray();
+        
+        try
         {
-            StopAsync(processId).Wait();
+            // Wait for all disposal tasks with a single timeout
+            // This matches the StopAsync default timeout
+            Task.WaitAll(disposeTasks, TimeSpan.FromSeconds(10));
         }
+        catch (Exception ex)
+        {
+            // Log but continue disposal
+            // Individual process disposal errors are already logged
+        }
+        
         GC.SuppressFinalize(this);
     }
 

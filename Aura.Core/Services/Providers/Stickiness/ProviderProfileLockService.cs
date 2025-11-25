@@ -168,7 +168,18 @@ public sealed class ProviderProfileLockService
         {
             lock_ = sessionLock.WithEnabled(false);
             _sessionLocks[jobId] = lock_;
-            SaveSessionLockAsync(CancellationToken.None).GetAwaiter().GetResult();
+            // Use Task.Run to avoid deadlocks when calling async methods from synchronous context
+            Task.Run(async () =>
+            {
+                try
+                {
+                    await SaveSessionLockAsync(CancellationToken.None).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to save session lock after unlock");
+                }
+            }).GetAwaiter().GetResult();
         }
         else if (!isSessionLevel && _projectLocks.TryGetValue(jobId, out var projectLock))
         {
@@ -203,7 +214,18 @@ public sealed class ProviderProfileLockService
             removed = _sessionLocks.TryRemove(jobId, out var lock_);
             if (removed)
             {
-                SaveSessionLockAsync(CancellationToken.None).GetAwaiter().GetResult();
+                // Use Task.Run to avoid deadlocks when calling async methods from synchronous context
+                Task.Run(async () =>
+                {
+                    try
+                    {
+                        await SaveSessionLockAsync(CancellationToken.None).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to save session lock after removal");
+                    }
+                }).GetAwaiter().GetResult();
                 _logger.LogInformation("SESSION_PROFILE_LOCK_REMOVED Job: {JobId}", jobId);
             }
         }

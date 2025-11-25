@@ -32,7 +32,7 @@ public class AudienceAnalysisService
 
         await Task.Delay(100, ct).ConfigureAwait(false);
 
-        var insights = GenerateAudienceInsights(request);
+        var insights = await GenerateAudienceInsightsAsync(request, ct).ConfigureAwait(false);
         var recommendations = GenerateRecommendations(insights, request);
 
         return new AudienceAnalysisResponse
@@ -160,11 +160,13 @@ public class AudienceAnalysisService
         });
     }
 
-    private AudienceInsight GenerateAudienceInsights(AudienceAnalysisRequest request)
+    private async Task<AudienceInsight> GenerateAudienceInsightsAsync(
+        AudienceAnalysisRequest request,
+        CancellationToken ct = default)
     {
         var platform = request.Platform ?? "General";
-        var demographics = GetDemographicsAsync(platform).Result;
-        var topInterests = GetTopInterestsAsync(request.Category ?? "General").Result;
+        var demographics = await GetDemographicsAsync(platform, ct).ConfigureAwait(false);
+        var topInterests = await GetTopInterestsAsync(request.Category ?? "General", ct).ConfigureAwait(false);
 
         return new AudienceInsight
         {

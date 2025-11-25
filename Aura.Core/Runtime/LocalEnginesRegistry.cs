@@ -56,6 +56,10 @@ public class LocalEnginesRegistry
     private readonly ExternalProcessManager _processManager;
     private readonly string _configPath;
     private readonly ConcurrentDictionary<string, EngineConfig> _engines = new();
+    private readonly Task _initializationTask;
+    private volatile bool _isInitialized;
+    private volatile bool _initializationFailed;
+    private Exception? _initializationException;
 
     public LocalEnginesRegistry(
         ILogger<LocalEnginesRegistry> logger,
@@ -66,11 +70,54 @@ public class LocalEnginesRegistry
         _processManager = processManager;
         _configPath = configPath;
 
-        LoadConfigAsync().Wait();
+        // Load config asynchronously in background to avoid blocking constructor
+        // Store the task so callers can await initialization if needed
+        _initializationTask = Task.Run(async () =>
+        {
+            try
+            {
+                await LoadConfigAsync().ConfigureAwait(false);
+                _isInitialized = true;
+                _initializationFailed = false;
+                _logger.LogInformation("Engine registry initialization completed");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to load engine config in background during initialization");
+                _isInitialized = true; // Mark as initialized even on error to prevent infinite waiting
+                _initializationFailed = true;
+                _initializationException = ex;
+            }
+        });
     }
+
+    /// <summary>
+    /// Wait for initialization to complete. Call this before using GetAllEngines() if you need guaranteed initialization.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">Thrown if initialization failed</exception>
+    public async Task WaitForInitializationAsync(CancellationToken ct = default)
+    {
+        await _initializationTask.WaitAsync(ct).ConfigureAwait(false);
+        
+        // Check if initialization failed and throw if so
+        if (_initializationFailed)
+        {
+            throw new InvalidOperationException(
+                "Engine registry initialization failed. Cannot access engines.",
+                _initializationException);
+        }
+    }
+
+    /// <summary>
+    /// Check if initialization is complete
+    /// </summary>
+    public bool IsInitialized => _isInitialized;
 
     public async Task RegisterEngineAsync(EngineConfig config)
     {
+        // Ensure initialization is complete before modifying engines
+        await WaitForInitializationAsync().ConfigureAwait(false);
+        
         _engines[config.Id] = config;
         await SaveConfigAsync().ConfigureAwait(false);
         _logger.LogInformation("Registered engine {Id} ({Name})", config.Id, config.Name);
@@ -78,6 +125,9 @@ public class LocalEnginesRegistry
 
     public async Task UnregisterEngineAsync(string engineId)
     {
+        // Ensure initialization is complete before modifying engines
+        await WaitForInitializationAsync().ConfigureAwait(false);
+        
         if (_engines.TryRemove(engineId, out var config))
         {
             if (_processManager.GetStatus(engineId).IsRunning)
@@ -92,11 +142,75 @@ public class LocalEnginesRegistry
 
     public EngineConfig? GetEngine(string engineId)
     {
+        // Ensure initialization is complete before accessing engines
+        // Use Task.Run to avoid deadlocks when called from async contexts
+        if (!_isInitialized)
+        {
+            _logger.LogWarning("GetEngine called before initialization complete, waiting...");
+            var waitTask = Task.Run(async () => await WaitForInitializationAsync().ConfigureAwait(false));
+            
+            if (!waitTask.Wait(TimeSpan.FromSeconds(5)))
+            {
+                _logger.LogError("GetEngine: Initialization wait timed out after 5 seconds");
+                throw new InvalidOperationException(
+                    "Engine registry initialization timed out. The registry may not be fully loaded.");
+            }
+            
+            // Check if initialization failed
+            if (_initializationFailed)
+            {
+                _logger.LogError("GetEngine: Initialization failed, cannot access engines");
+                throw new InvalidOperationException(
+                    "Engine registry initialization failed. Cannot access engines.",
+                    _initializationException);
+            }
+        }
+        else if (_initializationFailed)
+        {
+            // Initialization completed but failed
+            _logger.LogError("GetEngine: Attempting to access engines after failed initialization");
+            throw new InvalidOperationException(
+                "Engine registry initialization failed. Cannot access engines.",
+                _initializationException);
+        }
+        
         return _engines.TryGetValue(engineId, out var config) ? config : null;
     }
 
     public IReadOnlyList<EngineConfig> GetAllEngines()
     {
+        // Ensure initialization is complete before accessing engines
+        // Use Task.Run to avoid deadlocks when called from async contexts
+        if (!_isInitialized)
+        {
+            _logger.LogWarning("GetAllEngines called before initialization complete, waiting...");
+            var waitTask = Task.Run(async () => await WaitForInitializationAsync().ConfigureAwait(false));
+            
+            if (!waitTask.Wait(TimeSpan.FromSeconds(5)))
+            {
+                _logger.LogError("GetAllEngines: Initialization wait timed out after 5 seconds");
+                throw new InvalidOperationException(
+                    "Engine registry initialization timed out. The registry may not be fully loaded.");
+            }
+            
+            // Check if initialization failed
+            if (_initializationFailed)
+            {
+                _logger.LogError("GetAllEngines: Initialization failed, cannot access engines");
+                throw new InvalidOperationException(
+                    "Engine registry initialization failed. Cannot access engines.",
+                    _initializationException);
+            }
+        }
+        else if (_initializationFailed)
+        {
+            // Initialization completed but failed
+            _logger.LogError("GetAllEngines: Attempting to access engines after failed initialization");
+            throw new InvalidOperationException(
+                "Engine registry initialization failed. Cannot access engines.",
+                _initializationException);
+        }
+        
         return _engines.Values.ToList();
     }
 
@@ -174,6 +288,9 @@ public class LocalEnginesRegistry
 
     public async Task StartAutoLaunchEnginesAsync(CancellationToken ct = default)
     {
+        // Ensure initialization is complete before accessing engines
+        await WaitForInitializationAsync(ct).ConfigureAwait(false);
+        
         var autoLaunchEngines = _engines.Values.Where(e => e.StartOnAppLaunch).ToList();
         
         if (autoLaunchEngines.Count == 0)
@@ -199,6 +316,9 @@ public class LocalEnginesRegistry
 
     public async Task StopAllEnginesAsync()
     {
+        // Ensure initialization is complete before accessing engines
+        await WaitForInitializationAsync().ConfigureAwait(false);
+        
         var runningEngines = _engines.Keys.ToList();
         
         _logger.LogInformation("Stopping all running engines");
@@ -221,6 +341,38 @@ public class LocalEnginesRegistry
     /// </summary>
     public IReadOnlyList<EngineConfig> GetEngineInstances(string engineId)
     {
+        // Ensure initialization is complete before accessing engines
+        // Use Task.Run to avoid deadlocks when called from async contexts
+        if (!_isInitialized)
+        {
+            _logger.LogWarning("GetEngineInstances called before initialization complete, waiting...");
+            var waitTask = Task.Run(async () => await WaitForInitializationAsync().ConfigureAwait(false));
+            
+            if (!waitTask.Wait(TimeSpan.FromSeconds(5)))
+            {
+                _logger.LogError("GetEngineInstances: Initialization wait timed out after 5 seconds");
+                throw new InvalidOperationException(
+                    "Engine registry initialization timed out. The registry may not be fully loaded.");
+            }
+            
+            // Check if initialization failed
+            if (_initializationFailed)
+            {
+                _logger.LogError("GetEngineInstances: Initialization failed, cannot access engines");
+                throw new InvalidOperationException(
+                    "Engine registry initialization failed. Cannot access engines.",
+                    _initializationException);
+            }
+        }
+        else if (_initializationFailed)
+        {
+            // Initialization completed but failed
+            _logger.LogError("GetEngineInstances: Attempting to access engines after failed initialization");
+            throw new InvalidOperationException(
+                "Engine registry initialization failed. Cannot access engines.",
+                _initializationException);
+        }
+        
         return _engines.Values.Where(e => e.EngineId == engineId).ToList();
     }
 

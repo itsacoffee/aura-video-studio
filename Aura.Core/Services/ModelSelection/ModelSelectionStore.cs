@@ -28,10 +28,10 @@ public class ModelSelectionStore
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _providerSettings = providerSettings ?? throw new ArgumentNullException(nameof(providerSettings));
-        
+
         var auraDataDir = _providerSettings.GetAuraDataDirectory();
         _storePath = Path.Combine(auraDataDir, "model-selections.json");
-        
+
         _data = LoadData();
     }
 
@@ -47,13 +47,13 @@ public class ModelSelectionStore
         lock (_lock)
         {
             var key = GetSelectionKey(selection.Provider, selection.Stage, selection.Scope);
-            
+
             // Remove existing selection for this key if any
             _data.Selections.RemoveAll(s => GetSelectionKey(s.Provider, s.Stage, s.Scope) == key);
-            
+
             // Add new selection
             _data.Selections.Add(selection);
-            
+
             PersistData();
         }
 
@@ -63,20 +63,21 @@ public class ModelSelectionStore
     /// <summary>
     /// Get a specific model selection
     /// </summary>
-    public async Task<ModelSelection?> GetSelectionAsync(
+    public Task<ModelSelection?> GetSelectionAsync(
         string provider,
         string stage,
         ModelSelectionScope scope,
         CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        // This method doesn't perform async operations, but maintains async signature for consistency
+        // Return Task.FromResult to avoid unnecessary async overhead
         lock (_lock)
         {
             var key = GetSelectionKey(provider, stage, scope);
-            var selection = _data.Selections.FirstOrDefault(s => 
+            var selection = _data.Selections.FirstOrDefault(s =>
                 GetSelectionKey(s.Provider, s.Stage, s.Scope) == key);
-            
-            return Task.FromResult(selection).Result;
+
+            return Task.FromResult<ModelSelection?>(selection);
         }
     }
 
@@ -92,7 +93,7 @@ public class ModelSelectionStore
             var selections = _data.Selections
                 .Where(s => s.Scope == scope)
                 .ToList();
-            
+
             return Task.FromResult(selections);
         }
     }
@@ -116,7 +117,7 @@ public class ModelSelectionStore
                 (provider == null || s.Provider == provider) &&
                 (stage == null || s.Stage == stage) &&
                 (scope == null || s.Scope == scope));
-            
+
             PersistData();
         }
 
@@ -144,15 +145,15 @@ public class ModelSelectionStore
                 Timestamp = resolution.ResolutionTimestamp,
                 JobId = resolution.JobId
             };
-            
+
             _data.AuditLog.Add(audit);
-            
+
             // Keep only last 1000 audit entries
             if (_data.AuditLog.Count > 1000)
             {
                 _data.AuditLog.RemoveRange(0, _data.AuditLog.Count - 1000);
             }
-            
+
             PersistData();
         }
 
@@ -171,12 +172,12 @@ public class ModelSelectionStore
             var log = _data.AuditLog
                 .OrderByDescending(a => a.Timestamp)
                 .ToList();
-            
+
             if (limit.HasValue && limit.Value > 0)
             {
                 log = log.Take(limit.Value).ToList();
             }
-            
+
             return Task.FromResult(log);
         }
     }
@@ -194,7 +195,7 @@ public class ModelSelectionStore
                 .Where(a => a.JobId == jobId)
                 .OrderBy(a => a.Timestamp)
                 .ToList();
-            
+
             return Task.FromResult(log);
         }
     }
@@ -265,10 +266,10 @@ public class ModelSelectionStore
             {
                 WriteIndented = true
             };
-            
+
             var json = JsonSerializer.Serialize(_data, options);
             File.WriteAllText(_storePath, json);
-            
+
             _logger.LogDebug("Persisted model selections to {Path}", _storePath);
         }
         catch (Exception ex)

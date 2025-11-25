@@ -5416,8 +5416,31 @@ lifetime.ApplicationStopping.Register(() =>
             if (trackedProcesses.Length > 0)
             {
                 Log.Warning("Found {Count} tracked FFmpeg processes to terminate", trackedProcesses.Length);
-                processManager.KillAllProcessesAsync(CancellationToken.None).GetAwaiter().GetResult();
-                Log.Information("All FFmpeg processes terminated successfully");
+                
+                // Use Task.Run with timeout to avoid deadlocks during shutdown
+                // Use a single timeout (15 seconds) instead of nested timeouts
+                try
+                {
+                    var killTask = Task.Run(async () =>
+                    {
+                        // Create cancellation token with timeout that matches outer wait
+                        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+                        await processManager.KillAllProcessesAsync(cts.Token).ConfigureAwait(false);
+                    });
+                    
+                    if (killTask.Wait(TimeSpan.FromSeconds(15)))
+                    {
+                        Log.Information("All FFmpeg processes terminated successfully");
+                    }
+                    else
+                    {
+                        Log.Warning("FFmpeg process termination timed out after 15 seconds");
+                    }
+                }
+                catch (Exception killEx)
+                {
+                    Log.Error(killEx, "Error during FFmpeg process termination");
+                }
             }
             else
             {
@@ -5447,8 +5470,31 @@ lifetime.ApplicationStopping.Register(() =>
         Log.Information("Stopping Engine Lifecycle Manager...");
         try
         {
-            lifecycleManager.StopAsync().GetAwaiter().GetResult();
-            Log.Information("Engine Lifecycle Manager stopped successfully");
+            // Capture lifecycleManager in local variable to avoid null reference in closure
+            var manager = lifecycleManager;
+            if (manager == null)
+            {
+                Log.Warning("Engine Lifecycle Manager is null, skipping stop");
+            }
+            else
+            {
+                // Use Task.Run with timeout to avoid deadlocks during shutdown
+                // StopAsync doesn't accept CancellationToken, so we use a timeout wrapper
+                var stopTask = Task.Run(async () =>
+                {
+                    await manager.StopAsync().ConfigureAwait(false);
+                });
+                
+                // Wait with timeout - if it takes longer than 15 seconds, log warning and continue
+                if (stopTask.Wait(TimeSpan.FromSeconds(15)))
+                {
+                    Log.Information("Engine Lifecycle Manager stopped successfully");
+                }
+                else
+                {
+                    Log.Warning("Engine Lifecycle Manager stop operation timed out after 15 seconds");
+                }
+            }
         }
         catch (Exception ex)
         {

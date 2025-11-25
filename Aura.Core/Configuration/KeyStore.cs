@@ -219,13 +219,21 @@ public class KeyStore : IKeyStore
         try
         {
             // Load keys from encrypted storage using SecureStorageService
-            // Use ConfigureAwait(false) to avoid potential deadlocks in library code
-            var providers = _secureStorage.GetConfiguredProvidersAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+            // Use Task.Run to avoid deadlocks when calling async methods from synchronous context
+            var providers = Task.Run(async () =>
+            {
+                return await _secureStorage.GetConfiguredProvidersAsync().ConfigureAwait(false);
+            }).GetAwaiter().GetResult();
+            
             var keys = new Dictionary<string, string>();
             
             foreach (var provider in providers)
             {
-                var key = _secureStorage.GetApiKeyAsync(provider).ConfigureAwait(false).GetAwaiter().GetResult();
+                var key = Task.Run(async () =>
+                {
+                    return await _secureStorage.GetApiKeyAsync(provider).ConfigureAwait(false);
+                }).GetAwaiter().GetResult();
+                
                 if (!string.IsNullOrEmpty(key))
                 {
                     keys[provider] = key;
@@ -292,8 +300,11 @@ public class KeyStore : IKeyStore
                     {
                         try
                         {
-                            // Use ConfigureAwait(false) to avoid potential deadlocks in library code
-                            _secureStorage.SaveApiKeyAsync(kvp.Key, kvp.Value).ConfigureAwait(false).GetAwaiter().GetResult();
+                            // Use Task.Run to avoid deadlocks when calling async methods from synchronous context
+                            Task.Run(async () =>
+                            {
+                                await _secureStorage.SaveApiKeyAsync(kvp.Key, kvp.Value).ConfigureAwait(false);
+                            }).GetAwaiter().GetResult();
                             migratedCount++;
                         }
                         catch (Exception ex)

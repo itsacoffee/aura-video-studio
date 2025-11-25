@@ -603,7 +603,12 @@ public class DependencyManager
     
     public ManualInstallInstructions GetManualInstallInstructions(string componentName)
     {
-        var manifest = LoadManifestAsync().Result;
+        // Use Task.Run to avoid deadlocks when calling async methods from synchronous context
+        var manifest = Task.Run(async () =>
+        {
+            return await LoadManifestAsync().ConfigureAwait(false);
+        }).GetAwaiter().GetResult();
+        
         var component = manifest.Components.Find(c => c.Name == componentName);
         
         if (component == null)
