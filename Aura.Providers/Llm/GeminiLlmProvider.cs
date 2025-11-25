@@ -409,6 +409,187 @@ public class GeminiLlmProvider : ILlmProvider
         throw new InvalidOperationException($"Failed to complete prompt with Gemini after {_maxRetries + 1} attempts.");
     }
 
+    public async Task<string> GenerateChatCompletionAsync(
+        string systemPrompt,
+        string userPrompt,
+        LlmParameters? parameters = null,
+        CancellationToken ct = default)
+    {
+        _logger.LogInformation("Generating chat completion with Gemini (model: {Model})", _model);
+
+        var startTime = DateTime.UtcNow;
+        Exception? lastException = null;
+
+        // Use model override from parameters if provided
+        var modelToUse = !string.IsNullOrWhiteSpace(parameters?.ModelOverride)
+            ? parameters.ModelOverride
+            : _model;
+
+        // Get LLM parameters with defaults
+        var temperature = parameters?.Temperature ?? 0.7;
+        var maxTokens = parameters?.MaxTokens ?? 2000;
+        var topP = parameters?.TopP ?? 0.9;
+        var topK = parameters?.TopK;
+
+        for (int attempt = 0; attempt <= _maxRetries; attempt++)
+        {
+            try
+            {
+                if (attempt > 0)
+                {
+                    var backoffDelay = TimeSpan.FromSeconds(Math.Pow(2, attempt));
+                    _logger.LogInformation("Retry attempt {Attempt}/{MaxRetries} after {Delay}s delay",
+                        attempt, _maxRetries, backoffDelay.TotalSeconds);
+                    await Task.Delay(backoffDelay, ct).ConfigureAwait(false);
+                }
+
+                // Combine system and user prompts for Gemini
+                var prompt = $"{systemPrompt}\n\n{userPrompt}";
+
+                var generationConfig = new Dictionary<string, object>
+                {
+                    { "temperature", temperature },
+                    { "maxOutputTokens", maxTokens },
+                    { "topP", topP }
+                };
+
+                if (topK.HasValue)
+                {
+                    generationConfig["topK"] = topK.Value;
+                }
+
+                var requestBody = new
+                {
+                    contents = new[]
+                    {
+                        new
+                        {
+                            parts = new[]
+                            {
+                                new { text = prompt }
+                            }
+                        }
+                    },
+                    generationConfig = generationConfig
+                };
+
+                var json = JsonSerializer.Serialize(requestBody);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                cts.CancelAfter(_timeout);
+
+                var url = $"https://generativelanguage.googleapis.com/v1beta/models/{modelToUse}:generateContent?key={_apiKey}";
+                var response = await _httpClient.PostAsync(url, content, cts.Token).ConfigureAwait(false);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                    if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized ||
+                        response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                    {
+                        throw new InvalidOperationException(
+                            "Gemini API key is invalid or access is forbidden. Please verify your API key in Settings → Providers → Gemini");
+                    }
+                    else if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                    {
+                        _logger.LogWarning("Gemini quota exceeded or rate limit hit (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
+                        if (attempt >= _maxRetries)
+                        {
+                            throw new InvalidOperationException(
+                                "Gemini API quota exceeded or rate limit reached. Please check your quota at https://makersuite.google.com/app/apikey or wait before retrying.");
+                        }
+                        lastException = new Exception($"Quota/rate limit exceeded: {errorContent}");
+                        continue;
+                    }
+                    else if ((int)response.StatusCode >= 500)
+                    {
+                        _logger.LogWarning("Gemini server error (attempt {Attempt}/{MaxRetries}): {StatusCode}",
+                            attempt + 1, _maxRetries + 1, response.StatusCode);
+                        if (attempt >= _maxRetries)
+                        {
+                            throw new InvalidOperationException(
+                                $"Gemini service is experiencing issues (HTTP {response.StatusCode}). Please try again later.");
+                        }
+                        lastException = new Exception($"Server error: {errorContent}");
+                        continue;
+                    }
+
+                    response.EnsureSuccessStatusCode();
+                }
+
+                var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                var responseDoc = JsonDocument.Parse(responseJson);
+
+                if (responseDoc.RootElement.TryGetProperty("candidates", out var candidates) &&
+                    candidates.GetArrayLength() > 0)
+                {
+                    var firstCandidate = candidates[0];
+                    if (firstCandidate.TryGetProperty("content", out var contentObj) &&
+                        contentObj.TryGetProperty("parts", out var parts) &&
+                        parts.GetArrayLength() > 0)
+                    {
+                        var firstPart = parts[0];
+                        if (firstPart.TryGetProperty("text", out var textProp))
+                        {
+                            var result = textProp.GetString() ?? string.Empty;
+
+                            if (string.IsNullOrWhiteSpace(result))
+                            {
+                                throw new InvalidOperationException("Gemini returned an empty response");
+                            }
+
+                            var duration = DateTime.UtcNow - startTime;
+                            _logger.LogInformation("Chat completion generated successfully ({Length} characters) in {Duration}s",
+                                result.Length, duration.TotalSeconds);
+                            return result;
+                        }
+                    }
+                }
+
+                throw new InvalidOperationException("Invalid response structure from Gemini API");
+            }
+            catch (TaskCanceledException ex)
+            {
+                lastException = ex;
+                _logger.LogWarning(ex, "Gemini request timed out (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
+                if (attempt >= _maxRetries)
+                {
+                    throw new InvalidOperationException(
+                        $"Gemini request timed out after {_timeout.TotalSeconds}s. Please check your internet connection or try again later.", ex);
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                lastException = ex;
+                _logger.LogWarning(ex, "Failed to connect to Gemini API (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
+                if (attempt >= _maxRetries)
+                {
+                    throw new InvalidOperationException(
+                        "Cannot connect to Gemini API. Please check your internet connection and try again.", ex);
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                // Don't retry on validation errors
+                throw;
+            }
+            catch (Exception ex) when (attempt < _maxRetries)
+            {
+                lastException = ex;
+                _logger.LogWarning(ex, "Error generating chat completion with Gemini (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating chat completion with Gemini after all retries");
+                throw;
+            }
+        }
+
+        throw new InvalidOperationException(
+            $"Failed to generate chat completion with Gemini after {_maxRetries + 1} attempts. Please try again later.", lastException);
+    }
+
     public async Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
         string sceneText,
         string? previousSceneText,

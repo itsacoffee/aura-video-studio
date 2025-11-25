@@ -66,6 +66,20 @@ public class CompositeLlmProvider : ILlmProvider
             result => string.IsNullOrWhiteSpace(result) || result.Trim() == "{}" || result.Trim() == "[]" || result.Trim().Length < 10);
     }
 
+    public Task<string> GenerateChatCompletionAsync(
+        string systemPrompt,
+        string userPrompt,
+        LlmParameters? parameters = null,
+        CancellationToken ct = default)
+    {
+        return ExecuteWithFallbackAsync(
+            provider => provider.GenerateChatCompletionAsync(systemPrompt, userPrompt, parameters, ct),
+            "chat completion",
+            ct,
+            DefaultPreferredTier,
+            result => string.IsNullOrWhiteSpace(result));
+    }
+
     public Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
         string sceneText,
         string? previousSceneText,
@@ -195,8 +209,8 @@ public class CompositeLlmProvider : ILlmProvider
     /// Stream script generation using the first available streaming provider
     /// </summary>
     public async IAsyncEnumerable<LlmStreamChunk> DraftScriptStreamAsync(
-        Brief brief, 
-        PlanSpec spec, 
+        Brief brief,
+        PlanSpec spec,
         [EnumeratorCancellation] CancellationToken ct = default)
     {
         var providers = GetProviders();
@@ -244,7 +258,7 @@ public class CompositeLlmProvider : ILlmProvider
                     {
                         lastException = ex;
                         _logger.LogWarning(ex, "Streaming script generation failed with provider {Provider}, trying next", providerName);
-                        
+
                         if (hasYieldedChunks)
                         {
                             errorChunk = new LlmStreamChunk
@@ -300,8 +314,8 @@ public class CompositeLlmProvider : ILlmProvider
             Content = string.Empty,
             TokenIndex = 0,
             IsFinal = true,
-            ErrorMessage = lastException != null 
-                ? $"All streaming providers failed: {lastException.Message}" 
+            ErrorMessage = lastException != null
+                ? $"All streaming providers failed: {lastException.Message}"
                 : "No streaming providers available"
         };
     }

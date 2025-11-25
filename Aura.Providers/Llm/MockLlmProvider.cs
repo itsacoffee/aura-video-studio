@@ -83,6 +83,30 @@ public partial class MockLlmProvider : ILlmProvider
         };
     }
 
+    public async Task<string> GenerateChatCompletionAsync(
+        string systemPrompt,
+        string userPrompt,
+        LlmParameters? parameters = null,
+        CancellationToken ct = default)
+    {
+        RecordCall(nameof(GenerateChatCompletionAsync));
+        _logger.LogInformation("Mock LLM generating chat completion (system: {SystemLength}, user: {UserLength})",
+            systemPrompt.Length, userPrompt.Length);
+
+        if (SimulatedLatency > TimeSpan.Zero)
+        {
+            await Task.Delay(SimulatedLatency, ct).ConfigureAwait(false);
+        }
+
+        return _behavior switch
+        {
+            MockBehavior.Failure => throw new InvalidOperationException("Mock LLM provider configured to fail"),
+            MockBehavior.Timeout => throw new TaskCanceledException("Mock LLM provider timed out"),
+            MockBehavior.EmptyResponse => string.Empty,
+            _ => $"This is a mock chat completion response. System: {systemPrompt.Substring(0, Math.Min(50, systemPrompt.Length))}... User: {userPrompt.Substring(0, Math.Min(50, userPrompt.Length))}..."
+        };
+    }
+
     public async Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
         string sceneText,
         string? previousSceneText,

@@ -169,6 +169,24 @@ public class RuleBasedLlmProvider : ILlmProvider
             "Please ensure Ollama or another AI provider is running and configured.");
     }
 
+    public Task<string> GenerateChatCompletionAsync(
+        string systemPrompt,
+        string userPrompt,
+        LlmParameters? parameters = null,
+        CancellationToken ct = default)
+    {
+        _logger.LogWarning("RuleBasedLlmProvider.GenerateChatCompletionAsync: Chat completion not supported for rule-based provider. " +
+            "This provider only supports structured script generation via DraftScriptAsync. " +
+            "For chat completion, use an AI provider like Ollama, OpenAI, or Gemini.");
+        
+        // For rule-based provider, we can't meaningfully process chat completions
+        // Throw an exception to signal that this provider cannot handle this operation
+        // This will trigger the fallback chain in CompositeLlmProvider
+        throw new NotSupportedException(
+            "RuleBased provider does not support chat completion. " +
+            "Please ensure Ollama or another AI provider is running and configured.");
+    }
+
     public Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
         string sceneText,
         string? previousSceneText,
