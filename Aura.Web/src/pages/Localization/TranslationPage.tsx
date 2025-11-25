@@ -242,7 +242,7 @@ export const TranslationPage: React.FC = () => {
   // Form state
   const [sourceText, setSourceText] = useState('');
   const [sourceLanguage, setSourceLanguage] = useState('en');
-  const [targetLanguage, setTargetLanguage] = useState('es');
+  const [_targetLanguage, setTargetLanguage] = useState('es');
   const [targetLanguages, setTargetLanguages] = useState<string[]>(['es', 'fr']);
   const [translationMode, setTranslationMode] = useState<string>('Localized');
   const [enableBackTranslation, setEnableBackTranslation] = useState(true);

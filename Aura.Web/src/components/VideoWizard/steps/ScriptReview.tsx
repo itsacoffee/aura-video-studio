@@ -1260,7 +1260,7 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
 
     const scaleFactor = targetDurationSeconds / currentTotal;
     
-    return scenes.map((scene, index) => {
+    return scenes.map((scene, _index) => {
       // Scale scene duration proportionally
       const scaledDuration = scene.durationSeconds * scaleFactor;
       return {
