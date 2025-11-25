@@ -48,9 +48,12 @@ export interface PreviewThumbnail {
 
 export interface AudioSample {
   sceneId: string;
-  audioUrl: string;
+  audioUrl: string | null;
   duration: number;
   waveformData: number[];
+  status?: 'pending' | 'generating' | 'ready' | 'error';
+  error?: string;
+  provider?: string;
 }
 
 export interface PreviewData {
