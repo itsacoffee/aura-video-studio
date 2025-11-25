@@ -133,9 +133,34 @@ public class ScriptsController : ControllerBase
                 "[{CorrelationId}] POST /api/scripts/generate - Topic: {Topic}, Provider: {Provider}, Duration: {Duration}s",
                 correlationId, request.Topic, request.PreferredProvider ?? "auto", request.TargetDurationSeconds);
 
-            // Enable RAG automatically if documents are available in the index
+            // Enable RAG from request configuration or automatically if documents are available in the index
             Aura.Core.Models.RagConfiguration? ragConfig = null;
-            if (_vectorIndex != null)
+            
+            // First check if client explicitly specified RAG configuration
+            if (request.RagConfiguration != null)
+            {
+                if (request.RagConfiguration.Enabled)
+                {
+                    _logger.LogInformation(
+                        "[{CorrelationId}] RAG explicitly enabled via request with TopK={TopK}, MinScore={MinScore}",
+                        correlationId, request.RagConfiguration.TopK, request.RagConfiguration.MinimumScore);
+                    ragConfig = new Aura.Core.Models.RagConfiguration(
+                        Enabled: true,
+                        TopK: request.RagConfiguration.TopK,
+                        MinimumScore: request.RagConfiguration.MinimumScore,
+                        MaxContextTokens: request.RagConfiguration.MaxContextTokens,
+                        IncludeCitations: request.RagConfiguration.IncludeCitations,
+                        TightenClaims: request.RagConfiguration.TightenClaims);
+                }
+                else
+                {
+                    _logger.LogDebug(
+                        "[{CorrelationId}] RAG explicitly disabled via request",
+                        correlationId);
+                }
+            }
+            // If no explicit configuration, auto-enable if documents exist in the index
+            else if (_vectorIndex != null)
             {
                 try
                 {
@@ -143,7 +168,7 @@ public class ScriptsController : ControllerBase
                     if (stats.TotalDocuments > 0)
                     {
                         _logger.LogInformation(
-                            "[{CorrelationId}] RAG index contains {DocumentCount} documents, enabling RAG for script generation",
+                            "[{CorrelationId}] RAG index contains {DocumentCount} documents, auto-enabling RAG for script generation",
                             correlationId, stats.TotalDocuments);
                         ragConfig = new Aura.Core.Models.RagConfiguration(
                             Enabled: true,
