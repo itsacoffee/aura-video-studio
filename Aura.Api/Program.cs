@@ -268,7 +268,10 @@ builder.Services.AddScoped<ValidationFilter>();
 // Script generation endpoints can override with RequestTimeout attribute (6 minutes) to accommodate slow Ollama models
 builder.Services.AddRequestTimeouts(options =>
 {
-    options.DefaultTimeout = TimeSpan.FromMinutes(2);
+    options.DefaultPolicy = new Microsoft.AspNetCore.Http.Timeouts.RequestTimeoutPolicy
+    {
+        Timeout = TimeSpan.FromMinutes(2)
+    };
 });
 
 builder.Services.AddEndpointsApiExplorer();
