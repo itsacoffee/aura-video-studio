@@ -57,6 +57,13 @@ public record PlaceholderColorConfig
 /// </summary>
 public class PlaceholderColorGenerator : IStockProvider
 {
+    // Text display constants
+    private const int MaxDisplayTextLength = 50;
+    private const int TruncatedTextLength = 47;
+    private const int TextMargin = 200;
+    private const int MinFontSize = 20;
+    private const int FontSizeDecrementStep = 4;
+    
     private readonly ILogger<PlaceholderColorGenerator> _logger;
     private readonly string _outputDirectory;
     private readonly PlaceholderColorConfig _config;
@@ -242,7 +249,9 @@ public class PlaceholderColorGenerator : IStockProvider
     private void DrawTextOverlay(SKCanvas canvas, string text, int width, int height, SKColor bgColor)
     {
         var textColor = GetContrastColor(bgColor);
-        var displayText = text.Length > 50 ? string.Concat(text.AsSpan(0, 47), "...") : text;
+        var displayText = text.Length > MaxDisplayTextLength 
+            ? string.Concat(text.AsSpan(0, TruncatedTextLength), "...") 
+            : text;
 
         var fontSize = (float)_config.FontSize;
 
@@ -259,9 +268,9 @@ public class PlaceholderColorGenerator : IStockProvider
         var textBounds = new SKRect();
         paint.MeasureText(displayText, ref textBounds);
 
-        while (textBounds.Width > width - 200 && fontSize > 20)
+        while (textBounds.Width > width - TextMargin && fontSize > MinFontSize)
         {
-            fontSize -= 4;
+            fontSize -= FontSizeDecrementStep;
             paint.TextSize = fontSize;
             paint.MeasureText(displayText, ref textBounds);
         }
