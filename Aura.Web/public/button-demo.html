@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aura Button Demo</title>
+    <style>
+        :root {
+            --colorBrandBackground: #0ea5e9;
+            --colorBrandBackgroundHover: #0284c7;
+            --colorBrandBackgroundPressed: #0369a1;
+            --colorNeutralForegroundOnBrand: #ffffff;
+            --colorNeutralBackground1: #ffffff;
+            --colorNeutralForeground1: #1f2937;
+            --colorNeutralStroke1: #d1d5db;
+            --colorNeutralStroke1Hover: #9ca3af;
+            --colorNeutralForeground2: #6b7280;
+            --colorNeutralBackground1Hover: #f9fafb;
+            --colorPaletteRedBackground3: #fee2e2;
+            --colorPaletteRedForeground1: #b91c1c;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a2e 100%);
+            min-height: 100vh;
+            padding: 40px;
+            margin: 0;
+            color: #ffffff;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            font-size: 32px;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #0ea5e9 0%, #8b5cf6 50%, #ec4899 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .subtitle {
+            color: #9ca3af;
+            margin-bottom: 40px;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #ffffff;
+        }
+        
+        .label {
+            font-size: 12px;
+            color: #9ca3af;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .button-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 24px;
+        }
+        
+        /* Base Button Styles */
+        .aura-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            outline: none;
+            position: relative;
+        }
+        
+        .aura-btn:focus-visible {
+            outline: 2px solid #0ea5e9;
+            outline-offset: 2px;
+        }
+        
+        .aura-btn:active:not(:disabled) {
+            transform: scale(0.98);
+        }
+        
+        .aura-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        /* Primary Button */
+        .aura-btn-primary {
+            background: #0ea5e9;
+            color: #ffffff;
+            box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3);
+        }
+        
+        .aura-btn-primary:hover:not(:disabled) {
+            background: #0284c7;
+            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.4);
+        }
+        
+        /* Secondary Button */
+        .aura-btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .aura-btn-secondary:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        
+        /* Tertiary Button */
+        .aura-btn-tertiary {
+            background: transparent;
+            color: #9ca3af;
+        }
+        
+        .aura-btn-tertiary:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.05);
+            color: #ffffff;
+        }
+        
+        /* Destructive Button */
+        .aura-btn-destructive {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+        }
+        
+        .aura-btn-destructive:hover:not(:disabled) {
+            background: rgba(239, 68, 68, 0.3);
+        }
+        
+        /* Sizes */
+        .aura-btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+        
+        .aura-btn-lg {
+            padding: 14px 28px;
+            font-size: 16px;
+            border-radius: 8px;
+        }
+        
+        /* Full Width */
+        .aura-btn-full {
+            width: 100%;
+        }
+        
+        /* Loading State */
+        .aura-btn-loading {
+            position: relative;
+            color: transparent !important;
+        }
+        
+        .aura-btn-loading::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border: 2px solid currentColor;
+            border-right-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.75s linear infinite;
+        }
+        
+        .aura-btn-primary.aura-btn-loading::after {
+            border-color: rgba(255, 255, 255, 0.3);
+            border-right-color: #ffffff;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Icon */
+        .icon {
+            width: 18px;
+            height: 18px;
+            stroke: currentColor;
+            stroke-width: 2;
+            fill: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AuraButton Component</h1>
+        <p class="subtitle">Premium button variants for Aura Video Studio</p>
+        
+        <!-- Variants Section -->
+        <div class="card">
+            <div class="card-title">Button Variants</div>
+            
+            <div class="label">Primary - Main actions</div>
+            <div class="button-row">
+                <button class="aura-btn aura-btn-primary">Generate Video</button>
+                <button class="aura-btn aura-btn-primary">
+                    <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    Start
+                </button>
+                <button class="aura-btn aura-btn-primary">
+                    Next
+                    <svg class="icon" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                </button>
+            </div>
+            
+            <div class="label">Secondary - Alternative actions</div>
+            <div class="button-row">
+                <button class="aura-btn aura-btn-secondary">Cancel</button>
+                <button class="aura-btn aura-btn-secondary">
+                    <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    Settings
+                </button>
+                <button class="aura-btn aura-btn-secondary">Back</button>
+            </div>
+            
+            <div class="label">Tertiary - Minor actions</div>
+            <div class="button-row">
+                <button class="aura-btn aura-btn-tertiary">Learn more</button>
+                <button class="aura-btn aura-btn-tertiary">Advanced settings</button>
+                <button class="aura-btn aura-btn-tertiary">Skip</button>
+            </div>
+            
+            <div class="label">Destructive - Dangerous actions</div>
+            <div class="button-row">
+                <button class="aura-btn aura-btn-destructive">Delete</button>
+                <button class="aura-btn aura-btn-destructive">
+                    <svg class="icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    Delete Project
+                </button>
+            </div>
+        </div>
+        
+        <!-- Sizes Section -->
+        <div class="card">
+            <div class="card-title">Button Sizes</div>
+            <div class="button-row">
+                <button class="aura-btn aura-btn-primary aura-btn-sm">Small</button>
+                <button class="aura-btn aura-btn-primary">Medium</button>
+                <button class="aura-btn aura-btn-primary aura-btn-lg">Large</button>
+            </div>
+        </div>
+        
+        <!-- States Section -->
+        <div class="card">
+            <div class="card-title">Button States</div>
+            
+            <div class="label">Loading State</div>
+            <div class="button-row">
+                <button class="aura-btn aura-btn-primary aura-btn-loading" disabled>Generating...</button>
+                <button class="aura-btn aura-btn-secondary aura-btn-loading" disabled>Saving...</button>
+            </div>
+            
+            <div class="label">Disabled State</div>
+            <div class="button-row">
+                <button class="aura-btn aura-btn-primary" disabled>Disabled Primary</button>
+                <button class="aura-btn aura-btn-secondary" disabled>Disabled Secondary</button>
+                <button class="aura-btn aura-btn-tertiary" disabled>Disabled Tertiary</button>
+                <button class="aura-btn aura-btn-destructive" disabled>Disabled Destructive</button>
+            </div>
+        </div>
+        
+        <!-- Full Width Section -->
+        <div class="card">
+            <div class="card-title">Full Width</div>
+            <button class="aura-btn aura-btn-primary aura-btn-full">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                Save Changes
+            </button>
+        </div>
+    </div>
+</body>
+</html>

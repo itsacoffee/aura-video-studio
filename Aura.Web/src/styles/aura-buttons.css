@@ -1,0 +1,282 @@
+/**
+ * Aura Button System Styles
+ * Premium button styling with consistent interaction states
+ *
+ * These styles extend Fluent UI components with Aura branding
+ * and provide consistent micro-interactions across the app.
+ */
+
+/* ===================================================================
+   PRIMARY BUTTON ENHANCEMENTS
+   High-contrast, filled, strong label
+   =================================================================== */
+
+/* Gradient background for primary buttons (brand accent) */
+.aura-button-primary-gradient {
+  background: linear-gradient(
+    135deg,
+    var(--colorBrandBackground) 0%,
+    var(--colorBrandBackgroundHover) 100%
+  );
+  transition: all 0.2s ease;
+}
+
+.aura-button-primary-gradient:hover:not(:disabled) {
+  background: linear-gradient(
+    135deg,
+    var(--colorBrandBackgroundHover) 0%,
+    var(--colorBrandBackgroundPressed) 100%
+  );
+  box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
+}
+
+.aura-button-primary-gradient:active:not(:disabled) {
+  transform: scale(0.98);
+  box-shadow: 0 2px 4px rgb(0 0 0 / 10%);
+}
+
+/* ===================================================================
+   BUTTON INTERACTION STATES
+   Subtle color shifts and shadows, not harsh outlines
+   =================================================================== */
+
+/* Hover state enhancement */
+.aura-button-hover-lift:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgb(0 0 0 / 10%);
+}
+
+/* Focus state with high-contrast ring (WCAG compliant) */
+.aura-button-focus-ring:focus-visible {
+  outline: 2px solid var(--colorBrandStroke1, #0ea5e9);
+  outline-offset: 2px;
+}
+
+/* Pressed state */
+.aura-button-press:active:not(:disabled) {
+  transform: scale(0.98);
+  transition: transform 0.1s ease;
+}
+
+/* ===================================================================
+   LOADING STATE STYLES
+   Spinner integration without layout shift
+   =================================================================== */
+
+.aura-button-loading {
+  position: relative;
+  cursor: wait;
+}
+
+.aura-button-loading-content {
+  visibility: hidden;
+}
+
+.aura-button-loading-spinner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* Spinner animation */
+@keyframes aura-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.aura-spinner {
+  animation: aura-spin 1s linear infinite;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .aura-spinner {
+    animation: none;
+  }
+
+  .aura-button-hover-lift:hover:not(:disabled) {
+    transform: none;
+  }
+
+  .aura-button-press:active:not(:disabled) {
+    transform: none;
+  }
+}
+
+/* ===================================================================
+   DISABLED STATE STYLES
+   Softened colors but still legible
+   =================================================================== */
+
+.aura-button-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Ensure disabled buttons are still readable */
+.aura-button-disabled:disabled {
+  color: inherit;
+
+  /* Slightly muted but still visible */
+  filter: grayscale(30%);
+}
+
+/* ===================================================================
+   BUTTON SIZE UTILITIES
+   Consistent padding and corner radius
+   =================================================================== */
+
+.aura-button-sm {
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  min-height: 28px;
+}
+
+.aura-button-md {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  min-height: 36px;
+}
+
+.aura-button-lg {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 16px;
+  min-height: 44px;
+}
+
+/* Full width button */
+.aura-button-full-width {
+  width: 100%;
+}
+
+/* ===================================================================
+   ICON BUTTON STYLES
+   Square buttons with centered icons
+   =================================================================== */
+
+.aura-button-icon-only {
+  padding: 8px;
+  min-width: unset;
+  aspect-ratio: 1;
+}
+
+.aura-button-icon-only.aura-button-sm {
+  padding: 4px;
+}
+
+.aura-button-icon-only.aura-button-lg {
+  padding: 12px;
+}
+
+/* ===================================================================
+   DESTRUCTIVE BUTTON STYLES
+   Red-accented for dangerous actions
+   =================================================================== */
+
+.aura-button-destructive {
+  --button-bg: #fee2e2;
+  --button-bg-hover: #fecaca;
+  --button-bg-active: #fca5a5;
+  --button-text: #b91c1c;
+  --button-border: #f87171;
+
+  background-color: var(--button-bg);
+  color: var(--button-text);
+  border: 1px solid transparent;
+}
+
+.aura-button-destructive:hover:not(:disabled) {
+  background-color: var(--button-bg-hover);
+  border-color: var(--button-border);
+}
+
+.aura-button-destructive:active:not(:disabled) {
+  background-color: var(--button-bg-active);
+}
+
+.aura-button-destructive:focus-visible {
+  outline-color: var(--button-border);
+}
+
+/* Dark mode adjustments for destructive button */
+@media (prefers-color-scheme: dark) {
+  .aura-button-destructive {
+    --button-bg: rgb(127 29 29 / 30%);
+    --button-bg-hover: rgb(127 29 29 / 50%);
+    --button-bg-active: rgb(127 29 29 / 70%);
+    --button-text: #fca5a5;
+    --button-border: #dc2626;
+  }
+}
+
+/* ===================================================================
+   BUTTON GROUP STYLES
+   For grouped button actions
+   =================================================================== */
+
+.aura-button-group {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.aura-button-group-attached {
+  display: inline-flex;
+}
+
+.aura-button-group-attached > *:not(:first-child) {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  margin-left: -1px;
+}
+
+.aura-button-group-attached > *:not(:last-child) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+/* ===================================================================
+   SELECTION STATE STYLES
+   For lists and timelines
+   =================================================================== */
+
+.aura-selection-highlight {
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.aura-selection-highlight[aria-selected='true'],
+.aura-selection-highlight.selected {
+  background-color: rgb(14 165 233 / 10%);
+  border: 2px solid var(--colorBrandStroke1, #0ea5e9);
+  border-radius: 6px;
+}
+
+.aura-selection-highlight[aria-selected='true']::before,
+.aura-selection-highlight.selected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--colorBrandBackground, #0ea5e9);
+  border-radius: 2px 0 0 2px;
+}
+
+/* Ensure selection is not only indicated by color */
+.aura-selection-highlight:focus-visible {
+  outline: 2px solid var(--colorBrandStroke1, #0ea5e9);
+  outline-offset: 2px;
+}

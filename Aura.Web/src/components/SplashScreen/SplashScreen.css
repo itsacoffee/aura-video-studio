@@ -137,7 +137,8 @@
   display: inline-block;
   margin-bottom: 32px;
   animation: logoFloat 4s ease-in-out infinite;
-  filter: drop-shadow(0 0 30px rgb(99 102 241 / 40%)) drop-shadow(0 0 20px rgb(255 107 53 / 30%)) drop-shadow(0 20px 60px rgb(0 0 0 / 50%));
+  filter: drop-shadow(0 0 30px rgb(99 102 241 / 40%)) drop-shadow(0 0 20px rgb(255 107 53 / 30%))
+    drop-shadow(0 20px 60px rgb(0 0 0 / 50%));
 }
 
 /* Flame animations */
@@ -153,18 +154,22 @@
 }
 
 @keyframes flameFlickerBlue {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.8;
     transform: translateY(0) scaleY(1);
   }
+
   25% {
     opacity: 0.9;
     transform: translateY(-2px) scaleY(1.1);
   }
+
   50% {
     opacity: 0.7;
     transform: translateY(0) scaleY(0.95);
   }
+
   75% {
     opacity: 0.85;
     transform: translateY(-1px) scaleY(1.05);
@@ -172,18 +177,22 @@
 }
 
 @keyframes flameFlickerOrange {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.7;
     transform: translateY(0) scaleY(1);
   }
+
   25% {
     opacity: 0.85;
     transform: translateY(-1px) scaleY(1.08);
   }
+
   50% {
     opacity: 0.6;
     transform: translateY(0) scaleY(0.92);
   }
+
   75% {
     opacity: 0.75;
     transform: translateY(-1.5px) scaleY(1.03);
@@ -201,12 +210,11 @@
   }
 }
 
-
 /* ==================== TYPOGRAPHY ==================== */
 .splash-title {
   font-size: 72px;
   font-weight: 700;
-  color: #ffffff;
+  color: #fff;
   margin: 0;
   padding: 8px 16px;
   letter-spacing: 2px;
@@ -222,12 +230,14 @@
 }
 
 @keyframes titleGlow {
-  0%, 100% {
+  0%,
+  100% {
     text-shadow:
       0 0 20px rgb(255 255 255 / 30%),
       0 2px 4px rgb(0 0 0 / 30%),
       0 4px 8px rgb(0 0 0 / 20%);
   }
+
   50% {
     text-shadow:
       0 0 30px rgb(255 255 255 / 40%),
@@ -270,7 +280,7 @@
 .splash-status {
   font-size: 14px;
   color: rgb(255 255 255 / 90%);
-  margin: 0 0 16px 0;
+  margin: 0 0 16px;
   min-height: 20px;
   animation: statusFade 0.4s ease-in-out;
   font-weight: 400;
@@ -279,7 +289,7 @@
 
 .splash-progress-track {
   height: 4px;
-  background: rgba(255, 255, 255, 0.3);
+  background: rgb(255 255 255 / 30%);
   border-radius: 2px;
   overflow: hidden;
   position: relative;
@@ -287,7 +297,7 @@
 
 .splash-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #3B82F6 0%, #6366F1 50%, #A855F7 100%);
+  background: linear-gradient(90deg, #3b82f6 0%, #6366f1 50%, #a855f7 100%);
   border-radius: 2px;
   transition: width 0.3s ease;
   position: relative;
@@ -304,7 +314,6 @@
     transform: translateY(0);
   }
 }
-
 
 /* ==================== RESPONSIVE ==================== */
 @media (width <= 768px) {
