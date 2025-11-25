@@ -40,7 +40,7 @@ import {
   ImageEdit24Regular,
   Search24Regular,
 } from '@fluentui/react-icons';
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { FC } from 'react';
 import type {
   PreviewData,
@@ -50,7 +50,7 @@ import type {
   ScriptScene,
   PreviewThumbnail,
 } from '../types';
-import { getVisualsClient } from '@/api/visualsClient';
+import { getVisualsClient, VisualsClient } from '@/api/visualsClient';
 import type { VisualProvider, BatchGenerateProgress } from '@/api/visualsClient';
 
 const useStyles = makeStyles({
@@ -241,7 +241,11 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
   onValidationChange,
 }) => {
   const styles = useStyles();
-  const visualsClient = getVisualsClient();
+
+  // Memoize visualsClient to ensure consistent instance across renders
+  const visualsClient = useMemo<VisualsClient>(() => getVisualsClient(), []);
+
+  // State hooks - all declared unconditionally at top level
   const [status, setStatus] = useState<GenerationStatus>('idle');
   const [progress, setProgress] = useState(0);
   const [currentStage, setCurrentStage] = useState('');
@@ -256,52 +260,99 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
   const [fullscreenImage, setFullscreenImage] = useState<{
     url: string;
     scene: ScriptScene;
-    thumbnail: any;
+    thumbnail: PreviewThumbnail | null;
   } | null>(null);
+  const [providerLoadError, setProviderLoadError] = useState<string | null>(null);
+  const [isLoadingProviders, setIsLoadingProviders] = useState(true);
+
+  // Use ref to track if providers have been selected to avoid stale closure issues
+  const hasSelectedProviderRef = useRef(false);
+
+  // Validate script data before proceeding
+  const hasValidScriptData = useMemo(() => {
+    return scriptData && Array.isArray(scriptData.scenes) && scriptData.scenes.length > 0;
+  }, [scriptData]);
 
   const hasPreviewData = useMemo(() => {
     return data.thumbnails.length > 0 && data.audioSamples.length > 0;
   }, [data]);
 
+  // Validation effect - always called
   useEffect(() => {
+    if (!hasValidScriptData) {
+      onValidationChange({
+        isValid: false,
+        errors: ['Script data is missing. Please go back and generate a script first.'],
+      });
+      return;
+    }
+
     if (hasPreviewData) {
       setStatus('completed');
       onValidationChange({ isValid: true, errors: [] });
     } else {
       onValidationChange({ isValid: false, errors: ['Preview generation required'] });
     }
-  }, [hasPreviewData, onValidationChange]);
+  }, [hasPreviewData, hasValidScriptData, onValidationChange]);
 
-  useEffect(() => {
-    loadProviders();
-    loadStyles();
-  }, []);
-
+  // Load providers callback - no dependencies on selectedProvider to avoid stale closure
   const loadProviders = useCallback(async () => {
+    setIsLoadingProviders(true);
+    setProviderLoadError(null);
+
     try {
       const response = await visualsClient.getProviders();
       setProviders(response.providers);
 
-      const availableProvider = response.providers.find((p) => p.isAvailable);
-      if (availableProvider && !selectedProvider) {
-        setSelectedProvider(availableProvider.name);
+      // Only set provider if one hasn't been selected yet
+      if (!hasSelectedProviderRef.current) {
+        const availableProvider = response.providers.find((p) => p.isAvailable);
+        if (availableProvider) {
+          setSelectedProvider(availableProvider.name);
+          hasSelectedProviderRef.current = true;
+        }
       }
-    } catch (error) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load providers';
       console.error('Failed to load providers:', error);
+      setProviderLoadError(errorMessage);
+    } finally {
+      setIsLoadingProviders(false);
     }
-  }, [visualsClient, selectedProvider]);
+  }, [visualsClient]);
 
+  // Load styles callback
   const loadStyles = useCallback(async () => {
     try {
       const response = await visualsClient.getStyles();
       setAvailableStyles(response.allStyles);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to load styles:', error);
       setAvailableStyles(['photorealistic', 'artistic', 'cinematic', 'minimalist']);
     }
   }, [visualsClient]);
 
+  // Effect to load providers and styles on mount - properly includes dependencies
+  useEffect(() => {
+    void loadProviders();
+    void loadStyles();
+  }, [loadProviders, loadStyles]);
+
+  // Update ref when selectedProvider changes
+  useEffect(() => {
+    if (selectedProvider) {
+      hasSelectedProviderRef.current = true;
+    }
+  }, [selectedProvider]);
+
   const generatePreviews = useCallback(async () => {
+    // Validate script data before generation
+    if (!hasValidScriptData) {
+      setStatus('error');
+      setCurrentStage('No script data available. Please generate a script first.');
+      return;
+    }
+
     setStatus('generating');
     setProgress(0);
     setCurrentStage('Initializing preview generation...');
@@ -380,7 +431,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
       setProgress(100);
       setCurrentStage('Preview generation completed!');
       setStatus('completed');
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Preview generation failed:', error);
       setStatus('error');
       setCurrentStage('Preview generation failed. Using placeholder images.');
@@ -401,6 +452,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
       onValidationChange({ isValid: false, errors: ['Preview generation failed'] });
     }
   }, [
+    hasValidScriptData,
     scriptData.scenes,
     styleData.visualStyle,
     imageStyle,
@@ -552,10 +604,20 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
             {providers.map((provider) => (
               <div
                 key={provider.name}
+                role="button"
+                tabIndex={provider.isAvailable ? 0 : -1}
+                aria-disabled={!provider.isAvailable}
+                aria-pressed={selectedProvider === provider.name}
                 className={`${styles.providerOption} ${
                   selectedProvider === provider.name ? styles.selectedProvider : ''
                 }`}
                 onClick={() => provider.isAvailable && setSelectedProvider(provider.name)}
+                onKeyDown={(e) => {
+                  if ((e.key === 'Enter' || e.key === ' ') && provider.isAvailable) {
+                    e.preventDefault();
+                    setSelectedProvider(provider.name);
+                  }
+                }}
                 style={{
                   opacity: provider.isAvailable ? 1 : 0.5,
                   cursor: provider.isAvailable ? 'pointer' : 'not-allowed',
@@ -730,21 +792,35 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
           const thumbnail = data.thumbnails.find((t) => t.sceneId === scene.id);
           const audioSample = data.audioSamples.find((a) => a.sceneId === scene.id);
           const isRegenerating = regeneratingScene === scene.id;
+          const isClickable = thumbnail && !isRegenerating;
 
           return (
             <Card key={scene.id} className={`${styles.sceneCard} ${styles.sceneCardHover}`}>
               <div
+                role="button"
+                tabIndex={isClickable ? 0 : -1}
+                aria-label={`Scene ${index + 1} preview${isClickable ? ' - click to view fullscreen' : isRegenerating ? ' - regenerating' : ' - no preview available'}`}
+                aria-disabled={!isClickable}
                 className={styles.scenePreview}
                 onClick={() =>
-                  thumbnail &&
-                  !isRegenerating &&
+                  isClickable &&
                   setFullscreenImage({
                     url: thumbnail.imageUrl,
                     scene,
                     thumbnail,
                   })
                 }
-                style={{ cursor: thumbnail && !isRegenerating ? 'pointer' : 'default' }}
+                onKeyDown={(e) => {
+                  if ((e.key === 'Enter' || e.key === ' ') && isClickable) {
+                    e.preventDefault();
+                    setFullscreenImage({
+                      url: thumbnail.imageUrl,
+                      scene,
+                      thumbnail,
+                    });
+                  }
+                }}
+                style={{ cursor: isClickable ? 'pointer' : 'default' }}
               >
                 {isRegenerating ? (
                   <Spinner size="large" />
@@ -858,7 +934,9 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
 
       {advancedMode && (
         <Card style={{ padding: tokens.spacingVerticalL, marginTop: tokens.spacingVerticalL }}>
-          <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>Advanced Preview Options</Title3>
+          <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>
+            Advanced Preview Options
+          </Title3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
             <Text size={300}>
               Previews use lower quality settings for faster generation. Final video will use full
@@ -961,6 +1039,93 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
       </Button>
     </div>
   );
+
+  // Render missing script data error
+  const renderMissingScriptDataError = () => (
+    <div className={styles.generationCard}>
+      <Warning24Regular style={{ fontSize: '48px', color: tokens.colorPaletteRedForeground1 }} />
+      <Title3>Script Data Missing</Title3>
+      <Text style={{ marginBottom: tokens.spacingVerticalM }}>
+        No script data is available. Please go back to the Script Review step and generate a script
+        first.
+      </Text>
+      <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+        The Preview Generation step requires completed script data with scenes to generate visual
+        previews.
+      </Text>
+    </div>
+  );
+
+  // Render provider loading error with retry
+  const renderProviderLoadError = () => (
+    <div className={styles.generationCard}>
+      <Warning24Regular style={{ fontSize: '48px', color: tokens.colorPaletteRedForeground1 }} />
+      <Title3>Failed to Load Providers</Title3>
+      <Text style={{ marginBottom: tokens.spacingVerticalM }}>
+        {providerLoadError || 'An error occurred while loading image providers.'}
+      </Text>
+      <Button
+        appearance="primary"
+        icon={<ArrowClockwise24Regular />}
+        onClick={() => void loadProviders()}
+      >
+        Retry
+      </Button>
+    </div>
+  );
+
+  // Main render - handle all states
+  // First check for invalid script data
+  if (!hasValidScriptData) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <Title2>Preview Generation</Title2>
+          <Text>
+            Generate preview thumbnails and audio samples to review your video before final
+            rendering.
+          </Text>
+        </div>
+        {renderMissingScriptDataError()}
+      </div>
+    );
+  }
+
+  // Check for provider loading error
+  if (providerLoadError && !isLoadingProviders && providers.length === 0) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <Title2>Preview Generation</Title2>
+          <Text>
+            Generate preview thumbnails and audio samples to review your video before final
+            rendering.
+          </Text>
+        </div>
+        {renderProviderLoadError()}
+      </div>
+    );
+  }
+
+  // Show loading while providers are loading
+  if (isLoadingProviders && providers.length === 0) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <Title2>Preview Generation</Title2>
+          <Text>
+            Generate preview thumbnails and audio samples to review your video before final
+            rendering.
+          </Text>
+        </div>
+        <div className={styles.generationCard}>
+          <Spinner size="large" />
+          <Title3>Loading Providers...</Title3>
+          <Text>Please wait while we load available image generation providers.</Text>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>
