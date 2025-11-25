@@ -43,6 +43,24 @@ public class TranslationRequest
     public TranslationOptions Options { get; set; } = new();
     public Dictionary<string, string> Glossary { get; set; } = new();
     public string? AudienceProfileId { get; set; }
+    
+    /// <summary>
+    /// RAG configuration for terminology grounding.
+    /// When enabled, the translation service will retrieve relevant terminology
+    /// and context from indexed documents to ensure consistency.
+    /// </summary>
+    public Models.RagConfiguration? RagConfiguration { get; set; }
+    
+    /// <summary>
+    /// Domain-specific context for better translation accuracy.
+    /// Examples: "medical", "legal", "technical", "marketing"
+    /// </summary>
+    public string? Domain { get; set; }
+    
+    /// <summary>
+    /// Industry-specific terminology database ID for specialized translations.
+    /// </summary>
+    public string? IndustryGlossaryId { get; set; }
 }
 
 /// <summary>

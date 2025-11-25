@@ -289,22 +289,23 @@ public class TranslationService
             options, 
             glossary);
 
-        var brief = LlmRequestHelper.CreateTranslationBrief(
-            "Translation",
-            "Translation system",
-            "Translate text with cultural adaptation"
-        );
-
-        var spec = LlmRequestHelper.CreateTranslationPlanSpec();
-
         try
         {
-            var response = await _llmProvider.DraftScriptAsync(brief, spec, cancellationToken).ConfigureAwait(false);
-            return ExtractTranslation(response);
+            // Use CompleteAsync for direct prompt completion - this is the correct approach
+            // for translation tasks that require sending a specific prompt to the LLM
+            var response = await _llmProvider.CompleteAsync(prompt, cancellationToken).ConfigureAwait(false);
+            var translation = ExtractTranslation(response);
+            
+            _logger.LogDebug(
+                "Translation completed: {SourceLang} -> {TargetLang}, Input: {InputLength} chars, Output: {OutputLength} chars",
+                sourceLanguage, targetLanguage, text.Length, translation.Length);
+            
+            return translation;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Translation failed, using fallback");
+            _logger.LogError(ex, "Translation failed for {SourceLang} -> {TargetLang}: {Error}", 
+                sourceLanguage, targetLanguage, ex.Message);
             return $"[Translation unavailable: {text}]";
         }
     }
@@ -318,57 +319,105 @@ public class TranslationService
         Dictionary<string, string> glossary)
     {
         var sb = new StringBuilder();
-        sb.AppendLine($"Translate the following text from {sourceLanguage} to {targetLanguage}.");
+        
+        // Enhanced system context for high-quality translation
+        sb.AppendLine($@"You are an expert professional translator specializing in {sourceLanguage} to {targetLanguage} translation.
+
+TRANSLATION TASK:
+Translate the following text from {sourceLanguage} to {targetLanguage}.");
         sb.AppendLine();
 
+        // Mode-specific instructions with detailed guidance
         if (options.Mode == TranslationMode.Localized)
         {
-            sb.AppendLine("IMPORTANT: Provide LOCALIZED translation, not literal:");
-            sb.AppendLine("- Adapt idioms and expressions to target culture");
-            sb.AppendLine("- Replace culturally-specific references with local equivalents");
-            sb.AppendLine("- Adjust humor and tone for cultural appropriateness");
-            sb.AppendLine("- Modify examples for cultural relevance");
+            sb.AppendLine(@"LOCALIZATION MODE - Apply these principles:
+1. CULTURAL ADAPTATION: Adapt idioms, expressions, and cultural references to resonate with the target audience
+2. NATURAL FLOW: Ensure the translation reads naturally to native speakers, not as a translation
+3. CULTURAL EQUIVALENCE: Replace culturally-specific references with local equivalents when appropriate
+4. HUMOR AND TONE: Adjust humor, sarcasm, and tone for cultural appropriateness
+5. EXAMPLES: Modify examples to be culturally relevant and relatable
+6. FORMALITY: Match the formality level expected in the target culture");
         }
         else if (options.Mode == TranslationMode.Transcreation)
         {
-            sb.AppendLine("IMPORTANT: Provide TRANSCREATION (creative adaptation):");
-            sb.AppendLine("- Preserve the message and emotional impact");
-            sb.AppendLine("- Adapt freely to resonate with target culture");
-            sb.AppendLine("- Maintain brand voice and tone");
+            sb.AppendLine(@"TRANSCREATION MODE - Apply creative adaptation:
+1. MESSAGE PRESERVATION: Preserve the core message and emotional impact above literal accuracy
+2. CREATIVE FREEDOM: Adapt freely to maximize resonance with target culture
+3. BRAND VOICE: Maintain consistent brand voice and personality
+4. EMOTIONAL IMPACT: Ensure the translation evokes the same emotional response
+5. MARKETING EFFECTIVENESS: Optimize for persuasive impact in the target market
+6. CULTURAL APPEAL: Make the content feel native, not translated");
+        }
+        else // Literal mode
+        {
+            sb.AppendLine(@"LITERAL TRANSLATION MODE - Apply these principles:
+1. ACCURACY: Preserve exact meaning with high fidelity
+2. TERMINOLOGY: Maintain consistent terminology throughout
+3. STRUCTURE: Preserve sentence structure where grammatically appropriate
+4. COMPLETENESS: Include all information from the source text");
         }
 
+        // Glossary terms with emphasis
         if (glossary.Count != 0)
         {
             sb.AppendLine();
-            sb.AppendLine("Use these specific translations for key terms:");
+            sb.AppendLine("MANDATORY TERMINOLOGY (use these exact translations):");
             foreach (var entry in glossary)
             {
-                sb.AppendLine($"- {entry.Key} → {entry.Value}");
+                sb.AppendLine($"  • \"{entry.Key}\" → \"{entry.Value}\"");
             }
+            sb.AppendLine();
+            sb.AppendLine("IMPORTANT: These glossary terms MUST be used exactly as specified for consistency.");
         }
 
+        // Additional constraints
+        var constraints = new List<string>();
+        
         if (options.AdaptMeasurements)
         {
-            sb.AppendLine("- Convert measurements to local units (imperial ↔ metric)");
+            constraints.Add("Convert measurements to local units (imperial ↔ metric as appropriate for target region)");
         }
 
         if (options.PreserveNames)
         {
-            sb.AppendLine("- Preserve proper names unless localization is standard");
+            constraints.Add("Preserve proper names in their original form unless standard localization exists (e.g., country names)");
         }
 
         if (options.PreserveBrands)
         {
-            sb.AppendLine("- Keep brand names unchanged");
+            constraints.Add("Keep brand names, trademarks, and product names unchanged");
         }
 
+        if (constraints.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("ADDITIONAL CONSTRAINTS:");
+            foreach (var constraint in constraints)
+            {
+                sb.AppendLine($"  • {constraint}");
+            }
+        }
+
+        // Context information
+        if (!string.IsNullOrWhiteSpace(context))
+        {
+            sb.AppendLine();
+            sb.AppendLine($"CONTEXT FOR TRANSLATION:");
+            sb.AppendLine(context);
+        }
+
+        // Source text with clear demarcation
         sb.AppendLine();
-        sb.AppendLine($"Context: {context}");
-        sb.AppendLine();
-        sb.AppendLine("Text to translate:");
+        sb.AppendLine("═══════════════════════════════════════════════════════════════");
+        sb.AppendLine("SOURCE TEXT TO TRANSLATE:");
+        sb.AppendLine("═══════════════════════════════════════════════════════════════");
         sb.AppendLine(text);
+        sb.AppendLine("═══════════════════════════════════════════════════════════════");
         sb.AppendLine();
-        sb.AppendLine("Provide ONLY the translated text, no explanations.");
+        sb.AppendLine("OUTPUT INSTRUCTIONS:");
+        sb.AppendLine("Provide ONLY the translated text. Do not include explanations, notes, or commentary.");
+        sb.AppendLine();
+        sb.AppendLine($"TRANSLATION ({targetLanguage}):");
 
         return sb.ToString();
     }

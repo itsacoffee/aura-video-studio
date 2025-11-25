@@ -4,14 +4,22 @@ using Aura.Core.Models;
 namespace Aura.Core.Services.Localization;
 
 /// <summary>
-/// Helper class for creating standardized Brief and PlanSpec objects for LLM requests
-/// Reduces duplication across localization services
+/// Helper class for creating standardized Brief and PlanSpec objects for LLM requests.
+/// 
+/// IMPORTANT: For localization services, prefer using ILlmProvider.CompleteAsync() directly
+/// with a well-constructed prompt string instead of DraftScriptAsync(), as translation
+/// and analysis tasks require specific prompts to be passed to the LLM.
+/// 
+/// The methods in this class are provided for backwards compatibility but should be
+/// considered deprecated for new localization service implementations.
 /// </summary>
 internal static class LlmRequestHelper
 {
     /// <summary>
-    /// Create a standard Brief for analysis tasks
+    /// Create a standard Brief for analysis tasks.
+    /// DEPRECATED: Prefer using ILlmProvider.CompleteAsync() with a direct prompt.
     /// </summary>
+    [Obsolete("Prefer using ILlmProvider.CompleteAsync() with a direct prompt for localization tasks")]
     public static Brief CreateAnalysisBrief(string topic, string audience, string goal, string tone = "Analytical")
     {
         return new Brief(
@@ -25,8 +33,10 @@ internal static class LlmRequestHelper
     }
 
     /// <summary>
-    /// Create a standard PlanSpec for analysis tasks
+    /// Create a standard PlanSpec for analysis tasks.
+    /// DEPRECATED: Prefer using ILlmProvider.CompleteAsync() with a direct prompt.
     /// </summary>
+    [Obsolete("Prefer using ILlmProvider.CompleteAsync() with a direct prompt for localization tasks")]
     public static PlanSpec CreateAnalysisPlanSpec(string style = "Analysis")
     {
         return new PlanSpec(
@@ -38,8 +48,10 @@ internal static class LlmRequestHelper
     }
 
     /// <summary>
-    /// Create a standard Brief for translation tasks
+    /// Create a standard Brief for translation tasks.
+    /// DEPRECATED: Prefer using ILlmProvider.CompleteAsync() with a direct prompt.
     /// </summary>
+    [Obsolete("Prefer using ILlmProvider.CompleteAsync() with a direct prompt for translation tasks")]
     public static Brief CreateTranslationBrief(string topic, string audience, string goal)
     {
         return new Brief(
@@ -53,8 +65,10 @@ internal static class LlmRequestHelper
     }
 
     /// <summary>
-    /// Create a standard PlanSpec for translation tasks
+    /// Create a standard PlanSpec for translation tasks.
+    /// DEPRECATED: Prefer using ILlmProvider.CompleteAsync() with a direct prompt.
     /// </summary>
+    [Obsolete("Prefer using ILlmProvider.CompleteAsync() with a direct prompt for translation tasks")]
     public static PlanSpec CreateTranslationPlanSpec()
     {
         return new PlanSpec(
