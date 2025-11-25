@@ -410,6 +410,33 @@ public class OllamaLlmProvider : ILlmProvider
             ? parameters.ModelOverride
             : _model;
 
+        // Pre-check: Validate Ollama is available before attempting generation
+        // Skip availability check if cancellation is already requested to avoid blocking
+        // The actual request will fail fast if Ollama isn't available anyway
+        if (!ct.IsCancellationRequested)
+        {
+            try
+            {
+                // Use a short timeout for availability check to avoid blocking too long
+                using var availabilityCts = new CancellationTokenSource();
+                availabilityCts.CancelAfter(TimeSpan.FromSeconds(10));
+
+                var isAvailable = await IsServiceAvailableAsync(availabilityCts.Token).ConfigureAwait(false);
+                if (!isAvailable)
+                {
+                    _logger.LogWarning("Ollama availability check failed, but proceeding with request attempt anyway");
+                    // Don't throw - let the actual request attempt provide the real error
+                    // This avoids false negatives from timeout/cancellation issues
+                }
+            }
+            catch (Exception ex)
+            {
+                // If availability check fails for any reason, log but continue
+                // The actual request will provide the real error message
+                _logger.LogDebug(ex, "Ollama availability check encountered an issue, proceeding with request attempt");
+            }
+        }
+
         // Get LLM parameters with defaults
         var temperature = parameters?.Temperature ?? 0.7;
         var maxTokens = parameters?.MaxTokens ?? 2000;
@@ -459,7 +486,25 @@ public class OllamaLlmProvider : ILlmProvider
                 cts.CancelAfter(_timeout);
 
                 var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token).ConfigureAwait(false);
-                response.EnsureSuccessStatusCode();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
+                    var errorMessage = $"Ollama API returned status {response.StatusCode} ({(int)response.StatusCode})";
+                    if (!string.IsNullOrWhiteSpace(errorContent))
+                    {
+                        errorMessage += $": {errorContent.Substring(0, Math.Min(500, errorContent.Length))}";
+                    }
+
+                    if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                    {
+                        errorMessage += $". Please ensure Ollama is running at {_baseUrl}. " +
+                                       "Start Ollama with: ollama serve";
+                    }
+
+                    _logger.LogError("Ollama API error: {ErrorMessage}", errorMessage);
+                    throw new HttpRequestException(errorMessage);
+                }
 
                 var responseJson = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
                 var responseDoc = JsonDocument.Parse(responseJson);
@@ -486,7 +531,7 @@ public class OllamaLlmProvider : ILlmProvider
             }
             catch (HttpRequestException ex) when (attempt < _maxRetries)
             {
-                _logger.LogWarning(ex, "Ollama connection failed (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
+                _logger.LogWarning(ex, "Ollama connection failed (attempt {Attempt}/{MaxRetries}): {Message}", attempt + 1, _maxRetries + 1, ex.Message);
             }
             catch (Exception ex) when (attempt < _maxRetries)
             {
