@@ -356,3 +356,71 @@ export const useProviderStore = create<ProviderStoreState>((set) => ({
     }
   },
 }));
+
+// Offline mode provider filtering
+
+/**
+ * Get script providers filtered by operating mode
+ * @param isOfflineMode Whether offline mode is enabled
+ * @returns Filtered list of script providers
+ */
+export function getScriptProvidersByMode(isOfflineMode: boolean) {
+  if (!isOfflineMode) {
+    return [...ScriptProviders];
+  }
+  return ScriptProviders.filter((p) => p.isLocal);
+}
+
+/**
+ * Get TTS providers filtered by operating mode
+ * @param isOfflineMode Whether offline mode is enabled
+ * @returns Filtered list of TTS providers
+ */
+export function getTtsProvidersByMode(isOfflineMode: boolean) {
+  if (!isOfflineMode) {
+    return [...TtsProviders];
+  }
+  return TtsProviders.filter((p) => p.isLocal);
+}
+
+/**
+ * Get visuals providers filtered by operating mode
+ * In offline mode, only Placeholder is allowed
+ * @param isOfflineMode Whether offline mode is enabled
+ * @returns Filtered list of visuals providers
+ */
+export function getVisualsProvidersByMode(isOfflineMode: boolean) {
+  if (!isOfflineMode) {
+    return [...VisualsProviders];
+  }
+  // In offline mode, only Placeholder is allowed
+  return VisualsProviders.filter((p) => p.value === 'Placeholder');
+}
+
+/**
+ * Check if a specific provider is available in the current mode
+ * @param providerValue The provider value to check
+ * @param providerType The type of provider (script, tts, visuals)
+ * @param isOfflineMode Whether offline mode is enabled
+ * @returns True if the provider is available in the current mode
+ */
+export function isProviderAvailableInMode(
+  providerValue: string,
+  providerType: 'script' | 'tts' | 'visuals',
+  isOfflineMode: boolean
+): boolean {
+  if (!isOfflineMode) {
+    return true; // All providers available in online mode
+  }
+
+  switch (providerType) {
+    case 'script':
+      return ScriptProviders.some((p) => p.value === providerValue && p.isLocal);
+    case 'tts':
+      return TtsProviders.some((p) => p.value === providerValue && p.isLocal);
+    case 'visuals':
+      return providerValue === 'Placeholder';
+    default:
+      return false;
+  }
+}

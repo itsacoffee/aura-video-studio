@@ -56,6 +56,7 @@ import { KeyboardShortcutsTab } from '../components/Settings/KeyboardShortcutsTa
 import { LocalEngines } from '../components/Settings/LocalEngines';
 import { LoggingSettingsTab } from '../components/Settings/LoggingSettingsTab';
 import { NetworkConnectivityTest } from '../components/Settings/NetworkConnectivityTest';
+import { OfflineModeCard } from '../components/Settings/OfflineModeCard';
 import { OutputSettingsTab } from '../components/Settings/OutputSettingsTab';
 import { PerformanceSettingsTab } from '../components/Settings/PerformanceSettingsTab';
 import { ProviderConfigurationPanel } from '../components/Settings/ProviderConfigurationPanel';
@@ -1075,18 +1076,17 @@ export function SettingsPage() {
           <Card className={styles.section}>
             <Title2>System Profile</Title2>
             <div className={styles.form}>
-              <Field label="Offline Mode">
-                <Switch
-                  checked={offlineMode}
-                  onChange={(_, data) => setOfflineMode(data.checked)}
-                />
-                <Text size={200}>
-                  {offlineMode ? 'Enabled' : 'Disabled'} - Blocks all cloud providers. Only local
-                  and stock assets are used.
-                </Text>
-              </Field>
+              {/* Offline Mode Toggle - Uses extracted component */}
+              <OfflineModeCard offlineMode={offlineMode} onModeChange={setOfflineMode} />
 
-              <div style={{ display: 'flex', gap: tokens.spacingHorizontalM }}>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: tokens.spacingHorizontalM,
+                  flexWrap: 'wrap',
+                  marginTop: tokens.spacingVerticalM,
+                }}
+              >
                 <Button appearance="primary" onClick={saveSettings}>
                   Save Settings
                 </Button>

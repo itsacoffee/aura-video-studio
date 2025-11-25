@@ -17,3 +17,11 @@ export type { VideoGenerationState, VideoGenerationJob } from './videoGeneration
 
 export { useJobQueueStore } from './jobQueueStore';
 export type { JobQueueState } from './jobQueueStore';
+
+export {
+  useSettingsStore,
+  loadOperatingModeFromBackend,
+  isProviderAllowed,
+  filterProvidersByMode,
+} from './settingsStore';
+export type { SettingsStoreState, OperatingMode, OperatingModeInfo } from './settingsStore';
