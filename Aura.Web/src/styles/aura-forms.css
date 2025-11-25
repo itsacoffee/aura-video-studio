@@ -1,0 +1,351 @@
+/**
+ * Aura Form System Styles
+ * Consistent form layout and control styling
+ *
+ * These styles provide:
+ * - Consistent vertical spacing between fields (16px)
+ * - Label styling (sentence case, medium weight)
+ * - Helper/error text placement
+ * - Input focus states
+ */
+
+/* ===================================================================
+   FORM CONTAINER STYLES
+   Consistent spacing and layout
+   =================================================================== */
+
+.aura-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.aura-form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px 0;
+}
+
+.aura-form-section + .aura-form-section {
+  border-top: 1px solid var(--colorNeutralStroke2, #e5e7eb);
+}
+
+.aura-form-section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--colorNeutralForeground1, #1f2937);
+  margin-bottom: 8px;
+}
+
+/* ===================================================================
+   FORM FIELD LAYOUT
+   Consistent label, input, and message arrangement
+   =================================================================== */
+
+.aura-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.aura-form-field-horizontal {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.aura-form-field-horizontal .aura-form-label {
+  flex-shrink: 0;
+  width: 120px;
+  padding-top: 8px;
+}
+
+/* ===================================================================
+   LABEL STYLES
+   Sentence case, medium weight
+   =================================================================== */
+
+.aura-form-label {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--colorNeutralForeground1, #1f2937);
+  margin-bottom: 4px;
+}
+
+.aura-form-label-required {
+  color: var(--colorPaletteRedForeground1, #dc2626);
+  margin-left: 2px;
+}
+
+/* ===================================================================
+   INPUT CONTROL STYLES
+   Consistent appearance across all input types
+   =================================================================== */
+
+.aura-form-control {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Input base styles */
+.aura-input {
+  padding: 8px 12px;
+  border: 1px solid var(--colorNeutralStroke1, #d1d5db);
+  border-radius: 6px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--colorNeutralForeground1, #1f2937);
+  background-color: var(--colorNeutralBackground1, #fff);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.aura-input::placeholder {
+  color: var(--colorNeutralForeground4, #9ca3af);
+}
+
+.aura-input:hover:not(:disabled, :focus) {
+  border-color: var(--colorNeutralStroke1Hover, #9ca3af);
+}
+
+.aura-input:focus {
+  outline: none;
+  border-color: var(--colorBrandStroke1, #0ea5e9);
+  box-shadow: 0 0 0 3px rgb(14 165 233 / 10%);
+}
+
+.aura-input:disabled {
+  background-color: var(--colorNeutralBackground2, #f3f4f6);
+  color: var(--colorNeutralForeground4, #9ca3af);
+  cursor: not-allowed;
+}
+
+/* Input with validation state */
+.aura-input-error {
+  border-color: var(--colorPaletteRedBorder1, #f87171);
+}
+
+.aura-input-error:focus {
+  border-color: var(--colorPaletteRedBorder2, #dc2626);
+  box-shadow: 0 0 0 3px rgb(220 38 38 / 10%);
+}
+
+.aura-input-success {
+  border-color: var(--colorPaletteGreenBorder1, #4ade80);
+}
+
+.aura-input-success:focus {
+  border-color: var(--colorPaletteGreenBorder2, #22c55e);
+  box-shadow: 0 0 0 3px rgb(34 197 94 / 10%);
+}
+
+/* ===================================================================
+   TEXTAREA STYLES
+   =================================================================== */
+
+.aura-textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+/* ===================================================================
+   MESSAGE STYLES
+   Helper text, error, and success messages
+   =================================================================== */
+
+.aura-form-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  min-height: 18px; /* Prevent layout shift */
+}
+
+.aura-form-message-icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.aura-form-helper {
+  color: var(--colorNeutralForeground3, #6b7280);
+}
+
+.aura-form-error {
+  color: var(--colorPaletteRedForeground1, #dc2626);
+}
+
+.aura-form-success {
+  color: var(--colorPaletteGreenForeground1, #16a34a);
+}
+
+/* ===================================================================
+   VALIDATION ICON STYLES
+   Inline validation indicators
+   =================================================================== */
+
+.aura-input-with-validation {
+  position: relative;
+}
+
+.aura-validation-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.aura-validation-icon-valid {
+  color: var(--colorPaletteGreenForeground1, #16a34a);
+}
+
+.aura-validation-icon-invalid {
+  color: var(--colorPaletteRedForeground1, #dc2626);
+}
+
+/* Adjust input padding when validation icon is present */
+.aura-input-with-validation .aura-input {
+  padding-right: 36px;
+}
+
+/* ===================================================================
+   CHECKBOX AND RADIO STYLES
+   =================================================================== */
+
+.aura-checkbox-group,
+.aura-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.aura-checkbox-group-horizontal,
+.aura-radio-group-horizontal {
+  flex-flow: row wrap;
+  gap: 16px;
+}
+
+/* ===================================================================
+   TOGGLE/SWITCH STYLES
+   =================================================================== */
+
+.aura-toggle-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+}
+
+.aura-toggle-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.aura-toggle-label-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--colorNeutralForeground1, #1f2937);
+}
+
+.aura-toggle-label-description {
+  font-size: 12px;
+  color: var(--colorNeutralForeground3, #6b7280);
+}
+
+/* ===================================================================
+   FORM ACTIONS
+   Button layout at bottom of forms
+   =================================================================== */
+
+.aura-form-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding-top: 16px;
+  margin-top: 8px;
+  border-top: 1px solid var(--colorNeutralStroke2, #e5e7eb);
+}
+
+.aura-form-actions-spread {
+  justify-content: space-between;
+}
+
+.aura-form-actions-start {
+  justify-content: flex-start;
+}
+
+.aura-form-actions-center {
+  justify-content: center;
+}
+
+/* ===================================================================
+   TWO-COLUMN FORM LAYOUT
+   For simple forms with side-by-side fields
+   =================================================================== */
+
+.aura-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.aura-form-grid-span-full {
+  grid-column: span 2;
+}
+
+@media (width <= 640px) {
+  .aura-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .aura-form-grid-span-full {
+    grid-column: span 1;
+  }
+}
+
+/* ===================================================================
+   ACCESSIBILITY ENHANCEMENTS
+   =================================================================== */
+
+/* Skip to main content link */
+.aura-form-skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: var(--colorBrandBackground, #0ea5e9);
+  color: white;
+  padding: 8px 16px;
+  z-index: 100;
+  border-radius: 0 0 6px;
+}
+
+.aura-form-skip-link:focus {
+  top: 0;
+}
+
+/* High contrast mode support */
+@media (forced-colors: active) {
+  .aura-input {
+    border: 2px solid CanvasText;
+  }
+
+  .aura-input:focus {
+    outline: 3px solid Highlight;
+    outline-offset: 2px;
+  }
+
+  .aura-input-error {
+    border-color: Mark;
+  }
+}

@@ -89,7 +89,7 @@
   --editor-font-size-lg: 15px;
   --editor-font-size-xl: 16px;
   --editor-font-size-2xl: 18px;
-  
+
   /* Improved line heights for better readability */
   --editor-line-height-tight: 1.3;
   --editor-line-height-normal: 1.5;
@@ -237,12 +237,12 @@
 
   /* Ensure scrollbar doesn't touch panel edge */
   padding-right: var(--editor-space-2xl);
-  
+
   /* Better text rendering */
   font-size: var(--editor-font-size-base);
   line-height: 1.6;
   color: var(--editor-text-primary);
-  text-rendering: optimizeLegibility;
+  text-rendering: optimizelegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -252,34 +252,34 @@
   padding: 0;
 }
 
-  /* Panel header - unified across all panels - Improved for better visibility */
-  .aura-editor-panel__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    min-height: 48px;
-    padding: var(--editor-space-md) var(--editor-space-lg);
-    background-color: var(--editor-panel-header-bg);
-    border-bottom: 1px solid var(--editor-panel-border-subtle);
-    font-size: var(--editor-font-size-base);
-    font-weight: var(--editor-font-weight-semibold);
-    color: var(--editor-text-primary);
-    user-select: none;
-    transition: background-color var(--editor-transition-fast);
-    letter-spacing: 0.2px;
-    gap: var(--editor-space-md);
-  }
-  
-  /* Ensure panel header title never gets cut off */
-  .aura-editor-panel__header .aura-editor-panel__header-title {
-    flex: 1;
-    min-width: 0;
-    overflow: visible;
-    white-space: nowrap;
-    text-overflow: clip;
-    font-size: var(--editor-font-size-base);
-    font-weight: var(--editor-font-weight-semibold);
-  }
+/* Panel header - unified across all panels - Improved for better visibility */
+.aura-editor-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  padding: var(--editor-space-md) var(--editor-space-lg);
+  background-color: var(--editor-panel-header-bg);
+  border-bottom: 1px solid var(--editor-panel-border-subtle);
+  font-size: var(--editor-font-size-base);
+  font-weight: var(--editor-font-weight-semibold);
+  color: var(--editor-text-primary);
+  user-select: none;
+  transition: background-color var(--editor-transition-fast);
+  letter-spacing: 0.2px;
+  gap: var(--editor-space-md);
+}
+
+/* Ensure panel header title never gets cut off */
+.aura-editor-panel__header .aura-editor-panel__header-title {
+  flex: 1;
+  min-width: 0;
+  overflow: visible;
+  white-space: nowrap;
+  text-overflow: clip;
+  font-size: var(--editor-font-size-base);
+  font-weight: var(--editor-font-weight-semibold);
+}
 
 .aura-editor-panel__header:hover {
   background-color: var(--editor-panel-hover);
@@ -795,7 +795,7 @@
 
 /* Ensure tabs never truncate text */
 .aura-editor-tab,
-[role="tab"] {
+[role='tab'] {
   white-space: nowrap;
   overflow: visible;
   text-overflow: clip;
@@ -808,33 +808,32 @@
 
 /* Tab list container - allow horizontal scroll if needed */
 .aura-editor-tab-list,
-[role="tablist"] {
+[role='tablist'] {
   display: flex;
   gap: var(--editor-space-xs);
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: auto hidden;
   scrollbar-width: thin;
   scrollbar-color: var(--editor-panel-border) transparent;
 }
 
 .aura-editor-tab-list::-webkit-scrollbar,
-[role="tablist"]::-webkit-scrollbar {
+[role='tablist']::-webkit-scrollbar {
   height: 6px;
 }
 
 .aura-editor-tab-list::-webkit-scrollbar-track,
-[role="tablist"]::-webkit-scrollbar-track {
+[role='tablist']::-webkit-scrollbar-track {
   background: transparent;
 }
 
 .aura-editor-tab-list::-webkit-scrollbar-thumb,
-[role="tablist"]::-webkit-scrollbar-thumb {
+[role='tablist']::-webkit-scrollbar-thumb {
   background-color: var(--editor-panel-border);
   border-radius: 3px;
 }
 
 .aura-editor-tab-list::-webkit-scrollbar-thumb:hover,
-[role="tablist"]::-webkit-scrollbar-thumb:hover {
+[role='tablist']::-webkit-scrollbar-thumb:hover {
   background-color: var(--editor-text-secondary);
 }
 
@@ -862,7 +861,7 @@ button {
 
 /* Improved dropdown and menu items */
 .aura-editor-menu-item,
-[role="menuitem"] {
+[role='menuitem'] {
   white-space: nowrap;
   overflow: visible;
   text-overflow: clip;
@@ -899,7 +898,7 @@ button {
 /* Better tooltip visibility */
 .aura-editor-tooltip {
   max-width: 300px;
-  word-wrap: break-word;
+  overflow-wrap: break-word;
   white-space: normal;
   line-height: var(--editor-line-height-normal);
 }

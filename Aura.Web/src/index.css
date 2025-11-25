@@ -648,97 +648,100 @@ select:focus {
 }
 
 /* ==================== HIGH CONTRAST FIXES FOR SLIDERS, RADIO BUTTONS, AND DIVIDERS ==================== */
+
 /* Ensure all sliders are visible with high contrast */
-[class*="fui-Slider"],
+[class*='fui-Slider'],
 .fui-Slider,
-[role="slider"] {
-  --fui-slider-rail-background: rgba(255, 255, 255, 0.3) !important;
-  --fui-slider-rail-background-hover: rgba(255, 255, 255, 0.5) !important;
-  --fui-slider-thumb-background: #ffffff !important;
-  --fui-slider-thumb-border: #ffffff !important;
-  --fui-slider-thumb-background-hover: #ffffff !important;
-  --fui-slider-thumb-background-active: #ffffff !important;
-  --fui-slider-thumb-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3) !important;
+[role='slider'] {
+  --fui-slider-rail-background: rgb(255 255 255 / 30%) !important;
+  --fui-slider-rail-background-hover: rgb(255 255 255 / 50%) !important;
+  --fui-slider-thumb-background: #fff !important;
+  --fui-slider-thumb-border: #fff !important;
+  --fui-slider-thumb-background-hover: #fff !important;
+  --fui-slider-thumb-background-active: #fff !important;
+  --fui-slider-thumb-shadow: 0 0 0 2px rgb(255 255 255 / 30%) !important;
 }
 
-.dark [class*="fui-Slider"],
+.dark [class*='fui-Slider'],
 .dark .fui-Slider,
-.dark [role="slider"] {
-  --fui-slider-rail-background: rgba(255, 255, 255, 0.2) !important;
-  --fui-slider-rail-background-hover: rgba(255, 255, 255, 0.4) !important;
-  --fui-slider-thumb-background: #ffffff !important;
-  --fui-slider-thumb-border: #ffffff !important;
-  --fui-slider-thumb-background-hover: #ffffff !important;
-  --fui-slider-thumb-background-active: #ffffff !important;
-  --fui-slider-thumb-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5) !important;
+.dark [role='slider'] {
+  --fui-slider-rail-background: rgb(255 255 255 / 20%) !important;
+  --fui-slider-rail-background-hover: rgb(255 255 255 / 40%) !important;
+  --fui-slider-thumb-background: #fff !important;
+  --fui-slider-thumb-border: #fff !important;
+  --fui-slider-thumb-background-hover: #fff !important;
+  --fui-slider-thumb-background-active: #fff !important;
+  --fui-slider-thumb-shadow: 0 0 0 2px rgb(255 255 255 / 50%) !important;
 }
 
 /* Ensure radio buttons are visible with high contrast */
-[class*="fui-Radio"],
+[class*='fui-Radio'],
 .fui-Radio,
-[role="radio"],
-input[type="radio"] {
-  --fui-radio-checked-indicator-background: #ffffff !important;
-  --fui-radio-checked-indicator-border: #ffffff !important;
-  --fui-radio-indicator-border: #ffffff !important;
-  --fui-radio-indicator-border-hover: #ffffff !important;
+[role='radio'],
+input[type='radio'] {
+  --fui-radio-checked-indicator-background: #fff !important;
+  --fui-radio-checked-indicator-border: #fff !important;
+  --fui-radio-indicator-border: #fff !important;
+  --fui-radio-indicator-border-hover: #fff !important;
   --fui-radio-indicator-background: transparent !important;
-  border-color: #ffffff !important;
+
+  border-color: #fff !important;
 }
 
-.dark [class*="fui-Radio"],
+.dark [class*='fui-Radio'],
 .dark .fui-Radio,
-.dark [role="radio"],
-.dark input[type="radio"] {
-  --fui-radio-checked-indicator-background: #ffffff !important;
-  --fui-radio-checked-indicator-border: #ffffff !important;
-  --fui-radio-indicator-border: #ffffff !important;
-  --fui-radio-indicator-border-hover: #ffffff !important;
+.dark [role='radio'],
+.dark input[type='radio'] {
+  --fui-radio-checked-indicator-background: #fff !important;
+  --fui-radio-checked-indicator-border: #fff !important;
+  --fui-radio-indicator-border: #fff !important;
+  --fui-radio-indicator-border-hover: #fff !important;
   --fui-radio-indicator-background: transparent !important;
-  border-color: #ffffff !important;
+
+  border-color: #fff !important;
 }
 
 /* Ensure dividers are visible with high contrast */
-[class*="fui-Divider"],
+[class*='fui-Divider'],
 .fui-Divider,
 hr {
-  border-color: rgba(255, 255, 255, 0.3) !important;
-  background-color: rgba(255, 255, 255, 0.3) !important;
+  border-color: rgb(255 255 255 / 30%) !important;
+  background-color: rgb(255 255 255 / 30%) !important;
 }
 
-.dark [class*="fui-Divider"],
+.dark [class*='fui-Divider'],
 .dark .fui-Divider,
 .dark hr {
-  border-color: rgba(255, 255, 255, 0.4) !important;
-  background-color: rgba(255, 255, 255, 0.4) !important;
+  border-color: rgb(255 255 255 / 40%) !important;
+  background-color: rgb(255 255 255 / 40%) !important;
 }
 
 /* Additional slider rail visibility */
-[class*="fui-Slider"] [class*="rail"],
-.fui-Slider [class*="rail"] {
-  background-color: rgba(255, 255, 255, 0.3) !important;
+[class*='fui-Slider'] [class*='rail'],
+.fui-Slider [class*='rail'] {
+  background-color: rgb(255 255 255 / 30%) !important;
 }
 
-.dark [class*="fui-Slider"] [class*="rail"],
-.dark .fui-Slider [class*="rail"] {
-  background-color: rgba(255, 255, 255, 0.2) !important;
+.dark [class*='fui-Slider'] [class*='rail'],
+.dark .fui-Slider [class*='rail'] {
+  background-color: rgb(255 255 255 / 20%) !important;
 }
 
 /* Slider thumb visibility */
-[class*="fui-Slider"] [class*="thumb"],
-.fui-Slider [class*="thumb"],
-[class*="fui-Slider"] [class*="slider-thumb"],
-.fui-Slider [class*="slider-thumb"] {
-  background-color: #ffffff !important;
-  border: 2px solid #ffffff !important;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3) !important;
+[class*='fui-Slider'] [class*='thumb'],
+.fui-Slider [class*='thumb'],
+[class*='fui-Slider'] [class*='slider-thumb'],
+.fui-Slider [class*='slider-thumb'] {
+  background-color: #fff !important;
+  border: 2px solid #fff !important;
+  box-shadow: 0 0 0 2px rgb(255 255 255 / 30%) !important;
 }
 
-.dark [class*="fui-Slider"] [class*="thumb"],
-.dark .fui-Slider [class*="thumb"],
-.dark [class*="fui-Slider"] [class*="slider-thumb"],
-.dark .fui-Slider [class*="slider-thumb"] {
-  background-color: #ffffff !important;
-  border: 2px solid #ffffff !important;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5) !important;
+.dark [class*='fui-Slider'] [class*='thumb'],
+.dark .fui-Slider [class*='thumb'],
+.dark [class*='fui-Slider'] [class*='slider-thumb'],
+.dark .fui-Slider [class*='slider-thumb'] {
+  background-color: #fff !important;
+  border: 2px solid #fff !important;
+  box-shadow: 0 0 0 2px rgb(255 255 255 / 50%) !important;
 }
