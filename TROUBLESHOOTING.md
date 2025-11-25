@@ -12,6 +12,7 @@ This guide covers common issues and solutions for local development of Aura Vide
 - [Network and Connectivity](#network-and-connectivity)
 - [Performance Issues](#performance-issues)
 - [Desktop App and Process Issues](#desktop-app-and-process-issues)
+- [Ollama Script Generation Timeouts](#ollama-script-generation-timeouts)
 - [Platform-Specific Issues](#platform-specific-issues)
 - [Getting Help](#getting-help)
 
@@ -785,6 +786,96 @@ dotnet tool update dotnet-ef --version 8.0.11
 ```
 
 **Fallback Behavior**: If tool restoration fails, the build will continue successfully and database migrations will be applied automatically when you first run the application.
+
+## Ollama Script Generation Timeouts
+
+### Issue: Script generation fails after several minutes with timeout error
+
+**Symptom**: Script generation with Ollama fails with a message like "Ollama request timed out" or the API returns a 408 timeout error, even though system resources show Ollama is being utilized.
+
+**Common Causes**:
+
+1. **Model loading**: The first request after Ollama starts requires loading the model into RAM, which can take 2-5 minutes (or longer on slow systems)
+2. **Slow system**: Older CPUs or systems with limited RAM may take 10-15 minutes for generation
+3. **Large models**: 13B, 70B+ models are extremely slow without GPU acceleration
+
+**Current Timeout Values** (very lenient):
+- Availability check: 60 seconds
+- Script generation: 15 minutes
+- API request: 20 minutes
+
+**Solutions**:
+
+1. **Wait for model to fully load**:
+   ```bash
+   # Check if model is loaded
+   ollama ps
+   
+   # If no model is shown, load it explicitly
+   ollama run llama3.2 --keepalive 0
+   ```
+
+2. **Use a smaller/faster model**:
+   ```bash
+   # Try smaller models (much faster)
+   ollama pull llama3.2:3b   # 3B parameters - fast
+   ollama pull llama3.2:1b   # 1B parameters - fastest
+   ```
+
+3. **Check system resources**:
+   - Ensure you have sufficient RAM (model size + 2GB minimum)
+   - Close other memory-intensive applications
+   - Check CPU usage while generating
+
+4. **Check Ollama status**:
+   ```bash
+   # List available models
+   ollama list
+   
+   # Check Ollama logs for errors
+   ollama logs
+   
+   # Test generation manually
+   ollama run llama3.2 "Write a short story"
+   ```
+
+5. **Check backend logs**:
+   - Look for "Request sent to Ollama, awaiting response" message
+   - Check for any error messages after the timeout
+
+**Performance Tips**:
+
+- Models with "q4" in the name (like `llama3.1:8b-q4_k_m`) use less memory and are faster
+- First generation after Ollama restart will be slower due to model loading
+- GPU acceleration (if available) significantly improves performance
+- Keep Ollama running in background to avoid model reload delays
+
+### Frontend Timeout Issues
+
+If script generation fails with "Network Error" or "Request Timeout" in the browser console, but backend logs show Ollama is still working:
+
+**Cause**: The frontend may have a shorter timeout than the backend (typically 60-120 seconds by default for axios/fetch).
+
+**Symptoms**:
+- Browser console shows "Network Error" or "Request Timeout"
+- Backend logs show "Still awaiting Ollama response..." heartbeat messages
+- Backend continues processing after frontend shows error
+
+**Solutions**:
+1. Use the streaming endpoint instead: `/api/scripts/generate/stream` (provides real-time progress)
+2. Increase frontend axios timeout in `Aura.Web/src/services/api/scriptApi.ts`
+3. Use Server-Sent Events (SSE) for long-running operations
+
+**For developers**: Consider using SSE streaming for all Ollama requests to provide real-time progress feedback and prevent frontend timeouts.
+
+**If You Still Hit the 20-Minute API Timeout**:
+
+This timeout is very lenient. If you're hitting it, your system may be:
+- Too slow for the selected model (try a smaller model)
+- Experiencing Ollama issues (check `ollama logs`)
+- Out of memory (check RAM usage)
+
+Consider using the RuleBased provider for immediate results (no LLM required).
 
 ## Platform-Specific Issues
 

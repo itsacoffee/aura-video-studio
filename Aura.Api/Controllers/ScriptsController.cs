@@ -78,7 +78,7 @@ public class ScriptsController : ControllerBase
     /// Generate a new script using provider selection
     /// </summary>
     [HttpPost("generate")]
-    [Microsoft.AspNetCore.Http.Timeouts.RequestTimeout(360000)] // 6 minutes - allows for slow Ollama models (5 min + buffer)
+    [Microsoft.AspNetCore.Http.Timeouts.RequestTimeout(1200000)] // 20 minutes - very lenient for slow systems, large models, and initial model loading
     public async Task<IActionResult> GenerateScript(
         [FromBody] GenerateScriptRequest? request,
         CancellationToken ct)
@@ -400,7 +400,13 @@ public class ScriptsController : ControllerBase
                     Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E408",
                     Title = "Request Timeout",
                     Status = 408,
-                    Detail = "Script generation timed out after 6 minutes. The model may be processing a large request. Please try again with a shorter topic or simpler prompt, or check if Ollama is responding.",
+                    Detail = "Script generation timed out after 20 minutes. This timeout is very lenient and designed for slow systems. " +
+                             "If you're still hitting this timeout, your system may be too slow for the selected model, or there may be an issue with Ollama. " +
+                             "Suggestions:\n" +
+                             "  - Check if Ollama is actually running: 'ollama list'\n" +
+                             "  - Try a smaller model: llama3.2:3b or llama3.2:1b\n" +
+                             "  - Check system resources (RAM, CPU usage)\n" +
+                             "  - Review backend logs for detailed error messages",
                     Extensions =
                     {
                         ["correlationId"] = correlationId,
