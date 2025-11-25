@@ -153,83 +153,62 @@ export const textColors = {
 /**
  * Reusable typography style hooks.
  * Use these in components via the makeStyles pattern.
+ *
+ * Note: These styles intentionally include margins for consistent vertical rhythm.
+ * The styles mirror the semantic typography object above but add layout-specific
+ * properties (margins, colors) that are appropriate for the makeStyles pattern.
  */
 export const useTypographyStyles = makeStyles({
   display: {
-    fontSize: '48px',
-    fontWeight: tokens.fontWeightBold,
-    lineHeight: '1.2',
-    letterSpacing: '-0.02em',
+    ...typography.display,
     color: tokens.colorNeutralForeground1,
   },
   h1: {
-    fontSize: tokens.fontSizeHero900,
-    fontWeight: tokens.fontWeightSemibold,
-    lineHeight: '1.25',
-    letterSpacing: '-0.01em',
+    ...typography.h1,
     color: tokens.colorNeutralForeground1,
     marginBottom: tokens.spacingVerticalM,
   },
   h2: {
-    fontSize: tokens.fontSizeHero800,
-    fontWeight: tokens.fontWeightSemibold,
-    lineHeight: '1.3',
+    ...typography.h2,
     color: tokens.colorNeutralForeground1,
     marginBottom: tokens.spacingVerticalS,
   },
   h3: {
-    fontSize: tokens.fontSizeBase600,
-    fontWeight: tokens.fontWeightSemibold,
-    lineHeight: '1.4',
+    ...typography.h3,
     color: tokens.colorNeutralForeground1,
     marginBottom: tokens.spacingVerticalXS,
   },
   body: {
-    fontSize: tokens.fontSizeBase400,
-    fontWeight: tokens.fontWeightRegular,
-    lineHeight: '1.5',
+    ...typography.body,
     color: tokens.colorNeutralForeground1,
   },
   bodySecondary: {
-    fontSize: tokens.fontSizeBase400,
-    fontWeight: tokens.fontWeightRegular,
-    lineHeight: '1.5',
+    ...typography.body,
     color: tokens.colorNeutralForeground2,
   },
   caption: {
-    fontSize: tokens.fontSizeBase200,
-    fontWeight: tokens.fontWeightRegular,
-    lineHeight: '1.4',
+    ...typography.caption,
     color: tokens.colorNeutralForeground3,
   },
   label: {
-    fontSize: tokens.fontSizeBase400,
-    fontWeight: tokens.fontWeightMedium,
-    lineHeight: '1.4',
+    ...typography.label,
     color: tokens.colorNeutralForeground1,
   },
   /** Page title style with consistent margins */
   pageTitle: {
-    fontSize: tokens.fontSizeHero900,
-    fontWeight: tokens.fontWeightSemibold,
-    lineHeight: '1.25',
-    letterSpacing: '-0.01em',
+    ...typography.h1,
     color: tokens.colorNeutralForeground1,
     marginBottom: tokens.spacingVerticalL,
   },
   /** Section title style */
   sectionTitle: {
-    fontSize: tokens.fontSizeHero800,
-    fontWeight: tokens.fontWeightSemibold,
-    lineHeight: '1.3',
+    ...typography.h2,
     color: tokens.colorNeutralForeground1,
     marginBottom: tokens.spacingVerticalM,
   },
   /** Page subtitle/description */
   pageSubtitle: {
-    fontSize: tokens.fontSizeBase400,
-    fontWeight: tokens.fontWeightRegular,
-    lineHeight: '1.5',
+    ...typography.body,
     color: tokens.colorNeutralForeground2,
     marginBottom: tokens.spacingVerticalL,
   },

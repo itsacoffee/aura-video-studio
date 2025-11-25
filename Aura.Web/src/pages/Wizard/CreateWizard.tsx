@@ -1820,7 +1820,7 @@ export function CreateWizard() {
                   <Text
                     size={200}
                     style={{
-                      marginTop: tokens.spacingVerticalS,
+                      marginTop: spacing.sm,
                       color: tokens.colorNeutralForeground3,
                     }}
                   >
