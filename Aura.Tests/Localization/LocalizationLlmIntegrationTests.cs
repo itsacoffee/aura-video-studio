@@ -288,7 +288,7 @@ public class LocalizationLlmIntegrationTests
 
         var targetLanguage = new LanguageInfo
         {
-            Code = "cn",
+            Code = "zh",
             Name = "Chinese",
             CulturalSensitivities = new List<string>
             {

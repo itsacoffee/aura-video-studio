@@ -20,6 +20,12 @@ public class VisualLocalizationAnalyzer
     private readonly ILogger _logger;
     private readonly ILlmProvider _llmProvider;
 
+    /// <summary>
+    /// Standard response indicating no visual localization issues were found.
+    /// Used for consistent LLM response parsing.
+    /// </summary>
+    internal const string NoIssuesFoundResponse = "No visual localization issues identified.";
+
     private static readonly Dictionary<string, List<string>> _culturallySensitiveSymbols = new()
     {
         ["colors"] = new() { "red", "white", "black", "green", "yellow" },
@@ -224,9 +230,9 @@ Issue: [why this is a concern for the target culture]
 Recommendation: [specific localization action to take]
 Priority: [Critical/Important/Recommended/Optional]
 
-If no visual localization is needed, respond with: ""No visual localization issues identified.""");
+If no visual localization is needed, respond with: """ + NoIssuesFoundResponse + @"""");
 
-        return sb.ToString();
+        return sb.ToString();;
     }
 
     private List<VisualLocalizationRecommendation> ParseVisualRecommendations(string response)

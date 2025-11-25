@@ -21,6 +21,12 @@ public class CulturalLocalizationEngine
     private readonly ILogger _logger;
     private readonly ILlmProvider _llmProvider;
 
+    /// <summary>
+    /// Standard response indicating no idiom adaptations are needed.
+    /// Used for consistent LLM response parsing.
+    /// </summary>
+    internal const string NoAdaptationsNeededResponse = "No adaptations required - text is culturally appropriate.";
+
     // Cultural reference mappings - could be moved to configuration file for easier updates
     private static readonly Dictionary<string, List<CulturalReference>> _culturalReferences = new()
     {
@@ -268,7 +274,7 @@ Original: [the original phrase]
 Adapted: [the culturally appropriate alternative in the same language]
 Reason: [brief explanation of why adaptation was needed]
 
-If no adaptations are needed, respond with: ""No adaptations required - text is culturally appropriate.""");
+If no adaptations are needed, respond with: """ + NoAdaptationsNeededResponse + @"""");
 
         return sb.ToString();
     }
