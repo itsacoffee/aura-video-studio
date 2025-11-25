@@ -221,15 +221,16 @@ export async function generateScript(
       voiceProvider: styleData.voiceProvider,
     });
 
-    // Use extended timeout for script generation (5 minutes for Ollama/local models)
-    // Ollama can take variable amounts of time depending on hardware and model size
+    // Use extended timeout for script generation (21 minutes - very lenient for slow systems)
+    // Must exceed backend timeout (20 min after PR #523) to allow for network overhead
+    // Ollama can take 10-15 minutes on slow systems with large models
     const response = await postWithTimeout<ScriptGenerationResponse>(
       '/api/wizard/generate-script',
       {
         brief: briefData,
         style: styleData,
       },
-      300000, // 5 minute timeout - accounts for slow local Ollama models
+      1260000, // 21 minutes - exceeds backend 20-minute timeout (after PR #523) to allow for network overhead
       config
     );
 
