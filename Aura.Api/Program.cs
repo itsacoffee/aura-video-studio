@@ -55,10 +55,6 @@ using StockProviderDto = Aura.Api.Models.ApiModels.V1.StockProviderDto;
 using StockProvidersResponse = Aura.Api.Models.ApiModels.V1.StockProvidersResponse;
 using QuotaStatusResponse = Aura.Api.Models.ApiModels.V1.QuotaStatusResponse;
 
-// Request classes for path and file operations
-record PathResolveRequest(string Path);
-record FileOperationRequest(string Path);
-
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
     Args = args,
@@ -6035,6 +6031,10 @@ finally
     Log.Information("Application host stopped, flushing logs...");
     await Log.CloseAndFlushAsync().ConfigureAwait(false);
 }
+
+// Request classes for path and file operations
+record PathResolveRequest(string Path);
+record FileOperationRequest(string Path);
 
 // Make Program accessible for integration tests
 public partial class Program { }
