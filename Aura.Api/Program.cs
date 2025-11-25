@@ -55,6 +55,10 @@ using StockProviderDto = Aura.Api.Models.ApiModels.V1.StockProviderDto;
 using StockProvidersResponse = Aura.Api.Models.ApiModels.V1.StockProvidersResponse;
 using QuotaStatusResponse = Aura.Api.Models.ApiModels.V1.QuotaStatusResponse;
 
+// Request classes for path and file operations
+record PathResolveRequest(string Path);
+record FileOperationRequest(string Path);
+
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
     Args = args,
@@ -4751,10 +4755,6 @@ apiGroup.MapPost("/settings/open-tools-folder", () =>
 })
 .WithName("OpenToolsFolder")
 .WithOpenApi();
-
-// Request classes for path and file operations
-record PathResolveRequest(string Path);
-record FileOperationRequest(string Path);
 
 // Path resolution endpoint - expand environment variables in paths
 apiGroup.MapPost("/paths/resolve", ([FromBody] PathResolveRequest request) =>
