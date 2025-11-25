@@ -66,12 +66,14 @@ public static class ProviderServicesExtensions
         // Default HTTP client for other uses
         services.AddHttpClient();
 
-        // Named HttpClient for Ollama with proper configuration
-        // Timeout set to 300 seconds (5 minutes) to match providerTimeoutProfiles.json local_llm deepWaitThresholdMs
-        // This ensures slow Ollama models have sufficient time to complete, especially for complex prompts
+        // Named HttpClient for Ollama with proper configuration for long-running requests
+        // Timeout set to 1200 seconds (20 minutes) to be longer than provider timeout (15 minutes from PR #523)
+        // This ensures the HttpClient doesn't kill connections before the provider timeout is reached
+        // The default HttpClient timeout of 100 seconds was the ROOT CAUSE of "fails after a few minutes" issue
         services.AddHttpClient("OllamaClient", client =>
         {
-            client.Timeout = TimeSpan.FromSeconds(300); // 5 minutes - matches timeout profile for local_llm
+            // Must be longer than provider timeout (900s = 15 min) to prevent premature cancellation
+            client.Timeout = TimeSpan.FromMinutes(20); // 1200 seconds - 5 min buffer over provider timeout
             client.DefaultRequestHeaders.Add("User-Agent", "AuraVideoStudio/1.0");
             client.DefaultRequestHeaders.Add("Accept", "application/json");
         })
@@ -87,7 +89,8 @@ public static class ProviderServicesExtensions
                 MaxAutomaticRedirections = 5
             };
             return handler;
-        });
+        })
+        .SetHandlerLifetime(TimeSpan.FromMinutes(25)); // Prevent connection pool exhaustion for long requests
 
         // OpenAI key validation service using IHttpClientFactory
         services.AddSingleton<OpenAIKeyValidationService>(sp =>

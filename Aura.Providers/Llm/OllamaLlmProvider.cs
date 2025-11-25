@@ -57,7 +57,7 @@ public class OllamaLlmProvider : ILlmProvider
         string baseUrl = "http://127.0.0.1:11434",
         string model = "llama3.1:8b-q4_k_m",
         int maxRetries = 2,
-        int timeoutSeconds = 300, // 5 minutes - matches providerTimeoutProfiles.json local_llm deepWaitThresholdMs for slow models
+        int timeoutSeconds = 900, // 15 minutes - lenient for slow systems and large models (PR #523)
         PromptCustomizationService? promptCustomizationService = null)
     {
         _logger = logger;
@@ -66,6 +66,24 @@ public class OllamaLlmProvider : ILlmProvider
         _model = model;
         _maxRetries = maxRetries;
         _timeout = TimeSpan.FromSeconds(timeoutSeconds);
+
+        // CRITICAL: Ensure HttpClient timeout is longer than provider timeout
+        // HttpClient has a default 100-second timeout that would kill connections
+        // before our 15-minute provider timeout is reached
+        if (_httpClient.Timeout < TimeSpan.FromSeconds(timeoutSeconds + 300))
+        {
+            _logger.LogWarning(
+                "HttpClient timeout ({HttpClientTimeout}s) is shorter than provider timeout ({ProviderTimeout}s). " +
+                "Increasing HttpClient timeout to prevent premature cancellation. " +
+                "This should be configured in DI registration instead.",
+                _httpClient.Timeout.TotalSeconds, timeoutSeconds);
+            
+            _httpClient.Timeout = TimeSpan.FromSeconds(timeoutSeconds + 300); // Add 5-minute buffer
+            
+            _logger.LogInformation(
+                "HttpClient timeout increased to {NewTimeout}s to accommodate slow Ollama generation",
+                _httpClient.Timeout.TotalSeconds);
+        }
 
         // Create PromptCustomizationService if not provided (using logger factory pattern)
         if (promptCustomizationService == null)
@@ -79,7 +97,10 @@ public class OllamaLlmProvider : ILlmProvider
             _promptCustomizationService = promptCustomizationService;
         }
 
-        _logger.LogInformation("OllamaLlmProvider initialized with baseUrl={BaseUrl}, model={Model}", _baseUrl, _model);
+        _logger.LogInformation(
+            "OllamaLlmProvider initialized with baseUrl={BaseUrl}, model={Model}, " +
+            "providerTimeout={ProviderTimeout}s, httpTimeout={HttpTimeout}s (lenient for slow systems)",
+            _baseUrl, _model, timeoutSeconds, _httpClient.Timeout.TotalSeconds);
     }
 
     /// <summary>
