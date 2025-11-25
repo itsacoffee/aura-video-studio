@@ -985,7 +985,12 @@ public class ScriptsController : ControllerBase
         
         var title = lines.FirstOrDefault()?.Trim() ?? "Untitled Script";
 
-        if (title.StartsWith("Title:", StringComparison.OrdinalIgnoreCase))
+        // Handle markdown title format (# Title)
+        if (title.StartsWith("# ", StringComparison.Ordinal))
+        {
+            title = title.Substring(2).Trim();
+        }
+        else if (title.StartsWith("Title:", StringComparison.OrdinalIgnoreCase))
         {
             title = title.Substring(6).Trim();
         }
@@ -993,29 +998,97 @@ public class ScriptsController : ControllerBase
         var scenes = new List<ScriptScene>();
         var sceneNumber = 1;
         var totalDuration = planSpec.TargetDuration;
+        
+        // Ensure we have a valid duration, default to 3 minutes if not specified
+        if (totalDuration <= TimeSpan.Zero)
+        {
+            totalDuration = TimeSpan.FromMinutes(3);
+        }
+        
         var sceneDuration = TimeSpan.FromSeconds(totalDuration.TotalSeconds / Math.Max(1, lines.Length / 3));
 
+        // Try to parse structured scenes with ## markers first
+        var currentSceneContent = new List<string>();
+        string? currentSceneHeading = null;
+        
         foreach (var line in lines.Skip(1))
         {
-            if (!string.IsNullOrWhiteSpace(line) && line.Length > 10)
+            var trimmedLine = line.Trim();
+            
+            // Check for scene markers (## heading)
+            if (trimmedLine.StartsWith("## ", StringComparison.Ordinal))
+            {
+                // Save previous scene if any
+                if (currentSceneHeading != null && currentSceneContent.Count > 0)
+                {
+                    var narration = string.Join(" ", currentSceneContent);
+                    if (!string.IsNullOrWhiteSpace(narration))
+                    {
+                        scenes.Add(new ScriptScene
+                        {
+                            Number = sceneNumber++,
+                            Narration = narration,
+                            VisualPrompt = $"Visual for: {narration.Substring(0, Math.Min(50, narration.Length))}",
+                            Duration = sceneDuration,
+                            Transition = TransitionType.Cut
+                        });
+                    }
+                    currentSceneContent.Clear();
+                }
+                currentSceneHeading = trimmedLine.Substring(3).Trim();
+            }
+            else if (!string.IsNullOrWhiteSpace(trimmedLine) && !trimmedLine.StartsWith("#"))
+            {
+                // Regular content line - add to current scene
+                currentSceneContent.Add(trimmedLine);
+            }
+        }
+        
+        // Add the last scene
+        if (currentSceneHeading != null && currentSceneContent.Count > 0)
+        {
+            var narration = string.Join(" ", currentSceneContent);
+            if (!string.IsNullOrWhiteSpace(narration))
             {
                 scenes.Add(new ScriptScene
                 {
                     Number = sceneNumber++,
-                    Narration = line.Trim(),
-                    VisualPrompt = $"Visual for: {line.Trim().Substring(0, Math.Min(50, line.Length))}",
+                    Narration = narration,
+                    VisualPrompt = $"Visual for: {narration.Substring(0, Math.Min(50, narration.Length))}",
                     Duration = sceneDuration,
                     Transition = TransitionType.Cut
                 });
             }
         }
-
+        
+        // If no scenes found with ## markers, fall back to line-by-line parsing
         if (scenes.Count == 0)
         {
+            foreach (var line in lines.Skip(1))
+            {
+                var trimmedLine = line.Trim();
+                if (!string.IsNullOrWhiteSpace(trimmedLine) && trimmedLine.Length > 10)
+                {
+                    scenes.Add(new ScriptScene
+                    {
+                        Number = sceneNumber++,
+                        Narration = trimmedLine,
+                        VisualPrompt = $"Visual for: {trimmedLine.Substring(0, Math.Min(50, trimmedLine.Length))}",
+                        Duration = sceneDuration,
+                        Transition = TransitionType.Cut
+                    });
+                }
+            }
+        }
+
+        // Final fallback: create a single scene with the entire script
+        if (scenes.Count == 0)
+        {
+            var fullContent = scriptText.Trim();
             scenes.Add(new ScriptScene
             {
                 Number = 1,
-                Narration = scriptText.Trim(),
+                Narration = fullContent,
                 VisualPrompt = "Visual representation of script",
                 Duration = totalDuration,
                 Transition = TransitionType.Cut
