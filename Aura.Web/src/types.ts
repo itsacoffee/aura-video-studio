@@ -50,6 +50,7 @@ export interface Brief {
   language: string;
   aspect: 'Widescreen16x9' | 'Vertical9x16' | 'Square1x1';
   ragConfiguration?: RagConfiguration;
+  scriptGuidance?: string;
 }
 
 export interface PlanSpec {

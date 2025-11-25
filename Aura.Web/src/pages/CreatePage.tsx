@@ -15,8 +15,15 @@ import {
   Badge,
   Checkbox,
   Tooltip,
+  Textarea,
 } from '@fluentui/react-components';
-import { Play24Regular, Lightbulb24Regular, Checkmark24Regular } from '@fluentui/react-icons';
+import {
+  Play24Regular,
+  Lightbulb24Regular,
+  Checkmark24Regular,
+  ChevronDown24Regular,
+  ChevronUp24Regular,
+} from '@fluentui/react-icons';
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
@@ -63,6 +70,19 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     gap: tokens.spacingVerticalL,
+  },
+  advancedHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    cursor: 'pointer',
+    paddingTop: tokens.spacingVerticalM,
+    paddingBottom: tokens.spacingVerticalM,
+    borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
+    marginTop: tokens.spacingVerticalL,
+  },
+  advancedContent: {
+    paddingTop: tokens.spacingVerticalM,
   },
 });
 
@@ -118,6 +138,7 @@ export function CreatePage() {
   const [loadingRecommendations, setLoadingRecommendations] = useState(false);
   const [recommendations, setRecommendations] = useState<PlannerRecommendations | null>(null);
   const [showRecommendations, setShowRecommendations] = useState(false);
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
 
   // Preflight state
   const [selectedProfile, setSelectedProfile] = useState('Free-Only');
@@ -267,6 +288,9 @@ export function CreatePage() {
             tone: normalizedBrief.tone || 'Informative',
             language: normalizedBrief.language || 'en-US',
             aspect: normalizedBrief.aspect || 'Widescreen16x9',
+            promptModifiers: normalizedBrief.scriptGuidance
+              ? { additionalInstructions: normalizedBrief.scriptGuidance }
+              : undefined,
           },
           planSpec: {
             targetDuration: `00:${String(Math.floor(normalizedPlanSpec.targetDurationMinutes || 3)).padStart(2, '0')}:00`,
@@ -508,6 +532,49 @@ export function CreatePage() {
                     <Option>Dense</Option>
                   </Dropdown>
                 </Field>
+
+                {/* Advanced Options - Script Guidance */}
+                <div
+                  className={styles.advancedHeader}
+                  onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      setShowAdvancedOptions(!showAdvancedOptions);
+                    }
+                  }}
+                >
+                  <Text weight="semibold">Advanced Options</Text>
+                  {showAdvancedOptions ? <ChevronUp24Regular /> : <ChevronDown24Regular />}
+                </div>
+
+                {showAdvancedOptions && (
+                  <div className={styles.advancedContent}>
+                    <Field
+                      label="Script Guidance"
+                      hint="Optional: Provide specific instructions to guide the AI in generating your script. For example: 'Include a personal anecdote about learning to code', 'Focus on practical examples', 'Use a storytelling approach', or 'Emphasize beginner-friendly explanations'."
+                    >
+                      <Textarea
+                        value={brief.scriptGuidance || ''}
+                        onChange={(_, data) => setBrief({ ...brief, scriptGuidance: data.value })}
+                        placeholder="Example: Start with an attention-grabbing statistic about the topic. Include 3 practical tips that viewers can apply immediately. End with a thought-provoking question."
+                        resize="vertical"
+                        style={{ minHeight: '100px' }}
+                      />
+                    </Field>
+                    <Text
+                      size={200}
+                      style={{
+                        color: tokens.colorNeutralForeground3,
+                        marginTop: tokens.spacingVerticalS,
+                      }}
+                    >
+                      Tip: Be specific about what you want included or how you want the content
+                      structured. The AI will incorporate your guidance into the script generation.
+                    </Text>
+                  </div>
+                )}
 
                 <div style={{ marginTop: tokens.spacingVerticalL }}>
                   <Button

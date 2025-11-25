@@ -894,7 +894,8 @@ public record BriefDto(
     string Language,
     string Aspect,
     RagConfigurationDto? RagConfiguration = null,
-    LlmParametersDto? LlmParameters = null);
+    LlmParametersDto? LlmParameters = null,
+    PromptModifiersDto? PromptModifiers = null);
 
 /// <summary>
 /// A change made during conversion

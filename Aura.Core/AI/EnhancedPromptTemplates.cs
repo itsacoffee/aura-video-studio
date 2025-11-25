@@ -145,6 +145,19 @@ AVOID AI DETECTION FLAGS:
         sb.AppendLine(GetToneSpecificGuidelines(brief.Tone));
         sb.AppendLine();
 
+        // Add user's custom script guidance with high priority
+        if (brief.PromptModifiers?.AdditionalInstructions != null && 
+            !string.IsNullOrWhiteSpace(brief.PromptModifiers.AdditionalInstructions))
+        {
+            sb.AppendLine("=== USER'S SPECIFIC GUIDANCE (HIGH PRIORITY) ===");
+            sb.AppendLine("The user has provided the following specific instructions. Incorporate these into the script:");
+            sb.AppendLine();
+            sb.AppendLine(brief.PromptModifiers.AdditionalInstructions);
+            sb.AppendLine();
+            sb.AppendLine("Make sure to follow these user instructions closely while maintaining quality standards.");
+            sb.AppendLine();
+        }
+
         // Add context if provided
         if (!string.IsNullOrEmpty(additionalContext))
         {
@@ -153,25 +166,25 @@ AVOID AI DETECTION FLAGS:
             sb.AppendLine();
         }
 
-        // Structure requirements
-        sb.AppendLine($"REQUIRED STRUCTURE:");
-        sb.AppendLine($"# [Compelling, Specific Title - Not Generic]");
+        // Structure requirements - now simplified and clearer for LLMs
+        sb.AppendLine($"OUTPUT FORMAT:");
+        sb.AppendLine("Generate a complete video script using this exact structure:");
         sb.AppendLine();
-        sb.AppendLine($"## Hook (First 3-5 seconds)");
-        sb.AppendLine($"[Immediately grab attention with intrigue, surprise, or promised value. Be specific, not vague.]");
+        sb.AppendLine("# [Your Video Title Here]");
         sb.AppendLine();
-        sb.AppendLine($"## Introduction (Next 10-15 seconds)");
-        sb.AppendLine($"[Build context and preview the journey. Create anticipation.]");
+        sb.AppendLine("## Hook");
+        sb.AppendLine("[Opening 3-5 seconds to grab attention]");
         sb.AppendLine();
-        sb.AppendLine($"## [3-5 Content Sections with Descriptive Headers]");
-        sb.AppendLine($"[Each section should:");
-        sb.AppendLine($" - Have a clear purpose and payoff");
-        sb.AppendLine($" - Include specific examples or demonstrations");
-        sb.AppendLine($" - Maintain momentum toward the conclusion");
-        sb.AppendLine($" - Suggest visual moments with [VISUAL: description]]");
+        sb.AppendLine("## Introduction");
+        sb.AppendLine("[Set context and preview what's coming]");
         sb.AppendLine();
-        sb.AppendLine($"## Conclusion");
-        sb.AppendLine($"[Powerful summary and clear call-to-action. Leave viewers with lasting value.]");
+        sb.AppendLine("## [Section Name]");
+        sb.AppendLine("[Content for this section]");
+        sb.AppendLine();
+        sb.AppendLine("(Repeat ## sections as needed for your content)");
+        sb.AppendLine();
+        sb.AppendLine("## Conclusion");
+        sb.AppendLine("[Wrap up with key takeaways and call-to-action]");
         sb.AppendLine();
 
         // Quality requirements
