@@ -317,9 +317,11 @@ public class ScriptsController : ControllerBase
             }
             catch (Exception parseEx)
             {
+                // Log detailed info about the script content for debugging
+                var scriptPreview = result.Script?.Substring(0, Math.Min(500, result.Script?.Length ?? 0)) ?? "(null)";
                 _logger.LogError(parseEx,
-                    "[{CorrelationId}] Failed to parse script text. Script length: {Length}, Provider: {Provider}",
-                    correlationId, result.Script?.Length ?? 0, result.ProviderUsed ?? "Unknown");
+                    "[{CorrelationId}] Failed to parse script text. Script length: {Length}, Provider: {Provider}. Preview: {Preview}",
+                    correlationId, result.Script?.Length ?? 0, result.ProviderUsed ?? "Unknown", scriptPreview);
                 
                 return StatusCode(500, new ProblemDetails
                 {
@@ -340,9 +342,11 @@ public class ScriptsController : ControllerBase
             // Validate parsed script has scenes
             if (script.Scenes == null || script.Scenes.Count == 0)
             {
+                // Log detailed info about the script content for debugging
+                var scriptPreview = result.Script?.Substring(0, Math.Min(500, result.Script?.Length ?? 0)) ?? "(null)";
                 _logger.LogError(
-                    "[{CorrelationId}] Parsed script has no scenes. Script text length: {Length}, Provider: {Provider}",
-                    correlationId, result.Script?.Length ?? 0, result.ProviderUsed ?? "Unknown");
+                    "[{CorrelationId}] Parsed script has no scenes. Script text length: {Length}, Provider: {Provider}. Preview: {Preview}",
+                    correlationId, result.Script?.Length ?? 0, result.ProviderUsed ?? "Unknown", scriptPreview);
                 
                 return StatusCode(500, new ProblemDetails
                 {
