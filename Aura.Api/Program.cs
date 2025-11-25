@@ -268,9 +268,7 @@ builder.Services.AddScoped<ValidationFilter>();
 // Script generation endpoints can override with RequestTimeout attribute (6 minutes) to accommodate slow Ollama models
 builder.Services.AddRequestTimeouts(options =>
 {
-    options.DefaultPolicy = Microsoft.AspNetCore.Http.Timeouts.RequestTimeoutPolicy.Create(
-        TimeSpan.FromMinutes(2), 
-        timeoutStatusCode: StatusCodes.Status408RequestTimeout);
+    options.DefaultTimeout = TimeSpan.FromMinutes(2);
 });
 
 builder.Services.AddEndpointsApiExplorer();
@@ -1977,7 +1975,7 @@ var appLifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
 appLifetime.ApplicationStopping.Register(() =>
 {
     Log.Information("Application stopping - shutting down gracefully");
-    
+
     // Dispose ProcessRegistry to kill all tracked processes
     var processRegistry = app.Services.GetService<Aura.Core.Runtime.ProcessRegistry>();
     if (processRegistry != null)
@@ -2134,7 +2132,7 @@ try
     if (settingsValidator != null)
     {
         var validationResult = await settingsValidator.ValidateAllAsync(CancellationToken.None).ConfigureAwait(false);
-        
+
         if (!validationResult.CanStart)
         {
             Log.Error("=== Configuration Validation Failed ===");
@@ -2151,7 +2149,7 @@ try
             }
             Log.Error("");
             Log.Error("Please fix the issues above and restart the application.");
-            
+
             // Exit gracefully with proper cleanup
             Log.Information("Shutting down application due to configuration errors");
             await app.StopAsync().ConfigureAwait(false);
@@ -5431,7 +5429,7 @@ lifetime.ApplicationStopping.Register(() =>
             if (trackedProcesses.Length > 0)
             {
                 Log.Warning("Found {Count} tracked FFmpeg processes to terminate", trackedProcesses.Length);
-                
+
                 // Use Task.Run with timeout to avoid deadlocks during shutdown
                 // Use a single timeout (15 seconds) instead of nested timeouts
                 try
@@ -5442,7 +5440,7 @@ lifetime.ApplicationStopping.Register(() =>
                         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
                         await processManager.KillAllProcessesAsync(cts.Token).ConfigureAwait(false);
                     });
-                    
+
                     if (killTask.Wait(TimeSpan.FromSeconds(15)))
                     {
                         Log.Information("All FFmpeg processes terminated successfully");
@@ -5499,7 +5497,7 @@ lifetime.ApplicationStopping.Register(() =>
                 {
                     await manager.StopAsync().ConfigureAwait(false);
                 });
-                
+
                 // Wait with timeout - if it takes longer than 15 seconds, log warning and continue
                 if (stopTask.Wait(TimeSpan.FromSeconds(15)))
                 {
