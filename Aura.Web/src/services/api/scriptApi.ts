@@ -110,8 +110,8 @@ export interface ProvidersListResponse {
 
 /**
  * Generate a new script
- * Uses extended timeout (6.5 minutes) to accommodate slow local Ollama models
- * Must be longer than backend timeout (6 minutes) to allow for network overhead
+ * Uses extended timeout (21 minutes) to accommodate slow local Ollama models
+ * Must be longer than backend timeout (20 minutes after PR #523) to allow for network overhead
  */
 export async function generateScript(
   request: GenerateScriptRequest,
