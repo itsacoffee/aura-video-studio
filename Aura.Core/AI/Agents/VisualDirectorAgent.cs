@@ -103,7 +103,9 @@ public class VisualDirectorAgent : IAgent
                 CameraAngle: visualResult.CameraAngle,
                 Lighting: visualResult.LightingMood,
                 NegativePrompt: string.Join(", ", visualResult.NegativeElements),
-                StyleKeywords: visualResult.StyleKeywords
+                StyleKeywords: visualResult.StyleKeywords != null && visualResult.StyleKeywords.Length > 0 
+                    ? string.Join(", ", visualResult.StyleKeywords) 
+                    : null
             );
         }
 

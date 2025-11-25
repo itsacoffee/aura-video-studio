@@ -198,7 +198,7 @@ public class ConfigurationConsolidator
 
         return new DatabaseConfiguration
         {
-            Provider = provider,
+            Provider = provider ?? "SQLite",
             SqlitePath = effectivePath,
             ConnectionString = GetValue("Database:ConnectionString")
         };

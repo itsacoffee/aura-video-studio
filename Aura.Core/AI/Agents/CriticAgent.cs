@@ -155,7 +155,7 @@ Provide concise, actionable feedback (2-3 sentences) that will help improve the 
         }
     }
 
-    private async Task<List<string>> CheckVisualConsistencyAsync(
+    private Task<List<string>> CheckVisualConsistencyAsync(
         List<VisualPrompt> visualPrompts,
         ScriptDocument script,
         CancellationToken ct)
@@ -179,7 +179,7 @@ Provide concise, actionable feedback (2-3 sentences) that will help improve the 
         // Could add more sophisticated checks using LLM for visual style consistency
         // For now, we'll keep it simple
 
-        return issues;
+        return Task.FromResult(issues);
     }
 
     private async Task<CoherenceCheckResult> CheckNarrativeCoherenceAsync(

@@ -240,13 +240,13 @@ public class AssetLibraryService
             .Take(pageSize)
             .ToList();
 
-        return Task.FromResult(new AssetSearchResult
+        return new AssetSearchResult
         {
             Assets = pagedAssets,
             TotalCount = totalCount,
             Page = page,
             PageSize = pageSize
-        });
+        };
     }
 
     /// <summary>

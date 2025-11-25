@@ -326,7 +326,7 @@ public class ExternalProcessManager : IDisposable
                     // We'll let it use its default timeout
                     await StopAsync(processId).ConfigureAwait(false);
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     // Log but don't throw - we want to dispose all processes
                     // Logging is handled by StopAsync internally
@@ -340,7 +340,7 @@ public class ExternalProcessManager : IDisposable
             // This matches the StopAsync default timeout
             Task.WaitAll(disposeTasks, TimeSpan.FromSeconds(10));
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             // Log but continue disposal
             // Individual process disposal errors are already logged
