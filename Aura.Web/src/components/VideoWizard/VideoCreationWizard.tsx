@@ -43,28 +43,33 @@ import { ScriptReview } from './steps/ScriptReview';
 import { StyleSelection } from './steps/StyleSelection';
 import type { WizardData, StepValidation, VideoTemplate, WizardDraft } from './types';
 import { VideoTemplates } from './VideoTemplates';
+import { AdvancedModePanel } from './AdvancedModePanel';
 
 const useStyles = makeStyles({
   container: {
-    maxWidth: '1200px',
+    maxWidth: '1280px',
     margin: '0 auto',
-    padding: tokens.spacingVerticalXL,
+    padding: `${tokens.spacingVerticalXXL} ${tokens.spacingHorizontalXXL}`,
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalXL,
+    gap: tokens.spacingVerticalXXL,
     minHeight: '100vh',
+    animation: 'fadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
   },
   header: {
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: tokens.spacingVerticalL,
-    animation: 'fadeIn 0.5s ease',
+    alignItems: 'flex-start',
+    marginBottom: tokens.spacingVerticalXL,
+    paddingBottom: tokens.spacingVerticalL,
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+    animation: 'fadeInDown 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
   },
   headerLeft: {
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalXS,
+    gap: tokens.spacingVerticalS,
+    flex: 1,
   },
   headerRight: {
     display: 'flex',
@@ -73,22 +78,26 @@ const useStyles = makeStyles({
     flexWrap: 'wrap',
   },
   progressSection: {
-    marginBottom: tokens.spacingVerticalXL,
-    animation: 'fadeIn 0.6s ease',
+    marginBottom: tokens.spacingVerticalXXL,
+    animation: 'fadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.1s both',
   },
   contentCard: {
-    padding: tokens.spacingVerticalXXL,
+    padding: tokens.spacingVerticalXXXL,
     flex: 1,
-    animation: 'fadeInUp 0.5s ease',
-    transition: 'all 0.3s ease',
+    animation: 'fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.2s both',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    borderRadius: tokens.borderRadiusLarge,
+    backgroundColor: tokens.colorNeutralBackground1,
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.06)',
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
   },
   navigationBar: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: tokens.spacingVerticalL,
+    paddingTop: tokens.spacingVerticalXL,
     borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
-    animation: 'fadeIn 0.7s ease',
+    animation: 'fadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.3s both',
   },
   navigationButtons: {
     display: 'flex',
@@ -98,33 +107,52 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     gap: tokens.spacingHorizontalS,
+    padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
+    borderRadius: tokens.borderRadiusMedium,
+    backgroundColor: tokens.colorNeutralBackground2,
+    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
   },
   keyboardHint: {
     fontSize: tokens.fontSizeBase200,
     color: tokens.colorNeutralForeground3,
+    letterSpacing: '0.01em',
   },
   timeEstimate: {
     display: 'flex',
     alignItems: 'center',
     gap: tokens.spacingHorizontalS,
     color: tokens.colorNeutralForeground2,
+    fontSize: tokens.fontSizeBase300,
+    fontWeight: tokens.fontWeightMedium,
   },
   autoSaveIndicator: {
     display: 'flex',
     alignItems: 'center',
     gap: tokens.spacingHorizontalXS,
-    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
+    padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
     backgroundColor: tokens.colorNeutralBackground2,
     borderRadius: tokens.borderRadiusMedium,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
   },
   '@keyframes fadeIn': {
     '0%': { opacity: 0 },
     '100%': { opacity: 1 },
   },
+  '@keyframes fadeInDown': {
+    '0%': {
+      opacity: 0,
+      transform: 'translateY(-20px)',
+    },
+    '100%': {
+      opacity: 1,
+      transform: 'translateY(0)',
+    },
+  },
   '@keyframes fadeInUp': {
     '0%': {
       opacity: 0,
-      transform: 'translateY(20px)',
+      transform: 'translateY(30px)',
     },
     '100%': {
       opacity: 1,
@@ -196,9 +224,18 @@ export const VideoCreationWizard: FC = () => {
         includeCaptions: true,
       },
       advanced: {
-        seoKeywords: [],
         targetPlatform: 'youtube',
         customTransitions: false,
+        llmParameters: {},
+        ragConfiguration: {
+          enabled: false,
+          topK: 5,
+          minimumScore: 0.6,
+          maxContextTokens: 2000,
+          includeCitations: true,
+          tightenClaims: false,
+        },
+        customInstructions: '',
       },
     };
   });
@@ -442,6 +479,12 @@ export const VideoCreationWizard: FC = () => {
             advancedMode={advancedMode}
             selectedProvider={selectedLlmProvider}
             onProviderChange={setSelectedLlmProvider}
+            advancedSettings={{
+              llmParameters: wizardData.advanced.llmParameters,
+              ragConfiguration: wizardData.advanced.ragConfiguration,
+              customInstructions: wizardData.advanced.customInstructions,
+              targetPlatform: wizardData.advanced.targetPlatform,
+            }}
             onChange={(script) => updateWizardData({ script })}
             onValidationChange={(validation) => updateStepValidation(2, validation)}
           />
@@ -601,6 +644,49 @@ export const VideoCreationWizard: FC = () => {
           </Tooltip>
         </div>
       </div>
+
+      {/* Advanced Mode Panel - appears when Advanced Mode is enabled */}
+      {advancedMode && (
+        <AdvancedModePanel
+          selectedProvider={selectedLlmProvider}
+          llmParameters={wizardData.advanced.llmParameters ?? {}}
+          ragConfiguration={
+            wizardData.advanced.ragConfiguration ?? {
+              enabled: false,
+              topK: 5,
+              minimumScore: 0.6,
+              maxContextTokens: 2000,
+              includeCitations: true,
+              tightenClaims: false,
+            }
+          }
+          customInstructions={wizardData.advanced.customInstructions ?? ''}
+          onLlmParametersChange={(params) =>
+            updateWizardData({
+              advanced: {
+                ...wizardData.advanced,
+                llmParameters: params,
+              },
+            })
+          }
+          onRagConfigurationChange={(config) =>
+            updateWizardData({
+              advanced: {
+                ...wizardData.advanced,
+                ragConfiguration: config,
+              },
+            })
+          }
+          onCustomInstructionsChange={(instructions) =>
+            updateWizardData({
+              advanced: {
+                ...wizardData.advanced,
+                customInstructions: instructions,
+              },
+            })
+          }
+        />
+      )}
 
       <div className={styles.progressSection}>
         <WizardProgress

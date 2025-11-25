@@ -45,6 +45,8 @@ export interface GenerateScriptRequest {
   stopSequences?: string[];
   // RAG configuration for script grounding
   ragConfiguration?: RagConfigurationDto;
+  // Custom instructions for prompt customization
+  customInstructions?: string;
 }
 
 /**

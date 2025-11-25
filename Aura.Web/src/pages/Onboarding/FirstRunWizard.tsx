@@ -362,7 +362,12 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
   useEffect(() => {
     if (state.step > 0 && state.step < totalSteps - 1) {
       // Save to localStorage immediately (fast, no visual indicator needed)
-      saveWizardStateToStorage(state);
+      try {
+        saveWizardStateToStorage(state);
+      } catch (error) {
+        console.error('[Auto-save] Failed to save to localStorage:', error);
+        // Don't block on localStorage errors - continue with backend save
+      }
 
       // CRITICAL FIX: Only show auto-save indicator and save to backend on meaningful changes
       // Use a longer debounce time (5 seconds) to prevent spam
@@ -387,6 +392,8 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
             console.error('[Auto-save] Failed:', error);
             setAutoSaveStatus('error');
             setAutoSaveError(error instanceof Error ? error.message : 'Unknown error');
+            // CRITICAL FIX: Don't let auto-save errors crash the component
+            // The error is logged and shown to user, but component continues to work
           }
         }
       }, 5000); // Increased debounce to 5 seconds to prevent spam
@@ -879,13 +886,32 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
   // Handler functions for simplified setup
   const handleApiKeyChange = (provider: string, key: string) => {
-    dispatch({ type: 'SET_API_KEY', payload: { provider, key } });
+    try {
+      dispatch({ type: 'SET_API_KEY', payload: { provider, key } });
+    } catch (error) {
+      console.error('[FirstRunWizard] Error in handleApiKeyChange:', error);
+      showFailureToast({
+        title: 'Error Saving API Key',
+        message: 'Failed to save API key. Please try again.',
+      });
+      // Re-throw to ensure error is visible
+      throw error;
+    }
   };
 
   const handleValidateApiKey = async (provider: string) => {
-    const apiKey = state.apiKeys[provider] || '';
-    // Ollama doesn't require an API key, so we can validate it with an empty string
-    await validateApiKeyThunk(provider, apiKey, dispatch);
+    try {
+      const apiKey = state.apiKeys[provider] || '';
+      // Ollama doesn't require an API key, so we can validate it with an empty string
+      await validateApiKeyThunk(provider, apiKey, dispatch);
+    } catch (error) {
+      console.error('[FirstRunWizard] Error in handleValidateApiKey:', error);
+      showFailureToast({
+        title: 'Validation Error',
+        message: error instanceof Error ? error.message : 'Failed to validate API key. Please try again.',
+      });
+      // Don't re-throw - allow user to continue
+    }
   };
 
   const handleSkipValidation = (provider: string) => {
@@ -1540,6 +1566,29 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
       {(() => {
         try {
+          // CRITICAL FIX: Wrap handlers in error-safe wrappers to prevent black screen
+          const safeHandleApiKeyChange = (provider: string, key: string) => {
+            try {
+              handleApiKeyChange(provider, key);
+            } catch (error) {
+              console.error('[FirstRunWizard] Error in safeHandleApiKeyChange:', error);
+              // Show error but don't crash the component
+              showFailureToast({
+                title: 'Error Saving API Key',
+                message: 'Failed to save API key. Please try again.',
+              });
+            }
+          };
+
+          const safeHandleValidateApiKey = async (provider: string) => {
+            try {
+              await handleValidateApiKey(provider);
+            } catch (error) {
+              console.error('[FirstRunWizard] Error in safeHandleValidateApiKey:', error);
+              // Error already handled in handleValidateApiKey, just log here
+            }
+          };
+
           return (
             <ApiKeySetupStep
               apiKeys={state.apiKeys}
@@ -1547,18 +1596,26 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
               validationErrors={state.apiKeyErrors}
               fieldErrors={state.apiKeyFieldErrors}
               accountInfo={state.apiKeyAccountInfo}
-              onApiKeyChange={handleApiKeyChange}
-              onValidateApiKey={handleValidateApiKey}
+              onApiKeyChange={safeHandleApiKeyChange}
+              onValidateApiKey={safeHandleValidateApiKey}
               onSkipValidation={handleSkipValidation}
               onSkipAll={() => {
-                dispatch({ type: 'SET_MODE', payload: 'free' });
-                dispatch({ type: 'SET_TIER', payload: 'free' });
-                setHasAtLeastOneProvider(true);
-                showSuccessToast({
-                  title: 'Offline Mode Enabled',
-                  message:
-                    'Using rule-based script generation. You can add API keys later in Settings.',
-                });
+                try {
+                  dispatch({ type: 'SET_MODE', payload: 'free' });
+                  dispatch({ type: 'SET_TIER', payload: 'free' });
+                  setHasAtLeastOneProvider(true);
+                  showSuccessToast({
+                    title: 'Offline Mode Enabled',
+                    message:
+                      'Using rule-based script generation. You can add API keys later in Settings.',
+                  });
+                } catch (error) {
+                  console.error('[FirstRunWizard] Error in onSkipAll:', error);
+                  showFailureToast({
+                    title: 'Error',
+                    message: 'Failed to enable offline mode. Please try again.',
+                  });
+                }
               }}
               onLocalProviderReady={handleLocalProviderReady}
               allowInvalidKeys={allowInvalidKeys}
@@ -1568,12 +1625,19 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
           );
         } catch (error) {
           console.error('[FirstRunWizard] Error rendering ApiKeySetupStep:', error);
+          // CRITICAL FIX: Always render something visible to prevent black screen
           return (
             <Card
               style={{
                 padding: tokens.spacingVerticalXXL,
                 textAlign: 'center',
                 backgroundColor: tokens.colorNeutralBackground1 || '#1e1e1e',
+                color: tokens.colorNeutralForeground1 || '#ffffff',
+                minHeight: '400px',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
               }}
             >
               <Warning24Regular

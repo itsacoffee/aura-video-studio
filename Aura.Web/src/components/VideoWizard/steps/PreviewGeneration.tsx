@@ -57,47 +57,58 @@ const useStyles = makeStyles({
   container: {
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalXL,
+    gap: tokens.spacingVerticalXXL,
   },
   header: {
-    marginBottom: tokens.spacingVerticalM,
+    marginBottom: tokens.spacingVerticalL,
   },
   generationCard: {
-    padding: tokens.spacingVerticalXL,
+    padding: tokens.spacingVerticalXXL,
     backgroundColor: tokens.colorNeutralBackground2,
-    borderRadius: tokens.borderRadiusMedium,
+    borderRadius: tokens.borderRadiusLarge,
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: tokens.spacingVerticalL,
+    gap: tokens.spacingVerticalXL,
     textAlign: 'center',
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.06)',
   },
   previewGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-    gap: tokens.spacingHorizontalL,
-    marginTop: tokens.spacingVerticalL,
+    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+    gap: tokens.spacingHorizontalXL,
+    marginTop: tokens.spacingVerticalXL,
   },
   sceneCard: {
     padding: tokens.spacingVerticalL,
     cursor: 'pointer',
-    transition: 'all 0.2s ease',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    borderRadius: tokens.borderRadiusLarge,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    backgroundColor: tokens.colorNeutralBackground1,
     ':hover': {
+      transform: 'translateY(-4px)',
+      boxShadow: '0 12px 32px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08)',
+      borderColor: tokens.colorBrandStroke1,
+    },
+    ':active': {
       transform: 'translateY(-2px)',
-      boxShadow: tokens.shadow8,
     },
   },
   scenePreview: {
     width: '100%',
-    height: '160px',
+    height: '180px',
     backgroundColor: tokens.colorNeutralBackground3,
-    borderRadius: tokens.borderRadiusMedium,
+    borderRadius: tokens.borderRadiusLarge,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: tokens.spacingVerticalM,
+    marginBottom: tokens.spacingVerticalL,
     position: 'relative',
     overflow: 'hidden',
+    boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.06)',
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
   },
   sceneImage: {
     width: '100%',
@@ -122,8 +133,12 @@ const useStyles = makeStyles({
   statsRow: {
     display: 'flex',
     justifyContent: 'space-around',
-    padding: tokens.spacingVerticalL,
-    gap: tokens.spacingHorizontalL,
+    padding: `${tokens.spacingVerticalXL} ${tokens.spacingHorizontalXXL}`,
+    gap: tokens.spacingHorizontalXXL,
+    backgroundColor: tokens.colorNeutralBackground2,
+    borderRadius: tokens.borderRadiusLarge,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
   },
   statItem: {
     display: 'flex',
@@ -154,18 +169,22 @@ const useStyles = makeStyles({
     marginTop: tokens.spacingVerticalM,
   },
   providerOption: {
-    padding: tokens.spacingVerticalM,
-    border: `1px solid ${tokens.colorNeutralStroke2}`,
-    borderRadius: tokens.borderRadiusMedium,
+    padding: tokens.spacingVerticalL,
+    border: `2px solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: tokens.borderRadiusLarge,
     cursor: 'pointer',
-    transition: 'all 0.2s ease',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    backgroundColor: tokens.colorNeutralBackground1,
     ':hover': {
-      transform: 'translateY(-2px)',
-      boxShadow: tokens.shadow8,
+      transform: 'translateY(-3px)',
+      boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08)',
+      borderColor: tokens.colorBrandStroke1,
     },
   },
   selectedProvider: {
     border: `2px solid ${tokens.colorBrandStroke1}`,
+    backgroundColor: tokens.colorBrandBackground2,
+    boxShadow: `0 0 0 3px ${tokens.colorBrandBackground2}40`,
   },
   settingsRow: {
     display: 'flex',
@@ -183,12 +202,13 @@ const useStyles = makeStyles({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     opacity: 0,
-    transition: 'opacity 0.2s ease',
+    transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    backdropFilter: 'blur(4px)',
   },
   sceneCardHover: {
     ':hover .image-overlay': {
@@ -277,6 +297,36 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
     return data.thumbnails.length > 0 && data.audioSamples.length > 0;
   }, [data]);
 
+  // Initialize status when component mounts with existing preview data
+  useEffect(() => {
+    if (hasPreviewData && status === 'idle') {
+      setStatus('completed');
+    }
+  }, [hasPreviewData, status]);
+
+  // Reset preview data if script scenes change significantly (e.g., script was regenerated)
+  useEffect(() => {
+    if (hasValidScriptData && data.thumbnails.length > 0) {
+      const scriptSceneIds = new Set(scriptData.scenes.map((s) => s.id));
+      const previewSceneIds = new Set(data.thumbnails.map((t) => t.sceneId));
+      
+      // Check if scenes have changed (different IDs or count mismatch)
+      const scenesChanged = 
+        scriptData.scenes.length !== data.thumbnails.length ||
+        !scriptData.scenes.every((scene) => previewSceneIds.has(scene.id)) ||
+        !data.thumbnails.every((thumb) => scriptSceneIds.has(thumb.sceneId));
+
+      if (scenesChanged && status === 'completed') {
+        // Script was regenerated, reset preview status
+        setStatus('idle');
+        onChange({
+          thumbnails: [],
+          audioSamples: [],
+        });
+      }
+    }
+  }, [scriptData.scenes, data.thumbnails, hasValidScriptData, status, onChange]);
+
   // Validation effect - always called
   useEffect(() => {
     if (!hasValidScriptData) {
@@ -288,7 +338,6 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
     }
 
     if (hasPreviewData) {
-      setStatus('completed');
       onValidationChange({ isValid: true, errors: [] });
     } else {
       onValidationChange({ isValid: false, errors: ['Preview generation required'] });
@@ -306,16 +355,55 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
 
       // Only set provider if one hasn't been selected yet
       if (!hasSelectedProviderRef.current) {
-        const availableProvider = response.providers.find((p) => p.isAvailable);
+        // Prefer non-placeholder providers, but always fall back to Placeholder if needed
+        const availableProvider = response.providers.find(
+          (p) => p.isAvailable && p.name !== 'Placeholder'
+        );
+        const placeholderProvider = response.providers.find(
+          (p) => p.name === 'Placeholder' && p.isAvailable
+        );
+
         if (availableProvider) {
           setSelectedProvider(availableProvider.name);
           hasSelectedProviderRef.current = true;
+        } else if (placeholderProvider) {
+          // Placeholder is always available as guaranteed fallback
+          setSelectedProvider('Placeholder');
+          hasSelectedProviderRef.current = true;
+          console.info('[PreviewGeneration] Using Placeholder provider as fallback');
         }
       }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to load providers';
       console.error('Failed to load providers:', error);
       setProviderLoadError(errorMessage);
+      
+      // Even if loading fails, set Placeholder as fallback
+      if (!hasSelectedProviderRef.current) {
+        setSelectedProvider('Placeholder');
+        hasSelectedProviderRef.current = true;
+        setProviders([
+          {
+            name: 'Placeholder',
+            isAvailable: true,
+            requiresApiKey: false,
+            capabilities: {
+              providerName: 'Placeholder',
+              supportsNegativePrompts: false,
+              supportsBatchGeneration: true,
+              supportsStylePresets: false,
+              supportedAspectRatios: ['16:9', '9:16', '1:1', '4:3'],
+              supportedStyles: ['solid'],
+              maxWidth: 4096,
+              maxHeight: 4096,
+              isLocal: true,
+              isFree: true,
+              costPerImage: 0,
+              tier: 'Free',
+            },
+          },
+        ]);
+      }
     } finally {
       setIsLoadingProviders(false);
     }
@@ -350,6 +438,14 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
     if (!hasValidScriptData) {
       setStatus('error');
       setCurrentStage('No script data available. Please generate a script first.');
+      return;
+    }
+
+    // Validate that a provider is selected, or use Placeholder as fallback
+    const providerToUse = selectedProvider || 'Placeholder';
+    if (!providerToUse) {
+      setStatus('error');
+      setCurrentStage('Please select an image provider before generating previews.');
       return;
     }
 
@@ -453,6 +549,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
     }
   }, [
     hasValidScriptData,
+    selectedProvider,
     scriptData.scenes,
     styleData.visualStyle,
     imageStyle,
@@ -657,6 +754,18 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
                       : `$${provider.capabilities.costPerImage}/image`}
                   </Text>
                 )}
+                {provider.name === 'Placeholder' && (
+                  <Text
+                    size={200}
+                    style={{
+                      marginTop: tokens.spacingVerticalXS,
+                      color: tokens.colorNeutralForeground3,
+                      fontStyle: 'italic',
+                    }}
+                  >
+                    Generates solid color images - always available
+                  </Text>
+                )}
               </div>
             ))}
           </div>
@@ -739,7 +848,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
           appearance="primary"
           size="large"
           onClick={generatePreviews}
-          disabled={!selectedProvider || providers.length === 0}
+          disabled={!selectedProvider && providers.length === 0}
         >
           Generate Previews
         </Button>
@@ -747,6 +856,12 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
         {!selectedProvider && providers.length > 0 && (
           <Text size={200} style={{ color: tokens.colorPaletteRedForeground1 }}>
             Please select an image provider
+          </Text>
+        )}
+
+        {selectedProvider === 'Placeholder' && (
+          <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginTop: tokens.spacingVerticalS }}>
+            Using Placeholder provider - will generate solid color images for preview
           </Text>
         )}
       </div>
@@ -832,8 +947,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
                       className={styles.sceneImage}
                     />
                     <div
-                      className="image-overlay"
-                      style={styles.imageOverlay as React.CSSProperties}
+                      className={`image-overlay ${styles.imageOverlay}`}
                     >
                       <ImageEdit24Regular style={{ fontSize: '48px', color: 'white' }} />
                     </div>

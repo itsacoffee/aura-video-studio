@@ -17,13 +17,16 @@ public class IdeationController : ControllerBase
 {
     private readonly ILogger<IdeationController> _logger;
     private readonly IdeationService _ideationService;
+    private readonly Aura.Core.Services.RAG.VectorIndex? _vectorIndex;
 
     public IdeationController(
         ILogger<IdeationController> logger,
-        IdeationService ideationService)
+        IdeationService ideationService,
+        Aura.Core.Services.RAG.VectorIndex? vectorIndex = null)
     {
         _logger = logger;
         _ideationService = ideationService;
+        _vectorIndex = vectorIndex;
     }
 
     /// <summary>
@@ -34,6 +37,8 @@ public class IdeationController : ControllerBase
         [FromBody] BrainstormRequest request,
         CancellationToken ct)
     {
+        var correlationId = HttpContext.TraceIdentifier;
+        
         try
         {
             if (string.IsNullOrWhiteSpace(request.Topic))
@@ -41,7 +46,61 @@ public class IdeationController : ControllerBase
                 return BadRequest(new { error = "Topic is required" });
             }
 
-            var response = await _ideationService.BrainstormConceptsAsync(request, ct).ConfigureAwait(false);
+            _logger.LogInformation(
+                "[{CorrelationId}] POST /api/ideation/brainstorm - Topic: {Topic}, ConceptCount: {Count}",
+                correlationId, request.Topic, request.ConceptCount ?? 3);
+
+            // Handle RAG configuration: use from request, or auto-enable if documents exist
+            Aura.Core.Models.RagConfiguration? ragConfig = request.RagConfiguration;
+            
+            // If no explicit configuration, auto-enable if documents exist in the index
+            if (ragConfig == null && _vectorIndex != null)
+            {
+                try
+                {
+                    var stats = await _vectorIndex.GetStatisticsAsync(ct).ConfigureAwait(false);
+                    if (stats.TotalDocuments > 0)
+                    {
+                        _logger.LogInformation(
+                            "[{CorrelationId}] RAG index contains {DocumentCount} documents, auto-enabling RAG for ideation",
+                            correlationId, stats.TotalDocuments);
+                        ragConfig = new Aura.Core.Models.RagConfiguration(
+                            Enabled: true,
+                            TopK: 5,
+                            MinimumScore: 0.6f,
+                            MaxContextTokens: 2000,
+                            IncludeCitations: true,
+                            TightenClaims: false);
+                    }
+                    else
+                    {
+                        _logger.LogDebug(
+                            "[{CorrelationId}] RAG index is empty, skipping RAG enhancement for ideation",
+                            correlationId);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex,
+                        "[{CorrelationId}] Failed to check RAG index status, continuing without RAG",
+                        correlationId);
+                }
+            }
+            else if (ragConfig != null && ragConfig.Enabled)
+            {
+                _logger.LogInformation(
+                    "[{CorrelationId}] RAG explicitly enabled via request with TopK={TopK}, MinScore={MinScore}",
+                    correlationId, ragConfig.TopK, ragConfig.MinimumScore);
+            }
+
+            // Create updated request with RAG configuration
+            var requestWithRag = request with
+            {
+                RagConfiguration = ragConfig,
+                LlmParameters = request.LlmParameters
+            };
+
+            var response = await _ideationService.BrainstormConceptsAsync(requestWithRag, ct).ConfigureAwait(false);
 
             return Ok(new
             {
@@ -54,7 +113,7 @@ public class IdeationController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error brainstorming concepts for topic: {Topic}", request.Topic);
+            _logger.LogError(ex, "[{CorrelationId}] Error brainstorming concepts for topic: {Topic}", correlationId, request.Topic);
             return StatusCode(500, new { error = "Failed to generate concepts" });
         }
     }
@@ -362,6 +421,44 @@ public class IdeationController : ControllerBase
         {
             _logger.LogError(ex, "Error enhancing topic: {Topic}", request.Topic);
             return StatusCode(500, new { error = "Failed to enhance topic" });
+        }
+    }
+
+    /// <summary>
+    /// Analyze prompt quality using LLM-based analysis with RAG support
+    /// </summary>
+    [HttpPost("analyze-prompt-quality")]
+    public async Task<IActionResult> AnalyzePromptQuality(
+        [FromBody] AnalyzePromptQualityRequest request,
+        CancellationToken ct)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.Topic))
+            {
+                return BadRequest(new { error = "Topic is required" });
+            }
+
+            var response = await _ideationService.AnalyzePromptQualityAsync(request, ct).ConfigureAwait(false);
+
+            return Ok(new
+            {
+                success = true,
+                score = response.Score,
+                level = response.Level,
+                metrics = response.Metrics,
+                suggestions = response.Suggestions.Select(s => new
+                {
+                    type = s.Type,
+                    message = s.Message
+                }),
+                generatedAt = response.GeneratedAt
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error analyzing prompt quality for topic: {Topic}", request.Topic);
+            return StatusCode(500, new { error = "Failed to analyze prompt quality" });
         }
     }
 }

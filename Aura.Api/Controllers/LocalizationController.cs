@@ -431,7 +431,8 @@ public class LocalizationController : ControllerBase
             MaxTimingVariance = dto.MaxTimingVariance,
             PreserveNames = dto.PreserveNames,
             PreserveBrands = dto.PreserveBrands,
-            AdaptMeasurements = dto.AdaptMeasurements
+            AdaptMeasurements = dto.AdaptMeasurements,
+            TranscreationContext = dto.TranscreationContext
         };
     }
 

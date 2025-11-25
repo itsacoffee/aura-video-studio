@@ -211,6 +211,15 @@ public class ScriptsController : ControllerBase
                     ModelOverride: request.ModelOverride);
             }
 
+            // Map custom instructions to PromptModifiers if provided
+            Aura.Core.Models.PromptModifiers? promptModifiers = null;
+            if (!string.IsNullOrWhiteSpace(request.CustomInstructions))
+            {
+                promptModifiers = new Aura.Core.Models.PromptModifiers(
+                    AdditionalInstructions: request.CustomInstructions.Trim()
+                );
+            }
+
             var brief = new Brief(
                 Topic: request.Topic,
                 Audience: request.Audience,
@@ -218,6 +227,7 @@ public class ScriptsController : ControllerBase
                 Tone: request.Tone,
                 Language: request.Language,
                 Aspect: ParseAspect(request.Aspect),
+                PromptModifiers: promptModifiers,
                 RagConfiguration: ragConfig,
                 LlmParameters: llmParams);
 

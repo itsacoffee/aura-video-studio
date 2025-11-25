@@ -2,7 +2,6 @@ import {
   makeStyles,
   tokens,
   Title2,
-  Title3,
   Text,
   Field,
   Textarea,
@@ -11,16 +10,10 @@ import {
   Slider,
   Button,
   Badge,
-  Accordion,
-  AccordionItem,
-  AccordionHeader,
-  AccordionPanel,
   Tooltip,
 } from '@fluentui/react-components';
 import {
   Mic24Regular,
-  ChevronDown24Regular,
-  Info24Regular,
   Sparkle24Regular,
 } from '@fluentui/react-icons';
 import { useState, useEffect, useCallback } from 'react';
@@ -58,9 +51,6 @@ const useStyles = makeStyles({
     gap: tokens.spacingHorizontalM,
     marginTop: tokens.spacingVerticalM,
     flexWrap: 'wrap',
-  },
-  advancedSection: {
-    marginTop: tokens.spacingVerticalL,
   },
   '@keyframes fadeInUp': {
     '0%': {
@@ -293,14 +283,6 @@ export const BriefInput: FC<BriefInputProps> = ({
           </Tooltip>
         </div>
 
-        {/* Prompt Quality Analyzer */}
-        <PromptQualityAnalyzer
-          prompt={data.topic}
-          targetAudience={data.targetAudience}
-          keyMessage={data.keyMessage}
-          videoType={data.videoType}
-        />
-
         <Field label="Video Type" required>
           <Dropdown
             value={data.videoType}
@@ -357,78 +339,36 @@ export const BriefInput: FC<BriefInputProps> = ({
             <Text size={200}>10min</Text>
           </div>
         </Field>
+
+        <Field 
+          label="Target Platform" 
+          hint="Optimize video format and style for specific platform requirements"
+        >
+          <Dropdown
+            value={advancedData.targetPlatform}
+            onOptionSelect={(_, newData) =>
+              onAdvancedChange({
+                ...advancedData,
+                targetPlatform: newData.optionValue as AdvancedData['targetPlatform'],
+              })
+            }
+          >
+            <Option value="youtube">YouTube (16:9, detailed)</Option>
+            <Option value="tiktok">TikTok (9:16, short & punchy)</Option>
+            <Option value="instagram">Instagram (1:1 or 9:16)</Option>
+            <Option value="twitter">Twitter (16:9, concise)</Option>
+            <Option value="linkedin">LinkedIn (16:9, professional)</Option>
+          </Dropdown>
+        </Field>
       </div>
 
-      {advancedMode && (
-        <div className={styles.advancedSection}>
-          <Accordion collapsible openItems={['advanced']}>
-            <AccordionItem value="advanced">
-              <AccordionHeader icon={<ChevronDown24Regular />} expandIconPosition="end">
-                <Title3>Advanced Options</Title3>
-              </AccordionHeader>
-              <AccordionPanel>
-                <div className={styles.fieldGroup}>
-                  <Field
-                    label={
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: tokens.spacingHorizontalXS,
-                        }}
-                      >
-                        <Text>SEO Keywords</Text>
-                        <Tooltip
-                          content="Keywords to optimize for search engines. Separate with commas."
-                          relationship="label"
-                        >
-                          <Info24Regular
-                            style={{ fontSize: '16px', color: tokens.colorNeutralForeground3 }}
-                          />
-                        </Tooltip>
-                      </div>
-                    }
-                    hint="Comma-separated keywords for SEO optimization"
-                  >
-                    <Textarea
-                      value={advancedData.seoKeywords.join(', ')}
-                      onChange={(_, newData) =>
-                        onAdvancedChange({
-                          ...advancedData,
-                          seoKeywords: newData.value
-                            .split(',')
-                            .map((k) => k.trim())
-                            .filter(Boolean),
-                        })
-                      }
-                      placeholder="e.g., artificial intelligence, machine learning, AI basics"
-                      rows={2}
-                    />
-                  </Field>
-
-                  <Field label="Target Platform" hint="Optimize for specific platform requirements">
-                    <Dropdown
-                      value={advancedData.targetPlatform}
-                      onOptionSelect={(_, newData) =>
-                        onAdvancedChange({
-                          ...advancedData,
-                          targetPlatform: newData.optionValue as AdvancedData['targetPlatform'],
-                        })
-                      }
-                    >
-                      <Option value="youtube">YouTube (16:9, detailed)</Option>
-                      <Option value="tiktok">TikTok (9:16, short & punchy)</Option>
-                      <Option value="instagram">Instagram (1:1 or 9:16)</Option>
-                      <Option value="twitter">Twitter (16:9, concise)</Option>
-                      <Option value="linkedin">LinkedIn (16:9, professional)</Option>
-                    </Dropdown>
-                  </Field>
-                </div>
-              </AccordionPanel>
-            </AccordionItem>
-          </Accordion>
-        </div>
-      )}
+      {/* Prompt Quality Analyzer - Optional, appears at bottom */}
+      <PromptQualityAnalyzer
+        prompt={data.topic}
+        targetAudience={data.targetAudience}
+        keyMessage={data.keyMessage}
+        videoType={data.videoType}
+      />
     </div>
   );
 };

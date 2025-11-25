@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -86,28 +87,37 @@ public class IdeationService
 
         // Try to retrieve RAG context for the topic to provide more specific information
         RagContext? ragContext = null;
-        if (_ragContextBuilder != null)
+        if (_ragContextBuilder != null && request.RagConfiguration != null && request.RagConfiguration.Enabled)
         {
             try
             {
                 var ragConfig = new RagConfig
                 {
                     Enabled = true,
-                    TopK = 5,
-                    MinimumScore = 0.5f,
-                    MaxContextTokens = 2000,
-                    IncludeCitations = false
+                    TopK = request.RagConfiguration.TopK,
+                    MinimumScore = request.RagConfiguration.MinimumScore,
+                    MaxContextTokens = request.RagConfiguration.MaxContextTokens,
+                    IncludeCitations = request.RagConfiguration.IncludeCitations
                 };
                 ragContext = await _ragContextBuilder.BuildContextAsync(request.Topic, ragConfig, ct).ConfigureAwait(false);
                 if (ragContext.Chunks.Count > 0)
                 {
-                    _logger.LogInformation("Retrieved {Count} RAG chunks for topic: {Topic}", ragContext.Chunks.Count, request.Topic);
+                    _logger.LogInformation("Retrieved {Count} RAG chunks for topic: {Topic} (TopK={TopK}, MinScore={MinScore})", 
+                        ragContext.Chunks.Count, request.Topic, ragConfig.TopK, ragConfig.MinimumScore);
+                }
+                else
+                {
+                    _logger.LogDebug("No RAG chunks found for topic: {Topic} with current configuration", request.Topic);
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to retrieve RAG context for ideation, continuing without RAG");
             }
+        }
+        else if (request.RagConfiguration != null && !request.RagConfiguration.Enabled)
+        {
+            _logger.LogDebug("RAG is explicitly disabled for ideation topic: {Topic}", request.Topic);
         }
 
         try
@@ -122,7 +132,7 @@ public class IdeationService
                 prompt = prompt.Substring(0, MaxPromptLength);
             }
 
-            var response = await GenerateWithLlmAsync(prompt, ct).ConfigureAwait(false);
+            var response = await GenerateWithLlmAsync(prompt, request, ct).ConfigureAwait(false);
 
             if (string.IsNullOrWhiteSpace(response))
             {
@@ -130,8 +140,49 @@ public class IdeationService
                 throw new InvalidOperationException("LLM provider returned an empty response. Please try again.");
             }
 
+            // Validate response quality before parsing
+            var trimmedResponse = response.Trim();
+            if (trimmedResponse.Length < 100)
+            {
+                _logger.LogError("LLM returned suspiciously short response ({Length} chars) for topic: {Topic}. Response: {Response}",
+                    trimmedResponse.Length, request.Topic, trimmedResponse);
+                throw new InvalidOperationException(
+                    $"LLM returned an incomplete response. Please try again or check your LLM provider configuration.");
+            }
+
+            // Check if response looks like JSON (should start with { or [)
+            if (!trimmedResponse.TrimStart().StartsWith("{") && !trimmedResponse.TrimStart().StartsWith("["))
+            {
+                _logger.LogWarning("LLM response doesn't appear to be JSON. First 200 chars: {Preview}",
+                    trimmedResponse.Substring(0, Math.Min(200, trimmedResponse.Length)));
+                // Continue anyway - CleanJsonResponse might be able to extract JSON
+            }
+
             // Parse the response into structured concepts
             var concepts = ParseBrainstormResponse(response, request.Topic, desiredConceptCount);
+            
+            // Validate parsed concepts are meaningful (not just fallback placeholders)
+            if (concepts.Count == 0)
+            {
+                _logger.LogError("Failed to parse any concepts from LLM response for topic: {Topic}. Response length: {Length}",
+                    request.Topic, response.Length);
+                throw new InvalidOperationException(
+                    "Failed to generate concepts. The LLM response could not be parsed. Please try again.");
+            }
+            
+            // Check if concepts are too generic (likely fallback)
+            var hasGenericContent = concepts.Any(c => 
+                c.Description.Contains("This approach provides unique value through its specific perspective") ||
+                c.TalkingPoints?.Any(tp => tp == "Introduction to the topic") == true ||
+                c.Pros.Any(p => p == "Engaging and accessible format"));
+            
+            if (hasGenericContent && concepts.Count == desiredConceptCount)
+            {
+                _logger.LogWarning("Parsed concepts appear to be generic fallback data. LLM may not have returned valid JSON. " +
+                    "Response preview: {Preview}",
+                    response.Substring(0, Math.Min(500, response.Length)));
+                // Don't throw - at least we have something, but log the issue
+            }
 
             _logger.LogInformation("Successfully generated {Count} concepts for topic: {Topic}", 
                 concepts.Count, request.Topic);
@@ -1394,47 +1445,31 @@ public class IdeationService
             _logger.LogWarning(ex, "Unexpected error parsing LLM response, falling back to generic concepts");
         }
 
-        // Fallback: If parsing failed or no concepts were generated, create generic concepts
+        // Fallback: If parsing failed or no concepts were generated, try to extract meaningful data from raw response
         if (concepts.Count == 0)
         {
-            _logger.LogWarning("No concepts parsed from LLM response, generating fallback concepts");
-
-            var angles = new[] { "Tutorial", "Narrative", "Case Study" };
-
-            for (int i = 0; i < desiredConceptCount; i++)
+            _logger.LogError("No concepts parsed from LLM response. Attempting to extract meaningful content from raw response.");
+            
+            // Try to extract concepts from non-JSON response using pattern matching
+            var extractedConcepts = TryExtractConceptsFromText(response, originalTopic, desiredConceptCount);
+            if (extractedConcepts.Count > 0)
             {
-                var angle = angles[i % angles.Length];
-                concepts.Add(new ConceptIdea(
-                    ConceptId: Guid.NewGuid().ToString(),
-                    Title: $"{originalTopic} - {angle} Approach",
-                    Description: $"A {angle.ToLower()} style video exploring {originalTopic}. " +
-                                "This approach provides unique value through its specific perspective and presentation style.",
-                    Angle: angle,
-                    TargetAudience: "General viewers interested in the topic",
-                    Pros: new List<string>
-                    {
-                        "Engaging and accessible format",
-                        "Clear value proposition",
-                        "Suitable for target platform"
-                    },
-                    Cons: new List<string>
-                    {
-                        "May require specific expertise",
-                        "Needs careful pacing",
-                        "Competition in this format"
-                    },
-                    AppealScore: 70 + (i * 5),
-                    Hook: $"Discover the most {angle.ToLower()} way to understand {originalTopic}",
-                    TalkingPoints: new List<string>
-                    {
-                        "Introduction to the topic",
-                        "Key concepts and fundamentals",
-                        "Practical examples and applications",
-                        "Common mistakes to avoid",
-                        "Next steps and resources"
-                    },
-                    CreatedAt: DateTime.UtcNow
-                ));
+                _logger.LogInformation("Successfully extracted {Count} concepts from raw LLM response", extractedConcepts.Count);
+                concepts.AddRange(extractedConcepts);
+            }
+            else
+            {
+                // Last resort: Log the full response for debugging and throw an error
+                _logger.LogError(
+                    "Failed to parse or extract concepts from LLM response for topic: {Topic}. " +
+                    "Response length: {Length}. First 1000 chars: {Preview}",
+                    originalTopic, response.Length, 
+                    response.Substring(0, Math.Min(1000, response.Length)));
+                
+                throw new InvalidOperationException(
+                    $"Failed to generate concepts from LLM response. The response could not be parsed as JSON and no meaningful content could be extracted. " +
+                    $"Please check your LLM provider configuration and try again. " +
+                    $"Response preview: {response.Substring(0, Math.Min(200, response.Length))}...");
             }
         }
 
@@ -2575,11 +2610,387 @@ public class IdeationService
     }
 
     /// <summary>
-    /// Helper method to execute LLM generation using CompleteAsync for prompt completion
-    /// This works with all LLM providers including Ollama, OpenAI, Gemini, etc.
+    /// Analyze prompt quality for video creation using LLM-based analysis
+    /// </summary>
+    public async Task<AnalyzePromptQualityResponse> AnalyzePromptQualityAsync(
+        AnalyzePromptQualityRequest request,
+        CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(request, nameof(request));
+        if (string.IsNullOrWhiteSpace(request.Topic))
+        {
+            throw new ArgumentException("Topic cannot be null or empty", nameof(request));
+        }
+
+        _logger.LogInformation("Analyzing prompt quality for topic: {Topic} (length: {Length})", 
+            request.Topic, request.Topic.Length);
+
+        // Try to retrieve RAG context if enabled
+        RagContext? ragContext = null;
+        if (_ragContextBuilder != null && request.RagConfiguration != null && request.RagConfiguration.Enabled)
+        {
+            try
+            {
+                var ragConfig = new RagConfig
+                {
+                    Enabled = true,
+                    TopK = request.RagConfiguration.TopK,
+                    MinimumScore = request.RagConfiguration.MinimumScore,
+                    MaxContextTokens = request.RagConfiguration.MaxContextTokens,
+                    IncludeCitations = request.RagConfiguration.IncludeCitations
+                };
+                ragContext = await _ragContextBuilder.BuildContextAsync(request.Topic, ragConfig, ct).ConfigureAwait(false);
+                if (ragContext.Chunks.Count > 0)
+                {
+                    _logger.LogInformation("Retrieved {Count} RAG chunks for prompt quality analysis", ragContext.Chunks.Count);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to retrieve RAG context for prompt quality analysis, continuing without RAG");
+            }
+        }
+
+        try
+        {
+            var prompt = BuildPromptQualityAnalysisPrompt(request, ragContext);
+            
+            if (prompt.Length > MaxPromptLength)
+            {
+                _logger.LogWarning("Generated prompt exceeds maximum length ({Length} > {MaxLength}), truncating", 
+                    prompt.Length, MaxPromptLength);
+                prompt = prompt.Substring(0, MaxPromptLength);
+            }
+
+            var response = await GenerateWithLlmAsync(prompt, ct).ConfigureAwait(false);
+
+            if (string.IsNullOrWhiteSpace(response))
+            {
+                _logger.LogError("LLM returned empty response for prompt quality analysis");
+                throw new InvalidOperationException("LLM provider returned an empty response. Please try again.");
+            }
+
+            var analysis = ParsePromptQualityAnalysisResponse(response, request);
+
+            _logger.LogInformation("Successfully analyzed prompt quality. Score: {Score}, Level: {Level}", 
+                analysis.Score, analysis.Level);
+
+            return analysis;
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Prompt quality analysis operation was cancelled");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error analyzing prompt quality");
+            throw;
+        }
+    }
+
+    private string BuildPromptQualityAnalysisPrompt(AnalyzePromptQualityRequest request, RagContext? ragContext)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("You are an expert video content strategist and prompt engineer. Your task is to analyze a video creation prompt for quality, providing specific scores and actionable suggestions.");
+        sb.AppendLine();
+        sb.AppendLine("VIDEO PROMPT TO ANALYZE:");
+        sb.AppendLine($"Topic: {request.Topic}");
+        
+        if (!string.IsNullOrWhiteSpace(request.VideoType))
+        {
+            sb.AppendLine($"Video Type: {request.VideoType}");
+        }
+        if (!string.IsNullOrWhiteSpace(request.TargetAudience))
+        {
+            sb.AppendLine($"Target Audience: {request.TargetAudience}");
+        }
+        if (!string.IsNullOrWhiteSpace(request.KeyMessage))
+        {
+            sb.AppendLine($"Key Message: {request.KeyMessage}");
+        }
+
+        // Add RAG context if available
+        if (ragContext != null && ragContext.Chunks.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("RELEVANT CONTEXT FROM KNOWLEDGE BASE:");
+            foreach (var chunk in ragContext.Chunks.Take(3))
+            {
+                sb.AppendLine($"- {chunk.Content}");
+            }
+        }
+
+        sb.AppendLine();
+        sb.AppendLine("ANALYSIS REQUIREMENTS:");
+        sb.AppendLine("Analyze this prompt across 6 dimensions (each scored 0-100):");
+        sb.AppendLine("1. LENGTH: Is the prompt detailed enough (20-100 words optimal)? Does it provide sufficient context?");
+        sb.AppendLine("2. SPECIFICITY: Does it avoid vague terms? Are concrete details, examples, or actions specified?");
+        sb.AppendLine("3. CLARITY: Is the intent clear? Will the creator understand exactly what to make?");
+        sb.AppendLine("4. ACTIONABILITY: Does it include actionable elements? Can it be translated directly into video scenes?");
+        sb.AppendLine("5. ENGAGEMENT: Will this create engaging content? Does it consider audience needs and interests?");
+        sb.AppendLine("6. ALIGNMENT: Do topic, audience, key message, and video type work well together?");
+
+        sb.AppendLine();
+        sb.AppendLine("You MUST respond with ONLY valid JSON in this exact format:");
+        sb.AppendLine("{");
+        sb.AppendLine("  \"score\": 75,");
+        sb.AppendLine("  \"level\": \"good\",");
+        sb.AppendLine("  \"metrics\": {");
+        sb.AppendLine("    \"length\": 80,");
+        sb.AppendLine("    \"specificity\": 75,");
+        sb.AppendLine("    \"clarity\": 85,");
+        sb.AppendLine("    \"actionability\": 70,");
+        sb.AppendLine("    \"engagement\": 80,");
+        sb.AppendLine("    \"alignment\": 75");
+        sb.AppendLine("  },");
+        sb.AppendLine("  \"suggestions\": [");
+        sb.AppendLine("    {");
+        sb.AppendLine("      \"type\": \"tip\",");
+        sb.AppendLine("      \"message\": \"Specific, actionable suggestion text\"");
+        sb.AppendLine("    }");
+        sb.AppendLine("  ]");
+        sb.AppendLine("}");
+
+        sb.AppendLine();
+        sb.AppendLine("RULES:");
+        sb.AppendLine("- score: Overall quality score 0-100 (weighted average of metrics)");
+        sb.AppendLine("- level: \"excellent\" (80-100), \"good\" (60-79), \"fair\" (40-59), or \"poor\" (0-39)");
+        sb.AppendLine("- metrics: All values 0-100");
+        sb.AppendLine("- suggestions: Array of 2-5 specific, actionable suggestions");
+        sb.AppendLine("  - type: \"success\" (strength), \"warning\" (issue), \"info\" (note), or \"tip\" (improvement)");
+        sb.AppendLine("  - message: Clear, specific, actionable text (1-2 sentences max)");
+        sb.AppendLine("- Respond ONLY with valid JSON, no additional text or explanation");
+
+        return sb.ToString();
+    }
+
+    private AnalyzePromptQualityResponse ParsePromptQualityAnalysisResponse(
+        string llmResponse,
+        AnalyzePromptQualityRequest request)
+    {
+        try
+        {
+            // Try to extract JSON from response (might have markdown code blocks)
+            var jsonText = llmResponse;
+            
+            // Remove markdown code blocks if present
+            if (jsonText.Contains("```json"))
+            {
+                var startIndex = jsonText.IndexOf("```json") + 7;
+                var endIndex = jsonText.IndexOf("```", startIndex);
+                if (endIndex > startIndex)
+                {
+                    jsonText = jsonText.Substring(startIndex, endIndex - startIndex).Trim();
+                }
+            }
+            else if (jsonText.Contains("```"))
+            {
+                var startIndex = jsonText.IndexOf("```") + 3;
+                var endIndex = jsonText.LastIndexOf("```");
+                if (endIndex > startIndex)
+                {
+                    jsonText = jsonText.Substring(startIndex, endIndex - startIndex).Trim();
+                }
+            }
+
+            // Parse JSON
+            using var jsonDoc = JsonDocument.Parse(jsonText);
+            var root = jsonDoc.RootElement;
+
+            var score = root.TryGetProperty("score", out var scoreElement) 
+                ? scoreElement.GetInt32() 
+                : CalculateFallbackScore(request);
+
+            var level = root.TryGetProperty("level", out var levelElement)
+                ? levelElement.GetString()?.ToLowerInvariant() ?? "fair"
+                : DetermineLevel(score);
+
+            // Parse metrics
+            var metrics = new Dictionary<string, int>();
+            if (root.TryGetProperty("metrics", out var metricsElement))
+            {
+                foreach (var prop in metricsElement.EnumerateObject())
+                {
+                    if (prop.Value.ValueKind == JsonValueKind.Number)
+                    {
+                        metrics[prop.Name] = Math.Clamp(prop.Value.GetInt32(), 0, 100);
+                    }
+                }
+            }
+            
+            // Ensure all required metrics are present with fallback values
+            var requiredMetrics = new[] { "length", "specificity", "clarity", "actionability", "engagement", "alignment" };
+            foreach (var metric in requiredMetrics)
+            {
+                if (!metrics.ContainsKey(metric))
+                {
+                    metrics[metric] = CalculateFallbackMetric(metric, request);
+                }
+            }
+
+            // Parse suggestions
+            var suggestions = new List<QualitySuggestion>();
+            if (root.TryGetProperty("suggestions", out var suggestionsElement) && 
+                suggestionsElement.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var suggestionElement in suggestionsElement.EnumerateArray())
+                {
+                    var type = suggestionElement.TryGetProperty("type", out var typeElement)
+                        ? typeElement.GetString() ?? "info"
+                        : "info";
+                    var message = suggestionElement.TryGetProperty("message", out var messageElement)
+                        ? messageElement.GetString() ?? ""
+                        : "";
+
+                    if (!string.IsNullOrWhiteSpace(message))
+                    {
+                        suggestions.Add(new QualitySuggestion(type, message));
+                    }
+                }
+            }
+
+            // Add fallback suggestions if none provided
+            if (suggestions.Count == 0)
+            {
+                suggestions.AddRange(GenerateFallbackSuggestions(request, score));
+            }
+
+            return new AnalyzePromptQualityResponse(
+                Score: score,
+                Level: level,
+                Metrics: metrics,
+                Suggestions: suggestions,
+                GeneratedAt: DateTime.UtcNow
+            );
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "Failed to parse JSON response for prompt quality analysis, using fallback");
+            return CreateFallbackAnalysis(request);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error parsing prompt quality analysis response, using fallback");
+            return CreateFallbackAnalysis(request);
+        }
+    }
+
+    private AnalyzePromptQualityResponse CreateFallbackAnalysis(AnalyzePromptQualityRequest request)
+    {
+        var score = CalculateFallbackScore(request);
+        return new AnalyzePromptQualityResponse(
+            Score: score,
+            Level: DetermineLevel(score),
+            Metrics: new Dictionary<string, int>
+            {
+                ["length"] = CalculateFallbackMetric("length", request),
+                ["specificity"] = CalculateFallbackMetric("specificity", request),
+                ["clarity"] = CalculateFallbackMetric("clarity", request),
+                ["actionability"] = CalculateFallbackMetric("actionability", request),
+                ["engagement"] = CalculateFallbackMetric("engagement", request),
+                ["alignment"] = CalculateFallbackMetric("alignment", request),
+            },
+            Suggestions: GenerateFallbackSuggestions(request, score),
+            GeneratedAt: DateTime.UtcNow
+        );
+    }
+
+    private int CalculateFallbackScore(AnalyzePromptQualityRequest request)
+    {
+        var wordCount = request.Topic.Split(new[] { ' ', '\t', '\n' }, StringSplitOptions.RemoveEmptyEntries).Length;
+        var hasAudience = !string.IsNullOrWhiteSpace(request.TargetAudience) && request.TargetAudience.Length > 5;
+        var hasKeyMessage = !string.IsNullOrWhiteSpace(request.KeyMessage) && request.KeyMessage.Length > 5;
+        var hasVideoType = !string.IsNullOrWhiteSpace(request.VideoType);
+
+        var score = 0;
+        score += Math.Min((wordCount / 30.0) * 20, 20); // Length
+        score += wordCount > 15 ? 15 : 5; // Specificity
+        score += (hasAudience && hasKeyMessage) ? 20 : 10; // Clarity
+        score += wordCount > 20 ? 15 : 8; // Actionability
+        score += (hasVideoType && hasAudience) ? 15 : 8; // Engagement
+        score += (hasKeyMessage && hasAudience) ? 15 : 5; // Alignment
+
+        return Math.Clamp(score, 0, 100);
+    }
+
+    private int CalculateFallbackMetric(string metricName, AnalyzePromptQualityRequest request)
+    {
+        var wordCount = request.Topic.Split(new[] { ' ', '\t', '\n' }, StringSplitOptions.RemoveEmptyEntries).Length;
+        var hasAudience = !string.IsNullOrWhiteSpace(request.TargetAudience) && request.TargetAudience.Length > 5;
+        var hasKeyMessage = !string.IsNullOrWhiteSpace(request.KeyMessage) && request.KeyMessage.Length > 5;
+        var hasVideoType = !string.IsNullOrWhiteSpace(request.VideoType);
+
+        return metricName switch
+        {
+            "length" => Math.Clamp((int)((wordCount / 50.0) * 100), 0, 100),
+            "specificity" => wordCount > 15 ? 75 : 40,
+            "clarity" => (hasAudience && hasKeyMessage) ? 85 : 50,
+            "actionability" => wordCount > 20 ? 70 : 40,
+            "engagement" => (hasVideoType && hasAudience) ? 80 : 50,
+            "alignment" => (hasKeyMessage && hasAudience) ? 75 : 40,
+            _ => 50
+        };
+    }
+
+    private string DetermineLevel(int score) => score switch
+    {
+        >= 80 => "excellent",
+        >= 60 => "good",
+        >= 40 => "fair",
+        _ => "poor"
+    };
+
+    private List<QualitySuggestion> GenerateFallbackSuggestions(AnalyzePromptQualityRequest request, int score)
+    {
+        var suggestions = new List<QualitySuggestion>();
+        var wordCount = request.Topic.Split(new[] { ' ', '\t', '\n' }, StringSplitOptions.RemoveEmptyEntries).Length;
+
+        if (score >= 80)
+        {
+            suggestions.Add(new QualitySuggestion("success", "Great prompt! You have a clear topic, audience, and message."));
+        }
+        else
+        {
+            if (wordCount < 15)
+            {
+                suggestions.Add(new QualitySuggestion("warning", "Add more detail to your prompt for better results. Include specific examples or context."));
+            }
+            if (string.IsNullOrWhiteSpace(request.TargetAudience) || request.TargetAudience.Length < 5)
+            {
+                suggestions.Add(new QualitySuggestion("info", "A well-defined target audience helps create more targeted content."));
+            }
+            if (string.IsNullOrWhiteSpace(request.KeyMessage) || request.KeyMessage.Length < 10)
+            {
+                suggestions.Add(new QualitySuggestion("tip", "A clear key message helps focus your video content."));
+            }
+        }
+
+        if (suggestions.Count == 0)
+        {
+            suggestions.Add(new QualitySuggestion("info", "Consider adding more specific details to improve video quality."));
+        }
+
+        return suggestions;
+    }
+
+    /// <summary>
+    /// Helper method to execute LLM generation (backward compatibility - no parameters)
     /// </summary>
     private async Task<string> GenerateWithLlmAsync(
         string prompt,
+        CancellationToken ct)
+    {
+        return await GenerateWithLlmAsync(prompt, (BrainstormRequest?)null, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Helper method to execute LLM generation with proper parameter handling for all providers
+    /// Supports model override, temperature, and other LLM parameters
+    /// </summary>
+    private async Task<string> GenerateWithLlmAsync(
+        string prompt,
+        BrainstormRequest? request,
         CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(prompt, nameof(prompt));
@@ -2596,20 +3007,59 @@ public class IdeationService
             prompt = prompt.Substring(0, MaxPromptLength);
         }
 
+        var providerType = _llmProvider.GetType().Name;
+        var llmParams = request?.LlmParameters;
+
+        _logger.LogInformation(
+            "Calling LLM provider for ideation (Provider: {Provider}, ModelOverride: {ModelOverride}, Temperature: {Temperature})",
+            providerType, llmParams?.ModelOverride ?? "default", llmParams?.Temperature?.ToString() ?? "default");
+
         try
         {
-            _logger.LogDebug("Calling LLM provider CompleteAsync for ideation task (prompt length: {Length})", prompt.Length);
             var startTime = DateTime.UtcNow;
-            
-            var response = await _llmProvider.CompleteAsync(prompt, ct).ConfigureAwait(false);
+            string response;
+
+            // Use provider-specific parameter handling if LLM parameters are provided
+            if (request != null && llmParams != null)
+            {
+                
+                // Use DraftScriptAsync for proper parameter support if any parameters are specified
+                if (!string.IsNullOrWhiteSpace(llmParams.ModelOverride) ||
+                    llmParams.Temperature.HasValue || llmParams.TopP.HasValue || 
+                    llmParams.TopK.HasValue || llmParams.MaxTokens.HasValue)
+                {
+                    // LLM parameters specified - use provider-specific handling
+                    response = await GenerateWithDraftScriptAsync(prompt, request, ct).ConfigureAwait(false);
+                }
+                else
+                {
+                    // No special parameters - use CompleteAsync for simplicity
+                    _logger.LogDebug("Using CompleteAsync (no special parameters)");
+                    response = await _llmProvider.CompleteAsync(prompt, ct).ConfigureAwait(false);
+                }
+            }
+            else
+            {
+                // No request or LLM parameters - use CompleteAsync for simplicity
+                _logger.LogDebug("Using CompleteAsync (no LLM parameters provided)");
+                response = await _llmProvider.CompleteAsync(prompt, ct).ConfigureAwait(false);
+            }
             
             var duration = DateTime.UtcNow - startTime;
-            _logger.LogDebug("LLM provider CompleteAsync completed in {Duration}ms", duration.TotalMilliseconds);
+            _logger.LogDebug("LLM provider completed in {Duration}ms", duration.TotalMilliseconds);
             
             if (string.IsNullOrWhiteSpace(response))
             {
                 _logger.LogWarning("LLM provider returned empty response");
-                throw new InvalidOperationException("LLM provider returned an empty response");
+                throw new InvalidOperationException("LLM provider returned an empty response. Please try again.");
+            }
+            
+            // Validate response quality - check for common error patterns
+            var trimmedResponse = response.Trim();
+            if (trimmedResponse.Length < 50)
+            {
+                _logger.LogWarning("LLM response is suspiciously short ({Length} chars). Response: {Response}", 
+                    trimmedResponse.Length, trimmedResponse.Substring(0, Math.Min(100, trimmedResponse.Length)));
             }
             
             _logger.LogDebug("LLM provider returned response of length {Length}", response.Length);
@@ -2617,7 +3067,7 @@ public class IdeationService
         }
         catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
         {
-            _logger.LogError("LLM generation timed out");
+            _logger.LogError("LLM generation timed out for provider {Provider}", providerType);
             throw new TimeoutException("LLM generation timed out. Please try again.", ex);
         }
         catch (OperationCanceledException)
@@ -2627,9 +3077,191 @@ public class IdeationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error calling LLM provider CompleteAsync: {ErrorMessage}", ex.Message);
-            throw;
+            _logger.LogError(ex, "Error calling LLM provider {Provider}: {ErrorMessage}", providerType, ex.Message);
+            
+            // Provide helpful error message based on provider type
+            var errorMessage = providerType switch
+            {
+                "OllamaLlmProvider" => "Failed to generate concepts with Ollama. Please ensure Ollama is running and the model is available.",
+                "OpenAiLlmProvider" => "Failed to generate concepts with OpenAI. Please check your API key and network connection.",
+                "GeminiLlmProvider" => "Failed to generate concepts with Gemini. Please check your API key and network connection.",
+                _ => "Failed to generate concepts. Please try again or check your LLM provider configuration."
+            };
+            
+            throw new InvalidOperationException(errorMessage, ex);
         }
+    }
+
+    /// <summary>
+    /// Generate using provider-specific direct API calls with LLM parameters
+    /// This ensures proper model override, temperature, and other parameter handling
+    /// </summary>
+    private async Task<string> GenerateWithDraftScriptAsync(
+        string prompt,
+        BrainstormRequest request,
+        CancellationToken ct)
+    {
+        var providerType = _llmProvider.GetType().Name;
+        var llmParams = request.LlmParameters;
+
+        // For Ollama, we can call it directly with parameters
+        if (providerType == "OllamaLlmProvider")
+        {
+            return await GenerateWithOllamaDirectAsync(prompt, request, ct).ConfigureAwait(false);
+        }
+
+        // For other providers, we need to use CompleteAsync as DraftScriptAsync builds its own prompts
+        // This means LLM parameters may not be fully applied for non-Ollama providers
+        // However, model override might still work if the provider supports it via configuration
+        _logger.LogWarning(
+            "Using CompleteAsync for {Provider} - LLM parameters (model override, temperature, etc.) may not be fully applied. " +
+            "Model override: {ModelOverride}, Temperature: {Temperature}. " +
+            "For full parameter support, consider using Ollama provider.",
+            providerType, llmParams?.ModelOverride ?? "default", llmParams?.Temperature?.ToString() ?? "default");
+        
+        // Fallback to CompleteAsync - parameters may not be applied
+        return await _llmProvider.CompleteAsync(prompt, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Generate using Ollama API directly with full parameter support
+    /// This bypasses the CompleteAsync limitation and applies all LLM parameters correctly
+    /// </summary>
+    private async Task<string> GenerateWithOllamaDirectAsync(
+        string prompt,
+        BrainstormRequest request,
+        CancellationToken ct)
+    {
+        // Use reflection to access Ollama provider's internal HttpClient and configuration
+        // This allows us to call Ollama API directly with proper parameters
+        var providerType = _llmProvider.GetType();
+        
+        if (providerType.Name != "OllamaLlmProvider")
+        {
+            throw new InvalidOperationException("GenerateWithOllamaDirectAsync can only be used with OllamaLlmProvider");
+        }
+
+        // Get private fields via reflection
+        var httpClientField = providerType.GetField("_httpClient", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var baseUrlField = providerType.GetField("_baseUrl", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var modelField = providerType.GetField("_model", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var timeoutField = providerType.GetField("_timeout", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var maxRetriesField = providerType.GetField("_maxRetries", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+        if (httpClientField == null || baseUrlField == null || modelField == null)
+        {
+            _logger.LogWarning("Could not access Ollama provider internals via reflection, falling back to CompleteAsync");
+            return await _llmProvider.CompleteAsync(prompt, ct).ConfigureAwait(false);
+        }
+
+        var httpClient = (System.Net.Http.HttpClient?)httpClientField.GetValue(_llmProvider);
+        var baseUrl = (string?)baseUrlField.GetValue(_llmProvider) ?? "http://127.0.0.1:11434";
+        var defaultModel = (string?)modelField.GetValue(_llmProvider) ?? "llama3.1:8b-q4_k_m";
+        var timeout = timeoutField?.GetValue(_llmProvider) as TimeSpan? ?? TimeSpan.FromSeconds(900);
+        var maxRetries = (int)(maxRetriesField?.GetValue(_llmProvider) ?? 3);
+
+        if (httpClient == null)
+        {
+            throw new InvalidOperationException("Ollama HttpClient is null");
+        }
+
+        // Get LLM parameters with defaults
+        var llmParams = request.LlmParameters;
+        var modelToUse = !string.IsNullOrWhiteSpace(llmParams?.ModelOverride) 
+            ? llmParams.ModelOverride 
+            : defaultModel;
+        var temperature = llmParams?.Temperature ?? 0.7;
+        var maxTokens = llmParams?.MaxTokens ?? 2048;
+        var topP = llmParams?.TopP ?? 0.9;
+        var topK = llmParams?.TopK;
+
+        _logger.LogInformation(
+            "Calling Ollama API directly (Model: {Model}, Temperature: {Temperature}, MaxTokens: {MaxTokens})",
+            modelToUse, temperature, maxTokens);
+
+        // Build Ollama API request with parameters
+        var options = new Dictionary<string, object>
+        {
+            { "temperature", temperature },
+            { "top_p", topP },
+            { "num_predict", maxTokens }
+        };
+
+        if (topK.HasValue)
+        {
+            options["top_k"] = topK.Value;
+        }
+
+        var requestBody = new
+        {
+            model = modelToUse,
+            prompt = prompt,
+            stream = false,
+            options = options
+        };
+
+        var json = System.Text.Json.JsonSerializer.Serialize(requestBody);
+        var content = new System.Net.Http.StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+        Exception? lastException = null;
+        for (int attempt = 0; attempt <= maxRetries; attempt++)
+        {
+            try
+            {
+                if (attempt > 0)
+                {
+                    var backoffDelay = TimeSpan.FromSeconds(Math.Pow(2, attempt));
+                    _logger.LogInformation("Retrying Ollama ideation (attempt {Attempt}/{MaxRetries}) after {Delay}s",
+                        attempt + 1, maxRetries + 1, backoffDelay.TotalSeconds);
+                    await Task.Delay(backoffDelay, ct).ConfigureAwait(false);
+                }
+
+                using var cts = System.Threading.CancellationTokenSource.CreateLinkedTokenSource(ct);
+                cts.CancelAfter(timeout);
+
+                var response = await httpClient.PostAsync($"{baseUrl}/api/generate", content, cts.Token).ConfigureAwait(false);
+                response.EnsureSuccessStatusCode();
+
+                var responseJson = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
+                var responseDoc = System.Text.Json.JsonDocument.Parse(responseJson);
+
+                if (responseDoc.RootElement.TryGetProperty("response", out var responseProp))
+                {
+                    var result = responseProp.GetString() ?? string.Empty;
+                    
+                    if (string.IsNullOrWhiteSpace(result))
+                    {
+                        _logger.LogWarning("Ollama returned empty response for ideation");
+                        throw new InvalidOperationException("Ollama returned an empty response");
+                    }
+                    
+                    _logger.LogDebug("Ollama ideation succeeded with {Length} characters", result.Length);
+                    return result;
+                }
+
+                _logger.LogError("Ollama response did not contain 'response' field");
+                throw new InvalidOperationException("Invalid response structure from Ollama API");
+            }
+            catch (TaskCanceledException ex) when (attempt < maxRetries)
+            {
+                lastException = ex;
+                _logger.LogWarning(ex, "Ollama ideation timed out (attempt {Attempt}/{MaxRetries})", attempt + 1, maxRetries + 1);
+            }
+            catch (System.Net.Http.HttpRequestException ex) when (attempt < maxRetries)
+            {
+                lastException = ex;
+                _logger.LogWarning(ex, "Ollama ideation connection failed (attempt {Attempt}/{MaxRetries})", attempt + 1, maxRetries + 1);
+            }
+            catch (Exception ex) when (attempt < maxRetries)
+            {
+                lastException = ex;
+                _logger.LogWarning(ex, "Error calling Ollama for ideation (attempt {Attempt}/{MaxRetries})", attempt + 1, maxRetries + 1);
+            }
+        }
+
+        throw new InvalidOperationException(
+            $"Failed to generate concepts with Ollama after {maxRetries + 1} attempts. Please ensure Ollama is running and model '{modelToUse}' is available.",
+            lastException);
     }
 
     /// <summary>
@@ -2687,6 +3319,127 @@ public class IdeationService
         }
         
         return cleanedResponse;
+    }
+
+    /// <summary>
+    /// Try to extract concepts from a non-JSON text response using pattern matching
+    /// This is a fallback when JSON parsing fails but the response contains useful information
+    /// </summary>
+    private List<ConceptIdea> TryExtractConceptsFromText(string response, string originalTopic, int desiredConceptCount)
+    {
+        var concepts = new List<ConceptIdea>();
+        
+        try
+        {
+            // Look for numbered lists or concept patterns in the text
+            var lines = response.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            var currentConcept = new Dictionary<string, string>();
+            var conceptNumber = 1;
+            
+            foreach (var line in lines)
+            {
+                var trimmedLine = line.Trim();
+                
+                // Look for concept indicators
+                if (trimmedLine.StartsWith("Concept", StringComparison.OrdinalIgnoreCase) ||
+                    trimmedLine.StartsWith($"{conceptNumber}.", StringComparison.OrdinalIgnoreCase) ||
+                    (trimmedLine.Length > 0 && char.IsDigit(trimmedLine[0])))
+                {
+                    // If we have a previous concept, save it
+                    if (currentConcept.Count > 0)
+                    {
+                        var concept = BuildConceptFromDict(currentConcept, originalTopic, conceptNumber - 1);
+                        if (concept != null)
+                        {
+                            concepts.Add(concept);
+                        }
+                        currentConcept.Clear();
+                    }
+                    
+                    // Extract title from the line
+                    var titleMatch = System.Text.RegularExpressions.Regex.Match(trimmedLine, @"(?:Concept\s*\d*:?\s*|^\d+\.\s*)(.+)", 
+                        System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                    if (titleMatch.Success)
+                    {
+                        currentConcept["title"] = titleMatch.Groups[1].Value.Trim();
+                    }
+                    else if (trimmedLine.Length > 10)
+                    {
+                        currentConcept["title"] = trimmedLine;
+                    }
+                }
+                // Look for field indicators
+                else if (trimmedLine.StartsWith("Title:", StringComparison.OrdinalIgnoreCase))
+                {
+                    currentConcept["title"] = trimmedLine.Substring(6).Trim();
+                }
+                else if (trimmedLine.StartsWith("Description:", StringComparison.OrdinalIgnoreCase))
+                {
+                    currentConcept["description"] = trimmedLine.Substring(12).Trim();
+                }
+                else if (trimmedLine.StartsWith("Angle:", StringComparison.OrdinalIgnoreCase))
+                {
+                    currentConcept["angle"] = trimmedLine.Substring(6).Trim();
+                }
+                else if (trimmedLine.StartsWith("Hook:", StringComparison.OrdinalIgnoreCase))
+                {
+                    currentConcept["hook"] = trimmedLine.Substring(5).Trim();
+                }
+                else if (currentConcept.ContainsKey("description") && string.IsNullOrEmpty(currentConcept["description"]))
+                {
+                    // Continuation of description
+                    currentConcept["description"] = trimmedLine;
+                }
+            }
+            
+            // Add the last concept
+            if (currentConcept.Count > 0)
+            {
+                var concept = BuildConceptFromDict(currentConcept, originalTopic, conceptNumber);
+                if (concept != null)
+                {
+                    concepts.Add(concept);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to extract concepts from text response");
+        }
+        
+        return concepts;
+    }
+
+    /// <summary>
+    /// Build a ConceptIdea from a dictionary of extracted fields
+    /// </summary>
+    private ConceptIdea? BuildConceptFromDict(Dictionary<string, string> fields, string originalTopic, int index)
+    {
+        if (!fields.ContainsKey("title") || string.IsNullOrWhiteSpace(fields["title"]))
+        {
+            return null;
+        }
+        
+        var title = fields["title"];
+        var description = fields.GetValueOrDefault("description", 
+            $"A video concept about {originalTopic}.");
+        var angle = fields.GetValueOrDefault("angle", "Tutorial");
+        var hook = fields.GetValueOrDefault("hook", 
+            $"Discover insights about {originalTopic}");
+        
+        return new ConceptIdea(
+            ConceptId: Guid.NewGuid().ToString(),
+            Title: title,
+            Description: description,
+            Angle: angle,
+            TargetAudience: "General audience",
+            Pros: new List<string> { "Relevant to topic", "Engaging format" },
+            Cons: new List<string> { "May need refinement" },
+            AppealScore: 75.0,
+            Hook: hook,
+            TalkingPoints: null,
+            CreatedAt: DateTime.UtcNow
+        );
     }
 
     /// <summary>

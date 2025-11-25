@@ -116,6 +116,7 @@ AVOID AI DETECTION FLAGS:
         sb.AppendLine($"- Pacing: {GetPacingDescription(spec.Pacing)}");
         sb.AppendLine($"- Content Density: {GetDensityDescription(spec.Density)}");
         sb.AppendLine($"- Language: {brief.Language}");
+        sb.AppendLine($"- Aspect Ratio: {GetAspectRatioDescription(brief.Aspect)}");
         
         if (brief.AudienceProfile != null)
         {
@@ -131,6 +132,10 @@ AVOID AI DETECTION FLAGS:
             sb.AppendLine($"- Content Goal: {brief.Goal}");
         }
 
+        sb.AppendLine();
+
+        // Add platform-specific guidance based on aspect ratio
+        sb.AppendLine(GetPlatformSpecificGuidance(brief.Aspect));
         sb.AppendLine();
 
         // Add detailed audience adaptation guidelines if profile available
@@ -301,6 +306,66 @@ AVOID AI DETECTION FLAGS:
         };
 
         return (int)(spec.TargetDuration.TotalMinutes * baseWpm * densityMultiplier);
+    }
+
+    /// <summary>
+    /// Get aspect ratio description for prompts
+    /// </summary>
+    private static string GetAspectRatioDescription(Aspect aspect)
+    {
+        return aspect switch
+        {
+            Aspect.Widescreen16x9 => "16:9 (Widescreen - YouTube, LinkedIn, Twitter)",
+            Aspect.Vertical9x16 => "9:16 (Vertical - TikTok, Instagram Reels, YouTube Shorts)",
+            Aspect.Square1x1 => "1:1 (Square - Instagram Feed)",
+            _ => "16:9 (Widescreen)"
+        };
+    }
+
+    /// <summary>
+    /// Get platform-specific content guidance based on aspect ratio
+    /// </summary>
+    private static string GetPlatformSpecificGuidance(Aspect aspect)
+    {
+        return aspect switch
+        {
+            Aspect.Vertical9x16 => @"PLATFORM-SPECIFIC GUIDANCE (9:16 Vertical Format):
+- This is optimized for TikTok, Instagram Reels, or YouTube Shorts
+- Hook must be EXTREMELY strong - first 3 seconds are critical
+- Keep scenes SHORT and PUNCHY (3-8 seconds each)
+- Use HIGH ENERGY and FAST PACING
+- Include visual hooks and pattern interrupts frequently
+- Text should be concise and impactful - every word counts
+- Focus on immediate value and quick engagement
+- Use trending formats and styles when appropriate
+- Optimize for mobile viewing (vertical composition)
+- Consider on-screen text overlays for key points",
+
+            Aspect.Square1x1 => @"PLATFORM-SPECIFIC GUIDANCE (1:1 Square Format):
+- This is optimized for Instagram Feed posts
+- Balanced composition - works well for centered subjects
+- Moderate pacing - not too fast, not too slow
+- Focus on visual storytelling with strong imagery
+- Keep content engaging but not overwhelming
+- Consider Instagram's algorithm preferences
+- Use clear, readable text if including captions
+- Optimize for square composition and mobile viewing",
+
+            Aspect.Widescreen16x9 => @"PLATFORM-SPECIFIC GUIDANCE (16:9 Widescreen Format):
+- This is optimized for YouTube, LinkedIn, Twitter, or general video platforms
+- Can support longer-form content with deeper exploration
+- Use cinematic composition and visual storytelling
+- Allow for more detailed explanations and context
+- Professional presentation suitable for business/educational content
+- Can include more complex visual narratives
+- Optimize for desktop and TV viewing
+- Support for detailed graphics and text overlays",
+
+            _ => @"PLATFORM-SPECIFIC GUIDANCE:
+- Standard video format - optimize for general viewing
+- Balance engagement with information depth
+- Use appropriate pacing for the content type"
+        };
     }
 
     /// <summary>

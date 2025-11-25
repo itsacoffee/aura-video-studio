@@ -670,6 +670,9 @@ export function ApiKeySetupStep({
   const ttsProviders = providers.filter((p) => p.category === 'tts');
   const imageProviders = providers.filter((p) => p.category === 'image');
 
+  // CRITICAL FIX: Add error state to handle rendering errors gracefully
+  const [renderError, setRenderError] = useState<Error | null>(null);
+
   // Safety check: Ensure we always render something visible
   if (!styles || !styles.container) {
     console.error('[ApiKeySetupStep] Styles not loaded, rendering fallback');
@@ -677,15 +680,77 @@ export function ApiKeySetupStep({
       <div
         style={{
           padding: '2rem',
-          backgroundColor: '#1e1e1e',
-          color: '#ffffff',
-          minHeight: '100vh',
+          backgroundColor: tokens.colorNeutralBackground1 || '#1e1e1e',
+          color: tokens.colorNeutralForeground1 || '#ffffff',
+          minHeight: '400px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
         }}
       >
-        <Text>Loading provider configuration...</Text>
+        <Spinner size="large" />
+        <Text style={{ marginTop: '1rem' }}>Loading provider configuration...</Text>
       </div>
     );
   }
+
+  // CRITICAL FIX: If there's a render error, show error UI instead of black screen
+  if (renderError) {
+    return (
+      <div
+        style={{
+          padding: tokens.spacingVerticalXXL,
+          textAlign: 'center',
+          backgroundColor: tokens.colorNeutralBackground1 || '#1e1e1e',
+          color: tokens.colorNeutralForeground1 || '#ffffff',
+          minHeight: '400px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+      >
+        <Warning24Regular
+          style={{
+            fontSize: '48px',
+            color: tokens.colorPaletteRedForeground1,
+            marginBottom: tokens.spacingVerticalM,
+          }}
+        />
+        <Title2>Error Loading Provider Configuration</Title2>
+        <Text style={{ display: 'block', marginTop: tokens.spacingVerticalS }}>
+          An error occurred while loading the provider configuration. Please try refreshing the page.
+        </Text>
+        <Button
+          appearance="primary"
+          onClick={() => window.location.reload()}
+          style={{ marginTop: tokens.spacingVerticalM }}
+        >
+          Reload Page
+        </Button>
+      </div>
+    );
+  }
+
+  // CRITICAL FIX: Wrap handlers to catch errors and prevent black screen
+  const safeOnApiKeyChange = (provider: string, value: string) => {
+    try {
+      onApiKeyChange(provider, value);
+    } catch (error) {
+      console.error('[ApiKeySetupStep] Error in onApiKeyChange:', error);
+      setRenderError(error instanceof Error ? error : new Error(String(error)));
+    }
+  };
+
+  const safeOnValidateApiKey = async (provider: string) => {
+    try {
+      await onValidateApiKey(provider);
+    } catch (error) {
+      console.error('[ApiKeySetupStep] Error in onValidateApiKey:', error);
+      // Don't set render error for validation errors - they're expected
+    }
+  };
 
   return (
     <div
@@ -693,6 +758,7 @@ export function ApiKeySetupStep({
       style={{
         // Ensure background is always set to prevent black screen
         backgroundColor: tokens.colorNeutralBackground1 || '#1e1e1e',
+        color: tokens.colorNeutralForeground1 || '#ffffff',
         minHeight: '400px',
       }}
     >
@@ -915,7 +981,7 @@ export function ApiKeySetupStep({
                         <EnhancedApiKeyInput
                           providerDisplayName={provider.name}
                           value={apiKeys[provider.id] || ''}
-                          onChange={(value) => onApiKeyChange(provider.id, value)}
+                          onChange={(value) => safeOnApiKeyChange(provider.id, value)}
                           onValidate={() => handleValidate(provider.id)}
                           validationStatus={status}
                           fieldErrors={fieldErrors[provider.id]}

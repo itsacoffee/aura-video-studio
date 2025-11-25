@@ -192,7 +192,6 @@ const MOCK_TEMPLATES: VideoTemplate[] = [
       },
       advanced: {
         targetPlatform: 'tiktok',
-        seoKeywords: [],
         customTransitions: true,
       },
     },

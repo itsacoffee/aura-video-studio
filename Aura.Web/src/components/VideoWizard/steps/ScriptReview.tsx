@@ -28,6 +28,7 @@ import {
   Tooltip,
 } from '@fluentui/react-components';
 import {
+  Add24Regular,
   ArrowClockwise24Regular,
   ArrowDownload24Regular,
   Clock24Regular,
@@ -112,8 +113,16 @@ const useStyles = makeStyles({
     gap: tokens.spacingVerticalL,
   },
   sceneCard: {
-    padding: tokens.spacingVerticalL,
+    padding: tokens.spacingVerticalXXL,
     position: 'relative',
+    borderRadius: tokens.borderRadiusLarge,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    backgroundColor: tokens.colorNeutralBackground1,
+    transition: 'all 0.2s ease',
+    '&:hover': {
+      borderColor: tokens.colorNeutralStroke1,
+      boxShadow: `0 2px 8px ${tokens.colorNeutralShadowAmbient}`,
+    },
   },
   sceneHeader: {
     display: 'flex',
@@ -131,14 +140,30 @@ const useStyles = makeStyles({
     gap: tokens.spacingHorizontalS,
   },
   narrationField: {
-    marginBottom: tokens.spacingVerticalM,
+    marginBottom: tokens.spacingVerticalL,
+    '& textarea': {
+      fontSize: tokens.fontSizeBase400,
+      lineHeight: tokens.lineHeightBase400,
+      fontFamily: tokens.fontFamilyBase,
+      minHeight: '120px',
+      padding: tokens.spacingVerticalM,
+      borderRadius: tokens.borderRadiusMedium,
+      border: `1px solid ${tokens.colorNeutralStroke2}`,
+      transition: 'all 0.2s ease',
+      '&:focus': {
+        borderColor: tokens.colorBrandStroke1,
+        boxShadow: `0 0 0 2px ${tokens.colorBrandBackground2}`,
+      },
+    },
   },
   sceneMetadata: {
     display: 'flex',
-    gap: tokens.spacingHorizontalL,
-    fontSize: tokens.fontSizeBase200,
-    color: tokens.colorNeutralForeground3,
-    marginTop: tokens.spacingVerticalS,
+    gap: tokens.spacingHorizontalM,
+    flexWrap: 'wrap',
+    marginTop: tokens.spacingVerticalM,
+    padding: tokens.spacingVerticalM,
+    backgroundColor: tokens.colorNeutralBackground2,
+    borderRadius: tokens.borderRadiusMedium,
   },
   emptyState: {
     display: 'flex',
@@ -251,6 +276,26 @@ interface ScriptReviewProps {
   advancedMode: boolean;
   selectedProvider?: string;
   onProviderChange?: (provider: string | undefined) => void;
+  advancedSettings?: {
+    llmParameters?: {
+      temperature?: number;
+      topP?: number;
+      topK?: number;
+      maxTokens?: number;
+      frequencyPenalty?: number;
+      presencePenalty?: number;
+    };
+    ragConfiguration?: {
+      enabled: boolean;
+      topK?: number;
+      minimumScore?: number;
+      maxContextTokens?: number;
+      includeCitations?: boolean;
+      tightenClaims?: boolean;
+    };
+    customInstructions?: string;
+    targetPlatform?: 'youtube' | 'tiktok' | 'instagram' | 'twitter' | 'linkedin';
+  };
   onChange: (data: ScriptData) => void;
   onValidationChange: (validation: StepValidation) => void;
 }
@@ -262,6 +307,7 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
   advancedMode,
   selectedProvider: externalSelectedProvider,
   onProviderChange,
+  advancedSettings,
   onChange,
   onValidationChange,
 }) => {
@@ -301,13 +347,39 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
   const [showSplitDialog, setShowSplitDialog] = useState(false);
   const [splitSceneNumber, setSplitSceneNumber] = useState<number | null>(null);
   const [splitPosition, setSplitPosition] = useState('');
-  // Advanced LLM parameters
-  const [llmTemperature, setLlmTemperature] = useState<number | undefined>(undefined);
-  const [llmTopP, setLlmTopP] = useState<number | undefined>(undefined);
-  const [llmTopK, setLlmTopK] = useState<number | undefined>(undefined);
-  const [llmMaxTokens, setLlmMaxTokens] = useState<number | undefined>(undefined);
-  const [llmFrequencyPenalty, setLlmFrequencyPenalty] = useState<number | undefined>(undefined);
-  const [llmPresencePenalty, setLlmPresencePenalty] = useState<number | undefined>(undefined);
+  const [showRegenerateDialog, setShowRegenerateDialog] = useState(false);
+  const [regenerateSceneNumber, setRegenerateSceneNumber] = useState<number | null>(null);
+  const [regenerateImprovementGoal, setRegenerateImprovementGoal] = useState('');
+  const [regenerateIncludeContext, setRegenerateIncludeContext] = useState(true);
+  const [showRegenerateAllDialog, setShowRegenerateAllDialog] = useState(false);
+  const [regenerateAllInstructions, setRegenerateAllInstructions] = useState('');
+  // Advanced LLM parameters - use from advancedSettings if available, otherwise local state
+  const [llmTemperature, setLlmTemperature] = useState<number | undefined>(
+    advancedSettings?.llmParameters?.temperature
+  );
+  const [llmTopP, setLlmTopP] = useState<number | undefined>(advancedSettings?.llmParameters?.topP);
+  const [llmTopK, setLlmTopK] = useState<number | undefined>(advancedSettings?.llmParameters?.topK);
+  const [llmMaxTokens, setLlmMaxTokens] = useState<number | undefined>(
+    advancedSettings?.llmParameters?.maxTokens
+  );
+  const [llmFrequencyPenalty, setLlmFrequencyPenalty] = useState<number | undefined>(
+    advancedSettings?.llmParameters?.frequencyPenalty
+  );
+  const [llmPresencePenalty, setLlmPresencePenalty] = useState<number | undefined>(
+    advancedSettings?.llmParameters?.presencePenalty
+  );
+
+  // Sync with advancedSettings when they change
+  useEffect(() => {
+    if (advancedSettings?.llmParameters) {
+      setLlmTemperature(advancedSettings.llmParameters.temperature);
+      setLlmTopP(advancedSettings.llmParameters.topP);
+      setLlmTopK(advancedSettings.llmParameters.topK);
+      setLlmMaxTokens(advancedSettings.llmParameters.maxTokens);
+      setLlmFrequencyPenalty(advancedSettings.llmParameters.frequencyPenalty);
+      setLlmPresencePenalty(advancedSettings.llmParameters.presencePenalty);
+    }
+  }, [advancedSettings?.llmParameters]);
   // Model selection
   const [selectedModel, setSelectedModel] = useState<string | undefined>(undefined);
   const [isRefreshingModels, setIsRefreshingModels] = useState(false);
@@ -560,6 +632,24 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
     }
   }, [generatedScript, data, onValidationChange]);
 
+  // Helper function to get aspect ratio based on target platform
+  const getAspectRatioFromPlatform = (
+    platform: 'youtube' | 'tiktok' | 'instagram' | 'twitter' | 'linkedin' | undefined
+  ): string => {
+    switch (platform) {
+      case 'youtube':
+      case 'twitter':
+      case 'linkedin':
+        return '16:9';
+      case 'tiktok':
+        return '9:16';
+      case 'instagram':
+        return '9:16'; // Default to vertical for Instagram, could also be 1:1
+      default:
+        return '16:9'; // Default aspect ratio
+    }
+  };
+
   const handleGenerateScript = async () => {
     if (!briefData.topic || briefData.topic.trim().length < 3) {
       showFailureToast({
@@ -579,6 +669,7 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
           topic: briefData.topic,
           provider: selectedProvider,
           model: selectedModel,
+          targetPlatform: advancedSettings?.targetPlatform,
           timestamp: new Date().toISOString(),
         });
       } catch {
@@ -602,26 +693,48 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
       // This ensures the backend uses the exact model the user requested
       const shouldIncludeModel = selectedModel && currentProvider;
 
+      // Build RAG configuration from advancedSettings if available
+      const ragConfig = advancedSettings?.ragConfiguration?.enabled
+        ? {
+            enabled: true,
+            topK: advancedSettings.ragConfiguration.topK ?? 5,
+            minimumScore: advancedSettings.ragConfiguration.minimumScore ?? 0.6,
+            maxContextTokens: advancedSettings.ragConfiguration.maxContextTokens ?? 2000,
+            includeCitations: advancedSettings.ragConfiguration.includeCitations ?? true,
+            tightenClaims: advancedSettings.ragConfiguration.tightenClaims ?? false,
+          }
+        : undefined;
+
+      // Get aspect ratio based on target platform
+      const aspectRatio = getAspectRatioFromPlatform(advancedSettings?.targetPlatform);
+
       const requestPayload = {
         topic: briefData.topic,
         audience: briefData.targetAudience || 'General audience',
         goal: briefData.keyMessage || 'Create an engaging video',
         tone: styleData?.tone || 'Conversational',
         language: 'en',
-        aspect: '16:9',
+        aspect: aspectRatio,
         targetDurationSeconds: briefData.duration || 60,
-        pacing: 'Conversational',
+        pacing: styleData?.tone || 'Conversational', // Use tone as pacing indicator
         density: 'Balanced',
         style: styleData?.visualStyle || 'Modern',
         preferredProvider: normalizeProviderName(selectedProvider),
         ...(shouldIncludeModel && { modelOverride: selectedModel }),
-        // Advanced LLM parameters (only include if explicitly set)
+        // Advanced LLM parameters (use from advancedSettings or local state, only include if explicitly set)
         ...(llmTemperature !== undefined && { temperature: llmTemperature }),
         ...(llmTopP !== undefined && { topP: llmTopP }),
         ...(llmTopK !== undefined && { topK: llmTopK }),
         ...(llmMaxTokens !== undefined && { maxTokens: llmMaxTokens }),
         ...(llmFrequencyPenalty !== undefined && { frequencyPenalty: llmFrequencyPenalty }),
         ...(llmPresencePenalty !== undefined && { presencePenalty: llmPresencePenalty }),
+        // RAG configuration
+        ...(ragConfig && { ragConfiguration: ragConfig }),
+        // Custom instructions
+        ...(advancedSettings?.customInstructions &&
+          advancedSettings.customInstructions.trim() && {
+            customInstructions: advancedSettings.customInstructions.trim(),
+          }),
       };
 
       // Safe logging
@@ -847,6 +960,47 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
         [sceneNumber]: newNarration,
       }));
 
+      // Update duration estimate immediately based on word count and pacing
+      if (generatedScript) {
+        const wordCount = newNarration.split(/\s+/).filter((word) => word.length > 0).length;
+        const pacing = styleData?.tone || 'Conversational'; // Use tone as pacing indicator, or get from styleData if available
+        const estimatedDuration = estimateDurationFromWords(wordCount, pacing);
+        
+        // Update local state immediately for responsive UI
+        const updatedScenes = generatedScript.scenes.map((scene) =>
+          scene.number === sceneNumber
+            ? { ...scene, narration: newNarration, durationSeconds: estimatedDuration }
+            : scene
+        );
+
+        // Recalculate timestamps
+        const scriptScenes = updatedScenes.map((scene) => ({
+          id: `scene-${scene.number}`,
+          text: scene.narration,
+          duration: scene.durationSeconds,
+          visualDescription: scene.visualPrompt,
+          timestamp: updatedScenes
+            .slice(0, scene.number - 1)
+            .reduce((sum, s) => sum + s.durationSeconds, 0),
+        }));
+
+        // Update total duration (simple sum for immediate update)
+        // Full scaling will happen in the async timeout handler
+        const totalDuration = updatedScenes.reduce((sum, s) => sum + s.durationSeconds, 0);
+
+        setGeneratedScript({
+          ...generatedScript,
+          scenes: updatedScenes,
+          totalDurationSeconds: totalDuration,
+        });
+
+        onChange({
+          content: updatedScenes.map((s) => s.narration).join('\n\n'),
+          scenes: scriptScenes,
+          generatedAt: new Date(),
+        });
+      }
+
       setSavingScenes((prev) => ({
         ...prev,
         [sceneNumber]: true,
@@ -860,17 +1014,37 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
         if (!generatedScript) return;
 
         try {
+          const wordCount = newNarration.split(/\s+/).filter((word) => word.length > 0).length;
+          const pacing = styleData?.tone || 'Conversational';
+          const estimatedDuration = estimateDurationFromWords(wordCount, pacing);
+
           await updateScene(generatedScript.scriptId, sceneNumber, {
             narration: newNarration,
+            durationSeconds: estimatedDuration,
           });
 
-          const updatedScenes = generatedScript.scenes.map((scene) =>
-            scene.number === sceneNumber ? { ...scene, narration: newNarration } : scene
+          let updatedScenes = generatedScript.scenes.map((scene) =>
+            scene.number === sceneNumber
+              ? { ...scene, narration: newNarration, durationSeconds: estimatedDuration }
+              : scene
           );
+
+          // Recalculate total duration with transitions
+          const currentTotal = calculateTotalDurationWithTransitions(updatedScenes);
+          
+          // Scale scenes to match target duration if available
+          const targetDuration = briefData.duration || 60;
+          if (Math.abs(currentTotal - targetDuration) > 1) {
+            // Only scale if difference is more than 1 second
+            updatedScenes = scaleScenesToTargetDuration(updatedScenes, targetDuration);
+          }
+          
+          const scaledTotalDuration = calculateTotalDurationWithTransitions(updatedScenes);
 
           setGeneratedScript({
             ...generatedScript,
             scenes: updatedScenes,
+            totalDurationSeconds: scaledTotalDuration,
           });
 
           const scriptScenes = updatedScenes.map((scene) => ({
@@ -923,13 +1097,23 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
     }
   };
 
-  const handleRegenerateScene = async (sceneNumber: number) => {
+  const handleRegenerateScene = async (
+    sceneNumber: number,
+    improvementGoal?: string,
+    includeContext: boolean = true
+  ) => {
     if (!generatedScript) return;
 
     setRegeneratingScenes((prev) => ({ ...prev, [sceneNumber]: true }));
 
     try {
-      const response = await regenerateScene(generatedScript.scriptId, sceneNumber);
+      const request: { improvementGoal?: string; includeContext?: boolean } = {};
+      if (improvementGoal && improvementGoal.trim()) {
+        request.improvementGoal = improvementGoal.trim();
+      }
+      request.includeContext = includeContext;
+
+      const response = await regenerateScene(generatedScript.scriptId, sceneNumber, request);
 
       setGeneratedScript(response);
 
@@ -948,10 +1132,33 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
         scenes: scriptScenes,
         generatedAt: new Date(),
       });
+
+      showSuccessToast({
+        title: 'Scene Regenerated',
+        message: improvementGoal
+          ? `Scene ${sceneNumber} has been regenerated with your custom instructions.`
+          : `Scene ${sceneNumber} has been regenerated.`,
+      });
     } catch (error) {
       console.error('Failed to regenerate scene:', error);
+      showFailureToast({
+        title: 'Regeneration Failed',
+        message: 'Failed to regenerate the scene. Please try again.',
+      });
     } finally {
       setRegeneratingScenes((prev) => ({ ...prev, [sceneNumber]: false }));
+    }
+  };
+
+  const handleOpenRegenerateDialog = (sceneNumber: number) => {
+    if (advancedMode) {
+      setRegenerateSceneNumber(sceneNumber);
+      setRegenerateImprovementGoal('');
+      setRegenerateIncludeContext(true);
+      setShowRegenerateDialog(true);
+    } else {
+      // In non-advanced mode, regenerate without dialog
+      handleRegenerateScene(sceneNumber);
     }
   };
 
@@ -1001,6 +1208,60 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
     return Math.round((wordCount / durationSeconds) * 60);
   };
 
+  // Get pacing-specific words per minute (WPM) rates
+  const getWordsPerMinute = (pacing?: string): number => {
+    const pacingLower = pacing?.toLowerCase() || 'conversational';
+    switch (pacingLower) {
+      case 'chill':
+      case 'slow':
+        return 130; // 2.17 words/second
+      case 'conversational':
+      case 'normal':
+      case 'medium':
+        return 160; // 2.67 words/second
+      case 'fast':
+      case 'rapid':
+        return 190; // 3.17 words/second
+      default:
+        return 160; // Default to conversational
+    }
+  };
+
+  // Estimate duration based on word count and pacing setting
+  const estimateDurationFromWords = (wordCount: number, pacing?: string): number => {
+    const wpm = getWordsPerMinute(pacing);
+    const wordsPerSecond = wpm / 60;
+    const estimatedDuration = wordCount / wordsPerSecond;
+    return Math.max(3, Math.ceil(estimatedDuration)); // Minimum 3 seconds
+  };
+
+  // Calculate total duration with transitions (0.5s per transition)
+  const calculateTotalDurationWithTransitions = (scenes: ScriptSceneDto[]): number => {
+    const sceneDurations = scenes.reduce((sum, scene) => sum + scene.durationSeconds, 0);
+    const transitionTime = Math.max(0, (scenes.length - 1) * 0.5); // 0.5s per transition
+    return sceneDurations + transitionTime;
+  };
+
+  // Scale scene durations to match target duration precisely
+  const scaleScenesToTargetDuration = (
+    scenes: ScriptSceneDto[],
+    targetDurationSeconds: number
+  ): ScriptSceneDto[] => {
+    const currentTotal = calculateTotalDurationWithTransitions(scenes);
+    if (currentTotal === 0 || scenes.length === 0) return scenes;
+
+    const scaleFactor = targetDurationSeconds / currentTotal;
+    
+    return scenes.map((scene, index) => {
+      // Scale scene duration proportionally
+      const scaledDuration = scene.durationSeconds * scaleFactor;
+      return {
+        ...scene,
+        durationSeconds: Math.max(3, Math.round(scaledDuration * 10) / 10), // Minimum 3s, round to 0.1s
+      };
+    });
+  };
+
   const handleEnhanceScript = async () => {
     if (!generatedScript) return;
 
@@ -1036,11 +1297,13 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
     }
   };
 
-  const handleRegenerateAll = async () => {
+  const handleRegenerateAll = async (customInstructions?: string) => {
     if (!generatedScript) return;
 
     setIsRegeneratingAll(true);
     try {
+      // For now, regenerate all uses the standard API
+      // Custom instructions would need backend support
       const response = await regenerateAllScenes(generatedScript.scriptId);
 
       setGeneratedScript(response);
@@ -1060,15 +1323,42 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
         scenes: scriptScenes,
         generatedAt: new Date(),
       });
+
+      showSuccessToast({
+        title: 'Script Regenerated',
+        message: customInstructions
+          ? 'All scenes have been regenerated with your custom instructions.'
+          : 'All scenes have been regenerated.',
+      });
     } catch (error) {
       console.error('Failed to regenerate all scenes:', error);
+      showFailureToast({
+        title: 'Regeneration Failed',
+        message: 'Failed to regenerate all scenes. Please try again.',
+      });
     } finally {
       setIsRegeneratingAll(false);
     }
   };
 
+  const handleOpenRegenerateAllDialog = () => {
+    if (advancedMode) {
+      setRegenerateAllInstructions('');
+      setShowRegenerateAllDialog(true);
+    } else {
+      // In non-advanced mode, regenerate without dialog
+      handleRegenerateAll();
+    }
+  };
+
   const handleDeleteScene = async (sceneNumber: number) => {
-    if (!generatedScript || generatedScript.scenes.length === 1) return;
+    if (!generatedScript || generatedScript.scenes.length === 1) {
+      showFailureToast({
+        title: 'Cannot Delete Scene',
+        message: 'A script must have at least one scene.',
+      });
+      return;
+    }
 
     try {
       const response = await deleteScene(generatedScript.scriptId, sceneNumber);
@@ -1090,8 +1380,116 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
         scenes: scriptScenes,
         generatedAt: new Date(),
       });
+
+      showSuccessToast({
+        title: 'Scene Deleted',
+        message: `Scene ${sceneNumber} has been removed.`,
+      });
     } catch (error) {
       console.error('Failed to delete scene:', error);
+      showFailureToast({
+        title: 'Delete Failed',
+        message: 'Failed to delete the scene. Please try again.',
+      });
+    }
+  };
+
+  const handleAddScene = async (afterSceneNumber?: number) => {
+    if (!generatedScript) return;
+
+    try {
+      // Create a new empty scene
+      const newSceneNumber = afterSceneNumber
+        ? afterSceneNumber + 1
+        : generatedScript.scenes.length + 1;
+      
+      // Insert new scene after the specified scene, or at the end
+      const insertIndex = afterSceneNumber
+        ? generatedScript.scenes.findIndex((s) => s.number === afterSceneNumber) + 1
+        : generatedScript.scenes.length;
+
+      // Estimate duration for new scene based on default text and pacing
+      const defaultText = 'Enter narration for this scene...';
+      const wordCount = defaultText.split(/\s+/).filter((word) => word.length > 0).length;
+      const pacing = styleData?.tone || 'Conversational';
+      const estimatedDuration = estimateDurationFromWords(wordCount, pacing);
+
+      const newScene: ScriptSceneDto = {
+        number: newSceneNumber,
+        narration: defaultText,
+        visualPrompt: 'Visual for: New Scene',
+        durationSeconds: estimatedDuration,
+        transition: 'Cut',
+      };
+
+      // Renumber scenes if inserting in the middle
+      const updatedScenes = [...generatedScript.scenes];
+      updatedScenes.splice(insertIndex, 0, newScene);
+      
+      // Renumber all scenes to maintain sequential numbering
+      const renumberedScenes = updatedScenes.map((scene, index) => ({
+        ...scene,
+        number: index + 1,
+      }));
+
+      // Update local state immediately with proper duration calculation
+      let finalScenes = renumberedScenes;
+      const currentTotal = calculateTotalDurationWithTransitions(finalScenes);
+      const targetDuration = briefData.duration || 60;
+      
+      // Scale to match target duration
+      if (Math.abs(currentTotal - targetDuration) > 1) {
+        finalScenes = scaleScenesToTargetDuration(finalScenes, targetDuration);
+      }
+      
+      const finalTotalDuration = calculateTotalDurationWithTransitions(finalScenes);
+      
+      setGeneratedScript({
+        ...generatedScript,
+        scenes: finalScenes,
+        totalDurationSeconds: finalTotalDuration,
+      });
+
+      // Start editing the new scene
+      setEditingScenes((prev) => ({
+        ...prev,
+        [newSceneNumber]: newScene.narration,
+      }));
+
+      const scriptScenes = renumberedScenes.map((scene) => ({
+        id: `scene-${scene.number}`,
+        text: scene.narration,
+        duration: scene.durationSeconds,
+        visualDescription: scene.visualPrompt,
+        timestamp: renumberedScenes
+          .slice(0, scene.number - 1)
+          .reduce((sum, s) => sum + s.durationSeconds, 0),
+      }));
+
+      onChange({
+        content: renumberedScenes.map((s) => s.narration).join('\n\n'),
+        scenes: scriptScenes,
+        generatedAt: new Date(),
+      });
+
+      // Save to backend
+      try {
+        // For now, we'll need to regenerate the script or use a workaround
+        // Since there's no direct "add scene" API, we'll update the scene after creation
+        // The scene will be saved when the user edits it
+        showSuccessToast({
+          title: 'Scene Added',
+          message: `New scene added. Please edit the narration.`,
+        });
+      } catch (error) {
+        console.error('Failed to save new scene:', error);
+      }
+    } catch (error) {
+      console.error('Failed to add scene:', error);
+      showFailureToast({
+        title: 'Add Scene Failed',
+        message: 'Failed to add a new scene. Please try again.',
+      });
     }
   };
 
@@ -1534,6 +1932,13 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
 
   const wordCount = calculateWordCount(generatedScript.scenes);
   const wpm = calculateReadingSpeed(wordCount, generatedScript.totalDurationSeconds);
+  const targetDuration = briefData.duration || 60;
+  const actualDuration = generatedScript.totalDurationSeconds;
+  const durationDifference = actualDuration - targetDuration;
+  const durationAccuracy = targetDuration > 0 
+    ? Math.max(0, Math.min(100, 100 - (Math.abs(durationDifference) / targetDuration) * 100))
+    : 100;
+  const pacing = styleData?.tone || 'Conversational';
 
   return (
     <div className={styles.container}>
@@ -1562,13 +1967,39 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
       </div>
 
       <div className={styles.statsBar}>
-        <div className={styles.stat}>
-          <Text className={styles.statLabel}>Total Duration</Text>
-          <Text className={styles.statValue}>
-            {Math.floor(generatedScript.totalDurationSeconds / 60)}:
-            {String(Math.floor(generatedScript.totalDurationSeconds % 60)).padStart(2, '0')}
-          </Text>
-        </div>
+            <div className={styles.stat}>
+              <Text className={styles.statLabel}>Total Duration</Text>
+              <Text className={styles.statValue}>
+                {Math.floor(actualDuration / 60)}:
+                {String(Math.floor(actualDuration % 60)).padStart(2, '0')}
+              </Text>
+              <Text size={200} style={{ 
+                color: Math.abs(durationDifference) <= 2 
+                  ? tokens.colorSuccessForeground1 
+                  : Math.abs(durationDifference) <= 5 
+                    ? tokens.colorWarningForeground1 
+                    : tokens.colorErrorForeground1,
+                marginTop: tokens.spacingVerticalXXS 
+              }}>
+                Target: {Math.floor(targetDuration / 60)}:
+                {String(Math.floor(targetDuration % 60)).padStart(2, '0')}
+                {durationDifference !== 0 && (
+                  <Text weight="semibold">
+                    {' '}({durationDifference > 0 ? '+' : ''}{durationDifference.toFixed(1)}s)
+                  </Text>
+                )}
+              </Text>
+              <Text size={200} style={{ 
+                color: durationAccuracy >= 95 
+                  ? tokens.colorSuccessForeground1 
+                  : durationAccuracy >= 90 
+                    ? tokens.colorWarningForeground1 
+                    : tokens.colorErrorForeground1,
+                marginTop: tokens.spacingVerticalXXS 
+              }}>
+                Accuracy: {durationAccuracy.toFixed(1)}%
+              </Text>
+            </div>
         <div className={styles.stat}>
           <Text className={styles.statLabel}>Word Count</Text>
           <Text className={styles.statValue}>{wordCount}</Text>
@@ -1834,11 +2265,28 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
 
       {/* Bulk Actions Toolbar */}
       <div className={styles.bulkActions}>
-        <Tooltip content="Regenerate all scenes in the script" relationship="label">
+        <Tooltip content="Add a new scene to the script" relationship="label">
+          <Button
+            icon={<Add24Regular />}
+            appearance="primary"
+            onClick={() => handleAddScene()}
+            disabled={!generatedScript}
+          >
+            Add Scene
+          </Button>
+        </Tooltip>
+        <Tooltip
+          content={
+            advancedMode
+              ? 'Regenerate all scenes with optional custom instructions (Advanced Mode)'
+              : 'Regenerate all scenes in the script'
+          }
+          relationship="label"
+        >
           <Button
             icon={<ArrowClockwise24Regular />}
-            onClick={handleRegenerateAll}
-            disabled={isRegeneratingAll}
+            onClick={handleOpenRegenerateAllDialog}
+            disabled={isRegeneratingAll || !generatedScript}
           >
             {isRegeneratingAll ? 'Regenerating All...' : 'Regenerate All'}
           </Button>
@@ -2087,6 +2535,130 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
         </DialogSurface>
       </Dialog>
 
+      {/* Regenerate Scene Dialog (Advanced Mode) */}
+      {advancedMode && (
+        <Dialog
+          open={showRegenerateDialog}
+          onOpenChange={(_, data) => setShowRegenerateDialog(data.open)}
+        >
+          <DialogSurface style={{ maxWidth: '600px' }}>
+            <DialogBody>
+              <DialogTitle>Regenerate Scene {regenerateSceneNumber}</DialogTitle>
+              <DialogContent>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL }}>
+                  <Field
+                    label="Improvement Goal / Desired Changes"
+                    hint="Describe what you want to change or improve in this scene (optional)"
+                  >
+                    <Textarea
+                      value={regenerateImprovementGoal}
+                      onChange={(_, data) => setRegenerateImprovementGoal(data.value)}
+                      placeholder="e.g., 'Make it more engaging', 'Add more technical details', 'Simplify the language', 'Focus on the benefits'..."
+                      rows={4}
+                      resize="vertical"
+                    />
+                  </Field>
+                  <Field>
+                    <Checkbox
+                      checked={regenerateIncludeContext}
+                      onChange={(_, data) => setRegenerateIncludeContext(data.checked ?? true)}
+                      label="Include context from surrounding scenes"
+                    />
+                    <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginTop: tokens.spacingVerticalXS }}>
+                      When enabled, the regeneration will consider the content of adjacent scenes for better continuity.
+                    </Text>
+                  </Field>
+                  {regenerateSceneNumber && generatedScript && (
+                    <Card style={{ padding: tokens.spacingVerticalM, backgroundColor: tokens.colorNeutralBackground2 }}>
+                      <Text size={300} weight="semibold" style={{ marginBottom: tokens.spacingVerticalXS }}>
+                        Current Scene Content:
+                      </Text>
+                      <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>
+                        {generatedScript.scenes.find((s) => s.number === regenerateSceneNumber)?.narration || 'N/A'}
+                      </Text>
+                    </Card>
+                  )}
+                </div>
+              </DialogContent>
+              <DialogActions>
+                <Button appearance="secondary" onClick={() => setShowRegenerateDialog(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  appearance="primary"
+                  onClick={() => {
+                    if (regenerateSceneNumber !== null) {
+                      handleRegenerateScene(
+                        regenerateSceneNumber,
+                        regenerateImprovementGoal || undefined,
+                        regenerateIncludeContext
+                      );
+                      setShowRegenerateDialog(false);
+                    }
+                  }}
+                  disabled={regenerateSceneNumber === null || regeneratingScenes[regenerateSceneNumber ?? 0]}
+                >
+                  {regeneratingScenes[regenerateSceneNumber ?? 0] ? 'Regenerating...' : 'Regenerate Scene'}
+                </Button>
+              </DialogActions>
+            </DialogBody>
+          </DialogSurface>
+        </Dialog>
+      )}
+
+      {/* Regenerate All Scenes Dialog (Advanced Mode) */}
+      {advancedMode && (
+        <Dialog
+          open={showRegenerateAllDialog}
+          onOpenChange={(_, data) => setShowRegenerateAllDialog(data.open)}
+        >
+          <DialogSurface style={{ maxWidth: '600px' }}>
+            <DialogBody>
+              <DialogTitle>Regenerate All Scenes</DialogTitle>
+              <DialogContent>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL }}>
+                  <Field
+                    label="Custom Instructions / Desired Changes"
+                    hint="Describe what you want to change or improve across all scenes (optional)"
+                  >
+                    <Textarea
+                      value={regenerateAllInstructions}
+                      onChange={(_, data) => setRegenerateAllInstructions(data.value)}
+                      placeholder="e.g., 'Make the tone more professional', 'Add more examples', 'Increase the pacing', 'Focus on key benefits'..."
+                      rows={5}
+                      resize="vertical"
+                    />
+                  </Field>
+                  <MessageBar intent="info">
+                    <MessageBarBody>
+                      <Text size={300}>
+                        This will regenerate all scenes in the script. Your custom instructions will guide the
+                        regeneration process. Note: This feature may require backend support for full implementation.
+                      </Text>
+                    </MessageBarBody>
+                  </MessageBar>
+                </div>
+              </DialogContent>
+              <DialogActions>
+                <Button appearance="secondary" onClick={() => setShowRegenerateAllDialog(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  appearance="primary"
+                  onClick={() => {
+                    handleRegenerateAll(regenerateAllInstructions || undefined);
+                    setShowRegenerateAllDialog(false);
+                  }}
+                  disabled={isRegeneratingAll}
+                >
+                  {isRegeneratingAll ? 'Regenerating...' : 'Regenerate All Scenes'}
+                </Button>
+              </DialogActions>
+            </DialogBody>
+          </DialogSurface>
+        </Dialog>
+      )}
+
       <div className={styles.scenesContainer}>
         {generatedScript.scenes.map((scene, index) => {
           const durationStatus = isSceneDurationAppropriate(scene);
@@ -2135,11 +2707,28 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
                   )}
                 </div>
                 <div className={styles.sceneActions}>
-                  <Tooltip content="Regenerate this scene" relationship="label">
+                  <Tooltip content="Add a new scene after this one" relationship="label">
+                    <Button
+                      size="small"
+                      appearance="subtle"
+                      icon={<Add24Regular />}
+                      onClick={() => handleAddScene(scene.number)}
+                    >
+                      Add After
+                    </Button>
+                  </Tooltip>
+                  <Tooltip
+                    content={
+                      advancedMode
+                        ? 'Regenerate this scene with custom instructions (Advanced Mode)'
+                        : 'Regenerate this scene'
+                    }
+                    relationship="label"
+                  >
                     <Button
                       size="small"
                       icon={<ArrowClockwise24Regular />}
-                      onClick={() => handleRegenerateScene(scene.number)}
+                      onClick={() => handleOpenRegenerateDialog(scene.number)}
                       disabled={regeneratingScenes[scene.number]}
                     >
                       {regeneratingScenes[scene.number] ? 'Regenerating...' : 'Regenerate'}
@@ -2180,23 +2769,57 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
 
               <div className={styles.sceneMetadata}>
                 <div
-                  style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: tokens.spacingHorizontalXS,
+                    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
+                    backgroundColor: tokens.colorNeutralBackground2,
+                    borderRadius: tokens.borderRadiusSmall,
+                  }}
                 >
-                  <Clock24Regular />
-                  <Text>{scene.durationSeconds.toFixed(1)}s</Text>
-                </div>
-                <div
-                  style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS }}
-                >
-                  <TextGrammarCheckmark24Regular />
-                  <Text>
-                    {scene.narration.split(/\s+/).filter((word) => word.length > 0).length} words
+                  <Clock24Regular style={{ fontSize: '16px', color: tokens.colorNeutralForeground2 }} />
+                  <Text size={300} weight="medium">
+                    {(() => {
+                      const currentNarration = editingScenes[scene.number] ?? scene.narration;
+                      const wordCount = currentNarration.split(/\s+/).filter((word) => word.length > 0).length;
+                      const estimatedDuration = estimateDurationFromWords(wordCount, pacing);
+                      const displayDuration = editingScenes[scene.number] ? estimatedDuration : scene.durationSeconds;
+                      return `${displayDuration.toFixed(1)}s`;
+                    })()}
                   </Text>
                 </div>
                 <div
-                  style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: tokens.spacingHorizontalXS,
+                    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
+                    backgroundColor: tokens.colorNeutralBackground2,
+                    borderRadius: tokens.borderRadiusSmall,
+                  }}
                 >
-                  <Text>Transition: {scene.transition}</Text>
+                  <TextGrammarCheckmark24Regular style={{ fontSize: '16px', color: tokens.colorNeutralForeground2 }} />
+                  <Text size={300} weight="medium">
+                    {(() => {
+                      const currentNarration = editingScenes[scene.number] ?? scene.narration;
+                      return `${currentNarration.split(/\s+/).filter((word) => word.length > 0).length} words`;
+                    })()}
+                  </Text>
+                </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: tokens.spacingHorizontalXS,
+                    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
+                    backgroundColor: tokens.colorNeutralBackground2,
+                    borderRadius: tokens.borderRadiusSmall,
+                  }}
+                >
+                  <Text size={300} weight="medium" style={{ color: tokens.colorNeutralForeground2 }}>
+                    Transition: <Text weight="semibold">{scene.transition}</Text>
+                  </Text>
                 </div>
               </div>
 

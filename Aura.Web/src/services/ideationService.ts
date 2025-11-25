@@ -89,6 +89,30 @@ export interface BrainstormRequest {
   targetDuration?: number;
   platform?: string;
   conceptCount?: number;
+  ragConfiguration?: RagConfigurationDto;
+  llmParameters?: {
+    temperature?: number;
+    topP?: number;
+    topK?: number;
+    maxTokens?: number;
+    frequencyPenalty?: number;
+    presencePenalty?: number;
+    stopSequences?: string[];
+    modelOverride?: string;
+  };
+}
+
+/**
+ * RAG (Retrieval-Augmented Generation) configuration
+ * Matches the RagConfigurationDto in the backend
+ */
+export interface RagConfigurationDto {
+  enabled: boolean;
+  topK?: number; // Default: 5
+  minimumScore?: number; // Default: 0.6
+  maxContextTokens?: number; // Default: 2000
+  includeCitations?: boolean; // Default: true
+  tightenClaims?: boolean; // Default: false
 }
 
 export interface BrainstormResponse {
@@ -190,6 +214,25 @@ export interface EnhanceTopicRequest {
   videoType?: string;
   targetAudience?: string;
   keyMessage?: string;
+}
+
+export interface PromptQualityAnalysisResponse {
+  success: boolean;
+  score: number;
+  level: 'excellent' | 'good' | 'fair' | 'poor';
+  metrics: {
+    length: number;
+    specificity: number;
+    clarity: number;
+    actionability: number;
+    engagement: number;
+    alignment: number;
+  };
+  suggestions: Array<{
+    type: 'success' | 'warning' | 'info' | 'tip';
+    message: string;
+  }>;
+  generatedAt: string;
 }
 
 export interface EnhanceTopicResponse {
@@ -442,6 +485,45 @@ export const ideationService = {
         throw error;
       }
       throw new Error(`Failed to refine concept: ${String(error)}`);
+    }
+  },
+
+  /**
+   * Analyze prompt quality using LLM-based analysis
+   */
+  async analyzePromptQuality(request: {
+    topic: string;
+    videoType?: string;
+    targetAudience?: string;
+    keyMessage?: string;
+    ragConfiguration?: RagConfigurationDto;
+  }): Promise<PromptQualityAnalysisResponse> {
+    try {
+      const response = await fetch(apiUrl(`${API_BASE}/analyze-prompt-quality`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Failed to analyze prompt quality';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch {
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error(`Failed to analyze prompt quality: ${String(error)}`);
     }
   },
 

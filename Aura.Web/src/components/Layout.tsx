@@ -51,6 +51,7 @@ const useStyles = makeStyles({
   content: {
     flex: 1,
     overflow: 'auto',
+    minHeight: 0, // Critical: Allows flex child to shrink and enable scrolling
     padding: tokens.spacingVerticalXXL,
     backgroundColor: tokens.colorNeutralBackground1,
     '@media (max-width: 768px)': {

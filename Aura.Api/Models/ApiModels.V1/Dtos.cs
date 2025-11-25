@@ -987,7 +987,8 @@ public record TranslationOptionsDto(
     double MaxTimingVariance = 0.15,
     bool PreserveNames = true,
     bool PreserveBrands = true,
-    bool AdaptMeasurements = true);
+    bool AdaptMeasurements = true,
+    string? TranscreationContext = null);
 
 /// <summary>
 /// Translation result

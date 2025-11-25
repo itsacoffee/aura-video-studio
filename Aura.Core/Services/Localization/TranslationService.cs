@@ -50,10 +50,23 @@ public class TranslationService
         _logger.LogInformation("Starting translation from {Source} to {Target}", 
             request.SourceLanguage, request.TargetLanguage);
 
+        // Try to get language from registry, but if not found, create a default LanguageInfo
+        // This allows LLM to handle any language intelligently, not just hardcoded ones
         var targetLanguage = LanguageRegistry.GetLanguage(request.TargetLanguage);
         if (targetLanguage == null)
         {
-            throw new ArgumentException($"Unsupported target language: {request.TargetLanguage}");
+            _logger.LogInformation("Language {Language} not in registry, using LLM intelligence for custom language", 
+                request.TargetLanguage);
+            // Create a default LanguageInfo for custom languages - LLM will handle it intelligently
+            targetLanguage = new LanguageInfo
+            {
+                Code = request.TargetLanguage,
+                Name = request.TargetLanguage, // LLM will interpret this
+                NativeName = request.TargetLanguage,
+                Region = "Global",
+                TypicalExpansionFactor = 1.15, // Safe default
+                DefaultFormality = FormalityLevel.Neutral
+            };
         }
 
         var result = new TranslationResult
@@ -199,10 +212,21 @@ public class TranslationService
         _logger.LogInformation("Analyzing cultural content for {Language}/{Region}", 
             request.TargetLanguage, request.TargetRegion);
 
+        // Allow custom languages - LLM will handle them intelligently
         var targetLanguage = LanguageRegistry.GetLanguage(request.TargetLanguage);
         if (targetLanguage == null)
         {
-            throw new ArgumentException($"Unsupported target language: {request.TargetLanguage}");
+            _logger.LogInformation("Language {Language} not in registry, using LLM intelligence for cultural analysis", 
+                request.TargetLanguage);
+            targetLanguage = new LanguageInfo
+            {
+                Code = request.TargetLanguage,
+                Name = request.TargetLanguage,
+                NativeName = request.TargetLanguage,
+                Region = request.TargetRegion ?? "Global",
+                TypicalExpansionFactor = 1.15,
+                DefaultFormality = FormalityLevel.Neutral
+            };
         }
 
         return await _culturalEngine.AnalyzeCulturalContentAsync(
@@ -321,10 +345,28 @@ public class TranslationService
         var sb = new StringBuilder();
         
         // Enhanced system context for high-quality translation
-        sb.AppendLine($@"You are an expert professional translator specializing in {sourceLanguage} to {targetLanguage} translation.
+        // Handle ANY language description intelligently - including fictional, regional variants, and creative descriptions
+        sb.AppendLine($@"You are an expert professional translator with deep knowledge of languages and dialects worldwide, including constructed languages, fictional languages, historical variants, and regional dialects.
+        
+CRITICAL: The source language is specified as '{sourceLanguage}' and target language as '{targetLanguage}'. 
+These can be ANY of the following - interpret them intelligently:
+- Standard language codes (e.g., 'en', 'es', 'fr')
+- Full language names (e.g., 'English', 'Spanish', 'French')
+- Language names in their native form (e.g., 'Español', 'Français')
+- Regional variants with full descriptions (e.g., 'English (US)', 'English (UK)', 'Spanish (Mexico)')
+- Dialects and less common languages (e.g., 'Swiss German', 'Cockney English')
+- Historical variants (e.g., 'Medieval English', 'Old French')
+- Constructed/fictional languages (e.g., 'Klingon', 'Elvish', 'Esperanto')
+- Descriptive language variants (e.g., 'Formal Spanish', 'Slang English', 'Technical German')
+
+Your task: Intelligently interpret what language is meant from the description '{sourceLanguage}' and translate to the language described as '{targetLanguage}'. 
+For fictional or constructed languages, translate to the best of your ability based on your knowledge of that language.
+For regional variants, use the appropriate regional form.
+For descriptive variants (e.g., 'Formal Spanish'), apply the specified style.
 
 TRANSLATION TASK:
-Translate the following text from {sourceLanguage} to {targetLanguage}.");
+Translate the following text from {sourceLanguage} to {targetLanguage}.
+Preserve the exact meaning, tone, and cultural context while ensuring the translation is natural in the target language variant specified.");
         sb.AppendLine();
 
         // Mode-specific instructions with detailed guidance
@@ -342,11 +384,29 @@ Translate the following text from {sourceLanguage} to {targetLanguage}.");
         {
             sb.AppendLine(@"TRANSCREATION MODE - Apply creative adaptation:
 1. MESSAGE PRESERVATION: Preserve the core message and emotional impact above literal accuracy
-2. CREATIVE FREEDOM: Adapt freely to maximize resonance with target culture
+2. CREATIVE FREEDOM: Adapt freely to maximize resonance with target culture or specified style
 3. BRAND VOICE: Maintain consistent brand voice and personality
 4. EMOTIONAL IMPACT: Ensure the translation evokes the same emotional response
-5. MARKETING EFFECTIVENESS: Optimize for persuasive impact in the target market
+5. MARKETING EFFECTIVENESS: Optimize for persuasive impact in the target market or specified format
 6. CULTURAL APPEAL: Make the content feel native, not translated");
+            
+            // Add transcreation context instructions if provided
+            if (!string.IsNullOrWhiteSpace(options.TranscreationContext))
+            {
+                sb.AppendLine();
+                sb.AppendLine($@"TRANSCREATION CONTEXT - Apply these specific instructions:
+{options.TranscreationContext}
+
+The user wants the translation to be written in the style, format, or era described above. 
+This may involve transforming the content to match a specific:
+- Time period or era (e.g., '1950s advertising style')
+- Format or medium (e.g., 'television commercial', 'text message', 'Shakespearean')
+- Audience or tone (e.g., 'corporate formal', 'casual friends', 'dramatic monologue')
+- Regional or cultural variant (e.g., 'American 1950s', 'British formal')
+
+Follow these instructions precisely while preserving the core message and emotional intent of the original text.
+Even if source and target languages are the same, transform the style according to the instructions above.");
+            }
         }
         else // Literal mode
         {

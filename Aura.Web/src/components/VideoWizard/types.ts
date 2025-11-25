@@ -67,10 +67,26 @@ export interface ExportData {
 }
 
 export interface AdvancedData {
-  seoKeywords: string[];
   targetPlatform: 'youtube' | 'tiktok' | 'instagram' | 'twitter' | 'linkedin';
   customTransitions: boolean;
   sceneTimingOverrides?: Record<string, number>;
+  llmParameters?: {
+    temperature?: number;
+    topP?: number;
+    topK?: number;
+    maxTokens?: number;
+    frequencyPenalty?: number;
+    presencePenalty?: number;
+  };
+  ragConfiguration?: {
+    enabled: boolean;
+    topK?: number;
+    minimumScore?: number;
+    maxContextTokens?: number;
+    includeCitations?: boolean;
+    tightenClaims?: boolean;
+  };
+  customInstructions?: string;
 }
 
 export interface WizardData {

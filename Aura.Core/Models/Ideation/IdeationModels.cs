@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using Aura.Core.Models;
+using Aura.Core.Models.RAG;
 
 namespace Aura.Core.Models.Ideation;
 
@@ -111,7 +113,9 @@ public record BrainstormRequest(
     string? Tone = null,
     int? TargetDuration = null,
     string? Platform = null,
-    int? ConceptCount = null
+    int? ConceptCount = null,
+    RagConfiguration? RagConfiguration = null,
+    LlmParameters? LlmParameters = null
 );
 
 /// <summary>
@@ -247,6 +251,36 @@ public record EnhanceTopicResponse(
     string OriginalTopic,
     DateTime GeneratedAt,
     string? Improvements = null
+);
+
+/// <summary>
+/// Request to analyze prompt quality for video creation
+/// </summary>
+public record AnalyzePromptQualityRequest(
+    string Topic,
+    string? VideoType = null,
+    string? TargetAudience = null,
+    string? KeyMessage = null,
+    RagConfiguration? RagConfiguration = null
+);
+
+/// <summary>
+/// Response with prompt quality analysis results
+/// </summary>
+public record AnalyzePromptQualityResponse(
+    int Score,
+    string Level, // "excellent" | "good" | "fair" | "poor"
+    Dictionary<string, int> Metrics, // length, specificity, clarity, actionability, engagement, alignment
+    List<QualitySuggestion> Suggestions,
+    DateTime GeneratedAt
+);
+
+/// <summary>
+/// Quality suggestion with type and message
+/// </summary>
+public record QualitySuggestion(
+    string Type, // "success" | "warning" | "info" | "tip"
+    string Message
 );
 
 /// <summary>

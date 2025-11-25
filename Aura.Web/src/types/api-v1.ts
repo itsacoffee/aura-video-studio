@@ -495,6 +495,7 @@ export interface TranslationOptionsDto {
   preserveNames?: boolean;
   preserveBrands?: boolean;
   adaptMeasurements?: boolean;
+  transcreationContext?: string;
 }
 
 /**

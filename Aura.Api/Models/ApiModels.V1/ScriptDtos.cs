@@ -113,6 +113,11 @@ public record GenerateScriptRequest
     /// Uses existing RagConfigurationDto from Dtos.cs which has default values.
     /// </summary>
     public RagConfigurationDto? RagConfiguration { get; init; }
+
+    /// <summary>
+    /// Custom instructions for prompt customization (maps to PromptModifiers.AdditionalInstructions)
+    /// </summary>
+    public string? CustomInstructions { get; init; }
 }
 
 /// <summary>

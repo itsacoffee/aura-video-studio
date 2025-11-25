@@ -99,6 +99,7 @@ public class TranslationOptions
     public bool PreserveNames { get; set; } = true;
     public bool PreserveBrands { get; set; } = true;
     public bool AdaptMeasurements { get; set; } = true;
+    public string? TranscreationContext { get; set; }
 }
 
 /// <summary>

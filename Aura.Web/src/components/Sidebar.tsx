@@ -187,7 +187,7 @@ export function Sidebar({
   const homeItems = navItems.filter((item) => ['home', 'dashboard'].includes(item.key));
 
   const creationItems = navItems.filter((item) =>
-    ['ideation', 'trending', 'create', 'templates'].includes(item.key)
+    ['ideation', 'trending', 'create', 'templates', 'localization'].includes(item.key)
   );
 
   const editingItems = navItems.filter((item) =>
@@ -204,7 +204,6 @@ export function Sidebar({
       'downloads',
       'health',
       'models',
-      'localization',
       'prompt-management',
       'rag',
       'voice-enhancement',
