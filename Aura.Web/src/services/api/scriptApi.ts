@@ -177,14 +177,18 @@ export async function generateScript(
     // Backend already validates scenes array, but log defensively for debugging
     // Don't throw on empty/missing scenes - backend may have specific reasons (e.g., ProblemDetails error response)
     if (!response.scenes || !Array.isArray(response.scenes) || response.scenes.length === 0) {
-      console.warn(
-        '[scriptApi] Response has empty or invalid scenes - this should not happen after backend validation',
-        {
-          hasScenes: !!response.scenes,
-          isArray: Array.isArray(response.scenes),
-          sceneCount: response.scenes?.length ?? 0,
-        }
-      );
+      try {
+        console.warn(
+          '[scriptApi] Response has empty or invalid scenes - this should not happen after backend validation',
+          {
+            hasScenes: !!response.scenes,
+            isArray: Array.isArray(response.scenes),
+            sceneCount: response.scenes?.length ?? 0,
+          }
+        );
+      } catch {
+        // Ignore logging errors
+      }
     }
 
     return response;
