@@ -107,23 +107,22 @@ public class CulturalLocalizationEngine
             targetLanguage.Code, targetRegion);
 
         var prompt = BuildCulturalAnalysisPrompt(content, targetLanguage, targetRegion);
-        
-        var brief = LlmRequestHelper.CreateAnalysisBrief(
-            "Cultural analysis",
-            "Cultural experts",
-            "Analyze cultural appropriateness"
-        );
-
-        var spec = LlmRequestHelper.CreateAnalysisPlanSpec();
 
         try
         {
-            var response = await _llmProvider.DraftScriptAsync(brief, spec, cancellationToken).ConfigureAwait(false);
-            return ParseCulturalAnalysis(response, targetLanguage.Code, targetRegion);
+            // Use CompleteAsync for direct prompt completion
+            var response = await _llmProvider.CompleteAsync(prompt, cancellationToken).ConfigureAwait(false);
+            var result = ParseCulturalAnalysis(response, targetLanguage.Code, targetRegion);
+            
+            _logger.LogDebug("Cultural analysis complete for {Language}/{Region}: Score={Score}",
+                targetLanguage.Code, targetRegion, result.CulturalSensitivityScore);
+            
+            return result;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Cultural analysis failed");
+            _logger.LogError(ex, "Cultural analysis failed for {Language}/{Region}: {Error}",
+                targetLanguage.Code, targetRegion, ex.Message);
             return new CulturalAnalysisResult
             {
                 TargetLanguage = targetLanguage.Code,
@@ -180,24 +179,24 @@ public class CulturalLocalizationEngine
         }
 
         var prompt = BuildIdiomAdaptationPrompt(line.TranslatedText, culturalContext);
-        
-        var brief = LlmRequestHelper.CreateAnalysisBrief(
-            "Idiom adaptation",
-            "Translation experts",
-            "Adapt idioms and expressions"
-        );
-
-        var spec = LlmRequestHelper.CreateAnalysisPlanSpec();
 
         try
         {
-            var response = await _llmProvider.DraftScriptAsync(brief, spec, cancellationToken).ConfigureAwait(false);
+            // Use CompleteAsync for direct prompt completion
+            var response = await _llmProvider.CompleteAsync(prompt, cancellationToken).ConfigureAwait(false);
             var parsedAdaptations = ParseIdiomAdaptations(response, line.SceneIndex);
             adaptations.AddRange(parsedAdaptations);
+            
+            if (parsedAdaptations.Count > 0)
+            {
+                _logger.LogDebug("Found {Count} idiom adaptations for line {Index}", 
+                    parsedAdaptations.Count, line.SceneIndex);
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Idiom adaptation failed for line {Index}", line.SceneIndex);
+            _logger.LogWarning(ex, "Idiom adaptation failed for line {Index}: {Error}", 
+                line.SceneIndex, ex.Message);
         }
 
         return adaptations;
@@ -245,19 +244,31 @@ public class CulturalLocalizationEngine
     private string BuildIdiomAdaptationPrompt(string text, CulturalContext culturalContext)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("Analyze the following translated text for idioms and expressions that may not work in the target culture.");
-        sb.AppendLine($"Target region: {culturalContext.TargetRegion}");
-        sb.AppendLine($"Formality level: {culturalContext.TargetFormality}");
-        sb.AppendLine();
-        sb.AppendLine("For any idioms or culturally-specific expressions, suggest culturally-appropriate alternatives.");
-        sb.AppendLine();
-        sb.AppendLine("Text:");
-        sb.AppendLine(text);
-        sb.AppendLine();
-        sb.AppendLine("Provide adaptations in this format:");
-        sb.AppendLine("Original: [phrase]");
-        sb.AppendLine("Adapted: [culturally appropriate alternative]");
-        sb.AppendLine("Reason: [explanation]");
+        sb.AppendLine($@"You are an expert cultural linguist specializing in idiom and expression adaptation for the {culturalContext.TargetRegion} region.
+
+TASK: Analyze the following text and identify idioms, expressions, or phrases that may not translate well culturally. For each one, provide a culturally-appropriate alternative.
+
+TARGET AUDIENCE CONTEXT:
+- Region: {culturalContext.TargetRegion}
+- Formality Level: {culturalContext.TargetFormality}
+- Preferred Style: {culturalContext.PreferredStyle}
+
+ANALYSIS GUIDELINES:
+1. Look for idioms that are culture-specific and may not be understood
+2. Identify expressions that might be offensive or inappropriate in the target culture
+3. Find references that need cultural adaptation (sports, holidays, customs, etc.)
+4. Consider formality expectations of the target culture
+5. Identify humor or sarcasm that may not translate well
+
+TEXT TO ANALYZE:
+{text}
+
+OUTPUT FORMAT (provide one entry per idiom/expression found):
+Original: [the original phrase]
+Adapted: [the culturally appropriate alternative in the same language]
+Reason: [brief explanation of why adaptation was needed]
+
+If no adaptations are needed, respond with: ""No adaptations required - text is culturally appropriate.""");
 
         return sb.ToString();
     }
@@ -265,33 +276,44 @@ public class CulturalLocalizationEngine
     private string BuildCulturalAnalysisPrompt(string content, LanguageInfo targetLanguage, string targetRegion)
     {
         var sb = new StringBuilder();
-        sb.AppendLine($"Analyze the following content for cultural appropriateness in {targetLanguage.Name} ({targetRegion}).");
-        sb.AppendLine();
-        sb.AppendLine("Consider:");
-        sb.AppendLine("1. Cultural sensitivities and taboo topics");
-        sb.AppendLine("2. Appropriateness of humor and tone");
-        sb.AppendLine("3. Visual elements that may be culturally sensitive");
-        sb.AppendLine("4. Religious or political references");
-        sb.AppendLine("5. Gender and social norms");
-        sb.AppendLine();
+        sb.AppendLine($@"You are a cultural sensitivity expert specializing in content localization for {targetLanguage.Name}-speaking audiences in {targetRegion}.
+
+TASK: Analyze the following content for cultural appropriateness and sensitivity.
+
+EVALUATION FRAMEWORK:
+1. CULTURAL SENSITIVITIES (25%): Identify content that may be offensive, taboo, or uncomfortable
+2. HUMOR AND TONE (20%): Assess whether humor and tone are appropriate for the culture
+3. VISUAL REFERENCES (15%): Flag any visual descriptions that may be culturally problematic
+4. RELIGIOUS/POLITICAL CONTENT (20%): Identify any references that need careful handling
+5. SOCIAL NORMS (20%): Check alignment with gender roles, family structures, and social expectations");
 
         if (targetLanguage.CulturalSensitivities.Count != 0)
         {
-            sb.AppendLine("Known cultural sensitivities:");
+            sb.AppendLine();
+            sb.AppendLine("KNOWN CULTURAL SENSITIVITIES FOR THIS REGION:");
             foreach (var sensitivity in targetLanguage.CulturalSensitivities)
             {
-                sb.AppendLine($"- {sensitivity}");
+                sb.AppendLine($"  • {sensitivity}");
             }
-            sb.AppendLine();
         }
 
-        sb.AppendLine("Content:");
-        sb.AppendLine(content);
-        sb.AppendLine();
-        sb.AppendLine("Provide analysis with:");
-        sb.AppendLine("- Overall cultural sensitivity score (0-100)");
-        sb.AppendLine("- Specific issues identified");
-        sb.AppendLine("- Recommendations for improvement");
+        sb.AppendLine($@"
+
+CONTENT TO ANALYZE:
+═══════════════════════════════════════════════════════════════
+{content}
+═══════════════════════════════════════════════════════════════
+
+REQUIRED OUTPUT:
+1. Cultural Sensitivity Score: [0-100] (where 100 = fully appropriate)
+2. Issues Found:
+   - [Issue 1 description]
+   - [Issue 2 description]
+   (or ""No issues found"")
+3. Recommendations:
+   - [Recommendation 1]
+   - [Recommendation 2]
+   (or ""No changes recommended"")");
 
         return sb.ToString();
     }

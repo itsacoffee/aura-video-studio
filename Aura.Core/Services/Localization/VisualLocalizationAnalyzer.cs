@@ -145,31 +145,23 @@ public class VisualLocalizationAnalyzer
         var combinedText = string.Join(" ", lines.Select(l => l.TranslatedText));
         var prompt = BuildVisualAnalysisPrompt(combinedText, targetLanguage, culturalContext);
 
-        var brief = new Brief(
-            Topic: "Visual localization",
-            Audience: "Cultural experts",
-            Goal: "Identify visual elements requiring localization",
-            Tone: "Analytical",
-            Language: "English",
-            Aspect: Aspect.Widescreen16x9
-        );
-
-        var spec = new PlanSpec(
-            TargetDuration: TimeSpan.FromMinutes(1.0),
-            Pacing: Pacing.Conversational,
-            Density: Density.Balanced,
-            Style: "Analysis"
-        );
-
         try
         {
-            var response = await _llmProvider.DraftScriptAsync(brief, spec, cancellationToken).ConfigureAwait(false);
+            // Use CompleteAsync for direct prompt completion
+            var response = await _llmProvider.CompleteAsync(prompt, cancellationToken).ConfigureAwait(false);
             var parsedRecommendations = ParseVisualRecommendations(response);
             recommendations.AddRange(parsedRecommendations);
+            
+            if (parsedRecommendations.Count > 0)
+            {
+                _logger.LogDebug("LLM visual analysis found {Count} recommendations for {Language}",
+                    parsedRecommendations.Count, targetLanguage.Code);
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "LLM visual analysis failed");
+            _logger.LogWarning(ex, "LLM visual analysis failed for {Language}: {Error}", 
+                targetLanguage.Code, ex.Message);
         }
 
         return recommendations;
@@ -181,33 +173,58 @@ public class VisualLocalizationAnalyzer
         CulturalContext? culturalContext)
     {
         var sb = new StringBuilder();
-        sb.AppendLine($"Analyze the following content for visual elements that may need localization for {targetLanguage.Name} audience.");
-        sb.AppendLine();
-        sb.AppendLine("Identify:");
-        sb.AppendLine("1. Visual imagery that may be culturally inappropriate or insensitive");
-        sb.AppendLine("2. Symbols, colors, or gestures with different cultural meanings");
-        sb.AppendLine("3. Regional imagery that should be adapted (e.g., landmarks, clothing, architecture)");
-        sb.AppendLine("4. Brand logos or products that need localization");
-        sb.AppendLine();
+        sb.AppendLine($@"You are a visual localization expert specializing in cultural adaptation for {targetLanguage.Name}-speaking audiences.
+
+TASK: Analyze the following video script content to identify visual elements that may need localization or adaptation.
+
+ANALYSIS CATEGORIES:
+
+1. VISUAL IMAGERY REVIEW (Critical)
+   - Identify images/scenes that may be culturally inappropriate
+   - Flag potentially offensive or taboo visual content
+   - Check for imagery that may have different meanings in target culture
+
+2. SYMBOLIC CONTENT (Important)
+   - Colors with cultural significance (e.g., white = mourning in some Asian cultures)
+   - Gestures that may be offensive (e.g., thumbs up, OK sign)
+   - Numbers with cultural meaning (e.g., 4 = death in Chinese, 13 in Western cultures)
+   - Religious or spiritual symbols
+
+3. REGIONAL ADAPTATION (Recommended)
+   - Landmarks and architecture that should be localized
+   - Clothing and fashion that may seem foreign
+   - Food and dining customs
+   - Currency and measurement displays
+
+4. BRAND AND PRODUCT CONTENT (Important)
+   - Logos that need localization
+   - Products not available in target market
+   - Pricing and package designs");
 
         if (culturalContext != null && culturalContext.Sensitivities.Count != 0)
         {
-            sb.AppendLine("Cultural sensitivities to consider:");
+            sb.AppendLine();
+            sb.AppendLine("KNOWN CULTURAL SENSITIVITIES:");
             foreach (var sensitivity in culturalContext.Sensitivities)
             {
-                sb.AppendLine($"- {sensitivity}");
+                sb.AppendLine($"  ⚠ {sensitivity}");
             }
-            sb.AppendLine();
         }
 
-        sb.AppendLine("Content:");
-        sb.AppendLine(content);
-        sb.AppendLine();
-        sb.AppendLine("Provide recommendations in this format:");
-        sb.AppendLine("Element: [visual element]");
-        sb.AppendLine("Issue: [cultural concern]");
-        sb.AppendLine("Recommendation: [localization suggestion]");
-        sb.AppendLine("Priority: [Optional/Recommended/Important/Critical]");
+        sb.AppendLine($@"
+
+CONTENT TO ANALYZE:
+═══════════════════════════════════════════════════════════════
+{content}
+═══════════════════════════════════════════════════════════════
+
+OUTPUT FORMAT (provide one entry per issue found):
+Element: [specific visual element or description]
+Issue: [why this is a concern for the target culture]
+Recommendation: [specific localization action to take]
+Priority: [Critical/Important/Recommended/Optional]
+
+If no visual localization is needed, respond with: ""No visual localization issues identified.""");
 
         return sb.ToString();
     }

@@ -97,35 +97,36 @@ public class TranslationQualityValidator
         string targetLanguage,
         CancellationToken cancellationToken)
     {
-        _logger.LogDebug("Performing back-translation");
+        _logger.LogDebug("Performing back-translation from {Source} to {Target}", sourceLanguage, targetLanguage);
 
-        var prompt = $"Translate the following text from {sourceLanguage} to {targetLanguage}. " +
-                     $"Provide ONLY the translation, no explanations:\n\n{translatedText}";
+        var prompt = $@"You are an expert translator specializing in back-translation for quality verification.
 
-        var brief = new Brief(
-            Topic: "Back-translation",
-            Audience: "Translation system",
-            Goal: "Verify translation accuracy",
-            Tone: "Professional",
-            Language: "English",
-            Aspect: Aspect.Widescreen16x9
-        );
+Translate the following text from {sourceLanguage} to {targetLanguage}.
 
-        var spec = new PlanSpec(
-            TargetDuration: TimeSpan.FromMinutes(1.0),
-            Pacing: Pacing.Conversational,
-            Density: Density.Balanced,
-            Style: "Translation"
-        );
+IMPORTANT INSTRUCTIONS:
+- Provide ONLY the translation, no explanations or commentary
+- Translate as accurately as possible to preserve the original meaning
+- Maintain the same level of formality and style
+
+Text to translate:
+{translatedText}
+
+Translation:";
 
         try
         {
-            var response = await _llmProvider.DraftScriptAsync(brief, spec, cancellationToken).ConfigureAwait(false);
-            return response.Trim();
+            // Use CompleteAsync for direct prompt completion
+            var response = await _llmProvider.CompleteAsync(prompt, cancellationToken).ConfigureAwait(false);
+            var result = response.Trim();
+            
+            _logger.LogDebug("Back-translation completed: {InputLength} chars -> {OutputLength} chars",
+                translatedText.Length, result.Length);
+            
+            return result;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Back-translation failed");
+            _logger.LogWarning(ex, "Back-translation failed: {Error}", ex.Message);
             return string.Empty;
         }
     }
@@ -153,41 +154,44 @@ public class TranslationQualityValidator
         string targetLanguage,
         CancellationToken cancellationToken)
     {
-        var prompt = $"Rate the fluency and naturalness of the following {targetLanguage} text on a scale of 0-100. " +
-                     $"Consider grammar, word choice, and natural flow. " +
-                     $"Respond with ONLY a number between 0 and 100:\n\n{translatedText}";
+        var prompt = $@"You are an expert linguist specializing in {targetLanguage} language assessment.
 
-        var brief = new Brief(
-            Topic: "Fluency scoring",
-            Audience: "Language experts",
-            Goal: "Rate translation fluency",
-            Tone: "Analytical",
-            Language: "English",
-            Aspect: Aspect.Widescreen16x9
-        );
+Rate the fluency and naturalness of the following {targetLanguage} text on a scale of 0-100.
 
-        var spec = new PlanSpec(
-            TargetDuration: TimeSpan.FromMinutes(1.0),
-            Pacing: Pacing.Conversational,
-            Density: Density.Balanced,
-            Style: "Analysis"
-        );
+EVALUATION CRITERIA:
+- Grammar and syntax correctness (30%)
+- Natural word choice and phrasing (30%)
+- Smooth flow and readability (25%)
+- Appropriate register and style consistency (15%)
+
+Text to evaluate:
+{translatedText}
+
+IMPORTANT: Respond with ONLY a single number between 0 and 100 representing the fluency score. No explanation.
+
+Score:";
 
         try
         {
-            var response = await _llmProvider.DraftScriptAsync(brief, spec, cancellationToken).ConfigureAwait(false);
+            var response = await _llmProvider.CompleteAsync(prompt, cancellationToken).ConfigureAwait(false);
             var scoreMatch = System.Text.RegularExpressions.Regex.Match(response, @"\d+");
             
             if (scoreMatch.Success && double.TryParse(scoreMatch.Value, out var score))
             {
-                return Math.Clamp(score, 0, 100);
+                var clampedScore = Math.Clamp(score, 0, 100);
+                _logger.LogDebug("Fluency score for {Language}: {Score}", targetLanguage, clampedScore);
+                return clampedScore;
             }
+            
+            _logger.LogWarning("Could not parse fluency score from LLM response: {Response}", 
+                response.Substring(0, Math.Min(100, response.Length)));
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Fluency scoring failed");
+            _logger.LogWarning(ex, "Fluency scoring failed for {Language}: {Error}", targetLanguage, ex.Message);
         }
 
+        // Return a conservative default score when LLM scoring fails
         return 75.0;
     }
 
@@ -198,43 +202,48 @@ public class TranslationQualityValidator
         string targetLanguage,
         CancellationToken cancellationToken)
     {
-        var prompt = $"Compare these two texts (source in {sourceLanguage} and translation in {targetLanguage}). " +
-                     $"Rate the translation accuracy on a scale of 0-100. " +
-                     $"Consider meaning preservation and information completeness. " +
-                     $"Respond with ONLY a number between 0 and 100.\n\n" +
-                     $"Source: {sourceText}\n\nTranslation: {translatedText}";
+        var prompt = $@"You are an expert bilingual translator and quality assessor fluent in both {sourceLanguage} and {targetLanguage}.
 
-        var brief = new Brief(
-            Topic: "Accuracy scoring",
-            Audience: "Translation experts",
-            Goal: "Rate translation accuracy",
-            Tone: "Analytical",
-            Language: "English",
-            Aspect: Aspect.Widescreen16x9
-        );
+Compare the source text and its translation below. Rate the translation accuracy on a scale of 0-100.
 
-        var spec = new PlanSpec(
-            TargetDuration: TimeSpan.FromMinutes(1.0),
-            Pacing: Pacing.Conversational,
-            Density: Density.Balanced,
-            Style: "Analysis"
-        );
+EVALUATION CRITERIA:
+- Meaning preservation (40%): All ideas and nuances correctly conveyed
+- Information completeness (30%): No omissions or additions
+- Terminology accuracy (20%): Technical terms correctly translated
+- Intent preservation (10%): Tone and purpose maintained
+
+SOURCE TEXT ({sourceLanguage}):
+{sourceText}
+
+TRANSLATION ({targetLanguage}):
+{translatedText}
+
+IMPORTANT: Respond with ONLY a single number between 0 and 100 representing the accuracy score. No explanation.
+
+Score:";
 
         try
         {
-            var response = await _llmProvider.DraftScriptAsync(brief, spec, cancellationToken).ConfigureAwait(false);
+            var response = await _llmProvider.CompleteAsync(prompt, cancellationToken).ConfigureAwait(false);
             var scoreMatch = System.Text.RegularExpressions.Regex.Match(response, @"\d+");
             
             if (scoreMatch.Success && double.TryParse(scoreMatch.Value, out var score))
             {
-                return Math.Clamp(score, 0, 100);
+                var clampedScore = Math.Clamp(score, 0, 100);
+                _logger.LogDebug("Accuracy score for {Source}->{Target}: {Score}", 
+                    sourceLanguage, targetLanguage, clampedScore);
+                return clampedScore;
             }
+            
+            _logger.LogWarning("Could not parse accuracy score from LLM response: {Response}",
+                response.Substring(0, Math.Min(100, response.Length)));
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Accuracy scoring failed");
+            _logger.LogWarning(ex, "Accuracy scoring failed: {Error}", ex.Message);
         }
 
+        // Return a conservative default score when LLM scoring fails
         return 80.0;
     }
 
@@ -243,41 +252,45 @@ public class TranslationQualityValidator
         string targetLanguage,
         CancellationToken cancellationToken)
     {
-        var prompt = $"Rate the cultural appropriateness of the following {targetLanguage} text on a scale of 0-100. " +
-                     $"Consider cultural sensitivity, appropriateness of examples and references, and tone. " +
-                     $"Respond with ONLY a number between 0 and 100:\n\n{translatedText}";
+        var prompt = $@"You are a cultural sensitivity expert specializing in {targetLanguage}-speaking regions.
 
-        var brief = new Brief(
-            Topic: "Cultural appropriateness",
-            Audience: "Cultural experts",
-            Goal: "Rate cultural appropriateness",
-            Tone: "Analytical",
-            Language: "English",
-            Aspect: Aspect.Widescreen16x9
-        );
+Rate the cultural appropriateness of the following {targetLanguage} text on a scale of 0-100.
 
-        var spec = new PlanSpec(
-            TargetDuration: TimeSpan.FromMinutes(1.0),
-            Pacing: Pacing.Conversational,
-            Density: Density.Balanced,
-            Style: "Analysis"
-        );
+EVALUATION CRITERIA:
+- Cultural sensitivity (35%): No offensive or inappropriate content for the target culture
+- Appropriateness of examples and references (25%): References are relevant and understood
+- Tone appropriateness (20%): Formality level matches cultural expectations
+- Idiom and expression suitability (20%): Natural expressions for the target culture
+
+Text to evaluate:
+{translatedText}
+
+IMPORTANT: Respond with ONLY a single number between 0 and 100 representing the cultural appropriateness score. No explanation.
+
+Score:";
 
         try
         {
-            var response = await _llmProvider.DraftScriptAsync(brief, spec, cancellationToken).ConfigureAwait(false);
+            var response = await _llmProvider.CompleteAsync(prompt, cancellationToken).ConfigureAwait(false);
             var scoreMatch = System.Text.RegularExpressions.Regex.Match(response, @"\d+");
             
             if (scoreMatch.Success && double.TryParse(scoreMatch.Value, out var score))
             {
-                return Math.Clamp(score, 0, 100);
+                var clampedScore = Math.Clamp(score, 0, 100);
+                _logger.LogDebug("Cultural appropriateness score for {Language}: {Score}", 
+                    targetLanguage, clampedScore);
+                return clampedScore;
             }
+            
+            _logger.LogWarning("Could not parse cultural appropriateness score from LLM response: {Response}",
+                response.Substring(0, Math.Min(100, response.Length)));
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Cultural appropriateness scoring failed");
+            _logger.LogWarning(ex, "Cultural appropriateness scoring failed: {Error}", ex.Message);
         }
 
+        // Return a conservative default score when LLM scoring fails
         return 85.0;
     }
 
