@@ -136,7 +136,7 @@ public class AssetTaggerTests
         // Assert
         Assert.All(tags, tag =>
         {
-            Assert.True(tag.Confidence >= 0 && tag.Confidence <= 100,
+            Assert.True(tag.Confidence >= 0 && tag.Confidence <= 1.0f,
                 $"Tag {tag.Name} has invalid confidence score: {tag.Confidence}");
         });
     }
