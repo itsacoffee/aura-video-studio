@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Core.Configuration;
 using Aura.Core.Models;
 using Aura.Core.Orchestration;
 using Aura.Core.Providers;
@@ -26,6 +27,7 @@ public class ScriptOrchestrator
     private readonly object _lock = new object();
     private volatile LlmStageAdapter? _stageAdapter;
     private readonly OllamaDetectionService? _ollamaDetectionService;
+    private readonly ProviderSettings? _providerSettings;
 
     /// <summary>
     /// Constructor with pre-created providers (for backward compatibility)
@@ -35,7 +37,8 @@ public class ScriptOrchestrator
         ILoggerFactory loggerFactory,
         ProviderMixer providerMixer,
         Dictionary<string, ILlmProvider> providers,
-        OllamaDetectionService? ollamaDetectionService = null)
+        OllamaDetectionService? ollamaDetectionService = null,
+        ProviderSettings? providerSettings = null)
     {
         _logger = logger;
         _loggerFactory = loggerFactory;
@@ -43,6 +46,7 @@ public class ScriptOrchestrator
         _providers = providers;
         _providerFactory = null;
         _ollamaDetectionService = ollamaDetectionService;
+        _providerSettings = providerSettings;
     }
 
     /// <summary>
@@ -53,7 +57,8 @@ public class ScriptOrchestrator
         ILoggerFactory loggerFactory,
         ProviderMixer providerMixer,
         Func<Dictionary<string, ILlmProvider>> providerFactory,
-        OllamaDetectionService? ollamaDetectionService = null)
+        OllamaDetectionService? ollamaDetectionService = null,
+        ProviderSettings? providerSettings = null)
     {
         _logger = logger;
         _loggerFactory = loggerFactory;
@@ -61,6 +66,7 @@ public class ScriptOrchestrator
         _providerFactory = providerFactory;
         _providers = null;
         _ollamaDetectionService = ollamaDetectionService;
+        _providerSettings = providerSettings;
     }
 
     private Dictionary<string, ILlmProvider> GetProviders()
@@ -131,8 +137,11 @@ public class ScriptOrchestrator
         // Wait for Ollama detection to complete before selecting providers
         await EnsureOllamaDetectionCompleteAsync(ct).ConfigureAwait(false);
 
-        // Use the new deterministic ResolveLlm method
-        var decision = _providerMixer.ResolveLlm(GetProviders(), preferredTier, offlineOnly);
+        // Get preferred provider from settings if available
+        var preferredProvider = _providerSettings?.GetPreferredLlmProvider();
+        
+        // Use the new deterministic ResolveLlm method with preferred provider
+        var decision = _providerMixer.ResolveLlm(GetProviders(), preferredTier, offlineOnly, preferredProvider);
         _providerMixer.LogDecision(decision);
 
         // If Pro is blocked in offline mode, return error immediately
@@ -735,7 +744,7 @@ public class ScriptOrchestrator
 
             var providers = GetProviders();
             var logger = _loggerFactory.CreateLogger<LlmStageAdapter>();
-            _stageAdapter = new LlmStageAdapter(logger, providers, _providerMixer);
+            _stageAdapter = new LlmStageAdapter(logger, providers, _providerMixer, _providerSettings);
             return _stageAdapter;
         }
     }

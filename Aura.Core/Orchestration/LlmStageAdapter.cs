@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.AI.Cache;
 using Aura.Core.AI.Validation;
+using Aura.Core.Configuration;
 using Aura.Core.Models;
 using Aura.Core.Models.Visual;
 using Aura.Core.Orchestrator;
@@ -25,11 +26,13 @@ public class LlmStageAdapter : UnifiedGenerationOrchestrator<LlmStageRequest, Ll
 {
     private readonly Dictionary<string, ILlmProvider> _providers;
     private readonly ProviderMixer _providerMixer;
+    private readonly ProviderSettings? _providerSettings;
 
     public LlmStageAdapter(
         ILogger<LlmStageAdapter> logger,
         Dictionary<string, ILlmProvider> providers,
         ProviderMixer providerMixer,
+        ProviderSettings? providerSettings = null,
         ILlmCache? cache = null,
         SchemaValidator? schemaValidator = null,
         EnhancedCostTrackingService? costTrackingService = null,
@@ -38,6 +41,7 @@ public class LlmStageAdapter : UnifiedGenerationOrchestrator<LlmStageRequest, Ll
     {
         _providers = providers ?? throw new ArgumentNullException(nameof(providers));
         _providerMixer = providerMixer ?? throw new ArgumentNullException(nameof(providerMixer));
+        _providerSettings = providerSettings;
     }
 
     /// <summary>
@@ -141,7 +145,10 @@ public class LlmStageAdapter : UnifiedGenerationOrchestrator<LlmStageRequest, Ll
         var preferredTier = config.PreferredTier ?? "Free";
         var offlineOnly = config.OfflineOnly;
 
-        var decision = _providerMixer.ResolveLlm(_providers, preferredTier, offlineOnly);
+        // Get preferred provider from settings if available
+        var preferredProvider = _providerSettings?.GetPreferredLlmProvider();
+        
+        var decision = _providerMixer.ResolveLlm(_providers, preferredTier, offlineOnly, preferredProvider);
         _providerMixer.LogDecision(decision);
 
         if (decision.ProviderName == "None")

@@ -33,18 +33,58 @@ public class ProviderMixer
     /// - ProIfAvailable (offline): Ollama → RuleBased (guaranteed)
     /// - Free tier: Ollama → RuleBased (guaranteed)
     /// - Empty providers: RuleBased (guaranteed - never throws)
+    /// - preferredProvider: When specified, it is placed first in the chain (if available)
     /// </summary>
     public ProviderDecision ResolveLlm(
         Dictionary<string, ILlmProvider> availableProviders,
         string preferredTier,
-        bool offlineOnly = false)
+        bool offlineOnly = false,
+        string? preferredProvider = null)
     {
         var stage = "Script";
-        _logger.LogInformation("Resolving LLM provider for {Stage} stage (tier: {Tier}, offlineOnly: {OfflineOnly})",
-            stage, preferredTier, offlineOnly);
+        _logger.LogInformation("Resolving LLM provider for {Stage} stage (tier: {Tier}, offlineOnly: {OfflineOnly}, preferredProvider: {PreferredProvider})",
+            stage, preferredTier, offlineOnly, preferredProvider ?? "none");
 
         // Build the complete downgrade chain based on tier and offline mode
         var downgradeChain = BuildLlmDowngradeChain(preferredTier, offlineOnly);
+
+        // If a preferred provider is specified, ensure it's first in the chain (if available)
+        if (!string.IsNullOrWhiteSpace(preferredProvider) && availableProviders.ContainsKey(preferredProvider))
+        {
+            _logger.LogInformation("Prioritizing user-configured preferred provider: {Provider}", preferredProvider);
+            
+            // Create a new chain with preferred provider first, followed by the tier-based chain (excluding the preferred provider)
+            var prioritizedChain = new List<string> { preferredProvider };
+            
+            // Add other providers from downgrade chain, excluding the preferred provider
+            foreach (var provider in downgradeChain)
+            {
+                if (provider != preferredProvider && !prioritizedChain.Contains(provider))
+                {
+                    prioritizedChain.Add(provider);
+                }
+            }
+            
+            // Always ensure RuleBased is at the end if not already present
+            if (!prioritizedChain.Contains("RuleBased"))
+            {
+                prioritizedChain.Add("RuleBased");
+            }
+            
+            downgradeChain = prioritizedChain.ToArray();
+            
+            // Return decision with preferred provider as primary
+            return new ProviderDecision
+            {
+                Stage = stage,
+                ProviderName = preferredProvider,
+                PriorityRank = 1,
+                DowngradeChain = downgradeChain,
+                Reason = $"User-configured preferred provider: {preferredProvider}",
+                IsFallback = false,
+                FallbackFrom = null
+            };
+        }
 
         // If offline mode is enabled and Pro tier is requested, we need to handle this specially
         if (offlineOnly && preferredTier == "Pro")

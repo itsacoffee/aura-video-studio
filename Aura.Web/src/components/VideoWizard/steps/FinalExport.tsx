@@ -21,6 +21,7 @@ import {
     CheckmarkCircle24Regular,
     Dismiss24Regular,
     DocumentMultiple24Regular,
+    ErrorCircle24Regular,
     Folder24Regular,
     Info24Regular,
     Open24Regular
@@ -889,6 +890,42 @@ export const FinalExport: FC<FinalExportProps> = ({
     </div>
   );
 
+  const renderErrorView = () => (
+    <div className={styles.exportProgress}>
+      <ErrorCircle24Regular
+        style={{ fontSize: '64px', color: tokens.colorPaletteRedForeground1 }}
+      />
+      <Title3>Export Failed</Title3>
+      <Text style={{ marginBottom: tokens.spacingVerticalL, color: tokens.colorPaletteRedForeground1 }}>
+        {exportStage || 'An error occurred while exporting your video.'}
+      </Text>
+      <div className={styles.exportActions}>
+        <Button
+          appearance="primary"
+          onClick={() => {
+            setExportStatus('idle');
+            setExportProgress(0);
+            setExportStage('');
+            setExportResults([]);
+            setResolvedPaths({});
+          }}
+        >
+          Try Again
+        </Button>
+        <Button
+          appearance="secondary"
+          onClick={() => {
+            setExportStatus('idle');
+            setExportProgress(0);
+            setExportStage('');
+          }}
+        >
+          Back to Settings
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -899,6 +936,7 @@ export const FinalExport: FC<FinalExportProps> = ({
       {exportStatus === 'idle' && renderSettingsView()}
       {exportStatus === 'exporting' && renderExportingView()}
       {exportStatus === 'completed' && renderCompletedView()}
+      {exportStatus === 'error' && renderErrorView()}
     </div>
   );
 };

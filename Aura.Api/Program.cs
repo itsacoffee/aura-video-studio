@@ -709,6 +709,7 @@ builder.Services.AddSingleton<Aura.Core.Orchestrator.ScriptOrchestrator>(sp =>
     var factory = sp.GetRequiredService<Aura.Core.Orchestrator.LlmProviderFactory>();
     var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
     var ollamaDetectionService = sp.GetService<Aura.Core.Services.Providers.OllamaDetectionService>();
+    var providerSettings = sp.GetService<Aura.Core.Configuration.ProviderSettings>();
 
     // Use factory delegate to allow dynamic provider refresh (e.g., when Ollama becomes available)
     // This ensures providers are re-evaluated on each use, not just at startup
@@ -717,7 +718,7 @@ builder.Services.AddSingleton<Aura.Core.Orchestrator.ScriptOrchestrator>(sp =>
         return factory.CreateAvailableProviders(loggerFactory);
     }
 
-    return new Aura.Core.Orchestrator.ScriptOrchestrator(logger, loggerFactory, mixer, ProviderFactory, ollamaDetectionService);
+    return new Aura.Core.Orchestrator.ScriptOrchestrator(logger, loggerFactory, mixer, ProviderFactory, ollamaDetectionService, providerSettings);
 });
 
 // Register streaming orchestrator for SSE support

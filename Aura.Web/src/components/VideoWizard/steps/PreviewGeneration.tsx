@@ -1520,6 +1520,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
                   const isTtsAvailable = !currentProvider || (providerStatus?.isAvailable !== false);
                   // Check both status and audioUrl for backward compatibility with existing audio samples
                   const isPending = audioSample.status === 'pending' || audioSample.status === undefined;
+                  const hasAudio = audioSample.audioUrl !== null && audioSample.status !== 'pending';
                   
                   return (
                     <div className={styles.audioPreview}>
@@ -1535,22 +1536,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
                             TTS not available
                           </Text>
                         </>
-                      ) : isPending ? (
-                        <>
-                          <Speaker224Regular 
-                            style={{ 
-                              marginRight: tokens.spacingHorizontalS, 
-                              color: tokens.colorNeutralForeground2 
-                            }} 
-                          />
-                          <Text size={200}>Click Preview to generate audio</Text>
-                          {currentProvider && (
-                            <Text size={200} style={{ marginLeft: tokens.spacingHorizontalS, color: tokens.colorNeutralForeground3 }}>
-                              ({currentProvider})
-                            </Text>
-                          )}
-                        </>
-                      ) : (
+                      ) : hasAudio ? (
                         <>
                           <CheckmarkCircle24Regular 
                             style={{ 
@@ -1559,6 +1545,21 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
                             }} 
                           />
                           <Text size={200}>Audio ready</Text>
+                          {currentProvider && (
+                            <Text size={200} style={{ marginLeft: tokens.spacingHorizontalS, color: tokens.colorNeutralForeground3 }}>
+                              ({currentProvider})
+                            </Text>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <Speaker224Regular 
+                            style={{ 
+                              marginRight: tokens.spacingHorizontalS, 
+                              color: tokens.colorNeutralForeground2 
+                            }} 
+                          />
+                          <Text size={200}>Audio will be generated on preview</Text>
                           {currentProvider && (
                             <Text size={200} style={{ marginLeft: tokens.spacingHorizontalS, color: tokens.colorNeutralForeground3 }}>
                               ({currentProvider})
@@ -1577,9 +1578,6 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
                     onClick={() => void playScenePreview(scene.id)}
                     disabled={
                       !thumbnail || 
-                      !audioSample ||
-                      audioSample.status === 'pending' ||
-                      audioSample.audioUrl === null ||
                       playingSceneId === scene.id ||
                       !selectedTtsProvider ||
                       (ttsProviderStatus[selectedTtsProvider]?.isAvailable === false)
