@@ -205,19 +205,19 @@ public class ScriptsController : ControllerBase
             // Use PreferredProvider directly - it can be a provider name (e.g., "Ollama") or a tier (e.g., "Free")
             // ProviderMixer.SelectLlmProvider will handle both cases
             // If PreferredProvider is null/empty/"Auto", default to "Free" tier
-            var preferredTier = !string.IsNullOrWhiteSpace(request.PreferredProvider) && 
-                                request.PreferredProvider != "Auto" 
-                                ? request.PreferredProvider 
+            var preferredTier = !string.IsNullOrWhiteSpace(request.PreferredProvider) &&
+                                request.PreferredProvider != "Auto"
+                                ? request.PreferredProvider
                                 : "Free";
-            
+
             _logger.LogInformation(
-                "[{CorrelationId}] Script generation requested. Topic: {Topic}, PreferredProvider: {Provider} (resolved to: {Resolved}), ModelOverride: {ModelOverride}", 
+                "[{CorrelationId}] Script generation requested. Topic: {Topic}, PreferredProvider: {Provider} (resolved to: {Resolved}), ModelOverride: {ModelOverride}",
                 correlationId, request.Topic, request.PreferredProvider ?? "null", preferredTier, request.ModelOverride ?? "null");
 
             var result = await _scriptOrchestrator.GenerateScriptAsync(
                 brief, planSpec, preferredTier, offlineOnly: false, ct).ConfigureAwait(false);
-            
-            _logger.LogInformation("[{CorrelationId}] Script generation completed. Success: {Success}, ProviderUsed: {Provider}", 
+
+            _logger.LogInformation("[{CorrelationId}] Script generation completed. Success: {Success}, ProviderUsed: {Provider}",
                 correlationId, result.Success, result.ProviderUsed ?? "None");
 
             if (!result.Success || result.Script == null)
@@ -281,40 +281,58 @@ public class ScriptsController : ControllerBase
         }
         catch (TaskCanceledException ex) when (ct.IsCancellationRequested)
         {
-            // Check if it was a timeout cancellation
-            var isTimeout = ex.InnerException is TimeoutException || 
-                           ex.Message.Contains("timeout", StringComparison.OrdinalIgnoreCase) ||
-                           ex.Message.Contains("canceled", StringComparison.OrdinalIgnoreCase);
-            
-            _logger.LogWarning(ex, 
-                "[{CorrelationId}] Script generation was canceled. IsTimeout: {IsTimeout}, TimeElapsed: {TimeElapsed}ms",
-                correlationId, isTimeout, ex.Data.Contains("TimeElapsed") ? ex.Data["TimeElapsed"] : "unknown");
+            // Check if it was a timeout cancellation - only check for actual timeout indicators
+            // Do NOT check for "canceled" as cancellations can happen for many reasons (client disconnect, app shutdown, etc.)
+            var isTimeout = ex.InnerException is TimeoutException ||
+                           ex.Message.Contains("timeout", StringComparison.OrdinalIgnoreCase);
 
-            var errorDetail = isTimeout
-                ? "Script generation timed out after 6 minutes. The model may be processing a large request. Please try again with a shorter topic or simpler prompt, or check if Ollama is responding."
-                : "Script generation was canceled. Please try again.";
+            _logger.LogWarning(ex,
+                "[{CorrelationId}] Script generation was canceled. IsTimeout: {IsTimeout}, InnerException: {InnerExceptionType}",
+                correlationId, isTimeout, ex.InnerException?.GetType().Name ?? "none");
 
-            return StatusCode(408, new ProblemDetails
+            // Only return 408 for actual timeouts; for other cancellations, return a different status
+            if (isTimeout)
             {
-                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E408",
-                Title = "Request Timeout",
-                Status = 408,
-                Detail = errorDetail,
-                Extensions = 
-                { 
+                return StatusCode(408, new ProblemDetails
+                {
+                    Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E408",
+                    Title = "Request Timeout",
+                    Status = 408,
+                    Detail = "Script generation timed out after 6 minutes. The model may be processing a large request. Please try again with a shorter topic or simpler prompt, or check if Ollama is responding.",
+                    Extensions =
+                    {
+                        ["correlationId"] = correlationId,
+                        ["errorCode"] = "E408",
+                        ["suggestion"] = "Try a shorter topic or simpler prompt, or check Ollama status"
+                    }
+                });
+            }
+
+            // For non-timeout cancellations, return 499 (Client Closed Request) or generic cancellation message
+            _logger.LogInformation(
+                "[{CorrelationId}] Script generation was canceled (not due to timeout). Possible reasons: client disconnect, application shutdown, or manual cancellation.",
+                correlationId);
+
+            return StatusCode(499, new ProblemDetails
+            {
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E499",
+                Title = "Request Cancelled",
+                Status = 499,
+                Detail = "Script generation was canceled. Please try again.",
+                Extensions =
+                {
                     ["correlationId"] = correlationId,
-                    ["errorCode"] = "E408",
-                    ["suggestion"] = "Try a shorter topic or simpler prompt, or check Ollama status"
+                    ["errorCode"] = "E499"
                 }
             });
         }
         catch (Exception ex)
         {
             // Log the full exception details including inner exceptions
-            _logger.LogError(ex, 
+            _logger.LogError(ex,
                 "[{CorrelationId}] Error generating script. ExceptionType: {ExceptionType}, Message: {Message}, InnerException: {InnerException}",
-                correlationId, 
-                ex.GetType().Name, 
+                correlationId,
+                ex.GetType().Name,
                 ex.Message,
                 ex.InnerException?.Message ?? "none");
 
@@ -343,8 +361,8 @@ public class ScriptsController : ControllerBase
                 Title = "Internal Server Error",
                 Status = 500,
                 Detail = errorDetail,
-                Extensions = 
-                { 
+                Extensions =
+                {
                     ["correlationId"] = correlationId,
                     ["exceptionType"] = ex.GetType().Name,
                     ["errorCode"] = "E500"
