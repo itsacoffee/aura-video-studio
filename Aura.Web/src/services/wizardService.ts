@@ -5,6 +5,8 @@
 
 import { post, get, postWithTimeout } from './api/apiClient';
 import type { ExtendedAxiosRequestConfig } from './api/apiClient';
+import { streamGeneration } from './api/ollamaService';
+import type { StreamingScriptEvent, StreamGenerationRequest } from './api/ollamaService';
 import { loggingService as logger } from './loggingService';
 
 /**
@@ -427,6 +429,128 @@ export async function loadWizardState(
   } catch (error: unknown) {
     const errorObj = error instanceof Error ? error : new Error(String(error));
     logger.error('Failed to load wizard state', errorObj, 'wizardService', 'loadWizardState');
+    throw errorObj;
+  }
+}
+
+/**
+ * Helper: Parse script text into scenes
+ */
+function parseScriptIntoScenes(
+  scriptText: string
+): Array<{ id: string; text: string; duration: number; visualDescription: string }> {
+  // Simple scene extraction - split by scene markers or paragraphs
+  const sceneTexts = scriptText.split(/(?:\n\n|Scene \d+:)/g).filter((s) => s.trim());
+
+  return sceneTexts.map((text, index) => ({
+    id: `scene-${index + 1}`,
+    text: text.trim(),
+    duration: estimateSceneDuration(text),
+    visualDescription: extractVisualDescription(text),
+  }));
+}
+
+/**
+ * Helper: Estimate scene duration from text (150 words per minute = 2.5 words per second)
+ */
+function estimateSceneDuration(text: string): number {
+  const wordCount = text.split(/\s+/).length;
+  return Math.ceil(wordCount / 2.5);
+}
+
+/**
+ * Helper: Extract visual description from text (e.g., [Visual: ...])
+ */
+function extractVisualDescription(text: string): string {
+  const match = text.match(/\[Visual:\s*([^\]]+)\]/);
+  return match ? match[1] : 'General scene visuals';
+}
+
+/**
+ * Helper: Calculate total duration from script text
+ */
+function calculateDuration(scriptText: string): number {
+  const scenes = parseScriptIntoScenes(scriptText);
+  return scenes.reduce((total, scene) => total + scene.duration, 0);
+}
+
+/**
+ * Step 3: Generate script with SSE streaming for real-time progress
+ */
+export async function generateScriptWithProgress(
+  briefData: WizardBriefData,
+  styleData: WizardStyleData,
+  onProgress: (event: StreamingScriptEvent) => void,
+  _config?: ExtendedAxiosRequestConfig
+): Promise<ScriptGenerationResponse> {
+  try {
+    logger.info(
+      'Generating script with SSE streaming',
+      'wizardService',
+      'generateScriptWithProgress',
+      {
+        topic: briefData.topic,
+        voiceProvider: styleData.voiceProvider,
+      }
+    );
+
+    let accumulatedScript = '';
+
+    // Convert wizard data to generation request
+    const request: StreamGenerationRequest = {
+      topic: briefData.topic,
+      audience: briefData.audience,
+      goal: briefData.goal,
+      tone: briefData.tone,
+      language: briefData.language,
+      targetDurationSeconds: briefData.duration || 60,
+    };
+
+    await streamGeneration(request, (event: StreamingScriptEvent) => {
+      // Forward progress events to caller
+      onProgress(event);
+
+      // Accumulate script content
+      if (event.eventType === 'chunk') {
+        accumulatedScript = event.accumulatedContent || accumulatedScript + (event.content || '');
+      } else if (event.eventType === 'complete') {
+        accumulatedScript = event.accumulatedContent || accumulatedScript;
+      }
+    });
+
+    // Parse final accumulated script
+    if (!accumulatedScript) {
+      throw new Error('No script content received from streaming generation');
+    }
+
+    // Create response format matching non-streaming endpoint
+    const finalResponse: ScriptGenerationResponse = {
+      jobId: crypto.randomUUID(),
+      script: accumulatedScript,
+      scenes: parseScriptIntoScenes(accumulatedScript),
+      totalDuration: calculateDuration(accumulatedScript),
+      correlationId: crypto.randomUUID(),
+    };
+
+    logger.info(
+      'Script generated successfully via SSE',
+      'wizardService',
+      'generateScriptWithProgress',
+      {
+        jobId: finalResponse.jobId,
+        sceneCount: finalResponse.scenes.length,
+      }
+    );
+
+    return finalResponse;
+  } catch (error: unknown) {
+    const errorObj = error instanceof Error ? error : new Error(String(error));
+    logger.error(
+      'Failed to generate script via SSE',
+      errorObj,
+      'wizardService',
+      'generateScriptWithProgress'
+    );
     throw errorObj;
   }
 }

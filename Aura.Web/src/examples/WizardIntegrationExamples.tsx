@@ -8,11 +8,13 @@
 import { Button, Spinner, MessageBar } from '@fluentui/react-components';
 import { useState, useCallback } from 'react';
 import type { FC } from 'react';
+import type { StreamingScriptEvent } from '@/services/api/ollamaService';
 import { loggingService as logger } from '@/services/loggingService';
 import {
   storeBrief,
   fetchAvailableVoices,
   generateScript,
+  generateScriptWithProgress,
   startFinalRendering,
   type WizardBriefData,
   type WizardStyleData,
@@ -145,14 +147,60 @@ export const StyleStepExample: FC = () => {
 };
 
 /**
- * Example: Step 3 - Generating Script
+ * Example: Step 3 - Generating Script with SSE Streaming
  */
 export const ScriptStepExample: FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [script, setScript] = useState<string | null>(null);
+  const [progress, setProgress] = useState<string>('');
 
   const handleGenerateScript = useCallback(
+    async (briefData: WizardBriefData, styleData: WizardStyleData) => {
+      setLoading(true);
+      setError(null);
+      setScript(null);
+      setProgress('Initializing...');
+
+      try {
+        const result = await generateScriptWithProgress(
+          briefData,
+          styleData,
+          (event: StreamingScriptEvent) => {
+            // Update progress UI in real-time
+            if (event.eventType === 'chunk') {
+              setProgress(`Generating... (${event.tokenIndex || 0} tokens)`);
+              // Show live preview of accumulated content
+              setScript(event.accumulatedContent || '');
+            } else if (event.eventType === 'complete') {
+              setProgress('Complete!');
+            } else if (event.eventType === 'error') {
+              setProgress(`Error: ${event.errorMessage}`);
+            }
+          }
+        );
+
+        logger.info('Script generated via SSE', 'ScriptStep', 'handleGenerateScript', {
+          jobId: result.jobId,
+          sceneCount: result.scenes.length,
+        });
+
+        setScript(result.script);
+      } catch (error: unknown) {
+        const errorObj = error instanceof Error ? error : new Error(String(error));
+        const errorMessage = errorObj.message || 'Failed to generate script';
+
+        logger.error('Failed to generate script', errorObj, 'ScriptStep', 'handleGenerateScript');
+        setError(errorMessage);
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  // Keep old non-streaming function for reference/fallback
+  const handleGenerateScriptNonStreaming = useCallback(
     async (briefData: WizardBriefData, styleData: WizardStyleData) => {
       setLoading(true);
       setError(null);
@@ -167,9 +215,6 @@ export const ScriptStepExample: FC = () => {
         });
 
         setScript(result.script);
-
-        // Optionally start SSE streaming for script generation progress
-        // startStreaming(result.jobId);
       } catch (error: unknown) {
         const errorObj = error instanceof Error ? error : new Error(String(error));
         const errorMessage = errorObj.message || 'Failed to generate script';
@@ -182,6 +227,9 @@ export const ScriptStepExample: FC = () => {
     },
     []
   );
+
+  // Make non-streaming function available for potential fallback usage
+  void handleGenerateScriptNonStreaming;
 
   return (
     <div>
@@ -213,7 +261,20 @@ export const ScriptStepExample: FC = () => {
         Generate Script
       </Button>
 
-      {script && (
+      {loading && (
+        <div className="progress-indicator">
+          <Spinner />
+          <p>{progress}</p>
+          {script && (
+            <div className="live-preview">
+              <h4>Live Preview:</h4>
+              <pre>{script.substring(0, 500)}...</pre>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!loading && script && (
         <div>
           <h3>Generated Script:</h3>
           <pre>{script}</pre>
