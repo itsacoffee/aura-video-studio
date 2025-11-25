@@ -29,7 +29,15 @@ describe('Script API', () => {
       const mockResponse = {
         scriptId: 'script-123',
         title: 'Test Script',
-        scenes: [],
+        scenes: [
+          {
+            number: 1,
+            narration: 'Test narration',
+            visualPrompt: 'Test visual',
+            durationSeconds: 30,
+            transition: 'fade',
+          },
+        ],
         totalDurationSeconds: 60,
         metadata: {
           generatedAt: '2024-01-01T00:00:00Z',
@@ -52,7 +60,72 @@ describe('Script API', () => {
 
       const result = await generateScript(request);
 
-      expect(apiClient.post).toHaveBeenCalledWith('/api/scripts/generate', request, undefined);
+      expect(apiClient.post).toHaveBeenCalledWith(
+        '/api/scripts/generate',
+        request,
+        expect.objectContaining({
+          timeout: 1260000, // 21 minutes
+        })
+      );
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should use 21-minute timeout for generation', async () => {
+      const mockResponse = {
+        scriptId: 'script-456',
+        title: 'Timeout Test Script',
+        scenes: [
+          {
+            number: 1,
+            narration: 'Test',
+            visualPrompt: 'Visual',
+            durationSeconds: 30,
+            transition: 'fade',
+          },
+        ],
+        totalDurationSeconds: 30,
+        metadata: {
+          generatedAt: '2024-01-01T00:00:00Z',
+          providerName: 'Ollama',
+          modelUsed: 'llama3.1',
+          tokensUsed: 500,
+          estimatedCost: 0,
+          tier: 'Free',
+          generationTimeSeconds: 120,
+        },
+        correlationId: 'corr-456',
+      };
+
+      vi.mocked(apiClient.post).mockResolvedValue(mockResponse);
+
+      await generateScript({ topic: 'test' });
+
+      const callConfig = vi.mocked(apiClient.post).mock.calls[0][2];
+      expect(callConfig?.timeout).toBe(1260000); // 21 minutes
+    });
+
+    it('should allow empty scenes array with defensive validation', async () => {
+      const mockResponse = {
+        scriptId: 'script-789',
+        title: 'Empty Script',
+        scenes: [],
+        totalDurationSeconds: 0,
+        metadata: {
+          generatedAt: '2024-01-01T00:00:00Z',
+          providerName: 'RuleBased',
+          modelUsed: 'template-v1',
+          tokensUsed: 0,
+          estimatedCost: 0,
+          tier: 'Free',
+          generationTimeSeconds: 0.1,
+        },
+        correlationId: 'corr-789',
+      };
+
+      vi.mocked(apiClient.post).mockResolvedValue(mockResponse);
+
+      // Should not throw - defensive validation allows empty scenes to pass through
+      const result = await generateScript({ topic: 'test' });
       expect(result).toEqual(mockResponse);
     });
   });
