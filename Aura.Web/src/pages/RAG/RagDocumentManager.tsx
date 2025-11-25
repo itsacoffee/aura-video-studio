@@ -86,6 +86,12 @@ const useStyles = makeStyles({
     backgroundColor: tokens.colorPaletteRedBackground2,
     borderRadius: tokens.borderRadiusMedium,
   },
+  errorText: {
+    color: tokens.colorPaletteRedForeground1,
+  },
+  lastUpdatedValue: {
+    fontSize: tokens.fontSizeBase300,
+  },
 });
 
 const RagDocumentManager: FC = () => {
@@ -204,7 +210,7 @@ const RagDocumentManager: FC = () => {
 
       {error && (
         <div className={styles.errorBanner}>
-          <Text style={{ color: tokens.colorPaletteRedForeground1 }}>❌ {error}</Text>
+          <Text className={styles.errorText}>❌ {error}</Text>
           <Button
             appearance="subtle"
             icon={<Dismiss24Regular />}
@@ -229,7 +235,7 @@ const RagDocumentManager: FC = () => {
         </Card>
         <Card className={styles.statCard}>
           <Body1>Last Updated</Body1>
-          <Title3 style={{ fontSize: tokens.fontSizeBase300 }}>
+          <Title3 className={styles.lastUpdatedValue}>
             {statistics?.lastUpdated ? formatDate(statistics.lastUpdated) : 'Never'}
           </Title3>
         </Card>

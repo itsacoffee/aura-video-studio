@@ -1,5 +1,9 @@
 import { Switch, Text, tokens, makeStyles } from '@fluentui/react-components';
-import { DocumentSearch24Regular } from '@fluentui/react-icons';
+import {
+  DocumentSearch24Regular,
+  BookInformation24Regular,
+  CheckmarkCircle24Regular,
+} from '@fluentui/react-icons';
 import type { FC } from 'react';
 
 const useStyles = makeStyles({
@@ -25,11 +29,17 @@ const useStyles = makeStyles({
     marginLeft: tokens.spacingHorizontalXXL,
   },
   warningText: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalS,
     fontSize: tokens.fontSizeBase200,
     color: tokens.colorPaletteMarigoldForeground1,
     marginLeft: tokens.spacingHorizontalXXL,
   },
   successText: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalS,
     fontSize: tokens.fontSizeBase200,
     color: tokens.colorPaletteGreenForeground1,
     marginLeft: tokens.spacingHorizontalXXL,
@@ -58,15 +68,17 @@ export const RagToggle: FC<RagToggleProps> = ({ enabled, onChange, documentCount
       </div>
 
       {documentCount === 0 && (
-        <Text className={styles.warningText}>
-          📚 No documents indexed. Upload documents to enable RAG.
-        </Text>
+        <div className={styles.warningText}>
+          <BookInformation24Regular />
+          <Text>No documents indexed. Upload documents to enable RAG.</Text>
+        </div>
       )}
 
       {enabled && documentCount > 0 && (
-        <Text className={styles.successText}>
-          ✅ Script will be enhanced with relevant context from your knowledge base.
-        </Text>
+        <div className={styles.successText}>
+          <CheckmarkCircle24Regular />
+          <Text>Script will be enhanced with relevant context from your knowledge base.</Text>
+        </div>
       )}
     </div>
   );
