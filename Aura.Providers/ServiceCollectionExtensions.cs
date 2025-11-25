@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Net;
 using System.Net.Http;
 using Aura.Core.Configuration;
 using Aura.Core.Orchestrator;
@@ -52,6 +53,32 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<LlmProviderFactory>();
         services.TryAddSingleton<IKeyStore, KeyStore>();
         services.TryAddSingleton<Aura.Core.Services.Providers.LlmProviderSelector>();
+
+        // Register named HttpClient for Ollama with proper configuration for long-running requests
+        // Timeout set to 1200 seconds (20 minutes) to be longer than provider timeout (15 minutes)
+        // This ensures the HttpClient doesn't kill connections before the provider timeout is reached
+        // The default HttpClient timeout of 100 seconds causes "fails after a few minutes" issues
+        services.AddHttpClient("OllamaClient", client =>
+        {
+            // Must be longer than provider timeout (900s = 15 min) to prevent premature cancellation
+            client.Timeout = TimeSpan.FromMinutes(20); // 1200 seconds - 5 min buffer over provider timeout
+            client.DefaultRequestHeaders.Add("User-Agent", "AuraVideoStudio/1.0");
+            client.DefaultRequestHeaders.Add("Accept", "application/json");
+        })
+        .ConfigurePrimaryHttpMessageHandler(() =>
+        {
+            var handler = new HttpClientHandler
+            {
+                // Disable proxy for localhost connections
+                UseProxy = false,
+                UseDefaultCredentials = false,
+                AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate,
+                AllowAutoRedirect = true,
+                MaxAutomaticRedirections = 5
+            };
+            return handler;
+        })
+        .SetHandlerLifetime(TimeSpan.FromMinutes(25)); // Prevent connection pool exhaustion for long requests
 
         // Register individual LLM providers as keyed services
         // This allows direct resolution by provider name: sp.GetKeyedService<ILlmProvider>("OpenAI")
