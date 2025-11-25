@@ -166,7 +166,7 @@ const useStyles = makeStyles({
     left: 0,
     right: 0,
     height: '3px',
-    background: `linear-gradient(90deg, ${tokens.colorBrandForeground1}, ${tokens.colorPalettePurpleForeground1})`,
+    background: `linear-gradient(90deg, ${tokens.colorBrandForeground1}, ${tokens.colorPalettePurpleForeground2})`,
     opacity: 0.7,
   },
   transcreationHeader: {

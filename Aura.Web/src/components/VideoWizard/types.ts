@@ -16,6 +16,7 @@ export interface StyleData {
   imageStyle?: string;
   imageQuality?: number;
   imageAspectRatio?: string;
+  tone?: 'conversational' | 'professional' | 'casual' | 'formal' | 'energetic' | 'calm';
 }
 
 export interface ScriptScene {

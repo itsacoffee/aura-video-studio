@@ -63,7 +63,7 @@ public class CompositeLlmProvider : ILlmProvider
             "prompt completion",
             ct,
             DefaultPreferredTier,
-            result => string.IsNullOrWhiteSpace(result));
+            result => string.IsNullOrWhiteSpace(result) || result.Trim() == "{}" || result.Trim() == "[]" || result.Trim().Length < 10);
     }
 
     public Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(

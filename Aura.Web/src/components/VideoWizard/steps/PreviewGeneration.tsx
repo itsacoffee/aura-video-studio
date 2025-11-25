@@ -1153,7 +1153,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
           
           // Provide more helpful error messages
           if (errorMessage.includes('not found') || errorMessage.includes('not available')) {
-            errorMessage = `TTS provider "${apiProvider}" is not available. Please select a different provider in the TTS settings.`;
+            errorMessage = `TTS provider is not available. Please select a different provider in the TTS settings.`;
           } else if (errorMessage.includes('No TTS provider')) {
             errorMessage = 'No TTS provider selected. Please select a TTS provider in the settings above.';
           } else if (errorMessage.includes('Failed to generate')) {
@@ -1351,6 +1351,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
                         <Option 
                           key={provider.name} 
                           value={provider.name}
+                          text={provider.name}
                           disabled={!isAvailable}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
@@ -1392,7 +1393,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
                     disabled={!selectedTtsProvider || ttsVoices.length === 0}
                   >
                     {ttsVoices.map((voice) => (
-                      <Option key={voice.name} value={voice.name}>
+                      <Option key={voice.name} value={voice.name} text={voice.name}>
                         {voice.name}
                         {voice.gender && ` (${voice.gender})`}
                         {voice.languageCode && ` - ${voice.languageCode}`}

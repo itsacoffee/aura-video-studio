@@ -157,11 +157,16 @@ public class RuleBasedLlmProvider : ILlmProvider
 
     public Task<string> CompleteAsync(string prompt, CancellationToken ct)
     {
-        _logger.LogWarning("RuleBasedLlmProvider.CompleteAsync: Raw prompt completion not supported for rule-based provider");
+        _logger.LogWarning("RuleBasedLlmProvider.CompleteAsync: Raw prompt completion not supported for rule-based provider. " +
+            "This provider only supports structured script generation via DraftScriptAsync. " +
+            "For prompt completion, use an AI provider like Ollama, OpenAI, or Gemini.");
         
         // For rule-based provider, we can't meaningfully process arbitrary prompts
-        // Return an error response that will trigger the orchestration layer to handle appropriately
-        return Task.FromResult("{}");
+        // Throw an exception to signal that this provider cannot handle this operation
+        // This will trigger the fallback chain in CompositeLlmProvider
+        throw new NotSupportedException(
+            "RuleBased provider does not support raw prompt completion. " +
+            "Please ensure Ollama or another AI provider is running and configured.");
     }
 
     public Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
