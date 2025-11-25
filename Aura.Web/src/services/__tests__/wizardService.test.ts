@@ -3,7 +3,8 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import * as apiClient from './api/apiClient';
+import * as apiClient from '../api/apiClient';
+import * as ollamaService from '../api/ollamaService';
 import {
   storeBrief,
   fetchAvailableVoices,
@@ -13,25 +14,31 @@ import {
   startFinalRendering,
   saveWizardState,
   loadWizardState,
+  generateScriptWithProgress,
   type WizardBriefData,
   type WizardStyleData,
   type WizardScriptData,
-} from './wizardService';
+} from '../wizardService';
 
 // Mock the apiClient module
-vi.mock('./api/apiClient', () => ({
+vi.mock('../api/apiClient', () => ({
   post: vi.fn(),
   get: vi.fn(),
   postWithTimeout: vi.fn(),
 }));
 
 // Mock loggingService
-vi.mock('./loggingService', () => ({
+vi.mock('../loggingService', () => ({
   loggingService: {
     info: vi.fn(),
     debug: vi.fn(),
     error: vi.fn(),
   },
+}));
+
+// Mock ollamaService
+vi.mock('../api/ollamaService', () => ({
+  streamGeneration: vi.fn(),
 }));
 
 describe('wizardService', () => {
@@ -215,7 +222,7 @@ describe('wizardService', () => {
           brief: mockBriefData,
           style: mockStyleData,
         },
-        120000,
+        300000, // 5 minute timeout for Ollama/local models
         undefined
       );
       expect(result.jobId).toBe('job-123');
@@ -385,6 +392,103 @@ describe('wizardService', () => {
       expect(apiClient.get).toHaveBeenCalledWith('/api/wizard/load-state/wizard-123', undefined);
       expect(result.currentStep).toBe(3);
       expect(result.brief.topic).toBe('Introduction to AI');
+    });
+  });
+
+  describe('generateScriptWithProgress', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('should stream script generation with progress events', async () => {
+      const events: ollamaService.StreamingScriptEvent[] = [];
+      const mockAccumulatedContent =
+        'Scene 1: Welcome to our video.\n\nScene 2: Let us explore the topic.';
+
+      // Mock the streamGeneration function
+      vi.mocked(ollamaService.streamGeneration).mockImplementation(async (_request, onProgress) => {
+        // Simulate init event
+        onProgress({
+          eventType: 'init',
+          providerName: 'Ollama',
+          isLocal: true,
+          expectedFirstTokenMs: 1000,
+          expectedTokensPerSec: 20,
+          costPer1KTokens: null,
+          supportsStreaming: true,
+        });
+
+        // Simulate chunk events
+        onProgress({
+          eventType: 'chunk',
+          content: 'Scene 1: ',
+          accumulatedContent: 'Scene 1: ',
+          tokenIndex: 1,
+        });
+
+        onProgress({
+          eventType: 'chunk',
+          content: 'Welcome to our video.',
+          accumulatedContent: 'Scene 1: Welcome to our video.',
+          tokenIndex: 2,
+        });
+
+        // Simulate complete event
+        onProgress({
+          eventType: 'complete',
+          content: '',
+          accumulatedContent: mockAccumulatedContent,
+          tokenCount: 15,
+          metadata: {
+            totalTokens: 15,
+            estimatedCost: null,
+            tokensPerSecond: 20,
+            isLocalModel: true,
+            modelName: 'llama2',
+            timeToFirstTokenMs: 500,
+            totalDurationMs: 750,
+            finishReason: 'stop',
+          },
+        });
+
+        return mockAccumulatedContent;
+      });
+
+      const onProgress = (event: ollamaService.StreamingScriptEvent) => events.push(event);
+
+      const result = await generateScriptWithProgress(mockBriefData, mockStyleData, onProgress);
+
+      expect(events.length).toBeGreaterThan(0);
+      expect(events[events.length - 1].eventType).toBe('complete');
+      expect(result.script).toBe(mockAccumulatedContent);
+      expect(result.scenes.length).toBeGreaterThan(0);
+      expect(result.jobId).toBeDefined();
+    });
+
+    it('should handle error events from streaming', async () => {
+      const events: ollamaService.StreamingScriptEvent[] = [];
+
+      // Mock streamGeneration to throw an error
+      vi.mocked(ollamaService.streamGeneration).mockRejectedValueOnce(new Error('Stream failed'));
+
+      const onProgress = (event: ollamaService.StreamingScriptEvent) => events.push(event);
+
+      await expect(
+        generateScriptWithProgress(mockBriefData, mockStyleData, onProgress)
+      ).rejects.toThrow('Stream failed');
+    });
+
+    it('should throw error when no script content received', async () => {
+      // Mock streamGeneration to complete without any content
+      vi.mocked(ollamaService.streamGeneration).mockImplementation(async () => {
+        return '';
+      });
+
+      const onProgress = vi.fn();
+
+      await expect(
+        generateScriptWithProgress(mockBriefData, mockStyleData, onProgress)
+      ).rejects.toThrow('No script content received from streaming generation');
     });
   });
 });

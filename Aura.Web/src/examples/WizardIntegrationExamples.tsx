@@ -8,11 +8,12 @@
 import { Button, Spinner, MessageBar } from '@fluentui/react-components';
 import { useState, useCallback } from 'react';
 import type { FC } from 'react';
+import type { StreamingScriptEvent } from '@/services/api/ollamaService';
 import { loggingService as logger } from '@/services/loggingService';
 import {
   storeBrief,
   fetchAvailableVoices,
-  generateScript,
+  generateScriptWithProgress,
   startFinalRendering,
   type WizardBriefData,
   type WizardStyleData,
@@ -144,32 +145,49 @@ export const StyleStepExample: FC = () => {
   );
 };
 
+/** Maximum number of characters to show in the live preview */
+const MAX_PREVIEW_LENGTH = 500;
+
 /**
- * Example: Step 3 - Generating Script
+ * Example: Step 3 - Generating Script with SSE Streaming
  */
 export const ScriptStepExample: FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [script, setScript] = useState<string | null>(null);
+  const [progress, setProgress] = useState<string>('');
 
   const handleGenerateScript = useCallback(
     async (briefData: WizardBriefData, styleData: WizardStyleData) => {
       setLoading(true);
       setError(null);
       setScript(null);
+      setProgress('Initializing...');
 
       try {
-        const result = await generateScript(briefData, styleData);
+        const result = await generateScriptWithProgress(
+          briefData,
+          styleData,
+          (event: StreamingScriptEvent) => {
+            // Update progress UI in real-time
+            if (event.eventType === 'chunk') {
+              setProgress(`Generating... (${event.tokenIndex || 0} tokens)`);
+              // Show live preview of accumulated content
+              setScript(event.accumulatedContent || '');
+            } else if (event.eventType === 'complete') {
+              setProgress('Complete!');
+            } else if (event.eventType === 'error') {
+              setProgress(`Error: ${event.errorMessage}`);
+            }
+          }
+        );
 
-        logger.info('Script generated', 'ScriptStep', 'handleGenerateScript', {
+        logger.info('Script generated via SSE', 'ScriptStep', 'handleGenerateScript', {
           jobId: result.jobId,
           sceneCount: result.scenes.length,
         });
 
         setScript(result.script);
-
-        // Optionally start SSE streaming for script generation progress
-        // startStreaming(result.jobId);
       } catch (error: unknown) {
         const errorObj = error instanceof Error ? error : new Error(String(error));
         const errorMessage = errorObj.message || 'Failed to generate script';
@@ -213,7 +231,20 @@ export const ScriptStepExample: FC = () => {
         Generate Script
       </Button>
 
-      {script && (
+      {loading && (
+        <div className="progress-indicator">
+          <Spinner />
+          <p>{progress}</p>
+          {script && (
+            <div className="live-preview">
+              <h4>Live Preview:</h4>
+              <pre>{script.substring(0, MAX_PREVIEW_LENGTH)}...</pre>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!loading && script && (
         <div>
           <h3>Generated Script:</h3>
           <pre>{script}</pre>
