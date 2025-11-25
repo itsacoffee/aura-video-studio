@@ -364,8 +364,11 @@ public class OllamaLlmProvider : ILlmProvider
                     // Validate response is not empty
                     if (string.IsNullOrWhiteSpace(result))
                     {
+                        var responsePreview = string.IsNullOrEmpty(responseJson) 
+                            ? "(empty)" 
+                            : responseJson.Substring(0, Math.Min(500, responseJson.Length));
                         _logger.LogWarning("Ollama CompleteAsync returned empty response. Raw response: {Response}",
-                            responseJson.Substring(0, Math.Min(500, responseJson.Length)));
+                            responsePreview);
                         throw new InvalidOperationException("Ollama returned an empty response for prompt completion");
                     }
                     
