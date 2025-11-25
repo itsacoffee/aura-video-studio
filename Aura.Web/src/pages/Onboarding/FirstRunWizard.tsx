@@ -883,10 +883,9 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
   };
 
   const handleValidateApiKey = async (provider: string) => {
-    const apiKey = state.apiKeys[provider];
-    if (apiKey) {
-      await validateApiKeyThunk(provider, apiKey, dispatch);
-    }
+    const apiKey = state.apiKeys[provider] || '';
+    // Ollama doesn't require an API key, so we can validate it with an empty string
+    await validateApiKeyThunk(provider, apiKey, dispatch);
   };
 
   const handleSkipValidation = (provider: string) => {

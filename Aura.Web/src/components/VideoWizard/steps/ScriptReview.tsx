@@ -516,7 +516,7 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
       return parenIndex > 0 ? name.substring(0, parenIndex).trim() : name.trim();
     };
     const isOllama = selectedProvider && normalizeProviderName(selectedProvider) === 'Ollama';
-    
+
     if (!isOllama) return;
 
     setIsRefreshingModels(true);
@@ -524,19 +524,19 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
       // Reload providers to get fresh Ollama model list
       const response = await listProviders();
       setProviders(response.providers);
-      
+
       // Update selected model if current one is no longer available
       const ollamaProvider = response.providers.find((p) => {
         const normalized = normalizeProviderName(p.name);
         return normalized === 'Ollama';
       });
-      
+
       if (ollamaProvider) {
         if (!ollamaProvider.availableModels.includes(selectedModel || '')) {
           setSelectedModel(ollamaProvider.defaultModel);
         }
       }
-      
+
       console.info('[ScriptReview] Ollama models refreshed');
     } catch (error) {
       console.error('Failed to refresh Ollama models:', error);
@@ -570,7 +570,21 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
     }
 
     setIsGenerating(true);
+    const startTime = Date.now();
+
     try {
+      // Safe logging - wrapped to prevent any logging errors from breaking the application
+      try {
+        console.log('[ScriptReview] Starting script generation', {
+          topic: briefData.topic,
+          provider: selectedProvider,
+          model: selectedModel,
+          timestamp: new Date().toISOString(),
+        });
+      } catch {
+        // Ignore logging errors - they should never happen but we don't want them to break the app
+      }
+
       // Normalize provider name to strip model info before sending to API
       const normalizeProviderName = (name: string | undefined): string | undefined => {
         if (!name || name === 'Auto') return undefined;
@@ -588,7 +602,7 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
       // This ensures the backend uses the exact model the user requested
       const shouldIncludeModel = selectedModel && currentProvider;
 
-      const response = await generateScript({
+      const requestPayload = {
         topic: briefData.topic,
         audience: briefData.targetAudience || 'General audience',
         goal: briefData.keyMessage || 'Create an engaging video',
@@ -608,11 +622,88 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
         ...(llmMaxTokens !== undefined && { maxTokens: llmMaxTokens }),
         ...(llmFrequencyPenalty !== undefined && { frequencyPenalty: llmFrequencyPenalty }),
         ...(llmPresencePenalty !== undefined && { presencePenalty: llmPresencePenalty }),
-      });
+      };
+
+      // Safe logging
+      try {
+        console.log('[ScriptReview] Sending script generation request', {
+          payload: requestPayload,
+          timestamp: new Date().toISOString(),
+        });
+      } catch {
+        // Ignore logging errors
+      }
+
+      const response = await generateScript(requestPayload);
+
+      const elapsedTime = Date.now() - startTime;
+      // Safe logging
+      try {
+        console.log('[ScriptReview] Script generation request completed', {
+          elapsedTimeMs: elapsedTime,
+          elapsedTimeSeconds: (elapsedTime / 1000).toFixed(1),
+          responseReceived: !!response,
+          responseType: typeof response,
+          hasScenes: !!response?.scenes,
+          sceneCount: response?.scenes?.length ?? 0,
+          responseKeys: response ? Object.keys(response) : [],
+          timestamp: new Date().toISOString(),
+        });
+      } catch {
+        // Ignore logging errors
+      }
 
       // Validate response structure
-      if (!response || !response.scenes || !Array.isArray(response.scenes) || response.scenes.length === 0) {
+      if (!response) {
+        try {
+          console.error('[ScriptReview] Response is null or undefined');
+        } catch {
+          // Ignore logging errors
+        }
+        throw new Error('No response received from server. Please check your connection and try again.');
+      }
+
+      if (!response.scenes) {
+        try {
+          console.error('[ScriptReview] Response missing scenes property', { response });
+        } catch {
+          // Ignore logging errors
+        }
+        throw new Error('Invalid response from server: Response is missing scenes property. Please try again.');
+      }
+
+      if (!Array.isArray(response.scenes)) {
+        try {
+          console.error('[ScriptReview] Response scenes is not an array', {
+            scenes: response.scenes,
+            scenesType: typeof response.scenes,
+            response
+          });
+        } catch {
+          // Ignore logging errors
+        }
+        throw new Error('Invalid response from server: Scenes property is not an array. Please try again.');
+      }
+
+      if (response.scenes.length === 0) {
+        try {
+          console.error('[ScriptReview] Response has empty scenes array', { response });
+        } catch {
+          // Ignore logging errors
+        }
         throw new Error('Invalid response from server: Script was generated but contains no scenes. Please try again.');
+      }
+
+      // Safe logging
+      try {
+        console.log('[ScriptReview] Response validation passed', {
+          sceneCount: response.scenes.length,
+          title: response.title,
+          totalDuration: response.totalDurationSeconds,
+          provider: response.metadata?.providerName,
+        });
+      } catch {
+        // Ignore logging errors
       }
 
       if (!response.metadata || !response.metadata.providerName) {
@@ -642,7 +733,20 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
         message: `Generated ${response.scenes.length} scenes using ${response.metadata?.providerName || 'AI'}. Total duration: ${Math.floor(response.totalDurationSeconds / 60)}:${String(response.totalDurationSeconds % 60).padStart(2, '0')}`,
       });
     } catch (error) {
-      console.error('Script generation failed:', error);
+      const elapsedTime = Date.now() - startTime;
+      // Safe error logging
+      try {
+        console.error('[ScriptReview] Script generation failed', {
+          error,
+          errorType: error && typeof error === 'object' && 'constructor' in error ? (error as { constructor?: { name?: string } }).constructor?.name : undefined,
+          errorMessage: error instanceof Error ? error.message : String(error),
+          elapsedTimeMs: elapsedTime,
+          elapsedTimeSeconds: (elapsedTime / 1000).toFixed(1),
+          timestamp: new Date().toISOString(),
+        });
+      } catch {
+        // Ignore logging errors - continue with error handling
+      }
 
       let errorTitle = 'Script Generation Failed';
       let errorMessage = 'Failed to generate script. Please check your provider configuration and try again.';
@@ -651,7 +755,7 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
       if (error && typeof error === 'object') {
         // Check if it's an Axios timeout error
         const axiosError = error as { code?: string; message?: string; response?: { status?: number; data?: { detail?: string; errors?: Record<string, string[]>; message?: string } } };
-        
+
         if (axiosError.code === 'ECONNABORTED' || axiosError.message?.toLowerCase()?.includes('timeout')) {
           errorTitle = 'Request Timeout';
           errorMessage = 'Script generation took too long (over 6 minutes). The model may be processing a complex request. Please try again with a shorter topic or simpler prompt, or check if Ollama is responding properly.';
@@ -682,19 +786,57 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
         errorMessage = error.message;
       }
 
-      // Log additional details for debugging
-      console.error('Script generation error details:', {
-        error,
-        errorType: error?.constructor?.name,
-        errorMessage: error instanceof Error ? error.message : String(error),
-      });
+      // Safe logging - additional details for debugging
+      try {
+        console.error('[ScriptReview] Script generation error details:', {
+          error,
+          errorType: error && typeof error === 'object' && 'constructor' in error ? (error as { constructor?: { name?: string } }).constructor?.name : undefined,
+          errorMessage: error instanceof Error ? error.message : String(error),
+          errorStack: error instanceof Error ? error.stack : undefined,
+          isAxiosError: error && typeof error === 'object' && 'isAxiosError' in error,
+          axiosErrorCode: error && typeof error === 'object' && 'code' in error ? (error as { code?: string }).code : undefined,
+          axiosResponseStatus: error && typeof error === 'object' && 'response' in error
+            ? (error as { response?: { status?: number } }).response?.status
+            : undefined,
+        });
+      } catch {
+        // Ignore logging errors - continue with error handling
+      }
 
-      showFailureToast({
-        title: errorTitle,
-        message: errorMessage,
-      });
+      // Wrap error handling in try-catch to prevent errors in error handling from breaking the app
+      try {
+        showFailureToast({
+          title: errorTitle,
+          message: errorMessage,
+        });
+      } catch (unexpectedError) {
+        // Catch any errors in the error handling itself (e.g., toast service failure)
+        // Safe logging - even in error handler
+        try {
+          console.error('[ScriptReview] Unexpected error in error handler', unexpectedError);
+        } catch {
+          // Ignore logging errors - at least try to show a basic toast
+        }
+        // Try to show a fallback error message
+        try {
+          showFailureToast({
+            title: 'Script Generation Failed',
+            message: 'An unexpected error occurred. Please check the console for details.',
+          });
+        } catch {
+          // If even the fallback fails, at least we tried
+        }
+      }
     } finally {
       setIsGenerating(false);
+      // Safe logging
+      try {
+        console.log('[ScriptReview] Script generation finished, isGenerating set to false', {
+          timestamp: new Date().toISOString(),
+        });
+      } catch {
+        // Ignore logging errors
+      }
     }
   };
 

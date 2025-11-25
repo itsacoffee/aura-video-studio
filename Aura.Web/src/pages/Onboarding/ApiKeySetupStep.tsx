@@ -809,25 +809,80 @@ export function ApiKeySetupStep({
                               </>
                             ) : provider.id === 'ollama' ? (
                               <>
-                                <Checkmark24Regular
-                                  style={{ color: tokens.colorPaletteGreenForeground1 }}
-                                />
-                                <Text size={300}>Install and run Ollama locally</Text>
+                                {validationStatus[provider.id] === 'valid' ? (
+                                  <>
+                                    <Checkmark24Regular
+                                      style={{ color: tokens.colorPaletteGreenForeground1 }}
+                                    />
+                                    <Text size={300}>
+                                      {accountInfo[provider.id] || 'Ollama is running and validated'}
+                                    </Text>
+                                  </>
+                                ) : validationStatus[provider.id] === 'invalid' ? (
+                                  <>
+                                    <Warning24Regular
+                                      style={{ color: tokens.colorPaletteRedForeground1 }}
+                                    />
+                                    <Text size={300}>
+                                      {_validationErrors[provider.id] || 'Ollama validation failed'}
+                                    </Text>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Warning24Regular
+                                      style={{ color: tokens.colorPaletteYellowForeground1 }}
+                                    />
+                                    <Text size={300}>Install and run Ollama locally</Text>
+                                  </>
+                                )}
                               </>
                             ) : null}
                           </div>
                         )}
 
                         <div className={styles.localActions}>
-                          <Button
-                            appearance="primary"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onLocalProviderReady?.(provider.id);
-                            }}
-                          >
-                            Mark as Ready
-                          </Button>
+                          {provider.id === 'ollama' ? (
+                            <>
+                              <Button
+                                appearance="primary"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleValidate(provider.id);
+                                }}
+                                disabled={validationStatus[provider.id] === 'validating'}
+                              >
+                                {validationStatus[provider.id] === 'validating'
+                                  ? 'Validating...'
+                                  : validationStatus[provider.id] === 'valid'
+                                    ? 'Revalidate'
+                                    : 'Validate'}
+                              </Button>
+                              <Button
+                                appearance="secondary"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onLocalProviderReady?.(provider.id);
+                                }}
+                              >
+                                Mark as Ready
+                              </Button>
+                            </>
+                          ) : (
+                            <Button
+                              appearance="primary"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onLocalProviderReady?.(provider.id);
+                              }}
+                              disabled={
+                                (provider.id === 'piper' || provider.id === 'mimic3') &&
+                                !localTtsStatus[provider.id as 'piper' | 'mimic3']?.isAvailable &&
+                                !checkingTts[provider.id as 'piper' | 'mimic3']
+                              }
+                            >
+                              Mark as Ready
+                            </Button>
+                          )}
                           {provider.localSetup?.downloadUrl && (
                             <Button
                               appearance="secondary"

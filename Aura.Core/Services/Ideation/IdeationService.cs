@@ -33,6 +33,8 @@ public class IdeationService
 
     private const int MinConceptCount = 3;
     private const int MaxConceptCount = 9;
+    private const int MaxTopicLength = 500;
+    private const int MaxPromptLength = 10000;
 
     public IdeationService(
         ILogger<IdeationService> logger,
@@ -61,7 +63,21 @@ public class IdeationService
         BrainstormRequest request,
         CancellationToken ct = default)
     {
-        _logger.LogInformation("Brainstorming concepts for topic: {Topic}", request.Topic);
+        // Input validation
+        ArgumentNullException.ThrowIfNull(request, nameof(request));
+        if (string.IsNullOrWhiteSpace(request.Topic))
+        {
+            throw new ArgumentException("Topic cannot be null or empty", nameof(request));
+        }
+
+        // Validate topic length
+        if (request.Topic.Length > MaxTopicLength)
+        {
+            throw new ArgumentException($"Topic length exceeds maximum of {MaxTopicLength} characters", nameof(request));
+        }
+
+        _logger.LogInformation("Brainstorming concepts for topic: {Topic} (length: {Length})", 
+            request.Topic, request.Topic.Length);
 
         var desiredConceptCount = Math.Clamp(
             request.ConceptCount ?? MinConceptCount,
@@ -94,34 +110,48 @@ public class IdeationService
             }
         }
 
-        var prompt = await BuildBrainstormPromptAsync(request, desiredConceptCount, ragContext, ct).ConfigureAwait(false);
+        try
+        {
+            var prompt = await BuildBrainstormPromptAsync(request, desiredConceptCount, ragContext, ct).ConfigureAwait(false);
+            
+            // Validate prompt length
+            if (prompt.Length > MaxPromptLength)
+            {
+                _logger.LogWarning("Generated prompt exceeds maximum length ({Length} > {MaxLength}), truncating", 
+                    prompt.Length, MaxPromptLength);
+                prompt = prompt.Substring(0, MaxPromptLength);
+            }
 
-        var brief = new Brief(
-            Topic: prompt,
-            Audience: request.Audience ?? "General",
-            Goal: "Generate creative video concept variations",
-            Tone: request.Tone ?? "Professional",
-            Language: "en-US",
-            Aspect: Aspect.Widescreen16x9
-        );
+            var response = await GenerateWithLlmAsync(prompt, ct).ConfigureAwait(false);
 
-        var planSpec = new PlanSpec(
-            TargetDuration: TimeSpan.FromSeconds(request.TargetDuration ?? 60),
-            Pacing: Pacing.Conversational,
-            Density: Density.Balanced,
-            Style: "Creative"
-        );
+            if (string.IsNullOrWhiteSpace(response))
+            {
+                _logger.LogError("LLM returned empty response for brainstorming topic: {Topic}", request.Topic);
+                throw new InvalidOperationException("LLM provider returned an empty response. Please try again.");
+            }
 
-        var response = await GenerateWithLlmAsync(brief, planSpec, ct).ConfigureAwait(false);
+            // Parse the response into structured concepts
+            var concepts = ParseBrainstormResponse(response, request.Topic, desiredConceptCount);
 
-        // Parse the response into structured concepts
-        var concepts = ParseBrainstormResponse(response, request.Topic, desiredConceptCount);
+            _logger.LogInformation("Successfully generated {Count} concepts for topic: {Topic}", 
+                concepts.Count, request.Topic);
 
-        return new BrainstormResponse(
-            Concepts: concepts,
-            OriginalTopic: request.Topic,
-            GeneratedAt: DateTime.UtcNow
-        );
+            return new BrainstormResponse(
+                Concepts: concepts,
+                OriginalTopic: request.Topic,
+                GeneratedAt: DateTime.UtcNow
+            );
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Brainstorming operation was cancelled for topic: {Topic}", request.Topic);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error brainstorming concepts for topic: {Topic}", request.Topic);
+            throw;
+        }
     }
 
     /// <summary>
@@ -131,52 +161,91 @@ public class IdeationService
         ExpandBriefRequest request,
         CancellationToken ct = default)
     {
-        _logger.LogInformation("Expanding brief for project: {ProjectId}", request.ProjectId);
-
-        var prompt = BuildExpandBriefPrompt(request);
-
-        var brief = new Brief(
-            Topic: prompt,
-            Audience: request.CurrentBrief.Audience ?? "General",
-            Goal: "Expand and clarify video brief",
-            Tone: "Helpful",
-            Language: "en-US",
-            Aspect: Aspect.Widescreen16x9
-        );
-
-        var planSpec = new PlanSpec(
-            TargetDuration: TimeSpan.FromSeconds(60),
-            Pacing: Pacing.Conversational,
-            Density: Density.Balanced,
-            Style: "Conversational"
-        );
-
-        var response = await GenerateWithLlmAsync(brief, planSpec, ct).ConfigureAwait(false);
-
-        // Store in conversation history
-        if (!string.IsNullOrEmpty(request.UserMessage))
+        // Input validation
+        ArgumentNullException.ThrowIfNull(request, nameof(request));
+        if (string.IsNullOrWhiteSpace(request.ProjectId))
         {
-            await _conversationManager.AddMessageAsync(
-                request.ProjectId,
-                "user",
-                request.UserMessage,
-                ct: ct).ConfigureAwait(false);
+            throw new ArgumentException("ProjectId cannot be null or empty", nameof(request));
+        }
+        ArgumentNullException.ThrowIfNull(request.CurrentBrief, nameof(request.CurrentBrief));
+        if (string.IsNullOrWhiteSpace(request.CurrentBrief.Topic))
+        {
+            throw new ArgumentException("CurrentBrief.Topic cannot be null or empty", nameof(request));
         }
 
-        await _conversationManager.AddMessageAsync(
-            request.ProjectId,
-            "assistant",
-            response,
-            ct: ct).ConfigureAwait(false);
+        _logger.LogInformation("Expanding brief for project: {ProjectId}", request.ProjectId);
 
-        // Parse response for questions or updated brief
-        var (questions, aiResponse) = ParseExpandBriefResponse(response);
+        try
+        {
+            var prompt = BuildExpandBriefPrompt(request);
+            
+            if (prompt.Length > MaxPromptLength)
+            {
+                _logger.LogWarning("Generated prompt exceeds maximum length ({Length} > {MaxLength}), truncating", 
+                    prompt.Length, MaxPromptLength);
+                prompt = prompt.Substring(0, MaxPromptLength);
+            }
 
-        return new ExpandBriefResponse(
-            UpdatedBrief: null,  // Will be implemented with more sophisticated parsing
-            Questions: questions,
-            AiResponse: aiResponse
-        );
+            var response = await GenerateWithLlmAsync(prompt, ct).ConfigureAwait(false);
+
+            if (string.IsNullOrWhiteSpace(response))
+            {
+                _logger.LogError("LLM returned empty response for expand brief, project: {ProjectId}", request.ProjectId);
+                throw new InvalidOperationException("LLM provider returned an empty response. Please try again.");
+            }
+
+            // Store in conversation history
+            if (!string.IsNullOrEmpty(request.UserMessage))
+            {
+                try
+                {
+                    await _conversationManager.AddMessageAsync(
+                        request.ProjectId,
+                        "user",
+                        request.UserMessage,
+                        ct: ct).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to store user message in conversation history, continuing");
+                }
+            }
+
+            try
+            {
+                await _conversationManager.AddMessageAsync(
+                    request.ProjectId,
+                    "assistant",
+                    response,
+                    ct: ct).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to store assistant message in conversation history, continuing");
+            }
+
+            // Parse response for questions or updated brief
+            var (questions, aiResponse) = ParseExpandBriefResponse(response);
+
+            _logger.LogInformation("Successfully expanded brief for project: {ProjectId}, generated {QuestionCount} questions", 
+                request.ProjectId, questions?.Count ?? 0);
+
+            return new ExpandBriefResponse(
+                UpdatedBrief: null,  // Will be implemented with more sophisticated parsing
+                Questions: questions,
+                AiResponse: aiResponse
+            );
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Expand brief operation was cancelled for project: {ProjectId}", request.ProjectId);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error expanding brief for project: {ProjectId}", request.ProjectId);
+            throw;
+        }
     }
 
     /// <summary>
@@ -186,18 +255,47 @@ public class IdeationService
         TrendingTopicsRequest request,
         CancellationToken ct = default)
     {
-        _logger.LogInformation("Analyzing trending topics for niche: {Niche}", request.Niche ?? "general");
+        // Input validation
+        ArgumentNullException.ThrowIfNull(request, nameof(request));
 
-        var topics = await _trendingTopicsService.GetTrendingTopicsAsync(
-            request.Niche,
-            request.MaxResults ?? 10,
-            forceRefresh: false,
-            ct).ConfigureAwait(false);
+        // Validate niche length if provided
+        if (!string.IsNullOrWhiteSpace(request.Niche) && request.Niche.Length > MaxTopicLength)
+        {
+            throw new ArgumentException($"Niche length exceeds maximum of {MaxTopicLength} characters", nameof(request));
+        }
 
-        return new TrendingTopicsResponse(
-            Topics: topics,
-            AnalyzedAt: DateTime.UtcNow
-        );
+        // Validate MaxResults
+        var maxResults = Math.Clamp(request.MaxResults ?? 10, 1, 100);
+
+        _logger.LogInformation("Analyzing trending topics for niche: {Niche} (max results: {MaxResults})", 
+            request.Niche ?? "general", maxResults);
+
+        try
+        {
+            var topics = await _trendingTopicsService.GetTrendingTopicsAsync(
+                request.Niche,
+                maxResults,
+                forceRefresh: false,
+                ct).ConfigureAwait(false);
+
+            _logger.LogInformation("Successfully retrieved {Count} trending topics for niche: {Niche}", 
+                topics.Count, request.Niche ?? "general");
+
+            return new TrendingTopicsResponse(
+                Topics: topics,
+                AnalyzedAt: DateTime.UtcNow
+            );
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Get trending topics operation was cancelled for niche: {Niche}", request.Niche ?? "general");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting trending topics for niche: {Niche}", request.Niche ?? "general");
+            throw;
+        }
     }
 
     /// <summary>
@@ -207,7 +305,19 @@ public class IdeationService
         GapAnalysisRequest request,
         CancellationToken ct = default)
     {
+        // Input validation
+        ArgumentNullException.ThrowIfNull(request, nameof(request));
+
+        // Validate niche length if provided
+        if (!string.IsNullOrWhiteSpace(request.Niche) && request.Niche.Length > MaxTopicLength)
+        {
+            throw new ArgumentException($"Niche length exceeds maximum of {MaxTopicLength} characters", nameof(request));
+        }
+
         _logger.LogInformation("Analyzing content gaps for niche: {Niche}", request.Niche ?? "general");
+
+        try
+        {
 
         // Gather real-time competitive intelligence if web search is available
         ContentGapAnalysisResult? webGapAnalysis = null;
@@ -236,63 +346,74 @@ public class IdeationService
             }
         }
 
-        // Build enhanced prompt with web intelligence if available
-        var prompt = BuildGapAnalysisPrompt(request, webGapAnalysis);
-
-        var brief = new Brief(
-            Topic: prompt,
-            Audience: "Content Creators",
-            Goal: "Identify content gaps and opportunities",
-            Tone: "Analytical",
-            Language: "en-US",
-            Aspect: Aspect.Widescreen16x9
-        );
-
-        var planSpec = new PlanSpec(
-            TargetDuration: TimeSpan.FromSeconds(60),
-            Pacing: Pacing.Conversational,
-            Density: Density.Balanced,
-            Style: "Analytical"
-        );
-
-        var response = await GenerateWithLlmAsync(brief, planSpec, ct).ConfigureAwait(false);
-
-        var (missingTopics, opportunities, oversaturated, uniqueAngles) =
-            ParseGapAnalysisResponse(response);
-
-        // Merge web intelligence results with LLM analysis
-        if (webGapAnalysis != null)
-        {
-            missingTopics = missingTopics
-                .Concat(webGapAnalysis.GapKeywords)
-                .Distinct()
-                .ToList();
+            // Build enhanced prompt with web intelligence if available
+            var prompt = BuildGapAnalysisPrompt(request, webGapAnalysis);
             
-            oversaturated = oversaturated
-                .Concat(webGapAnalysis.OversaturatedTopics)
-                .Distinct()
-                .ToList();
-            
-            // Merge unique angles - webGapAnalysis.UniqueAngles is List<string>, uniqueAngles is Dictionary<string, List<string>>
-            foreach (var angle in webGapAnalysis.UniqueAngles)
+            if (prompt.Length > MaxPromptLength)
             {
-                if (!uniqueAngles.ContainsKey("Web Intelligence"))
+                _logger.LogWarning("Generated prompt exceeds maximum length ({Length} > {MaxLength}), truncating", 
+                    prompt.Length, MaxPromptLength);
+                prompt = prompt.Substring(0, MaxPromptLength);
+            }
+
+            var response = await GenerateWithLlmAsync(prompt, ct).ConfigureAwait(false);
+
+            if (string.IsNullOrWhiteSpace(response))
+            {
+                _logger.LogError("LLM returned empty response for gap analysis, niche: {Niche}", request.Niche ?? "general");
+                throw new InvalidOperationException("LLM provider returned an empty response. Please try again.");
+            }
+
+            var (missingTopics, opportunities, oversaturated, uniqueAngles) =
+                ParseGapAnalysisResponse(response);
+
+            // Merge web intelligence results with LLM analysis
+            if (webGapAnalysis != null)
+            {
+                missingTopics = missingTopics
+                    .Concat(webGapAnalysis.GapKeywords)
+                    .Distinct()
+                    .ToList();
+                
+                oversaturated = oversaturated
+                    .Concat(webGapAnalysis.OversaturatedTopics)
+                    .Distinct()
+                    .ToList();
+                
+                // Merge unique angles - webGapAnalysis.UniqueAngles is List<string>, uniqueAngles is Dictionary<string, List<string>>
+                foreach (var angle in webGapAnalysis.UniqueAngles)
                 {
-                    uniqueAngles["Web Intelligence"] = new List<string>();
-                }
-                if (!uniqueAngles["Web Intelligence"].Contains(angle))
-                {
-                    uniqueAngles["Web Intelligence"].Add(angle);
+                    if (!uniqueAngles.ContainsKey("Web Intelligence"))
+                    {
+                        uniqueAngles["Web Intelligence"] = new List<string>();
+                    }
+                    if (!uniqueAngles["Web Intelligence"].Contains(angle))
+                    {
+                        uniqueAngles["Web Intelligence"].Add(angle);
+                    }
                 }
             }
-        }
 
-        return new GapAnalysisResponse(
-            MissingTopics: missingTopics,
-            Opportunities: opportunities,
-            OversaturatedTopics: oversaturated,
-            UniqueAngles: uniqueAngles
-        );
+            _logger.LogInformation("Successfully analyzed content gaps for niche: {Niche}, found {MissingCount} missing topics, {OpportunityCount} opportunities", 
+                request.Niche ?? "general", missingTopics.Count, opportunities.Count);
+
+            return new GapAnalysisResponse(
+                MissingTopics: missingTopics,
+                Opportunities: opportunities,
+                OversaturatedTopics: oversaturated,
+                UniqueAngles: uniqueAngles
+            );
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Gap analysis operation was cancelled for niche: {Niche}", request.Niche ?? "general");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error analyzing content gaps for niche: {Niche}", request.Niche ?? "general");
+            throw;
+        }
     }
 
     /// <summary>
@@ -302,35 +423,64 @@ public class IdeationService
         ResearchRequest request,
         CancellationToken ct = default)
     {
-        _logger.LogInformation("Gathering research for topic: {Topic}", request.Topic);
+        // Input validation
+        ArgumentNullException.ThrowIfNull(request, nameof(request));
+        if (string.IsNullOrWhiteSpace(request.Topic))
+        {
+            throw new ArgumentException("Topic cannot be null or empty", nameof(request));
+        }
 
-        var prompt = BuildResearchPrompt(request);
+        if (request.Topic.Length > MaxTopicLength)
+        {
+            throw new ArgumentException($"Topic length exceeds maximum of {MaxTopicLength} characters", nameof(request));
+        }
 
-        var brief = new Brief(
-            Topic: prompt,
-            Audience: "Researchers",
-            Goal: "Gather facts and examples",
-            Tone: "Factual",
-            Language: "en-US",
-            Aspect: Aspect.Widescreen16x9
-        );
+        // Validate MaxFindings
+        var maxFindings = Math.Clamp(request.MaxFindings ?? 10, 1, 50);
 
-        var planSpec = new PlanSpec(
-            TargetDuration: TimeSpan.FromSeconds(60),
-            Pacing: Pacing.Conversational,
-            Density: Density.Balanced,
-            Style: "Factual"
-        );
+        _logger.LogInformation("Gathering research for topic: {Topic} (max findings: {MaxFindings})", 
+            request.Topic, maxFindings);
 
-        var response = await GenerateWithLlmAsync(brief, planSpec, ct).ConfigureAwait(false);
+        try
+        {
+            var prompt = BuildResearchPrompt(request);
+            
+            if (prompt.Length > MaxPromptLength)
+            {
+                _logger.LogWarning("Generated prompt exceeds maximum length ({Length} > {MaxLength}), truncating", 
+                    prompt.Length, MaxPromptLength);
+                prompt = prompt.Substring(0, MaxPromptLength);
+            }
 
-        var findings = ParseResearchResponse(response, request.Topic);
+            var response = await GenerateWithLlmAsync(prompt, ct).ConfigureAwait(false);
 
-        return new ResearchResponse(
-            Findings: findings,
-            Topic: request.Topic,
-            GatheredAt: DateTime.UtcNow
-        );
+            if (string.IsNullOrWhiteSpace(response))
+            {
+                _logger.LogError("LLM returned empty response for research topic: {Topic}", request.Topic);
+                throw new InvalidOperationException("LLM provider returned an empty response. Please try again.");
+            }
+
+            var findings = ParseResearchResponse(response, request.Topic);
+
+            _logger.LogInformation("Successfully gathered {Count} research findings for topic: {Topic}", 
+                findings.Count, request.Topic);
+
+            return new ResearchResponse(
+                Findings: findings,
+                Topic: request.Topic,
+                GatheredAt: DateTime.UtcNow
+            );
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Research gathering operation was cancelled for topic: {Topic}", request.Topic);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error gathering research for topic: {Topic}", request.Topic);
+            throw;
+        }
     }
 
     /// <summary>
@@ -340,36 +490,69 @@ public class IdeationService
         StoryboardRequest request,
         CancellationToken ct = default)
     {
-        _logger.LogInformation("Generating storyboard for concept: {ConceptTitle}", request.Concept.Title);
+        // Input validation
+        ArgumentNullException.ThrowIfNull(request, nameof(request));
+        ArgumentNullException.ThrowIfNull(request.Concept, nameof(request.Concept));
+        
+        if (string.IsNullOrWhiteSpace(request.Concept.Title))
+        {
+            throw new ArgumentException("Concept.Title cannot be null or empty", nameof(request));
+        }
 
-        var prompt = BuildStoryboardPrompt(request);
+        if (request.TargetDurationSeconds <= 0)
+        {
+            throw new ArgumentException("TargetDurationSeconds must be greater than 0", nameof(request));
+        }
 
-        var brief = new Brief(
-            Topic: prompt,
-            Audience: request.Concept.TargetAudience,
-            Goal: "Create visual storyboard",
-            Tone: "Descriptive",
-            Language: "en-US",
-            Aspect: Aspect.Widescreen16x9
-        );
+        if (request.TargetDurationSeconds > 3600) // 1 hour max
+        {
+            throw new ArgumentException("TargetDurationSeconds cannot exceed 3600 seconds (1 hour)", nameof(request));
+        }
 
-        var planSpec = new PlanSpec(
-            TargetDuration: TimeSpan.FromSeconds(request.TargetDurationSeconds),
-            Pacing: Pacing.Conversational,
-            Density: Density.Balanced,
-            Style: "Visual"
-        );
+        _logger.LogInformation("Generating storyboard for concept: {ConceptTitle} (duration: {Duration}s)", 
+            request.Concept.Title, request.TargetDurationSeconds);
 
-        var response = await GenerateWithLlmAsync(brief, planSpec, ct).ConfigureAwait(false);
+        try
+        {
+            var prompt = BuildStoryboardPrompt(request);
+            
+            if (prompt.Length > MaxPromptLength)
+            {
+                _logger.LogWarning("Generated prompt exceeds maximum length ({Length} > {MaxLength}), truncating", 
+                    prompt.Length, MaxPromptLength);
+                prompt = prompt.Substring(0, MaxPromptLength);
+            }
 
-        var scenes = ParseStoryboardResponse(response, request.TargetDurationSeconds);
+            var response = await GenerateWithLlmAsync(prompt, ct).ConfigureAwait(false);
 
-        return new StoryboardResponse(
-            Scenes: scenes,
-            ConceptTitle: request.Concept.Title,
-            TotalDurationSeconds: scenes.Sum(s => s.DurationSeconds),
-            GeneratedAt: DateTime.UtcNow
-        );
+            if (string.IsNullOrWhiteSpace(response))
+            {
+                _logger.LogError("LLM returned empty response for storyboard, concept: {ConceptTitle}", request.Concept.Title);
+                throw new InvalidOperationException("LLM provider returned an empty response. Please try again.");
+            }
+
+            var scenes = ParseStoryboardResponse(response, request.TargetDurationSeconds);
+
+            _logger.LogInformation("Successfully generated {Count} storyboard scenes for concept: {ConceptTitle}", 
+                scenes.Count, request.Concept.Title);
+
+            return new StoryboardResponse(
+                Scenes: scenes,
+                ConceptTitle: request.Concept.Title,
+                TotalDurationSeconds: scenes.Sum(s => s.DurationSeconds),
+                GeneratedAt: DateTime.UtcNow
+            );
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Storyboard generation operation was cancelled for concept: {ConceptTitle}", request.Concept.Title);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating storyboard for concept: {ConceptTitle}", request.Concept.Title);
+            throw;
+        }
     }
 
     /// <summary>
@@ -379,38 +562,65 @@ public class IdeationService
         RefineConceptRequest request,
         CancellationToken ct = default)
     {
+        // Input validation
+        ArgumentNullException.ThrowIfNull(request, nameof(request));
+        ArgumentNullException.ThrowIfNull(request.Concept, nameof(request.Concept));
+        
+        if (string.IsNullOrWhiteSpace(request.RefinementDirection))
+        {
+            throw new ArgumentException("RefinementDirection cannot be null or empty", nameof(request));
+        }
+
+        var validDirections = new[] { "expand", "simplify", "adjust-audience", "merge" };
+        if (!validDirections.Contains(request.RefinementDirection.ToLowerInvariant()))
+        {
+            throw new ArgumentException($"RefinementDirection must be one of: {string.Join(", ", validDirections)}", nameof(request));
+        }
+
         _logger.LogInformation("Refining concept: {ConceptTitle} with direction: {Direction}",
             request.Concept.Title, request.RefinementDirection);
 
-        var prompt = BuildRefineConceptPrompt(request);
+        try
+        {
+            var prompt = BuildRefineConceptPrompt(request);
+            
+            if (prompt.Length > MaxPromptLength)
+            {
+                _logger.LogWarning("Generated prompt exceeds maximum length ({Length} > {MaxLength}), truncating", 
+                    prompt.Length, MaxPromptLength);
+                prompt = prompt.Substring(0, MaxPromptLength);
+            }
 
-        var brief = new Brief(
-            Topic: prompt,
-            Audience: request.TargetAudience ?? request.Concept.TargetAudience,
-            Goal: "Refine video concept",
-            Tone: "Creative",
-            Language: "en-US",
-            Aspect: Aspect.Widescreen16x9
-        );
+            var response = await GenerateWithLlmAsync(prompt, ct).ConfigureAwait(false);
 
-        var planSpec = new PlanSpec(
-            TargetDuration: TimeSpan.FromSeconds(60),
-            Pacing: Pacing.Conversational,
-            Density: Density.Balanced,
-            Style: "Creative"
-        );
+            if (string.IsNullOrWhiteSpace(response))
+            {
+                _logger.LogError("LLM returned empty response for refine concept: {ConceptTitle}", request.Concept.Title);
+                throw new InvalidOperationException("LLM provider returned an empty response. Please try again.");
+            }
 
-        var response = await GenerateWithLlmAsync(brief, planSpec, ct).ConfigureAwait(false);
+            var (refinedConcept, changesSummary) = ParseRefineConceptResponse(
+                response,
+                request.Concept,
+                request.RefinementDirection);
 
-        var (refinedConcept, changesSummary) = ParseRefineConceptResponse(
-            response,
-            request.Concept,
-            request.RefinementDirection);
+            _logger.LogInformation("Successfully refined concept: {ConceptTitle}", request.Concept.Title);
 
-        return new RefineConceptResponse(
-            RefinedConcept: refinedConcept,
-            ChangesSummary: changesSummary
-        );
+            return new RefineConceptResponse(
+                RefinedConcept: refinedConcept,
+                ChangesSummary: changesSummary
+            );
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Refine concept operation was cancelled for concept: {ConceptTitle}", request.Concept.Title);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error refining concept: {ConceptTitle}", request.Concept.Title);
+            throw;
+        }
     }
 
     /// <summary>
@@ -420,34 +630,54 @@ public class IdeationService
         QuestionsRequest request,
         CancellationToken ct = default)
     {
+        // Input validation
+        ArgumentNullException.ThrowIfNull(request, nameof(request));
+        if (string.IsNullOrWhiteSpace(request.ProjectId))
+        {
+            throw new ArgumentException("ProjectId cannot be null or empty", nameof(request));
+        }
+
         _logger.LogInformation("Generating clarifying questions for project: {ProjectId}", request.ProjectId);
 
-        var prompt = BuildQuestionsPrompt(request);
+        try
+        {
+            var prompt = BuildQuestionsPrompt(request);
+            
+            if (prompt.Length > MaxPromptLength)
+            {
+                _logger.LogWarning("Generated prompt exceeds maximum length ({Length} > {MaxLength}), truncating", 
+                    prompt.Length, MaxPromptLength);
+                prompt = prompt.Substring(0, MaxPromptLength);
+            }
 
-        var brief = new Brief(
-            Topic: prompt,
-            Audience: "Content Creator",
-            Goal: "Ask clarifying questions",
-            Tone: "Helpful",
-            Language: "en-US",
-            Aspect: Aspect.Widescreen16x9
-        );
+            var response = await GenerateWithLlmAsync(prompt, ct).ConfigureAwait(false);
 
-        var planSpec = new PlanSpec(
-            TargetDuration: TimeSpan.FromSeconds(30),
-            Pacing: Pacing.Conversational,
-            Density: Density.Balanced,
-            Style: "Conversational"
-        );
+            if (string.IsNullOrWhiteSpace(response))
+            {
+                _logger.LogError("LLM returned empty response for clarifying questions, project: {ProjectId}", request.ProjectId);
+                throw new InvalidOperationException("LLM provider returned an empty response. Please try again.");
+            }
 
-        var response = await GenerateWithLlmAsync(brief, planSpec, ct).ConfigureAwait(false);
+            var questions = ParseQuestionsResponse(response);
 
-        var questions = ParseQuestionsResponse(response);
+            _logger.LogInformation("Successfully generated {Count} clarifying questions for project: {ProjectId}", 
+                questions.Count, request.ProjectId);
 
-        return new QuestionsResponse(
-            Questions: questions,
-            Context: "These questions will help create a better video concept"
-        );
+            return new QuestionsResponse(
+                Questions: questions,
+                Context: "These questions will help create a better video concept"
+            );
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Get clarifying questions operation was cancelled for project: {ProjectId}", request.ProjectId);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating clarifying questions for project: {ProjectId}", request.ProjectId);
+            throw;
+        }
     }
 
     /// <summary>
@@ -457,37 +687,63 @@ public class IdeationService
         IdeaToBriefRequest request,
         CancellationToken ct = default)
     {
-        _logger.LogInformation("Converting idea to brief: {Idea}", request.Idea);
+        // Input validation
+        ArgumentNullException.ThrowIfNull(request, nameof(request));
+        if (string.IsNullOrWhiteSpace(request.Idea))
+        {
+            throw new ArgumentException("Idea cannot be null or empty", nameof(request));
+        }
+
+        if (request.Idea.Length > MaxTopicLength * 2) // Ideas can be longer than topics
+        {
+            throw new ArgumentException($"Idea length exceeds maximum of {MaxTopicLength * 2} characters", nameof(request));
+        }
 
         var variantCount = Math.Clamp(request.VariantCount ?? 3, 2, 4);
-        var prompt = BuildIdeaToBriefPrompt(request, variantCount);
 
-        var brief = new Brief(
-            Topic: prompt,
-            Audience: request.Audience ?? "General",
-            Goal: "Generate structured brief variants from freeform idea",
-            Tone: "Professional",
-            Language: request.Language ?? "en-US",
-            Aspect: Aspect.Widescreen16x9
-        );
+        _logger.LogInformation("Converting idea to brief: {Idea} (variant count: {VariantCount})", 
+            request.Idea, variantCount);
 
-        var planSpec = new PlanSpec(
-            TargetDuration: TimeSpan.FromSeconds(60),
-            Pacing: Pacing.Conversational,
-            Density: Density.Balanced,
-            Style: "Analytical"
-        );
+        try
+        {
+            var prompt = BuildIdeaToBriefPrompt(request, variantCount);
+            
+            if (prompt.Length > MaxPromptLength)
+            {
+                _logger.LogWarning("Generated prompt exceeds maximum length ({Length} > {MaxLength}), truncating", 
+                    prompt.Length, MaxPromptLength);
+                prompt = prompt.Substring(0, MaxPromptLength);
+            }
 
-        var response = await GenerateWithLlmAsync(brief, planSpec, ct).ConfigureAwait(false);
+            var response = await GenerateWithLlmAsync(prompt, ct).ConfigureAwait(false);
 
-        // Parse the response into structured brief variants
-        var variants = ParseIdeaToBriefResponse(response, request);
+            if (string.IsNullOrWhiteSpace(response))
+            {
+                _logger.LogError("LLM returned empty response for idea to brief: {Idea}", request.Idea);
+                throw new InvalidOperationException("LLM provider returned an empty response. Please try again.");
+            }
 
-        return new IdeaToBriefResponse(
-            Variants: variants,
-            OriginalIdea: request.Idea,
-            GeneratedAt: DateTime.UtcNow
-        );
+            // Parse the response into structured brief variants
+            var variants = ParseIdeaToBriefResponse(response, request);
+
+            _logger.LogInformation("Successfully converted idea to {Count} brief variants", variants.Count);
+
+            return new IdeaToBriefResponse(
+                Variants: variants,
+                OriginalIdea: request.Idea,
+                GeneratedAt: DateTime.UtcNow
+            );
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Idea to brief operation was cancelled for idea: {Idea}", request.Idea);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error converting idea to brief: {Idea}", request.Idea);
+            throw;
+        }
     }
 
     // --- Prompt Building Methods ---
@@ -699,6 +955,21 @@ public class IdeationService
 
         sb.AppendLine("Ask 3-5 thoughtful clarifying questions that will help refine the concept.");
         sb.AppendLine("Focus on questions about target audience, desired outcome, unique angle, and creative direction.");
+        sb.AppendLine();
+        sb.AppendLine("You must respond with ONLY valid JSON in this exact format:");
+        sb.AppendLine("{");
+        sb.AppendLine("  \"questions\": [");
+        sb.AppendLine("    {");
+        sb.AppendLine("      \"question\": \"Specific question text\",");
+        sb.AppendLine("      \"context\": \"Why this question is being asked\",");
+        sb.AppendLine("      \"questionType\": \"open-ended|multiple-choice|yes-no\",");
+        sb.AppendLine("      \"suggestedAnswers\": [\"Option 1\", \"Option 2\", \"Option 3\"] // Only for multiple-choice questions");
+        sb.AppendLine("    }");
+        sb.AppendLine("  ],");
+        sb.AppendLine("  \"aiResponse\": \"Your helpful response or summary text\"");
+        sb.AppendLine("}");
+        sb.AppendLine();
+        sb.AppendLine("CRITICAL: Return ONLY the JSON object, no additional text or markdown formatting.");
 
         return sb.ToString();
     }
@@ -775,6 +1046,27 @@ public class IdeationService
         sb.AppendLine("2. High-opportunity topics with low competition");
         sb.AppendLine("3. Oversaturated topics to avoid");
         sb.AppendLine("4. Unique angles for popular topics");
+        sb.AppendLine();
+        sb.AppendLine("You must respond with ONLY valid JSON in this exact format:");
+        sb.AppendLine("{");
+        sb.AppendLine("  \"missingTopics\": [\"Topic 1\", \"Topic 2\", \"Topic 3\"],");
+        sb.AppendLine("  \"opportunities\": [");
+        sb.AppendLine("    {");
+        sb.AppendLine("      \"topic\": \"High-opportunity topic name\",");
+        sb.AppendLine("      \"trendScore\": 85,");
+        sb.AppendLine("      \"searchVolume\": \"10K/month\",");
+        sb.AppendLine("      \"competition\": \"Low\",");
+        sb.AppendLine("      \"lifecycle\": \"Rising\"");
+        sb.AppendLine("    }");
+        sb.AppendLine("  ],");
+        sb.AppendLine("  \"oversaturatedTopics\": [\"Topic 1\", \"Topic 2\"],");
+        sb.AppendLine("  \"uniqueAngles\": {");
+        sb.AppendLine("    \"Popular Topic 1\": [\"Unique angle 1\", \"Unique angle 2\"],");
+        sb.AppendLine("    \"Popular Topic 2\": [\"Unique angle 1\"]");
+        sb.AppendLine("  }");
+        sb.AppendLine("}");
+        sb.AppendLine();
+        sb.AppendLine("CRITICAL: Return ONLY the JSON object, no additional text or markdown formatting.");
 
         return sb.ToString();
     }
@@ -790,6 +1082,21 @@ public class IdeationService
         sb.AppendLine("3. Why this is relevant to the topic");
         sb.AppendLine();
         sb.AppendLine("Focus on interesting, credible, and engaging information that will make the video compelling.");
+        sb.AppendLine();
+        sb.AppendLine("You must respond with ONLY valid JSON in this exact format:");
+        sb.AppendLine("{");
+        sb.AppendLine("  \"findings\": [");
+        sb.AppendLine("    {");
+        sb.AppendLine("      \"fact\": \"The specific fact or statistic\",");
+        sb.AppendLine("      \"source\": \"Source URL or citation (if available)\",");
+        sb.AppendLine("      \"credibilityScore\": 85,");
+        sb.AppendLine("      \"relevanceScore\": 90,");
+        sb.AppendLine("      \"example\": \"Real-world example illustrating this fact\"");
+        sb.AppendLine("    }");
+        sb.AppendLine("  ]");
+        sb.AppendLine("}");
+        sb.AppendLine();
+        sb.AppendLine("CRITICAL: Return ONLY the JSON object, no additional text or markdown formatting.");
 
         return sb.ToString();
     }
@@ -811,6 +1118,23 @@ public class IdeationService
         sb.AppendLine("5. Shot list (3-5 specific shots)");
         sb.AppendLine();
         sb.AppendLine("Ensure the first scene has a strong hook.");
+        sb.AppendLine();
+        sb.AppendLine("You must respond with ONLY valid JSON in this exact format:");
+        sb.AppendLine("{");
+        sb.AppendLine("  \"scenes\": [");
+        sb.AppendLine("    {");
+        sb.AppendLine("      \"sceneNumber\": 1,");
+        sb.AppendLine("      \"description\": \"Detailed scene description\",");
+        sb.AppendLine("      \"visualStyle\": \"Visual style description (cinematography, camera angles, lighting)\",");
+        sb.AppendLine("      \"durationSeconds\": 10,");
+        sb.AppendLine("      \"purpose\": \"hook|context|explanation|example|call-to-action\",");
+        sb.AppendLine("      \"shotList\": [\"Shot 1\", \"Shot 2\", \"Shot 3\"],");
+        sb.AppendLine("      \"transitionType\": \"Smooth fade\" // Optional");
+        sb.AppendLine("    }");
+        sb.AppendLine("  ]");
+        sb.AppendLine("}");
+        sb.AppendLine();
+        sb.AppendLine("CRITICAL: Return ONLY the JSON object, no additional text or markdown formatting.");
 
         return sb.ToString();
     }
@@ -846,6 +1170,24 @@ public class IdeationService
 
         sb.AppendLine();
         sb.AppendLine("Provide the refined concept with a clear summary of what changed.");
+        sb.AppendLine();
+        sb.AppendLine("You must respond with ONLY valid JSON in this exact format:");
+        sb.AppendLine("{");
+        sb.AppendLine("  \"refinedConcept\": {");
+        sb.AppendLine("    \"title\": \"Refined concept title\",");
+        sb.AppendLine("    \"description\": \"Refined concept description\",");
+        sb.AppendLine("    \"angle\": \"Concept angle\",");
+        sb.AppendLine("    \"targetAudience\": \"Target audience description\",");
+        sb.AppendLine("    \"pros\": [\"Pro 1\", \"Pro 2\", \"Pro 3\"],");
+        sb.AppendLine("    \"cons\": [\"Con 1\", \"Con 2\"],");
+        sb.AppendLine("    \"appealScore\": 85,");
+        sb.AppendLine("    \"hook\": \"Refined hook\",");
+        sb.AppendLine("    \"talkingPoints\": [\"Point 1\", \"Point 2\", \"Point 3\"]");
+        sb.AppendLine("  },");
+        sb.AppendLine("  \"changesSummary\": \"Clear summary of what changed and why\"");
+        sb.AppendLine("}");
+        sb.AppendLine();
+        sb.AppendLine("CRITICAL: Return ONLY the JSON object, no additional text or markdown formatting.");
 
         return sb.ToString();
     }
@@ -872,6 +1214,20 @@ public class IdeationService
         sb.AppendLine("- Unique angle or perspective");
         sb.AppendLine("- Style and tone preferences");
         sb.AppendLine("- Key messages to convey");
+        sb.AppendLine();
+        sb.AppendLine("You must respond with ONLY valid JSON in this exact format:");
+        sb.AppendLine("{");
+        sb.AppendLine("  \"questions\": [");
+        sb.AppendLine("    {");
+        sb.AppendLine("      \"question\": \"Specific question text\",");
+        sb.AppendLine("      \"context\": \"Why this question is being asked\",");
+        sb.AppendLine("      \"questionType\": \"open-ended|multiple-choice|yes-no\",");
+        sb.AppendLine("      \"suggestedAnswers\": [\"Option 1\", \"Option 2\"] // Only for multiple-choice questions, null otherwise");
+        sb.AppendLine("    }");
+        sb.AppendLine("  ]");
+        sb.AppendLine("}");
+        sb.AppendLine();
+        sb.AppendLine("CRITICAL: Return ONLY the JSON object, no additional text or markdown formatting.");
 
         return sb.ToString();
     }
@@ -1082,51 +1438,232 @@ public class IdeationService
 
     private (List<ClarifyingQuestion>?, string) ParseExpandBriefResponse(string response)
     {
-        // Simplified parsing
-        var questions = new List<ClarifyingQuestion>
+        var questions = new List<ClarifyingQuestion>();
+        string aiResponse = response;
+
+        try
         {
-            new ClarifyingQuestion(
+            // Clean the response - remove markdown code blocks if present
+            var cleanedResponse = response.Trim();
+            if (cleanedResponse.StartsWith("```json"))
+            {
+                cleanedResponse = cleanedResponse.Substring(7);
+            }
+            if (cleanedResponse.StartsWith("```"))
+            {
+                cleanedResponse = cleanedResponse.Substring(3);
+            }
+            if (cleanedResponse.EndsWith("```"))
+            {
+                cleanedResponse = cleanedResponse.Substring(0, cleanedResponse.Length - 3);
+            }
+            cleanedResponse = cleanedResponse.Trim();
+
+            // Parse JSON response
+            var jsonDoc = JsonDocument.Parse(cleanedResponse);
+            
+            // Extract AI response if present
+            if (jsonDoc.RootElement.TryGetProperty("aiResponse", out var aiResponseElement))
+            {
+                aiResponse = aiResponseElement.GetString() ?? response;
+            }
+
+            // Parse questions
+            if (jsonDoc.RootElement.TryGetProperty("questions", out var questionsArray))
+            {
+                foreach (var questionElement in questionsArray.EnumerateArray())
+                {
+                    var questionText = questionElement.GetProperty("question").GetString() ?? "";
+                    var context = questionElement.GetProperty("context").GetString() ?? "";
+                    var questionType = questionElement.GetProperty("questionType").GetString() ?? "open-ended";
+                    
+                    List<string>? suggestedAnswers = null;
+                    if (questionElement.TryGetProperty("suggestedAnswers", out var answersArray) && answersArray.ValueKind == JsonValueKind.Array)
+                    {
+                        suggestedAnswers = new List<string>();
+                        foreach (var answer in answersArray.EnumerateArray())
+                        {
+                            var answerText = answer.GetString();
+                            if (!string.IsNullOrEmpty(answerText))
+                            {
+                                suggestedAnswers.Add(answerText);
+                            }
+                        }
+                        if (suggestedAnswers.Count == 0)
+                        {
+                            suggestedAnswers = null;
+                        }
+                    }
+
+                    if (!string.IsNullOrEmpty(questionText))
+                    {
+                        questions.Add(new ClarifyingQuestion(
+                            QuestionId: Guid.NewGuid().ToString(),
+                            Question: questionText,
+                            Context: context,
+                            SuggestedAnswers: suggestedAnswers,
+                            QuestionType: questionType
+                        ));
+                    }
+                }
+            }
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "Failed to parse JSON response from LLM for expand brief, using fallback");
+        }
+
+        // Fallback: If parsing failed or no questions were generated, create generic questions
+        if (questions.Count == 0)
+        {
+            _logger.LogWarning("No questions parsed from LLM response, generating fallback questions");
+            questions.Add(new ClarifyingQuestion(
                 QuestionId: Guid.NewGuid().ToString(),
                 Question: "Who is your ideal viewer for this video?",
                 Context: "Understanding your target audience helps tailor the content and tone",
                 SuggestedAnswers: new List<string> { "Beginners", "Intermediate learners", "Experts", "General public" },
                 QuestionType: "multiple-choice"
-            ),
-            new ClarifyingQuestion(
+            ));
+            questions.Add(new ClarifyingQuestion(
                 QuestionId: Guid.NewGuid().ToString(),
                 Question: "What action do you want viewers to take after watching?",
                 Context: "Defining the desired outcome shapes the video's call-to-action",
                 SuggestedAnswers: null,
                 QuestionType: "open-ended"
-            ),
-            new ClarifyingQuestion(
+            ));
+            questions.Add(new ClarifyingQuestion(
                 QuestionId: Guid.NewGuid().ToString(),
                 Question: "What makes your perspective on this topic unique?",
                 Context: "Your unique angle differentiates your content from competitors",
                 SuggestedAnswers: null,
                 QuestionType: "open-ended"
-            )
-        };
+            ));
+        }
 
-        return (questions, response);
+        return (questions, aiResponse);
     }
 
 
     private (List<string>, List<TrendingTopic>, List<string>, Dictionary<string, List<string>>)
         ParseGapAnalysisResponse(string response)
     {
-        // Simplified parsing
-        var missingTopics = new List<string>
-        {
-            "Beginner-friendly introductions",
-            "Advanced techniques and workflows",
-            "Real-world case studies",
-            "Common mistakes to avoid"
-        };
+        var missingTopics = new List<string>();
+        var opportunities = new List<TrendingTopic>();
+        var oversaturated = new List<string>();
+        var uniqueAngles = new Dictionary<string, List<string>>();
 
-        var opportunities = new List<TrendingTopic>
+        try
         {
-            new TrendingTopic(
+            // Clean the response - remove markdown code blocks if present
+            var cleanedResponse = response.Trim();
+            if (cleanedResponse.StartsWith("```json"))
+            {
+                cleanedResponse = cleanedResponse.Substring(7);
+            }
+            if (cleanedResponse.StartsWith("```"))
+            {
+                cleanedResponse = cleanedResponse.Substring(3);
+            }
+            if (cleanedResponse.EndsWith("```"))
+            {
+                cleanedResponse = cleanedResponse.Substring(0, cleanedResponse.Length - 3);
+            }
+            cleanedResponse = cleanedResponse.Trim();
+
+            // Parse JSON response
+            var jsonDoc = JsonDocument.Parse(cleanedResponse);
+
+            // Parse missing topics
+            if (jsonDoc.RootElement.TryGetProperty("missingTopics", out var missingTopicsArray))
+            {
+                foreach (var topic in missingTopicsArray.EnumerateArray())
+                {
+                    var topicText = topic.GetString();
+                    if (!string.IsNullOrEmpty(topicText))
+                    {
+                        missingTopics.Add(topicText);
+                    }
+                }
+            }
+
+            // Parse opportunities
+            if (jsonDoc.RootElement.TryGetProperty("opportunities", out var opportunitiesArray))
+            {
+                foreach (var oppElement in opportunitiesArray.EnumerateArray())
+                {
+                    var topic = oppElement.GetProperty("topic").GetString() ?? "Untitled Topic";
+                    var trendScore = oppElement.TryGetProperty("trendScore", out var scoreElement) ? scoreElement.GetDouble() : 75.0;
+                    var searchVolume = oppElement.TryGetProperty("searchVolume", out var volumeElement) ? volumeElement.GetString() : null;
+                    var competition = oppElement.TryGetProperty("competition", out var compElement) ? compElement.GetString() : null;
+                    var lifecycle = oppElement.TryGetProperty("lifecycle", out var lifecycleElement) ? lifecycleElement.GetString() : null;
+
+                    opportunities.Add(new TrendingTopic(
+                        TopicId: Guid.NewGuid().ToString(),
+                        Topic: topic,
+                        TrendScore: trendScore,
+                        SearchVolume: searchVolume,
+                        Competition: competition,
+                        Seasonality: null,
+                        Lifecycle: lifecycle,
+                        RelatedTopics: null,
+                        DetectedAt: DateTime.UtcNow
+                    ));
+                }
+            }
+
+            // Parse oversaturated topics
+            if (jsonDoc.RootElement.TryGetProperty("oversaturatedTopics", out var oversaturatedArray))
+            {
+                foreach (var topic in oversaturatedArray.EnumerateArray())
+                {
+                    var topicText = topic.GetString();
+                    if (!string.IsNullOrEmpty(topicText))
+                    {
+                        oversaturated.Add(topicText);
+                    }
+                }
+            }
+
+            // Parse unique angles
+            if (jsonDoc.RootElement.TryGetProperty("uniqueAngles", out var uniqueAnglesObject))
+            {
+                foreach (var prop in uniqueAnglesObject.EnumerateObject())
+                {
+                    var topicName = prop.Name;
+                    var angles = new List<string>();
+                    if (prop.Value.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var angle in prop.Value.EnumerateArray())
+                        {
+                            var angleText = angle.GetString();
+                            if (!string.IsNullOrEmpty(angleText))
+                            {
+                                angles.Add(angleText);
+                            }
+                        }
+                    }
+                    if (angles.Count > 0)
+                    {
+                        uniqueAngles[topicName] = angles;
+                    }
+                }
+            }
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "Failed to parse JSON response from LLM for gap analysis, using fallback");
+        }
+
+        // Fallback: If parsing failed or no data was generated, create generic data
+        if (missingTopics.Count == 0 && opportunities.Count == 0 && oversaturated.Count == 0)
+        {
+            _logger.LogWarning("No data parsed from LLM response, generating fallback data");
+            missingTopics.Add("Beginner-friendly introductions");
+            missingTopics.Add("Advanced techniques and workflows");
+            missingTopics.Add("Real-world case studies");
+            missingTopics.Add("Common mistakes to avoid");
+
+            opportunities.Add(new TrendingTopic(
                 TopicId: Guid.NewGuid().ToString(),
                 Topic: "Emerging tools and technologies",
                 TrendScore: 90,
@@ -1136,43 +1673,92 @@ public class IdeationService
                 Lifecycle: "Rising",
                 RelatedTopics: null,
                 DetectedAt: DateTime.UtcNow
-            )
-        };
+            ));
 
-        var oversaturated = new List<string>
-        {
-            "Basic introductions covered by many creators"
-        };
+            oversaturated.Add("Basic introductions covered by many creators");
 
-        var uniqueAngles = new Dictionary<string, List<string>>
-        {
-            ["Popular Topic"] = new List<string>
+            uniqueAngles["Popular Topic"] = new List<string>
             {
                 "Focus on uncommon use cases",
                 "Interview experts in the field",
                 "Behind-the-scenes perspective"
-            }
-        };
+            };
+        }
 
         return (missingTopics, opportunities, oversaturated, uniqueAngles);
     }
 
     private List<ResearchFinding> ParseResearchResponse(string response, string topic)
     {
-        // Simplified parsing
         var findings = new List<ResearchFinding>();
 
-        for (int i = 0; i < 5; i++)
+        try
         {
-            findings.Add(new ResearchFinding(
-                FindingId: Guid.NewGuid().ToString(),
-                Fact: $"Key finding {i + 1} about {topic}",
-                Source: "Industry research and expert analysis",
-                CredibilityScore: 85,
-                RelevanceScore: 90,
-                Example: $"A real-world example demonstrating this concept in action",
-                GatheredAt: DateTime.UtcNow
-            ));
+            // Clean the response - remove markdown code blocks if present
+            var cleanedResponse = response.Trim();
+            if (cleanedResponse.StartsWith("```json"))
+            {
+                cleanedResponse = cleanedResponse.Substring(7);
+            }
+            if (cleanedResponse.StartsWith("```"))
+            {
+                cleanedResponse = cleanedResponse.Substring(3);
+            }
+            if (cleanedResponse.EndsWith("```"))
+            {
+                cleanedResponse = cleanedResponse.Substring(0, cleanedResponse.Length - 3);
+            }
+            cleanedResponse = cleanedResponse.Trim();
+
+            // Parse JSON response
+            var jsonDoc = JsonDocument.Parse(cleanedResponse);
+
+            if (jsonDoc.RootElement.TryGetProperty("findings", out var findingsArray))
+            {
+                foreach (var findingElement in findingsArray.EnumerateArray())
+                {
+                    var fact = findingElement.GetProperty("fact").GetString() ?? "";
+                    var source = findingElement.TryGetProperty("source", out var sourceElement) ? sourceElement.GetString() : null;
+                    var credibilityScore = findingElement.TryGetProperty("credibilityScore", out var credElement) ? credElement.GetDouble() : 80.0;
+                    var relevanceScore = findingElement.TryGetProperty("relevanceScore", out var relElement) ? relElement.GetDouble() : 85.0;
+                    var example = findingElement.TryGetProperty("example", out var exampleElement) ? exampleElement.GetString() : null;
+
+                    if (!string.IsNullOrEmpty(fact))
+                    {
+                        findings.Add(new ResearchFinding(
+                            FindingId: Guid.NewGuid().ToString(),
+                            Fact: fact,
+                            Source: source,
+                            CredibilityScore: credibilityScore,
+                            RelevanceScore: relevanceScore,
+                            Example: example,
+                            GatheredAt: DateTime.UtcNow
+                        ));
+                    }
+                }
+            }
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "Failed to parse JSON response from LLM for research, using fallback");
+        }
+
+        // Fallback: If parsing failed or no findings were generated, create generic findings
+        if (findings.Count == 0)
+        {
+            _logger.LogWarning("No findings parsed from LLM response, generating fallback findings");
+            for (int i = 0; i < 5; i++)
+            {
+                findings.Add(new ResearchFinding(
+                    FindingId: Guid.NewGuid().ToString(),
+                    Fact: $"Key finding {i + 1} about {topic}",
+                    Source: "Industry research and expert analysis",
+                    CredibilityScore: 85,
+                    RelevanceScore: 90,
+                    Example: $"A real-world example demonstrating this concept in action",
+                    GatheredAt: DateTime.UtcNow
+                ));
+            }
         }
 
         return findings;
@@ -1180,30 +1766,104 @@ public class IdeationService
 
     private List<StoryboardScene> ParseStoryboardResponse(string response, int targetDuration)
     {
-        // Simplified parsing
         var scenes = new List<StoryboardScene>();
-        var sceneCount = 6;
-        var sceneDuration = targetDuration / sceneCount;
 
-        var scenePurposes = new[] { "Hook", "Context", "Main Content", "Example", "Deep Dive", "Call to Action" };
-
-        for (int i = 0; i < sceneCount; i++)
+        try
         {
-            scenes.Add(new StoryboardScene(
-                SceneNumber: i + 1,
-                Description: $"Scene {i + 1}: {scenePurposes[i]} - Visual storytelling element",
-                VisualStyle: i == 0 ? "Dynamic, attention-grabbing" : "Clear, focused",
-                DurationSeconds: sceneDuration,
-                Purpose: scenePurposes[i],
-                ShotList: new List<string>
+            // Clean the response - remove markdown code blocks if present
+            var cleanedResponse = response.Trim();
+            if (cleanedResponse.StartsWith("```json"))
+            {
+                cleanedResponse = cleanedResponse.Substring(7);
+            }
+            if (cleanedResponse.StartsWith("```"))
+            {
+                cleanedResponse = cleanedResponse.Substring(3);
+            }
+            if (cleanedResponse.EndsWith("```"))
+            {
+                cleanedResponse = cleanedResponse.Substring(0, cleanedResponse.Length - 3);
+            }
+            cleanedResponse = cleanedResponse.Trim();
+
+            // Parse JSON response
+            var jsonDoc = JsonDocument.Parse(cleanedResponse);
+
+            if (jsonDoc.RootElement.TryGetProperty("scenes", out var scenesArray))
+            {
+                foreach (var sceneElement in scenesArray.EnumerateArray())
                 {
-                    "Establishing shot",
-                    "Medium close-up",
-                    "Detail shot",
-                    "Transition element"
-                },
-                TransitionType: i < sceneCount - 1 ? "Smooth fade" : null
-            ));
+                    var sceneNumber = sceneElement.TryGetProperty("sceneNumber", out var numElement) ? numElement.GetInt32() : scenes.Count + 1;
+                    var description = sceneElement.GetProperty("description").GetString() ?? "";
+                    var visualStyle = sceneElement.GetProperty("visualStyle").GetString() ?? "Clear, focused";
+                    var durationSeconds = sceneElement.TryGetProperty("durationSeconds", out var durElement) ? durElement.GetInt32() : targetDuration / 6;
+                    var purpose = sceneElement.GetProperty("purpose").GetString() ?? "Main Content";
+                    var transitionType = sceneElement.TryGetProperty("transitionType", out var transElement) ? transElement.GetString() : null;
+
+                    List<string>? shotList = null;
+                    if (sceneElement.TryGetProperty("shotList", out var shotListArray) && shotListArray.ValueKind == JsonValueKind.Array)
+                    {
+                        shotList = new List<string>();
+                        foreach (var shot in shotListArray.EnumerateArray())
+                        {
+                            var shotText = shot.GetString();
+                            if (!string.IsNullOrEmpty(shotText))
+                            {
+                                shotList.Add(shotText);
+                            }
+                        }
+                        if (shotList.Count == 0)
+                        {
+                            shotList = null;
+                        }
+                    }
+
+                    if (!string.IsNullOrEmpty(description))
+                    {
+                        scenes.Add(new StoryboardScene(
+                            SceneNumber: sceneNumber,
+                            Description: description,
+                            VisualStyle: visualStyle,
+                            DurationSeconds: durationSeconds,
+                            Purpose: purpose,
+                            ShotList: shotList,
+                            TransitionType: transitionType
+                        ));
+                    }
+                }
+            }
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "Failed to parse JSON response from LLM for storyboard, using fallback");
+        }
+
+        // Fallback: If parsing failed or no scenes were generated, create generic scenes
+        if (scenes.Count == 0)
+        {
+            _logger.LogWarning("No scenes parsed from LLM response, generating fallback scenes");
+            var sceneCount = 6;
+            var sceneDuration = targetDuration / sceneCount;
+            var scenePurposes = new[] { "Hook", "Context", "Main Content", "Example", "Deep Dive", "Call to Action" };
+
+            for (int i = 0; i < sceneCount; i++)
+            {
+                scenes.Add(new StoryboardScene(
+                    SceneNumber: i + 1,
+                    Description: $"Scene {i + 1}: {scenePurposes[i]} - Visual storytelling element",
+                    VisualStyle: i == 0 ? "Dynamic, attention-grabbing" : "Clear, focused",
+                    DurationSeconds: sceneDuration,
+                    Purpose: scenePurposes[i],
+                    ShotList: new List<string>
+                    {
+                        "Establishing shot",
+                        "Medium close-up",
+                        "Detail shot",
+                        "Transition element"
+                    },
+                    TransitionType: i < sceneCount - 1 ? "Smooth fade" : null
+                ));
+            }
         }
 
         return scenes;
@@ -1214,47 +1874,218 @@ public class IdeationService
         ConceptIdea originalConcept,
         string direction)
     {
-        // Simplified parsing - create refined version
-        var refined = originalConcept with
-        {
-            ConceptId = Guid.NewGuid().ToString(),
-            Title = $"{originalConcept.Title} (Refined)",
-            Description = $"{originalConcept.Description} [Refined based on {direction}]",
-            AppealScore = Math.Min(100, originalConcept.AppealScore + 5)
-        };
+        ConceptIdea refined = originalConcept;
+        string summary = $"Refined concept based on '{direction}' direction. Enhanced clarity and focus.";
 
-        var summary = $"Refined concept based on '{direction}' direction. Enhanced clarity and focus.";
+        try
+        {
+            // Clean the response - remove markdown code blocks if present
+            var cleanedResponse = response.Trim();
+            if (cleanedResponse.StartsWith("```json"))
+            {
+                cleanedResponse = cleanedResponse.Substring(7);
+            }
+            if (cleanedResponse.StartsWith("```"))
+            {
+                cleanedResponse = cleanedResponse.Substring(3);
+            }
+            if (cleanedResponse.EndsWith("```"))
+            {
+                cleanedResponse = cleanedResponse.Substring(0, cleanedResponse.Length - 3);
+            }
+            cleanedResponse = cleanedResponse.Trim();
+
+            // Parse JSON response
+            var jsonDoc = JsonDocument.Parse(cleanedResponse);
+
+            if (jsonDoc.RootElement.TryGetProperty("refinedConcept", out var refinedConceptElement))
+            {
+                var title = refinedConceptElement.TryGetProperty("title", out var titleElement) ? titleElement.GetString() : originalConcept.Title;
+                var description = refinedConceptElement.TryGetProperty("description", out var descElement) ? descElement.GetString() : originalConcept.Description;
+                var angle = refinedConceptElement.TryGetProperty("angle", out var angleElement) ? angleElement.GetString() : originalConcept.Angle;
+                var targetAudience = refinedConceptElement.TryGetProperty("targetAudience", out var audienceElement) ? audienceElement.GetString() : originalConcept.TargetAudience;
+                var appealScore = refinedConceptElement.TryGetProperty("appealScore", out var scoreElement) ? scoreElement.GetDouble() : originalConcept.AppealScore;
+                var hook = refinedConceptElement.TryGetProperty("hook", out var hookElement) ? hookElement.GetString() : originalConcept.Hook;
+
+                var pros = originalConcept.Pros;
+                if (refinedConceptElement.TryGetProperty("pros", out var prosArray) && prosArray.ValueKind == JsonValueKind.Array)
+                {
+                    pros = new List<string>();
+                    foreach (var pro in prosArray.EnumerateArray())
+                    {
+                        var proText = pro.GetString();
+                        if (!string.IsNullOrEmpty(proText))
+                        {
+                            pros.Add(proText);
+                        }
+                    }
+                }
+
+                var cons = originalConcept.Cons;
+                if (refinedConceptElement.TryGetProperty("cons", out var consArray) && consArray.ValueKind == JsonValueKind.Array)
+                {
+                    cons = new List<string>();
+                    foreach (var con in consArray.EnumerateArray())
+                    {
+                        var conText = con.GetString();
+                        if (!string.IsNullOrEmpty(conText))
+                        {
+                            cons.Add(conText);
+                        }
+                    }
+                }
+
+                List<string>? talkingPoints = originalConcept.TalkingPoints;
+                if (refinedConceptElement.TryGetProperty("talkingPoints", out var talkingPointsArray) && talkingPointsArray.ValueKind == JsonValueKind.Array)
+                {
+                    talkingPoints = new List<string>();
+                    foreach (var point in talkingPointsArray.EnumerateArray())
+                    {
+                        var pointText = point.GetString();
+                        if (!string.IsNullOrEmpty(pointText))
+                        {
+                            talkingPoints.Add(pointText);
+                        }
+                    }
+                    if (talkingPoints.Count == 0)
+                    {
+                        talkingPoints = null;
+                    }
+                }
+
+                refined = originalConcept with
+                {
+                    ConceptId = Guid.NewGuid().ToString(),
+                    Title = title ?? originalConcept.Title,
+                    Description = description ?? originalConcept.Description,
+                    Angle = angle ?? originalConcept.Angle,
+                    TargetAudience = targetAudience ?? originalConcept.TargetAudience,
+                    Pros = pros,
+                    Cons = cons,
+                    AppealScore: appealScore,
+                    Hook: hook ?? originalConcept.Hook,
+                    TalkingPoints: talkingPoints
+                };
+            }
+
+            if (jsonDoc.RootElement.TryGetProperty("changesSummary", out var summaryElement))
+            {
+                summary = summaryElement.GetString() ?? summary;
+            }
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "Failed to parse JSON response from LLM for refine concept, using fallback");
+            // Use fallback refined concept
+            refined = originalConcept with
+            {
+                ConceptId = Guid.NewGuid().ToString(),
+                Title = $"{originalConcept.Title} (Refined)",
+                Description = $"{originalConcept.Description} [Refined based on {direction}]",
+                AppealScore = Math.Min(100, originalConcept.AppealScore + 5)
+            };
+        }
 
         return (refined, summary);
     }
 
     private List<ClarifyingQuestion> ParseQuestionsResponse(string response)
     {
-        // Simplified parsing
-        return new List<ClarifyingQuestion>
+        var questions = new List<ClarifyingQuestion>();
+
+        try
         {
-            new ClarifyingQuestion(
+            // Clean the response - remove markdown code blocks if present
+            var cleanedResponse = response.Trim();
+            if (cleanedResponse.StartsWith("```json"))
+            {
+                cleanedResponse = cleanedResponse.Substring(7);
+            }
+            if (cleanedResponse.StartsWith("```"))
+            {
+                cleanedResponse = cleanedResponse.Substring(3);
+            }
+            if (cleanedResponse.EndsWith("```"))
+            {
+                cleanedResponse = cleanedResponse.Substring(0, cleanedResponse.Length - 3);
+            }
+            cleanedResponse = cleanedResponse.Trim();
+
+            // Parse JSON response
+            var jsonDoc = JsonDocument.Parse(cleanedResponse);
+
+            if (jsonDoc.RootElement.TryGetProperty("questions", out var questionsArray))
+            {
+                foreach (var questionElement in questionsArray.EnumerateArray())
+                {
+                    var questionText = questionElement.GetProperty("question").GetString() ?? "";
+                    var context = questionElement.GetProperty("context").GetString() ?? "";
+                    var questionType = questionElement.GetProperty("questionType").GetString() ?? "open-ended";
+                    
+                    List<string>? suggestedAnswers = null;
+                    if (questionElement.TryGetProperty("suggestedAnswers", out var answersArray) && answersArray.ValueKind == JsonValueKind.Array)
+                    {
+                        suggestedAnswers = new List<string>();
+                        foreach (var answer in answersArray.EnumerateArray())
+                        {
+                            var answerText = answer.GetString();
+                            if (!string.IsNullOrEmpty(answerText))
+                            {
+                                suggestedAnswers.Add(answerText);
+                            }
+                        }
+                        if (suggestedAnswers.Count == 0)
+                        {
+                            suggestedAnswers = null;
+                        }
+                    }
+
+                    if (!string.IsNullOrEmpty(questionText))
+                    {
+                        questions.Add(new ClarifyingQuestion(
+                            QuestionId: Guid.NewGuid().ToString(),
+                            Question: questionText,
+                            Context: context,
+                            SuggestedAnswers: suggestedAnswers,
+                            QuestionType: questionType
+                        ));
+                    }
+                }
+            }
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "Failed to parse JSON response from LLM for questions, using fallback");
+        }
+
+        // Fallback: If parsing failed or no questions were generated, create generic questions
+        if (questions.Count == 0)
+        {
+            _logger.LogWarning("No questions parsed from LLM response, generating fallback questions");
+            questions.Add(new ClarifyingQuestion(
                 QuestionId: Guid.NewGuid().ToString(),
                 Question: "What specific problem does this video solve for your audience?",
                 Context: "Understanding the problem helps create targeted, valuable content",
                 SuggestedAnswers: null,
                 QuestionType: "open-ended"
-            ),
-            new ClarifyingQuestion(
+            ));
+            questions.Add(new ClarifyingQuestion(
                 QuestionId: Guid.NewGuid().ToString(),
                 Question: "How much prior knowledge should viewers have?",
                 Context: "This determines the depth and pacing of explanations",
                 SuggestedAnswers: new List<string> { "Complete beginner", "Some familiarity", "Advanced" },
                 QuestionType: "multiple-choice"
-            ),
-            new ClarifyingQuestion(
+            ));
+            questions.Add(new ClarifyingQuestion(
                 QuestionId: Guid.NewGuid().ToString(),
                 Question: "What emotions should viewers feel while watching?",
                 Context: "Emotional tone guides the creative direction",
                 SuggestedAnswers: new List<string> { "Inspired", "Educated", "Entertained", "Empowered" },
                 QuestionType: "multiple-choice"
-            )
-        };
+            ));
+        }
+
+        return questions;
     }
 
     private List<BriefVariant> ParseIdeaToBriefResponse(string response, IdeaToBriefRequest request)
@@ -1430,43 +2261,64 @@ public class IdeationService
         EnhanceTopicRequest request,
         CancellationToken ct = default)
     {
-        _logger.LogInformation("Enhancing topic: {Topic}", request.Topic);
-
+        // Input validation
+        ArgumentNullException.ThrowIfNull(request, nameof(request));
         if (string.IsNullOrWhiteSpace(request.Topic))
         {
-            throw new ArgumentException("Topic cannot be empty", nameof(request));
+            throw new ArgumentException("Topic cannot be null or empty", nameof(request));
         }
 
-        var prompt = BuildEnhanceTopicPrompt(request);
+        if (request.Topic.Length > MaxTopicLength)
+        {
+            throw new ArgumentException($"Topic length exceeds maximum of {MaxTopicLength} characters", nameof(request));
+        }
 
-        var brief = new Brief(
-            Topic: prompt,
-            Audience: request.TargetAudience ?? "General video audience",
-            Goal: "Enhance and improve video topic description",
-            Tone: "Professional and engaging",
-            Language: "en-US",
-            Aspect: Aspect.Widescreen16x9
-        );
+        _logger.LogInformation("Enhancing topic: {Topic} (length: {Length})", request.Topic, request.Topic.Length);
 
-        var planSpec = new PlanSpec(
-            TargetDuration: TimeSpan.FromSeconds(30),
-            Pacing: Pacing.Conversational,
-            Density: Density.Balanced,
-            Style: "Clear and descriptive"
-        );
+        try
+        {
 
-        var response = await GenerateWithLlmAsync(brief, planSpec, ct).ConfigureAwait(false);
+            var prompt = BuildEnhanceTopicPrompt(request);
+            
+            if (prompt.Length > MaxPromptLength)
+            {
+                _logger.LogWarning("Generated prompt exceeds maximum length ({Length} > {MaxLength}), truncating", 
+                    prompt.Length, MaxPromptLength);
+                prompt = prompt.Substring(0, MaxPromptLength);
+            }
 
-        // Extract enhanced topic from response
-        var enhancedTopic = ExtractEnhancedTopic(response, request.Topic);
-        var improvements = ExtractImprovements(response);
+            var response = await GenerateWithLlmAsync(prompt, ct).ConfigureAwait(false);
 
-        return new EnhanceTopicResponse(
-            EnhancedTopic: enhancedTopic,
-            OriginalTopic: request.Topic,
-            Improvements: improvements,
-            GeneratedAt: DateTime.UtcNow
-        );
+            if (string.IsNullOrWhiteSpace(response))
+            {
+                _logger.LogError("LLM returned empty response for enhance topic: {Topic}", request.Topic);
+                throw new InvalidOperationException("LLM provider returned an empty response. Please try again.");
+            }
+
+            // Extract enhanced topic from response
+            var enhancedTopic = ExtractEnhancedTopic(response, request.Topic);
+            var improvements = ExtractImprovements(response);
+
+            _logger.LogInformation("Successfully enhanced topic: {OriginalTopic} -> {EnhancedTopic}", 
+                request.Topic, enhancedTopic);
+
+            return new EnhanceTopicResponse(
+                EnhancedTopic: enhancedTopic,
+                OriginalTopic: request.Topic,
+                Improvements: improvements,
+                GeneratedAt: DateTime.UtcNow
+            );
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Enhance topic operation was cancelled for topic: {Topic}", request.Topic);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error enhancing topic: {Topic}", request.Topic);
+            throw;
+        }
     }
 
     private string BuildEnhanceTopicPrompt(EnhanceTopicRequest request)
@@ -1717,26 +2569,60 @@ public class IdeationService
     }
 
     /// <summary>
-    /// Helper method to execute LLM generation through unified orchestrator or fallback to direct provider
+    /// Helper method to execute LLM generation using CompleteAsync for prompt completion
+    /// This works with all LLM providers including Ollama, OpenAI, Gemini, etc.
     /// </summary>
     private async Task<string> GenerateWithLlmAsync(
-        Brief brief,
-        PlanSpec planSpec,
+        string prompt,
         CancellationToken ct)
     {
-        if (_stageAdapter != null)
+        ArgumentNullException.ThrowIfNull(prompt, nameof(prompt));
+
+        if (string.IsNullOrWhiteSpace(prompt))
         {
-            var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct).ConfigureAwait(false);
-            if (!result.IsSuccess || result.Data == null)
-            {
-                _logger.LogWarning("Orchestrator generation failed, falling back to direct provider: {Error}", result.ErrorMessage);
-                return await _llmProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
-            }
-            return result.Data;
+            throw new ArgumentException("Prompt cannot be null or empty", nameof(prompt));
         }
-        else
+
+        if (prompt.Length > MaxPromptLength)
         {
-            return await _llmProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
+            _logger.LogWarning("Prompt length ({Length}) exceeds maximum ({MaxLength}), truncating", 
+                prompt.Length, MaxPromptLength);
+            prompt = prompt.Substring(0, MaxPromptLength);
+        }
+
+        try
+        {
+            _logger.LogDebug("Calling LLM provider CompleteAsync for ideation task (prompt length: {Length})", prompt.Length);
+            var startTime = DateTime.UtcNow;
+            
+            var response = await _llmProvider.CompleteAsync(prompt, ct).ConfigureAwait(false);
+            
+            var duration = DateTime.UtcNow - startTime;
+            _logger.LogDebug("LLM provider CompleteAsync completed in {Duration}ms", duration.TotalMilliseconds);
+            
+            if (string.IsNullOrWhiteSpace(response))
+            {
+                _logger.LogWarning("LLM provider returned empty response");
+                throw new InvalidOperationException("LLM provider returned an empty response");
+            }
+            
+            _logger.LogDebug("LLM provider returned response of length {Length}", response.Length);
+            return response;
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("LLM generation was cancelled");
+            throw;
+        }
+        catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
+        {
+            _logger.LogError("LLM generation timed out");
+            throw new TimeoutException("LLM generation timed out. Please try again.", ex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calling LLM provider CompleteAsync: {ErrorMessage}", ex.Message);
+            throw;
         }
     }
 
@@ -1754,3 +2640,4 @@ public class IdeationService
         return number.ToString();
     }
 }
+

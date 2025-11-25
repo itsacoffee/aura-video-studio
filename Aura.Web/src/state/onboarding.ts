@@ -1018,16 +1018,6 @@ export async function validateApiKeyThunk(
   console.info(`[API Key Validation] Circuit breaker reset for ${provider} validation`);
 
   try {
-    // Client-side format validation
-    const formatValidation = validateApiKeyFormat(provider, apiKey);
-    if (!formatValidation.valid) {
-      dispatch({
-        type: 'API_KEY_INVALID',
-        payload: { provider, error: formatValidation.error || 'Invalid API key format' },
-      });
-      return;
-    }
-
     // Map frontend provider IDs to backend provider names and API key fields
     const providerNameMap: Record<string, { validatorName: string; keyField: string }> = {
       openai: { validatorName: 'OpenAI', keyField: 'openai' },
@@ -1045,21 +1035,86 @@ export async function validateApiKeyThunk(
       keyField: provider.toLowerCase(),
     };
 
-    // Save the API key using secure KeyVault API (encrypted storage)
-    const saveResponse = await fetch(apiUrl('/api/keys/set'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        provider: providerInfo.keyField,
-        apiKey: apiKey.trim(),
-      }),
-    });
+    // Ollama doesn't require an API key - skip format validation and key saving
+    const isOllama = provider.toLowerCase() === 'ollama';
+    
+    if (!isOllama) {
+      // Client-side format validation for providers that require API keys
+      const formatValidation = validateApiKeyFormat(provider, apiKey);
+      if (!formatValidation.valid) {
+        dispatch({
+          type: 'API_KEY_INVALID',
+          payload: { provider, error: formatValidation.error || 'Invalid API key format' },
+        });
+        return;
+      }
 
-    if (!saveResponse.ok) {
-      throw new Error(`Failed to save API key: ${saveResponse.statusText}`);
+      // Save the API key using secure KeyVault API (encrypted storage)
+      const saveResponse = await fetch(apiUrl('/api/keys/set'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: providerInfo.keyField,
+          apiKey: apiKey.trim(),
+        }),
+      });
+
+      if (!saveResponse.ok) {
+        throw new Error(`Failed to save API key: ${saveResponse.statusText}`);
+      }
     }
 
-    // Use enhanced validation endpoint for all providers
+    // Use enhanced validation endpoint for providers that support it
+    // For Ollama, use the legacy validation endpoint since it doesn't require an API key
+    if (isOllama) {
+      // Ollama validation - use legacy endpoint that checks service availability
+      console.info('[Ollama Validation] Using legacy validation endpoint');
+      const response = await fetch(apiUrl('/api/providers/validate'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          providers: [providerInfo.validatorName],
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Validation request failed: ${response.statusText}`);
+      }
+
+      const result: {
+        results: Array<{ name: string; ok: boolean; details: string }>;
+        ok: boolean;
+      } = await response.json();
+
+      const providerResult = result.results.find(
+        (r) => r.name.toLowerCase() === providerInfo.validatorName.toLowerCase()
+      );
+
+      if (!providerResult) {
+        throw new Error('Ollama validation result not found in response');
+      }
+
+      if (providerResult.ok) {
+        dispatch({
+          type: 'API_KEY_VALID',
+          payload: {
+            provider,
+            accountInfo: providerResult.details || 'Ollama is running and validated',
+          },
+        });
+      } else {
+        dispatch({
+          type: 'API_KEY_INVALID',
+          payload: {
+            provider,
+            error: providerResult.details || 'Ollama validation failed. Ensure Ollama is running.',
+          },
+        });
+      }
+      return;
+    }
+
+    // Use enhanced validation endpoint for providers that require API keys
     try {
       const validationResponse = await validateProviderEnhanced({
         provider: providerInfo.validatorName,
