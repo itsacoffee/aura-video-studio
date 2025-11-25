@@ -119,7 +119,7 @@ const useStyles = makeStyles({
     border: `1px solid ${tokens.colorNeutralStroke2}`,
     backgroundColor: tokens.colorNeutralBackground1,
     transition: 'all 0.2s ease',
-    '&:hover': {
+    ':hover': {
       borderColor: tokens.colorNeutralStroke1,
       boxShadow: `0 2px 8px ${tokens.colorNeutralShadowAmbient}`,
     },
@@ -141,19 +141,19 @@ const useStyles = makeStyles({
   },
   narrationField: {
     marginBottom: tokens.spacingVerticalL,
-    '& textarea': {
-      fontSize: tokens.fontSizeBase400,
-      lineHeight: tokens.lineHeightBase400,
-      fontFamily: tokens.fontFamilyBase,
-      minHeight: '120px',
-      padding: tokens.spacingVerticalM,
-      borderRadius: tokens.borderRadiusMedium,
-      border: `1px solid ${tokens.colorNeutralStroke2}`,
-      transition: 'all 0.2s ease',
-      '&:focus': {
-        borderColor: tokens.colorBrandStroke1,
-        boxShadow: `0 0 0 2px ${tokens.colorBrandBackground2}`,
-      },
+  },
+  narrationTextarea: {
+    fontSize: tokens.fontSizeBase400,
+    lineHeight: tokens.lineHeightBase400,
+    fontFamily: tokens.fontFamilyBase,
+    minHeight: '120px',
+    padding: tokens.spacingVerticalM,
+    borderRadius: tokens.borderRadiusMedium,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    transition: 'all 0.2s ease',
+    ':focus': {
+      borderColor: tokens.colorBrandStroke1,
+      boxShadow: `0 0 0 2px ${tokens.colorBrandBackground2}`,
     },
   },
   sceneMetadata: {
@@ -266,6 +266,14 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     gap: tokens.spacingVerticalM,
+  },
+  providerDropdown: {
+    minWidth: '200px',
+  },
+  providerInfo: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalXXS,
   },
 });
 
@@ -1252,7 +1260,7 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
 
     const scaleFactor = targetDurationSeconds / currentTotal;
     
-    return scenes.map((scene, index) => {
+    return scenes.map((scene, _index) => {
       // Scale scene duration proportionally
       const scaledDuration = scene.durationSeconds * scaleFactor;
       return {
@@ -1975,10 +1983,10 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
               </Text>
               <Text size={200} style={{ 
                 color: Math.abs(durationDifference) <= 2 
-                  ? tokens.colorSuccessForeground1 
+                  ? tokens.colorPaletteGreenForeground1 
                   : Math.abs(durationDifference) <= 5 
-                    ? tokens.colorWarningForeground1 
-                    : tokens.colorErrorForeground1,
+                    ? tokens.colorPaletteYellowForeground1 
+                    : tokens.colorPaletteRedForeground1,
                 marginTop: tokens.spacingVerticalXXS 
               }}>
                 Target: {Math.floor(targetDuration / 60)}:
@@ -1991,10 +1999,10 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
               </Text>
               <Text size={200} style={{ 
                 color: durationAccuracy >= 95 
-                  ? tokens.colorSuccessForeground1 
+                  ? tokens.colorPaletteGreenForeground1 
                   : durationAccuracy >= 90 
-                    ? tokens.colorWarningForeground1 
-                    : tokens.colorErrorForeground1,
+                    ? tokens.colorPaletteYellowForeground1 
+                    : tokens.colorPaletteRedForeground1,
                 marginTop: tokens.spacingVerticalXXS 
               }}>
                 Accuracy: {durationAccuracy.toFixed(1)}%
@@ -2561,7 +2569,7 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
                   <Field>
                     <Checkbox
                       checked={regenerateIncludeContext}
-                      onChange={(_, data) => setRegenerateIncludeContext(data.checked ?? true)}
+                      onChange={(_, data) => setRegenerateIncludeContext(data.checked === true)}
                       label="Include context from surrounding scenes"
                     />
                     <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginTop: tokens.spacingVerticalXS }}>

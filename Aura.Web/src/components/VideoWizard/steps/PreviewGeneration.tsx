@@ -849,8 +849,8 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
 
         // Fetch the audio file - try to get it as a blob from the server
         let audioUrl: string;
-        let isBlobUrl = false;
-        let detectedMimeType = 'audio/wav';
+        let _isBlobUrl = false;
+        let _detectedMimeType = 'audio/wav';
         
         if (previewResponse.audioPath.startsWith('http://') || previewResponse.audioPath.startsWith('https://')) {
           // Already a URL
@@ -882,7 +882,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
                 const text = await blobCopy.text();
                 const errorData = JSON.parse(text);
                 throw new Error(errorData.error || errorData.message || `Server returned error: ${response.status}`);
-              } catch (parseError) {
+              } catch (_parseError) {
                 // If parsing fails, just report the status code
                 throw new Error(`Failed to fetch audio file: Server returned ${response.status} ${response.statusText || ''}`);
               }
@@ -896,7 +896,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
                                  previewResponse.audioPath.endsWith('.wav') ? 'audio/wav' :
                                  'audio/wav');
             
-            detectedMimeType = contentType;
+            _detectedMimeType = contentType;
             
             // Re-create blob from response data (axios blob response)
             // We need to recreate it because axios might return it as a different Blob type
@@ -922,9 +922,9 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
             }
             
             audioUrl = URL.createObjectURL(blob);
-            isBlobUrl = true;
+            _isBlobUrl = true;
             
-            console.log(`Audio fetched successfully. Type: ${contentType}, Size: ${blob.size} bytes`);
+            console.info(`Audio fetched successfully. Type: ${contentType}, Size: ${blob.size} bytes`);
           } catch (fetchError: unknown) {
             const error = fetchError instanceof Error ? fetchError : new Error(String(fetchError));
             // Don't fallback silently - throw the error so user knows what went wrong
@@ -1055,7 +1055,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
             console.log('Audio data loaded. Ready state:', audio.readyState);
           };
 
-          const onError = (e: Event) => {
+          const onError = (_e: Event) => {
             cleanup();
             const error = audio.error;
             let errorMsg = 'Audio failed to load';
@@ -1153,14 +1153,13 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
           
           // Provide more helpful error messages
           if (errorMessage.includes('not found') || errorMessage.includes('not available')) {
-            errorMessage = `TTS provider "${apiProvider}" is not available. Please select a different provider in the TTS settings.`;
+            errorMessage = `TTS provider is not available. Please select a different provider in the TTS settings.`;
           } else if (errorMessage.includes('No TTS provider')) {
             errorMessage = 'No TTS provider selected. Please select a TTS provider in the settings above.';
           } else if (errorMessage.includes('Failed to generate')) {
             errorMessage = `Failed to generate audio. ${errorMessage}`;
-          } else if (errorMessage.includes('Failed to play audio')) {
-            errorMessage = errorMessage; // Already user-friendly
-          } else {
+          } else if (!errorMessage.includes('Failed to play audio')) {
+            // Only add prefix if not already a user-friendly message
             errorMessage = `Audio preview error: ${errorMessage}`;
           }
         }
@@ -1351,6 +1350,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
                         <Option 
                           key={provider.name} 
                           value={provider.name}
+                          text={provider.name}
                           disabled={!isAvailable}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
@@ -1392,7 +1392,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
                     disabled={!selectedTtsProvider || ttsVoices.length === 0}
                   >
                     {ttsVoices.map((voice) => (
-                      <Option key={voice.name} value={voice.name}>
+                      <Option key={voice.name} value={voice.name} text={voice.name}>
                         {voice.name}
                         {voice.gender && ` (${voice.gender})`}
                         {voice.languageCode && ` - ${voice.languageCode}`}

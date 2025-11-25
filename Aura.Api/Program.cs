@@ -4753,7 +4753,7 @@ apiGroup.MapPost("/settings/open-tools-folder", () =>
 .WithOpenApi();
 
 // Path resolution endpoint - expand environment variables in paths
-apiGroup.MapPost("/paths/resolve", ([FromBody] PathResolveRequest request) =>
+apiGroup.MapPost("/paths/resolve", ([FromBody] PathResolveRequestDto request) =>
 {
     try
     {
@@ -4788,7 +4788,7 @@ apiGroup.MapPost("/paths/resolve", ([FromBody] PathResolveRequest request) =>
 .WithOpenApi();
 
 // File operations endpoints
-apiGroup.MapPost("/v1/files/open-file", ([FromBody] FileOperationRequest request) =>
+apiGroup.MapPost("/v1/files/open-file", ([FromBody] FileOperationRequestDto request) =>
 {
     try
     {
@@ -4839,7 +4839,7 @@ apiGroup.MapPost("/v1/files/open-file", ([FromBody] FileOperationRequest request
 .WithName("OpenFile")
 .WithOpenApi();
 
-apiGroup.MapPost("/v1/files/open-folder", ([FromBody] FileOperationRequest request) =>
+apiGroup.MapPost("/v1/files/open-folder", ([FromBody] FileOperationRequestDto request) =>
 {
     try
     {
@@ -6038,3 +6038,7 @@ record FileOperationRequest(string Path);
 
 // Make Program accessible for integration tests
 public partial class Program { }
+
+// Request classes for path and file operations (must be after all top-level statements)
+record PathResolveRequestDto(string Path);
+record FileOperationRequestDto(string Path);

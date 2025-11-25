@@ -166,7 +166,7 @@ const useStyles = makeStyles({
     left: 0,
     right: 0,
     height: '3px',
-    background: `linear-gradient(90deg, ${tokens.colorBrandForeground1}, ${tokens.colorPalettePurpleForeground1})`,
+    background: `linear-gradient(90deg, ${tokens.colorBrandForeground1}, ${tokens.colorPalettePurpleForeground2})`,
     opacity: 0.7,
   },
   transcreationHeader: {
@@ -242,7 +242,7 @@ export const TranslationPage: React.FC = () => {
   // Form state
   const [sourceText, setSourceText] = useState('');
   const [sourceLanguage, setSourceLanguage] = useState('en');
-  const [targetLanguage, setTargetLanguage] = useState('es');
+  const [_targetLanguage, setTargetLanguage] = useState('es');
   const [targetLanguages, setTargetLanguages] = useState<string[]>(['es', 'fr']);
   const [translationMode, setTranslationMode] = useState<string>('Localized');
   const [enableBackTranslation, setEnableBackTranslation] = useState(true);
