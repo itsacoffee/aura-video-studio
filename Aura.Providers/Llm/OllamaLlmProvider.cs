@@ -204,7 +204,11 @@ public class OllamaLlmProvider : ILlmProvider
                 var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
 
-                var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                // CRITICAL FIX: Use cts.Token instead of ct for ReadAsStringAsync
+                // The original code used 'ct' which could have a shorter timeout set by the caller,
+                // causing the response read to be cancelled even after the POST completed successfully.
+                // This was the root cause of "empty content" issues after long Ollama generation.
+                var responseJson = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
 
                 // Parse and validate response structure
                 JsonDocument? responseDoc = null;
@@ -342,18 +346,47 @@ public class OllamaLlmProvider : ILlmProvider
                 var json = JsonSerializer.Serialize(requestBody);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, ct).ConfigureAwait(false);
+                // Apply provider timeout consistently with DraftScriptAsync
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                cts.CancelAfter(_timeout);
+
+                var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
 
-                var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                // Use cts.Token for reading response to maintain consistent timeout
+                var responseJson = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
                 var responseDoc = JsonDocument.Parse(responseJson);
 
                 if (responseDoc.RootElement.TryGetProperty("response", out var responseProp))
                 {
-                    return responseProp.GetString() ?? string.Empty;
+                    var result = responseProp.GetString() ?? string.Empty;
+                    
+                    // Validate response is not empty
+                    if (string.IsNullOrWhiteSpace(result))
+                    {
+                        var responsePreview = string.IsNullOrEmpty(responseJson) 
+                            ? "(empty)" 
+                            : responseJson.Substring(0, Math.Min(500, responseJson.Length));
+                        _logger.LogWarning("Ollama CompleteAsync returned empty response. Raw response: {Response}",
+                            responsePreview);
+                        throw new InvalidOperationException("Ollama returned an empty response for prompt completion");
+                    }
+                    
+                    _logger.LogDebug("Ollama CompleteAsync succeeded with {Length} characters", result.Length);
+                    return result;
                 }
 
+                _logger.LogError("Ollama response did not contain 'response' field. Available fields: {Fields}",
+                    string.Join(", ", responseDoc.RootElement.EnumerateObject().Select(p => p.Name)));
                 throw new InvalidOperationException("Invalid response structure from Ollama API");
+            }
+            catch (TaskCanceledException ex) when (attempt < _maxRetries)
+            {
+                _logger.LogWarning(ex, "Ollama CompleteAsync timed out (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
+            }
+            catch (HttpRequestException ex) when (attempt < _maxRetries)
+            {
+                _logger.LogWarning(ex, "Ollama CompleteAsync connection failed (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
             }
             catch (Exception ex) when (attempt < _maxRetries)
             {
@@ -417,7 +450,7 @@ Respond with ONLY the JSON object, no other text:";
             var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            var responseJson = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("response", out var responseText))
@@ -534,7 +567,7 @@ Respond with ONLY the JSON object, no other text:";
             var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            var responseJson = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("response", out var responseText))
@@ -651,7 +684,7 @@ Respond with ONLY the JSON object, no other text:";
             var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            var responseJson = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("response", out var responseText))
@@ -818,7 +851,7 @@ Respond with ONLY the JSON object, no other text:";
             var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            var responseJson = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("response", out var responseText))
@@ -934,7 +967,7 @@ Respond with ONLY the JSON object, no other text:";
             var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            var responseJson = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("response", out var responseText))
@@ -1045,7 +1078,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
             var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            var responseJson = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("response", out var responseText))
@@ -1314,7 +1347,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
             var response = await _httpClient.GetAsync($"{_baseUrl}/api/tags", cts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            var content = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            var content = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
             var tagsDoc = JsonDocument.Parse(content);
 
             var models = new List<OllamaModelInfo>();
@@ -1470,7 +1503,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
             // Check for model not found error
             if (!response.IsSuccessStatusCode)
             {
-                var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                var errorContent = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
                 if (errorContent.Contains("model") && errorContent.Contains("not found"))
                 {
                     throw new InvalidOperationException(
@@ -1479,7 +1512,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
                 response.EnsureSuccessStatusCode();
             }
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            var responseJson = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
             var responseDoc = JsonDocument.Parse(responseJson);
 
             if (responseDoc.RootElement.TryGetProperty("response", out var responseText))
@@ -1834,7 +1867,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
                 var response = await _httpClient.PostAsync($"{_baseUrl}/api/chat", content, cts.Token).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
 
-                var responseJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                var responseJson = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
                 var responseDoc = JsonDocument.Parse(responseJson);
 
                 if (!responseDoc.RootElement.TryGetProperty("message", out var messageElement))
