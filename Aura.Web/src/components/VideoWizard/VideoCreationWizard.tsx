@@ -30,6 +30,8 @@ import {
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { FC } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { listProviders } from '../../services/api/scriptApi';
+import { ComponentErrorBoundary } from '../ErrorBoundary/ComponentErrorBoundary';
 import { WizardProgress } from '../WizardProgress';
 import { CelebrationEffect } from './CelebrationEffect';
 import { CostEstimator } from './CostEstimator';
@@ -41,7 +43,6 @@ import { ScriptReview } from './steps/ScriptReview';
 import { StyleSelection } from './steps/StyleSelection';
 import type { WizardData, StepValidation, VideoTemplate, WizardDraft } from './types';
 import { VideoTemplates } from './VideoTemplates';
-import { listProviders, type ProviderInfoDto } from '../../services/api/scriptApi';
 
 const useStyles = makeStyles({
   container: {
@@ -152,7 +153,9 @@ export const VideoCreationWizard: FC = () => {
   const [showTemplates, setShowTemplates] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [selectedLlmProvider, setSelectedLlmProvider] = useState<string | undefined>(undefined);
-  const [availableLlmProviders, setAvailableLlmProviders] = useState<Array<{ name: string; isAvailable: boolean; tier: string }>>([]);
+  const [availableLlmProviders, setAvailableLlmProviders] = useState<
+    Array<{ name: string; isAvailable: boolean; tier: string }>
+  >([]);
   const [wizardData, setWizardData] = useState<WizardData>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -272,6 +275,18 @@ export const VideoCreationWizard: FC = () => {
 
   const handleNext = useCallback(() => {
     if (currentStep < STEP_LABELS.length - 1 && stepValidation[currentStep].isValid) {
+      // Extra validation before navigating to Preview step (step 3)
+      // Ensure script data with scenes exists
+      if (currentStep === 2) {
+        const hasScriptScenes = wizardData.script.scenes && wizardData.script.scenes.length > 0;
+        if (!hasScriptScenes) {
+          console.error(
+            '[VideoCreationWizard] Cannot proceed to Preview: no script scenes available'
+          );
+          return;
+        }
+      }
+
       setCurrentStep((prev) => prev + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
@@ -280,7 +295,7 @@ export const VideoCreationWizard: FC = () => {
         setShowCelebration(true);
       }
     }
-  }, [currentStep, stepValidation]);
+  }, [currentStep, stepValidation, wizardData.script.scenes]);
 
   const handlePrevious = useCallback(() => {
     if (currentStep > 0) {
@@ -353,18 +368,22 @@ export const VideoCreationWizard: FC = () => {
 
         const llmProviders = response.providers.filter((p) => {
           const normalized = normalizeProviderName(p.name);
-          return normalized === 'RuleBased' || 
-            normalized === 'Ollama' || 
-            normalized === 'OpenAI' || 
+          return (
+            normalized === 'RuleBased' ||
+            normalized === 'Ollama' ||
+            normalized === 'OpenAI' ||
             normalized === 'Gemini' ||
-            normalized === 'Anthropic';
+            normalized === 'Anthropic'
+          );
         });
-        setAvailableLlmProviders(llmProviders.map(p => ({
-          name: p.name,
-          isAvailable: p.isAvailable,
-          tier: p.tier,
-        })));
-        
+        setAvailableLlmProviders(
+          llmProviders.map((p) => ({
+            name: p.name,
+            isAvailable: p.isAvailable,
+            tier: p.tier,
+          }))
+        );
+
         // Prefer Ollama if available (check normalized name), otherwise use first available
         const ollamaProvider = llmProviders.find((p) => {
           const normalized = normalizeProviderName(p.name);
@@ -376,7 +395,10 @@ export const VideoCreationWizard: FC = () => {
         } else {
           const firstAvailable = llmProviders.find((p) => p.isAvailable);
           if (firstAvailable) {
-            console.info('[VideoCreationWizard] Selecting first available provider:', firstAvailable.name);
+            console.info(
+              '[VideoCreationWizard] Selecting first available provider:',
+              firstAvailable.name
+            );
             setSelectedLlmProvider(firstAvailable.name);
           }
         }
@@ -384,7 +406,7 @@ export const VideoCreationWizard: FC = () => {
         console.error('[VideoCreationWizard] Failed to load providers:', error);
       }
     };
-    
+
     void loadProviders();
   }, []);
 
@@ -425,15 +447,32 @@ export const VideoCreationWizard: FC = () => {
           />
         );
       case 3:
+        // Wrap PreviewGeneration in error boundary to catch and handle errors gracefully
         return (
-          <PreviewGeneration
-            data={wizardData.preview}
-            scriptData={wizardData.script}
-            styleData={wizardData.style}
-            advancedMode={advancedMode}
-            onChange={(preview) => updateWizardData({ preview })}
-            onValidationChange={(validation) => updateStepValidation(3, validation)}
-          />
+          <ComponentErrorBoundary
+            componentName="Preview Generation"
+            onError={(error, errorInfo) => {
+              console.error('[VideoCreationWizard] Preview Generation error:', {
+                error: error.message,
+                componentStack: errorInfo.componentStack,
+                wizardStep: currentStep,
+                hasScriptData: wizardData.script.scenes.length > 0,
+              });
+            }}
+            onRetry={() => {
+              // Reset preview step validation on retry
+              updateStepValidation(3, { isValid: false, errors: ['Preview generation required'] });
+            }}
+          >
+            <PreviewGeneration
+              data={wizardData.preview}
+              scriptData={wizardData.script}
+              styleData={wizardData.style}
+              advancedMode={advancedMode}
+              onChange={(preview) => updateWizardData({ preview })}
+              onValidationChange={(validation) => updateStepValidation(3, validation)}
+            />
+          </ComponentErrorBoundary>
         );
       case 4:
         return (
@@ -468,11 +507,10 @@ export const VideoCreationWizard: FC = () => {
         <div className={styles.headerRight}>
           {/* LLM Provider Selector - Always visible */}
           {availableLlmProviders.length > 0 && (
-            <Tooltip 
-              content="Select which LLM to use for script generation" 
-              relationship="label"
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+            <Tooltip content="Select which LLM to use for script generation" relationship="label">
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}
+              >
                 <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
                   LLM:
                 </Text>
@@ -481,7 +519,10 @@ export const VideoCreationWizard: FC = () => {
                   onOptionSelect={(_, data) => {
                     if (data.optionValue) {
                       setSelectedLlmProvider(data.optionValue);
-                      console.info('[VideoCreationWizard] LLM provider changed to:', data.optionValue);
+                      console.info(
+                        '[VideoCreationWizard] LLM provider changed to:',
+                        data.optionValue
+                      );
                     }
                   }}
                   style={{ minWidth: '150px' }}
@@ -495,28 +536,30 @@ export const VideoCreationWizard: FC = () => {
                       value={provider.name}
                       disabled={!provider.isAvailable}
                     >
-                      {provider.name}{!provider.isAvailable ? ' (Unavailable)' : ''}
+                      {provider.name}
+                      {!provider.isAvailable ? ' (Unavailable)' : ''}
                     </Option>
                   ))}
                 </Dropdown>
-                {selectedLlmProvider && selectedLlmProvider !== 'Auto' && (() => {
-                  // Normalize provider name for comparison (handle "Ollama (model)" format)
-                  const normalizeProviderName = (name: string) => {
-                    const parenIndex = name.indexOf('(');
-                    return parenIndex > 0 ? name.substring(0, parenIndex).trim() : name.trim();
-                  };
-                  const selectedNormalized = normalizeProviderName(selectedLlmProvider);
-                  const provider = availableLlmProviders.find(p => normalizeProviderName(p.name) === selectedNormalized);
-                  const isAvailable = provider?.isAvailable ?? false;
-                  return (
-                    <Badge 
-                      color={isAvailable ? 'success' : 'subtle'}
-                      size="small"
-                    >
-                      {isAvailable ? 'Active' : 'Unavailable'}
-                    </Badge>
-                  );
-                })()}
+                {selectedLlmProvider &&
+                  selectedLlmProvider !== 'Auto' &&
+                  (() => {
+                    // Normalize provider name for comparison (handle "Ollama (model)" format)
+                    const normalizeProviderName = (name: string) => {
+                      const parenIndex = name.indexOf('(');
+                      return parenIndex > 0 ? name.substring(0, parenIndex).trim() : name.trim();
+                    };
+                    const selectedNormalized = normalizeProviderName(selectedLlmProvider);
+                    const provider = availableLlmProviders.find(
+                      (p) => normalizeProviderName(p.name) === selectedNormalized
+                    );
+                    const isAvailable = provider?.isAvailable ?? false;
+                    return (
+                      <Badge color={isAvailable ? 'success' : 'subtle'} size="small">
+                        {isAvailable ? 'Active' : 'Unavailable'}
+                      </Badge>
+                    );
+                  })()}
               </div>
             </Tooltip>
           )}
