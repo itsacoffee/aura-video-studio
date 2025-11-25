@@ -1962,9 +1962,9 @@ public class IdeationService
                     TargetAudience = targetAudience ?? originalConcept.TargetAudience,
                     Pros = pros,
                     Cons = cons,
-                    AppealScore: appealScore,
-                    Hook: hook ?? originalConcept.Hook,
-                    TalkingPoints: talkingPoints
+                    AppealScore = appealScore,
+                    Hook = hook ?? originalConcept.Hook,
+                    TalkingPoints = talkingPoints
                 };
             }
 
@@ -2609,15 +2609,15 @@ public class IdeationService
             _logger.LogDebug("LLM provider returned response of length {Length}", response.Length);
             return response;
         }
-        catch (OperationCanceledException)
-        {
-            _logger.LogWarning("LLM generation was cancelled");
-            throw;
-        }
         catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
         {
             _logger.LogError("LLM generation timed out");
             throw new TimeoutException("LLM generation timed out. Please try again.", ex);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("LLM generation was cancelled");
+            throw;
         }
         catch (Exception ex)
         {

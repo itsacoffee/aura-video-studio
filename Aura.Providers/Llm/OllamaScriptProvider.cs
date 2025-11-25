@@ -38,7 +38,7 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
         string baseUrl = "http://127.0.0.1:11434",
         string model = "llama3.1:8b-q4_k_m",
         int maxRetries = 3,
-        int timeoutSeconds = 300) // 5 minutes - matches OllamaLlmProvider and accounts for slow local models
+        int timeoutSeconds = 900) // 15 minutes - very lenient for slow systems and large models
         : base(logger, maxRetries, baseRetryDelayMs: 1000)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
@@ -46,8 +46,20 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
         _model = model;
         _timeout = TimeSpan.FromSeconds(timeoutSeconds);
 
-        _logger.LogInformation("OllamaScriptProvider initialized with baseUrl={BaseUrl}, model={Model}, timeout={Timeout}s",
-            _baseUrl, _model, timeoutSeconds);
+        // CRITICAL: Ensure HttpClient timeout is longer than provider timeout
+        // HttpClient has a default 100-second timeout that would kill connections
+        // before our 15-minute provider timeout is reached
+        if (_httpClient.Timeout < TimeSpan.FromSeconds(timeoutSeconds + 60))
+        {
+            _logger.LogWarning(
+                "HttpClient timeout ({HttpClientTimeout}s) is shorter than provider timeout ({ProviderTimeout}s). " +
+                "Increasing HttpClient timeout to prevent premature cancellation.",
+                _httpClient.Timeout.TotalSeconds, timeoutSeconds);
+            _httpClient.Timeout = TimeSpan.FromSeconds(timeoutSeconds + 300); // Add 5-minute buffer
+        }
+
+        _logger.LogInformation("OllamaScriptProvider initialized with baseUrl={BaseUrl}, model={Model}, timeout={Timeout}s (lenient for slow systems), httpClientTimeout={HttpClientTimeout}s",
+            _baseUrl, _model, timeoutSeconds, _httpClient.Timeout.TotalSeconds);
     }
 
     /// <summary>
@@ -136,18 +148,81 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
                 var json = JsonSerializer.Serialize(requestBody);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                cts.CancelAfter(_timeout); // 5 minutes - allows for slow local models
+                // CRITICAL FIX: Use independent timeout - don't link to parent token for timeout management
+                // This prevents upstream components (frontend, API middleware) from cancelling our long-running operation
+                // if they have shorter timeouts. The linked token approach would cancel if ANY upstream has a short timeout.
+                using var cts = new CancellationTokenSource();
+                cts.CancelAfter(_timeout); // 15 minutes - allows for slow local models, large models, and model loading
 
-                _logger.LogInformation("Sending request to Ollama (attempt {Attempt}/{MaxRetries}, timeout: {Timeout}s)",
-                    attempt + 1, _maxRetries + 1, _timeout.TotalSeconds);
+                // Still respect explicit user cancellation by checking the parent token
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    throw new OperationCanceledException("Script generation was cancelled by user", cancellationToken);
+                }
 
-                var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token)
-                    .ConfigureAwait(false);
+                _logger.LogInformation("Sending request to Ollama (attempt {Attempt}/{MaxRetries}, timeout: {Timeout:F1} minutes)",
+                    attempt + 1, _maxRetries + 1, _timeout.TotalMinutes);
+
+                _logger.LogInformation("Request sent to Ollama, awaiting response (timeout: {Timeout:F1} minutes, this may take a while for large models)...",
+                    _timeout.TotalMinutes);
+
+                // CRITICAL FIX: Start periodic heartbeat logging to show the system is still working
+                // During a 15-minute wait, there's no visibility that the system is working without this
+                var requestStartTime = DateTime.UtcNow;
+                using var heartbeatCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token);
+                var heartbeatTask = Task.Run(async () =>
+                {
+                    try
+                    {
+                        while (!heartbeatCts.Token.IsCancellationRequested)
+                        {
+                            await Task.Delay(TimeSpan.FromSeconds(30), heartbeatCts.Token).ConfigureAwait(false);
+                            var elapsed = DateTime.UtcNow - requestStartTime;
+                            var remaining = _timeout.TotalSeconds - elapsed.TotalSeconds;
+                            if (remaining > 0)
+                            {
+                                _logger.LogInformation(
+                                    "Still awaiting Ollama response... ({Elapsed:F0}s elapsed, {Remaining:F0}s remaining before timeout)",
+                                    elapsed.TotalSeconds,
+                                    remaining);
+                            }
+                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Expected when generation completes or fails - ignore
+                    }
+                }, heartbeatCts.Token);
+
+                HttpResponseMessage response;
+                try
+                {
+                    response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token)
+                        .ConfigureAwait(false);
+                }
+                finally
+                {
+                    // Stop heartbeat logging regardless of success/failure
+                    heartbeatCts.Cancel();
+                    try
+                    {
+                        await heartbeatTask.ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Expected
+                    }
+                }
+
+                // Check for user cancellation after long operation
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    throw new OperationCanceledException("Script generation was cancelled by user", cancellationToken);
+                }
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    var errorContent = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                    var errorContent = await response.Content.ReadAsStringAsync(CancellationToken.None).ConfigureAwait(false);
                     if (errorContent.Contains("model") && errorContent.Contains("not found"))
                     {
                         throw new InvalidOperationException(
@@ -156,7 +231,7 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
                     response.EnsureSuccessStatusCode();
                 }
 
-                var responseJson = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                var responseJson = await response.Content.ReadAsStringAsync(CancellationToken.None).ConfigureAwait(false);
                 var responseDoc = JsonDocument.Parse(responseJson);
 
                 if (!responseDoc.RootElement.TryGetProperty("response", out var responseText))
@@ -201,9 +276,16 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
                 if (attempt >= _maxRetries)
                 {
                     throw new InvalidOperationException(
-                        $"Ollama request timed out after {_timeout.TotalSeconds}s. " +
-                        $"The model '{model}' may be slow, still loading, or Ollama may be overloaded. " +
-                        $"Try using a smaller/faster model or wait for Ollama to finish loading the model.", ex);
+                        $"Ollama request timed out after {_timeout.TotalSeconds}s ({_timeout.TotalMinutes:F1} minutes). " +
+                        $"This can happen with large models or slow systems. The model '{model}' may be:\n" +
+                        $"  - Still loading into memory (first request after Ollama start can take 2-5 minutes)\n" +
+                        $"  - Generating on a slow CPU (some systems need 10-15 minutes for script generation)\n" +
+                        $"  - A very large model (70B+ models can be extremely slow)\n" +
+                        $"Suggestions:\n" +
+                        $"  - Wait for Ollama to fully load the model (check 'ollama ps' in terminal)\n" +
+                        $"  - Use a smaller/faster model (e.g., llama3.2:3b instead of llama3.1:8b)\n" +
+                        $"  - Ensure Ollama has sufficient RAM (model size + 2GB minimum)\n" +
+                        $"  - Check Ollama logs for errors: 'ollama logs'", ex);
                 }
             }
             catch (InvalidOperationException ex)
@@ -544,8 +626,9 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
             // The availability check needs its own independent timeout
             // However, we still monitor the parent token and exit early if it's cancelled
             using var cts = new CancellationTokenSource();
-            // Increased timeout to 15 seconds to account for slow startup or model loading
-            cts.CancelAfter(TimeSpan.FromSeconds(15));
+            // Increased timeout to 60 seconds to accommodate slow systems, model loading, and network latency
+            // This is very lenient to ensure we don't prematurely fail on systems that are actually working
+            cts.CancelAfter(TimeSpan.FromSeconds(60));
 
             // Try /api/version first (lightweight endpoint)
             try
@@ -574,7 +657,7 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
             }
             catch (TaskCanceledException ex)
             {
-                _logger.LogInformation("Ollama /api/version endpoint timed out after 15s, trying /api/tags as fallback. Inner exception: {InnerException}", ex.InnerException?.Message);
+                _logger.LogInformation("Ollama /api/version endpoint timed out after 60s, trying /api/tags as fallback. This is normal for slow systems. Inner exception: {InnerException}", ex.InnerException?.Message);
             }
             catch (HttpRequestException ex)
             {
@@ -602,7 +685,7 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
                 }
 
                 using var fallbackCts = new CancellationTokenSource();
-                fallbackCts.CancelAfter(TimeSpan.FromSeconds(10));
+                fallbackCts.CancelAfter(TimeSpan.FromSeconds(45)); // Lenient fallback
                 using var fallbackRequest = new HttpRequestMessage(HttpMethod.Get, $"{_baseUrl}/api/tags");
                 using var tagsResponse = await _httpClient.SendAsync(fallbackRequest, HttpCompletionOption.ResponseHeadersRead, fallbackCts.Token).ConfigureAwait(false);
                 
@@ -620,7 +703,7 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
             }
             catch (TaskCanceledException ex)
             {
-                _logger.LogWarning("Ollama /api/tags fallback endpoint timed out after 10s. Inner exception: {InnerException}", ex.InnerException?.Message);
+                _logger.LogWarning("Ollama /api/tags fallback endpoint timed out after 45s. System may be very slow or Ollama may not be running. Inner exception: {InnerException}", ex.InnerException?.Message);
             }
             catch (HttpRequestException ex)
             {

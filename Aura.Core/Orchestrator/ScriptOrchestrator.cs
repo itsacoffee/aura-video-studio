@@ -102,7 +102,7 @@ public class ScriptOrchestrator
 
         _logger.LogInformation("Waiting for Ollama detection to complete...");
         var detectionCompleted = await _ollamaDetectionService.WaitForInitialDetectionAsync(
-            TimeSpan.FromSeconds(10), ct).ConfigureAwait(false);
+            TimeSpan.FromSeconds(30), ct).ConfigureAwait(false); // Lenient for slow system initialization
 
         if (detectionCompleted)
         {
@@ -110,7 +110,7 @@ public class ScriptOrchestrator
         }
         else
         {
-            _logger.LogWarning("Ollama detection did not complete within timeout, proceeding with available providers");
+            _logger.LogWarning("Ollama detection did not complete within 30s timeout (lenient for slow systems), proceeding with available providers");
         }
     }
 
