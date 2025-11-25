@@ -29,6 +29,9 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
     private readonly TimeSpan _timeout;
     private readonly RagContextBuilder? _ragContextBuilder;
 
+    // Citation format constant for consistency
+    private const string CitationFormat = "[Citation X]";
+
     // Cache for availability check to avoid repeated calls
     private DateTime _lastAvailabilityCheck = DateTime.MinValue;
     private bool _lastAvailabilityResult = false;
@@ -104,43 +107,8 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
             throw new InvalidOperationException(errorMessage);
         }
 
-        // RAG Context Retrieval
-        string ragContext = string.Empty;
-        if (_ragContextBuilder != null && request.Brief.RagConfiguration?.Enabled == true)
-        {
-            try
-            {
-                var ragConfig = new RagConfig
-                {
-                    Enabled = true,
-                    TopK = request.Brief.RagConfiguration.TopK,
-                    MinimumScore = request.Brief.RagConfiguration.MinimumScore,
-                    MaxContextTokens = request.Brief.RagConfiguration.MaxContextTokens,
-                    IncludeCitations = request.Brief.RagConfiguration.IncludeCitations
-                };
-
-                var ragResult = await _ragContextBuilder.BuildContextAsync(
-                    request.Brief.Topic,
-                    ragConfig,
-                    cancellationToken).ConfigureAwait(false);
-
-                if (ragResult.Chunks.Count > 0)
-                {
-                    ragContext = ragResult.FormattedContext;
-                    _logger.LogInformation("RAG context retrieved: {ChunkCount} chunks, {TokenCount} tokens",
-                        ragResult.Chunks.Count, ragResult.TotalTokens);
-                }
-                else
-                {
-                    _logger.LogInformation("No relevant RAG context found for topic: {Topic}", request.Brief.Topic);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to retrieve RAG context, continuing without it");
-                // Continue without RAG - graceful fallback
-            }
-        }
+        // RAG Context Retrieval using helper method
+        var ragContext = await RetrieveRagContextAsync(request, cancellationToken).ConfigureAwait(false);
 
         var startTime = DateTime.UtcNow;
         var prompt = BuildPrompt(request, ragContext);
@@ -411,38 +379,8 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
             throw new InvalidOperationException(errorMessage);
         }
 
-        // RAG Context Retrieval for streaming
-        string ragContext = string.Empty;
-        if (_ragContextBuilder != null && request.Brief.RagConfiguration?.Enabled == true)
-        {
-            try
-            {
-                var ragConfig = new RagConfig
-                {
-                    Enabled = true,
-                    TopK = request.Brief.RagConfiguration.TopK,
-                    MinimumScore = request.Brief.RagConfiguration.MinimumScore,
-                    MaxContextTokens = request.Brief.RagConfiguration.MaxContextTokens,
-                    IncludeCitations = request.Brief.RagConfiguration.IncludeCitations
-                };
-
-                var ragResult = await _ragContextBuilder.BuildContextAsync(
-                    request.Brief.Topic,
-                    ragConfig,
-                    cancellationToken).ConfigureAwait(false);
-
-                if (ragResult.Chunks.Count > 0)
-                {
-                    ragContext = ragResult.FormattedContext;
-                    _logger.LogInformation("RAG context retrieved for streaming: {ChunkCount} chunks, {TokenCount} tokens",
-                        ragResult.Chunks.Count, ragResult.TotalTokens);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to retrieve RAG context for streaming, continuing without it");
-            }
-        }
+        // RAG Context Retrieval using helper method
+        var ragContext = await RetrieveRagContextAsync(request, cancellationToken).ConfigureAwait(false);
 
         var prompt = BuildPrompt(request, ragContext);
         var model = request.ModelOverride ?? _model;
@@ -839,6 +777,53 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
     }
 
     /// <summary>
+    /// Retrieves RAG context for a request if enabled and available
+    /// </summary>
+    private async Task<string> RetrieveRagContextAsync(
+        ScriptGenerationRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (_ragContextBuilder == null || request.Brief.RagConfiguration?.Enabled != true)
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            var ragConfig = new RagConfig
+            {
+                Enabled = true,
+                TopK = request.Brief.RagConfiguration.TopK,
+                MinimumScore = request.Brief.RagConfiguration.MinimumScore,
+                MaxContextTokens = request.Brief.RagConfiguration.MaxContextTokens,
+                IncludeCitations = request.Brief.RagConfiguration.IncludeCitations
+            };
+
+            var ragResult = await _ragContextBuilder.BuildContextAsync(
+                request.Brief.Topic,
+                ragConfig,
+                cancellationToken).ConfigureAwait(false);
+
+            if (ragResult.Chunks.Count > 0)
+            {
+                _logger.LogInformation("RAG context retrieved: {ChunkCount} chunks, {TokenCount} tokens",
+                    ragResult.Chunks.Count, ragResult.TotalTokens);
+                return ragResult.FormattedContext;
+            }
+            else
+            {
+                _logger.LogInformation("No relevant RAG context found for topic: {Topic}", request.Brief.Topic);
+                return string.Empty;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to retrieve RAG context, continuing without it");
+            return string.Empty;
+        }
+    }
+
+    /// <summary>
     /// Build prompt from request with optional RAG context
     /// </summary>
     private string BuildPrompt(ScriptGenerationRequest request, string ragContext = "")
@@ -857,7 +842,7 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
             promptBuilder.AppendLine("---");
             promptBuilder.AppendLine();
             promptBuilder.AppendLine("Use the above reference context to inform your script generation.");
-            promptBuilder.AppendLine("Cite sources using [Citation X] format where appropriate.");
+            promptBuilder.AppendLine($"Cite sources using {CitationFormat} format where appropriate.");
             promptBuilder.AppendLine();
         }
 
@@ -871,9 +856,9 @@ Follow these guidelines:
 
         if (!string.IsNullOrEmpty(ragContext))
         {
-            systemPrompt += @"
+            systemPrompt += $@"
 - Use information from the reference context when relevant
-- Cite sources appropriately using [Citation X] format";
+- Cite sources appropriately using {CitationFormat} format";
         }
 
         var userPrompt = $@"Create a video script for the following:
