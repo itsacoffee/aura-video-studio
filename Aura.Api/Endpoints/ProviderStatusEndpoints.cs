@@ -35,7 +35,7 @@ public static class ProviderStatusEndpoints
             try
             {
                 var loggerFactory = serviceProvider.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>();
-                var logger = loggerFactory.CreateLogger<ProviderStatusEndpoints>();
+                var logger = loggerFactory.CreateLogger("ProviderStatusEndpoints");
 
                 // Get LLM provider status
                 var llmProviders = new List<ProviderStatusDto>();
@@ -47,14 +47,16 @@ public static class ProviderStatusEndpoints
                     try
                     {
                         var ollamaStatus = await ollamaDetection.GetStatusAsync(ct).ConfigureAwait(false);
-                        var isAvailable = ollamaStatus.IsRunning && (ollamaStatus.Models?.Count ?? 0) > 0;
+                        var models = ollamaStatus.IsRunning ? await ollamaDetection.GetModelsAsync(ct).ConfigureAwait(false) : new List<OllamaModel>();
+                        var modelsCount = models?.Count ?? 0;
+                        var isAvailable = ollamaStatus.IsRunning && modelsCount > 0;
                         llmProviders.Add(new ProviderStatusDto(
                             Name: "Ollama",
                             Available: isAvailable,
                             Tier: "local",
                             LastChecked: DateTime.UtcNow,
                             ErrorMessage: isAvailable ? null : (ollamaStatus.ErrorMessage ?? "Ollama service not running or no models installed"),
-                            Details: ollamaStatus.IsRunning ? $"Running with {ollamaStatus.Models?.Count ?? 0} models" : null
+                            Details: ollamaStatus.IsRunning ? $"Running with {modelsCount} models" : null
                         ));
                     }
                     catch (Exception ex)
@@ -89,7 +91,7 @@ public static class ProviderStatusEndpoints
                     {
                         var tier = GetLlmProviderTier(name);
                         var isAvailable = name == "RuleBased" || await CheckLlmProviderAvailabilityAsync(provider, name, ct).ConfigureAwait(false);
-                        
+
                         llmProviders.Add(new ProviderStatusDto(
                             Name: name,
                             Available: isAvailable,
@@ -121,10 +123,10 @@ public static class ProviderStatusEndpoints
                     {
                         var providerName = ttsProvider.GetType().Name.Replace("Provider", "").Replace("Tts", "");
                         var tier = GetTtsProviderTier(providerName);
-                        
+
                         // Check if provider is healthy/available
                         var isAvailable = await CheckTtsProviderAvailabilityAsync(ttsProvider, providerName, ct).ConfigureAwait(false);
-                        
+
                         ttsProviders.Add(new ProviderStatusDto(
                             Name: providerName,
                             Available: isAvailable,
@@ -253,7 +255,7 @@ public static class ProviderStatusEndpoints
             try
             {
                 var providerType = provider.GetType();
-                var availabilityMethod = providerType.GetMethod("IsServiceAvailableAsync", 
+                var availabilityMethod = providerType.GetMethod("IsServiceAvailableAsync",
                     new[] { typeof(CancellationToken), typeof(bool) });
 
                 if (availabilityMethod != null)
