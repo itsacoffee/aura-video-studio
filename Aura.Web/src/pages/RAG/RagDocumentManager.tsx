@@ -21,7 +21,6 @@ import {
   TableCellLayout,
   tokens,
   makeStyles,
-  Badge,
   Tooltip,
 } from '@fluentui/react-components';
 import {
@@ -29,9 +28,12 @@ import {
   Delete24Regular,
   Info24Regular,
   DocumentText24Regular,
+  Dismiss24Regular,
 } from '@fluentui/react-icons';
 import React, { useState, useCallback, useEffect } from 'react';
 import type { FC } from 'react';
+import { ragClient } from '../../api/ragClient';
+import type { DocumentInfo, IndexStatistics } from '../../types';
 
 const useStyles = makeStyles({
   container: {
@@ -75,52 +77,52 @@ const useStyles = makeStyles({
     padding: tokens.spacingVerticalXXXL,
     color: tokens.colorNeutralForeground3,
   },
+  errorBanner: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: tokens.spacingVerticalL,
+    padding: tokens.spacingVerticalM,
+    backgroundColor: tokens.colorPaletteRedBackground2,
+    borderRadius: tokens.borderRadiusMedium,
+  },
 });
-
-interface IndexStatistics {
-  totalDocuments: number;
-  totalChunks: number;
-  totalSizeBytes: number;
-  lastUpdated: string;
-  documentsByFormat: Record<string, number>;
-}
-
-interface Document {
-  id: string;
-  filename: string;
-  format: string;
-  chunks: number;
-  uploadedAt: string;
-}
 
 const RagDocumentManager: FC = () => {
   const styles = useStyles();
   const [statistics, setStatistics] = useState<IndexStatistics | null>(null);
-  const [documents, setDocuments] = useState<Document[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [documents, setDocuments] = useState<DocumentInfo[]>([]);
+  const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchStatistics = useCallback(async () => {
+  const loadDocuments = useCallback(async () => {
     try {
-      setLoading(true);
-      const response = await fetch('/api/rag/statistics');
-      if (!response.ok) {
-        throw new Error('Failed to fetch statistics');
-      }
-      const data = await response.json();
-      setStatistics(data);
+      const docs = await ragClient.getDocuments();
+      setDocuments(docs);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load documents';
       setError(errorMessage);
-    } finally {
-      setLoading(false);
+    }
+  }, []);
+
+  const loadStatistics = useCallback(async () => {
+    try {
+      const stats = await ragClient.getStatistics();
+      setStatistics(stats);
+    } catch (err: unknown) {
+      console.error('Failed to load statistics:', err);
     }
   }, []);
 
   useEffect(() => {
-    fetchStatistics();
-  }, [fetchStatistics]);
+    const loadData = async () => {
+      setLoading(true);
+      await Promise.all([loadDocuments(), loadStatistics()]);
+      setLoading(false);
+    };
+    loadData();
+  }, [loadDocuments, loadStatistics]);
 
   const handleFileUpload = useCallback(
     async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -128,36 +130,17 @@ const RagDocumentManager: FC = () => {
       if (!files || files.length === 0) return;
 
       const file = files[0];
-      const formData = new FormData();
-      formData.append('file', file);
 
       try {
         setUploading(true);
         setError(null);
 
-        const response = await fetch('/api/rag/ingest?strategy=Semantic&maxChunkSize=512', {
-          method: 'POST',
-          body: formData,
-        });
+        await ragClient.uploadDocument(file, 'Semantic', 512);
+        await loadDocuments();
+        await loadStatistics();
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.detail || 'Upload failed');
-        }
-
-        const result = await response.json();
-
-        const newDocument: Document = {
-          id: result.documentId,
-          filename: file.name,
-          format: file.name.split('.').pop()?.toUpperCase() || 'UNKNOWN',
-          chunks: result.chunksCreated,
-          uploadedAt: new Date().toISOString(),
-        };
-
-        setDocuments((prev) => [...prev, newDocument]);
-
-        await fetchStatistics();
+        // Reset input so the same file can be uploaded again if needed
+        event.target.value = '';
       } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : 'Upload failed';
         setError(errorMessage);
@@ -165,23 +148,16 @@ const RagDocumentManager: FC = () => {
         setUploading(false);
       }
     },
-    [fetchStatistics]
+    [loadDocuments, loadStatistics]
   );
 
   const handleDeleteDocument = useCallback(
     async (documentId: string) => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/rag/documents/${documentId}`, {
-          method: 'DELETE',
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to delete document');
-        }
-
-        setDocuments((prev) => prev.filter((doc) => doc.id !== documentId));
-        await fetchStatistics();
+        await ragClient.deleteDocument(documentId);
+        await loadDocuments();
+        await loadStatistics();
       } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : 'Delete failed';
         setError(errorMessage);
@@ -189,29 +165,22 @@ const RagDocumentManager: FC = () => {
         setLoading(false);
       }
     },
-    [fetchStatistics]
+    [loadDocuments, loadStatistics]
   );
 
   const handleClearAll = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/rag/clear', {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to clear index');
-      }
-
-      setDocuments([]);
-      await fetchStatistics();
+      await ragClient.clearAll();
+      await loadDocuments();
+      await loadStatistics();
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Clear failed';
       setError(errorMessage);
     } finally {
       setLoading(false);
     }
-  }, [fetchStatistics]);
+  }, [loadDocuments, loadStatistics]);
 
   const formatBytes = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
@@ -219,6 +188,11 @@ const RagDocumentManager: FC = () => {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+  };
+
+  const formatDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
   };
 
   return (
@@ -229,14 +203,15 @@ const RagDocumentManager: FC = () => {
       </div>
 
       {error && (
-        <Card
-          style={{
-            marginBottom: tokens.spacingVerticalL,
-            backgroundColor: tokens.colorPaletteRedBackground2,
-          }}
-        >
-          <Text style={{ color: tokens.colorPaletteRedForeground1 }}>{error}</Text>
-        </Card>
+        <div className={styles.errorBanner}>
+          <Text style={{ color: tokens.colorPaletteRedForeground1 }}>❌ {error}</Text>
+          <Button
+            appearance="subtle"
+            icon={<Dismiss24Regular />}
+            onClick={() => setError(null)}
+            aria-label="Dismiss error"
+          />
+        </div>
       )}
 
       <div className={styles.statsSection}>
@@ -251,6 +226,12 @@ const RagDocumentManager: FC = () => {
         <Card className={styles.statCard}>
           <Body1>Index Size</Body1>
           <Title3>{statistics ? formatBytes(statistics.totalSizeBytes) : '0 Bytes'}</Title3>
+        </Card>
+        <Card className={styles.statCard}>
+          <Body1>Last Updated</Body1>
+          <Title3 style={{ fontSize: tokens.fontSizeBase300 }}>
+            {statistics?.lastUpdated ? formatDate(statistics.lastUpdated) : 'Never'}
+          </Title3>
         </Card>
       </div>
 
@@ -346,29 +327,29 @@ const RagDocumentManager: FC = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHeaderCell>Filename</TableHeaderCell>
-                  <TableHeaderCell>Format</TableHeaderCell>
+                  <TableHeaderCell>Source</TableHeaderCell>
+                  <TableHeaderCell>Title</TableHeaderCell>
                   <TableHeaderCell>Chunks</TableHeaderCell>
-                  <TableHeaderCell>Uploaded</TableHeaderCell>
+                  <TableHeaderCell>Created</TableHeaderCell>
                   <TableHeaderCell>Actions</TableHeaderCell>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {documents.map((doc) => (
-                  <TableRow key={doc.id}>
+                  <TableRow key={doc.documentId}>
                     <TableCell>
-                      <TableCellLayout>{doc.filename}</TableCellLayout>
+                      <TableCellLayout>{doc.source}</TableCellLayout>
                     </TableCell>
                     <TableCell>
-                      <Badge appearance="outline">{doc.format}</Badge>
+                      <TableCellLayout>{doc.title || '—'}</TableCellLayout>
                     </TableCell>
-                    <TableCell>{doc.chunks}</TableCell>
-                    <TableCell>{new Date(doc.uploadedAt).toLocaleDateString()}</TableCell>
+                    <TableCell>{doc.chunkCount}</TableCell>
+                    <TableCell>{formatDate(doc.createdAt)}</TableCell>
                     <TableCell>
                       <Button
                         appearance="subtle"
                         icon={<Delete24Regular />}
-                        onClick={() => handleDeleteDocument(doc.id)}
+                        onClick={() => handleDeleteDocument(doc.documentId)}
                       >
                         Delete
                       </Button>
