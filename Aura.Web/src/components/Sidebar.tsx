@@ -17,35 +17,37 @@ import {
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { navItems, type NavItem } from '../navigation';
+import { panelLayout, spacing, gaps } from '../themes/layout';
 import { Logo } from './Logo';
 
 const useStyles = makeStyles({
   sidebar: {
-    width: '240px',
+    width: panelLayout.sidebarWidth,
     backgroundColor: tokens.colorNeutralBackground2,
     borderRight: `1px solid ${tokens.colorNeutralStroke1}`,
     display: 'flex',
     flexDirection: 'column',
-    padding: tokens.spacingVerticalL,
-    gap: tokens.spacingVerticalM,
+    padding: spacing.lg,
+    gap: spacing.md,
     boxShadow: '2px 0 8px rgba(0, 0, 0, 0.1)',
     transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
     overflow: 'hidden',
+    flexShrink: 0,
     '@media (max-width: 768px)': {
-      width: '64px',
-      padding: tokens.spacingVerticalS,
+      width: panelLayout.sidebarWidthCollapsed,
+      padding: spacing.sm,
     },
   },
   sidebarCollapsed: {
-    width: '64px',
-    padding: tokens.spacingVerticalS,
+    width: panelLayout.sidebarWidthCollapsed,
+    padding: spacing.sm,
   },
   header: {
-    marginBottom: tokens.spacingVerticalM,
-    paddingLeft: tokens.spacingHorizontalM,
+    marginBottom: spacing.md,
+    paddingLeft: spacing.md,
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalS,
+    gap: spacing.sm,
     alignItems: 'flex-start',
   },
   headerCollapsed: {
@@ -55,23 +57,27 @@ const useStyles = makeStyles({
   nav: {
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalXS,
+    gap: spacing.xs,
     flex: 1,
     overflowY: 'auto',
     overflowX: 'hidden',
+    paddingRight: spacing.xs, // Space for scrollbar
   },
   section: {
     display: 'flex',
     flexDirection: 'column',
     gap: tokens.spacingVerticalXXS,
-    marginBottom: tokens.spacingVerticalM,
+    marginBottom: spacing.md,
   },
   sectionLabel: {
-    paddingLeft: tokens.spacingHorizontalM,
-    paddingBottom: tokens.spacingVerticalXXS,
+    paddingLeft: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xs,
     fontSize: tokens.fontSizeBase200,
     fontWeight: tokens.fontWeightSemibold,
     color: tokens.colorNeutralForeground3,
+    textTransform: 'uppercase',
+    letterSpacing: '0.02em',
   },
   sectionLabelCollapsed: {
     paddingLeft: '0',
@@ -80,8 +86,8 @@ const useStyles = makeStyles({
   navButton: {
     justifyContent: 'flex-start',
     width: '100%',
-    paddingTop: tokens.spacingVerticalM,
-    paddingBottom: tokens.spacingVerticalM,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.sm,
     borderRadius: tokens.borderRadiusMedium,
     transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
     ':hover': {
@@ -105,7 +111,7 @@ const useStyles = makeStyles({
   },
   footer: {
     marginTop: 'auto',
-    paddingTop: tokens.spacingVerticalM,
+    paddingTop: spacing.md,
     borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
   },
   themeToggle: {
@@ -119,16 +125,16 @@ const useStyles = makeStyles({
   },
   toggleButton: {
     width: '100%',
-    marginBottom: tokens.spacingVerticalS,
+    marginBottom: spacing.sm,
   },
   divider: {
-    marginTop: tokens.spacingVerticalXS,
-    marginBottom: tokens.spacingVerticalXS,
+    marginTop: spacing.xs,
+    marginBottom: spacing.xs,
   },
   brandContainer: {
     display: 'flex',
     alignItems: 'center',
-    gap: tokens.spacingHorizontalS,
+    gap: gaps.tight,
   },
   brandLogo: {
     flexShrink: 0,

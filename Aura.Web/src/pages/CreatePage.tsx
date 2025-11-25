@@ -35,54 +35,62 @@ import { useFormValidation } from '../hooks/useFormValidation';
 import { keyboardShortcutManager } from '../services/keyboardShortcutManager';
 import { useActivity } from '../state/activityContext';
 import type { PreflightReport } from '../state/providers';
+import { container, spacing, gaps, formLayout } from '../themes/layout';
 import type { Brief, PlanSpec, PlannerRecommendations } from '../types';
 import { normalizeEnumsForApi, validateAndWarnEnums } from '../utils/enumNormalizer';
 
 const useStyles = makeStyles({
   container: {
-    maxWidth: '800px',
+    maxWidth: container.formMaxWidth,
     margin: '0 auto',
   },
   header: {
-    marginBottom: tokens.spacingVerticalXXL,
+    marginBottom: spacing.xxl,
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalS,
+    gap: spacing.sm,
   },
   subtitle: {
     color: tokens.colorNeutralForeground3,
+    fontSize: tokens.fontSizeBase400,
   },
   form: {
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalL,
+    gap: spacing.lg,
   },
   section: {
-    padding: tokens.spacingVerticalXL,
+    padding: spacing.xl,
+  },
+  sectionTitle: {
+    marginBottom: spacing.sm,
+  },
+  sectionDescription: {
+    marginBottom: spacing.lg,
   },
   actions: {
     display: 'flex',
-    gap: tokens.spacingHorizontalM,
+    gap: gaps.standard,
     justifyContent: 'flex-end',
-    marginTop: tokens.spacingVerticalXL,
+    marginTop: spacing.xl,
   },
   fieldGroup: {
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalL,
+    gap: formLayout.fieldGap,
   },
   advancedHeader: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
     cursor: 'pointer',
-    paddingTop: tokens.spacingVerticalM,
-    paddingBottom: tokens.spacingVerticalM,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.md,
     borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
-    marginTop: tokens.spacingVerticalL,
+    marginTop: spacing.lg,
   },
   advancedContent: {
-    paddingTop: tokens.spacingVerticalM,
+    paddingTop: spacing.md,
   },
 });
 
@@ -427,8 +435,8 @@ export function CreatePage() {
       <div className={styles.form}>
         {currentStep === 1 && (
           <Card className={styles.section}>
-            <Title2>Brief</Title2>
-            <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
+            <Title2 className={styles.sectionTitle}>Brief</Title2>
+            <Text size={200} className={styles.sectionDescription}>
               Define the core details of your video
             </Text>
             <div className={styles.fieldGroup}>
@@ -487,8 +495,8 @@ export function CreatePage() {
         {currentStep === 2 && (
           <>
             <Card className={styles.section}>
-              <Title2>Length and Pacing</Title2>
-              <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
+              <Title2 className={styles.sectionTitle}>Length and Pacing</Title2>
+              <Text size={200} className={styles.sectionDescription}>
                 Configure the duration and pacing of your video
               </Text>
               <div className={styles.fieldGroup}>

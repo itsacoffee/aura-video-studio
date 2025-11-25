@@ -871,6 +871,91 @@ docfx serve _site
 
 **Note:** There may be a cosmetic warning about file links that appears even when links work correctly in the generated HTML. This is a known DocFX behavior and can be safely ignored if the links render correctly.
 
+## UI/UX Style Guidelines
+
+Aura Video Studio follows a consistent layout and typography system to maintain a professional, polished visual standard similar to Adobe and Apple applications.
+
+### Layout Tokens
+
+Centralized spacing tokens are defined in `Aura.Web/src/themes/layout.ts`:
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `spacing.xs` | 4px | Icon-label gaps, tight spacing |
+| `spacing.sm` | 8px | Form hints, compact item gaps |
+| `spacing.md` | 12px | Related element spacing |
+| `spacing.lg` | 16px | Standard form field gaps |
+| `spacing.xl` | 24px | Section separation |
+| `spacing.xxl` | 32px | Page padding, major sections |
+
+**Page Layout:**
+- Maximum content width: `1440px` for central content flows
+- Page padding: `32px` on desktop, `16px` on mobile
+- Form max width: `800px` for focused form workflows
+
+**Panel Ratios:**
+- Sidebar: `240px` expanded, `64px` collapsed
+- Inspector/detail panels: `320px` standard
+
+### Typography Scale
+
+Typography tokens are defined in `Aura.Web/src/themes/typography.ts`:
+
+| Style | Size | Weight | Usage |
+|-------|------|--------|-------|
+| Display | 48px | Bold | Hero areas only (rare) |
+| H1 | 28-32px | Semi-bold | Main page titles |
+| H2 | 22-24px | Semi-bold | Section headings |
+| H3 | 18-20px | Semi-bold | Subgroup headings |
+| Body | 14-16px | Normal | Primary copy |
+| Caption | 12-13px | Normal | Helper text, labels |
+
+**Text Alignment:**
+- Use left alignment for multi-line body text
+- Center alignment only for short phrases, headings, or splash contexts
+
+**Casing Rules:**
+- **Title Case** for primary page and section headings
+- **Sentence case** for labels, buttons, and helper text
+
+### Form Layout
+
+Consistent form field spacing ensures professional appearance:
+
+- **Label → Control gap:** 4px
+- **Control → Helper text gap:** 4px
+- **Field → Field gap:** 16px
+- **Section → Section gap:** 24px
+
+### Using the Tokens
+
+Import and use tokens in components:
+
+```typescript
+import { spacing, gaps, container } from '../themes/layout';
+import { useTypographyStyles } from '../themes/typography';
+
+const useStyles = makeStyles({
+  container: {
+    maxWidth: container.formMaxWidth,
+    padding: spacing.xxl,
+  },
+  fieldGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: spacing.lg,
+  },
+});
+```
+
+For typography with consistent margins, use the `useTypographyStyles` hook:
+
+```typescript
+const typographyStyles = useTypographyStyles();
+
+return <h1 className={typographyStyles.pageTitle}>Page Title</h1>;
+```
+
 ## Additional Resources
 
 - **[README.md](README.md)** - Project overview and quick start
