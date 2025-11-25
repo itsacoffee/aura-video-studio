@@ -980,24 +980,17 @@ public class ScriptsController : ControllerBase
             throw new ArgumentException("Script text cannot be null or empty", nameof(scriptText));
         }
 
-        var lines = scriptText.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        // Normalize line endings and clean up the text
+        var normalizedText = scriptText.Replace("\r\n", "\n").Replace("\r", "\n");
+        var lines = normalizedText.Split('\n', StringSplitOptions.None); // Keep empty lines for paragraph detection
         
-        if (lines.Length == 0)
+        if (lines.Length == 0 || lines.All(l => string.IsNullOrWhiteSpace(l)))
         {
             throw new ArgumentException("Script text contains no valid lines", nameof(scriptText));
         }
         
-        var title = lines.FirstOrDefault()?.Trim() ?? "Untitled Script";
-
-        // Handle markdown title format (# Title)
-        if (title.StartsWith("# ", StringComparison.Ordinal))
-        {
-            title = title.Substring(2).Trim();
-        }
-        else if (title.StartsWith("Title:", StringComparison.OrdinalIgnoreCase))
-        {
-            title = title.Substring(6).Trim();
-        }
+        // Find the title - look for # heading, "Title:" prefix, or first non-empty substantive line
+        var title = ExtractTitle(lines);
 
         var scenes = new List<ScriptScene>();
         var sceneNumber = 1;
@@ -1008,87 +1001,32 @@ public class ScriptsController : ControllerBase
         {
             totalDuration = TimeSpan.FromMinutes(3);
         }
-        
-        var sceneDuration = TimeSpan.FromSeconds(totalDuration.TotalSeconds / Math.Max(1, lines.Length / 3));
 
-        // Try to parse structured scenes with ## markers first
-        var currentSceneContent = new List<string>();
-        string? currentSceneHeading = null;
+        // Try multiple parsing strategies in order of preference
+        scenes = TryParseWithMarkdownHeaders(lines, ref sceneNumber);
         
-        foreach (var line in lines.Skip(1))
-        {
-            var trimmedLine = line.Trim();
-            
-            // Check for scene markers (## heading)
-            if (trimmedLine.StartsWith("## ", StringComparison.Ordinal))
-            {
-                // Save previous scene if any
-                if (currentSceneHeading != null && currentSceneContent.Count > 0)
-                {
-                    var narration = string.Join(" ", currentSceneContent);
-                    if (!string.IsNullOrWhiteSpace(narration))
-                    {
-                        scenes.Add(new ScriptScene
-                        {
-                            Number = sceneNumber++,
-                            Narration = narration,
-                            VisualPrompt = $"Visual for: {narration.Substring(0, Math.Min(50, narration.Length))}",
-                            Duration = sceneDuration,
-                            Transition = TransitionType.Cut
-                        });
-                    }
-                    currentSceneContent.Clear();
-                }
-                currentSceneHeading = trimmedLine.Substring(3).Trim();
-            }
-            else if (!string.IsNullOrWhiteSpace(trimmedLine) && !trimmedLine.StartsWith("#"))
-            {
-                // Regular content line - add to current scene
-                currentSceneContent.Add(trimmedLine);
-            }
-        }
-        
-        // Add the last scene
-        if (currentSceneHeading != null && currentSceneContent.Count > 0)
-        {
-            var narration = string.Join(" ", currentSceneContent);
-            if (!string.IsNullOrWhiteSpace(narration))
-            {
-                scenes.Add(new ScriptScene
-                {
-                    Number = sceneNumber++,
-                    Narration = narration,
-                    VisualPrompt = $"Visual for: {narration.Substring(0, Math.Min(50, narration.Length))}",
-                    Duration = sceneDuration,
-                    Transition = TransitionType.Cut
-                });
-            }
-        }
-        
-        // If no scenes found with ## markers, fall back to line-by-line parsing
+        // If markdown parsing didn't work, try numbered sections (1. Section, 2. Section)
         if (scenes.Count == 0)
         {
-            foreach (var line in lines.Skip(1))
-            {
-                var trimmedLine = line.Trim();
-                if (!string.IsNullOrWhiteSpace(trimmedLine) && trimmedLine.Length > 10)
-                {
-                    scenes.Add(new ScriptScene
-                    {
-                        Number = sceneNumber++,
-                        Narration = trimmedLine,
-                        VisualPrompt = $"Visual for: {trimmedLine.Substring(0, Math.Min(50, trimmedLine.Length))}",
-                        Duration = sceneDuration,
-                        Transition = TransitionType.Cut
-                    });
-                }
-            }
+            scenes = TryParseWithNumberedSections(lines, ref sceneNumber);
+        }
+        
+        // If still no scenes, try bold/emphasis markers (**Section** or *Section*)
+        if (scenes.Count == 0)
+        {
+            scenes = TryParseWithEmphasisMarkers(lines, ref sceneNumber);
+        }
+        
+        // If still no scenes, try paragraph-based parsing (separated by blank lines)
+        if (scenes.Count == 0)
+        {
+            scenes = TryParseByParagraphs(lines, ref sceneNumber);
         }
 
         // Final fallback: create a single scene with the entire script
         if (scenes.Count == 0)
         {
-            var fullContent = scriptText.Trim();
+            var fullContent = CleanupNarrationText(scriptText.Trim());
             scenes.Add(new ScriptScene
             {
                 Number = 1,
@@ -1097,6 +1035,23 @@ public class ScriptsController : ControllerBase
                 Duration = totalDuration,
                 Transition = TransitionType.Cut
             });
+        }
+
+        // Calculate scene durations proportionally based on content length
+        // Create new scenes with correct durations since ScriptScene has init-only properties
+        var totalNarrationLength = scenes.Sum(s => s.Narration?.Length ?? 0);
+        if (totalNarrationLength > 0)
+        {
+            scenes = scenes.Select(scene =>
+            {
+                var proportion = (scene.Narration?.Length ?? 1) / (double)totalNarrationLength;
+                return scene with { Duration = TimeSpan.FromSeconds(totalDuration.TotalSeconds * proportion) };
+            }).ToList();
+        }
+        else
+        {
+            var sceneDuration = TimeSpan.FromSeconds(totalDuration.TotalSeconds / scenes.Count);
+            scenes = scenes.Select(scene => scene with { Duration = sceneDuration }).ToList();
         }
 
         return new Script
@@ -1113,6 +1068,304 @@ public class ScriptsController : ControllerBase
                 EstimatedCost = 0,
                 Tier = provider == "RuleBased" ? Aura.Core.Models.Generation.ProviderTier.Free : Aura.Core.Models.Generation.ProviderTier.Pro
             }
+        };
+    }
+
+    /// <summary>
+    /// Extract title from script lines using multiple strategies
+    /// </summary>
+    private static string ExtractTitle(string[] lines)
+    {
+        foreach (var line in lines)
+        {
+            var trimmed = line.Trim();
+            if (string.IsNullOrWhiteSpace(trimmed)) continue;
+            
+            // # Title format
+            if (trimmed.StartsWith("# ", StringComparison.Ordinal))
+            {
+                return trimmed.Substring(2).Trim();
+            }
+            
+            // Title: format
+            if (trimmed.StartsWith("Title:", StringComparison.OrdinalIgnoreCase))
+            {
+                return trimmed.Substring(6).Trim();
+            }
+            
+            // Skip section headers that look like ## sections
+            if (trimmed.StartsWith("##", StringComparison.Ordinal))
+            {
+                continue;
+            }
+            
+            // Use first substantive line as title if no explicit format found
+            if (trimmed.Length > 5 && trimmed.Length < 150 && !trimmed.StartsWith("["))
+            {
+                return trimmed;
+            }
+        }
+        
+        return "Untitled Script";
+    }
+
+    /// <summary>
+    /// Parse script using markdown ## headers
+    /// </summary>
+    private static List<ScriptScene> TryParseWithMarkdownHeaders(string[] lines, ref int sceneNumber)
+    {
+        var scenes = new List<ScriptScene>();
+        var currentSceneContent = new List<string>();
+        string? currentSceneHeading = null;
+        bool foundFirstHeader = false;
+        
+        foreach (var line in lines)
+        {
+            var trimmedLine = line.Trim();
+            
+            // Check for scene markers (## heading, ###, or even just # if it's not the title)
+            bool isSceneHeader = trimmedLine.StartsWith("## ", StringComparison.Ordinal) ||
+                                 trimmedLine.StartsWith("### ", StringComparison.Ordinal) ||
+                                 (foundFirstHeader && trimmedLine.StartsWith("# ", StringComparison.Ordinal));
+            
+            if (isSceneHeader)
+            {
+                foundFirstHeader = true;
+                
+                // Save previous scene if any
+                if (currentSceneHeading != null && currentSceneContent.Count > 0)
+                {
+                    var narration = CleanupNarrationText(string.Join(" ", currentSceneContent));
+                    if (!string.IsNullOrWhiteSpace(narration))
+                    {
+                        scenes.Add(CreateScene(sceneNumber++, narration, currentSceneHeading));
+                    }
+                    currentSceneContent.Clear();
+                }
+                
+                // Extract heading, removing markdown markers
+                currentSceneHeading = trimmedLine.TrimStart('#').Trim();
+            }
+            else if (!string.IsNullOrWhiteSpace(trimmedLine) && 
+                     !trimmedLine.StartsWith("#") && 
+                     currentSceneHeading != null)
+            {
+                // Regular content line - add to current scene
+                currentSceneContent.Add(trimmedLine);
+            }
+        }
+        
+        // Add the last scene
+        if (currentSceneHeading != null && currentSceneContent.Count > 0)
+        {
+            var narration = CleanupNarrationText(string.Join(" ", currentSceneContent));
+            if (!string.IsNullOrWhiteSpace(narration))
+            {
+                scenes.Add(CreateScene(sceneNumber++, narration, currentSceneHeading));
+            }
+        }
+        
+        return scenes;
+    }
+
+    /// <summary>
+    /// Parse script using numbered sections (1. Introduction, 2. Main Point)
+    /// </summary>
+    private static List<ScriptScene> TryParseWithNumberedSections(string[] lines, ref int sceneNumber)
+    {
+        var scenes = new List<ScriptScene>();
+        var currentSceneContent = new List<string>();
+        string? currentSceneHeading = null;
+        
+        var numberedSectionPattern = new System.Text.RegularExpressions.Regex(
+            @"^\s*(\d+)\.\s+(.+)$", 
+            System.Text.RegularExpressions.RegexOptions.Compiled);
+        
+        foreach (var line in lines)
+        {
+            var trimmedLine = line.Trim();
+            var match = numberedSectionPattern.Match(trimmedLine);
+            
+            if (match.Success && match.Groups[2].Value.Length > 3)
+            {
+                // Save previous scene if any
+                if (currentSceneHeading != null && currentSceneContent.Count > 0)
+                {
+                    var narration = CleanupNarrationText(string.Join(" ", currentSceneContent));
+                    if (!string.IsNullOrWhiteSpace(narration))
+                    {
+                        scenes.Add(CreateScene(sceneNumber++, narration, currentSceneHeading));
+                    }
+                    currentSceneContent.Clear();
+                }
+                
+                currentSceneHeading = match.Groups[2].Value.Trim();
+            }
+            else if (!string.IsNullOrWhiteSpace(trimmedLine) && currentSceneHeading != null)
+            {
+                currentSceneContent.Add(trimmedLine);
+            }
+        }
+        
+        // Add the last scene
+        if (currentSceneHeading != null && currentSceneContent.Count > 0)
+        {
+            var narration = CleanupNarrationText(string.Join(" ", currentSceneContent));
+            if (!string.IsNullOrWhiteSpace(narration))
+            {
+                scenes.Add(CreateScene(sceneNumber++, narration, currentSceneHeading));
+            }
+        }
+        
+        return scenes;
+    }
+
+    /// <summary>
+    /// Parse script using **bold** or *emphasis* markers as section headers
+    /// </summary>
+    private static List<ScriptScene> TryParseWithEmphasisMarkers(string[] lines, ref int sceneNumber)
+    {
+        var scenes = new List<ScriptScene>();
+        var currentSceneContent = new List<string>();
+        string? currentSceneHeading = null;
+        
+        var emphasisPattern = new System.Text.RegularExpressions.Regex(
+            @"^\s*\*{1,2}([^*]+)\*{1,2}\s*$", 
+            System.Text.RegularExpressions.RegexOptions.Compiled);
+        
+        foreach (var line in lines)
+        {
+            var trimmedLine = line.Trim();
+            var match = emphasisPattern.Match(trimmedLine);
+            
+            if (match.Success && match.Groups[1].Value.Length > 3 && match.Groups[1].Value.Length < 100)
+            {
+                // Save previous scene if any
+                if (currentSceneHeading != null && currentSceneContent.Count > 0)
+                {
+                    var narration = CleanupNarrationText(string.Join(" ", currentSceneContent));
+                    if (!string.IsNullOrWhiteSpace(narration))
+                    {
+                        scenes.Add(CreateScene(sceneNumber++, narration, currentSceneHeading));
+                    }
+                    currentSceneContent.Clear();
+                }
+                
+                currentSceneHeading = match.Groups[1].Value.Trim();
+            }
+            else if (!string.IsNullOrWhiteSpace(trimmedLine) && currentSceneHeading != null)
+            {
+                currentSceneContent.Add(trimmedLine);
+            }
+        }
+        
+        // Add the last scene
+        if (currentSceneHeading != null && currentSceneContent.Count > 0)
+        {
+            var narration = CleanupNarrationText(string.Join(" ", currentSceneContent));
+            if (!string.IsNullOrWhiteSpace(narration))
+            {
+                scenes.Add(CreateScene(sceneNumber++, narration, currentSceneHeading));
+            }
+        }
+        
+        return scenes;
+    }
+
+    /// <summary>
+    /// Parse script by paragraphs (separated by blank lines)
+    /// </summary>
+    private static List<ScriptScene> TryParseByParagraphs(string[] lines, ref int sceneNumber)
+    {
+        var scenes = new List<ScriptScene>();
+        var currentParagraph = new List<string>();
+        
+        foreach (var line in lines)
+        {
+            var trimmedLine = line.Trim();
+            
+            if (string.IsNullOrWhiteSpace(trimmedLine))
+            {
+                // End of paragraph
+                if (currentParagraph.Count > 0)
+                {
+                    var content = CleanupNarrationText(string.Join(" ", currentParagraph));
+                    if (!string.IsNullOrWhiteSpace(content) && content.Length > 20)
+                    {
+                        scenes.Add(CreateScene(sceneNumber++, content, $"Section {sceneNumber}"));
+                    }
+                    currentParagraph.Clear();
+                }
+            }
+            else if (!trimmedLine.StartsWith("#"))
+            {
+                currentParagraph.Add(trimmedLine);
+            }
+        }
+        
+        // Add the last paragraph
+        if (currentParagraph.Count > 0)
+        {
+            var content = CleanupNarrationText(string.Join(" ", currentParagraph));
+            if (!string.IsNullOrWhiteSpace(content) && content.Length > 20)
+            {
+                scenes.Add(CreateScene(sceneNumber++, content, $"Section {sceneNumber}"));
+            }
+        }
+        
+        return scenes;
+    }
+
+    /// <summary>
+    /// Clean up narration text by removing markdown artifacts and normalizing whitespace
+    /// </summary>
+    private static string CleanupNarrationText(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return string.Empty;
+
+        // Remove [VISUAL: ...] markers but keep the description for context
+        var visualPattern = new System.Text.RegularExpressions.Regex(
+            @"\[VISUAL:\s*([^\]]+)\]", 
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        text = visualPattern.Replace(text, "");
+
+        // Remove markdown formatting (bold, italic)
+        text = text.Replace("**", "").Replace("__", "");
+        text = System.Text.RegularExpressions.Regex.Replace(text, @"(?<!\*)\*(?!\*)", "");
+        text = System.Text.RegularExpressions.Regex.Replace(text, @"(?<!_)_(?!_)", "");
+
+        // Normalize whitespace
+        text = System.Text.RegularExpressions.Regex.Replace(text, @"\s+", " ");
+        
+        return text.Trim();
+    }
+
+    /// <summary>
+    /// Create a scene with proper visual prompt extraction
+    /// </summary>
+    private static ScriptScene CreateScene(int number, string narration, string? heading)
+    {
+        // Try to extract visual prompts from the content
+        var visualPrompt = $"Visual for: {heading ?? narration.Substring(0, Math.Min(50, narration.Length))}";
+        
+        var visualMatch = System.Text.RegularExpressions.Regex.Match(
+            narration, 
+            @"\[VISUAL:\s*([^\]]+)\]", 
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        
+        if (visualMatch.Success)
+        {
+            visualPrompt = visualMatch.Groups[1].Value.Trim();
+        }
+        
+        return new ScriptScene
+        {
+            Number = number,
+            Narration = CleanupNarrationText(narration),
+            VisualPrompt = visualPrompt,
+            Duration = TimeSpan.Zero, // Will be set later based on content proportion
+            Transition = TransitionType.Cut
         };
     }
 

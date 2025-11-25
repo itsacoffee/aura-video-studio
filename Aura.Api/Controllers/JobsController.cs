@@ -117,6 +117,17 @@ public class JobsController : ControllerBase
                 );
             }
 
+            PromptModifiers? promptModifiers = null;
+            if (request.Brief.PromptModifiers != null)
+            {
+                promptModifiers = new PromptModifiers(
+                    AdditionalInstructions: request.Brief.PromptModifiers.AdditionalInstructions,
+                    ExampleStyle: request.Brief.PromptModifiers.ExampleStyle,
+                    EnableChainOfThought: request.Brief.PromptModifiers.EnableChainOfThought,
+                    PromptVersion: request.Brief.PromptModifiers.PromptVersion
+                );
+            }
+
             var brief = new Brief(
                 Topic: request.Brief.Topic,
                 Audience: request.Brief.Audience,
@@ -124,6 +135,7 @@ public class JobsController : ControllerBase
                 Tone: request.Brief.Tone,
                 Language: request.Brief.Language,
                 Aspect: ParseAspect(request.Brief.Aspect),
+                PromptModifiers: promptModifiers,
                 RagConfiguration: ragConfig,
                 LlmParameters: llmParams
             );
