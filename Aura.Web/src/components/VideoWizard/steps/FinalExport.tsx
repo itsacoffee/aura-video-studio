@@ -1,37 +1,36 @@
 import {
-  makeStyles,
-  tokens,
-  Title2,
-  Title3,
-  Text,
-  Button,
-  Card,
-  Field,
-  Radio,
-  RadioGroup,
-  Checkbox,
-  Dropdown,
-  Option,
-  ProgressBar,
-  Spinner,
-  Tooltip,
-  Badge,
+    Badge,
+    Button,
+    Card,
+    Checkbox,
+    Dropdown,
+    Field,
+    makeStyles,
+    Option,
+    ProgressBar,
+    Radio,
+    RadioGroup,
+    Spinner,
+    Text,
+    Title2,
+    Title3,
+    tokens,
+    Tooltip,
 } from '@fluentui/react-components';
 import {
-  ArrowDownload24Regular,
-  CheckmarkCircle24Regular,
-  Dismiss24Regular,
-  DocumentMultiple24Regular,
-  Info24Regular,
-  Folder24Regular,
-  Open24Regular,
+    CheckmarkCircle24Regular,
+    Dismiss24Regular,
+    DocumentMultiple24Regular,
+    Folder24Regular,
+    Info24Regular,
+    Open24Regular
 } from '@fluentui/react-icons';
-import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { FC } from 'react';
-import type { ExportData, WizardData, StepValidation } from '../types';
-import { openFile, openFolder } from '../../../utils/fileSystemUtils';
-import { pickFolder, resolvePathOnBackend, getDefaultSaveLocation, validatePathWritable } from '../../../utils/pathUtils';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiUrl } from '../../../config/api';
+import { openFile, openFolder } from '../../../utils/fileSystemUtils';
+import { getDefaultSaveLocation, pickFolder, resolvePathOnBackend, validatePathWritable } from '../../../utils/pathUtils';
+import type { ExportData, StepValidation, WizardData } from '../types';
 
 const useStyles = makeStyles({
   container: {
@@ -303,9 +302,11 @@ export const FinalExport: FC<FinalExportProps> = ({
     setExportStatus('exporting');
     setExportProgress(0);
     setExportResults([]);
+    setResolvedPaths({});
 
     try {
       const formatsToExport = batchExport ? selectedFormats : [data.format];
+      const newExportResults: ExportResult[] = [];
 
       for (let i = 0; i < formatsToExport.length; i++) {
         const format = formatsToExport[i];
@@ -319,15 +320,20 @@ export const FinalExport: FC<FinalExportProps> = ({
         }
 
         const fileSize = estimatedFileSize * (format === 'mov' ? 3 : format === 'webm' ? 0.7 : 1);
-        
+
         // Generate actual file path
         const fileName = `video-${Date.now()}.${format}`;
         const basePath = saveLocation || getDefaultSaveLocation();
-        const fullPath = `${basePath.replace(/\\/g, '/').replace(/\/$/, '')}/${fileName}`;
 
-        // Resolve the path to expand environment variables
-        const resolvedPath = await resolvePathOnBackend(fullPath);
+        // Resolve base path first to expand environment variables
         const resolvedFolder = await resolvePathOnBackend(basePath);
+
+        // Construct full path using platform-appropriate separator
+        const pathSeparator = resolvedFolder.includes('\\') ? '\\' : '/';
+        const fullPath = `${resolvedFolder}${pathSeparator}${fileName}`;
+
+        // Resolve the full path to ensure it's properly expanded
+        const resolvedPath = await resolvePathOnBackend(fullPath);
 
         // Ensure the directory exists
         try {
@@ -344,19 +350,18 @@ export const FinalExport: FC<FinalExportProps> = ({
           format: format.toUpperCase(),
           resolution: data.resolution,
           filePath: fileName,
-          fullPath: resolvedPath,
+          fullPath: resolvedPath, // Store the fully resolved path
           fileSize: Math.round(fileSize * 1024),
         };
 
-        exportResults.push(result);
+        newExportResults.push(result);
         setResolvedPaths((prev) => ({
           ...prev,
-          [result.fullPath]: resolvedFolder,
+          [resolvedPath]: resolvedFolder,
         }));
-
-        setExportResults([...exportResults]);
       }
 
+      setExportResults(newExportResults);
       setExportProgress(100);
       setExportStatus('completed');
       setExportStage('Export completed successfully!');
@@ -371,7 +376,7 @@ export const FinalExport: FC<FinalExportProps> = ({
     data.format,
     data.resolution,
     estimatedFileSize,
-    exportResults,
+    saveLocation, // Add saveLocation to dependencies
   ]);
 
   const cancelExport = useCallback(() => {
@@ -393,12 +398,17 @@ export const FinalExport: FC<FinalExportProps> = ({
 
   const handleOpenFile = useCallback(async (filePath: string, fullPath?: string) => {
     try {
-      const pathToOpen = fullPath || filePath;
+      let pathToOpen = fullPath || filePath;
       if (!pathToOpen) {
         console.warn('No file path provided');
         return;
       }
-      
+
+      // If path contains environment variables, resolve it
+      if (pathToOpen.includes('%') || pathToOpen.includes('~')) {
+        pathToOpen = await resolvePathOnBackend(pathToOpen);
+      }
+
       const success = await openFile(pathToOpen);
       if (!success) {
         console.warn('Failed to open file, trying folder instead');
@@ -408,7 +418,7 @@ export const FinalExport: FC<FinalExportProps> = ({
           pathToOpen.lastIndexOf('\\')
         ));
         if (folderPath) {
-        await openFolder(folderPath);
+          await openFolder(folderPath);
         }
       }
     } catch (error) {
@@ -418,20 +428,38 @@ export const FinalExport: FC<FinalExportProps> = ({
 
   const handleOpenFolder = useCallback(async (filePath: string, fullPath?: string) => {
     try {
-      const pathToOpen = fullPath || filePath;
+      let pathToOpen = fullPath || filePath;
       if (!pathToOpen) {
         console.warn('No file path provided');
         return;
       }
-      
+
+      // If path contains environment variables, resolve it
+      if (pathToOpen.includes('%') || pathToOpen.includes('~')) {
+        pathToOpen = await resolvePathOnBackend(pathToOpen);
+      }
+
       // Get the folder path - either from resolved paths or extract from file path
-      const folderPath = resolvedPaths[pathToOpen] || pathToOpen.substring(0, Math.max(
-        pathToOpen.lastIndexOf('/'),
-        pathToOpen.lastIndexOf('\\')
-      ));
-      
+      let folderPath = resolvedPaths[pathToOpen];
+      if (!folderPath) {
+        // Extract directory from file path
+        const lastSlash = Math.max(
+          pathToOpen.lastIndexOf('/'),
+          pathToOpen.lastIndexOf('\\')
+        );
+        if (lastSlash >= 0) {
+          folderPath = pathToOpen.substring(0, lastSlash);
+        } else {
+          folderPath = pathToOpen; // Assume it's already a folder
+        }
+      }
+
       if (folderPath) {
-      await openFolder(folderPath);
+        // Resolve folder path if it contains environment variables
+        if (folderPath.includes('%') || folderPath.includes('~')) {
+          folderPath = await resolvePathOnBackend(folderPath);
+        }
+        await openFolder(folderPath);
       } else {
         console.warn('Could not determine folder path');
       }

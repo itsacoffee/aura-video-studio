@@ -4752,6 +4752,166 @@ apiGroup.MapPost("/settings/open-tools-folder", () =>
 .WithName("OpenToolsFolder")
 .WithOpenApi();
 
+// Request classes for path and file operations
+record PathResolveRequest(string Path);
+record FileOperationRequest(string Path);
+
+// Path resolution endpoint - expand environment variables in paths
+apiGroup.MapPost("/paths/resolve", ([FromBody] PathResolveRequest request) =>
+{
+    try
+    {
+        if (string.IsNullOrWhiteSpace(request.Path))
+        {
+            return Results.BadRequest(new { error = "Path is required" });
+        }
+
+        // Expand environment variables using ConfigurationConsolidator
+        var expandedPath = Aura.Core.Configuration.ConfigurationConsolidator.ExpandEnvironmentVariables(request.Path);
+
+        // Resolve to full path
+        try
+        {
+            var fullPath = Path.GetFullPath(expandedPath);
+            return Results.Ok(new { resolvedPath = fullPath });
+        }
+        catch (Exception ex)
+        {
+            // If path resolution fails, return expanded path anyway
+            Log.Warning(ex, "Failed to resolve full path for: {Path}", expandedPath);
+            return Results.Ok(new { resolvedPath = expandedPath });
+        }
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error resolving path");
+        return Results.Problem("Error resolving path", statusCode: 500);
+    }
+})
+.WithName("ResolvePath")
+.WithOpenApi();
+
+// File operations endpoints
+apiGroup.MapPost("/v1/files/open-file", ([FromBody] FileOperationRequest request) =>
+{
+    try
+    {
+        if (string.IsNullOrWhiteSpace(request.Path))
+        {
+            return Results.BadRequest(new { error = "File path is required" });
+        }
+
+        // Expand environment variables
+        var expandedPath = Aura.Core.Configuration.ConfigurationConsolidator.ExpandEnvironmentVariables(request.Path);
+        var fullPath = Path.GetFullPath(expandedPath);
+
+        if (!File.Exists(fullPath))
+        {
+            return Results.NotFound(new { error = "File not found", path = fullPath });
+        }
+
+        // Platform-specific logic to open file
+        if (OperatingSystem.IsWindows())
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = fullPath,
+                UseShellExecute = true
+            });
+        }
+        else if (OperatingSystem.IsMacOS())
+        {
+            System.Diagnostics.Process.Start("open", fullPath);
+        }
+        else if (OperatingSystem.IsLinux())
+        {
+            System.Diagnostics.Process.Start("xdg-open", fullPath);
+        }
+        else
+        {
+            return Results.Problem("Opening files is not supported on this platform", statusCode: 501);
+        }
+
+        return Results.Ok(new { success = true, path = fullPath });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error opening file");
+        return Results.Problem("Error opening file", statusCode: 500);
+    }
+})
+.WithName("OpenFile")
+.WithOpenApi();
+
+apiGroup.MapPost("/v1/files/open-folder", ([FromBody] FileOperationRequest request) =>
+{
+    try
+    {
+        if (string.IsNullOrWhiteSpace(request.Path))
+        {
+            return Results.BadRequest(new { error = "Folder path is required" });
+        }
+
+        // Expand environment variables
+        var expandedPath = Aura.Core.Configuration.ConfigurationConsolidator.ExpandEnvironmentVariables(request.Path);
+        var fullPath = Path.GetFullPath(expandedPath);
+
+        // If path is a file, get its directory
+        if (File.Exists(fullPath))
+        {
+            fullPath = Path.GetDirectoryName(fullPath) ?? fullPath;
+        }
+
+        if (!Directory.Exists(fullPath))
+        {
+            return Results.NotFound(new { error = "Folder not found", path = fullPath });
+        }
+
+        // Platform-specific logic to open folder in file explorer
+        if (OperatingSystem.IsWindows())
+        {
+            System.Diagnostics.Process.Start("explorer.exe", fullPath);
+        }
+        else if (OperatingSystem.IsMacOS())
+        {
+            System.Diagnostics.Process.Start("open", fullPath);
+        }
+        else if (OperatingSystem.IsLinux())
+        {
+            // Try xdg-open first (most common), fallback to nautilus/dolphin
+            try
+            {
+                System.Diagnostics.Process.Start("xdg-open", fullPath);
+            }
+            catch
+            {
+                // Fallback options for Linux
+                try
+                {
+                    System.Diagnostics.Process.Start("nautilus", fullPath);
+                }
+                catch
+                {
+                    System.Diagnostics.Process.Start("dolphin", fullPath);
+                }
+            }
+        }
+        else
+        {
+            return Results.Problem("Opening folders is not supported on this platform", statusCode: 501);
+        }
+
+        return Results.Ok(new { success = true, path = fullPath });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error opening folder");
+        return Results.Problem("Error opening folder", statusCode: 500);
+    }
+})
+.WithName("OpenFolder")
+.WithOpenApi();
+
 // Assets search endpoint - search stock providers
 apiGroup.MapPost("/assets/search", async ([FromBody] AssetSearchRequest request, HardwareDetector detector, IHttpClientFactory httpClientFactory, CancellationToken ct) =>
 {

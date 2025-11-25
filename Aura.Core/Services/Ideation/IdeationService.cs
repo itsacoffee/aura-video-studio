@@ -132,30 +132,116 @@ public class IdeationService
                 prompt = prompt.Substring(0, MaxPromptLength);
             }
 
-            var response = await GenerateWithLlmAsync(prompt, request, ct).ConfigureAwait(false);
+            // Retry logic for incomplete responses
+            const int maxRetries = 2;
+            string? response = null;
+            Exception? lastException = null;
 
-            if (string.IsNullOrWhiteSpace(response))
+            for (int attempt = 0; attempt <= maxRetries; attempt++)
             {
-                _logger.LogError("LLM returned empty response for brainstorming topic: {Topic}", request.Topic);
-                throw new InvalidOperationException("LLM provider returned an empty response. Please try again.");
+                try
+                {
+                    if (attempt > 0)
+                    {
+                        _logger.LogInformation("Retrying LLM generation (attempt {Attempt}/{MaxAttempts}) for topic: {Topic}",
+                            attempt + 1, maxRetries + 1, request.Topic);
+                        await Task.Delay(TimeSpan.FromSeconds(1), ct).ConfigureAwait(false);
+                    }
+
+                    response = await GenerateWithLlmAsync(prompt, request, ct).ConfigureAwait(false);
+
+                    if (string.IsNullOrWhiteSpace(response))
+                    {
+                        _logger.LogWarning("LLM returned empty response (attempt {Attempt}/{MaxAttempts}) for topic: {Topic}",
+                            attempt + 1, maxRetries + 1, request.Topic);
+                        if (attempt < maxRetries)
+                            continue;
+                        throw new InvalidOperationException("LLM provider returned an empty response. Please try again.");
+                    }
+
+                    // Validate response quality before parsing
+                    var trimmedResponse = response.Trim();
+
+                    // More lenient validation - check for minimum viable JSON structure
+                    // A minimal valid JSON with one concept would be at least ~50-80 chars
+                    // But we'll be more lenient and check for actual JSON structure
+                    var hasJsonStructure = trimmedResponse.Contains("{") && trimmedResponse.Contains("}");
+                    var hasConceptsKey = trimmedResponse.Contains("\"concepts\"") || trimmedResponse.Contains("'concepts'");
+
+                    if (trimmedResponse.Length < 50)
+                    {
+                        _logger.LogWarning("LLM returned very short response ({Length} chars) for topic: {Topic}. Response: {Response}",
+                            trimmedResponse.Length, request.Topic, trimmedResponse);
+                        if (attempt < maxRetries)
+                        {
+                            lastException = new InvalidOperationException("Response too short, retrying...");
+                            continue;
+                        }
+                        throw new InvalidOperationException(
+                            $"LLM returned an incomplete response ({trimmedResponse.Length} characters). " +
+                            $"Please try again or check your LLM provider configuration. Response: {trimmedResponse}");
+                    }
+
+                    // Check if response looks like JSON (should start with { or [)
+                    var startsWithJson = trimmedResponse.TrimStart().StartsWith("{") || trimmedResponse.TrimStart().StartsWith("[");
+                    if (!startsWithJson && !hasJsonStructure)
+                    {
+                        _logger.LogWarning("LLM response doesn't appear to be JSON. First 200 chars: {Preview}",
+                            trimmedResponse.Substring(0, Math.Min(200, trimmedResponse.Length)));
+                        if (attempt < maxRetries)
+                        {
+                            lastException = new InvalidOperationException("Response doesn't appear to be JSON, retrying...");
+                            continue;
+                        }
+                        // Continue anyway - CleanJsonResponse might be able to extract JSON
+                    }
+
+                    // Try parsing to validate JSON structure early
+                    try
+                    {
+                        var cleanedResponse = CleanJsonResponse(response);
+                        if (!string.IsNullOrWhiteSpace(cleanedResponse))
+                        {
+                            var testDoc = JsonDocument.Parse(cleanedResponse);
+                            if (testDoc.RootElement.TryGetProperty("concepts", out var testConcepts) &&
+                                testConcepts.ValueKind == JsonValueKind.Array)
+                            {
+                                // Response looks valid, break out of retry loop
+                                break;
+                            }
+                        }
+                    }
+                    catch (JsonException)
+                    {
+                        // JSON parsing failed, might retry
+                        if (attempt < maxRetries)
+                        {
+                            _logger.LogWarning("JSON validation failed (attempt {Attempt}/{MaxAttempts}), will retry",
+                                attempt + 1, maxRetries + 1);
+                            lastException = new InvalidOperationException("Response is not valid JSON, retrying...");
+                            continue;
+                        }
+                    }
+
+                    // If we get here, response passed basic validation
+                    break;
+                }
+                catch (InvalidOperationException ex) when (attempt < maxRetries &&
+                    (ex.Message.Contains("incomplete") || ex.Message.Contains("empty") || ex.Message.Contains("too short")))
+                {
+                    lastException = ex;
+                    _logger.LogWarning(ex, "LLM generation failed validation (attempt {Attempt}/{MaxAttempts}), will retry",
+                        attempt + 1, maxRetries + 1);
+                    continue;
+                }
             }
 
-            // Validate response quality before parsing
-            var trimmedResponse = response.Trim();
-            if (trimmedResponse.Length < 100)
+            if (response == null || string.IsNullOrWhiteSpace(response))
             {
-                _logger.LogError("LLM returned suspiciously short response ({Length} chars) for topic: {Topic}. Response: {Response}",
-                    trimmedResponse.Length, request.Topic, trimmedResponse);
-                throw new InvalidOperationException(
-                    $"LLM returned an incomplete response. Please try again or check your LLM provider configuration.");
-            }
-
-            // Check if response looks like JSON (should start with { or [)
-            if (!trimmedResponse.TrimStart().StartsWith("{") && !trimmedResponse.TrimStart().StartsWith("["))
-            {
-                _logger.LogWarning("LLM response doesn't appear to be JSON. First 200 chars: {Preview}",
-                    trimmedResponse.Substring(0, Math.Min(200, trimmedResponse.Length)));
-                // Continue anyway - CleanJsonResponse might be able to extract JSON
+                _logger.LogError("LLM failed to generate valid response after {MaxAttempts} attempts for topic: {Topic}",
+                    maxRetries + 1, request.Topic);
+                throw lastException ?? new InvalidOperationException(
+                    "LLM provider failed to generate a valid response after multiple attempts. Please try again or check your LLM provider configuration.");
             }
 
             // Parse the response into structured concepts
@@ -912,22 +998,34 @@ public class IdeationService
             }
         }
 
-        sb.AppendLine("You must respond with ONLY valid JSON in this exact format:");
+        sb.AppendLine("=== CRITICAL: JSON FORMAT REQUIREMENT ===");
+        sb.AppendLine("You MUST respond with ONLY valid JSON. No markdown, no code blocks, no explanations, no additional text.");
+        sb.AppendLine("Start your response immediately with the opening brace { and end with the closing brace }.");
+        sb.AppendLine();
+        sb.AppendLine("REQUIRED JSON STRUCTURE (copy this exactly):");
         sb.AppendLine("{");
         sb.AppendLine("  \"concepts\": [");
-        sb.AppendLine("    {");
-        sb.AppendLine("      \"title\": \"Catchy, engaging title SPECIFIC to the topic\",");
-        sb.AppendLine("      \"description\": \"Detailed 2-3 sentence description SPECIFIC to this topic and concept angle\",");
-        sb.AppendLine("      \"angle\": \"One of: Tutorial, Narrative, Case Study, Comparison, Interview, Documentary, Behind-the-Scenes, Expert Analysis, Beginner's Guide, Deep Dive\",");
-        sb.AppendLine("      \"targetAudience\": \"Specific description of the intended audience for THIS topic\",");
-        sb.AppendLine("      \"pros\": [\"Specific advantage 1 related to THIS topic\", \"Specific advantage 2 related to THIS topic\", \"Specific advantage 3 related to THIS topic\"],");
-        sb.AppendLine("      \"cons\": [\"Specific challenge 1 related to THIS topic\", \"Specific challenge 2 related to THIS topic\", \"Specific challenge 3 related to THIS topic\"],");
-        sb.AppendLine("      \"hook\": \"Compelling opening hook SPECIFIC to this topic and concept (15 seconds max)\",");
-        sb.AppendLine("      \"talkingPoints\": [\"Specific talking point 1 about THIS topic\", \"Specific talking point 2 about THIS topic\", \"Specific talking point 3 about THIS topic\", \"Specific talking point 4 about THIS topic\", \"Specific talking point 5 about THIS topic\"],");
-        sb.AppendLine("      \"appealScore\": 85");
-        sb.AppendLine("    }");
+        for (int i = 0; i < conceptCount; i++)
+        {
+            sb.AppendLine("    {");
+            sb.AppendLine("      \"title\": \"Catchy, engaging title SPECIFIC to the topic\",");
+            sb.AppendLine("      \"description\": \"Detailed 2-3 sentence description SPECIFIC to this topic and concept angle\",");
+            sb.AppendLine("      \"angle\": \"One of: Tutorial, Narrative, Case Study, Comparison, Interview, Documentary, Behind-the-Scenes, Expert Analysis, Beginner's Guide, Deep Dive\",");
+            sb.AppendLine("      \"targetAudience\": \"Specific description of the intended audience for THIS topic\",");
+            sb.AppendLine("      \"pros\": [\"Specific advantage 1 related to THIS topic\", \"Specific advantage 2 related to THIS topic\", \"Specific advantage 3 related to THIS topic\"],");
+            sb.AppendLine("      \"cons\": [\"Specific challenge 1 related to THIS topic\", \"Specific challenge 2 related to THIS topic\", \"Specific challenge 3 related to THIS topic\"],");
+            sb.AppendLine("      \"hook\": \"Compelling opening hook SPECIFIC to this topic and concept (15 seconds max)\",");
+            sb.AppendLine("      \"talkingPoints\": [\"Specific talking point 1 about THIS topic\", \"Specific talking point 2 about THIS topic\", \"Specific talking point 3 about THIS topic\", \"Specific talking point 4 about THIS topic\", \"Specific talking point 5 about THIS topic\"],");
+            sb.AppendLine("      \"appealScore\": 85");
+            if (i < conceptCount - 1)
+                sb.AppendLine("    },");
+            else
+                sb.AppendLine("    }");
+        }
         sb.AppendLine("  ]");
         sb.AppendLine("}");
+        sb.AppendLine();
+        sb.AppendLine($"IMPORTANT: Generate exactly {conceptCount} concepts in the array above.");
         sb.AppendLine();
 
         if (!string.IsNullOrEmpty(request.Audience))
@@ -975,7 +1073,15 @@ public class IdeationService
         sb.AppendLine("6. APPEAL SCORES: Should realistically range from 65-95 based on concept viability");
         sb.AppendLine("7. FORMAT: Return ONLY the JSON object, no additional text or markdown formatting");
         sb.AppendLine();
-        sb.AppendLine($"Remember: Every field must contain SPECIFIC information about '{request.Topic}'. Generic placeholders are NOT acceptable.");
+        sb.AppendLine("=== FINAL REMINDER ===");
+        sb.AppendLine("1. Start your response with { (opening brace)");
+        sb.AppendLine($"2. Include exactly {conceptCount} concepts in the \"concepts\" array");
+        sb.AppendLine("3. End your response with } (closing brace)");
+        sb.AppendLine("4. Do NOT include ```json or ``` markdown code blocks");
+        sb.AppendLine("5. Do NOT include any text before or after the JSON");
+        sb.AppendLine($"6. Every field must contain SPECIFIC information about '{request.Topic}'. Generic placeholders are NOT acceptable.");
+        sb.AppendLine();
+        sb.AppendLine("Now generate the JSON response:");
 
         return sb.ToString();
     }
@@ -1355,7 +1461,7 @@ public class IdeationService
 
             if (string.IsNullOrWhiteSpace(cleanedResponse))
             {
-                _logger.LogWarning("Cleaned response is empty for topic: {Topic}. Original response length: {Length}", 
+                _logger.LogWarning("Cleaned response is empty for topic: {Topic}. Original response length: {Length}",
                     originalTopic, response.Length);
             }
             else
@@ -1439,19 +1545,52 @@ public class IdeationService
         }
         catch (JsonException ex)
         {
-            _logger.LogWarning(ex, "Failed to parse JSON response from LLM for topic: {Topic}. Response preview: {Preview}", 
-                originalTopic, response.Substring(0, Math.Min(500, response.Length)));
+            _logger.LogWarning(ex,
+                "Failed to parse JSON response from LLM for topic: {Topic}. " +
+                "Response length: {Length}. " +
+                "JSON error: {JsonError}. " +
+                "Response preview: {Preview}",
+                originalTopic,
+                response.Length,
+                ex.Message,
+                response.Substring(0, Math.Min(500, response.Length)));
+
+            // Log the cleaned response for debugging
+            try
+            {
+                var cleaned = CleanJsonResponse(response);
+                if (!string.IsNullOrWhiteSpace(cleaned) && cleaned != response)
+                {
+                    _logger.LogDebug("Cleaned response (length: {Length}): {CleanedPreview}",
+                        cleaned.Length, cleaned.Substring(0, Math.Min(300, cleaned.Length)));
+                }
+            }
+            catch
+            {
+                // Ignore errors in logging
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Unexpected error parsing LLM response for topic: {Topic}. Response preview: {Preview}", 
-                originalTopic, response.Substring(0, Math.Min(500, response.Length)));
+            _logger.LogWarning(ex,
+                "Unexpected error parsing LLM response for topic: {Topic}. " +
+                "Response length: {Length}. " +
+                "Error: {Error}. " +
+                "Response preview: {Preview}",
+                originalTopic,
+                response.Length,
+                ex.Message,
+                response.Substring(0, Math.Min(500, response.Length)));
         }
 
         // Fallback: If parsing failed or no concepts were generated, try to extract meaningful data from raw response
         if (concepts.Count == 0)
         {
-            _logger.LogError("No concepts parsed from LLM response. Attempting to extract meaningful content from raw response.");
+            _logger.LogWarning(
+                "No concepts parsed from LLM response. " +
+                "Response length: {Length}. " +
+                "Attempting to extract meaningful content from raw response.",
+                response.Length);
 
             // Try to extract concepts from non-JSON response using pattern matching
             var extractedConcepts = TryExtractConceptsFromText(response, originalTopic, desiredConceptCount);
@@ -1463,16 +1602,25 @@ public class IdeationService
             else
             {
                 // Last resort: Log the full response for debugging and throw an error
+                var responsePreview = response.Length > 0
+                    ? response.Substring(0, Math.Min(1000, response.Length))
+                    : "(empty response)";
+
                 _logger.LogError(
                     "Failed to parse or extract concepts from LLM response for topic: {Topic}. " +
-                    "Response length: {Length}. First 1000 chars: {Preview}",
-                    originalTopic, response.Length,
-                    response.Substring(0, Math.Min(1000, response.Length)));
+                    "Response length: {Length}. " +
+                    "Full response preview: {Preview}",
+                    originalTopic, response.Length, responsePreview);
 
-                throw new InvalidOperationException(
-                    $"Failed to generate concepts from LLM response. The response could not be parsed as JSON and no meaningful content could be extracted. " +
-                    $"Please check your LLM provider configuration and try again. " +
-                    $"Response preview: {response.Substring(0, Math.Min(200, response.Length))}...");
+                // Provide more helpful error message
+                var errorMessage = response.Length < 50
+                    ? $"LLM returned an incomplete response ({response.Length} characters). The response is too short to contain valid JSON. Please try again or check your LLM provider configuration."
+                    : $"Failed to generate concepts from LLM response. The response could not be parsed as JSON and no meaningful content could be extracted. " +
+                      $"Response length: {response.Length} characters. " +
+                      $"Please check your LLM provider configuration and try again. " +
+                      $"Response preview: {response.Substring(0, Math.Min(200, response.Length))}...";
+
+                throw new InvalidOperationException(errorMessage);
             }
         }
 
@@ -3053,19 +3201,31 @@ public class IdeationService
 
             if (string.IsNullOrWhiteSpace(response))
             {
-                _logger.LogWarning("LLM provider returned empty response");
+                _logger.LogWarning("LLM provider ({Provider}) returned empty response", providerType);
                 throw new InvalidOperationException("LLM provider returned an empty response. Please try again.");
             }
 
             // Validate response quality - check for common error patterns
             var trimmedResponse = response.Trim();
+            _logger.LogDebug("LLM provider ({Provider}) returned response of length {Length} characters",
+                providerType, response.Length);
+
             if (trimmedResponse.Length < 50)
             {
-                _logger.LogWarning("LLM response is suspiciously short ({Length} chars). Response: {Response}",
-                    trimmedResponse.Length, trimmedResponse.Substring(0, Math.Min(100, trimmedResponse.Length)));
+                _logger.LogWarning(
+                    "LLM response is suspiciously short ({Length} chars) from provider {Provider}. " +
+                    "Response: {Response}",
+                    trimmedResponse.Length,
+                    providerType,
+                    trimmedResponse.Substring(0, Math.Min(100, trimmedResponse.Length)));
+            }
+            else
+            {
+                // Log a preview of the response for debugging
+                var preview = trimmedResponse.Substring(0, Math.Min(200, trimmedResponse.Length));
+                _logger.LogDebug("LLM response preview: {Preview}...", preview);
             }
 
-            _logger.LogDebug("LLM provider returned response of length {Length}", response.Length);
             return response;
         }
         catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
@@ -3226,7 +3386,24 @@ public class IdeationService
                 response.EnsureSuccessStatusCode();
 
                 var responseJson = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
+
+                if (string.IsNullOrWhiteSpace(responseJson))
+                {
+                    _logger.LogError("Ollama returned empty JSON response for ideation");
+                    throw new InvalidOperationException("Ollama returned an empty JSON response");
+                }
+
+                _logger.LogDebug("Ollama API returned JSON response of length {Length} characters", responseJson.Length);
+
                 var responseDoc = System.Text.Json.JsonDocument.Parse(responseJson);
+
+                // Check for error field first
+                if (responseDoc.RootElement.TryGetProperty("error", out var errorProp))
+                {
+                    var errorMessage = errorProp.GetString() ?? "Unknown error";
+                    _logger.LogError("Ollama API returned error: {Error}", errorMessage);
+                    throw new InvalidOperationException($"Ollama API error: {errorMessage}");
+                }
 
                 if (responseDoc.RootElement.TryGetProperty("response", out var responseProp))
                 {
@@ -3234,16 +3411,23 @@ public class IdeationService
 
                     if (string.IsNullOrWhiteSpace(result))
                     {
-                        _logger.LogWarning("Ollama returned empty response for ideation");
-                        throw new InvalidOperationException("Ollama returned an empty response");
+                        _logger.LogWarning("Ollama returned empty 'response' field in JSON. Full JSON: {Json}",
+                            responseJson.Substring(0, Math.Min(500, responseJson.Length)));
+                        throw new InvalidOperationException("Ollama returned an empty response field");
                     }
 
                     _logger.LogDebug("Ollama ideation succeeded with {Length} characters", result.Length);
                     return result;
                 }
 
-                _logger.LogError("Ollama response did not contain 'response' field");
-                throw new InvalidOperationException("Invalid response structure from Ollama API");
+                // Log available fields for debugging
+                var availableFields = string.Join(", ", responseDoc.RootElement.EnumerateObject().Select(p => p.Name));
+                _logger.LogError(
+                    "Ollama response did not contain 'response' field. Available fields: {Fields}. " +
+                    "Response JSON preview: {Preview}",
+                    availableFields,
+                    responseJson.Substring(0, Math.Min(500, responseJson.Length)));
+                throw new InvalidOperationException($"Invalid response structure from Ollama API. Available fields: {availableFields}");
             }
             catch (TaskCanceledException ex) when (attempt < maxRetries)
             {
@@ -3291,28 +3475,35 @@ public class IdeationService
 
         var cleanedResponse = response.Trim();
 
-        // Remove markdown code block markers with language specifier
-        if (cleanedResponse.StartsWith("```json", StringComparison.OrdinalIgnoreCase))
+        // Remove markdown code block markers with language specifier (case-insensitive)
+        var jsonMarker = "```json";
+        var jsonMarkerUpper = "```JSON";
+        var codeMarker = "```";
+
+        // Check for markdown code blocks at the start
+        if (cleanedResponse.StartsWith(jsonMarker, StringComparison.OrdinalIgnoreCase))
         {
-            cleanedResponse = cleanedResponse.Substring(7);
+            cleanedResponse = cleanedResponse.Substring(jsonMarker.Length);
         }
-        else if (cleanedResponse.StartsWith("```JSON", StringComparison.OrdinalIgnoreCase))
+        else if (cleanedResponse.StartsWith(codeMarker, StringComparison.OrdinalIgnoreCase))
         {
-            cleanedResponse = cleanedResponse.Substring(7);
-        }
-        else if (cleanedResponse.StartsWith("```"))
-        {
-            cleanedResponse = cleanedResponse.Substring(3);
+            cleanedResponse = cleanedResponse.Substring(codeMarker.Length);
         }
 
-        if (cleanedResponse.EndsWith("```"))
+        // Remove markdown code blocks at the end
+        if (cleanedResponse.EndsWith(codeMarker, StringComparison.OrdinalIgnoreCase))
         {
-            cleanedResponse = cleanedResponse.Substring(0, cleanedResponse.Length - 3);
+            cleanedResponse = cleanedResponse.Substring(0, cleanedResponse.Length - codeMarker.Length);
         }
 
         cleanedResponse = cleanedResponse.Trim();
 
+        // Remove any leading/trailing whitespace or newlines that might interfere
+        cleanedResponse = cleanedResponse.TrimStart('\r', '\n', ' ', '\t');
+        cleanedResponse = cleanedResponse.TrimEnd('\r', '\n', ' ', '\t');
+
         // Try to extract JSON if there's text before/after
+        // Look for the first opening brace and last closing brace
         var firstBrace = cleanedResponse.IndexOf('{');
         var lastBrace = cleanedResponse.LastIndexOf('}');
 
@@ -3320,6 +3511,20 @@ public class IdeationService
         {
             cleanedResponse = cleanedResponse.Substring(firstBrace, lastBrace - firstBrace + 1);
         }
+        else
+        {
+            // If no braces found, try to find array brackets
+            var firstBracket = cleanedResponse.IndexOf('[');
+            var lastBracket = cleanedResponse.LastIndexOf(']');
+
+            if (firstBracket >= 0 && lastBracket > firstBracket)
+            {
+                cleanedResponse = cleanedResponse.Substring(firstBracket, lastBracket - firstBracket + 1);
+            }
+        }
+
+        // Final cleanup - remove any remaining leading/trailing whitespace
+        cleanedResponse = cleanedResponse.Trim();
 
         return cleanedResponse;
     }

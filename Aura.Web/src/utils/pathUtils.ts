@@ -195,19 +195,10 @@ export function migrateLegacyPath(path: string): string {
  */
 export async function resolvePathOnBackend(path: string): Promise<string> {
   try {
-    // Try to use apiUrl if available, otherwise use relative path
-    let url = '/api/paths/resolve';
-    if (typeof window !== 'undefined') {
-      // Check if we're in Electron/desktop app
-      const apiBase = (window as any).__API_BASE_URL__;
-      if (apiBase) {
-        url = `${apiBase}${url}`;
-      } else {
-        // Use current origin for web
-        url = `${window.location.origin}${url}`;
-      }
-    }
-    
+    // Import apiUrl dynamically to avoid circular dependencies
+    const { apiUrl } = await import('../config/api');
+    const url = apiUrl('/api/paths/resolve');
+
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -219,16 +210,25 @@ export async function resolvePathOnBackend(path: string): Promise<string> {
     if (!response.ok) {
       // If endpoint doesn't exist, just return the path as-is (backend will handle expansion)
       if (response.status === 404) {
+        console.warn('Path resolve endpoint not found, using path as-is');
         return path;
       }
-      throw new Error(`Failed to resolve path: ${response.statusText}`);
+      const errorText = await response.text();
+      throw new Error(`Failed to resolve path: ${response.statusText} - ${errorText}`);
     }
 
     const data = await response.json();
-    return data.resolvedPath || path;
+    const resolved = data.resolvedPath || path;
+
+    // Verify the resolved path doesn't still contain environment variables
+    if (resolved.includes('%') || (resolved.includes('~') && !resolved.startsWith('~/'))) {
+      console.warn('Path resolution may have failed, resolved path still contains variables:', resolved);
+    }
+
+    return resolved;
   } catch (error: unknown) {
     // If path resolution fails, return path as-is - backend will handle expansion when needed
-    console.debug('Path resolution not available, using path as-is:', error);
+    console.warn('Path resolution failed, using path as-is:', error);
     return path;
   }
 }

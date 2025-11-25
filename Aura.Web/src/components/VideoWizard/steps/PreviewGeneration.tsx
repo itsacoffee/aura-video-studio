@@ -849,6 +849,9 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
 
         // Fetch the audio file - try to get it as a blob from the server
         let audioUrl: string;
+        let isBlobUrl = false;
+        let detectedMimeType = 'audio/wav';
+        
         if (previewResponse.audioPath.startsWith('http://') || previewResponse.audioPath.startsWith('https://')) {
           // Already a URL
           audioUrl = previewResponse.audioPath;
@@ -864,32 +867,95 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
               },
               {
                 responseType: 'blob',
+                validateStatus: (status) => status < 500, // Don't throw on 4xx, we'll handle it
               }
             );
-            const blob = new Blob([response.data], { type: 'audio/wav' });
+            
+            // Check if response is actually an error (sometimes errors come as JSON in blob responses)
+            if (response.status >= 400) {
+              // Try to parse error message from blob
+              try {
+                // Clone the blob before reading it, so we don't consume it
+                const blobCopy = response.data instanceof Blob 
+                  ? response.data.slice() 
+                  : new Blob([response.data]);
+                const text = await blobCopy.text();
+                const errorData = JSON.parse(text);
+                throw new Error(errorData.error || errorData.message || `Server returned error: ${response.status}`);
+              } catch (parseError) {
+                // If parsing fails, just report the status code
+                throw new Error(`Failed to fetch audio file: Server returned ${response.status} ${response.statusText || ''}`);
+              }
+            }
+            
+            // Detect MIME type from response headers (axios uses lowercase header names)
+            const contentType = response.headers['content-type'] || 
+                                response.headers['Content-Type'] ||
+                                (previewResponse.audioPath.endsWith('.mp3') ? 'audio/mpeg' :
+                                 previewResponse.audioPath.endsWith('.opus') ? 'audio/opus' :
+                                 previewResponse.audioPath.endsWith('.wav') ? 'audio/wav' :
+                                 'audio/wav');
+            
+            detectedMimeType = contentType;
+            
+            // Re-create blob from response data (axios blob response)
+            // We need to recreate it because axios might return it as a different Blob type
+            let blob: Blob;
+            if (response.data instanceof Blob) {
+              // If it's already a Blob, verify it's the right type or recreate with correct MIME
+              if (response.data.type === contentType) {
+                blob = response.data;
+              } else {
+                // Recreate with correct MIME type
+                blob = new Blob([response.data], { type: contentType });
+              }
+            } else if (response.data instanceof ArrayBuffer) {
+              blob = new Blob([response.data], { type: contentType });
+            } else {
+              // Fallback: assume it's binary data
+              blob = new Blob([response.data], { type: contentType });
+            }
+            
+            // Verify blob is not empty
+            if (blob.size === 0) {
+              throw new Error('Received empty audio file from server. The audio generation may have failed.');
+            }
+            
             audioUrl = URL.createObjectURL(blob);
-          } catch (fetchError) {
-            // Fallback: try to construct a file URL
-            console.warn('Failed to fetch audio as blob, trying direct path:', fetchError);
-            // Try using the audioPath directly - might work if it's accessible
-            audioUrl = previewResponse.audioPath;
+            isBlobUrl = true;
+            
+            console.log(`Audio fetched successfully. Type: ${contentType}, Size: ${blob.size} bytes`);
+          } catch (fetchError: unknown) {
+            const error = fetchError instanceof Error ? fetchError : new Error(String(fetchError));
+            // Don't fallback silently - throw the error so user knows what went wrong
+            console.error('Failed to fetch audio as blob:', error);
+            throw new Error(`Failed to retrieve audio file: ${error.message}. Please try regenerating the preview.`);
           }
         }
 
-        // Create and play audio element
+        // Clean up any existing audio
         if (audioRef.current) {
           audioRef.current.pause();
+          audioRef.current.src = '';
+          audioRef.current.load(); // Reset the audio element
           if (audioRef.current.src.startsWith('blob:')) {
             URL.revokeObjectURL(audioRef.current.src);
           }
           audioRef.current = null;
         }
 
-        const audio = new Audio(audioUrl);
+        // Create new audio element
+        const audio = new Audio();
         audioRef.current = audio;
 
-        // Handle audio events with once: true to prevent multiple calls
+        // Set audio properties before loading
+        audio.volume = 1.0; // Ensure volume is at maximum
+        audio.preload = 'auto'; // Preload the audio
+        audio.crossOrigin = 'anonymous'; // For CORS if needed
+
+        // Handle audio events with proper error handling
         const handleEnded = () => {
+          console.log('Audio playback ended');
           setPlayingSceneId(null);
           if (audio.src.startsWith('blob:')) {
             URL.revokeObjectURL(audio.src);
@@ -900,8 +966,32 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
         };
 
         const handleError = (e: Event) => {
-          console.error('Audio playback error:', e);
-          setAudioError('Failed to play audio preview');
+          const error = audio.error;
+          let errorMessage = 'Failed to play audio preview';
+          
+          if (error) {
+            switch (error.code) {
+              case error.MEDIA_ERR_ABORTED:
+                errorMessage = 'Audio playback was aborted';
+                break;
+              case error.MEDIA_ERR_NETWORK:
+                errorMessage = 'Network error while loading audio';
+                break;
+              case error.MEDIA_ERR_DECODE:
+                errorMessage = 'Audio file could not be decoded. The file may be corrupted or in an unsupported format.';
+                break;
+              case error.MEDIA_ERR_SRC_NOT_SUPPORTED:
+                errorMessage = 'Audio format not supported by your browser';
+                break;
+              default:
+                errorMessage = `Audio error: ${error.message || 'Unknown error'}`;
+            }
+            console.error('Audio playback error:', error, errorMessage);
+          } else {
+            console.error('Audio playback error event:', e);
+          }
+          
+          setAudioError(errorMessage);
           setPlayingSceneId(null);
           if (audio.src.startsWith('blob:')) {
             URL.revokeObjectURL(audio.src);
@@ -911,15 +1001,148 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
           }
         };
 
+        const handleLoadedMetadata = () => {
+          console.log('Audio metadata loaded. Duration:', audio.duration, 'seconds');
+        };
+
+        const handleCanPlay = () => {
+          console.log('Audio can play. Ready state:', audio.readyState);
+        };
+
+        const handleCanPlayThrough = () => {
+          console.log('Audio can play through. Ready state:', audio.readyState);
+        };
+
+        // Add all event listeners
         audio.addEventListener('ended', handleEnded, { once: true });
         audio.addEventListener('error', handleError, { once: true });
+        audio.addEventListener('loadedmetadata', handleLoadedMetadata, { once: true });
+        audio.addEventListener('canplay', handleCanPlay, { once: true });
+        audio.addEventListener('canplaythrough', handleCanPlayThrough, { once: true });
 
-        // Try to play the audio
+        // Set the audio source and wait for it to load
+        audio.src = audioUrl;
+        
+        // Wait for the audio to be ready before playing
+        await new Promise<void>((resolve, reject) => {
+          // Create a timeout to prevent infinite waiting
+          const timeout = setTimeout(() => {
+            cleanup();
+            reject(new Error('Audio loading timeout after 30 seconds. The file may be too large or the network too slow.'));
+          }, 30000); // 30 second timeout
+
+          const cleanup = () => {
+            clearTimeout(timeout);
+            audio.removeEventListener('canplaythrough', onCanPlayThrough);
+            audio.removeEventListener('canplay', onCanPlay);
+            audio.removeEventListener('loadeddata', onLoadedData);
+            audio.removeEventListener('error', onError);
+          };
+
+          const onCanPlayThrough = () => {
+            cleanup();
+            console.log('Audio can play through. Ready state:', audio.readyState);
+            resolve();
+          };
+
+          const onCanPlay = () => {
+            // If canplaythrough hasn't fired yet but canplay has, that's usually enough for short clips
+            // But we'll still wait for canplaythrough for better reliability
+            console.log('Audio can play. Ready state:', audio.readyState);
+          };
+
+          const onLoadedData = () => {
+            console.log('Audio data loaded. Ready state:', audio.readyState);
+          };
+
+          const onError = (e: Event) => {
+            cleanup();
+            const error = audio.error;
+            let errorMsg = 'Audio failed to load';
+            
+            if (error) {
+              switch (error.code) {
+                case error.MEDIA_ERR_ABORTED:
+                  errorMsg = 'Audio loading was aborted';
+                  break;
+                case error.MEDIA_ERR_NETWORK:
+                  errorMsg = 'Network error while loading audio';
+                  break;
+                case error.MEDIA_ERR_DECODE:
+                  errorMsg = 'Audio file could not be decoded';
+                  break;
+                case error.MEDIA_ERR_SRC_NOT_SUPPORTED:
+                  errorMsg = 'Audio format not supported by your browser';
+                  break;
+              }
+            }
+            
+            console.error('Audio loading error:', error, errorMsg);
+            reject(new Error(errorMsg));
+          };
+
+          // Check if already loaded (shouldn't happen, but handle it)
+          if (audio.readyState >= 4) { // HAVE_ENOUGH_DATA
+            cleanup();
+            console.log('Audio already loaded. Ready state:', audio.readyState);
+            resolve();
+            return;
+          }
+
+          // Listen for the events we need
+          audio.addEventListener('canplaythrough', onCanPlayThrough, { once: true });
+          audio.addEventListener('canplay', onCanPlay, { once: true });
+          audio.addEventListener('loadeddata', onLoadedData, { once: true });
+          audio.addEventListener('error', onError, { once: true });
+          
+          // Explicitly trigger loading
+          audio.load();
+          
+          // For blob URLs, sometimes the events fire synchronously, so check again after a brief delay
+          setTimeout(() => {
+            if (audio.readyState >= 4 && timeout) {
+              cleanup();
+              console.log('Audio loaded synchronously. Ready state:', audio.readyState);
+              resolve();
+            }
+          }, 100);
+        });
+
+        // Verify audio is valid before playing
+        if (!audio.duration || audio.duration === 0) {
+          throw new Error('Audio file appears to be empty or invalid');
+        }
+
+        if (audio.duration === Infinity || isNaN(audio.duration)) {
+          // This might be a live stream or corrupted file
+          console.warn('Audio duration is invalid:', audio.duration);
+        }
+
+        // Try to play the audio with user interaction context
         try {
-          await audio.play();
-        } catch (playError) {
-          console.error('Audio playback failed:', playError);
-          throw new Error('Failed to play audio. Your browser may have blocked autoplay or the audio file is corrupted.');
+          console.log(`Attempting to play audio. Duration: ${audio.duration}s, Volume: ${audio.volume}, Muted: ${audio.muted}`);
+          const playPromise = audio.play();
+          
+          // Modern browsers return a promise
+          if (playPromise !== undefined) {
+            await playPromise;
+            console.log('Audio playback started successfully');
+          } else {
+            // Fallback for older browsers
+            console.log('Audio play() called (no promise returned)');
+          }
+        } catch (playError: unknown) {
+          const error = playError instanceof Error ? playError : new Error(String(playError));
+          console.error('Audio playback failed:', error);
+          
+          // Provide more helpful error messages
+          if (error.name === 'NotAllowedError' || error.message.includes('play() request')) {
+            throw new Error('Browser blocked autoplay. Please click the preview button again or interact with the page first.');
+          } else if (error.name === 'NotSupportedError') {
+            throw new Error('Audio format not supported. Please try a different TTS provider.');
+          } else {
+            throw new Error(`Failed to play audio: ${error.message}`);
+          }
         }
       } catch (error) {
         console.error('Error playing scene preview:', error);
