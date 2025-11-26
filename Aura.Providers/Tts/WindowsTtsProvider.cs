@@ -120,12 +120,23 @@ public class WindowsTtsProvider : ITtsProvider
         string outputFilePath = Path.Combine(_outputDirectory, $"narration_{DateTime.Now:yyyyMMddHHmmss}.wav");
         
         // Process each line with chunking and timeout support
-        var lineOutputs = new List<string>();
-        const int MaxCharsPerChunk = 450; // Safe limit for Windows TTS
+        // Use a dictionary to track per-line outputs (key: line index, value: list of chunk temp files)
+        var lineChunkOutputs = new Dictionary<int, List<string>>();
+        var allTempFiles = new List<string>(); // Track all temp files for cleanup
         
-        foreach (var line in lines)
+        // Constants for audio processing
+        const int MaxCharsPerChunk = 450; // Safe limit for Windows TTS
+        const int WavHeaderSize = 44; // Standard WAV header size in bytes
+        const double WavBytesPerSecond = 44100.0; // 22050 Hz sample rate * 2 bytes per sample (16-bit mono) = 44100 bytes/sec
+        const double DefaultChunkDurationSeconds = 5.0; // Fallback duration estimate for chunks
+        
+        var linesList = lines.ToList();
+        for (int lineIndex = 0; lineIndex < linesList.Count; lineIndex++)
         {
+            var line = linesList[lineIndex];
             ct.ThrowIfCancellationRequested();
+            
+            lineChunkOutputs[lineIndex] = new List<string>();
             
             // Chunk long lines (>450 chars) to prevent silent failures
             if (line.Text.Length > MaxCharsPerChunk)
@@ -146,7 +157,8 @@ public class WindowsTtsProvider : ITtsProvider
                     
                     if (chunkTempFile != null)
                     {
-                        lineOutputs.Add(chunkTempFile);
+                        lineChunkOutputs[lineIndex].Add(chunkTempFile);
+                        allTempFiles.Add(chunkTempFile);
                     }
                 }
             }
@@ -162,23 +174,87 @@ public class WindowsTtsProvider : ITtsProvider
                 
                 if (tempFile != null)
                 {
-                    lineOutputs.Add(tempFile);
+                    lineChunkOutputs[lineIndex].Add(tempFile);
+                    allTempFiles.Add(tempFile);
                 }
             }
         }
         
-        // Combine all audio files into one using WAV merger
-        _logger.LogInformation("Synthesized {Count} lines, combining into final output", lineOutputs.Count);
+        // Create per-line merged files for lines that were chunked, or use single chunk directly
+        // Store tuples of (line, outputFile) to maintain correct mapping
+        var successfulLineOutputs = new List<(ScriptLine Line, string OutputFile)>();
+        var mergedLineFiles = new List<string>(); // Track merged line files for cleanup
         
-        if (lineOutputs.Count > 0)
+        for (int lineIndex = 0; lineIndex < linesList.Count; lineIndex++)
         {
-            var linesList = lines.ToList();
-            var segments = linesList.Select((line, index) => 
-                new WavSegment(
-                    FilePath: lineOutputs[index],
-                    StartTime: line.Start,
-                    Duration: line.Duration
-                )).ToList();
+            var line = linesList[lineIndex];
+            var chunkFiles = lineChunkOutputs.GetValueOrDefault(lineIndex) ?? new List<string>();
+            
+            if (chunkFiles.Count == 0)
+            {
+                _logger.LogWarning("No audio generated for line {LineIndex}", lineIndex);
+                continue;
+            }
+            else if (chunkFiles.Count == 1)
+            {
+                // Single file (no chunking needed) - use directly
+                successfulLineOutputs.Add((line, chunkFiles[0]));
+            }
+            else
+            {
+                // Multiple chunks need to be merged into a single line file first
+                var lineOutputFile = Path.Combine(_outputDirectory, $"line_{lineIndex}_{DateTime.Now:yyyyMMddHHmmss}.wav");
+                mergedLineFiles.Add(lineOutputFile);
+                
+                // Create segments for chunk merging (chunks are contiguous, no gaps)
+                var chunkSegments = new List<WavSegment>();
+                TimeSpan chunkOffset = TimeSpan.Zero;
+                
+                foreach (var chunkFile in chunkFiles)
+                {
+                    // Estimate chunk duration from file size using WAV format constants
+                    var chunkDuration = TimeSpan.FromSeconds(DefaultChunkDurationSeconds);
+                    try
+                    {
+                        var fileInfo = new FileInfo(chunkFile);
+                        var dataBytes = Math.Max(0, fileInfo.Length - WavHeaderSize);
+                        chunkDuration = TimeSpan.FromSeconds(dataBytes / WavBytesPerSecond);
+                    }
+                    catch (IOException ex)
+                    {
+                        _logger.LogDebug(ex, "Could not read file size for chunk {ChunkFile}, using default duration", chunkFile);
+                    }
+                    catch (UnauthorizedAccessException ex)
+                    {
+                        _logger.LogDebug(ex, "Access denied reading chunk {ChunkFile}, using default duration", chunkFile);
+                    }
+                    
+                    chunkSegments.Add(new WavSegment(
+                        FilePath: chunkFile,
+                        StartTime: chunkOffset,
+                        Duration: chunkDuration
+                    ));
+                    chunkOffset += chunkDuration;
+                }
+                
+                _logger.LogDebug("Merging {Count} chunks for line {LineIndex}", chunkFiles.Count, lineIndex);
+                WavMerger.MergeWavFiles(chunkSegments, lineOutputFile);
+                successfulLineOutputs.Add((line, lineOutputFile));
+            }
+        }
+        
+        // Combine all line audio files into one using WAV merger
+        _logger.LogInformation("Synthesized {Count} lines, combining into final output", successfulLineOutputs.Count);
+        
+        if (successfulLineOutputs.Count > 0)
+        {
+            var segments = successfulLineOutputs
+                .Select(item => 
+                    new WavSegment(
+                        FilePath: item.OutputFile,
+                        StartTime: item.Line.Start,
+                        Duration: item.Line.Duration
+                    )).ToList();
 
             // Merge WAV files with proper timing
             WavMerger.MergeWavFiles(segments, outputFilePath);
@@ -201,8 +277,11 @@ public class WindowsTtsProvider : ITtsProvider
             }
         }
         
-        // Clean up temp files
-        foreach (var file in lineOutputs)
+        // Clean up all temp files (individual chunks and merged line files)
+        var filesToCleanup = new List<string>(allTempFiles);
+        filesToCleanup.AddRange(mergedLineFiles);
+        
+        foreach (var file in filesToCleanup)
         {
             try
             {
