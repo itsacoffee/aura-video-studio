@@ -17,8 +17,9 @@ import { UndoRedoButtons } from './UndoRedo/UndoRedoButtons';
 
 /**
  * Standard toolbar height for consistent vertical rhythm.
+ * Reduced from 48px for better 1080p density.
  */
-const TOOLBAR_HEIGHT = '48px';
+const TOOLBAR_HEIGHT = '36px';
 
 const useStyles = makeStyles({
   container: {
@@ -34,7 +35,7 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
-    minWidth: 0, // Prevents flex item from overflowing
+    minWidth: 0,
   },
   topBar: {
     display: 'flex',
@@ -42,31 +43,31 @@ const useStyles = makeStyles({
     alignItems: 'center',
     height: TOOLBAR_HEIGHT,
     minHeight: TOOLBAR_HEIGHT,
-    paddingLeft: spacing.xl,
-    paddingRight: spacing.xl,
+    paddingLeft: spacing.lg,
+    paddingRight: spacing.lg,
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
     backgroundColor: tokens.colorNeutralBackground1,
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.06)',
+    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
     flexShrink: 0,
     '@media (max-width: 768px)': {
-      paddingLeft: spacing.lg,
-      paddingRight: spacing.lg,
+      paddingLeft: spacing.md,
+      paddingRight: spacing.md,
     },
   },
   topBarActions: {
     display: 'flex',
     alignItems: 'center',
-    gap: gaps.standard,
+    gap: gaps.tight,
   },
   content: {
     flex: 1,
     overflow: 'auto',
-    minHeight: 0, // Critical: Allows flex child to shrink and enable scrolling
+    minHeight: 0,
     padding: pageLayout.pagePadding,
     backgroundColor: tokens.colorNeutralBackground1,
     '@media (max-width: 768px)': {
       padding: pageLayout.pagePaddingMobile,
-      paddingBottom: '80px', // Space for mobile nav
+      paddingBottom: '64px',
     },
   },
   /** Inner content wrapper for max-width constraint */

@@ -6,8 +6,16 @@
 .splash-screen {
   position: fixed;
   inset: 0;
+
   /* Deep gradient: dark navy → deep violet, with orange/blue bloom around icon */
-  background: linear-gradient(180deg, #0a0f1a 0%, #1a1f2e 25%, #1a1626 50%, #0f0f1a 75%, #050510 100%);
+  background: linear-gradient(
+    180deg,
+    #0a0f1a 0%,
+    #1a1f2e 25%,
+    #1a1626 50%,
+    #0f0f1a 75%,
+    #050510 100%
+  );
   display: flex;
   align-items: center;
   justify-content: center;
@@ -49,6 +57,7 @@
 .splash-background-gradient {
   position: absolute;
   inset: 0;
+
   /* Orange/blue bloom around the app icon at 40-45% vertical height */
   background: radial-gradient(
     ellipse at 50% 42%,
@@ -88,6 +97,7 @@
 .splash-grid-overlay {
   position: absolute;
   inset: 0;
+
   /* Subtle grid using orange/blue palette */
   background-image:
     linear-gradient(rgb(255 107 53 / 2%) 1px, transparent 1px),
@@ -109,6 +119,7 @@
 }
 
 /* ==================== CONTENT ==================== */
+
 /* Content positioned so icon center is at 40-45% vertical height */
 .splash-content {
   position: relative;
@@ -133,6 +144,7 @@
 }
 
 /* ==================== LOGO ==================== */
+
 /* Logo positioned at 40-45% of vertical height (via padding-top: 12% on container) */
 .splash-logo {
   margin-bottom: 48px;
@@ -305,6 +317,7 @@
 
 .splash-progress-fill {
   height: 100%;
+
   /* Refined progress bar with orange/blue gradient */
   background: linear-gradient(90deg, #ff6b35 0%, #6366f1 50%, #3b82f6 100%);
   border-radius: 2px;

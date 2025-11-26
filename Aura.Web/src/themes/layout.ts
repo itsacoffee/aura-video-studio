@@ -2,16 +2,18 @@
  * Centralized Layout Tokens
  *
  * This module provides standardized spacing tokens for consistent layout
- * across all screens in Aura Video Studio. These tokens align with
- * Fluent UI spacing tokens where possible.
+ * across all screens in Aura Video Studio. Optimized for 1080p displays
+ * with Apple/Adobe-inspired density.
  *
- * Spacing Scale:
- * - XS: 4px  - Tight spacing (between icon and label)
- * - SM: 8px  - Small spacing (form hints, compact lists)
- * - MD: 12px - Medium spacing (between related elements)
- * - LG: 16px - Standard spacing (between form fields)
- * - XL: 24px - Large spacing (between sections)
- * - XXL: 32px - Extra large spacing (page padding, major sections)
+ * Spacing Scale (compact for better 1080p density):
+ * - XS: 4px  - Tight spacing (icon-label gaps, inline elements)
+ * - SM: 8px  - Small spacing (form hints, compact gaps)
+ * - MD: 12px - Medium spacing (related elements)
+ * - LG: 16px - Standard spacing (section padding)
+ * - XL: 24px - Large spacing (page padding on mobile)
+ * - XXL: 32px - Extra large (reserved for major sections)
+ *
+ * Note: These map to Fluent UI tokens which provide cross-platform consistency.
  *
  * @see https://react.fluentui.dev/?path=/docs/concepts-developer-design-tokens--page
  */
@@ -51,32 +53,34 @@ export const spacingHorizontal = {
 
 /**
  * Page layout constants for consistent content areas.
+ * Optimized for 1080p displays with Apple/Adobe-like density.
  */
 export const pageLayout = {
   /** Maximum content width for central flows (prevents overly wide reading columns) */
-  maxContentWidth: '1440px',
-  /** Standard page padding (desktop) */
-  pagePadding: tokens.spacingVerticalXXL,
+  maxContentWidth: '1400px',
+  /** Standard page padding (desktop) - reduced for more content space */
+  pagePadding: tokens.spacingVerticalL,
   /** Page padding for smaller screens */
-  pagePaddingMobile: tokens.spacingVerticalL,
+  pagePaddingMobile: tokens.spacingVerticalM,
   /** Minimum page padding to ensure content is not flush with edges */
-  pagePaddingMin: tokens.spacingVerticalM,
+  pagePaddingMin: tokens.spacingVerticalS,
 } as const;
 
 /**
  * Panel layout ratios for multi-panel views.
+ * Optimized for 1080p displays.
  */
 export const panelLayout = {
-  /** Standard sidebar width */
-  sidebarWidth: '240px',
+  /** Standard sidebar width - reduced for more content area */
+  sidebarWidth: '200px',
   /** Collapsed sidebar width */
-  sidebarWidthCollapsed: '64px',
+  sidebarWidthCollapsed: '48px',
   /** Inspector/detail panel width */
-  inspectorWidth: '320px',
+  inspectorWidth: '280px',
   /** Minimum panel width for resizable panels */
-  panelMinWidth: '200px',
+  panelMinWidth: '160px',
   /** Maximum panel width for resizable panels */
-  panelMaxWidth: '480px',
+  panelMaxWidth: '400px',
 } as const;
 
 /**
