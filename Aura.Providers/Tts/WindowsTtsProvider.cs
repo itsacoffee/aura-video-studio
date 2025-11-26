@@ -127,7 +127,7 @@ public class WindowsTtsProvider : ITtsProvider
         // Constants for audio processing
         const int MaxCharsPerChunk = 450; // Safe limit for Windows TTS
         const int WavHeaderSize = 44; // Standard WAV header size in bytes
-        const double WavBytesPerSecond = 44100.0; // WAV at 22050 Hz, 16-bit, mono = ~44100 bytes per second
+        const double WavBytesPerSecond = 44100.0; // 22050 Hz sample rate * 2 bytes per sample (16-bit mono) = 44100 bytes/sec
         const double DefaultChunkDurationSeconds = 5.0; // Fallback duration estimate for chunks
         
         var linesList = lines.ToList();
