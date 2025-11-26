@@ -33,6 +33,7 @@ import { useNavigate } from 'react-router-dom';
 import { listProviders } from '../../services/api/scriptApi';
 import { ComponentErrorBoundary } from '../ErrorBoundary/ComponentErrorBoundary';
 import { WizardProgress } from '../WizardProgress';
+import { AdvancedModePanel } from './AdvancedModePanel';
 import { CelebrationEffect } from './CelebrationEffect';
 import { CostEstimator } from './CostEstimator';
 import { DraftManager } from './DraftManager';
@@ -43,7 +44,6 @@ import { ScriptReview } from './steps/ScriptReview';
 import { StyleSelection } from './steps/StyleSelection';
 import type { WizardData, StepValidation, VideoTemplate, WizardDraft } from './types';
 import { VideoTemplates } from './VideoTemplates';
-import { AdvancedModePanel } from './AdvancedModePanel';
 
 const useStyles = makeStyles({
   container: {
@@ -202,11 +202,12 @@ export const VideoCreationWizard: FC = () => {
         duration: 60,
       },
       style: {
-        voiceProvider: 'ElevenLabs',
-        voiceName: '',
+        voiceProvider: 'Windows',
+        voiceName: 'default',
         visualStyle: 'modern',
         musicGenre: 'ambient',
         musicEnabled: true,
+        imageProvider: 'Placeholder',
       },
       script: {
         content: '',
