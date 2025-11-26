@@ -343,11 +343,11 @@ function App() {
     // Set up toast handler for HTTP interceptor
     setHttpInterceptorToastHandler((message: string, type: 'error' | 'warning' | 'info' = 'error') => {
       if (type === 'error') {
-        errorReportingService.error('Connection Error', message, new Error(message), { duration: 10000 });
+        errorReportingService.error('Connection Error', message, new Error(message));
       } else if (type === 'warning') {
         errorReportingService.warning('Warning', message, { duration: 8000 });
       } else {
-        errorReportingService.info(message, { duration: 5000 });
+        errorReportingService.info('Info', message, { duration: 5000 });
       }
     });
 

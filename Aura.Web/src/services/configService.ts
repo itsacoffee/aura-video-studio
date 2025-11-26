@@ -142,9 +142,9 @@ class ConfigService {
       const status = await this.getConfigurationStatus();
       return status.canStart;
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       logger.warn(
-        'Failed to check if application can start',
-        error instanceof Error ? error : new Error(String(error)),
+        `Failed to check if application can start: ${errorMessage}`,
         'configService',
         'canStart'
       );
@@ -161,9 +161,9 @@ class ConfigService {
       const status = await this.getConfigurationStatus();
       return status.criticalIssues;
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       logger.warn(
-        'Failed to get critical issues',
-        error instanceof Error ? error : new Error(String(error)),
+        `Failed to get critical issues: ${errorMessage}`,
         'configService',
         'getCriticalIssues'
       );
@@ -179,9 +179,9 @@ class ConfigService {
       const status = await this.getConfigurationStatus();
       return status.warnings;
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       logger.warn(
-        'Failed to get warnings',
-        error instanceof Error ? error : new Error(String(error)),
+        `Failed to get warnings: ${errorMessage}`,
         'configService',
         'getWarnings'
       );

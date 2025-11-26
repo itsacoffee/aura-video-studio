@@ -585,7 +585,7 @@ export const AdvancedModePanel: FC<AdvancedModePanelProps> = ({
                   onChange={(_, data) =>
                     onRagConfigurationChange({
                       ...ragConfiguration,
-                      enabled: data.checked ?? false,
+                      enabled: data.checked === true,
                     })
                   }
                   label="Enable RAG for script generation"
@@ -659,7 +659,7 @@ export const AdvancedModePanel: FC<AdvancedModePanelProps> = ({
                       onChange={(_, data) =>
                         onRagConfigurationChange({
                           ...ragConfiguration,
-                          includeCitations: data.checked ?? true,
+                          includeCitations: data.checked === true,
                         })
                       }
                       label="Include citations in generated script"
@@ -673,7 +673,7 @@ export const AdvancedModePanel: FC<AdvancedModePanelProps> = ({
                       onChange={(_, data) =>
                         onRagConfigurationChange({
                           ...ragConfiguration,
-                          tightenClaims: data.checked ?? false,
+                          tightenClaims: data.checked === true,
                         })
                       }
                       label="Tighten claims (use only high-confidence information)"

@@ -87,12 +87,12 @@ const useStyles = makeStyles({
     transition: 'all 0.2s ease',
     cursor: 'pointer',
     ':hover': {
-      borderColor: tokens.colorNeutralStroke1,
+      border: `1px solid ${tokens.colorNeutralStroke1}`,
       boxShadow: tokens.shadow4,
     },
   },
   providerCardExpanded: {
-    borderColor: tokens.colorBrandStroke1,
+    border: `1px solid ${tokens.colorBrandStroke1}`,
     boxShadow: tokens.shadow8,
   },
   providerCardHeader: {
@@ -554,6 +554,8 @@ export function ApiKeySetupStep({
       name: 'Windows TTS',
       isAvailable: true,
       message: 'Built into Windows - always available',
+      details: {},
+      recommendations: [],
     },
     piper: null,
     mimic3: null,
@@ -759,6 +761,8 @@ export function ApiKeySetupStep({
             name: 'Windows TTS',
             isAvailable: true,
             message: 'Built into Windows - always available',
+            details: {},
+            recommendations: [],
           };
         }
       } else {
@@ -781,6 +785,8 @@ export function ApiKeySetupStep({
                 : 'Mimic3 TTS',
           isAvailable: provider === 'windows', // Windows is always available on Windows
           message: provider === 'windows' ? 'Built into Windows' : 'Status check failed',
+          details: {},
+          recommendations: [],
         },
       }));
     } finally {

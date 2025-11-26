@@ -206,9 +206,9 @@ const useStyles = makeStyles({
   },
   transcreationTextarea: {
     transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-    borderWidth: '2px',
+    border: `2px solid ${tokens.colorNeutralStroke1}`,
     ':focus-within': {
-      borderColor: tokens.colorBrandStroke1,
+      border: `2px solid ${tokens.colorBrandStroke1}`,
       boxShadow: `0 0 0 4px ${tokens.colorBrandBackground2}`,
       outline: 'none',
     },

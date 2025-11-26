@@ -155,7 +155,7 @@ const useStyles = makeStyles({
     ':hover': {
       transform: 'translateY(-4px)',
       boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08)',
-      borderColor: tokens.colorBrandStroke1,
+      border: `1px solid ${tokens.colorBrandStroke1}`,
     },
     ':active': {
       transform: 'translateY(-2px)',

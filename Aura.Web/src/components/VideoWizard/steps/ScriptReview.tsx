@@ -120,7 +120,7 @@ const useStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground1,
     transition: 'all 0.2s ease',
     ':hover': {
-      borderColor: tokens.colorNeutralStroke1,
+      border: `1px solid ${tokens.colorNeutralStroke1}`,
       boxShadow: `0 2px 8px ${tokens.colorNeutralShadowAmbient}`,
     },
   },
@@ -152,7 +152,7 @@ const useStyles = makeStyles({
     border: `1px solid ${tokens.colorNeutralStroke2}`,
     transition: 'all 0.2s ease',
     ':focus': {
-      borderColor: tokens.colorBrandStroke1,
+      border: `1px solid ${tokens.colorBrandStroke1}`,
       boxShadow: `0 0 0 2px ${tokens.colorBrandBackground2}`,
     },
   },

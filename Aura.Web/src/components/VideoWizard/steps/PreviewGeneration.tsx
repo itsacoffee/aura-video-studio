@@ -92,7 +92,7 @@ const useStyles = makeStyles({
     ':hover': {
       transform: 'translateY(-4px)',
       boxShadow: '0 12px 32px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08)',
-      borderColor: tokens.colorBrandStroke1,
+      border: `1px solid ${tokens.colorBrandStroke1}`,
     },
     ':active': {
       transform: 'translateY(-2px)',
@@ -180,7 +180,7 @@ const useStyles = makeStyles({
     ':hover': {
       transform: 'translateY(-3px)',
       boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08)',
-      borderColor: tokens.colorBrandStroke1,
+      border: `2px solid ${tokens.colorBrandStroke1}`,
     },
   },
   selectedProvider: {
@@ -1634,7 +1634,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
                           {currentProvider === 'Null' && (
                             <Text size={200} style={{ 
                               marginLeft: tokens.spacingHorizontalS, 
-                              color: tokens.colorPaletteOrangeForeground1,
+                              color: tokens.colorPaletteDarkOrangeForeground1,
                               fontWeight: 'semibold'
                             }}>
                               ⚠️ Generates silence - configure a real TTS provider
@@ -1658,7 +1658,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
                           {currentProvider === 'Null' && (
                             <Text size={200} style={{ 
                               marginLeft: tokens.spacingHorizontalS, 
-                              color: tokens.colorPaletteOrangeForeground1,
+                              color: tokens.colorPaletteDarkOrangeForeground1,
                               fontWeight: 'semibold'
                             }}>
                               ⚠️ Generates silence - configure a real TTS provider
