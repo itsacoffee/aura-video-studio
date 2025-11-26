@@ -443,18 +443,8 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
       const providers = await ttsService.getAvailableProviders();
       setTtsProviders(providers);
       
-      // Initialize selected provider if not set
-      if (!selectedTtsProvider && providers.length > 0) {
-        // Prefer Windows (free) or first available
-        const windowsProvider = providers.find(p => p.name === 'Windows');
-        const firstAvailable = providers[0];
-        const initialProvider = windowsProvider || firstAvailable;
-        if (initialProvider) {
-          setSelectedTtsProvider(initialProvider.name);
-        }
-      }
-      
-      // Check status of all providers
+      // Check status of all providers FIRST
+      let statusMap: Record<string, { isAvailable: boolean; error?: string }> = {};
       try {
         const statusResponse = await apiClient.get<{
           success: boolean;
@@ -462,7 +452,6 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
         }>('/api/tts/status');
         
         if (statusResponse.data.success) {
-          const statusMap: Record<string, { isAvailable: boolean; error?: string }> = {};
           statusResponse.data.providers.forEach((p: { name: string; isAvailable: boolean; error?: string }) => {
             statusMap[p.name] = { isAvailable: p.isAvailable, error: p.error };
           });
@@ -471,12 +460,40 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
       } catch (statusError) {
         console.warn('Failed to check TTS provider status:', statusError);
       }
+      
+      // Initialize selected provider if not set, choosing from AVAILABLE providers only
+      if (!selectedTtsProvider && providers.length > 0) {
+        // Check if styleData has a provider that's actually available
+        const styleProvider = styleData.voiceProvider;
+        const styleProviderStatus = styleProvider ? statusMap[styleProvider] : null;
+        const isStyleProviderAvailable = styleProviderStatus?.isAvailable !== false;
+        
+        // If styleData provider is available, use it
+        if (styleProvider && isStyleProviderAvailable) {
+          setSelectedTtsProvider(styleProvider);
+        } else {
+          // Otherwise, find the first available provider (prefer Null as fallback since it always works)
+          const availableProvider = providers.find(p => {
+            const status = statusMap[p.name];
+            return status?.isAvailable !== false;
+          });
+          
+          // Fallback to Null provider if nothing else is available
+          const nullProvider = providers.find(p => p.name === 'Null');
+          const initialProvider = availableProvider || nullProvider || providers[0];
+          
+          if (initialProvider) {
+            setSelectedTtsProvider(initialProvider.name);
+            console.info(`[PreviewGeneration] Auto-selected TTS provider: ${initialProvider.name}`);
+          }
+        }
+      }
     } catch (error) {
       console.error('Failed to load TTS providers:', error);
     } finally {
       setIsLoadingTtsProviders(false);
     }
-  }, [selectedTtsProvider]);
+  }, [selectedTtsProvider, styleData.voiceProvider]);
 
   // Load voices for selected TTS provider
   const loadTtsVoices = useCallback(async (provider: string) => {

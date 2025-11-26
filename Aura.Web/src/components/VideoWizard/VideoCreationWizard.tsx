@@ -222,7 +222,9 @@ export const VideoCreationWizard: FC = () => {
         duration: 60,
       },
       style: {
-        voiceProvider: 'Windows',
+        // Use 'Null' as default voice provider - it's always available (generates silence)
+        // The StyleSelection and PreviewGeneration components will auto-select a better provider if available
+        voiceProvider: 'Null',
         voiceName: 'default',
         visualStyle: 'modern',
         musicGenre: 'ambient',
@@ -536,7 +538,8 @@ export const VideoCreationWizard: FC = () => {
     });
 
     const getDefaultStyle = (): StyleData => ({
-      voiceProvider: 'Windows',
+      // Use 'Null' as default voice provider - it's always available (generates silence)
+      voiceProvider: 'Null',
       voiceName: 'default',
       visualStyle: 'modern',
       musicGenre: 'ambient',
