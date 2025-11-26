@@ -618,6 +618,9 @@ public class LocalizationController : ControllerBase
             
             var dto = MapToCulturalAnalysisResultDto(result);
 
+            _logger.LogInformation("Cultural analysis completed successfully: Score={Score}, Issues={IssueCount}, Recommendations={RecCount}, CorrelationId: {CorrelationId}",
+                result.CulturalSensitivityScore, result.Issues?.Count ?? 0, result.Recommendations?.Count ?? 0, HttpContext.TraceIdentifier);
+
             return Ok(dto);
         }
         catch (BrokenCircuitException ex)
