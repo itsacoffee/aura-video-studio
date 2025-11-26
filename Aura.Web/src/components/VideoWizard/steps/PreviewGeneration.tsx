@@ -839,7 +839,6 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
 
         // Use the selected TTS provider, fallback to styleData if not set
         const apiProvider = selectedTtsProvider || styleData.voiceProvider;
-        const voiceName = selectedTtsVoice || styleData.voiceName || 'default';
         
         if (!apiProvider) {
           throw new Error('No TTS provider selected. Please select a TTS provider in the settings.');
@@ -851,6 +850,16 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
           throw new Error(
             `TTS provider "${apiProvider}" is not available. ${providerStatus.error || 'Please select a different provider.'}`
           );
+        }
+        
+        // Get voice name - prefer selected voice, then styleData, then first available voice
+        let voiceName = selectedTtsVoice || styleData.voiceName;
+        if (!voiceName && ttsVoices.length > 0) {
+          // Use first available voice if none selected
+          voiceName = ttsVoices[0].name;
+        }
+        if (!voiceName) {
+          throw new Error(`No voice selected for provider "${apiProvider}". Please select a voice in the TTS settings.`);
         }
 
         // Fetch audio as blob in SINGLE request with returnFile parameter
@@ -875,28 +884,44 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
 
           // Check if response is an error status
           if (response.status >= 400) {
-            // Try to parse error message from blob
-            try {
-              // Clone the blob before reading it, so we don't consume it
-              const blobCopy = response.data instanceof Blob 
-                ? response.data.slice() 
-                : new Blob([response.data]);
-              const text = await blobCopy.text();
-              const errorData = JSON.parse(text);
-              throw new Error(errorData.error || errorData.details || `Server returned error: ${response.status}`);
-            } catch (parseError) {
-              // If parsing fails, just report the status code
+            // Check content type - backend may return JSON errors even when returnFile is requested
+            const contentType = response.headers['content-type'] || response.headers['Content-Type'] || '';
+            const isJsonError = contentType.includes('application/json') || 
+                               (response.data instanceof Blob && response.data.type === 'application/json');
+            
+            if (isJsonError) {
+              // Backend returned JSON error (even though we requested blob)
+              try {
+                const blobCopy = response.data instanceof Blob 
+                  ? response.data.slice() 
+                  : new Blob([response.data]);
+                const text = await blobCopy.text();
+                const errorData = JSON.parse(text);
+                throw new Error(
+                  errorData.error || errorData.details || 
+                  `Server returned ${response.status} ${response.statusText || ''}`
+                );
+              } catch (parseError) {
+                // If parsing fails, report the status code
+                throw new Error(`Failed to fetch audio file: Server returned ${response.status} ${response.statusText || ''}`);
+              }
+            } else {
+              // Unexpected error format
               throw new Error(`Failed to fetch audio file: Server returned ${response.status} ${response.statusText || ''}`);
             }
           }
 
           // Verify we got a blob, not JSON error
-          // Check if response is actually JSON (error response)
-          if (response.data.type === 'application/json' || 
+          // Check if response is actually JSON (error response that wasn't caught above)
+          const contentType = response.headers['content-type'] || response.headers['Content-Type'] || '';
+          if (contentType.includes('application/json') || 
               (response.data instanceof Blob && response.data.type === 'application/json')) {
             // Backend returned error as JSON
             try {
-              const errorText = await response.data.text();
+              const blobCopy = response.data instanceof Blob 
+                ? response.data.slice() 
+                : new Blob([response.data]);
+              const errorText = await blobCopy.text();
               const errorJson = JSON.parse(errorText);
               throw new Error(errorJson.error || errorJson.details || 'TTS generation failed');
             } catch (parseError) {
@@ -1089,7 +1114,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
         }
       }
     },
-    [scriptData.scenes, selectedTtsProvider, selectedTtsVoice, styleData.voiceProvider, styleData.voiceName, playingSceneId, ttsProviderStatus]
+    [scriptData.scenes, selectedTtsProvider, selectedTtsVoice, styleData.voiceProvider, styleData.voiceName, playingSceneId, ttsProviderStatus, ttsVoices]
   );
 
   const renderProviderSettings = () => (

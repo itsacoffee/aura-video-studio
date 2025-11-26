@@ -305,6 +305,15 @@ export async function startFinalRendering(
       codec: exportConfig.codec,
     });
 
+    // Convert duration from seconds to TimeSpan format (HH:mm:ss)
+    // ASP.NET Core expects TimeSpan in "HH:mm:ss" format, not ISO 8601
+    const formatTimeSpan = (seconds: number): string => {
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      const secs = seconds % 60;
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
+
     // Map wizard data to job creation format
     const jobRequest = {
       brief: {
@@ -316,7 +325,7 @@ export async function startFinalRendering(
         aspect: '16:9', // Default aspect ratio
       },
       planSpec: {
-        targetDuration: `PT${briefData.duration}S`, // ISO 8601 duration format
+        targetDuration: formatTimeSpan(briefData.duration), // TimeSpan format: HH:mm:ss
         pacing: 'Medium',
         density: 'Balanced',
         style: styleData.visualStyle,

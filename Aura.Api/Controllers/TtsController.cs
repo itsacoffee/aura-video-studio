@@ -206,12 +206,39 @@ public class TtsController : ControllerBase
 
             var audioPath = await ttsProvider.SynthesizeAsync(new[] { scriptLine }, voiceSpec, ct).ConfigureAwait(false);
 
+            // Validate audio file was created
+            if (string.IsNullOrWhiteSpace(audioPath) || !System.IO.File.Exists(audioPath))
+            {
+                _logger.LogError("[{CorrelationId}] TTS provider returned invalid audio path: {Path}", correlationId, audioPath);
+                return StatusCode(500, new
+                {
+                    success = false,
+                    error = "TTS provider failed to generate audio file",
+                    details = "Audio file was not created or path is invalid",
+                    correlationId
+                });
+            }
+
+            // Check file size to ensure it's not empty
+            var fileInfo = new System.IO.FileInfo(audioPath);
+            if (fileInfo.Length == 0)
+            {
+                _logger.LogError("[{CorrelationId}] TTS provider generated empty audio file: {Path}", correlationId, audioPath);
+                return StatusCode(500, new
+                {
+                    success = false,
+                    error = "TTS provider generated empty audio file",
+                    details = "The generated audio file has no content",
+                    correlationId
+                });
+            }
+
             // Check if client wants the file directly (for streaming/preview)
             var returnFile = Request.Query.ContainsKey("returnFile") && 
                             bool.TryParse(Request.Query["returnFile"], out var returnFileValue) && 
                             returnFileValue;
 
-            if (returnFile && System.IO.File.Exists(audioPath))
+            if (returnFile)
             {
                 var audioBytes = await System.IO.File.ReadAllBytesAsync(audioPath, ct).ConfigureAwait(false);
                 var contentType = audioPath.EndsWith(".wav", StringComparison.OrdinalIgnoreCase) ? "audio/wav" :
@@ -234,13 +261,29 @@ public class TtsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "[{CorrelationId}] Failed to generate voice preview", correlationId);
-            return StatusCode(500, new
+            
+            // Check if client wants file - if so, we need to return JSON error instead
+            var returnFile = Request.Query.ContainsKey("returnFile") && 
+                            bool.TryParse(Request.Query["returnFile"], out var returnFileValue) && 
+                            returnFileValue;
+            
+            // If returnFile is requested, we still return JSON error (client should check status code)
+            // The client will handle this appropriately
+            var errorResponse = StatusCode(500, new
             {
                 success = false,
                 error = "Failed to generate voice preview",
                 details = ex.Message,
                 correlationId
             });
+            
+            // Set content type explicitly for JSON error responses
+            if (returnFile)
+            {
+                Response.ContentType = "application/json";
+            }
+            
+            return errorResponse;
         }
     }
 
