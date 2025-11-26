@@ -26,12 +26,13 @@ import {
   Lightbulb24Regular,
   DocumentMultiple24Regular,
   Clock24Regular,
+  History24Regular,
 } from '@fluentui/react-icons';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { FC } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useWizardPersistence } from '../../hooks/useWizardPersistence';
 import { listProviders } from '../../services/api/scriptApi';
-import { ComponentErrorBoundary } from '../ErrorBoundary/ComponentErrorBoundary';
 import { WizardProgress } from '../WizardProgress';
 import { AdvancedModePanel } from './AdvancedModePanel';
 import { CelebrationEffect } from './CelebrationEffect';
@@ -42,8 +43,19 @@ import { FinalExport } from './steps/FinalExport';
 import { PreviewGeneration } from './steps/PreviewGeneration';
 import { ScriptReview } from './steps/ScriptReview';
 import { StyleSelection } from './steps/StyleSelection';
-import type { WizardData, StepValidation, VideoTemplate, WizardDraft } from './types';
+import type {
+  WizardData,
+  StepValidation,
+  VideoTemplate,
+  WizardDraft,
+  BriefData,
+  StyleData,
+  ScriptData,
+  PreviewData,
+  ExportData,
+} from './types';
 import { VideoTemplates } from './VideoTemplates';
+import { WizardErrorBoundary } from './WizardErrorBoundary';
 
 const useStyles = makeStyles({
   container: {
@@ -135,6 +147,19 @@ const useStyles = makeStyles({
     border: `1px solid ${tokens.colorNeutralStroke2}`,
     transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
   },
+  resumeDialogContent: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalM,
+  },
+  resumeInfo: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalS,
+    padding: tokens.spacingVerticalM,
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderRadius: tokens.borderRadiusMedium,
+  },
   '@keyframes fadeIn': {
     '0%': { opacity: 0 },
     '100%': { opacity: 1 },
@@ -176,6 +201,7 @@ export const VideoCreationWizard: FC = () => {
   });
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showDraftManager, setShowDraftManager] = useState(false);
+  const [showResumeDialog, setShowResumeDialog] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const autoSaveTimerRef = useRef<number | null>(null);
   const [showTemplates, setShowTemplates] = useState(false);
@@ -184,16 +210,10 @@ export const VideoCreationWizard: FC = () => {
   const [availableLlmProviders, setAvailableLlmProviders] = useState<
     Array<{ name: string; isAvailable: boolean; tier: string }>
   >([]);
-  const [wizardData, setWizardData] = useState<WizardData>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (error) {
-        console.error('Failed to parse saved wizard data:', error);
-      }
-    }
-    return {
+
+  // Default wizard data - memoized to avoid recreating on each render
+  const defaultWizardData = useMemo<WizardData>(
+    () => ({
       brief: {
         topic: '',
         videoType: 'educational',
@@ -238,8 +258,63 @@ export const VideoCreationWizard: FC = () => {
         },
         customInstructions: '',
       },
-    };
+    }),
+    []
+  );
+
+  const [wizardData, setWizardData] = useState<WizardData>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (error) {
+        console.error('Failed to parse saved wizard data:', error);
+      }
+    }
+    return defaultWizardData;
   });
+
+  // Wizard persistence hook for state save/resume
+  const {
+    state: persistenceState,
+    saveState: persistState,
+    restoreSession,
+    clearSession,
+  } = useWizardPersistence({
+    enableAutoSave: true,
+    onSaveError: (error) => {
+      console.error('[VideoCreationWizard] Auto-save failed:', error);
+    },
+  });
+
+  // Check for resumable session on mount - capture values to avoid stale closures
+  const hasResumableSession = persistenceState.hasResumableSession;
+  const savedStep = persistenceState.savedStep;
+  useEffect(() => {
+    if (hasResumableSession && savedStep > 0) {
+      // Only show resume dialog if there's meaningful progress
+      setShowResumeDialog(true);
+    }
+  }, [hasResumableSession, savedStep]);
+
+  // Handle resume session
+  const handleResumeSession = useCallback(() => {
+    const restored = restoreSession();
+    if (restored) {
+      setWizardData(restored.data);
+      setCurrentStep(restored.step);
+      console.info('[VideoCreationWizard] Session restored to step', restored.step);
+    }
+    setShowResumeDialog(false);
+  }, [restoreSession]);
+
+  // Handle start fresh (clear saved session)
+  const handleStartFresh = useCallback(() => {
+    clearSession();
+    setWizardData(defaultWizardData);
+    setCurrentStep(0);
+    setShowResumeDialog(false);
+  }, [clearSession, defaultWizardData]);
 
   const [stepValidation, setStepValidation] = useState<StepValidation[]>([
     { isValid: false, errors: [] },
@@ -249,16 +324,18 @@ export const VideoCreationWizard: FC = () => {
     { isValid: false, errors: [] },
   ]);
 
-  // Save wizard data to localStorage whenever it changes
+  // Save wizard data to localStorage and persistence hook whenever it changes
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(wizardData));
+    persistState(wizardData, currentStep);
     setLastSaved(new Date());
-  }, [wizardData]);
+  }, [wizardData, currentStep, persistState]);
 
   // Auto-save every 30 seconds
   useEffect(() => {
     autoSaveTimerRef.current = window.setInterval(() => {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(wizardData));
+      persistState(wizardData, currentStep);
       setLastSaved(new Date());
     }, AUTO_SAVE_INTERVAL);
 
@@ -267,7 +344,7 @@ export const VideoCreationWizard: FC = () => {
         window.clearInterval(autoSaveTimerRef.current);
       }
     };
-  }, [wizardData]);
+  }, [wizardData, currentStep, persistState]);
 
   // Save advanced mode preference
   useEffect(() => {
@@ -449,64 +526,150 @@ export const VideoCreationWizard: FC = () => {
   }, []);
 
   const renderStepContent = () => {
+    // Default data for graceful degradation when a step fails
+    const getDefaultBrief = (): BriefData => ({
+      topic: 'Video topic',
+      videoType: 'educational',
+      targetAudience: 'General audience',
+      keyMessage: 'Key message',
+      duration: 60,
+    });
+
+    const getDefaultStyle = (): StyleData => ({
+      voiceProvider: 'Windows',
+      voiceName: 'default',
+      visualStyle: 'modern',
+      musicGenre: 'ambient',
+      musicEnabled: true,
+      imageProvider: 'Placeholder',
+    });
+
+    const getDefaultScript = (): ScriptData => ({
+      content: '',
+      scenes: [],
+      generatedAt: null,
+    });
+
+    const getDefaultPreview = (): PreviewData => ({
+      thumbnails: [],
+      audioSamples: [],
+    });
+
+    const getDefaultExport = (): ExportData => ({
+      quality: 'high',
+      format: 'mp4',
+      resolution: '1080p',
+      includeCaptions: true,
+    });
+
     switch (currentStep) {
       case 0:
         return (
-          <BriefInput
-            data={wizardData.brief}
-            advancedMode={advancedMode}
-            advancedData={wizardData.advanced}
-            onChange={(brief) => updateWizardData({ brief })}
-            onAdvancedChange={(advanced) => updateWizardData({ advanced })}
-            onValidationChange={(validation) => updateStepValidation(0, validation)}
-          />
+          <WizardErrorBoundary
+            stepName="Brief Input"
+            onError={(error, errorInfo) => {
+              console.error('[VideoCreationWizard] Brief Input error:', {
+                error: error.message,
+                componentStack: errorInfo.componentStack,
+              });
+            }}
+            onRetry={() => updateStepValidation(0, { isValid: false, errors: [] })}
+            onSkipWithDefaults={() => {
+              updateWizardData({ brief: getDefaultBrief() });
+              updateStepValidation(0, { isValid: true, errors: [] });
+            }}
+            enableGracefulDegradation={true}
+          >
+            <BriefInput
+              data={wizardData.brief}
+              advancedMode={advancedMode}
+              advancedData={wizardData.advanced}
+              onChange={(brief) => updateWizardData({ brief })}
+              onAdvancedChange={(advanced) => updateWizardData({ advanced })}
+              onValidationChange={(validation) => updateStepValidation(0, validation)}
+            />
+          </WizardErrorBoundary>
         );
       case 1:
         return (
-          <StyleSelection
-            data={wizardData.style}
-            briefData={wizardData.brief}
-            advancedMode={advancedMode}
-            onChange={(style) => updateWizardData({ style })}
-            onValidationChange={(validation) => updateStepValidation(1, validation)}
-          />
+          <WizardErrorBoundary
+            stepName="Style Selection"
+            onError={(error, errorInfo) => {
+              console.error('[VideoCreationWizard] Style Selection error:', {
+                error: error.message,
+                componentStack: errorInfo.componentStack,
+              });
+            }}
+            onRetry={() => updateStepValidation(1, { isValid: false, errors: [] })}
+            onSkipWithDefaults={() => {
+              updateWizardData({ style: getDefaultStyle() });
+              updateStepValidation(1, { isValid: true, errors: [] });
+            }}
+            enableGracefulDegradation={true}
+          >
+            <StyleSelection
+              data={wizardData.style}
+              briefData={wizardData.brief}
+              advancedMode={advancedMode}
+              onChange={(style) => updateWizardData({ style })}
+              onValidationChange={(validation) => updateStepValidation(1, validation)}
+            />
+          </WizardErrorBoundary>
         );
       case 2:
         return (
-          <ScriptReview
-            data={wizardData.script}
-            briefData={wizardData.brief}
-            styleData={wizardData.style}
-            advancedMode={advancedMode}
-            selectedProvider={selectedLlmProvider}
-            onProviderChange={setSelectedLlmProvider}
-            advancedSettings={{
-              llmParameters: wizardData.advanced.llmParameters,
-              ragConfiguration: wizardData.advanced.ragConfiguration,
-              customInstructions: wizardData.advanced.customInstructions,
-              targetPlatform: wizardData.advanced.targetPlatform,
+          <WizardErrorBoundary
+            stepName="Script Review"
+            onError={(error, errorInfo) => {
+              console.error('[VideoCreationWizard] Script Review error:', {
+                error: error.message,
+                componentStack: errorInfo.componentStack,
+              });
             }}
-            onChange={(script) => updateWizardData({ script })}
-            onValidationChange={(validation) => updateStepValidation(2, validation)}
-          />
+            onRetry={() => updateStepValidation(2, { isValid: false, errors: [] })}
+            onSkipWithDefaults={() => {
+              updateWizardData({ script: getDefaultScript() });
+              updateStepValidation(2, { isValid: false, errors: ['Script generation required'] });
+            }}
+            enableGracefulDegradation={false}
+          >
+            <ScriptReview
+              data={wizardData.script}
+              briefData={wizardData.brief}
+              styleData={wizardData.style}
+              advancedMode={advancedMode}
+              selectedProvider={selectedLlmProvider}
+              onProviderChange={setSelectedLlmProvider}
+              advancedSettings={{
+                llmParameters: wizardData.advanced.llmParameters,
+                ragConfiguration: wizardData.advanced.ragConfiguration,
+                customInstructions: wizardData.advanced.customInstructions,
+                targetPlatform: wizardData.advanced.targetPlatform,
+              }}
+              onChange={(script) => updateWizardData({ script })}
+              onValidationChange={(validation) => updateStepValidation(2, validation)}
+            />
+          </WizardErrorBoundary>
         );
       case 3:
-        // Wrap PreviewGeneration in error boundary to catch and handle errors gracefully
         return (
-          <ComponentErrorBoundary
-            componentName="Preview Generation"
+          <WizardErrorBoundary
+            stepName="Preview Generation"
             onError={(error, errorInfo) => {
               console.error('[VideoCreationWizard] Preview Generation error:', {
                 error: error.message,
                 componentStack: errorInfo.componentStack,
-                wizardStep: currentStep,
                 hasScriptData: wizardData.script.scenes.length > 0,
               });
             }}
-            onRetry={() => {
-              // Reset preview step validation on retry
-              updateStepValidation(3, { isValid: false, errors: ['Preview generation required'] });
+            onRetry={() =>
+              updateStepValidation(3, { isValid: false, errors: ['Preview generation required'] })
+            }
+            onSkipWithDefaults={() => {
+              updateWizardData({ preview: getDefaultPreview() });
+              updateStepValidation(3, { isValid: true, errors: [] });
             }}
+            enableGracefulDegradation={true}
           >
             <PreviewGeneration
               data={wizardData.preview}
@@ -516,17 +679,33 @@ export const VideoCreationWizard: FC = () => {
               onChange={(preview) => updateWizardData({ preview })}
               onValidationChange={(validation) => updateStepValidation(3, validation)}
             />
-          </ComponentErrorBoundary>
+          </WizardErrorBoundary>
         );
       case 4:
         return (
-          <FinalExport
-            data={wizardData.export}
-            wizardData={wizardData}
-            advancedMode={advancedMode}
-            onChange={(exportData) => updateWizardData({ export: exportData })}
-            onValidationChange={(validation) => updateStepValidation(4, validation)}
-          />
+          <WizardErrorBoundary
+            stepName="Final Export"
+            onError={(error, errorInfo) => {
+              console.error('[VideoCreationWizard] Final Export error:', {
+                error: error.message,
+                componentStack: errorInfo.componentStack,
+              });
+            }}
+            onRetry={() => updateStepValidation(4, { isValid: false, errors: [] })}
+            onSkipWithDefaults={() => {
+              updateWizardData({ export: getDefaultExport() });
+              updateStepValidation(4, { isValid: true, errors: [] });
+            }}
+            enableGracefulDegradation={true}
+          >
+            <FinalExport
+              data={wizardData.export}
+              wizardData={wizardData}
+              advancedMode={advancedMode}
+              onChange={(exportData) => updateWizardData({ export: exportData })}
+              onValidationChange={(validation) => updateStepValidation(4, validation)}
+            />
+          </WizardErrorBoundary>
         );
       default:
         return null;
@@ -791,6 +970,55 @@ export const VideoCreationWizard: FC = () => {
         type="both"
         duration={3000}
       />
+
+      {/* Resume Session Dialog */}
+      <Dialog open={showResumeDialog} onOpenChange={(_, data) => setShowResumeDialog(data.open)}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>Resume Previous Session?</DialogTitle>
+            <DialogContent>
+              <div className={styles.resumeDialogContent}>
+                <Text>
+                  You have an incomplete wizard session from a previous visit. Would you like to
+                  continue where you left off?
+                </Text>
+                {persistenceState.savedAt && (
+                  <div className={styles.resumeInfo}>
+                    <History24Regular style={{ color: tokens.colorBrandForeground1 }} />
+                    <div>
+                      <Text weight="semibold" size={300}>
+                        Step {persistenceState.savedStep + 1} of {STEP_LABELS.length}
+                      </Text>
+                      <Text
+                        size={200}
+                        style={{ display: 'block', color: tokens.colorNeutralForeground3 }}
+                      >
+                        Last saved: {persistenceState.savedAt.toLocaleString()}
+                      </Text>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+            <DialogActions>
+              <Button
+                appearance="secondary"
+                icon={<DismissCircle24Regular />}
+                onClick={handleStartFresh}
+              >
+                Start Fresh
+              </Button>
+              <Button
+                appearance="primary"
+                icon={<History24Regular />}
+                onClick={handleResumeSession}
+              >
+                Resume Session
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
     </div>
   );
 };
