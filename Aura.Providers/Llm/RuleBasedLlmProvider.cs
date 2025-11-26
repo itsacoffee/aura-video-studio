@@ -218,9 +218,10 @@ public class RuleBasedLlmProvider : ILlmProvider
         {
             var trimmedLine = line.Trim();
             // Look for lines that START with "Topic:" (case-insensitive)
-            if (trimmedLine.StartsWith("Topic:", StringComparison.OrdinalIgnoreCase))
+            const string topicPrefix = "Topic:";
+            if (trimmedLine.StartsWith(topicPrefix, StringComparison.OrdinalIgnoreCase))
             {
-                var topic = trimmedLine.Substring(6).Trim(); // 6 = "Topic:".Length
+                var topic = trimmedLine.Substring(topicPrefix.Length).Trim();
                 if (!string.IsNullOrWhiteSpace(topic))
                 {
                     _logger.LogDebug("Extracted topic from prompt: {Topic}", topic);
