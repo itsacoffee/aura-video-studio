@@ -104,14 +104,15 @@ export const LocalizationPage: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          text: sourceText,
+          sourceText: sourceText,
           sourceLanguage,
           targetLanguage,
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Translation failed');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || errorData.error || 'Translation failed');
       }
 
       const data = await response.json();
@@ -133,27 +134,19 @@ export const LocalizationPage: React.FC = () => {
     setError(null);
 
     try {
-      const response = await fetch('/api/localization/generate-subtitles', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          videoPath,
-          targetLanguage,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Subtitle generation failed');
-      }
-
-      const data = await response.json();
-      setSubtitles(data.subtitles || '');
+      // Note: The generate-subtitles endpoint is not implemented.
+      // For subtitle generation, use the translate-and-plan-ssml endpoint
+      // which provides a full translation and SSML planning workflow.
+      setError(
+        'Subtitle generation requires video transcription. Please use the Create workflow to generate subtitles from your video script.'
+      );
+      setSubtitles('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
     }
-  }, [videoPath, targetLanguage]);
+  }, [videoPath]);
 
   const handleAdaptContent = useCallback(async () => {
     if (!sourceText) {
@@ -165,21 +158,41 @@ export const LocalizationPage: React.FC = () => {
     setError(null);
 
     try {
-      const response = await fetch('/api/localization/adapt-content', {
+      const response = await fetch('/api/localization/analyze-culture', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           content: sourceText,
-          targetCulture: targetLanguage,
+          targetLanguage: targetLanguage,
+          targetRegion: targetLanguage.includes('-')
+            ? targetLanguage.split('-')[1]
+            : targetLanguage,
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Content adaptation failed');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || errorData.error || 'Content adaptation failed');
       }
 
       const data = await response.json();
-      setTranslatedText(data.adaptedContent || '');
+      // Format the cultural analysis result for display
+      const analysisResult = [
+        `Cultural Sensitivity Score: ${data.culturalSensitivityScore || 'N/A'}`,
+        '',
+        'Recommendations:',
+        ...(data.recommendations || []).map(
+          (rec: { category: string; recommendation: string }) =>
+            `• ${rec.category}: ${rec.recommendation}`
+        ),
+        '',
+        'Issues Found:',
+        ...(data.issues || []).map(
+          (issue: { category: string; issue: string; suggestion: string }) =>
+            `• ${issue.category}: ${issue.issue} - ${issue.suggestion}`
+        ),
+      ].join('\n');
+      setTranslatedText(analysisResult || 'No analysis results available');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {

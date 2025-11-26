@@ -65,12 +65,40 @@ public class WindowsTtsProvider : ITtsProvider
         
         // Find the requested voice
         VoiceInformation? selectedVoice = null;
-        foreach (var voice in SpeechSynthesizer.AllVoices)
+        
+        // Handle "default" voice name by using the system default
+        var requestedVoice = spec.VoiceName?.Trim();
+        if (string.IsNullOrWhiteSpace(requestedVoice) || 
+            requestedVoice.Equals("default", StringComparison.OrdinalIgnoreCase))
         {
-            if (voice.DisplayName == spec.VoiceName)
+            selectedVoice = SpeechSynthesizer.DefaultVoice;
+            _logger.LogInformation("Using system default voice: {DefaultVoice}", selectedVoice?.DisplayName ?? "Unknown");
+        }
+        else
+        {
+            // Try to find the requested voice by exact match or partial match
+            foreach (var voice in SpeechSynthesizer.AllVoices)
             {
-                selectedVoice = voice;
-                break;
+                if (voice.DisplayName.Equals(requestedVoice, StringComparison.OrdinalIgnoreCase))
+                {
+                    selectedVoice = voice;
+                    break;
+                }
+            }
+            
+            // If exact match not found, try partial match
+            if (selectedVoice == null)
+            {
+                foreach (var voice in SpeechSynthesizer.AllVoices)
+                {
+                    if (voice.DisplayName.Contains(requestedVoice, StringComparison.OrdinalIgnoreCase))
+                    {
+                        selectedVoice = voice;
+                        _logger.LogInformation("Using partial match voice: {MatchedVoice} for requested {RequestedVoice}", 
+                            voice.DisplayName, requestedVoice);
+                        break;
+                    }
+                }
             }
         }
         
@@ -79,6 +107,11 @@ public class WindowsTtsProvider : ITtsProvider
             _logger.LogWarning("Voice {Voice} not found, using default voice", spec.VoiceName);
             selectedVoice = SpeechSynthesizer.DefaultVoice;
         }
+        
+        // Update the spec with the actual voice name for SSML generation
+        var actualVoiceName = selectedVoice?.DisplayName ?? "Microsoft David Desktop";
+        var effectiveSpec = spec with { VoiceName = actualVoiceName };
+        _logger.LogDebug("Effective voice for SSML: {VoiceName}", actualVoiceName);
         
         // Set the voice
         _synthesizer.Voice = selectedVoice;
@@ -106,7 +139,7 @@ public class WindowsTtsProvider : ITtsProvider
                     var chunk = chunks[chunkIndex];
                     var chunkTempFile = await SynthesizeChunkWithTimeoutAsync(
                         chunk,
-                        spec,
+                        effectiveSpec,
                         $"{line.SceneIndex}_{chunkIndex}",
                         TimeSpan.FromSeconds(30),
                         ct).ConfigureAwait(false);
@@ -122,7 +155,7 @@ public class WindowsTtsProvider : ITtsProvider
                 // Normal processing for short lines
                 var tempFile = await SynthesizeChunkWithTimeoutAsync(
                     line.Text,
-                    spec,
+                    effectiveSpec,
                     line.SceneIndex.ToString(),
                     TimeSpan.FromSeconds(30),
                     ct).ConfigureAwait(false);
