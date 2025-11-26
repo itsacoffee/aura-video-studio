@@ -20,7 +20,7 @@ import {
   Warning24Regular,
 } from '@fluentui/react-icons';
 import type { ReactNode } from 'react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { EnhancedApiKeyInput } from '../../components/Onboarding/EnhancedApiKeyInput';
 import type { FieldValidationError } from '../../components/Onboarding/FieldValidationErrors';
 import { ProviderHelpPanel } from '../../components/ProviderHelpPanel';
@@ -582,8 +582,8 @@ export function ApiKeySetupStep({
    * This function encapsulates all the complex logic for rendering Ollama's status
    * in a way that gracefully handles any errors or unexpected states.
    */
-  const renderOllamaStatus = useMemo(() => {
-    return (
+  const renderOllamaStatus = useCallback(
+    (
       currentValidationStatus: 'idle' | 'validating' | 'valid' | 'invalid',
       currentAccountInfo: string | undefined,
       currentValidationErrors: string | undefined
@@ -740,8 +740,9 @@ export function ApiKeySetupStep({
           </>
         );
       }
-    };
-  }, [llmStatusList, isLoadingProviderStatus]);
+    },
+    [llmStatusList, isLoadingProviderStatus]
+  );
 
   const checkLocalTtsStatus = useCallback(async (provider: 'windows' | 'piper' | 'mimic3') => {
     setCheckingTts((prev) => ({ ...prev, [provider]: true }));

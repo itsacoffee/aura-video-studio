@@ -57,25 +57,28 @@ export function useProviderStatus(pollInterval: number = 15000): UseProviderStat
       const imagesArray = Array.isArray(data?.images) ? data.images : [];
       
       // Convert timestamp strings to Date objects safely
+      // Note: Using current time as fallback for missing timestamps since the data was just fetched
+      // This is preferable to using Date(0) which would show "January 1, 1970" in the UI
+      const now = new Date();
       const processedData: ProviderStatusResponse = {
         ...data,
         llm: llmArray.map(p => ({
           ...p,
-          lastChecked: p?.lastChecked ? new Date(p.lastChecked) : new Date(),
+          lastChecked: p?.lastChecked ? new Date(p.lastChecked) : now,
         })),
         tts: ttsArray.map(p => ({
           ...p,
-          lastChecked: p?.lastChecked ? new Date(p.lastChecked) : new Date(),
+          lastChecked: p?.lastChecked ? new Date(p.lastChecked) : now,
         })),
         images: imagesArray.map(p => ({
           ...p,
-          lastChecked: p?.lastChecked ? new Date(p.lastChecked) : new Date(),
+          lastChecked: p?.lastChecked ? new Date(p.lastChecked) : now,
         })),
-        timestamp: data?.timestamp || new Date().toISOString(),
+        timestamp: data?.timestamp || now.toISOString(),
       };
 
       setStatus(processedData);
-      setLastUpdated(new Date());
+      setLastUpdated(now);
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
       setError(error);
