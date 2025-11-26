@@ -436,4 +436,83 @@ public class SettingsController : ControllerBase
             return StatusCode(500, new { error = "Failed to test upload destination" });
         }
     }
+
+    /// <summary>
+    /// Get operating mode (online/offline)
+    /// </summary>
+    [HttpGet("operating-mode")]
+    [ProducesResponseType(typeof(OperatingModeResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetOperatingMode(CancellationToken ct)
+    {
+        try
+        {
+            var settings = await _settingsService.GetSettingsAsync(ct).ConfigureAwait(false);
+            var isOffline = settings.Advanced.OfflineMode;
+
+            return Ok(new OperatingModeResponse
+            {
+                Mode = isOffline ? "offline" : "online",
+                IsOffline = isOffline,
+                AllowedLlmProviders = isOffline
+                    ? Aura.Core.Configuration.OperatingModeHelper.OfflineLlmProviders
+                    : Array.Empty<string>(),
+                AllowedTtsProviders = isOffline
+                    ? Aura.Core.Configuration.OperatingModeHelper.OfflineTtsProviders
+                    : Array.Empty<string>(),
+                AllowedImageProviders = isOffline
+                    ? Aura.Core.Configuration.OperatingModeHelper.OfflineImageProviders
+                    : Array.Empty<string>()
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get operating mode");
+            return StatusCode(500, new { error = "Failed to get operating mode" });
+        }
+    }
+
+    /// <summary>
+    /// Set operating mode (online/offline)
+    /// </summary>
+    [HttpPut("operating-mode")]
+    [ProducesResponseType(typeof(SettingsUpdateResult), StatusCodes.Status200OK)]
+    public async Task<IActionResult> SetOperatingMode([FromBody] SetOperatingModeRequest request, CancellationToken ct)
+    {
+        try
+        {
+            var settings = await _settingsService.GetSettingsAsync(ct).ConfigureAwait(false);
+            settings.Advanced.OfflineMode = request.IsOffline;
+
+            var result = await _settingsService.UpdateSettingsAsync(settings, ct).ConfigureAwait(false);
+            
+            _logger.LogInformation("Operating mode changed to {Mode}", request.IsOffline ? "offline" : "online");
+            
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to set operating mode");
+            return StatusCode(500, new { error = "Failed to set operating mode" });
+        }
+    }
+}
+
+/// <summary>
+/// Response for operating mode query
+/// </summary>
+public class OperatingModeResponse
+{
+    public string Mode { get; set; } = "online";
+    public bool IsOffline { get; set; }
+    public string[] AllowedLlmProviders { get; set; } = Array.Empty<string>();
+    public string[] AllowedTtsProviders { get; set; } = Array.Empty<string>();
+    public string[] AllowedImageProviders { get; set; } = Array.Empty<string>();
+}
+
+/// <summary>
+/// Request to set operating mode
+/// </summary>
+public class SetOperatingModeRequest
+{
+    public bool IsOffline { get; set; }
 }
