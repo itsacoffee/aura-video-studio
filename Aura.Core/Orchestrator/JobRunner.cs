@@ -116,14 +116,18 @@ public class JobRunner
 
         _logger.LogInformation("Job {JobId} saved to active jobs and artifact storage", jobId);
 
-        // Create a linked cancellation token source that responds to both the provided token and manual cancellation
-        var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        _jobCancellationTokens[job.Id] = linkedCts;
+        // Create a standalone cancellation token source for job cancellation only.
+        // Do NOT link to the HTTP request cancellation token (ct) because:
+        // - The HTTP request completes immediately after job creation returns
+        // - When ct is cancelled (request completes), it would cancel the background job
+        // - Jobs should only be cancellable via explicit CancelJob() calls
+        var jobCts = new CancellationTokenSource();
+        _jobCancellationTokens[job.Id] = jobCts;
 
         _logger.LogInformation("Starting background execution for job {JobId}", jobId);
 
-        // Start execution in background
-        _ = Task.Run(async () => await ExecuteJobAsync(job.Id, linkedCts.Token).ConfigureAwait(false), linkedCts.Token);
+        // Start execution in background without linking to HTTP request token
+        _ = Task.Run(async () => await ExecuteJobAsync(job.Id, jobCts.Token).ConfigureAwait(false), CancellationToken.None);
 
         return job;
     }
