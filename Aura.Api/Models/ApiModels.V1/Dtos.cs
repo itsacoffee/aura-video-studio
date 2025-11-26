@@ -2620,3 +2620,23 @@ public record ProviderCancellationStatusDto(
 public record PullOllamaModelRequest(
     string ModelName);
 
+// ============================================================================
+// SIMPLE TRANSLATION DTOs - for frontend LocalizationPage
+// ============================================================================
+
+/// <summary>
+/// Simple translation request for direct text translation
+/// Used by LocalizationPage frontend
+/// </summary>
+public record SimpleTranslationRequest(
+    string SourceText,
+    string SourceLanguage,
+    string TargetLanguage);
+
+/// <summary>
+/// Simple translation response with just the translated text
+/// Used by LocalizationPage frontend
+/// </summary>
+public record SimpleTranslationDto(
+    string TranslatedText);
+
