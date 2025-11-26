@@ -132,6 +132,16 @@ export const LocalizationPage: React.FC = () => {
     setLoadingMessage('');
   }, []);
 
+  // Helper function to handle request errors
+  const handleRequestError = useCallback((err: unknown, operationType: string): string => {
+    if (err instanceof Error && err.name === 'AbortError') {
+      return `${operationType} request timed out. Please try again with shorter content or check your connection.`;
+    } else if (err instanceof TimeoutError) {
+      return err.message;
+    }
+    return err instanceof Error ? err.message : 'An error occurred';
+  }, []);
+
   const handleTranslate = useCallback(async () => {
     if (!sourceText) {
       setError('Please enter text to translate');
@@ -139,7 +149,10 @@ export const LocalizationPage: React.FC = () => {
     }
 
     // Cancel any previous request
-    cancelRequest();
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
 
     setLoading(true);
     setError(null);
@@ -182,22 +195,14 @@ export const LocalizationPage: React.FC = () => {
       const data = await response.json();
       setTranslatedText(data.translatedText || '');
     } catch (err: unknown) {
-      if (err instanceof Error && err.name === 'AbortError') {
-        setError(
-          'Translation request timed out. Please try again with shorter text or check your connection.'
-        );
-      } else if (err instanceof TimeoutError) {
-        setError(err.message);
-      } else {
-        setError(err instanceof Error ? err.message : 'An error occurred');
-      }
+      setError(handleRequestError(err, 'Translation'));
     } finally {
       clearTimeout(timeoutId);
       setLoading(false);
       setLoadingMessage('');
       abortControllerRef.current = null;
     }
-  }, [sourceText, sourceLanguage, targetLanguage, cancelRequest]);
+  }, [sourceText, sourceLanguage, targetLanguage, handleRequestError]);
 
   const handleGenerateSubtitles = useCallback(async () => {
     if (!videoPath) {
@@ -230,7 +235,10 @@ export const LocalizationPage: React.FC = () => {
     }
 
     // Cancel any previous request
-    cancelRequest();
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
 
     setLoading(true);
     setError(null);
@@ -291,22 +299,14 @@ export const LocalizationPage: React.FC = () => {
       ].join('\n');
       setTranslatedText(analysisResult || 'No analysis results available');
     } catch (err: unknown) {
-      if (err instanceof Error && err.name === 'AbortError') {
-        setError(
-          'Cultural analysis request timed out. Please try again with shorter content or check your connection.'
-        );
-      } else if (err instanceof TimeoutError) {
-        setError(err.message);
-      } else {
-        setError(err instanceof Error ? err.message : 'An error occurred');
-      }
+      setError(handleRequestError(err, 'Cultural analysis'));
     } finally {
       clearTimeout(timeoutId);
       setLoading(false);
       setLoadingMessage('');
       abortControllerRef.current = null;
     }
-  }, [sourceText, targetLanguage, cancelRequest]);
+  }, [sourceText, targetLanguage, handleRequestError]);
 
   return (
     <div className={styles.container}>
