@@ -584,6 +584,16 @@ internal sealed class PipelineValidationFailingLlmProvider : ILlmProvider
         _logger.LogError("LLM provider is unavailable or misconfigured");
         throw new InvalidOperationException("LLM provider is unavailable or misconfigured");
     }
+
+    public Task<string> GenerateChatCompletionAsync(
+        string systemPrompt,
+        string userPrompt,
+        LlmParameters? parameters = null,
+        CancellationToken ct = default)
+    {
+        _logger.LogError("LLM provider is unavailable or misconfigured");
+        throw new InvalidOperationException("LLM provider is unavailable or misconfigured");
+    }
     
     public bool SupportsStreaming => false;
     
