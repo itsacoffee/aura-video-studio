@@ -1,37 +1,37 @@
 import {
-    Badge,
-    Button,
-    Card,
-    Checkbox,
-    Dropdown,
-    Field,
-    makeStyles,
-    Option,
-    ProgressBar,
-    Radio,
-    RadioGroup,
-    Spinner,
-    Text,
-    Title2,
-    Title3,
-    tokens,
-    Tooltip,
+  Badge,
+  Button,
+  Card,
+  Checkbox,
+  Dropdown,
+  Field,
+  makeStyles,
+  Option,
+  ProgressBar,
+  Radio,
+  RadioGroup,
+  Spinner,
+  Text,
+  Title2,
+  Title3,
+  tokens,
+  Tooltip,
 } from '@fluentui/react-components';
 import {
-    CheckmarkCircle24Regular,
-    Dismiss24Regular,
-    DocumentMultiple24Regular,
-    ErrorCircle24Regular,
-    Folder24Regular,
-    Info24Regular,
-    Open24Regular
+  CheckmarkCircle24Regular,
+  Dismiss24Regular,
+  DocumentMultiple24Regular,
+  ErrorCircle24Regular,
+  Folder24Regular,
+  Info24Regular,
+  Open24Regular,
 } from '@fluentui/react-icons';
 import type { FC } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiUrl } from '../../../config/api';
-import { openFile, openFolder } from '../../../utils/fileSystemUtils';
-import { getDefaultSaveLocation, pickFolder, resolvePathOnBackend, validatePathWritable } from '../../../utils/pathUtils';
 import { startFinalRendering } from '../../../services/wizardService';
+import { openFile, openFolder } from '../../../utils/fileSystemUtils';
+import { getDefaultSaveLocation, pickFolder, resolvePathOnBackend } from '../../../utils/pathUtils';
 import type { ExportData, StepValidation, WizardData } from '../types';
 
 const useStyles = makeStyles({
@@ -218,7 +218,7 @@ export const FinalExport: FC<FinalExportProps> = ({
               return;
             }
           }
-        } catch (e) {
+        } catch {
           // Fall through to next method
         }
 
@@ -234,7 +234,7 @@ export const FinalExport: FC<FinalExportProps> = ({
               return;
             }
           }
-        } catch (e) {
+        } catch {
           // Fall through to default
         }
 
@@ -300,6 +300,7 @@ export const FinalExport: FC<FinalExportProps> = ({
     }
   }, []);
 
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   const startExport = useCallback(async () => {
     setExportStatus('exporting');
     setExportProgress(0);
@@ -312,6 +313,7 @@ export const FinalExport: FC<FinalExportProps> = ({
 
       for (let i = 0; i < formatsToExport.length; i++) {
         const format = formatsToExport[i];
+        console.info('[FinalExport] Starting export for format:', format);
         setExportStage(`Preparing export for ${format.toUpperCase()} format...`);
 
         // Map quality to video bitrate
@@ -379,11 +381,15 @@ export const FinalExport: FC<FinalExportProps> = ({
             }
           );
 
-          setExportStage(`Rendering ${format.toUpperCase()} video...`);
+          // Provide initial feedback before polling starts
+          console.info('[FinalExport] Job submitted, waiting for backend to start processing...');
+          console.info('[FinalExport] Job ID received:', jobId);
+          setExportStage('Job submitted, waiting for backend to start processing...');
+          setExportProgress(1); // Show some progress so user knows something is happening
 
-          // ✅ REAL PROGRESS - Poll job status with improved error handling
+          // Poll job status with improved error handling
           let jobCompleted = false;
-          let jobData: any = null;
+          let jobData: unknown = null;
           const maxPollAttempts = 600; // 10 minutes max (600 * 1 second)
           let pollAttempts = 0;
           let consecutiveErrors = 0;
@@ -396,50 +402,98 @@ export const FinalExport: FC<FinalExportProps> = ({
             try {
               const statusResponse = await fetch(apiUrl(`/api/jobs/${jobId}`), {
                 headers: {
-                  'Accept': 'application/json',
+                  Accept: 'application/json',
                 },
               });
 
               if (!statusResponse.ok) {
                 if (statusResponse.status === 404) {
-                  // Job not found yet, continue polling (but log after a few attempts)
-                  if (pollAttempts > 5) {
-                    console.warn(`Job ${jobId} not found after ${pollAttempts} attempts`);
-                  }
                   consecutiveErrors++;
-                  if (consecutiveErrors >= maxConsecutiveErrors) {
-                    throw new Error(`Job ${jobId} not found after multiple attempts`);
+
+                  // Provide user feedback at different stages
+                  if (pollAttempts === 5) {
+                    setExportStage('Starting video generation...');
+                  } else if (pollAttempts === 10) {
+                    setExportStage('Initializing rendering pipeline...');
+                  } else if (pollAttempts > 15 && consecutiveErrors > 10) {
+                    throw new Error(
+                      'Video generation job not found. The backend may not have started the job correctly. ' +
+                        'Please check backend logs and ensure the API is running.'
+                    );
+                  }
+
+                  // Log after a few attempts for debugging
+                  if (pollAttempts > 5) {
+                    console.warn(
+                      `[FinalExport] Job ${jobId} not found after ${pollAttempts} attempts`
+                    );
                   }
                   continue;
                 }
+
                 const errorText = await statusResponse.text().catch(() => 'Unknown error');
-                throw new Error(`Failed to check job status: ${statusResponse.status} - ${errorText}`);
+                throw new Error(
+                  `Failed to check job status: ${statusResponse.status} - ${errorText}`
+                );
               }
 
               consecutiveErrors = 0; // Reset error counter on success
               jobData = await statusResponse.json();
 
+              // Type guard for job data
+              const typedJobData = jobData as {
+                percent?: number;
+                stage?: string;
+                progressMessage?: string;
+                status?: string;
+                errorMessage?: string;
+                error?: string;
+                failureDetails?: {
+                  message?: string;
+                  suggestedActions?: string[];
+                };
+                outputPath?: string;
+                artifacts?: Array<{
+                  path?: string;
+                  filePath?: string;
+                  type?: string;
+                }>;
+              };
+
               // Update progress based on job percent
-              const jobProgress = jobData.percent || 0;
+              const jobProgress = typedJobData.percent || 0;
               const overallProgress = (i * 100 + jobProgress) / formatsToExport.length;
               setExportProgress(overallProgress);
 
-              // Update stage message with more detail
-              const stageMessage = jobData.stage || jobData.progressMessage || 'Rendering...';
-              const progressMessage = jobData.progressMessage 
-                ? `${stageMessage}: ${jobData.progressMessage}`
-                : `${stageMessage} - ${jobProgress}%`;
-              setExportStage(progressMessage);
+              // Show detailed stage information
+              const stageMessage = typedJobData.stage || 'Processing...';
+              const detailMessage = typedJobData.progressMessage || '';
+              setExportStage(
+                detailMessage
+                  ? `${stageMessage}: ${detailMessage}`
+                  : `${stageMessage} (${Math.round(jobProgress)}%)`
+              );
 
-              // Check if job is complete
-              const jobStatus = (jobData.status?.toLowerCase() || '').trim();
+              console.info(
+                '[FinalExport] Polling attempt:',
+                pollAttempts,
+                'Status:',
+                typedJobData.status
+              );
+
+              // Check completion status
+              const jobStatus = (typedJobData.status?.toLowerCase() || '').trim();
               if (jobStatus === 'done' || jobStatus === 'succeeded' || jobStatus === 'completed') {
                 jobCompleted = true;
-                console.log(`Job ${jobId} completed successfully`, jobData);
+                console.info('[FinalExport] Job completed:', typedJobData);
               } else if (jobStatus === 'failed') {
-                const errorMsg = jobData.errorMessage || jobData.error || jobData.failureDetails?.message || 'Video generation failed';
-                const errorDetails = jobData.failureDetails?.suggestedActions 
-                  ? `\n\nSuggested actions:\n${jobData.failureDetails.suggestedActions.join('\n')}`
+                const errorMsg =
+                  typedJobData.errorMessage ||
+                  typedJobData.error ||
+                  typedJobData.failureDetails?.message ||
+                  'Video generation failed';
+                const errorDetails = typedJobData.failureDetails?.suggestedActions
+                  ? `\n\nSuggested actions:\n${typedJobData.failureDetails.suggestedActions.join('\n')}`
                   : '';
                 throw new Error(`${errorMsg}${errorDetails}`);
               } else if (jobStatus === 'canceled' || jobStatus === 'cancelled') {
@@ -447,72 +501,112 @@ export const FinalExport: FC<FinalExportProps> = ({
               }
               // Continue polling for 'queued' or 'running' status
             } catch (error) {
+              // Re-throw "not found" errors after threshold
+              if (error instanceof Error && error.message.includes('not found')) {
+                throw error;
+              }
+
               // If it's a network error, continue polling (with retry limit)
-              if (error instanceof TypeError && (error.message.includes('fetch') || error.message.includes('network'))) {
+              if (
+                error instanceof TypeError &&
+                (error.message.includes('fetch') || error.message.includes('network'))
+              ) {
                 consecutiveErrors++;
-                console.warn(`Network error while polling job status (attempt ${consecutiveErrors}/${maxConsecutiveErrors}), retrying...`);
+                console.warn(
+                  `[FinalExport] Network error while polling job status (attempt ${consecutiveErrors}/${maxConsecutiveErrors}), retrying...`
+                );
                 if (consecutiveErrors >= maxConsecutiveErrors) {
-                  throw new Error('Network connection lost. Please check your internet connection and try again.');
+                  throw new Error(
+                    'Network connection lost. Please check your internet connection and try again.'
+                  );
                 }
                 continue;
               }
-              // For other errors, throw immediately
-              throw error;
+
+              consecutiveErrors++;
+              console.warn(`[FinalExport] Poll attempt ${pollAttempts} failed:`, error);
+
+              if (consecutiveErrors >= maxConsecutiveErrors) {
+                throw new Error(
+                  `Failed to check job status after ${maxConsecutiveErrors} attempts. ` +
+                    `Last error: ${error instanceof Error ? error.message : String(error)}`
+                );
+              }
             }
           }
 
+          // Timeout handling
           if (!jobCompleted) {
-            throw new Error(`Job did not complete within the expected time (${maxPollAttempts} seconds). The job may still be processing.`);
+            throw new Error(
+              `Video generation timed out after ${Math.round(pollAttempts / 60)} minutes. ` +
+                `The rendering process may still be running on the server.`
+            );
           }
 
-          // ✅ REAL FILE PATH - From job artifacts or output path
-          let outputPath = jobData.outputPath;
-          
+          // Get typed job data for output extraction
+          const typedJobData = jobData as {
+            outputPath?: string;
+            artifacts?: Array<{
+              path?: string;
+              filePath?: string;
+              type?: string;
+            }>;
+          };
+
+          // Get file path from job artifacts or output path
+          let outputPath = typedJobData.outputPath;
+
           // Try to extract from artifacts if outputPath is not directly available
-          if (!outputPath && jobData.artifacts && Array.isArray(jobData.artifacts) && jobData.artifacts.length > 0) {
+          if (
+            !outputPath &&
+            typedJobData.artifacts &&
+            Array.isArray(typedJobData.artifacts) &&
+            typedJobData.artifacts.length > 0
+          ) {
             // Find video artifact - check multiple possible formats
-            const videoArtifact = jobData.artifacts.find(
-              (a: any) => {
-                const path = a.path || a.filePath || '';
-                const type = (a.type || '').toLowerCase();
-                return (
-                  type.includes('video') ||
-                  path.endsWith('.mp4') ||
-                  path.endsWith('.webm') ||
-                  path.endsWith('.mov') ||
-                  path.endsWith('.mkv') ||
-                  path.endsWith('.avi')
-                );
-              }
-            );
+            const videoArtifact = typedJobData.artifacts.find((a) => {
+              const path = a.path || a.filePath || '';
+              const type = (a.type || '').toLowerCase();
+              return (
+                type.includes('video') ||
+                path.endsWith('.mp4') ||
+                path.endsWith('.webm') ||
+                path.endsWith('.mov') ||
+                path.endsWith('.mkv') ||
+                path.endsWith('.avi')
+              );
+            });
             if (videoArtifact) {
               outputPath = videoArtifact.path || videoArtifact.filePath;
-              console.log('Found video artifact:', videoArtifact);
+              console.info('[FinalExport] Found video artifact:', videoArtifact);
             }
           }
 
           // If still no output path, try to construct from job directory
           if (!outputPath) {
-            console.warn('No output path in job data, attempting to construct from job ID');
+            console.warn(
+              '[FinalExport] No output path in job data, attempting to construct from job ID'
+            );
             // The backend should set outputPath, but if it doesn't, we can't proceed
             throw new Error(
               'No output path returned from video generation. ' +
-              'The video file may not have been created. ' +
-              'Please check the job logs for errors.'
+                'The video file may not have been created. ' +
+                'Please check the job logs for errors.'
             );
           }
 
-          console.log('Video generation completed, output path:', outputPath);
+          console.info('[FinalExport] Video generation completed, output path:', outputPath);
 
           // Resolve path for display
           const resolvedPath = await resolvePathOnBackend(outputPath);
-          const pathSeparator = resolvedPath.includes('\\') ? '\\' : '/';
           const lastSeparatorIndex = Math.max(
             resolvedPath.lastIndexOf('/'),
             resolvedPath.lastIndexOf('\\')
           );
-          const resolvedFolder = lastSeparatorIndex >= 0 ? resolvedPath.substring(0, lastSeparatorIndex) : resolvedPath;
-          const fileName = lastSeparatorIndex >= 0 ? resolvedPath.substring(lastSeparatorIndex + 1) : outputPath;
+          const resolvedFolder =
+            lastSeparatorIndex >= 0 ? resolvedPath.substring(0, lastSeparatorIndex) : resolvedPath;
+          const fileName =
+            lastSeparatorIndex >= 0 ? resolvedPath.substring(lastSeparatorIndex + 1) : outputPath;
 
           // ✅ REAL FILE SIZE - Get from file system
           let actualFileSize = 0;
@@ -525,7 +619,7 @@ export const FinalExport: FC<FinalExportProps> = ({
               actualFileSize = statData.size || 0;
             }
           } catch (error) {
-            console.warn('Could not get file size:', error);
+            console.warn('[FinalExport] Could not get file size:', error);
             // Fallback to estimate
             actualFileSize = Math.round(estimatedFileSize * 1024 * 1024);
           }
@@ -550,7 +644,7 @@ export const FinalExport: FC<FinalExportProps> = ({
             [resolvedPath]: resolvedFolder,
           }));
         } catch (error) {
-          console.error(`Export failed for format ${format}:`, error);
+          console.error(`[FinalExport] Export failed for format ${format}:`, error);
           throw error; // Re-throw to be caught by outer try-catch
         }
       }
@@ -560,22 +654,11 @@ export const FinalExport: FC<FinalExportProps> = ({
       setExportStatus('completed');
       setExportStage('Export completed successfully!');
     } catch (error) {
-      console.error('Export failed:', error);
+      console.error('[FinalExport] Export failed:', error);
       setExportStatus('error');
-      setExportStage(
-        error instanceof Error
-          ? `Export failed: ${error.message}`
-          : 'Export failed. Please try again.'
-      );
+      setExportStage(error instanceof Error ? error.message : 'Export failed. Please try again.');
     }
-  }, [
-    batchExport,
-    selectedFormats,
-    data,
-    wizardData,
-    estimatedFileSize,
-    saveLocation,
-  ]);
+  }, [batchExport, selectedFormats, data, wizardData, estimatedFileSize]);
 
   const cancelExport = useCallback(() => {
     setExportStatus('idle');
@@ -594,77 +677,82 @@ export const FinalExport: FC<FinalExportProps> = ({
     }
   }, []);
 
-  const handleOpenFile = useCallback(async (filePath: string, fullPath?: string) => {
-    try {
-      let pathToOpen = fullPath || filePath;
-      if (!pathToOpen) {
-        console.warn('No file path provided');
-        return;
-      }
+  const handleOpenFile = useCallback(
+    async (filePath: string, fullPath?: string) => {
+      try {
+        let pathToOpen = fullPath || filePath;
+        if (!pathToOpen) {
+          console.warn('No file path provided');
+          return;
+        }
 
-      // If path contains environment variables, resolve it
-      if (pathToOpen.includes('%') || pathToOpen.includes('~')) {
-        pathToOpen = await resolvePathOnBackend(pathToOpen);
-      }
+        // If path contains environment variables, resolve it
+        if (pathToOpen.includes('%') || pathToOpen.includes('~')) {
+          pathToOpen = await resolvePathOnBackend(pathToOpen);
+        }
 
-      const success = await openFile(pathToOpen);
-      if (!success) {
-        console.warn('Failed to open file, trying folder instead');
-        // Try to open the folder containing the file
-        const folderPath = resolvedPaths[pathToOpen] || pathToOpen.substring(0, Math.max(
-          pathToOpen.lastIndexOf('/'),
-          pathToOpen.lastIndexOf('\\')
-        ));
+        const success = await openFile(pathToOpen);
+        if (!success) {
+          console.warn('Failed to open file, trying folder instead');
+          // Try to open the folder containing the file
+          const folderPath =
+            resolvedPaths[pathToOpen] ||
+            pathToOpen.substring(
+              0,
+              Math.max(pathToOpen.lastIndexOf('/'), pathToOpen.lastIndexOf('\\'))
+            );
+          if (folderPath) {
+            await openFolder(folderPath);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to open file:', error);
+      }
+    },
+    [resolvedPaths]
+  );
+
+  const handleOpenFolder = useCallback(
+    async (filePath: string, fullPath?: string) => {
+      try {
+        let pathToOpen = fullPath || filePath;
+        if (!pathToOpen) {
+          console.warn('No file path provided');
+          return;
+        }
+
+        // If path contains environment variables, resolve it
+        if (pathToOpen.includes('%') || pathToOpen.includes('~')) {
+          pathToOpen = await resolvePathOnBackend(pathToOpen);
+        }
+
+        // Get the folder path - either from resolved paths or extract from file path
+        let folderPath = resolvedPaths[pathToOpen];
+        if (!folderPath) {
+          // Extract directory from file path
+          const lastSlash = Math.max(pathToOpen.lastIndexOf('/'), pathToOpen.lastIndexOf('\\'));
+          if (lastSlash >= 0) {
+            folderPath = pathToOpen.substring(0, lastSlash);
+          } else {
+            folderPath = pathToOpen; // Assume it's already a folder
+          }
+        }
+
         if (folderPath) {
+          // Resolve folder path if it contains environment variables
+          if (folderPath.includes('%') || folderPath.includes('~')) {
+            folderPath = await resolvePathOnBackend(folderPath);
+          }
           await openFolder(folderPath);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to open file:', error);
-    }
-  }, [resolvedPaths]);
-
-  const handleOpenFolder = useCallback(async (filePath: string, fullPath?: string) => {
-    try {
-      let pathToOpen = fullPath || filePath;
-      if (!pathToOpen) {
-        console.warn('No file path provided');
-        return;
-      }
-
-      // If path contains environment variables, resolve it
-      if (pathToOpen.includes('%') || pathToOpen.includes('~')) {
-        pathToOpen = await resolvePathOnBackend(pathToOpen);
-      }
-
-      // Get the folder path - either from resolved paths or extract from file path
-      let folderPath = resolvedPaths[pathToOpen];
-      if (!folderPath) {
-        // Extract directory from file path
-        const lastSlash = Math.max(
-          pathToOpen.lastIndexOf('/'),
-          pathToOpen.lastIndexOf('\\')
-        );
-        if (lastSlash >= 0) {
-          folderPath = pathToOpen.substring(0, lastSlash);
         } else {
-          folderPath = pathToOpen; // Assume it's already a folder
+          console.warn('Could not determine folder path');
         }
+      } catch (error) {
+        console.error('Failed to open folder:', error);
       }
-
-      if (folderPath) {
-        // Resolve folder path if it contains environment variables
-        if (folderPath.includes('%') || folderPath.includes('~')) {
-          folderPath = await resolvePathOnBackend(folderPath);
-        }
-        await openFolder(folderPath);
-      } else {
-        console.warn('Could not determine folder path');
-      }
-    } catch (error) {
-      console.error('Failed to open folder:', error);
-    }
-  }, [resolvedPaths]);
+    },
+    [resolvedPaths]
+  );
 
   const renderSettingsView = () => (
     <div className={styles.container}>
@@ -753,7 +841,9 @@ export const FinalExport: FC<FinalExportProps> = ({
             </div>
           ) : (
             <>
-              <div style={{ display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'center' }}>
+              <div
+                style={{ display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'center' }}
+              >
                 <Text
                   style={{
                     flex: 1,
@@ -775,7 +865,13 @@ export const FinalExport: FC<FinalExportProps> = ({
                   Browse
                 </Button>
               </div>
-              <Text size={200} style={{ marginTop: tokens.spacingVerticalXS, color: tokens.colorNeutralForeground3 }}>
+              <Text
+                size={200}
+                style={{
+                  marginTop: tokens.spacingVerticalXS,
+                  color: tokens.colorNeutralForeground3,
+                }}
+              >
                 Choose where to save your exported video file
               </Text>
             </>
@@ -787,31 +883,33 @@ export const FinalExport: FC<FinalExportProps> = ({
         <Card style={{ padding: tokens.spacingVerticalL, marginTop: tokens.spacingVerticalL }}>
           <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>Advanced Export Options</Title3>
           <div className={styles.batchExportSection}>
-            <Title3 style={{ marginBottom: tokens.spacingVerticalM, fontSize: tokens.fontSizeBase400 }}>
+            <Title3
+              style={{ marginBottom: tokens.spacingVerticalM, fontSize: tokens.fontSizeBase400 }}
+            >
               Batch Export
             </Title3>
-          <Checkbox
-            label="Export to multiple formats"
-            checked={batchExport}
-            onChange={(_, { checked }) => setBatchExport(!!checked)}
-          />
+            <Checkbox
+              label="Export to multiple formats"
+              checked={batchExport}
+              onChange={(_, { checked }) => setBatchExport(!!checked)}
+            />
 
-          {batchExport && (
-            <div className={styles.formatCheckboxes}>
-              {FORMAT_OPTIONS.map((option) => (
-                <div key={option.value}>
-                  <Checkbox
-                    label={option.label}
-                    checked={selectedFormats.includes(option.value)}
-                    onChange={(_, { checked }) => handleFormatToggle(option.value, !!checked)}
-                  />
-                  <Text size={200} style={{ marginLeft: tokens.spacingHorizontalXL }}>
-                    {option.description}
-                  </Text>
-                </div>
-              ))}
-            </div>
-          )}
+            {batchExport && (
+              <div className={styles.formatCheckboxes}>
+                {FORMAT_OPTIONS.map((option) => (
+                  <div key={option.value}>
+                    <Checkbox
+                      label={option.label}
+                      checked={selectedFormats.includes(option.value)}
+                      onChange={(_, { checked }) => handleFormatToggle(option.value, !!checked)}
+                    />
+                    <Text size={200} style={{ marginLeft: tokens.spacingHorizontalXL }}>
+                      {option.description}
+                    </Text>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </Card>
       )}
@@ -885,42 +983,48 @@ export const FinalExport: FC<FinalExportProps> = ({
           <Card key={index} className={styles.downloadItem}>
             <div className={styles.downloadItemHeader}>
               <div className={styles.downloadItemInfo}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM }}>
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM }}
+                >
                   <Text weight="semibold" size={400}>
-                {result.format} - {result.resolution}
-              </Text>
+                    {result.format} - {result.resolution}
+                  </Text>
                   <Badge appearance="filled" color="success">
-                {(result.fileSize / 1024).toFixed(1)} MB
+                    {(result.fileSize / 1024).toFixed(1)} MB
                   </Badge>
                 </div>
                 {result.fullPath && (
                   <div className={styles.filePath}>
-                    <Text size={200} weight="semibold" style={{ marginBottom: tokens.spacingVerticalXXS }}>
+                    <Text
+                      size={200}
+                      weight="semibold"
+                      style={{ marginBottom: tokens.spacingVerticalXXS }}
+                    >
                       File Location:
-              </Text>
+                    </Text>
                     <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>
                       {result.fullPath}
-                </Text>
+                    </Text>
                   </div>
-              )}
-            </div>
+                )}
+              </div>
               <div className={styles.downloadItemActions}>
-              <Button
-                appearance="primary"
-                icon={<Open24Regular />}
-                onClick={() => handleOpenFile(result.filePath, result.fullPath)}
-              >
-                Open File
-              </Button>
-              <Button
-                appearance="secondary"
-                icon={<Folder24Regular />}
-                onClick={() => handleOpenFolder(result.filePath, result.fullPath)}
-              >
-                Open Folder
-              </Button>
+                <Button
+                  appearance="primary"
+                  icon={<Open24Regular />}
+                  onClick={() => handleOpenFile(result.filePath, result.fullPath)}
+                >
+                  Open File
+                </Button>
+                <Button
+                  appearance="secondary"
+                  icon={<Folder24Regular />}
+                  onClick={() => handleOpenFolder(result.filePath, result.fullPath)}
+                >
+                  Open Folder
+                </Button>
+              </div>
             </div>
-          </div>
           </Card>
         ))}
       </div>
@@ -947,9 +1051,32 @@ export const FinalExport: FC<FinalExportProps> = ({
         style={{ fontSize: '64px', color: tokens.colorPaletteRedForeground1 }}
       />
       <Title3>Export Failed</Title3>
-      <Text style={{ marginBottom: tokens.spacingVerticalL, color: tokens.colorPaletteRedForeground1 }}>
-        {exportStage || 'An error occurred while exporting your video.'}
-      </Text>
+      <div
+        style={{
+          padding: tokens.spacingVerticalM,
+          backgroundColor: tokens.colorNeutralBackground3,
+          borderRadius: tokens.borderRadiusMedium,
+          marginBottom: tokens.spacingVerticalL,
+          maxWidth: '600px',
+        }}
+      >
+        <Text style={{ color: tokens.colorPaletteRedForeground1, fontWeight: 600 }}>
+          Error Details:
+        </Text>
+        <Text style={{ display: 'block', marginTop: tokens.spacingVerticalXS }}>
+          {exportStage || 'An error occurred while exporting your video.'}
+        </Text>
+        <Text
+          size={200}
+          style={{
+            display: 'block',
+            marginTop: tokens.spacingVerticalS,
+            color: tokens.colorNeutralForeground3,
+          }}
+        >
+          Check the browser console (F12) for detailed logs.
+        </Text>
+      </div>
       <div className={styles.exportActions}>
         <Button
           appearance="primary"
