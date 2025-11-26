@@ -93,7 +93,7 @@ const useStyles = makeStyles({
   },
   stageRowActive: {
     backgroundColor: tokens.colorBrandBackground2,
-    borderColor: tokens.colorBrandStroke1,
+    border: `1px solid ${tokens.colorBrandStroke1}`,
     transform: 'translateX(4px)',
     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
     '::before': {
@@ -467,8 +467,8 @@ export const VideoGenerationProgress: FC<VideoGenerationProgressProps> = ({
   const activeProvider = useMemo(() => {
     const currentPhase = phaseState.current;
     
-    // Script generation stage - show LLM provider
-    if (currentPhase === 'plan' || currentPhase === 'script') {
+    // Script generation stage - show LLM provider (plan stage handles script generation)
+    if (currentPhase === 'plan') {
       const availableLlm = llmProviders.find(p => p.available);
       if (availableLlm) {
         return {
@@ -480,7 +480,7 @@ export const VideoGenerationProgress: FC<VideoGenerationProgressProps> = ({
     }
     
     // TTS stage - show TTS provider
-    if (currentPhase === 'tts' || currentPhase === 'audio') {
+    if (currentPhase === 'tts') {
       const availableTts = ttsProviders.find(p => p.available);
       if (availableTts) {
         return {
@@ -492,7 +492,7 @@ export const VideoGenerationProgress: FC<VideoGenerationProgressProps> = ({
     }
     
     // Image generation stage - show image provider
-    if (currentPhase === 'visuals' || currentPhase === 'images') {
+    if (currentPhase === 'visuals') {
       const availableImage = imageProviders.find(p => p.available);
       if (availableImage) {
         return {

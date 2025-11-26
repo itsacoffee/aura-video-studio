@@ -71,21 +71,21 @@ export class ElectronErrorBoundary extends Component<Props, State> {
             return;
           }
         } else if (window.electron?.backend?.restart) {
-          const result = await window.electron.backend.restart();
-          if (result.success) {
+          const result = (await window.electron.backend.restart()) as { success?: boolean; error?: string } | undefined;
+          if (result && result.success) {
             this.setState({ hasError: false, error: null, errorInfo: null });
             window.location.reload();
             return;
-          } else {
+          } else if (result) {
             alert(`Failed to restart backend: ${result.error}`);
           }
         } else if (window.electronAPI?.restartBackend) {
-          const result = await window.electronAPI.restartBackend();
-          if (result.success) {
+          const result = (await window.electronAPI.restartBackend()) as { success?: boolean; error?: string } | undefined;
+          if (result && result.success) {
             this.setState({ hasError: false, error: null, errorInfo: null });
             window.location.reload();
             return;
-          } else {
+          } else if (result) {
             alert(`Failed to restart backend: ${result.error}`);
           }
         }

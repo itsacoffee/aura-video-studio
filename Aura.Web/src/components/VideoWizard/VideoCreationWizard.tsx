@@ -760,6 +760,7 @@ export const VideoCreationWizard: FC = () => {
                     <Option
                       key={provider.name}
                       value={provider.name}
+                      text={provider.name + (!provider.isAvailable ? ' (Unavailable)' : '')}
                       disabled={!provider.isAvailable}
                     >
                       {provider.name}

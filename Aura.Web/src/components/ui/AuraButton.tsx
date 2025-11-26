@@ -317,13 +317,14 @@ export const AuraButton = forwardRef<HTMLButtonElement, AuraButtonProps>(
     return (
       <Button
         // Fluent UI Button supports both anchor and button elements.
-        // AuraButton is always rendered as a button, so we cast the ref type.
-        ref={ref as ForwardedRef<HTMLButtonElement | HTMLAnchorElement>}
+        // AuraButton is always rendered as a button, so we assert the ref type.
+        // Using HTMLButtonElement directly as that's what AuraButton is declared with.
+        ref={ref as ForwardedRef<HTMLButtonElement>}
         className={buttonClassName}
         disabled={isDisabled}
         aria-busy={loading}
         aria-disabled={isDisabled}
-        {...props}
+        {...(props as ButtonProps)}
       >
         {/* Content wrapper - hidden when loading but keeps width */}
         <span className={contentClassName}>
