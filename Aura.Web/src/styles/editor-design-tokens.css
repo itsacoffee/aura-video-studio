@@ -5,42 +5,46 @@
 
 :root {
   /* ==================== SPACING SYSTEM ==================== */
+
+  /* Optimized for 1080p displays - Apple/Adobe-inspired density */
   --space-0: 0px;
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 24px;
-  --space-6: 32px;
-  --space-7: 40px;
-  --space-8: 48px;
-  --space-9: 64px;
-  --space-10: 80px;
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 8px;
+  --space-4: 12px;
+  --space-5: 16px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 48px;
+  --space-10: 64px;
   --panel-padding: var(--space-4);
-  --toolbar-height: 48px;
-  --timeline-height: 240px;
-  --sidebar-width: 280px;
-  --inspector-width: 320px;
+  --toolbar-height: 40px;
+  --timeline-height: 200px;
+  --sidebar-width: 200px;
+  --inspector-width: 280px;
 
   /* ==================== TYPOGRAPHY ==================== */
+
+  /* Optimized for 1080p displays - compact but readable */
   --font-family-primary: -apple-system, blinkmacsystemfont, 'Segoe UI', 'Roboto', sans-serif;
   --font-family-mono: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
-  --font-size-xs: 11px;
-  --font-size-sm: 12px;
-  --font-size-base: 13px;
-  --font-size-md: 14px;
-  --font-size-lg: 16px;
-  --font-size-xl: 18px;
-  --font-size-2xl: 20px;
-  --font-size-3xl: 24px;
-  --font-size-4xl: 32px;
+  --font-size-xs: 10px;
+  --font-size-sm: 11px;
+  --font-size-base: 12px;
+  --font-size-md: 13px;
+  --font-size-lg: 14px;
+  --font-size-xl: 16px;
+  --font-size-2xl: 18px;
+  --font-size-3xl: 20px;
+  --font-size-4xl: 24px;
   --font-weight-normal: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
-  --line-height-tight: 1.25;
-  --line-height-normal: 1.5;
-  --line-height-relaxed: 1.625;
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.4;
+  --line-height-relaxed: 1.5;
 
   /* ==================== COLORS - PROFESSIONAL DARK THEME ==================== */
   --color-primary-400: #60a5fa;
@@ -142,22 +146,22 @@
   --z-base: 0;
   --z-panel: 10;
   --z-toolbar: 20;
-  --panel-header-height: 36px;
-  --sidebar-collapsed-width: 48px;
-  --sidebar-expanded-width-min: 240px;
-  --sidebar-expanded-width-max: 400px;
-  --timeline-track-height-compact: 24px;
-  --timeline-track-height-default: 32px;
-  --timeline-track-height-comfortable: 48px;
+  --panel-header-height: 32px;
+  --sidebar-collapsed-width: 40px;
+  --sidebar-expanded-width-min: 180px;
+  --sidebar-expanded-width-max: 320px;
+  --timeline-track-height-compact: 20px;
+  --timeline-track-height-default: 28px;
+  --timeline-track-height-comfortable: 40px;
   --playhead-width: 2px;
-  --playhead-handle-size: 12px;
-  --toolbar-button-size: 32px;
-  --toolbar-icon-size: 20px;
+  --playhead-handle-size: 10px;
+  --toolbar-button-size: 28px;
+  --toolbar-icon-size: 16px;
   --toolbar-padding-v: var(--space-2);
   --toolbar-padding-h: var(--space-3);
-  --target-size-min: 24px;
-  --target-size-comfortable: 32px;
-  --target-size-large: 44px;
+  --target-size-min: 20px;
+  --target-size-comfortable: 28px;
+  --target-size-large: 36px;
   --clip-color-video: #4a5568;
   --clip-color-audio: #2d7a8f;
   --clip-color-image: #6b46c1;

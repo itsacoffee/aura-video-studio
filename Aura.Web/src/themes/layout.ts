@@ -51,32 +51,34 @@ export const spacingHorizontal = {
 
 /**
  * Page layout constants for consistent content areas.
+ * Optimized for 1080p displays with Apple/Adobe-like density.
  */
 export const pageLayout = {
   /** Maximum content width for central flows (prevents overly wide reading columns) */
-  maxContentWidth: '1440px',
-  /** Standard page padding (desktop) */
-  pagePadding: tokens.spacingVerticalXXL,
+  maxContentWidth: '1400px',
+  /** Standard page padding (desktop) - reduced for more content space */
+  pagePadding: tokens.spacingVerticalL,
   /** Page padding for smaller screens */
-  pagePaddingMobile: tokens.spacingVerticalL,
+  pagePaddingMobile: tokens.spacingVerticalM,
   /** Minimum page padding to ensure content is not flush with edges */
-  pagePaddingMin: tokens.spacingVerticalM,
+  pagePaddingMin: tokens.spacingVerticalS,
 } as const;
 
 /**
  * Panel layout ratios for multi-panel views.
+ * Optimized for 1080p displays.
  */
 export const panelLayout = {
-  /** Standard sidebar width */
-  sidebarWidth: '240px',
+  /** Standard sidebar width - reduced for more content area */
+  sidebarWidth: '200px',
   /** Collapsed sidebar width */
-  sidebarWidthCollapsed: '64px',
+  sidebarWidthCollapsed: '48px',
   /** Inspector/detail panel width */
-  inspectorWidth: '320px',
+  inspectorWidth: '280px',
   /** Minimum panel width for resizable panels */
-  panelMinWidth: '200px',
+  panelMinWidth: '160px',
   /** Maximum panel width for resizable panels */
-  panelMaxWidth: '480px',
+  panelMaxWidth: '400px',
 } as const;
 
 /**
