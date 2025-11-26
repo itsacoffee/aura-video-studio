@@ -15,6 +15,7 @@ export interface TimeoutConfig {
   fileUpload: number;
   fileDownload: number;
   quickOperations: number;
+  localization: number;
 }
 
 /**
@@ -32,6 +33,7 @@ export const DEFAULT_TIMEOUTS: TimeoutConfig = {
   fileUpload: 120000, // 2 minutes
   fileDownload: 180000, // 3 minutes
   quickOperations: 5000, // 5 seconds
+  localization: 30000, // 30 seconds for translation operations
 };
 
 /**
@@ -147,6 +149,7 @@ export function getOperationTimeout(
     | 'upload'
     | 'download'
     | 'quick'
+    | 'localization'
 ): number {
   const mapping: Record<string, keyof TimeoutConfig> = {
     default: 'default',
@@ -160,6 +163,7 @@ export function getOperationTimeout(
     upload: 'fileUpload',
     download: 'fileDownload',
     quick: 'quickOperations',
+    localization: 'localization',
   };
 
   return timeoutConfig.getTimeout(mapping[operation] || 'default');
