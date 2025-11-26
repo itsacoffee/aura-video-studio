@@ -163,6 +163,26 @@ interface ExportResult {
   fullPath?: string;
 }
 
+// Job data structure returned from the backend API
+interface JobStatusData {
+  percent?: number;
+  stage?: string;
+  progressMessage?: string;
+  status?: string;
+  errorMessage?: string;
+  error?: string;
+  failureDetails?: {
+    message?: string;
+    suggestedActions?: string[];
+  };
+  outputPath?: string;
+  artifacts?: Array<{
+    path?: string;
+    filePath?: string;
+    type?: string;
+  }>;
+}
+
 const QUALITY_OPTIONS = [
   { label: 'Draft (480p)', value: 'low', bitrate: 1500 },
   { label: 'Standard (720p)', value: 'medium', bitrate: 2500 },
@@ -392,7 +412,8 @@ export const FinalExport: FC<FinalExportProps> = ({
           let jobData: unknown = null;
           const maxPollAttempts = 600; // 10 minutes max (600 * 1 second)
           let pollAttempts = 0;
-          let consecutiveErrors = 0;
+          let total404Errors = 0; // Track total 404 errors (doesn't reset on success)
+          let consecutiveErrors = 0; // Track consecutive errors of any kind
           const maxConsecutiveErrors = 5;
 
           while (!jobCompleted && pollAttempts < maxPollAttempts) {
@@ -408,6 +429,7 @@ export const FinalExport: FC<FinalExportProps> = ({
 
               if (!statusResponse.ok) {
                 if (statusResponse.status === 404) {
+                  total404Errors++;
                   consecutiveErrors++;
 
                   // Provide user feedback at different stages
@@ -415,7 +437,9 @@ export const FinalExport: FC<FinalExportProps> = ({
                     setExportStage('Starting video generation...');
                   } else if (pollAttempts === 10) {
                     setExportStage('Initializing rendering pipeline...');
-                  } else if (pollAttempts > 15 && consecutiveErrors > 10) {
+                  } else if (pollAttempts > 15 && total404Errors > 10) {
+                    // If we've polled for more than 15 seconds and had more than 10 total 404s,
+                    // the job likely doesn't exist
                     throw new Error(
                       'Video generation job not found. The backend may not have started the job correctly. ' +
                         'Please check backend logs and ensure the API is running.'
@@ -425,7 +449,7 @@ export const FinalExport: FC<FinalExportProps> = ({
                   // Log after a few attempts for debugging
                   if (pollAttempts > 5) {
                     console.warn(
-                      `[FinalExport] Job ${jobId} not found after ${pollAttempts} attempts`
+                      `[FinalExport] Job ${jobId} not found after ${pollAttempts} attempts (total 404s: ${total404Errors})`
                     );
                   }
                   continue;
@@ -437,28 +461,11 @@ export const FinalExport: FC<FinalExportProps> = ({
                 );
               }
 
-              consecutiveErrors = 0; // Reset error counter on success
+              consecutiveErrors = 0; // Reset consecutive error counter on success (but not total404Errors)
               jobData = await statusResponse.json();
 
-              // Type guard for job data
-              const typedJobData = jobData as {
-                percent?: number;
-                stage?: string;
-                progressMessage?: string;
-                status?: string;
-                errorMessage?: string;
-                error?: string;
-                failureDetails?: {
-                  message?: string;
-                  suggestedActions?: string[];
-                };
-                outputPath?: string;
-                artifacts?: Array<{
-                  path?: string;
-                  filePath?: string;
-                  type?: string;
-                }>;
-              };
+              // Use the JobStatusData interface
+              const typedJobData = jobData as JobStatusData;
 
               // Update progress based on job percent
               const jobProgress = typedJobData.percent || 0;
@@ -543,28 +550,21 @@ export const FinalExport: FC<FinalExportProps> = ({
             );
           }
 
-          // Get typed job data for output extraction
-          const typedJobData = jobData as {
-            outputPath?: string;
-            artifacts?: Array<{
-              path?: string;
-              filePath?: string;
-              type?: string;
-            }>;
-          };
+          // Get typed job data for output extraction (reuse JobStatusData interface)
+          const finalJobData = jobData as JobStatusData;
 
           // Get file path from job artifacts or output path
-          let outputPath = typedJobData.outputPath;
+          let outputPath = finalJobData.outputPath;
 
           // Try to extract from artifacts if outputPath is not directly available
           if (
             !outputPath &&
-            typedJobData.artifacts &&
-            Array.isArray(typedJobData.artifacts) &&
-            typedJobData.artifacts.length > 0
+            finalJobData.artifacts &&
+            Array.isArray(finalJobData.artifacts) &&
+            finalJobData.artifacts.length > 0
           ) {
             // Find video artifact - check multiple possible formats
-            const videoArtifact = typedJobData.artifacts.find((a) => {
+            const videoArtifact = finalJobData.artifacts.find((a) => {
               const path = a.path || a.filePath || '';
               const type = (a.type || '').toLowerCase();
               return (
