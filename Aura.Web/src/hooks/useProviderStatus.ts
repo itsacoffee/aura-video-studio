@@ -7,6 +7,7 @@ export interface ProviderStatus {
   lastChecked: Date;
   errorMessage?: string;
   details?: string;
+  howToFix?: string[];
 }
 
 export interface ProviderStatusResponse {

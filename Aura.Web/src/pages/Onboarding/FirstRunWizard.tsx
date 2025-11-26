@@ -1570,6 +1570,17 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
         >
           Configure at least one LLM provider for script generation, or use offline mode.
         </Text>
+        <Text
+          size={300}
+          style={{
+            display: 'block',
+            color: tokens.colorNeutralForeground3,
+            marginTop: tokens.spacingVerticalXS,
+            fontStyle: 'italic',
+          }}
+        >
+          Provider status updates automatically every 15 seconds
+        </Text>
       </div>
 
       {(() => {

@@ -233,25 +233,47 @@ public class WindowsTtsProvider : ITtsProvider
         }
         catch (OperationCanceledException) when (timeoutCts.Token.IsCancellationRequested && !ct.IsCancellationRequested)
         {
-            _logger.LogWarning("Windows TTS synthesis timed out after {Timeout}s for chunk {Identifier}",
-                timeout.TotalSeconds, identifier);
-            throw new TimeoutException($"Windows TTS synthesis exceeded {timeout.TotalSeconds} second timeout");
+            _logger.LogWarning("Windows TTS synthesis timed out after {Timeout}s for chunk {Identifier}. Text length: {Length} chars",
+                timeout.TotalSeconds, identifier, text.Length);
+            throw new TimeoutException(
+                $"Windows TTS synthesis exceeded {timeout.TotalSeconds} second timeout for chunk '{identifier}'. " +
+                $"This may occur with very long text segments. Consider using shorter chunks or a different TTS provider.");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Windows TTS synthesis failed for chunk {Identifier}: {Message}",
-                identifier, ex.Message);
+            _logger.LogError(ex, "Windows TTS synthesis failed for chunk {Identifier} (text length: {Length}): {Message}",
+                identifier, text.Length, ex.Message);
             
             // Provide specific error messages for common failure modes
-            if (ex.Message.Contains("SAPI") || ex.Message.Contains("speech"))
+            if (ex.Message.Contains("SAPI") || ex.Message.Contains("speech") || ex.Message.Contains("SpeechSynthesizer"))
             {
                 throw new InvalidOperationException(
-                    $"Windows TTS engine error: {ex.Message}. " +
-                    "This may indicate a problem with the Windows Speech API or voice configuration.",
+                    $"Windows TTS engine error for chunk '{identifier}': {ex.Message}. " +
+                    "This may indicate a problem with the Windows Speech API, voice configuration, or text encoding. " +
+                    "Try using a different voice or check Windows Speech settings.",
                     ex);
             }
             
-            throw;
+            if (ex is UnauthorizedAccessException || ex.Message.Contains("access") || ex.Message.Contains("permission"))
+            {
+                throw new InvalidOperationException(
+                    $"Access denied when synthesizing chunk '{identifier}'. " +
+                    "Check file permissions and ensure the output directory is writable.",
+                    ex);
+            }
+            
+            if (ex.Message.Contains("encoding") || ex.Message.Contains("character"))
+            {
+                throw new InvalidOperationException(
+                    $"Text encoding error for chunk '{identifier}': {ex.Message}. " +
+                    "The text may contain unsupported characters for Windows TTS.",
+                    ex);
+            }
+            
+            throw new InvalidOperationException(
+                $"Windows TTS synthesis failed for chunk '{identifier}': {ex.Message}. " +
+                "This may be a transient error - try again or use a different TTS provider.",
+                ex);
         }
     }
 

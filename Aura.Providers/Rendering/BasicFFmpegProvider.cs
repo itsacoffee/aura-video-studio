@@ -21,7 +21,9 @@ public class BasicFFmpegProvider : BaseRenderingProvider
         ILogger<BasicFFmpegProvider> logger,
         IFfmpegLocator ffmpegLocator,
         string? configuredFfmpegPath = null,
-        string? outputDirectory = null)
+        string? outputDirectory = null,
+        Aura.Core.Runtime.ProcessRegistry? processRegistry = null,
+        Aura.Core.Runtime.ManagedProcessRunner? processRunner = null)
         : base(logger, ffmpegLocator, configuredFfmpegPath)
     {
         _videoComposer = new FfmpegVideoComposer(
@@ -29,7 +31,9 @@ public class BasicFFmpegProvider : BaseRenderingProvider
                 Microsoft.Extensions.Logging.Abstractions.NullLogger<FfmpegVideoComposer>.Instance,
             ffmpegLocator,
             configuredFfmpegPath,
-            outputDirectory);
+            outputDirectory,
+            processRegistry,
+            processRunner);
     }
 
     public override string Name => "BasicFFmpeg";

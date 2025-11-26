@@ -118,6 +118,30 @@ function ProviderSection({ title, providers }: ProviderSectionProps) {
                     {provider.details}
                   </Text>
                 )}
+                {provider.howToFix && provider.howToFix.length > 0 && (
+                  <div style={{ marginTop: tokens.spacingVerticalXS }}>
+                    <Text
+                      size={200}
+                      weight="semibold"
+                      style={{ color: tokens.colorNeutralForeground2, display: 'block', marginBottom: tokens.spacingVerticalXXS }}
+                    >
+                      How to fix:
+                    </Text>
+                    <ul
+                      style={{
+                        margin: 0,
+                        paddingLeft: tokens.spacingHorizontalM,
+                        color: tokens.colorNeutralForeground3,
+                      }}
+                    >
+                      {provider.howToFix.map((step, index) => (
+                        <li key={index}>
+                          <Text size={200}>{step}</Text>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             </div>
             <Badge

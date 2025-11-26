@@ -230,8 +230,7 @@ public class PiperTtsProvider : ITtsProvider
 
     /// <summary>
     /// Run Piper using ManagedProcessRunner (preferred method)
-    /// Note: ManagedProcessRunner doesn't support stdin, so we use manual process management
-    /// but with improved timeout handling (60s instead of 5 minutes)
+    /// Uses stdin support to write text to Piper process
     /// </summary>
     private async Task<bool> RunPiperWithManagedRunnerAsync(
         ProcessStartInfo startInfo,
@@ -239,9 +238,48 @@ public class PiperTtsProvider : ITtsProvider
         string outputPath,
         CancellationToken ct)
     {
-        // Since ManagedProcessRunner doesn't support stdin, we fall back to manual management
-        // but use the improved timeout (60s) pattern
-        return await RunPiperManuallyAsync(startInfo, text, outputPath, ct).ConfigureAwait(false);
+        try
+        {
+            var result = await _processRunner!.RunAsync(
+                startInfo,
+                jobId: null,
+                timeout: TimeSpan.FromSeconds(60),
+                ct: ct,
+                writeToStdin: async (stdin) =>
+                {
+                    await stdin.WriteLineAsync(text).ConfigureAwait(false);
+                }
+            ).ConfigureAwait(false);
+
+            if (result.ExitCode == 0 && File.Exists(outputPath))
+            {
+                return true;
+            }
+
+            _logger.LogWarning(
+                "Piper process failed with exit code {ExitCode}: {Error}",
+                result.ExitCode,
+                result.StandardError);
+            return false;
+        }
+        catch (TimeoutException ex)
+        {
+            _logger.LogWarning(ex, "Piper process timed out after 60 seconds for text length {Length} characters. Output path: {Path}",
+                text.Length, outputPath);
+            return false;
+        }
+        catch (OperationCanceledException ex)
+        {
+            _logger.LogInformation(ex, "Piper process was cancelled for text length {Length} characters",
+                text.Length);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error running Piper with ManagedProcessRunner for text length {Length}",
+                text.Length);
+            return false;
+        }
     }
 
     /// <summary>
@@ -277,10 +315,19 @@ public class PiperTtsProvider : ITtsProvider
         }
         catch (OperationCanceledException) when (timeoutCts.Token.IsCancellationRequested && !ct.IsCancellationRequested)
         {
-            _logger.LogWarning("Piper process timed out after 60 seconds");
+            _logger.LogWarning("Piper process timed out after 60 seconds for text length {Length} characters. Output path: {Path}. Process will be killed.",
+                text.Length, outputPath);
             if (!process.HasExited)
             {
-                process.Kill(entireProcessTree: true);
+                try
+                {
+                    process.Kill(entireProcessTree: true);
+                    _logger.LogDebug("Killed hung Piper process (PID: {Pid})", process.Id);
+                }
+                catch (Exception killEx)
+                {
+                    _logger.LogWarning(killEx, "Failed to kill hung Piper process (PID: {Pid})", process.Id);
+                }
             }
             return false;
         }

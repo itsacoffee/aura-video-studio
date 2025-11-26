@@ -560,7 +560,8 @@ public static class ServiceCollectionExtensions
             var cache = sp.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>();
             var settings = sp.GetRequiredService<ProviderSettings>();
             var baseUrl = settings.GetOllamaUrl();
-            return new Aura.Core.Services.Providers.OllamaDetectionService(logger, httpClient, cache, baseUrl);
+            // Pass service provider so detection service can invalidate provider cache when availability changes
+            return new Aura.Core.Services.Providers.OllamaDetectionService(logger, httpClient, cache, baseUrl, sp);
         });
 
         // Stable Diffusion detection service
@@ -590,35 +591,44 @@ public static class ServiceCollectionExtensions
             var logger = sp.GetRequiredService<ILogger<Rendering.FFmpegProvider>>();
             var ffmpegLocator = sp.GetRequiredService<Aura.Core.Dependencies.IFfmpegLocator>();
             var processRegistry = sp.GetService<Aura.Core.Runtime.ProcessRegistry>();
-            return new Rendering.FFmpegProvider(logger, ffmpegLocator, processRegistry: processRegistry);
+            var processRunner = sp.GetService<Aura.Core.Runtime.ManagedProcessRunner>();
+            return new Rendering.FFmpegProvider(logger, ffmpegLocator, processRegistry: processRegistry, processRunner: processRunner);
         });
 
         services.AddSingleton<Rendering.IRenderingProvider>(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<Rendering.FFmpegNvidiaProvider>>();
             var ffmpegLocator = sp.GetRequiredService<Aura.Core.Dependencies.IFfmpegLocator>();
-            return new Rendering.FFmpegNvidiaProvider(logger, ffmpegLocator);
+            var processRegistry = sp.GetService<Aura.Core.Runtime.ProcessRegistry>();
+            var processRunner = sp.GetService<Aura.Core.Runtime.ManagedProcessRunner>();
+            return new Rendering.FFmpegNvidiaProvider(logger, ffmpegLocator, processRegistry: processRegistry, processRunner: processRunner);
         });
 
         services.AddSingleton<Rendering.IRenderingProvider>(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<Rendering.FFmpegAmdProvider>>();
             var ffmpegLocator = sp.GetRequiredService<Aura.Core.Dependencies.IFfmpegLocator>();
-            return new Rendering.FFmpegAmdProvider(logger, ffmpegLocator);
+            var processRegistry = sp.GetService<Aura.Core.Runtime.ProcessRegistry>();
+            var processRunner = sp.GetService<Aura.Core.Runtime.ManagedProcessRunner>();
+            return new Rendering.FFmpegAmdProvider(logger, ffmpegLocator, processRegistry: processRegistry, processRunner: processRunner);
         });
 
         services.AddSingleton<Rendering.IRenderingProvider>(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<Rendering.FFmpegIntelProvider>>();
             var ffmpegLocator = sp.GetRequiredService<Aura.Core.Dependencies.IFfmpegLocator>();
-            return new Rendering.FFmpegIntelProvider(logger, ffmpegLocator);
+            var processRegistry = sp.GetService<Aura.Core.Runtime.ProcessRegistry>();
+            var processRunner = sp.GetService<Aura.Core.Runtime.ManagedProcessRunner>();
+            return new Rendering.FFmpegIntelProvider(logger, ffmpegLocator, processRegistry: processRegistry, processRunner: processRunner);
         });
 
         services.AddSingleton<Rendering.IRenderingProvider>(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<Rendering.BasicFFmpegProvider>>();
             var ffmpegLocator = sp.GetRequiredService<Aura.Core.Dependencies.IFfmpegLocator>();
-            return new Rendering.BasicFFmpegProvider(logger, ffmpegLocator);
+            var processRegistry = sp.GetService<Aura.Core.Runtime.ProcessRegistry>();
+            var processRunner = sp.GetService<Aura.Core.Runtime.ManagedProcessRunner>();
+            return new Rendering.BasicFFmpegProvider(logger, ffmpegLocator, processRegistry: processRegistry, processRunner: processRunner);
         });
 
         // Register the selector service

@@ -24,7 +24,8 @@ public class FFmpegProvider : BaseRenderingProvider
         IFfmpegLocator ffmpegLocator,
         string? configuredFfmpegPath = null,
         string? outputDirectory = null,
-        Aura.Core.Runtime.ProcessRegistry? processRegistry = null)
+        Aura.Core.Runtime.ProcessRegistry? processRegistry = null,
+        Aura.Core.Runtime.ManagedProcessRunner? processRunner = null)
         : base(logger, ffmpegLocator, configuredFfmpegPath)
     {
         _videoComposer = new FfmpegVideoComposer(
@@ -33,7 +34,8 @@ public class FFmpegProvider : BaseRenderingProvider
             ffmpegLocator,
             configuredFfmpegPath,
             outputDirectory,
-            processRegistry);
+            processRegistry,
+            processRunner);
 
         _hardwareEncoder = new HardwareEncoder(
             Microsoft.Extensions.Logging.Abstractions.NullLogger<HardwareEncoder>.Instance,

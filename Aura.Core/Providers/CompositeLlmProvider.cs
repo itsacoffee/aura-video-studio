@@ -606,7 +606,7 @@ public class CompositeLlmProvider : ILlmProvider
                 {
                     ct.ThrowIfCancellationRequested();
 
-                    // For Ollama, log availability status before attempting
+                    // For Ollama, check availability before attempting and skip if unavailable
                     if (providerName == "Ollama")
                     {
                         try
@@ -616,15 +616,28 @@ public class CompositeLlmProvider : ILlmProvider
                             if (availabilityMethod != null)
                             {
                                 using var availabilityCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                                availabilityCts.CancelAfter(TimeSpan.FromSeconds(5));
+                                availabilityCts.CancelAfter(TimeSpan.FromSeconds(2)); // Short timeout for availability check
                                 var availabilityTask = (Task<bool>)availabilityMethod.Invoke(provider, new object[] { availabilityCts.Token, false })!;
                                 var isAvailable = await availabilityTask.ConfigureAwait(false);
-                                _logger.LogInformation("Ollama availability check: {Available} for {Operation}", isAvailable ? "Available" : "Unavailable", operationName);
+                                
+                                if (!isAvailable)
+                                {
+                                    _logger.LogWarning("Ollama is unavailable for {Operation}, skipping to next provider in fallback chain", operationName);
+                                    continue; // Skip to next provider in chain
+                                }
+                                
+                                _logger.LogInformation("Ollama availability check: Available for {Operation}", operationName);
                             }
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            _logger.LogWarning("Ollama availability check timed out for {Operation}, skipping to next provider", operationName);
+                            continue; // Skip to next provider in chain
                         }
                         catch (Exception availEx)
                         {
-                            _logger.LogWarning(availEx, "Could not check Ollama availability before {Operation}, proceeding anyway", operationName);
+                            _logger.LogWarning(availEx, "Could not check Ollama availability before {Operation}, skipping to next provider", operationName);
+                            continue; // Skip to next provider in chain
                         }
                     }
 

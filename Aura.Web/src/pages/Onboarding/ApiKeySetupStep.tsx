@@ -25,6 +25,7 @@ import type { FieldValidationError } from '../../components/Onboarding/FieldVali
 import { ProviderHelpPanel } from '../../components/ProviderHelpPanel';
 import { offlineProvidersApi } from '../../services/api/offlineProvidersApi';
 import type { OfflineProviderStatus } from '@/types/offlineProviders';
+import { useProviderStatus } from '../../hooks/useProviderStatus';
 
 const useStyles = makeStyles({
   container: {
@@ -559,6 +560,10 @@ export function ApiKeySetupStep({
     mimic3: false,
   });
 
+  // Real-time provider status polling (every 15 seconds)
+  const { llmProviders, ttsProviders, imageProviders, isLoading: isLoadingProviderStatus } =
+    useProviderStatus(15000);
+
   const checkLocalTtsStatus = useCallback(async (provider: 'windows' | 'piper' | 'mimic3') => {
     setCheckingTts((prev) => ({ ...prev, [provider]: true }));
     try {
@@ -875,32 +880,124 @@ export function ApiKeySetupStep({
                               </>
                             ) : provider.id === 'ollama' ? (
                               <>
-                                {validationStatus[provider.id] === 'valid' ? (
-                                  <>
-                                    <Checkmark24Regular
-                                      style={{ color: tokens.colorPaletteGreenForeground1 }}
-                                    />
-                                    <Text size={300}>
-                                      {accountInfo[provider.id] || 'Ollama is running and validated'}
-                                    </Text>
-                                  </>
-                                ) : validationStatus[provider.id] === 'invalid' ? (
-                                  <>
-                                    <Warning24Regular
-                                      style={{ color: tokens.colorPaletteRedForeground1 }}
-                                    />
-                                    <Text size={300}>
-                                      {_validationErrors[provider.id] || 'Ollama validation failed'}
-                                    </Text>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Warning24Regular
-                                      style={{ color: tokens.colorPaletteYellowForeground1 }}
-                                    />
-                                    <Text size={300}>Install and run Ollama locally</Text>
-                                  </>
-                                )}
+                                {(() => {
+                                  // Use real-time status if available, otherwise fall back to validation status
+                                  const ollamaStatus = llmProviders.find((p) => p.name === 'Ollama');
+                                  const isAvailable = ollamaStatus?.available ?? false;
+                                  const errorMessage = ollamaStatus?.errorMessage;
+
+                                  if (validationStatus[provider.id] === 'valid' || isAvailable) {
+                                    return (
+                                      <>
+                                        <Checkmark24Regular
+                                          style={{ color: tokens.colorPaletteGreenForeground1 }}
+                                        />
+                                        <Text size={300}>
+                                          {accountInfo[provider.id] ||
+                                            ollamaStatus?.details ||
+                                            'Ollama is running and validated'}
+                                        </Text>
+                                      </>
+                                    );
+                                  }
+
+                                  if (validationStatus[provider.id] === 'invalid') {
+                                    return (
+                                      <>
+                                        <Warning24Regular
+                                          style={{ color: tokens.colorPaletteRedForeground1 }}
+                                        />
+                                        <div>
+                                          <Text size={300}>
+                                            {_validationErrors[provider.id] ||
+                                              errorMessage ||
+                                              'Ollama validation failed'}
+                                          </Text>
+                                          {ollamaStatus?.howToFix && ollamaStatus.howToFix.length > 0 && (
+                                            <div style={{ marginTop: tokens.spacingVerticalXS }}>
+                                              <Text
+                                                size={200}
+                                                weight="semibold"
+                                                style={{
+                                                  color: tokens.colorNeutralForeground2,
+                                                  display: 'block',
+                                                  marginBottom: tokens.spacingVerticalXXS,
+                                                }}
+                                              >
+                                                How to fix:
+                                              </Text>
+                                              <ul
+                                                style={{
+                                                  margin: 0,
+                                                  paddingLeft: tokens.spacingHorizontalM,
+                                                  color: tokens.colorNeutralForeground3,
+                                                }}
+                                              >
+                                                {ollamaStatus.howToFix.map((step, idx) => (
+                                                  <li key={idx}>
+                                                    <Text size={200}>{step}</Text>
+                                                  </li>
+                                                ))}
+                                              </ul>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </>
+                                    );
+                                  }
+
+                                  // Show real-time detection status
+                                  if (isLoadingProviderStatus) {
+                                    return (
+                                      <>
+                                        <Spinner size="tiny" />
+                                        <Text size={300}>Detecting Ollama...</Text>
+                                      </>
+                                    );
+                                  }
+
+                                  return (
+                                    <>
+                                      <Warning24Regular
+                                        style={{ color: tokens.colorPaletteYellowForeground1 }}
+                                      />
+                                      <div>
+                                        <Text size={300}>
+                                          {errorMessage ||
+                                            'Install and run Ollama locally. Status updates automatically.'}
+                                        </Text>
+                                        {ollamaStatus?.howToFix && ollamaStatus.howToFix.length > 0 && (
+                                          <div style={{ marginTop: tokens.spacingVerticalXS }}>
+                                            <Text
+                                              size={200}
+                                              weight="semibold"
+                                              style={{
+                                                color: tokens.colorNeutralForeground2,
+                                                display: 'block',
+                                                marginBottom: tokens.spacingVerticalXXS,
+                                              }}
+                                            >
+                                              How to fix:
+                                            </Text>
+                                            <ul
+                                              style={{
+                                                margin: 0,
+                                                paddingLeft: tokens.spacingHorizontalM,
+                                                color: tokens.colorNeutralForeground3,
+                                              }}
+                                            >
+                                              {ollamaStatus.howToFix.map((step, idx) => (
+                                                <li key={idx}>
+                                                  <Text size={200}>{step}</Text>
+                                                </li>
+                                              ))}
+                                            </ul>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </>
+                                  );
+                                })()}
                               </>
                             ) : null}
                           </div>

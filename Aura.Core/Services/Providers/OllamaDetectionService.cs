@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -20,6 +21,7 @@ public class OllamaDetectionService : IHostedService, IDisposable
     private readonly HttpClient _httpClient;
     private readonly IMemoryCache _cache;
     private readonly string _baseUrl;
+    private readonly IServiceProvider? _serviceProvider;
     private Timer? _refreshTimer;
     private readonly TimeSpan _refreshInterval = TimeSpan.FromSeconds(15);
     private bool _disposed;
@@ -40,12 +42,14 @@ public class OllamaDetectionService : IHostedService, IDisposable
         ILogger<OllamaDetectionService> logger,
         HttpClient httpClient,
         IMemoryCache cache,
-        string baseUrl = "http://localhost:11434")
+        string baseUrl = "http://localhost:11434",
+        IServiceProvider? serviceProvider = null)
     {
         _logger = logger;
         _httpClient = httpClient;
         _cache = cache;
         _baseUrl = baseUrl;
+        _serviceProvider = serviceProvider;
     }
 
     /// <summary>
@@ -123,6 +127,9 @@ public class OllamaDetectionService : IHostedService, IDisposable
                 _logger.LogInformation("Ollama availability changed: {PreviousStatus} -> {CurrentStatus}",
                     previousStatus ? "Available" : "Unavailable",
                     _lastKnownStatus ? "Available" : "Unavailable");
+
+                // Invalidate OllamaLlmProvider cache when availability changes
+                InvalidateProviderCache();
 
                 AvailabilityChanged?.Invoke(this, new OllamaAvailabilityChangedEventArgs
                 {
@@ -275,6 +282,23 @@ public class OllamaDetectionService : IHostedService, IDisposable
             BaseUrl: _baseUrl,
             ErrorMessage: "Ollama service not running. Please start Ollama with 'ollama serve' or install from https://ollama.com"
         );
+    }
+
+    /// <summary>
+    /// Checks Ollama availability (convenience method for consistency with other dependency checks)
+    /// </summary>
+    public async Task<bool> CheckAvailabilityAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            var status = await DetectOllamaAsync(ct).ConfigureAwait(false);
+            return status.IsRunning;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Error checking Ollama availability");
+            return false;
+        }
     }
 
     /// <summary>
@@ -512,6 +536,49 @@ public class OllamaDetectionService : IHostedService, IDisposable
         {
             _logger.LogError(ex, "Error getting Ollama model info for: {ModelName}", modelName);
             return null;
+        }
+    }
+
+    /// <summary>
+    /// Invalidates the OllamaLlmProvider availability cache when availability status changes
+    /// This ensures the provider re-checks availability after Ollama starts/stops
+    /// </summary>
+    private void InvalidateProviderCache()
+    {
+        if (_serviceProvider == null)
+        {
+            _logger.LogDebug("ServiceProvider not available, skipping provider cache invalidation");
+            return;
+        }
+
+        try
+        {
+            // Get the Ollama provider instance from keyed services
+            var ollamaProvider = _serviceProvider.GetKeyedService<Aura.Core.Providers.ILlmProvider>("Ollama");
+            if (ollamaProvider != null)
+            {
+                // Use reflection to call InvalidateAvailabilityCache if it exists
+                var providerType = ollamaProvider.GetType();
+                var invalidateMethod = providerType.GetMethod("InvalidateAvailabilityCache", Array.Empty<Type>());
+                
+                if (invalidateMethod != null)
+                {
+                    invalidateMethod.Invoke(ollamaProvider, null);
+                    _logger.LogDebug("Invalidated OllamaLlmProvider availability cache after status change");
+                }
+                else
+                {
+                    _logger.LogDebug("OllamaLlmProvider does not have InvalidateAvailabilityCache method");
+                }
+            }
+            else
+            {
+                _logger.LogDebug("Ollama provider not found in service container");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error invalidating OllamaLlmProvider cache");
         }
     }
 

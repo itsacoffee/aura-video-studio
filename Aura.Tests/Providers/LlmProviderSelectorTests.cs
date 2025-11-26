@@ -272,5 +272,74 @@ public class LlmProviderSelectorTests
         Assert.NotNull(result);
         Assert.Equal(mockRuleBasedProvider.Object, result);
     }
+
+    [Fact]
+    public async Task GetProviderAsync_CacheInvalidation_TriggersReEvaluation()
+    {
+        // Arrange
+        _mockSettings.Setup(s => s.GetPreferredLlmProvider()).Returns((string?)null);
+
+        var mockOllamaProvider = new Mock<ILlmProvider>();
+        var mockRuleBasedProvider = new Mock<ILlmProvider>();
+        var mockOllamaDetection = new Mock<OllamaDetectionService>(
+            MockBehavior.Strict,
+            NullLogger<OllamaDetectionService>.Instance,
+            Mock.Of<System.Net.Http.HttpClient>(),
+            Mock.Of<Microsoft.Extensions.Caching.Memory.IMemoryCache>(),
+            "http://localhost:11434");
+
+        // First call: Ollama unavailable
+        var unavailableStatus = new OllamaStatus(
+            IsRunning: false,
+            IsInstalled: false,
+            Version: null,
+            BaseUrl: "http://localhost:11434",
+            ErrorMessage: "Service not running");
+
+        // Second call: Ollama available (after cache invalidation)
+        var availableStatus = new OllamaStatus(
+            IsRunning: true,
+            IsInstalled: true,
+            Version: "1.0.0",
+            BaseUrl: "http://localhost:11434",
+            ErrorMessage: null);
+
+        var callCount = 0;
+        mockOllamaDetection.Setup(s => s.GetStatusAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() =>
+            {
+                callCount++;
+                return callCount == 1 ? unavailableStatus : availableStatus;
+            });
+
+        _services.AddKeyedSingleton<ILlmProvider>("Ollama", (sp, key) => mockOllamaProvider.Object);
+        _services.AddKeyedSingleton<ILlmProvider>("RuleBased", (sp, key) => mockRuleBasedProvider.Object);
+        _services.AddSingleton(_mockSettings.Object);
+        _services.AddSingleton(_mockFactory.Object);
+
+        var serviceProvider = _services.BuildServiceProvider();
+        var selector = new LlmProviderSelector(
+            serviceProvider,
+            _mockSettings.Object,
+            _logger,
+            mockOllamaDetection.Object,
+            _mockFactory.Object);
+
+        // Act - First call should return RuleBased (Ollama unavailable)
+        var result1 = await selector.GetProviderAsync();
+        
+        // Simulate cache invalidation by changing status
+        // Second call should return Ollama (now available)
+        var result2 = await selector.GetProviderAsync();
+
+        // Assert
+        Assert.NotNull(result1);
+        Assert.Equal(mockRuleBasedProvider.Object, result1);
+        
+        Assert.NotNull(result2);
+        Assert.Equal(mockOllamaProvider.Object, result2);
+        
+        mockOllamaDetection.Verify(s => s.GetStatusAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+    }
 }
 

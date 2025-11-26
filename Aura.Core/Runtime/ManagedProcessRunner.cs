@@ -42,7 +42,8 @@ public class ManagedProcessRunner
         TimeSpan? timeout = null,
         CancellationToken ct = default,
         Action<string>? onStdOut = null,
-        Action<string>? onStdErr = null)
+        Action<string>? onStdErr = null,
+        Func<StreamWriter, Task>? writeToStdin = null)
     {
         if (startInfo == null)
         {
@@ -59,6 +60,12 @@ public class ManagedProcessRunner
         {
             process.StartInfo.RedirectStandardOutput = true;
             process.StartInfo.RedirectStandardError = true;
+        }
+
+        // Set up stdin redirection if writeToStdin is provided
+        if (writeToStdin != null)
+        {
+            process.StartInfo.RedirectStandardInput = true;
         }
 
         var stdoutBuilder = new StringBuilder();
@@ -103,6 +110,21 @@ public class ManagedProcessRunner
 
         try
         {
+            // Write to stdin if provided (must be done before BeginOutputReadLine)
+            if (writeToStdin != null && process.StartInfo.RedirectStandardInput)
+            {
+                try
+                {
+                    await writeToStdin(process.StandardInput).ConfigureAwait(false);
+                    process.StandardInput.Close();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error writing to stdin for process {Pid}", process.Id);
+                    // Continue execution even if stdin write fails
+                }
+            }
+
             // Begin reading output streams
             if (process.StartInfo.RedirectStandardOutput)
             {

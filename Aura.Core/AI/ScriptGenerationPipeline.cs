@@ -60,11 +60,11 @@ public class ScriptGenerationPipeline
             {
                 _logger.LogDebug("Attempt {Attempt}/{MaxRetries} for script generation", attemptNumber, MaxRetries);
 
-                // Build prompt with feedback from previous attempts
-                var prompt = BuildPrompt(brief, spec, attempts);
+                // Build prompt with feedback from previous attempts and apply to brief
+                var modifiedBrief = BuildBriefWithFeedback(brief, attempts);
 
-                // Generate script from LLM
-                var script = await _llmProvider.DraftScriptAsync(brief, spec, ct).ConfigureAwait(false);
+                // Generate script from LLM with modified brief containing feedback
+                var script = await _llmProvider.DraftScriptAsync(modifiedBrief, spec, ct).ConfigureAwait(false);
 
                 if (string.IsNullOrWhiteSpace(script))
                 {
@@ -156,37 +156,60 @@ public class ScriptGenerationPipeline
     }
 
     /// <summary>
-    /// Builds prompt with feedback from previous attempts
+    /// Builds a modified brief with feedback from previous attempts
+    /// Passes validation feedback through PromptModifiers so LLM providers can use it
     /// </summary>
-    private string BuildPrompt(Brief brief, PlanSpec spec, List<GenerationAttempt> previousAttempts)
+    private Brief BuildBriefWithFeedback(Brief originalBrief, List<GenerationAttempt> previousAttempts)
     {
-        var basePrompt = EnhancedPromptTemplates.GetSystemPromptForScriptGeneration();
-
-        if (previousAttempts.Count > 0)
+        if (previousAttempts.Count == 0)
         {
-            var lastAttempt = previousAttempts.Last();
-            if (lastAttempt.Validation != null && lastAttempt.Validation.Errors.Count > 0)
-            {
-                var feedbackPrompt = "\n\nPREVIOUS ATTEMPT FEEDBACK:\n";
-                feedbackPrompt += "The previous attempt had the following issues:\n";
-                
-                foreach (var error in lastAttempt.Validation.Errors)
-                {
-                    feedbackPrompt += $"  - {error}\n";
-                }
-
-                feedbackPrompt += "\nPlease address these issues in your response:\n";
-                feedbackPrompt += "- Ensure the script has a clear title starting with '# '\n";
-                feedbackPrompt += "- Include at least 2-3 scenes marked with '## Scene Name'\n";
-                feedbackPrompt += "- Reference the topic: " + brief.Topic + "\n";
-                feedbackPrompt += "- Avoid placeholder text, AI refusal language, or excessive repetition\n";
-                feedbackPrompt += "- Match the target duration with appropriate word count\n";
-
-                return basePrompt + feedbackPrompt;
-            }
+            return originalBrief;
         }
 
-        return basePrompt;
+        var lastAttempt = previousAttempts.Last();
+        if (lastAttempt.Validation == null || lastAttempt.Validation.Errors.Count == 0)
+        {
+            return originalBrief;
+        }
+
+        // Build feedback instructions
+        var feedbackInstructions = new System.Text.StringBuilder();
+        feedbackInstructions.AppendLine("PREVIOUS ATTEMPT FEEDBACK:");
+        feedbackInstructions.AppendLine("The previous attempt had the following issues:");
+        
+        foreach (var error in lastAttempt.Validation.Errors)
+        {
+            feedbackInstructions.AppendLine($"  - {error}");
+        }
+
+        feedbackInstructions.AppendLine();
+        feedbackInstructions.AppendLine("Please address these issues in your response:");
+        feedbackInstructions.AppendLine("- Ensure the script has a clear title starting with '# '");
+        feedbackInstructions.AppendLine("- Include at least 2-3 scenes marked with '## Scene Name'");
+        feedbackInstructions.AppendLine($"- Reference the topic: {originalBrief.Topic}");
+        feedbackInstructions.AppendLine("- Avoid placeholder text, AI refusal language, or excessive repetition");
+        feedbackInstructions.AppendLine("- Match the target duration with appropriate word count");
+
+        // Merge with existing PromptModifiers if present
+        var existingInstructions = originalBrief.PromptModifiers?.AdditionalInstructions;
+        var combinedInstructions = string.IsNullOrWhiteSpace(existingInstructions)
+            ? feedbackInstructions.ToString()
+            : $"{existingInstructions}\n\n{feedbackInstructions}";
+
+        var modifiedPromptModifiers = new PromptModifiers(
+            AdditionalInstructions: combinedInstructions,
+            ExampleStyle: originalBrief.PromptModifiers?.ExampleStyle,
+            EnableChainOfThought: originalBrief.PromptModifiers?.EnableChainOfThought ?? false,
+            PromptVersion: originalBrief.PromptModifiers?.PromptVersion
+        );
+
+        _logger.LogDebug(
+            "Applying feedback from attempt {Attempt} with {ErrorCount} errors",
+            lastAttempt.AttemptNumber,
+            lastAttempt.Validation.Errors.Count);
+
+        // Return modified brief with feedback in PromptModifiers
+        return originalBrief with { PromptModifiers = modifiedPromptModifiers };
     }
 }
 

@@ -1120,7 +1120,9 @@ builder.Services.AddSingleton<IVideoComposer>(sp =>
     var ffmpegLocator = sp.GetRequiredService<Aura.Core.Dependencies.IFfmpegLocator>();
     var configuredFfmpegPath = providerSettings.GetFfmpegPath();
     var outputDirectory = providerSettings.GetOutputDirectory();
-    return new FfmpegVideoComposer(logger, ffmpegLocator, configuredFfmpegPath, outputDirectory);
+    var processRegistry = sp.GetService<Aura.Core.Runtime.ProcessRegistry>();
+    var processRunner = sp.GetService<Aura.Core.Runtime.ManagedProcessRunner>();
+    return new FfmpegVideoComposer(logger, ffmpegLocator, configuredFfmpegPath, outputDirectory, processRegistry, processRunner);
 });
 
 // IImageProvider is NOT registered as a singleton to avoid circular DI dependency
@@ -1192,6 +1194,38 @@ builder.Services.AddSingleton<Aura.Core.AI.ScriptGenerationPipeline>(sp =>
     var fallbackGenerator = sp.GetRequiredService<Aura.Core.AI.Templates.FallbackScriptGenerator>();
     var logger = sp.GetRequiredService<ILogger<Aura.Core.AI.ScriptGenerationPipeline>>();
     return new Aura.Core.AI.ScriptGenerationPipeline(llmProvider, validator, fallbackGenerator, logger);
+});
+
+// Register PR-007: Agentic Director Foundation - Multi-Agent Script Generation
+builder.Services.AddScoped<Aura.Core.AI.Agents.ScreenwriterAgent>(sp =>
+{
+    var llmProvider = sp.GetRequiredService<Aura.Core.Providers.ILlmProvider>();
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.AI.Agents.ScreenwriterAgent>>();
+    return new Aura.Core.AI.Agents.ScreenwriterAgent(llmProvider, logger);
+});
+
+builder.Services.AddScoped<Aura.Core.AI.Agents.VisualDirectorAgent>(sp =>
+{
+    var llmProvider = sp.GetRequiredService<Aura.Core.Providers.ILlmProvider>();
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.AI.Agents.VisualDirectorAgent>>();
+    return new Aura.Core.AI.Agents.VisualDirectorAgent(llmProvider, logger);
+});
+
+builder.Services.AddScoped<Aura.Core.AI.Agents.CriticAgent>(sp =>
+{
+    var llmProvider = sp.GetRequiredService<Aura.Core.Providers.ILlmProvider>();
+    var validator = sp.GetRequiredService<Aura.Core.AI.Validation.ScriptSchemaValidator>();
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.AI.Agents.CriticAgent>>();
+    return new Aura.Core.AI.Agents.CriticAgent(llmProvider, validator, logger);
+});
+
+builder.Services.AddScoped<Aura.Core.AI.Agents.AgentOrchestrator>(sp =>
+{
+    var screenwriter = sp.GetRequiredService<Aura.Core.AI.Agents.ScreenwriterAgent>();
+    var visualDirector = sp.GetRequiredService<Aura.Core.AI.Agents.VisualDirectorAgent>();
+    var critic = sp.GetRequiredService<Aura.Core.AI.Agents.CriticAgent>();
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.AI.Agents.AgentOrchestrator>>();
+    return new Aura.Core.AI.Agents.AgentOrchestrator(screenwriter, visualDirector, critic, logger);
 });
 
 // Register Model Selection services
@@ -1974,6 +2008,80 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
 
 var app = builder.Build();
 
+// ===================================================================
+// EARLY STARTUP VALIDATION - Must pass before application starts
+// ===================================================================
+Log.Information("=== Early Startup Validation ===");
+try
+{
+    using var validationScope = app.Services.CreateScope();
+    var settingsValidator = validationScope.ServiceProvider.GetService<Aura.Core.Configuration.SettingsValidationService>();
+    
+    if (settingsValidator != null)
+    {
+        Log.Information("Running comprehensive configuration validation...");
+        var validationResult = await settingsValidator.ValidateAllAsync(CancellationToken.None).ConfigureAwait(false);
+
+        if (!validationResult.CanStart)
+        {
+            Log.Error("========================================");
+            Log.Error("CRITICAL: Configuration Validation Failed");
+            Log.Error("========================================");
+            Log.Error("");
+            Log.Error("The application cannot start due to critical configuration issues:");
+            Log.Error("");
+            
+            foreach (var issue in validationResult.CriticalIssues)
+            {
+                Log.Error("  [{Code}] {Message}", issue.Code, issue.Message);
+                if (!string.IsNullOrWhiteSpace(issue.Resolution))
+                {
+                    Log.Error("    Resolution: {Resolution}", issue.Resolution);
+                }
+            }
+            
+            Log.Error("");
+            Log.Error("Please fix the issues above and restart the application.");
+            Log.Error("========================================");
+            
+            // Exit with error code 1 to indicate failure
+            Environment.ExitCode = 1;
+            return;
+        }
+
+        // Log warnings if any (non-critical)
+        if (validationResult.Warnings.Count > 0)
+        {
+            Log.Warning("Configuration validation completed with {Count} warnings (non-critical):", validationResult.Warnings.Count);
+            foreach (var warning in validationResult.Warnings)
+            {
+                Log.Warning("  [{Code}] {Message}", warning.Code, warning.Message);
+                if (!string.IsNullOrWhiteSpace(warning.Resolution))
+                {
+                    Log.Warning("    Suggestion: {Resolution}", warning.Resolution);
+                }
+            }
+        }
+        else
+        {
+            Log.Information("✓ Configuration validation passed successfully (completed in {Duration}ms)",
+                validationResult.ValidationDuration.TotalMilliseconds);
+        }
+    }
+    else
+    {
+        Log.Warning("SettingsValidationService not available - skipping early validation");
+    }
+}
+catch (Exception ex)
+{
+    Log.Error(ex, "Configuration validation failed with exception");
+    Log.Error("This is a critical error. The application cannot start safely.");
+    Environment.ExitCode = 1;
+    return;
+}
+Log.Information("=== Early Startup Validation Complete ===");
+
 // Register application lifetime callbacks for clean shutdown
 var appLifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
 appLifetime.ApplicationStopping.Register(() =>
@@ -2105,86 +2213,7 @@ static string GetDatabasePath(WebApplication app)
 
 Log.Information("=== Aura Video Studio API Starting ===");
 Log.Information("Initialization Phase 1: Service Registration Complete");
-
-// Perform comprehensive configuration validation
-Log.Information("Initialization Phase 2: Configuration Validation");
-try
-{
-    // First, run existing ConfigurationValidator for basic checks
-    var configValidator = app.Services.GetRequiredService<ConfigurationValidator>();
-    var configResult = configValidator.Validate();
-    if (!configResult.IsValid)
-    {
-        Log.Error("Configuration validation failed with critical issues. Application cannot start.");
-        Log.Error("Please fix the configuration issues listed above and restart the application.");
-
-        // Provide detailed error message for troubleshooting
-        foreach (var issue in configResult.Issues.Where(i => i.Severity == IssueSeverity.Critical))
-        {
-            Log.Error("CRITICAL: {Key} - {Message}", issue.Key, issue.Message);
-        }
-
-        // Exit gracefully with proper cleanup
-        Log.Information("Shutting down application due to configuration errors");
-        await app.StopAsync().ConfigureAwait(false);
-        return;
-    }
-
-    // Then run comprehensive SettingsValidationService for dependency checks
-    using var validationScope = app.Services.CreateScope();
-    var settingsValidator = validationScope.ServiceProvider.GetService<Aura.Core.Configuration.SettingsValidationService>();
-    if (settingsValidator != null)
-    {
-        var validationResult = await settingsValidator.ValidateAllAsync(CancellationToken.None).ConfigureAwait(false);
-
-        if (!validationResult.CanStart)
-        {
-            Log.Error("=== Configuration Validation Failed ===");
-            Log.Error("Critical dependencies are missing. Application cannot start.");
-            Log.Error("");
-            Log.Error("Critical Issues:");
-            foreach (var issue in validationResult.CriticalIssues)
-            {
-                Log.Error("  [{Code}] {Message}", issue.Code, issue.Message);
-                if (!string.IsNullOrWhiteSpace(issue.Resolution))
-                {
-                    Log.Error("    Resolution: {Resolution}", issue.Resolution);
-                }
-            }
-            Log.Error("");
-            Log.Error("Please fix the issues above and restart the application.");
-
-            // Exit gracefully with proper cleanup
-            Log.Information("Shutting down application due to configuration errors");
-            await app.StopAsync().ConfigureAwait(false);
-            return;
-        }
-
-        // Log warnings if any
-        if (validationResult.Warnings.Count > 0)
-        {
-            Log.Warning("Configuration validation completed with {Count} warnings (non-critical):", validationResult.Warnings.Count);
-            foreach (var warning in validationResult.Warnings)
-            {
-                Log.Warning("  [{Code}] {Message}", warning.Code, warning.Message);
-                if (!string.IsNullOrWhiteSpace(warning.Resolution))
-                {
-                    Log.Warning("    Suggestion: {Resolution}", warning.Resolution);
-                }
-            }
-        }
-        else
-        {
-            Log.Information("Configuration validation passed successfully (completed in {Duration}ms)",
-                validationResult.ValidationDuration.TotalMilliseconds);
-        }
-    }
-}
-catch (Exception ex)
-{
-    Log.Error(ex, "Configuration validation failed with exception. Continuing with startup...");
-    // Don't fail startup if validation itself fails - let the app try to start
-}
+// Note: Configuration validation is now performed earlier (right after app.Build())
 
 // Perform startup validation - warn on non-critical issues but continue
 Log.Information("Initialization Phase 3: Running Startup Validation");

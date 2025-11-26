@@ -36,10 +36,12 @@ public class AudioNormalizer
     }
 
     /// <summary>
-    /// Normalizes audio file to target loudness level
+    /// Normalizes audio file to target loudness level.
+    /// The original input file is never modified - normalization always writes to a separate output file.
+    /// If normalization fails, the original file remains intact and unchanged.
     /// </summary>
-    /// <param name="inputPath">Path to input audio file</param>
-    /// <param name="outputPath">Path for normalized output (optional)</param>
+    /// <param name="inputPath">Path to input audio file (will be preserved)</param>
+    /// <param name="outputPath">Path for normalized output (optional, auto-generated if not provided)</param>
     /// <param name="targetLufs">Target integrated loudness in LUFS (default: -16)</param>
     /// <param name="truePeak">True peak target in dBTP (default: -1.5)</param>
     /// <param name="loudnessRange">Target loudness range (default: 11)</param>
@@ -63,6 +65,15 @@ public class AudioNormalizer
         // Determine output path
         outputPath ??= GenerateOutputPath(inputPath);
 
+        // Safeguard: Prevent overwriting the original file
+        if (Path.GetFullPath(outputPath).Equals(Path.GetFullPath(inputPath), StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogWarning(
+                "[{CorrelationId}] Output path matches input path, generating new output path to preserve original",
+                correlationId);
+            outputPath = GenerateOutputPath(inputPath);
+        }
+
         var outputDir = Path.GetDirectoryName(outputPath);
         if (!string.IsNullOrEmpty(outputDir) && !Directory.Exists(outputDir))
         {
@@ -70,7 +81,7 @@ public class AudioNormalizer
         }
 
         _logger.LogInformation(
-            "[{CorrelationId}] Normalizing audio: {Input} -> {Output} (target: {Lufs} LUFS)",
+            "[{CorrelationId}] Normalizing audio: {Input} -> {Output} (target: {Lufs} LUFS). Original file will be preserved.",
             correlationId, Path.GetFileName(inputPath), Path.GetFileName(outputPath), targetLufs);
 
         // Get FFmpeg path

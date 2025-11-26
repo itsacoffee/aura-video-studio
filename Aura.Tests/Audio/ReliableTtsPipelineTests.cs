@@ -344,6 +344,131 @@ public class ReliableTtsPipelineTests : IDisposable
         Assert.True(outputInfo.Length > 0);
     }
 
+    [Fact]
+    public async Task ReliableTtsPipeline_SynthesizeAsync_ChunkValidationFails_FallsBackToNextProvider()
+    {
+        // Arrange - First provider returns invalid audio (too short), second provider succeeds
+        var invalidAudioPath = Path.Combine(_tempDirectory, "invalid.wav");
+        File.WriteAllBytes(invalidAudioPath, new byte[50]); // Too small to be valid
+
+        var providerWithInvalidAudio = new Mock<ITtsProvider>();
+        providerWithInvalidAudio.Setup(p => p.SynthesizeAsync(
+            It.IsAny<IEnumerable<ScriptLine>>(),
+            It.IsAny<VoiceSpec>(),
+            It.IsAny<CancellationToken>()))
+            .ReturnsAsync(invalidAudioPath);
+
+        var validAudioPath = Path.Combine(_tempDirectory, "valid.wav");
+        CreateMinimalWavFile(validAudioPath);
+
+        var providerWithValidAudio = new Mock<ITtsProvider>();
+        providerWithValidAudio.Setup(p => p.SynthesizeAsync(
+            It.IsAny<IEnumerable<ScriptLine>>(),
+            It.IsAny<VoiceSpec>(),
+            It.IsAny<CancellationToken>()))
+            .ReturnsAsync(validAudioPath);
+
+        var providers = new[] { providerWithInvalidAudio.Object, providerWithValidAudio.Object };
+        var chunker = new TtsChunker();
+        var mockFfmpegLocator = new Mock<IFfmpegLocator>();
+        var validator = new AudioQualityValidator(_validatorLogger, mockFfmpegLocator.Object);
+        var concatenator = new AudioConcatenator(_concatenatorLogger, mockFfmpegLocator.Object);
+        var pipeline = new ReliableTtsPipeline(
+            providers,
+            chunker,
+            validator,
+            concatenator,
+            _logger);
+
+        var voiceSpec = new VoiceSpec("TestVoice", 1.0, 0.0, PauseStyle.Natural);
+
+        // Act
+        var result = await pipeline.SynthesizeAsync("Test text.", voiceSpec, null, CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(result);
+        providerWithInvalidAudio.Verify(p => p.SynthesizeAsync(
+            It.IsAny<IEnumerable<ScriptLine>>(),
+            It.IsAny<VoiceSpec>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+        providerWithValidAudio.Verify(p => p.SynthesizeAsync(
+            It.IsAny<IEnumerable<ScriptLine>>(),
+            It.IsAny<VoiceSpec>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public void TtsChunker_ChunkText_1000PlusCharacters_SplitsIntoMultipleChunks()
+    {
+        // Arrange
+        var chunker = new TtsChunker();
+        var veryLongText = string.Join(". ", Enumerable.Range(1, 30).Select(i => 
+            $"This is sentence number {i} with some additional text to make it much longer than usual " +
+            $"so that we can test the chunking behavior for very long scripts that exceed typical limits."));
+
+        // Act
+        var chunks = chunker.ChunkText(veryLongText);
+
+        // Assert
+        Assert.True(chunks.Count > 1, $"Expected multiple chunks for 1000+ character text, got {chunks.Count}");
+        Assert.All(chunks, chunk => 
+        {
+            Assert.True(chunk.Text.Length <= 450, 
+                $"Chunk {chunk.Index} exceeds 450 characters: {chunk.Text.Length}");
+            Assert.NotEmpty(chunk.Text);
+        });
+    }
+
+    [Fact]
+    public async Task ReliableTtsPipeline_SynthesizeAsync_PartialFailure_ContinuesWithFallback()
+    {
+        // Arrange - First chunk fails, second chunk succeeds with fallback
+        var failingProvider = new Mock<ITtsProvider>();
+        failingProvider.Setup(p => p.SynthesizeAsync(
+            It.IsAny<IEnumerable<ScriptLine>>(),
+            It.IsAny<VoiceSpec>(),
+            It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new Exception("Provider failed"));
+
+        var workingProvider = new Mock<ITtsProvider>();
+        var testAudioPath = Path.Combine(_tempDirectory, "output.wav");
+        CreateMinimalWavFile(testAudioPath);
+        workingProvider.Setup(p => p.SynthesizeAsync(
+            It.IsAny<IEnumerable<ScriptLine>>(),
+            It.IsAny<VoiceSpec>(),
+            It.IsAny<CancellationToken>()))
+            .ReturnsAsync(testAudioPath);
+
+        var providers = new[] { failingProvider.Object, workingProvider.Object };
+        var chunker = new TtsChunker();
+        var mockFfmpegLocator = new Mock<IFfmpegLocator>();
+        var validator = new AudioQualityValidator(_validatorLogger, mockFfmpegLocator.Object);
+        var concatenator = new AudioConcatenator(_concatenatorLogger, mockFfmpegLocator.Object);
+        var pipeline = new ReliableTtsPipeline(
+            providers,
+            chunker,
+            validator,
+            concatenator,
+            _logger);
+
+        // Create text that will be split into multiple chunks
+        var longText = string.Join(". ", Enumerable.Range(1, 10).Select(i => 
+            $"This is sentence number {i} with some additional text to make it longer"));
+
+        var voiceSpec = new VoiceSpec("TestVoice", 1.0, 0.0, PauseStyle.Natural);
+
+        // Act
+        var result = await pipeline.SynthesizeAsync(longText, voiceSpec, null, CancellationToken.None);
+
+        // Assert - Should succeed using fallback provider for all chunks
+        Assert.NotNull(result);
+        Assert.True(result.ChunkCount > 1, "Long text should be split into multiple chunks");
+        // Both providers should be called (first fails, second succeeds for each chunk)
+        Assert.True(failingProvider.Invocations.Count > 0, "Failing provider should be attempted");
+        Assert.True(workingProvider.Invocations.Count >= result.ChunkCount, 
+            $"Working provider should be called at least once per chunk. Expected >= {result.ChunkCount}, got {workingProvider.Invocations.Count}");
+    }
+
     /// <summary>
     /// Create a minimal valid WAV file for testing
     /// </summary>

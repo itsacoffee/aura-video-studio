@@ -393,5 +393,258 @@ We've covered the basics of Renewable Energy. Thank you for watching!";
             x => x.DraftScriptAsync(It.IsAny<Brief>(), It.IsAny<PlanSpec>(), It.IsAny<CancellationToken>()),
             Times.Exactly(2));
     }
+
+    [Fact]
+    public void ScriptSchemaValidator_ParseScenes_HandlesEmptyLines()
+    {
+        // Arrange
+        var script = @"# Test Script
+
+## Scene One
+
+This is the first scene.
+
+It has multiple paragraphs.
+
+## Scene Two
+
+This is the second scene.
+
+With more content.";
+
+        var brief = new Brief(
+            Topic: "Test",
+            Audience: "General",
+            Goal: "Test",
+            Tone: "Informative",
+            Language: "en",
+            Aspect: Aspect.Widescreen16x9);
+
+        var spec = new PlanSpec(
+            TargetDuration: TimeSpan.FromSeconds(60),
+            Pacing: Pacing.Conversational,
+            Density: Density.Balanced,
+            Style: "Test");
+
+        // Act
+        var result = _validator.Validate(script, brief, spec);
+
+        // Assert
+        Assert.True(result.Metrics.SceneCount >= 2);
+        Assert.True(result.IsValid || result.QualityScore >= 0.5);
+    }
+
+    [Fact]
+    public void ScriptSchemaValidator_ParseScenes_HandlesSpecialCharacters()
+    {
+        // Arrange
+        var script = @"# Test Script with Special Chars: ""quotes"", 'apostrophes', & symbols!
+
+## Scene 1: Introduction
+This scene has special characters: @#$%^&*()[]{}|\\:;""'<>?,./
+
+## Scene 2: Main Content
+More content with émojis 🎬 and unicode: 中文 العربية";
+
+        var brief = new Brief(
+            Topic: "Test",
+            Audience: "General",
+            Goal: "Test",
+            Tone: "Informative",
+            Language: "en",
+            Aspect: Aspect.Widescreen16x9);
+
+        var spec = new PlanSpec(
+            TargetDuration: TimeSpan.FromSeconds(60),
+            Pacing: Pacing.Conversational,
+            Density: Density.Balanced,
+            Style: "Test");
+
+        // Act
+        var result = _validator.Validate(script, brief, spec);
+
+        // Assert
+        Assert.True(result.Metrics.SceneCount >= 2);
+        // Should not throw exceptions with special characters
+    }
+
+    [Fact]
+    public void ScriptSchemaValidator_ParseScenes_HandlesNumberedScenes()
+    {
+        // Arrange
+        var script = @"# Test Script
+
+Scene 1: Introduction
+This is the introduction scene.
+
+Scene 2: Main Content
+This is the main content scene.
+
+Scene 3: Conclusion
+This is the conclusion.";
+
+        var brief = new Brief(
+            Topic: "Test",
+            Audience: "General",
+            Goal: "Test",
+            Tone: "Informative",
+            Language: "en",
+            Aspect: Aspect.Widescreen16x9);
+
+        var spec = new PlanSpec(
+            TargetDuration: TimeSpan.FromSeconds(60),
+            Pacing: Pacing.Conversational,
+            Density: Density.Balanced,
+            Style: "Test");
+
+        // Act
+        var result = _validator.Validate(script, brief, spec);
+
+        // Assert
+        Assert.True(result.Metrics.SceneCount >= 2);
+    }
+
+    [Fact]
+    public void ScriptSchemaValidator_ParseScenes_HandlesNoSceneMarkers()
+    {
+        // Arrange - Script without explicit scene markers
+        var script = @"# Test Script Title
+
+This is a script without explicit scene markers. It should still be parsed as a single scene or multiple scenes based on content structure.
+
+The content continues here with more paragraphs and information.
+
+And even more content to make it substantial.";
+
+        var brief = new Brief(
+            Topic: "Test",
+            Audience: "General",
+            Goal: "Test",
+            Tone: "Informative",
+            Language: "en",
+            Aspect: Aspect.Widescreen16x9);
+
+        var spec = new PlanSpec(
+            TargetDuration: TimeSpan.FromSeconds(60),
+            Pacing: Pacing.Conversational,
+            Density: Density.Balanced,
+            Style: "Test");
+
+        // Act
+        var result = _validator.Validate(script, brief, spec);
+
+        // Assert - Should parse as at least one scene
+        Assert.True(result.Metrics.SceneCount >= 1);
+    }
+
+    [Fact]
+    public void ScriptSchemaValidator_ParseScenes_HandlesSectionDividers()
+    {
+        // Arrange - Script with section dividers
+        var script = @"# Test Script
+
+## Scene One
+This is scene one content.
+
+---
+
+## Scene Two
+This is scene two content.
+
+***
+
+## Scene Three
+This is scene three content.";
+
+        var brief = new Brief(
+            Topic: "Test",
+            Audience: "General",
+            Goal: "Test",
+            Tone: "Informative",
+            Language: "en",
+            Aspect: Aspect.Widescreen16x9);
+
+        var spec = new PlanSpec(
+            TargetDuration: TimeSpan.FromSeconds(60),
+            Pacing: Pacing.Conversational,
+            Density: Density.Balanced,
+            Style: "Test");
+
+        // Act
+        var result = _validator.Validate(script, brief, spec);
+
+        // Assert
+        Assert.True(result.Metrics.SceneCount >= 2);
+    }
+
+    [Fact]
+    public void ScriptSchemaValidator_ParseScenes_HandlesEmptyHeadings()
+    {
+        // Arrange - Script with empty scene headings
+        var script = @"# Test Script
+
+## 
+This scene has an empty heading but has content.
+
+## Scene Two
+This scene has a proper heading.";
+
+        var brief = new Brief(
+            Topic: "Test",
+            Audience: "General",
+            Goal: "Test",
+            Tone: "Informative",
+            Language: "en",
+            Aspect: Aspect.Widescreen16x9);
+
+        var spec = new PlanSpec(
+            TargetDuration: TimeSpan.FromSeconds(60),
+            Pacing: Pacing.Conversational,
+            Density: Density.Balanced,
+            Style: "Test");
+
+        // Act
+        var result = _validator.Validate(script, brief, spec);
+
+        // Assert - Should handle empty headings gracefully
+        Assert.True(result.Metrics.SceneCount >= 1);
+    }
+
+    [Fact]
+    public void ScriptSchemaValidator_ParseScenes_HandlesWhitespaceOnlyLines()
+    {
+        // Arrange - Script with lots of whitespace
+        var script = @"# Test Script
+   
+## Scene One
+   
+   This scene has whitespace.
+   
+   More content here.
+   
+## Scene Two
+   
+   Another scene with whitespace.";
+
+        var brief = new Brief(
+            Topic: "Test",
+            Audience: "General",
+            Goal: "Test",
+            Tone: "Informative",
+            Language: "en",
+            Aspect: Aspect.Widescreen16x9);
+
+        var spec = new PlanSpec(
+            TargetDuration: TimeSpan.FromSeconds(60),
+            Pacing: Pacing.Conversational,
+            Density: Density.Balanced,
+            Style: "Test");
+
+        // Act
+        var result = _validator.Validate(script, brief, spec);
+
+        // Assert
+        Assert.True(result.Metrics.SceneCount >= 2);
+    }
 }
 

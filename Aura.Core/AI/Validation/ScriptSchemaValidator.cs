@@ -145,78 +145,180 @@ public class ScriptSchemaValidator
     }
 
     /// <summary>
-    /// Parses scenes from script text, handling various formats
+    /// Parses scenes from script text, handling various formats and edge cases
+    /// Handles: markdown headers, numbered scenes, empty lines, special characters, unicode, etc.
     /// </summary>
     private List<ParsedScene> ParseScenes(string script)
     {
         var scenes = new List<ParsedScene>();
+        
+        if (string.IsNullOrWhiteSpace(script))
+        {
+            return scenes;
+        }
+
         var lines = script.Split('\n', StringSplitOptions.None);
 
         string? currentHeading = null;
         var currentContent = new List<string>();
         int sceneIndex = 0;
+        bool foundFirstHeader = false;
 
         foreach (var line in lines)
         {
             var trimmedLine = line.Trim();
 
-            // Check for scene markers: ## Scene Name, Scene 1:, etc.
-            if (trimmedLine.StartsWith("## ", StringComparison.OrdinalIgnoreCase))
+            // Skip completely empty lines (but preserve them in content for paragraph breaks)
+            if (string.IsNullOrEmpty(trimmedLine))
             {
-                // Save previous scene
-                if (currentHeading != null && currentContent.Count > 0)
+                // Add empty line to content to preserve paragraph structure
+                if (currentHeading != null)
                 {
-                    scenes.Add(new ParsedScene(
-                        Index: sceneIndex++,
-                        Heading: currentHeading,
-                        Content: string.Join("\n", currentContent).Trim()
-                    ));
+                    currentContent.Add(string.Empty);
+                }
+                continue;
+            }
+
+            // Check for scene markers: ## Scene Name, ### Scene Name, etc.
+            if (trimmedLine.StartsWith("## ", StringComparison.OrdinalIgnoreCase) ||
+                trimmedLine.StartsWith("### ", StringComparison.OrdinalIgnoreCase))
+            {
+                foundFirstHeader = true;
+                
+                // Save previous scene if it has content
+                if (currentHeading != null)
+                {
+                    var content = string.Join("\n", currentContent).Trim();
+                    if (!string.IsNullOrWhiteSpace(content))
+                    {
+                        scenes.Add(new ParsedScene(
+                            Index: sceneIndex++,
+                            Heading: currentHeading,
+                            Content: content
+                        ));
+                    }
                     currentContent.Clear();
                 }
 
-                currentHeading = trimmedLine.Substring(3).Trim();
+                // Extract heading, removing markdown markers and trimming
+                currentHeading = trimmedLine.TrimStart('#').Trim();
+                
+                // Handle empty headings
+                if (string.IsNullOrWhiteSpace(currentHeading))
+                {
+                    currentHeading = $"Scene {sceneIndex + 1}";
+                }
             }
+            // Check for numbered scene markers: "Scene 1:", "Scene 1 - Title", etc.
             else if (Regex.IsMatch(trimmedLine, @"^Scene\s+\d+[:]", RegexOptions.IgnoreCase))
             {
+                foundFirstHeader = true;
+                
                 // Save previous scene
-                if (currentHeading != null && currentContent.Count > 0)
+                if (currentHeading != null)
+                {
+                    var content = string.Join("\n", currentContent).Trim();
+                    if (!string.IsNullOrWhiteSpace(content))
+                    {
+                        scenes.Add(new ParsedScene(
+                            Index: sceneIndex++,
+                            Heading: currentHeading,
+                            Content: content
+                        ));
+                    }
+                    currentContent.Clear();
+                }
+
+                // Extract scene number and optional title
+                var match = Regex.Match(trimmedLine, @"^Scene\s+(\d+)[:]\s*(.+)", RegexOptions.IgnoreCase);
+                if (match.Success)
+                {
+                    currentHeading = !string.IsNullOrWhiteSpace(match.Groups[2].Value.Trim())
+                        ? match.Groups[2].Value.Trim()
+                        : $"Scene {match.Groups[1].Value}";
+                }
+                else
+                {
+                    // Fallback: use the line as heading
+                    currentHeading = trimmedLine;
+                }
+            }
+            // Check for other scene markers: "---", "***", etc. (section dividers)
+            else if (Regex.IsMatch(trimmedLine, @"^[-*]{3,}$") && currentHeading != null && currentContent.Count > 0)
+            {
+                // Treat as scene separator - save current scene
+                var content = string.Join("\n", currentContent).Trim();
+                if (!string.IsNullOrWhiteSpace(content))
                 {
                     scenes.Add(new ParsedScene(
                         Index: sceneIndex++,
                         Heading: currentHeading,
-                        Content: string.Join("\n", currentContent).Trim()
+                        Content: content
                     ));
-                    currentContent.Clear();
                 }
-
-                var match = Regex.Match(trimmedLine, @"^Scene\s+\d+[:]\s*(.+)", RegexOptions.IgnoreCase);
-                currentHeading = match.Success ? match.Groups[1].Value.Trim() : trimmedLine;
+                currentContent.Clear();
+                currentHeading = null;
             }
-            else if (!trimmedLine.StartsWith("#", StringComparison.Ordinal) && 
-                     !string.IsNullOrWhiteSpace(trimmedLine))
+            // Regular content line - add to current scene
+            else if (!trimmedLine.StartsWith("#", StringComparison.Ordinal))
             {
-                // Regular content line
+                // If we don't have a heading yet but have content, create a default heading
+                if (currentHeading == null && currentContent.Count == 0 && foundFirstHeader == false)
+                {
+                    // This might be the title or intro - wait for first scene marker
+                    // But if we have substantial content, create a scene
+                    if (currentContent.Count > 5)
+                    {
+                        currentHeading = "Introduction";
+                    }
+                }
+                
+                // Add line to content (preserve original line to maintain formatting)
                 currentContent.Add(line);
             }
         }
 
-        // Add the last scene
-        if (currentHeading != null && currentContent.Count > 0)
+        // Add the last scene if it has content
+        if (currentHeading != null)
         {
-            scenes.Add(new ParsedScene(
-                Index: sceneIndex++,
-                Heading: currentHeading,
-                Content: string.Join("\n", currentContent).Trim()
-            ));
+            var content = string.Join("\n", currentContent).Trim();
+            if (!string.IsNullOrWhiteSpace(content))
+            {
+                scenes.Add(new ParsedScene(
+                    Index: sceneIndex++,
+                    Heading: currentHeading,
+                    Content: content
+                ));
+            }
         }
 
         // If no scenes found, treat entire script as one scene
+        // This handles scripts without explicit scene markers
         if (scenes.Count == 0 && !string.IsNullOrWhiteSpace(script))
         {
+            var trimmedScript = script.Trim();
+            
+            // Try to extract title if present
+            string heading = "Introduction";
+            string content = trimmedScript;
+            
+            var firstLineBreak = trimmedScript.IndexOf('\n');
+            if (firstLineBreak > 0 && firstLineBreak < 100)
+            {
+                var firstLine = trimmedScript.Substring(0, firstLineBreak).Trim();
+                // If first line looks like a title (short, no punctuation at end, or starts with #)
+                if (firstLine.Length < 80 && 
+                    (firstLine.StartsWith("# ") || !firstLine.EndsWith(".") && !firstLine.EndsWith("!")))
+                {
+                    heading = firstLine.TrimStart('#').Trim();
+                    content = trimmedScript.Substring(firstLineBreak).Trim();
+                }
+            }
+            
             scenes.Add(new ParsedScene(
                 Index: 0,
-                Heading: "Introduction",
-                Content: script.Trim()
+                Heading: heading,
+                Content: content
             ));
         }
 

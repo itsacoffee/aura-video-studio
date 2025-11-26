@@ -27,18 +27,21 @@ public class FfmpegVideoComposer : IVideoComposer
     private readonly string _logsDirectory;
     private readonly HardwareEncoder _hardwareEncoder;
     private readonly ProcessRegistry? _processRegistry;
+    private readonly ManagedProcessRunner? _processRunner;
 
     public FfmpegVideoComposer(
         ILogger<FfmpegVideoComposer> logger,
         IFfmpegLocator ffmpegLocator,
         string? configuredFfmpegPath = null,
         string? outputDirectory = null,
-        ProcessRegistry? processRegistry = null)
+        ProcessRegistry? processRegistry = null,
+        ManagedProcessRunner? processRunner = null)
     {
         _logger = logger;
         _ffmpegLocator = ffmpegLocator;
         _configuredFfmpegPath = configuredFfmpegPath;
         _processRegistry = processRegistry;
+        _processRunner = processRunner;
         _workingDirectory = Path.Combine(Path.GetTempPath(), "AuraVideoStudio", "Render");
         _outputDirectory = outputDirectory ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.MyVideos),
@@ -113,7 +116,33 @@ public class FfmpegVideoComposer : IVideoComposer
         _logger.LogInformation("FFmpeg command (JobId={JobId}): {FFmpegPath} {Command}",
             jobId, ffmpegPath, ffmpegCommand);
 
-        // Create process to run FFmpeg with stderr/stdout capture
+        // Track progress
+        var totalDuration = timeline.Scenes.Count > 0
+            ? timeline.Scenes[^1].Start + timeline.Scenes[^1].Duration
+            : TimeSpan.FromMinutes(1);
+
+        var startTime = DateTime.Now;
+        var lastReportTime = DateTime.Now;
+
+        // Use ManagedProcessRunner if available, otherwise fall back to manual process management
+        if (_processRunner != null)
+        {
+            return await RenderWithManagedRunnerAsync(
+                ffmpegPath,
+                ffmpegCommand,
+                ffmpegLogPath,
+                logWriter,
+                jobId,
+                correlationId,
+                outputFilePath,
+                totalDuration,
+                startTime,
+                lastReportTime,
+                progress,
+                ct).ConfigureAwait(false);
+        }
+
+        // Fallback to manual process management (original implementation)
         var stderrBuilder = new StringBuilder();
         var stdoutBuilder = new StringBuilder();
 
@@ -130,14 +159,6 @@ public class FfmpegVideoComposer : IVideoComposer
             },
             EnableRaisingEvents = true
         };
-
-        // Track progress
-        var totalDuration = timeline.Scenes.Count > 0
-            ? timeline.Scenes[^1].Start + timeline.Scenes[^1].Duration
-            : TimeSpan.FromMinutes(1);
-
-        var startTime = DateTime.Now;
-        var lastReportTime = DateTime.Now;
 
         // Initialize log writer for FFmpeg output
         try
@@ -404,6 +425,183 @@ public class FfmpegVideoComposer : IVideoComposer
 
         return outputFilePath;
     }
+
+    /// <summary>
+    /// Render using ManagedProcessRunner (preferred method with proper tracking and timeout)
+    /// </summary>
+    private async Task<string> RenderWithManagedRunnerAsync(
+        string ffmpegPath,
+        string ffmpegCommand,
+        string ffmpegLogPath,
+        StreamWriter? logWriter,
+        string jobId,
+        string correlationId,
+        string outputFilePath,
+        TimeSpan totalDuration,
+        DateTime startTime,
+        DateTime lastReportTime,
+        IProgress<RenderProgress> progress,
+        CancellationToken ct)
+    {
+        var stderrBuilder = new StringBuilder();
+        var stdoutBuilder = new StringBuilder();
+
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = ffmpegPath,
+            Arguments = ffmpegCommand,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardError = true,
+            RedirectStandardOutput = true
+        };
+
+        try
+        {
+            var result = await _processRunner!.RunAsync(
+                startInfo,
+                jobId: jobId,
+                timeout: TimeSpan.FromMinutes(30),
+                ct: ct,
+                onStdOut: (line) =>
+                {
+                    if (!string.IsNullOrEmpty(line))
+                    {
+                        stdoutBuilder.AppendLine(line);
+                        try
+                        {
+                            logWriter?.WriteLine($"[stdout] {line}");
+                        }
+                        catch { }
+                        _logger.LogTrace("FFmpeg stdout: {Output}", line);
+                    }
+                },
+                onStdErr: (line) =>
+                {
+                    if (string.IsNullOrEmpty(line)) return;
+
+                    stderrBuilder.AppendLine(line);
+
+                    try
+                    {
+                        logWriter?.WriteLine($"[stderr] {line}");
+                    }
+                    catch { }
+
+                    _logger.LogTrace("FFmpeg stderr: {Output}", line);
+
+                    // Parse progress if it contains time information
+                    if (line.Contains("time="))
+                    {
+                        var timeMatch = System.Text.RegularExpressions.Regex.Match(line, @"time=(\d{2}:\d{2}:\d{2}\.\d{2})");
+                        if (timeMatch.Success)
+                        {
+                            var timeStr = timeMatch.Groups[1].Value;
+                            if (TimeSpan.TryParse(timeStr, out var currentTime))
+                            {
+                                var now = DateTime.Now;
+
+                                // Report progress at most once per second
+                                if ((now - lastReportTime).TotalSeconds >= 1)
+                                {
+                                    lastReportTime = now;
+
+                                    // Calculate progress percentage
+                                    float percentage = (float)(currentTime.TotalSeconds / totalDuration.TotalSeconds * 100);
+                                    percentage = Math.Clamp(percentage, 0, 100);
+
+                                    // Calculate time remaining
+                                    var elapsed = now - startTime;
+                                    var estimatedTotal = TimeSpan.FromSeconds(
+                                        elapsed.TotalSeconds / (percentage / 100));
+                                    var remaining = estimatedTotal - elapsed;
+
+                                    // Report progress
+                                    progress.Report(new RenderProgress(
+                                        percentage,
+                                        elapsed,
+                                        remaining,
+                                        "Rendering video"));
+                                }
+                            }
+                        }
+                    }
+                }
+            ).ConfigureAwait(false);
+
+            // Close log file
+            try
+            {
+                logWriter?.WriteLine(new string('-', 80));
+                logWriter?.WriteLine($"Completed: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
+                logWriter?.WriteLine($"Exit Code: {result.ExitCode}");
+                logWriter?.Dispose();
+            }
+            catch { }
+
+            if (result.ExitCode != 0)
+            {
+                var stderr = stderrBuilder.ToString();
+                throw FfmpegException.FromProcessFailure(
+                    result.ExitCode,
+                    stderr,
+                    jobId,
+                    correlationId);
+            }
+
+            _logger.LogInformation("Render completed successfully (JobId={JobId}): {OutputPath}", jobId, outputFilePath);
+            _logger.LogInformation("FFmpeg log written to: {LogPath}", ffmpegLogPath);
+
+            // Report 100% completion
+            progress.Report(new RenderProgress(
+                100,
+                DateTime.Now - startTime,
+                TimeSpan.Zero,
+                "Render complete"));
+
+            return outputFilePath;
+        }
+        catch (TimeoutException)
+        {
+            _logger.LogError("FFmpeg render timeout after 30 minutes (JobId={JobId})", jobId);
+            throw new FfmpegException(
+                "FFmpeg render operation timed out after 30 minutes",
+                FfmpegErrorCategory.Timeout,
+                jobId: jobId,
+                correlationId: correlationId,
+                suggestedActions: new[]
+                {
+                    "Try with shorter content or lower resolution",
+                    "Check system resources (CPU, disk space)",
+                    "Ensure FFmpeg is not hanging on a corrupted input file"
+                });
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("FFmpeg render cancelled (JobId={JobId})", jobId);
+            throw;
+        }
+        catch (FfmpegException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected FFmpeg error (JobId={JobId})", jobId);
+            throw new InvalidOperationException(
+                $"FFmpeg render failed unexpectedly: {ex.Message} (JobId: {jobId}, CorrelationId: {correlationId})",
+                ex);
+        }
+        finally
+        {
+            try
+            {
+                logWriter?.Dispose();
+            }
+            catch { }
+        }
+    }
+
     /// <summary>
     /// Build FFmpeg command using FFmpegCommandBuilder with hardware acceleration support
     /// </summary>
