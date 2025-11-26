@@ -444,7 +444,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
       setTtsProviders(providers);
       
       // Check status of all providers FIRST
-      let statusMap: Record<string, { isAvailable: boolean; error?: string }> = {};
+      const statusMap: Record<string, { isAvailable: boolean; error?: string }> = {};
       try {
         const statusResponse = await apiClient.get<{
           success: boolean;
@@ -462,6 +462,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
       }
       
       // Initialize selected provider if not set, choosing from AVAILABLE providers only
+      // Note: We use styleData.voiceProvider captured at effect call time
       if (!selectedTtsProvider && providers.length > 0) {
         // Check if styleData has a provider that's actually available
         const styleProvider = styleData.voiceProvider;
