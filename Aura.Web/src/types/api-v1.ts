@@ -1968,3 +1968,73 @@ export interface ProviderCancellationStatusDto {
   status: string;
   warning?: string | null;
 }
+
+// ============================================================================
+// PROVIDER HEALTH DASHBOARD TYPES
+// ============================================================================
+
+/**
+ * Response for the unified provider health dashboard
+ */
+export interface ProviderHealthDashboardResponse {
+  providers: ProviderDashboardStatus[];
+  summary: ProviderDashboardSummary;
+  timestamp: string;
+  correlationId?: string;
+}
+
+/**
+ * Status of a single provider in the dashboard
+ */
+export interface ProviderDashboardStatus {
+  name: string;
+  category: string;
+  tier: string;
+  healthStatus: 'healthy' | 'degraded' | 'offline' | 'not_configured' | 'unknown';
+  isConfigured: boolean;
+  requiresApiKey: boolean;
+  successRate: number;
+  averageLatencyMs: number;
+  consecutiveFailures: number;
+  circuitState: string;
+  lastError?: string | null;
+  lastCheckTime: string;
+  quotaInfo?: QuotaInfo | null;
+  configureUrl?: string | null;
+}
+
+/**
+ * Quota/rate limit information for a provider
+ */
+export interface QuotaInfo {
+  rateLimitType: string;
+  limitValue?: number | null;
+  usedValue?: number | null;
+  remainingValue?: number | null;
+  resetsAt?: string | null;
+  description?: string | null;
+}
+
+/**
+ * Summary of all providers in the dashboard
+ */
+export interface ProviderDashboardSummary {
+  totalProviders: number;
+  healthyProviders: number;
+  degradedProviders: number;
+  offlineProviders: number;
+  notConfiguredProviders: number;
+  unknownProviders: number;
+  byCategory: Record<string, CategorySummary>;
+}
+
+/**
+ * Summary for a specific category of providers
+ */
+export interface CategorySummary {
+  total: number;
+  healthy: number;
+  degraded: number;
+  offline: number;
+  notConfigured: number;
+}
