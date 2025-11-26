@@ -181,6 +181,15 @@ internal sealed class MockLlmProvider : ILlmProvider
         return Task.FromResult<string?>(null);
     }
 
+    public Task<string> GenerateChatCompletionAsync(
+        string systemPrompt,
+        string userPrompt,
+        LlmParameters? parameters = null,
+        CancellationToken ct = default)
+    {
+        return Task.FromResult("Mock chat completion response for testing.");
+    }
+
     public bool SupportsStreaming => true;
 
     public LlmProviderCharacteristics GetCharacteristics()

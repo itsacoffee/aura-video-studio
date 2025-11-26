@@ -108,6 +108,15 @@ internal sealed class FailingLlmProvider : ILlmProvider
     {
         throw new System.Exception($"{_name} provider is not available");
     }
+
+    public Task<string> GenerateChatCompletionAsync(
+        string systemPrompt,
+        string userPrompt,
+        LlmParameters? parameters = null,
+        CancellationToken ct = default)
+    {
+        throw new System.Exception($"{_name} provider is not available");
+    }
     
     public bool SupportsStreaming => false;
     
