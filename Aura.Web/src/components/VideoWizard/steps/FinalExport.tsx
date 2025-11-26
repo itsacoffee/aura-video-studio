@@ -381,27 +381,42 @@ export const FinalExport: FC<FinalExportProps> = ({
 
           setExportStage(`Rendering ${format.toUpperCase()} video...`);
 
-          // ✅ REAL PROGRESS - Poll job status
+          // ✅ REAL PROGRESS - Poll job status with improved error handling
           let jobCompleted = false;
           let jobData: any = null;
           const maxPollAttempts = 600; // 10 minutes max (600 * 1 second)
           let pollAttempts = 0;
+          let consecutiveErrors = 0;
+          const maxConsecutiveErrors = 5;
 
           while (!jobCompleted && pollAttempts < maxPollAttempts) {
             await new Promise((resolve) => setTimeout(resolve, 1000)); // Poll every 1 second
             pollAttempts++;
 
             try {
-              const statusResponse = await fetch(apiUrl(`/api/jobs/${jobId}`));
+              const statusResponse = await fetch(apiUrl(`/api/jobs/${jobId}`), {
+                headers: {
+                  'Accept': 'application/json',
+                },
+              });
 
               if (!statusResponse.ok) {
                 if (statusResponse.status === 404) {
-                  // Job not found yet, continue polling
+                  // Job not found yet, continue polling (but log after a few attempts)
+                  if (pollAttempts > 5) {
+                    console.warn(`Job ${jobId} not found after ${pollAttempts} attempts`);
+                  }
+                  consecutiveErrors++;
+                  if (consecutiveErrors >= maxConsecutiveErrors) {
+                    throw new Error(`Job ${jobId} not found after multiple attempts`);
+                  }
                   continue;
                 }
-                throw new Error(`Failed to check job status: ${statusResponse.status}`);
+                const errorText = await statusResponse.text().catch(() => 'Unknown error');
+                throw new Error(`Failed to check job status: ${statusResponse.status} - ${errorText}`);
               }
 
+              consecutiveErrors = 0; // Reset error counter on success
               jobData = await statusResponse.json();
 
               // Update progress based on job percent
@@ -409,49 +424,85 @@ export const FinalExport: FC<FinalExportProps> = ({
               const overallProgress = (i * 100 + jobProgress) / formatsToExport.length;
               setExportProgress(overallProgress);
 
-              // Update stage message
-              const stageMessage = jobData.stage || 'Rendering...';
-              setExportStage(`${stageMessage} - ${jobProgress}%`);
+              // Update stage message with more detail
+              const stageMessage = jobData.stage || jobData.progressMessage || 'Rendering...';
+              const progressMessage = jobData.progressMessage 
+                ? `${stageMessage}: ${jobData.progressMessage}`
+                : `${stageMessage} - ${jobProgress}%`;
+              setExportStage(progressMessage);
 
               // Check if job is complete
-              const jobStatus = jobData.status?.toLowerCase() || '';
+              const jobStatus = (jobData.status?.toLowerCase() || '').trim();
               if (jobStatus === 'done' || jobStatus === 'succeeded' || jobStatus === 'completed') {
                 jobCompleted = true;
+                console.log(`Job ${jobId} completed successfully`, jobData);
               } else if (jobStatus === 'failed') {
-                throw new Error(jobData.errorMessage || jobData.error || 'Video generation failed');
+                const errorMsg = jobData.errorMessage || jobData.error || jobData.failureDetails?.message || 'Video generation failed';
+                const errorDetails = jobData.failureDetails?.suggestedActions 
+                  ? `\n\nSuggested actions:\n${jobData.failureDetails.suggestedActions.join('\n')}`
+                  : '';
+                throw new Error(`${errorMsg}${errorDetails}`);
               } else if (jobStatus === 'canceled' || jobStatus === 'cancelled') {
                 throw new Error('Video generation was cancelled');
               }
               // Continue polling for 'queued' or 'running' status
             } catch (error) {
-              // If it's a network error, continue polling
-              if (error instanceof TypeError && error.message.includes('fetch')) {
-                console.warn('Network error while polling job status, retrying...');
+              // If it's a network error, continue polling (with retry limit)
+              if (error instanceof TypeError && (error.message.includes('fetch') || error.message.includes('network'))) {
+                consecutiveErrors++;
+                console.warn(`Network error while polling job status (attempt ${consecutiveErrors}/${maxConsecutiveErrors}), retrying...`);
+                if (consecutiveErrors >= maxConsecutiveErrors) {
+                  throw new Error('Network connection lost. Please check your internet connection and try again.');
+                }
                 continue;
               }
+              // For other errors, throw immediately
               throw error;
             }
           }
 
           if (!jobCompleted) {
-            throw new Error('Job did not complete within the expected time');
+            throw new Error(`Job did not complete within the expected time (${maxPollAttempts} seconds). The job may still be processing.`);
           }
 
           // ✅ REAL FILE PATH - From job artifacts or output path
           let outputPath = jobData.outputPath;
-          if (!outputPath && jobData.artifacts && jobData.artifacts.length > 0) {
-            // Find video artifact
+          
+          // Try to extract from artifacts if outputPath is not directly available
+          if (!outputPath && jobData.artifacts && Array.isArray(jobData.artifacts) && jobData.artifacts.length > 0) {
+            // Find video artifact - check multiple possible formats
             const videoArtifact = jobData.artifacts.find(
-              (a: any) => a.type === 'video' || a.type === 'video/mp4' || a.path?.endsWith('.mp4') || a.path?.endsWith('.webm') || a.path?.endsWith('.mov')
+              (a: any) => {
+                const path = a.path || a.filePath || '';
+                const type = (a.type || '').toLowerCase();
+                return (
+                  type.includes('video') ||
+                  path.endsWith('.mp4') ||
+                  path.endsWith('.webm') ||
+                  path.endsWith('.mov') ||
+                  path.endsWith('.mkv') ||
+                  path.endsWith('.avi')
+                );
+              }
             );
             if (videoArtifact) {
-              outputPath = videoArtifact.path;
+              outputPath = videoArtifact.path || videoArtifact.filePath;
+              console.log('Found video artifact:', videoArtifact);
             }
           }
 
+          // If still no output path, try to construct from job directory
           if (!outputPath) {
-            throw new Error('No output path returned from video generation');
+            console.warn('No output path in job data, attempting to construct from job ID');
+            // The backend should set outputPath, but if it doesn't, we can't proceed
+            throw new Error(
+              'No output path returned from video generation. ' +
+              'The video file may not have been created. ' +
+              'Please check the job logs for errors.'
+            );
           }
+
+          console.log('Video generation completed, output path:', outputPath);
 
           // Resolve path for display
           const resolvedPath = await resolvePathOnBackend(outputPath);

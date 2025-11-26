@@ -123,28 +123,65 @@ public class IdeationController : ControllerBase
             
             // Provide detailed error message to help user diagnose
             var errorMessage = invOpEx.Message;
+            var suggestions = new List<string>();
             
+            // Add Ollama-specific error handling
+            if (errorMessage.Contains("Ollama", StringComparison.OrdinalIgnoreCase) || 
+                errorMessage.Contains("Cannot connect", StringComparison.OrdinalIgnoreCase))
+            {
+                if (errorMessage.Contains("Cannot connect", StringComparison.OrdinalIgnoreCase))
+                {
+                    suggestions.Add("Ensure Ollama is running: Open a terminal and run 'ollama serve'");
+                    suggestions.Add("Verify Ollama is installed: Visit https://ollama.com to download");
+                    suggestions.Add("Check Ollama base URL in Settings (default: http://localhost:11434)");
+                }
+                else if (errorMessage.Contains("model", StringComparison.OrdinalIgnoreCase) && 
+                         errorMessage.Contains("not installed", StringComparison.OrdinalIgnoreCase))
+                {
+                    suggestions.Add("Install the requested model: Run 'ollama pull <model-name>' in terminal");
+                    suggestions.Add("List available models: Run 'ollama list' to see installed models");
+                    suggestions.Add("Check model name in Settings matches an installed model");
+                }
+                else
+                {
+                    suggestions.Add("Check Ollama service status: Run 'ollama list' to verify it's working");
+                    suggestions.Add("Restart Ollama service if needed");
+                    suggestions.Add("Verify GPU drivers are installed for GPU acceleration (optional)");
+                }
+            }
             // Add helpful context based on error type
-            if (errorMessage.Contains("JSON", StringComparison.OrdinalIgnoreCase))
+            else if (errorMessage.Contains("JSON", StringComparison.OrdinalIgnoreCase))
             {
                 errorMessage += " The LLM provider may not be configured to return JSON format. " +
                                "Try using a different model or provider.";
+                suggestions.Add("Verify your LLM provider is configured correctly in Settings");
+                suggestions.Add("Try using a different LLM model");
             }
             else if (errorMessage.Contains("empty response", StringComparison.OrdinalIgnoreCase))
             {
                 errorMessage += " The LLM provider may be unavailable or rate-limited. " +
                                "Please check your API key and quota.";
+                suggestions.Add("Check that your API key has sufficient quota");
+                suggestions.Add("Verify your LLM provider is configured correctly in Settings");
+            }
+            else
+            {
+                // Generic suggestions
+                suggestions.Add("Verify your LLM provider is configured correctly in Settings");
+                suggestions.Add("Check that your API key has sufficient quota");
+                suggestions.Add("Try using a different LLM model");
+            }
+            
+            // Always add these general suggestions
+            if (!suggestions.Contains("Simplify your topic description"))
+            {
+                suggestions.Add("Simplify your topic description");
             }
             
             return StatusCode(500, new { 
                 error = errorMessage,
                 correlationId,
-                suggestions = new[] {
-                    "Verify your LLM provider is configured correctly in Settings",
-                    "Check that your API key has sufficient quota",
-                    "Try using a different LLM model",
-                    "Simplify your topic description"
-                }
+                suggestions = suggestions.ToArray()
             });
         }
         catch (TimeoutException timeoutEx)
@@ -165,17 +202,31 @@ public class IdeationController : ControllerBase
             _logger.LogError(ex, "[{CorrelationId}] Unexpected error in ideation", correlationId);
             
             var errorMessage = $"An unexpected error occurred: {ex.Message}";
+            var suggestions = new List<string>();
+            
+            // Check for Ollama-specific errors
+            if (ex.Message.Contains("Ollama", StringComparison.OrdinalIgnoreCase) ||
+                ex is HttpRequestException httpEx && httpEx.Message.Contains("localhost:11434", StringComparison.OrdinalIgnoreCase))
+            {
+                suggestions.Add("Ensure Ollama is running: Open a terminal and run 'ollama serve'");
+                suggestions.Add("Verify Ollama is installed: Visit https://ollama.com to download");
+                suggestions.Add("Check Ollama base URL in Settings (default: http://localhost:11434)");
+                suggestions.Add("Check GPU drivers are installed for GPU acceleration (optional)");
+            }
+            else
+            {
+                suggestions.Add("Verify your LLM provider is configured correctly in Settings");
+                suggestions.Add("Check that your API key has sufficient quota");
+                suggestions.Add("Try using a different LLM model");
+            }
+            
+            suggestions.Add("Simplify your topic description");
             
             return StatusCode(500, new { 
                 error = errorMessage,
                 correlationId,
                 type = ex.GetType().Name,
-                suggestions = new[] {
-                    "Verify your LLM provider is configured correctly in Settings",
-                    "Check that your API key has sufficient quota",
-                    "Try using a different LLM model",
-                    "Simplify your topic description"
-                }
+                suggestions = suggestions.ToArray()
             });
         }
     }

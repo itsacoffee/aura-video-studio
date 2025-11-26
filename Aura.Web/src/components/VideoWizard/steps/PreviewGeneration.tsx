@@ -287,6 +287,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
   const [providerLoadError, setProviderLoadError] = useState<string | null>(null);
   const [isLoadingProviders, setIsLoadingProviders] = useState(true);
   const [playingSceneId, setPlayingSceneId] = useState<string | null>(null);
+  const [loadingAudioSceneId, setLoadingAudioSceneId] = useState<string | null>(null);
   const [audioError, setAudioError] = useState<string | null>(null);
   const [audioErrorSceneId, setAudioErrorSceneId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -545,6 +546,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
         }
         audioRef.current = null;
       }
+      // Cleanup complete
     };
   }, []);
 
@@ -554,6 +556,8 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
       hasSelectedProviderRef.current = true;
     }
   }, [selectedProvider]);
+
+  // Waveform visualization removed - was incomplete implementation
 
   const generatePreviews = useCallback(async () => {
     // Validate script data before generation
@@ -841,12 +845,14 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
         const apiProvider = selectedTtsProvider || styleData.voiceProvider;
         
         if (!apiProvider) {
+          setLoadingAudioSceneId(null);
           throw new Error('No TTS provider selected. Please select a TTS provider in the settings.');
         }
         
-        // Verify provider is available
+        // Verify provider is available (only check if we have status info)
         const providerStatus = ttsProviderStatus[apiProvider];
-        if (providerStatus && !providerStatus.isAvailable) {
+        if (providerStatus && providerStatus.isAvailable === false) {
+          setLoadingAudioSceneId(null);
           throw new Error(
             `TTS provider "${apiProvider}" is not available. ${providerStatus.error || 'Please select a different provider.'}`
           );
@@ -859,6 +865,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
           voiceName = ttsVoices[0].name;
         }
         if (!voiceName) {
+          setLoadingAudioSceneId(null);
           throw new Error(`No voice selected for provider "${apiProvider}". Please select a voice in the TTS settings.`);
         }
 
@@ -964,6 +971,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
           console.info(`Audio fetched successfully. Type: ${mimeType}, Size: ${audioBlob.size} bytes`);
 
         } catch (fetchError: unknown) {
+          setLoadingAudioSceneId(null);
           const error = fetchError instanceof Error ? fetchError : new Error(String(fetchError));
           console.error('[PreviewGeneration] Failed to fetch audio:', error);
           throw new Error(
@@ -997,6 +1005,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
         const handleEnded = () => {
           console.log('[PreviewGeneration] Audio playback ended');
           setPlayingSceneId(null);
+          setLoadingAudioSceneId(null);
           setAudioError(null);
           setAudioErrorSceneId(null);
           if (audioUrl.startsWith('blob:')) {
@@ -1039,6 +1048,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
           console.error('Audio playback error:', errorMessage, e);
           setAudioError(errorMessage);
           setPlayingSceneId(null);
+          setLoadingAudioSceneId(null);
           
           if (audioUrl.startsWith('blob:')) {
             URL.revokeObjectURL(audioUrl);
@@ -1050,6 +1060,8 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
 
         const handleCanPlayThrough = () => {
           console.log('[PreviewGeneration] Audio ready to play');
+          // Clear loading state and set playing state
+          setLoadingAudioSceneId(null);
           // Clear any previous errors since we successfully loaded
           setAudioError(null);
           setAudioErrorSceneId(null);
@@ -1058,12 +1070,14 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
           audio.play()
             .then(() => {
               console.log('[PreviewGeneration] Audio playback started successfully');
+              setPlayingSceneId(sceneId);
             })
             .catch((playError) => {
               console.error('[PreviewGeneration] Autoplay failed:', playError);
               setAudioError(`Failed to start playback: ${playError.message}. Try clicking Preview again.`);
               setAudioErrorSceneId(sceneId);
               setPlayingSceneId(null);
+              setLoadingAudioSceneId(null);
             });
         };
 
@@ -1105,6 +1119,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
         setAudioError(errorMessage);
         setAudioErrorSceneId(sceneId);
         setPlayingSceneId(null);
+        setLoadingAudioSceneId(null);
         
         if (audioRef.current) {
           if (audioRef.current.src.startsWith('blob:')) {
@@ -1568,6 +1583,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
                   // Check both status and audioUrl for backward compatibility with existing audio samples
                   const isPending = audioSample.status === 'pending' || audioSample.status === undefined;
                   const hasAudio = audioSample.audioUrl !== null && audioSample.status !== 'pending';
+                  const isPlayingThisScene = playingSceneId === scene.id;
                   
                   return (
                     <div className={styles.audioPreview}>
@@ -1642,30 +1658,39 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
                     content={
                       !thumbnail
                         ? 'Generate preview thumbnail first'
-                        : !selectedTtsProvider
+                        : !selectedTtsProvider && !styleData.voiceProvider
                           ? 'Select a TTS provider in settings'
-                          : ttsProviderStatus[selectedTtsProvider]?.isAvailable === false
+                          : selectedTtsProvider && ttsProviderStatus[selectedTtsProvider]?.isAvailable === false
                             ? `TTS provider "${selectedTtsProvider}" is not available`
                             : playingSceneId === scene.id
                               ? 'Audio is playing'
-                              : undefined
+                              : loadingAudioSceneId === scene.id
+                                ? 'Loading audio...'
+                                : undefined
                     }
                   >
                     <Button
                       appearance="secondary"
-                      icon={<Play24Regular />}
-                      onClick={() => {
+                      icon={loadingAudioSceneId === scene.id ? <Spinner size="tiny" /> : <Play24Regular />}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
                         console.log('[PreviewGeneration] Preview button clicked for scene:', scene.id);
                         void playScenePreview(scene.id);
                       }}
                       disabled={
                         !thumbnail || 
                         playingSceneId === scene.id ||
-                        !selectedTtsProvider ||
-                        (ttsProviderStatus[selectedTtsProvider]?.isAvailable === false)
+                        loadingAudioSceneId === scene.id ||
+                        (!selectedTtsProvider && !styleData.voiceProvider) ||
+                        (selectedTtsProvider && ttsProviderStatus[selectedTtsProvider]?.isAvailable === false)
                       }
                     >
-                      {playingSceneId === scene.id ? 'Playing...' : 'Preview'}
+                      {loadingAudioSceneId === scene.id 
+                        ? 'Loading...' 
+                        : playingSceneId === scene.id 
+                          ? 'Playing...' 
+                          : 'Preview'}
                     </Button>
                   </Tooltip>
                   {audioError && audioErrorSceneId === scene.id && (

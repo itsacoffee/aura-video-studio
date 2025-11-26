@@ -403,7 +403,7 @@ public class OllamaLlmProvider : ILlmProvider
         LlmParameters? parameters = null,
         CancellationToken ct = default)
     {
-        _logger.LogInformation("Generating chat completion with Ollama (model: {Model})", _model);
+        _logger.LogInformation("Generating chat completion with Ollama (model: {Model}, baseUrl: {BaseUrl})", _model, _baseUrl);
 
         // Use model override from parameters if provided
         var modelToUse = !string.IsNullOrWhiteSpace(parameters?.ModelOverride)
@@ -411,8 +411,7 @@ public class OllamaLlmProvider : ILlmProvider
             : _model;
 
         // Pre-check: Validate Ollama is available before attempting generation
-        // Skip availability check if cancellation is already requested to avoid blocking
-        // The actual request will fail fast if Ollama isn't available anyway
+        // This provides better error messages early
         if (!ct.IsCancellationRequested)
         {
             try
@@ -424,14 +423,25 @@ public class OllamaLlmProvider : ILlmProvider
                 var isAvailable = await IsServiceAvailableAsync(availabilityCts.Token).ConfigureAwait(false);
                 if (!isAvailable)
                 {
-                    _logger.LogWarning("Ollama availability check failed, but proceeding with request attempt anyway");
-                    // Don't throw - let the actual request attempt provide the real error
-                    // This avoids false negatives from timeout/cancellation issues
+                    var diagnosticMessage = await GetConnectionDiagnosticsAsync(ct).ConfigureAwait(false);
+                    var errorMessage = $"Cannot connect to Ollama at {_baseUrl}. {diagnosticMessage}";
+                    _logger.LogError("Ollama availability check failed: {ErrorMessage}", errorMessage);
+                    throw new InvalidOperationException(errorMessage);
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                // Availability check timed out, but proceed with request attempt
+                _logger.LogDebug("Ollama availability check timed out, proceeding with request attempt");
+            }
+            catch (InvalidOperationException)
+            {
+                // Re-throw availability errors as-is
+                throw;
             }
             catch (Exception ex)
             {
-                // If availability check fails for any reason, log but continue
+                // If availability check fails for any other reason, log but continue
                 // The actual request will provide the real error message
                 _logger.LogDebug(ex, "Ollama availability check encountered an issue, proceeding with request attempt");
             }
@@ -443,8 +453,16 @@ public class OllamaLlmProvider : ILlmProvider
         var topP = parameters?.TopP ?? 0.9;
         var topK = parameters?.TopK;
 
-        // Combine system and user prompts for Ollama (it doesn't have separate system/user roles in /api/generate)
-        var fullPrompt = $"{systemPrompt}\n\n{userPrompt}";
+        // Build messages array for /api/chat endpoint
+        // Ollama's /api/chat endpoint supports system and user roles separately
+        var messages = new List<object>();
+        
+        if (!string.IsNullOrWhiteSpace(systemPrompt))
+        {
+            messages.Add(new { role = "system", content = systemPrompt });
+        }
+        
+        messages.Add(new { role = "user", content = userPrompt });
 
         for (int attempt = 0; attempt <= _maxRetries; attempt++)
         {
@@ -470,12 +488,14 @@ public class OllamaLlmProvider : ILlmProvider
                     options["top_k"] = topK.Value;
                 }
 
+                // Use /api/chat endpoint for proper chat completion support
+                // This endpoint better supports system/user roles and JSON format
                 var requestBody = new
                 {
                     model = modelToUse,
-                    prompt = fullPrompt,
+                    messages = messages,
                     stream = false,
-                    format = "json", // Force JSON for ideation
+                    format = "json", // Force JSON format for ideation responses
                     options = options
                 };
 
@@ -485,21 +505,44 @@ public class OllamaLlmProvider : ILlmProvider
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                 cts.CancelAfter(_timeout);
 
-                var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token).ConfigureAwait(false);
+                _logger.LogDebug("Sending chat completion request to {Url}/api/chat with model {Model}", _baseUrl, modelToUse);
+                var response = await _httpClient.PostAsync($"{_baseUrl}/api/chat", content, cts.Token).ConfigureAwait(false);
 
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
                     var errorMessage = $"Ollama API returned status {response.StatusCode} ({(int)response.StatusCode})";
+                    
                     if (!string.IsNullOrWhiteSpace(errorContent))
                     {
-                        errorMessage += $": {errorContent.Substring(0, Math.Min(500, errorContent.Length))}";
+                        try
+                        {
+                            var errorDoc = JsonDocument.Parse(errorContent);
+                            if (errorDoc.RootElement.TryGetProperty("error", out var errorProp))
+                            {
+                                errorMessage = $"Ollama API error: {errorProp.GetString()}";
+                            }
+                            else
+                            {
+                                errorMessage += $": {errorContent.Substring(0, Math.Min(500, errorContent.Length))}";
+                            }
+                        }
+                        catch
+                        {
+                            errorMessage += $": {errorContent.Substring(0, Math.Min(500, errorContent.Length))}";
+                        }
                     }
 
                     if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
                     {
                         errorMessage += $". Please ensure Ollama is running at {_baseUrl}. " +
                                        "Start Ollama with: ollama serve";
+                    }
+                    else if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+                    {
+                        errorMessage += ". This may indicate the model is not installed. " +
+                                       $"Check available models with: ollama list. " +
+                                       $"Requested model: {modelToUse}";
                     }
 
                     _logger.LogError("Ollama API error: {ErrorMessage}", errorMessage);
@@ -509,7 +552,29 @@ public class OllamaLlmProvider : ILlmProvider
                 var responseJson = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
                 var responseDoc = JsonDocument.Parse(responseJson);
 
-                if (responseDoc.RootElement.TryGetProperty("response", out var responseProp))
+                // /api/chat returns response in message.content field
+                if (responseDoc.RootElement.TryGetProperty("message", out var messageElement))
+                {
+                    if (messageElement.TryGetProperty("content", out var contentProp))
+                    {
+                        var result = contentProp.GetString() ?? string.Empty;
+
+                        if (string.IsNullOrWhiteSpace(result))
+                        {
+                            throw new InvalidOperationException("Ollama returned an empty response");
+                        }
+
+                        _logger.LogInformation("Chat completion generated successfully ({Length} characters)", result.Length);
+                        return result;
+                    }
+                    else
+                    {
+                        _logger.LogError("Ollama response message did not contain 'content' field");
+                        throw new InvalidOperationException("Invalid response structure from Ollama API: message.content missing");
+                    }
+                }
+                // Fallback: check for 'response' field (for backward compatibility with /api/generate format)
+                else if (responseDoc.RootElement.TryGetProperty("response", out var responseProp))
                 {
                     var result = responseProp.GetString() ?? string.Empty;
 
@@ -522,8 +587,9 @@ public class OllamaLlmProvider : ILlmProvider
                     return result;
                 }
 
-                _logger.LogError("Ollama response did not contain 'response' field");
-                throw new InvalidOperationException("Invalid response structure from Ollama API");
+                _logger.LogError("Ollama response did not contain 'message' or 'response' field. Response: {Response}",
+                    responseJson.Substring(0, Math.Min(500, responseJson.Length)));
+                throw new InvalidOperationException("Invalid response structure from Ollama API: missing message or response field");
             }
             catch (TaskCanceledException ex) when (attempt < _maxRetries)
             {
@@ -533,13 +599,22 @@ public class OllamaLlmProvider : ILlmProvider
             {
                 _logger.LogWarning(ex, "Ollama connection failed (attempt {Attempt}/{MaxRetries}): {Message}", attempt + 1, _maxRetries + 1, ex.Message);
             }
+            catch (InvalidOperationException ex) when (attempt < _maxRetries && !ex.Message.Contains("Cannot connect"))
+            {
+                // Don't retry connection errors, but retry other InvalidOperationExceptions
+                _logger.LogWarning(ex, "Ollama operation failed (attempt {Attempt}/{MaxRetries}): {Message}", attempt + 1, _maxRetries + 1, ex.Message);
+            }
             catch (Exception ex) when (attempt < _maxRetries)
             {
-                _logger.LogWarning(ex, "Error generating chat completion with Ollama (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
+                _logger.LogWarning(ex, "Error generating chat completion with Ollama (attempt {Attempt}/{MaxRetries}): {Message}", attempt + 1, _maxRetries + 1, ex.Message);
             }
         }
 
-        throw new InvalidOperationException($"Failed to generate chat completion with Ollama after {_maxRetries + 1} attempts.");
+        var finalErrorMessage = $"Failed to generate chat completion with Ollama after {_maxRetries + 1} attempts. " +
+                               $"Base URL: {_baseUrl}, Model: {modelToUse}. " +
+                               "Please verify: 1) Ollama is running (ollama serve), 2) Model is installed (ollama list), 3) Base URL is correct.";
+        _logger.LogError(finalErrorMessage);
+        throw new InvalidOperationException(finalErrorMessage);
     }
 
     public async Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(

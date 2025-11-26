@@ -314,6 +314,32 @@ export async function startFinalRendering(
       return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
+    // Map resolution string to Resolution object (width, height)
+    const parseResolution = (resolution: string): { width: number; height: number } => {
+      const resolutionMap: Record<string, { width: number; height: number }> = {
+        '480p': { width: 854, height: 480 },
+        '720p': { width: 1280, height: 720 },
+        '1080p': { width: 1920, height: 1080 },
+        '4K': { width: 3840, height: 2160 },
+        '4k': { width: 3840, height: 2160 },
+      };
+      return resolutionMap[resolution] || resolutionMap['1080p'];
+    };
+
+    // Map bitrate to quality level (0-100)
+    // exportConfig.quality is the bitrate in kbps from qualityBitrateMap
+    const getQualityLevel = (bitrate: number): number => {
+      // Map common bitrate values to quality levels
+      if (bitrate <= 1500) return 50; // low
+      if (bitrate <= 2500) return 65; // medium
+      if (bitrate <= 5000) return 80; // high
+      if (bitrate <= 15000) return 95; // ultra
+      return 75; // default
+    };
+
+    const resolution = parseResolution(exportConfig.resolution);
+    const qualityLevel = getQualityLevel(typeof exportConfig.quality === 'number' ? exportConfig.quality : 5000);
+
     // Map wizard data to job creation format
     const jobRequest = {
       brief: {
@@ -337,13 +363,16 @@ export async function startFinalRendering(
         pause: 'Natural',
       },
       renderSpec: {
-        res: exportConfig.resolution,
+        res: {
+          width: resolution.width,
+          height: resolution.height,
+        },
         container: exportConfig.outputFormat || 'mp4',
-        videoBitrateK: 5000,
+        videoBitrateK: exportConfig.quality || 5000,
         audioBitrateK: 192,
-        fps: exportConfig.fps,
-        codec: exportConfig.codec,
-        qualityLevel: exportConfig.quality.toString(),
+        fps: exportConfig.fps || 30,
+        codec: (exportConfig.codec || 'H264').toUpperCase(),
+        qualityLevel: qualityLevel,
         enableSceneCut: true,
       },
     };

@@ -175,16 +175,120 @@ public class RuleBasedLlmProvider : ILlmProvider
         LlmParameters? parameters = null,
         CancellationToken ct = default)
     {
-        _logger.LogWarning("RuleBasedLlmProvider.GenerateChatCompletionAsync: Chat completion not supported for rule-based provider. " +
-            "This provider only supports structured script generation via DraftScriptAsync. " +
-            "For chat completion, use an AI provider like Ollama, OpenAI, or Gemini.");
+        _logger.LogWarning("RuleBasedLlmProvider.GenerateChatCompletionAsync: Using basic rule-based fallback for chat completion. " +
+            "This is a last-resort fallback - for better results, use an AI provider like Ollama, OpenAI, or Gemini.");
         
-        // For rule-based provider, we can't meaningfully process chat completions
-        // Throw an exception to signal that this provider cannot handle this operation
-        // This will trigger the fallback chain in CompositeLlmProvider
-        throw new NotSupportedException(
-            "RuleBased provider does not support chat completion. " +
-            "Please ensure Ollama or another AI provider is running and configured.");
+        // Extract topic from user prompt for ideation/concept generation
+        // This is a basic fallback that generates simple concept JSON
+        var topic = ExtractTopicFromPrompt(userPrompt);
+        var keywords = ExtractKeywords(topic);
+        
+        // Generate basic concepts as JSON
+        // This ensures ideation works even if all AI providers fail
+        var concepts = GenerateBasicConcepts(topic, keywords, 3);
+        
+        var jsonResponse = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            concepts = concepts.Select(c => new
+            {
+                title = c.Title,
+                description = c.Description,
+                angle = c.Angle,
+                targetAudience = c.TargetAudience,
+                estimatedDuration = c.EstimatedDuration,
+                appealScore = c.AppealScore,
+                talkingPoints = c.TalkingPoints,
+                pros = c.Pros,
+                cons = c.Cons,
+                productionNotes = c.ProductionNotes
+            }).ToArray()
+        }, new System.Text.Json.JsonSerializerOptions { WriteIndented = false });
+        
+        _logger.LogInformation("RuleBased provider generated {Count} basic concepts as fallback for topic: {Topic}", concepts.Count, topic);
+        return Task.FromResult(jsonResponse);
+    }
+    
+    private string ExtractTopicFromPrompt(string prompt)
+    {
+        // Try to extract topic from common prompt patterns
+        if (prompt.Contains("Topic:", StringComparison.OrdinalIgnoreCase))
+        {
+            var topicIndex = prompt.IndexOf("Topic:", StringComparison.OrdinalIgnoreCase);
+            var topicLine = prompt.Substring(topicIndex);
+            var lines = topicLine.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+            if (lines.Length > 0)
+            {
+                var topic = lines[0].Replace("Topic:", "", StringComparison.OrdinalIgnoreCase).Trim();
+                if (!string.IsNullOrWhiteSpace(topic))
+                {
+                    return topic;
+                }
+            }
+        }
+        
+        // Fallback: use first sentence or first 50 characters
+        var firstLine = prompt.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? prompt;
+        return firstLine.Length > 100 ? firstLine.Substring(0, 100) + "..." : firstLine;
+    }
+    
+    private List<BasicConcept> GenerateBasicConcepts(string topic, List<string> keywords, int count)
+    {
+        var concepts = new List<BasicConcept>();
+        var angles = new[] { "Tutorial", "Narrative", "Comparison", "Beginner's Guide", "Deep Dive" };
+        var audiences = new[] { "beginners", "intermediate users", "professionals", "general audience", "enthusiasts" };
+        
+        for (int i = 0; i < count; i++)
+        {
+            var angle = angles[i % angles.Length];
+            var audience = audiences[i % audiences.Length];
+            var keyword = keywords.ElementAtOrDefault(i) ?? topic.Split(' ').FirstOrDefault() ?? "topic";
+            
+            concepts.Add(new BasicConcept
+            {
+                Title = $"{angle} Approach to {topic}",
+                Description = $"A {angle.ToLowerInvariant()} video exploring {topic} with focus on {keyword}. " +
+                            $"This approach provides unique value through its specific perspective on the subject matter.",
+                Angle = angle,
+                TargetAudience = audience,
+                EstimatedDuration = "30-60 seconds",
+                AppealScore = 70 + (i * 5),
+                TalkingPoints = new[]
+                {
+                    $"Introduction to {topic}",
+                    $"Key aspects of {keyword}",
+                    $"Practical applications",
+                    $"Benefits and considerations",
+                    $"Conclusion and next steps"
+                },
+                Pros = new[]
+                {
+                    "Engaging and accessible format",
+                    "Clear structure and flow"
+                },
+                Cons = new[]
+                {
+                    "May lack depth for advanced users",
+                    "Requires clear visual support"
+                },
+                ProductionNotes = $"Focus on clear visuals and concise narration. Use {angle.ToLowerInvariant()} structure."
+            });
+        }
+        
+        return concepts;
+    }
+    
+    private class BasicConcept
+    {
+        public string Title { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string Angle { get; set; } = string.Empty;
+        public string TargetAudience { get; set; } = string.Empty;
+        public string EstimatedDuration { get; set; } = string.Empty;
+        public int AppealScore { get; set; }
+        public string[] TalkingPoints { get; set; } = Array.Empty<string>();
+        public string[] Pros { get; set; } = Array.Empty<string>();
+        public string[] Cons { get; set; } = Array.Empty<string>();
+        public string ProductionNotes { get; set; } = string.Empty;
     }
 
     public Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
