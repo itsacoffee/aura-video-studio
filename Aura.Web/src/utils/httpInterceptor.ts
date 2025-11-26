@@ -1,7 +1,7 @@
 /**
  * HTTP Interceptor for global fetch requests
  * Handles 401 Unauthorized (redirect to login) and 500 Server Error (show toast)
- * 
+ *
  * This module provides utilities to enhance the existing fetch interceptor
  */
 
@@ -10,7 +10,8 @@ import { useConnectionStore } from '../stores/connectionStore';
 /**
  * Global handlers for toast and navigation (set from React context)
  */
-let globalToastHandler: ((message: string, type?: 'error' | 'warning' | 'info') => void) | null = null;
+let globalToastHandler: ((message: string, type?: 'error' | 'warning' | 'info') => void) | null =
+  null;
 let globalNavigationHandler: ((path: string) => void) | null = null;
 
 /**
@@ -81,8 +82,10 @@ export async function handleHttpErrorResponse(response: Response, url: string): 
 
 /**
  * Handle fetch errors (network failures, etc.)
+ * @param error - The error that occurred
+ * @param _url - The URL that was being fetched (for logging/debugging)
  */
-export function handleHttpError(error: unknown, url: string): void {
+export function handleHttpError(error: unknown, _url: string): void {
   // Handle network errors
   if (error instanceof TypeError && error.message.includes('fetch')) {
     useConnectionStore.getState().setStatus('offline');
@@ -93,4 +96,3 @@ export function handleHttpError(error: unknown, url: string): void {
     }
   }
 }
-
