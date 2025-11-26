@@ -1892,6 +1892,8 @@ builder.Services.AddSingleton<Aura.Core.Services.Export.IResolutionService, Aura
 builder.Services.AddSingleton<Aura.Core.Services.Export.IBitrateOptimizationService, Aura.Core.Services.Export.BitrateOptimizationService>();
 // Changed from Singleton to Scoped because ExportOrchestrationService depends on scoped AuraDbContext
 builder.Services.AddScoped<Aura.Core.Services.Export.IExportOrchestrationService, Aura.Core.Services.Export.ExportOrchestrationService>();
+// Export job service for tracking timeline rendering progress
+builder.Services.AddSingleton<Aura.Core.Services.Export.IExportJobService, Aura.Core.Services.Export.ExportJobService>();
 
 // Register Licensing services
 builder.Services.AddSingleton<Aura.Core.Services.Licensing.ILicensingService, Aura.Core.Services.Licensing.LicensingService>();

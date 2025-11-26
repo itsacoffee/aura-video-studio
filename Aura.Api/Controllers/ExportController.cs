@@ -20,15 +20,18 @@ namespace Aura.Api.Controllers;
 public class ExportController : ControllerBase
 {
     private readonly IExportOrchestrationService _exportService;
+    private readonly IExportJobService _exportJobService;
     private readonly ILogger<ExportController> _logger;
     private readonly TimelineRenderer _timelineRenderer;
 
     public ExportController(
         IExportOrchestrationService exportService,
+        IExportJobService exportJobService,
         ILogger<ExportController> logger,
         TimelineRenderer timelineRenderer)
     {
         _exportService = exportService ?? throw new ArgumentNullException(nameof(exportService));
+        _exportJobService = exportJobService ?? throw new ArgumentNullException(nameof(exportJobService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _timelineRenderer = timelineRenderer ?? throw new ArgumentNullException(nameof(timelineRenderer));
     }
@@ -41,9 +44,12 @@ public class ExportController : ControllerBase
     [HttpPost("start")]
     public async Task<IActionResult> StartExport([FromBody] ExportRequestDto request)
     {
+        // Create job ID upfront for tracking
+        var jobId = Guid.NewGuid().ToString();
+
         try
         {
-            _logger.LogInformation("Starting export with preset {Preset}", request.PresetName);
+            _logger.LogInformation("Starting export with preset {Preset}, JobId: {JobId}", request.PresetName, jobId);
 
             // Get preset by name
             var preset = ExportPresets.GetPresetByName(request.PresetName);
@@ -52,12 +58,23 @@ public class ExportController : ControllerBase
                 return BadRequest(new { error = $"Unknown preset: {request.PresetName}" });
             }
 
+            // Create and register job before any rendering work
+            var job = new VideoJob
+            {
+                Id = jobId,
+                Status = "queued",
+                Progress = 0,
+                Stage = "Preparing timeline for export",
+                CreatedAt = DateTime.UtcNow
+            };
+            await _exportJobService.CreateJobAsync(job).ConfigureAwait(false);
+
             string inputFile;
 
             // If timeline data is provided, render it first
             if (request.Timeline != null && request.Timeline.Scenes?.Count > 0)
             {
-                _logger.LogInformation("Rendering timeline with {SceneCount} scenes before export", request.Timeline.Scenes.Count);
+                _logger.LogInformation("Rendering timeline with {SceneCount} scenes before export, JobId: {JobId}", request.Timeline.Scenes.Count, jobId);
 
                 // Create temporary file for timeline render
                 var tempDir = Path.Combine(Path.GetTempPath(), "aura-exports", Guid.NewGuid().ToString());
@@ -77,32 +94,44 @@ public class ExportController : ControllerBase
                                   preset.Quality == QualityLevel.High ? 85 : 95
                 );
 
-                // Render timeline to temporary file
+                // Update job status to running
+                await _exportJobService.UpdateJobStatusAsync(jobId, "running", 0).ConfigureAwait(false);
+
+                // Create progress reporter that updates job status
+                var progress = new Progress<int>(async percent =>
+                {
+                    await _exportJobService.UpdateJobProgressAsync(jobId, percent, "Rendering video").ConfigureAwait(false);
+                });
+
+                // Render timeline to temporary file with progress tracking
                 try
                 {
                     await _timelineRenderer.GenerateFinalAsync(
                         request.Timeline,
                         renderSpec,
                         inputFile,
-                        null,
+                        progress,
                         default).ConfigureAwait(false);
 
-                    _logger.LogInformation("Timeline rendered successfully to {InputFile}", inputFile);
+                    _logger.LogInformation("Timeline rendered successfully to {InputFile}, JobId: {JobId}", inputFile, jobId);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to render timeline");
-                    return StatusCode(500, new { error = "Failed to render timeline", details = ex.Message });
+                    _logger.LogError(ex, "Failed to render timeline, JobId: {JobId}", jobId);
+                    await _exportJobService.UpdateJobStatusAsync(jobId, "failed", 0, null, ex.Message).ConfigureAwait(false);
+                    return StatusCode(500, new { error = "Failed to render timeline", details = ex.Message, jobId });
                 }
             }
             else if (!string.IsNullOrEmpty(request.InputFile))
             {
                 // Use provided input file
                 inputFile = request.InputFile;
+                await _exportJobService.UpdateJobStatusAsync(jobId, "running", 0).ConfigureAwait(false);
             }
             else
             {
-                return BadRequest(new { error = "Either timeline data or inputFile must be provided" });
+                await _exportJobService.UpdateJobStatusAsync(jobId, "failed", 0, null, "Either timeline data or inputFile must be provided").ConfigureAwait(false);
+                return BadRequest(new { error = "Either timeline data or inputFile must be provided", jobId });
             }
 
             // Create export request
@@ -117,15 +146,19 @@ public class ExportController : ControllerBase
                 Metadata = request.Metadata ?? new Dictionary<string, string>()
             };
 
-            // Queue the export job
-            var jobId = await _exportService.QueueExportAsync(exportRequest).ConfigureAwait(false);
+            // Queue the export job for final processing
+            var exportJobId = await _exportService.QueueExportAsync(exportRequest).ConfigureAwait(false);
+
+            // Update job to completed with output path
+            await _exportJobService.UpdateJobStatusAsync(jobId, "completed", 100, request.OutputFile).ConfigureAwait(false);
 
             return Ok(new { jobId, message = "Export job queued successfully" });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to start export");
-            return StatusCode(500, new { error = "Failed to start export", details = ex.Message });
+            _logger.LogError(ex, "Failed to start export, JobId: {JobId}", jobId);
+            await _exportJobService.UpdateJobStatusAsync(jobId, "failed", 0, null, ex.Message).ConfigureAwait(false);
+            return StatusCode(500, new { error = "Failed to start export", details = ex.Message, jobId });
         }
     }
 
@@ -139,6 +172,26 @@ public class ExportController : ControllerBase
     {
         try
         {
+            // First check the export job service for timeline rendering jobs
+            var videoJob = await _exportJobService.GetJobAsync(jobId).ConfigureAwait(false);
+            if (videoJob != null)
+            {
+                return Ok(new
+                {
+                    id = videoJob.Id,
+                    status = videoJob.Status,
+                    percent = videoJob.Progress,
+                    stage = videoJob.Stage,
+                    progressMessage = videoJob.Message,
+                    outputPath = videoJob.OutputPath,
+                    errorMessage = videoJob.ErrorMessage,
+                    createdAt = videoJob.CreatedAt,
+                    startedAt = videoJob.StartedAt,
+                    completedAt = videoJob.CompletedAt
+                });
+            }
+
+            // Fall back to the export orchestration service
             var job = await _exportService.GetJobStatusAsync(jobId).ConfigureAwait(false);
             if (job == null)
             {
