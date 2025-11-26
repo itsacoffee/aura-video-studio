@@ -123,7 +123,12 @@ public class WindowsTtsProvider : ITtsProvider
         // Use a dictionary to track per-line outputs (key: line index, value: list of chunk temp files)
         var lineChunkOutputs = new Dictionary<int, List<string>>();
         var allTempFiles = new List<string>(); // Track all temp files for cleanup
+        
+        // Constants for audio processing
         const int MaxCharsPerChunk = 450; // Safe limit for Windows TTS
+        const int WavHeaderSize = 44; // Standard WAV header size in bytes
+        const double WavBytesPerSecond = 44100.0; // WAV at 22050 Hz, 16-bit, mono = ~44100 bytes per second
+        const double DefaultChunkDurationSeconds = 5.0; // Fallback duration estimate for chunks
         
         var linesList = lines.ToList();
         for (int lineIndex = 0; lineIndex < linesList.Count; lineIndex++)
@@ -207,20 +212,21 @@ public class WindowsTtsProvider : ITtsProvider
                 
                 foreach (var chunkFile in chunkFiles)
                 {
-                    // Estimate chunk duration from file size (approximate for WAV: bytes / (sampleRate * channels * bytesPerSample))
-                    // For simplicity, use a fixed duration estimate per chunk (chunks are typically similar in length)
-                    var chunkDuration = TimeSpan.FromSeconds(5); // Default estimate
+                    // Estimate chunk duration from file size using WAV format constants
+                    var chunkDuration = TimeSpan.FromSeconds(DefaultChunkDurationSeconds);
                     try
                     {
                         var fileInfo = new FileInfo(chunkFile);
-                        // WAV at 22050 Hz, 16-bit, mono = ~44100 bytes per second
-                        // Subtract 44 bytes for header
-                        var dataBytes = Math.Max(0, fileInfo.Length - 44);
-                        chunkDuration = TimeSpan.FromSeconds(dataBytes / 44100.0);
+                        var dataBytes = Math.Max(0, fileInfo.Length - WavHeaderSize);
+                        chunkDuration = TimeSpan.FromSeconds(dataBytes / WavBytesPerSecond);
                     }
-                    catch
+                    catch (IOException ex)
                     {
-                        // Use default on error
+                        _logger.LogDebug(ex, "Could not read file size for chunk {ChunkFile}, using default duration", chunkFile);
+                    }
+                    catch (UnauthorizedAccessException ex)
+                    {
+                        _logger.LogDebug(ex, "Access denied reading chunk {ChunkFile}, using default duration", chunkFile);
                     }
                     
                     chunkSegments.Add(new WavSegment(
