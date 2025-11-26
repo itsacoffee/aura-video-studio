@@ -485,10 +485,40 @@ apiClient.interceptors.response.use(
         }
       }
 
-      // Handle 401 - clear auth and potentially redirect
+      // Handle 401 - clear auth and redirect to login
       if (status === 401) {
         localStorage.removeItem('auth_token');
-        // Auth refresh handled by interceptor
+        
+        // Redirect to login if not already there
+        if (!window.location.pathname.includes('/login')) {
+          // Try to use navigation service if available
+          const navService = (window as unknown as { navigationService?: { push: (path: string) => void } }).navigationService;
+          if (navService?.push) {
+            navService.push('/login');
+          } else {
+            window.location.href = '/login';
+          }
+        }
+        
+        // Update connection store (import synchronously)
+        import('../../stores/connectionStore').then(({ useConnectionStore }) => {
+          useConnectionStore.getState().setStatus('offline');
+          useConnectionStore.getState().setError('Authentication required');
+        });
+      }
+      
+      // Handle 500 - show user-friendly toast
+      if (status === 500) {
+        const errorMessage =
+          'The server encountered an error. Please try again later or contact support if the problem persists.';
+        
+        // Log error (toast will be shown via global handler if registered)
+        console.error('[API Client] Server Error:', errorMessage);
+        
+        // Update connection store (import synchronously)
+        import('../../stores/connectionStore').then(({ useConnectionStore }) => {
+          useConnectionStore.getState().setError('Server error occurred');
+        });
       }
 
       // Handle 429 - rate limit

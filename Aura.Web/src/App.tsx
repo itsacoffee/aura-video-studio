@@ -46,6 +46,11 @@ import { ActivityProvider } from './state/activityContext';
 import { useJobState } from './state/jobState';
 import { useEnvironmentStore } from './stores/environmentStore';
 import { getAuraTheme } from './themes/auraTheme';
+import {
+  setHttpInterceptorToastHandler,
+  setHttpInterceptorNavigationHandler,
+} from './utils/httpInterceptor';
+import { useNotifications } from './components/Notifications/Toasts';
 
 interface ThemeContextType {
   isDarkMode: boolean;
@@ -330,6 +335,31 @@ function App() {
     return () => {
       healthMonitorService.removeWarningListener(handleHealthWarning);
       healthMonitorService.stop();
+    };
+  }, []);
+
+  // Setup HTTP interceptor handlers for toast and navigation
+  useEffect(() => {
+    // Set up toast handler for HTTP interceptor
+    setHttpInterceptorToastHandler((message: string, type: 'error' | 'warning' | 'info' = 'error') => {
+      if (type === 'error') {
+        errorReportingService.error('Connection Error', message, new Error(message), { duration: 10000 });
+      } else if (type === 'warning') {
+        errorReportingService.warning('Warning', message, { duration: 8000 });
+      } else {
+        errorReportingService.info(message, { duration: 5000 });
+      }
+    });
+
+    // Set up navigation handler for HTTP interceptor
+    setHttpInterceptorNavigationHandler((path: string) => {
+      navigationService.push(path);
+    });
+
+    return () => {
+      // Cleanup handlers on unmount
+      setHttpInterceptorToastHandler(() => {});
+      setHttpInterceptorNavigationHandler(() => {});
     };
   }, []);
 

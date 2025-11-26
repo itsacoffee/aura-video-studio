@@ -2426,7 +2426,168 @@ catch (Exception ex)
 }
 Log.Information("========================================");
 
-// Add correlation ID middleware early in the pipeline
+// ============================================================================
+// MIDDLEWARE PIPELINE - Ordered according to ASP.NET Core best practices
+// ============================================================================
+// Reference: https://learn.microsoft.com/en-us/aspnet/core/fundamentals/middleware/
+// ============================================================================
+
+// 1. EXCEPTION HANDLING (MUST BE FIRST)
+// Global exception handler catches all unhandled exceptions and returns ProblemDetails
+if (app.Environment.IsDevelopment())
+{
+    // Developer exception page for detailed error information in development
+    app.UseDeveloperExceptionPage();
+}
+else
+{
+    // Production: Use global exception handler with ProblemDetails
+    app.UseExceptionHandler();
+}
+
+// 2. HTTPS REDIRECTION & HSTS (Security - before other middleware)
+if (!app.Environment.IsDevelopment())
+{
+    // Force HTTPS in production
+    app.UseHttpsRedirection();
+    
+    // HTTP Strict Transport Security (HSTS) - only in production
+    app.UseHsts();
+}
+
+// 3. STATIC FILES (Must be before routing to serve static assets efficiently)
+var wwwrootPath = Path.Combine(AppContext.BaseDirectory, "wwwroot");
+if (Directory.Exists(wwwrootPath))
+{
+    // Validate that wwwroot has the minimum required files
+    var indexHtmlPath = Path.Combine(wwwrootPath, "index.html");
+    var assetsPath = Path.Combine(wwwrootPath, "assets");
+    var fileCount = Directory.GetFiles(wwwrootPath, "*", SearchOption.AllDirectories).Length;
+
+    if (!File.Exists(indexHtmlPath))
+    {
+        Log.Warning("=================================================================");
+        Log.Warning("wwwroot directory exists but index.html is missing: {Path}", wwwrootPath);
+        Log.Warning("Files found in wwwroot: {Count}", fileCount);
+        Log.Warning("The web UI will not be available. Please ensure the build completed successfully.");
+        Log.Warning("Visit http://127.0.0.1:5005/diag for more diagnostics.");
+        Log.Warning("=================================================================");
+    }
+    else if (!Directory.Exists(assetsPath))
+    {
+        Log.Warning("=================================================================");
+        Log.Warning("index.html found but assets directory is missing: {Path}", assetsPath);
+        Log.Warning("Files found in wwwroot: {Count}", fileCount);
+        Log.Warning("The web UI may not function correctly. JavaScript and CSS may be missing.");
+        Log.Warning("Visit http://127.0.0.1:5005/diag for diagnostics.");
+        Log.Warning("=================================================================");
+    }
+    else
+    {
+        Log.Information("=================================================================");
+        Log.Information("Static UI: ENABLED");
+        Log.Information("  Path: {Path}", wwwrootPath);
+        Log.Information("  Files: {Count}", fileCount);
+        Log.Information("  index.html: ✓");
+        Log.Information("  assets/: ✓");
+        Log.Information("  SPA fallback: ACTIVE (handles client-side routing)");
+        Log.Information("=================================================================");
+
+        // Serve index.html as default file for root requests
+        app.UseDefaultFiles();
+
+        // Configure static file serving with proper MIME types
+        var staticFileOptions = new StaticFileOptions
+        {
+            ContentTypeProvider = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider
+            {
+                Mappings =
+                {
+                    [".js"] = "application/javascript",
+                    [".mjs"] = "application/javascript",
+                    [".json"] = "application/json",
+                    [".css"] = "text/css",
+                    [".map"] = "application/json",
+                    [".svg"] = "image/svg+xml",
+                    [".webp"] = "image/webp",
+                    [".wasm"] = "application/wasm",
+                    [".woff"] = "font/woff",
+                    [".woff2"] = "font/woff2",
+                    [".ttf"] = "font/ttf",
+                    [".eot"] = "application/vnd.ms-fontobject"
+                }
+            },
+            OnPrepareResponse = ctx =>
+            {
+                // Add caching headers for static assets (not for index.html)
+                if (!ctx.File.Name.Equals("index.html", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Cache static assets for 1 year (they have content hashes in filenames)
+                    ctx.Context.Response.Headers.Append("Cache-Control", "public, max-age=31536000, immutable");
+                }
+                else
+                {
+                    // Never cache index.html to ensure latest version is always served
+                    ctx.Context.Response.Headers.Append("Cache-Control", "no-cache, no-store, must-revalidate");
+                    ctx.Context.Response.Headers.Append("Pragma", "no-cache");
+                    ctx.Context.Response.Headers.Append("Expires", "0");
+                }
+            }
+        };
+
+        app.UseStaticFiles(staticFileOptions);
+    }
+}
+else
+{
+    Log.Error("=================================================================");
+    Log.Error("CRITICAL: wwwroot directory not found at: {Path}", wwwrootPath);
+    Log.Error("The web UI cannot be served without this directory.");
+    Log.Error("=================================================================");
+    Log.Error("");
+    Log.Error("This usually means one of the following:");
+    Log.Error("  1. The portable build did not complete successfully");
+    Log.Error("  2. The frontend build (npm run build) failed");
+    Log.Error("  3. The wwwroot folder was not extracted from the ZIP");
+    Log.Error("");
+    Log.Error("To fix this issue:");
+    Log.Error("  - Re-extract the portable ZIP file completely");
+    Log.Error("  - Or rebuild the application with: scripts\\packaging\\build-portable.ps1");
+    Log.Error("");
+    Log.Error("The API will continue to run, but accessing http://127.0.0.1:5005");
+    Log.Error("in your browser will show a blank page or 404 error.");
+    Log.Error("Visit http://127.0.0.1:5005/diag for diagnostics.");
+    Log.Error("=================================================================");
+}
+
+// 4. ROUTING (Must come before CORS, Authentication, and Authorization)
+app.UseRouting();
+
+// 5. CORS (Must be after UseRouting() and before UseAuthentication())
+// This ensures CORS policies are applied to endpoints correctly
+app.UseCors(AuraCorsPolicy);
+
+// CORS rejection logging middleware
+app.Use(async (context, next) =>
+{
+    await next();
+
+    var originHeader = context.Request.Headers.Origin;
+    if (context.Response.StatusCode == StatusCodes.Status403Forbidden &&
+        !Microsoft.Extensions.Primitives.StringValues.IsNullOrEmpty(originHeader))
+    {
+        Log.Warning("CORS rejection for origin {Origin} on path {Path}",
+            originHeader.ToString(),
+            context.Request.Path);
+    }
+});
+
+// 6. AUTHENTICATION & AUTHORIZATION
+app.UseApiAuthentication();
+// Note: Authorization is handled per-endpoint via [Authorize] attributes
+
+// 7. APPLICATION MIDDLEWARE (Request processing, logging, etc.)
+// Add correlation ID middleware early in the request processing pipeline
 app.UseCorrelationId();
 
 // Add response compression (before most other middleware)
@@ -2450,16 +2611,21 @@ app.UseRequestValidation();
 // Add request logging middleware (after correlation ID)
 app.UseRequestLogging();
 
-// Add new global exception handler (ASP.NET Core IExceptionHandler pattern)
-// This replaces the legacy ExceptionHandlingMiddleware
-app.UseExceptionHandler();
-
 // Configure request timeouts
 // Default timeout for all requests is 2 minutes
 // Script generation endpoints need longer timeout (6 minutes) to accommodate slow Ollama models
 app.UseRequestTimeouts();
 
-// Configure the HTTP request pipeline
+// Add first-run wizard check middleware (checks if setup is completed)
+app.UseFirstRunCheck();
+
+// Add AspNetCoreRateLimit middleware after routing and before authorization
+app.UseIpRateLimiting();
+
+// Add Performance Telemetry middleware
+app.UseMiddleware<Aura.Api.Telemetry.PerformanceMiddleware>();
+
+// 8. SWAGGER/OPENAPI (Development tooling)
 // Enable Swagger in all environments for contract testing
 app.UseSwagger();
 
@@ -2486,40 +2652,6 @@ if (!string.IsNullOrEmpty(hangfireConnectionString))
     Log.Information("Hangfire Dashboard available at /hangfire");
 }
 */
-
-// CRITICAL FIX: In ASP.NET Core 6+, routing must come BEFORE CORS
-// See: https://learn.microsoft.com/en-us/aspnet/core/fundamentals/middleware/
-app.UseRouting();
-
-// CORS middleware MUST be after UseRouting() and before UseAuthentication()
-// This ensures CORS policies are applied to endpoints correctly
-app.UseCors(AuraCorsPolicy);
-
-app.Use(async (context, next) =>
-{
-    await next();
-
-    var originHeader = context.Request.Headers.Origin;
-    if (context.Response.StatusCode == StatusCodes.Status403Forbidden &&
-        !Microsoft.Extensions.Primitives.StringValues.IsNullOrEmpty(originHeader))
-    {
-        Log.Warning("CORS rejection for origin {Origin} on path {Path}",
-            originHeader.ToString(),
-            context.Request.Path);
-    }
-});
-
-// Authentication middleware (after CORS)
-app.UseApiAuthentication();
-
-// Add first-run wizard check middleware (checks if setup is completed)
-app.UseFirstRunCheck();
-
-// Add AspNetCoreRateLimit middleware after routing and before authorization
-app.UseIpRateLimiting();
-
-// Add Performance Telemetry middleware
-app.UseMiddleware<Aura.Api.Telemetry.PerformanceMiddleware>();
 
 // Map health check endpoints with detailed JSON responses
 app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
@@ -2637,113 +2769,9 @@ app.MapHealthChecks("/health/{tag}", new Microsoft.AspNetCore.Diagnostics.Health
     }
 });
 
+// 9. ENDPOINTS (Controllers, Minimal APIs, Health Checks, etc.)
 // Add controller routing
 app.MapControllers();
-
-// Serve static files from wwwroot with proper content types
-var wwwrootPath = Path.Combine(AppContext.BaseDirectory, "wwwroot");
-if (Directory.Exists(wwwrootPath))
-{
-    // Validate that wwwroot has the minimum required files
-    var indexHtmlPath = Path.Combine(wwwrootPath, "index.html");
-    var assetsPath = Path.Combine(wwwrootPath, "assets");
-    var fileCount = Directory.GetFiles(wwwrootPath, "*", SearchOption.AllDirectories).Length;
-
-    if (!File.Exists(indexHtmlPath))
-    {
-        Log.Warning("=================================================================");
-        Log.Warning("wwwroot directory exists but index.html is missing: {Path}", wwwrootPath);
-        Log.Warning("Files found in wwwroot: {Count}", fileCount);
-        Log.Warning("The web UI will not be available. Please ensure the build completed successfully.");
-        Log.Warning("Visit http://127.0.0.1:5005/diag for more diagnostics.");
-        Log.Warning("=================================================================");
-    }
-    else if (!Directory.Exists(assetsPath))
-    {
-        Log.Warning("=================================================================");
-        Log.Warning("index.html found but assets directory is missing: {Path}", assetsPath);
-        Log.Warning("Files found in wwwroot: {Count}", fileCount);
-        Log.Warning("The web UI may not function correctly. JavaScript and CSS may be missing.");
-        Log.Warning("Visit http://127.0.0.1:5005/diag for more diagnostics.");
-        Log.Warning("=================================================================");
-    }
-    else
-    {
-        Log.Information("=================================================================");
-        Log.Information("Static UI: ENABLED");
-        Log.Information("  Path: {Path}", wwwrootPath);
-        Log.Information("  Files: {Count}", fileCount);
-        Log.Information("  index.html: ✓");
-        Log.Information("  assets/: ✓");
-        Log.Information("  SPA fallback: ACTIVE (handles client-side routing)");
-        Log.Information("=================================================================");
-
-        // Serve index.html as default file for root requests
-        app.UseDefaultFiles();
-
-        // Configure static file serving with proper MIME types
-        var staticFileOptions = new StaticFileOptions
-        {
-            ContentTypeProvider = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider
-            {
-                Mappings =
-                {
-                    [".js"] = "application/javascript",
-                    [".mjs"] = "application/javascript",
-                    [".json"] = "application/json",
-                    [".css"] = "text/css",
-                    [".map"] = "application/json",
-                    [".svg"] = "image/svg+xml",
-                    [".webp"] = "image/webp",
-                    [".wasm"] = "application/wasm",
-                    [".woff"] = "font/woff",
-                    [".woff2"] = "font/woff2",
-                    [".ttf"] = "font/ttf",
-                    [".eot"] = "application/vnd.ms-fontobject"
-                }
-            },
-            OnPrepareResponse = ctx =>
-            {
-                // Add caching headers for static assets (not for index.html)
-                if (!ctx.File.Name.Equals("index.html", StringComparison.OrdinalIgnoreCase))
-                {
-                    // Cache static assets for 1 year (they have content hashes in filenames)
-                    ctx.Context.Response.Headers.Append("Cache-Control", "public, max-age=31536000, immutable");
-                }
-                else
-                {
-                    // Never cache index.html to ensure latest version is always served
-                    ctx.Context.Response.Headers.Append("Cache-Control", "no-cache, no-store, must-revalidate");
-                    ctx.Context.Response.Headers.Append("Pragma", "no-cache");
-                    ctx.Context.Response.Headers.Append("Expires", "0");
-                }
-            }
-        };
-
-        app.UseStaticFiles(staticFileOptions);
-    }
-}
-else
-{
-    Log.Error("=================================================================");
-    Log.Error("CRITICAL: wwwroot directory not found at: {Path}", wwwrootPath);
-    Log.Error("The web UI cannot be served without this directory.");
-    Log.Error("=================================================================");
-    Log.Error("");
-    Log.Error("This usually means one of the following:");
-    Log.Error("  1. The portable build did not complete successfully");
-    Log.Error("  2. The frontend build (npm run build) failed");
-    Log.Error("  3. The wwwroot folder was not extracted from the ZIP");
-    Log.Error("");
-    Log.Error("To fix this issue:");
-    Log.Error("  - Re-extract the portable ZIP file completely");
-    Log.Error("  - Or rebuild the application with: scripts\\packaging\\build-portable.ps1");
-    Log.Error("");
-    Log.Error("The API will continue to run, but accessing http://127.0.0.1:5005");
-    Log.Error("in your browser will show a blank page or 404 error.");
-    Log.Error("Visit http://127.0.0.1:5005/diag for diagnostics.");
-    Log.Error("=================================================================");
-}
 
 // API endpoints are grouped under /api prefix
 var apiGroup = app.MapGroup("/api");

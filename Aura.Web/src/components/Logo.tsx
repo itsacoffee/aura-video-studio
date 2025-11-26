@@ -56,30 +56,35 @@ export const Logo = memo<LogoProps>(({ size = 64, className, alt = 'Aura Video S
   useEffect(() => {
     // Determine the correct image path based on environment
     const getIconPath = (requestedSize: number): string => {
-      // Base paths to try
-      const sizes = [
-        { max: 16, paths: ['/favicon-16x16.png', './favicon-16x16.png', 'favicon-16x16.png'] },
-        { max: 32, paths: ['/favicon-32x32.png', './favicon-32x32.png', 'favicon-32x32.png'] },
-        { max: 128, paths: ['/logo256.png', './logo256.png', 'logo256.png'] },
-        { max: Infinity, paths: ['/logo512.png', './logo512.png', 'logo512.png'] },
+      // Get base URL from Vite (handles both dev and production)
+      const baseUrl = import.meta.env.BASE_URL || './';
+      
+      // Map sizes to appropriate icon files
+      const sizeMap: Array<{ max: number; file: string }> = [
+        { max: 16, file: 'favicon-16x16.png' },
+        { max: 32, file: 'favicon-32x32.png' },
+        { max: 128, file: 'logo256.png' },
+        { max: Infinity, file: 'logo512.png' },
       ];
 
-      const sizeConfig = sizes.find((s) => requestedSize <= s.max);
-      if (!sizeConfig) return '/logo512.png';
+      const sizeConfig = sizeMap.find((s) => requestedSize <= s.max);
+      if (!sizeConfig) {
+        return `${baseUrl}logo512.png`;
+      }
 
-      // In Electron with file:// protocol, try relative paths first
+      // In Electron with file:// protocol, use relative paths
       const isElectron = window.navigator.userAgent
         .toLowerCase()
         .includes(ELECTRON_USER_AGENT_MARKER);
       const isFileProtocol = window.location.protocol === 'file:';
 
       if (isElectron || isFileProtocol) {
-        // Try relative path without leading slash first for file:// protocol
-        return sizeConfig.paths[1] || sizeConfig.paths[0];
+        // For file:// protocol, use relative path without base URL prefix
+        return `./${sizeConfig.file}`;
       }
 
-      // For web/http, use absolute path
-      return sizeConfig.paths[0];
+      // For web/http, use base URL (which handles both / and ./)
+      return `${baseUrl}${sizeConfig.file}`;
     };
 
     setImagePath(getIconPath(size));

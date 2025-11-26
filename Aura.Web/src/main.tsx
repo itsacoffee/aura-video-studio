@@ -87,27 +87,64 @@ console.info('[Main] aura environment:', desktopDiagnostics?.environment);
 console.info('[Main] Legacy AURA_BACKEND_URL:', window.AURA_BACKEND_URL);
 
 // Normalize relative /api requests so they work in Electron's file:// origin
+// Also handles 401 and 500 errors globally
 if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
   const originalFetch = window.fetch.bind(window);
 
-  window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
-    if (typeof input === 'string' && input.startsWith('/api/')) {
-      return originalFetch(apiUrl(input), init);
-    }
+  window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    let resolvedUrl: string;
+    let finalInput: RequestInfo | URL;
 
-    if (input instanceof URL && input.pathname.startsWith('/api/')) {
-      const absoluteUrl = apiUrl(`${input.pathname}${input.search || ''}`);
-      return originalFetch(absoluteUrl, init);
-    }
-
-    if (input instanceof Request && input.url.startsWith('/api/')) {
+    // Normalize URL
+    if (typeof input === 'string') {
+      if (input.startsWith('/api/')) {
+        resolvedUrl = apiUrl(input);
+        finalInput = resolvedUrl;
+      } else {
+        resolvedUrl = input;
+        finalInput = input;
+      }
+    } else if (input instanceof URL) {
+      if (input.pathname.startsWith('/api/')) {
+        resolvedUrl = apiUrl(`${input.pathname}${input.search || ''}`);
+        finalInput = resolvedUrl;
+      } else {
+        resolvedUrl = input.href;
+        finalInput = input;
+      }
+    } else if (input instanceof Request) {
       const requestUrl = new URL(input.url, window.location.origin);
-      const absoluteUrl = apiUrl(`${requestUrl.pathname}${requestUrl.search}`);
-      const rewrittenRequest = new Request(absoluteUrl, input);
-      return originalFetch(rewrittenRequest, init);
+      if (requestUrl.pathname.startsWith('/api/')) {
+        resolvedUrl = apiUrl(`${requestUrl.pathname}${requestUrl.search}`);
+        finalInput = new Request(resolvedUrl, input);
+      } else {
+        resolvedUrl = input.url;
+        finalInput = input;
+      }
+    } else {
+      resolvedUrl = String(input);
+      finalInput = input;
     }
 
-    return originalFetch(input, init);
+    try {
+      const response = await originalFetch(finalInput, init);
+      
+      // Handle HTTP error status codes (401, 500, etc.) for API calls
+      if (resolvedUrl.includes('/api/')) {
+        // Dynamically import error handler to avoid top-level await
+        const { handleHttpErrorResponse } = await import('./utils/httpInterceptor');
+        return await handleHttpErrorResponse(response, resolvedUrl);
+      }
+      
+      return response;
+    } catch (error) {
+      // Handle network errors for API calls
+      if (resolvedUrl.includes('/api/')) {
+        const { handleHttpError } = await import('./utils/httpInterceptor');
+        handleHttpError(error, resolvedUrl);
+      }
+      throw error;
+    }
   };
 }
 

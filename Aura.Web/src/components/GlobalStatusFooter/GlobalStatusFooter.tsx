@@ -187,20 +187,17 @@ export function GlobalStatusFooter() {
     });
   }, [activities, dispatchToast, previousActivityStates]);
 
-  // Don't render footer if there are no activities
-  if (activities.length === 0 && recentHistory.length === 0) {
-    return (
-      <>
-        <Toaster toasterId={toasterId} position="top-end" />
-      </>
-    );
-  }
+  // Always render footer to show backend status, even when no activities
+  // The footer will be minimal (just status indicators) when there are no activities
 
   // Get the primary active operation to show in collapsed state
   const primaryOperation = activeActivities[0] || pausedActivities[0] || queuedActivities[0];
 
   const activeCount = activeActivities.length + pausedActivities.length;
   const failedCount = failedActivities.length;
+  
+  // If no activities, show minimal footer with just status indicators
+  const hasActivities = activities.length > 0 || recentHistory.length > 0;
 
   const getSummaryText = () => {
     if (primaryOperation) {
@@ -229,55 +226,69 @@ export function GlobalStatusFooter() {
       <div className={styles.footer}>
         <div
           className={styles.header}
-          onClick={() => setIsDrawerOpen(!isDrawerOpen)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              setIsDrawerOpen(!isDrawerOpen);
-            }
-          }}
-          role="button"
-          tabIndex={0}
-          aria-expanded={isDrawerOpen}
-          aria-label="Toggle activity drawer"
+          onClick={hasActivities ? () => setIsDrawerOpen(!isDrawerOpen) : undefined}
+          onKeyDown={
+            hasActivities
+              ? (e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setIsDrawerOpen(!isDrawerOpen);
+                  }
+                }
+              : undefined
+          }
+          role={hasActivities ? 'button' : undefined}
+          tabIndex={hasActivities ? 0 : undefined}
+          aria-expanded={hasActivities ? isDrawerOpen : undefined}
+          aria-label={hasActivities ? 'Toggle activity drawer' : 'Status footer'}
         >
           <div className={styles.headerLeft}>
-            {isDrawerOpen ? <ChevronDown24Regular /> : <ChevronUp24Regular />}
+            {hasActivities && (
+              <>
+                {isDrawerOpen ? <ChevronDown24Regular /> : <ChevronUp24Regular />}
 
-            {primaryOperation && primaryOperation.status === 'running' && (
-              <div className={styles.compactProgress}>
-                <ProgressBar
-                  className={styles.progressBar}
-                  value={primaryOperation.progress / 100}
-                />
-                <Text weight="semibold" size={200}>
-                  {primaryOperation.progress}%
-                </Text>
-              </div>
+                {primaryOperation && primaryOperation.status === 'running' && (
+                  <div className={styles.compactProgress}>
+                    <ProgressBar
+                      className={styles.progressBar}
+                      value={primaryOperation.progress / 100}
+                      aria-label={`Progress: ${primaryOperation.progress}%`}
+                    />
+                    <Text weight="semibold" size={200}>
+                      {primaryOperation.progress}%
+                    </Text>
+                  </div>
+                )}
+
+                <Text className={styles.statusText}>{getSummaryText()}</Text>
+
+                {primaryOperation?.details?.timeRemaining && (
+                  <Text className={styles.statusText}>
+                    ~
+                    {formatDuration(
+                      new Date(),
+                      new Date(Date.now() + primaryOperation.details.timeRemaining * 1000)
+                    )}{' '}
+                    remaining
+                  </Text>
+                )}
+
+                {activeCount > 0 && (
+                  <Badge appearance="filled" color="informative" size="small" aria-label={`${activeCount} active operations`}>
+                    {activeCount}
+                  </Badge>
+                )}
+                {failedCount > 0 && (
+                  <Badge appearance="filled" color="danger" size="small" aria-label={`${failedCount} failed operations`}>
+                    {failedCount}
+                  </Badge>
+                )}
+              </>
             )}
-
-            <Text className={styles.statusText}>{getSummaryText()}</Text>
-
-            {primaryOperation?.details?.timeRemaining && (
-              <Text className={styles.statusText}>
-                ~
-                {formatDuration(
-                  new Date(),
-                  new Date(Date.now() + primaryOperation.details.timeRemaining * 1000)
-                )}{' '}
-                remaining
+            {!hasActivities && (
+              <Text className={styles.statusText} aria-label="No active operations">
+                Ready
               </Text>
-            )}
-
-            {activeCount > 0 && (
-              <Badge appearance="filled" color="informative" size="small">
-                {activeCount}
-              </Badge>
-            )}
-            {failedCount > 0 && (
-              <Badge appearance="filled" color="danger" size="small">
-                {failedCount}
-              </Badge>
             )}
           </div>
 
@@ -292,16 +303,19 @@ export function GlobalStatusFooter() {
             )}
             <BackendStatusIndicator />
             <ResourceMonitor compact />
-            <Button
-              appearance="subtle"
-              size="small"
-              onClick={(e) => {
-                e.stopPropagation();
-                clearCompleted();
-              }}
-            >
-              Clear Completed
-            </Button>
+            {hasActivities && (
+              <Button
+                appearance="subtle"
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  clearCompleted();
+                }}
+                aria-label="Clear completed operations"
+              >
+                Clear Completed
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -317,7 +331,9 @@ export function GlobalStatusFooter() {
         batchOperations={batchOperations}
         onPause={pauseActivity}
         onResume={resumeActivity}
-        onCancel={(id) => updateActivity(id, { status: 'cancelled' })}
+        onCancel={(id) => {
+          updateActivity(id, { status: 'cancelled' });
+        }}
         onRetry={handleRetryActivity}
         onPriorityChange={setPriority}
         onClearHistory={clearHistory}

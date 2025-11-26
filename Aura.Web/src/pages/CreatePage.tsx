@@ -32,6 +32,7 @@ import { useNotifications } from '../components/Notifications/Toasts';
 import { PreflightPanel } from '../components/PreflightPanel';
 import { apiUrl } from '../config/api';
 import { useFormValidation } from '../hooks/useFormValidation';
+import { useDisableWhenOffline } from '../hooks/useDisableWhenOffline';
 import { keyboardShortcutManager } from '../services/keyboardShortcutManager';
 import { useActivity } from '../state/activityContext';
 import type { PreflightReport } from '../state/providers';
@@ -98,6 +99,7 @@ export function CreatePage() {
   const styles = useStyles();
   const navigate = useNavigate();
   const { addActivity, updateActivity } = useActivity();
+  const isOfflineDisabled = useDisableWhenOffline();
   const { showSuccessToast, showFailureToast } = useNotifications();
   const [currentStep, setCurrentStep] = useState(1);
   const [brief, setBrief] = useState<Partial<Brief>>({
@@ -851,8 +853,12 @@ export function CreatePage() {
                 icon={<Play24Regular />}
                 onClick={handleGenerate}
                 disabled={
-                  generating || !preflightReport || (!preflightReport.ok && !overridePreflightGate)
+                  generating ||
+                  !preflightReport ||
+                  (!preflightReport.ok && !overridePreflightGate) ||
+                  isOfflineDisabled
                 }
+                aria-label={isOfflineDisabled ? 'Generate Video (Backend offline)' : 'Generate Video'}
               >
                 {generating ? 'Generating...' : 'Generate Video'}
               </Button>

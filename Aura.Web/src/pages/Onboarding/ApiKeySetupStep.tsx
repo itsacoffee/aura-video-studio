@@ -1,31 +1,31 @@
+import type { OfflineProviderStatus } from '@/types/offlineProviders';
 import {
-  makeStyles,
-  tokens,
-  Title2,
-  Title3,
-  Text,
+  Badge,
   Button,
   Card,
-  Badge,
   Checkbox,
+  makeStyles,
   MessageBar,
   MessageBarBody,
   MessageBarTitle,
   Spinner,
+  Text,
+  Title2,
+  Title3,
+  tokens,
 } from '@fluentui/react-components';
-import { useState, useEffect, useCallback } from 'react';
 import {
   Checkmark24Regular,
-  Warning24Regular,
   ChevronDown24Regular,
   ChevronUp24Regular,
+  Warning24Regular,
 } from '@fluentui/react-icons';
+import { useCallback, useEffect, useState } from 'react';
 import { EnhancedApiKeyInput } from '../../components/Onboarding/EnhancedApiKeyInput';
 import type { FieldValidationError } from '../../components/Onboarding/FieldValidationErrors';
 import { ProviderHelpPanel } from '../../components/ProviderHelpPanel';
-import { offlineProvidersApi } from '../../services/api/offlineProvidersApi';
-import type { OfflineProviderStatus } from '@/types/offlineProviders';
 import { useProviderStatus } from '../../hooks/useProviderStatus';
+import { offlineProvidersApi } from '../../services/api/offlineProvidersApi';
 
 const useStyles = makeStyles({
   container: {
@@ -455,7 +455,8 @@ const providers: ProviderConfig[] = [
     name: 'Placeholder Images',
     logo: '🎨',
     description: 'Solid color backgrounds with text - always available',
-    usedFor: 'Guaranteed fallback image provider - generates solid color backgrounds with text overlays',
+    usedFor:
+      'Guaranteed fallback image provider - generates solid color backgrounds with text overlays',
     signupUrl: '',
     steps: [
       'No setup required - always available',
@@ -546,7 +547,11 @@ export function ApiKeySetupStep({
     piper: OfflineProviderStatus | null;
     mimic3: OfflineProviderStatus | null;
   }>({
-    windows: { name: 'Windows TTS', isAvailable: true, message: 'Built into Windows - always available' },
+    windows: {
+      name: 'Windows TTS',
+      isAvailable: true,
+      message: 'Built into Windows - always available',
+    },
     piper: null,
     mimic3: null,
   });
@@ -561,8 +566,11 @@ export function ApiKeySetupStep({
   });
 
   // Real-time provider status polling (every 15 seconds)
-  const { llmProviders, ttsProviders, imageProviders, isLoading: isLoadingProviderStatus } =
-    useProviderStatus(15000);
+  const providerStatusResult = useProviderStatus(15000);
+  const llmStatusList = providerStatusResult.llmProviders;
+  const ttsStatusList = providerStatusResult.ttsProviders;
+  const imageStatusList = providerStatusResult.imageProviders;
+  const isLoadingProviderStatus = providerStatusResult.isLoading;
 
   const checkLocalTtsStatus = useCallback(async (provider: 'windows' | 'piper' | 'mimic3') => {
     setCheckingTts((prev) => ({ ...prev, [provider]: true }));
@@ -671,9 +679,9 @@ export function ApiKeySetupStep({
   const hasInvalidKeys = invalidKeys.length > 0;
 
   // Organize providers by category
-  const llmProviders = providers.filter((p) => p.category === 'llm');
-  const ttsProviders = providers.filter((p) => p.category === 'tts');
-  const imageProviders = providers.filter((p) => p.category === 'image');
+  const filteredLlmProviders = providers.filter((p) => p.category === 'llm');
+  const filteredTtsProviders = providers.filter((p) => p.category === 'tts');
+  const filteredImageProviders = providers.filter((p) => p.category === 'image');
 
   // CRITICAL FIX: Add error state to handle rendering errors gracefully
   const [renderError, setRenderError] = useState<Error | null>(null);
@@ -725,7 +733,8 @@ export function ApiKeySetupStep({
         />
         <Title2>Error Loading Provider Configuration</Title2>
         <Text style={{ display: 'block', marginTop: tokens.spacingVerticalS }}>
-          An error occurred while loading the provider configuration. Please try refreshing the page.
+          An error occurred while loading the provider configuration. Please try refreshing the
+          page.
         </Text>
         <Button
           appearance="primary"
@@ -816,7 +825,7 @@ export function ApiKeySetupStep({
         </div>
 
         <div className={styles.providersGrid}>
-          {llmProviders.map((provider) => {
+          {filteredLlmProviders.map((provider) => {
             const isExpanded = expandedProviders.has(provider.id);
             const status = validationStatus[provider.id] || 'idle';
 
@@ -882,7 +891,9 @@ export function ApiKeySetupStep({
                               <>
                                 {(() => {
                                   // Use real-time status if available, otherwise fall back to validation status
-                                  const ollamaStatus = llmProviders.find((p) => p.name === 'Ollama');
+                                  const ollamaStatus = llmStatusList?.find(
+                                    (p) => p.name === 'Ollama'
+                                  );
                                   const isAvailable = ollamaStatus?.available ?? false;
                                   const errorMessage = ollamaStatus?.errorMessage;
 
@@ -913,7 +924,62 @@ export function ApiKeySetupStep({
                                               errorMessage ||
                                               'Ollama validation failed'}
                                           </Text>
-                                          {ollamaStatus?.howToFix && ollamaStatus.howToFix.length > 0 && (
+                                          {ollamaStatus?.howToFix &&
+                                            ollamaStatus.howToFix.length > 0 && (
+                                              <div style={{ marginTop: tokens.spacingVerticalXS }}>
+                                                <Text
+                                                  size={200}
+                                                  weight="semibold"
+                                                  style={{
+                                                    color: tokens.colorNeutralForeground2,
+                                                    display: 'block',
+                                                    marginBottom: tokens.spacingVerticalXXS,
+                                                  }}
+                                                >
+                                                  How to fix:
+                                                </Text>
+                                                <ul
+                                                  style={{
+                                                    margin: 0,
+                                                    paddingLeft: tokens.spacingHorizontalM,
+                                                    color: tokens.colorNeutralForeground3,
+                                                  }}
+                                                >
+                                                  {ollamaStatus.howToFix.map((step, idx) => (
+                                                    <li key={idx}>
+                                                      <Text size={200}>{step}</Text>
+                                                    </li>
+                                                  ))}
+                                                </ul>
+                                              </div>
+                                            )}
+                                        </div>
+                                      </>
+                                    );
+                                  }
+
+                                  // Show real-time detection status
+                                  if (isLoadingProviderStatus) {
+                                    return (
+                                      <>
+                                        <Spinner size="tiny" />
+                                        <Text size={300}>Detecting Ollama...</Text>
+                                      </>
+                                    );
+                                  }
+
+                                  return (
+                                    <>
+                                      <Warning24Regular
+                                        style={{ color: tokens.colorPaletteYellowForeground1 }}
+                                      />
+                                      <div>
+                                        <Text size={300}>
+                                          {errorMessage ||
+                                            'Install and run Ollama locally. Status updates automatically.'}
+                                        </Text>
+                                        {ollamaStatus?.howToFix &&
+                                          ollamaStatus.howToFix.length > 0 && (
                                             <div style={{ marginTop: tokens.spacingVerticalXS }}>
                                               <Text
                                                 size={200}
@@ -941,59 +1007,6 @@ export function ApiKeySetupStep({
                                               </ul>
                                             </div>
                                           )}
-                                        </div>
-                                      </>
-                                    );
-                                  }
-
-                                  // Show real-time detection status
-                                  if (isLoadingProviderStatus) {
-                                    return (
-                                      <>
-                                        <Spinner size="tiny" />
-                                        <Text size={300}>Detecting Ollama...</Text>
-                                      </>
-                                    );
-                                  }
-
-                                  return (
-                                    <>
-                                      <Warning24Regular
-                                        style={{ color: tokens.colorPaletteYellowForeground1 }}
-                                      />
-                                      <div>
-                                        <Text size={300}>
-                                          {errorMessage ||
-                                            'Install and run Ollama locally. Status updates automatically.'}
-                                        </Text>
-                                        {ollamaStatus?.howToFix && ollamaStatus.howToFix.length > 0 && (
-                                          <div style={{ marginTop: tokens.spacingVerticalXS }}>
-                                            <Text
-                                              size={200}
-                                              weight="semibold"
-                                              style={{
-                                                color: tokens.colorNeutralForeground2,
-                                                display: 'block',
-                                                marginBottom: tokens.spacingVerticalXXS,
-                                              }}
-                                            >
-                                              How to fix:
-                                            </Text>
-                                            <ul
-                                              style={{
-                                                margin: 0,
-                                                paddingLeft: tokens.spacingHorizontalM,
-                                                color: tokens.colorNeutralForeground3,
-                                              }}
-                                            >
-                                              {ollamaStatus.howToFix.map((step, idx) => (
-                                                <li key={idx}>
-                                                  <Text size={200}>{step}</Text>
-                                                </li>
-                                              ))}
-                                            </ul>
-                                          </div>
-                                        )}
                                       </div>
                                     </>
                                   );
@@ -1110,7 +1123,7 @@ export function ApiKeySetupStep({
       </div>
 
       {/* TTS Providers */}
-      {ttsProviders.length > 0 && (
+      {filteredTtsProviders.length > 0 && (
         <div className={styles.section}>
           <div className={styles.sectionHeader}>
             <Title3 className={styles.sectionTitle}>Text-to-Speech Providers</Title3>
@@ -1120,7 +1133,7 @@ export function ApiKeySetupStep({
           </div>
 
           <div className={styles.providersGrid}>
-            {ttsProviders.map((provider) => {
+            {filteredTtsProviders.map((provider) => {
               const isExpanded = expandedProviders.has(provider.id);
               const status = validationStatus[provider.id] || 'idle';
 
@@ -1291,7 +1304,7 @@ export function ApiKeySetupStep({
       )}
 
       {/* Image/Visual Providers */}
-      {imageProviders.length > 0 && (
+      {filteredImageProviders.length > 0 && (
         <div className={styles.section}>
           <div className={styles.sectionHeader}>
             <Title3 className={styles.sectionTitle}>Image & Visual Providers</Title3>
@@ -1301,7 +1314,7 @@ export function ApiKeySetupStep({
           </div>
 
           <div className={styles.providersGrid}>
-            {imageProviders.map((provider) => {
+            {filteredImageProviders.map((provider) => {
               const isExpanded = expandedProviders.has(provider.id);
               const status = validationStatus[provider.id] || 'idle';
 
