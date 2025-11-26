@@ -530,6 +530,62 @@ app.MapGet("/myendpoint", (HardwareDetector detector) =>
 });
 ```
 
+## Architecture
+
+### Dependency Injection Lifetimes
+
+The API uses appropriate DI lifetimes for all services:
+
+- **Scoped** (per-request): `AuraDbContext`, repositories, Unit of Work, analytics services
+- **Singleton** (application lifetime): Configuration services, hardware detection, provider factories, health checks
+- **Transient**: None currently used (avoided for performance)
+
+DbContext is registered as Scoped (default for `AddDbContext`) which is correct for Entity Framework Core. For singleton services that need database access, `IDbContextFactory<AuraDbContext>` is registered to allow creating scoped contexts on demand.
+
+**Circular Dependency Prevention**: `Aura.Providers` depends on `Aura.Core`, but `Aura.Core` does NOT depend on `Aura.Providers`, preventing circular dependencies.
+
+### Middleware Pipeline Order
+
+The middleware pipeline follows the [recommended ASP.NET Core order](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/middleware/):
+
+1. **Exception Handling** - `UseDeveloperExceptionPage()` (dev) / `UseExceptionHandler()` (prod)
+2. **HTTPS Redirection & HSTS** - Security middleware (production only)
+3. **Static Files** - `UseStaticFiles()` for serving frontend assets
+4. **Routing** - `UseRouting()`
+5. **CORS** - `UseCors()` with configured policy
+6. **Authentication** - `UseApiAuthentication()`
+7. **Application Middleware** - Correlation ID, compression, caching, logging
+8. **Endpoints** - `MapControllers()`, minimal APIs, SignalR hubs
+
+### Global Error Handling
+
+The `GlobalExceptionHandler` implements `IExceptionHandler` and returns standardized [RFC 7807 ProblemDetails](https://tools.ietf.org/html/rfc7807) responses:
+
+- Maps exception types to appropriate HTTP status codes
+- Includes correlation ID for request tracking
+- Sanitizes error messages (no stack traces in production)
+- Logs full exception details with structured logging
+
+### Health Checks
+
+Multiple health check endpoints are available:
+
+| Endpoint | Purpose | Tags |
+|----------|---------|------|
+| `/health/live` | Kubernetes liveness probe | None |
+| `/health/ready` | Kubernetes readiness probe | `ready` |
+| `/health` | Comprehensive status | All |
+| `/health/{tag}` | Tag-filtered checks | Specified tag |
+
+Registered health checks:
+- **StartupHealthCheck** - Application initialization status
+- **DatabaseConfigurationHealthCheck** - Database configuration validation
+- **DatabaseHealthCheck** - Database connectivity and response time
+- **DependencyHealthCheck** - External dependencies (FFmpeg, etc.)
+- **DiskSpaceHealthCheck** - Available disk space
+- **MemoryHealthCheck** - Memory usage
+- **ProviderHealthCheck** - LLM/TTS/Image provider availability
+
 ## CORS Configuration
 
 CORS is configured for local development:
