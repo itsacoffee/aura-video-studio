@@ -2,6 +2,7 @@ using Aura.Core.Artifacts;
 using Aura.Core.Models;
 using Aura.Core.Orchestrator;
 using Aura.Core.Services;
+using Aura.Core.Services.Export;
 using Aura.Api.Models.ApiModels.V1;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
@@ -21,17 +22,20 @@ public class JobsController : ControllerBase
     private readonly ArtifactManager _artifactManager;
     private readonly ProgressAggregatorService? _progressAggregator;
     private readonly CancellationOrchestrator? _cancellationOrchestrator;
+    private readonly IExportJobService? _exportJobService;
 
     public JobsController(
         JobRunner jobRunner,
         ArtifactManager artifactManager,
         ProgressAggregatorService? progressAggregator = null,
-        CancellationOrchestrator? cancellationOrchestrator = null)
+        CancellationOrchestrator? cancellationOrchestrator = null,
+        IExportJobService? exportJobService = null)
     {
         _jobRunner = jobRunner;
         _artifactManager = artifactManager;
         _progressAggregator = progressAggregator;
         _cancellationOrchestrator = cancellationOrchestrator;
+        _exportJobService = exportJobService;
     }
 
     /// <summary>
@@ -207,27 +211,50 @@ public class JobsController : ControllerBase
     /// Get job status and progress
     /// </summary>
     [HttpGet("{jobId}")]
-    public IActionResult GetJob(string jobId)
+    public async Task<IActionResult> GetJob(string jobId)
     {
         try
         {
             var correlationId = HttpContext.TraceIdentifier;
 
+            // First check the video generation job runner
             var job = _jobRunner.GetJob(jobId);
-            if (job == null)
+            if (job != null)
             {
-                Log.Warning("[{CorrelationId}] Job not found: {JobId}", correlationId, jobId);
-                return NotFound(new
-                {
-                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
-                    title = "Job Not Found",
-                    status = 404,
-                    detail = $"Job {jobId} not found",
-                    correlationId
-                });
+                return Ok(job);
             }
 
-            return Ok(job);
+            // Fall back to export job service if available
+            if (_exportJobService != null)
+            {
+                var exportJob = await _exportJobService.GetJobAsync(jobId).ConfigureAwait(false);
+                if (exportJob != null)
+                {
+                    return Ok(new
+                    {
+                        id = exportJob.Id,
+                        status = exportJob.Status,
+                        percent = exportJob.Progress,
+                        stage = exportJob.Stage,
+                        progressMessage = exportJob.Message,
+                        outputPath = exportJob.OutputPath,
+                        errorMessage = exportJob.ErrorMessage,
+                        createdAt = exportJob.CreatedAt,
+                        startedAt = exportJob.StartedAt,
+                        completedAt = exportJob.CompletedAt
+                    });
+                }
+            }
+
+            Log.Warning("[{CorrelationId}] Job not found: {JobId}", correlationId, jobId);
+            return NotFound(new
+            {
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
+                title = "Job Not Found",
+                status = 404,
+                detail = $"Job {jobId} not found",
+                correlationId
+            });
         }
         catch (Exception ex)
         {
