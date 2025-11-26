@@ -21,6 +21,8 @@ public class AssetTaggingService
     
     // In-memory storage for semantic metadata (will be enhanced with database integration)
     private readonly Dictionary<Guid, SemanticAssetMetadata> _metadataStore = new();
+    // Pre-computed tag sets for efficient searching
+    private readonly Dictionary<Guid, HashSet<string>> _tagSetCache = new();
     private readonly object _storeLock = new();
 
     public AssetTaggingService(
@@ -168,6 +170,9 @@ public class AssetTaggingService
                     TaggingProvider = "Manual"
                 };
             }
+            
+            // Update tag set cache for efficient searching
+            _tagSetCache[assetId] = tags.Select(t => t.Name).ToHashSet();
         }
 
         _logger.LogInformation("Updated tags for asset {AssetId}: {TagCount} tags", assetId, tags.Count);
@@ -184,10 +189,10 @@ public class AssetTaggingService
         {
             var normalizedTags = tags.Select(t => t.ToLowerInvariant()).ToHashSet();
 
-            var matches = _metadataStore
+            var matches = _tagSetCache
                 .Where(kvp =>
                 {
-                    var assetTags = kvp.Value.Tags.Select(t => t.Name).ToHashSet();
+                    var assetTags = kvp.Value;
                     
                     if (matchAll)
                     {
@@ -282,13 +287,15 @@ public class AssetTaggingService
     }
 
     /// <summary>
-    /// Store semantic metadata for an asset
+    /// Store semantic metadata for an asset and update the tag set cache
     /// </summary>
     private void StoreMetadata(Guid assetId, SemanticAssetMetadata metadata)
     {
         lock (_storeLock)
         {
             _metadataStore[assetId] = metadata;
+            // Pre-compute tag set for efficient searching
+            _tagSetCache[assetId] = metadata.Tags.Select(t => t.Name).ToHashSet();
         }
     }
 

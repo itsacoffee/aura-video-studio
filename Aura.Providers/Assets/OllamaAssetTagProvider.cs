@@ -164,7 +164,7 @@ public class OllamaAssetTagProvider : IAssetTagProvider
         }
 
         _logger.LogDebug("Generating embedding for text: {TextPreview}...", 
-            text.Length > 50 ? text.Substring(0, 50) : text);
+            text.Length > 50 ? text[..50] : text);
 
         try
         {
@@ -219,7 +219,7 @@ public class OllamaAssetTagProvider : IAssetTagProvider
         CancellationToken ct = default)
     {
         _logger.LogInformation("Matching assets to scene: {Description}", 
-            sceneDescription.Length > 100 ? sceneDescription.Substring(0, 100) + "..." : sceneDescription);
+            sceneDescription.Length > 100 ? sceneDescription[..100] + "..." : sceneDescription);
 
         var assetList = availableAssets.ToList();
         if (assetList.Count == 0)
@@ -407,7 +407,7 @@ Return ONLY the JSON array.";
             
             if (jsonStart >= 0 && jsonEnd > jsonStart)
             {
-                var jsonString = response.Substring(jsonStart, jsonEnd - jsonStart + 1);
+                var jsonString = response[jsonStart..(jsonEnd + 1)];
                 using var doc = JsonDocument.Parse(jsonString);
                 var root = doc.RootElement;
 
@@ -515,7 +515,7 @@ Return ONLY the JSON array.";
             
             if (jsonStart >= 0 && jsonEnd > jsonStart)
             {
-                var jsonString = response.Substring(jsonStart, jsonEnd - jsonStart + 1);
+                var jsonString = response[jsonStart..(jsonEnd + 1)];
                 using var doc = JsonDocument.Parse(jsonString);
                 
                 foreach (var element in doc.RootElement.EnumerateArray())
