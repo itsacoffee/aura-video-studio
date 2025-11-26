@@ -3317,13 +3317,23 @@ You MUST respond with ONLY valid JSON in the following format (no markdown, no c
         BrainstormRequest request,
         CancellationToken ct)
     {
-        var providerType = _llmProvider.GetType().Name;
+        var providerType = _llmProvider.GetType();
+        var providerTypeName = providerType.Name;
         var llmParams = request.LlmParameters;
 
-        // For Ollama, we can call it directly with parameters
-        if (providerType == "OllamaLlmProvider")
+        // Check if this is OllamaLlmProvider directly or if it's CompositeLlmProvider that might contain Ollama
+        if (providerTypeName == "OllamaLlmProvider" || providerTypeName == "CompositeLlmProvider")
         {
-            return await GenerateWithOllamaDirectAsync(prompt, request, ct).ConfigureAwait(false);
+            // Try to use direct Ollama API call - this will handle both direct OllamaLlmProvider and CompositeLlmProvider
+            try
+            {
+                return await GenerateWithOllamaDirectAsync(prompt, request, ct).ConfigureAwait(false);
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("Ollama") || ex.Message.Contains("can only be used"))
+            {
+                // If direct call fails (e.g., not Ollama provider), fall through to CompleteAsync
+                _logger.LogDebug("Direct Ollama call not available: {Error}. Falling back to CompleteAsync", ex.Message);
+            }
         }
 
         // For other providers, we need to use CompleteAsync as DraftScriptAsync builds its own prompts
@@ -3333,7 +3343,7 @@ You MUST respond with ONLY valid JSON in the following format (no markdown, no c
             "Using CompleteAsync for {Provider} - LLM parameters (model override, temperature, etc.) may not be fully applied. " +
             "Model override: {ModelOverride}, Temperature: {Temperature}. " +
             "For full parameter support, consider using Ollama provider.",
-            providerType, llmParams?.ModelOverride ?? "default", llmParams?.Temperature?.ToString() ?? "default");
+            providerTypeName, llmParams?.ModelOverride ?? "default", llmParams?.Temperature?.ToString() ?? "default");
 
         // Fallback to CompleteAsync - parameters may not be applied
         return await _llmProvider.CompleteAsync(prompt, ct).ConfigureAwait(false);
@@ -3351,34 +3361,92 @@ You MUST respond with ONLY valid JSON in the following format (no markdown, no c
         // Use reflection to access Ollama provider's internal HttpClient and configuration
         // This allows us to call Ollama API directly with proper parameters
         var providerType = _llmProvider.GetType();
+        System.Net.Http.HttpClient? httpClient = null;
+        string baseUrl = "http://127.0.0.1:11434";
+        string defaultModel = "llama3.1:8b-q4_k_m";
+        TimeSpan timeout = TimeSpan.FromSeconds(900);
+        int maxRetries = 3;
 
-        if (providerType.Name != "OllamaLlmProvider")
+        // Try to get Ollama provider - handle both direct OllamaLlmProvider and CompositeLlmProvider
+        if (providerType.Name == "OllamaLlmProvider")
         {
-            throw new InvalidOperationException("GenerateWithOllamaDirectAsync can only be used with OllamaLlmProvider");
+            // Direct Ollama provider - get fields via reflection
+            var httpClientField = providerType.GetField("_httpClient", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var baseUrlField = providerType.GetField("_baseUrl", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var modelField = providerType.GetField("_model", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var timeoutField = providerType.GetField("_timeout", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var maxRetriesField = providerType.GetField("_maxRetries", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            if (httpClientField != null && baseUrlField != null && modelField != null)
+            {
+                httpClient = (System.Net.Http.HttpClient?)httpClientField.GetValue(_llmProvider);
+                baseUrl = (string?)baseUrlField.GetValue(_llmProvider) ?? baseUrl;
+                defaultModel = (string?)modelField.GetValue(_llmProvider) ?? defaultModel;
+                timeout = timeoutField?.GetValue(_llmProvider) as TimeSpan? ?? timeout;
+                maxRetries = (int)(maxRetriesField?.GetValue(_llmProvider) ?? maxRetries);
+            }
+        }
+        else if (providerType.Name == "CompositeLlmProvider")
+        {
+            // Composite provider - try to get Ollama provider from its internal providers
+            try
+            {
+                // First, try to get providers via GetProviders() method to ensure they're initialized
+                var getProvidersMethod = providerType.GetMethod("GetProviders", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                System.Collections.Generic.Dictionary<string, ILlmProvider>? providers = null;
+
+                if (getProvidersMethod != null)
+                {
+                    // Call GetProviders(false) to get cached providers without forcing refresh
+                    var providersResult = getProvidersMethod.Invoke(_llmProvider, new object[] { false });
+                    providers = providersResult as System.Collections.Generic.Dictionary<string, ILlmProvider>;
+                }
+
+                // Fallback: try direct field access if method doesn't work
+                if (providers == null)
+                {
+                    var providersField = providerType.GetField("_cachedProviders", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    if (providersField != null)
+                    {
+                        providers = providersField.GetValue(_llmProvider) as System.Collections.Generic.Dictionary<string, ILlmProvider>;
+                    }
+                }
+
+                if (providers != null && providers.TryGetValue("Ollama", out var ollamaProvider) && ollamaProvider != null)
+                {
+                    var ollamaProviderType = ollamaProvider.GetType();
+                    var httpClientField = ollamaProviderType.GetField("_httpClient", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    var baseUrlField = ollamaProviderType.GetField("_baseUrl", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    var modelField = ollamaProviderType.GetField("_model", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    var timeoutField = ollamaProviderType.GetField("_timeout", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    var maxRetriesField = ollamaProviderType.GetField("_maxRetries", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+                    if (httpClientField != null && baseUrlField != null && modelField != null)
+                    {
+                        httpClient = (System.Net.Http.HttpClient?)httpClientField.GetValue(ollamaProvider);
+                        baseUrl = (string?)baseUrlField.GetValue(ollamaProvider) ?? baseUrl;
+                        defaultModel = (string?)modelField.GetValue(ollamaProvider) ?? defaultModel;
+                        timeout = timeoutField?.GetValue(ollamaProvider) as TimeSpan? ?? timeout;
+                        maxRetries = (int)(maxRetriesField?.GetValue(ollamaProvider) ?? maxRetries);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not extract Ollama provider from CompositeLlmProvider via reflection");
+            }
         }
 
-        // Get private fields via reflection
-        var httpClientField = providerType.GetField("_httpClient", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        var baseUrlField = providerType.GetField("_baseUrl", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        var modelField = providerType.GetField("_model", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        var timeoutField = providerType.GetField("_timeout", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        var maxRetriesField = providerType.GetField("_maxRetries", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-        if (httpClientField == null || baseUrlField == null || modelField == null)
-        {
-            _logger.LogWarning("Could not access Ollama provider internals via reflection, falling back to CompleteAsync");
-            return await _llmProvider.CompleteAsync(prompt, ct).ConfigureAwait(false);
-        }
-
-        var httpClient = (System.Net.Http.HttpClient?)httpClientField.GetValue(_llmProvider);
-        var baseUrl = (string?)baseUrlField.GetValue(_llmProvider) ?? "http://127.0.0.1:11434";
-        var defaultModel = (string?)modelField.GetValue(_llmProvider) ?? "llama3.1:8b-q4_k_m";
-        var timeout = timeoutField?.GetValue(_llmProvider) as TimeSpan? ?? TimeSpan.FromSeconds(900);
-        var maxRetries = (int)(maxRetriesField?.GetValue(_llmProvider) ?? 3);
-
+        // Track if we created the HttpClient so we can dispose it properly
+        bool createdHttpClient = false;
         if (httpClient == null)
         {
-            throw new InvalidOperationException("Ollama HttpClient is null");
+            _logger.LogInformation("Creating new HttpClient for direct Ollama API call (baseUrl: {BaseUrl})", baseUrl);
+            httpClient = new System.Net.Http.HttpClient
+            {
+                Timeout = timeout.Add(TimeSpan.FromMinutes(5)) // Add buffer for timeout
+            };
+            createdHttpClient = true;
         }
 
         // Get LLM parameters with defaults
@@ -3432,11 +3500,57 @@ You MUST respond with ONLY valid JSON in the following format (no markdown, no c
                     await Task.Delay(backoffDelay, ct).ConfigureAwait(false);
                 }
 
-                using var cts = System.Threading.CancellationTokenSource.CreateLinkedTokenSource(ct);
+                // CRITICAL FIX: Use independent timeout - don't link to parent token for timeout management
+                // This prevents upstream components (frontend, API middleware) from cancelling our long-running operation
+                // if they have shorter timeouts. The linked token approach would cancel if ANY upstream has a short timeout.
+                using var cts = new System.Threading.CancellationTokenSource();
                 cts.CancelAfter(timeout);
+
+                // Still respect explicit user cancellation by checking the parent token
+                if (ct.IsCancellationRequested)
+                {
+                    throw new OperationCanceledException("Ideation was cancelled by user", ct);
+                }
+
+                _logger.LogInformation("Sending ideation request to Ollama (attempt {Attempt}/{MaxRetries}, timeout: {Timeout:F1} minutes)",
+                    attempt + 1, maxRetries + 1, timeout.TotalMinutes);
+
+                _logger.LogInformation("Request sent to Ollama, awaiting response (timeout: {Timeout:F1} minutes, this may take a while for large models)...",
+                    timeout.TotalMinutes);
+
+                // Start periodic heartbeat logging to show the system is still working
+                // During a long wait, there's no visibility that the system is working without this
+                var requestStartTime = DateTime.UtcNow;
+                using var heartbeatCts = System.Threading.CancellationTokenSource.CreateLinkedTokenSource(cts.Token);
+                var heartbeatTask = Task.Run(async () =>
+                {
+                    try
+                    {
+                        while (!heartbeatCts.Token.IsCancellationRequested)
+                        {
+                            await Task.Delay(TimeSpan.FromSeconds(30), heartbeatCts.Token).ConfigureAwait(false);
+                            var elapsed = DateTime.UtcNow - requestStartTime;
+                            var remaining = timeout.TotalSeconds - elapsed.TotalSeconds;
+                            if (remaining > 0)
+                            {
+                                _logger.LogInformation(
+                                    "Still awaiting Ollama ideation response... ({Elapsed:F0}s elapsed, {Remaining:F0}s remaining before timeout)",
+                                    elapsed.TotalSeconds,
+                                    remaining);
+                            }
+                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Expected when request completes or is cancelled
+                    }
+                }, heartbeatCts.Token);
 
                 var response = await httpClient.PostAsync($"{baseUrl}/api/generate", content, cts.Token).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
+
+                // Cancel heartbeat since we got a response
+                heartbeatCts.Cancel();
 
                 var responseJson = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
 

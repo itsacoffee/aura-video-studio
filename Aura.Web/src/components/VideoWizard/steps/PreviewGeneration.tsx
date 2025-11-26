@@ -288,6 +288,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
   const [isLoadingProviders, setIsLoadingProviders] = useState(true);
   const [playingSceneId, setPlayingSceneId] = useState<string | null>(null);
   const [audioError, setAudioError] = useState<string | null>(null);
+  const [audioErrorSceneId, setAudioErrorSceneId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   
   // TTS provider state
@@ -794,6 +795,8 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
 
   const playScenePreview = useCallback(
     async (sceneId: string) => {
+      console.log('[PreviewGeneration] playScenePreview called for scene:', sceneId);
+      
       try {
         // Prevent multiple simultaneous plays
         if (playingSceneId === sceneId) {
@@ -806,6 +809,8 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
             audioRef.current = null;
           }
           setPlayingSceneId(null);
+          setAudioError(null);
+          setAudioErrorSceneId(null);
           return;
         }
 
@@ -818,8 +823,13 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
           audioRef.current = null;
         }
 
-        setPlayingSceneId(sceneId);
+        // Clear previous errors for this scene
         setAudioError(null);
+        setAudioErrorSceneId(null);
+        
+        // Set playing state immediately for visual feedback
+        setPlayingSceneId(sceneId);
+        console.log('[PreviewGeneration] Starting audio preview for scene:', sceneId);
 
         // Find the scene
         const scene = scriptData.scenes.find((s) => s.id === sceneId);
@@ -930,7 +940,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
 
         } catch (fetchError: unknown) {
           const error = fetchError instanceof Error ? fetchError : new Error(String(fetchError));
-          console.error('Failed to fetch audio:', error);
+          console.error('[PreviewGeneration] Failed to fetch audio:', error);
           throw new Error(
             `Failed to retrieve audio: ${error.message}. ` +
             `Provider: ${apiProvider}, Voice: ${voiceName}`
@@ -960,8 +970,10 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
 
         // Setup event handlers
         const handleEnded = () => {
-          console.log('Audio playback ended');
+          console.log('[PreviewGeneration] Audio playback ended');
           setPlayingSceneId(null);
+          setAudioError(null);
+          setAudioErrorSceneId(null);
           if (audioUrl.startsWith('blob:')) {
             URL.revokeObjectURL(audioUrl);
           }
@@ -1012,15 +1024,20 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
         };
 
         const handleCanPlayThrough = () => {
-          console.log('Audio ready to play');
+          console.log('[PreviewGeneration] Audio ready to play');
+          // Clear any previous errors since we successfully loaded
+          setAudioError(null);
+          setAudioErrorSceneId(null);
+          
           // Attempt autoplay
           audio.play()
             .then(() => {
-              console.log('Audio playback started successfully');
+              console.log('[PreviewGeneration] Audio playback started successfully');
             })
             .catch((playError) => {
-              console.error('Autoplay failed:', playError);
+              console.error('[PreviewGeneration] Autoplay failed:', playError);
               setAudioError(`Failed to start playback: ${playError.message}. Try clicking Preview again.`);
+              setAudioErrorSceneId(sceneId);
               setPlayingSceneId(null);
             });
         };
@@ -1057,8 +1074,13 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
           }
         }
         
+        console.error('[PreviewGeneration] Error in playScenePreview:', errorMessage);
+        
+        // Set error with scene ID so it can be displayed
         setAudioError(errorMessage);
+        setAudioErrorSceneId(sceneId);
         setPlayingSceneId(null);
+        
         if (audioRef.current) {
           if (audioRef.current.src.startsWith('blob:')) {
             URL.revokeObjectURL(audioRef.current.src);
@@ -1550,6 +1572,15 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
                               ({currentProvider})
                             </Text>
                           )}
+                          {currentProvider === 'Null' && (
+                            <Text size={200} style={{ 
+                              marginLeft: tokens.spacingHorizontalS, 
+                              color: tokens.colorPaletteOrangeForeground1,
+                              fontWeight: 'semibold'
+                            }}>
+                              ⚠️ Generates silence - configure a real TTS provider
+                            </Text>
+                          )}
                         </>
                       ) : (
                         <>
@@ -1565,6 +1596,15 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
                               ({currentProvider})
                             </Text>
                           )}
+                          {currentProvider === 'Null' && (
+                            <Text size={200} style={{ 
+                              marginLeft: tokens.spacingHorizontalS, 
+                              color: tokens.colorPaletteOrangeForeground1,
+                              fontWeight: 'semibold'
+                            }}>
+                              ⚠️ Generates silence - configure a real TTS provider
+                            </Text>
+                          )}
                         </>
                       )}
                     </div>
@@ -1572,20 +1612,38 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
                 })()}
 
                 <div className={styles.sceneActions}>
-                  <Button
-                    appearance="secondary"
-                    icon={<Play24Regular />}
-                    onClick={() => void playScenePreview(scene.id)}
-                    disabled={
-                      !thumbnail || 
-                      playingSceneId === scene.id ||
-                      !selectedTtsProvider ||
-                      (ttsProviderStatus[selectedTtsProvider]?.isAvailable === false)
+                  <Tooltip
+                    relationship="label"
+                    content={
+                      !thumbnail
+                        ? 'Generate preview thumbnail first'
+                        : !selectedTtsProvider
+                          ? 'Select a TTS provider in settings'
+                          : ttsProviderStatus[selectedTtsProvider]?.isAvailable === false
+                            ? `TTS provider "${selectedTtsProvider}" is not available`
+                            : playingSceneId === scene.id
+                              ? 'Audio is playing'
+                              : undefined
                     }
                   >
-                    {playingSceneId === scene.id ? 'Playing...' : 'Preview'}
-                  </Button>
-                  {audioError && playingSceneId === scene.id && (
+                    <Button
+                      appearance="secondary"
+                      icon={<Play24Regular />}
+                      onClick={() => {
+                        console.log('[PreviewGeneration] Preview button clicked for scene:', scene.id);
+                        void playScenePreview(scene.id);
+                      }}
+                      disabled={
+                        !thumbnail || 
+                        playingSceneId === scene.id ||
+                        !selectedTtsProvider ||
+                        (ttsProviderStatus[selectedTtsProvider]?.isAvailable === false)
+                      }
+                    >
+                      {playingSceneId === scene.id ? 'Playing...' : 'Preview'}
+                    </Button>
+                  </Tooltip>
+                  {audioError && audioErrorSceneId === scene.id && (
                     <div style={{
                       display: 'flex',
                       flexDirection: 'column',
