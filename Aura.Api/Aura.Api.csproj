@@ -1,12 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <!-- Target Windows 10+ to enable Windows-specific TTS support via Windows.Media.SpeechSynthesis -->
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\Aura.Api.xml</DocumentationFile>
     <NoWarn>$(NoWarn);1591</NoWarn>
+    <!-- Enable Windows targeting on non-Windows hosts (e.g., CI/CD) -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
     
     <!-- Self-contained deployment settings for Electron bundling -->
     <PublishSingleFile>true</PublishSingleFile>
