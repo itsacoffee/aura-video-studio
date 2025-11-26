@@ -57,7 +57,7 @@ const useStyles = makeStyles({
   nav: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '2px',
+    gap: tokens.spacingVerticalXXS,
     flex: 1,
     overflowY: 'auto',
     overflowX: 'hidden',
@@ -66,13 +66,13 @@ const useStyles = makeStyles({
   section: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '1px',
+    gap: tokens.spacingVerticalNone,
     marginBottom: spacing.sm,
   },
   sectionLabel: {
     paddingLeft: spacing.sm,
     paddingTop: spacing.xs,
-    paddingBottom: '2px',
+    paddingBottom: tokens.spacingVerticalXXS,
     fontSize: tokens.fontSizeBase100,
     fontWeight: tokens.fontWeightSemibold,
     color: tokens.colorNeutralForeground3,
@@ -131,8 +131,8 @@ const useStyles = makeStyles({
     marginBottom: spacing.xs,
   },
   divider: {
-    marginTop: '2px',
-    marginBottom: '2px',
+    marginTop: tokens.spacingVerticalXXS,
+    marginBottom: tokens.spacingVerticalXXS,
   },
   brandContainer: {
     display: 'flex',

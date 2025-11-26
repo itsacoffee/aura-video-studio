@@ -2,16 +2,18 @@
  * Centralized Layout Tokens
  *
  * This module provides standardized spacing tokens for consistent layout
- * across all screens in Aura Video Studio. These tokens align with
- * Fluent UI spacing tokens where possible.
+ * across all screens in Aura Video Studio. Optimized for 1080p displays
+ * with Apple/Adobe-inspired density.
  *
- * Spacing Scale:
- * - XS: 4px  - Tight spacing (between icon and label)
- * - SM: 8px  - Small spacing (form hints, compact lists)
- * - MD: 12px - Medium spacing (between related elements)
- * - LG: 16px - Standard spacing (between form fields)
- * - XL: 24px - Large spacing (between sections)
- * - XXL: 32px - Extra large spacing (page padding, major sections)
+ * Spacing Scale (compact for better 1080p density):
+ * - XS: 4px  - Tight spacing (icon-label gaps, inline elements)
+ * - SM: 8px  - Small spacing (form hints, compact gaps)
+ * - MD: 12px - Medium spacing (related elements)
+ * - LG: 16px - Standard spacing (section padding)
+ * - XL: 24px - Large spacing (page padding on mobile)
+ * - XXL: 32px - Extra large (reserved for major sections)
+ *
+ * Note: These map to Fluent UI tokens which provide cross-platform consistency.
  *
  * @see https://react.fluentui.dev/?path=/docs/concepts-developer-design-tokens--page
  */
