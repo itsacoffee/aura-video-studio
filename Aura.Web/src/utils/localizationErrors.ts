@@ -18,6 +18,7 @@ export const LocalizationErrorCode = {
   PROVIDER_ERROR: 'PROVIDER_ERROR',
   INTERNAL_ERROR: 'INTERNAL_ERROR',
   INVALID_REQUEST: 'INVALID_REQUEST',
+  NETWORK_ERROR: 'NETWORK_ERROR',
 } as const;
 
 export type LocalizationErrorCodeType =

@@ -56,6 +56,7 @@ public class LocalizationController : ControllerBase
         _llmTimeoutSeconds = configuration.GetValue("Localization:LlmTimeoutSeconds", 25);
         
         // Initialize the localization service with retry logic
+        // Note: This could also be injected via DI by registering ILocalizationService in Program.cs
         _localizationService = new LocalizationService(
             loggerFactory.CreateLogger<LocalizationService>(),
             llmProvider,

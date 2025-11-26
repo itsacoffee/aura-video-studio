@@ -21,8 +21,8 @@ namespace Aura.Api.Services;
 public class LocalizationService : ILocalizationService
 {
     private readonly ILogger<LocalizationService> _logger;
+    private readonly TranslationService _translationService;
     private readonly ILlmProvider _llmProvider;
-    private readonly ILoggerFactory _loggerFactory;
     private readonly ResiliencePipeline<TranslationResult> _translationPipeline;
     private readonly ResiliencePipeline<CulturalAnalysisResult> _analysisPipeline;
 
@@ -50,7 +50,11 @@ public class LocalizationService : ILocalizationService
     {
         _logger = logger;
         _llmProvider = llmProvider;
-        _loggerFactory = loggerFactory;
+        
+        // Create the translation service once for reuse across all methods
+        _translationService = new TranslationService(
+            loggerFactory.CreateLogger<TranslationService>(),
+            llmProvider);
 
         // Build resilience pipeline for translation operations
         _translationPipeline = new ResiliencePipelineBuilder<TranslationResult>()
@@ -149,12 +153,8 @@ public class LocalizationService : ILocalizationService
             request.SourceLanguage,
             request.TargetLanguage);
 
-        var translationService = new TranslationService(
-            _loggerFactory.CreateLogger<TranslationService>(),
-            _llmProvider);
-
         return await _translationPipeline.ExecuteAsync(
-            async ct => await translationService.TranslateAsync(request, ct).ConfigureAwait(false),
+            async ct => await _translationService.TranslateAsync(request, ct).ConfigureAwait(false),
             cancellationToken).ConfigureAwait(false);
     }
 
@@ -168,12 +168,8 @@ public class LocalizationService : ILocalizationService
             request.TargetLanguage,
             request.TargetRegion);
 
-        var translationService = new TranslationService(
-            _loggerFactory.CreateLogger<TranslationService>(),
-            _llmProvider);
-
         return await _analysisPipeline.ExecuteAsync(
-            async ct => await translationService.AnalyzeCulturalContentAsync(request, ct).ConfigureAwait(false),
+            async ct => await _translationService.AnalyzeCulturalContentAsync(request, ct).ConfigureAwait(false),
             cancellationToken).ConfigureAwait(false);
     }
 
@@ -187,11 +183,7 @@ public class LocalizationService : ILocalizationService
             "Starting batch translation to {Count} languages",
             request.TargetLanguages.Count);
 
-        var translationService = new TranslationService(
-            _loggerFactory.CreateLogger<TranslationService>(),
-            _llmProvider);
-
-        return await translationService.BatchTranslateAsync(request, progress, cancellationToken)
+        return await _translationService.BatchTranslateAsync(request, progress, cancellationToken)
             .ConfigureAwait(false);
     }
 
