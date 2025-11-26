@@ -214,7 +214,7 @@ export const LocalizationPage: React.FC = () => {
     }, timeoutMs);
 
     try {
-      const response = await fetch('/api/localization/translate', {
+      const response = await fetch('/api/localization/translate/simple', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
