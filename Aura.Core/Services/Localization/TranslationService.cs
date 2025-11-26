@@ -305,7 +305,8 @@ public class TranslationService
         Dictionary<string, string> glossary,
         CancellationToken cancellationToken)
     {
-        var prompt = BuildTranslationPrompt(
+        // Build system and user prompts for chat completion (more consistent with ideation pattern)
+        var (systemPrompt, userPrompt) = BuildTranslationChatPrompts(
             text, 
             sourceLanguage, 
             targetLanguage, 
@@ -315,9 +316,19 @@ public class TranslationService
 
         try
         {
-            // Use CompleteAsync for direct prompt completion - this is the correct approach
-            // for translation tasks that require sending a specific prompt to the LLM
-            var response = await _llmProvider.CompleteAsync(prompt, cancellationToken).ConfigureAwait(false);
+            // Use GenerateChatCompletionAsync for translation - this is consistent with how ideation works
+            // and ensures proper fallback behavior through CompositeLlmProvider
+            _logger.LogInformation(
+                "Starting translation: {SourceLang} -> {TargetLang}, Mode: {Mode}, Transcreation: {HasTranscreation}",
+                sourceLanguage, targetLanguage, options.Mode, 
+                !string.IsNullOrWhiteSpace(options.TranscreationContext));
+            
+            var response = await _llmProvider.GenerateChatCompletionAsync(
+                systemPrompt,
+                userPrompt,
+                null, // Use default LLM parameters
+                cancellationToken).ConfigureAwait(false);
+            
             var translation = ExtractTranslation(response);
             
             _logger.LogDebug(
@@ -326,15 +337,27 @@ public class TranslationService
             
             return translation;
         }
+        catch (NotSupportedException)
+        {
+            // RuleBased provider doesn't support translation - provide helpful message
+            _logger.LogWarning(
+                "Translation not available - no AI provider (Ollama, OpenAI, etc.) is running. " +
+                "Please start Ollama or configure another AI provider.");
+            return $"[Translation requires an AI provider. Please ensure Ollama is running.]";
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Translation failed for {SourceLang} -> {TargetLang}: {Error}", 
                 sourceLanguage, targetLanguage, ex.Message);
-            return $"[Translation unavailable: {text}]";
+            return $"[Translation unavailable: {ex.Message}]";
         }
     }
 
-    private string BuildTranslationPrompt(
+    /// <summary>
+    /// Build system and user prompts for translation chat completion.
+    /// This separates the translator instructions (system) from the content to translate (user).
+    /// </summary>
+    private (string SystemPrompt, string UserPrompt) BuildTranslationChatPrompts(
         string text,
         string sourceLanguage,
         string targetLanguage,
@@ -342,13 +365,16 @@ public class TranslationService
         TranslationOptions options,
         Dictionary<string, string> glossary)
     {
-        var sb = new StringBuilder();
+        var systemBuilder = new StringBuilder();
+        var userBuilder = new StringBuilder();
         
-        // Enhanced system context for high-quality translation
-        // Handle ANY language description intelligently - including fictional, regional variants, and creative descriptions
-        sb.AppendLine($@"You are an expert professional translator with deep knowledge of languages and dialects worldwide, including constructed languages, fictional languages, historical variants, and regional dialects.
-        
-CRITICAL: The source language is specified as '{sourceLanguage}' and target language as '{targetLanguage}'. 
+        // System prompt: Translator persona and instructions
+        systemBuilder.AppendLine($@"You are an expert professional translator with deep knowledge of languages and dialects worldwide, including constructed languages, fictional languages, historical variants, and regional dialects.
+
+CRITICAL LANGUAGE HANDLING:
+- Source language: '{sourceLanguage}'
+- Target language: '{targetLanguage}'
+
 These can be ANY of the following - interpret them intelligently:
 - Standard language codes (e.g., 'en', 'es', 'fr')
 - Full language names (e.g., 'English', 'Spanish', 'French')
@@ -359,127 +385,102 @@ These can be ANY of the following - interpret them intelligently:
 - Constructed/fictional languages (e.g., 'Klingon', 'Elvish', 'Esperanto')
 - Descriptive language variants (e.g., 'Formal Spanish', 'Slang English', 'Technical German')
 
-Your task: Intelligently interpret what language is meant from the description '{sourceLanguage}' and translate to the language described as '{targetLanguage}'. 
-For fictional or constructed languages, translate to the best of your ability based on your knowledge of that language.
-For regional variants, use the appropriate regional form.
-For descriptive variants (e.g., 'Formal Spanish'), apply the specified style.
+Intelligently interpret the source and target languages. For fictional or constructed languages, translate to the best of your ability.");
 
-TRANSLATION TASK:
-Translate the following text from {sourceLanguage} to {targetLanguage}.
-Preserve the exact meaning, tone, and cultural context while ensuring the translation is natural in the target language variant specified.");
-        sb.AppendLine();
-
-        // Mode-specific instructions with detailed guidance
+        // Mode-specific instructions
         if (options.Mode == TranslationMode.Localized)
         {
-            sb.AppendLine(@"LOCALIZATION MODE - Apply these principles:
-1. CULTURAL ADAPTATION: Adapt idioms, expressions, and cultural references to resonate with the target audience
-2. NATURAL FLOW: Ensure the translation reads naturally to native speakers, not as a translation
-3. CULTURAL EQUIVALENCE: Replace culturally-specific references with local equivalents when appropriate
+            systemBuilder.AppendLine(@"
+
+LOCALIZATION MODE:
+1. CULTURAL ADAPTATION: Adapt idioms, expressions, and cultural references
+2. NATURAL FLOW: Ensure the translation reads naturally to native speakers
+3. CULTURAL EQUIVALENCE: Replace culturally-specific references with local equivalents
 4. HUMOR AND TONE: Adjust humor, sarcasm, and tone for cultural appropriateness
-5. EXAMPLES: Modify examples to be culturally relevant and relatable
-6. FORMALITY: Match the formality level expected in the target culture");
+5. FORMALITY: Match the formality level expected in the target culture");
         }
         else if (options.Mode == TranslationMode.Transcreation)
         {
-            sb.AppendLine(@"TRANSCREATION MODE - Apply creative adaptation:
+            systemBuilder.AppendLine(@"
+
+TRANSCREATION MODE:
 1. MESSAGE PRESERVATION: Preserve the core message and emotional impact above literal accuracy
 2. CREATIVE FREEDOM: Adapt freely to maximize resonance with target culture or specified style
-3. BRAND VOICE: Maintain consistent brand voice and personality
-4. EMOTIONAL IMPACT: Ensure the translation evokes the same emotional response
-5. MARKETING EFFECTIVENESS: Optimize for persuasive impact in the target market or specified format
-6. CULTURAL APPEAL: Make the content feel native, not translated");
+3. EMOTIONAL IMPACT: Ensure the translation evokes the same emotional response
+4. CULTURAL APPEAL: Make the content feel native, not translated");
             
-            // Add transcreation context instructions if provided
             if (!string.IsNullOrWhiteSpace(options.TranscreationContext))
             {
-                sb.AppendLine();
-                sb.AppendLine($@"TRANSCREATION CONTEXT - Apply these specific instructions:
+                systemBuilder.AppendLine($@"
+
+TRANSCREATION CONTEXT - Apply these specific instructions:
 {options.TranscreationContext}
 
-The user wants the translation to be written in the style, format, or era described above. 
-This may involve transforming the content to match a specific:
-- Time period or era (e.g., '1950s advertising style')
-- Format or medium (e.g., 'television commercial', 'text message', 'Shakespearean')
-- Audience or tone (e.g., 'corporate formal', 'casual friends', 'dramatic monologue')
-- Regional or cultural variant (e.g., 'American 1950s', 'British formal')
-
-Follow these instructions precisely while preserving the core message and emotional intent of the original text.
-Even if source and target languages are the same, transform the style according to the instructions above.");
+Transform the content to match the specified style, format, or era. Even if source and target languages are the same, apply the style transformation described above.");
             }
         }
         else // Literal mode
         {
-            sb.AppendLine(@"LITERAL TRANSLATION MODE - Apply these principles:
+            systemBuilder.AppendLine(@"
+
+LITERAL TRANSLATION MODE:
 1. ACCURACY: Preserve exact meaning with high fidelity
 2. TERMINOLOGY: Maintain consistent terminology throughout
 3. STRUCTURE: Preserve sentence structure where grammatically appropriate
 4. COMPLETENESS: Include all information from the source text");
         }
 
-        // Glossary terms with emphasis
+        // Glossary terms
         if (glossary.Count != 0)
         {
-            sb.AppendLine();
-            sb.AppendLine("MANDATORY TERMINOLOGY (use these exact translations):");
+            systemBuilder.AppendLine(@"
+
+MANDATORY TERMINOLOGY (use these exact translations):");
             foreach (var entry in glossary)
             {
-                sb.AppendLine($"  • \"{entry.Key}\" → \"{entry.Value}\"");
+                systemBuilder.AppendLine($"  • \"{entry.Key}\" → \"{entry.Value}\"");
             }
-            sb.AppendLine();
-            sb.AppendLine("IMPORTANT: These glossary terms MUST be used exactly as specified for consistency.");
         }
 
         // Additional constraints
         var constraints = new List<string>();
-        
         if (options.AdaptMeasurements)
-        {
-            constraints.Add("Convert measurements to local units (imperial ↔ metric as appropriate for target region)");
-        }
-
+            constraints.Add("Convert measurements to local units (imperial ↔ metric as appropriate)");
         if (options.PreserveNames)
-        {
-            constraints.Add("Preserve proper names in their original form unless standard localization exists (e.g., country names)");
-        }
-
+            constraints.Add("Preserve proper names in their original form unless standard localization exists");
         if (options.PreserveBrands)
-        {
             constraints.Add("Keep brand names, trademarks, and product names unchanged");
-        }
 
         if (constraints.Count > 0)
         {
-            sb.AppendLine();
-            sb.AppendLine("ADDITIONAL CONSTRAINTS:");
+            systemBuilder.AppendLine(@"
+
+ADDITIONAL CONSTRAINTS:");
             foreach (var constraint in constraints)
             {
-                sb.AppendLine($"  • {constraint}");
+                systemBuilder.AppendLine($"  • {constraint}");
             }
         }
 
-        // Context information
+        systemBuilder.AppendLine(@"
+
+OUTPUT INSTRUCTIONS:
+Provide ONLY the translated/transformed text. Do not include explanations, notes, or commentary.");
+
+        // User prompt: The actual content to translate
+        userBuilder.AppendLine($"Translate the following text from {sourceLanguage} to {targetLanguage}:");
+        userBuilder.AppendLine();
+        
         if (!string.IsNullOrWhiteSpace(context))
         {
-            sb.AppendLine();
-            sb.AppendLine($"CONTEXT FOR TRANSLATION:");
-            sb.AppendLine(context);
+            userBuilder.AppendLine($"Context: {context}");
+            userBuilder.AppendLine();
         }
+        
+        userBuilder.AppendLine("TEXT TO TRANSLATE:");
+        userBuilder.AppendLine(text);
 
-        // Source text with clear demarcation
-        sb.AppendLine();
-        sb.AppendLine("═══════════════════════════════════════════════════════════════");
-        sb.AppendLine("SOURCE TEXT TO TRANSLATE:");
-        sb.AppendLine("═══════════════════════════════════════════════════════════════");
-        sb.AppendLine(text);
-        sb.AppendLine("═══════════════════════════════════════════════════════════════");
-        sb.AppendLine();
-        sb.AppendLine("OUTPUT INSTRUCTIONS:");
-        sb.AppendLine("Provide ONLY the translated text. Do not include explanations, notes, or commentary.");
-        sb.AppendLine();
-        sb.AppendLine($"TRANSLATION ({targetLanguage}):");
-
-        return sb.ToString();
+        return (systemBuilder.ToString(), userBuilder.ToString());
     }
 
     private string BuildTranslationContext(TranslationRequest request, int lineIndex)

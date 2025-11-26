@@ -210,25 +210,71 @@ public class RuleBasedLlmProvider : ILlmProvider
     
     private string ExtractTopicFromPrompt(string prompt)
     {
-        // Try to extract topic from common prompt patterns
-        if (prompt.Contains("Topic:", StringComparison.OrdinalIgnoreCase))
+        // Split prompt into lines and look for a line starting with "Topic:"
+        // This avoids false matches like "for the following topic:" where "topic:" appears mid-sentence
+        var lines = prompt.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+        
+        foreach (var line in lines)
         {
-            var topicIndex = prompt.IndexOf("Topic:", StringComparison.OrdinalIgnoreCase);
-            var topicLine = prompt.Substring(topicIndex);
-            var lines = topicLine.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
-            if (lines.Length > 0)
+            var trimmedLine = line.Trim();
+            // Look for lines that START with "Topic:" (case-insensitive)
+            const string topicPrefix = "Topic:";
+            if (trimmedLine.StartsWith(topicPrefix, StringComparison.OrdinalIgnoreCase))
             {
-                var topic = lines[0].Replace("Topic:", "", StringComparison.OrdinalIgnoreCase).Trim();
+                var topic = trimmedLine.Substring(topicPrefix.Length).Trim();
                 if (!string.IsNullOrWhiteSpace(topic))
                 {
+                    _logger.LogDebug("Extracted topic from prompt: {Topic}", topic);
                     return topic;
                 }
             }
         }
         
-        // Fallback: use first sentence or first 50 characters
-        var firstLine = prompt.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? prompt;
-        return firstLine.Length > 100 ? firstLine.Substring(0, 100) + "..." : firstLine;
+        // Fallback: look for content after "topic:" but only if followed by actual content
+        // This handles cases like "Topic: value" on the same line
+        foreach (var line in lines)
+        {
+            var trimmedLine = line.Trim();
+            var topicIndex = trimmedLine.IndexOf("Topic:", StringComparison.OrdinalIgnoreCase);
+            if (topicIndex >= 0)
+            {
+                // Only use this if "Topic:" is at the start or preceded by reasonable separator
+                var beforeTopic = trimmedLine.Substring(0, topicIndex);
+                if (beforeTopic.Length == 0 || beforeTopic.EndsWith(" ") || beforeTopic.EndsWith(":"))
+                {
+                    var afterTopic = trimmedLine.Substring(topicIndex + 6).Trim();
+                    if (!string.IsNullOrWhiteSpace(afterTopic) && afterTopic.Length > 3)
+                    {
+                        _logger.LogDebug("Extracted topic from line (mid-line match): {Topic}", afterTopic);
+                        return afterTopic;
+                    }
+                }
+            }
+        }
+        
+        // Final fallback: use first substantive line (skip instruction lines)
+        foreach (var line in lines)
+        {
+            var trimmedLine = line.Trim();
+            // Skip lines that look like instructions/prompts
+            if (trimmedLine.StartsWith("Generate ", StringComparison.OrdinalIgnoreCase) ||
+                trimmedLine.StartsWith("Create ", StringComparison.OrdinalIgnoreCase) ||
+                trimmedLine.StartsWith("You ", StringComparison.OrdinalIgnoreCase) ||
+                trimmedLine.StartsWith("Please ", StringComparison.OrdinalIgnoreCase) ||
+                string.IsNullOrWhiteSpace(trimmedLine) ||
+                trimmedLine.Length < 5)
+            {
+                continue;
+            }
+            
+            _logger.LogDebug("Using fallback topic extraction from line: {Line}", 
+                trimmedLine.Length > 50 ? trimmedLine.Substring(0, 50) + "..." : trimmedLine);
+            return trimmedLine.Length > 100 ? trimmedLine.Substring(0, 100) + "..." : trimmedLine;
+        }
+        
+        // Ultimate fallback
+        _logger.LogWarning("Could not extract topic from prompt, using default");
+        return "video content";
     }
     
     private List<BasicConcept> GenerateBasicConcepts(string topic, List<string> keywords, int count)
