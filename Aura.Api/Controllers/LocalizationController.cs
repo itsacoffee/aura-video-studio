@@ -15,6 +15,7 @@ using Aura.Core.Captions;
 using Aura.Providers.Tts.validators;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using ApiTranslateAndPlanSSMLRequest = Aura.Api.Models.ApiModels.V1.TranslateAndPlanSSMLRequest;
 using CoreTranslateAndPlanSSMLRequest = Aura.Core.Services.Localization.TranslateAndPlanSSMLRequest;
@@ -33,15 +34,22 @@ public class LocalizationController : ControllerBase
     private readonly GlossaryManager _glossaryManager;
     private readonly ILoggerFactory _loggerFactory;
     private readonly List<ISSMLMapper> _ssmlMappers;
+    private readonly int _requestTimeoutSeconds;
+    private readonly int _llmTimeoutSeconds;
 
     public LocalizationController(
         ILogger<LocalizationController> logger,
         ILlmProvider llmProvider,
-        ILoggerFactory loggerFactory)
+        ILoggerFactory loggerFactory,
+        IConfiguration configuration)
     {
         _logger = logger;
         _llmProvider = llmProvider;
         _loggerFactory = loggerFactory;
+        
+        // Load timeout configuration with defaults
+        _requestTimeoutSeconds = configuration.GetValue("Localization:RequestTimeoutSeconds", 30);
+        _llmTimeoutSeconds = configuration.GetValue("Localization:LlmTimeoutSeconds", 25);
         
         var storageDir = System.IO.Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
@@ -67,12 +75,17 @@ public class LocalizationController : ControllerBase
     [HttpPost("translate")]
     [ProducesResponseType(typeof(TranslationResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status408RequestTimeout)]
     public async Task<ActionResult<TranslationResultDto>> TranslateScript(
         [FromBody] TranslateScriptRequest request,
         CancellationToken cancellationToken)
     {
         _logger.LogInformation("Translation request: {Source} → {Target}, CorrelationId: {CorrelationId}",
             request.SourceLanguage, request.TargetLanguage, HttpContext.TraceIdentifier);
+
+        // Create a linked cancellation token with timeout
+        using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(_llmTimeoutSeconds));
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
 
         try
         {
@@ -81,7 +94,7 @@ public class LocalizationController : ControllerBase
                 _llmProvider);
 
             var translationRequest = MapToTranslationRequest(request);
-            var result = await translationService.TranslateAsync(translationRequest, cancellationToken).ConfigureAwait(false);
+            var result = await translationService.TranslateAsync(translationRequest, linkedCts.Token).ConfigureAwait(false);
             
             var dto = MapToTranslationResultDto(result);
             
@@ -89,6 +102,30 @@ public class LocalizationController : ControllerBase
                 result.TranslationTimeSeconds, result.Quality.OverallScore);
 
             return Ok(dto);
+        }
+        catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
+        {
+            _logger.LogWarning("Translation request timed out after {Timeout}s, CorrelationId: {CorrelationId}",
+                _llmTimeoutSeconds, HttpContext.TraceIdentifier);
+            return StatusCode(StatusCodes.Status408RequestTimeout, new ProblemDetails
+            {
+                Title = "Request Timeout",
+                Status = StatusCodes.Status408RequestTimeout,
+                Detail = $"Translation request timed out after {_llmTimeoutSeconds} seconds. Please try with shorter text.",
+                Extensions = { ["correlationId"] = HttpContext.TraceIdentifier }
+            });
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Translation request was cancelled, CorrelationId: {CorrelationId}",
+                HttpContext.TraceIdentifier);
+            return StatusCode(499, new ProblemDetails
+            {
+                Title = "Request Cancelled",
+                Status = 499,
+                Detail = "The request was cancelled by the client.",
+                Extensions = { ["correlationId"] = HttpContext.TraceIdentifier }
+            });
         }
         catch (ArgumentException ex)
         {
@@ -160,12 +197,17 @@ public class LocalizationController : ControllerBase
     /// </summary>
     [HttpPost("analyze-culture")]
     [ProducesResponseType(typeof(CulturalAnalysisResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status408RequestTimeout)]
     public async Task<ActionResult<CulturalAnalysisResultDto>> AnalyzeCulturalContent(
         [FromBody] Models.ApiModels.V1.CulturalAnalysisRequest request,
         CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Cultural analysis request: {Language}/{Region}",
-            request.TargetLanguage, request.TargetRegion);
+        _logger.LogInformation("Cultural analysis request: {Language}/{Region}, CorrelationId: {CorrelationId}",
+            request.TargetLanguage, request.TargetRegion, HttpContext.TraceIdentifier);
+
+        // Create a linked cancellation token with timeout
+        using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(_llmTimeoutSeconds));
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
 
         try
         {
@@ -181,11 +223,35 @@ public class LocalizationController : ControllerBase
                 AudienceProfileId = request.AudienceProfileId
             };
 
-            var result = await translationService.AnalyzeCulturalContentAsync(analysisRequest, cancellationToken).ConfigureAwait(false);
+            var result = await translationService.AnalyzeCulturalContentAsync(analysisRequest, linkedCts.Token).ConfigureAwait(false);
             
             var dto = MapToCulturalAnalysisResultDto(result);
 
             return Ok(dto);
+        }
+        catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
+        {
+            _logger.LogWarning("Cultural analysis request timed out after {Timeout}s, CorrelationId: {CorrelationId}",
+                _llmTimeoutSeconds, HttpContext.TraceIdentifier);
+            return StatusCode(StatusCodes.Status408RequestTimeout, new ProblemDetails
+            {
+                Title = "Request Timeout",
+                Status = StatusCodes.Status408RequestTimeout,
+                Detail = $"Cultural analysis request timed out after {_llmTimeoutSeconds} seconds. Please try with shorter content.",
+                Extensions = { ["correlationId"] = HttpContext.TraceIdentifier }
+            });
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Cultural analysis request was cancelled, CorrelationId: {CorrelationId}",
+                HttpContext.TraceIdentifier);
+            return StatusCode(499, new ProblemDetails
+            {
+                Title = "Request Cancelled",
+                Status = 499,
+                Detail = "The request was cancelled by the client.",
+                Extensions = { ["correlationId"] = HttpContext.TraceIdentifier }
+            });
         }
         catch (Exception ex)
         {

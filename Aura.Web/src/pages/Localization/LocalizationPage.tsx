@@ -14,14 +14,16 @@ import {
   Dropdown,
   Option,
   Textarea,
+  ProgressBar,
 } from '@fluentui/react-components';
 import {
   LocalLanguage24Regular,
   ArrowSync24Regular,
   TextDescription24Regular,
 } from '@fluentui/react-icons';
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { ErrorState } from '../../components/Loading';
+import { getOperationTimeout } from '../../config/timeouts';
 
 const useStyles = makeStyles({
   container: {
@@ -74,9 +76,26 @@ const useStyles = makeStyles({
     fontSize: '14px',
     whiteSpace: 'pre-wrap',
   },
+  progressContainer: {
+    marginTop: tokens.spacingVerticalM,
+    marginBottom: tokens.spacingVerticalM,
+  },
+  progressText: {
+    marginTop: tokens.spacingVerticalS,
+    color: tokens.colorNeutralForeground3,
+    fontSize: '12px',
+  },
 });
 
 type TabValue = 'translate' | 'subtitles' | 'adapt';
+
+// Timeout error class to distinguish timeout from other errors
+class TimeoutError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'TimeoutError';
+  }
+}
 
 export const LocalizationPage: React.FC = () => {
   const styles = useStyles();
@@ -89,6 +108,39 @@ export const LocalizationPage: React.FC = () => {
   const [translatedText, setTranslatedText] = useState('');
   const [videoPath, setVideoPath] = useState('');
   const [subtitles, setSubtitles] = useState('');
+  const [loadingMessage, setLoadingMessage] = useState('');
+
+  // AbortController ref for cancelling in-flight requests
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Cleanup abort controller on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
+  // Cancel any in-flight request
+  const cancelRequest = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setLoading(false);
+    setLoadingMessage('');
+  }, []);
+
+  // Helper function to handle request errors
+  const handleRequestError = useCallback((err: unknown, operationType: string): string => {
+    if (err instanceof Error && err.name === 'AbortError') {
+      return `${operationType} request timed out. Please try again with shorter content or check your connection.`;
+    } else if (err instanceof TimeoutError) {
+      return err.message;
+    }
+    return err instanceof Error ? err.message : 'An error occurred';
+  }, []);
 
   const handleTranslate = useCallback(async () => {
     if (!sourceText) {
@@ -96,8 +148,25 @@ export const LocalizationPage: React.FC = () => {
       return;
     }
 
+    // Cancel any previous request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+
     setLoading(true);
     setError(null);
+    setLoadingMessage('Translating...');
+
+    // Create new AbortController for this request
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
+    // Set up timeout
+    const timeoutMs = getOperationTimeout('localization');
+    const timeoutId = setTimeout(() => {
+      abortController.abort();
+    }, timeoutMs);
 
     try {
       const response = await fetch('/api/localization/translate', {
@@ -108,21 +177,32 @@ export const LocalizationPage: React.FC = () => {
           sourceLanguage,
           targetLanguage,
         }),
+        signal: abortController.signal,
       });
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
+        if (response.status === 408) {
+          throw new TimeoutError(
+            'Translation request timed out. Please try again with shorter text.'
+          );
+        }
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.detail || errorData.error || 'Translation failed');
       }
 
       const data = await response.json();
       setTranslatedText(data.translatedText || '');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+    } catch (err: unknown) {
+      setError(handleRequestError(err, 'Translation'));
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
+      setLoadingMessage('');
+      abortControllerRef.current = null;
     }
-  }, [sourceText, sourceLanguage, targetLanguage]);
+  }, [sourceText, sourceLanguage, targetLanguage, handleRequestError]);
 
   const handleGenerateSubtitles = useCallback(async () => {
     if (!videoPath) {
@@ -154,8 +234,25 @@ export const LocalizationPage: React.FC = () => {
       return;
     }
 
+    // Cancel any previous request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+
     setLoading(true);
     setError(null);
+    setLoadingMessage('Analyzing cultural context...');
+
+    // Create new AbortController for this request
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
+    // Set up timeout
+    const timeoutMs = getOperationTimeout('localization');
+    const timeoutId = setTimeout(() => {
+      abortController.abort();
+    }, timeoutMs);
 
     try {
       const response = await fetch('/api/localization/analyze-culture', {
@@ -168,9 +265,17 @@ export const LocalizationPage: React.FC = () => {
             ? targetLanguage.split('-')[1]
             : targetLanguage,
         }),
+        signal: abortController.signal,
       });
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
+        if (response.status === 408) {
+          throw new TimeoutError(
+            'Cultural analysis request timed out. Please try again with shorter content.'
+          );
+        }
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.detail || errorData.error || 'Content adaptation failed');
       }
@@ -193,12 +298,15 @@ export const LocalizationPage: React.FC = () => {
         ),
       ].join('\n');
       setTranslatedText(analysisResult || 'No analysis results available');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+    } catch (err: unknown) {
+      setError(handleRequestError(err, 'Cultural analysis'));
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
+      setLoadingMessage('');
+      abortControllerRef.current = null;
     }
-  }, [sourceText, targetLanguage]);
+  }, [sourceText, targetLanguage, handleRequestError]);
 
   return (
     <div className={styles.container}>
@@ -288,7 +396,19 @@ export const LocalizationPage: React.FC = () => {
               >
                 {loading ? <Spinner size="tiny" /> : 'Translate'}
               </Button>
+              {loading && (
+                <Button appearance="secondary" onClick={cancelRequest}>
+                  Cancel
+                </Button>
+              )}
             </div>
+
+            {loading && loadingMessage && (
+              <div className={styles.progressContainer}>
+                <ProgressBar />
+                <Text className={styles.progressText}>{loadingMessage}</Text>
+              </div>
+            )}
           </div>
 
           {translatedText && (
@@ -395,7 +515,19 @@ export const LocalizationPage: React.FC = () => {
               >
                 {loading ? <Spinner size="tiny" /> : 'Adapt Content'}
               </Button>
+              {loading && (
+                <Button appearance="secondary" onClick={cancelRequest}>
+                  Cancel
+                </Button>
+              )}
             </div>
+
+            {loading && loadingMessage && (
+              <div className={styles.progressContainer}>
+                <ProgressBar />
+                <Text className={styles.progressText}>{loadingMessage}</Text>
+              </div>
+            )}
           </div>
 
           {translatedText && (
