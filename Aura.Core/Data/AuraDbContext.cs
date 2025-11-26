@@ -238,6 +238,16 @@ public class AuraDbContext : DbContext
     /// </summary>
     public DbSet<HardwareSettingsEntity> HardwareSettings { get; set; } = null!;
 
+    /// <summary>
+    /// Semantic asset metadata for LLM-intelligent asset selection
+    /// </summary>
+    public DbSet<SemanticAssetMetadataEntity> SemanticAssetMetadata { get; set; } = null!;
+
+    /// <summary>
+    /// Semantic asset tags with confidence and category
+    /// </summary>
+    public DbSet<SemanticAssetTagEntity> SemanticAssetTags { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -725,6 +735,31 @@ public class AuraDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.UpdatedAt);
             entity.HasIndex(e => e.Version);
+        });
+
+        // Configure SemanticAssetMetadataEntity
+        modelBuilder.Entity<SemanticAssetMetadataEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.AssetId).IsUnique();
+            entity.HasIndex(e => e.TaggedAt);
+            entity.HasIndex(e => e.Mood);
+            entity.HasIndex(e => e.Subject);
+        });
+
+        // Configure SemanticAssetTagEntity
+        modelBuilder.Entity<SemanticAssetTagEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.MetadataId);
+            entity.HasIndex(e => e.Name);
+            entity.HasIndex(e => e.Category);
+            entity.HasIndex(e => e.Confidence);
+            entity.HasIndex(e => new { e.Name, e.Category });
+            entity.HasOne(e => e.Metadata)
+                .WithMany(m => m.Tags)
+                .HasForeignKey(e => e.MetadataId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         // Apply global query filters for soft delete

@@ -9,6 +9,7 @@ using Aura.Core.Models.Audio;
 using Aura.Core.Models.Generation;
 using Aura.Core.Providers;
 using Aura.Core.Services;
+using Aura.Core.Services.Assets;
 using Aura.Core.Services.Audio;
 using Aura.Core.Services.Generation;
 using Aura.Core.Services.Orchestration;
@@ -16,6 +17,7 @@ using Aura.Core.Services.PacingServices;
 using Aura.Core.Models.Timeline;
 using Aura.Core.Validation;
 using Microsoft.Extensions.Logging;
+using LibraryAssetType = Aura.Core.Models.Assets.AssetType;
 
 namespace Aura.Core.Orchestrator;
 
@@ -48,6 +50,7 @@ public class VideoOrchestrator
     private readonly Services.RAG.RagScriptEnhancer? _ragScriptEnhancer;
     private readonly Telemetry.RunTelemetryCollector _telemetryCollector;
     private readonly Dependencies.FFmpegResolver? _ffmpegResolver;
+    private readonly AssetTaggingService? _assetTaggingService;
 
     public VideoOrchestrator(
         ILogger<VideoOrchestrator> logger,
@@ -72,7 +75,8 @@ public class VideoOrchestrator
         NarrationOptimizationService? narrationOptimizationService = null,
         PipelineOrchestrationEngine? pipelineEngine = null,
         Services.RAG.RagScriptEnhancer? ragScriptEnhancer = null,
-        Dependencies.FFmpegResolver? ffmpegResolver = null)
+        Dependencies.FFmpegResolver? ffmpegResolver = null,
+        AssetTaggingService? assetTaggingService = null)
     {
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(llmProvider);
@@ -114,6 +118,12 @@ public class VideoOrchestrator
         _pipelineEngine = pipelineEngine;
         _ragScriptEnhancer = ragScriptEnhancer;
         _ffmpegResolver = ffmpegResolver;
+        _assetTaggingService = assetTaggingService;
+
+        if (_assetTaggingService != null)
+        {
+            _logger.LogInformation("AssetTaggingService configured for intelligent asset selection");
+        }
     }
 
     /// <summary>
@@ -1191,6 +1201,66 @@ public class VideoOrchestrator
             Duration: scene.Duration,
             Position: new Position(0, 0, 100, 100),
             ZIndex: order);
+    }
+
+    /// <summary>
+    /// Attempts to select assets from the library using semantic matching via AssetTaggingService.
+    /// Falls back to the image provider if no matching assets are found or the service is unavailable.
+    /// </summary>
+    /// <param name="scene">The scene to match assets for</param>
+    /// <param name="visualSpec">Visual specification for the scene</param>
+    /// <param name="preferredType">The preferred asset type to match</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>List of matching assets, or empty list if none found</returns>
+    private async Task<IReadOnlyList<Asset>> SelectAssetsFromLibraryAsync(
+        Scene scene,
+        VisualSpec visualSpec,
+        LibraryAssetType preferredType,
+        CancellationToken ct)
+    {
+        if (_assetTaggingService == null)
+        {
+            _logger.LogDebug("AssetTaggingService not available, skipping library search");
+            return Array.Empty<Asset>();
+        }
+
+        try
+        {
+            // Combine scene heading and script for semantic matching
+            var sceneDescription = $"{scene.Heading}. {scene.Script}";
+            
+            // Use the tagging service to find matching assets
+            var matches = await _assetTaggingService.MatchAssetsToSceneAsync(
+                scene.Heading,
+                scene.Script,
+                preferredType,
+                maxResults: 3,
+                ct
+            ).ConfigureAwait(false);
+
+            if (matches.Count == 0)
+            {
+                _logger.LogDebug("No matching assets found in library for scene {SceneIndex}", scene.Index);
+                return Array.Empty<Asset>();
+            }
+
+            _logger.LogInformation(
+                "Found {Count} matching assets in library for scene {SceneIndex} with scores: {Scores}",
+                matches.Count,
+                scene.Index,
+                string.Join(", ", matches.Select(m => $"{m.Score:F2}")));
+
+            // The AssetTaggingService returns library asset IDs, but we need file paths
+            // In a full implementation, this would query the asset repository for paths
+            // For now, we log the matches and return empty (let the image provider handle generation)
+            _logger.LogDebug("Asset library matching available but path resolution not implemented yet");
+            return Array.Empty<Asset>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error selecting assets from library for scene {SceneIndex}", scene.Index);
+            return Array.Empty<Asset>();
+        }
     }
 
     /// <summary>

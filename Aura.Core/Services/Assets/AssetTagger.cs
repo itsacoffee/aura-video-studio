@@ -9,7 +9,8 @@ using Microsoft.Extensions.Logging;
 namespace Aura.Core.Services.Assets;
 
 /// <summary>
-/// Service for automatic asset tagging using AI
+/// Service for automatic asset tagging using rule-based analysis.
+/// This provides fallback tagging when LLM providers are unavailable.
 /// </summary>
 public class AssetTagger
 {
@@ -21,7 +22,7 @@ public class AssetTagger
     }
 
     /// <summary>
-    /// Generate tags for an asset
+    /// Generate tags for an asset using rule-based analysis
     /// </summary>
     public async Task<List<AssetTag>> GenerateTagsAsync(Asset asset)
     {
@@ -51,16 +52,10 @@ public class AssetTagger
 
     private async Task<List<AssetTag>> GenerateImageTagsAsync(Asset asset)
     {
-        // In a full implementation, this would:
-        // 1. Use a vision API or multimodal LLM
-        // 2. Analyze the image content
-        // 3. Generate relevant tags with confidence scores
-        
-        // For now, generate basic tags based on filename and metadata
         var tags = new List<AssetTag>();
 
         // Add type tag
-        tags.Add(new AssetTag("image", 100));
+        tags.Add(new AssetTag("image", 1.0f, TagCategory.Object));
 
         // Analyze filename for keywords
         var filename = Path.GetFileNameWithoutExtension(asset.FilePath).ToLowerInvariant();
@@ -69,7 +64,7 @@ public class AssetTagger
         foreach (var keyword in keywords.Take(5))
         {
             if (keyword.Length > 2)
-                tags.Add(new AssetTag(keyword, 80));
+                tags.Add(new AssetTag(keyword, 0.8f, InferCategoryFromKeyword(keyword)));
         }
 
         // Add resolution-based tags
@@ -79,16 +74,16 @@ public class AssetTagger
             var height = asset.Metadata.Height.Value;
             
             if (width >= 3840 && height >= 2160)
-                tags.Add(new AssetTag("4k", 100));
+                tags.Add(new AssetTag("4k", 1.0f, TagCategory.Style));
             else if (width >= 1920 && height >= 1080)
-                tags.Add(new AssetTag("hd", 100));
+                tags.Add(new AssetTag("hd", 1.0f, TagCategory.Style));
 
             if (width > height)
-                tags.Add(new AssetTag("landscape", 90));
+                tags.Add(new AssetTag("landscape", 0.9f, TagCategory.Style));
             else if (height > width)
-                tags.Add(new AssetTag("portrait", 90));
+                tags.Add(new AssetTag("portrait", 0.9f, TagCategory.Style));
             else
-                tags.Add(new AssetTag("square", 90));
+                tags.Add(new AssetTag("square", 0.9f, TagCategory.Style));
         }
 
         return await Task.FromResult(tags).ConfigureAwait(false);
@@ -98,7 +93,7 @@ public class AssetTagger
     {
         var tags = new List<AssetTag>
         {
-            new AssetTag("video", 100)
+            new AssetTag("video", 1.0f, TagCategory.Object)
         };
 
         // Analyze filename
@@ -108,7 +103,7 @@ public class AssetTagger
         foreach (var keyword in keywords.Take(5))
         {
             if (keyword.Length > 2)
-                tags.Add(new AssetTag(keyword, 80));
+                tags.Add(new AssetTag(keyword, 0.8f, InferCategoryFromKeyword(keyword)));
         }
 
         // Add duration-based tags
@@ -116,11 +111,11 @@ public class AssetTagger
         {
             var duration = asset.Metadata.Duration.Value;
             if (duration.TotalSeconds < 10)
-                tags.Add(new AssetTag("short", 90));
+                tags.Add(new AssetTag("short", 0.9f, TagCategory.Style));
             else if (duration.TotalSeconds < 60)
-                tags.Add(new AssetTag("medium", 90));
+                tags.Add(new AssetTag("medium", 0.9f, TagCategory.Style));
             else
-                tags.Add(new AssetTag("long", 90));
+                tags.Add(new AssetTag("long", 0.9f, TagCategory.Style));
         }
 
         // Add resolution tags
@@ -130,9 +125,9 @@ public class AssetTagger
             var height = asset.Metadata.Height.Value;
             
             if (width >= 3840 && height >= 2160)
-                tags.Add(new AssetTag("4k", 100));
+                tags.Add(new AssetTag("4k", 1.0f, TagCategory.Style));
             else if (width >= 1920 && height >= 1080)
-                tags.Add(new AssetTag("hd", 100));
+                tags.Add(new AssetTag("hd", 1.0f, TagCategory.Style));
         }
 
         return await Task.FromResult(tags).ConfigureAwait(false);
@@ -142,7 +137,7 @@ public class AssetTagger
     {
         var tags = new List<AssetTag>
         {
-            new AssetTag("audio", 100)
+            new AssetTag("audio", 1.0f, TagCategory.Object)
         };
 
         // Analyze filename for mood/style keywords
@@ -152,7 +147,7 @@ public class AssetTagger
         foreach (var keyword in keywords.Take(5))
         {
             if (keyword.Length > 2)
-                tags.Add(new AssetTag(keyword, 80));
+                tags.Add(new AssetTag(keyword, 0.8f, InferCategoryFromKeyword(keyword)));
         }
 
         // Add duration-based tags
@@ -160,11 +155,11 @@ public class AssetTagger
         {
             var duration = asset.Metadata.Duration.Value;
             if (duration.TotalSeconds < 30)
-                tags.Add(new AssetTag("short", 90));
+                tags.Add(new AssetTag("short", 0.9f, TagCategory.Style));
             else if (duration.TotalSeconds < 180)
-                tags.Add(new AssetTag("medium", 90));
+                tags.Add(new AssetTag("medium", 0.9f, TagCategory.Style));
             else
-                tags.Add(new AssetTag("long", 90));
+                tags.Add(new AssetTag("long", 0.9f, TagCategory.Style));
         }
 
         // Common audio mood tags based on filename patterns
@@ -183,9 +178,31 @@ public class AssetTagger
         foreach (var (pattern, tag) in moodKeywords)
         {
             if (filename.Contains(pattern))
-                tags.Add(new AssetTag(tag, 85));
+                tags.Add(new AssetTag(tag, 0.85f, TagCategory.Mood));
         }
 
         return await Task.FromResult(tags).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Infer tag category from keyword content
+    /// </summary>
+    private static TagCategory InferCategoryFromKeyword(string keyword)
+    {
+        var lowerKeyword = keyword.ToLowerInvariant();
+
+        var colorTerms = new[] { "red", "blue", "green", "yellow", "orange", "purple", "pink", "black", "white", "gray", "brown" };
+        var moodTerms = new[] { "happy", "sad", "dramatic", "calm", "energetic", "peaceful", "intense", "dark", "bright", "cheerful" };
+        var styleTerms = new[] { "modern", "vintage", "minimal", "rustic", "elegant", "casual", "professional", "artistic" };
+        var settingTerms = new[] { "indoor", "outdoor", "urban", "nature", "office", "home", "studio", "landscape" };
+        var actionTerms = new[] { "walking", "running", "sitting", "talking", "working", "playing", "dancing" };
+
+        if (colorTerms.Any(c => lowerKeyword.Contains(c))) return TagCategory.Color;
+        if (moodTerms.Any(m => lowerKeyword.Contains(m))) return TagCategory.Mood;
+        if (styleTerms.Any(s => lowerKeyword.Contains(s))) return TagCategory.Style;
+        if (settingTerms.Any(s => lowerKeyword.Contains(s))) return TagCategory.Setting;
+        if (actionTerms.Any(a => lowerKeyword.Contains(a))) return TagCategory.Action;
+
+        return TagCategory.Subject;
     }
 }
