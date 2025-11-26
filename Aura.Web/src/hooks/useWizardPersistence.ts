@@ -63,9 +63,14 @@ interface UseWizardPersistenceReturn {
 }
 
 /**
- * Generate a unique session ID
+ * Generate a unique session ID using crypto API for better security
  */
 function generateSessionId(): string {
+  // Use crypto.randomUUID if available (modern browsers), otherwise fallback
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `wizard-${Date.now()}-${crypto.randomUUID().substring(0, 8)}`;
+  }
+  // Fallback for older environments
   return `wizard-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 }
 
