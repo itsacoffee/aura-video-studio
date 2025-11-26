@@ -120,36 +120,68 @@ export const VoiceSamplePlayer: React.FC<VoiceSamplePlayerProps> = ({
   const generateSample = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Call API to generate voice sample
-      const response = await fetch(`${apiUrl}/api/v1/voice/sample`, {
+      // Parse voiceId to extract provider and voice name
+      // Format expected: "provider:voiceName" (e.g., "Windows:Microsoft David" or "ElevenLabs:Rachel")
+      const [provider, voice] = voiceId.includes(':')
+        ? voiceId.split(':', 2)
+        : ['Windows', voiceId];
+
+      // Call API to generate voice preview with returnFile query param to get audio directly
+      const response = await fetch(apiUrl(`/api/tts/preview?returnFile=true`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          text: sampleText,
-          voiceId,
-          enhancement: enhancementConfig,
+          provider,
+          voice,
+          sampleText,
+          speed: enhancementConfig?.prosody?.rateMultiplier ?? 1.0,
+          pitch: enhancementConfig?.prosody?.pitchShift ?? 0.0,
         }),
       });
 
       if (response.ok) {
-        const data = await response.json();
-        setAudioUrl(data.audioUrl || '');
-        setDuration(data.duration || 0);
+        // The API returns the audio file directly when returnFile=true
+        const audioBlob = await response.blob();
+        const url = URL.createObjectURL(audioBlob);
+
+        // Clean up previous audio URL to prevent memory leaks
+        if (audioUrl && audioUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(audioUrl);
+        }
+
+        setAudioUrl(url);
+        // Duration will be set when audio metadata is loaded
+        setDuration(0);
       } else {
-        console.warn('Sample generation failed, using mock data');
-        // Mock fallback
-        setAudioUrl('/mock-sample.mp3');
-        setDuration(5.2);
+        // Try to get error details from response
+        let errorMessage = 'Sample generation failed';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.details || errorMessage;
+        } catch {
+          // Response wasn't JSON
+        }
+        console.warn('Voice preview generation failed:', errorMessage);
+        setAudioUrl('');
+        setDuration(0);
       }
     } catch (error) {
-      console.error('Failed to generate sample:', error);
-      // Mock fallback on error
-      setAudioUrl('/mock-sample.mp3');
-      setDuration(5.2);
+      console.error('Failed to generate voice preview:', error);
+      setAudioUrl('');
+      setDuration(0);
     } finally {
       setIsLoading(false);
     }
-  }, [sampleText, voiceId, enhancementConfig]);
+  }, [sampleText, voiceId, enhancementConfig, audioUrl]);
+
+  // Clean up blob URL on unmount
+  useEffect(() => {
+    return () => {
+      if (audioUrl && audioUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(audioUrl);
+      }
+    };
+  }, [audioUrl]);
 
   useEffect(() => {
     // Generate sample when voice or enhancement changes
