@@ -50,21 +50,28 @@ export function useProviderStatus(pollInterval: number = 15000): UseProviderStat
 
       const data: ProviderStatusResponse = await response.json();
       
-      // Convert timestamp strings to Date objects
+      // CRITICAL: Defensive coding to prevent crashes from malformed responses
+      // If any of the arrays are null/undefined, use empty arrays as fallback
+      const llmArray = Array.isArray(data?.llm) ? data.llm : [];
+      const ttsArray = Array.isArray(data?.tts) ? data.tts : [];
+      const imagesArray = Array.isArray(data?.images) ? data.images : [];
+      
+      // Convert timestamp strings to Date objects safely
       const processedData: ProviderStatusResponse = {
         ...data,
-        llm: data.llm.map(p => ({
+        llm: llmArray.map(p => ({
           ...p,
-          lastChecked: new Date(p.lastChecked),
+          lastChecked: p?.lastChecked ? new Date(p.lastChecked) : new Date(),
         })),
-        tts: data.tts.map(p => ({
+        tts: ttsArray.map(p => ({
           ...p,
-          lastChecked: new Date(p.lastChecked),
+          lastChecked: p?.lastChecked ? new Date(p.lastChecked) : new Date(),
         })),
-        images: data.images.map(p => ({
+        images: imagesArray.map(p => ({
           ...p,
-          lastChecked: new Date(p.lastChecked),
+          lastChecked: p?.lastChecked ? new Date(p.lastChecked) : new Date(),
         })),
+        timestamp: data?.timestamp || new Date().toISOString(),
       };
 
       setStatus(processedData);
