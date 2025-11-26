@@ -405,8 +405,8 @@ public class LocalizationController : ControllerBase
                 SourceLanguage = request.SourceLanguage,
                 TargetLanguage = request.TargetLanguage,
                 SourceText = request.SourceText,
-                ScriptLines = new(),
-                Options = new()
+                ScriptLines = new List<ScriptLine>(),
+                Options = new TranslationOptions()
             };
 
             var result = await _localizationService.TranslateAsync(translationRequest, linkedCts.Token).ConfigureAwait(false);
