@@ -63,6 +63,11 @@ const ProviderHealthDashboard = lazy(() =>
     default: m.ProviderHealthDashboard,
   }))
 );
+const ProvidersPage = lazy(() =>
+  import('../pages/ProvidersPage').then((m) => ({
+    default: m.ProvidersPage,
+  }))
+);
 const SystemHealthDashboard = lazy(() => import('../pages/Health/SystemHealthDashboard'));
 const CostHistoryPage = lazy(() =>
   import('../pages/CostHistory/CostHistoryPage').then((m) => ({
@@ -542,6 +547,14 @@ const AppRouterContentInner: FC<
                   element={
                     <LazyRoute routePath="/health/providers">
                       <ProviderHealthDashboard />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="providers"
+                  element={
+                    <LazyRoute routePath="/providers">
+                      <ProvidersPage />
                     </LazyRoute>
                   }
                 />

@@ -10,7 +10,6 @@ import {
   Lightbulb24Regular,
   ChannelShare24Regular,
   ChartMultiple24Regular,
-  CalendarLtr24Regular,
   FlashFlow24Regular,
   Wand24Regular,
   Eye24Regular,
@@ -29,6 +28,7 @@ import {
   Grid24Regular,
   ImageMultiple24Regular,
   Video24Regular,
+  PlugConnected24Regular,
 } from '@fluentui/react-icons';
 
 export interface NavItem {
@@ -74,6 +74,12 @@ export const navItems: NavItem[] = [
     path: '/downloads',
   },
   { key: 'health', name: 'Provider Health', icon: HeartPulse24Regular, path: '/health' },
+  {
+    key: 'providers',
+    name: 'Providers Dashboard',
+    icon: PlugConnected24Regular,
+    path: '/providers',
+  },
   {
     key: 'ai-editing',
     name: 'AI Editing',
