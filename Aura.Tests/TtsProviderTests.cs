@@ -10,6 +10,10 @@ using Aura.Tests.Helpers;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
+#if WINDOWS10_0_19041_0_OR_GREATER
+using Aura.Providers.Tts;
+#endif
+
 namespace Aura.Tests;
 
 public class TtsProviderTests

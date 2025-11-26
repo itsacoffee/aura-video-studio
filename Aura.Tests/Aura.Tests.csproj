@@ -1,9 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <!-- Target Windows 10+ to match Aura.Api target framework (required for Windows TTS support) -->
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- Enable Windows targeting on non-Windows hosts (e.g., CI/CD) -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
 
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
