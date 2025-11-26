@@ -116,47 +116,108 @@ export const VoiceSamplePlayer: React.FC<VoiceSamplePlayerProps> = ({
   const [duration, setDuration] = useState(0);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUrlRef = useRef<string | null>(null);
+
+  // Default TTS provider when voiceId doesn't include provider prefix
+  const DEFAULT_TTS_PROVIDER = 'Windows';
+
+  // Keep ref in sync with state for cleanup purposes
+  useEffect(() => {
+    audioUrlRef.current = audioUrl;
+  }, [audioUrl]);
+
+  // Store current config in refs for stable access in generateSample
+  const sampleTextRef = useRef(sampleText);
+  const enhancementConfigRef = useRef(enhancementConfig);
+
+  useEffect(() => {
+    sampleTextRef.current = sampleText;
+  }, [sampleText]);
+
+  useEffect(() => {
+    enhancementConfigRef.current = enhancementConfig;
+  }, [enhancementConfig]);
 
   const generateSample = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Call API to generate voice sample
-      const response = await fetch(`${apiUrl}/api/v1/voice/sample`, {
+      // Parse voiceId to extract provider and voice name
+      // Format expected: "provider:voiceName" (e.g., "Windows:Microsoft David" or "ElevenLabs:Rachel")
+      const [provider, voice] = voiceId.includes(':')
+        ? voiceId.split(':', 2)
+        : [DEFAULT_TTS_PROVIDER, voiceId];
+
+      // Use refs for values that shouldn't trigger recreation
+      const currentSampleText = sampleTextRef.current;
+      const currentEnhancement = enhancementConfigRef.current;
+
+      // Call API to generate voice preview with returnFile query param to get audio directly
+      const response = await fetch(apiUrl('/api/tts/preview?returnFile=true'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          text: sampleText,
-          voiceId,
-          enhancement: enhancementConfig,
+          provider,
+          voice,
+          sampleText: currentSampleText,
+          speed: currentEnhancement?.prosody?.rateMultiplier ?? 1.0,
+          pitch: currentEnhancement?.prosody?.pitchShift ?? 0.0,
         }),
       });
 
       if (response.ok) {
-        const data = await response.json();
-        setAudioUrl(data.audioUrl || '');
-        setDuration(data.duration || 0);
+        // The API returns the audio file directly when returnFile=true
+        const audioBlob = await response.blob();
+        const url = URL.createObjectURL(audioBlob);
+
+        // Clean up previous audio URL to prevent memory leaks (using ref for stable reference)
+        const prevUrl = audioUrlRef.current;
+        if (prevUrl && prevUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(prevUrl);
+        }
+
+        setAudioUrl(url);
+        // Duration will be set when audio metadata is loaded
+        setDuration(0);
       } else {
-        console.warn('Sample generation failed, using mock data');
-        // Mock fallback
-        setAudioUrl('/mock-sample.mp3');
-        setDuration(5.2);
+        // Try to get error details from response
+        let errorMessage = 'Sample generation failed';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.details || errorMessage;
+        } catch {
+          // Response wasn't JSON
+        }
+        console.warn('Voice preview generation failed:', errorMessage);
+        setAudioUrl('');
+        setDuration(0);
       }
     } catch (error) {
-      console.error('Failed to generate sample:', error);
-      // Mock fallback on error
-      setAudioUrl('/mock-sample.mp3');
-      setDuration(5.2);
+      console.error('Failed to generate voice preview:', error);
+      setAudioUrl('');
+      setDuration(0);
     } finally {
       setIsLoading(false);
     }
-  }, [sampleText, voiceId, enhancementConfig]);
+  }, [voiceId]); // Only depend on voiceId - other values accessed via refs
 
+  // Clean up blob URL on unmount
   useEffect(() => {
-    // Generate sample when voice or enhancement changes
+    return () => {
+      const urlToCleanup = audioUrlRef.current;
+      if (urlToCleanup && urlToCleanup.startsWith('blob:')) {
+        URL.revokeObjectURL(urlToCleanup);
+      }
+    };
+  }, []);
+
+  // Effect to trigger sample generation on voice change
+  // Using a stable generateSample that only changes when voiceId changes
+  useEffect(() => {
     if (voiceId) {
       generateSample();
     }
-  }, [voiceId, generateSample]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [voiceId]); // Intentionally exclude generateSample - it's stable per voiceId
 
   const handlePlayPause = () => {
     if (!audioRef.current) return;
