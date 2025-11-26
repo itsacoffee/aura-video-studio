@@ -1,6 +1,18 @@
 import type { BriefData, StyleData, ExportData, AdvancedData } from './types';
 
 /**
+ * Target platforms supported by presets
+ */
+export type PresetTargetPlatform =
+  | 'youtube'
+  | 'tiktok'
+  | 'instagram'
+  | 'twitter'
+  | 'linkedin'
+  | 'general'
+  | 'social';
+
+/**
  * Video preset definition for prosumer-friendly defaults.
  * Each preset is optimized for a specific use case.
  */
@@ -20,7 +32,7 @@ export interface VideoPreset {
   requiresApiKey: boolean;
   worksOffline: boolean;
   estimatedCost: number;
-  targetPlatform: string;
+  targetPlatform: PresetTargetPlatform;
 }
 
 /**
@@ -102,6 +114,28 @@ export const VIDEO_PRESETS: VideoPreset[] = [
 ];
 
 /**
+ * Maps preset target platforms to AdvancedData-compatible platforms
+ */
+function mapToAdvancedPlatform(
+  platform: PresetTargetPlatform
+): 'youtube' | 'tiktok' | 'instagram' | 'twitter' | 'linkedin' {
+  switch (platform) {
+    case 'youtube':
+    case 'tiktok':
+    case 'instagram':
+    case 'twitter':
+    case 'linkedin':
+      return platform;
+    case 'general':
+      return 'youtube'; // Default general content to YouTube
+    case 'social':
+      return 'instagram'; // Default social content to Instagram
+    default:
+      return 'youtube';
+  }
+}
+
+/**
  * Applies a preset's settings to the wizard data objects.
  * Returns the updated brief, style, export, and advanced data.
  */
@@ -129,12 +163,7 @@ export function applyPresetToWizardData(preset: VideoPreset): {
       includeCaptions: true,
     },
     advanced: {
-      targetPlatform: preset.targetPlatform as
-        | 'youtube'
-        | 'tiktok'
-        | 'instagram'
-        | 'twitter'
-        | 'linkedin',
+      targetPlatform: mapToAdvancedPlatform(preset.targetPlatform),
     },
   };
 }

@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { VIDEO_PRESETS, applyPresetToWizardData } from '../presetData';
 import PresetSelector from '../PresetSelector';
 
@@ -183,5 +183,19 @@ describe('applyPresetToWizardData', () => {
 
     expect(result.style.musicEnabled).toBe(false);
     expect(result.style.musicGenre).toBe('none');
+  });
+
+  it('maps general platform to youtube', () => {
+    const quickDemo = VIDEO_PRESETS.find((p) => p.id === 'quick-demo')!;
+    expect(quickDemo.targetPlatform).toBe('general');
+    const result = applyPresetToWizardData(quickDemo);
+    expect(result.advanced.targetPlatform).toBe('youtube');
+  });
+
+  it('maps social platform to instagram', () => {
+    const socialMedia = VIDEO_PRESETS.find((p) => p.id === 'social-media')!;
+    expect(socialMedia.targetPlatform).toBe('social');
+    const result = applyPresetToWizardData(socialMedia);
+    expect(result.advanced.targetPlatform).toBe('instagram');
   });
 });
