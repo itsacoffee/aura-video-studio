@@ -247,12 +247,14 @@ cd Aura.Web && npm run playwright
 
 **Complete Documentation:**
 - [Documentation Index](docs/DocsIndex.md) - Complete map of all documentation
+- [Changelog](docs/CHANGELOG.md) - Major fixes and improvements
 - [User Guides](docs/user-guide/) - Feature-specific end-user docs
 - [Developer Docs](docs/development/) - Contributor setup, testing, CI/CD
 - [Architecture](docs/architecture/) - System design and component diagrams
 - [API Reference](docs/api/) - REST API and SSE event documentation
 - [Providers](docs/providers/) - LLM, TTS, image, and video provider configuration
 - [Operations](docs/operations/) - Deployment, configuration, logging, monitoring
+- [Archive](docs/archive/) - Historical implementation and fix summaries
 
 ## Contributing
 
