@@ -50,25 +50,35 @@ export function useProviderStatus(pollInterval: number = 15000): UseProviderStat
 
       const data: ProviderStatusResponse = await response.json();
       
-      // Convert timestamp strings to Date objects
+      // CRITICAL: Defensive coding to prevent crashes from malformed responses
+      // If any of the arrays are null/undefined, use empty arrays as fallback
+      const llmArray = Array.isArray(data?.llm) ? data.llm : [];
+      const ttsArray = Array.isArray(data?.tts) ? data.tts : [];
+      const imagesArray = Array.isArray(data?.images) ? data.images : [];
+      
+      // Convert timestamp strings to Date objects safely
+      // Note: Using current time as fallback for missing timestamps since the data was just fetched
+      // This is preferable to using Date(0) which would show "January 1, 1970" in the UI
+      const now = new Date();
       const processedData: ProviderStatusResponse = {
         ...data,
-        llm: data.llm.map(p => ({
+        llm: llmArray.map(p => ({
           ...p,
-          lastChecked: new Date(p.lastChecked),
+          lastChecked: p?.lastChecked ? new Date(p.lastChecked) : now,
         })),
-        tts: data.tts.map(p => ({
+        tts: ttsArray.map(p => ({
           ...p,
-          lastChecked: new Date(p.lastChecked),
+          lastChecked: p?.lastChecked ? new Date(p.lastChecked) : now,
         })),
-        images: data.images.map(p => ({
+        images: imagesArray.map(p => ({
           ...p,
-          lastChecked: new Date(p.lastChecked),
+          lastChecked: p?.lastChecked ? new Date(p.lastChecked) : now,
         })),
+        timestamp: data?.timestamp || now.toISOString(),
       };
 
       setStatus(processedData);
-      setLastUpdated(new Date());
+      setLastUpdated(now);
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
       setError(error);
