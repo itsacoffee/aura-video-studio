@@ -4,6 +4,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Api.Models.ApiModels.V1;
+using Aura.Api.Services;
+using Aura.Core.Errors;
 using Aura.Core.Models;
 using Aura.Core.Models.Audio;
 using Aura.Core.Models.Localization;
@@ -17,6 +19,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Polly.CircuitBreaker;
 using ApiTranslateAndPlanSSMLRequest = Aura.Api.Models.ApiModels.V1.TranslateAndPlanSSMLRequest;
 using CoreTranslateAndPlanSSMLRequest = Aura.Core.Services.Localization.TranslateAndPlanSSMLRequest;
 
@@ -36,6 +39,7 @@ public class LocalizationController : ControllerBase
     private readonly List<ISSMLMapper> _ssmlMappers;
     private readonly int _requestTimeoutSeconds;
     private readonly int _llmTimeoutSeconds;
+    private readonly ILocalizationService _localizationService;
 
     public LocalizationController(
         ILogger<LocalizationController> logger,
@@ -50,6 +54,13 @@ public class LocalizationController : ControllerBase
         // Load timeout configuration with defaults
         _requestTimeoutSeconds = configuration.GetValue("Localization:RequestTimeoutSeconds", 30);
         _llmTimeoutSeconds = configuration.GetValue("Localization:LlmTimeoutSeconds", 25);
+        
+        // Initialize the localization service with retry logic
+        // Note: This could also be injected via DI by registering ILocalizationService in Program.cs
+        _localizationService = new LocalizationService(
+            loggerFactory.CreateLogger<LocalizationService>(),
+            llmProvider,
+            loggerFactory);
         
         var storageDir = System.IO.Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
@@ -76,6 +87,7 @@ public class LocalizationController : ControllerBase
     [ProducesResponseType(typeof(TranslationResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status408RequestTimeout)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<ActionResult<TranslationResultDto>> TranslateScript(
         [FromBody] TranslateScriptRequest request,
         CancellationToken cancellationToken)
@@ -83,18 +95,97 @@ public class LocalizationController : ControllerBase
         _logger.LogInformation("Translation request: {Source} → {Target}, CorrelationId: {CorrelationId}",
             request.SourceLanguage, request.TargetLanguage, HttpContext.TraceIdentifier);
 
+        // Validate language codes
+        var sourceValidation = _localizationService.ValidateLanguageCode(request.SourceLanguage);
+        if (!sourceValidation.IsValid && !sourceValidation.IsWarning)
+        {
+            _logger.LogWarning("Invalid source language code: {Code}, CorrelationId: {CorrelationId}",
+                request.SourceLanguage, HttpContext.TraceIdentifier);
+            return BadRequest(new ProblemDetails
+            {
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#INVALID_LANGUAGE",
+                Title = "Invalid Source Language",
+                Status = StatusCodes.Status400BadRequest,
+                Detail = sourceValidation.Message,
+                Extensions = 
+                { 
+                    ["correlationId"] = HttpContext.TraceIdentifier,
+                    ["errorCode"] = sourceValidation.ErrorCode ?? "INVALID_LANGUAGE",
+                    ["languageCode"] = request.SourceLanguage
+                }
+            });
+        }
+
+        var targetValidation = _localizationService.ValidateLanguageCode(request.TargetLanguage);
+        if (!targetValidation.IsValid && !targetValidation.IsWarning)
+        {
+            _logger.LogWarning("Invalid target language code: {Code}, CorrelationId: {CorrelationId}",
+                request.TargetLanguage, HttpContext.TraceIdentifier);
+            return BadRequest(new ProblemDetails
+            {
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#INVALID_LANGUAGE",
+                Title = "Invalid Target Language",
+                Status = StatusCodes.Status400BadRequest,
+                Detail = targetValidation.Message,
+                Extensions = 
+                { 
+                    ["correlationId"] = HttpContext.TraceIdentifier,
+                    ["errorCode"] = targetValidation.ErrorCode ?? "INVALID_LANGUAGE",
+                    ["languageCode"] = request.TargetLanguage
+                }
+            });
+        }
+
+        // Validate text length
+        var textLength = request.SourceText?.Length ?? 0;
+        if (request.ScriptLines != null)
+        {
+            textLength += request.ScriptLines.Sum(l => l.Text?.Length ?? 0);
+        }
+
+        if (textLength == 0)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#EMPTY_CONTENT",
+                Title = "Empty Content",
+                Status = StatusCodes.Status400BadRequest,
+                Detail = "No text provided for translation. Please provide either sourceText or scriptLines.",
+                Extensions = 
+                { 
+                    ["correlationId"] = HttpContext.TraceIdentifier,
+                    ["errorCode"] = "EMPTY_CONTENT"
+                }
+            });
+        }
+
+        const int maxTextLength = 50000;
+        if (textLength > maxTextLength)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#TEXT_TOO_LONG",
+                Title = "Text Too Long",
+                Status = StatusCodes.Status400BadRequest,
+                Detail = $"Text length ({textLength} characters) exceeds maximum allowed ({maxTextLength} characters). Please split into smaller batches.",
+                Extensions = 
+                { 
+                    ["correlationId"] = HttpContext.TraceIdentifier,
+                    ["errorCode"] = "TEXT_TOO_LONG",
+                    ["textLength"] = textLength,
+                    ["maxLength"] = maxTextLength
+                }
+            });
+        }
+
         // Create a linked cancellation token with timeout
         using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(_llmTimeoutSeconds));
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
 
         try
         {
-            var translationService = new TranslationService(
-                _loggerFactory.CreateLogger<TranslationService>(), 
-                _llmProvider);
-
             var translationRequest = MapToTranslationRequest(request);
-            var result = await translationService.TranslateAsync(translationRequest, linkedCts.Token).ConfigureAwait(false);
+            var result = await _localizationService.TranslateAsync(translationRequest, linkedCts.Token).ConfigureAwait(false);
             
             var dto = MapToTranslationResultDto(result);
             
@@ -103,16 +194,63 @@ public class LocalizationController : ControllerBase
 
             return Ok(dto);
         }
+        catch (BrokenCircuitException ex)
+        {
+            _logger.LogError(ex, "Translation circuit breaker is open, CorrelationId: {CorrelationId}",
+                HttpContext.TraceIdentifier);
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new ProblemDetails
+            {
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#SERVICE_UNAVAILABLE",
+                Title = "Translation Service Temporarily Unavailable",
+                Status = StatusCodes.Status503ServiceUnavailable,
+                Detail = "The translation service is experiencing issues and has been temporarily disabled. Please try again in a few minutes.",
+                Extensions = 
+                { 
+                    ["correlationId"] = HttpContext.TraceIdentifier,
+                    ["errorCode"] = "CIRCUIT_BREAKER_OPEN",
+                    ["retryAfterSeconds"] = 30
+                }
+            });
+        }
+        catch (ProviderException ex)
+        {
+            _logger.LogError(ex, "LLM provider error during translation, CorrelationId: {CorrelationId}",
+                HttpContext.TraceIdentifier);
+            
+            var statusCode = ex.IsTransient ? StatusCodes.Status503ServiceUnavailable : StatusCodes.Status500InternalServerError;
+            return StatusCode(statusCode, new ProblemDetails
+            {
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#PROVIDER_ERROR",
+                Title = "LLM Provider Error",
+                Status = statusCode,
+                Detail = ex.UserMessage ?? ex.Message,
+                Extensions = 
+                { 
+                    ["correlationId"] = HttpContext.TraceIdentifier,
+                    ["errorCode"] = ex.SpecificErrorCode,
+                    ["providerName"] = ex.ProviderName,
+                    ["isRetryable"] = ex.IsTransient,
+                    ["suggestedActions"] = ex.SuggestedActions
+                }
+            });
+        }
         catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
         {
             _logger.LogWarning("Translation request timed out after {Timeout}s, CorrelationId: {CorrelationId}",
                 _llmTimeoutSeconds, HttpContext.TraceIdentifier);
             return StatusCode(StatusCodes.Status408RequestTimeout, new ProblemDetails
             {
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#TIMEOUT",
                 Title = "Request Timeout",
                 Status = StatusCodes.Status408RequestTimeout,
-                Detail = $"Translation request timed out after {_llmTimeoutSeconds} seconds. Please try with shorter text.",
-                Extensions = { ["correlationId"] = HttpContext.TraceIdentifier }
+                Detail = $"Translation request timed out after {_llmTimeoutSeconds} seconds. Please try with shorter text or check your connection.",
+                Extensions = 
+                { 
+                    ["correlationId"] = HttpContext.TraceIdentifier,
+                    ["errorCode"] = "TIMEOUT",
+                    ["timeoutSeconds"] = _llmTimeoutSeconds,
+                    ["isRetryable"] = true
+                }
             });
         }
         catch (OperationCanceledException)
@@ -132,10 +270,15 @@ public class LocalizationController : ControllerBase
             _logger.LogWarning(ex, "Invalid translation request");
             return BadRequest(new ProblemDetails
             {
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#INVALID_REQUEST",
                 Title = "Invalid Translation Request",
                 Status = StatusCodes.Status400BadRequest,
                 Detail = ex.Message,
-                Extensions = { ["correlationId"] = HttpContext.TraceIdentifier }
+                Extensions = 
+                { 
+                    ["correlationId"] = HttpContext.TraceIdentifier,
+                    ["errorCode"] = "INVALID_REQUEST"
+                }
             });
         }
         catch (Exception ex)
@@ -143,10 +286,16 @@ public class LocalizationController : ControllerBase
             _logger.LogError(ex, "Translation failed");
             return StatusCode(StatusCodes.Status500InternalServerError, new ProblemDetails
             {
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#INTERNAL_ERROR",
                 Title = "Translation Failed",
                 Status = StatusCodes.Status500InternalServerError,
-                Detail = ex.Message,
-                Extensions = { ["correlationId"] = HttpContext.TraceIdentifier }
+                Detail = "An unexpected error occurred during translation. Please try again or contact support if the problem persists.",
+                Extensions = 
+                { 
+                    ["correlationId"] = HttpContext.TraceIdentifier,
+                    ["errorCode"] = "INTERNAL_ERROR",
+                    ["isRetryable"] = true
+                }
             });
         }
     }
@@ -197,7 +346,9 @@ public class LocalizationController : ControllerBase
     /// </summary>
     [HttpPost("analyze-culture")]
     [ProducesResponseType(typeof(CulturalAnalysisResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status408RequestTimeout)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<ActionResult<CulturalAnalysisResultDto>> AnalyzeCulturalContent(
         [FromBody] Models.ApiModels.V1.CulturalAnalysisRequest request,
         CancellationToken cancellationToken)
@@ -205,16 +356,50 @@ public class LocalizationController : ControllerBase
         _logger.LogInformation("Cultural analysis request: {Language}/{Region}, CorrelationId: {CorrelationId}",
             request.TargetLanguage, request.TargetRegion, HttpContext.TraceIdentifier);
 
+        // Validate language code
+        var languageValidation = _localizationService.ValidateLanguageCode(request.TargetLanguage);
+        if (!languageValidation.IsValid && !languageValidation.IsWarning)
+        {
+            _logger.LogWarning("Invalid language code for cultural analysis: {Code}, CorrelationId: {CorrelationId}",
+                request.TargetLanguage, HttpContext.TraceIdentifier);
+            return BadRequest(new ProblemDetails
+            {
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#INVALID_LANGUAGE",
+                Title = "Invalid Language Code",
+                Status = StatusCodes.Status400BadRequest,
+                Detail = languageValidation.Message,
+                Extensions = 
+                { 
+                    ["correlationId"] = HttpContext.TraceIdentifier,
+                    ["errorCode"] = languageValidation.ErrorCode ?? "INVALID_LANGUAGE",
+                    ["languageCode"] = request.TargetLanguage
+                }
+            });
+        }
+
+        // Validate content is not empty
+        if (string.IsNullOrWhiteSpace(request.Content))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#EMPTY_CONTENT",
+                Title = "Empty Content",
+                Status = StatusCodes.Status400BadRequest,
+                Detail = "Content is required for cultural analysis.",
+                Extensions = 
+                { 
+                    ["correlationId"] = HttpContext.TraceIdentifier,
+                    ["errorCode"] = "EMPTY_CONTENT"
+                }
+            });
+        }
+
         // Create a linked cancellation token with timeout
         using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(_llmTimeoutSeconds));
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
 
         try
         {
-            var translationService = new TranslationService(
-                _loggerFactory.CreateLogger<TranslationService>(), 
-                _llmProvider);
-
             var analysisRequest = new Core.Models.Localization.CulturalAnalysisRequest
             {
                 TargetLanguage = request.TargetLanguage,
@@ -223,11 +408,51 @@ public class LocalizationController : ControllerBase
                 AudienceProfileId = request.AudienceProfileId
             };
 
-            var result = await translationService.AnalyzeCulturalContentAsync(analysisRequest, linkedCts.Token).ConfigureAwait(false);
+            var result = await _localizationService.AnalyzeCulturalContentAsync(analysisRequest, linkedCts.Token).ConfigureAwait(false);
             
             var dto = MapToCulturalAnalysisResultDto(result);
 
             return Ok(dto);
+        }
+        catch (BrokenCircuitException ex)
+        {
+            _logger.LogError(ex, "Cultural analysis circuit breaker is open, CorrelationId: {CorrelationId}",
+                HttpContext.TraceIdentifier);
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new ProblemDetails
+            {
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#SERVICE_UNAVAILABLE",
+                Title = "Analysis Service Temporarily Unavailable",
+                Status = StatusCodes.Status503ServiceUnavailable,
+                Detail = "The cultural analysis service is experiencing issues. Please try again in a few minutes.",
+                Extensions = 
+                { 
+                    ["correlationId"] = HttpContext.TraceIdentifier,
+                    ["errorCode"] = "CIRCUIT_BREAKER_OPEN",
+                    ["retryAfterSeconds"] = 30
+                }
+            });
+        }
+        catch (ProviderException ex)
+        {
+            _logger.LogError(ex, "LLM provider error during cultural analysis, CorrelationId: {CorrelationId}",
+                HttpContext.TraceIdentifier);
+            
+            var statusCode = ex.IsTransient ? StatusCodes.Status503ServiceUnavailable : StatusCodes.Status500InternalServerError;
+            return StatusCode(statusCode, new ProblemDetails
+            {
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#PROVIDER_ERROR",
+                Title = "LLM Provider Error",
+                Status = statusCode,
+                Detail = ex.UserMessage ?? ex.Message,
+                Extensions = 
+                { 
+                    ["correlationId"] = HttpContext.TraceIdentifier,
+                    ["errorCode"] = ex.SpecificErrorCode,
+                    ["providerName"] = ex.ProviderName,
+                    ["isRetryable"] = ex.IsTransient,
+                    ["suggestedActions"] = ex.SuggestedActions
+                }
+            });
         }
         catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
         {
@@ -235,10 +460,17 @@ public class LocalizationController : ControllerBase
                 _llmTimeoutSeconds, HttpContext.TraceIdentifier);
             return StatusCode(StatusCodes.Status408RequestTimeout, new ProblemDetails
             {
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#TIMEOUT",
                 Title = "Request Timeout",
                 Status = StatusCodes.Status408RequestTimeout,
                 Detail = $"Cultural analysis request timed out after {_llmTimeoutSeconds} seconds. Please try with shorter content.",
-                Extensions = { ["correlationId"] = HttpContext.TraceIdentifier }
+                Extensions = 
+                { 
+                    ["correlationId"] = HttpContext.TraceIdentifier,
+                    ["errorCode"] = "TIMEOUT",
+                    ["timeoutSeconds"] = _llmTimeoutSeconds,
+                    ["isRetryable"] = true
+                }
             });
         }
         catch (OperationCanceledException)
@@ -258,10 +490,16 @@ public class LocalizationController : ControllerBase
             _logger.LogError(ex, "Cultural analysis failed");
             return StatusCode(StatusCodes.Status500InternalServerError, new ProblemDetails
             {
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#INTERNAL_ERROR",
                 Title = "Cultural Analysis Failed",
                 Status = StatusCodes.Status500InternalServerError,
-                Detail = ex.Message,
-                Extensions = { ["correlationId"] = HttpContext.TraceIdentifier }
+                Detail = "An unexpected error occurred during cultural analysis. Please try again or contact support.",
+                Extensions = 
+                { 
+                    ["correlationId"] = HttpContext.TraceIdentifier,
+                    ["errorCode"] = "INTERNAL_ERROR",
+                    ["isRetryable"] = true
+                }
             });
         }
     }

@@ -15,15 +15,27 @@ import {
   Option,
   Textarea,
   ProgressBar,
+  MessageBar,
+  MessageBarBody,
+  MessageBarTitle,
+  MessageBarActions,
 } from '@fluentui/react-components';
 import {
   LocalLanguage24Regular,
   ArrowSync24Regular,
   TextDescription24Regular,
+  ArrowClockwise24Regular,
+  Info24Regular,
 } from '@fluentui/react-icons';
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { ErrorState } from '../../components/Loading';
 import { getOperationTimeout } from '../../config/timeouts';
+import {
+  parseLocalizationError,
+  getUserFriendlyMessage,
+  getErrorGuidance,
+  getErrorSeverity,
+  type ParsedLocalizationError,
+} from '../../utils/localizationErrors';
 
 const useStyles = makeStyles({
   container: {
@@ -85,23 +97,35 @@ const useStyles = makeStyles({
     color: tokens.colorNeutralForeground3,
     fontSize: '12px',
   },
+  errorContainer: {
+    marginBottom: tokens.spacingVerticalL,
+  },
+  errorGuidance: {
+    marginTop: tokens.spacingVerticalS,
+    fontSize: '13px',
+    color: tokens.colorNeutralForeground3,
+  },
+  errorActions: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalS,
+    flexWrap: 'wrap',
+    marginTop: tokens.spacingVerticalS,
+  },
+  suggestedAction: {
+    fontSize: '12px',
+    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderRadius: tokens.borderRadiusSmall,
+  },
 });
 
 type TabValue = 'translate' | 'subtitles' | 'adapt';
-
-// Timeout error class to distinguish timeout from other errors
-class TimeoutError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'TimeoutError';
-  }
-}
 
 export const LocalizationPage: React.FC = () => {
   const styles = useStyles();
   const [activeTab, setActiveTab] = useState<TabValue>('translate');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [parsedError, setParsedError] = useState<ParsedLocalizationError | null>(null);
   const [sourceText, setSourceText] = useState('');
   const [sourceLanguage, setSourceLanguage] = useState('en');
   const [targetLanguage, setTargetLanguage] = useState('es');
@@ -109,6 +133,7 @@ export const LocalizationPage: React.FC = () => {
   const [videoPath, setVideoPath] = useState('');
   const [subtitles, setSubtitles] = useState('');
   const [loadingMessage, setLoadingMessage] = useState('');
+  const [lastOperation, setLastOperation] = useState<'translate' | 'analyze' | null>(null);
 
   // AbortController ref for cancelling in-flight requests
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -132,19 +157,38 @@ export const LocalizationPage: React.FC = () => {
     setLoadingMessage('');
   }, []);
 
-  // Helper function to handle request errors
-  const handleRequestError = useCallback((err: unknown, operationType: string): string => {
-    if (err instanceof Error && err.name === 'AbortError') {
-      return `${operationType} request timed out. Please try again with shorter content or check your connection.`;
-    } else if (err instanceof TimeoutError) {
-      return err.message;
-    }
-    return err instanceof Error ? err.message : 'An error occurred';
+  // Clear error state
+  const clearError = useCallback(() => {
+    setParsedError(null);
   }, []);
+
+  // Handle request errors with detailed parsing
+  const handleRequestError = useCallback(
+    async (response: Response): Promise<ParsedLocalizationError> => {
+      try {
+        const errorData = await response.json();
+        return parseLocalizationError(errorData);
+      } catch {
+        return parseLocalizationError({
+          title: 'Request Failed',
+          status: response.status,
+          detail: `Request failed with status ${response.status}`,
+        });
+      }
+    },
+    []
+  );
 
   const handleTranslate = useCallback(async () => {
     if (!sourceText) {
-      setError('Please enter text to translate');
+      setParsedError(
+        parseLocalizationError({
+          title: 'Empty Content',
+          status: 400,
+          detail: 'Please enter text to translate',
+          errorCode: 'EMPTY_CONTENT',
+        })
+      );
       return;
     }
 
@@ -155,8 +199,9 @@ export const LocalizationPage: React.FC = () => {
     }
 
     setLoading(true);
-    setError(null);
+    setParsedError(null);
     setLoadingMessage('Translating...');
+    setLastOperation('translate');
 
     // Create new AbortController for this request
     const abortController = new AbortController();
@@ -183,19 +228,16 @@ export const LocalizationPage: React.FC = () => {
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        if (response.status === 408) {
-          throw new TimeoutError(
-            'Translation request timed out. Please try again with shorter text.'
-          );
-        }
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || errorData.error || 'Translation failed');
+        const error = await handleRequestError(response);
+        setParsedError(error);
+        return;
       }
 
       const data = await response.json();
       setTranslatedText(data.translatedText || '');
     } catch (err: unknown) {
-      setError(handleRequestError(err, 'Translation'));
+      const error = parseLocalizationError(err);
+      setParsedError(error);
     } finally {
       clearTimeout(timeoutId);
       setLoading(false);
@@ -206,23 +248,36 @@ export const LocalizationPage: React.FC = () => {
 
   const handleGenerateSubtitles = useCallback(async () => {
     if (!videoPath) {
-      setError('Please provide a video path');
+      setParsedError(
+        parseLocalizationError({
+          title: 'Missing Video Path',
+          status: 400,
+          detail: 'Please provide a video path',
+          errorCode: 'EMPTY_CONTENT',
+        })
+      );
       return;
     }
 
     setLoading(true);
-    setError(null);
+    setParsedError(null);
 
     try {
       // Note: The generate-subtitles endpoint is not implemented.
       // For subtitle generation, use the translate-and-plan-ssml endpoint
       // which provides a full translation and SSML planning workflow.
-      setError(
-        'Subtitle generation requires video transcription. Please use the Create workflow to generate subtitles from your video script.'
+      setParsedError(
+        parseLocalizationError({
+          title: 'Feature Not Available',
+          status: 501,
+          detail:
+            'Subtitle generation requires video transcription. Please use the Create workflow to generate subtitles from your video script.',
+          errorCode: 'NOT_IMPLEMENTED',
+        })
       );
       setSubtitles('');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+    } catch (err: unknown) {
+      setParsedError(parseLocalizationError(err));
     } finally {
       setLoading(false);
     }
@@ -230,7 +285,14 @@ export const LocalizationPage: React.FC = () => {
 
   const handleAdaptContent = useCallback(async () => {
     if (!sourceText) {
-      setError('Please enter content to adapt');
+      setParsedError(
+        parseLocalizationError({
+          title: 'Empty Content',
+          status: 400,
+          detail: 'Please enter content to adapt',
+          errorCode: 'EMPTY_CONTENT',
+        })
+      );
       return;
     }
 
@@ -241,8 +303,9 @@ export const LocalizationPage: React.FC = () => {
     }
 
     setLoading(true);
-    setError(null);
+    setParsedError(null);
     setLoadingMessage('Analyzing cultural context...');
+    setLastOperation('analyze');
 
     // Create new AbortController for this request
     const abortController = new AbortController();
@@ -271,13 +334,9 @@ export const LocalizationPage: React.FC = () => {
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        if (response.status === 408) {
-          throw new TimeoutError(
-            'Cultural analysis request timed out. Please try again with shorter content.'
-          );
-        }
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || errorData.error || 'Content adaptation failed');
+        const error = await handleRequestError(response);
+        setParsedError(error);
+        return;
       }
 
       const data = await response.json();
@@ -299,7 +358,8 @@ export const LocalizationPage: React.FC = () => {
       ].join('\n');
       setTranslatedText(analysisResult || 'No analysis results available');
     } catch (err: unknown) {
-      setError(handleRequestError(err, 'Cultural analysis'));
+      const error = parseLocalizationError(err);
+      setParsedError(error);
     } finally {
       clearTimeout(timeoutId);
       setLoading(false);
@@ -307,6 +367,30 @@ export const LocalizationPage: React.FC = () => {
       abortControllerRef.current = null;
     }
   }, [sourceText, targetLanguage, handleRequestError]);
+
+  // Retry the last failed operation
+  const handleRetry = useCallback(() => {
+    clearError();
+    if (lastOperation === 'translate') {
+      handleTranslate();
+    } else if (lastOperation === 'analyze') {
+      handleAdaptContent();
+    }
+  }, [lastOperation, handleTranslate, handleAdaptContent, clearError]);
+
+  // Get the message bar intent based on error severity
+  const getMessageBarIntent = useCallback((errorCode: string): 'error' | 'warning' | 'info' => {
+    const severity = getErrorSeverity(errorCode);
+    switch (severity) {
+      case 'warning':
+      case 'info':
+        return 'warning';
+      case 'critical':
+      case 'error':
+      default:
+        return 'error';
+    }
+  }, []);
 
   return (
     <div className={styles.container}>
@@ -336,7 +420,41 @@ export const LocalizationPage: React.FC = () => {
         </Tab>
       </TabList>
 
-      {error && <ErrorState message={error} />}
+      {parsedError && (
+        <div className={styles.errorContainer}>
+          <MessageBar intent={getMessageBarIntent(parsedError.errorCode)}>
+            <MessageBarBody>
+              <MessageBarTitle>{parsedError.title}</MessageBarTitle>
+              {getUserFriendlyMessage(parsedError)}
+              {getErrorGuidance(parsedError.errorCode) && (
+                <div className={styles.errorGuidance}>
+                  <Info24Regular style={{ marginRight: '4px', verticalAlign: 'middle' }} />
+                  {getErrorGuidance(parsedError.errorCode)}
+                </div>
+              )}
+              {parsedError.suggestedActions.length > 0 && (
+                <div className={styles.errorActions}>
+                  {parsedError.suggestedActions.slice(0, 3).map((action, idx) => (
+                    <span key={idx} className={styles.suggestedAction}>
+                      {action}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </MessageBarBody>
+            <MessageBarActions>
+              {parsedError.isRetryable && lastOperation && (
+                <Button icon={<ArrowClockwise24Regular />} onClick={handleRetry} size="small">
+                  Retry
+                </Button>
+              )}
+              <Button onClick={clearError} size="small" appearance="subtle">
+                Dismiss
+              </Button>
+            </MessageBarActions>
+          </MessageBar>
+        </div>
+      )}
 
       {activeTab === 'translate' && (
         <Card className={styles.toolCard}>
