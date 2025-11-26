@@ -81,7 +81,8 @@ public class ScriptsController : ControllerBase
     [Microsoft.AspNetCore.Http.Timeouts.RequestTimeout(1200000)] // 20 minutes - very lenient for slow systems, large models, and initial model loading
     public async Task<IActionResult> GenerateScript(
         [FromBody] GenerateScriptRequest? request,
-        CancellationToken ct)
+        CancellationToken ct,
+        [FromQuery] bool useAgenticMode = false)
     {
         var correlationId = HttpContext.TraceIdentifier;
 
@@ -245,9 +246,12 @@ public class ScriptsController : ControllerBase
                                 ? request.PreferredProvider
                                 : "Free";
 
+            // Use agentic mode from request DTO if provided, otherwise from query parameter
+            var effectiveUseAgenticMode = request.UseAgenticMode || useAgenticMode;
+            
             _logger.LogInformation(
-                "[{CorrelationId}] Script generation requested. Topic: {Topic}, PreferredProvider: {Provider} (resolved to: {Resolved}), ModelOverride: {ModelOverride}",
-                correlationId, request.Topic, request.PreferredProvider ?? "null", preferredTier, request.ModelOverride ?? "null");
+                "[{CorrelationId}] Script generation requested. Topic: {Topic}, PreferredProvider: {Provider} (resolved to: {Resolved}), ModelOverride: {ModelOverride}, AgenticMode: {AgenticMode}",
+                correlationId, request.Topic, request.PreferredProvider ?? "null", preferredTier, request.ModelOverride ?? "null", effectiveUseAgenticMode);
 
             var result = await _scriptOrchestrator.GenerateScriptAsync(
                 brief, planSpec, preferredTier, offlineOnly: false, ct).ConfigureAwait(false);

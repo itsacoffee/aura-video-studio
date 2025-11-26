@@ -19,6 +19,16 @@ public interface IAgent
     /// Process a message and return a response
     /// </summary>
     Task<AgentResponse> ProcessAsync(AgentMessage message, CancellationToken ct);
+
+    /// <summary>
+    /// Checks if this agent can handle the specified message type
+    /// </summary>
+    bool CanHandle(string messageType);
+
+    /// <summary>
+    /// Gets the list of message types this agent supports
+    /// </summary>
+    IReadOnlyList<string> SupportedMessageTypes { get; }
 }
 
 /// <summary>

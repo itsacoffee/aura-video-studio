@@ -3,11 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Core.AI.Agents;
 using Aura.Core.AI.Templates;
 using Aura.Core.AI.Validation;
+using Aura.Core.Configuration;
 using Aura.Core.Models;
 using Aura.Core.Providers;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Aura.Core.AI;
 
@@ -21,6 +24,8 @@ public class ScriptGenerationPipeline
     private readonly ScriptSchemaValidator _validator;
     private readonly FallbackScriptGenerator _fallbackGenerator;
     private readonly ILogger<ScriptGenerationPipeline> _logger;
+    private readonly AgentOrchestrator? _agentOrchestrator;
+    private readonly IOptions<AgenticModeOptions>? _agenticOptions;
 
     private const int MaxRetries = 3;
 
@@ -28,22 +33,106 @@ public class ScriptGenerationPipeline
         ILlmProvider llmProvider,
         ScriptSchemaValidator validator,
         FallbackScriptGenerator fallbackGenerator,
-        ILogger<ScriptGenerationPipeline> logger)
+        ILogger<ScriptGenerationPipeline> logger,
+        AgentOrchestrator? agentOrchestrator = null,
+        IOptions<AgenticModeOptions>? agenticOptions = null)
     {
         _llmProvider = llmProvider ?? throw new ArgumentNullException(nameof(llmProvider));
         _validator = validator ?? throw new ArgumentNullException(nameof(validator));
         _fallbackGenerator = fallbackGenerator ?? throw new ArgumentNullException(nameof(fallbackGenerator));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _agentOrchestrator = agentOrchestrator;
+        _agenticOptions = agenticOptions ?? Options.Create(new AgenticModeOptions());
     }
 
     /// <summary>
     /// Generates a script with validation and retry logic
+    /// Supports both single-pass and agentic multi-agent modes
     /// </summary>
     public async Task<ScriptGenerationResult> GenerateAsync(
         Brief brief,
         PlanSpec spec,
         CancellationToken ct)
     {
+        return await GenerateAsync(brief, spec, useAgenticMode: false, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Generates a script with validation and retry logic
+    /// Supports both single-pass and agentic multi-agent modes
+    /// </summary>
+    public async Task<ScriptGenerationResult> GenerateAsync(
+        Brief brief,
+        PlanSpec spec,
+        bool useAgenticMode,
+        CancellationToken ct)
+    {
+        // Check if agentic mode is requested and available
+        if (useAgenticMode && 
+            _agentOrchestrator != null && 
+            _agenticOptions?.Value.Enabled == true)
+        {
+            _logger.LogInformation(
+                "Using agentic multi-agent script generation for topic: {Topic}",
+                brief.Topic);
+
+            try
+            {
+                var result = await _agentOrchestrator.GenerateAsync(brief, spec, ct).ConfigureAwait(false);
+                
+                _logger.LogInformation(
+                    "Agentic generation completed in {Iterations} iterations, approved: {Approved}",
+                    result.Iterations.Count,
+                    result.ApprovedByCritic);
+
+                // Convert AgentOrchestratorResult to ScriptGenerationResult
+                var validation = _validator.Validate(result.Script.RawText, brief, spec);
+                
+                return new ScriptGenerationResult(
+                    Success: result.ApprovedByCritic,
+                    Script: result.Script.RawText,
+                    Attempts: result.Iterations.Select((iter, idx) => new GenerationAttempt(
+                        AttemptNumber: idx + 1,
+                        Script: iter.Script.RawText,
+                        Validation: validation,
+                        Error: iter.CriticFeedback,
+                        Duration: TimeSpan.Zero // Agent iterations don't track individual durations
+                    )).ToList(),
+                    UsedFallback: false,
+                    QualityScore: validation.QualityScore,
+                    Metrics: validation.Metrics
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Agentic generation failed");
+
+                if (_agenticOptions?.Value.FallbackToSinglePass == true)
+                {
+                    _logger.LogWarning("Falling back to single-pass generation");
+                }
+                else
+                {
+                    throw;
+                }
+            }
+        }
+
+        // Fallback to existing single-pass generation
+        return await GenerateSinglePassAsync(brief, spec, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Generates a script using single-pass generation (original implementation)
+    /// </summary>
+    private async Task<ScriptGenerationResult> GenerateSinglePassAsync(
+        Brief brief,
+        PlanSpec spec,
+        CancellationToken ct)
+    {
+        _logger.LogInformation(
+            "Using single-pass script generation for topic: {Topic}",
+            brief.Topic);
         var attempts = new List<GenerationAttempt>();
 
         _logger.LogInformation(

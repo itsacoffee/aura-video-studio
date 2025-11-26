@@ -118,6 +118,11 @@ public record GenerateScriptRequest
     /// Custom instructions for prompt customization (maps to PromptModifiers.AdditionalInstructions)
     /// </summary>
     public string? CustomInstructions { get; init; }
+
+    /// <summary>
+    /// Whether to use agentic multi-agent script generation mode (requires AgenticMode:Enabled in configuration)
+    /// </summary>
+    public bool UseAgenticMode { get; init; } = false;
 }
 
 /// <summary>

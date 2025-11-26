@@ -3,7 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Core.AI.Agents.Telemetry;
+using Aura.Core.Data.Repositories;
 using Aura.Core.Models;
+using Aura.Core.Models.Visual;
 using Aura.Core.Services.Content;
 using Microsoft.Extensions.Logging;
 
@@ -19,7 +22,10 @@ public class AgentOrchestrator
     private readonly VisualDirectorAgent _visualDirector;
     private readonly CriticAgent _critic;
     private readonly ILogger<AgentOrchestrator> _logger;
+    private readonly ILoggerFactory _loggerFactory;
     private readonly ScriptParser _scriptParser;
+    private readonly IVisualPromptRepository? _promptRepository;
+    private readonly AgentTelemetry _telemetry;
 
     private const int MaxIterations = 3;
 
@@ -27,13 +33,21 @@ public class AgentOrchestrator
         ScreenwriterAgent screenwriter,
         VisualDirectorAgent visualDirector,
         CriticAgent critic,
-        ILogger<AgentOrchestrator> logger)
+        ILogger<AgentOrchestrator> logger,
+        ILoggerFactory loggerFactory,
+        IVisualPromptRepository? promptRepository = null)
     {
         _screenwriter = screenwriter ?? throw new ArgumentNullException(nameof(screenwriter));
         _visualDirector = visualDirector ?? throw new ArgumentNullException(nameof(visualDirector));
         _critic = critic ?? throw new ArgumentNullException(nameof(critic));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
+        _promptRepository = promptRepository;
         _scriptParser = new ScriptParser();
+        
+        // Create telemetry logger using the same factory
+        var telemetryLogger = _loggerFactory.CreateLogger<AgentTelemetry>();
+        _telemetry = new AgentTelemetry(telemetryLogger);
     }
 
     /// <summary>
@@ -44,38 +58,50 @@ public class AgentOrchestrator
         PlanSpec spec,
         CancellationToken ct)
     {
+        var scriptId = Guid.NewGuid().ToString();
+        var correlationId = Guid.NewGuid().ToString();
+
         _logger.LogInformation(
-            "Starting multi-agent script generation for topic: {Topic}, duration: {Duration}s",
+            "Starting multi-agent script generation for topic: {Topic}, duration: {Duration}s, scriptId: {ScriptId}, correlationId: {CorrelationId}",
             brief.Topic,
-            spec.TargetDuration.TotalSeconds);
+            spec.TargetDuration.TotalSeconds,
+            scriptId,
+            correlationId);
 
         ScriptDocument? currentScript = null;
         List<VisualPrompt>? visualPrompts = null;
         var iterations = new List<AgentIteration>();
 
+        _logger.LogInformation("Starting agentic script generation with up to {Max} iterations", MaxIterations);
+
         for (int i = 0; i < MaxIterations; i++)
         {
             var iterationNumber = i + 1;
-            _logger.LogInformation("Agent iteration {Iteration}/{Max}", iterationNumber, MaxIterations);
+            _logger.LogInformation("=== Agent Iteration {Current}/{Max} ===", iterationNumber, MaxIterations);
 
             try
             {
                 // Step 1: Generate/revise script
-                var scriptMessage = currentScript == null
-                    ? new AgentMessage(
-                        FromAgent: "Orchestrator",
-                        ToAgent: "Screenwriter",
-                        MessageType: "GenerateScript",
-                        Payload: brief,
-                        Context: new Dictionary<string, object> { ["planSpec"] = spec, ["brief"] = brief })
-                    : new AgentMessage(
-                        FromAgent: "Orchestrator",
-                        ToAgent: "Screenwriter",
-                        MessageType: "ReviseScript",
-                        Payload: new RevisionRequest(currentScript, iterations.Last().CriticFeedback),
-                        Context: new Dictionary<string, object> { ["planSpec"] = spec, ["brief"] = brief });
+                var messageType = currentScript == null ? "GenerateScript" : "ReviseScript";
+                AgentResponse scriptResponse;
+                using (_telemetry.TrackInvocation("Screenwriter", messageType))
+                {
+                    var scriptMessage = currentScript == null
+                        ? new AgentMessage(
+                            FromAgent: "Orchestrator",
+                            ToAgent: "Screenwriter",
+                            MessageType: "GenerateScript",
+                            Payload: brief,
+                            Context: new Dictionary<string, object> { ["planSpec"] = spec, ["brief"] = brief })
+                        : new AgentMessage(
+                            FromAgent: "Orchestrator",
+                            ToAgent: "Screenwriter",
+                            MessageType: "ReviseScript",
+                            Payload: new RevisionRequest(currentScript, iterations.Last().CriticFeedback),
+                            Context: new Dictionary<string, object> { ["planSpec"] = spec, ["brief"] = brief });
 
-                var scriptResponse = await _screenwriter.ProcessAsync(scriptMessage, ct).ConfigureAwait(false);
+                    scriptResponse = await _screenwriter.ProcessAsync(scriptMessage, ct).ConfigureAwait(false);
+                }
 
                 if (!scriptResponse.Success || scriptResponse.Result == null)
                 {
@@ -101,14 +127,18 @@ public class AgentOrchestrator
                     iterationNumber, currentScript.Scenes.Count);
 
                 // Step 2: Generate visual prompts
-                var visualMessage = new AgentMessage(
-                    FromAgent: "Orchestrator",
-                    ToAgent: "VisualDirector",
-                    MessageType: "GeneratePrompts",
-                    Payload: currentScript,
-                    Context: new Dictionary<string, object> { ["brief"] = brief });
+                AgentResponse visualResponse;
+                using (_telemetry.TrackInvocation("VisualDirector", "GeneratePrompts"))
+                {
+                    var visualMessage = new AgentMessage(
+                        FromAgent: "Orchestrator",
+                        ToAgent: "VisualDirector",
+                        MessageType: "GeneratePrompts",
+                        Payload: currentScript,
+                        Context: new Dictionary<string, object> { ["brief"] = brief });
 
-                var visualResponse = await _visualDirector.ProcessAsync(visualMessage, ct).ConfigureAwait(false);
+                    visualResponse = await _visualDirector.ProcessAsync(visualMessage, ct).ConfigureAwait(false);
+                }
 
                 if (!visualResponse.Success || visualResponse.Result == null)
                 {
@@ -124,19 +154,23 @@ public class AgentOrchestrator
                     iterationNumber, visualPrompts.Count);
 
                 // Step 3: Critic review
-                var criticMessage = new AgentMessage(
-                    FromAgent: "Orchestrator",
-                    ToAgent: "Critic",
-                    MessageType: "Review",
-                    Payload: currentScript,
-                    Context: new Dictionary<string, object>
-                    {
-                        ["brief"] = brief,
-                        ["planSpec"] = spec,
-                        ["visualPrompts"] = visualPrompts
-                    });
+                AgentResponse criticResponse;
+                using (_telemetry.TrackInvocation("Critic", "Review"))
+                {
+                    var criticMessage = new AgentMessage(
+                        FromAgent: "Orchestrator",
+                        ToAgent: "Critic",
+                        MessageType: "Review",
+                        Payload: currentScript,
+                        Context: new Dictionary<string, object>
+                        {
+                            ["brief"] = brief,
+                            ["planSpec"] = spec,
+                            ["visualPrompts"] = visualPrompts
+                        });
 
-                var criticResponse = await _critic.ProcessAsync(criticMessage, ct).ConfigureAwait(false);
+                    criticResponse = await _critic.ProcessAsync(criticMessage, ct).ConfigureAwait(false);
+                }
 
                 iterations.Add(new AgentIteration(
                     IterationNumber: iterationNumber,
@@ -145,14 +179,35 @@ public class AgentOrchestrator
                     CriticFeedback: criticResponse.FeedbackForRevision
                 ));
 
+                // Record iteration decision
+                _telemetry.RecordIteration(iterationNumber, !criticResponse.RequiresRevision, criticResponse.FeedbackForRevision);
+
                 if (!criticResponse.RequiresRevision)
                 {
-                    _logger.LogInformation("Script approved by Critic on iteration {Iteration}", iterationNumber);
+                    _logger.LogInformation("✓ Script APPROVED by Critic on iteration {Iteration}", iterationNumber);
                     break;
                 }
-
-                _logger.LogInformation("Critic requested revision on iteration {Iteration}: {Feedback}",
-                    iterationNumber, criticResponse.FeedbackForRevision);
+                else
+                {
+                    _logger.LogWarning("✗ Script requires revision (iteration {Iteration})", iterationNumber);
+                }
+            }
+            catch (InvalidAgentMessageException ex)
+            {
+                _logger.LogError(ex, "Invalid message in iteration {Iteration}", iterationNumber);
+                throw;
+            }
+            catch (UnknownMessageTypeException ex)
+            {
+                _logger.LogError(ex, "Unknown message type in iteration {Iteration}: {MessageType} for agent {AgentName}", 
+                    iterationNumber, ex.MessageType, ex.AgentName);
+                throw;
+            }
+            catch (UnknownAgentException ex)
+            {
+                _logger.LogError(ex, "Unknown agent referenced in iteration {Iteration}: {AgentName}", 
+                    iterationNumber, ex.AgentName);
+                throw;
             }
             catch (OperationCanceledException)
             {
@@ -168,6 +223,9 @@ public class AgentOrchestrator
                     VisualPrompts: visualPrompts ?? new List<VisualPrompt>(),
                     CriticFeedback: $"Error during iteration: {ex.Message}"
                 ));
+                
+                // Re-throw to fail fast on unexpected errors
+                throw;
             }
         }
 
@@ -183,11 +241,63 @@ public class AgentOrchestrator
             iterations.Count,
             approvedByCritic);
 
+        // Log telemetry summary
+        _telemetry.LogSummary();
+
+        // Get performance report
+        var performanceReport = _telemetry.GetReport();
+
+        // Save visual prompts after successful generation
+        if (visualPrompts != null && visualPrompts.Any() && _promptRepository != null)
+        {
+            _logger.LogInformation(
+                "Saving {Count} visual prompts for script {ScriptId}, correlation {CorrelationId}",
+                visualPrompts.Count,
+                scriptId,
+                correlationId);
+
+            try
+            {
+                foreach (var vp in visualPrompts)
+                {
+                    var scene = currentScript.Scenes.ElementAtOrDefault(vp.SceneNumber - 1);
+                    var storedPrompt = new StoredVisualPrompt
+                    {
+                        ScriptId = scriptId,
+                        CorrelationId = correlationId,
+                        SceneNumber = vp.SceneNumber,
+                        SceneHeading = !string.IsNullOrWhiteSpace(scene?.Narration) 
+                            ? scene.Narration.Substring(0, Math.Min(50, scene.Narration.Length)) 
+                            : $"Scene {vp.SceneNumber}",
+                        DetailedPrompt = vp.DetailedPrompt,
+                        CameraAngle = vp.CameraAngle,
+                        Lighting = vp.Lighting,
+                        NegativePrompts = !string.IsNullOrWhiteSpace(vp.NegativePrompt)
+                            ? vp.NegativePrompt.Split(',').Select(s => s.Trim()).Where(s => !string.IsNullOrEmpty(s)).ToList()
+                            : new List<string>(),
+                        StyleKeywords = vp.StyleKeywords
+                    };
+
+                    await _promptRepository.SaveAsync(storedPrompt, ct).ConfigureAwait(false);
+                }
+
+                _logger.LogInformation("Successfully saved {Count} visual prompts", visualPrompts.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to save visual prompts, continuing without persistence");
+                // Don't fail the entire operation if prompt saving fails
+            }
+        }
+
         return new AgentOrchestratorResult(
             Script: currentScript,
             VisualPrompts: visualPrompts ?? new List<VisualPrompt>(),
             Iterations: iterations,
-            ApprovedByCritic: approvedByCritic
+            ApprovedByCritic: approvedByCritic,
+            ScriptId: scriptId,
+            CorrelationId: correlationId,
+            PerformanceReport: performanceReport
         );
     }
 

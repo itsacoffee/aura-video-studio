@@ -18,8 +18,14 @@ public class CriticAgent : IAgent
     private readonly ILlmProvider _llmProvider;
     private readonly ScriptSchemaValidator _validator;
     private readonly ILogger<CriticAgent> _logger;
+    private readonly AgentMessageValidator _messageValidator;
 
     public string Name => "Critic";
+
+    public IReadOnlyList<string> SupportedMessageTypes { get; } = new[]
+    {
+        "Review"
+    };
 
     public CriticAgent(
         ILlmProvider llmProvider,
@@ -29,16 +35,38 @@ public class CriticAgent : IAgent
         _llmProvider = llmProvider ?? throw new ArgumentNullException(nameof(llmProvider));
         _validator = validator ?? throw new ArgumentNullException(nameof(validator));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _messageValidator = new AgentMessageValidator();
+    }
+
+    public bool CanHandle(string messageType)
+    {
+        return SupportedMessageTypes.Contains(messageType);
     }
 
     public async Task<AgentResponse> ProcessAsync(AgentMessage message, CancellationToken ct)
     {
-        _logger.LogInformation("CriticAgent processing message type: {MessageType}", message.MessageType);
-
-        if (message.MessageType != "Review")
+        // Validate message
+        var messageValidationResult = _messageValidator.Validate(message);
+        if (!messageValidationResult.IsValid)
         {
-            throw new ArgumentException($"Unknown message type: {message.MessageType}");
+            var errors = string.Join("; ", messageValidationResult.Errors);
+            _logger.LogError("Invalid message received by CriticAgent: {Errors}", errors);
+            throw new InvalidAgentMessageException(errors, message);
         }
+
+        // Check if we can handle this message type
+        if (!CanHandle(message.MessageType))
+        {
+            _logger.LogError(
+                "CriticAgent cannot handle message type: {MessageType}",
+                message.MessageType);
+            throw new UnknownMessageTypeException(message.MessageType, Name);
+        }
+
+        _logger.LogInformation(
+            "CriticAgent processing message type: {MessageType} from {FromAgent}",
+            message.MessageType,
+            message.FromAgent);
 
         var scriptDocument = (ScriptDocument)message.Payload;
         var brief = (Brief)message.Context!["brief"];

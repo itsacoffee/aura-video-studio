@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
@@ -14,8 +16,15 @@ public class ScreenwriterAgent : IAgent
 {
     private readonly ILlmProvider _llmProvider;
     private readonly ILogger<ScreenwriterAgent> _logger;
+    private readonly AgentMessageValidator _validator;
 
     public string Name => "Screenwriter";
+
+    public IReadOnlyList<string> SupportedMessageTypes { get; } = new[]
+    {
+        "GenerateScript",
+        "ReviseScript"
+    };
 
     public ScreenwriterAgent(
         ILlmProvider llmProvider,
@@ -23,17 +32,44 @@ public class ScreenwriterAgent : IAgent
     {
         _llmProvider = llmProvider ?? throw new ArgumentNullException(nameof(llmProvider));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _validator = new AgentMessageValidator();
+    }
+
+    public bool CanHandle(string messageType)
+    {
+        return SupportedMessageTypes.Contains(messageType);
     }
 
     public async Task<AgentResponse> ProcessAsync(AgentMessage message, CancellationToken ct)
     {
-        _logger.LogInformation("ScreenwriterAgent processing message type: {MessageType}", message.MessageType);
+        // Validate message
+        var validationResult = _validator.Validate(message);
+        if (!validationResult.IsValid)
+        {
+            var errors = string.Join("; ", validationResult.Errors);
+            _logger.LogError("Invalid message received by ScreenwriterAgent: {Errors}", errors);
+            throw new InvalidAgentMessageException(errors, message);
+        }
+
+        // Check if we can handle this message type
+        if (!CanHandle(message.MessageType))
+        {
+            _logger.LogError(
+                "ScreenwriterAgent cannot handle message type: {MessageType}",
+                message.MessageType);
+            throw new UnknownMessageTypeException(message.MessageType, Name);
+        }
+
+        _logger.LogInformation(
+            "ScreenwriterAgent processing message type: {MessageType} from {FromAgent}",
+            message.MessageType,
+            message.FromAgent);
 
         return message.MessageType switch
         {
             "GenerateScript" => await GenerateScriptAsync(message, ct),
             "ReviseScript" => await ReviseScriptAsync(message, ct),
-            _ => throw new ArgumentException($"Unknown message type: {message.MessageType}")
+            _ => throw new UnknownMessageTypeException(message.MessageType, Name)
         };
     }
 

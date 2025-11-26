@@ -10,6 +10,7 @@ using Aura.Api.Validation;
 using Aura.Api.Validators;
 using Aura.Core.Configuration;
 using Aura.Core.Data;
+using Aura.Core.Extensions;
 using Aura.Core.Hardware;
 using Aura.Core.Logging;
 using Aura.Core.Models;
@@ -1193,40 +1194,16 @@ builder.Services.AddSingleton<Aura.Core.AI.ScriptGenerationPipeline>(sp =>
     var validator = sp.GetRequiredService<Aura.Core.AI.Validation.ScriptSchemaValidator>();
     var fallbackGenerator = sp.GetRequiredService<Aura.Core.AI.Templates.FallbackScriptGenerator>();
     var logger = sp.GetRequiredService<ILogger<Aura.Core.AI.ScriptGenerationPipeline>>();
-    return new Aura.Core.AI.ScriptGenerationPipeline(llmProvider, validator, fallbackGenerator, logger);
+    var agentOrchestrator = sp.GetService<Aura.Core.AI.Agents.AgentOrchestrator>(); // Optional
+    var agenticOptions = sp.GetService<Microsoft.Extensions.Options.IOptions<Aura.Core.Configuration.AgenticModeOptions>>();
+    return new Aura.Core.AI.ScriptGenerationPipeline(llmProvider, validator, fallbackGenerator, logger, agentOrchestrator, agenticOptions);
 });
 
 // Register PR-007: Agentic Director Foundation - Multi-Agent Script Generation
-builder.Services.AddScoped<Aura.Core.AI.Agents.ScreenwriterAgent>(sp =>
-{
-    var llmProvider = sp.GetRequiredService<Aura.Core.Providers.ILlmProvider>();
-    var logger = sp.GetRequiredService<ILogger<Aura.Core.AI.Agents.ScreenwriterAgent>>();
-    return new Aura.Core.AI.Agents.ScreenwriterAgent(llmProvider, logger);
-});
+builder.Services.AddAgentServices(builder.Configuration);
 
-builder.Services.AddScoped<Aura.Core.AI.Agents.VisualDirectorAgent>(sp =>
-{
-    var llmProvider = sp.GetRequiredService<Aura.Core.Providers.ILlmProvider>();
-    var logger = sp.GetRequiredService<ILogger<Aura.Core.AI.Agents.VisualDirectorAgent>>();
-    return new Aura.Core.AI.Agents.VisualDirectorAgent(llmProvider, logger);
-});
-
-builder.Services.AddScoped<Aura.Core.AI.Agents.CriticAgent>(sp =>
-{
-    var llmProvider = sp.GetRequiredService<Aura.Core.Providers.ILlmProvider>();
-    var validator = sp.GetRequiredService<Aura.Core.AI.Validation.ScriptSchemaValidator>();
-    var logger = sp.GetRequiredService<ILogger<Aura.Core.AI.Agents.CriticAgent>>();
-    return new Aura.Core.AI.Agents.CriticAgent(llmProvider, validator, logger);
-});
-
-builder.Services.AddScoped<Aura.Core.AI.Agents.AgentOrchestrator>(sp =>
-{
-    var screenwriter = sp.GetRequiredService<Aura.Core.AI.Agents.ScreenwriterAgent>();
-    var visualDirector = sp.GetRequiredService<Aura.Core.AI.Agents.VisualDirectorAgent>();
-    var critic = sp.GetRequiredService<Aura.Core.AI.Agents.CriticAgent>();
-    var logger = sp.GetRequiredService<ILogger<Aura.Core.AI.Agents.AgentOrchestrator>>();
-    return new Aura.Core.AI.Agents.AgentOrchestrator(screenwriter, visualDirector, critic, logger);
-});
+// Register PR-007C: Visual Prompt Storage & Retrieval
+builder.Services.AddSingleton<Aura.Core.Data.Repositories.IVisualPromptRepository, Aura.Core.Data.Repositories.InMemoryVisualPromptRepository>();
 
 // Register Model Selection services
 builder.Services.AddSingleton<Aura.Core.AI.Adapters.ModelCatalog>();
@@ -3563,7 +3540,8 @@ apiGroup.MapPost("/script", async (
     [FromBody] ScriptRequest request,
     Aura.Core.Orchestrator.ScriptOrchestrator orchestrator,
     HardwareDetector hardwareDetector,
-    CancellationToken ct) =>
+    CancellationToken ct,
+    [FromQuery] bool useAgenticMode = false) =>
 {
     try
     {
@@ -3608,8 +3586,16 @@ apiGroup.MapPost("/script", async (
         var profile = await hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
         bool offlineOnly = profile.OfflineOnly;
 
-        Log.Information("Generating script for topic: {Topic}, duration: {Duration} min, tier: {Tier}, offline: {Offline}",
-            request.Topic, request.TargetDurationMinutes, preferredTier, offlineOnly);
+        Log.Information("Generating script for topic: {Topic}, duration: {Duration} min, tier: {Tier}, offline: {Offline}, agenticMode: {AgenticMode}",
+            request.Topic, request.TargetDurationMinutes, preferredTier, offlineOnly, useAgenticMode);
+
+        // TODO: Integrate agentic mode support into ScriptOrchestrator
+        // For now, agentic mode is logged but not yet integrated with ScriptOrchestrator
+        // This parameter is available for future integration
+        if (useAgenticMode)
+        {
+            Log.Information("Agentic mode requested, but ScriptOrchestrator integration pending. Using standard generation.");
+        }
 
         var result = await orchestrator.GenerateScriptAsync(brief, planSpec, preferredTier, offlineOnly, ct).ConfigureAwait(false);
 

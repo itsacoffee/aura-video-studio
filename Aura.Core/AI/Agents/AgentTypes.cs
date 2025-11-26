@@ -54,7 +54,10 @@ public record AgentOrchestratorResult(
     ScriptDocument Script,
     List<VisualPrompt> VisualPrompts,
     List<AgentIteration> Iterations,
-    bool ApprovedByCritic
+    bool ApprovedByCritic,
+    string ScriptId,
+    string CorrelationId,
+    Aura.Core.AI.Agents.Telemetry.AgentPerformanceReport PerformanceReport
 );
 
 /// <summary>

@@ -49,6 +49,9 @@ public record Job
     /// <summary>Execution logs for debugging and progress tracking</summary>
     public List<string> Logs { get; init; } = new();
     
+    /// <summary>Agent performance metrics if agentic mode was used</summary>
+    public Aura.Core.AI.Agents.Telemetry.AgentPerformanceReport? AgentPerformance { get; init; }
+    
     /// <summary>Legacy: When job started execution (use StartedUtc instead)</summary>
     public DateTime StartedAt { get; init; } = DateTime.UtcNow;
     
