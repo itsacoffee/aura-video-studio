@@ -67,6 +67,7 @@ namespace Aura.Api.Serialization
     /// <summary>
     /// JSON converter for Pacing enum
     /// Canonical: "Chill", "Conversational", "Fast"
+    /// Aliases: "Medium" -> "Conversational", "Slow" -> "Chill", "Quick" -> "Fast"
     /// </summary>
     public class TolerantPacingConverter : JsonConverter<ApiV1.Pacing>
     {
@@ -82,7 +83,14 @@ namespace Aura.Api.Serialization
             if (Enum.TryParse<ApiV1.Pacing>(value, ignoreCase: true, out var result))
                 return result;
 
-            throw new JsonException($"Unknown Pacing value: '{value}'. Valid values are: Chill, Conversational, Fast");
+            // Handle common aliases
+            return value.Trim().ToLowerInvariant() switch
+            {
+                "medium" or "normal" or "standard" => ApiV1.Pacing.Conversational,
+                "slow" or "relaxed" => ApiV1.Pacing.Chill,
+                "quick" or "rapid" => ApiV1.Pacing.Fast,
+                _ => throw new JsonException($"Unknown Pacing value: '{value}'. Valid values are: Chill, Conversational, Fast (aliases: Medium, Slow, Quick)")
+            };
         }
 
         public override void Write(Utf8JsonWriter writer, ApiV1.Pacing value, JsonSerializerOptions options)
@@ -186,6 +194,7 @@ namespace Aura.Api.Serialization
 
     /// <summary>
     /// JSON converter for legacy Core.Models.Pacing enum (for backward compatibility)
+    /// Aliases: "Medium" -> "Conversational", "Slow" -> "Chill", "Quick" -> "Fast"
     /// </summary>
     public class TolerantPacingConverterLegacy : JsonConverter<CoreModels.Pacing>
     {
@@ -201,7 +210,14 @@ namespace Aura.Api.Serialization
             if (Enum.TryParse<CoreModels.Pacing>(value, ignoreCase: true, out var result))
                 return result;
 
-            throw new JsonException($"Unknown Pacing value: '{value}'. Valid values are: Chill, Conversational, Fast");
+            // Handle common aliases
+            return value.Trim().ToLowerInvariant() switch
+            {
+                "medium" or "normal" or "standard" => CoreModels.Pacing.Conversational,
+                "slow" or "relaxed" => CoreModels.Pacing.Chill,
+                "quick" or "rapid" => CoreModels.Pacing.Fast,
+                _ => throw new JsonException($"Unknown Pacing value: '{value}'. Valid values are: Chill, Conversational, Fast (aliases: Medium, Slow, Quick)")
+            };
         }
 
         public override void Write(Utf8JsonWriter writer, CoreModels.Pacing value, JsonSerializerOptions options)

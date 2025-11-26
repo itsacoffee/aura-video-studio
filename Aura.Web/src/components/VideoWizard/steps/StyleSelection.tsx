@@ -314,9 +314,11 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
     const needsDefaults = !data.voiceProvider || !data.visualStyle || !data.imageProvider;
     if (needsDefaults) {
       defaultsSetRef.current = true;
+      // Use 'Null' as default voice provider since it's always available (generates silence)
+      // User can select a better provider in the TTS settings if available
       onChange({
         ...data,
-        voiceProvider: data.voiceProvider || 'Windows',
+        voiceProvider: data.voiceProvider || 'Null',
         visualStyle: data.visualStyle || 'modern',
         imageProvider: data.imageProvider || 'Placeholder',
       });
@@ -374,8 +376,8 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
         musicGenre: preset.musicGenre,
         musicEnabled: preset.musicGenre !== 'none',
         // CRITICAL FIX: Ensure voiceProvider is set when using presets
-        // If not already set, use a default
-        voiceProvider: data.voiceProvider || 'Windows',
+        // Use 'Null' as fallback which is always available (generates silence)
+        voiceProvider: data.voiceProvider || 'Null',
         // CRITICAL FIX: Ensure imageProvider is set when using presets
         // If not already set and providers are available, auto-select first available
         imageProvider: data.imageProvider || (providers.length > 0

@@ -352,7 +352,7 @@ export async function startFinalRendering(
       },
       planSpec: {
         targetDuration: formatTimeSpan(briefData.duration), // TimeSpan format: HH:mm:ss
-        pacing: 'Medium',
+        pacing: 'Conversational', // Valid pacing values: Chill, Conversational, Fast
         density: 'Balanced',
         style: styleData.visualStyle,
       },

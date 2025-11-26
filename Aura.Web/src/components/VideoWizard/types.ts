@@ -7,7 +7,7 @@ export interface BriefData {
 }
 
 export interface StyleData {
-  voiceProvider: 'ElevenLabs' | 'PlayHT' | 'Windows' | 'Piper';
+  voiceProvider: 'ElevenLabs' | 'PlayHT' | 'Windows' | 'Piper' | 'Null' | 'Mimic3' | 'Azure';
   voiceName: string;
   visualStyle: 'modern' | 'minimal' | 'cinematic' | 'playful' | 'professional';
   musicGenre: 'ambient' | 'upbeat' | 'dramatic' | 'none';
