@@ -10,60 +10,39 @@ import {
   useToastController,
 } from '@fluentui/react-components';
 import {
-  CheckmarkCircle24Regular,
-  ErrorCircle24Regular,
-  Folder24Regular,
-  Open24Regular,
-  Dismiss24Regular,
-  DocumentBulletList24Regular,
+  CheckmarkCircle20Regular,
+  ErrorCircle20Regular,
+  Folder20Regular,
+  Open20Regular,
+  Dismiss20Regular,
+  DocumentBulletList20Regular,
 } from '@fluentui/react-icons';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 const useStyles = makeStyles({
-  // Main toast container with Apple-inspired glass morphism
-  toastContainer: {
-    backdropFilter: 'blur(24px) saturate(180%)',
-    WebkitBackdropFilter: 'blur(24px) saturate(180%)',
-    backgroundColor: 'rgba(255, 255, 255, 0.88)',
-    ...shorthands.border('0.5px', 'solid', 'rgba(0, 0, 0, 0.08)'),
-    ...shorthands.borderRadius('12px'),
-    ...shorthands.padding('18px', '22px', '16px', '22px'),
-    minWidth: '320px',
-    maxWidth: '480px',
-    width: 'fit-content',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.10), 0 12px 48px rgba(0, 0, 0, 0.06)',
-    transitionProperty: 'transform, box-shadow',
-    transitionDuration: '200ms',
-    transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
-    position: 'relative',
-    contain: 'layout style paint',
-    willChange: 'transform, opacity',
+  // Modern toast styling - compact and clean like macOS/Windows 11 notifications
+  toast: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backdropFilter: 'blur(20px) saturate(180%)',
+    WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+    ...shorthands.borderRadius('10px'),
+    ...shorthands.border('1px', 'solid', 'rgba(0, 0, 0, 0.06)'),
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04)',
+    maxWidth: '360px',
+    minWidth: '280px',
+    ...shorthands.padding('12px', '14px'),
     '@media (prefers-color-scheme: dark)': {
-      backgroundColor: 'rgba(30, 30, 30, 0.92)',
-      ...shorthands.border('0.5px', 'solid', 'rgba(255, 255, 255, 0.1)'),
-    },
-    '@media (max-width: 768px)': {
-      minWidth: '280px',
-      maxWidth: '360px',
-      ...shorthands.padding('16px', '18px', '14px', '18px'),
-    },
-    '@media (min-width: 1920px)': {
-      maxWidth: '520px',
-    },
-    '@media (prefers-reduced-motion: reduce)': {
-      transitionDuration: '0.01ms',
-    },
-    ':hover': {
-      transform: 'translateY(-2px)',
-      boxShadow: '0 6px 16px rgba(0, 0, 0, 0.12), 0 16px 56px rgba(0, 0, 0, 0.08)',
+      backgroundColor: 'rgba(40, 40, 40, 0.95)',
+      ...shorthands.border('1px', 'solid', 'rgba(255, 255, 255, 0.08)'),
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.24), 0 1px 3px rgba(0, 0, 0, 0.12)',
     },
   },
 
-  // Toast layout wrapper
+  // Toast layout
   toastLayout: {
     display: 'flex',
     flexDirection: 'column',
-    ...shorthands.gap('8px'),
+    ...shorthands.gap('6px'),
   },
 
   // Header row with title and close button
@@ -71,45 +50,37 @@ const useStyles = makeStyles({
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    ...shorthands.gap('14px'),
-    marginBottom: '2px',
+    ...shorthands.gap('10px'),
   },
 
   // Title wrapper with icon
   toastTitleWrapper: {
     display: 'flex',
     alignItems: 'center',
-    ...shorthands.gap('14px'),
+    ...shorthands.gap('8px'),
     ...shorthands.flex(1),
     minWidth: 0,
   },
 
   // Icon container
   toastIcon: {
-    width: '24px',
-    height: '24px',
     flexShrink: 0,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
   },
 
-  // Title typography with balanced text wrapping
+  // Title typography - compact
   toastTitle: {
-    fontSize: '15px',
+    fontSize: '13px',
     fontWeight: '600',
-    lineHeight: '1.35',
-    letterSpacing: '-0.01em',
+    lineHeight: '1.4',
     marginBottom: 0,
     color: tokens.colorNeutralForeground1,
-    wordBreak: 'break-word',
-    overflowWrap: 'break-word',
-    hyphens: 'auto',
-    WebkitHyphens: 'auto',
     ...shorthands.flex(1),
     minWidth: 0,
     '@media (prefers-color-scheme: dark)': {
-      color: 'rgba(255, 255, 255, 0.92)',
+      color: 'rgba(255, 255, 255, 0.95)',
     },
   },
 
@@ -125,92 +96,78 @@ const useStyles = makeStyles({
     minWidth: 0,
   },
 
-  // Body typography for readability
+  // Body typography - compact
   toastBody: {
-    fontSize: '14px',
+    fontSize: '12px',
     fontWeight: '400',
-    lineHeight: '1.5',
-    letterSpacing: '0',
-    opacity: 0.9,
+    lineHeight: '1.4',
     color: tokens.colorNeutralForeground2,
-    wordBreak: 'break-word',
-    overflowWrap: 'break-word',
-    hyphens: 'auto',
-    maxWidth: '100%',
+    ...shorthands.margin(0),
+    ...shorthands.padding(0),
     '@media (prefers-color-scheme: dark)': {
-      color: 'rgba(255, 255, 255, 0.80)',
+      color: 'rgba(255, 255, 255, 0.7)',
     },
   },
 
-  // File path styling with monospace font
+  // File path styling - compact
   pathText: {
-    marginTop: '10px',
-    fontSize: '12px',
+    marginTop: '6px',
+    fontSize: '11px',
     fontFamily:
       'ui-monospace, "SF Mono", "Cascadia Code", "Segoe UI Mono", Menlo, Monaco, Consolas, monospace',
     fontWeight: '400',
-    lineHeight: '1.45',
-    opacity: 0.65,
+    lineHeight: '1.4',
+    opacity: 0.7,
     color: tokens.colorNeutralForeground3,
     wordBreak: 'break-all',
     overflowWrap: 'anywhere',
     whiteSpace: 'pre-wrap',
-    backgroundColor: 'rgba(0, 0, 0, 0.04)',
-    ...shorthands.padding('6px', '8px'),
-    ...shorthands.borderRadius('6px'),
+    backgroundColor: 'rgba(0, 0, 0, 0.03)',
+    ...shorthands.padding('4px', '6px'),
+    ...shorthands.borderRadius('4px'),
     display: '-webkit-box',
     WebkitLineClamp: 2,
     WebkitBoxOrient: 'vertical',
     ...shorthands.overflow('hidden'),
     textOverflow: 'ellipsis',
     '@media (prefers-color-scheme: dark)': {
-      backgroundColor: 'rgba(255, 255, 255, 0.06)',
-      color: 'rgba(255, 255, 255, 0.65)',
+      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+      color: 'rgba(255, 255, 255, 0.6)',
     },
   },
 
-  // Duration/metadata text
+  // Duration/metadata text - compact
   metadataText: {
-    marginTop: '8px',
-    fontSize: '12px',
+    marginTop: '4px',
+    fontSize: '11px',
     fontWeight: '500',
     lineHeight: '1.4',
-    opacity: 0.65,
-    letterSpacing: '0.01em',
+    opacity: 0.6,
     color: tokens.colorNeutralForeground3,
     whiteSpace: 'nowrap',
     '@media (prefers-color-scheme: dark)': {
-      color: 'rgba(255, 255, 255, 0.65)',
+      color: 'rgba(255, 255, 255, 0.6)',
     },
   },
 
-  // Footer with action buttons
+  // Footer with action buttons - compact
   toastFooter: {
     display: 'flex',
-    ...shorthands.gap('10px'),
-    marginTop: '14px',
+    ...shorthands.gap('8px'),
+    marginTop: '8px',
     alignItems: 'center',
     flexWrap: 'wrap',
   },
 
   // Progress bar container
   progressBar: {
-    height: '3px',
-    backgroundColor: 'rgba(0, 0, 0, 0.08)',
-    ...shorthands.borderRadius('1.5px'),
+    height: '2px',
+    backgroundColor: 'rgba(0, 0, 0, 0.06)',
+    ...shorthands.borderRadius('1px'),
     ...shorthands.overflow('hidden'),
-    marginTop: '14px',
-    marginLeft: '-22px',
-    marginRight: '-22px',
-    marginBottom: '-16px',
-    willChange: 'width',
+    marginTop: '10px',
     '@media (prefers-color-scheme: dark)': {
-      backgroundColor: 'rgba(255, 255, 255, 0.12)',
-    },
-    '@media (max-width: 768px)': {
-      marginLeft: '-18px',
-      marginRight: '-18px',
-      marginBottom: '-14px',
+      backgroundColor: 'rgba(255, 255, 255, 0.1)',
     },
   },
 
@@ -221,7 +178,6 @@ const useStyles = makeStyles({
     transitionProperty: 'width',
     transitionDuration: '100ms',
     transitionTimingFunction: 'linear',
-    willChange: 'width',
   },
 
   // Success progress fill
@@ -231,28 +187,23 @@ const useStyles = makeStyles({
 
   // Error progress fill
   progressFillError: {
-    backgroundColor: '#FF453A',
+    backgroundColor: '#FF3B30',
   },
 
-  // Close button with hover state
+  // Close button - compact
   closeButton: {
-    minWidth: '28px',
-    height: '28px',
+    minWidth: '24px',
+    height: '24px',
     ...shorthands.padding('0'),
-    ...shorthands.borderRadius('6px'),
-    transitionProperty: 'transform, background-color',
-    transitionDuration: '150ms',
-    transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+    ...shorthands.borderRadius('4px'),
     flexShrink: 0,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    opacity: 0.6,
     ':hover': {
-      transform: 'scale(1.08)',
-      backgroundColor: 'rgba(0, 0, 0, 0.06)',
-    },
-    ':active': {
-      transform: 'scale(0.96)',
+      opacity: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.05)',
     },
     '@media (prefers-color-scheme: dark)': {
       ':hover': {
@@ -261,47 +212,52 @@ const useStyles = makeStyles({
     },
   },
 
-  // Action buttons
+  // Action buttons - compact
   actionButton: {
-    ...shorthands.borderRadius('8px'),
-    ...shorthands.padding('7px', '16px'),
-    fontSize: '13px',
+    ...shorthands.borderRadius('6px'),
+    ...shorthands.padding('4px', '10px'),
+    fontSize: '12px',
     fontWeight: '500',
     lineHeight: '1.3',
-    transitionProperty: 'transform',
-    transitionDuration: '150ms',
-    transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
     whiteSpace: 'nowrap',
-    ':hover': {
-      transform: 'translateY(-1px)',
-    },
-    ':active': {
-      transform: 'translateY(0)',
-    },
   },
 
   // Success toast variant
   toastSuccess: {
-    backgroundColor: 'rgba(52, 199, 89, 0.10)',
-    ...shorthands.border('0.5px', 'solid', 'rgba(52, 199, 89, 0.25)'),
+    backgroundColor: 'rgba(52, 199, 89, 0.08)',
+    ...shorthands.border('1px', 'solid', 'rgba(52, 199, 89, 0.15)'),
   },
 
   // Error toast variant
   toastError: {
-    backgroundColor: 'rgba(255, 69, 58, 0.10)',
-    ...shorthands.border('0.5px', 'solid', 'rgba(255, 69, 58, 0.25)'),
+    backgroundColor: 'rgba(255, 59, 48, 0.08)',
+    ...shorthands.border('1px', 'solid', 'rgba(255, 59, 48, 0.15)'),
   },
 
   // Info toast variant
   toastInfo: {
-    backgroundColor: 'rgba(10, 132, 255, 0.10)',
-    ...shorthands.border('0.5px', 'solid', 'rgba(10, 132, 255, 0.25)'),
+    backgroundColor: 'rgba(0, 122, 255, 0.08)',
+    ...shorthands.border('1px', 'solid', 'rgba(0, 122, 255, 0.15)'),
   },
 
   // Warning toast variant
   toastWarning: {
-    backgroundColor: 'rgba(255, 159, 10, 0.10)',
-    ...shorthands.border('0.5px', 'solid', 'rgba(255, 159, 10, 0.25)'),
+    backgroundColor: 'rgba(255, 149, 0, 0.08)',
+    ...shorthands.border('1px', 'solid', 'rgba(255, 149, 0, 0.15)'),
+  },
+
+  // Icon colors - Apple SF Symbols palette
+  iconSuccess: {
+    color: '#34C759',
+  },
+  iconError: {
+    color: '#FF3B30',
+  },
+  iconInfo: {
+    color: '#007AFF',
+  },
+  iconWarning: {
+    color: '#FF9500',
   },
 });
 
@@ -415,11 +371,7 @@ function ToastWithProgress({
   return (
     // This div is for hover detection to pause toast auto-dismiss, not for interactive content
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions
-    <div
-      className={`${styles.toastContainer} toast-slide-in`}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
+    <div className={styles.toast} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
       {children}
       {timeout > 0 && (
         <div className={styles.progressBar}>
@@ -464,14 +416,14 @@ export function useNotifications() {
               <div className={styles.toastHeader}>
                 <div className={styles.toastTitleWrapper}>
                   <div className={styles.toastIcon}>
-                    <CheckmarkCircle24Regular style={{ color: '#34C759' }} />
+                    <CheckmarkCircle20Regular className={styles.iconSuccess} />
                   </div>
                   <div className={styles.toastTitle}>{title}</div>
                 </div>
                 <Button
                   size="small"
                   appearance="transparent"
-                  icon={<Dismiss24Regular />}
+                  icon={<Dismiss20Regular />}
                   onClick={handleDismiss}
                   aria-label="Dismiss notification"
                   className={styles.closeButton}
@@ -494,7 +446,7 @@ export function useNotifications() {
                     <Button
                       size="small"
                       appearance="primary"
-                      icon={<Open24Regular />}
+                      icon={<Open20Regular />}
                       onClick={onOpenFile}
                       className={styles.actionButton}
                     >
@@ -505,7 +457,7 @@ export function useNotifications() {
                     <Button
                       size="small"
                       appearance="subtle"
-                      icon={<Folder24Regular />}
+                      icon={<Folder20Regular />}
                       onClick={onOpenFolder}
                       className={styles.actionButton}
                     >
@@ -516,7 +468,7 @@ export function useNotifications() {
                     <Button
                       size="small"
                       appearance="subtle"
-                      icon={<Open24Regular />}
+                      icon={<Open20Regular />}
                       onClick={onViewResults}
                       className={styles.actionButton}
                     >
@@ -548,6 +500,7 @@ export function useNotifications() {
       styles.metadataText,
       styles.toastFooter,
       styles.actionButton,
+      styles.iconSuccess,
     ]
   );
 
@@ -577,14 +530,14 @@ export function useNotifications() {
               <div className={styles.toastHeader}>
                 <div className={styles.toastTitleWrapper}>
                   <div className={styles.toastIcon}>
-                    <ErrorCircle24Regular style={{ color: '#FF453A' }} />
+                    <ErrorCircle20Regular className={styles.iconError} />
                   </div>
                   <div className={styles.toastTitle}>{title}</div>
                 </div>
                 <Button
                   size="small"
                   appearance="transparent"
-                  icon={<Dismiss24Regular />}
+                  icon={<Dismiss20Regular />}
                   onClick={handleDismiss}
                   aria-label="Dismiss notification"
                   className={styles.closeButton}
@@ -618,7 +571,7 @@ export function useNotifications() {
                     <Button
                       size="small"
                       appearance="subtle"
-                      icon={<DocumentBulletList24Regular />}
+                      icon={<DocumentBulletList20Regular />}
                       onClick={onOpenLogs}
                       className={styles.actionButton}
                     >
@@ -650,6 +603,7 @@ export function useNotifications() {
       styles.metadataText,
       styles.toastFooter,
       styles.actionButton,
+      styles.iconError,
     ]
   );
 

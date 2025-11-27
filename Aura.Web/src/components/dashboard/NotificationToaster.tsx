@@ -11,129 +11,103 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import {
-  CheckmarkCircle24Filled,
-  Warning24Filled,
-  ErrorCircle24Filled,
-  Info24Filled,
+  CheckmarkCircle20Filled,
+  Warning20Filled,
+  ErrorCircle20Filled,
+  Info20Filled,
 } from '@fluentui/react-icons';
 import { useEffect } from 'react';
 import { useNotificationStore, type NotificationType } from '../../state/notifications';
 
 const useStyles = makeStyles({
-  // Main toast container with Apple-inspired glass morphism
-  toastContainer: {
-    backdropFilter: 'blur(24px) saturate(180%)',
-    WebkitBackdropFilter: 'blur(24px) saturate(180%)',
-    backgroundColor: 'rgba(255, 255, 255, 0.88)',
-    ...shorthands.border('0.5px', 'solid', 'rgba(0, 0, 0, 0.08)'),
-    ...shorthands.borderRadius('12px'),
-    ...shorthands.padding('18px', '22px', '16px', '22px'),
-    minWidth: '320px',
-    maxWidth: '480px',
-    width: 'fit-content',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.10), 0 12px 48px rgba(0, 0, 0, 0.06)',
-    transitionProperty: 'transform, box-shadow',
-    transitionDuration: '200ms',
-    transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
-    position: 'relative',
-    contain: 'layout style paint',
-    willChange: 'transform, opacity',
+  // Modern toast styling inspired by macOS/Windows 11 notifications
+  toast: {
+    // Override FluentUI default toast styles for a cleaner look
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backdropFilter: 'blur(20px) saturate(180%)',
+    WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+    ...shorthands.borderRadius('10px'),
+    ...shorthands.border('1px', 'solid', 'rgba(0, 0, 0, 0.06)'),
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04)',
+    maxWidth: '360px',
+    minWidth: '280px',
+    ...shorthands.padding('12px', '14px'),
     '@media (prefers-color-scheme: dark)': {
-      backgroundColor: 'rgba(30, 30, 30, 0.92)',
-      ...shorthands.border('0.5px', 'solid', 'rgba(255, 255, 255, 0.1)'),
-    },
-    '@media (max-width: 768px)': {
-      minWidth: '280px',
-      maxWidth: '360px',
-      ...shorthands.padding('16px', '18px', '14px', '18px'),
-    },
-    '@media (prefers-reduced-motion: reduce)': {
-      transitionDuration: '0.01ms',
-    },
-    ':hover': {
-      transform: 'translateY(-2px)',
-      boxShadow: '0 6px 16px rgba(0, 0, 0, 0.12), 0 16px 56px rgba(0, 0, 0, 0.08)',
+      backgroundColor: 'rgba(40, 40, 40, 0.95)',
+      ...shorthands.border('1px', 'solid', 'rgba(255, 255, 255, 0.08)'),
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.24), 0 1px 3px rgba(0, 0, 0, 0.12)',
     },
   },
 
-  // Toast layout wrapper
-  toastLayout: {
+  // Toaster container overrides to remove extra wrapper styling
+  toaster: {
+    // Remove any default borders or backgrounds from the toaster container
+    '& > div': {
+      ...shorthands.border('none'),
+      background: 'transparent',
+    },
+  },
+
+  // Content layout - horizontal alignment
+  content: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    ...shorthands.gap('10px'),
+  },
+
+  // Icon styling
+  icon: {
+    flexShrink: 0,
+    marginTop: '2px',
+  },
+
+  // Text container
+  textContainer: {
     display: 'flex',
     flexDirection: 'column',
-    ...shorthands.gap('8px'),
-  },
-
-  // Header row with icon and title
-  toastHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    ...shorthands.gap('14px'),
-  },
-
-  // Icon container
-  toastIcon: {
-    width: '24px',
-    height: '24px',
-    flexShrink: 0,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  // Title typography
-  toastTitle: {
-    fontSize: '15px',
-    fontWeight: '600',
-    lineHeight: '1.35',
-    letterSpacing: '-0.01em',
-    color: tokens.colorNeutralForeground1,
-    wordBreak: 'break-word',
-    overflowWrap: 'break-word',
-    hyphens: 'auto',
-    WebkitHyphens: 'auto',
-    ...shorthands.flex(1),
+    ...shorthands.gap('2px'),
     minWidth: 0,
+    ...shorthands.flex(1),
+  },
+
+  // Title styling - compact and readable
+  title: {
+    fontSize: '13px',
+    fontWeight: '600',
+    lineHeight: '1.4',
+    color: tokens.colorNeutralForeground1,
+    ...shorthands.margin(0),
+    ...shorthands.padding(0),
     '@media (prefers-color-scheme: dark)': {
-      color: 'rgba(255, 255, 255, 0.92)',
+      color: 'rgba(255, 255, 255, 0.95)',
     },
   },
 
-  // Body typography
-  toastBody: {
-    fontSize: '14px',
+  // Body styling - secondary text
+  body: {
+    fontSize: '12px',
     fontWeight: '400',
-    lineHeight: '1.5',
-    letterSpacing: '0',
-    opacity: 0.9,
+    lineHeight: '1.4',
     color: tokens.colorNeutralForeground2,
-    wordBreak: 'break-word',
-    overflowWrap: 'break-word',
-    hyphens: 'auto',
-    maxWidth: '100%',
-    paddingLeft: '38px',
+    ...shorthands.margin(0),
+    ...shorthands.padding(0),
     '@media (prefers-color-scheme: dark)': {
-      color: 'rgba(255, 255, 255, 0.80)',
+      color: 'rgba(255, 255, 255, 0.7)',
     },
   },
 
-  // Success icon color
+  // Icon colors - Apple/SF Symbols inspired
   iconSuccess: {
     color: '#34C759',
   },
-
-  // Warning icon color
   iconWarning: {
-    color: '#FF9F0A',
+    color: '#FF9500',
   },
-
-  // Error icon color
   iconError: {
-    color: '#FF453A',
+    color: '#FF3B30',
   },
-
-  // Info icon color
   iconInfo: {
-    color: '#0A84FF',
+    color: '#007AFF',
   },
 });
 
@@ -150,17 +124,15 @@ export function NotificationToaster() {
       const iconElement = getIcon(latestNotification.type, styles);
 
       dispatchToast(
-        <div className={`${styles.toastContainer} toast-slide-in`}>
-          <Toast>
-            <div className={styles.toastLayout}>
-              <div className={styles.toastHeader}>
-                <div className={styles.toastIcon}>{iconElement}</div>
-                <ToastTitle className={styles.toastTitle}>{latestNotification.title}</ToastTitle>
-              </div>
-              <ToastBody className={styles.toastBody}>{latestNotification.message}</ToastBody>
+        <Toast className={styles.toast}>
+          <div className={styles.content}>
+            <span className={styles.icon}>{iconElement}</span>
+            <div className={styles.textContainer}>
+              <ToastTitle className={styles.title}>{latestNotification.title}</ToastTitle>
+              <ToastBody className={styles.body}>{latestNotification.message}</ToastBody>
             </div>
-          </Toast>
-        </div>,
+          </div>
+        </Toast>,
         { intent, timeout: 5000 }
       );
     }
@@ -182,13 +154,13 @@ export function NotificationToaster() {
   const getIcon = (type: NotificationType, iconStyles: ReturnType<typeof useStyles>) => {
     switch (type) {
       case 'success':
-        return <CheckmarkCircle24Filled className={iconStyles.iconSuccess} />;
+        return <CheckmarkCircle20Filled className={iconStyles.iconSuccess} />;
       case 'warning':
-        return <Warning24Filled className={iconStyles.iconWarning} />;
+        return <Warning20Filled className={iconStyles.iconWarning} />;
       case 'error':
-        return <ErrorCircle24Filled className={iconStyles.iconError} />;
+        return <ErrorCircle20Filled className={iconStyles.iconError} />;
       case 'info':
-        return <Info24Filled className={iconStyles.iconInfo} />;
+        return <Info20Filled className={iconStyles.iconInfo} />;
     }
   };
 
@@ -196,10 +168,11 @@ export function NotificationToaster() {
     <Toaster
       toasterId={toasterId}
       position="top-end"
-      offset={{ horizontal: 24, vertical: 24 }}
+      offset={{ horizontal: 20, vertical: 20 }}
       pauseOnHover
       pauseOnWindowBlur
       limit={3}
+      className={styles.toaster}
     />
   );
 }
