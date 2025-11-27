@@ -480,8 +480,14 @@ export const FinalExport: FC<FinalExportProps> = ({
           // Provide initial feedback
           console.info('[FinalExport] Job submitted, connecting to SSE for real-time updates...');
           console.info('[FinalExport] Job ID received:', jobId);
-          setExportStage('Connecting to job progress stream...');
+          setExportStage('Starting video generation...');
           setExportProgress(1); // Show some progress so user knows something is happening
+
+          // Wait 2 seconds for job to be registered in JobRunner before attempting SSE connection
+          // This helps prevent race condition where SSE connection is attempted before job is available
+          console.info('[FinalExport] Waiting 2 seconds for job registration...');
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          setExportStage('Connecting to job progress stream...');
 
           // Use SSE for real-time progress updates with polling fallback
           let jobData: JobStatusData | null = null;
@@ -497,8 +503,24 @@ export const FinalExport: FC<FinalExportProps> = ({
             const formatIndex = i;
             const totalFormats = formatsToExport.length;
 
-            // Connection timeout (10 minutes)
-            const timeoutId = setTimeout(() => {
+            // Track whether we've received any progress updates (connection established)
+            let connectionEstablished = false;
+
+            // Connection establishment timeout (30 seconds) - separate from job timeout
+            const connectionTimeoutId = setTimeout(() => {
+              if (!connectionEstablished && eventSource.readyState !== EventSource.CLOSED) {
+                console.warn(
+                  '[FinalExport] SSE connection not established after 30 seconds, falling back to polling'
+                );
+                eventSource.close();
+                eventSourceRef.current = null;
+                // Fall back to polling instead of rejecting
+                fallbackToPolling(jobId, formatIndex, totalFormats).then(resolve).catch(reject);
+              }
+            }, 30000);
+
+            // Overall job timeout (10 minutes)
+            const jobTimeoutId = setTimeout(() => {
               if (eventSource.readyState !== EventSource.CLOSED) {
                 console.warn('[FinalExport] SSE connection timed out after 10 minutes');
                 eventSource.close();
@@ -509,6 +531,13 @@ export const FinalExport: FC<FinalExportProps> = ({
 
             eventSource.addEventListener('job-progress', (event) => {
               try {
+                // Mark connection as established once we receive progress
+                if (!connectionEstablished) {
+                  connectionEstablished = true;
+                  clearTimeout(connectionTimeoutId);
+                  console.info('[SSE] Connection established - receiving progress updates');
+                }
+
                 const data = JSON.parse(event.data) as JobStatusData;
                 const jobProgress = data.percent || 0;
                 const overallProgress = (formatIndex * 100 + jobProgress) / totalFormats;
@@ -525,7 +554,8 @@ export const FinalExport: FC<FinalExportProps> = ({
             });
 
             eventSource.addEventListener('job-completed', (event) => {
-              clearTimeout(timeoutId);
+              clearTimeout(connectionTimeoutId);
+              clearTimeout(jobTimeoutId);
               try {
                 const data = JSON.parse(event.data) as JobStatusData;
                 console.info('[SSE] Job completed:', data);
@@ -559,7 +589,8 @@ export const FinalExport: FC<FinalExportProps> = ({
               }
 
               console.error('[SSE] Connection error, falling back to polling:', event);
-              clearTimeout(timeoutId);
+              clearTimeout(connectionTimeoutId);
+              clearTimeout(jobTimeoutId);
               eventSource.close();
               eventSourceRef.current = null;
 
@@ -568,7 +599,7 @@ export const FinalExport: FC<FinalExportProps> = ({
             });
 
             eventSource.onopen = () => {
-              console.info('[SSE] Connection established for job:', jobId);
+              console.info('[SSE] Connection opened for job:', jobId);
               setExportStage('Connected - waiting for progress updates...');
             };
           });

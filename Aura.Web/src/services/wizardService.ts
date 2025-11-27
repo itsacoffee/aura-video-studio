@@ -406,6 +406,17 @@ export async function startFinalRendering(
       payload: jobRequest,
     });
 
+    logger.info(
+      'Sending job creation request to /api/jobs',
+      'wizardService',
+      'startFinalRendering',
+      {
+        topic: briefData.topic,
+        duration: briefData.duration,
+        outputFormat: exportConfig.outputFormat,
+      }
+    );
+
     // Use extended timeout for job creation (5 minutes)
     const response = await postWithTimeout<{
       jobId: string;
@@ -418,9 +429,21 @@ export async function startFinalRendering(
       config
     );
 
-    logger.info('Final rendering job created', 'wizardService', 'startFinalRendering', {
+    logger.info(
+      'Final rendering job created successfully',
+      'wizardService',
+      'startFinalRendering',
+      {
+        jobId: response.jobId,
+        correlationId: response.correlationId,
+        status: response.status,
+      }
+    );
+
+    // Log the SSE endpoint that will be used for progress updates
+    logger.debug('SSE endpoint for progress updates', 'wizardService', 'startFinalRendering', {
+      endpoint: `/api/jobs/${response.jobId}/progress/stream`,
       jobId: response.jobId,
-      correlationId: response.correlationId,
     });
 
     return { jobId: response.jobId, correlationId: response.correlationId };
