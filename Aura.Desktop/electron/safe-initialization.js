@@ -385,6 +385,7 @@ function initializeIpcHandlers(
     ffmpeg: null,
     startupLogs: null,
     diagnostics: null,
+    contextMenu: null,
   };
 
   const failedHandlers = [];
@@ -504,6 +505,20 @@ function initializeIpcHandlers(
       failedHandlers.push({ name: "diagnostics", error: error.message });
       if (logger)
         logger.warn("IPC", "Diagnostics handler failed to initialize", {
+          error: error.message,
+        });
+    }
+
+    // Context Menu handler
+    try {
+      const { ContextMenuHandler } = require("./ipc-handlers/context-menu-handler");
+      handlers.contextMenu = new ContextMenuHandler(logger, windowManager);
+      handlers.contextMenu.register();
+      succeededHandlers.push("contextMenu");
+    } catch (error) {
+      failedHandlers.push({ name: "contextMenu", error: error.message });
+      if (logger)
+        logger.warn("IPC", "Context menu handler failed to initialize", {
           error: error.message,
         });
     }

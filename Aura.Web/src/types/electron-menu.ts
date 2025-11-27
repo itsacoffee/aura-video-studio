@@ -10,6 +10,8 @@
  * - React components (useElectronMenuEvents.ts)
  */
 
+import type { ContextMenuAPI } from './electron-context-menu';
+
 /**
  * All valid menu event channel names
  */
@@ -291,6 +293,7 @@ export interface AuraAPI {
   protocol?: {
     onNavigate(callback: (data: Record<string, unknown>) => void): () => void;
   };
+  contextMenu?: ContextMenuAPI;
   startupLogs?: {
     getLatest(): Promise<unknown>;
     getSummary(): Promise<unknown>;
