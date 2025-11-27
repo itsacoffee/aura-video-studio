@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -19,6 +20,9 @@ namespace Aura.Api.Controllers;
 [Route("api/script")]
 public class ScriptController : ControllerBase
 {
+    // Cached search values for sentence delimiter search (CA1870 compliance)
+    private static readonly SearchValues<char> SentenceDelimiters = SearchValues.Create(".!?");
+
     private readonly ILogger<ScriptController> _logger;
     private readonly ScriptAnalysisService _analysisService;
     private readonly AdvancedScriptEnhancer _enhancer;
@@ -538,7 +542,7 @@ public class ScriptController : ControllerBase
                 {
                     Number = request.SceneIndex + 1,
                     Narration = result.Text ?? string.Empty,
-                    VisualPrompt = "Visual for regenerated scene",
+                    VisualPrompt = GenerateVisualPromptFromNarration(result.Text ?? string.Empty),
                     DurationSeconds = EstimateDuration(result.Text ?? string.Empty),
                     Transition = "Cut"
                 },
@@ -594,7 +598,7 @@ public class ScriptController : ControllerBase
                 {
                     Number = request.SceneIndex + 1,
                     Narration = result.Text ?? string.Empty,
-                    VisualPrompt = "Visual for expanded scene",
+                    VisualPrompt = GenerateVisualPromptFromNarration(result.Text ?? string.Empty),
                     DurationSeconds = EstimateDuration(result.Text ?? string.Empty),
                     Transition = "Cut"
                 },
@@ -650,7 +654,7 @@ public class ScriptController : ControllerBase
                 {
                     Number = request.SceneIndex + 1,
                     Narration = result.Text ?? string.Empty,
-                    VisualPrompt = "Visual for shortened scene",
+                    VisualPrompt = GenerateVisualPromptFromNarration(result.Text ?? string.Empty),
                     DurationSeconds = EstimateDuration(result.Text ?? string.Empty),
                     Transition = "Cut"
                 },
@@ -728,5 +732,24 @@ public class ScriptController : ControllerBase
         var wordCount = text.Split(new[] { ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries).Length;
         var durationSeconds = (wordCount / 150.0) * 60.0;
         return Math.Max(3.0, Math.Round(durationSeconds, 1));
+    }
+
+    /// <summary>
+    /// Generates a visual prompt based on the narration text by extracting key themes
+    /// </summary>
+    private static string GenerateVisualPromptFromNarration(string narration)
+    {
+        if (string.IsNullOrWhiteSpace(narration))
+            return "Visual representation of the scene content";
+
+        // Extract the first sentence or up to 80 characters for the visual prompt
+        var firstSentenceEnd = narration.AsSpan().IndexOfAny(SentenceDelimiters);
+        var keyPhrase = firstSentenceEnd > 0 && firstSentenceEnd < 100
+            ? narration.Substring(0, firstSentenceEnd)
+            : narration.Length > 80
+                ? narration.Substring(0, 80) + "..."
+                : narration;
+
+        return $"Visual representation: {keyPhrase.Trim()}";
     }
 }

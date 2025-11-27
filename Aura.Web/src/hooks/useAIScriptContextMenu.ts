@@ -94,12 +94,19 @@ export function useAIScriptContextMenu(callbacks: AIScriptContextMenuCallbacks) 
     'onCopyText',
     useCallback(
       (data: AIScriptMenuData) => {
-        console.info('Copying scene text to clipboard');
+        // Call the user-provided callback for UI feedback (toast notifications, etc.)
         onCopyText(data.sceneText);
-        navigator.clipboard.writeText(data.sceneText).catch((err: unknown) => {
-          const errorMessage = err instanceof Error ? err.message : String(err);
-          console.error('Failed to copy text to clipboard:', errorMessage);
-        });
+
+        // Also write to clipboard directly for convenience
+        navigator.clipboard
+          .writeText(data.sceneText)
+          .then(() => {
+            console.info('Scene text copied to clipboard successfully');
+          })
+          .catch((err: unknown) => {
+            const errorMessage = err instanceof Error ? err.message : String(err);
+            console.error('Failed to copy text to clipboard:', errorMessage);
+          });
       },
       [onCopyText]
     )
