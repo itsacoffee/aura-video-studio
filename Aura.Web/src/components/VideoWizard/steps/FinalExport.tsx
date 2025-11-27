@@ -167,8 +167,10 @@ interface ExportResult {
 interface JobStatusData {
   percent?: number;
   stage?: string;
+  /** Detailed progress message from polling endpoint */
   progressMessage?: string;
-  message?: string; // Used in SSE progress events
+  /** Short progress message from SSE progress events (similar purpose to progressMessage) */
+  message?: string;
   status?: string;
   errorMessage?: string;
   error?: string;
@@ -182,6 +184,20 @@ interface JobStatusData {
     filePath?: string;
     type?: string;
   }>;
+}
+
+/**
+ * Formats the stage and detail message for display.
+ * Reduces duplication between SSE and polling code paths.
+ */
+function formatStageMessage(stage: string, detail?: string | null, percent?: number): string {
+  if (detail) {
+    return `${stage}: ${detail}`;
+  }
+  if (percent !== undefined) {
+    return `${stage} (${Math.round(percent)}%)`;
+  }
+  return stage;
 }
 
 const QUALITY_OPTIONS = [
@@ -453,13 +469,8 @@ export const FinalExport: FC<FinalExportProps> = ({
                 const overallProgress = (formatIndex * 100 + jobProgress) / totalFormats;
 
                 setExportProgress(overallProgress);
-
-                const stageMessage = data.stage || 'Processing...';
-                const detailMessage = data.message || '';
                 setExportStage(
-                  detailMessage
-                    ? `${stageMessage}: ${detailMessage}`
-                    : `${stageMessage} (${Math.round(jobProgress)}%)`
+                  formatStageMessage(data.stage || 'Processing...', data.message, jobProgress)
                 );
 
                 console.info('[SSE] Progress update:', jobProgress, '%', data.stage);
@@ -555,9 +566,9 @@ export const FinalExport: FC<FinalExportProps> = ({
                 const jobProgress = typedJobData.percent || 0;
                 const overallProgress = (formatIdx * 100 + jobProgress) / totalFmts;
                 setExportProgress(overallProgress);
-
-                const stageMessage = typedJobData.stage || 'Processing...';
-                setExportStage(`${stageMessage} (${Math.round(jobProgress)}%)`);
+                setExportStage(
+                  formatStageMessage(typedJobData.stage || 'Processing...', null, jobProgress)
+                );
 
                 const jobStatus = (typedJobData.status?.toLowerCase() || '').trim();
                 if (

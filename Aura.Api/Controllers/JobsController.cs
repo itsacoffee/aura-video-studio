@@ -1164,8 +1164,9 @@ public class JobsController : ControllerBase
             Log.Error(ex, "[{CorrelationId}] Error streaming progress for job {JobId}", correlationId, jobId);
             try
             {
+                var errorData = JsonSerializer.Serialize(new { error = ex.Message });
                 await Response.WriteAsync($"event: error\n", CancellationToken.None).ConfigureAwait(false);
-                await Response.WriteAsync($"data: {{\"error\":\"{ex.Message.Replace("\"", "\\\"")}\"}}\n\n", CancellationToken.None).ConfigureAwait(false);
+                await Response.WriteAsync($"data: {errorData}\n\n", CancellationToken.None).ConfigureAwait(false);
                 await Response.Body.FlushAsync(CancellationToken.None).ConfigureAwait(false);
             }
             catch
