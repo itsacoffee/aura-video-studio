@@ -1514,6 +1514,14 @@ builder.Services.AddSingleton<Aura.Core.Services.ScriptEnhancement.AdvancedScrip
     return new Aura.Core.Services.ScriptEnhancement.AdvancedScriptEnhancer(logger, llmProvider, analysisService, stageAdapter);
 });
 
+// Register ScriptSceneService for AI script context menu operations
+builder.Services.AddSingleton<Aura.Core.Services.ScriptReview.ScriptSceneService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.ScriptReview.ScriptSceneService>>();
+    var llmProvider = sp.GetRequiredService<ILlmProvider>();
+    return new Aura.Core.Services.ScriptReview.ScriptSceneService(logger, llmProvider);
+});
+
 builder.Services.AddSingleton<Aura.Core.Services.Content.VisualAssetSuggester>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Content.VisualAssetSuggester>>();

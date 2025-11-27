@@ -1,10 +1,13 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Api.Models.ApiModels.V1;
 using Aura.Core.Models.ScriptEnhancement;
 using Aura.Core.Services.ScriptEnhancement;
+using Aura.Core.Services.ScriptReview;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -17,18 +20,24 @@ namespace Aura.Api.Controllers;
 [Route("api/script")]
 public class ScriptController : ControllerBase
 {
+    // Cached search values for sentence delimiter search (CA1870 compliance)
+    private static readonly SearchValues<char> SentenceDelimiters = SearchValues.Create(".!?");
+
     private readonly ILogger<ScriptController> _logger;
     private readonly ScriptAnalysisService _analysisService;
     private readonly AdvancedScriptEnhancer _enhancer;
+    private readonly ScriptSceneService _sceneService;
 
     public ScriptController(
         ILogger<ScriptController> logger,
         ScriptAnalysisService analysisService,
-        AdvancedScriptEnhancer enhancer)
+        AdvancedScriptEnhancer enhancer,
+        ScriptSceneService sceneService)
     {
         _logger = logger;
         _analysisService = analysisService;
         _enhancer = enhancer;
+        _sceneService = sceneService;
     }
 
     /// <summary>
@@ -494,5 +503,253 @@ public class ScriptController : ControllerBase
                 ErrorMessage: $"Failed to compare versions: {ex.Message}"
             ));
         }
+    }
+
+    /// <summary>
+    /// Regenerate a single scene from context menu
+    /// </summary>
+    [HttpPost("regenerate-scene")]
+    public async Task<IActionResult> RegenerateScene(
+        [FromBody] RegenerateSceneContextRequest request,
+        CancellationToken ct)
+    {
+        try
+        {
+            _logger.LogInformation("Regenerating scene {SceneIndex} for job {JobId}",
+                request.SceneIndex, request.JobId);
+
+            var result = await _sceneService.RegenerateSceneAsync(
+                request.JobId,
+                request.SceneIndex,
+                request.Brief,
+                null,
+                ct).ConfigureAwait(false);
+
+            if (!result.Success)
+            {
+                return StatusCode(500, new SceneModificationResponse
+                {
+                    Success = false,
+                    Scene = null,
+                    Error = result.Error
+                });
+            }
+
+            return Ok(new SceneModificationResponse
+            {
+                Success = true,
+                Scene = new ScriptSceneDto
+                {
+                    Number = request.SceneIndex + 1,
+                    Narration = result.Text ?? string.Empty,
+                    VisualPrompt = GenerateVisualPromptFromNarration(result.Text ?? string.Empty),
+                    DurationSeconds = EstimateDuration(result.Text ?? string.Empty),
+                    Transition = "Cut"
+                },
+                Error = null
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to regenerate scene {SceneIndex}", request.SceneIndex);
+            return StatusCode(500, new SceneModificationResponse
+            {
+                Success = false,
+                Scene = null,
+                Error = ex.Message
+            });
+        }
+    }
+
+    /// <summary>
+    /// Expand a scene to make it longer
+    /// </summary>
+    [HttpPost("expand-scene")]
+    public async Task<IActionResult> ExpandScene(
+        [FromBody] ExpandSceneRequest request,
+        CancellationToken ct)
+    {
+        try
+        {
+            _logger.LogInformation("Expanding scene {SceneIndex} by {Expansion}x for job {JobId}",
+                request.SceneIndex, request.TargetExpansion, request.JobId);
+
+            var result = await _sceneService.ExpandSceneAsync(
+                request.JobId,
+                request.SceneIndex,
+                string.Empty,
+                request.TargetExpansion,
+                ct).ConfigureAwait(false);
+
+            if (!result.Success)
+            {
+                return StatusCode(500, new SceneModificationResponse
+                {
+                    Success = false,
+                    Scene = null,
+                    Error = result.Error
+                });
+            }
+
+            return Ok(new SceneModificationResponse
+            {
+                Success = true,
+                Scene = new ScriptSceneDto
+                {
+                    Number = request.SceneIndex + 1,
+                    Narration = result.Text ?? string.Empty,
+                    VisualPrompt = GenerateVisualPromptFromNarration(result.Text ?? string.Empty),
+                    DurationSeconds = EstimateDuration(result.Text ?? string.Empty),
+                    Transition = "Cut"
+                },
+                Error = null
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to expand scene {SceneIndex}", request.SceneIndex);
+            return StatusCode(500, new SceneModificationResponse
+            {
+                Success = false,
+                Scene = null,
+                Error = ex.Message
+            });
+        }
+    }
+
+    /// <summary>
+    /// Shorten a scene to make it more concise
+    /// </summary>
+    [HttpPost("shorten-scene")]
+    public async Task<IActionResult> ShortenScene(
+        [FromBody] ShortenSceneRequest request,
+        CancellationToken ct)
+    {
+        try
+        {
+            _logger.LogInformation("Shortening scene {SceneIndex} to {Reduction}x for job {JobId}",
+                request.SceneIndex, request.TargetReduction, request.JobId);
+
+            var result = await _sceneService.ShortenSceneAsync(
+                request.JobId,
+                request.SceneIndex,
+                string.Empty,
+                request.TargetReduction,
+                ct).ConfigureAwait(false);
+
+            if (!result.Success)
+            {
+                return StatusCode(500, new SceneModificationResponse
+                {
+                    Success = false,
+                    Scene = null,
+                    Error = result.Error
+                });
+            }
+
+            return Ok(new SceneModificationResponse
+            {
+                Success = true,
+                Scene = new ScriptSceneDto
+                {
+                    Number = request.SceneIndex + 1,
+                    Narration = result.Text ?? string.Empty,
+                    VisualPrompt = GenerateVisualPromptFromNarration(result.Text ?? string.Empty),
+                    DurationSeconds = EstimateDuration(result.Text ?? string.Empty),
+                    Transition = "Cut"
+                },
+                Error = null
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to shorten scene {SceneIndex}", request.SceneIndex);
+            return StatusCode(500, new SceneModificationResponse
+            {
+                Success = false,
+                Scene = null,
+                Error = ex.Message
+            });
+        }
+    }
+
+    /// <summary>
+    /// Generate B-Roll visual suggestions for a scene
+    /// </summary>
+    [HttpPost("generate-broll")]
+    public async Task<IActionResult> GenerateBRollSuggestions(
+        [FromBody] GenerateBRollRequest request,
+        CancellationToken ct)
+    {
+        try
+        {
+            _logger.LogInformation("Generating B-Roll suggestions for scene {SceneIndex} in job {JobId}",
+                request.SceneIndex, request.JobId);
+
+            var result = await _sceneService.GenerateBRollSuggestionsAsync(
+                request.JobId,
+                request.SceneIndex,
+                string.Empty,
+                ct).ConfigureAwait(false);
+
+            if (!result.Success)
+            {
+                return StatusCode(500, new BRollSuggestionsResponse
+                {
+                    Success = false,
+                    Suggestions = new List<string>(),
+                    Error = result.Error
+                });
+            }
+
+            return Ok(new BRollSuggestionsResponse
+            {
+                Success = true,
+                Suggestions = result.Suggestions,
+                Error = null
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to generate B-Roll suggestions for scene {SceneIndex}", request.SceneIndex);
+            return StatusCode(500, new BRollSuggestionsResponse
+            {
+                Success = false,
+                Suggestions = new List<string>(),
+                Error = ex.Message
+            });
+        }
+    }
+
+    /// <summary>
+    /// Estimates duration based on word count (average 150 WPM)
+    /// </summary>
+    private static double EstimateDuration(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return 5.0;
+
+        var wordCount = text.Split(new[] { ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries).Length;
+        var durationSeconds = (wordCount / 150.0) * 60.0;
+        return Math.Max(3.0, Math.Round(durationSeconds, 1));
+    }
+
+    /// <summary>
+    /// Generates a visual prompt based on the narration text by extracting key themes
+    /// </summary>
+    private static string GenerateVisualPromptFromNarration(string narration)
+    {
+        if (string.IsNullOrWhiteSpace(narration))
+            return "Visual representation of the scene content";
+
+        // Extract the first sentence or up to 80 characters for the visual prompt
+        var firstSentenceEnd = narration.AsSpan().IndexOfAny(SentenceDelimiters);
+        var keyPhrase = firstSentenceEnd > 0 && firstSentenceEnd < 100
+            ? narration.Substring(0, firstSentenceEnd)
+            : narration.Length > 80
+                ? narration.Substring(0, 80) + "..."
+                : narration;
+
+        return $"Visual representation: {keyPhrase.Trim()}";
     }
 }
