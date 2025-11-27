@@ -500,11 +500,23 @@ public class OllamaLlmProvider : ILlmProvider
 
                 // Only add format constraint when explicitly requested (e.g., for ideation that needs JSON)
                 // Translation and other plain-text use cases should NOT have format constraint
+                // Ollama currently supports "json" as the only format option
                 var responseFormat = parameters?.ResponseFormat;
                 if (!string.IsNullOrEmpty(responseFormat))
                 {
-                    requestBodyDict["format"] = responseFormat;
-                    _logger.LogDebug("Requesting Ollama response with format: {Format}", responseFormat);
+                    // Validate the format value - Ollama currently only supports "json"
+                    if (string.Equals(responseFormat, "json", StringComparison.OrdinalIgnoreCase))
+                    {
+                        requestBodyDict["format"] = "json";
+                        _logger.LogDebug("Requesting Ollama response with format: json");
+                    }
+                    else
+                    {
+                        _logger.LogWarning(
+                            "Unsupported ResponseFormat value '{Format}' for Ollama. " +
+                            "Only 'json' is currently supported. Proceeding without format constraint.",
+                            responseFormat);
+                    }
                 }
                 else
                 {

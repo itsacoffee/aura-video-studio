@@ -18,7 +18,9 @@ namespace Aura.Core.Models;
 /// <param name="ModelOverride">Override the default model</param>
 /// <param name="ResponseFormat">Desired response format (e.g., "json" for structured output, null for plain text).
 /// When set to "json", instructs compatible providers to return JSON-formatted responses.
-/// Leave null for plain text responses like translations.</param>
+/// Leave null for plain text responses like translations.
+/// Currently supported by: Ollama (with "json" format). Other providers may ignore this parameter.
+/// If an unsupported value is passed, providers may log a warning and proceed without format constraint.</param>
 public record LlmParameters(
     double? Temperature = null,
     double? TopP = null,

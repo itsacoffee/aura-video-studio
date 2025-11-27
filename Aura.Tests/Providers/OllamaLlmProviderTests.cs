@@ -586,6 +586,42 @@ public class OllamaLlmProviderTests : IDisposable
         Assert.DoesNotContain("\"format\"", capturedRequestBody);
     }
 
+    [Fact]
+    public async Task GenerateChatCompletionAsync_WithUnsupportedFormat_DoesNotIncludeFormatInRequest()
+    {
+        // Arrange - unsupported format value should be logged and ignored
+        var systemPrompt = "You are a helper.";
+        var userPrompt = "Help me with something.";
+        
+        // ResponseFormat with unsupported value - should NOT be included in request
+        var parameters = new LlmParameters(ResponseFormat: "xml");
+        
+        string? capturedRequestBody = null;
+        
+        var ollamaResponse = new
+        {
+            message = new { role = "assistant", content = "Sure, I can help." },
+            done = true
+        };
+
+        SetupHttpResponseWithCapture(
+            $"{BaseUrl}/api/chat",
+            JsonSerializer.Serialize(ollamaResponse),
+            body => capturedRequestBody = body);
+
+        // Act
+        var result = await _provider.GenerateChatCompletionAsync(
+            systemPrompt, userPrompt, parameters, CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Contains("help", result, StringComparison.OrdinalIgnoreCase);
+        
+        // Verify that format is NOT in the request for unsupported format values
+        Assert.NotNull(capturedRequestBody);
+        Assert.DoesNotContain("\"format\"", capturedRequestBody);
+    }
+
     public void Dispose()
     {
         _httpClient?.Dispose();
