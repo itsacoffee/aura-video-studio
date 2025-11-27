@@ -139,7 +139,7 @@ public class ScriptOrchestrator
 
         // Get preferred provider from settings if available
         var preferredProvider = _providerSettings?.GetPreferredLlmProvider();
-        
+
         // Use the new deterministic ResolveLlm method with preferred provider
         var decision = _providerMixer.ResolveLlm(GetProviders(), preferredTier, offlineOnly, preferredProvider);
         _providerMixer.LogDecision(decision);
@@ -289,14 +289,14 @@ public class ScriptOrchestrator
 
         // Get fresh provider list (factory delegate ensures we get latest providers)
         var providers = GetProviders();
-        
+
         // Log available providers for debugging
         _logger.LogInformation("Available LLM providers: {Providers}", string.Join(", ", providers.Keys));
-        
+
         // If Ollama was specifically requested, verify it's in the dictionary
         if (preferredTier == "Ollama" && !providers.ContainsKey("Ollama"))
         {
-            _logger.LogError("Ollama was requested but is not in the providers dictionary. Available: {Providers}", 
+            _logger.LogError("Ollama was requested but is not in the providers dictionary. Available: {Providers}",
                 string.Join(", ", providers.Keys));
             return new ScriptResult
             {
@@ -317,7 +317,7 @@ public class ScriptOrchestrator
         // If provider selection returned "None", it means the requested provider isn't available
         if (selection.SelectedProvider == "None")
         {
-            _logger.LogError("Requested provider '{Provider}' is not available. Reason: {Reason}", 
+            _logger.LogError("Requested provider '{Provider}' is not available. Reason: {Reason}",
                 preferredTier, selection.Reason);
             return new ScriptResult
             {
@@ -350,14 +350,14 @@ public class ScriptOrchestrator
 
         // If a specific provider was explicitly requested (not a tier), don't fall back
         // Return the error so user knows their requested provider isn't available
-        var isSpecificProviderRequest = preferredTier != "Pro" && 
-                                       preferredTier != "ProIfAvailable" && 
+        var isSpecificProviderRequest = preferredTier != "Pro" &&
+                                       preferredTier != "ProIfAvailable" &&
                                        preferredTier != "Free" &&
                                        !string.IsNullOrWhiteSpace(preferredTier);
-        
+
         if (isSpecificProviderRequest)
         {
-            _logger.LogError("Requested provider '{Provider}' failed and will not fall back. Error: {Error}", 
+            _logger.LogError("Requested provider '{Provider}' failed and will not fall back. Error: {Error}",
                 preferredTier, result.ErrorMessage);
             return result; // Return the error instead of falling back
         }
@@ -413,7 +413,7 @@ public class ScriptOrchestrator
         _logger.LogError(
             "All LLM providers failed to generate script for topic: {Topic}. Requested tier: {Tier}, Available providers: {Providers}",
             brief.Topic, preferredTier, string.Join(", ", providers.Keys));
-        
+
         return new ScriptResult
         {
             Success = false,
@@ -580,15 +580,47 @@ public class ScriptOrchestrator
 
         try
         {
-            _logger.LogInformation("=== Attempting script generation with provider: {Provider} ===", providerName);
+            var providerType = provider.GetType();
+            var providerTypeName = providerType.Name;
+
+            _logger.LogInformation("=== Attempting script generation with provider: {Provider} (Type: {Type}) ===",
+                providerName, providerTypeName);
             _logger.LogInformation("Provider type: {Type}, Brief topic: {Topic}, Model: {Model}",
-                provider.GetType().Name, brief.Topic, brief.LlmParameters?.ModelOverride ?? "default");
-            
+                providerTypeName, brief.Topic, brief.LlmParameters?.ModelOverride ?? "default");
+
+            // CRITICAL: Verify we're not using RuleBased when Ollama should be available
+            if (providerTypeName.Contains("RuleBased", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogError(
+                    "CRITICAL: Script generation is using RuleBased provider instead of real LLM (Ollama). " +
+                    "This will produce low-quality template scripts. Check Ollama is running and configured. " +
+                    "Available providers should include Ollama if it's running.");
+            }
+            else if (providerTypeName.Contains("Mock", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogError(
+                    "CRITICAL: Script generation is using Mock provider. This should never happen in production. " +
+                    "Check LLM provider configuration.");
+            }
+            else
+            {
+                _logger.LogInformation(
+                    "Using real LLM provider: {Provider} - this should be Ollama or another real LLM. " +
+                    "If Ollama is running, you should see CPU/GPU utilization during script generation.",
+                    providerTypeName);
+            }
+
             string? script = null;
             try
             {
+                var scriptStartTime = DateTime.UtcNow;
                 script = await provider.DraftScriptAsync(brief, spec, ct).ConfigureAwait(false);
-                _logger.LogInformation("=== Provider {Provider} completed script generation ===", providerName);
+                var scriptDuration = DateTime.UtcNow - scriptStartTime;
+
+                _logger.LogInformation(
+                    "=== Provider {Provider} completed script generation in {Duration}ms. " +
+                    "Response length: {Length} chars. If this was Ollama, system utilization should show activity. ===",
+                    providerName, scriptDuration.TotalMilliseconds, script?.Length ?? 0);
             }
             catch (Exception ex)
             {
@@ -649,10 +681,10 @@ public class ScriptOrchestrator
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, 
+            _logger.LogError(ex,
                 "Provider {Provider} failed with exception. Type: {ExceptionType}, Message: {Message}, InnerException: {InnerException}",
                 providerName, ex.GetType().Name, ex.Message, ex.InnerException?.Message ?? "none");
-            
+
             // Extract more detailed error message based on exception type
             var errorMessage = $"Provider {providerName} failed";
             if (ex is InvalidOperationException)
@@ -671,7 +703,7 @@ public class ScriptOrchestrator
             {
                 errorMessage = $"{providerName} error: {ex.Message}";
             }
-            
+
             return new ScriptResult
             {
                 Success = false,

@@ -46,14 +46,14 @@ public class TranslationService
     private void ValidateProviderCapabilities()
     {
         var capabilities = _llmProvider.GetCapabilities();
-        
+
         if (!capabilities.SupportsTranslation)
         {
             throw new InvalidOperationException(
                 $"The current LLM provider ({capabilities.ProviderName}) does not support translation. " +
                 $"Please configure an AI provider that supports translation capabilities.");
         }
-        
+
         if (capabilities.IsLocalModel)
         {
             _logger.LogInformation(
@@ -83,7 +83,7 @@ public class TranslationService
         CancellationToken cancellationToken = default)
     {
         var stopwatch = Stopwatch.StartNew();
-        _logger.LogInformation("Starting translation from {Source} to {Target}", 
+        _logger.LogInformation("Starting translation from {Source} to {Target}",
             request.SourceLanguage, request.TargetLanguage);
 
         // Validate provider capabilities before attempting translation
@@ -94,7 +94,7 @@ public class TranslationService
         var targetLanguage = LanguageRegistry.GetLanguage(request.TargetLanguage);
         if (targetLanguage == null)
         {
-            _logger.LogInformation("Language {Language} not in registry, using LLM intelligence for custom language", 
+            _logger.LogInformation("Language {Language} not in registry, using LLM intelligence for custom language",
                 request.TargetLanguage);
             // Create a default LanguageInfo for custom languages - LLM will handle it intelligently
             targetLanguage = new LanguageInfo
@@ -119,8 +119,8 @@ public class TranslationService
             // Phase 1: Core translation with cultural context
             _logger.LogInformation("Phase 1: Core translation");
             var translatedLines = await TranslateScriptLinesAsync(
-                request, 
-                targetLanguage, 
+                request,
+                targetLanguage,
                 cancellationToken).ConfigureAwait(false);
             result.TranslatedLines = translatedLines;
             result.TranslatedText = string.Join("\n", translatedLines.Select(l => l.TranslatedText));
@@ -173,10 +173,45 @@ public class TranslationService
 
             // Phase 6: Calculate translation metrics for monitoring
             _logger.LogInformation("Phase 6: Calculating translation metrics");
-            result.Metrics = CalculateMetrics(
-                result.SourceText,
-                result.TranslatedText,
-                result.TranslationTimeSeconds);
+
+            // Only calculate metrics if we have valid source and translated text
+            if (!string.IsNullOrWhiteSpace(result.SourceText) && !string.IsNullOrWhiteSpace(result.TranslatedText))
+            {
+                result.Metrics = CalculateMetrics(
+                    result.SourceText,
+                    result.TranslatedText,
+                    result.TranslationTimeSeconds);
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "Cannot calculate translation metrics - source or translated text is empty. " +
+                    "Source length: {SourceLength}, Translated length: {TranslatedLength}",
+                    result.SourceText?.Length ?? 0, result.TranslatedText?.Length ?? 0);
+
+                // Create metrics with error indication
+                result.Metrics = new TranslationMetrics
+                {
+                    CharacterCount = 0,
+                    WordCount = 0,
+                    LengthRatio = 0.0,
+                    TranslationTimeSeconds = result.TranslationTimeSeconds,
+                    ProviderUsed = "Unknown",
+                    Grade = TranslationQualityGrade.Poor,
+                    QualityIssues = new List<string> { "Translation failed or returned empty result" }
+                };
+
+                // Try to get provider name even if translation failed
+                try
+                {
+                    var capabilities = _llmProvider.GetCapabilities();
+                    result.Metrics.ProviderUsed = capabilities.ProviderName;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Could not retrieve provider capabilities for metrics");
+                }
+            }
 
             // Log quality issues if any detected
             if (result.Metrics.QualityIssues.Count > 0)
@@ -186,8 +221,8 @@ public class TranslationService
                     result.Metrics.Grade,
                     string.Join("; ", result.Metrics.QualityIssues));
             }
-            
-            _logger.LogInformation("Translation completed in {Time:F2}s with quality score {Quality:F1}", 
+
+            _logger.LogInformation("Translation completed in {Time:F2}s with quality score {Quality:F1}",
                 result.TranslationTimeSeconds, result.Quality.OverallScore);
 
             return result;
@@ -208,7 +243,7 @@ public class TranslationService
         CancellationToken cancellationToken = default)
     {
         var stopwatch = Stopwatch.StartNew();
-        _logger.LogInformation("Starting batch translation to {Count} languages", 
+        _logger.LogInformation("Starting batch translation to {Count} languages",
             request.TargetLanguages.Count);
 
         var result = new BatchTranslationResult
@@ -235,7 +270,7 @@ public class TranslationService
                 var translation = await TranslateAsync(translationRequest, cancellationToken).ConfigureAwait(false);
                 result.Translations[targetLanguage] = translation;
                 result.SuccessfulLanguages.Add(targetLanguage);
-                
+
                 _logger.LogInformation("Completed translation to {Language}", targetLanguage);
             }
             catch (Exception ex)
@@ -251,7 +286,7 @@ public class TranslationService
         stopwatch.Stop();
         result.TotalTimeSeconds = stopwatch.Elapsed.TotalSeconds;
 
-        _logger.LogInformation("Batch translation completed: {Success}/{Total} successful", 
+        _logger.LogInformation("Batch translation completed: {Success}/{Total} successful",
             result.SuccessfulLanguages.Count, request.TargetLanguages.Count);
 
         return result;
@@ -264,14 +299,14 @@ public class TranslationService
         CulturalAnalysisRequest request,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Analyzing cultural content for {Language}/{Region}", 
+        _logger.LogInformation("Analyzing cultural content for {Language}/{Region}",
             request.TargetLanguage, request.TargetRegion);
 
         // Allow custom languages - LLM will handle them intelligently
         var targetLanguage = LanguageRegistry.GetLanguage(request.TargetLanguage);
         if (targetLanguage == null)
         {
-            _logger.LogInformation("Language {Language} not in registry, using LLM intelligence for cultural analysis", 
+            _logger.LogInformation("Language {Language} not in registry, using LLM intelligence for cultural analysis",
                 request.TargetLanguage);
             targetLanguage = new LanguageInfo
             {
@@ -305,7 +340,7 @@ public class TranslationService
             {
                 var line = request.ScriptLines[i];
                 var context = BuildTranslationContext(request, i);
-                
+
                 var translatedText = await TranslateWithContextAsync(
                     line.Text,
                     request.SourceLanguage,
@@ -362,30 +397,60 @@ public class TranslationService
     {
         // Build system and user prompts for chat completion (more consistent with ideation pattern)
         var (systemPrompt, userPrompt) = BuildTranslationChatPrompts(
-            text, 
-            sourceLanguage, 
-            targetLanguage, 
-            context, 
-            options, 
+            text,
+            sourceLanguage,
+            targetLanguage,
+            context,
+            options,
             glossary);
 
         try
         {
             // Use GenerateChatCompletionAsync for translation - this is consistent with how ideation works
             // and ensures proper fallback behavior through CompositeLlmProvider
+            var providerType = _llmProvider.GetType();
+            var providerTypeName = providerType.Name;
+            var isComposite = providerTypeName == "CompositeLlmProvider";
+
             _logger.LogInformation(
-                "Starting translation: {SourceLang} -> {TargetLang}, Mode: {Mode}, Transcreation: {HasTranscreation}",
-                sourceLanguage, targetLanguage, options.Mode, 
-                !string.IsNullOrWhiteSpace(options.TranscreationContext));
-            
+                "Starting translation: {SourceLang} -> {TargetLang}, Mode: {Mode}, Transcreation: {HasTranscreation}, Provider: {Provider}",
+                sourceLanguage, targetLanguage, options.Mode,
+                !string.IsNullOrWhiteSpace(options.TranscreationContext), providerTypeName);
+
+            // CRITICAL: Verify we're not using RuleBased or mock providers
+            if (providerTypeName.Contains("RuleBased", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogError(
+                    "CRITICAL: Translation is using RuleBased provider instead of real LLM (Ollama). " +
+                    "This will produce poor quality translations. Check Ollama is running and configured.");
+            }
+            else if (providerTypeName.Contains("Mock", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogError(
+                    "CRITICAL: Translation is using Mock provider. This should never happen in production. " +
+                    "Check LLM provider configuration.");
+            }
+            else if (isComposite)
+            {
+                _logger.LogInformation(
+                    "Using CompositeLlmProvider - it will select the best available provider (Ollama if available)");
+            }
+
+            var translationStartTime = DateTime.UtcNow;
             var response = await _llmProvider.GenerateChatCompletionAsync(
                 systemPrompt,
                 userPrompt,
                 null, // Use default LLM parameters
                 cancellationToken).ConfigureAwait(false);
-            
+            var translationDuration = DateTime.UtcNow - translationStartTime;
+
+            _logger.LogInformation(
+                "Translation LLM call completed: Provider={Provider}, Duration={Duration}ms, ResponseLength={Length} chars. " +
+                "If Ollama is running, you should see CPU/GPU utilization in system monitor.",
+                providerTypeName, translationDuration.TotalMilliseconds, response?.Length ?? 0);
+
             var translation = ExtractTranslation(response);
-            
+
             // Validate translation quality - check for structured metadata artifacts
             // Use the helper method to ensure we're checking for JSON property patterns
             if (ContainsStructuredArtifactKeys(translation))
@@ -394,7 +459,7 @@ public class TranslationService
                     "Translation output contains structured metadata. This indicates prompt engineering failure. " +
                     "Source: {Source}, Target: {Target}, ResponseLength: {Length}",
                     sourceLanguage, targetLanguage, response.Length);
-                
+
                 // Attempt aggressive cleanup
                 translation = StripStructuredArtifacts(translation);
             }
@@ -407,11 +472,11 @@ public class TranslationService
                     "Consider adjusting prompt or model parameters.",
                     (double)translation.Length / text.Length);
             }
-            
+
             _logger.LogDebug(
                 "Translation completed: {SourceLang} -> {TargetLang}, Input: {InputLength} chars, Output: {OutputLength} chars",
                 sourceLanguage, targetLanguage, text.Length, translation.Length);
-            
+
             return translation;
         }
         catch (NotSupportedException)
@@ -424,7 +489,7 @@ public class TranslationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Translation failed for {SourceLang} -> {TargetLang}: {Error}", 
+            _logger.LogError(ex, "Translation failed for {SourceLang} -> {TargetLang}: {Error}",
                 sourceLanguage, targetLanguage, ex.Message);
             return $"[Translation unavailable: {ex.Message}]";
         }
@@ -444,7 +509,7 @@ public class TranslationService
     {
         var systemBuilder = new StringBuilder();
         var userBuilder = new StringBuilder();
-        
+
         // System prompt: Translator persona and instructions
         systemBuilder.AppendLine($@"You are an expert professional translator with deep knowledge of languages and dialects worldwide, including constructed languages, fictional languages, historical variants, and regional dialects.
 
@@ -485,7 +550,7 @@ TRANSCREATION MODE:
 2. CREATIVE FREEDOM: Adapt freely to maximize resonance with target culture or specified style
 3. EMOTIONAL IMPACT: Ensure the translation evokes the same emotional response
 4. CULTURAL APPEAL: Make the content feel native, not translated");
-            
+
             if (!string.IsNullOrWhiteSpace(options.TranscreationContext))
             {
                 systemBuilder.AppendLine($@"
@@ -545,7 +610,7 @@ ADDITIONAL CONSTRAINTS:");
             systemBuilder.AppendLine(@"
 
 IMPORTANT FOR LOCAL MODELS:
-You are a translation tool, not a tutorial generator. Your ONLY job is to translate text. 
+You are a translation tool, not a tutorial generator. Your ONLY job is to translate text.
 Do NOT generate structured content, tutorials, or explanations.
 Return the translated text EXACTLY as it should appear in the target language - nothing more.");
         }
@@ -573,13 +638,13 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
         // User prompt: The actual content to translate
         userBuilder.AppendLine($"Translate the following text from {sourceLanguage} to {targetLanguage}:");
         userBuilder.AppendLine();
-        
+
         if (!string.IsNullOrWhiteSpace(context))
         {
             userBuilder.AppendLine($"Context: {context}");
             userBuilder.AppendLine();
         }
-        
+
         userBuilder.AppendLine("TEXT TO TRANSLATE:");
         userBuilder.AppendLine(text);
 
@@ -589,7 +654,7 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
     private string BuildTranslationContext(TranslationRequest request, int lineIndex)
     {
         var context = new StringBuilder();
-        
+
         if (request.CulturalContext != null)
         {
             context.Append($"Target region: {request.CulturalContext.TargetRegion}. ");
@@ -618,7 +683,7 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
         }
 
         var trimmedResponse = llmResponse.Trim();
-        
+
         // Check if response looks like JSON (starts with { and ends with })
         // Use TryParse to reliably detect valid JSON before attempting extraction
         if (trimmedResponse.StartsWith("{") && trimmedResponse.EndsWith("}"))
@@ -628,42 +693,42 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
                 // Attempt to parse as JSON
                 using var doc = JsonDocument.Parse(trimmedResponse);
                 var root = doc.RootElement;
-                
+
                 // Only proceed with extraction if this is a JSON object (not an array or primitive)
                 if (root.ValueKind == JsonValueKind.Object)
                 {
                     _logger.LogWarning("Detected structured JSON response instead of plain text translation. Attempting to extract translation field.");
-                    
+
                     // Try common field names in order of preference
-                    if (root.TryGetProperty("translation", out var translationField) && 
+                    if (root.TryGetProperty("translation", out var translationField) &&
                         translationField.ValueKind == JsonValueKind.String)
                     {
                         var extracted = translationField.GetString();
                         if (!string.IsNullOrWhiteSpace(extracted))
                             return extracted;
                     }
-                    if (root.TryGetProperty("translatedText", out var translatedTextField) && 
+                    if (root.TryGetProperty("translatedText", out var translatedTextField) &&
                         translatedTextField.ValueKind == JsonValueKind.String)
                     {
                         var extracted = translatedTextField.GetString();
                         if (!string.IsNullOrWhiteSpace(extracted))
                             return extracted;
                     }
-                    if (root.TryGetProperty("text", out var textField) && 
+                    if (root.TryGetProperty("text", out var textField) &&
                         textField.ValueKind == JsonValueKind.String)
                     {
                         var extracted = textField.GetString();
                         if (!string.IsNullOrWhiteSpace(extracted))
                             return extracted;
                     }
-                    if (root.TryGetProperty("content", out var contentField) && 
+                    if (root.TryGetProperty("content", out var contentField) &&
                         contentField.ValueKind == JsonValueKind.String)
                     {
                         var extracted = contentField.GetString();
                         if (!string.IsNullOrWhiteSpace(extracted))
                             return extracted;
                     }
-                        
+
                     _logger.LogWarning("Could not extract translation from JSON structure, returning raw response");
                 }
             }
@@ -672,7 +737,7 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
                 // Not valid JSON, continue with text processing
             }
         }
-        
+
         // Remove common unwanted prefixes that models sometimes add
         var prefixesToRemove = new[]
         {
@@ -683,7 +748,7 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
             "Output:",
             "Result:"
         };
-        
+
         foreach (var prefix in prefixesToRemove)
         {
             if (trimmedResponse.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
@@ -692,16 +757,16 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
                 break;
             }
         }
-        
+
         // Normalize line breaks while preserving paragraph structure
         // Replace multiple consecutive newlines with a double newline (paragraph break)
         // This preserves intentional formatting while cleaning up excessive whitespace
         var normalizedText = Regex.Replace(trimmedResponse, @"\n\s*\n\s*\n+", "\n\n");
-        
+
         // Trim whitespace from each line but preserve line structure
         var lines = normalizedText.Split('\n');
         var cleanedLines = lines.Select(l => l.Trim());
-        
+
         return string.Join("\n", cleanedLines).Trim();
     }
 
@@ -723,11 +788,11 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
         var braceDepth = 0;
         var inJsonObject = false;
         var jsonStart = -1;
-        
+
         while (i < text.Length)
         {
             var c = text[i];
-            
+
             if (c == '{' && !inJsonObject)
             {
                 // Potential start of JSON object
@@ -760,16 +825,16 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
             {
                 result.Append(c);
             }
-            
+
             i++;
         }
-        
+
         // If we ended mid-JSON, append the remainder
         if (inJsonObject && jsonStart >= 0)
         {
             result.Append(text.Substring(jsonStart));
         }
-        
+
         return result.ToString().Trim();
     }
 
@@ -796,13 +861,36 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
         string translatedText,
         double translationTimeSeconds)
     {
+        // Validate inputs
+        if (string.IsNullOrWhiteSpace(sourceText))
+        {
+            _logger.LogWarning("CalculateMetrics called with empty sourceText");
+            sourceText = string.Empty;
+        }
+
+        if (string.IsNullOrWhiteSpace(translatedText))
+        {
+            _logger.LogWarning("CalculateMetrics called with empty translatedText");
+            translatedText = string.Empty;
+        }
+
+        var sourceLength = sourceText.Length;
+        var translatedLength = translatedText.Length;
+        var sourceWordCount = sourceText.Split(new[] { ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries).Length;
+        var translatedWordCount = translatedText.Split(new[] { ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries).Length;
+
         var metrics = new TranslationMetrics
         {
-            CharacterCount = translatedText.Length,
-            WordCount = translatedText.Split(new[] { ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries).Length,
-            LengthRatio = (double)translatedText.Length / Math.Max(1, sourceText.Length),
+            CharacterCount = translatedLength,
+            WordCount = translatedWordCount,
+            LengthRatio = sourceLength > 0 ? (double)translatedLength / sourceLength : 0.0,
             TranslationTimeSeconds = translationTimeSeconds
         };
+
+        _logger.LogDebug(
+            "Translation metrics calculated: Source={SourceLen} chars ({SourceWords} words), " +
+            "Translated={TranslatedLen} chars ({TranslatedWords} words), Ratio={Ratio:F2}x",
+            sourceLength, sourceWordCount, translatedLength, translatedWordCount, metrics.LengthRatio);
 
         // Try to get provider name
         try

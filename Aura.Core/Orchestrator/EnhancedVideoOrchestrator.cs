@@ -42,7 +42,7 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
     private readonly ResourceCleanupManager _cleanupManager;
     private readonly CheckpointManager? _checkpointManager;
     private readonly Telemetry.RunTelemetryCollector _telemetryCollector;
-    
+
     private readonly SemaphoreSlim _concurrencySemaphore;
     private bool _disposed;
 
@@ -77,7 +77,7 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
         _llmValidator = llmValidator ?? throw new ArgumentNullException(nameof(llmValidator));
         _cleanupManager = cleanupManager ?? throw new ArgumentNullException(nameof(cleanupManager));
         _telemetryCollector = telemetryCollector ?? throw new ArgumentNullException(nameof(telemetryCollector));
-        
+
         _imageProvider = imageProvider;
         _checkpointManager = checkpointManager;
         _concurrencySemaphore = new SemaphoreSlim(maxConcurrency, maxConcurrency);
@@ -99,7 +99,7 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
     {
         configuration ??= new PipelineConfiguration();
         var correlationId = jobId ?? Guid.NewGuid().ToString();
-        
+
         _logger.LogInformation(
             "[{CorrelationId}] Starting enhanced video generation pipeline for topic: {Topic}",
             correlationId, brief.Topic);
@@ -131,7 +131,7 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
             await ExecuteRenderingStageAsync(context, progress, configuration, ct).ConfigureAwait(false);
 
             context.MarkCompleted();
-            
+
             _logger.LogInformation(
                 "[{CorrelationId}] Pipeline completed successfully in {Elapsed:F2}s",
                 correlationId, context.GetElapsedTime().TotalSeconds);
@@ -149,11 +149,11 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
         {
             context.MarkFailed();
             context.RecordError(context.CurrentStage, ex, isRecoverable: false);
-            
+
             _logger.LogError(ex,
                 "[{CorrelationId}] Pipeline failed at stage {Stage} after {Elapsed:F2}s",
                 correlationId, context.CurrentStage, context.GetElapsedTime().TotalSeconds);
-            
+
             LogPipelineMetrics(context);
             throw;
         }
@@ -198,7 +198,7 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
             }
 
             progress?.Report(ProgressBuilder.CreateBriefProgress(100, "Validation complete", context.CorrelationId));
-            
+
             RecordStageMetrics(context, stageName, sw, itemsProcessed: 1);
         }
         catch (Exception ex)
@@ -237,11 +237,35 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
                 async (ctRetry) =>
                 {
                     progress?.Report(ProgressBuilder.CreateScriptProgress(30, "Calling LLM provider", context.CorrelationId));
-                    
+
+                    // Verify provider type and log for verification
+                    var providerType = _llmProvider.GetType();
+                    var providerTypeName = providerType.Name;
+                    _logger.LogInformation(
+                        "[{CorrelationId}] Calling LLM for script generation: Provider={Provider}, Topic={Topic}. " +
+                        "If Ollama is running, you should see CPU/GPU utilization.",
+                        context.CorrelationId, providerTypeName, context.Brief.Topic);
+
+                    if (providerTypeName.Contains("RuleBased", StringComparison.OrdinalIgnoreCase))
+                    {
+                        _logger.LogError(
+                            "[{CorrelationId}] CRITICAL: Script generation using RuleBased instead of real LLM (Ollama). " +
+                            "Check Ollama is running and configured.",
+                            context.CorrelationId);
+                    }
+
+                    var scriptStartTime = DateTime.UtcNow;
                     var generatedScript = await _llmProvider.DraftScriptAsync(
                         context.Brief,
                         context.PlanSpec,
                         ctRetry).ConfigureAwait(false);
+                    var scriptDuration = DateTime.UtcNow - scriptStartTime;
+
+                    _logger.LogInformation(
+                        "[{CorrelationId}] Script generation completed: Provider={Provider}, Duration={Duration}ms, " +
+                        "ScriptLength={Length} chars. If Ollama was used, system utilization should show activity.",
+                        context.CorrelationId, providerTypeName, scriptDuration.TotalMilliseconds,
+                        generatedScript?.Length ?? 0);
 
                     progress?.Report(ProgressBuilder.CreateScriptProgress(60, "Validating script quality", context.CorrelationId));
 
@@ -270,7 +294,7 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
 
             progress?.Report(ProgressBuilder.CreateScriptProgress(100, "Script generated successfully", context.CorrelationId));
 
-            RecordStageMetrics(context, stageName, sw, 
+            RecordStageMetrics(context, stageName, sw,
                 itemsProcessed: 1,
                 providerUsed: "LLM",
                 providerModel: _llmProvider.GetType().Name);
@@ -441,7 +465,7 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
             // Check circuit breaker
             if (!_circuitBreaker.CanExecute("ImageProvider"))
             {
-                _logger.LogWarning("[{CorrelationId}] Image provider circuit breaker is open, skipping visual generation", 
+                _logger.LogWarning("[{CorrelationId}] Image provider circuit breaker is open, skipping visual generation",
                     context.CorrelationId);
                 return;
             }
@@ -533,7 +557,7 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
         {
             _circuitBreaker.RecordFailure("ImageProvider", ex);
             context.RecordError(stageName, ex, isRecoverable: true);
-            
+
             // Don't throw - visual generation is optional
             _logger.LogWarning(ex, "[{CorrelationId}] Visual generation failed but continuing", context.CorrelationId);
         }
@@ -688,7 +712,7 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
         string? providerModel = null)
     {
         sw.Stop();
-        
+
         var metrics = new PipelineStageMetrics
         {
             StageName = stageName,

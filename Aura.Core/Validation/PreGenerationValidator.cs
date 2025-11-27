@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Dependencies;
@@ -229,7 +230,7 @@ public class PreGenerationValidator
 
             if (hardwareTimedOut)
             {
-                _logger.LogWarning("Hardware detection timed out after {Timeout}s, continuing with default assumptions", 
+                _logger.LogWarning("Hardware detection timed out after {Timeout}s, continuing with default assumptions",
                     _timeoutSettings.HardwareCheckTimeoutSeconds);
                 // Don't fail validation if hardware detection times out - continue with defaults
             }
@@ -267,7 +268,8 @@ public class PreGenerationValidator
         progress?.Report("Validating provider configuration...");
         try
         {
-            var providerTimeout = TimeSpan.FromSeconds(_timeoutSettings.ProviderCheckTimeoutSeconds);
+            // Use shorter timeout to prevent hanging - providers should validate quickly
+            var providerTimeout = TimeSpan.FromSeconds(Math.Min(_timeoutSettings.ProviderCheckTimeoutSeconds, 10));
             var (readiness, providerTimedOut) = await ExecuteWithTimeoutAsync(
                 _providerReadiness.ValidateRequiredProvidersAsync(ct),
                 providerTimeout,
@@ -276,14 +278,80 @@ public class PreGenerationValidator
 
             if (providerTimedOut)
             {
-                issues.Add($"Provider validation timed out after {_timeoutSettings.ProviderCheckTimeoutSeconds} seconds. Check network connectivity and provider API availability.");
+                _logger.LogWarning("Provider validation timed out after {Timeout}s - continuing with available providers",
+                    providerTimeout.TotalSeconds);
+                // Don't fail validation on timeout - allow pipeline to continue with available providers
+                issues.Add($"Provider validation timed out. Some providers may be slow or unreachable, but generation will continue with available providers.");
             }
             else if (readiness != null && !readiness.IsReady)
             {
-                foreach (var issue in readiness.Issues)
+                // CRITICAL: Check LLM category status directly, not by parsing issue messages
+                // This is safer than relying on string matching in issue messages
+                var llmCategoryStatus = readiness.CategoryStatuses
+                    .FirstOrDefault(status => string.Equals(status.Category, "LLM", StringComparison.OrdinalIgnoreCase));
+
+                if (llmCategoryStatus != null && !llmCategoryStatus.Ready)
                 {
-                    issues.Add(issue);
+                    // LLM is not ready - this is critical, fail validation
+                    var llmIssue = llmCategoryStatus.Message ??
+                        $"No LLM providers are available. Configure at least one LLM provider (Ollama, OpenAI, etc.) in Settings.";
+
+                    _logger.LogError(
+                        "CRITICAL: LLM provider category is not ready. Category: {Category}, Ready: {Ready}, Message: {Message}",
+                        llmCategoryStatus.Category, llmCategoryStatus.Ready, llmCategoryStatus.Message);
+
+                    issues.Add(llmIssue);
+
+                    // Add suggestions if available
+                    if (llmCategoryStatus.Suggestions != null && llmCategoryStatus.Suggestions.Count > 0)
+                    {
+                        foreach (var suggestion in llmCategoryStatus.Suggestions)
+                        {
+                            issues.Add($"  → {suggestion}");
+                        }
+                    }
                 }
+                else if (llmCategoryStatus != null && llmCategoryStatus.Ready)
+                {
+                    // LLM is ready - check for other non-critical provider issues
+                    var nonCriticalIssues = readiness.CategoryStatuses
+                        .Where(status => !status.Ready &&
+                               !string.Equals(status.Category, "LLM", StringComparison.OrdinalIgnoreCase))
+                        .Select(status => status.Message ?? $"Category {status.Category} is not ready")
+                        .ToList();
+
+                    if (nonCriticalIssues.Count > 0)
+                    {
+                        _logger.LogInformation(
+                            "LLM is ready ({Provider}), but some optional providers are not ready: {Issues}. Generation can proceed.",
+                            llmCategoryStatus.Provider, string.Join(", ", nonCriticalIssues));
+                    }
+                    else
+                    {
+                        _logger.LogInformation("LLM is ready ({Provider}). All required providers are available.",
+                            llmCategoryStatus.Provider);
+                    }
+                }
+                else
+                {
+                    // LLM category status not found - this is unexpected, be conservative and fail
+                    _logger.LogError(
+                        "CRITICAL: Could not determine LLM provider status. CategoryStatuses: {Categories}. " +
+                        "This may indicate a configuration issue. Failing validation to be safe.",
+                        string.Join(", ", readiness.CategoryStatuses.Select(s => $"{s.Category}:{s.Ready}")));
+
+                    issues.Add("Unable to verify LLM provider status. Please check your provider configuration.");
+
+                    // Add all issues as fallback
+                    foreach (var issue in readiness.Issues)
+                    {
+                        issues.Add(issue);
+                    }
+                }
+            }
+            else if (readiness != null && readiness.IsReady)
+            {
+                _logger.LogInformation("All required providers are ready");
             }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -292,8 +360,10 @@ public class PreGenerationValidator
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Error validating provider readiness");
-            issues.Add("Unable to verify provider readiness. Check provider configuration and try again.");
+            _logger.LogWarning(ex, "Error validating provider readiness - continuing anyway");
+            // Don't fail validation on error - allow pipeline to continue
+            // Only warn if LLM is definitely not available
+            issues.Add("Unable to verify all provider readiness. Generation will attempt to proceed with configured providers.");
         }
 
         progress?.Report("Validation complete");

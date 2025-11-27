@@ -123,45 +123,50 @@ public class IdeationService
         try
         {
             // Build expert-level system prompt for high-value concept generation
+            // CRITICAL: This prompt MUST produce specific, actionable, unique concepts - NO GENERIC PLACEHOLDERS
             var systemPrompt = @"You are a world-class content strategist with 10+ years of experience helping creators achieve viral success on YouTube, TikTok, and Instagram. You have deep expertise in audience psychology, viral mechanics, and content differentiation strategies.
 
-Your task is to generate SPECIFIC, ACTIONABLE, and UNIQUE video concept variations that will genuinely help creators stand out. Every concept must include:
-- A curiosity-driven title that uses viral hook formulas (curiosity gap, pattern interrupt, controversy)
-- Specific audience pain points and desires (not generic descriptions)
-- Unique value propositions that differentiate from competitors
-- Content gaps that competitors are missing
-- Specific actionable insights (not generic advice)
-- Monetization and virality potential assessment
+YOUR MISSION: Generate SPECIFIC, ACTIONABLE, and UNIQUE video concept variations that will genuinely help creators stand out.
 
-You MUST respond with ONLY valid JSON in the following format (no markdown, no code blocks):
+ABSOLUTE REQUIREMENTS - NO EXCEPTIONS:
+1. EVERY field must be SPECIFIC to the exact topic provided. Generic phrases like 'engaging content', 'valuable information', 'This approach provides unique value through its specific perspective', 'Introduction to the topic', 'Key aspects of [topic]', or 'Practical applications' are FORBIDDEN.
+2. Each concept must have a genuinely different angle that could compete in a crowded market.
+3. Talking points and insights must be things a creator can immediately use - NOT generic advice.
+4. Hook must use a specific psychological trigger (curiosity gap, fear of missing out, controversy, pattern interrupt).
+5. uniqueValue and contentGap must explain how this stands out from existing content with SPECIFIC examples.
+
+You MUST respond with ONLY valid JSON in the following format (no markdown, no code blocks, no explanations):
 {
   ""concepts"": [
     {
-      ""title"": ""Specific, curiosity-driven title using viral formula"",
-      ""description"": ""3-4 sentences with SPECIFIC tactics and insights, not vague concepts. Include what makes this approach unique and why it works."",
+      ""title"": ""Specific, curiosity-driven title using viral formula - MUST be unique to this topic"",
+      ""description"": ""3-4 sentences with SPECIFIC tactics and insights, not vague concepts. Include what makes this approach unique and why it works. MUST reference the actual topic specifically."",
       ""angle"": ""Unique perspective (Tutorial, Narrative, Case Study, Comparison, Documentary, Behind-the-Scenes, Expert Analysis, Deep Dive)"",
-      ""targetAudience"": ""Detailed persona with specific pain points and desires - not just 'beginners' but 'entrepreneurs struggling to get their first 1000 followers'"",
-      ""hook"": ""Specific viral hook (15 seconds max) with psychological trigger - curiosity gap, pattern interrupt, or controversy"",
-      ""uniqueValue"": ""What makes this concept stand out from the 1000 other videos on this topic"",
-      ""contentGap"": ""What competitors are missing that this video addresses"",
-      ""keyInsights"": [""Specific actionable insight 1"", ""Specific insight 2"", ""Specific insight 3""],
-      ""talkingPoints"": [""Specific point with example 1"", ""Point 2"", ""Point 3"", ""Point 4"", ""Point 5""],
-      ""visualSuggestions"": [""Specific visual idea 1"", ""Visual idea 2""],
-      ""monetizationPotential"": ""High/Medium/Low - with specific reasoning about sponsorship, affiliate, or product opportunities"",
+      ""targetAudience"": ""Detailed persona with specific pain points and desires - not just 'beginners' but 'entrepreneurs struggling to get their first 1000 followers' - MUST be specific to this topic"",
+      ""hook"": ""Specific viral hook (15 seconds max) with psychological trigger - curiosity gap, pattern interrupt, or controversy - MUST mention the topic specifically"",
+      ""uniqueValue"": ""What makes this concept stand out from the 1000 other videos on this topic - MUST be specific and different from generic statements"",
+      ""contentGap"": ""What competitors are missing that this video addresses - MUST be specific to this topic"",
+      ""keyInsights"": [""Specific actionable insight 1 related to the topic"", ""Specific insight 2 related to the topic"", ""Specific insight 3 related to the topic""],
+      ""talkingPoints"": [""Specific point with example 1 related to the topic"", ""Point 2 related to the topic"", ""Point 3 related to the topic"", ""Point 4 related to the topic"", ""Point 5 related to the topic""],
+      ""visualSuggestions"": [""Specific visual idea 1 related to the topic"", ""Visual idea 2 related to the topic""],
+      ""monetizationPotential"": ""High/Medium/Low - with specific reasoning about sponsorship, affiliate, or product opportunities for this topic"",
       ""viralityScore"": 85,
       ""appealScore"": 90,
-      ""pros"": [""Specific advantage with data or reasoning"", ""Advantage 2"", ""Advantage 3""],
-      ""cons"": [""Specific challenge with mitigation strategy"", ""Challenge 2""]
+      ""pros"": [""Specific advantage with data or reasoning for this topic"", ""Advantage 2 for this topic"", ""Advantage 3 for this topic""],
+      ""cons"": [""Specific challenge with mitigation strategy for this topic"", ""Challenge 2 for this topic""]
     }
   ]
 }
 
-CRITICAL REQUIREMENTS:
-1. SPECIFICITY: Every field must be SPECIFIC to the topic. No generic phrases like 'engaging content' or 'valuable information'.
-2. UNIQUENESS: Each concept must have a genuinely different angle that could compete in a crowded market.
-3. ACTIONABILITY: Talking points and insights must be things a creator can immediately use.
-4. PSYCHOLOGY: Hook must use a specific psychological trigger (curiosity gap, fear of missing out, controversy, pattern interrupt).
-5. DIFFERENTIATION: uniqueValue and contentGap must explain how this stands out from existing content.";
+FORBIDDEN PHRASES (DO NOT USE):
+- 'This approach provides unique value through its specific perspective'
+- 'Introduction to [topic]' or 'Introduction to how to [topic]'
+- 'Key aspects of [topic]' or 'Key aspects of [word]'
+- 'Practical applications' (without specific examples)
+- 'Engaging and accessible format'
+- Any generic placeholder text
+
+You MUST analyze the topic deeply and provide concepts that are genuinely useful for brainstorming. If you cannot provide specific, unique concepts, you must still try your best - do NOT use placeholder text.";
 
             // Build user prompt with topic and context
             var userPromptBuilder = new StringBuilder();
@@ -285,25 +290,102 @@ CRITICAL REQUIREMENTS:
                         await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt)), ct); // Exponential backoff
                     }
 
+                    // Verify provider type and log detailed information
+                    var providerType = _llmProvider.GetType();
+                    var providerTypeName = providerType.Name;
+                    var isComposite = providerTypeName == "CompositeLlmProvider";
+
+                    _logger.LogInformation(
+                        "Calling LLM for ideation (Attempt {Attempt}/{Max}, Provider: {Provider}, Topic: {Topic})",
+                        attempt + 1, maxRetries + 1, providerTypeName, request.Topic);
+
+                    // CRITICAL: Verify we're not using RuleBased or mock providers
+                    if (providerTypeName.Contains("RuleBased", StringComparison.OrdinalIgnoreCase))
+                    {
+                        _logger.LogError(
+                            "CRITICAL: Ideation is using RuleBased provider instead of real LLM (Ollama). " +
+                            "This will produce low-quality placeholder concepts. Check Ollama is running and configured.");
+                    }
+                    else if (providerTypeName.Contains("Mock", StringComparison.OrdinalIgnoreCase))
+                    {
+                        _logger.LogError(
+                            "CRITICAL: Ideation is using Mock provider. This should never happen in production. " +
+                            "Check LLM provider configuration.");
+                    }
+                    else if (isComposite)
+                    {
+                        // For CompositeLlmProvider, log that it will select the best available provider
+                        _logger.LogInformation(
+                            "Using CompositeLlmProvider - it will select the best available provider (Ollama if available)");
+                    }
+                    else
+                    {
+                        _logger.LogInformation(
+                            "Using direct provider: {Provider} - this should be Ollama or another real LLM provider",
+                            providerTypeName);
+                    }
+
+                    var callStartTime = DateTime.UtcNow;
                     jsonResponse = await _llmProvider.GenerateChatCompletionAsync(
                         systemPrompt,
                         userPrompt,
                         ideationParams,
                         ct);
+                    var callDuration = DateTime.UtcNow - callStartTime;
+
+                    // Log provider utilization verification
+                    _logger.LogInformation(
+                        "LLM call completed: Provider={Provider}, Duration={Duration}ms, ResponseLength={Length} chars. " +
+                        "If Ollama is running, you should see CPU/GPU utilization in system monitor.",
+                        providerTypeName, callDuration.TotalMilliseconds, jsonResponse?.Length ?? 0);
 
                     if (string.IsNullOrWhiteSpace(jsonResponse))
                     {
+                        _logger.LogError("LLM returned empty response (Attempt {Attempt}, Duration: {Duration}ms)",
+                            attempt + 1, callDuration.TotalMilliseconds);
                         throw new InvalidOperationException("LLM returned empty response");
                     }
 
+                    _logger.LogInformation(
+                        "LLM returned response (Attempt {Attempt}, Duration: {Duration}ms, Length: {Length} chars, Preview: {Preview})",
+                        attempt + 1, callDuration.TotalMilliseconds, jsonResponse.Length,
+                        jsonResponse.Substring(0, Math.Min(200, jsonResponse.Length)));
+
+                    // Clean response before parsing (remove markdown code blocks)
+                    var cleanedResponse = CleanJsonResponse(jsonResponse);
+
                     // Validate JSON structure before breaking
-                    var testDoc = JsonDocument.Parse(jsonResponse);
+                    var testDoc = JsonDocument.Parse(cleanedResponse);
                     if (testDoc.RootElement.TryGetProperty("concepts", out var conceptsArray) &&
                         conceptsArray.ValueKind == JsonValueKind.Array &&
                         conceptsArray.GetArrayLength() > 0)
                     {
-                        _logger.LogInformation("Successfully generated {Count} concepts for topic: {Topic}",
-                            conceptsArray.GetArrayLength(), request.Topic);
+                        // Quick quality check - reject if all concepts have generic descriptions
+                        var hasGenericContent = false;
+                        foreach (var concept in conceptsArray.EnumerateArray())
+                        {
+                            if (concept.TryGetProperty("description", out var desc))
+                            {
+                                var descText = desc.GetString() ?? "";
+                                if (descText.Contains("This approach provides unique value through its specific perspective") ||
+                                    descText.Contains("Introduction to how to") && descText.Length < 100)
+                                {
+                                    hasGenericContent = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (hasGenericContent && attempt < maxRetries)
+                        {
+                            _logger.LogWarning("LLM returned generic/placeholder content (Attempt {Attempt}), retrying with stronger prompt",
+                                attempt + 1);
+                            throw new InvalidOperationException("Response contains generic placeholder content - retrying");
+                        }
+
+                        _logger.LogInformation("Successfully generated {Count} concepts for topic: {Topic} (Attempt {Attempt})",
+                            conceptsArray.GetArrayLength(), request.Topic, attempt + 1);
+                        jsonResponse = cleanedResponse; // Use cleaned response
                         break; // Valid response
                     }
                     else
@@ -351,18 +433,31 @@ CRITICAL REQUIREMENTS:
                     "Failed to generate concepts. The LLM response could not be parsed. Please try again.");
             }
 
-            // Check if concepts are too generic (likely fallback)
+            // Validate concepts are not generic placeholders
             var hasGenericContent = concepts.Any(c =>
                 c.Description.Contains("This approach provides unique value through its specific perspective") ||
-                c.TalkingPoints?.Any(tp => tp == "Introduction to the topic") == true ||
-                c.Pros.Any(p => p == "Engaging and accessible format"));
+                c.Description.Contains("Introduction to how to") && c.Description.Length < 100 ||
+                c.Description.Contains("Key aspects of") && !c.Description.Contains(request.Topic) ||
+                c.TalkingPoints?.Any(tp => tp.Contains("Introduction to") && !tp.Contains(request.Topic)) == true ||
+                c.Pros.Any(p => p == "Engaging and accessible format") ||
+                (c.Description.Length < 50) || // Too short to be meaningful
+                (c.UniqueValue != null && c.UniqueValue.Length < 30) || // Too generic
+                (c.KeyInsights != null && c.KeyInsights.Any(ki => ki.Length < 20))); // Too generic
 
-            if (hasGenericContent && concepts.Count == desiredConceptCount)
+            if (hasGenericContent)
             {
-                _logger.LogWarning("Parsed concepts appear to be generic fallback data. LLM may not have returned valid JSON. " +
-                    "Response preview: {Preview}",
+                _logger.LogError(
+                    "Parsed concepts contain generic/placeholder content. This indicates the LLM did not generate proper concepts. " +
+                    "Response length: {Length}, Response preview: {Preview}. " +
+                    "This is a critical quality issue - the LLM may not be properly configured or the prompt needs adjustment.",
+                    response.Length,
                     response.Substring(0, Math.Min(500, response.Length)));
-                // Don't throw - at least we have something, but log the issue
+
+                // Throw error to force retry or alert user
+                throw new InvalidOperationException(
+                    "The LLM generated generic placeholder content instead of specific concepts. " +
+                    "This usually means: (1) The LLM provider is not properly configured, (2) The model is not responding correctly, " +
+                    "or (3) The prompt needs adjustment. Please check your LLM provider settings and try again.");
             }
 
             _logger.LogInformation("Successfully generated {Count} concepts for topic: {Topic}",

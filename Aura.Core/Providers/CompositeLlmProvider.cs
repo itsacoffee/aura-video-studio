@@ -652,13 +652,13 @@ public class CompositeLlmProvider : ILlmProvider
                                 availabilityCts.CancelAfter(TimeSpan.FromSeconds(2)); // Short timeout for availability check
                                 var availabilityTask = (Task<bool>)availabilityMethod.Invoke(provider, new object[] { availabilityCts.Token, false })!;
                                 var isAvailable = await availabilityTask.ConfigureAwait(false);
-                                
+
                                 if (!isAvailable)
                                 {
                                     _logger.LogWarning("Ollama is unavailable for {Operation}, skipping to next provider in fallback chain", operationName);
                                     continue; // Skip to next provider in chain
                                 }
-                                
+
                                 _logger.LogInformation("Ollama availability check: Available for {Operation}", operationName);
                             }
                         }
@@ -674,8 +674,20 @@ public class CompositeLlmProvider : ILlmProvider
                         }
                     }
 
-                    _logger.LogInformation("Executing {Operation} with provider {Provider}", operationName, providerName);
+                    _logger.LogInformation(
+                        "Executing {Operation} with provider {Provider} (Type: {ProviderType}). " +
+                        "This is a REAL LLM call - check system monitor for CPU/GPU utilization if using Ollama.",
+                        operationName, providerName, provider.GetType().Name);
+
+                    var operationStartTime = DateTime.UtcNow;
                     var result = await operation(provider).ConfigureAwait(false);
+                    var operationDuration = DateTime.UtcNow - operationStartTime;
+
+                    _logger.LogInformation(
+                        "Provider {Provider} completed {Operation} in {Duration}ms with result length {Length}. " +
+                        "If this was Ollama, you should see system utilization during this time.",
+                        providerName, operationName, operationDuration.TotalMilliseconds,
+                        result is string str ? str.Length : result?.ToString()?.Length ?? 0);
 
                     if (shouldRetry != null && shouldRetry(result))
                     {

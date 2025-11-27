@@ -111,31 +111,72 @@ public class ProviderReadinessService : IProviderReadinessService
         CancellationToken ct)
     {
         var candidates = new List<ProviderCandidateStatus>();
+        const int perProviderTimeoutSeconds = 3; // Fast timeout per provider
 
         foreach (var providerName in requirement.ProviderNames)
         {
-            var validation = await _validationService.ValidateProviderAsync(providerName, ct).ConfigureAwait(false);
-
-            var candidateStatus = new ProviderCandidateStatus(
-                providerName,
-                validation.Configured,
-                validation.Reachable,
-                validation.ErrorCode,
-                validation.ErrorMessage,
-                validation.HowToFix?.ToArray() ?? Array.Empty<string>());
-
-            candidates.Add(candidateStatus);
-
-            if (validation.Configured && validation.Reachable)
+            try
             {
-                return new ProviderCategoryStatus(
-                    requirement.Category,
-                    true,
+                // Add per-provider timeout to prevent hanging
+                using var providerCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                providerCts.CancelAfter(TimeSpan.FromSeconds(perProviderTimeoutSeconds));
+
+                var validation = await _validationService.ValidateProviderAsync(providerName, providerCts.Token).ConfigureAwait(false);
+
+                var candidateStatus = new ProviderCandidateStatus(
                     providerName,
-                    null,
-                    $"{providerName} is ready",
-                    Array.Empty<string>(),
-                    candidates);
+                    validation.Configured,
+                    validation.Reachable,
+                    validation.ErrorCode,
+                    validation.ErrorMessage,
+                    validation.HowToFix?.ToArray() ?? Array.Empty<string>());
+
+                candidates.Add(candidateStatus);
+
+                // Fail fast: if we find a working provider, return immediately
+                if (validation.Configured && validation.Reachable)
+                {
+                    _logger.LogInformation("Provider {Provider} is ready for category {Category}, skipping remaining providers",
+                        providerName, requirement.Category);
+                    return new ProviderCategoryStatus(
+                        requirement.Category,
+                        true,
+                        providerName,
+                        null,
+                        $"{providerName} is ready",
+                        Array.Empty<string>(),
+                        candidates);
+                }
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                // User cancelled - rethrow
+                throw;
+            }
+            catch (OperationCanceledException)
+            {
+                // Provider validation timed out - log and continue to next provider
+                _logger.LogWarning("Provider {Provider} validation timed out after {Timeout}s, trying next provider",
+                    providerName, perProviderTimeoutSeconds);
+                candidates.Add(new ProviderCandidateStatus(
+                    providerName,
+                    false,
+                    false,
+                    "Timeout",
+                    $"Validation timed out after {perProviderTimeoutSeconds} seconds",
+                    new[] { "Provider may be slow or unreachable", "Check provider configuration" }));
+            }
+            catch (Exception ex)
+            {
+                // Provider validation failed - log and continue to next provider
+                _logger.LogWarning(ex, "Provider {Provider} validation failed, trying next provider", providerName);
+                candidates.Add(new ProviderCandidateStatus(
+                    providerName,
+                    false,
+                    false,
+                    "ValidationError",
+                    ex.Message,
+                    new[] { "Check provider configuration", "See logs for details" }));
             }
         }
 

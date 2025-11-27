@@ -107,7 +107,7 @@ public class ProviderConnectionValidationService
                 "https://api.openai.com/v1/models",
                 ct).ConfigureAwait(false);
 
-            if (response.StatusCode == HttpStatusCode.Unauthorized || 
+            if (response.StatusCode == HttpStatusCode.Unauthorized ||
                 response.StatusCode == HttpStatusCode.Forbidden)
             {
                 return new ProviderConnectionValidationResult
@@ -253,7 +253,7 @@ public class ProviderConnectionValidationService
                 content,
                 ct).ConfigureAwait(false);
 
-            if (response.StatusCode == HttpStatusCode.Unauthorized || 
+            if (response.StatusCode == HttpStatusCode.Unauthorized ||
                 response.StatusCode == HttpStatusCode.Forbidden)
             {
                 return new ProviderConnectionValidationResult
@@ -378,7 +378,7 @@ public class ProviderConnectionValidationService
                 $"https://generativelanguage.googleapis.com/v1beta/models?key={apiKey}",
                 ct).ConfigureAwait(false);
 
-            if (response.StatusCode == HttpStatusCode.Unauthorized || 
+            if (response.StatusCode == HttpStatusCode.Unauthorized ||
                 response.StatusCode == HttpStatusCode.Forbidden ||
                 response.StatusCode == HttpStatusCode.BadRequest)
             {
@@ -666,7 +666,8 @@ public class ProviderConnectionValidationService
         try
         {
             using var httpClient = _httpClientFactory.CreateClient();
-            httpClient.Timeout = ValidationTimeout;
+            // Use shorter timeout for faster validation
+            httpClient.Timeout = TimeSpan.FromSeconds(3);
 
             var response = await httpClient.GetAsync($"{ollamaUrl}/api/tags", ct).ConfigureAwait(false);
 
@@ -732,7 +733,8 @@ public class ProviderConnectionValidationService
         try
         {
             using var httpClient = _httpClientFactory.CreateClient();
-            httpClient.Timeout = ValidationTimeout;
+            // Use shorter timeout for faster validation - don't block on StableDiffusion
+            httpClient.Timeout = TimeSpan.FromSeconds(2);
 
             var response = await httpClient.GetAsync($"{sdUrl}/sdapi/v1/sd-models", ct).ConfigureAwait(false);
 
@@ -843,8 +845,8 @@ public class ProviderConnectionValidationService
     }
 
     private ProviderConnectionValidationResult HandleStandardHttpResponse(
-        HttpResponseMessage response, 
-        string providerName, 
+        HttpResponseMessage response,
+        string providerName,
         string providerUrl)
     {
         return response.StatusCode switch
