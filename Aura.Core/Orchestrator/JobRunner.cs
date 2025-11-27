@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Artifacts;
@@ -19,8 +20,15 @@ namespace Aura.Core.Orchestrator;
 /// <summary>
 /// Manages video generation jobs with background execution and progress tracking.
 /// </summary>
-public class JobRunner
+public partial class JobRunner
 {
+    // Compiled regex patterns for performance (used in progress message parsing)
+    [GeneratedRegex(@"(\d+(?:\.\d+)?)\s*%", RegexOptions.Compiled)]
+    private static partial Regex PercentageRegex();
+    
+    [GeneratedRegex(@"(\d+)/(\d+)\s*tasks", RegexOptions.Compiled)]
+    private static partial Regex TaskProgressRegex();
+
     private readonly ILogger<JobRunner> _logger;
     private readonly ArtifactManager _artifactManager;
     private readonly VideoOrchestrator _orchestrator;
@@ -1121,8 +1129,8 @@ public class JobRunner
         {
             // Extract percentage from render progress if available
             stage = "Rendering";
-            // Try to parse "Rendering: X%" from message
-            var percentMatch = System.Text.RegularExpressions.Regex.Match(message, @"(\d+(?:\.\d+)?)\s*%");
+            // Try to parse "Rendering: X%" from message using compiled regex
+            var percentMatch = PercentageRegex().Match(message);
             if (percentMatch.Success && double.TryParse(percentMatch.Groups[1].Value, out double renderPercent))
             {
                 // Map render progress (0-100%) to overall progress (80-95%)
@@ -1137,8 +1145,8 @@ public class JobRunner
         else if (message.Contains("Processing batch", StringComparison.OrdinalIgnoreCase) ||
                  message.Contains("Batch completed", StringComparison.OrdinalIgnoreCase))
         {
-            // Extract batch progress from message
-            var match = System.Text.RegularExpressions.Regex.Match(message, @"(\d+)/(\d+)\s*tasks");
+            // Extract batch progress from message using compiled regex
+            var match = TaskProgressRegex().Match(message);
             if (match.Success && 
                 int.TryParse(match.Groups[1].Value, out int completed) && 
                 int.TryParse(match.Groups[2].Value, out int total) &&

@@ -339,16 +339,17 @@ public class VideoGenerationOrchestrator
 
     /// <summary>
     /// Gets a human-readable stage name for a task type
+    /// Uses centralized StageNames constants for consistency
     /// </summary>
     private static string GetTaskStageName(GenerationTaskType taskType)
     {
         return taskType switch
         {
-            GenerationTaskType.ScriptGeneration => "Script generation",
-            GenerationTaskType.AudioGeneration => "Audio generation (TTS)",
-            GenerationTaskType.ImageGeneration => "Image generation",
-            GenerationTaskType.CaptionGeneration => "Caption generation",
-            GenerationTaskType.VideoComposition => "Video composition (rendering)",
+            GenerationTaskType.ScriptGeneration => StageNames.ScriptGeneration,
+            GenerationTaskType.AudioGeneration => StageNames.AudioGeneration,
+            GenerationTaskType.ImageGeneration => StageNames.ImageGeneration,
+            GenerationTaskType.CaptionGeneration => StageNames.CaptionGeneration,
+            GenerationTaskType.VideoComposition => StageNames.VideoComposition,
             _ => taskType.ToString()
         };
     }
