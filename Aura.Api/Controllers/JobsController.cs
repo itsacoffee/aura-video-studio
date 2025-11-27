@@ -211,65 +211,132 @@ public class JobsController : ControllerBase
     /// Get job status and progress
     /// </summary>
     [HttpGet("{jobId}")]
+    [ProducesResponseType(typeof(JobStatusResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetJob(string jobId)
     {
+        var correlationId = HttpContext.TraceIdentifier;
+
         try
         {
-            var correlationId = HttpContext.TraceIdentifier;
+            Log.Debug(
+                "[{CorrelationId}] GET /api/jobs/{JobId} - Fetching job status",
+                correlationId, jobId);
 
-            // First check the video generation job runner
+            // Check JobRunner first
             var job = _jobRunner.GetJob(jobId);
-            if (job != null)
-            {
-                return Ok(job);
-            }
 
-            // Fall back to export job service if available
-            if (_exportJobService != null)
+            if (job == null)
             {
-                var exportJob = await _exportJobService.GetJobAsync(jobId).ConfigureAwait(false);
-                if (exportJob != null)
+                // Check export job service as fallback
+                if (_exportJobService != null)
                 {
-                    return Ok(new
+                    var exportJob = await _exportJobService.GetJobAsync(jobId).ConfigureAwait(false);
+
+                    if (exportJob != null)
                     {
-                        id = exportJob.Id,
-                        status = exportJob.Status,
-                        percent = exportJob.Progress,
-                        stage = exportJob.Stage,
-                        progressMessage = exportJob.Message,
-                        outputPath = exportJob.OutputPath,
-                        errorMessage = exportJob.ErrorMessage,
-                        createdAt = exportJob.CreatedAt,
-                        startedAt = exportJob.StartedAt,
-                        completedAt = exportJob.CompletedAt
-                    });
+                        // Return export job status
+                        return Ok(new JobStatusResponse
+                        {
+                            Id = exportJob.Id,
+                            Status = MapJobStatus(exportJob.Status),
+                            Percent = exportJob.Progress,
+                            Stage = exportJob.Stage,
+                            ProgressMessage = exportJob.Message,
+                            CreatedAt = exportJob.CreatedAt,
+                            StartedAt = exportJob.StartedAt,
+                            CompletedAt = exportJob.CompletedAt,
+                            OutputPath = exportJob.OutputPath,
+                            ErrorMessage = exportJob.ErrorMessage,
+                            CorrelationId = correlationId
+                        });
+                    }
                 }
+
+                Log.Warning(
+                    "[{CorrelationId}] Job {JobId} not found in JobRunner or ExportJobService",
+                    correlationId, jobId);
+
+                return NotFound(new ProblemDetails
+                {
+                    Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
+                    Title = "Job Not Found",
+                    Status = 404,
+                    Detail = $"Job with ID '{jobId}' was not found. It may have expired or never existed.",
+                    Extensions = {
+                        ["correlationId"] = correlationId,
+                        ["jobId"] = jobId
+                    }
+                });
             }
 
-            Log.Warning("[{CorrelationId}] Job not found: {JobId}", correlationId, jobId);
-            return NotFound(new
+            // Return generation job status
+            var response = new JobStatusResponse
             {
-                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
-                title = "Job Not Found",
-                status = 404,
-                detail = $"Job {jobId} not found",
-                correlationId
-            });
+                Id = job.Id,
+                Status = MapJobStatus(job.Status.ToString()),
+                Percent = job.Percent,
+                Stage = job.Stage,
+                ProgressMessage = job.Logs.LastOrDefault(),
+                CreatedAt = job.CreatedUtc,
+                StartedAt = job.StartedUtc,
+                CompletedAt = job.CompletedUtc,
+                OutputPath = job.OutputPath,
+                ErrorMessage = job.ErrorMessage,
+                Artifacts = job.Artifacts?.Select(a => new ArtifactDto
+                {
+                    Path = a.Path,
+                    FilePath = a.Path,
+                    Type = a.Type,
+                    SizeBytes = a.SizeBytes
+                }).ToList(),
+                CorrelationId = correlationId
+            };
+
+            Log.Debug(
+                "[{CorrelationId}] Job {JobId} status: {Status}, progress: {Progress}%",
+                correlationId, jobId, response.Status, response.Percent);
+
+            return Ok(response);
         }
         catch (Exception ex)
         {
-            var correlationId = HttpContext.TraceIdentifier;
-            Log.Error(ex, "[{CorrelationId}] Error retrieving job {JobId}", correlationId, jobId);
+            Log.Error(ex,
+                "[{CorrelationId}] Error fetching job {JobId}",
+                correlationId, jobId);
 
-            return StatusCode(500, new
+            return StatusCode(500, new ProblemDetails
             {
-                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
-                title = "Error Retrieving Job",
-                status = 500,
-                detail = $"Failed to retrieve job: {ex.Message}",
-                correlationId
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
+                Title = "Internal Server Error",
+                Status = 500,
+                Detail = "An error occurred while fetching job status.",
+                Extensions = {
+                    ["correlationId"] = correlationId,
+                    ["error"] = ex.Message
+                }
             });
         }
+    }
+
+    /// <summary>
+    /// Normalize status strings to lowercase for frontend consistency
+    /// </summary>
+    private static string MapJobStatus(string status)
+    {
+        return status.ToLowerInvariant() switch
+        {
+            "queued" => "queued",
+            "running" => "running",
+            "processing" => "running",
+            "done" => "completed",
+            "completed" => "completed",
+            "succeeded" => "completed",
+            "failed" => "failed",
+            "cancelled" => "cancelled",
+            "canceled" => "cancelled",
+            _ => status.ToLowerInvariant()
+        };
     }
 
     /// <summary>
@@ -1082,22 +1149,37 @@ public class JobsController : ControllerBase
             }
 
             // Fall back to JobRunner for video generation jobs
-            var job = _jobRunner.GetJob(jobId);
+            // Wait for job to appear (it may take a moment after creation)
+            Job? job = null;
+            var waitAttempts = 0;
+            const int maxWaitAttempts = 40; // Wait up to 10 seconds (40 * 250ms)
+
+            while (job == null && waitAttempts < maxWaitAttempts && !cancellationToken.IsCancellationRequested)
+            {
+                job = _jobRunner.GetJob(jobId);
+                if (job == null)
+                {
+                    waitAttempts++;
+                    await Task.Delay(250, cancellationToken).ConfigureAwait(false);
+                }
+            }
+
             if (job == null)
             {
                 await Response.WriteAsync("event: error\n", cancellationToken).ConfigureAwait(false);
-                await Response.WriteAsync($"data: {{\"error\":\"Job not found\",\"jobId\":\"{jobId}\"}}\n\n", cancellationToken).ConfigureAwait(false);
+                await Response.WriteAsync($"data: {{\"error\":\"Job not found after waiting\",\"jobId\":\"{jobId}\"}}\n\n", cancellationToken).ConfigureAwait(false);
                 await Response.Body.FlushAsync(cancellationToken).ConfigureAwait(false);
                 return;
             }
 
-            // Send initial state
+            // Send initial state with normalized status
             var initialData = JsonSerializer.Serialize(new
             {
                 percent = job.Percent,
                 stage = job.Stage,
-                status = job.Status.ToString().ToLowerInvariant(),
-                message = job.Logs.LastOrDefault() ?? ""
+                status = MapJobStatus(job.Status.ToString()),
+                message = job.Logs.LastOrDefault() ?? "Starting video generation...",
+                outputPath = job.OutputPath
             });
             await Response.WriteAsync($"event: job-progress\n", cancellationToken).ConfigureAwait(false);
             await Response.WriteAsync($"data: {initialData}\n\n", cancellationToken).ConfigureAwait(false);
@@ -1106,24 +1188,33 @@ public class JobsController : ControllerBase
             // Poll for updates (JobRunner doesn't have subscription support)
             var lastPercent = job.Percent;
             var lastStatus = job.Status;
-            var pollIntervalMs = 250; // Poll every 250ms for responsiveness
+            var lastStage = job.Stage;
+            var pollIntervalMs = 500; // Poll every 500ms for responsiveness
+            var heartbeatCounter = 0;
 
             while (!cancellationToken.IsCancellationRequested)
             {
                 await Task.Delay(pollIntervalMs, cancellationToken).ConfigureAwait(false);
+                heartbeatCounter++;
 
                 job = _jobRunner.GetJob(jobId);
                 if (job == null) break;
 
-                // Only send updates when something changed
-                if (job.Percent != lastPercent || job.Status != lastStatus)
+                // Send updates when something changed OR every 10 polls (5 seconds) as heartbeat
+                var shouldSendUpdate = job.Percent != lastPercent || 
+                                       job.Status != lastStatus || 
+                                       job.Stage != lastStage ||
+                                       heartbeatCounter >= 10;
+
+                if (shouldSendUpdate)
                 {
                     var eventData = JsonSerializer.Serialize(new
                     {
                         percent = job.Percent,
                         stage = job.Stage,
-                        status = job.Status.ToString().ToLowerInvariant(),
-                        message = job.Logs.LastOrDefault() ?? ""
+                        status = MapJobStatus(job.Status.ToString()),
+                        message = job.Logs.LastOrDefault() ?? "Processing...",
+                        outputPath = job.OutputPath
                     });
 
                     await Response.WriteAsync($"event: job-progress\n", cancellationToken).ConfigureAwait(false);
@@ -1132,6 +1223,8 @@ public class JobsController : ControllerBase
 
                     lastPercent = job.Percent;
                     lastStatus = job.Status;
+                    lastStage = job.Stage;
+                    heartbeatCounter = 0;
                 }
 
                 // Check for terminal state
@@ -1142,9 +1235,9 @@ public class JobsController : ControllerBase
                     {
                         percent = job.Percent,
                         stage = job.Stage,
-                        status = job.Status.ToString().ToLowerInvariant(),
+                        status = MapJobStatus(job.Status.ToString()),
                         message = job.Logs.LastOrDefault() ?? "",
-                        outputPath = job.Artifacts.FirstOrDefault(a => a.Type == "video" || a.Type == "video/mp4")?.Path
+                        outputPath = job.OutputPath ?? job.Artifacts.FirstOrDefault(a => a.Type == "video" || a.Type == "video/mp4")?.Path
                     });
 
                     await Response.WriteAsync($"event: job-completed\n", cancellationToken).ConfigureAwait(false);
