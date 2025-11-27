@@ -463,3 +463,124 @@ public record RegenerateSceneRequest
     /// </summary>
     public bool IncludeContext { get; init; } = true;
 }
+
+/// <summary>
+/// Request to expand a scene (make it longer)
+/// </summary>
+public record ExpandSceneRequest
+{
+    /// <summary>
+    /// Job ID for the current video generation
+    /// </summary>
+    public string JobId { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Scene index (0-based) to expand
+    /// </summary>
+    public int SceneIndex { get; init; }
+
+    /// <summary>
+    /// Target expansion factor (e.g., 1.5 = 50% longer)
+    /// </summary>
+    public double TargetExpansion { get; init; } = 1.5;
+}
+
+/// <summary>
+/// Request to shorten a scene (make it shorter)
+/// </summary>
+public record ShortenSceneRequest
+{
+    /// <summary>
+    /// Job ID for the current video generation
+    /// </summary>
+    public string JobId { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Scene index (0-based) to shorten
+    /// </summary>
+    public int SceneIndex { get; init; }
+
+    /// <summary>
+    /// Target reduction factor (e.g., 0.7 = 30% shorter)
+    /// </summary>
+    public double TargetReduction { get; init; } = 0.7;
+}
+
+/// <summary>
+/// Request to generate B-Roll suggestions for a scene
+/// </summary>
+public record GenerateBRollRequest
+{
+    /// <summary>
+    /// Job ID for the current video generation
+    /// </summary>
+    public string JobId { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Scene index (0-based) to generate B-Roll suggestions for
+    /// </summary>
+    public int SceneIndex { get; init; }
+}
+
+/// <summary>
+/// Request to regenerate a scene from the context menu
+/// </summary>
+public record RegenerateSceneContextRequest
+{
+    /// <summary>
+    /// Job ID for the current video generation
+    /// </summary>
+    public string JobId { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Scene index (0-based) to regenerate
+    /// </summary>
+    public int SceneIndex { get; init; }
+
+    /// <summary>
+    /// Optional creative brief to guide regeneration
+    /// </summary>
+    public string? Brief { get; init; }
+}
+
+/// <summary>
+/// Response for scene modification operations
+/// </summary>
+public record SceneModificationResponse
+{
+    /// <summary>
+    /// Whether the operation was successful
+    /// </summary>
+    public bool Success { get; init; }
+
+    /// <summary>
+    /// Updated scene data
+    /// </summary>
+    public ScriptSceneDto? Scene { get; init; }
+
+    /// <summary>
+    /// Error message if operation failed
+    /// </summary>
+    public string? Error { get; init; }
+}
+
+/// <summary>
+/// Response for B-Roll suggestions generation
+/// </summary>
+public record BRollSuggestionsResponse
+{
+    /// <summary>
+    /// Whether the operation was successful
+    /// </summary>
+    public bool Success { get; init; }
+
+    /// <summary>
+    /// List of B-Roll suggestions
+    /// </summary>
+    public List<string> Suggestions { get; init; } = new();
+
+    /// <summary>
+    /// Error message if operation failed
+    /// </summary>
+    public string? Error { get; init; }
+}
