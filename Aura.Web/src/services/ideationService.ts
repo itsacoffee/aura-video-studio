@@ -17,6 +17,13 @@ export interface ConceptIdea {
   talkingPoints?: string[];
   demographicScores?: Record<string, number>;
   createdAt?: string;
+  // Enhanced high-value fields for better concept generation
+  uniqueValue?: string; // What makes this concept stand out from competitors
+  contentGap?: string; // What competitors are missing that this addresses
+  keyInsights?: string[]; // Specific actionable insights
+  visualSuggestions?: string[]; // Specific visual ideas for the video
+  monetizationPotential?: string; // High/Medium/Low with reasoning
+  viralityScore?: number; // 0-100 score for potential virality
 }
 
 export interface BriefRequirements {
@@ -279,9 +286,11 @@ export const ideationService = {
           errorMessage,
           suggestions,
         });
-        
+
         // Create error with suggestions attached
-        const error = new Error(errorMessage) as Error & { response?: { data?: { suggestions?: string[] } } };
+        const error = new Error(errorMessage) as Error & {
+          response?: { data?: { suggestions?: string[] } };
+        };
         if (suggestions.length > 0) {
           error.response = { data: { suggestions } };
         }
@@ -642,5 +651,51 @@ export const ideationService = {
       'Deep Dive': '🔬',
     };
     return angleMap[angle] || '💡';
+  },
+
+  /**
+   * Format virality score for display
+   */
+  formatViralityScore(score: number | undefined): string {
+    if (score === undefined || score === null) return 'N/A';
+    if (score >= 85) return 'Viral Potential';
+    if (score >= 70) return 'High Share';
+    if (score >= 55) return 'Good Share';
+    return 'Low Share';
+  },
+
+  /**
+   * Get color for virality score
+   */
+  getViralityScoreColor(score: number | undefined): string {
+    if (score === undefined || score === null) return '#888888'; // gray
+    if (score >= 85) return '#9b4dca'; // purple for viral
+    if (score >= 70) return '#107c10'; // green
+    if (score >= 55) return '#faa700'; // orange
+    return '#d13438'; // red
+  },
+
+  /**
+   * Get icon for monetization potential
+   */
+  getMonetizationIcon(potential: string | undefined): string {
+    if (!potential) return '💰';
+    const lower = potential.toLowerCase();
+    if (lower.includes('high')) return '💰💰💰';
+    if (lower.includes('medium')) return '💰💰';
+    if (lower.includes('low')) return '💰';
+    return '💰';
+  },
+
+  /**
+   * Get color for monetization potential
+   */
+  getMonetizationColor(potential: string | undefined): string {
+    if (!potential) return '#888888'; // gray
+    const lower = potential.toLowerCase();
+    if (lower.includes('high')) return '#107c10'; // green
+    if (lower.includes('medium')) return '#faa700'; // orange
+    if (lower.includes('low')) return '#d13438'; // red
+    return '#888888';
   },
 };

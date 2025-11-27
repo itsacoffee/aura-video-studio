@@ -13,65 +13,69 @@ import {
 
 const useStyles = makeStyles({
   container: {
-    padding: tokens.spacingVerticalXXL,
-    maxWidth: '1400px',
+    padding: tokens.spacingVerticalL,
+    maxWidth: '1600px',
     margin: '0 auto',
   },
   header: {
-    marginBottom: tokens.spacingVerticalXXL,
+    marginBottom: tokens.spacingVerticalL,
   },
   title: {
     display: 'flex',
     alignItems: 'center',
     gap: tokens.spacingHorizontalM,
-    marginBottom: tokens.spacingVerticalM,
+    marginBottom: tokens.spacingVerticalS,
   },
   icon: {
-    fontSize: '32px',
+    fontSize: '28px',
     color: tokens.colorBrandForeground1,
   },
   subtitle: {
     color: tokens.colorNeutralForeground3,
     maxWidth: '800px',
+    fontSize: tokens.fontSizeBase200,
   },
   content: {
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalXXL,
+    gap: tokens.spacingVerticalL,
   },
   conceptsSection: {
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalM,
+    gap: tokens.spacingVerticalS,
   },
   conceptsHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: tokens.spacingHorizontalL,
+    gap: tokens.spacingHorizontalM,
   },
   conceptsGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))',
-    gap: tokens.spacingVerticalL,
+    gridTemplateColumns: 'repeat(2, 1fr)',
+    gap: tokens.spacingHorizontalM,
+    '@media (max-width: 1000px)': {
+      gridTemplateColumns: '1fr',
+    },
   },
   emptyState: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: tokens.spacingVerticalXXXL,
+    padding: tokens.spacingVerticalXXL,
     gap: tokens.spacingVerticalM,
     color: tokens.colorNeutralForeground3,
   },
   emptyIcon: {
-    fontSize: '64px',
+    fontSize: '48px',
   },
   headerActions: {
     display: 'flex',
     alignItems: 'center',
-    gap: tokens.spacingHorizontalXL,
+    gap: tokens.spacingHorizontalL,
     flexWrap: 'wrap',
     justifyContent: 'flex-end',
   },
@@ -79,7 +83,7 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     gap: tokens.spacingVerticalXXS,
-    minWidth: '220px',
+    minWidth: '200px',
   },
   hotkeyInputRow: {
     display: 'flex',
@@ -90,14 +94,24 @@ const useStyles = makeStyles({
   },
   hotkeyHint: {
     color: tokens.colorNeutralForeground3,
+    fontSize: tokens.fontSizeBase200,
   },
   hotkeyHelper: {
     color: tokens.colorNeutralForeground4,
-    fontSize: tokens.fontSizeBase200,
+    fontSize: tokens.fontSizeBase100,
   },
   hotkeyReset: {
     padding: 0,
     height: 'auto',
+    fontSize: tokens.fontSizeBase200,
+  },
+  conceptCount: {
+    fontSize: tokens.fontSizeBase400,
+    fontWeight: tokens.fontWeightSemibold,
+  },
+  topicLabel: {
+    fontSize: tokens.fontSizeBase300,
+    color: tokens.colorNeutralForeground2,
   },
 });
 
@@ -195,17 +209,19 @@ export const IdeationDashboard: React.FC = () => {
         setError(null);
       } catch (err) {
         console.error('Brainstorm error:', err);
-        
+
         let errorMessage = 'Failed to generate concepts';
         let suggestions: string[] = [];
-        
+
         if (err instanceof Error) {
           errorMessage = err.message;
         }
-        
+
         // Try to extract suggestions from API response
         if (typeof err === 'object' && err !== null) {
-          const apiError = err as any;
+          const apiError = err as {
+            response?: { data?: { suggestions?: string[]; error?: string } };
+          };
           if (apiError.response?.data?.suggestions) {
             suggestions = apiError.response.data.suggestions;
           }
@@ -213,12 +229,13 @@ export const IdeationDashboard: React.FC = () => {
             errorMessage = apiError.response.data.error;
           }
         }
-        
+
         // Build comprehensive error message
-        const fullError = suggestions.length > 0
-          ? `${errorMessage}\n\nSuggestions:\n${suggestions.map((s, i) => `${i + 1}. ${s}`).join('\n')}`
-          : errorMessage;
-        
+        const fullError =
+          suggestions.length > 0
+            ? `${errorMessage}\n\nSuggestions:\n${suggestions.map((s, i) => `${i + 1}. ${s}`).join('\n')}`
+            : errorMessage;
+
         setError(fullError);
       } finally {
         setLoading(false);
@@ -377,9 +394,10 @@ export const IdeationDashboard: React.FC = () => {
         {concepts.length > 0 && (
           <div className={styles.conceptsSection}>
             <div className={styles.conceptsHeader}>
-              <Text size={600} weight="semibold">
-                {concepts.length} Creative Concepts for &quot;{originalTopic}&quot;
-              </Text>
+              <div>
+                <Text className={styles.conceptCount}>{concepts.length} Concepts Generated</Text>
+                <Text className={styles.topicLabel}>for &quot;{originalTopic}&quot;</Text>
+              </div>
               <div className={styles.headerActions}>
                 <Button appearance="subtle" onClick={handleRefresh}>
                   Generate More
@@ -403,17 +421,10 @@ export const IdeationDashboard: React.FC = () => {
                       className={styles.hotkeyReset}
                       onClick={resetHotkey}
                     >
-                      Reset to Ctrl + Space
+                      Reset
                     </Button>
                   </div>
-                  <Text size={200} className={styles.hotkeyHint}>
-                    Press {hotkeyLabel} to refresh ideas instantly
-                  </Text>
-                  <Text size={200} className={styles.hotkeyHelper}>
-                    {isCapturingHotkey
-                      ? 'Listening for your new shortcut…'
-                      : 'Click the box, then press your preferred key combo'}
-                  </Text>
+                  <Text className={styles.hotkeyHint}>{hotkeyLabel} to refresh</Text>
                 </div>
               </div>
             </div>
@@ -425,6 +436,7 @@ export const IdeationDashboard: React.FC = () => {
                   concept={concept}
                   onSelect={handleSelectConcept}
                   onExpand={handleExpandConcept}
+                  onUseForVideo={handleSelectConcept}
                 />
               ))}
             </div>
@@ -443,8 +455,8 @@ export const IdeationDashboard: React.FC = () => {
 
         {loading && (
           <div className={styles.conceptsGrid}>
-            {Array.from({ length: 4 }).map((_, i) => (
-              <SkeletonCard key={`skeleton-${i}`} hasImage={true} />
+            {Array.from({ length: 6 }).map((_, i) => (
+              <SkeletonCard key={`skeleton-${i}`} hasImage={false} />
             ))}
           </div>
         )}
