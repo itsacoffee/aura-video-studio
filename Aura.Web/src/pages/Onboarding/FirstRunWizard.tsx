@@ -112,7 +112,8 @@ const useStyles = makeStyles({
   },
   '@keyframes fadeSlideIn': {
     from: {
-      // Start with slightly reduced opacity instead of 0 to prevent flash
+      // Start opacity at 0.7 (STEP_ANIMATION_START_OPACITY) instead of 0 to prevent flash
+      // This ensures content is always partially visible during transitions
       opacity: 0.7,
       transform: 'translateX(10px)',
     },
