@@ -386,6 +386,7 @@ function initializeIpcHandlers(
     startupLogs: null,
     diagnostics: null,
     contextMenu: null,
+    file: null,
   };
 
   const failedHandlers = [];
@@ -519,6 +520,20 @@ function initializeIpcHandlers(
       failedHandlers.push({ name: "contextMenu", error: error.message });
       if (logger)
         logger.warn("IPC", "Context menu handler failed to initialize", {
+          error: error.message,
+        });
+    }
+
+    // File handler (for frame export and file operations)
+    try {
+      const { FileHandler } = require("./ipc-handlers/file-handler");
+      handlers.file = new FileHandler(logger);
+      handlers.file.register();
+      succeededHandlers.push("file");
+    } catch (error) {
+      failedHandlers.push({ name: "file", error: error.message });
+      if (logger)
+        logger.warn("IPC", "File handler failed to initialize", {
           error: error.message,
         });
     }
