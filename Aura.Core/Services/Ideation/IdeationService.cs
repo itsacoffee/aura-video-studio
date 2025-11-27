@@ -3901,7 +3901,14 @@ CRITICAL REQUIREMENTS:
             AppealScore: 75.0,
             Hook: hook,
             TalkingPoints: null,
-            CreatedAt: DateTime.UtcNow
+            CreatedAt: DateTime.UtcNow,
+            // Fallback values for enhanced fields - these are extracted from text fallback
+            UniqueValue: fields.TryGetValue("uniqueValue", out var uv) ? uv : null,
+            ContentGap: fields.TryGetValue("contentGap", out var cg) ? cg : null,
+            KeyInsights: null,
+            VisualSuggestions: null,
+            MonetizationPotential: fields.TryGetValue("monetizationPotential", out var mp) ? mp : null,
+            ViralityScore: null
         );
     }
 

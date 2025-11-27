@@ -22,6 +22,10 @@ import React, { useState } from 'react';
 import type { ConceptIdea } from '../../services/ideationService';
 import { ideationService } from '../../services/ideationService';
 
+// Constants for consistent styling
+const INSIGHT_MAX_WIDTH = '150px';
+const INSIGHT_TRUNCATE_LENGTH = 40;
+
 const useStyles = makeStyles({
   card: {
     width: '100%',
@@ -334,8 +338,10 @@ export const ConceptCard: React.FC<ConceptCardProps> = ({
             <React.Fragment key={index}>
               <span className={styles.insightBullet}>
                 <span className={styles.bulletDot} />
-                <span className={styles.quickInfoText} style={{ maxWidth: '150px' }}>
-                  {insight.length > 40 ? insight.substring(0, 40) + '...' : insight}
+                <span className={styles.quickInfoText} style={{ maxWidth: INSIGHT_MAX_WIDTH }}>
+                  {insight.length > INSIGHT_TRUNCATE_LENGTH
+                    ? insight.substring(0, INSIGHT_TRUNCATE_LENGTH) + '...'
+                    : insight}
                 </span>
               </span>
             </React.Fragment>
@@ -473,7 +479,10 @@ export const ConceptCard: React.FC<ConceptCardProps> = ({
           {/* Pros and Cons */}
           <div className={styles.prosConsRow}>
             <div className={styles.expandedSection}>
-              <Text className={styles.expandedSectionTitle} style={{ color: '#107c10' }}>
+              <Text
+                className={styles.expandedSectionTitle}
+                style={{ color: tokens.colorPaletteGreenForeground1 }}
+              >
                 ✓ Pros
               </Text>
               <ul className={styles.expandedList}>
@@ -483,7 +492,10 @@ export const ConceptCard: React.FC<ConceptCardProps> = ({
               </ul>
             </div>
             <div className={styles.expandedSection}>
-              <Text className={styles.expandedSectionTitle} style={{ color: '#d13438' }}>
+              <Text
+                className={styles.expandedSectionTitle}
+                style={{ color: tokens.colorPaletteRedForeground1 }}
+              >
                 ✗ Cons
               </Text>
               <ul className={styles.expandedList}>
