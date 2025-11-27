@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
 using Aura.Core.Models.Narrative;
+using Aura.Core.Models.Providers;
 using Aura.Core.Models.Streaming;
 using Aura.Core.Models.Visual;
 
@@ -27,6 +28,11 @@ public interface ILlmProvider
     /// Get provider characteristics for adaptive UI (expected latency, throughput, cost)
     /// </summary>
     LlmProviderCharacteristics GetCharacteristics();
+
+    /// <summary>
+    /// Get provider capabilities and metadata for validation and user guidance
+    /// </summary>
+    ProviderCapabilities GetCapabilities();
 
     /// <summary>
     /// Executes a raw prompt completion for structured output generation (used by orchestration layer)

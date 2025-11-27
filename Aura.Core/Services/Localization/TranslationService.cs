@@ -41,6 +41,29 @@ public class TranslationService
     }
 
     /// <summary>
+    /// Validate that the current LLM provider supports translation
+    /// </summary>
+    private void ValidateProviderCapabilities()
+    {
+        var capabilities = _llmProvider.GetCapabilities();
+        
+        if (!capabilities.SupportsTranslation)
+        {
+            throw new InvalidOperationException(
+                $"The current LLM provider ({capabilities.ProviderName}) does not support translation. " +
+                $"Please configure an AI provider that supports translation capabilities.");
+        }
+        
+        if (capabilities.IsLocalModel)
+        {
+            _logger.LogInformation(
+                "Using local model provider: {Provider}. Known limitations: {Limitations}",
+                capabilities.ProviderName,
+                string.Join(", ", capabilities.KnownLimitations));
+        }
+    }
+
+    /// <summary>
     /// Determines if the current LLM provider is a local model (Ollama, Local, or RuleBased).
     /// Local models may require stronger prompt constraints to produce clean translation output.
     /// </summary>
@@ -62,6 +85,9 @@ public class TranslationService
         var stopwatch = Stopwatch.StartNew();
         _logger.LogInformation("Starting translation from {Source} to {Target}", 
             request.SourceLanguage, request.TargetLanguage);
+
+        // Validate provider capabilities before attempting translation
+        ValidateProviderCapabilities();
 
         // Try to get language from registry, but if not found, create a default LanguageInfo
         // This allows LLM to handle any language intelligently, not just hardcoded ones

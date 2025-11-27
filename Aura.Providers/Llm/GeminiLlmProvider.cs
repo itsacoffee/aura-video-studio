@@ -1502,6 +1502,27 @@ Return ONLY the transition text, no explanations or additional commentary:";
     }
 
     /// <summary>
+    /// Get provider capabilities and metadata for validation and user guidance
+    /// </summary>
+    public Core.Models.Providers.ProviderCapabilities GetCapabilities()
+    {
+        return new Core.Models.Providers.ProviderCapabilities
+        {
+            ProviderName = "Google Gemini",
+            SupportsTranslation = true,
+            SupportsStreaming = false,
+            IsLocalModel = false,
+            MaxContextLength = 1048576,
+            RecommendedTemperature = "0.3-0.7",
+            KnownLimitations = new List<string>
+            {
+                "Requires API key and internet connection",
+                "Usage may be metered depending on tier"
+            }
+        };
+    }
+
+    /// <summary>
     /// Gemini streaming not yet implemented. Falls back to non-streaming DraftScriptAsync.
     /// </summary>
     public async IAsyncEnumerable<LlmStreamChunk> DraftScriptStreamAsync(

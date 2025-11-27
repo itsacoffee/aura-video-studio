@@ -132,6 +132,23 @@ internal sealed class FailingLlmProvider : ILlmProvider
             CostPer1KTokens = null
         };
     }
+
+    public Aura.Core.Models.Providers.ProviderCapabilities GetCapabilities()
+    {
+        return new Aura.Core.Models.Providers.ProviderCapabilities
+        {
+            ProviderName = _name,
+            SupportsTranslation = false,
+            SupportsStreaming = false,
+            IsLocalModel = true,
+            MaxContextLength = 0,
+            RecommendedTemperature = "N/A",
+            KnownLimitations = new List<string>
+            {
+                $"{_name} test provider always fails"
+            }
+        };
+    }
     
     public async IAsyncEnumerable<LlmStreamChunk> DraftScriptStreamAsync(
         Brief brief,

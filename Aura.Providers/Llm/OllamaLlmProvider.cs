@@ -2252,6 +2252,28 @@ Return ONLY the transition text, no explanations or additional commentary:";
     }
 
     /// <summary>
+    /// Get provider capabilities and metadata for validation and user guidance
+    /// </summary>
+    public Core.Models.Providers.ProviderCapabilities GetCapabilities()
+    {
+        return new Core.Models.Providers.ProviderCapabilities
+        {
+            ProviderName = "Ollama",
+            SupportsTranslation = true,
+            SupportsStreaming = true,
+            IsLocalModel = true,
+            MaxContextLength = 4096, // Default, can be model-specific
+            RecommendedTemperature = "0.3-0.7",
+            KnownLimitations = new List<string>
+            {
+                "May generate verbose output - requires strong prompt constraints",
+                "Structured output handling varies by model",
+                "Best with llama3.1, mistral, or gemma2 models for translation"
+            }
+        };
+    }
+
+    /// <summary>
     /// Stream script generation with unified interface (wraps existing GenerateStreamingAsync)
     /// </summary>
     public async IAsyncEnumerable<LlmStreamChunk> DraftScriptStreamAsync(

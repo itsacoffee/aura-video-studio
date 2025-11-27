@@ -212,6 +212,43 @@ public class LocalizationController : ControllerBase
                 }
             });
         }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("does not support translation"))
+        {
+            _logger.LogWarning(ex, "Translation attempted with unsupported provider, CorrelationId: {CorrelationId}",
+                HttpContext.TraceIdentifier);
+            return BadRequest(new ProblemDetails
+            {
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#PROVIDER_NOT_SUPPORTED",
+                Title = "Provider Not Supported",
+                Status = StatusCodes.Status400BadRequest,
+                Detail = ex.Message,
+                Extensions = 
+                { 
+                    ["correlationId"] = HttpContext.TraceIdentifier,
+                    ["errorCode"] = "PROVIDER_NOT_SUPPORTED",
+                    ["recommendation"] = "Start Ollama with a model (e.g., 'ollama run llama3.1') or configure OpenAI API key"
+                }
+            });
+        }
+        catch (ProviderException ex) when (ex.Message.Contains("connection", StringComparison.OrdinalIgnoreCase) || 
+                                            ex.Message.Contains("unavailable", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogWarning(ex, "LLM provider connection failed, CorrelationId: {CorrelationId}",
+                HttpContext.TraceIdentifier);
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new ProblemDetails
+            {
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#PROVIDER_UNAVAILABLE",
+                Title = "AI Provider Unavailable",
+                Status = StatusCodes.Status503ServiceUnavailable,
+                Detail = $"Could not connect to AI provider: {ex.Message}",
+                Extensions = 
+                { 
+                    ["correlationId"] = HttpContext.TraceIdentifier,
+                    ["errorCode"] = "PROVIDER_UNAVAILABLE",
+                    ["recommendation"] = "Verify Ollama is running: 'ollama list' should show available models"
+                }
+            });
+        }
         catch (ProviderException ex)
         {
             _logger.LogError(ex, "LLM provider error during translation, CorrelationId: {CorrelationId}",
@@ -725,6 +762,42 @@ public class LocalizationController : ControllerBase
         
         _logger.LogInformation("Returned {Count} supported languages", dtos.Count);
         return Ok(dtos);
+    }
+
+    /// <summary>
+    /// Check if translation is available and provider is healthy
+    /// </summary>
+    [HttpGet("health")]
+    [ProducesResponseType(typeof(TranslationProviderHealthDto), StatusCodes.Status200OK)]
+    public ActionResult<TranslationProviderHealthDto> CheckProviderHealth()
+    {
+        try
+        {
+            var capabilities = _llmProvider.GetCapabilities();
+            
+            return Ok(new TranslationProviderHealthDto(
+                IsAvailable: true,
+                ProviderName: capabilities.ProviderName,
+                SupportsTranslation: capabilities.SupportsTranslation,
+                IsLocalModel: capabilities.IsLocalModel,
+                Limitations: capabilities.KnownLimitations,
+                ErrorMessage: null
+            ));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to get provider capabilities, CorrelationId: {CorrelationId}",
+                HttpContext.TraceIdentifier);
+            
+            return Ok(new TranslationProviderHealthDto(
+                IsAvailable: false,
+                ProviderName: "",
+                SupportsTranslation: false,
+                IsLocalModel: false,
+                Limitations: null,
+                ErrorMessage: ex.Message
+            ));
+        }
     }
 
     /// <summary>

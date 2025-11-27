@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Aura.Core.Configuration;
 using Aura.Core.Models;
 using Aura.Core.Models.Narrative;
+using Aura.Core.Models.Providers;
 using Aura.Core.Models.Streaming;
 using Aura.Core.Models.Visual;
 using Aura.Core.Orchestrator;
@@ -215,6 +216,38 @@ public class CompositeLlmProvider : ILlmProvider
             ExpectedTokensPerSec = 15,
             SupportsStreaming = true,
             ProviderTier = "Unknown"
+        };
+    }
+
+    /// <summary>
+    /// Get capabilities from the first available provider in the chain
+    /// </summary>
+    public Models.Providers.ProviderCapabilities GetCapabilities()
+    {
+        var providers = GetProviders();
+        var chain = BuildProviderChain(providers, DefaultPreferredTier, "get capabilities");
+
+        foreach (var providerName in chain)
+        {
+            if (providers.TryGetValue(providerName, out var provider) && provider != null)
+            {
+                return provider.GetCapabilities();
+            }
+        }
+
+        // Fallback for when no providers are available
+        return new Models.Providers.ProviderCapabilities
+        {
+            ProviderName = "Unknown",
+            SupportsTranslation = false,
+            SupportsStreaming = false,
+            IsLocalModel = false,
+            MaxContextLength = 0,
+            RecommendedTemperature = "N/A",
+            KnownLimitations = new List<string>
+            {
+                "No LLM providers are currently available"
+            }
         };
     }
 

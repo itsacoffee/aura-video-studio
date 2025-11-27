@@ -1989,6 +1989,27 @@ Return ONLY the transition text, no explanations or additional commentary:";
     }
 
     /// <summary>
+    /// Get provider capabilities and metadata for validation and user guidance
+    /// </summary>
+    public Core.Models.Providers.ProviderCapabilities GetCapabilities()
+    {
+        return new Core.Models.Providers.ProviderCapabilities
+        {
+            ProviderName = "OpenAI",
+            SupportsTranslation = true,
+            SupportsStreaming = true,
+            IsLocalModel = false,
+            MaxContextLength = _model.Contains("gpt-4o", StringComparison.OrdinalIgnoreCase) ? 128000 : 16385,
+            RecommendedTemperature = "0.3-0.7",
+            KnownLimitations = new List<string>
+            {
+                "Requires API key and internet connection",
+                "Usage is metered and charged per token"
+            }
+        };
+    }
+
+    /// <summary>
     /// Stream script generation with real-time token-by-token updates
     /// </summary>
     public async IAsyncEnumerable<LlmStreamChunk> DraftScriptStreamAsync(
