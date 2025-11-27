@@ -438,13 +438,21 @@ public abstract class BaseLlmScriptProvider : IScriptLlmProvider
     /// </summary>
     protected string ExtractNarration(string content)
     {
-        var narrationMatch = Regex.Match(content, @"Narration:\s*(.+?)(?=Visual:|$)", RegexOptions.Singleline | RegexOptions.IgnoreCase);
-        if (narrationMatch.Success)
+        // Match "Narration:" followed by content, stopping at standalone "Visual:" or "Transition:" or end
+        // Use negative lookbehind (?<!\[) to ensure we don't match Visual: inside [VISUAL:...] markers
+        var narrationMatch = Regex.Match(
+            content, 
+            @"Narration:\s*(.*?)(?=\s*(?<!\[)(?:Visual|Transition):|$)", 
+            RegexOptions.Singleline | RegexOptions.IgnoreCase
+        );
+        
+        if (narrationMatch.Success && !string.IsNullOrWhiteSpace(narrationMatch.Groups[1].Value))
         {
-            return narrationMatch.Groups[1].Value.Trim();
+            return CleanNarration(narrationMatch.Groups[1].Value.Trim());
         }
 
-        return content.Trim();
+        // Fallback: return the entire content cleaned
+        return CleanNarration(content.Trim());
     }
 
     /// <summary>
