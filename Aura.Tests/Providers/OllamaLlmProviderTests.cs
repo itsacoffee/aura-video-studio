@@ -453,6 +453,139 @@ public class OllamaLlmProviderTests : IDisposable
             });
     }
 
+    /// <summary>
+    /// Helper to set up HTTP response and capture the request body for verification
+    /// </summary>
+    private void SetupHttpResponseWithCapture(string requestUri, string responseContent, Action<string> onRequestBody)
+    {
+        _httpMessageHandlerMock
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.Is<HttpRequestMessage>(req => req.RequestUri!.ToString() == requestUri),
+                ItExpr.IsAny<CancellationToken>())
+            .Returns(async (HttpRequestMessage request, CancellationToken _) =>
+            {
+                // Capture request body for verification
+                if (request.Content != null)
+                {
+                    var body = await request.Content.ReadAsStringAsync();
+                    onRequestBody(body);
+                }
+                return new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    Content = new StringContent(responseContent, Encoding.UTF8, "application/json")
+                };
+            });
+    }
+
+    [Fact]
+    public async Task GenerateChatCompletionAsync_WithoutResponseFormat_DoesNotIncludeFormatInRequest()
+    {
+        // Arrange
+        var systemPrompt = "You are a translator.";
+        var userPrompt = "Translate 'Hello' to Spanish.";
+        
+        // No ResponseFormat specified - should NOT include format in request
+        var parameters = new LlmParameters(Temperature: 0.7);
+        
+        string? capturedRequestBody = null;
+        
+        var ollamaResponse = new
+        {
+            message = new { role = "assistant", content = "Hola" },
+            done = true
+        };
+
+        SetupHttpResponseWithCapture(
+            $"{BaseUrl}/api/chat",
+            JsonSerializer.Serialize(ollamaResponse),
+            body => capturedRequestBody = body);
+
+        // Act
+        var result = await _provider.GenerateChatCompletionAsync(
+            systemPrompt, userPrompt, parameters, CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal("Hola", result);
+        
+        // Verify that format is NOT in the request (critical for translation)
+        Assert.NotNull(capturedRequestBody);
+        Assert.DoesNotContain("\"format\"", capturedRequestBody);
+    }
+
+    [Fact]
+    public async Task GenerateChatCompletionAsync_WithJsonResponseFormat_IncludesFormatInRequest()
+    {
+        // Arrange
+        var systemPrompt = "You are a JSON generator.";
+        var userPrompt = "Generate a JSON object with name and age.";
+        
+        // ResponseFormat = "json" - should include format in request
+        var parameters = new LlmParameters(ResponseFormat: "json");
+        
+        string? capturedRequestBody = null;
+        
+        var ollamaResponse = new
+        {
+            message = new { role = "assistant", content = "{\"name\": \"John\", \"age\": 30}" },
+            done = true
+        };
+
+        SetupHttpResponseWithCapture(
+            $"{BaseUrl}/api/chat",
+            JsonSerializer.Serialize(ollamaResponse),
+            body => capturedRequestBody = body);
+
+        // Act
+        var result = await _provider.GenerateChatCompletionAsync(
+            systemPrompt, userPrompt, parameters, CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Contains("John", result);
+        
+        // Verify that format IS in the request for JSON output
+        Assert.NotNull(capturedRequestBody);
+        Assert.Contains("\"format\"", capturedRequestBody);
+        Assert.Contains("\"json\"", capturedRequestBody);
+    }
+
+    [Fact]
+    public async Task GenerateChatCompletionAsync_WithNullParameters_DoesNotIncludeFormatInRequest()
+    {
+        // Arrange - null parameters (used by TranslationService)
+        var systemPrompt = "You are a translator.";
+        var userPrompt = "Translate 'Hello' to Spanish.";
+        
+        string? capturedRequestBody = null;
+        
+        var ollamaResponse = new
+        {
+            message = new { role = "assistant", content = "Hola" },
+            done = true
+        };
+
+        SetupHttpResponseWithCapture(
+            $"{BaseUrl}/api/chat",
+            JsonSerializer.Serialize(ollamaResponse),
+            body => capturedRequestBody = body);
+
+        // Act - pass null parameters (this is what TranslationService does)
+        var result = await _provider.GenerateChatCompletionAsync(
+            systemPrompt, userPrompt, null, CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal("Hola", result);
+        
+        // Verify that format is NOT in the request when parameters are null
+        Assert.NotNull(capturedRequestBody);
+        Assert.DoesNotContain("\"format\"", capturedRequestBody);
+    }
+
     public void Dispose()
     {
         _httpClient?.Dispose();
