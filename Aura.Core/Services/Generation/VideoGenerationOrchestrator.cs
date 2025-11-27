@@ -61,15 +61,20 @@ public class VideoGenerationOrchestrator
         {
             _logger.LogInformation("Starting video generation orchestration for topic: {Topic}", brief.Topic);
 
+            // Report initial progress immediately to show activity
+            progress?.Report(new OrchestrationProgress("Starting orchestration", 0, 1, TimeSpan.Zero));
+
             // Select generation strategy
             var strategy = _strategySelector.SelectStrategy(brief, systemProfile, planSpec);
             UpdateConcurrencyLimit(strategy.MaxConcurrency);
 
-            progress?.Report(new OrchestrationProgress("Analyzing dependencies", 0, 0, TimeSpan.Zero));
+            progress?.Report(new OrchestrationProgress("Analyzing dependencies and building task graph", 0, 1, stopwatch.Elapsed));
 
             // Build dependency graph
             var graph = BuildDependencyGraph(brief, planSpec, strategy);
             _logger.LogInformation("Built dependency graph with {NodeCount} tasks", graph.NodeCount);
+
+            progress?.Report(new OrchestrationProgress($"Task graph ready with {graph.NodeCount} tasks", 0, graph.NodeCount, stopwatch.Elapsed));
 
             // Get optimal execution batches
             var batches = graph.GetOptimalExecutionBatches();
@@ -123,10 +128,21 @@ public class VideoGenerationOrchestrator
                     batch,
                     strategy,
                     taskExecutor,
+                    progress,
+                    completedTasks,
+                    totalTasks,
+                    stopwatch,
                     ct).ConfigureAwait(false);
 
                 completedTasks += batchResults.Count(r => r.Succeeded);
                 failedTasks += batchResults.Count(r => !r.Succeeded);
+
+                // Report progress after batch completion
+                progress?.Report(new OrchestrationProgress(
+                    $"Batch completed ({completedTasks}/{totalTasks} tasks done)",
+                    completedTasks,
+                    totalTasks,
+                    stopwatch.Elapsed));
 
                 // Check for critical failures
                 if (HasCriticalFailures(batchResults, graph))
@@ -239,9 +255,14 @@ public class VideoGenerationOrchestrator
         List<GenerationNode> batch,
         GenerationStrategy strategy,
         Func<GenerationNode, CancellationToken, Task<object>> taskExecutor,
+        IProgress<OrchestrationProgress>? progress,
+        int baseCompletedTasks,
+        int totalTasks,
+        Stopwatch stopwatch,
         CancellationToken ct)
     {
         var results = new ConcurrentBag<TaskResult>();
+        var batchCompletedCount = 0;
 
         var tasks = batch.Select(async node =>
         {
@@ -258,6 +279,14 @@ public class VideoGenerationOrchestrator
                     node.Status = TaskStatus.Running;
                     node.StartedAt = DateTime.UtcNow;
 
+                    // Report task starting
+                    var stageName = GetTaskStageName(node.TaskType);
+                    progress?.Report(new OrchestrationProgress(
+                        $"Executing: {stageName}",
+                        baseCompletedTasks + batchCompletedCount,
+                        totalTasks,
+                        stopwatch.Elapsed));
+
                     _logger.LogInformation("Executing task: {TaskId} ({TaskType}) - Priority: {Priority}, ResourceCost: {ResourceCost}", 
                         node.TaskId, node.TaskType, node.Priority, node.EstimatedResourceCost);
 
@@ -270,6 +299,14 @@ public class VideoGenerationOrchestrator
                     var taskResult = new TaskResult(node.TaskId, true, result, null);
                     _taskResults[node.TaskId] = taskResult;
                     results.Add(taskResult);
+
+                    // Increment completed count and report progress
+                    Interlocked.Increment(ref batchCompletedCount);
+                    progress?.Report(new OrchestrationProgress(
+                        $"Completed: {stageName}",
+                        baseCompletedTasks + batchCompletedCount,
+                        totalTasks,
+                        stopwatch.Elapsed));
 
                     _logger.LogInformation("Task completed successfully: {TaskId} (Duration: {Duration}ms)", 
                         node.TaskId, node.CompletedAt.HasValue && node.StartedAt.HasValue 
@@ -298,6 +335,22 @@ public class VideoGenerationOrchestrator
         await Task.WhenAll(tasks).ConfigureAwait(false);
 
         return results.ToList();
+    }
+
+    /// <summary>
+    /// Gets a human-readable stage name for a task type
+    /// </summary>
+    private static string GetTaskStageName(GenerationTaskType taskType)
+    {
+        return taskType switch
+        {
+            GenerationTaskType.ScriptGeneration => "Script generation",
+            GenerationTaskType.AudioGeneration => "Audio generation (TTS)",
+            GenerationTaskType.ImageGeneration => "Image generation",
+            GenerationTaskType.CaptionGeneration => "Caption generation",
+            GenerationTaskType.VideoComposition => "Video composition (rendering)",
+            _ => taskType.ToString()
+        };
     }
 
     /// <summary>

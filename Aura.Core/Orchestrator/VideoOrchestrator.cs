@@ -1573,30 +1573,63 @@ Aura Video Studio helps you create professional videos quickly and easily. Thank
         int totalItems,
         string? correlationId)
     {
+        var currentStage = orchestrationProgress.CurrentStage.ToLowerInvariant();
+        
         // Map stage name to GenerationProgress stage format
-        var stage = orchestrationProgress.CurrentStage.ToLowerInvariant() switch
+        var stage = currentStage switch
         {
+            var s when s.Contains("starting") || s.Contains("analyzing") || s.Contains("task graph") => "Brief",
             var s when s.Contains("script") => "Script",
             var s when s.Contains("audio") || s.Contains("tts") || s.Contains("narration") => "TTS",
             var s when s.Contains("image") || s.Contains("visual") || s.Contains("asset") => "Images",
             var s when s.Contains("render") || s.Contains("compose") || s.Contains("composition") => "Rendering",
-            var s when s.Contains("post") => "PostProcess",
+            var s when s.Contains("post") || s.Contains("completed") || s.Contains("complete") => "PostProcess",
+            var s when s.Contains("batch") => DetermineStageFromProgress(orchestrationProgress.ProgressPercentage),
             _ => "Processing"
         };
 
-        // Calculate stage-specific percent
-        var stagePercent = orchestrationProgress.ProgressPercentage;
+        // Calculate stage-specific percent based on completed/total tasks
+        double stagePercent;
+        double overallPercent;
+        
+        if (totalItems > 0)
+        {
+            // Use task completion ratio for progress
+            overallPercent = 5.0 + (double)currentItem / totalItems * 90.0; // 5% to 95%
+            stagePercent = (double)currentItem / totalItems * 100.0;
+        }
+        else
+        {
+            // Fallback to orchestration progress
+            stagePercent = orchestrationProgress.ProgressPercentage;
+            overallPercent = StageWeights.CalculateOverallProgress(stage, stagePercent);
+        }
 
         return new GenerationProgress
         {
             Stage = stage,
-            OverallPercent = StageWeights.CalculateOverallProgress(stage, stagePercent),
+            OverallPercent = overallPercent,
             StagePercent = stagePercent,
             Message = orchestrationProgress.CurrentStage,
             CurrentItem = currentItem,
             TotalItems = totalItems,
             ElapsedTime = orchestrationProgress.ElapsedTime,
             CorrelationId = correlationId
+        };
+    }
+
+    /// <summary>
+    /// Determines the current stage based on overall progress percentage
+    /// </summary>
+    private static string DetermineStageFromProgress(double progressPercent)
+    {
+        return progressPercent switch
+        {
+            < 20 => "Script",
+            < 50 => "TTS",
+            < 70 => "Images",
+            < 95 => "Rendering",
+            _ => "PostProcess"
         };
     }
 }
