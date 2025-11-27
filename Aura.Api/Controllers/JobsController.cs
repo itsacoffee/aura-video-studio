@@ -945,6 +945,205 @@ public class JobsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Pause a running job
+    /// </summary>
+    [HttpPost("{jobId}/pause")]
+    public IActionResult PauseJob(string jobId)
+    {
+        try
+        {
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Information("[{CorrelationId}] Pause request for job {JobId}", correlationId, jobId);
+
+            var job = _jobRunner.GetJob(jobId);
+            if (job == null)
+            {
+                return NotFound(new
+                {
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
+                    title = "Job Not Found",
+                    status = 404,
+                    detail = $"Job {jobId} not found",
+                    correlationId
+                });
+            }
+
+            // Check if job is in a pausable state
+            if (job.Status != JobStatus.Running)
+            {
+                return BadRequest(new
+                {
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
+                    title = "Job Not Pausable",
+                    status = 400,
+                    detail = $"Job is in {job.Status} status and cannot be paused",
+                    currentStatus = job.Status.ToString(),
+                    correlationId
+                });
+            }
+
+            // Attempt to pause the job
+            var paused = _jobRunner.PauseJob(jobId);
+
+            if (paused)
+            {
+                Log.Information("[{CorrelationId}] Successfully paused job {JobId}", correlationId, jobId);
+                return Ok(new { success = true, jobId, message = "Job paused successfully", correlationId });
+            }
+            else
+            {
+                Log.Warning("[{CorrelationId}] Failed to pause job {JobId}", correlationId, jobId);
+                return StatusCode(500, new
+                {
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
+                    title = "Pause Failed",
+                    status = 500,
+                    detail = "Job could not be paused.",
+                    currentStatus = job.Status.ToString(),
+                    correlationId
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Error(ex, "[{CorrelationId}] Error pausing job {JobId}", correlationId, jobId);
+
+            return StatusCode(500, new
+            {
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
+                title = "Pause Failed",
+                status = 500,
+                detail = $"Failed to pause job: {ex.Message}",
+                correlationId
+            });
+        }
+    }
+
+    /// <summary>
+    /// Resume a paused job
+    /// </summary>
+    [HttpPost("{jobId}/resume")]
+    public IActionResult ResumeJob(string jobId)
+    {
+        try
+        {
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Information("[{CorrelationId}] Resume request for job {JobId}", correlationId, jobId);
+
+            var job = _jobRunner.GetJob(jobId);
+            if (job == null)
+            {
+                return NotFound(new
+                {
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
+                    title = "Job Not Found",
+                    status = 404,
+                    detail = $"Job {jobId} not found",
+                    correlationId
+                });
+            }
+
+            // Check if job is in a resumable state
+            if (job.Status != JobStatus.Paused)
+            {
+                return BadRequest(new
+                {
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
+                    title = "Job Not Resumable",
+                    status = 400,
+                    detail = $"Job is in {job.Status} status and cannot be resumed",
+                    currentStatus = job.Status.ToString(),
+                    correlationId
+                });
+            }
+
+            // Attempt to resume the job
+            var resumed = _jobRunner.ResumeJob(jobId);
+
+            if (resumed)
+            {
+                Log.Information("[{CorrelationId}] Successfully resumed job {JobId}", correlationId, jobId);
+                return Ok(new { success = true, jobId, message = "Job resumed successfully", correlationId });
+            }
+            else
+            {
+                Log.Warning("[{CorrelationId}] Failed to resume job {JobId}", correlationId, jobId);
+                return StatusCode(500, new
+                {
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
+                    title = "Resume Failed",
+                    status = 500,
+                    detail = "Job could not be resumed.",
+                    currentStatus = job.Status.ToString(),
+                    correlationId
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Error(ex, "[{CorrelationId}] Error resuming job {JobId}", correlationId, jobId);
+
+            return StatusCode(500, new
+            {
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
+                title = "Resume Failed",
+                status = 500,
+                detail = $"Failed to resume job: {ex.Message}",
+                correlationId
+            });
+        }
+    }
+
+    /// <summary>
+    /// Get logs for a specific job
+    /// </summary>
+    [HttpGet("{jobId}/logs")]
+    public IActionResult GetJobLogs(string jobId)
+    {
+        try
+        {
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Information("[{CorrelationId}] Logs request for job {JobId}", correlationId, jobId);
+
+            var job = _jobRunner.GetJob(jobId);
+            if (job == null)
+            {
+                return NotFound(new
+                {
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
+                    title = "Job Not Found",
+                    status = 404,
+                    detail = $"Job {jobId} not found",
+                    correlationId
+                });
+            }
+
+            // Return the job logs as plain text
+            var logs = job.Logs.Count > 0
+                ? string.Join("\n", job.Logs)
+                : "No logs available for this job";
+
+            return Content(logs, "text/plain");
+        }
+        catch (Exception ex)
+        {
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Error(ex, "[{CorrelationId}] Error retrieving logs for job {JobId}", correlationId, jobId);
+
+            return StatusCode(500, new
+            {
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
+                title = "Logs Retrieval Failed",
+                status = 500,
+                detail = $"Failed to retrieve logs: {ex.Message}",
+                correlationId
+            });
+        }
+    }
+
     private async Task SendSseEvent(string eventType, object data)
     {
         var json = JsonSerializer.Serialize(data);

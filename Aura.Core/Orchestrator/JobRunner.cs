@@ -198,6 +198,68 @@ public class JobRunner
     }
 
     /// <summary>
+    /// Pauses a running job.
+    /// </summary>
+    /// <param name="jobId">The ID of the job to pause</param>
+    /// <returns>True if the job was successfully paused, false otherwise</returns>
+    public bool PauseJob(string jobId)
+    {
+        _logger.LogInformation("Pause requested for job {JobId}", jobId);
+
+        var job = GetJob(jobId);
+        if (job == null)
+        {
+            _logger.LogWarning("Cannot pause job {JobId}: job not found", jobId);
+            return false;
+        }
+
+        if (job.Status != JobStatus.Running)
+        {
+            _logger.LogWarning("Cannot pause job {JobId}: job is in status {Status}", jobId, job.Status);
+            return false;
+        }
+
+        // Update job status to paused
+        var updatedJob = job with { Status = JobStatus.Paused };
+        _activeJobs[jobId] = updatedJob;
+        _artifactManager.SaveJob(updatedJob);
+
+        _logger.LogInformation("Job {JobId} paused successfully", jobId);
+        return true;
+    }
+
+    /// <summary>
+    /// Resumes a paused job.
+    /// </summary>
+    /// <param name="jobId">The ID of the job to resume</param>
+    /// <returns>True if the job was successfully resumed, false otherwise</returns>
+    public bool ResumeJob(string jobId)
+    {
+        _logger.LogInformation("Resume requested for job {JobId}", jobId);
+
+        var job = GetJob(jobId);
+        if (job == null)
+        {
+            _logger.LogWarning("Cannot resume job {JobId}: job not found", jobId);
+            return false;
+        }
+
+        if (job.Status != JobStatus.Paused)
+        {
+            _logger.LogWarning("Cannot resume job {JobId}: job is in status {Status}", jobId, job.Status);
+            return false;
+        }
+
+        // Update job status back to running
+        var updatedJob = job with { Status = JobStatus.Running };
+        _activeJobs[jobId] = updatedJob;
+        _artifactManager.SaveJob(updatedJob);
+
+        _logger.LogInformation("Job {JobId} resumed successfully", jobId);
+        return true;
+    }
+
+    /// <summary>
     /// Retries a failed job with exponential backoff
     /// </summary>
     public async Task<bool> RetryJobAsync(string jobId, CancellationToken ct = default)
