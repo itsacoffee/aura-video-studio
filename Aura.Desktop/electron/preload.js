@@ -129,6 +129,13 @@ const VALID_CHANNELS = {
 
   // Runtime diagnostics
   RUNTIME: ["runtime:getDiagnostics"],
+
+  // Context menu channels
+  CONTEXT_MENU: [
+    "context-menu:show",
+    "context-menu:reveal-in-os",
+    "context-menu:open-path",
+  ],
 };
 
 // Event channels that renderer can listen to (includes menu events from menu-event-types.js)
@@ -185,7 +192,16 @@ function isValidChannel(channel) {
  * Validate event channel name
  */
 function isValidEventChannel(channel) {
-  return VALID_EVENT_CHANNELS.includes(channel);
+  // Allow static valid event channels
+  if (VALID_EVENT_CHANNELS.includes(channel)) {
+    return true;
+  }
+  // Allow dynamic context menu action channels
+  // Pattern: context-menu:action:${type}:${actionType}
+  if (channel.startsWith("context-menu:action:")) {
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -519,6 +535,40 @@ function createAuraBridge() {
     onNavigate: (callback) => safeOn("protocol:navigate", callback),
   };
 
+  const contextMenuApi = {
+    /**
+     * Show a context menu of the specified type.
+     * @param {string} type - The context menu type
+     * @param {object} data - Data specific to the menu type
+     * @returns {Promise<{success: boolean, error?: string}>}
+     */
+    show: (type, data) => safeInvoke("context-menu:show", type, data),
+
+    /**
+     * Register a listener for context menu actions.
+     * @param {string} type - The context menu type
+     * @param {string} actionType - The action type (e.g., 'onCut', 'onCopy')
+     * @param {function} callback - Function called when action is triggered
+     * @returns {function} Unsubscribe function
+     */
+    onAction: (type, actionType, callback) => {
+      const channel = `context-menu:action:${type}:${actionType}`;
+      return safeOn(channel, callback);
+    },
+
+    /**
+     * Reveal a file or folder in the OS file explorer.
+     * @param {string} filePath - Path to the file or folder
+     */
+    revealInOS: (filePath) => safeInvoke("context-menu:reveal-in-os", filePath),
+
+    /**
+     * Open a file or path with the default system application.
+     * @param {string} filePath - Path to the file or folder
+     */
+    openPath: (filePath) => safeInvoke("context-menu:open-path", filePath),
+  };
+
   const runtimeApi = {
     getDiagnostics: () => refreshDiagnostics(),
     refresh: () => refreshDiagnostics(),
@@ -583,6 +633,7 @@ function createAuraBridge() {
     diagnostics: diagnosticsApi,
     updates: updatesApi,
     protocol: protocolApi,
+    contextMenu: contextMenuApi,
     menu: createValidatedMenuAPI(ipcRenderer),
     startupLogs: startupLogsApi,
     safeMode: {

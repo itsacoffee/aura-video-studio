@@ -63,6 +63,7 @@ let ipcHandlers = {
   backend: null,
   ffmpeg: null,
   startupLogs: null,
+  contextMenu: null,
 };
 
 let isQuitting = false;
