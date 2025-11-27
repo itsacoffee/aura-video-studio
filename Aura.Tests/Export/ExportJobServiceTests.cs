@@ -254,4 +254,161 @@ public class ExportJobServiceTests
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() => new ExportJobService(null!));
     }
+
+    [Fact]
+    public async Task SubscribeToJobUpdatesAsync_YieldsInitialJobState()
+    {
+        // Arrange
+        var job = new VideoJob
+        {
+            Id = "subscribe-job-1",
+            Status = "running",
+            Progress = 25,
+            Stage = "Rendering"
+        };
+        await _service.CreateJobAsync(job);
+
+        using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(2));
+        var updates = new System.Collections.Generic.List<VideoJob>();
+
+        // Act - Subscribe and collect initial state
+        try
+        {
+            await foreach (var update in _service.SubscribeToJobUpdatesAsync("subscribe-job-1", cts.Token))
+            {
+                updates.Add(update);
+                // Just get the initial update and exit
+                cts.Cancel();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected when cancellation token triggers
+        }
+
+        // Assert
+        Assert.Single(updates);
+        Assert.Equal("subscribe-job-1", updates[0].Id);
+        Assert.Equal("running", updates[0].Status);
+        Assert.Equal(25, updates[0].Progress);
+    }
+
+    [Fact]
+    public async Task SubscribeToJobUpdatesAsync_ReceivesProgressUpdates()
+    {
+        // Arrange
+        var job = new VideoJob
+        {
+            Id = "subscribe-job-2",
+            Status = "running",
+            Progress = 0,
+            Stage = "Initializing"
+        };
+        await _service.CreateJobAsync(job);
+
+        using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var updates = new System.Collections.Generic.List<VideoJob>();
+        var subscriptionTask = Task.Run(async () =>
+        {
+            await foreach (var update in _service.SubscribeToJobUpdatesAsync("subscribe-job-2", cts.Token))
+            {
+                updates.Add(update);
+                // Stop after receiving 3 updates
+                if (updates.Count >= 3)
+                {
+                    cts.Cancel();
+                }
+            }
+        });
+
+        // Wait a bit for subscription to start
+        await Task.Delay(100);
+
+        // Act - Send progress updates
+        await _service.UpdateJobProgressAsync("subscribe-job-2", 50, "Processing");
+        await Task.Delay(50);
+        await _service.UpdateJobProgressAsync("subscribe-job-2", 75, "Finalizing");
+
+        // Wait for subscription to complete or timeout
+        try
+        {
+            await subscriptionTask;
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected
+        }
+
+        // Assert
+        Assert.True(updates.Count >= 2, "Expected at least 2 updates (initial + progress)");
+        Assert.Equal("subscribe-job-2", updates[0].Id);
+        // Last update should be the latest progress
+        var lastUpdate = updates[^1];
+        Assert.True(lastUpdate.Progress >= 50, "Expected progress to be at least 50%");
+    }
+
+    [Fact]
+    public async Task SubscribeToJobUpdatesAsync_EndsOnTerminalStatus()
+    {
+        // Arrange
+        var job = new VideoJob
+        {
+            Id = "subscribe-job-3",
+            Status = "running",
+            Progress = 50,
+            Stage = "Processing"
+        };
+        await _service.CreateJobAsync(job);
+
+        using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var updates = new System.Collections.Generic.List<VideoJob>();
+        var completedNormally = false;
+
+        var subscriptionTask = Task.Run(async () =>
+        {
+            await foreach (var update in _service.SubscribeToJobUpdatesAsync("subscribe-job-3", cts.Token))
+            {
+                updates.Add(update);
+            }
+            completedNormally = true;
+        });
+
+        // Wait for subscription to start
+        await Task.Delay(100);
+
+        // Act - Complete the job
+        await _service.UpdateJobStatusAsync("subscribe-job-3", "completed", 100, "/output/video.mp4");
+
+        // Wait for subscription to complete
+        await Task.WhenAny(subscriptionTask, Task.Delay(2000));
+
+        // Assert
+        Assert.True(completedNormally, "Subscription should complete normally on terminal status");
+        Assert.True(updates.Count >= 2, "Expected at least 2 updates (initial + completed)");
+        Assert.Equal("completed", updates[^1].Status);
+    }
+
+    [Fact]
+    public async Task SubscribeToJobUpdatesAsync_ReturnsNothingForNonExistentJob()
+    {
+        // Arrange
+        using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(2));
+        var updates = new System.Collections.Generic.List<VideoJob>();
+
+        // Act
+        try
+        {
+            await foreach (var update in _service.SubscribeToJobUpdatesAsync("non-existent-job", cts.Token))
+            {
+                updates.Add(update);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected when no updates come and token times out
+        }
+
+        // Assert - No updates for non-existent job
+        Assert.Empty(updates);
+    }
 }
