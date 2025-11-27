@@ -20,6 +20,10 @@ import {
 } from '@fluentui/react-components';
 import { Save24Regular, Dismiss24Regular } from '@fluentui/react-icons';
 import React, { useState, useEffect, useCallback } from 'react';
+import {
+  formatFileSize as formatFileSizeUtil,
+  formatDuration as formatDurationUtil,
+} from '../../utils/formatters';
 
 const useStyles = makeStyles({
   content: {
@@ -63,29 +67,19 @@ export interface AssetPropertiesDialogProps {
 }
 
 /**
- * Format file size to human-readable string
+ * Wrapper for formatFileSize that handles undefined values
  */
 function formatFileSize(bytes: number | undefined): string {
   if (bytes === undefined) return 'Unknown';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return formatFileSizeUtil(bytes);
 }
 
 /**
- * Format duration in seconds to MM:SS or HH:MM:SS
+ * Wrapper for formatDuration that handles undefined values
  */
 function formatDuration(seconds: number | undefined): string {
   if (seconds === undefined) return 'Unknown';
-
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
-
-  if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  }
-  return `${minutes}:${secs.toString().padStart(2, '0')}`;
+  return formatDurationUtil(seconds);
 }
 
 export function AssetPropertiesDialog({
