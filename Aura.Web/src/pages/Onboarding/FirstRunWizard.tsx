@@ -105,12 +105,17 @@ const useStyles = makeStyles({
     position: 'relative',
   },
   stepContent: {
-    animation: 'slideIn 0.4s ease-out',
+    // CRITICAL FIX: Remove animation that could cause temporary invisibility
+    // Animation with opacity:0 start could contribute to black screen flash
+    // Instead use a gentler animation that keeps content visible
+    animation: 'fadeSlideIn 0.3s ease-out',
   },
-  '@keyframes slideIn': {
+  '@keyframes fadeSlideIn': {
     from: {
-      opacity: 0,
-      transform: 'translateX(20px)',
+      // Start opacity at 0.7 (STEP_ANIMATION_START_OPACITY) instead of 0 to prevent flash
+      // This ensures content is always partially visible during transitions
+      opacity: 0.7,
+      transform: 'translateX(10px)',
     },
     to: {
       opacity: 1,
@@ -872,7 +877,9 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
       if (onComplete) {
         try {
           await onComplete();
-          console.info('[FirstRunWizard] Exit completed via onComplete callback - modal should close');
+          console.info(
+            '[FirstRunWizard] Exit completed via onComplete callback - modal should close'
+          );
           // Don't navigate if we're in a modal - onComplete will handle closing it
           return;
         } catch (callbackError: unknown) {
@@ -916,7 +923,8 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
       console.error('[FirstRunWizard] Error in handleValidateApiKey:', error);
       showFailureToast({
         title: 'Validation Error',
-        message: error instanceof Error ? error.message : 'Failed to validate API key. Please try again.',
+        message:
+          error instanceof Error ? error.message : 'Failed to validate API key. Please try again.',
       });
       // Don't re-throw - allow user to continue
     }
