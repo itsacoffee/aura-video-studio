@@ -59,18 +59,27 @@ public class PreGenerationValidatorTests
         var brief = CreateTestBrief();
         var planSpec = CreateTestPlanSpec();
         var progressMessages = new List<string>();
-        var progress = new Progress<string>(msg => progressMessages.Add(msg));
+        
+        // Use synchronous list collection to avoid timing issues
+        var syncProgress = new SynchronousProgress<string>(msg => progressMessages.Add(msg));
 
         // Act
-        await validator.ValidateSystemReadyAsync(brief, planSpec, progress);
+        await validator.ValidateSystemReadyAsync(brief, planSpec, syncProgress);
 
-        // Wait a bit for progress reports to be collected
-        await Task.Delay(100);
-
-        // Assert
+        // Assert - messages are collected synchronously
         Assert.True(progressMessages.Count > 0, "Expected progress messages to be reported");
         Assert.Contains(progressMessages, m => m.Contains("FFmpeg"));
         Assert.Contains(progressMessages, m => m.Contains("complete", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Synchronous IProgress implementation for testing to avoid timing-dependent tests
+    /// </summary>
+    private sealed class SynchronousProgress<T> : IProgress<T>
+    {
+        private readonly Action<T> _handler;
+        public SynchronousProgress(Action<T> handler) => _handler = handler;
+        public void Report(T value) => _handler(value);
     }
 
     [Fact]
