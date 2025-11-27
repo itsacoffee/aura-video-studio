@@ -12,6 +12,14 @@ import {
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
+import {
+  PlayCircle24Regular,
+  PauseCircle24Regular,
+  CheckmarkCircle24Regular,
+  ErrorCircle24Regular,
+  DismissCircle24Regular,
+  Clock24Regular,
+} from '@fluentui/react-icons';
 
 const useStyles = makeStyles({
   jobCard: {
@@ -41,6 +49,10 @@ const useStyles = makeStyles({
     marginTop: '8px',
     fontSize: '12px',
     color: tokens.colorNeutralForeground3,
+  },
+  statusIcon: {
+    display: 'flex',
+    alignItems: 'center',
   },
 });
 
@@ -81,20 +93,47 @@ export function JobCard({ job, onContextMenu }: JobCardProps) {
     }
   };
 
-  const getStatusIcon = (status: string): string => {
+  const getStatusIcon = (status: string) => {
     switch (status) {
       case 'running':
-        return '▶️';
+        return (
+          <PlayCircle24Regular
+            aria-label="Running"
+            style={{ color: tokens.colorPaletteGreenForeground1 }}
+          />
+        );
       case 'paused':
-        return '⏸️';
+        return (
+          <PauseCircle24Regular
+            aria-label="Paused"
+            style={{ color: tokens.colorPaletteYellowForeground1 }}
+          />
+        );
       case 'completed':
-        return '✅';
+        return (
+          <CheckmarkCircle24Regular
+            aria-label="Completed"
+            style={{ color: tokens.colorPaletteGreenForeground1 }}
+          />
+        );
       case 'failed':
-        return '❌';
+        return (
+          <ErrorCircle24Regular
+            aria-label="Failed"
+            style={{ color: tokens.colorPaletteRedForeground1 }}
+          />
+        );
       case 'canceled':
-        return '🚫';
+        return (
+          <DismissCircle24Regular
+            aria-label="Canceled"
+            style={{ color: tokens.colorNeutralForeground3 }}
+          />
+        );
       default:
-        return '⏳';
+        return (
+          <Clock24Regular aria-label="Queued" style={{ color: tokens.colorNeutralForeground3 }} />
+        );
     }
   };
 
@@ -105,7 +144,7 @@ export function JobCard({ job, onContextMenu }: JobCardProps) {
           <div className={styles.jobHeader}>
             <Text className={styles.jobTitle}>{job.topic}</Text>
             <div className={styles.jobStatus}>
-              <span>{getStatusIcon(job.status)}</span>
+              <span className={styles.statusIcon}>{getStatusIcon(job.status)}</span>
               <Badge color={getStatusColor(job.status)}>{job.status.toUpperCase()}</Badge>
             </div>
           </div>
