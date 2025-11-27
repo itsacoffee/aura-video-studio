@@ -23,7 +23,10 @@ public class BriefStageTests
         _mockValidator = new Mock<PreGenerationValidator>(
             Mock.Of<ILogger<PreGenerationValidator>>(),
             Mock.Of<Core.Dependencies.IFfmpegLocator>(),
-            Mock.Of<Core.Services.Resources.DiskSpaceChecker>());
+            Mock.Of<Core.Dependencies.FFmpegResolver>(MockBehavior.Loose),
+            Mock.Of<Core.Hardware.IHardwareDetector>(),
+            Mock.Of<Core.Services.Providers.IProviderReadinessService>(),
+            null);
     }
 
     [Fact]
@@ -31,7 +34,7 @@ public class BriefStageTests
     {
         // Arrange
         _mockValidator
-            .Setup(v => v.ValidateSystemReadyAsync(It.IsAny<Brief>(), It.IsAny<PlanSpec>(), It.IsAny<CancellationToken>()))
+            .Setup(v => v.ValidateSystemReadyAsync(It.IsAny<Brief>(), It.IsAny<PlanSpec>(), It.IsAny<IProgress<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ValidationResult(true, new List<string>()));
 
         var stage = new BriefStage(_mockLogger.Object, _mockValidator.Object);
@@ -54,7 +57,7 @@ public class BriefStageTests
     {
         // Arrange
         _mockValidator
-            .Setup(v => v.ValidateSystemReadyAsync(It.IsAny<Brief>(), It.IsAny<PlanSpec>(), It.IsAny<CancellationToken>()))
+            .Setup(v => v.ValidateSystemReadyAsync(It.IsAny<Brief>(), It.IsAny<PlanSpec>(), It.IsAny<IProgress<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ValidationResult(false, new List<string> { "Invalid topic", "Missing dependencies" }));
 
         var stage = new BriefStage(_mockLogger.Object, _mockValidator.Object);

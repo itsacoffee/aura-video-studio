@@ -33,7 +33,7 @@ public class BriefStage : PipelineStage
         IProgress<StageProgress>? progress,
         CancellationToken ct)
     {
-        ReportProgress(progress, 10, "Validating brief...");
+        ReportProgress(progress, 5, "Starting system validation...");
 
         Logger.LogInformation(
             "[{CorrelationId}] Validating brief: Topic='{Topic}', Audience='{Audience}'",
@@ -41,10 +41,18 @@ public class BriefStage : PipelineStage
             context.Brief.Topic,
             context.Brief.Audience);
 
-        // Validate brief
+        // Create progress callback for validation sub-steps
+        var validationProgress = new Progress<string>(message =>
+        {
+            ReportProgress(progress, 10, message);
+            Logger.LogDebug("[{CorrelationId}] Validation: {Message}", context.CorrelationId, message);
+        });
+
+        // Validate brief with sub-step progress reporting
         var validationResult = await _validator.ValidateSystemReadyAsync(
             context.Brief,
             context.PlanSpec,
+            validationProgress,
             ct).ConfigureAwait(false);
 
         if (!validationResult.IsValid)
@@ -58,7 +66,7 @@ public class BriefStage : PipelineStage
             throw new Validation.ValidationException("Brief validation failed", validationResult.Issues);
         }
 
-        ReportProgress(progress, 50, "Checking system resources...");
+        ReportProgress(progress, 80, "Validation complete, finalizing...");
 
         // Additional brief processing can be done here
         // For example: enriching the brief with context, normalizing inputs, etc.

@@ -146,8 +146,13 @@ public static class RemainingServicesExtensions
         return services;
     }
 
-    public static IServiceCollection AddValidationServices(this IServiceCollection services)
+    public static IServiceCollection AddValidationServices(this IServiceCollection services, IConfiguration configuration)
     {
+        // Bind ValidationTimeoutSettings from configuration using IConfiguration.Bind
+        var timeoutSettings = new Aura.Core.Validation.ValidationTimeoutSettings();
+        configuration.GetSection("Validation").Bind(timeoutSettings);
+        services.AddSingleton(timeoutSettings);
+        
         services.AddSingleton<Aura.Core.Validation.PreGenerationValidator>();
         services.AddSingleton<Aura.Core.Validation.ScriptValidator>();
         services.AddSingleton<Aura.Core.Validation.TtsOutputValidator>();

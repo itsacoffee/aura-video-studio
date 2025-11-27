@@ -49,7 +49,7 @@ public static class ServiceCollectionExtensions
         services.AddAudienceServices();
         services.AddContentServices();
         services.AddAudioServices();
-        services.AddValidationServices();
+        services.AddValidationServices(configuration);
         services.AddPerformanceServices();
         services.AddMLServices();
         services.AddPacingServices();

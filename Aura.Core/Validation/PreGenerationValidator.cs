@@ -12,6 +12,32 @@ using Microsoft.Extensions.Logging;
 namespace Aura.Core.Validation;
 
 /// <summary>
+/// Configuration for validation timeout settings
+/// </summary>
+public class ValidationTimeoutSettings
+{
+    /// <summary>
+    /// Timeout for FFmpeg check in seconds
+    /// </summary>
+    public int FfmpegCheckTimeoutSeconds { get; set; } = 10;
+
+    /// <summary>
+    /// Timeout for provider check in seconds
+    /// </summary>
+    public int ProviderCheckTimeoutSeconds { get; set; } = 15;
+
+    /// <summary>
+    /// Timeout for hardware detection in seconds
+    /// </summary>
+    public int HardwareCheckTimeoutSeconds { get; set; } = 10;
+
+    /// <summary>
+    /// Total validation timeout in seconds
+    /// </summary>
+    public int TotalValidationTimeoutSeconds { get; set; } = 30;
+}
+
+/// <summary>
 /// Validates system readiness before starting video generation
 /// </summary>
 public class PreGenerationValidator
@@ -21,19 +47,46 @@ public class PreGenerationValidator
     private readonly FFmpegResolver _ffmpegResolver;
     private readonly IHardwareDetector _hardwareDetector;
     private readonly IProviderReadinessService _providerReadiness;
+    private readonly ValidationTimeoutSettings _timeoutSettings;
 
     public PreGenerationValidator(
         ILogger<PreGenerationValidator> logger,
         IFfmpegLocator ffmpegLocator,
         FFmpegResolver ffmpegResolver,
         IHardwareDetector hardwareDetector,
-        IProviderReadinessService providerReadiness)
+        IProviderReadinessService providerReadiness,
+        ValidationTimeoutSettings? timeoutSettings = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _ffmpegLocator = ffmpegLocator ?? throw new ArgumentNullException(nameof(ffmpegLocator));
         _ffmpegResolver = ffmpegResolver ?? throw new ArgumentNullException(nameof(ffmpegResolver));
         _hardwareDetector = hardwareDetector ?? throw new ArgumentNullException(nameof(hardwareDetector));
         _providerReadiness = providerReadiness ?? throw new ArgumentNullException(nameof(providerReadiness));
+        _timeoutSettings = timeoutSettings ?? new ValidationTimeoutSettings();
+    }
+
+    /// <summary>
+    /// Executes a task with a timeout, returning a default value if timeout occurs
+    /// </summary>
+    private async Task<(T? Result, bool TimedOut)> ExecuteWithTimeoutAsync<T>(
+        Task<T> task,
+        TimeSpan timeout,
+        string operationName,
+        CancellationToken ct)
+    {
+        try
+        {
+            // Use WaitAsync with both timeout and cancellation token
+            // WaitAsync will throw TimeoutException if timeout expires
+            // or OperationCanceledException if ct is cancelled
+            var result = await task.WaitAsync(timeout, ct).ConfigureAwait(false);
+            return (result, false);
+        }
+        catch (TimeoutException)
+        {
+            _logger.LogWarning("{Operation} timed out after {Timeout}s", operationName, timeout.TotalSeconds);
+            return (default, true);
+        }
     }
 
     /// <summary>
@@ -41,24 +94,36 @@ public class PreGenerationValidator
     /// </summary>
     /// <param name="brief">The video brief</param>
     /// <param name="planSpec">The plan specification</param>
+    /// <param name="progress">Optional progress reporter for validation sub-steps</param>
     /// <param name="ct">Cancellation token</param>
     /// <returns>Validation result with issues if any</returns>
-    public async Task<ValidationResult> ValidateSystemReadyAsync(
+    public virtual async Task<ValidationResult> ValidateSystemReadyAsync(
         Brief brief,
         PlanSpec planSpec,
+        IProgress<string>? progress = null,
         CancellationToken ct = default)
     {
         var issues = new List<string>();
 
-        // Validate FFmpeg availability using FFmpegResolver for proper precedence
+        // FFmpeg validation with timeout
+        progress?.Report("Validating FFmpeg installation...");
         try
         {
-            var resolutionResult = await _ffmpegResolver.ResolveAsync(null, forceRefresh: false, ct).ConfigureAwait(false);
+            var ffmpegTimeout = TimeSpan.FromSeconds(_timeoutSettings.FfmpegCheckTimeoutSeconds);
+            var (resolutionResult, timedOut) = await ExecuteWithTimeoutAsync(
+                _ffmpegResolver.ResolveAsync(null, forceRefresh: false, ct),
+                ffmpegTimeout,
+                "FFmpeg resolution",
+                ct).ConfigureAwait(false);
 
-            if (!resolutionResult.Found || !resolutionResult.IsValid)
+            if (timedOut)
+            {
+                issues.Add($"FFmpeg validation timed out after {_timeoutSettings.FfmpegCheckTimeoutSeconds} seconds. This may indicate FFmpeg is not properly installed or is taking too long to respond.");
+            }
+            else if (resolutionResult == null || !resolutionResult.Found || !resolutionResult.IsValid)
             {
                 issues.Add("FFmpeg is required but not found or invalid. Install managed FFmpeg or configure the path in Settings.");
-                _logger.LogWarning("FFmpeg validation failed: {Error}", resolutionResult.Error ?? "Not found");
+                _logger.LogWarning("FFmpeg validation failed: {Error}", resolutionResult?.Error ?? "Not found");
             }
             else if (!string.IsNullOrEmpty(resolutionResult.Path))
             {
@@ -75,6 +140,10 @@ public class PreGenerationValidator
                 }
             }
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw; // Rethrow if user cancelled
+        }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Error checking FFmpeg availability");
@@ -82,6 +151,7 @@ public class PreGenerationValidator
         }
 
         // Validate disk space
+        progress?.Report("Checking available disk space...");
         try
         {
             var outputPath = Path.Combine(
@@ -114,6 +184,7 @@ public class PreGenerationValidator
         }
 
         // Validate Brief topic
+        progress?.Report("Validating brief content...");
         if (string.IsNullOrWhiteSpace(brief.Topic))
         {
             issues.Add("Topic is required. Please provide a topic for your video.");
@@ -145,27 +216,46 @@ public class PreGenerationValidator
             _logger.LogInformation("Duration validation passed: {Duration:F1}s", planSpec.TargetDuration.TotalSeconds);
         }
 
-        // Validate system hardware
+        // Validate system hardware with timeout
+        progress?.Report("Detecting system hardware...");
         try
         {
-            var systemProfile = await _hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
+            var hardwareTimeout = TimeSpan.FromSeconds(_timeoutSettings.HardwareCheckTimeoutSeconds);
+            var (systemProfile, hardwareTimedOut) = await ExecuteWithTimeoutAsync(
+                _hardwareDetector.DetectSystemAsync(),
+                hardwareTimeout,
+                "Hardware detection",
+                ct).ConfigureAwait(false);
 
-            _logger.LogInformation("System hardware detected: {Cores} cores, {Ram}GB RAM",
-                systemProfile.LogicalCores, systemProfile.RamGB);
-
-            // Check CPU cores
-            if (systemProfile.LogicalCores < 2)
+            if (hardwareTimedOut)
             {
-                issues.Add($"Insufficient CPU cores: {systemProfile.LogicalCores} core(s) detected, need at least 2 cores for video generation.");
-                _logger.LogWarning("Hardware validation failed: {Cores} cores < 2", systemProfile.LogicalCores);
+                _logger.LogWarning("Hardware detection timed out after {Timeout}s, continuing with default assumptions", 
+                    _timeoutSettings.HardwareCheckTimeoutSeconds);
+                // Don't fail validation if hardware detection times out - continue with defaults
             }
-
-            // Check RAM
-            if (systemProfile.RamGB < 4)
+            else if (systemProfile != null)
             {
-                issues.Add($"Insufficient RAM: {systemProfile.RamGB:F1}GB detected, need at least 4GB for video generation.");
-                _logger.LogWarning("Hardware validation failed: {Ram}GB < 4GB", systemProfile.RamGB);
+                _logger.LogInformation("System hardware detected: {Cores} cores, {Ram}GB RAM",
+                    systemProfile.LogicalCores, systemProfile.RamGB);
+
+                // Check CPU cores
+                if (systemProfile.LogicalCores < 2)
+                {
+                    issues.Add($"Insufficient CPU cores: {systemProfile.LogicalCores} core(s) detected, need at least 2 cores for video generation.");
+                    _logger.LogWarning("Hardware validation failed: {Cores} cores < 2", systemProfile.LogicalCores);
+                }
+
+                // Check RAM
+                if (systemProfile.RamGB < 4)
+                {
+                    issues.Add($"Insufficient RAM: {systemProfile.RamGB:F1}GB detected, need at least 4GB for video generation.");
+                    _logger.LogWarning("Hardware validation failed: {Ram}GB < 4GB", systemProfile.RamGB);
+                }
             }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw; // Rethrow if user cancelled
         }
         catch (Exception ex)
         {
@@ -173,11 +263,22 @@ public class PreGenerationValidator
             // Don't fail validation if we can't detect hardware
         }
 
-        // Validate provider readiness (LLM, TTS, Images)
+        // Validate provider readiness (LLM, TTS, Images) with timeout
+        progress?.Report("Validating provider configuration...");
         try
         {
-            var readiness = await _providerReadiness.ValidateRequiredProvidersAsync(ct).ConfigureAwait(false);
-            if (!readiness.IsReady)
+            var providerTimeout = TimeSpan.FromSeconds(_timeoutSettings.ProviderCheckTimeoutSeconds);
+            var (readiness, providerTimedOut) = await ExecuteWithTimeoutAsync(
+                _providerReadiness.ValidateRequiredProvidersAsync(ct),
+                providerTimeout,
+                "Provider readiness validation",
+                ct).ConfigureAwait(false);
+
+            if (providerTimedOut)
+            {
+                issues.Add($"Provider validation timed out after {_timeoutSettings.ProviderCheckTimeoutSeconds} seconds. Check network connectivity and provider API availability.");
+            }
+            else if (readiness != null && !readiness.IsReady)
             {
                 foreach (var issue in readiness.Issues)
                 {
@@ -185,11 +286,17 @@ public class PreGenerationValidator
                 }
             }
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw; // Rethrow if user cancelled
+        }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Error validating provider readiness");
             issues.Add("Unable to verify provider readiness. Check provider configuration and try again.");
         }
+
+        progress?.Report("Validation complete");
 
         var validationResult = new ValidationResult(issues.Count == 0, issues);
 
