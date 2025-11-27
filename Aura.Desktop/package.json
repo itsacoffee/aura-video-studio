@@ -77,6 +77,9 @@
     "test:build-script": "node test/test-build-backend-script.js",
     "test:window-close": "node test/test-window-close-behavior.js",
     "test:context-menu": "node test/test-context-menu-system.js",
+    "test:context-menus": "node test/unit/context-menu-builder.test.js",
+    "test:e2e:context-menus": "node test/e2e/context-menus.spec.js",
+    "test:all-context-menus": "npm run test:context-menu && npm run test:context-menus && npm run test:e2e:context-menus",
     "validate": "node scripts/validate-build-config.js",
     "validate:electron": "node scripts/validate-electron-config.js",
     "validate:menu": "node scripts/validate-menu-events.js"
