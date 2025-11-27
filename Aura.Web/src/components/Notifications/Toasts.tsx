@@ -245,6 +245,20 @@ const useStyles = makeStyles({
     backgroundColor: 'rgba(255, 149, 0, 0.08)',
     ...shorthands.border('1px', 'solid', 'rgba(255, 149, 0, 0.15)'),
   },
+
+  // Icon colors - Apple SF Symbols palette
+  iconSuccess: {
+    color: '#34C759',
+  },
+  iconError: {
+    color: '#FF3B30',
+  },
+  iconInfo: {
+    color: '#007AFF',
+  },
+  iconWarning: {
+    color: '#FF9500',
+  },
 });
 
 export interface SuccessToastOptions {
@@ -402,7 +416,7 @@ export function useNotifications() {
               <div className={styles.toastHeader}>
                 <div className={styles.toastTitleWrapper}>
                   <div className={styles.toastIcon}>
-                    <CheckmarkCircle20Regular style={{ color: '#34C759' }} />
+                    <CheckmarkCircle20Regular className={styles.iconSuccess} />
                   </div>
                   <div className={styles.toastTitle}>{title}</div>
                 </div>
@@ -486,6 +500,7 @@ export function useNotifications() {
       styles.metadataText,
       styles.toastFooter,
       styles.actionButton,
+      styles.iconSuccess,
     ]
   );
 
@@ -515,7 +530,7 @@ export function useNotifications() {
               <div className={styles.toastHeader}>
                 <div className={styles.toastTitleWrapper}>
                   <div className={styles.toastIcon}>
-                    <ErrorCircle20Regular style={{ color: '#FF3B30' }} />
+                    <ErrorCircle20Regular className={styles.iconError} />
                   </div>
                   <div className={styles.toastTitle}>{title}</div>
                 </div>
@@ -588,6 +603,7 @@ export function useNotifications() {
       styles.metadataText,
       styles.toastFooter,
       styles.actionButton,
+      styles.iconError,
     ]
   );
 
