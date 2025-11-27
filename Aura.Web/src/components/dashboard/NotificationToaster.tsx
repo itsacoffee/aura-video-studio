@@ -32,18 +32,6 @@ const useStyles = makeStyles({
     maxWidth: '480px',
     width: 'fit-content',
     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.10), 0 12px 48px rgba(0, 0, 0, 0.06)',
-    animationName: {
-      from: {
-        transform: 'translateX(100%) translateY(-8px)',
-        opacity: 0,
-      },
-      to: {
-        transform: 'translateX(0) translateY(0)',
-        opacity: 1,
-      },
-    },
-    animationDuration: '350ms',
-    animationTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
     transitionProperty: 'transform, box-shadow',
     transitionDuration: '200ms',
     transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
@@ -60,7 +48,6 @@ const useStyles = makeStyles({
       ...shorthands.padding('16px', '18px', '14px', '18px'),
     },
     '@media (prefers-reduced-motion: reduce)': {
-      animationDuration: '0.01ms',
       transitionDuration: '0.01ms',
     },
     ':hover': {
@@ -163,7 +150,7 @@ export function NotificationToaster() {
       const iconElement = getIcon(latestNotification.type, styles);
 
       dispatchToast(
-        <div className={styles.toastContainer}>
+        <div className={`${styles.toastContainer} toast-slide-in`}>
           <Toast>
             <div className={styles.toastLayout}>
               <div className={styles.toastHeader}>
