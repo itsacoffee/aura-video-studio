@@ -28,6 +28,19 @@ public abstract class BaseLlmScriptProvider : IScriptLlmProvider
     private static readonly Regex MediaMarkerRegex = new(@"\[(MUSIC|SFX|CUT|FADE)[^\]]*\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex MultiSpaceRegex = new(@"\s+", RegexOptions.Compiled);
     private static readonly Regex ParagraphSplitRegex = new(@"\n\s*\n", RegexOptions.Compiled);
+    
+    /// <summary>
+    /// Matches "Narration:" followed by content, stopping at standalone "Visual:" or "Transition:" labels.
+    /// Pattern breakdown:
+    /// - Narration:\s* - Match literal "Narration:" followed by optional whitespace
+    /// - (.*?) - Capture group 1: non-greedy match of any characters (the narration content)
+    /// - (?=\s*(?&lt;!\[)(?:Visual|Transition):|$) - Lookahead: stop at "Visual:" or "Transition:" 
+    ///   NOT preceded by "[" (to avoid matching [VISUAL:...]), or at end of string
+    /// </summary>
+    private static readonly Regex NarrationExtractionRegex = new(
+        @"Narration:\s*(.*?)(?=\s*(?<!\[)(?:Visual|Transition):|$)", 
+        RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.IgnoreCase
+    );
 
     protected BaseLlmScriptProvider(ILogger logger, int maxRetries = 3, int baseRetryDelayMs = 1000)
     {
@@ -438,13 +451,7 @@ public abstract class BaseLlmScriptProvider : IScriptLlmProvider
     /// </summary>
     protected string ExtractNarration(string content)
     {
-        // Match "Narration:" followed by content, stopping at standalone "Visual:" or "Transition:" or end
-        // Use negative lookbehind (?<!\[) to ensure we don't match Visual: inside [VISUAL:...] markers
-        var narrationMatch = Regex.Match(
-            content, 
-            @"Narration:\s*(.*?)(?=\s*(?<!\[)(?:Visual|Transition):|$)", 
-            RegexOptions.Singleline | RegexOptions.IgnoreCase
-        );
+        var narrationMatch = NarrationExtractionRegex.Match(content);
         
         if (narrationMatch.Success && !string.IsNullOrWhiteSpace(narrationMatch.Groups[1].Value))
         {
