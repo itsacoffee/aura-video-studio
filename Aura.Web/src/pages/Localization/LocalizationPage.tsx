@@ -80,7 +80,7 @@ const useStyles = makeStyles({
   },
   sectionDescription: {
     color: tokens.colorNeutralForeground2,
-    lineHeight: '1.6',
+    lineHeight: '1.5',
     marginBottom: tokens.spacingVerticalXL,
     maxWidth: '650px',
   },

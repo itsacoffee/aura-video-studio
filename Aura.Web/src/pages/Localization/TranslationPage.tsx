@@ -79,7 +79,7 @@ const useStyles = makeStyles({
   },
   subtitle: {
     color: tokens.colorNeutralForeground2,
-    lineHeight: '1.6',
+    lineHeight: '1.5',
     maxWidth: '700px',
   },
   tabs: {
@@ -95,7 +95,7 @@ const useStyles = makeStyles({
   },
   sectionDescription: {
     color: tokens.colorNeutralForeground2,
-    lineHeight: '1.6',
+    lineHeight: '1.5',
     marginBottom: tokens.spacingVerticalL,
     maxWidth: '700px',
   },

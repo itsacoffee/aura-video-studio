@@ -75,7 +75,7 @@ console.info('[Main] User Agent:', navigator.userAgent);
 
 // ===== DEFAULT ZOOM INITIALIZATION =====
 // Set default zoom level to 90% for better readability on first load
-// Users can change this using browser zoom (Ctrl+/Ctrl-) and it will be saved
+// Uses CSS zoom property which is supported in all modern browsers (Chrome, Edge, Safari, Firefox 126+)
 const initializeDefaultZoom = (): void => {
   const ZOOM_KEY = 'aura-zoom-level';
   const DEFAULT_ZOOM = 0.9; // 90% zoom for better content density
@@ -83,7 +83,7 @@ const initializeDefaultZoom = (): void => {
   // Check if user has a saved zoom preference
   const savedZoom = localStorage.getItem(ZOOM_KEY);
   
-  // Use type assertion for the non-standard zoom CSS property
+  // Use type assertion for the non-standard (but widely supported) zoom CSS property
   const htmlStyle = document.documentElement.style as CSSStyleDeclaration & { zoom: string };
   
   if (savedZoom === null) {
@@ -98,22 +98,6 @@ const initializeDefaultZoom = (): void => {
       htmlStyle.zoom = String(zoomLevel);
       console.info(`[Main] Applied saved zoom level: ${zoomLevel * 100}%`);
     }
-  }
-  
-  // Listen for zoom changes via keyboard (Ctrl+Plus/Minus) and save preference
-  // Note: Browser zoom events are not directly available, but we can detect via
-  // visual viewport changes in some browsers
-  if (window.visualViewport) {
-    let lastScale = window.visualViewport.scale;
-    window.visualViewport.addEventListener('resize', () => {
-      const currentScale = window.visualViewport?.scale ?? 1;
-      if (Math.abs(currentScale - lastScale) > 0.01) {
-        // User changed zoom - update preference
-        // Note: visualViewport.scale reflects browser zoom, not CSS zoom
-        lastScale = currentScale;
-        console.info(`[Main] Detected zoom change: ${currentScale * 100}%`);
-      }
-    });
   }
 };
 
