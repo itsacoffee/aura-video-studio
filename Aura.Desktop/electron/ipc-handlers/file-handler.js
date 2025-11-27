@@ -8,6 +8,34 @@
 const { ipcMain, dialog, BrowserWindow } = require('electron');
 const fs = require('fs').promises;
 
+/**
+ * Convert various data types to a Buffer for file writing.
+ * Handles Buffer, ArrayBuffer, serialized Buffer objects, and strings.
+ * @param {Buffer|ArrayBuffer|string|Object} data - The data to convert
+ * @returns {Buffer} The converted Buffer
+ */
+function toBuffer(data) {
+  if (Buffer.isBuffer(data)) {
+    return data;
+  }
+
+  if (data instanceof ArrayBuffer) {
+    return Buffer.from(data);
+  }
+
+  // Handle serialized buffer from IPC (e.g., { type: 'Buffer', data: [...] })
+  if (data && typeof data === 'object' && data.type === 'Buffer' && Array.isArray(data.data)) {
+    return Buffer.from(data.data);
+  }
+
+  if (typeof data === 'string') {
+    return Buffer.from(data, 'utf-8');
+  }
+
+  // Fallback: attempt to create buffer from any iterable/array-like
+  return Buffer.from(data);
+}
+
 class FileHandler {
   /**
    * Create a new FileHandler instance.
@@ -50,21 +78,7 @@ class FileHandler {
     // Write file
     ipcMain.handle('fs:writeFile', async (event, filePath, data) => {
       try {
-        // Handle Buffer or ArrayBuffer data
-        let buffer;
-        if (Buffer.isBuffer(data)) {
-          buffer = data;
-        } else if (data instanceof ArrayBuffer) {
-          buffer = Buffer.from(data);
-        } else if (data && typeof data === 'object' && data.type === 'Buffer') {
-          // Handle serialized buffer from IPC
-          buffer = Buffer.from(data.data);
-        } else if (typeof data === 'string') {
-          buffer = Buffer.from(data, 'utf-8');
-        } else {
-          buffer = Buffer.from(data);
-        }
-
+        const buffer = toBuffer(data);
         await fs.writeFile(filePath, buffer);
         this.logger.info('File written successfully', { path: filePath, size: buffer.length });
         return { success: true };
@@ -110,4 +124,4 @@ class FileHandler {
   }
 }
 
-module.exports = { FileHandler };
+module.exports = { FileHandler, toBuffer };

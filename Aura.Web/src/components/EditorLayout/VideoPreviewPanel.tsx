@@ -76,6 +76,7 @@ interface VideoPreviewPanelProps {
   onPause?: () => void;
   onStop?: () => void;
   onMarkerAdded?: (marker: Omit<Marker, 'id'>) => void;
+  onFrameExported?: (success: boolean, filePath?: string, error?: string) => void;
 }
 
 export interface VideoPreviewPanelHandle {
@@ -98,6 +99,7 @@ const VideoPreviewPanelInner = forwardRef<VideoPreviewPanelHandle, VideoPreviewP
       onPlay,
       onPause,
       onMarkerAdded,
+      onFrameExported,
     }: VideoPreviewPanelProps,
     ref
   ) {
@@ -162,12 +164,18 @@ const VideoPreviewPanelInner = forwardRef<VideoPreviewPanelHandle, VideoPreviewP
     // Handler for exporting the current frame as an image
     const handleExportFrame = useCallback(
       async (time: number) => {
-        if (!videoRef.current && !canvasRef.current) return;
+        if (!videoRef.current && !canvasRef.current) {
+          onFrameExported?.(false, undefined, 'No video source available');
+          return;
+        }
 
         try {
           // Use canvas if effects are applied, otherwise capture from video
           const sourceElement = hasEffects ? canvasRef.current : videoRef.current;
-          if (!sourceElement) return;
+          if (!sourceElement) {
+            onFrameExported?.(false, undefined, 'Source element not available');
+            return;
+          }
 
           // Create a temporary canvas to capture the frame
           const exportCanvas = document.createElement('canvas');
@@ -180,7 +188,10 @@ const VideoPreviewPanelInner = forwardRef<VideoPreviewPanelHandle, VideoPreviewP
           }
 
           const ctx = exportCanvas.getContext('2d');
-          if (!ctx) return;
+          if (!ctx) {
+            onFrameExported?.(false, undefined, 'Failed to get canvas context');
+            return;
+          }
 
           ctx.drawImage(sourceElement, 0, 0, exportCanvas.width, exportCanvas.height);
 
@@ -189,6 +200,7 @@ const VideoPreviewPanelInner = forwardRef<VideoPreviewPanelHandle, VideoPreviewP
             async (blob) => {
               if (!blob) {
                 console.error('Failed to create blob from canvas');
+                onFrameExported?.(false, undefined, 'Failed to create image blob');
                 return;
               }
 
@@ -199,13 +211,20 @@ const VideoPreviewPanelInner = forwardRef<VideoPreviewPanelHandle, VideoPreviewP
                   filters: [{ name: 'PNG Image', extensions: ['png'] }],
                 });
 
-                if (!result.canceled && result.filePath && window.electron?.fs?.writeFile) {
+                if (result.canceled) {
+                  // User cancelled, not an error
+                  return;
+                }
+
+                if (result.filePath && window.electron?.fs?.writeFile) {
                   const buffer = await blob.arrayBuffer();
                   const writeResult = await window.electron.fs.writeFile(result.filePath, buffer);
                   if (writeResult.success) {
                     console.info('Frame exported to:', result.filePath);
+                    onFrameExported?.(true, result.filePath);
                   } else {
                     console.error('Failed to write file:', writeResult.error);
+                    onFrameExported?.(false, undefined, writeResult.error);
                   }
                 }
               } else {
@@ -216,6 +235,8 @@ const VideoPreviewPanelInner = forwardRef<VideoPreviewPanelHandle, VideoPreviewP
                 a.download = `frame-${formatTime(time).replace(':', '-')}.png`;
                 a.click();
                 URL.revokeObjectURL(url);
+                // Notify success for browser download
+                onFrameExported?.(true, a.download);
               }
             },
             'image/png',
@@ -224,9 +245,10 @@ const VideoPreviewPanelInner = forwardRef<VideoPreviewPanelHandle, VideoPreviewP
         } catch (error: unknown) {
           const errorMessage = error instanceof Error ? error.message : String(error);
           console.error('Failed to export frame:', errorMessage);
+          onFrameExported?.(false, undefined, errorMessage);
         }
       },
-      [hasEffects, formatTime]
+      [hasEffects, formatTime, onFrameExported]
     );
 
     // Handler for toggling playback
