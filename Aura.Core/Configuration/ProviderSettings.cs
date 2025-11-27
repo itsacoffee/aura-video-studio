@@ -228,6 +228,172 @@ public class ProviderSettings
     }
 
     /// <summary>
+    /// Get whether Ollama GPU acceleration is enabled
+    /// </summary>
+    public bool GetOllamaGpuEnabled()
+    {
+        LoadSettings();
+        if (_settings != null && _settings.TryGetValue("ollamaGpuEnabled", out var value))
+        {
+            if (value is JsonElement jsonElement)
+            {
+                if (jsonElement.ValueKind == JsonValueKind.True)
+                    return true;
+                if (jsonElement.ValueKind == JsonValueKind.False)
+                    return false;
+            }
+            if (value is bool boolValue)
+                return boolValue;
+        }
+        return true; // GPU enabled by default
+    }
+
+    /// <summary>
+    /// Set whether Ollama GPU acceleration is enabled
+    /// </summary>
+    public void SetOllamaGpuEnabled(bool enabled)
+    {
+        LoadSettings();
+        if (_settings == null)
+        {
+            _settings = new Dictionary<string, object>();
+        }
+        _settings["ollamaGpuEnabled"] = enabled;
+        SaveSettings();
+    }
+
+    /// <summary>
+    /// Get the Ollama num_gpu setting.
+    /// -1 = use all GPUs, 0 = CPU only, positive number = specific GPU count
+    /// </summary>
+    public int GetOllamaNumGpu()
+    {
+        LoadSettings();
+        if (_settings != null && _settings.TryGetValue("ollamaNumGpu", out var value))
+        {
+            if (value is JsonElement jsonElement && jsonElement.TryGetInt32(out var intValue))
+            {
+                return intValue;
+            }
+            if (value is int directInt)
+                return directInt;
+        }
+        return -1; // Use all GPUs by default
+    }
+
+    /// <summary>
+    /// Set the Ollama num_gpu setting
+    /// </summary>
+    public void SetOllamaNumGpu(int numGpu)
+    {
+        LoadSettings();
+        if (_settings == null)
+        {
+            _settings = new Dictionary<string, object>();
+        }
+        _settings["ollamaNumGpu"] = numGpu;
+        SaveSettings();
+    }
+
+    /// <summary>
+    /// Get the Ollama num_ctx (context window size) setting
+    /// </summary>
+    public int GetOllamaNumCtx()
+    {
+        LoadSettings();
+        if (_settings != null && _settings.TryGetValue("ollamaNumCtx", out var value))
+        {
+            if (value is JsonElement jsonElement && jsonElement.TryGetInt32(out var intValue))
+            {
+                return intValue;
+            }
+            if (value is int directInt)
+                return directInt;
+        }
+        return 4096; // Default context size
+    }
+
+    /// <summary>
+    /// Set the Ollama num_ctx (context window size) setting
+    /// </summary>
+    public void SetOllamaNumCtx(int numCtx)
+    {
+        LoadSettings();
+        if (_settings == null)
+        {
+            _settings = new Dictionary<string, object>();
+        }
+        _settings["ollamaNumCtx"] = numCtx;
+        SaveSettings();
+    }
+
+    /// <summary>
+    /// Get whether Ollama GPU auto-detection is enabled
+    /// </summary>
+    public bool GetOllamaGpuAutoDetect()
+    {
+        LoadSettings();
+        if (_settings != null && _settings.TryGetValue("ollamaGpuAutoDetect", out var value))
+        {
+            if (value is JsonElement jsonElement)
+            {
+                if (jsonElement.ValueKind == JsonValueKind.True)
+                    return true;
+                if (jsonElement.ValueKind == JsonValueKind.False)
+                    return false;
+            }
+            if (value is bool boolValue)
+                return boolValue;
+        }
+        return true; // Auto-detect enabled by default
+    }
+
+    /// <summary>
+    /// Set whether Ollama GPU auto-detection is enabled
+    /// </summary>
+    public void SetOllamaGpuAutoDetect(bool autoDetect)
+    {
+        LoadSettings();
+        if (_settings == null)
+        {
+            _settings = new Dictionary<string, object>();
+        }
+        _settings["ollamaGpuAutoDetect"] = autoDetect;
+        SaveSettings();
+    }
+
+    /// <summary>
+    /// Set all Ollama GPU configuration at once
+    /// </summary>
+    public void SetOllamaGpuConfig(bool? enabled = null, int? numGpu = null, int? numCtx = null, bool? autoDetect = null)
+    {
+        LoadSettings();
+        if (_settings == null)
+        {
+            _settings = new Dictionary<string, object>();
+        }
+
+        if (enabled.HasValue)
+        {
+            _settings["ollamaGpuEnabled"] = enabled.Value;
+        }
+        if (numGpu.HasValue)
+        {
+            _settings["ollamaNumGpu"] = numGpu.Value;
+        }
+        if (numCtx.HasValue)
+        {
+            _settings["ollamaNumCtx"] = numCtx.Value;
+        }
+        if (autoDetect.HasValue)
+        {
+            _settings["ollamaGpuAutoDetect"] = autoDetect.Value;
+        }
+
+        SaveSettings();
+    }
+
+    /// <summary>
     /// Get Ollama executable path
     /// </summary>
     public string GetOllamaExecutablePath()

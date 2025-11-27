@@ -92,6 +92,7 @@ public static class ServiceCollectionExtensions
         });
 
         // Ollama provider (local, checks availability at runtime)
+        // GPU configuration is read from provider settings
         services.AddKeyedSingleton<ILlmProvider>("Ollama", (sp, key) =>
         {
             var logger = sp.GetRequiredService<ILogger<OllamaLlmProvider>>();
@@ -102,7 +103,25 @@ public static class ServiceCollectionExtensions
             var baseUrl = providerSettings.GetOllamaUrl();
             var model = providerSettings.GetOllamaModel();
 
-            return new OllamaLlmProvider(logger, httpClient, baseUrl, model);
+            // Get GPU configuration from settings
+            var gpuEnabled = providerSettings.GetOllamaGpuEnabled();
+            var numGpu = providerSettings.GetOllamaNumGpu();
+            var numCtx = providerSettings.GetOllamaNumCtx();
+
+            logger.LogInformation("Creating OllamaLlmProvider with GPU config: Enabled={GpuEnabled}, NumGpu={NumGpu}, NumCtx={NumCtx}",
+                gpuEnabled, numGpu, numCtx);
+
+            return new OllamaLlmProvider(
+                logger, 
+                httpClient, 
+                baseUrl, 
+                model,
+                maxRetries: 2,
+                timeoutSeconds: 900,
+                promptCustomizationService: null,
+                gpuEnabled: gpuEnabled,
+                numGpu: numGpu,
+                numCtx: numCtx);
         });
 
         // OpenAI provider (requires API key)

@@ -12,12 +12,15 @@ import {
   MessageBarBody,
   MessageBarTitle,
   Badge,
+  Switch,
+  SpinButton,
 } from '@fluentui/react-components';
 import {
   CheckmarkCircle24Filled,
   DismissCircle24Filled,
   ArrowClockwise24Regular,
   Warning24Regular,
+  Desktop24Regular,
 } from '@fluentui/react-icons';
 import { useState, useCallback, useEffect } from 'react';
 import type { FC } from 'react';
@@ -61,6 +64,34 @@ const useStyles = makeStyles({
     color: tokens.colorNeutralForeground3,
     marginTop: tokens.spacingVerticalXXS,
   },
+  gpuSection: {
+    marginTop: tokens.spacingVerticalM,
+    padding: tokens.spacingVerticalM,
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderRadius: tokens.borderRadiusMedium,
+  },
+  gpuHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalS,
+    marginBottom: tokens.spacingVerticalS,
+  },
+  gpuSettings: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalS,
+  },
+  gpuRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalM,
+    justifyContent: 'space-between',
+  },
+  gpuStatus: {
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground2,
+    marginTop: tokens.spacingVerticalXS,
+  },
 });
 
 interface OllamaProviderConfigProps {
@@ -83,6 +114,20 @@ interface OllamaModel {
   modifiedFormatted?: string;
 }
 
+interface GpuStatus {
+  gpuEnabled: boolean;
+  numGpu: number;
+  numCtx: number;
+  autoDetect: boolean;
+  hasGpu: boolean;
+  gpuName: string | null;
+  vramMB: number;
+  vramFormatted: string;
+  recommendedNumGpu: number;
+  recommendedNumCtx: number;
+  detectionMethod: string;
+}
+
 export const OllamaProviderConfig: FC<OllamaProviderConfigProps> = ({
   selectedModel,
   onModelChange,
@@ -92,6 +137,12 @@ export const OllamaProviderConfig: FC<OllamaProviderConfigProps> = ({
   const [models, setModels] = useState<OllamaModel[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // GPU state
+  const [gpuStatus, setGpuStatus] = useState<GpuStatus | null>(null);
+  const [gpuLoading, setGpuLoading] = useState(false);
+  const [gpuEnabled, setGpuEnabled] = useState(true);
+  const [numCtx, setNumCtx] = useState(4096);
 
   const checkStatus = useCallback(async () => {
     try {
@@ -105,6 +156,75 @@ export const OllamaProviderConfig: FC<OllamaProviderConfigProps> = ({
       return null;
     }
   }, []);
+
+  const fetchGpuStatus = useCallback(async () => {
+    try {
+      setGpuLoading(true);
+      const response = await fetch('/api/ollama/gpu/status');
+      const data = await response.json();
+      setGpuStatus(data);
+      setGpuEnabled(data.gpuEnabled);
+      setNumCtx(data.numCtx);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      console.error('Failed to fetch GPU status:', errorMessage);
+    } finally {
+      setGpuLoading(false);
+    }
+  }, []);
+
+  const handleAutoDetectGpu = useCallback(async () => {
+    try {
+      setGpuLoading(true);
+      const response = await fetch('/api/ollama/gpu/auto-detect', { method: 'POST' });
+      const data = await response.json();
+      setGpuStatus(data);
+      setGpuEnabled(data.gpuEnabled);
+      setNumCtx(data.numCtx);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setError(`Failed to auto-detect GPU: ${errorMessage}`);
+    } finally {
+      setGpuLoading(false);
+    }
+  }, []);
+
+  const handleGpuEnabledChange = useCallback(
+    async (enabled: boolean) => {
+      setGpuEnabled(enabled);
+      try {
+        await fetch('/api/ollama/gpu/config', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ gpuEnabled: enabled }),
+        });
+        await fetchGpuStatus();
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        setError(`Failed to update GPU setting: ${errorMessage}`);
+      }
+    },
+    [fetchGpuStatus]
+  );
+
+  const handleNumCtxChange = useCallback(
+    async (value: number | null) => {
+      if (value === null) return;
+      setNumCtx(value);
+      try {
+        await fetch('/api/ollama/gpu/config', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ numCtx: value }),
+        });
+        await fetchGpuStatus();
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        setError(`Failed to update context window: ${errorMessage}`);
+      }
+    },
+    [fetchGpuStatus]
+  );
 
   const fetchModels = useCallback(async () => {
     try {
@@ -148,6 +268,7 @@ export const OllamaProviderConfig: FC<OllamaProviderConfigProps> = ({
 
   useEffect(() => {
     handleRefresh();
+    fetchGpuStatus();
     // Run once on mount only
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -310,6 +431,81 @@ export const OllamaProviderConfig: FC<OllamaProviderConfigProps> = ({
           Ollama version: {status.version}
         </Text>
       )}
+
+      {/* GPU Configuration Section */}
+      <div className={styles.gpuSection}>
+        <div className={styles.gpuHeader}>
+          <Desktop24Regular />
+          <Text weight="semibold">GPU Acceleration</Text>
+          {gpuLoading && <Spinner size="extra-tiny" />}
+        </div>
+
+        <div className={styles.gpuSettings}>
+          <div className={styles.gpuRow}>
+            <Text>Enable GPU</Text>
+            <Switch
+              checked={gpuEnabled}
+              onChange={(_, data) => handleGpuEnabledChange(data.checked)}
+              disabled={gpuLoading}
+            />
+          </div>
+
+          {gpuStatus?.hasGpu && (
+            <div className={styles.gpuStatus}>
+              <Text size={200}>
+                Detected: <strong>{gpuStatus.gpuName}</strong> ({gpuStatus.vramFormatted})
+              </Text>
+            </div>
+          )}
+
+          {!gpuStatus?.hasGpu && gpuStatus?.detectionMethod !== 'NotAvailable' && (
+            <MessageBar intent="warning" className={styles.messageBarContainer}>
+              <MessageBarBody>
+                <MessageBarTitle>No GPU Detected</MessageBarTitle>
+                <Text size={200}>
+                  Ollama will use CPU mode. For faster inference, install NVIDIA drivers.
+                </Text>
+              </MessageBarBody>
+            </MessageBar>
+          )}
+
+          {gpuEnabled && (
+            <Field
+              label="Context Window Size"
+              hint="Higher values use more VRAM but allow longer context"
+            >
+              <SpinButton
+                value={numCtx}
+                onChange={(_, data) => handleNumCtxChange(data.value ?? null)}
+                min={512}
+                max={32768}
+                step={512}
+                disabled={gpuLoading}
+              />
+            </Field>
+          )}
+
+          <div className={styles.buttonGroup}>
+            <Button
+              appearance="subtle"
+              icon={<ArrowClockwise24Regular />}
+              onClick={handleAutoDetectGpu}
+              disabled={gpuLoading}
+              size="small"
+            >
+              Auto-detect GPU
+            </Button>
+          </div>
+
+          {gpuStatus && (
+            <Text size={200} className={styles.infoText}>
+              {gpuEnabled
+                ? `GPU layers: ${gpuStatus.numGpu === -1 ? 'All' : gpuStatus.numGpu} • Context: ${numCtx}`
+                : 'GPU disabled (CPU mode)'}
+            </Text>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

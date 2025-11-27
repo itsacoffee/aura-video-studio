@@ -136,6 +136,9 @@ public static class ProviderServicesExtensions
         services.AddSingleton<Aura.Core.Services.Providers.Stickiness.ProviderGateway>();
         services.AddSingleton<Aura.Core.Services.Providers.Stickiness.ProviderProfileLockService>();
         
+        // GPU detection service for Ollama GPU configuration
+        services.AddSingleton<Aura.Core.Hardware.IGpuDetectionService, Aura.Core.Hardware.GpuDetectionService>();
+        
         // Ollama detection service
         services.AddSingleton<Aura.Core.Services.Providers.OllamaDetectionService>(sp =>
         {

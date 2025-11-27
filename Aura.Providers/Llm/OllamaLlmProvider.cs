@@ -36,6 +36,14 @@ public class OllamaLlmProvider : ILlmProvider
     private readonly TimeSpan _timeout;
     private readonly PromptCustomizationService _promptCustomizationService;
 
+    // GPU configuration for hardware acceleration
+    // -1 = use all available GPUs, 0 = CPU only, positive number = specific GPU count
+    private readonly int _numGpu;
+    // Context window size (affects VRAM usage) - higher values allow more context but use more memory
+    private readonly int _numCtx;
+    // Whether GPU acceleration is enabled
+    private readonly bool _gpuEnabled;
+
     // Cache for availability check to avoid repeated calls
     private DateTime _lastAvailabilityCheck = DateTime.MinValue;
     private bool _lastAvailabilityResult = false;
@@ -68,7 +76,10 @@ public class OllamaLlmProvider : ILlmProvider
         string model = "llama3.1:8b-q4_k_m",
         int maxRetries = 2,
         int timeoutSeconds = 900, // 15 minutes - lenient for slow systems and large models (PR #523)
-        PromptCustomizationService? promptCustomizationService = null)
+        PromptCustomizationService? promptCustomizationService = null,
+        bool gpuEnabled = true,
+        int numGpu = -1, // -1 = use all GPUs, 0 = CPU only
+        int numCtx = 4096) // Context window size
     {
         _logger = logger;
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
@@ -76,6 +87,11 @@ public class OllamaLlmProvider : ILlmProvider
         _model = model;
         _maxRetries = maxRetries;
         _timeout = TimeSpan.FromSeconds(timeoutSeconds);
+
+        // GPU configuration
+        _gpuEnabled = gpuEnabled;
+        _numGpu = gpuEnabled ? numGpu : 0; // Force CPU mode if GPU disabled
+        _numCtx = numCtx;
 
         // CRITICAL: Ensure HttpClient timeout is longer than provider timeout
         // HttpClient has a default 100-second timeout that would kill connections
@@ -109,8 +125,56 @@ public class OllamaLlmProvider : ILlmProvider
 
         _logger.LogInformation(
             "OllamaLlmProvider initialized with baseUrl={BaseUrl}, model={Model}, " +
-            "providerTimeout={ProviderTimeout}s, httpTimeout={HttpTimeout}s (lenient for slow systems)",
-            _baseUrl, _model, timeoutSeconds, _httpClient.Timeout.TotalSeconds);
+            "providerTimeout={ProviderTimeout}s, httpTimeout={HttpTimeout}s, " +
+            "gpuEnabled={GpuEnabled}, numGpu={NumGpu}, numCtx={NumCtx}",
+            _baseUrl, _model, timeoutSeconds, _httpClient.Timeout.TotalSeconds,
+            _gpuEnabled, _numGpu, _numCtx);
+    }
+
+    /// <summary>
+    /// Gets whether GPU acceleration is enabled
+    /// </summary>
+    public bool GpuEnabled => _gpuEnabled;
+
+    /// <summary>
+    /// Gets the number of GPU layers (-1 = all GPUs, 0 = CPU only)
+    /// </summary>
+    public int NumGpu => _numGpu;
+
+    /// <summary>
+    /// Gets the context window size
+    /// </summary>
+    public int NumCtx => _numCtx;
+
+    /// <summary>
+    /// Builds the options dictionary with GPU parameters for Ollama API requests
+    /// </summary>
+    /// <param name="temperature">Temperature for generation (0.0 - 1.0)</param>
+    /// <param name="topP">Top-p sampling parameter</param>
+    /// <param name="maxTokens">Maximum tokens to generate (num_predict)</param>
+    /// <param name="topK">Optional top-k sampling parameter</param>
+    /// <returns>Dictionary of options including GPU configuration</returns>
+    private Dictionary<string, object> BuildOptionsWithGpu(double temperature, double topP, int maxTokens, int? topK = null)
+    {
+        var options = new Dictionary<string, object>
+        {
+            { "temperature", temperature },
+            { "top_p", topP },
+            { "num_predict", maxTokens },
+            { "num_gpu", _numGpu },      // GPU layer configuration
+            { "num_ctx", _numCtx }       // Context window size
+        };
+
+        if (topK.HasValue)
+        {
+            options["top_k"] = topK.Value;
+        }
+
+        _logger.LogDebug(
+            "Built Ollama options: temperature={Temperature}, topP={TopP}, numPredict={MaxTokens}, numGpu={NumGpu}, numCtx={NumCtx}",
+            temperature, topP, maxTokens, _numGpu, _numCtx);
+
+        return options;
     }
 
     /// <summary>
@@ -182,20 +246,10 @@ public class OllamaLlmProvider : ILlmProvider
                 var topP = llmParams?.TopP ?? 0.9;
                 var topK = llmParams?.TopK;
 
-                // Call Ollama API with proper format
+                // Call Ollama API with proper format including GPU configuration
                 // Ollama uses num_predict (not max_tokens) and supports top_k
                 // Ollama doesn't support frequency_penalty or presence_penalty
-                var options = new Dictionary<string, object>
-                {
-                    { "temperature", temperature },
-                    { "top_p", topP },
-                    { "num_predict", maxTokens }
-                };
-
-                if (topK.HasValue)
-                {
-                    options["top_k"] = topK.Value;
-                }
+                var options = BuildOptionsWithGpu(temperature, topP, maxTokens, topK);
 
                 var requestBody = new
                 {
@@ -341,16 +395,14 @@ public class OllamaLlmProvider : ILlmProvider
                     await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt)), ct).ConfigureAwait(false);
                 }
 
+                var options = BuildOptionsWithGpu(0.7, 0.9, 2048);
+
                 var requestBody = new
                 {
                     model = _model,
                     prompt = prompt,
                     stream = false,
-                    options = new
-                    {
-                        temperature = 0.7,
-                        num_predict = 2048
-                    }
+                    options = options
                 };
 
                 var json = JsonSerializer.Serialize(requestBody);
@@ -486,17 +538,8 @@ public class OllamaLlmProvider : ILlmProvider
                     await Task.Delay(backoffDelay, ct).ConfigureAwait(false);
                 }
 
-                var options = new Dictionary<string, object>
-                {
-                    { "temperature", temperature },
-                    { "top_p", topP },
-                    { "num_predict", maxTokens }
-                };
-
-                if (topK.HasValue)
-                {
-                    options["top_k"] = topK.Value;
-                }
+                // Build options with GPU configuration
+                var options = BuildOptionsWithGpu(temperature, topP, maxTokens, topK);
 
                 // Build request body - only include format when explicitly requested
                 // This fixes translation returning empty output when format="json" was hardcoded
@@ -682,17 +725,14 @@ Respond with ONLY the JSON object, no other text:";
 
             var prompt = $"{systemPrompt}\n\n{userPrompt}";
 
+            var options = BuildOptionsWithGpu(0.3, 0.9, 512); // Lower temperature for more consistent JSON
+
             var requestBody = new
             {
                 model = _model,
                 prompt = prompt,
                 stream = false,
-                options = new
-                {
-                    temperature = 0.3, // Lower temperature for more consistent JSON
-                    top_p = 0.9,
-                    num_predict = 512
-                }
+                options = options
             };
 
             var json = JsonSerializer.Serialize(requestBody);
@@ -799,17 +839,14 @@ Respond with ONLY the JSON object, no other text:";
 
             var prompt = $"{systemPrompt}\n\n{userPrompt}";
 
+            var options = BuildOptionsWithGpu(0.7, 0.9, 1024);
+
             var requestBody = new
             {
                 model = _model,
                 prompt = prompt,
                 stream = false,
-                options = new
-                {
-                    temperature = 0.7,
-                    top_p = 0.9,
-                    num_predict = 1024
-                }
+                options = options
             };
 
             var json = JsonSerializer.Serialize(requestBody);
@@ -916,17 +953,14 @@ Respond with ONLY the JSON object, no other text:";
 
             var fullPrompt = $"{systemPrompt}\n\n{prompt}";
 
+            var options = BuildOptionsWithGpu(0.3, 0.9, 512);
+
             var requestBody = new
             {
                 model = _model,
                 prompt = fullPrompt,
                 stream = false,
-                options = new
-                {
-                    temperature = 0.3,
-                    top_p = 0.9,
-                    num_predict = 512
-                }
+                options = options
             };
 
             var json = JsonSerializer.Serialize(requestBody);
@@ -1083,17 +1117,14 @@ Respond with ONLY the JSON object, no other text:";
 
             var prompt = $"{systemPrompt}\n\n{userPrompt}";
 
+            var options = BuildOptionsWithGpu(0.3, 0.9, 512);
+
             var requestBody = new
             {
                 model = _model,
                 prompt = prompt,
                 stream = false,
-                options = new
-                {
-                    temperature = 0.3,
-                    top_p = 0.9,
-                    num_predict = 512
-                }
+                options = options
             };
 
             var json = JsonSerializer.Serialize(requestBody);
@@ -1199,17 +1230,14 @@ Respond with ONLY the JSON object, no other text:";
 
             var prompt = $"{systemPrompt}\n\n{userPrompt}";
 
+            var options = BuildOptionsWithGpu(0.3, 0.9, 1024);
+
             var requestBody = new
             {
                 model = _model,
                 prompt = prompt,
                 stream = false,
-                options = new
-                {
-                    temperature = 0.3,
-                    top_p = 0.9,
-                    num_predict = 1024
-                }
+                options = options
             };
 
             var json = JsonSerializer.Serialize(requestBody);
@@ -1310,17 +1338,14 @@ Return ONLY the transition text, no explanations or additional commentary:";
 
             var prompt = $"{systemPrompt}\n\n{userPrompt}";
 
+            var options = BuildOptionsWithGpu(0.7, 0.9, 128);
+
             var requestBody = new
             {
                 model = _model,
                 prompt = prompt,
                 stream = false,
-                options = new
-                {
-                    temperature = 0.7,
-                    top_p = 0.9,
-                    num_predict = 128
-                }
+                options = options
             };
 
             var json = JsonSerializer.Serialize(requestBody);
@@ -1731,19 +1756,16 @@ Return ONLY the transition text, no explanations or additional commentary:";
 
             string prompt = $"{systemPrompt}\n\n{userPrompt}";
 
-            // Call Ollama API with JSON format
+            // Call Ollama API with JSON format and GPU configuration
+            var options = BuildOptionsWithGpu(0.7, 0.9, 2048);
+
             var requestBody = new
             {
                 model = _model,
                 prompt = prompt,
                 stream = false,
                 format = "json",
-                options = new
-                {
-                    temperature = 0.7,
-                    top_p = 0.9,
-                    num_predict = 2048
-                }
+                options = options
             };
 
             var json = JsonSerializer.Serialize(requestBody);
@@ -2125,17 +2147,14 @@ Return ONLY the transition text, no explanations or additional commentary:";
 
         string prompt = $"{systemPrompt}\n\n{userPrompt}";
 
+        var options = BuildOptionsWithGpu(0.7, 0.9, 2048);
+
         var requestBody = new
         {
             model = _model,
             prompt = prompt,
             stream = true,
-            options = new
-            {
-                temperature = 0.7,
-                top_p = 0.9,
-                num_predict = 2048
-            }
+            options = options
         };
 
         var json = JsonSerializer.Serialize(requestBody);
@@ -2324,6 +2343,8 @@ Return ONLY the transition text, no explanations or additional commentary:";
 
                 var toolDefinitions = tools.Select(t => t.GetToolDefinition()).ToList();
 
+                var options = BuildOptionsWithGpu(0.7, 0.9, 2048);
+
                 var requestBody = new
                 {
                     model = _model,
@@ -2334,12 +2355,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
                     }).ToList(),
                     tools = toolDefinitions,
                     stream = false,
-                    options = new
-                    {
-                        temperature = 0.7,
-                        top_p = 0.9,
-                        num_predict = 2048
-                    }
+                    options = options
                 };
 
                 var json = JsonSerializer.Serialize(requestBody);
