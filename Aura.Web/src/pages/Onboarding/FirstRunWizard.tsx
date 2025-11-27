@@ -47,6 +47,7 @@ import {
   loadWizardProgressFromBackend,
   loadWizardStateFromStorage,
   onboardingReducer,
+  resetWizardInBackend,
   saveWizardProgressToBackend,
   saveWizardStateToStorage,
   validateApiKeyThunk,
@@ -452,7 +453,6 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
     // Also reset backend wizard state
     try {
-      const { resetWizardInBackend } = await import('../../state/onboarding');
       await resetWizardInBackend(false); // Don't preserve data
       console.info('[FirstRunWizard] Wizard state reset in backend and localStorage');
     } catch (error) {

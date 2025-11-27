@@ -3,6 +3,8 @@
  * Provides cross-platform default paths and folder picker functionality
  */
 
+import { apiUrl } from '../config/api';
+
 /**
  * Get the OS-specific default save location for videos
  * Returns an absolute path based on the operating system
@@ -195,8 +197,6 @@ export function migrateLegacyPath(path: string): string {
  */
 export async function resolvePathOnBackend(path: string): Promise<string> {
   try {
-    // Import apiUrl dynamically to avoid circular dependencies
-    const { apiUrl } = await import('../config/api');
     const url = apiUrl('/api/paths/resolve');
 
     const response = await fetch(url, {
@@ -222,7 +222,10 @@ export async function resolvePathOnBackend(path: string): Promise<string> {
 
     // Verify the resolved path doesn't still contain environment variables
     if (resolved.includes('%') || (resolved.includes('~') && !resolved.startsWith('~/'))) {
-      console.warn('Path resolution may have failed, resolved path still contains variables:', resolved);
+      console.warn(
+        'Path resolution may have failed, resolved path still contains variables:',
+        resolved
+      );
     }
 
     return resolved;
