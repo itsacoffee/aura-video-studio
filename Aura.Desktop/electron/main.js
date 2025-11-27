@@ -64,6 +64,7 @@ let ipcHandlers = {
   ffmpeg: null,
   startupLogs: null,
   contextMenu: null,
+  file: null,
 };
 
 let isQuitting = false;

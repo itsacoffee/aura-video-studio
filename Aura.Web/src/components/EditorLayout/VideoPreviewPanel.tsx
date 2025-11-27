@@ -1,10 +1,22 @@
 import { makeStyles, tokens, Text } from '@fluentui/react-components';
-import { useState, useRef, useEffect, memo, useMemo, useImperativeHandle, forwardRef } from 'react';
+import {
+  useState,
+  useRef,
+  useEffect,
+  memo,
+  useMemo,
+  useImperativeHandle,
+  forwardRef,
+  useCallback,
+} from 'react';
+import { usePreviewContextMenu } from '../../hooks/usePreviewContextMenu';
 import { AudioSyncService } from '../../services/audioSyncService';
 import { PlaybackEngine, PlaybackState, PlaybackMetrics } from '../../services/playbackEngine';
 import type { PlaybackSpeed, PlaybackQuality } from '../../services/playbackEngine';
 import { AppliedEffect } from '../../types/effects';
 import { applyEffectsToFrame } from '../../utils/effectsEngine';
+import { Marker } from '../VideoEditor/MarkerList';
+import { ZoomControls } from '../VideoEditor/ZoomControls';
 import { PlaybackControls } from '../VideoPreview/PlaybackControls';
 import { TransportBar } from '../VideoPreview/TransportBar';
 
@@ -24,6 +36,9 @@ const useStyles = makeStyles({
     position: 'relative',
     overflow: 'hidden',
   },
+  videoWrapper: {
+    transition: 'transform 0.2s ease',
+  },
   video: {
     maxWidth: '100%',
     maxHeight: '100%',
@@ -42,6 +57,14 @@ const useStyles = makeStyles({
     fontSize: tokens.fontSizeBase600,
     fontWeight: tokens.fontWeightMedium,
   },
+  zoomBar: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: tokens.spacingVerticalXS,
+    backgroundColor: tokens.colorNeutralBackground2,
+    borderTop: `1px solid ${tokens.colorNeutralStroke1}`,
+  },
 });
 
 interface VideoPreviewPanelProps {
@@ -52,6 +75,8 @@ interface VideoPreviewPanelProps {
   onPlay?: () => void;
   onPause?: () => void;
   onStop?: () => void;
+  onMarkerAdded?: (marker: Omit<Marker, 'id'>) => void;
+  onFrameExported?: (success: boolean, filePath?: string, error?: string) => void;
 }
 
 export interface VideoPreviewPanelHandle {
@@ -61,6 +86,7 @@ export interface VideoPreviewPanelHandle {
   stepBackward: () => void;
   setPlaybackRate: (rate: number) => void;
   playAround: (secondsBefore?: number, secondsAfter?: number) => void;
+  addMarker: () => void;
 }
 
 const VideoPreviewPanelInner = forwardRef<VideoPreviewPanelHandle, VideoPreviewPanelProps>(
@@ -72,6 +98,8 @@ const VideoPreviewPanelInner = forwardRef<VideoPreviewPanelHandle, VideoPreviewP
       onTimeUpdate,
       onPlay,
       onPause,
+      onMarkerAdded,
+      onFrameExported,
     }: VideoPreviewPanelProps,
     ref
   ) {
@@ -80,6 +108,9 @@ const VideoPreviewPanelInner = forwardRef<VideoPreviewPanelHandle, VideoPreviewP
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const playbackEngineRef = useRef<PlaybackEngine | null>(null);
     const audioSyncServiceRef = useRef<AudioSyncService | null>(null);
+
+    // Zoom state for preview
+    const [zoom, setZoom] = useState(1.0);
 
     // State from playback engine
     const [playbackState, setPlaybackState] = useState<PlaybackState>({
@@ -109,6 +140,164 @@ const VideoPreviewPanelInner = forwardRef<VideoPreviewPanelHandle, VideoPreviewP
     // Memoize effects to prevent unnecessary re-renders
     const memoizedEffects = useMemo(() => effects, [effects]);
     const hasEffects = useMemo(() => memoizedEffects.length > 0, [memoizedEffects]);
+
+    // Format time helper for markers
+    const formatTime = useCallback((seconds: number): string => {
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }, []);
+
+    // Handler for adding markers
+    const handleAddMarker = useCallback(
+      (time: number) => {
+        if (onMarkerAdded) {
+          onMarkerAdded({
+            time,
+            label: `Marker at ${formatTime(time)}`,
+          });
+        }
+      },
+      [onMarkerAdded, formatTime]
+    );
+
+    // Handler for exporting the current frame as an image
+    const handleExportFrame = useCallback(
+      async (time: number) => {
+        if (!videoRef.current && !canvasRef.current) {
+          onFrameExported?.(false, undefined, 'No video source available');
+          return;
+        }
+
+        try {
+          // Use canvas if effects are applied, otherwise capture from video
+          const sourceElement = hasEffects ? canvasRef.current : videoRef.current;
+          if (!sourceElement) {
+            onFrameExported?.(false, undefined, 'Source element not available');
+            return;
+          }
+
+          // Create a temporary canvas to capture the frame
+          const exportCanvas = document.createElement('canvas');
+          if (sourceElement instanceof HTMLVideoElement) {
+            exportCanvas.width = sourceElement.videoWidth || 1920;
+            exportCanvas.height = sourceElement.videoHeight || 1080;
+          } else {
+            exportCanvas.width = sourceElement.width || 1920;
+            exportCanvas.height = sourceElement.height || 1080;
+          }
+
+          const ctx = exportCanvas.getContext('2d');
+          if (!ctx) {
+            onFrameExported?.(false, undefined, 'Failed to get canvas context');
+            return;
+          }
+
+          ctx.drawImage(sourceElement, 0, 0, exportCanvas.width, exportCanvas.height);
+
+          // Convert canvas to blob
+          exportCanvas.toBlob(
+            async (blob) => {
+              if (!blob) {
+                console.error('Failed to create blob from canvas');
+                onFrameExported?.(false, undefined, 'Failed to create image blob');
+                return;
+              }
+
+              // Check if Electron API is available for native save dialog
+              if (window.electron?.dialogs?.showSaveDialog) {
+                const result = await window.electron.dialogs.showSaveDialog({
+                  defaultPath: `frame-${formatTime(time).replace(':', '-')}.png`,
+                  filters: [{ name: 'PNG Image', extensions: ['png'] }],
+                });
+
+                if (result.canceled) {
+                  // User cancelled, not an error
+                  return;
+                }
+
+                if (result.filePath && window.electron?.fs?.writeFile) {
+                  const buffer = await blob.arrayBuffer();
+                  const writeResult = await window.electron.fs.writeFile(result.filePath, buffer);
+                  if (writeResult.success) {
+                    console.info('Frame exported to:', result.filePath);
+                    onFrameExported?.(true, result.filePath);
+                  } else {
+                    console.error('Failed to write file:', writeResult.error);
+                    onFrameExported?.(false, undefined, writeResult.error);
+                  }
+                }
+              } else {
+                // Fallback to browser download
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `frame-${formatTime(time).replace(':', '-')}.png`;
+                a.click();
+                URL.revokeObjectURL(url);
+                // Notify success for browser download
+                onFrameExported?.(true, a.download);
+              }
+            },
+            'image/png',
+            1.0
+          );
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          console.error('Failed to export frame:', errorMessage);
+          onFrameExported?.(false, undefined, errorMessage);
+        }
+      },
+      [hasEffects, formatTime, onFrameExported]
+    );
+
+    // Handler for toggling playback
+    const handleTogglePlayback = useCallback(() => {
+      if (playbackState.isPlaying) {
+        playbackEngineRef.current?.pause();
+        onPause?.();
+      } else {
+        playbackEngineRef.current?.play();
+        onPlay?.();
+      }
+    }, [playbackState.isPlaying, onPause, onPlay]);
+
+    // Handler for setting zoom
+    const handleSetZoom = useCallback((newZoom: number | 'fit') => {
+      if (newZoom === 'fit') {
+        setZoom(1.0);
+      } else {
+        setZoom(newZoom);
+      }
+    }, []);
+
+    // Context menu hook integration
+    const handlePreviewContextMenu = usePreviewContextMenu(
+      handleTogglePlayback,
+      handleAddMarker,
+      handleExportFrame,
+      handleSetZoom
+    );
+
+    // Handle context menu on video container
+    const handleVideoContextMenu = useCallback(
+      (e: React.MouseEvent) => {
+        handlePreviewContextMenu(
+          e,
+          playbackState.currentTime,
+          playbackState.duration,
+          playbackState.isPlaying,
+          zoom
+        );
+      },
+      [
+        handlePreviewContextMenu,
+        playbackState.currentTime,
+        playbackState.duration,
+        playbackState.isPlaying,
+        zoom,
+      ]
+    );
 
     // Expose imperative methods via ref
     useImperativeHandle(
@@ -146,8 +335,11 @@ const VideoPreviewPanelInner = forwardRef<VideoPreviewPanelHandle, VideoPreviewP
         playAround: (secondsBefore = 2, secondsAfter = 2) => {
           playbackEngineRef.current?.playAround(secondsBefore, secondsAfter);
         },
+        addMarker: () => {
+          handleAddMarker(playbackState.currentTime);
+        },
       }),
-      []
+      [handleAddMarker, playbackState.currentTime]
     );
 
     // Initialize playback engine
@@ -309,9 +501,10 @@ const VideoPreviewPanelInner = forwardRef<VideoPreviewPanelHandle, VideoPreviewP
 
     return (
       <div className={styles.container}>
-        <div className={styles.videoContainer}>
+        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- Context menu container for video preview */}
+        <div className={styles.videoContainer} onContextMenu={handleVideoContextMenu}>
           {videoUrl ? (
-            <>
+            <div className={styles.videoWrapper} style={{ transform: `scale(${zoom})` }}>
               <video
                 ref={videoRef}
                 className={styles.video}
@@ -329,10 +522,20 @@ const VideoPreviewPanelInner = forwardRef<VideoPreviewPanelHandle, VideoPreviewP
                   display: hasEffects ? 'block' : 'none',
                 }}
               />
-            </>
+            </div>
           ) : (
             <Text className={styles.placeholder}>No video loaded</Text>
           )}
+        </div>
+
+        {/* Zoom Controls */}
+        <div className={styles.zoomBar}>
+          <ZoomControls
+            zoom={zoom}
+            onZoomChange={setZoom}
+            onZoomFit={() => setZoom(1.0)}
+            disabled={!videoUrl}
+          />
         </div>
 
         {/* Transport Bar */}

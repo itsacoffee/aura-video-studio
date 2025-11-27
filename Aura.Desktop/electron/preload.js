@@ -44,6 +44,16 @@ const VALID_CHANNELS = {
     "dialog:saveFile",
     "dialog:showMessage",
     "dialog:showError",
+    "dialog:showSaveDialog",
+    "dialog:showOpenDialog",
+  ],
+
+  // File system channels
+  FS: [
+    "fs:writeFile",
+    "fs:readFile",
+    "fs:exists",
+    "fs:mkdir",
   ],
 
   // Shell channels
@@ -441,6 +451,15 @@ function createAuraBridge() {
     showMessage: (options) => safeInvoke("dialog:showMessage", options),
     showError: (title, message) =>
       safeInvoke("dialog:showError", title, message),
+    showSaveDialog: (options) => safeInvoke("dialog:showSaveDialog", options),
+    showOpenDialog: (options) => safeInvoke("dialog:showOpenDialog", options),
+  };
+
+  const fsApi = {
+    writeFile: (path, data) => safeInvoke("fs:writeFile", path, data),
+    readFile: (path) => safeInvoke("fs:readFile", path),
+    exists: (path) => safeInvoke("fs:exists", path),
+    mkdir: (path, options) => safeInvoke("fs:mkdir", path, options),
   };
 
   const shellApi = {
@@ -625,6 +644,7 @@ function createAuraBridge() {
     backend: backendApi,
     ffmpeg: ffmpegApi,
     dialogs: dialogsApi,
+    fs: fsApi,
     shell: shellApi,
     app: appApi,
     window: windowApi,

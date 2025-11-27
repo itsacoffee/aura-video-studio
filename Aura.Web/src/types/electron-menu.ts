@@ -222,6 +222,26 @@ export interface AuraAPI {
     saveFile(options?: Record<string, unknown>): Promise<string | null>;
     showMessage(options: Record<string, unknown>): Promise<number>;
     showError(title: string, message: string): Promise<boolean>;
+    showSaveDialog(options?: Record<string, unknown>): Promise<{
+      canceled: boolean;
+      filePath?: string;
+    }>;
+    showOpenDialog(options?: Record<string, unknown>): Promise<{
+      canceled: boolean;
+      filePaths: string[];
+    }>;
+  };
+  fs?: {
+    writeFile(
+      path: string,
+      data: ArrayBuffer | Uint8Array | string
+    ): Promise<{ success: boolean; error?: string }>;
+    readFile(path: string): Promise<{ success: boolean; data?: ArrayBuffer; error?: string }>;
+    exists(path: string): Promise<{ success: boolean; exists: boolean }>;
+    mkdir(
+      path: string,
+      options?: Record<string, unknown>
+    ): Promise<{ success: boolean; error?: string }>;
   };
   shell?: {
     openExternal(url: string): Promise<{ success: boolean }>;
