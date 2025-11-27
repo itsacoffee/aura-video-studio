@@ -232,7 +232,7 @@ public class ProvidersController : ControllerBase
     /// Get usage statistics for a specific provider
     /// </summary>
     [HttpGet("{id}/stats")]
-    public async Task<IActionResult> GetProviderStats(string id, CancellationToken cancellationToken)
+    public IActionResult GetProviderStats(string id)
     {
         var correlationId = HttpContext.TraceIdentifier;
 
