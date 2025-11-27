@@ -825,6 +825,7 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
 
     /// <summary>
     /// Build prompt from request with optional RAG context
+    /// Includes TTS formatting requirements for natural speech output
     /// </summary>
     private string BuildPrompt(ScriptGenerationRequest request, string ragContext = "")
     {
@@ -846,10 +847,33 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
             promptBuilder.AppendLine();
         }
 
-        var systemPrompt = @"You are a professional scriptwriter creating engaging video scripts.
-Follow these guidelines:
+        // Calculate target scene count based on duration and density
+        var targetSceneCount = spec.GetCalculatedSceneCount();
+        var wordsPerScene = 100; // ~40 seconds at 150 WPM
+        var totalWords = targetSceneCount * wordsPerScene;
+
+        var systemPrompt = $@"You are a professional scriptwriter creating engaging video scripts optimized for Text-to-Speech (TTS).
+
+TTS FORMATTING REQUIREMENTS (CRITICAL):
+- Write in complete, natural sentences with proper punctuation
+- Use periods, commas, and question marks to create natural speech pauses
+- Keep sentences under 25 words for optimal TTS delivery
+- No run-on sentences - break long thoughts into multiple sentences
+- No marketing fluff (avoid 'game-changing', 'revolutionary', etc.)
+- No metadata or scene numbers in the narration text
+- Each scene should have 50-150 words
+- Write conversationally, as if speaking directly to the viewer
+
+STRUCTURE REQUIREMENTS:
+- Create exactly {targetSceneCount} scenes (use ## headers for each)
+- Total script length: approximately {totalWords} words
+- Hook viewers in the first scene
+- Build logically through middle scenes
+- End with a clear conclusion
+
+CONTENT GUIDELINES:
 - Create clear, concise narration suitable for video
-- Structure content into logical scenes
+- Structure content into logical scenes using ## headers
 - Match the requested tone and style
 - Consider the target audience
 - Keep scenes focused and digestible";
@@ -864,13 +888,18 @@ Follow these guidelines:
         var userPrompt = $@"Create a video script for the following:
 
 Topic: {brief.Topic}
-Audience: {brief.Audience}
-Goal: {brief.Goal}
+Audience: {brief.Audience ?? "General"}
+Goal: {brief.Goal ?? "Inform and engage"}
 Tone: {brief.Tone}
 Duration: {spec.TargetDuration.TotalSeconds} seconds
 Style: {spec.Style}
+Target Scenes: {targetSceneCount}
 
-Please provide a well-structured script with clear narration for each scene.";
+Please provide a well-structured script with:
+1. A title line starting with # 
+2. {targetSceneCount} scenes, each starting with ## [Scene Name]
+3. Clear narration for each scene (50-150 words each)
+4. Proper punctuation for natural TTS reading";
 
         promptBuilder.Append(systemPrompt);
         promptBuilder.AppendLine();

@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.AI;
@@ -40,6 +41,15 @@ public class OllamaLlmProvider : ILlmProvider
     private bool _lastAvailabilityResult = false;
     private readonly TimeSpan _availabilityCacheDuration = TimeSpan.FromSeconds(10);
     private readonly object _availabilityCacheLock = new object();
+
+    // Static compiled regex patterns for better performance
+    private static readonly Regex MarkdownHeaderRegex = new(@"^#{1,3}\s+(.+?)$", RegexOptions.Compiled);
+    private static readonly Regex SceneMetadataRegex = new(@"^scene\s+\d+\s*[:\-]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex VisualMarkerRegex = new(@"\[VISUAL:[^\]]*\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex PauseMarkerRegex = new(@"\[PAUSE[^\]]*\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex MediaMarkerRegex = new(@"\[(MUSIC|SFX|CUT|FADE)[^\]]*\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex MultiSpaceRegex = new(@"\s+", RegexOptions.Compiled);
+    private static readonly Regex ParagraphSplitRegex = new(@"\n\s*\n", RegexOptions.Compiled);
 
     /// <summary>
     /// Optional callback to enhance prompts before generation
@@ -1814,37 +1824,267 @@ Return ONLY the transition text, no explanations or additional commentary:";
 
     private List<ScriptScene> ParseScriptIntoScenes(string scriptText, PlanSpec spec)
     {
-        // Simple scene parsing - split by newlines and create scenes
+        // Use TTS-aware scene parsing with word-count based duration calculation
         var scenes = new List<ScriptScene>();
-        var lines = scriptText.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
-
-        int sceneNumber = 1;
-        foreach (var line in lines)
+        
+        if (string.IsNullOrWhiteSpace(scriptText))
         {
-            if (!string.IsNullOrWhiteSpace(line))
-            {
-                scenes.Add(new ScriptScene
-                {
-                    Number = sceneNumber++,
-                    Narration = line.Trim(),
-                    Duration = TimeSpan.FromSeconds(5),
-                    Transition = TransitionType.Cut
-                });
-            }
+            return CreateFallbackScene(scriptText, spec);
         }
 
-        if (scenes.Count == 0)
+        // Try to parse structured scenes with markdown headers (## Section)
+        var parsedScenes = ParseMarkdownScenes(scriptText);
+        
+        // If no structured scenes found, intelligently segment the text
+        if (parsedScenes.Count == 0)
         {
+            parsedScenes = SegmentTextIntoScenes(scriptText, spec);
+        }
+
+        // If still no scenes, create a single scene
+        if (parsedScenes.Count == 0)
+        {
+            return CreateFallbackScene(scriptText, spec);
+        }
+
+        // Calculate durations based on word count at 150 WPM
+        int sceneNumber = 1;
+        foreach (var (narration, heading) in parsedScenes)
+        {
+            if (string.IsNullOrWhiteSpace(narration))
+                continue;
+
+            var wordCount = CountWords(narration);
+            var duration = CalculateTtsDuration(wordCount);
+            
+            var visualPrompt = GenerateVisualPrompt(narration);
+            var transition = sceneNumber == parsedScenes.Count ? TransitionType.Fade : TransitionType.Cut;
+
             scenes.Add(new ScriptScene
             {
-                Number = 1,
-                Narration = scriptText,
-                Duration = spec.TargetDuration,
-                Transition = TransitionType.Cut
+                Number = sceneNumber++,
+                Narration = CleanNarration(narration),
+                VisualPrompt = visualPrompt,
+                Duration = duration,
+                Transition = transition
             });
         }
 
+        // Ensure we have at least one scene
+        if (scenes.Count == 0)
+        {
+            return CreateFallbackScene(scriptText, spec);
+        }
+
+        _logger.LogInformation("Parsed {SceneCount} scenes from script (target: {TargetCount})",
+            scenes.Count, spec.GetCalculatedSceneCount());
+
         return scenes;
+    }
+
+    /// <summary>
+    /// Parse markdown-structured scenes (## Section headers)
+    /// </summary>
+    private List<(string narration, string heading)> ParseMarkdownScenes(string scriptText)
+    {
+        var scenes = new List<(string narration, string heading)>();
+        var lines = scriptText.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+        
+        string? currentHeading = null;
+        var currentContent = new List<string>();
+
+        foreach (var line in lines)
+        {
+            var headerMatch = MarkdownHeaderRegex.Match(line.Trim());
+            if (headerMatch.Success)
+            {
+                if (currentHeading != null && currentContent.Count > 0)
+                {
+                    var narration = string.Join(" ", currentContent);
+                    if (!string.IsNullOrWhiteSpace(narration))
+                    {
+                        scenes.Add((narration, currentHeading));
+                    }
+                }
+                
+                currentHeading = headerMatch.Groups[1].Value.Trim();
+                currentContent.Clear();
+            }
+            else
+            {
+                var trimmedLine = line.Trim();
+                if (!IsMetadataLine(trimmedLine) && !string.IsNullOrWhiteSpace(trimmedLine))
+                {
+                    currentContent.Add(trimmedLine);
+                }
+            }
+        }
+
+        if (currentHeading != null && currentContent.Count > 0)
+        {
+            var narration = string.Join(" ", currentContent);
+            if (!string.IsNullOrWhiteSpace(narration))
+            {
+                scenes.Add((narration, currentHeading));
+            }
+        }
+
+        return scenes;
+    }
+
+    /// <summary>
+    /// Segment unstructured text into logical scenes based on content
+    /// </summary>
+    private List<(string narration, string heading)> SegmentTextIntoScenes(string scriptText, PlanSpec spec)
+    {
+        var scenes = new List<(string narration, string heading)>();
+        
+        var paragraphs = ParagraphSplitRegex.Split(scriptText)
+            .Select(p => p.Trim())
+            .Where(p => !string.IsNullOrWhiteSpace(p) && !IsMetadataLine(p))
+            .ToList();
+
+        if (paragraphs.Count == 0)
+        {
+            return scenes;
+        }
+
+        var targetSceneCount = spec.GetCalculatedSceneCount();
+        var totalWords = paragraphs.Sum(p => CountWords(p));
+        var targetWordsPerScene = Math.Max(50, totalWords / targetSceneCount);
+
+        var currentSceneWords = 0;
+        var currentSceneContent = new List<string>();
+        var sceneIndex = 1;
+
+        foreach (var paragraph in paragraphs)
+        {
+            var paragraphWords = CountWords(paragraph);
+            
+            if (currentSceneWords + paragraphWords > targetWordsPerScene * 1.5 && currentSceneContent.Count > 0)
+            {
+                var content = string.Join(" ", currentSceneContent);
+                scenes.Add((content, $"Scene {sceneIndex}"));
+                sceneIndex++;
+                currentSceneContent.Clear();
+                currentSceneWords = 0;
+            }
+
+            currentSceneContent.Add(paragraph);
+            currentSceneWords += paragraphWords;
+
+            if (currentSceneWords >= targetWordsPerScene * 0.7 && scenes.Count < targetSceneCount - 1)
+            {
+                var content = string.Join(" ", currentSceneContent);
+                scenes.Add((content, $"Scene {sceneIndex}"));
+                sceneIndex++;
+                currentSceneContent.Clear();
+                currentSceneWords = 0;
+            }
+        }
+
+        if (currentSceneContent.Count > 0)
+        {
+            var content = string.Join(" ", currentSceneContent);
+            scenes.Add((content, $"Scene {sceneIndex}"));
+        }
+
+        return scenes;
+    }
+
+    /// <summary>
+    /// Calculate TTS duration based on word count (150 WPM)
+    /// with minimum 3 seconds and maximum 30 seconds bounds
+    /// </summary>
+    private TimeSpan CalculateTtsDuration(int wordCount)
+    {
+        const int wordsPerMinute = 150;
+        const double minSeconds = 3.0;
+        const double maxSeconds = 30.0;
+
+        var durationSeconds = (wordCount / (double)wordsPerMinute) * 60;
+        durationSeconds = Math.Clamp(durationSeconds, minSeconds, maxSeconds);
+        
+        return TimeSpan.FromSeconds(durationSeconds);
+    }
+
+    /// <summary>
+    /// Check if a line is metadata that should be excluded from narration
+    /// </summary>
+    private bool IsMetadataLine(string line)
+    {
+        if (string.IsNullOrWhiteSpace(line))
+            return true;
+
+        var trimmed = line.Trim().ToLowerInvariant();
+        
+        return trimmed.StartsWith("[visual:") ||
+               trimmed.StartsWith("[pause") ||
+               trimmed.StartsWith("[music") ||
+               trimmed.StartsWith("[sfx") ||
+               (trimmed.StartsWith("scene ") && SceneMetadataRegex.IsMatch(trimmed)) ||
+               trimmed.StartsWith("duration:") ||
+               trimmed.StartsWith("narration:") ||
+               trimmed.StartsWith("visual:");
+    }
+
+    /// <summary>
+    /// Clean narration text by removing metadata and formatting artifacts
+    /// </summary>
+    private string CleanNarration(string narration)
+    {
+        if (string.IsNullOrWhiteSpace(narration))
+            return string.Empty;
+
+        var cleaned = VisualMarkerRegex.Replace(narration, "");
+        cleaned = PauseMarkerRegex.Replace(cleaned, "");
+        cleaned = MediaMarkerRegex.Replace(cleaned, "");
+        cleaned = MultiSpaceRegex.Replace(cleaned, " ");
+        
+        return cleaned.Trim();
+    }
+
+    /// <summary>
+    /// Count words in text
+    /// </summary>
+    private int CountWords(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return 0;
+        return text.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
+    }
+
+    /// <summary>
+    /// Generate a visual prompt from narration
+    /// </summary>
+    private string GenerateVisualPrompt(string narration)
+    {
+        var firstSentence = narration.Split(new[] { '.', '!', '?' }, 2)[0].Trim();
+        return $"Visual representation of: {firstSentence}";
+    }
+
+    /// <summary>
+    /// Create a fallback single scene when parsing fails
+    /// </summary>
+    private List<ScriptScene> CreateFallbackScene(string scriptText, PlanSpec spec)
+    {
+        var narration = CleanNarration(scriptText);
+        if (string.IsNullOrWhiteSpace(narration))
+        {
+            narration = "Content could not be parsed.";
+        }
+
+        return new List<ScriptScene>
+        {
+            new ScriptScene
+            {
+                Number = 1,
+                Narration = narration,
+                VisualPrompt = GenerateVisualPrompt(narration),
+                Duration = spec.TargetDuration,
+                Transition = TransitionType.Cut
+            }
+        };
     }
 
     private int EstimateTokenCount(string text)

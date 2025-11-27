@@ -20,6 +20,15 @@ public abstract class BaseLlmScriptProvider : IScriptLlmProvider
     protected readonly int _maxRetries;
     protected readonly TimeSpan _baseRetryDelay;
 
+    // Static compiled regex patterns for better performance
+    private static readonly Regex MarkdownHeaderRegex = new(@"^#{1,3}\s+(.+?)$", RegexOptions.Compiled);
+    private static readonly Regex SceneMetadataRegex = new(@"^scene\s+\d+\s*[:\-]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex VisualMarkerRegex = new(@"\[VISUAL:[^\]]*\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex PauseMarkerRegex = new(@"\[PAUSE[^\]]*\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex MediaMarkerRegex = new(@"\[(MUSIC|SFX|CUT|FADE)[^\]]*\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex MultiSpaceRegex = new(@"\s+", RegexOptions.Compiled);
+    private static readonly Regex ParagraphSplitRegex = new(@"\n\s*\n", RegexOptions.Compiled);
+
     protected BaseLlmScriptProvider(ILogger logger, int maxRetries = 3, int baseRetryDelayMs = 1000)
     {
         _logger = logger;
@@ -148,71 +157,280 @@ public abstract class BaseLlmScriptProvider : IScriptLlmProvider
     }
 
     /// <summary>
-    /// Parse raw script text into structured scenes
-    /// Common utility for text-based providers
+    /// Parse raw script text into structured scenes with TTS-aware duration calculation.
+    /// Calculates duration based on word count at 150 WPM.
+    /// Enforces minimum 3 seconds and maximum 30 seconds per scene.
+    /// Common utility for text-based providers.
     /// </summary>
     protected List<ScriptScene> ParseScriptIntoScenes(string scriptText, PlanSpec planSpec)
     {
         var scenes = new List<ScriptScene>();
         
-        var scenePattern = @"(?:Scene\s+(\d+)|^#{1,3}\s*(.+?)$)(.*?)(?=Scene\s+\d+|^#{1,3}\s|$)";
-        var matches = Regex.Matches(scriptText, scenePattern, RegexOptions.Singleline | RegexOptions.Multiline | RegexOptions.IgnoreCase);
-
-        if (matches.Count == 0)
+        if (string.IsNullOrWhiteSpace(scriptText))
         {
-            var singleSceneDuration = planSpec.TargetDuration;
-            scenes.Add(new ScriptScene
-            {
-                Number = 1,
-                Narration = scriptText.Trim(),
-                VisualPrompt = GenerateDefaultVisualPrompt(scriptText),
-                Duration = singleSceneDuration,
-                Transition = TransitionType.Cut
-            });
-            return scenes;
+            return CreateFallbackScene(scriptText, planSpec);
         }
 
-        var totalDuration = planSpec.TargetDuration;
-        var sceneDuration = TimeSpan.FromSeconds(totalDuration.TotalSeconds / matches.Count);
-
-        for (int i = 0; i < matches.Count; i++)
+        // Try to parse structured scenes with markdown headers
+        var parsedScenes = ParseMarkdownScenes(scriptText);
+        
+        // If no structured scenes found, try to intelligently segment the text
+        if (parsedScenes.Count == 0)
         {
-            var match = matches[i];
-            var sceneNumber = i + 1;
-            var content = match.Groups[3].Value.Trim();
+            parsedScenes = SegmentTextIntoScenes(scriptText, planSpec);
+        }
 
-            if (string.IsNullOrWhiteSpace(content))
-            {
+        // If still no scenes, create a single scene
+        if (parsedScenes.Count == 0)
+        {
+            return CreateFallbackScene(scriptText, planSpec);
+        }
+
+        // Calculate durations based on word count and validate scene count
+        var targetSceneCount = planSpec.GetCalculatedSceneCount();
+        
+        int sceneNumber = 1;
+        foreach (var (narration, heading) in parsedScenes)
+        {
+            if (string.IsNullOrWhiteSpace(narration))
                 continue;
-            }
 
-            var narration = ExtractNarration(content);
-            var visualPrompt = ExtractVisualPrompt(content) ?? GenerateDefaultVisualPrompt(narration);
-            var transition = DetermineTransition(i, matches.Count, planSpec.Style);
+            var wordCount = CountWords(narration);
+            var duration = CalculateTtsDuration(wordCount);
+            
+            var visualPrompt = GenerateDefaultVisualPrompt(narration);
+            var transition = DetermineTransition(sceneNumber - 1, parsedScenes.Count, planSpec.Style);
 
             scenes.Add(new ScriptScene
             {
-                Number = sceneNumber,
-                Narration = narration,
+                Number = sceneNumber++,
+                Narration = CleanNarration(narration),
                 VisualPrompt = visualPrompt,
-                Duration = sceneDuration,
+                Duration = duration,
                 Transition = transition
             });
         }
 
+        // Ensure we have at least one scene
         if (scenes.Count == 0)
         {
-            scenes.Add(new ScriptScene
+            return CreateFallbackScene(scriptText, planSpec);
+        }
+
+        _logger.LogInformation("Parsed {SceneCount} scenes from script (target: {TargetCount})",
+            scenes.Count, targetSceneCount);
+
+        return scenes;
+    }
+
+    /// <summary>
+    /// Parse markdown-structured scenes (## Section headers)
+    /// </summary>
+    private List<(string narration, string heading)> ParseMarkdownScenes(string scriptText)
+    {
+        var scenes = new List<(string narration, string heading)>();
+        var lines = scriptText.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+        
+        string? currentHeading = null;
+        var currentContent = new List<string>();
+
+        foreach (var line in lines)
+        {
+            var headerMatch = MarkdownHeaderRegex.Match(line.Trim());
+            if (headerMatch.Success)
             {
-                Number = 1,
-                Narration = scriptText.Trim(),
-                VisualPrompt = GenerateDefaultVisualPrompt(scriptText),
-                Duration = totalDuration,
-                Transition = TransitionType.Cut
-            });
+                // Save previous section if it has content
+                if (currentHeading != null && currentContent.Count > 0)
+                {
+                    var narration = string.Join(" ", currentContent);
+                    if (!string.IsNullOrWhiteSpace(narration))
+                    {
+                        scenes.Add((narration, currentHeading));
+                    }
+                }
+                
+                currentHeading = headerMatch.Groups[1].Value.Trim();
+                currentContent.Clear();
+            }
+            else
+            {
+                // Skip metadata lines and visual markers
+                var trimmedLine = line.Trim();
+                if (!IsMetadataLine(trimmedLine) && !string.IsNullOrWhiteSpace(trimmedLine))
+                {
+                    currentContent.Add(trimmedLine);
+                }
+            }
+        }
+
+        // Add the last section
+        if (currentHeading != null && currentContent.Count > 0)
+        {
+            var narration = string.Join(" ", currentContent);
+            if (!string.IsNullOrWhiteSpace(narration))
+            {
+                scenes.Add((narration, currentHeading));
+            }
         }
 
         return scenes;
+    }
+
+    /// <summary>
+    /// Segment unstructured text into logical scenes based on content
+    /// </summary>
+    private List<(string narration, string heading)> SegmentTextIntoScenes(string scriptText, PlanSpec planSpec)
+    {
+        var scenes = new List<(string narration, string heading)>();
+        
+        // Split by paragraphs (double newlines)
+        var paragraphs = ParagraphSplitRegex.Split(scriptText)
+            .Select(p => p.Trim())
+            .Where(p => !string.IsNullOrWhiteSpace(p) && !IsMetadataLine(p))
+            .ToList();
+
+        if (paragraphs.Count == 0)
+        {
+            return scenes;
+        }
+
+        // Calculate target scene count and words per scene
+        var targetSceneCount = planSpec.GetCalculatedSceneCount();
+        var totalWords = paragraphs.Sum(p => CountWords(p));
+        var targetWordsPerScene = totalWords / targetSceneCount;
+
+        // Group paragraphs into scenes based on word count targets
+        var currentSceneWords = 0;
+        var currentSceneContent = new List<string>();
+        var sceneIndex = 1;
+
+        foreach (var paragraph in paragraphs)
+        {
+            var paragraphWords = CountWords(paragraph);
+            
+            // If adding this paragraph would exceed target and we have content, start new scene
+            if (currentSceneWords + paragraphWords > targetWordsPerScene * 1.5 && currentSceneContent.Count > 0)
+            {
+                var content = string.Join(" ", currentSceneContent);
+                scenes.Add((content, $"Scene {sceneIndex}"));
+                sceneIndex++;
+                currentSceneContent.Clear();
+                currentSceneWords = 0;
+            }
+
+            currentSceneContent.Add(paragraph);
+            currentSceneWords += paragraphWords;
+
+            // Check minimum words threshold to start a new scene
+            if (currentSceneWords >= targetWordsPerScene * 0.7 && scenes.Count < targetSceneCount - 1)
+            {
+                var content = string.Join(" ", currentSceneContent);
+                scenes.Add((content, $"Scene {sceneIndex}"));
+                sceneIndex++;
+                currentSceneContent.Clear();
+                currentSceneWords = 0;
+            }
+        }
+
+        // Add remaining content as final scene
+        if (currentSceneContent.Count > 0)
+        {
+            var content = string.Join(" ", currentSceneContent);
+            scenes.Add((content, $"Scene {sceneIndex}"));
+        }
+
+        return scenes;
+    }
+
+    /// <summary>
+    /// Calculate TTS duration based on word count (150 WPM)
+    /// with minimum 3 seconds and maximum 30 seconds bounds
+    /// </summary>
+    private TimeSpan CalculateTtsDuration(int wordCount)
+    {
+        const int wordsPerMinute = 150;
+        const double minSeconds = 3.0;
+        const double maxSeconds = 30.0;
+
+        // Calculate duration based on word count
+        var durationSeconds = (wordCount / (double)wordsPerMinute) * 60;
+        
+        // Apply bounds
+        durationSeconds = Math.Clamp(durationSeconds, minSeconds, maxSeconds);
+        
+        return TimeSpan.FromSeconds(durationSeconds);
+    }
+
+    /// <summary>
+    /// Check if a line is metadata/formatting that should be excluded from narration
+    /// </summary>
+    private bool IsMetadataLine(string line)
+    {
+        if (string.IsNullOrWhiteSpace(line))
+            return true;
+
+        var trimmed = line.Trim().ToLowerInvariant();
+        
+        // Check for common metadata patterns using static compiled regex
+        return trimmed.StartsWith("[visual:") ||
+               trimmed.StartsWith("[pause") ||
+               trimmed.StartsWith("[music") ||
+               trimmed.StartsWith("[sfx") ||
+               (trimmed.StartsWith("scene ") && SceneMetadataRegex.IsMatch(trimmed)) ||
+               trimmed.StartsWith("duration:") ||
+               trimmed.StartsWith("narration:") ||
+               trimmed.StartsWith("visual:");
+    }
+
+    /// <summary>
+    /// Clean narration text by removing metadata and formatting artifacts
+    /// </summary>
+    private string CleanNarration(string narration)
+    {
+        if (string.IsNullOrWhiteSpace(narration))
+            return string.Empty;
+
+        // Remove visual markers, pause markers, media markers, and clean up spaces
+        var cleaned = VisualMarkerRegex.Replace(narration, "");
+        cleaned = PauseMarkerRegex.Replace(cleaned, "");
+        cleaned = MediaMarkerRegex.Replace(cleaned, "");
+        cleaned = MultiSpaceRegex.Replace(cleaned, " ");
+        
+        return cleaned.Trim();
+    }
+
+    /// <summary>
+    /// Count words in text
+    /// </summary>
+    private int CountWords(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return 0;
+        return text.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
+    }
+
+    /// <summary>
+    /// Create a fallback single scene when parsing fails
+    /// </summary>
+    private List<ScriptScene> CreateFallbackScene(string scriptText, PlanSpec planSpec)
+    {
+        var narration = CleanNarration(scriptText);
+        if (string.IsNullOrWhiteSpace(narration))
+        {
+            narration = "Content could not be parsed.";
+        }
+
+        return new List<ScriptScene>
+        {
+            new ScriptScene
+            {
+                Number = 1,
+                Narration = narration,
+                VisualPrompt = GenerateDefaultVisualPrompt(narration),
+                Duration = planSpec.TargetDuration,
+                Transition = TransitionType.Cut
+            }
+        };
     }
 
     /// <summary>
