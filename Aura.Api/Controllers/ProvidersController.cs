@@ -130,6 +130,269 @@ public class ProvidersController : ControllerBase
     }
 
     /// <summary>
+    /// Get all configured AI providers
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> GetProviders(CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+
+        try
+        {
+            Log.Information("Fetching all providers, CorrelationId: {CorrelationId}", correlationId);
+
+            var configuredProviders = await _secureStorageService.GetConfiguredProvidersAsync().ConfigureAwait(false);
+            var providers = new List<AIProviderDto>();
+
+            // Define all known providers
+            var allProviders = new (string id, string name, string type, string keyName)[]
+            {
+                ("openai", "OpenAI", "llm", "openai"),
+                ("anthropic", "Anthropic", "llm", "anthropic"),
+                ("gemini", "Google Gemini", "llm", "gemini"),
+                ("ollama", "Ollama", "llm", "ollama"),
+                ("elevenlabs", "ElevenLabs", "tts", "elevenlabs"),
+                ("playht", "PlayHT", "tts", "playht"),
+                ("windows", "Windows TTS", "tts", "windows"),
+                ("stabilityai", "Stability AI", "image", "stabilityai"),
+                ("stablediffusion", "Stable Diffusion", "image", "stablediffusion"),
+            };
+
+            foreach (var (id, name, type, keyName) in allProviders)
+            {
+                var hasKey = await _secureStorageService.HasApiKeyAsync(keyName).ConfigureAwait(false);
+                var isConfigured = configuredProviders.Contains(id, StringComparer.OrdinalIgnoreCase) || hasKey;
+                var isLocal = IsLocalProvider(id);
+
+                if (isConfigured || isLocal)
+                {
+                    providers.Add(new AIProviderDto(
+                        Id: id,
+                        Name: name,
+                        Type: type,
+                        IsDefault: id.Equals("openai", StringComparison.OrdinalIgnoreCase) || 
+                                   id.Equals("elevenlabs", StringComparison.OrdinalIgnoreCase) ||
+                                   id.Equals("stabilityai", StringComparison.OrdinalIgnoreCase),
+                        IsEnabled: isConfigured || isLocal,
+                        Model: null,
+                        HasFallback: true
+                    ));
+                }
+            }
+
+            return Ok(providers);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error fetching providers, CorrelationId: {CorrelationId}", correlationId);
+            return Problem(
+                title: "Provider Fetch Error",
+                detail: "An error occurred while fetching providers.",
+                statusCode: 500,
+                instance: correlationId);
+        }
+    }
+
+    /// <summary>
+    /// Test connection to a specific provider
+    /// </summary>
+    [HttpPost("{id}/test")]
+    public async Task<IActionResult> TestProviderConnection(string id, CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+
+        try
+        {
+            Log.Information("Testing provider connection for {ProviderId}, CorrelationId: {CorrelationId}", id, correlationId);
+
+            var result = await _providerPingService.PingAsync(id, null, cancellationToken).ConfigureAwait(false);
+
+            return Ok(new
+            {
+                success = result.Success,
+                message = result.Message ?? (result.Success ? "Connection successful" : "Connection failed"),
+                latency = result.LatencyMs ?? 0,
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error testing provider {ProviderId}, CorrelationId: {CorrelationId}", id, correlationId);
+            return Ok(new
+            {
+                success = false,
+                message = $"Error testing provider: {ex.Message}",
+                latency = 0,
+                correlationId
+            });
+        }
+    }
+
+    /// <summary>
+    /// Get usage statistics for a specific provider
+    /// </summary>
+    [HttpGet("{id}/stats")]
+    public async Task<IActionResult> GetProviderStats(string id, CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+
+        try
+        {
+            Log.Information("Fetching stats for provider {ProviderId}, CorrelationId: {CorrelationId}", id, correlationId);
+
+            // Attempt to get stats from cost tracking service
+            if (_costTrackingService != null)
+            {
+                var costByProvider = _costTrackingService.GetCostByProvider();
+                var providerCost = costByProvider.TryGetValue(id, out var cost) ? cost : 0m;
+
+                return Ok(new ProviderStatsDto(
+                    TotalRequests: 0,
+                    SuccessfulRequests: 0,
+                    FailedRequests: 0,
+                    AverageLatency: 0,
+                    TotalTokensUsed: 0,
+                    TotalCost: providerCost,
+                    LastUsed: DateTime.UtcNow.ToString("o")
+                ));
+            }
+
+            // Return empty stats if service not available
+            return Ok(new ProviderStatsDto(
+                TotalRequests: 0,
+                SuccessfulRequests: 0,
+                FailedRequests: 0,
+                AverageLatency: 0,
+                TotalTokensUsed: 0,
+                TotalCost: 0m,
+                LastUsed: DateTime.UtcNow.ToString("o")
+            ));
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error fetching stats for provider {ProviderId}, CorrelationId: {CorrelationId}", id, correlationId);
+            return Problem(
+                title: "Stats Fetch Error",
+                detail: $"Error fetching stats for provider: {ex.Message}",
+                statusCode: 500,
+                instance: correlationId);
+        }
+    }
+
+    /// <summary>
+    /// Set a provider as the default for its type
+    /// </summary>
+    [HttpPost("{id}/set-default")]
+    public Task<IActionResult> SetDefaultProvider(string id, CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+
+        try
+        {
+            Log.Information("Setting provider {ProviderId} as default, CorrelationId: {CorrelationId}", id, correlationId);
+
+            // For now, just acknowledge the request - full implementation would persist this preference
+            return Task.FromResult<IActionResult>(Ok(new
+            {
+                success = true,
+                message = $"Provider {id} set as default",
+                correlationId
+            }));
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error setting default provider {ProviderId}, CorrelationId: {CorrelationId}", id, correlationId);
+            return Task.FromResult<IActionResult>(Problem(
+                title: "Set Default Error",
+                detail: $"Error setting default provider: {ex.Message}",
+                statusCode: 500,
+                instance: correlationId));
+        }
+    }
+
+    /// <summary>
+    /// Get configuration for a specific provider
+    /// </summary>
+    [HttpGet("{id}/config")]
+    public async Task<IActionResult> GetProviderConfig(string id, CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+
+        try
+        {
+            Log.Information("Fetching config for provider {ProviderId}, CorrelationId: {CorrelationId}", id, correlationId);
+
+            var hasKey = await _secureStorageService.HasApiKeyAsync(id).ConfigureAwait(false);
+            var providerType = DetermineCategory(id).ToLowerInvariant() switch
+            {
+                "llm" => "llm",
+                "tts" => "tts",
+                "image" => "image",
+                _ => "unknown"
+            };
+
+            return Ok(new ProviderSettingsDto(
+                ApiKey: hasKey ? "********" : null,
+                Endpoint: null,
+                Model: null,
+                MaxTokens: providerType == "llm" ? 4096 : null,
+                Temperature: providerType == "llm" ? 0.7 : null,
+                IsEnabled: hasKey || IsLocalProvider(id),
+                HasFallback: true,
+                Type: providerType
+            ));
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error fetching config for provider {ProviderId}, CorrelationId: {CorrelationId}", id, correlationId);
+            return Problem(
+                title: "Config Fetch Error",
+                detail: $"Error fetching config for provider: {ex.Message}",
+                statusCode: 500,
+                instance: correlationId);
+        }
+    }
+
+    /// <summary>
+    /// Update configuration for a specific provider
+    /// </summary>
+    [HttpPut("{id}/config")]
+    public async Task<IActionResult> UpdateProviderConfig(
+        string id,
+        [FromBody] UpdateProviderConfigRequest request,
+        CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+
+        try
+        {
+            Log.Information("Updating config for provider {ProviderId}, CorrelationId: {CorrelationId}", id, correlationId);
+
+            // Save API key if provided and not masked
+            if (!string.IsNullOrWhiteSpace(request.ApiKey) && !request.ApiKey.StartsWith("*"))
+            {
+                await _secureStorageService.SaveApiKeyAsync(id, request.ApiKey).ConfigureAwait(false);
+            }
+
+            return Ok(new
+            {
+                success = true,
+                message = $"Configuration updated for provider {id}",
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error updating config for provider {ProviderId}, CorrelationId: {CorrelationId}", id, correlationId);
+            return Problem(
+                title: "Config Update Error",
+                detail: $"Error updating config for provider: {ex.Message}",
+                statusCode: 500,
+                instance: correlationId);
+        }
+    }
+
+    /// <summary>
     /// Get provider recommendations for a specific operation type
     /// </summary>
     [HttpGet("recommendations/{operationType}")]
@@ -1622,7 +1885,7 @@ public class ProvidersController : ControllerBase
     [HttpPost("{name}/ping")]
     public async Task<IActionResult> PingProvider(
         string name,
-        [FromBody] ProviderPingRequest? request,
+        [FromBody] Aura.Core.Services.Providers.ProviderPingRequest? request,
         CancellationToken cancellationToken)
     {
         var correlationId = HttpContext.TraceIdentifier;

@@ -215,3 +215,52 @@ public record SaveSetupApiKeysResponse(
     List<string>? Warnings = null,
     string? ErrorMessage = null,
     string? CorrelationId = null);
+
+/// <summary>
+/// AI Provider information for listing (context menu integration)
+/// </summary>
+public record AIProviderDto(
+    string Id,
+    string Name,
+    string Type,
+    bool IsDefault,
+    bool IsEnabled,
+    string? Model = null,
+    bool HasFallback = false);
+
+/// <summary>
+/// Provider usage statistics
+/// </summary>
+public record ProviderStatsDto(
+    int TotalRequests,
+    int SuccessfulRequests,
+    int FailedRequests,
+    int AverageLatency,
+    long TotalTokensUsed,
+    decimal TotalCost,
+    string LastUsed);
+
+/// <summary>
+/// Provider configuration settings for context menu
+/// </summary>
+public record ProviderSettingsDto(
+    string? ApiKey = null,
+    string? Endpoint = null,
+    string? Model = null,
+    int? MaxTokens = null,
+    double? Temperature = null,
+    bool IsEnabled = true,
+    bool HasFallback = false,
+    string? Type = null);
+
+/// <summary>
+/// Request to update provider configuration
+/// </summary>
+public record UpdateProviderConfigRequest(
+    string? ApiKey = null,
+    string? Endpoint = null,
+    string? Model = null,
+    int? MaxTokens = null,
+    double? Temperature = null,
+    bool? IsEnabled = null,
+    bool? HasFallback = null);
