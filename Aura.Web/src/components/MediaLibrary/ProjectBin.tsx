@@ -2,6 +2,9 @@ import { makeStyles, tokens, Text, Button, ToolbarButton } from '@fluentui/react
 import { Add24Regular, Grid24Regular, List24Regular, Apps24Regular } from '@fluentui/react-icons';
 import React, { useState, useRef, useMemo, useCallback } from 'react';
 import { Virtuoso } from 'react-virtuoso';
+import { useMediaAssetContextMenu } from '../../hooks/useMediaAssetContextMenu';
+import { AssetPreviewModal } from './AssetPreviewModal';
+import { AssetPropertiesDialog } from './AssetPropertiesDialog';
 import { MediaThumbnail } from './MediaThumbnail';
 import { SmartCollections, MediaCollection } from './SmartCollections';
 
@@ -72,6 +75,8 @@ export interface MediaAsset {
   frameRate?: number;
   codec?: string;
   creationDate?: string;
+  isFavorite?: boolean;
+  tags?: string[];
 }
 
 interface ProjectBinProps {
@@ -81,6 +86,8 @@ interface ProjectBinProps {
   onAssetDragStart?: (asset: MediaAsset) => void;
   onAssetDragEnd?: () => void;
   onAssetSelect?: (asset: MediaAsset) => void;
+  onAssetUpdate?: (assetId: string, updates: Partial<MediaAsset>) => void;
+  onAddToTimeline?: (assetId: string) => void;
 }
 
 type ViewMode = 'thumbnail' | 'list' | 'grid';
@@ -92,11 +99,31 @@ export const ProjectBin: React.FC<ProjectBinProps> = ({
   onAssetDragStart,
   onAssetDragEnd,
   onAssetSelect,
+  onAssetUpdate,
+  onAddToTimeline,
 }) => {
   const styles = useStyles();
   const [viewMode, setViewMode] = useState<ViewMode>('thumbnail');
   const [selectedCollection, setSelectedCollection] = useState<string>('all');
   const virtuosoRef = useRef(null);
+
+  // State for preview modal
+  const [previewAssetId, setPreviewAssetId] = useState<string | null>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+
+  // State for properties dialog
+  const [propertiesAssetId, setPropertiesAssetId] = useState<string | null>(null);
+  const [showPropertiesDialog, setShowPropertiesDialog] = useState(false);
+
+  // Get asset by ID for dialogs
+  const previewAsset = useMemo(
+    () => assets.find((a) => a.id === previewAssetId) || null,
+    [assets, previewAssetId]
+  );
+  const propertiesAsset = useMemo(
+    () => assets.find((a) => a.id === propertiesAssetId) || null,
+    [assets, propertiesAssetId]
+  );
 
   // Use virtual scrolling for large asset lists (> 100 items)
   const useVirtualScrolling = useMemo(() => assets.length > 100, [assets.length]);
@@ -133,11 +160,84 @@ export const ProjectBin: React.FC<ProjectBinProps> = ({
   const filteredAssets =
     selectedCollection === 'all' ? assets : assets.filter((a) => a.type === selectedCollection);
 
+  // Context menu action handlers
+  const handleAddToTimeline = useCallback(
+    (assetId: string) => {
+      console.info('Adding asset to timeline:', assetId);
+      onAddToTimeline?.(assetId);
+    },
+    [onAddToTimeline]
+  );
+
+  const handlePreview = useCallback((assetId: string) => {
+    console.info('Previewing asset:', assetId);
+    setPreviewAssetId(assetId);
+    setShowPreviewModal(true);
+  }, []);
+
+  const handleRename = useCallback(
+    (assetId: string, newName: string) => {
+      console.info('Renaming asset:', assetId, 'to', newName);
+      onAssetUpdate?.(assetId, { name: newName });
+    },
+    [onAssetUpdate]
+  );
+
+  const handleToggleFavorite = useCallback(
+    (assetId: string) => {
+      const asset = assets.find((a) => a.id === assetId);
+      if (asset) {
+        console.info('Toggling favorite for asset:', assetId);
+        onAssetUpdate?.(assetId, { isFavorite: !asset.isFavorite });
+      }
+    },
+    [assets, onAssetUpdate]
+  );
+
+  const handleDelete = useCallback(
+    (assetId: string) => {
+      console.info('Deleting asset:', assetId);
+      onRemoveAsset?.(assetId);
+    },
+    [onRemoveAsset]
+  );
+
+  const handleShowProperties = useCallback((assetId: string) => {
+    console.info('Showing properties for asset:', assetId);
+    setPropertiesAssetId(assetId);
+    setShowPropertiesDialog(true);
+  }, []);
+
+  const handlePropertiesSave = useCallback(
+    (assetId: string, updates: { name: string; tags: string[] }) => {
+      console.info('Saving properties for asset:', assetId, updates);
+      onAssetUpdate?.(assetId, updates);
+    },
+    [onAssetUpdate]
+  );
+
+  // Set up context menu hook
+  const handleContextMenu = useMediaAssetContextMenu({
+    onAddToTimeline: handleAddToTimeline,
+    onPreview: handlePreview,
+    onRename: handleRename,
+    onToggleFavorite: handleToggleFavorite,
+    onDelete: handleDelete,
+    onShowProperties: handleShowProperties,
+  });
+
   const handleRevealInFinder = useCallback((asset: MediaAsset) => {
     // In a real implementation, this would call a native API to reveal the file
-    // For demo purposes, show an alert with the path
-    // This would be replaced with a proper notification system
-    alert(`File location: ${asset.filePath || 'Not available'}`);
+    // Uses Electron's contextMenu.revealInOS API if available
+    if (window.electron?.contextMenu?.revealInOS && asset.filePath) {
+      window.electron.contextMenu.revealInOS(asset.filePath).catch((error: unknown) => {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error('Failed to reveal in finder:', errorMessage);
+      });
+    } else {
+      // Fallback for demo purposes
+      console.info(`File location: ${asset.filePath || 'Not available'}`);
+    }
   }, []);
 
   const handleAssetClick = useCallback(
@@ -160,15 +260,26 @@ export const ProjectBin: React.FC<ProjectBinProps> = ({
           preview={asset.preview}
           duration={asset.duration}
           fileSize={asset.fileSize}
+          isFavorite={asset.isFavorite}
           onDragStart={(e) => {
             e.dataTransfer.effectAllowed = 'copy';
-            e.dataTransfer.setData('application/json', JSON.stringify(asset));
+            e.dataTransfer.setData(
+              'application/json',
+              JSON.stringify({
+                type: 'media-asset',
+                assetId: asset.id,
+                assetType: asset.type,
+                filePath: asset.filePath,
+                duration: asset.duration,
+              })
+            );
             onAssetDragStart?.(asset);
           }}
           onDragEnd={onAssetDragEnd}
           onRemove={() => onRemoveAsset?.(asset.id)}
           onRevealInFinder={() => handleRevealInFinder(asset)}
           onClick={() => handleAssetClick(asset)}
+          onContextMenu={(e) => handleContextMenu(e, asset)}
         />
       );
     },
@@ -179,6 +290,7 @@ export const ProjectBin: React.FC<ProjectBinProps> = ({
       onRemoveAsset,
       handleRevealInFinder,
       handleAssetClick,
+      handleContextMenu,
     ]
   );
 
@@ -247,20 +359,46 @@ export const ProjectBin: React.FC<ProjectBinProps> = ({
                 preview={asset.preview}
                 duration={asset.duration}
                 fileSize={asset.fileSize}
+                isFavorite={asset.isFavorite}
                 onDragStart={(e) => {
                   e.dataTransfer.effectAllowed = 'copy';
-                  e.dataTransfer.setData('application/json', JSON.stringify(asset));
+                  e.dataTransfer.setData(
+                    'application/json',
+                    JSON.stringify({
+                      type: 'media-asset',
+                      assetId: asset.id,
+                      assetType: asset.type,
+                      filePath: asset.filePath,
+                      duration: asset.duration,
+                    })
+                  );
                   onAssetDragStart?.(asset);
                 }}
                 onDragEnd={onAssetDragEnd}
                 onRemove={() => onRemoveAsset?.(asset.id)}
                 onRevealInFinder={() => handleRevealInFinder(asset)}
                 onClick={() => handleAssetClick(asset)}
+                onContextMenu={(e) => handleContextMenu(e, asset)}
               />
             ))}
           </div>
         )}
       </div>
+
+      {/* Preview Modal */}
+      <AssetPreviewModal
+        isOpen={showPreviewModal}
+        onClose={() => setShowPreviewModal(false)}
+        asset={previewAsset}
+      />
+
+      {/* Properties Dialog */}
+      <AssetPropertiesDialog
+        isOpen={showPropertiesDialog}
+        onClose={() => setShowPropertiesDialog(false)}
+        onSave={handlePropertiesSave}
+        asset={propertiesAsset}
+      />
     </div>
   );
 };
