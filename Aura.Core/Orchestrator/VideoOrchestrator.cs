@@ -335,7 +335,7 @@ public class VideoOrchestrator
             progress?.Report(validationMsg);
             detailedProgress?.Report(ProgressBuilder.CreateBriefProgress(0, validationMsg, correlationId));
 
-            var validationResult = await _preGenerationValidator.ValidateSystemReadyAsync(brief, planSpec, ct).ConfigureAwait(false);
+            var validationResult = await _preGenerationValidator.ValidateSystemReadyAsync(brief, planSpec, progress: null, ct).ConfigureAwait(false);
             if (!validationResult.IsValid)
             {
                 var issues = string.Join("\n", validationResult.Issues);
@@ -541,7 +541,7 @@ public class VideoOrchestrator
         {
             // Pre-generation validation
             progress?.Report("Validating system readiness...");
-            var validationResult = await _preGenerationValidator.ValidateSystemReadyAsync(brief, planSpec, ct).ConfigureAwait(false);
+            var validationResult = await _preGenerationValidator.ValidateSystemReadyAsync(brief, planSpec, progress: null, ct).ConfigureAwait(false);
             if (!validationResult.IsValid)
             {
                 var issues = string.Join("\n", validationResult.Issues);

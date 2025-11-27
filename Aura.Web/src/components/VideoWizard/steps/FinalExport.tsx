@@ -206,8 +206,23 @@ interface JobStatusData {
 /**
  * Formats the stage and detail message for display.
  * Reduces duplication between SSE and polling code paths.
+ * Handles validation sub-messages to show specific validation steps.
  */
 function formatStageMessage(stage: string, detail?: string | null, percent?: number): string {
+  // Handle validation sub-messages from the Initialization/BriefValidation stage
+  if ((stage === 'Initialization' || stage === 'BriefValidation') && detail) {
+    // Extract and format sub-step from detail message
+    if (detail.includes('FFmpeg')) return 'Validating FFmpeg installation...';
+    if (detail.includes('disk space')) return 'Checking available disk space...';
+    if (detail.includes('brief content')) return 'Validating brief content...';
+    if (detail.includes('hardware') || detail.includes('Detecting'))
+      return 'Detecting system hardware...';
+    if (detail.includes('provider') || detail.includes('Provider'))
+      return 'Validating provider configuration...';
+    if (detail.includes('complete') || detail.includes('Complete')) return 'Validation complete';
+    if (detail.includes('Starting')) return 'Starting system validation...';
+  }
+
   if (detail) {
     return `${stage}: ${detail}`;
   }

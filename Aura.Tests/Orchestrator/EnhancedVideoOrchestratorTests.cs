@@ -60,7 +60,12 @@ public class EnhancedVideoOrchestratorTests : IDisposable
         _mockRetryWrapper = new Mock<ProviderRetryWrapper>(
             Mock.Of<ILogger<ProviderRetryWrapper>>(), null);
         _mockPreValidator = new Mock<PreGenerationValidator>(
-            Mock.Of<ILogger<PreGenerationValidator>>());
+            Mock.Of<ILogger<PreGenerationValidator>>(),
+            Mock.Of<Core.Dependencies.IFfmpegLocator>(),
+            Mock.Of<Core.Dependencies.FFmpegResolver>(MockBehavior.Loose),
+            Mock.Of<Core.Hardware.IHardwareDetector>(),
+            Mock.Of<Core.Services.Providers.IProviderReadinessService>(),
+            null);
         _mockScriptValidator = new Mock<ScriptValidator>(
             Mock.Of<ILogger<ScriptValidator>>());
         _mockTtsValidator = new Mock<TtsOutputValidator>(
@@ -191,7 +196,7 @@ public class EnhancedVideoOrchestratorTests : IDisposable
         
         // Verify all stages executed
         _mockPreValidator.Verify(v => v.ValidateSystemReadyAsync(
-            It.IsAny<Brief>(), It.IsAny<PlanSpec>(), It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<Brief>(), It.IsAny<PlanSpec>(), It.IsAny<IProgress<string>>(), It.IsAny<CancellationToken>()), Times.Once);
         
         VerifyScriptGeneration();
         VerifyVoiceGeneration();
@@ -432,7 +437,7 @@ public class EnhancedVideoOrchestratorTests : IDisposable
     {
         // Arrange
         _mockPreValidator
-            .Setup(v => v.ValidateSystemReadyAsync(It.IsAny<Brief>(), It.IsAny<PlanSpec>(), It.IsAny<CancellationToken>()))
+            .Setup(v => v.ValidateSystemReadyAsync(It.IsAny<Brief>(), It.IsAny<PlanSpec>(), It.IsAny<IProgress<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ValidationResult
             {
                 IsValid = false,
@@ -615,7 +620,7 @@ public class EnhancedVideoOrchestratorTests : IDisposable
     private void SetupValidation()
     {
         _mockPreValidator
-            .Setup(v => v.ValidateSystemReadyAsync(It.IsAny<Brief>(), It.IsAny<PlanSpec>(), It.IsAny<CancellationToken>()))
+            .Setup(v => v.ValidateSystemReadyAsync(It.IsAny<Brief>(), It.IsAny<PlanSpec>(), It.IsAny<IProgress<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ValidationResult { IsValid = true });
     }
 

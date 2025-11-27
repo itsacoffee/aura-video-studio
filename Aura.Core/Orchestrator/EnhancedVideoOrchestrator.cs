@@ -176,12 +176,20 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
         var sw = Stopwatch.StartNew();
 
         _logger.LogInformation("[{CorrelationId}] Stage: {Stage}", context.CorrelationId, stageName);
-        progress?.Report(ProgressBuilder.CreateBriefProgress(0, "Validating brief and system readiness", context.CorrelationId));
+        progress?.Report(ProgressBuilder.CreateBriefProgress(0, "Starting system validation...", context.CorrelationId));
 
         try
         {
+            // Create progress callback for validation sub-steps
+            var validationProgress = new Progress<string>(message =>
+            {
+                // Report validation sub-progress at 2% to show activity without affecting overall progress much
+                progress?.Report(ProgressBuilder.CreateBriefProgress(2, message, context.CorrelationId));
+                _logger.LogDebug("[{CorrelationId}] Validation: {Message}", context.CorrelationId, message);
+            });
+
             var validationResult = await _preGenerationValidator
-                .ValidateSystemReadyAsync(context.Brief, context.PlanSpec, ct).ConfigureAwait(false);
+                .ValidateSystemReadyAsync(context.Brief, context.PlanSpec, validationProgress, ct).ConfigureAwait(false);
 
             if (!validationResult.IsValid)
             {
