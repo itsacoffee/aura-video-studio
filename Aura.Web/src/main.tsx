@@ -8,6 +8,8 @@ import { errorReportingService } from './services/errorReportingService';
 import { loggingService } from './services/loggingService';
 import './styles/component-overrides.css';
 import './styles/windows11.css';
+// Global UI density and spacing adjustments (see global.css for details and how to revert)
+import './styles/global.css';
 import { getAuraTheme } from './themes/auraTheme';
 import { handleHttpErrorResponse, handleHttpError } from './utils/httpInterceptor';
 import { validateEnvironment } from './utils/validateEnv';
