@@ -1110,11 +1110,30 @@ public class JobsController : ControllerBase
 
         try
         {
+            // Send immediate connection acknowledgment so client knows the connection is established
+            var ackData = JsonSerializer.Serialize(new
+            {
+                percent = 0,
+                stage = "Connecting",
+                status = "connecting",
+                message = "SSE connection established, waiting for job...",
+                jobId,
+                correlationId
+            });
+            await Response.WriteAsync($"event: job-progress\n", cancellationToken).ConfigureAwait(false);
+            await Response.WriteAsync($"data: {ackData}\n\n", cancellationToken).ConfigureAwait(false);
+            await Response.Body.FlushAsync(cancellationToken).ConfigureAwait(false);
+
+            Log.Debug("[{CorrelationId}] SSE connection acknowledgment sent for job {JobId}", correlationId, jobId);
+
             // First, check JobRunner for video generation jobs (primary use case)
             // Wait for job to appear (it may take a moment after creation)
             Job? job = null;
             var waitAttempts = 0;
-            const int maxWaitAttempts = 40; // Wait up to 10 seconds (40 * 250ms)
+            const int waitIntervalMs = 250;
+            const int maxWaitTimeMs = 20_000; // 20 seconds
+            const int maxWaitAttempts = maxWaitTimeMs / waitIntervalMs;
+            var lastWaitingMessageTime = DateTime.UtcNow;
 
             while (job == null && waitAttempts < maxWaitAttempts && !cancellationToken.IsCancellationRequested)
             {
@@ -1122,13 +1141,33 @@ public class JobsController : ControllerBase
                 if (job == null)
                 {
                     waitAttempts++;
-                    await Task.Delay(250, cancellationToken).ConfigureAwait(false);
+
+                    // Send waiting message every 2 seconds while waiting for job to appear
+                    if ((DateTime.UtcNow - lastWaitingMessageTime).TotalSeconds >= 2)
+                    {
+                        var waitingData = JsonSerializer.Serialize(new
+                        {
+                            percent = 0,
+                            stage = "Initializing",
+                            status = "waiting",
+                            message = $"Waiting for job to start... ({waitAttempts * 250 / 1000}s)",
+                            jobId,
+                            correlationId
+                        });
+                        await Response.WriteAsync($"event: job-progress\n", cancellationToken).ConfigureAwait(false);
+                        await Response.WriteAsync($"data: {waitingData}\n\n", cancellationToken).ConfigureAwait(false);
+                        await Response.Body.FlushAsync(cancellationToken).ConfigureAwait(false);
+                        lastWaitingMessageTime = DateTime.UtcNow;
+                    }
+
+                    await Task.Delay(waitIntervalMs, cancellationToken).ConfigureAwait(false);
                 }
             }
 
             if (job != null)
             {
-                Log.Information("[{CorrelationId}] Streaming video generation job {JobId} via SSE", correlationId, jobId);
+                Log.Information("[{CorrelationId}] Streaming video generation job {JobId} via SSE (found after {WaitAttempts} attempts)", 
+                    correlationId, jobId, waitAttempts);
 
                 // Send initial state with normalized status
                 var initialData = JsonSerializer.Serialize(new
@@ -1243,12 +1282,15 @@ public class JobsController : ControllerBase
                     }
 
                     return;
-                }
+            }
             }
 
-            // No job found in either service
+            // No job found in either service after extended wait
+            var maxWaitSeconds = maxWaitTimeMs / 1000;
+            Log.Warning("[{CorrelationId}] Job {JobId} not found after waiting {MaxWaitSeconds} seconds",
+                correlationId, jobId, maxWaitSeconds);
             await Response.WriteAsync("event: error\n", cancellationToken).ConfigureAwait(false);
-            await Response.WriteAsync($"data: {{\"error\":\"Job not found after waiting\",\"jobId\":\"{jobId}\"}}\n\n", cancellationToken).ConfigureAwait(false);
+            await Response.WriteAsync($"data: {{\"error\":\"Job not found after waiting {maxWaitSeconds} seconds\",\"jobId\":\"{jobId}\",\"correlationId\":\"{correlationId}\"}}\n\n", cancellationToken).ConfigureAwait(false);
             await Response.Body.FlushAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
