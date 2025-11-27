@@ -245,6 +245,11 @@ function checkJobCompletion(jobData: JobStatusData): boolean {
   return false;
 }
 
+// SSE connection timing constants
+const JOB_REGISTRATION_DELAY_MS = 2000; // Wait for job to be registered in JobRunner
+const SSE_CONNECTION_TIMEOUT_MS = 30000; // Timeout for SSE connection establishment
+const JOB_TIMEOUT_MS = 10 * 60 * 1000; // Overall job timeout (10 minutes)
+
 const QUALITY_OPTIONS = [
   { label: 'Draft (480p)', value: 'low', bitrate: 1500 },
   { label: 'Standard (720p)', value: 'medium', bitrate: 2500 },
@@ -483,10 +488,12 @@ export const FinalExport: FC<FinalExportProps> = ({
           setExportStage('Starting video generation...');
           setExportProgress(1); // Show some progress so user knows something is happening
 
-          // Wait 2 seconds for job to be registered in JobRunner before attempting SSE connection
+          // Wait for job to be registered in JobRunner before attempting SSE connection
           // This helps prevent race condition where SSE connection is attempted before job is available
-          console.info('[FinalExport] Waiting 2 seconds for job registration...');
-          await new Promise((resolve) => setTimeout(resolve, 2000));
+          console.info(
+            `[FinalExport] Waiting ${JOB_REGISTRATION_DELAY_MS}ms for job registration...`
+          );
+          await new Promise((resolve) => setTimeout(resolve, JOB_REGISTRATION_DELAY_MS));
           setExportStage('Connecting to job progress stream...');
 
           // Use SSE for real-time progress updates with polling fallback
@@ -506,28 +513,32 @@ export const FinalExport: FC<FinalExportProps> = ({
             // Track whether we've received any progress updates (connection established)
             let connectionEstablished = false;
 
-            // Connection establishment timeout (30 seconds) - separate from job timeout
+            // Connection establishment timeout - separate from job timeout
             const connectionTimeoutId = setTimeout(() => {
               if (!connectionEstablished && eventSource.readyState !== EventSource.CLOSED) {
                 console.warn(
-                  '[FinalExport] SSE connection not established after 30 seconds, falling back to polling'
+                  `[FinalExport] SSE connection not established after ${SSE_CONNECTION_TIMEOUT_MS}ms, falling back to polling`
                 );
                 eventSource.close();
                 eventSourceRef.current = null;
                 // Fall back to polling instead of rejecting
                 fallbackToPolling(jobId, formatIndex, totalFormats).then(resolve).catch(reject);
               }
-            }, 30000);
+            }, SSE_CONNECTION_TIMEOUT_MS);
 
-            // Overall job timeout (10 minutes)
+            // Overall job timeout
             const jobTimeoutId = setTimeout(() => {
               if (eventSource.readyState !== EventSource.CLOSED) {
-                console.warn('[FinalExport] SSE connection timed out after 10 minutes');
+                console.warn(
+                  `[FinalExport] SSE connection timed out after ${JOB_TIMEOUT_MS / 60000} minutes`
+                );
                 eventSource.close();
                 eventSourceRef.current = null;
-                reject(new Error('Video generation timed out after 10 minutes'));
+                reject(
+                  new Error(`Video generation timed out after ${JOB_TIMEOUT_MS / 60000} minutes`)
+                );
               }
-            }, 600000);
+            }, JOB_TIMEOUT_MS);
 
             eventSource.addEventListener('job-progress', (event) => {
               try {

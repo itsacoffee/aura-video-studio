@@ -1130,7 +1130,9 @@ public class JobsController : ControllerBase
             // Wait for job to appear (it may take a moment after creation)
             Job? job = null;
             var waitAttempts = 0;
-            const int maxWaitAttempts = 80; // Wait up to 20 seconds (80 * 250ms)
+            const int waitIntervalMs = 250;
+            const int maxWaitTimeMs = 20_000; // 20 seconds
+            const int maxWaitAttempts = maxWaitTimeMs / waitIntervalMs;
             var lastWaitingMessageTime = DateTime.UtcNow;
 
             while (job == null && waitAttempts < maxWaitAttempts && !cancellationToken.IsCancellationRequested)
@@ -1158,7 +1160,7 @@ public class JobsController : ControllerBase
                         lastWaitingMessageTime = DateTime.UtcNow;
                     }
 
-                    await Task.Delay(250, cancellationToken).ConfigureAwait(false);
+                    await Task.Delay(waitIntervalMs, cancellationToken).ConfigureAwait(false);
                 }
             }
 
@@ -1280,14 +1282,15 @@ public class JobsController : ControllerBase
                     }
 
                     return;
-                }
+            }
             }
 
             // No job found in either service after extended wait
+            var maxWaitSeconds = maxWaitTimeMs / 1000;
             Log.Warning("[{CorrelationId}] Job {JobId} not found after waiting {MaxWaitSeconds} seconds",
-                correlationId, jobId, maxWaitAttempts * 250 / 1000);
+                correlationId, jobId, maxWaitSeconds);
             await Response.WriteAsync("event: error\n", cancellationToken).ConfigureAwait(false);
-            await Response.WriteAsync($"data: {{\"error\":\"Job not found after waiting 20 seconds\",\"jobId\":\"{jobId}\",\"correlationId\":\"{correlationId}\"}}\n\n", cancellationToken).ConfigureAwait(false);
+            await Response.WriteAsync($"data: {{\"error\":\"Job not found after waiting {maxWaitSeconds} seconds\",\"jobId\":\"{jobId}\",\"correlationId\":\"{correlationId}\"}}\n\n", cancellationToken).ConfigureAwait(false);
             await Response.Body.FlushAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
