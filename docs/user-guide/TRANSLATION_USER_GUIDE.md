@@ -416,6 +416,44 @@ Advanced workflow combining translation, SSML markup, and TTS generation for com
 - May not require immediate action
 - Document for future iterations
 
+### Structured Output Instead of Translation (Ollama/Local LLMs)
+
+**Problem:** Translation returns JSON-like output with metadata fields (e.g., `{"title": "...", "description": "..."}`) instead of clean translated text.
+
+**Cause:** Local LLM (Ollama) is interpreting the translation prompt incorrectly, generating structured documentation or tutorial content rather than pure translation output.
+
+**Solutions:**
+
+1. **Update to Latest Version**
+   - The latest version includes improved prompt engineering that provides stronger output constraints
+   - Prompts now include explicit instructions to avoid JSON/structured output
+
+2. **Try a Different Ollama Model**
+   - Some models (e.g., llama3.1, mistral) follow translation instructions more reliably
+   - Models with larger context windows tend to perform better
+   - Check available models with: `ollama list`
+   - Install a recommended model with: `ollama pull llama3.1:8b`
+
+3. **Adjust Model Temperature**
+   - Lower temperature values (0.3-0.5) produce more consistent output
+   - Higher temperatures may cause the model to "improvise" with structured formats
+   - Configure in your LLM settings or provider configuration
+
+4. **Verify Model Context Length**
+   - Ensure the model has sufficient context length for your translation
+   - Long source texts may cause truncation issues
+   - Consider breaking long texts into smaller segments
+
+5. **Automatic Recovery**
+   - The system now automatically attempts to extract translation from JSON responses
+   - If a `translation`, `translatedText`, `text`, or `content` field is detected, it will be extracted
+   - Check logs for warnings about "structured JSON response" if issues persist
+
+**Technical Details:**
+- The translation service includes robust response parsing that handles malformed output
+- JSON artifacts are automatically stripped when detected
+- Provider-specific prompt reinforcement is applied for local models
+
 ## Performance Expectations
 
 - **Single translation**: 5-15 seconds (short text) to 30-45 seconds (10-min script)
