@@ -345,8 +345,8 @@ public class TranslationService
             var translation = ExtractTranslation(response);
             
             // Validate translation quality - check for structured metadata artifacts
-            if (translation.Contains("\"title\"") || translation.Contains("\"description\"") || 
-                translation.Contains("\"tutorial\"") || translation.Contains("\"steps\""))
+            // Use the helper method to ensure we're checking for JSON property patterns
+            if (ContainsStructuredArtifactKeys(translation))
             {
                 _logger.LogError(
                     "Translation output contains structured metadata. This indicates prompt engineering failure. " +
@@ -577,49 +577,57 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
 
         var trimmedResponse = llmResponse.Trim();
         
-        // Check if response is malformed JSON/structured data
-        if ((trimmedResponse.StartsWith("{") && trimmedResponse.Contains("\"title\"")) ||
-            (trimmedResponse.StartsWith("{") && trimmedResponse.Contains("\"translation\"")))
+        // Check if response looks like JSON (starts with { and ends with })
+        // Use TryParse to reliably detect valid JSON before attempting extraction
+        if (trimmedResponse.StartsWith("{") && trimmedResponse.EndsWith("}"))
         {
-            _logger.LogWarning("Detected structured JSON response instead of plain text translation. Attempting to extract translation field.");
-            
             try
             {
-                // Try to parse as JSON and extract translation field
+                // Attempt to parse as JSON
                 using var doc = JsonDocument.Parse(trimmedResponse);
                 var root = doc.RootElement;
                 
-                // Try common field names
-                if (root.TryGetProperty("translation", out var translationField))
+                // Only proceed with extraction if this is a JSON object (not an array or primitive)
+                if (root.ValueKind == JsonValueKind.Object)
                 {
-                    var extracted = translationField.GetString();
-                    if (!string.IsNullOrWhiteSpace(extracted))
-                        return extracted;
-                }
-                if (root.TryGetProperty("translatedText", out var translatedTextField))
-                {
-                    var extracted = translatedTextField.GetString();
-                    if (!string.IsNullOrWhiteSpace(extracted))
-                        return extracted;
-                }
-                if (root.TryGetProperty("text", out var textField))
-                {
-                    var extracted = textField.GetString();
-                    if (!string.IsNullOrWhiteSpace(extracted))
-                        return extracted;
-                }
-                if (root.TryGetProperty("content", out var contentField))
-                {
-                    var extracted = contentField.GetString();
-                    if (!string.IsNullOrWhiteSpace(extracted))
-                        return extracted;
-                }
+                    _logger.LogWarning("Detected structured JSON response instead of plain text translation. Attempting to extract translation field.");
                     
-                _logger.LogWarning("Could not extract translation from JSON structure, returning raw response");
+                    // Try common field names in order of preference
+                    if (root.TryGetProperty("translation", out var translationField) && 
+                        translationField.ValueKind == JsonValueKind.String)
+                    {
+                        var extracted = translationField.GetString();
+                        if (!string.IsNullOrWhiteSpace(extracted))
+                            return extracted;
+                    }
+                    if (root.TryGetProperty("translatedText", out var translatedTextField) && 
+                        translatedTextField.ValueKind == JsonValueKind.String)
+                    {
+                        var extracted = translatedTextField.GetString();
+                        if (!string.IsNullOrWhiteSpace(extracted))
+                            return extracted;
+                    }
+                    if (root.TryGetProperty("text", out var textField) && 
+                        textField.ValueKind == JsonValueKind.String)
+                    {
+                        var extracted = textField.GetString();
+                        if (!string.IsNullOrWhiteSpace(extracted))
+                            return extracted;
+                    }
+                    if (root.TryGetProperty("content", out var contentField) && 
+                        contentField.ValueKind == JsonValueKind.String)
+                    {
+                        var extracted = contentField.GetString();
+                        if (!string.IsNullOrWhiteSpace(extracted))
+                            return extracted;
+                    }
+                        
+                    _logger.LogWarning("Could not extract translation from JSON structure, returning raw response");
+                }
             }
-            catch (JsonException ex)
+            catch (JsonException)
             {
-                _logger.LogWarning(ex, "Failed to parse response as JSON, returning cleaned text");
+                // Not valid JSON, continue with text processing
             }
         }
         
@@ -643,9 +651,14 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
             }
         }
         
-        // Clean up multiple consecutive line breaks but preserve intentional formatting
-        var lines = trimmedResponse.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        var cleanedLines = lines.Select(l => l.Trim()).Where(l => !string.IsNullOrEmpty(l));
+        // Normalize line breaks while preserving paragraph structure
+        // Replace multiple consecutive newlines with a double newline (paragraph break)
+        // This preserves intentional formatting while cleaning up excessive whitespace
+        var normalizedText = Regex.Replace(trimmedResponse, @"\n\s*\n\s*\n+", "\n\n");
+        
+        // Trim whitespace from each line but preserve line structure
+        var lines = normalizedText.Split('\n');
+        var cleanedLines = lines.Select(l => l.Trim());
         
         return string.Join("\n", cleanedLines).Trim();
     }
@@ -661,14 +674,74 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
             return text;
         }
 
-        // Remove JSON-like structures aggressively
-        var cleaned = Regex.Replace(
-            text, 
-            @"\{[^}]*""(title|description|tutorial|steps|metadata)""[^}]*\}", 
-            "", 
-            RegexOptions.IgnoreCase);
+        // Try to parse embedded JSON objects and remove them
+        // This approach is more robust than regex for handling nested structures
+        var result = new StringBuilder();
+        var i = 0;
+        var braceDepth = 0;
+        var inJsonObject = false;
+        var jsonStart = -1;
         
-        return cleaned.Trim();
+        while (i < text.Length)
+        {
+            var c = text[i];
+            
+            if (c == '{' && !inJsonObject)
+            {
+                // Potential start of JSON object
+                jsonStart = i;
+                inJsonObject = true;
+                braceDepth = 1;
+            }
+            else if (c == '{' && inJsonObject)
+            {
+                braceDepth++;
+            }
+            else if (c == '}' && inJsonObject)
+            {
+                braceDepth--;
+                if (braceDepth == 0)
+                {
+                    // End of JSON object - check if it contains known artifact keys
+                    var potentialJson = text.Substring(jsonStart, i - jsonStart + 1);
+                    if (!ContainsStructuredArtifactKeys(potentialJson))
+                    {
+                        // Not a structured artifact, keep it
+                        result.Append(potentialJson);
+                    }
+                    // Otherwise, we strip it by not appending
+                    inJsonObject = false;
+                    jsonStart = -1;
+                }
+            }
+            else if (!inJsonObject)
+            {
+                result.Append(c);
+            }
+            
+            i++;
+        }
+        
+        // If we ended mid-JSON, append the remainder
+        if (inJsonObject && jsonStart >= 0)
+        {
+            result.Append(text.Substring(jsonStart));
+        }
+        
+        return result.ToString().Trim();
+    }
+
+    /// <summary>
+    /// Checks if a JSON-like string contains known structured artifact keys.
+    /// </summary>
+    private static bool ContainsStructuredArtifactKeys(string text)
+    {
+        // Check for common artifact patterns as JSON property names (with quotes)
+        return text.Contains("\"title\"", StringComparison.OrdinalIgnoreCase) ||
+               text.Contains("\"description\"", StringComparison.OrdinalIgnoreCase) ||
+               text.Contains("\"tutorial\"", StringComparison.OrdinalIgnoreCase) ||
+               text.Contains("\"steps\"", StringComparison.OrdinalIgnoreCase) ||
+               text.Contains("\"metadata\"", StringComparison.OrdinalIgnoreCase);
     }
 
     private CulturalContext BuildDefaultCulturalContext(LanguageInfo targetLanguage)
