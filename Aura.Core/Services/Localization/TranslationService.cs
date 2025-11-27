@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
@@ -37,6 +38,18 @@ public class TranslationService
         _qualityValidator = new TranslationQualityValidator(logger, llmProvider);
         _timingAdjuster = new TimingAdjuster(logger);
         _visualAnalyzer = new VisualLocalizationAnalyzer(logger, llmProvider);
+    }
+
+    /// <summary>
+    /// Determines if the current LLM provider is a local model (Ollama, Local, or RuleBased).
+    /// Local models may require stronger prompt constraints to produce clean translation output.
+    /// </summary>
+    private bool IsLocalModel()
+    {
+        var providerTypeName = _llmProvider.GetType().Name;
+        return providerTypeName.Contains("Ollama", StringComparison.OrdinalIgnoreCase) ||
+               providerTypeName.Contains("Local", StringComparison.OrdinalIgnoreCase) ||
+               providerTypeName.Contains("RuleBased", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -331,6 +344,28 @@ public class TranslationService
             
             var translation = ExtractTranslation(response);
             
+            // Validate translation quality - check for structured metadata artifacts
+            if (translation.Contains("\"title\"") || translation.Contains("\"description\"") || 
+                translation.Contains("\"tutorial\"") || translation.Contains("\"steps\""))
+            {
+                _logger.LogError(
+                    "Translation output contains structured metadata. This indicates prompt engineering failure. " +
+                    "Source: {Source}, Target: {Target}, ResponseLength: {Length}",
+                    sourceLanguage, targetLanguage, response.Length);
+                
+                // Attempt aggressive cleanup
+                translation = StripStructuredArtifacts(translation);
+            }
+
+            // Ensure translation is not suspiciously long compared to source
+            if (translation.Length > text.Length * 5)
+            {
+                _logger.LogWarning(
+                    "Translation is {Ratio:F1}x longer than source text. This may indicate verbose LLM output. " +
+                    "Consider adjusting prompt or model parameters.",
+                    (double)translation.Length / text.Length);
+            }
+            
             _logger.LogDebug(
                 "Translation completed: {SourceLang} -> {TargetLang}, Input: {InputLength} chars, Output: {OutputLength} chars",
                 sourceLanguage, targetLanguage, text.Length, translation.Length);
@@ -462,10 +497,36 @@ ADDITIONAL CONSTRAINTS:");
             }
         }
 
+        // Add provider-specific reinforcement for local models
+        if (IsLocalModel())
+        {
+            systemBuilder.AppendLine(@"
+
+IMPORTANT FOR LOCAL MODELS:
+You are a translation tool, not a tutorial generator. Your ONLY job is to translate text. 
+Do NOT generate structured content, tutorials, or explanations.
+Return the translated text EXACTLY as it should appear in the target language - nothing more.");
+        }
+
         systemBuilder.AppendLine(@"
 
-OUTPUT INSTRUCTIONS:
-Provide ONLY the translated/transformed text. Do not include explanations, notes, or commentary.");
+CRITICAL OUTPUT REQUIREMENTS:
+1. Return ONLY the translated text itself - nothing else
+2. DO NOT wrap the output in JSON, XML, or any structured format
+3. DO NOT include metadata fields like 'title', 'description', 'steps', etc.
+4. DO NOT include explanations, notes, commentary, or reasoning
+5. DO NOT include the word 'translation' or 'translated text' in your response
+6. DO NOT add introductory phrases like 'Here is the translation:'
+7. If the input is a simple sentence, output should be a simple translated sentence
+8. Preserve the original formatting (line breaks, paragraphs) but nothing more
+
+WRONG OUTPUT EXAMPLE:
+{""translation"": ""Prueba nuestro nuevo sabor de pasta de dientes hoy"", ""title"": ""Tutorial...""}
+
+CORRECT OUTPUT EXAMPLE:
+Prueba nuestro nuevo sabor de pasta de dientes hoy -- Spearmint. Larga duración refrescante! - Atom Toothpaste Company
+
+Your response must contain ONLY the translated text, exactly as shown in the correct example.");
 
         // User prompt: The actual content to translate
         userBuilder.AppendLine($"Translate the following text from {sourceLanguage} to {targetLanguage}:");
@@ -502,10 +563,112 @@ Provide ONLY the translated/transformed text. Do not include explanations, notes
         return context.ToString();
     }
 
+    /// <summary>
+    /// Extracts the actual translation from an LLM response, handling various malformed output formats.
+    /// Supports extraction from JSON structures and removal of common unwanted prefixes.
+    /// </summary>
     private string ExtractTranslation(string llmResponse)
     {
-        var lines = llmResponse.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        return string.Join(" ", lines).Trim();
+        if (string.IsNullOrWhiteSpace(llmResponse))
+        {
+            _logger.LogWarning("LLM returned empty translation response");
+            return string.Empty;
+        }
+
+        var trimmedResponse = llmResponse.Trim();
+        
+        // Check if response is malformed JSON/structured data
+        if ((trimmedResponse.StartsWith("{") && trimmedResponse.Contains("\"title\"")) ||
+            (trimmedResponse.StartsWith("{") && trimmedResponse.Contains("\"translation\"")))
+        {
+            _logger.LogWarning("Detected structured JSON response instead of plain text translation. Attempting to extract translation field.");
+            
+            try
+            {
+                // Try to parse as JSON and extract translation field
+                using var doc = JsonDocument.Parse(trimmedResponse);
+                var root = doc.RootElement;
+                
+                // Try common field names
+                if (root.TryGetProperty("translation", out var translationField))
+                {
+                    var extracted = translationField.GetString();
+                    if (!string.IsNullOrWhiteSpace(extracted))
+                        return extracted;
+                }
+                if (root.TryGetProperty("translatedText", out var translatedTextField))
+                {
+                    var extracted = translatedTextField.GetString();
+                    if (!string.IsNullOrWhiteSpace(extracted))
+                        return extracted;
+                }
+                if (root.TryGetProperty("text", out var textField))
+                {
+                    var extracted = textField.GetString();
+                    if (!string.IsNullOrWhiteSpace(extracted))
+                        return extracted;
+                }
+                if (root.TryGetProperty("content", out var contentField))
+                {
+                    var extracted = contentField.GetString();
+                    if (!string.IsNullOrWhiteSpace(extracted))
+                        return extracted;
+                }
+                    
+                _logger.LogWarning("Could not extract translation from JSON structure, returning raw response");
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogWarning(ex, "Failed to parse response as JSON, returning cleaned text");
+            }
+        }
+        
+        // Remove common unwanted prefixes that models sometimes add
+        var prefixesToRemove = new[]
+        {
+            "Translation:",
+            "Translated text:",
+            "Here is the translation:",
+            "The translation is:",
+            "Output:",
+            "Result:"
+        };
+        
+        foreach (var prefix in prefixesToRemove)
+        {
+            if (trimmedResponse.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                trimmedResponse = trimmedResponse.Substring(prefix.Length).TrimStart();
+                break;
+            }
+        }
+        
+        // Clean up multiple consecutive line breaks but preserve intentional formatting
+        var lines = trimmedResponse.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        var cleanedLines = lines.Select(l => l.Trim()).Where(l => !string.IsNullOrEmpty(l));
+        
+        return string.Join("\n", cleanedLines).Trim();
+    }
+
+    /// <summary>
+    /// Aggressively strips structured artifacts (JSON-like structures) from translation output.
+    /// Used as a fallback when the LLM returns metadata instead of plain translation text.
+    /// </summary>
+    private string StripStructuredArtifacts(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return text;
+        }
+
+        // Remove JSON-like structures aggressively
+        var cleaned = Regex.Replace(
+            text, 
+            @"\{[^}]*""(title|description|tutorial|steps|metadata)""[^}]*\}", 
+            "", 
+            RegexOptions.IgnoreCase);
+        
+        return cleaned.Trim();
     }
 
     private CulturalContext BuildDefaultCulturalContext(LanguageInfo targetLanguage)
