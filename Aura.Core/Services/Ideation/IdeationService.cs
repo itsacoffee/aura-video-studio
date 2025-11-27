@@ -122,47 +122,70 @@ public class IdeationService
 
         try
         {
-            // Build system prompt for structured JSON output
-            var systemPrompt = @"You are an expert video content strategist specializing in creating engaging video concept variations.
-Your task is to generate diverse, creative video concept variations based on the user's topic.
+            // Build expert-level system prompt for high-value concept generation
+            var systemPrompt = @"You are a world-class content strategist with 10+ years of experience helping creators achieve viral success on YouTube, TikTok, and Instagram. You have deep expertise in audience psychology, viral mechanics, and content differentiation strategies.
+
+Your task is to generate SPECIFIC, ACTIONABLE, and UNIQUE video concept variations that will genuinely help creators stand out. Every concept must include:
+- A curiosity-driven title that uses viral hook formulas (curiosity gap, pattern interrupt, controversy)
+- Specific audience pain points and desires (not generic descriptions)
+- Unique value propositions that differentiate from competitors
+- Content gaps that competitors are missing
+- Specific actionable insights (not generic advice)
+- Monetization and virality potential assessment
 
 You MUST respond with ONLY valid JSON in the following format (no markdown, no code blocks):
 {
   ""concepts"": [
     {
-      ""title"": ""Engaging title specific to the topic"",
-      ""description"": ""Detailed 2-3 sentence description"",
-      ""angle"": ""Unique perspective (e.g., Tutorial, Story, Comparison, Behind-the-Scenes)"",
-      ""targetAudience"": ""Specific audience description"",
-      ""estimatedDuration"": ""30-60 seconds"",
-      ""appealScore"": 85,
-      ""talkingPoints"": [""Point 1"", ""Point 2"", ""Point 3""],
-      ""pros"": [""Advantage 1"", ""Advantage 2""],
-      ""cons"": [""Challenge 1"", ""Challenge 2""],
-      ""productionNotes"": ""Brief notes on how to produce this""
+      ""title"": ""Specific, curiosity-driven title using viral formula"",
+      ""description"": ""3-4 sentences with SPECIFIC tactics and insights, not vague concepts. Include what makes this approach unique and why it works."",
+      ""angle"": ""Unique perspective (Tutorial, Narrative, Case Study, Comparison, Documentary, Behind-the-Scenes, Expert Analysis, Deep Dive)"",
+      ""targetAudience"": ""Detailed persona with specific pain points and desires - not just 'beginners' but 'entrepreneurs struggling to get their first 1000 followers'"",
+      ""hook"": ""Specific viral hook (15 seconds max) with psychological trigger - curiosity gap, pattern interrupt, or controversy"",
+      ""uniqueValue"": ""What makes this concept stand out from the 1000 other videos on this topic"",
+      ""contentGap"": ""What competitors are missing that this video addresses"",
+      ""keyInsights"": [""Specific actionable insight 1"", ""Specific insight 2"", ""Specific insight 3""],
+      ""talkingPoints"": [""Specific point with example 1"", ""Point 2"", ""Point 3"", ""Point 4"", ""Point 5""],
+      ""visualSuggestions"": [""Specific visual idea 1"", ""Visual idea 2""],
+      ""monetizationPotential"": ""High/Medium/Low - with specific reasoning about sponsorship, affiliate, or product opportunities"",
+      ""viralityScore"": 85,
+      ""appealScore"": 90,
+      ""pros"": [""Specific advantage with data or reasoning"", ""Advantage 2"", ""Advantage 3""],
+      ""cons"": [""Specific challenge with mitigation strategy"", ""Challenge 2""]
     }
   ]
-}";
+}
+
+CRITICAL REQUIREMENTS:
+1. SPECIFICITY: Every field must be SPECIFIC to the topic. No generic phrases like 'engaging content' or 'valuable information'.
+2. UNIQUENESS: Each concept must have a genuinely different angle that could compete in a crowded market.
+3. ACTIONABILITY: Talking points and insights must be things a creator can immediately use.
+4. PSYCHOLOGY: Hook must use a specific psychological trigger (curiosity gap, fear of missing out, controversy, pattern interrupt).
+5. DIFFERENTIATION: uniqueValue and contentGap must explain how this stands out from existing content.";
 
             // Build user prompt with topic and context
             var userPromptBuilder = new StringBuilder();
-            userPromptBuilder.AppendLine($"Generate {desiredConceptCount} unique video concept variations for the following topic:");
+            userPromptBuilder.AppendLine($"Generate {desiredConceptCount} HIGH-VALUE, DIFFERENTIATED video concepts for:");
             userPromptBuilder.AppendLine();
-            userPromptBuilder.AppendLine($"Topic: {request.Topic}");
+            userPromptBuilder.AppendLine($"TOPIC: {request.Topic}");
             if (!string.IsNullOrEmpty(request.Audience))
             {
-                userPromptBuilder.AppendLine($"Target Audience: {request.Audience}");
+                userPromptBuilder.AppendLine($"TARGET AUDIENCE HINT: {request.Audience}");
             }
             if (!string.IsNullOrEmpty(request.Tone))
             {
-                userPromptBuilder.AppendLine($"Desired Tone: {request.Tone}");
+                userPromptBuilder.AppendLine($"DESIRED TONE: {request.Tone}");
+            }
+            if (!string.IsNullOrEmpty(request.Platform))
+            {
+                userPromptBuilder.AppendLine($"PLATFORM: {request.Platform}");
             }
             userPromptBuilder.AppendLine();
 
             // Include RAG context if available
             if (ragContext != null && ragContext.Chunks.Count > 0)
             {
-                userPromptBuilder.AppendLine("Additional Context from Knowledge Base:");
+                userPromptBuilder.AppendLine("=== RELEVANT CONTEXT FROM KNOWLEDGE BASE ===");
                 foreach (var chunk in ragContext.Chunks.Take(5))
                 {
                     userPromptBuilder.AppendLine(chunk.Content);
@@ -187,7 +210,7 @@ You MUST respond with ONLY valid JSON in the following format (no markdown, no c
 
                     if (trendingTopics.Count > 0)
                     {
-                        userPromptBuilder.AppendLine("Trending Topics (for reference):");
+                        userPromptBuilder.AppendLine("=== TRENDING CONTEXT (use for relevance) ===");
                         foreach (var topic in trendingTopics.Take(3))
                         {
                             userPromptBuilder.AppendLine($"- {topic.Topic} (Trend Score: {topic.TrendScore:F1}/100)");
@@ -201,16 +224,29 @@ You MUST respond with ONLY valid JSON in the following format (no markdown, no c
                 }
             }
 
-            userPromptBuilder.AppendLine("Requirements:");
-            userPromptBuilder.AppendLine("- Each concept must have a DIFFERENT angle/approach");
-            userPromptBuilder.AppendLine("- Make titles catchy and specific to the topic");
-            userPromptBuilder.AppendLine("- Ensure descriptions are detailed and actionable");
-            userPromptBuilder.AppendLine("- Appeal scores should vary (60-95 range)");
-            userPromptBuilder.AppendLine("- Include 3-5 talking points per concept");
-            userPromptBuilder.AppendLine("- List 2-3 pros and cons for each");
-            userPromptBuilder.AppendLine("- Add production notes for each concept");
+            userPromptBuilder.AppendLine("=== CRITICAL REQUIREMENTS ===");
             userPromptBuilder.AppendLine();
-            userPromptBuilder.AppendLine($"Generate {desiredConceptCount} concepts now.");
+            userPromptBuilder.AppendLine("For EACH concept, you MUST provide:");
+            userPromptBuilder.AppendLine("1. TITLE: Use a viral formula (curiosity gap, 'X vs Y', 'The truth about...', numbered list)");
+            userPromptBuilder.AppendLine("2. DESCRIPTION: 100+ characters with SPECIFIC tactics, not vague promises");
+            userPromptBuilder.AppendLine("3. HOOK: Specific 15-second opening that creates immediate curiosity");
+            userPromptBuilder.AppendLine("4. UNIQUE VALUE: What makes THIS concept different from the 1000 other videos on this topic");
+            userPromptBuilder.AppendLine("5. CONTENT GAP: What are competitors MISSING that this addresses");
+            userPromptBuilder.AppendLine("6. KEY INSIGHTS: 3 specific, actionable takeaways (not generic advice)");
+            userPromptBuilder.AppendLine("7. VIRALITY SCORE: 60-95 based on shareability, controversy potential, and trending alignment");
+            userPromptBuilder.AppendLine("8. MONETIZATION POTENTIAL: How can this be monetized (sponsorship, affiliate, products)");
+            userPromptBuilder.AppendLine();
+            userPromptBuilder.AppendLine("BAD EXAMPLES (DO NOT DO THIS):");
+            userPromptBuilder.AppendLine("- 'A video about the topic' (too vague)");
+            userPromptBuilder.AppendLine("- 'Beginners interested in learning' (not specific)");
+            userPromptBuilder.AppendLine("- 'Key concepts and tips' (generic talking points)");
+            userPromptBuilder.AppendLine();
+            userPromptBuilder.AppendLine("GOOD EXAMPLES:");
+            userPromptBuilder.AppendLine("- Title: 'I Tried X for 30 Days - Here's What Happened'");
+            userPromptBuilder.AppendLine("- Audience: 'Side-hustlers aged 25-35 who tried and failed at their first online business'");
+            userPromptBuilder.AppendLine("- Insight: 'Most creators fail because they optimize for views instead of watch time - here's the data'");
+            userPromptBuilder.AppendLine();
+            userPromptBuilder.AppendLine($"Generate exactly {desiredConceptCount} concepts now. Return ONLY valid JSON.");
 
             var userPrompt = userPromptBuilder.ToString();
 
@@ -1540,6 +1576,12 @@ You MUST respond with ONLY valid JSON in the following format (no markdown, no c
                             var hook = GetStringPropertySafe(conceptElement, "hook", "");
                             var appealScore = GetDoublePropertySafe(conceptElement, "appealScore", 75.0);
 
+                            // Parse new high-value fields
+                            var uniqueValue = GetStringPropertySafe(conceptElement, "uniqueValue", null!);
+                            var contentGap = GetStringPropertySafe(conceptElement, "contentGap", null!);
+                            var monetizationPotential = GetStringPropertySafe(conceptElement, "monetizationPotential", null!);
+                            var viralityScore = GetDoublePropertySafe(conceptElement, "viralityScore", 0.0);
+
                     var pros = new List<string>();
                     if (conceptElement.TryGetProperty("pros", out var prosArray))
                     {
@@ -1579,6 +1621,40 @@ You MUST respond with ONLY valid JSON in the following format (no markdown, no c
                         }
                     }
 
+                    // Parse new array fields
+                    var keyInsights = new List<string>();
+                    if (conceptElement.TryGetProperty("keyInsights", out var keyInsightsArray))
+                    {
+                        foreach (var insight in keyInsightsArray.EnumerateArray())
+                        {
+                            var insightText = insight.GetString();
+                            if (!string.IsNullOrEmpty(insightText))
+                            {
+                                keyInsights.Add(insightText);
+                            }
+                        }
+                    }
+
+                    var visualSuggestions = new List<string>();
+                    if (conceptElement.TryGetProperty("visualSuggestions", out var visualSuggestionsArray))
+                    {
+                        foreach (var visual in visualSuggestionsArray.EnumerateArray())
+                        {
+                            var visualText = visual.GetString();
+                            if (!string.IsNullOrEmpty(visualText))
+                            {
+                                visualSuggestions.Add(visualText);
+                            }
+                        }
+                    }
+
+                    // Quality validation: skip concepts with too-short descriptions
+                    if (description.Length < 50)
+                    {
+                        _logger.LogWarning("Skipping concept with short description: {Title} (length: {Length})", title, description.Length);
+                        continue;
+                    }
+
                     concepts.Add(new ConceptIdea(
                         ConceptId: Guid.NewGuid().ToString(),
                         Title: title,
@@ -1590,7 +1666,13 @@ You MUST respond with ONLY valid JSON in the following format (no markdown, no c
                         AppealScore: appealScore,
                         Hook: hook,
                         TalkingPoints: talkingPoints.Count > 0 ? talkingPoints : null,
-                        CreatedAt: DateTime.UtcNow
+                        CreatedAt: DateTime.UtcNow,
+                        UniqueValue: string.IsNullOrEmpty(uniqueValue) ? null : uniqueValue,
+                        ContentGap: string.IsNullOrEmpty(contentGap) ? null : contentGap,
+                        KeyInsights: keyInsights.Count > 0 ? keyInsights : null,
+                        VisualSuggestions: visualSuggestions.Count > 0 ? visualSuggestions : null,
+                        MonetizationPotential: string.IsNullOrEmpty(monetizationPotential) ? null : monetizationPotential,
+                        ViralityScore: viralityScore > 0 ? viralityScore : null
                     ));
                         }
                         catch (Exception elementEx)

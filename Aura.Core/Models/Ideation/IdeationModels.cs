@@ -20,7 +20,14 @@ public record ConceptIdea(
     string Hook,                     // Opening hook suggestion
     List<string>? TalkingPoints = null,  // Key talking points for the video
     Dictionary<string, double>? DemographicScores = null,  // Appeal scores by demographic
-    DateTime? CreatedAt = null
+    DateTime? CreatedAt = null,
+    // Enhanced high-value fields for better concept generation
+    string? UniqueValue = null,      // What makes this concept stand out from competitors
+    string? ContentGap = null,       // What competitors are missing that this addresses
+    List<string>? KeyInsights = null, // Specific actionable insights
+    List<string>? VisualSuggestions = null, // Specific visual ideas for the video
+    string? MonetizationPotential = null, // High/Medium/Low with reasoning
+    double? ViralityScore = null     // 0-100 score for potential virality
 );
 
 /// <summary>

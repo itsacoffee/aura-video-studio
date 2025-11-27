@@ -120,6 +120,19 @@ public class IdeationServiceTests
         Assert.Contains("Introduction to AI editing", firstConcept.TalkingPoints);
         Assert.Equal(3, firstConcept.Pros.Count);
         Assert.Equal(3, firstConcept.Cons.Count);
+        
+        // Verify new high-value fields
+        Assert.NotNull(firstConcept.UniqueValue);
+        Assert.Contains("First-hand testing", firstConcept.UniqueValue);
+        Assert.NotNull(firstConcept.ContentGap);
+        Assert.NotNull(firstConcept.KeyInsights);
+        Assert.Equal(3, firstConcept.KeyInsights.Count);
+        Assert.NotNull(firstConcept.VisualSuggestions);
+        Assert.Equal(2, firstConcept.VisualSuggestions.Count);
+        Assert.NotNull(firstConcept.MonetizationPotential);
+        Assert.Contains("High", firstConcept.MonetizationPotential);
+        Assert.NotNull(firstConcept.ViralityScore);
+        Assert.Equal(82, firstConcept.ViralityScore);
     }
 
     [Theory]
@@ -152,36 +165,52 @@ public class IdeationServiceTests
             ""concepts"": [
                 {
                     ""title"": ""AI Tools for Video Editing"",
-                    ""description"": ""Explore cutting-edge AI tools that automate video editing tasks."",
+                    ""description"": ""Explore cutting-edge AI tools that automate video editing tasks. This comprehensive guide covers the top 5 tools that can save you hours of editing time."",
                     ""angle"": ""Tutorial"",
                     ""targetAudience"": ""Video editors and content creators"",
                     ""pros"": [""Time-saving"", ""Professional results"", ""Easy to learn""],
                     ""cons"": [""Requires subscription"", ""Limited customization"", ""Learning curve""],
                     ""hook"": ""Want to edit videos 10x faster? AI can help!"",
                     ""talkingPoints"": [""Introduction to AI editing"", ""Top AI tools"", ""Hands-on demo"", ""Tips and tricks"", ""Future trends""],
-                    ""appealScore"": 85
+                    ""appealScore"": 85,
+                    ""uniqueValue"": ""First-hand testing of all 5 tools with real project comparisons"",
+                    ""contentGap"": ""Most tutorials only cover one tool - this covers all major options"",
+                    ""keyInsights"": [""AI editing can reduce editing time by 70%"", ""Best for repetitive tasks like color grading"", ""Still requires human creative direction""],
+                    ""visualSuggestions"": [""Side-by-side comparison screens"", ""Time-lapse of editing process""],
+                    ""monetizationPotential"": ""High - affiliate links for all tools mentioned"",
+                    ""viralityScore"": 82
                 },
                 {
                     ""title"": ""The Future of AI in Video Production"",
-                    ""description"": ""A deep dive into how AI is transforming the video production industry."",
+                    ""description"": ""A deep dive into how AI is transforming the video production industry. Featuring insights from industry leaders and predictions for the next 5 years."",
                     ""angle"": ""Documentary"",
                     ""targetAudience"": ""Industry professionals"",
                     ""pros"": [""Insightful"", ""Industry trends"", ""Expert opinions""],
                     ""cons"": [""Complex topic"", ""Longer format"", ""Requires research""],
                     ""hook"": ""AI is revolutionizing video production. Here's how."",
                     ""talkingPoints"": [""Current state of AI"", ""Key innovations"", ""Industry impact"", ""Challenges"", ""What's next""],
-                    ""appealScore"": 78
+                    ""appealScore"": 78,
+                    ""uniqueValue"": ""Exclusive interviews with AI company founders"",
+                    ""contentGap"": ""Lack of forward-looking analysis in current content"",
+                    ""keyInsights"": [""75% of studios plan to adopt AI tools by 2026"", ""Job roles are shifting, not disappearing"", ""Human creativity remains irreplaceable""],
+                    ""monetizationPotential"": ""Medium - potential for sponsored content from AI companies"",
+                    ""viralityScore"": 75
                 },
                 {
                     ""title"": ""AI vs Traditional Editing: A Comparison"",
-                    ""description"": ""Compare AI-powered editing tools with traditional methods to see which is better."",
+                    ""description"": ""Compare AI-powered editing tools with traditional methods to see which is better. Real projects edited both ways to show actual differences."",
                     ""angle"": ""Comparison"",
                     ""targetAudience"": ""Professionals and beginners"",
                     ""pros"": [""Clear comparison"", ""Practical insights"", ""Balanced view""],
                     ""cons"": [""May be biased"", ""Requires testing"", ""Rapidly changing field""],
                     ""hook"": ""AI editing vs traditional: which should you choose?"",
                     ""talkingPoints"": [""Traditional workflow"", ""AI workflow"", ""Speed comparison"", ""Quality comparison"", ""Cost analysis""],
-                    ""appealScore"": 82
+                    ""appealScore"": 82,
+                    ""uniqueValue"": ""Same project edited both ways with side-by-side results"",
+                    ""contentGap"": ""No other video shows direct A/B comparison on same footage"",
+                    ""keyInsights"": [""AI wins on speed, traditional wins on precision"", ""Best approach combines both methods"", ""Cost difference is negligible at scale""],
+                    ""monetizationPotential"": ""High - course sales potential for hybrid approach"",
+                    ""viralityScore"": 88
                 }
             ]
         }";
