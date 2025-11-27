@@ -488,18 +488,42 @@ public class OllamaLlmProvider : ILlmProvider
                     options["top_k"] = topK.Value;
                 }
 
-                // Use /api/chat endpoint for proper chat completion support
-                // This endpoint better supports system/user roles and JSON format
-                var requestBody = new
+                // Build request body - only include format when explicitly requested
+                // This fixes translation returning empty output when format="json" was hardcoded
+                var requestBodyDict = new Dictionary<string, object>
                 {
-                    model = modelToUse,
-                    messages = messages,
-                    stream = false,
-                    format = "json", // Force JSON format for ideation responses
-                    options = options
+                    { "model", modelToUse },
+                    { "messages", messages },
+                    { "stream", false },
+                    { "options", options }
                 };
 
-                var json = JsonSerializer.Serialize(requestBody);
+                // Only add format constraint when explicitly requested (e.g., for ideation that needs JSON)
+                // Translation and other plain-text use cases should NOT have format constraint
+                // Ollama currently supports "json" as the only format option
+                var responseFormat = parameters?.ResponseFormat;
+                if (!string.IsNullOrEmpty(responseFormat))
+                {
+                    // Validate the format value - Ollama currently only supports "json"
+                    if (string.Equals(responseFormat, "json", StringComparison.OrdinalIgnoreCase))
+                    {
+                        requestBodyDict["format"] = "json";
+                        _logger.LogDebug("Requesting Ollama response with format: json");
+                    }
+                    else
+                    {
+                        _logger.LogWarning(
+                            "Unsupported ResponseFormat value '{Format}' for Ollama. " +
+                            "Only 'json' is currently supported. Proceeding without format constraint.",
+                            responseFormat);
+                    }
+                }
+                else
+                {
+                    _logger.LogDebug("Requesting Ollama response without format constraint (plain text)");
+                }
+
+                var json = JsonSerializer.Serialize(requestBodyDict);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);

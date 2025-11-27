@@ -6,8 +6,21 @@ using Aura.Core.Models.RAG;
 namespace Aura.Core.Models;
 
 /// <summary>
-/// LLM generation parameters for fine-tuning model behavior
+/// LLM generation parameters for fine-tuning model behavior.
 /// </summary>
+/// <param name="Temperature">Controls randomness in output generation (0.0-2.0)</param>
+/// <param name="TopP">Controls nucleus sampling probability (0.0-1.0)</param>
+/// <param name="TopK">Limits tokens to consider at each step</param>
+/// <param name="MaxTokens">Maximum tokens to generate</param>
+/// <param name="FrequencyPenalty">Penalty for token frequency</param>
+/// <param name="PresencePenalty">Penalty for token presence</param>
+/// <param name="StopSequences">Sequences that stop generation</param>
+/// <param name="ModelOverride">Override the default model</param>
+/// <param name="ResponseFormat">Desired response format (e.g., "json" for structured output, null for plain text).
+/// When set to "json", instructs compatible providers to return JSON-formatted responses.
+/// Leave null for plain text responses like translations.
+/// Currently supported by: Ollama (with "json" format). Other providers may ignore this parameter.
+/// If an unsupported value is passed, providers may log a warning and proceed without format constraint.</param>
 public record LlmParameters(
     double? Temperature = null,
     double? TopP = null,
@@ -16,7 +29,8 @@ public record LlmParameters(
     double? FrequencyPenalty = null,
     double? PresencePenalty = null,
     List<string>? StopSequences = null,
-    string? ModelOverride = null);
+    string? ModelOverride = null,
+    string? ResponseFormat = null);
 
 /// <summary>
 /// Brief configuration for video generation with optional prompt customization

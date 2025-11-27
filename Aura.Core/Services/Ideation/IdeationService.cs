@@ -232,6 +232,12 @@ You MUST respond with ONLY valid JSON in the following format (no markdown, no c
             string? jsonResponse = null;
             Exception? lastException = null;
 
+            // Create LLM parameters with JSON format for ideation (requires structured output)
+            // This ensures Ollama and other providers return valid JSON
+            var ideationParams = request.LlmParameters != null
+                ? request.LlmParameters with { ResponseFormat = "json" }
+                : new LlmParameters(ResponseFormat: "json");
+
             for (int attempt = 0; attempt <= maxRetries; attempt++)
             {
                 try
@@ -246,7 +252,7 @@ You MUST respond with ONLY valid JSON in the following format (no markdown, no c
                     jsonResponse = await _llmProvider.GenerateChatCompletionAsync(
                         systemPrompt,
                         userPrompt,
-                        request.LlmParameters,
+                        ideationParams,
                         ct);
 
                     if (string.IsNullOrWhiteSpace(jsonResponse))
