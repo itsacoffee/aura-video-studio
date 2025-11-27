@@ -71,6 +71,31 @@ public record GenerationProgress
 }
 
 /// <summary>
+/// Stage name constants for consistent progress reporting across the pipeline
+/// </summary>
+public static class StageNames
+{
+    // Stage identifiers (short names used in Job.Stage)
+    public const string Initialization = "Initialization";
+    public const string Script = "Script";
+    public const string Voice = "Voice";
+    public const string Visuals = "Visuals";
+    public const string Rendering = "Rendering";
+    public const string Complete = "Complete";
+
+    // Progress message prefixes (for task-level progress)
+    public const string Executing = "Executing:";
+    public const string Completed = "Completed:";
+    
+    // Task-specific stage names (used in progress messages)
+    public const string ScriptGeneration = "Script generation";
+    public const string AudioGeneration = "Audio generation (TTS)";
+    public const string ImageGeneration = "Image generation";
+    public const string CaptionGeneration = "Caption generation";
+    public const string VideoComposition = "Video composition (rendering)";
+}
+
+/// <summary>
 /// Stage weights for progress calculation
 /// Total should sum to 100 for accurate overall progress
 /// </summary>

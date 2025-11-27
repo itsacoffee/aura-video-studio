@@ -331,6 +331,7 @@ public class VideoOrchestrator
         {
             // Pre-generation validation
             var validationMsg = "Validating system readiness...";
+            _logger.LogInformation("[Orchestrator] {Message}", validationMsg);
             progress?.Report(validationMsg);
             detailedProgress?.Report(ProgressBuilder.CreateBriefProgress(0, validationMsg, correlationId));
 
@@ -343,21 +344,27 @@ public class VideoOrchestrator
             }
             _logger.LogInformation("Pre-generation validation passed");
 
-            detailedProgress?.Report(ProgressBuilder.CreateBriefProgress(50, "System validation passed", correlationId));
+            var validationPassedMsg = "System validation passed";
+            _logger.LogInformation("[Orchestrator] {Message}", validationPassedMsg);
+            detailedProgress?.Report(ProgressBuilder.CreateBriefProgress(50, validationPassedMsg, correlationId));
 
             var pipelineMsg = "Starting smart video generation pipeline...";
+            _logger.LogInformation("[Orchestrator] {Message}", pipelineMsg);
             progress?.Report(pipelineMsg);
             detailedProgress?.Report(ProgressBuilder.CreateBriefProgress(100, pipelineMsg, correlationId));
 
             _logger.LogInformation("Using smart orchestration for topic: {Topic}, IsQuickDemo: {IsQuickDemo}", brief.Topic, isQuickDemo);
 
             // Create task executor that maps generation tasks to providers
+            _logger.LogInformation("[Orchestrator] Creating task executor for generation tasks");
             var executorContext = CreateTaskExecutor(brief, planSpec, voiceSpec, renderSpec, ct, isQuickDemo);
             var taskExecutor = executorContext.Executor;
 
             // Map progress events from orchestration to both string and detailed progress
             var orchestrationProgress = new Progress<OrchestrationProgress>(p =>
             {
+                _logger.LogDebug("[Orchestrator] Progress: {Stage} - {Completed}/{Total} tasks ({Percent:F1}%)",
+                    p.CurrentStage, p.CompletedTasks, p.TotalTasks, p.ProgressPercentage);
                 progress?.Report($"{p.CurrentStage}: {p.ProgressPercentage:F1}%");
 
                 // Map to detailed progress with stage-specific information
@@ -1573,30 +1580,63 @@ Aura Video Studio helps you create professional videos quickly and easily. Thank
         int totalItems,
         string? correlationId)
     {
+        var currentStage = orchestrationProgress.CurrentStage.ToLowerInvariant();
+        
         // Map stage name to GenerationProgress stage format
-        var stage = orchestrationProgress.CurrentStage.ToLowerInvariant() switch
+        var stage = currentStage switch
         {
+            var s when s.Contains("starting") || s.Contains("analyzing") || s.Contains("task graph") => "Brief",
             var s when s.Contains("script") => "Script",
             var s when s.Contains("audio") || s.Contains("tts") || s.Contains("narration") => "TTS",
             var s when s.Contains("image") || s.Contains("visual") || s.Contains("asset") => "Images",
             var s when s.Contains("render") || s.Contains("compose") || s.Contains("composition") => "Rendering",
-            var s when s.Contains("post") => "PostProcess",
+            var s when s.Contains("post") || s.Contains("completed") || s.Contains("complete") => "PostProcess",
+            var s when s.Contains("batch") => DetermineStageFromProgress(orchestrationProgress.ProgressPercentage),
             _ => "Processing"
         };
 
-        // Calculate stage-specific percent
-        var stagePercent = orchestrationProgress.ProgressPercentage;
+        // Calculate stage-specific percent based on completed/total tasks
+        double stagePercent;
+        double overallPercent;
+        
+        if (totalItems > 0)
+        {
+            // Use task completion ratio for progress
+            overallPercent = 5.0 + (double)currentItem / totalItems * 90.0; // 5% to 95%
+            stagePercent = (double)currentItem / totalItems * 100.0;
+        }
+        else
+        {
+            // Fallback to orchestration progress
+            stagePercent = orchestrationProgress.ProgressPercentage;
+            overallPercent = StageWeights.CalculateOverallProgress(stage, stagePercent);
+        }
 
         return new GenerationProgress
         {
             Stage = stage,
-            OverallPercent = StageWeights.CalculateOverallProgress(stage, stagePercent),
+            OverallPercent = overallPercent,
             StagePercent = stagePercent,
             Message = orchestrationProgress.CurrentStage,
             CurrentItem = currentItem,
             TotalItems = totalItems,
             ElapsedTime = orchestrationProgress.ElapsedTime,
             CorrelationId = correlationId
+        };
+    }
+
+    /// <summary>
+    /// Determines the current stage based on overall progress percentage
+    /// </summary>
+    private static string DetermineStageFromProgress(double progressPercent)
+    {
+        return progressPercent switch
+        {
+            < 20 => "Script",
+            < 50 => "TTS",
+            < 70 => "Images",
+            < 95 => "Rendering",
+            _ => "PostProcess"
         };
     }
 }

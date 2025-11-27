@@ -85,8 +85,8 @@ public class VideoGenerationOrchestratorTests
             OfflineOnly = false
         };
 
-        int progressReports = 0;
-        var progress = new Progress<OrchestrationProgress>(p => progressReports++);
+        var progressReports = new System.Collections.Generic.List<OrchestrationProgress>();
+        var progress = new Progress<OrchestrationProgress>(p => progressReports.Add(p));
 
         Func<GenerationNode, CancellationToken, Task<object>> mockExecutor = async (node, ct) =>
         {
@@ -103,8 +103,25 @@ public class VideoGenerationOrchestratorTests
             progress,
             CancellationToken.None).ConfigureAwait(false);
 
-        // Assert
-        Assert.True(progressReports > 0);
+        // Assert - Should have multiple progress reports
+        Assert.True(progressReports.Count > 0, "Should have at least one progress report");
+        
+        // Verify we get progress reports for key stages
+        var hasStartingProgress = progressReports.Exists(p => 
+            p.CurrentStage.Contains("Starting", StringComparison.OrdinalIgnoreCase) ||
+            p.CurrentStage.Contains("Analyzing", StringComparison.OrdinalIgnoreCase));
+        Assert.True(hasStartingProgress, "Should have starting/analyzing progress");
+
+        // Verify we get task-level progress
+        var hasExecutingProgress = progressReports.Exists(p => 
+            p.CurrentStage.Contains("Executing", StringComparison.OrdinalIgnoreCase) ||
+            p.CurrentStage.Contains("Completed", StringComparison.OrdinalIgnoreCase));
+        Assert.True(hasExecutingProgress, "Should have executing/completed progress");
+
+        // Verify final progress report
+        var lastReport = progressReports[progressReports.Count - 1];
+        Assert.True(lastReport.CurrentStage.Contains("completed", StringComparison.OrdinalIgnoreCase),
+            $"Last progress should indicate completion, got: {lastReport.CurrentStage}");
     }
 
     [Fact]

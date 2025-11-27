@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Artifacts;
@@ -19,8 +20,15 @@ namespace Aura.Core.Orchestrator;
 /// <summary>
 /// Manages video generation jobs with background execution and progress tracking.
 /// </summary>
-public class JobRunner
+public partial class JobRunner
 {
+    // Compiled regex patterns for performance (used in progress message parsing)
+    [GeneratedRegex(@"(\d+(?:\.\d+)?)\s*%", RegexOptions.Compiled)]
+    private static partial Regex PercentageRegex();
+    
+    [GeneratedRegex(@"(\d+)/(\d+)\s*tasks", RegexOptions.Compiled)]
+    private static partial Regex TaskProgressRegex();
+
     private readonly ILogger<JobRunner> _logger;
     private readonly ArtifactManager _artifactManager;
     private readonly VideoOrchestrator _orchestrator;
@@ -1000,6 +1008,38 @@ public class JobRunner
             percent = 2;
             formattedMessage = "Validating system readiness";
         }
+        else if (message.Contains("Starting orchestration", StringComparison.OrdinalIgnoreCase))
+        {
+            stage = "Initialization";
+            percent = 3;
+            formattedMessage = "Starting video generation orchestration";
+        }
+        else if (message.Contains("Analyzing dependencies", StringComparison.OrdinalIgnoreCase) ||
+                 message.Contains("building task graph", StringComparison.OrdinalIgnoreCase))
+        {
+            stage = "Initialization";
+            percent = 4;
+            formattedMessage = "Analyzing dependencies and building task graph";
+        }
+        else if (message.Contains("Task graph ready", StringComparison.OrdinalIgnoreCase))
+        {
+            stage = "Initialization";
+            percent = 5;
+            formattedMessage = "Task graph ready, starting execution";
+        }
+        else if (message.Contains("Script generation", StringComparison.OrdinalIgnoreCase) ||
+                 message.Contains("Executing: Script", StringComparison.OrdinalIgnoreCase))
+        {
+            stage = "Script";
+            percent = 10;
+            formattedMessage = "Generating video script with AI";
+        }
+        else if (message.Contains("Completed: Script", StringComparison.OrdinalIgnoreCase))
+        {
+            stage = "Script";
+            percent = 20;
+            formattedMessage = "Script generation complete";
+        }
         else if (message.Contains("Stage 1/5", StringComparison.OrdinalIgnoreCase) ||
                  message.Contains("Generating script", StringComparison.OrdinalIgnoreCase))
         {
@@ -1014,6 +1054,20 @@ public class JobRunner
             percent = 25;
             formattedMessage = "Parsing script into scenes";
         }
+        else if (message.Contains("Audio generation", StringComparison.OrdinalIgnoreCase) ||
+                 message.Contains("Executing: Audio", StringComparison.OrdinalIgnoreCase) ||
+                 message.Contains("TTS", StringComparison.OrdinalIgnoreCase))
+        {
+            stage = "Voice";
+            percent = 30;
+            formattedMessage = "Generating voice narration (TTS)";
+        }
+        else if (message.Contains("Completed: Audio", StringComparison.OrdinalIgnoreCase))
+        {
+            stage = "Voice";
+            percent = 45;
+            formattedMessage = "Voice narration complete";
+        }
         else if (message.Contains("Stage 3/5", StringComparison.OrdinalIgnoreCase) ||
                  message.Contains("Generating narration", StringComparison.OrdinalIgnoreCase) ||
                  message.Contains("voice", StringComparison.OrdinalIgnoreCase))
@@ -1021,6 +1075,19 @@ public class JobRunner
             stage = "Voice";
             percent = 40;
             formattedMessage = "Generating voice narration";
+        }
+        else if (message.Contains("Image generation", StringComparison.OrdinalIgnoreCase) ||
+                 message.Contains("Executing: Image", StringComparison.OrdinalIgnoreCase))
+        {
+            stage = "Visuals";
+            percent = 50;
+            formattedMessage = "Generating visual assets";
+        }
+        else if (message.Contains("Completed: Image", StringComparison.OrdinalIgnoreCase))
+        {
+            stage = "Visuals";
+            percent = 65;
+            formattedMessage = "Visual assets complete";
         }
         else if (message.Contains("Stage 4/5", StringComparison.OrdinalIgnoreCase) ||
                  message.Contains("Building timeline", StringComparison.OrdinalIgnoreCase))
@@ -1037,6 +1104,19 @@ public class JobRunner
             percent = 65;
             formattedMessage = "Generating visual assets";
         }
+        else if (message.Contains("Video composition", StringComparison.OrdinalIgnoreCase) ||
+                 message.Contains("Executing: Video composition", StringComparison.OrdinalIgnoreCase))
+        {
+            stage = "Rendering";
+            percent = 70;
+            formattedMessage = "Starting video composition";
+        }
+        else if (message.Contains("Completed: Video composition", StringComparison.OrdinalIgnoreCase))
+        {
+            stage = "Rendering";
+            percent = 95;
+            formattedMessage = "Video composition complete";
+        }
         else if (message.Contains("Stage 5/5", StringComparison.OrdinalIgnoreCase) ||
                  message.Contains("render", StringComparison.OrdinalIgnoreCase) ||
                  message.Contains("composing video", StringComparison.OrdinalIgnoreCase))
@@ -1049,8 +1129,8 @@ public class JobRunner
         {
             // Extract percentage from render progress if available
             stage = "Rendering";
-            // Try to parse "Rendering: X%" from message
-            var percentMatch = System.Text.RegularExpressions.Regex.Match(message, @"(\d+(?:\.\d+)?)\s*%");
+            // Try to parse "Rendering: X%" from message using compiled regex
+            var percentMatch = PercentageRegex().Match(message);
             if (percentMatch.Success && double.TryParse(percentMatch.Groups[1].Value, out double renderPercent))
             {
                 // Map render progress (0-100%) to overall progress (80-95%)
@@ -1061,6 +1141,27 @@ public class JobRunner
                 percent = 85;
             }
             formattedMessage = message;
+        }
+        else if (message.Contains("Processing batch", StringComparison.OrdinalIgnoreCase) ||
+                 message.Contains("Batch completed", StringComparison.OrdinalIgnoreCase))
+        {
+            // Extract batch progress from message using compiled regex
+            var match = TaskProgressRegex().Match(message);
+            if (match.Success && 
+                int.TryParse(match.Groups[1].Value, out int completed) && 
+                int.TryParse(match.Groups[2].Value, out int total) &&
+                total > 0)
+            {
+                // Map task progress (0/N to N/N) to overall progress (5-95%)
+                percent = 5 + (int)((double)completed / total * 90);
+            }
+            formattedMessage = message;
+        }
+        else if (message.Contains("Orchestration completed", StringComparison.OrdinalIgnoreCase))
+        {
+            stage = "Complete";
+            percent = 98;
+            formattedMessage = "Orchestration completed, finalizing";
         }
         else if (message.Contains("complete", StringComparison.OrdinalIgnoreCase))
         {
