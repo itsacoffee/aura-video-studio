@@ -9,6 +9,7 @@ import { loggingService } from './services/loggingService';
 import './styles/component-overrides.css';
 import './styles/windows11.css';
 import { getAuraTheme } from './themes/auraTheme';
+import { handleHttpErrorResponse, handleHttpError } from './utils/httpInterceptor';
 import { validateEnvironment } from './utils/validateEnv';
 import { logWindowsEnvironment } from './utils/windowsUtils';
 
@@ -128,19 +129,16 @@ if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
 
     try {
       const response = await originalFetch(finalInput, init);
-      
+
       // Handle HTTP error status codes (401, 500, etc.) for API calls
       if (resolvedUrl.includes('/api/')) {
-        // Dynamically import error handler to avoid top-level await
-        const { handleHttpErrorResponse } = await import('./utils/httpInterceptor');
         return await handleHttpErrorResponse(response, resolvedUrl);
       }
-      
+
       return response;
     } catch (error) {
       // Handle network errors for API calls
       if (resolvedUrl.includes('/api/')) {
-        const { handleHttpError } = await import('./utils/httpInterceptor');
         handleHttpError(error, resolvedUrl);
       }
       throw error;
@@ -510,8 +508,7 @@ async function startReactApp(): Promise<void> {
               : webLightTheme;
 
         // Use theme background color with fallback
-        const safeBgColor =
-          theme.colorNeutralBackground1 || (isDarkMode ? '#1e1e1e' : '#ffffff');
+        const safeBgColor = theme.colorNeutralBackground1 || (isDarkMode ? '#1e1e1e' : '#ffffff');
 
         rootElement.style.backgroundColor = safeBgColor;
         document.body.style.backgroundColor = safeBgColor;
@@ -534,7 +531,7 @@ async function startReactApp(): Promise<void> {
       const isWizardActive =
         rootElement!.querySelector('[data-wizard-active]') !== null ||
         rootElement!.textContent?.includes('Welcome to Aura Video Studio') ||
-        rootElement!.textContent?.includes('Let\'s get you set up') ||
+        rootElement!.textContent?.includes("Let's get you set up") ||
         window.location.hash.includes('onboarding') ||
         document.body.getAttribute('data-wizard-active') === 'true';
 

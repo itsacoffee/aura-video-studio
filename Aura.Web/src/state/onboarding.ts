@@ -2,8 +2,11 @@
 
 import { apiUrl } from '../config/api';
 import { resetCircuitBreaker } from '../services/api/apiClient';
+import { isNetworkError, parseApiError } from '../services/api/errorHandler';
 import type { FieldValidationError } from '../services/api/providersApi';
 import { validateProviderEnhanced } from '../services/api/providersApi';
+import { setupApi } from '../services/api/setupApi';
+import { saveWizardProgressToBackend as saveWizardProgressToBackendService } from '../services/firstRunService';
 import { getDefaultCacheLocation, getDefaultSaveLocation } from '../utils/pathUtils';
 import type { PreflightReport, StageCheck } from './providers';
 
@@ -1005,6 +1008,7 @@ export async function checkAllInstallationStatusesThunk(
 }
 
 // Validate API key
+// eslint-disable-next-line sonarjs/cognitive-complexity -- Pre-existing complexity, refactoring deferred
 export async function validateApiKeyThunk(
   provider: string,
   apiKey: string,
@@ -1037,7 +1041,7 @@ export async function validateApiKeyThunk(
 
     // Ollama doesn't require an API key - skip format validation and key saving
     const isOllama = provider.toLowerCase() === 'ollama';
-    
+
     if (!isOllama) {
       // Client-side format validation for providers that require API keys
       const formatValidation = validateApiKeyFormat(provider, apiKey);
@@ -1154,7 +1158,6 @@ export async function validateApiKeyThunk(
       console.error('[Enhanced Validation] Error:', validationError);
 
       // Check if this is a network error before falling back
-      const { isNetworkError } = await import('../services/api/errorHandler');
       if (isNetworkError(validationError)) {
         console.warn('[Enhanced Validation] Network error detected, not marking key as invalid');
         dispatch({
@@ -1215,9 +1218,6 @@ export async function validateApiKeyThunk(
     }
   } catch (error: unknown) {
     console.error('API key validation error:', error);
-
-    // Import error handler to properly categorize errors
-    const { isNetworkError, parseApiError } = await import('../services/api/errorHandler');
 
     // Check if this is a network error
     if (isNetworkError(error)) {
@@ -1319,14 +1319,12 @@ export function saveWizardStateToStorage(state: OnboardingState): void {
     localStorage.setItem('wizardProgress', JSON.stringify(stateToSave));
 
     // Also save to backend (fire and forget)
-    import('../services/firstRunService').then(({ saveWizardProgressToBackend }) => {
-      saveWizardProgressToBackend(
-        state.step,
-        state.selectedTier,
-        JSON.stringify(stateToSave)
-      ).catch((error) => {
-        console.warn('Failed to save wizard progress to backend:', error);
-      });
+    saveWizardProgressToBackendService(
+      state.step,
+      state.selectedTier,
+      JSON.stringify(stateToSave)
+    ).catch((error) => {
+      console.warn('Failed to save wizard progress to backend:', error);
     });
   } catch (error) {
     console.error('Failed to save wizard state:', error);
@@ -1363,8 +1361,6 @@ export async function saveWizardProgressToBackend(
   correlationId?: string
 ): Promise<boolean> {
   try {
-    const { setupApi } = await import('../services/api/setupApi');
-
     // Extract serializable state (exclude non-serializable fields)
     const serializableState = {
       step: state.step,
@@ -1403,8 +1399,6 @@ export async function loadWizardProgressFromBackend(
   userId?: string
 ): Promise<Partial<OnboardingState> | null> {
   try {
-    const { setupApi } = await import('../services/api/setupApi');
-
     const status = await setupApi.getWizardStatus(userId);
 
     if (!status.canResume || !status.state) {
@@ -1433,9 +1427,9 @@ export async function completeWizardInBackend(
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      console.info(`[Wizard Persistence] Completing wizard in backend (attempt ${attempt}/${maxRetries})`);
-
-      const { setupApi } = await import('../services/api/setupApi');
+      console.info(
+        `[Wizard Persistence] Completing wizard in backend (attempt ${attempt}/${maxRetries})`
+      );
 
       const result = await setupApi.completeWizard({
         finalStep: state.step,
@@ -1459,7 +1453,10 @@ export async function completeWizardInBackend(
       }
     } catch (error) {
       const errorObj = error instanceof Error ? error : new Error(String(error));
-      console.error(`[Wizard Persistence] ❌ Attempt ${attempt}/${maxRetries} failed:`, errorObj.message);
+      console.error(
+        `[Wizard Persistence] ❌ Attempt ${attempt}/${maxRetries} failed:`,
+        errorObj.message
+      );
 
       // If this is the last attempt, return false
       if (attempt === maxRetries) {
@@ -1469,7 +1466,7 @@ export async function completeWizardInBackend(
 
       // Wait before retrying
       console.info(`[Wizard Persistence] Retrying in ${retryDelay}ms...`);
-      await new Promise(resolve => setTimeout(resolve, retryDelay));
+      await new Promise((resolve) => setTimeout(resolve, retryDelay));
     }
   }
 
@@ -1484,8 +1481,6 @@ export async function resetWizardInBackend(
   correlationId?: string
 ): Promise<boolean> {
   try {
-    const { setupApi } = await import('../services/api/setupApi');
-
     const result = await setupApi.resetWizard({
       preserveData,
       correlationId: correlationId || `wizard-reset-${Date.now()}`,

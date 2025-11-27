@@ -4,6 +4,7 @@
 
 import { AxiosError } from 'axios';
 import { apiUrl } from '../../config/api';
+import { navigateToRoute } from '../../utils/navigation';
 import { loggingService } from '../loggingService';
 
 /**
@@ -716,7 +717,6 @@ export function openLogsFolder(): void {
       'openLogsFolder'
     );
     // Fallback: try to navigate to logs page
-    const { navigateToRoute } = await import('../../utils/navigation');
     navigateToRoute('/logs');
   });
 }
