@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.AI;
@@ -40,6 +41,15 @@ public class OllamaLlmProvider : ILlmProvider
     private bool _lastAvailabilityResult = false;
     private readonly TimeSpan _availabilityCacheDuration = TimeSpan.FromSeconds(10);
     private readonly object _availabilityCacheLock = new object();
+
+    // Static compiled regex patterns for better performance
+    private static readonly Regex MarkdownHeaderRegex = new(@"^#{1,3}\s+(.+?)$", RegexOptions.Compiled);
+    private static readonly Regex SceneMetadataRegex = new(@"^scene\s+\d+\s*[:\-]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex VisualMarkerRegex = new(@"\[VISUAL:[^\]]*\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex PauseMarkerRegex = new(@"\[PAUSE[^\]]*\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex MediaMarkerRegex = new(@"\[(MUSIC|SFX|CUT|FADE)[^\]]*\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex MultiSpaceRegex = new(@"\s+", RegexOptions.Compiled);
+    private static readonly Regex ParagraphSplitRegex = new(@"\n\s*\n", RegexOptions.Compiled);
 
     /// <summary>
     /// Optional callback to enhance prompts before generation
@@ -1854,8 +1864,6 @@ Return ONLY the transition text, no explanations or additional commentary:";
     private List<(string narration, string heading)> ParseMarkdownScenes(string scriptText)
     {
         var scenes = new List<(string narration, string heading)>();
-        
-        var headerPattern = @"^#{1,3}\s+(.+?)$";
         var lines = scriptText.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
         
         string? currentHeading = null;
@@ -1863,7 +1871,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
 
         foreach (var line in lines)
         {
-            var headerMatch = System.Text.RegularExpressions.Regex.Match(line.Trim(), headerPattern);
+            var headerMatch = MarkdownHeaderRegex.Match(line.Trim());
             if (headerMatch.Success)
             {
                 if (currentHeading != null && currentContent.Count > 0)
@@ -1907,7 +1915,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
     {
         var scenes = new List<(string narration, string heading)>();
         
-        var paragraphs = System.Text.RegularExpressions.Regex.Split(scriptText, @"\n\s*\n")
+        var paragraphs = ParagraphSplitRegex.Split(scriptText)
             .Select(p => p.Trim())
             .Where(p => !string.IsNullOrWhiteSpace(p) && !IsMetadataLine(p))
             .ToList();
@@ -1990,7 +1998,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
                trimmed.StartsWith("[pause") ||
                trimmed.StartsWith("[music") ||
                trimmed.StartsWith("[sfx") ||
-               (trimmed.StartsWith("scene ") && System.Text.RegularExpressions.Regex.IsMatch(trimmed, @"^scene\s+\d+\s*[:\-]")) ||
+               (trimmed.StartsWith("scene ") && SceneMetadataRegex.IsMatch(trimmed)) ||
                trimmed.StartsWith("duration:") ||
                trimmed.StartsWith("narration:") ||
                trimmed.StartsWith("visual:");
@@ -2004,10 +2012,10 @@ Return ONLY the transition text, no explanations or additional commentary:";
         if (string.IsNullOrWhiteSpace(narration))
             return string.Empty;
 
-        var cleaned = System.Text.RegularExpressions.Regex.Replace(narration, @"\[VISUAL:[^\]]*\]", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        cleaned = System.Text.RegularExpressions.Regex.Replace(cleaned, @"\[PAUSE[^\]]*\]", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        cleaned = System.Text.RegularExpressions.Regex.Replace(cleaned, @"\[(MUSIC|SFX|CUT|FADE)[^\]]*\]", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        cleaned = System.Text.RegularExpressions.Regex.Replace(cleaned, @"\s+", " ");
+        var cleaned = VisualMarkerRegex.Replace(narration, "");
+        cleaned = PauseMarkerRegex.Replace(cleaned, "");
+        cleaned = MediaMarkerRegex.Replace(cleaned, "");
+        cleaned = MultiSpaceRegex.Replace(cleaned, " ");
         
         return cleaned.Trim();
     }

@@ -277,12 +277,14 @@ public class TtsScriptValidator
 
         if (longSentenceCount > 0)
         {
-            var severity = longSentenceCount > 2 ? TtsIssueSeverity.Warning : TtsIssueSeverity.Info;
-            (severity == TtsIssueSeverity.Warning ? warnings : issues).Add(new TtsValidationIssue(
+            var issue = new TtsValidationIssue(
                 "Sentence",
                 $"{longSentenceCount} sentence(s) exceed {_config.MaxWordsPerSentence} words (may affect TTS naturalness)",
                 sceneNumber,
-                severity));
+                longSentenceCount > 2 ? TtsIssueSeverity.Warning : TtsIssueSeverity.Info);
+            
+            // Warnings and Info severity issues go to warnings list
+            warnings.Add(issue);
         }
     }
 

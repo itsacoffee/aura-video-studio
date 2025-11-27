@@ -20,6 +20,15 @@ public abstract class BaseLlmScriptProvider : IScriptLlmProvider
     protected readonly int _maxRetries;
     protected readonly TimeSpan _baseRetryDelay;
 
+    // Static compiled regex patterns for better performance
+    private static readonly Regex MarkdownHeaderRegex = new(@"^#{1,3}\s+(.+?)$", RegexOptions.Compiled);
+    private static readonly Regex SceneMetadataRegex = new(@"^scene\s+\d+\s*[:\-]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex VisualMarkerRegex = new(@"\[VISUAL:[^\]]*\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex PauseMarkerRegex = new(@"\[PAUSE[^\]]*\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex MediaMarkerRegex = new(@"\[(MUSIC|SFX|CUT|FADE)[^\]]*\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex MultiSpaceRegex = new(@"\s+", RegexOptions.Compiled);
+    private static readonly Regex ParagraphSplitRegex = new(@"\n\s*\n", RegexOptions.Compiled);
+
     protected BaseLlmScriptProvider(ILogger logger, int maxRetries = 3, int baseRetryDelayMs = 1000)
     {
         _logger = logger;
@@ -179,8 +188,6 @@ public abstract class BaseLlmScriptProvider : IScriptLlmProvider
 
         // Calculate durations based on word count and validate scene count
         var targetSceneCount = planSpec.GetCalculatedSceneCount();
-        var totalWordCount = parsedScenes.Sum(s => CountWords(s.narration));
-        var totalTargetDuration = planSpec.TargetDuration;
         
         int sceneNumber = 1;
         foreach (var (narration, heading) in parsedScenes)
@@ -189,7 +196,7 @@ public abstract class BaseLlmScriptProvider : IScriptLlmProvider
                 continue;
 
             var wordCount = CountWords(narration);
-            var duration = CalculateTtsDuration(wordCount, totalWordCount, totalTargetDuration);
+            var duration = CalculateTtsDuration(wordCount);
             
             var visualPrompt = GenerateDefaultVisualPrompt(narration);
             var transition = DetermineTransition(sceneNumber - 1, parsedScenes.Count, planSpec.Style);
@@ -222,9 +229,6 @@ public abstract class BaseLlmScriptProvider : IScriptLlmProvider
     private List<(string narration, string heading)> ParseMarkdownScenes(string scriptText)
     {
         var scenes = new List<(string narration, string heading)>();
-        
-        // Match markdown headers (## or ###) with their content
-        var headerPattern = @"^#{1,3}\s+(.+?)$";
         var lines = scriptText.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
         
         string? currentHeading = null;
@@ -232,7 +236,7 @@ public abstract class BaseLlmScriptProvider : IScriptLlmProvider
 
         foreach (var line in lines)
         {
-            var headerMatch = Regex.Match(line.Trim(), headerPattern);
+            var headerMatch = MarkdownHeaderRegex.Match(line.Trim());
             if (headerMatch.Success)
             {
                 // Save previous section if it has content
@@ -280,7 +284,7 @@ public abstract class BaseLlmScriptProvider : IScriptLlmProvider
         var scenes = new List<(string narration, string heading)>();
         
         // Split by paragraphs (double newlines)
-        var paragraphs = Regex.Split(scriptText, @"\n\s*\n")
+        var paragraphs = ParagraphSplitRegex.Split(scriptText)
             .Select(p => p.Trim())
             .Where(p => !string.IsNullOrWhiteSpace(p) && !IsMetadataLine(p))
             .ToList();
@@ -342,7 +346,7 @@ public abstract class BaseLlmScriptProvider : IScriptLlmProvider
     /// Calculate TTS duration based on word count (150 WPM)
     /// with minimum 3 seconds and maximum 30 seconds bounds
     /// </summary>
-    private TimeSpan CalculateTtsDuration(int wordCount, int totalWordCount, TimeSpan totalDuration)
+    private TimeSpan CalculateTtsDuration(int wordCount)
     {
         const int wordsPerMinute = 150;
         const double minSeconds = 3.0;
@@ -367,12 +371,12 @@ public abstract class BaseLlmScriptProvider : IScriptLlmProvider
 
         var trimmed = line.Trim().ToLowerInvariant();
         
-        // Check for common metadata patterns
+        // Check for common metadata patterns using static compiled regex
         return trimmed.StartsWith("[visual:") ||
                trimmed.StartsWith("[pause") ||
                trimmed.StartsWith("[music") ||
                trimmed.StartsWith("[sfx") ||
-               trimmed.StartsWith("scene ") && Regex.IsMatch(trimmed, @"^scene\s+\d+\s*[:\-]") ||
+               (trimmed.StartsWith("scene ") && SceneMetadataRegex.IsMatch(trimmed)) ||
                trimmed.StartsWith("duration:") ||
                trimmed.StartsWith("narration:") ||
                trimmed.StartsWith("visual:");
@@ -386,17 +390,11 @@ public abstract class BaseLlmScriptProvider : IScriptLlmProvider
         if (string.IsNullOrWhiteSpace(narration))
             return string.Empty;
 
-        // Remove visual markers like [VISUAL: description]
-        var cleaned = Regex.Replace(narration, @"\[VISUAL:[^\]]*\]", "", RegexOptions.IgnoreCase);
-        
-        // Remove pause markers
-        cleaned = Regex.Replace(cleaned, @"\[PAUSE[^\]]*\]", "", RegexOptions.IgnoreCase);
-        
-        // Remove other bracketed metadata
-        cleaned = Regex.Replace(cleaned, @"\[(MUSIC|SFX|CUT|FADE)[^\]]*\]", "", RegexOptions.IgnoreCase);
-        
-        // Clean up multiple spaces
-        cleaned = Regex.Replace(cleaned, @"\s+", " ");
+        // Remove visual markers, pause markers, media markers, and clean up spaces
+        var cleaned = VisualMarkerRegex.Replace(narration, "");
+        cleaned = PauseMarkerRegex.Replace(cleaned, "");
+        cleaned = MediaMarkerRegex.Replace(cleaned, "");
+        cleaned = MultiSpaceRegex.Replace(cleaned, " ");
         
         return cleaned.Trim();
     }

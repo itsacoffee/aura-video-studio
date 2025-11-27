@@ -53,6 +53,13 @@ public record PlanSpec(
     int? MaxSceneCount = null,
     int? TargetSceneCount = null)
 {
+    // Scene duration constants based on density (in seconds)
+    private const int SparseSecondsPerScene = 20;
+    private const int BalancedSecondsPerScene = 12;
+    private const int DenseSecondsPerScene = 8;
+    private const int DefaultMinScenes = 3;
+    private const int DefaultMaxScenes = 20;
+
     /// <summary>
     /// Calculates the target scene count based on duration and density.
     /// Uses density to determine seconds per scene:
@@ -64,17 +71,17 @@ public record PlanSpec(
     {
         var secondsPerScene = Density switch
         {
-            Density.Sparse => 20,
-            Density.Balanced => 12,
-            Density.Dense => 8,
-            _ => 12
+            Density.Sparse => SparseSecondsPerScene,
+            Density.Balanced => BalancedSecondsPerScene,
+            Density.Dense => DenseSecondsPerScene,
+            _ => BalancedSecondsPerScene
         };
         
         var calculated = (int)Math.Ceiling(TargetDuration.TotalSeconds / secondsPerScene);
         
         // Apply min/max bounds
-        var minScenes = MinSceneCount ?? 3;
-        var maxScenes = MaxSceneCount ?? 20;
+        var minScenes = MinSceneCount ?? DefaultMinScenes;
+        var maxScenes = MaxSceneCount ?? DefaultMaxScenes;
         
         // If target is explicitly set, use it within bounds
         if (TargetSceneCount.HasValue)
