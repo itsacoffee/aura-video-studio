@@ -560,5 +560,200 @@ public class TranslationServiceTests
     }
 
     #endregion
+
+    #region Metrics Calculation Tests
+
+    [Fact]
+    public async Task TranslateAsync_ReturnsMetrics()
+    {
+        // Arrange - LLM returns clean translation
+        var cleanResponse = "Hola mundo";
+        
+        _llmProviderMock
+            .Setup(x => x.GenerateChatCompletionAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<LlmParameters>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cleanResponse);
+
+        var request = new TranslationRequest
+        {
+            SourceLanguage = "en",
+            TargetLanguage = "es",
+            SourceText = "Hello world",
+            Options = new TranslationOptions { Mode = TranslationMode.Literal, EnableQualityScoring = false }
+        };
+
+        // Act
+        var result = await _service.TranslateAsync(request, CancellationToken.None);
+
+        // Assert - Metrics should be populated
+        Assert.NotNull(result.Metrics);
+        Assert.True(result.Metrics.CharacterCount > 0);
+        Assert.True(result.Metrics.WordCount > 0);
+        Assert.True(result.Metrics.LengthRatio > 0);
+    }
+
+    [Fact]
+    public async Task TranslateAsync_WithCleanOutput_ReturnsExcellentGrade()
+    {
+        // Arrange - LLM returns clean translation with appropriate length
+        var cleanResponse = "Hola mundo amigo"; // Similar length to source
+        
+        _llmProviderMock
+            .Setup(x => x.GenerateChatCompletionAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<LlmParameters>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cleanResponse);
+
+        var request = new TranslationRequest
+        {
+            SourceLanguage = "en",
+            TargetLanguage = "es",
+            SourceText = "Hello world friend",
+            Options = new TranslationOptions { Mode = TranslationMode.Literal, EnableQualityScoring = false }
+        };
+
+        // Act
+        var result = await _service.TranslateAsync(request, CancellationToken.None);
+
+        // Assert - Should be Excellent grade with no issues
+        Assert.NotNull(result.Metrics);
+        Assert.Equal(TranslationQualityGrade.Excellent, result.Metrics.Grade);
+        Assert.Empty(result.Metrics.QualityIssues);
+    }
+
+    [Fact]
+    public async Task TranslateAsync_WithStructuredArtifacts_DetectsIssue()
+    {
+        // Arrange - LLM returns response with structured artifacts that are extracted
+        var artifactResponse = @"{""translation"": ""Hola mundo con artifacts"", ""title"": ""Test""}";
+        
+        _llmProviderMock
+            .Setup(x => x.GenerateChatCompletionAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<LlmParameters>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(artifactResponse);
+
+        var request = new TranslationRequest
+        {
+            SourceLanguage = "en",
+            TargetLanguage = "es",
+            SourceText = "Hello world with artifacts",
+            Options = new TranslationOptions { Mode = TranslationMode.Literal, EnableQualityScoring = false }
+        };
+
+        // Act
+        var result = await _service.TranslateAsync(request, CancellationToken.None);
+
+        // Assert - The extraction logic should clean the response, so metrics should be clean
+        Assert.NotNull(result.Metrics);
+        Assert.Equal("Hola mundo con artifacts", result.TranslatedText);
+    }
+
+    [Fact]
+    public async Task TranslateAsync_WithUnusuallyLongOutput_ReportsIssue()
+    {
+        // Arrange - LLM returns unusually long response (more than 3x source length)
+        var longResponse = "Esta es una traducción muy larga que contiene mucho más texto del esperado para una simple frase corta";
+        
+        _llmProviderMock
+            .Setup(x => x.GenerateChatCompletionAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<LlmParameters>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(longResponse);
+
+        var request = new TranslationRequest
+        {
+            SourceLanguage = "en",
+            TargetLanguage = "es",
+            SourceText = "Short text",
+            Options = new TranslationOptions { Mode = TranslationMode.Literal, EnableQualityScoring = false }
+        };
+
+        // Act
+        var result = await _service.TranslateAsync(request, CancellationToken.None);
+
+        // Assert - Should report length ratio issue
+        Assert.NotNull(result.Metrics);
+        Assert.True(result.Metrics.LengthRatio > 3.0);
+        Assert.Contains(result.Metrics.QualityIssues, i => i.Contains("unusually long"));
+    }
+
+    [Fact]
+    public async Task TranslateAsync_WithUnusuallyShortOutput_ReportsIssue()
+    {
+        // Arrange - LLM returns unusually short response (less than 0.3x source length)
+        var shortResponse = "Hola";
+        
+        _llmProviderMock
+            .Setup(x => x.GenerateChatCompletionAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<LlmParameters>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(shortResponse);
+
+        var request = new TranslationRequest
+        {
+            SourceLanguage = "en",
+            TargetLanguage = "es",
+            SourceText = "This is a long sentence that should have a longer translation in the target language",
+            Options = new TranslationOptions { Mode = TranslationMode.Literal, EnableQualityScoring = false }
+        };
+
+        // Act
+        var result = await _service.TranslateAsync(request, CancellationToken.None);
+
+        // Assert - Should report length ratio issue
+        Assert.NotNull(result.Metrics);
+        Assert.True(result.Metrics.LengthRatio < 0.3);
+        Assert.Contains(result.Metrics.QualityIssues, i => i.Contains("unusually short"));
+    }
+
+    [Fact]
+    public async Task TranslateAsync_MetricsIncludesProviderName()
+    {
+        // Arrange
+        _llmProviderMock
+            .Setup(x => x.GenerateChatCompletionAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<LlmParameters>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync("Hola mundo");
+        
+        _llmProviderMock
+            .Setup(x => x.GetCapabilities())
+            .Returns(new Aura.Core.Models.Providers.ProviderCapabilities 
+            { 
+                ProviderName = "TestProvider",
+                SupportsTranslation = true
+            });
+
+        var request = new TranslationRequest
+        {
+            SourceLanguage = "en",
+            TargetLanguage = "es",
+            SourceText = "Hello world",
+            Options = new TranslationOptions { Mode = TranslationMode.Literal, EnableQualityScoring = false }
+        };
+
+        // Act
+        var result = await _service.TranslateAsync(request, CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(result.Metrics);
+        Assert.Equal("TestProvider", result.Metrics.ProviderUsed);
+    }
+
+    #endregion
 }
 

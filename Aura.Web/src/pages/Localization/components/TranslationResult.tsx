@@ -15,12 +15,14 @@ import {
   ProgressBar,
   Divider,
   Button,
+  Tooltip,
 } from '@fluentui/react-components';
 import {
   Warning24Regular,
   ErrorCircle24Regular,
   Info24Regular,
   Copy24Regular,
+  Info16Regular,
 } from '@fluentui/react-icons';
 import type { TranslationResultDto } from '../../../types/api-v1';
 
@@ -150,6 +152,29 @@ const useStyles = makeStyles({
   copyButton: {
     marginTop: tokens.spacingVerticalS,
   },
+  qualityIndicator: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalS,
+    marginTop: tokens.spacingVerticalS,
+  },
+  metricsCard: {
+    padding: tokens.spacingVerticalM,
+    backgroundColor: tokens.colorNeutralBackground2,
+    borderRadius: tokens.borderRadiusMedium,
+    marginTop: tokens.spacingVerticalM,
+  },
+  metricsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+    gap: tokens.spacingHorizontalM,
+    marginTop: tokens.spacingVerticalS,
+  },
+  metricItem: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalXXS,
+  },
 });
 
 interface TranslationResultProps {
@@ -163,6 +188,27 @@ export const TranslationResult: React.FC<TranslationResultProps> = ({ result }) 
     if (score >= 85) return tokens.colorPaletteGreenForeground1;
     if (score >= 70) return tokens.colorPaletteYellowForeground1;
     return tokens.colorPaletteRedForeground1;
+  };
+
+  const getGradeBadgeColor = (grade: string): 'success' | 'informative' | 'warning' | 'danger' => {
+    switch (grade) {
+      case 'Excellent':
+        return 'success';
+      case 'Good':
+        return 'informative';
+      case 'Fair':
+        return 'warning';
+      case 'Poor':
+        return 'danger';
+      default:
+        return 'informative';
+    }
+  };
+
+  const getGradeBadgeAppearance = (grade: string): 'filled' | 'outline' | 'tint' => {
+    if (grade === 'Excellent') return 'filled';
+    if (grade === 'Good') return 'outline';
+    return 'tint';
   };
 
   const getSeverityIcon = (severity: string) => {
@@ -208,7 +254,93 @@ export const TranslationResult: React.FC<TranslationResultProps> = ({ result }) 
           <Text className={styles.statLabel}>Cultural Adaptations</Text>
           <Text className={styles.statValue}>{result.culturalAdaptations.length}</Text>
         </div>
+        {/* Quality Metrics Indicator */}
+        {result.metrics && (
+          <div className={styles.statItem}>
+            <Text className={styles.statLabel}>Output Quality</Text>
+            <div className={styles.qualityIndicator}>
+              <Badge
+                appearance={getGradeBadgeAppearance(result.metrics.grade)}
+                color={getGradeBadgeColor(result.metrics.grade)}
+              >
+                {result.metrics.grade}
+              </Badge>
+              {result.metrics.qualityIssues.length > 0 && (
+                <Tooltip content={result.metrics.qualityIssues.join(', ')} relationship="label">
+                  <Info16Regular />
+                </Tooltip>
+              )}
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Translation Metrics Card */}
+      {result.metrics && (
+        <Card>
+          <Title2>Translation Metrics</Title2>
+          <Text style={{ color: tokens.colorNeutralForeground3 }}>
+            Quality analysis of the LLM translation output
+          </Text>
+          <div className={styles.metricsCard}>
+            <div className={styles.metricsGrid}>
+              <div className={styles.metricItem}>
+                <Text className={styles.statLabel}>Provider</Text>
+                <Text weight="semibold">{result.metrics.providerUsed || 'Unknown'}</Text>
+              </div>
+              <div className={styles.metricItem}>
+                <Text className={styles.statLabel}>Length Ratio</Text>
+                <Text weight="semibold">{result.metrics.lengthRatio.toFixed(2)}x</Text>
+              </div>
+              <div className={styles.metricItem}>
+                <Text className={styles.statLabel}>Character Count</Text>
+                <Text weight="semibold">{result.metrics.characterCount.toLocaleString()}</Text>
+              </div>
+              <div className={styles.metricItem}>
+                <Text className={styles.statLabel}>Word Count</Text>
+                <Text weight="semibold">{result.metrics.wordCount.toLocaleString()}</Text>
+              </div>
+              <div className={styles.metricItem}>
+                <Text className={styles.statLabel}>Artifacts Detected</Text>
+                <Badge
+                  appearance="tint"
+                  color={result.metrics.hasStructuredArtifacts ? 'warning' : 'success'}
+                >
+                  {result.metrics.hasStructuredArtifacts ? 'Yes' : 'No'}
+                </Badge>
+              </div>
+              <div className={styles.metricItem}>
+                <Text className={styles.statLabel}>Prefixes Cleaned</Text>
+                <Badge
+                  appearance="tint"
+                  color={result.metrics.hasUnwantedPrefixes ? 'warning' : 'success'}
+                >
+                  {result.metrics.hasUnwantedPrefixes ? 'Yes' : 'No'}
+                </Badge>
+              </div>
+            </div>
+            {result.metrics.qualityIssues.length > 0 && (
+              <>
+                <Divider
+                  style={{
+                    marginTop: tokens.spacingVerticalM,
+                    marginBottom: tokens.spacingVerticalM,
+                  }}
+                />
+                <Title3>Quality Issues Detected</Title3>
+                <div className={styles.issuesList}>
+                  {result.metrics.qualityIssues.map((issue, idx) => (
+                    <div key={idx} className={styles.issueItem}>
+                      <Warning24Regular color={tokens.colorPaletteYellowForeground1} />
+                      <Text>{issue}</Text>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </Card>
+      )}
 
       {/* Side-by-Side Comparison */}
       <Card>
