@@ -48,7 +48,43 @@ public record PlanSpec(
     Pacing Pacing, 
     Density Density, 
     string Style,
-    ScriptRefinementConfig? RefinementConfig = null);
+    ScriptRefinementConfig? RefinementConfig = null,
+    int? MinSceneCount = null,
+    int? MaxSceneCount = null,
+    int? TargetSceneCount = null)
+{
+    /// <summary>
+    /// Calculates the target scene count based on duration and density.
+    /// Uses density to determine seconds per scene:
+    /// - Sparse: 20 seconds per scene
+    /// - Balanced: 12 seconds per scene  
+    /// - Dense: 8 seconds per scene
+    /// </summary>
+    public int GetCalculatedSceneCount()
+    {
+        var secondsPerScene = Density switch
+        {
+            Density.Sparse => 20,
+            Density.Balanced => 12,
+            Density.Dense => 8,
+            _ => 12
+        };
+        
+        var calculated = (int)Math.Ceiling(TargetDuration.TotalSeconds / secondsPerScene);
+        
+        // Apply min/max bounds
+        var minScenes = MinSceneCount ?? 3;
+        var maxScenes = MaxSceneCount ?? 20;
+        
+        // If target is explicitly set, use it within bounds
+        if (TargetSceneCount.HasValue)
+        {
+            return Math.Clamp(TargetSceneCount.Value, minScenes, maxScenes);
+        }
+        
+        return Math.Clamp(calculated, minScenes, maxScenes);
+    }
+}
 
 public record VoiceSpec(string VoiceName, double Rate, double Pitch, PauseStyle Pause);
 

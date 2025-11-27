@@ -59,8 +59,8 @@ public class RuleBasedLlmProvider : ILlmProvider
         // Calculate the target word count based on duration, pacing, and density
         int targetWordCount = CalculateWordCount(spec.TargetDuration, spec.Pacing, spec.Density);
         
-        // Determine the number of scenes based on the total duration
-        int sceneCount = DetermineSceneCount(spec.TargetDuration);
+        // Determine the number of scenes using the unified scene count calculation
+        int sceneCount = spec.GetCalculatedSceneCount();
         
         // Approximate words per scene
         int wordsPerScene = targetWordCount / sceneCount;
@@ -96,15 +96,6 @@ public class RuleBasedLlmProvider : ILlmProvider
 
         // Calculate target word count
         return (int)(duration.TotalMinutes * wpm * densityFactor);
-    }
-
-    private int DetermineSceneCount(TimeSpan duration)
-    {
-        // Approximate 1 scene per 30 seconds, with some bounds
-        int baseCount = (int)Math.Ceiling(duration.TotalSeconds / 30);
-        
-        // Ensure a minimum of 3 scenes and maximum of 20 scenes
-        return Math.Clamp(baseCount, 3, 20);
     }
 
     private string GenerateScript(Brief brief, PlanSpec spec, int sceneCount, int wordsPerScene)
@@ -729,7 +720,14 @@ public class RuleBasedLlmProvider : ILlmProvider
             var keywords = ExtractKeywords(brief);
             var videoType = DetectVideoType(keywords, brief);
             
-            var sceneCount = Math.Max(3, Math.Min(20, durationSeconds / 10));
+            // Use unified scene count calculation via PlanSpec
+            var defaultPlanSpec = new PlanSpec(
+                TargetDuration: TimeSpan.FromSeconds(durationSeconds),
+                Pacing: Pacing.Conversational,
+                Density: Density.Balanced,
+                Style: "General"
+            );
+            var sceneCount = defaultPlanSpec.GetCalculatedSceneCount();
             _logger.LogInformation("RuleBased provider generated {SceneCount} scenes for {Duration}s video", sceneCount, durationSeconds);
             
             var scenes = new List<Core.Models.Generation.ScriptScene>();
