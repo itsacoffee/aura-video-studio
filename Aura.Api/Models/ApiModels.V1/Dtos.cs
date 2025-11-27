@@ -2640,3 +2640,18 @@ public record SimpleTranslationRequest(
 public record SimpleTranslationDto(
     string TranslatedText);
 
+// ============================================================================
+// PROVIDER HEALTH DTOs - for translation provider validation
+// ============================================================================
+
+/// <summary>
+/// Provider health status for translation capability validation
+/// </summary>
+public record TranslationProviderHealthDto(
+    bool IsAvailable,
+    string ProviderName = "",
+    bool SupportsTranslation = false,
+    bool IsLocalModel = false,
+    List<string>? Limitations = null,
+    string? ErrorMessage = null);
+

@@ -19,6 +19,9 @@ import {
   Option,
   Textarea,
   Input,
+  MessageBar,
+  MessageBarBody,
+  MessageBarTitle,
 } from '@fluentui/react-components';
 import {
   LocalLanguage24Regular,
@@ -28,6 +31,7 @@ import {
   Database24Regular,
   Search24Regular,
   Sparkle24Regular,
+  Warning24Regular,
 } from '@fluentui/react-icons';
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { ErrorState } from '../../components/Loading';
@@ -35,7 +39,9 @@ import {
   translateScript,
   batchTranslate,
   getSupportedLanguages,
+  checkProviderHealth,
 } from '../../services/api/localizationApi';
+import type { TranslationProviderHealth } from '../../services/api/localizationApi';
 import type {
   TranslateScriptRequest,
   TranslationResultDto,
@@ -263,6 +269,33 @@ export const TranslationPage: React.FC = () => {
   const sourceInputRef = useRef<HTMLInputElement>(null);
   const targetInputRef = useRef<HTMLInputElement>(null);
 
+  // Provider health
+  const [providerHealth, setProviderHealth] = useState<TranslationProviderHealth | null>(null);
+
+  // Check provider health on mount
+  useEffect(() => {
+    async function loadProviderHealth() {
+      try {
+        const health = await checkProviderHealth();
+        setProviderHealth(health);
+        
+        if (!health.isAvailable || !health.supportsTranslation) {
+          console.warn('Translation provider is not available or does not support translation:', health);
+        }
+      } catch (err) {
+        console.error('Failed to check provider health:', err);
+        setProviderHealth({
+          isAvailable: false,
+          errorMessage: err instanceof Error 
+            ? err.message 
+            : 'Unable to connect to translation service. Please check your network connection or try again later.'
+        });
+      }
+    }
+    
+    loadProviderHealth();
+  }, []);
+
   // Load supported languages on mount (non-blocking - suggestions only)
   useEffect(() => {
     async function loadLanguages() {
@@ -489,6 +522,28 @@ export const TranslationPage: React.FC = () => {
       </TabList>
 
       {error && <ErrorState message={error} />}
+
+      {/* Provider health warning banner */}
+      {providerHealth && (!providerHealth.isAvailable || !providerHealth.supportsTranslation) && (
+        <MessageBar intent="warning" style={{ marginBottom: tokens.spacingVerticalL }}>
+          <MessageBarBody>
+            <MessageBarTitle>
+              <Warning24Regular style={{ marginRight: tokens.spacingHorizontalS, verticalAlign: 'middle' }} />
+              Translation Unavailable
+            </MessageBarTitle>
+            <Text>
+              {providerHealth.errorMessage || 
+               `Current AI provider (${providerHealth.providerName || 'Unknown'}) does not support translation. `}
+              {providerHealth.isLocalModel && (
+                <> Please start Ollama: <code style={{ backgroundColor: tokens.colorNeutralBackground4, padding: '2px 6px', borderRadius: '4px' }}>ollama run llama3.1</code></>
+              )}
+              {!providerHealth.isLocalModel && !providerHealth.errorMessage && (
+                <> Please configure an AI provider such as Ollama, OpenAI, or Anthropic Claude.</>
+              )}
+            </Text>
+          </MessageBarBody>
+        </MessageBar>
+      )}
 
       {activeTab === 'translate' && (
         <>

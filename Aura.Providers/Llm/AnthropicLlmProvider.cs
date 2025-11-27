@@ -1357,6 +1357,27 @@ Return ONLY the transition text, no explanations or additional commentary:";
     }
 
     /// <summary>
+    /// Get provider capabilities and metadata for validation and user guidance
+    /// </summary>
+    public Core.Models.Providers.ProviderCapabilities GetCapabilities()
+    {
+        return new Core.Models.Providers.ProviderCapabilities
+        {
+            ProviderName = "Anthropic",
+            SupportsTranslation = true,
+            SupportsStreaming = false,
+            IsLocalModel = false,
+            MaxContextLength = 200000,
+            RecommendedTemperature = "0.3-0.7",
+            KnownLimitations = new List<string>
+            {
+                "Requires API key and internet connection",
+                "Usage is metered and charged per token"
+            }
+        };
+    }
+
+    /// <summary>
     /// Anthropic streaming not yet implemented. Falls back to non-streaming DraftScriptAsync.
     /// </summary>
     public async IAsyncEnumerable<LlmStreamChunk> DraftScriptStreamAsync(

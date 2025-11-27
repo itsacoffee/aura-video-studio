@@ -1059,6 +1059,26 @@ public class RuleBasedLlmProvider : ILlmProvider
     }
 
     /// <summary>
+    /// Get provider capabilities and metadata for validation and user guidance
+    /// </summary>
+    public Core.Models.Providers.ProviderCapabilities GetCapabilities()
+    {
+        return new Core.Models.Providers.ProviderCapabilities
+        {
+            ProviderName = "RuleBased",
+            SupportsTranslation = false,
+            SupportsStreaming = false,
+            IsLocalModel = true,
+            MaxContextLength = 0,
+            RecommendedTemperature = "N/A",
+            KnownLimitations = new List<string>
+            {
+                "Does not support translation - requires AI provider (Ollama, OpenAI, etc.)"
+            }
+        };
+    }
+
+    /// <summary>
     /// RuleBased provider does not support streaming
     /// </summary>
     public async IAsyncEnumerable<LlmStreamChunk> DraftScriptStreamAsync(

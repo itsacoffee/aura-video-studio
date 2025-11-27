@@ -205,6 +205,23 @@ internal sealed class MockLlmProvider : ILlmProvider
         };
     }
 
+    public Aura.Core.Models.Providers.ProviderCapabilities GetCapabilities()
+    {
+        return new Aura.Core.Models.Providers.ProviderCapabilities
+        {
+            ProviderName = "TestMock",
+            SupportsTranslation = true,
+            SupportsStreaming = true,
+            IsLocalModel = true,
+            MaxContextLength = 8192,
+            RecommendedTemperature = "0.0-1.0",
+            KnownLimitations = new List<string>
+            {
+                "Mock provider for testing only"
+            }
+        };
+    }
+
     public async IAsyncEnumerable<LlmStreamChunk> DraftScriptStreamAsync(
         Brief brief,
         PlanSpec spec,

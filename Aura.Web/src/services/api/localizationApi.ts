@@ -121,3 +121,23 @@ export async function addGlossaryEntry(
 export async function deleteGlossary(glossaryId: string): Promise<void> {
   await apiClient.delete(`/api/localization/glossary/${glossaryId}`);
 }
+
+/**
+ * Provider health status for translation capability validation
+ */
+export interface TranslationProviderHealth {
+  isAvailable: boolean;
+  providerName?: string;
+  supportsTranslation?: boolean;
+  isLocalModel?: boolean;
+  limitations?: string[];
+  errorMessage?: string;
+}
+
+/**
+ * Check if translation provider is available and healthy
+ */
+export async function checkProviderHealth(): Promise<TranslationProviderHealth> {
+  const response = await apiClient.get<TranslationProviderHealth>('/api/localization/health');
+  return response.data;
+}

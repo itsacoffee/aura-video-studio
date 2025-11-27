@@ -462,6 +462,27 @@ public partial class MockLlmProvider
     }
 
     /// <summary>
+    /// Get provider capabilities and metadata for validation and user guidance
+    /// </summary>
+    public Core.Models.Providers.ProviderCapabilities GetCapabilities()
+    {
+        return new Core.Models.Providers.ProviderCapabilities
+        {
+            ProviderName = "Mock",
+            SupportsTranslation = true,
+            SupportsStreaming = true,
+            IsLocalModel = true,
+            MaxContextLength = 8192,
+            RecommendedTemperature = "0.0-1.0",
+            KnownLimitations = new List<string>
+            {
+                "Mock provider for testing only",
+                "Returns predefined responses"
+            }
+        };
+    }
+
+    /// <summary>
     /// Mock streaming implementation for testing
     /// </summary>
     public async IAsyncEnumerable<LlmStreamChunk> DraftScriptStreamAsync(
