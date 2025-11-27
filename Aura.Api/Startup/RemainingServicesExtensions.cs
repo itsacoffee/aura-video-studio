@@ -146,8 +146,24 @@ public static class RemainingServicesExtensions
         return services;
     }
 
-    public static IServiceCollection AddValidationServices(this IServiceCollection services)
+    public static IServiceCollection AddValidationServices(this IServiceCollection services, IConfiguration configuration)
     {
+        // Bind ValidationTimeoutSettings from configuration
+        var timeoutSettings = new Aura.Core.Validation.ValidationTimeoutSettings();
+        var validationSection = configuration.GetSection("Validation");
+        if (validationSection.Exists())
+        {
+            if (int.TryParse(validationSection["FfmpegCheckTimeoutSeconds"], out var ffmpegTimeout))
+                timeoutSettings.FfmpegCheckTimeoutSeconds = ffmpegTimeout;
+            if (int.TryParse(validationSection["ProviderCheckTimeoutSeconds"], out var providerTimeout))
+                timeoutSettings.ProviderCheckTimeoutSeconds = providerTimeout;
+            if (int.TryParse(validationSection["HardwareCheckTimeoutSeconds"], out var hardwareTimeout))
+                timeoutSettings.HardwareCheckTimeoutSeconds = hardwareTimeout;
+            if (int.TryParse(validationSection["TotalValidationTimeoutSeconds"], out var totalTimeout))
+                timeoutSettings.TotalValidationTimeoutSeconds = totalTimeout;
+        }
+        services.AddSingleton(timeoutSettings);
+        
         services.AddSingleton<Aura.Core.Validation.PreGenerationValidator>();
         services.AddSingleton<Aura.Core.Validation.ScriptValidator>();
         services.AddSingleton<Aura.Core.Validation.TtsOutputValidator>();

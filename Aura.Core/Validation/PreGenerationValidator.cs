@@ -74,20 +74,15 @@ public class PreGenerationValidator
         string operationName,
         CancellationToken ct)
     {
-        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        timeoutCts.CancelAfter(timeout);
-
         try
         {
+            // Use WaitAsync with both timeout and cancellation token
+            // WaitAsync will throw TimeoutException if timeout expires
+            // or OperationCanceledException if ct is cancelled
             var result = await task.WaitAsync(timeout, ct).ConfigureAwait(false);
             return (result, false);
         }
         catch (TimeoutException)
-        {
-            _logger.LogWarning("{Operation} timed out after {Timeout}s", operationName, timeout.TotalSeconds);
-            return (default, true);
-        }
-        catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !ct.IsCancellationRequested)
         {
             _logger.LogWarning("{Operation} timed out after {Timeout}s", operationName, timeout.TotalSeconds);
             return (default, true);
