@@ -17,6 +17,7 @@ import { AppRouterContent } from './components/AppRouterContent';
 import { CrashRecoveryScreen, ErrorBoundary } from './components/ErrorBoundary';
 import type { InitializationError } from './components/Initialization';
 import { InitializationScreen, StartupErrorScreen } from './components/Initialization';
+import { NotificationsToaster } from './components/Notifications/Toasts';
 import { SplashScreen } from './components/SplashScreen/SplashScreen';
 import { env } from './config/env';
 import { ROUTE_METADATA_ENHANCED } from './config/routesWithGuards';
@@ -50,7 +51,6 @@ import {
   setHttpInterceptorToastHandler,
   setHttpInterceptorNavigationHandler,
 } from './utils/httpInterceptor';
-import { useNotifications } from './components/Notifications/Toasts';
 
 interface ThemeContextType {
   isDarkMode: boolean;
@@ -341,15 +341,17 @@ function App() {
   // Setup HTTP interceptor handlers for toast and navigation
   useEffect(() => {
     // Set up toast handler for HTTP interceptor
-    setHttpInterceptorToastHandler((message: string, type: 'error' | 'warning' | 'info' = 'error') => {
-      if (type === 'error') {
-        errorReportingService.error('Connection Error', message, new Error(message));
-      } else if (type === 'warning') {
-        errorReportingService.warning('Warning', message, { duration: 8000 });
-      } else {
-        errorReportingService.info('Info', message, { duration: 5000 });
+    setHttpInterceptorToastHandler(
+      (message: string, type: 'error' | 'warning' | 'info' = 'error') => {
+        if (type === 'error') {
+          errorReportingService.error('Connection Error', message, new Error(message));
+        } else if (type === 'warning') {
+          errorReportingService.warning('Warning', message, { duration: 8000 });
+        } else {
+          errorReportingService.info('Info', message, { duration: 5000 });
+        }
       }
-    });
+    );
 
     // Set up navigation handler for HTTP interceptor
     setHttpInterceptorNavigationHandler((path: string) => {
@@ -685,6 +687,10 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
           <FluentProvider theme={currentTheme}>
+            {/* CRITICAL FIX: Add NotificationsToaster for wizard context
+                The wizard uses useNotifications hook which requires a Toaster component.
+                Without this, toast calls would fail and could contribute to black screen issues. */}
+            <NotificationsToaster toasterId={toasterId} />
             <ErrorBoundary
               fallback={
                 <div
