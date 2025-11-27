@@ -1,0 +1,85 @@
+/**
+ * Aura Video Studio - Global UI Density & Spacing Adjustments
+ *
+ * PURPOSE:
+ * This file reduces the overall "zoom level" of the UI by about one step,
+ * making pages like the Localization UI render with tighter, more professional
+ * spacing while maintaining readability.
+ *
+ * CHANGES MADE:
+ * 1. Root font-size reduced from 16px to 15px (93.75%)
+ * 2. Body and form control line-heights normalized
+ * 3. Form group vertical spacing tightened
+ * 4. Card container padding reduced
+ * 5. Textarea minimum height and box-sizing ensured
+ *
+ * HOW TO REVERT:
+ * To restore the original larger UI appearance:
+ * 1. Remove or comment out the `html` font-size rule below
+ * 2. Remove or comment out the line-height overrides on body and form controls
+ * 3. Remove the .aura-form and .aura-card spacing rules
+ * Or simply stop importing this file in main.tsx
+ */
+
+/* ==========================================================================
+   ROOT FONT-SIZE REDUCTION
+   Reduces base font-size from browser default 16px to 15px (93.75%).
+   Use --aura-base-font-size CSS custom property to override if needed.
+   To revert: comment out this entire rule block.
+   ========================================================================== */
+html {
+  font-size: var(--aura-base-font-size, 93.75%);
+}
+
+/* ==========================================================================
+   BODY LINE-HEIGHT NORMALIZATION
+   Sets a comfortable line-height for body text that's slightly tighter
+   than typical defaults, improving density without hurting readability.
+   To revert: remove or comment out this rule.
+   ========================================================================== */
+body {
+  line-height: 1.45;
+}
+
+/* ==========================================================================
+   FORM CONTROLS LINE-HEIGHT
+   Normalizes line-height for form inputs to create consistent vertical
+   rhythm in forms. Slightly tighter than body text for compact forms.
+   To revert: remove or comment out this rule.
+   ========================================================================== */
+input,
+textarea,
+select {
+  line-height: 1.4;
+}
+
+/* ==========================================================================
+   FORM GROUP VERTICAL SPACING
+   Tightens vertical spacing between form fields for a more compact layout.
+   Original spacing was typically 1rem (16px), now 0.875rem (14px).
+   To revert: remove or comment out this rule.
+   ========================================================================== */
+.aura-form .form-group {
+  margin-bottom: 0.875rem;
+}
+
+/* ==========================================================================
+   CARD CONTAINER PADDING
+   Reduces internal padding in Fluent-styled card containers for tighter UI.
+   Original padding was typically 1rem (16px), now 0.875rem (14px).
+   To revert: remove or comment out this rule.
+   ========================================================================== */
+.aura-card .card-body {
+  padding: 0.875rem;
+}
+
+/* ==========================================================================
+   TEXTAREA SIZING
+   Ensures textareas have a reasonable minimum height and proper box-sizing
+   so placeholder text doesn't overflow and sizing is predictable.
+   To revert: remove or comment out this rule.
+   ========================================================================== */
+textarea {
+  min-height: 8rem;
+  box-sizing: border-box;
+}
