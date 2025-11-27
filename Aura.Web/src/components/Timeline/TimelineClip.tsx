@@ -1,7 +1,10 @@
 import { makeStyles, tokens, Tooltip, type GriffelStyle } from '@fluentui/react-components';
 import React, { useState, useRef, useCallback } from 'react';
+import { useContextMenu, useContextMenuAction } from '../../hooks/useContextMenu';
 import { snapToFrame } from '../../services/timelineEngine';
 import { AppliedEffect } from '../../types/effects';
+import type { TimelineClipMenuData } from '../../types/electron-context-menu';
+import { clipboardManager } from '../../utils/clipboardManager';
 import { WaveformDisplay } from './WaveformDisplay';
 import '../../styles/video-editor-theme.css';
 
@@ -161,6 +164,8 @@ export interface TimelineClipData {
   audioPath?: string;
   preview?: string;
   keyframes?: Record<string, Array<{ time: number; value: number | string | boolean }>>;
+  isLocked?: boolean;
+  hasAudio?: boolean;
 }
 
 interface TimelineClipProps {
@@ -174,6 +179,14 @@ interface TimelineClipProps {
   onDragEnd?: () => void;
   snapping?: boolean;
   frameRate?: number;
+  onCut?: (clipId: string) => void;
+  onCopy?: (clipId: string) => void;
+  onPaste?: (clipId: string, startTime: number) => void;
+  onDuplicate?: (clipId: string) => void;
+  onSplit?: (clipId: string) => void;
+  onDelete?: (clipId: string) => void;
+  onRippleDelete?: (clipId: string) => void;
+  onShowProperties?: (clipId: string) => void;
 }
 
 export function TimelineClip({
@@ -187,6 +200,14 @@ export function TimelineClip({
   onDragEnd,
   snapping = true,
   frameRate = 30,
+  onCut,
+  onCopy,
+  onPaste,
+  onDuplicate,
+  onSplit,
+  onDelete,
+  onRippleDelete,
+  onShowProperties,
 }: TimelineClipProps) {
   const styles = useStyles();
   const [isDragging, setIsDragging] = useState(false);
@@ -194,6 +215,125 @@ export function TimelineClip({
   const [showTrimPreview, setShowTrimPreview] = useState(false);
   const [trimDelta, setTrimDelta] = useState(0);
   const dragStartRef = useRef<{ startTime: number; duration: number; mouseX: number } | null>(null);
+
+  // Context menu integration
+  const showContextMenu = useContextMenu<TimelineClipMenuData>('timeline-clip');
+
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      const menuData: TimelineClipMenuData = {
+        clipId: clip.id,
+        clipType: clip.type,
+        startTime: clip.startTime,
+        duration: clip.duration,
+        trackId: clip.trackId,
+        isLocked: clip.isLocked || false,
+        hasAudio: clip.hasAudio || clip.type === 'audio',
+        hasClipboardData: clipboardManager.hasData(),
+      };
+      showContextMenu(e, menuData);
+    },
+    [clip, showContextMenu]
+  );
+
+  // Context menu action handlers
+  useContextMenuAction(
+    'timeline-clip',
+    'onCut',
+    useCallback(
+      (data: TimelineClipMenuData) => {
+        console.info('Cut clip:', data.clipId);
+        clipboardManager.cut(clip);
+        onCut?.(data.clipId);
+      },
+      [clip, onCut]
+    )
+  );
+
+  useContextMenuAction(
+    'timeline-clip',
+    'onCopy',
+    useCallback(
+      (data: TimelineClipMenuData) => {
+        console.info('Copy clip:', data.clipId);
+        clipboardManager.copy(clip);
+        onCopy?.(data.clipId);
+      },
+      [clip, onCopy]
+    )
+  );
+
+  useContextMenuAction(
+    'timeline-clip',
+    'onPaste',
+    useCallback(
+      (data: TimelineClipMenuData) => {
+        console.info('Paste at position:', data.startTime);
+        onPaste?.(data.clipId, data.startTime);
+      },
+      [onPaste]
+    )
+  );
+
+  useContextMenuAction(
+    'timeline-clip',
+    'onDuplicate',
+    useCallback(
+      (data: TimelineClipMenuData) => {
+        console.info('Duplicate clip:', data.clipId);
+        onDuplicate?.(data.clipId);
+      },
+      [onDuplicate]
+    )
+  );
+
+  useContextMenuAction(
+    'timeline-clip',
+    'onSplit',
+    useCallback(
+      (data: TimelineClipMenuData) => {
+        console.info('Split clip:', data.clipId);
+        onSplit?.(data.clipId);
+      },
+      [onSplit]
+    )
+  );
+
+  useContextMenuAction(
+    'timeline-clip',
+    'onDelete',
+    useCallback(
+      (data: TimelineClipMenuData) => {
+        console.info('Delete clip:', data.clipId);
+        onDelete?.(data.clipId);
+      },
+      [onDelete]
+    )
+  );
+
+  useContextMenuAction(
+    'timeline-clip',
+    'onRippleDelete',
+    useCallback(
+      (data: TimelineClipMenuData) => {
+        console.info('Ripple delete clip:', data.clipId);
+        onRippleDelete?.(data.clipId);
+      },
+      [onRippleDelete]
+    )
+  );
+
+  useContextMenuAction(
+    'timeline-clip',
+    'onProperties',
+    useCallback(
+      (data: TimelineClipMenuData) => {
+        console.info('Show properties for clip:', data.clipId);
+        onShowProperties?.(data.clipId);
+      },
+      [onShowProperties]
+    )
+  );
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -315,6 +455,8 @@ export function TimelineClip({
       } ${isTrimming ? styles.clipTrimming : ''}`}
       style={clipStyle}
       onMouseDown={handleMouseDown}
+      onContextMenu={handleContextMenu}
+      data-clip-id={clip.id}
       role="button"
       tabIndex={0}
       aria-label={`${clip.label} clip`}
