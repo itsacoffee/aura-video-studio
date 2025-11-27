@@ -775,3 +775,29 @@ hr {
   border: 2px solid #fff !important;
   box-shadow: 0 0 0 2px rgb(255 255 255 / 50%) !important;
 }
+
+/* ==================== FLUENTUI TOAST OVERRIDES ==================== */
+
+/* Clean up FluentUI Toast default styling for modern look */
+.fui-Toast {
+  /* Remove default FluentUI borders and backgrounds */
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  min-width: auto !important;
+}
+
+/* Remove any wrapper borders/styling from Toaster */
+.fui-Toaster > div,
+.fui-Toast__root {
+  border: none !important;
+  background: transparent !important;
+}
+
+/* Ensure ToastTitle and ToastBody use our custom styles */
+.fui-ToastTitle,
+.fui-ToastBody {
+  padding: 0 !important;
+  margin: 0 !important;
+}
