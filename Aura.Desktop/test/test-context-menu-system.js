@@ -308,8 +308,62 @@ assert(
 );
 console.log('✓ Enabled/Disabled State test passed');
 
-// Test 14: Submenu Structure
-console.log('\n14. Testing Submenu Structure...');
+// Test 14: Completed Job With Output Path
+console.log('\n14. Testing Completed Job With Output Path...');
+const completedJobWithOutput = {
+  jobId: 'job-completed',
+  status: 'completed',
+  outputPath: '/path/to/output.mp4'
+};
+
+builder.build('job-queue', completedJobWithOutput, {});
+
+const openOutputWithPath = mockMenuBuiltFrom.find(
+  (item) => item.label === 'Open Output File'
+);
+const revealOutputWithPath = mockMenuBuiltFrom.find(
+  (item) => item.label === 'Reveal Output in Explorer'
+);
+
+assert(
+  openOutputWithPath.enabled === true,
+  'Open Output should be enabled for completed job with output path'
+);
+assert(
+  revealOutputWithPath.enabled === true,
+  'Reveal Output should be enabled for completed job with output path'
+);
+console.log('✓ Completed Job With Output Path test passed');
+
+// Test 15: Completed Job Without Output Path
+console.log('\n15. Testing Completed Job Without Output Path...');
+const completedJobNoOutput = {
+  jobId: 'job-completed-no-output',
+  status: 'completed',
+  outputPath: null
+};
+
+builder.build('job-queue', completedJobNoOutput, {});
+
+const openOutputNoPath = mockMenuBuiltFrom.find(
+  (item) => item.label === 'Open Output File'
+);
+const revealOutputNoPath = mockMenuBuiltFrom.find(
+  (item) => item.label === 'Reveal Output in Explorer'
+);
+
+assert(
+  openOutputNoPath.enabled === false,
+  'Open Output should be disabled for completed job without output path'
+);
+assert(
+  revealOutputNoPath.enabled === false,
+  'Reveal Output should be disabled for completed job without output path'
+);
+console.log('✓ Completed Job Without Output Path test passed');
+
+// Test 16: Submenu Structure
+console.log('\n16. Testing Submenu Structure...');
 builder.build('preview-window', previewData, {});
 
 const zoomItem = mockMenuBuiltFrom.find((item) => item.label === 'Zoom');
@@ -324,8 +378,8 @@ assert(zoomLabels.includes('100%'), 'Should have 100%');
 assert(zoomLabels.includes('200%'), 'Should have 200%');
 console.log('✓ Submenu Structure test passed');
 
-// Test 15: Delete Track Disabled When Only One Track
-console.log('\n15. Testing Delete Track Disabled When Only One Track...');
+// Test 17: Delete Track Disabled When Only One Track
+console.log('\n17. Testing Delete Track Disabled When Only One Track...');
 const singleTrackData = {
   ...trackData,
   totalTracks: 1
@@ -361,6 +415,7 @@ console.log('  - Unknown menu type fallback');
 console.log('  - Callback invocation');
 console.log('  - Checkbox state management');
 console.log('  - Enabled/disabled state management');
+console.log('  - Output path validation for completed jobs');
 console.log('  - Submenu structure');
 console.log('  - Conditional menu item states');
 console.log('='.repeat(60));

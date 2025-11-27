@@ -277,6 +277,7 @@ class ContextMenuBuilder {
     const isCancelable = ['running', 'paused', 'queued'].includes(data.status);
     const isRetryable = data.status === 'failed';
     const isCompleted = data.status === 'completed';
+    const hasOutput = isCompleted && Boolean(data.outputPath);
 
     const template = [
       {
@@ -308,12 +309,12 @@ class ContextMenuBuilder {
       {
         label: 'Open Output File',
         click: () => callbacks.onOpenOutput?.(data),
-        enabled: isCompleted
+        enabled: hasOutput
       },
       {
         label: 'Reveal Output in Explorer',
         click: () => callbacks.onRevealOutput?.(data),
-        enabled: isCompleted
+        enabled: hasOutput
       }
     ];
     return Menu.buildFromTemplate(template);

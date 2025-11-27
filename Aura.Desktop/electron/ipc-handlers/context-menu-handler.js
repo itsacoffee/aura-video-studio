@@ -231,7 +231,10 @@ class ContextMenuHandler {
       try {
         const result = await shell.openPath(filePath);
         // shell.openPath returns empty string on success, error string on failure
-        return { success: result === '', error: result || undefined };
+        if (result === '') {
+          return { success: true };
+        }
+        return { success: false, error: result };
       } catch (error) {
         this.logger.error('Error opening path', { filePath, error: error.message });
         return { success: false, error: error.message };
