@@ -384,7 +384,7 @@ export async function startFinalRendering(
       voiceSpec: {
         voiceName: voiceName,
         rate: 1.0,
-        pitch: 1.0, // Normalized pitch
+        pitch: 0.0, // 0.0 = no pitch change (default), positive = higher, negative = lower
         pause: 'Natural', // Valid pause values: Natural, Short, Long, Dramatic
       },
       renderSpec: {
