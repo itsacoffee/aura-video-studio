@@ -17,7 +17,7 @@ import {
   Dismiss24Regular,
   DocumentBulletList24Regular,
 } from '@fluentui/react-icons';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 const useStyles = makeStyles({
   toastFooter: {
@@ -160,6 +160,8 @@ function ToastWithProgress({
   };
 
   return (
+    // This div is for hover detection to pause toast auto-dismiss, not for interactive content
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <div onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
       {children}
       {timeout > 0 && (
@@ -179,210 +181,216 @@ export function useNotifications() {
   const { dispatchToast, dismissToast } = useToastController(TOASTER_ID);
   const styles = useStyles();
 
-  const showSuccessToast = (options: SuccessToastOptions) => {
-    const {
-      title,
-      message,
-      duration,
-      outputPath,
-      onViewResults,
-      onOpenFile,
-      onOpenFolder,
-      timeout = 5000,
-    } = options;
+  const showSuccessToast = useCallback(
+    (options: SuccessToastOptions) => {
+      const {
+        title,
+        message,
+        duration,
+        outputPath,
+        onViewResults,
+        onOpenFile,
+        onOpenFolder,
+        timeout = 5000,
+      } = options;
 
-    const toastId = `toast-success-${Date.now()}`;
+      const toastId = `toast-success-${Date.now()}`;
 
-    const handleDismiss = () => {
-      dismissToast(toastId);
-    };
+      const handleDismiss = () => {
+        dismissToast(toastId);
+      };
 
-    dispatchToast(
-      <ToastWithProgress timeout={timeout} onDismiss={handleDismiss}>
-        <Toast>
-          <div className={styles.toastHeader}>
-            <div className={styles.toastTitleContent}>
-              <ToastTitle
-                action={
-                  <CheckmarkCircle24Regular
-                    style={{ color: tokens.colorPaletteGreenForeground1 }}
-                  />
-                }
-              >
-                {title}
-              </ToastTitle>
+      dispatchToast(
+        <ToastWithProgress timeout={timeout} onDismiss={handleDismiss}>
+          <Toast>
+            <div className={styles.toastHeader}>
+              <div className={styles.toastTitleContent}>
+                <ToastTitle
+                  action={
+                    <CheckmarkCircle24Regular
+                      style={{ color: tokens.colorPaletteGreenForeground1 }}
+                    />
+                  }
+                >
+                  {title}
+                </ToastTitle>
+              </div>
+              <Button
+                size="small"
+                appearance="transparent"
+                icon={<Dismiss24Regular />}
+                onClick={handleDismiss}
+                aria-label="Dismiss notification"
+              />
             </div>
-            <Button
-              size="small"
-              appearance="transparent"
-              icon={<Dismiss24Regular />}
-              onClick={handleDismiss}
-              aria-label="Dismiss notification"
-            />
-          </div>
-          <ToastBody>
-            <div>
-              <div>{message}</div>
-              {outputPath && (
-                <div
-                  style={{
-                    marginTop: tokens.spacingVerticalS,
-                    fontSize: '11px',
-                    fontFamily: 'monospace',
-                    opacity: 0.8,
-                    wordBreak: 'break-all',
-                  }}
+            <ToastBody>
+              <div>
+                <div>{message}</div>
+                {outputPath && (
+                  <div
+                    style={{
+                      marginTop: tokens.spacingVerticalS,
+                      fontSize: '11px',
+                      fontFamily: 'monospace',
+                      opacity: 0.8,
+                      wordBreak: 'break-all',
+                    }}
+                  >
+                    {outputPath}
+                  </div>
+                )}
+                {duration && (
+                  <div
+                    style={{ marginTop: tokens.spacingVerticalXS, fontSize: '12px', opacity: 0.8 }}
+                  >
+                    Duration: {duration}
+                  </div>
+                )}
+              </div>
+            </ToastBody>
+            {(onViewResults || onOpenFile || onOpenFolder) && (
+              <ToastFooter className={styles.toastFooter}>
+                {onOpenFile && (
+                  <Button
+                    size="small"
+                    appearance="primary"
+                    icon={<Open24Regular />}
+                    onClick={onOpenFile}
+                  >
+                    Open File
+                  </Button>
+                )}
+                {onOpenFolder && (
+                  <Button
+                    size="small"
+                    appearance="subtle"
+                    icon={<Folder24Regular />}
+                    onClick={onOpenFolder}
+                  >
+                    Open Folder
+                  </Button>
+                )}
+                {onViewResults && (
+                  <Button
+                    size="small"
+                    appearance="subtle"
+                    icon={<Open24Regular />}
+                    onClick={onViewResults}
+                  >
+                    View results
+                  </Button>
+                )}
+              </ToastFooter>
+            )}
+          </Toast>
+        </ToastWithProgress>,
+        { intent: 'success', toastId }
+      );
+
+      return toastId;
+    },
+    [dispatchToast, dismissToast, styles.toastFooter, styles.toastHeader, styles.toastTitleContent]
+  );
+
+  const showFailureToast = useCallback(
+    (options: FailureToastOptions) => {
+      const {
+        title,
+        message,
+        errorDetails,
+        correlationId,
+        errorCode,
+        onRetry,
+        onOpenLogs,
+        timeout = 5000,
+      } = options;
+
+      const toastId = `toast-error-${Date.now()}`;
+
+      const handleDismiss = () => {
+        dismissToast(toastId);
+      };
+
+      dispatchToast(
+        <ToastWithProgress timeout={timeout} onDismiss={handleDismiss}>
+          <Toast>
+            <div className={styles.toastHeader}>
+              <div className={styles.toastTitleContent}>
+                <ToastTitle
+                  action={
+                    <ErrorCircle24Regular style={{ color: tokens.colorPaletteRedForeground1 }} />
+                  }
                 >
-                  {outputPath}
-                </div>
-              )}
-              {duration && (
-                <div
-                  style={{ marginTop: tokens.spacingVerticalXS, fontSize: '12px', opacity: 0.8 }}
-                >
-                  Duration: {duration}
-                </div>
-              )}
+                  {title}
+                </ToastTitle>
+              </div>
+              <Button
+                size="small"
+                appearance="transparent"
+                icon={<Dismiss24Regular />}
+                onClick={handleDismiss}
+                aria-label="Dismiss notification"
+              />
             </div>
-          </ToastBody>
-          {(onViewResults || onOpenFile || onOpenFolder) && (
-            <ToastFooter className={styles.toastFooter}>
-              {onOpenFile && (
-                <Button
-                  size="small"
-                  appearance="primary"
-                  icon={<Open24Regular />}
-                  onClick={onOpenFile}
-                >
-                  Open File
-                </Button>
-              )}
-              {onOpenFolder && (
-                <Button
-                  size="small"
-                  appearance="subtle"
-                  icon={<Folder24Regular />}
-                  onClick={onOpenFolder}
-                >
-                  Open Folder
-                </Button>
-              )}
-              {onViewResults && (
-                <Button
-                  size="small"
-                  appearance="subtle"
-                  icon={<Open24Regular />}
-                  onClick={onViewResults}
-                >
-                  View results
-                </Button>
-              )}
-            </ToastFooter>
-          )}
-        </Toast>
-      </ToastWithProgress>,
-      { intent: 'success', toastId }
-    );
+            <ToastBody>
+              <div>
+                <div>{message}</div>
+                {errorDetails && (
+                  <div
+                    style={{ marginTop: tokens.spacingVerticalXS, fontSize: '12px', opacity: 0.8 }}
+                  >
+                    {errorDetails}
+                  </div>
+                )}
+                {correlationId && (
+                  <div
+                    style={{
+                      marginTop: tokens.spacingVerticalXS,
+                      fontSize: '11px',
+                      opacity: 0.7,
+                      fontFamily: 'monospace',
+                    }}
+                  >
+                    Correlation ID: {correlationId}
+                  </div>
+                )}
+                {errorCode && (
+                  <div
+                    style={{ marginTop: tokens.spacingVerticalXXS, fontSize: '11px', opacity: 0.7 }}
+                  >
+                    Error Code: {errorCode}
+                  </div>
+                )}
+              </div>
+            </ToastBody>
+            {(onRetry || onOpenLogs) && (
+              <ToastFooter className={styles.toastFooter}>
+                {onRetry && (
+                  <Button size="small" appearance="primary" onClick={onRetry}>
+                    Retry
+                  </Button>
+                )}
+                {onOpenLogs && (
+                  <Button
+                    size="small"
+                    appearance="subtle"
+                    icon={<DocumentBulletList24Regular />}
+                    onClick={onOpenLogs}
+                  >
+                    View Logs
+                  </Button>
+                )}
+              </ToastFooter>
+            )}
+          </Toast>
+        </ToastWithProgress>,
+        { intent: 'error', toastId }
+      );
 
-    return toastId;
-  };
-
-  const showFailureToast = (options: FailureToastOptions) => {
-    const {
-      title,
-      message,
-      errorDetails,
-      correlationId,
-      errorCode,
-      onRetry,
-      onOpenLogs,
-      timeout = 5000,
-    } = options;
-
-    const toastId = `toast-error-${Date.now()}`;
-
-    const handleDismiss = () => {
-      dismissToast(toastId);
-    };
-
-    dispatchToast(
-      <ToastWithProgress timeout={timeout} onDismiss={handleDismiss}>
-        <Toast>
-          <div className={styles.toastHeader}>
-            <div className={styles.toastTitleContent}>
-              <ToastTitle
-                action={
-                  <ErrorCircle24Regular style={{ color: tokens.colorPaletteRedForeground1 }} />
-                }
-              >
-                {title}
-              </ToastTitle>
-            </div>
-            <Button
-              size="small"
-              appearance="transparent"
-              icon={<Dismiss24Regular />}
-              onClick={handleDismiss}
-              aria-label="Dismiss notification"
-            />
-          </div>
-          <ToastBody>
-            <div>
-              <div>{message}</div>
-              {errorDetails && (
-                <div
-                  style={{ marginTop: tokens.spacingVerticalXS, fontSize: '12px', opacity: 0.8 }}
-                >
-                  {errorDetails}
-                </div>
-              )}
-              {correlationId && (
-                <div
-                  style={{
-                    marginTop: tokens.spacingVerticalXS,
-                    fontSize: '11px',
-                    opacity: 0.7,
-                    fontFamily: 'monospace',
-                  }}
-                >
-                  Correlation ID: {correlationId}
-                </div>
-              )}
-              {errorCode && (
-                <div
-                  style={{ marginTop: tokens.spacingVerticalXXS, fontSize: '11px', opacity: 0.7 }}
-                >
-                  Error Code: {errorCode}
-                </div>
-              )}
-            </div>
-          </ToastBody>
-          {(onRetry || onOpenLogs) && (
-            <ToastFooter className={styles.toastFooter}>
-              {onRetry && (
-                <Button size="small" appearance="primary" onClick={onRetry}>
-                  Retry
-                </Button>
-              )}
-              {onOpenLogs && (
-                <Button
-                  size="small"
-                  appearance="subtle"
-                  icon={<DocumentBulletList24Regular />}
-                  onClick={onOpenLogs}
-                >
-                  View Logs
-                </Button>
-              )}
-            </ToastFooter>
-          )}
-        </Toast>
-      </ToastWithProgress>,
-      { intent: 'error', toastId }
-    );
-
-    return toastId;
-  };
+      return toastId;
+    },
+    [dispatchToast, dismissToast, styles.toastFooter, styles.toastHeader, styles.toastTitleContent]
+  );
 
   return {
     showSuccessToast,

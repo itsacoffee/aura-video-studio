@@ -19,6 +19,7 @@ import {
   MoreVertical24Regular,
   Folder24Regular,
   Delete24Regular,
+  Star24Filled,
 } from '@fluentui/react-icons';
 import React, { memo } from 'react';
 
@@ -78,6 +79,13 @@ const useStyles = makeStyles({
       opacity: 1,
     },
   },
+  favoriteIcon: {
+    position: 'absolute',
+    top: '4px',
+    left: '4px',
+    color: tokens.colorPaletteYellowForeground1,
+    filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3))',
+  },
 });
 
 interface MediaThumbnailProps {
@@ -87,11 +95,13 @@ interface MediaThumbnailProps {
   preview?: string;
   duration?: number;
   fileSize?: number;
+  isFavorite?: boolean;
   onDragStart?: (e: React.DragEvent) => void;
   onDragEnd?: () => void;
   onRemove?: () => void;
   onRevealInFinder?: () => void;
   onClick?: () => void;
+  onContextMenu?: (e: React.MouseEvent) => void;
 }
 
 const getMediaIcon = (type: 'video' | 'audio' | 'image') => {
@@ -112,16 +122,19 @@ const formatFileSize = (bytes: number): string => {
 };
 
 export const MediaThumbnail = memo(function MediaThumbnail({
+  id,
   name,
   type,
   preview,
   duration,
   fileSize,
+  isFavorite,
   onDragStart,
   onDragEnd,
   onRemove,
   onRevealInFinder,
   onClick,
+  onContextMenu,
 }: MediaThumbnailProps) {
   const styles = useStyles();
 
@@ -133,6 +146,8 @@ export const MediaThumbnail = memo(function MediaThumbnail({
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
         onClick={onClick}
+        onContextMenu={onContextMenu}
+        data-asset-id={id}
       >
         <MenuTrigger disableButtonEnhancement>
           <Button
@@ -143,6 +158,7 @@ export const MediaThumbnail = memo(function MediaThumbnail({
             aria-label="More options"
           />
         </MenuTrigger>
+        {isFavorite && <Star24Filled className={styles.favoriteIcon} aria-label="Favorite" />}
         <CardPreview className={styles.preview}>
           {preview ? (
             <img src={preview} alt={name} className={styles.thumbnailImage} />
