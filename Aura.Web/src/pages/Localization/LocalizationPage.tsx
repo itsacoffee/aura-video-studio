@@ -40,79 +40,123 @@ import {
 const useStyles = makeStyles({
   container: {
     padding: tokens.spacingVerticalXXL,
-    maxWidth: '1400px',
+    paddingLeft: tokens.spacingHorizontalXXL,
+    paddingRight: tokens.spacingHorizontalXXL,
+    maxWidth: '1200px',
     margin: '0 auto',
   },
   header: {
-    marginBottom: tokens.spacingVerticalXL,
+    marginBottom: tokens.spacingVerticalXXL,
     display: 'flex',
-    alignItems: 'center',
-    gap: tokens.spacingHorizontalM,
+    alignItems: 'flex-start',
+    gap: tokens.spacingHorizontalL,
   },
   headerIcon: {
     fontSize: '32px',
     color: tokens.colorBrandForeground1,
+    flexShrink: 0,
+    marginTop: tokens.spacingVerticalXS,
+  },
+  headerContent: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalS,
   },
   subtitle: {
-    color: tokens.colorNeutralForeground3,
-    marginTop: tokens.spacingVerticalS,
+    color: tokens.colorNeutralForeground2,
+    lineHeight: '1.5',
+    maxWidth: '600px',
   },
   tabs: {
-    marginBottom: tokens.spacingVerticalL,
+    marginBottom: tokens.spacingVerticalXL,
   },
   toolCard: {
-    padding: tokens.spacingVerticalXL,
+    padding: tokens.spacingVerticalXXL,
+    paddingLeft: tokens.spacingHorizontalXXL,
+    paddingRight: tokens.spacingHorizontalXXL,
+  },
+  sectionTitle: {
+    marginBottom: tokens.spacingVerticalS,
+  },
+  sectionDescription: {
+    color: tokens.colorNeutralForeground2,
+    lineHeight: '1.6',
+    marginBottom: tokens.spacingVerticalXL,
+    maxWidth: '650px',
   },
   form: {
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalL,
-    maxWidth: '800px',
+    gap: tokens.spacingVerticalXL,
+    maxWidth: '700px',
+  },
+  fieldGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalS,
+  },
+  fieldHint: {
+    color: tokens.colorNeutralForeground3,
+    fontSize: tokens.fontSizeBase200,
+    lineHeight: '1.5',
+    marginTop: tokens.spacingVerticalXS,
   },
   actions: {
     display: 'flex',
     gap: tokens.spacingHorizontalM,
-    marginTop: tokens.spacingVerticalL,
+    marginTop: tokens.spacingVerticalXL,
+    paddingTop: tokens.spacingVerticalM,
   },
   resultsSection: {
-    marginTop: tokens.spacingVerticalL,
+    marginTop: tokens.spacingVerticalXXL,
     padding: tokens.spacingVerticalL,
+    paddingLeft: tokens.spacingHorizontalL,
+    paddingRight: tokens.spacingHorizontalL,
     backgroundColor: tokens.colorNeutralBackground2,
     borderRadius: tokens.borderRadiusMedium,
   },
   resultText: {
     padding: tokens.spacingVerticalM,
+    paddingLeft: tokens.spacingHorizontalM,
+    paddingRight: tokens.spacingHorizontalM,
     backgroundColor: tokens.colorNeutralBackground1,
     borderRadius: tokens.borderRadiusSmall,
     fontFamily: 'monospace',
     fontSize: '14px',
+    lineHeight: '1.6',
     whiteSpace: 'pre-wrap',
   },
   progressContainer: {
-    marginTop: tokens.spacingVerticalM,
+    marginTop: tokens.spacingVerticalL,
     marginBottom: tokens.spacingVerticalM,
   },
   progressText: {
     marginTop: tokens.spacingVerticalS,
     color: tokens.colorNeutralForeground3,
     fontSize: '12px',
+    lineHeight: '1.5',
   },
   errorContainer: {
-    marginBottom: tokens.spacingVerticalL,
+    marginBottom: tokens.spacingVerticalXL,
   },
   errorGuidance: {
-    marginTop: tokens.spacingVerticalS,
+    marginTop: tokens.spacingVerticalM,
     fontSize: '13px',
-    color: tokens.colorNeutralForeground3,
+    lineHeight: '1.6',
+    color: tokens.colorNeutralForeground2,
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: tokens.spacingHorizontalXS,
   },
   errorActions: {
     display: 'flex',
     gap: tokens.spacingHorizontalS,
     flexWrap: 'wrap',
-    marginTop: tokens.spacingVerticalS,
+    marginTop: tokens.spacingVerticalM,
   },
   suggestedAction: {
     fontSize: '12px',
+    lineHeight: '1.5',
     padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
     backgroundColor: tokens.colorNeutralBackground3,
     borderRadius: tokens.borderRadiusSmall,
@@ -396,10 +440,11 @@ export const LocalizationPage: React.FC = () => {
     <div className={styles.container}>
       <div className={styles.header}>
         <LocalLanguage24Regular className={styles.headerIcon} />
-        <div>
+        <div className={styles.headerContent}>
           <Title1>Localization & Translation</Title1>
           <Text className={styles.subtitle}>
-            Translate content, generate subtitles, and adapt for different cultures and languages
+            Translate content, generate subtitles, and adapt your videos for different cultures and
+            languages. Use these tools to reach a global audience with properly localized content.
           </Text>
         </div>
       </div>
@@ -458,52 +503,70 @@ export const LocalizationPage: React.FC = () => {
 
       {activeTab === 'translate' && (
         <Card className={styles.toolCard}>
-          <Title2>Text Translation</Title2>
-          <Text>Translate text content between languages</Text>
+          <Title2 className={styles.sectionTitle}>Text Translation</Title2>
+          <Text className={styles.sectionDescription}>
+            Translate text content between languages with AI-powered translation. Select your source
+            and target languages below, then enter the text you want to translate.
+          </Text>
 
           <div className={styles.form}>
-            <Field label="Source Language">
-              <Dropdown
-                value={sourceLanguage}
-                onOptionSelect={(_, data) => setSourceLanguage(data.optionValue as string)}
-              >
-                <Option value="en">English</Option>
-                <Option value="es">Spanish</Option>
-                <Option value="fr">French</Option>
-                <Option value="de">German</Option>
-                <Option value="it">Italian</Option>
-                <Option value="pt">Portuguese</Option>
-                <Option value="zh">Chinese</Option>
-                <Option value="ja">Japanese</Option>
-                <Option value="ko">Korean</Option>
-              </Dropdown>
-            </Field>
+            <div className={styles.fieldGroup}>
+              <Field label="Source Language">
+                <Dropdown
+                  value={sourceLanguage}
+                  onOptionSelect={(_, data) => setSourceLanguage(data.optionValue as string)}
+                >
+                  <Option value="en">English</Option>
+                  <Option value="es">Spanish</Option>
+                  <Option value="fr">French</Option>
+                  <Option value="de">German</Option>
+                  <Option value="it">Italian</Option>
+                  <Option value="pt">Portuguese</Option>
+                  <Option value="zh">Chinese</Option>
+                  <Option value="ja">Japanese</Option>
+                  <Option value="ko">Korean</Option>
+                </Dropdown>
+              </Field>
+              <Text className={styles.fieldHint}>
+                The language of your original content
+              </Text>
+            </div>
 
-            <Field label="Target Language">
-              <Dropdown
-                value={targetLanguage}
-                onOptionSelect={(_, data) => setTargetLanguage(data.optionValue as string)}
-              >
-                <Option value="es">Spanish</Option>
-                <Option value="fr">French</Option>
-                <Option value="de">German</Option>
-                <Option value="it">Italian</Option>
-                <Option value="pt">Portuguese</Option>
-                <Option value="zh">Chinese</Option>
-                <Option value="ja">Japanese</Option>
-                <Option value="ko">Korean</Option>
-                <Option value="en">English</Option>
-              </Dropdown>
-            </Field>
+            <div className={styles.fieldGroup}>
+              <Field label="Target Language">
+                <Dropdown
+                  value={targetLanguage}
+                  onOptionSelect={(_, data) => setTargetLanguage(data.optionValue as string)}
+                >
+                  <Option value="es">Spanish</Option>
+                  <Option value="fr">French</Option>
+                  <Option value="de">German</Option>
+                  <Option value="it">Italian</Option>
+                  <Option value="pt">Portuguese</Option>
+                  <Option value="zh">Chinese</Option>
+                  <Option value="ja">Japanese</Option>
+                  <Option value="ko">Korean</Option>
+                  <Option value="en">English</Option>
+                </Dropdown>
+              </Field>
+              <Text className={styles.fieldHint}>
+                The language to translate your content into
+              </Text>
+            </div>
 
-            <Field label="Text to Translate" required>
-              <Textarea
-                value={sourceText}
-                onChange={(_, data) => setSourceText(data.value)}
-                placeholder="Enter text to translate..."
-                rows={8}
-              />
-            </Field>
+            <div className={styles.fieldGroup}>
+              <Field label="Text to Translate" required>
+                <Textarea
+                  value={sourceText}
+                  onChange={(_, data) => setSourceText(data.value)}
+                  placeholder="Enter text to translate..."
+                  rows={8}
+                />
+              </Field>
+              <Text className={styles.fieldHint}>
+                Enter the text you want to translate. Longer texts may take more time to process.
+              </Text>
+            </div>
 
             <div className={styles.actions}>
               <Button
@@ -531,7 +594,7 @@ export const LocalizationPage: React.FC = () => {
 
           {translatedText && (
             <div className={styles.resultsSection}>
-              <Title2>Translation Result</Title2>
+              <Title2 className={styles.sectionTitle}>Translation Result</Title2>
               <div className={styles.resultText}>{translatedText}</div>
             </div>
           )}
@@ -540,33 +603,46 @@ export const LocalizationPage: React.FC = () => {
 
       {activeTab === 'subtitles' && (
         <Card className={styles.toolCard}>
-          <Title2>Subtitle Generation</Title2>
-          <Text>Generate translated subtitles for video content</Text>
+          <Title2 className={styles.sectionTitle}>Subtitle Generation</Title2>
+          <Text className={styles.sectionDescription}>
+            Generate translated subtitles for your video content. Provide the path to your video
+            file and select the target language for the subtitles.
+          </Text>
 
           <div className={styles.form}>
-            <Field label="Video Path" required>
-              <Input
-                value={videoPath}
-                onChange={(_, data) => setVideoPath(data.value)}
-                placeholder="/path/to/video.mp4"
-              />
-            </Field>
+            <div className={styles.fieldGroup}>
+              <Field label="Video Path" required>
+                <Input
+                  value={videoPath}
+                  onChange={(_, data) => setVideoPath(data.value)}
+                  placeholder="/path/to/video.mp4"
+                />
+              </Field>
+              <Text className={styles.fieldHint}>
+                Enter the full path to your video file (e.g., C:\Videos\my-video.mp4)
+              </Text>
+            </div>
 
-            <Field label="Target Language">
-              <Dropdown
-                value={targetLanguage}
-                onOptionSelect={(_, data) => setTargetLanguage(data.optionValue as string)}
-              >
-                <Option value="es">Spanish</Option>
-                <Option value="fr">French</Option>
-                <Option value="de">German</Option>
-                <Option value="it">Italian</Option>
-                <Option value="pt">Portuguese</Option>
-                <Option value="zh">Chinese</Option>
-                <Option value="ja">Japanese</Option>
-                <Option value="ko">Korean</Option>
-              </Dropdown>
-            </Field>
+            <div className={styles.fieldGroup}>
+              <Field label="Target Language">
+                <Dropdown
+                  value={targetLanguage}
+                  onOptionSelect={(_, data) => setTargetLanguage(data.optionValue as string)}
+                >
+                  <Option value="es">Spanish</Option>
+                  <Option value="fr">French</Option>
+                  <Option value="de">German</Option>
+                  <Option value="it">Italian</Option>
+                  <Option value="pt">Portuguese</Option>
+                  <Option value="zh">Chinese</Option>
+                  <Option value="ja">Japanese</Option>
+                  <Option value="ko">Korean</Option>
+                </Dropdown>
+              </Field>
+              <Text className={styles.fieldHint}>
+                The language for your generated subtitles
+              </Text>
+            </div>
 
             <div className={styles.actions}>
               <Button
@@ -582,7 +658,7 @@ export const LocalizationPage: React.FC = () => {
 
           {subtitles && (
             <div className={styles.resultsSection}>
-              <Title2>Generated Subtitles</Title2>
+              <Title2 className={styles.sectionTitle}>Generated Subtitles</Title2>
               <div className={styles.resultText}>{subtitles}</div>
             </div>
           )}
@@ -591,38 +667,53 @@ export const LocalizationPage: React.FC = () => {
 
       {activeTab === 'adapt' && (
         <Card className={styles.toolCard}>
-          <Title2>Cultural Adaptation</Title2>
-          <Text>Adapt content for cultural context and local references</Text>
+          <Title2 className={styles.sectionTitle}>Cultural Adaptation</Title2>
+          <Text className={styles.sectionDescription}>
+            Adapt your content for cultural context and local references. This tool analyzes your
+            text and provides recommendations for making it culturally appropriate for your target
+            audience.
+          </Text>
 
           <div className={styles.form}>
-            <Field label="Target Culture">
-              <Dropdown
-                value={targetLanguage}
-                onOptionSelect={(_, data) => setTargetLanguage(data.optionValue as string)}
-              >
-                <Option value="es-MX">Spanish (Mexico)</Option>
-                <Option value="es-ES">Spanish (Spain)</Option>
-                <Option value="fr-FR">French (France)</Option>
-                <Option value="fr-CA">French (Canada)</Option>
-                <Option value="de-DE">German (Germany)</Option>
-                <Option value="it-IT">Italian (Italy)</Option>
-                <Option value="pt-BR">Portuguese (Brazil)</Option>
-                <Option value="pt-PT">Portuguese (Portugal)</Option>
-                <Option value="zh-CN">Chinese (Simplified)</Option>
-                <Option value="zh-TW">Chinese (Traditional)</Option>
-                <Option value="ja-JP">Japanese (Japan)</Option>
-                <Option value="ko-KR">Korean (Korea)</Option>
-              </Dropdown>
-            </Field>
+            <div className={styles.fieldGroup}>
+              <Field label="Target Culture">
+                <Dropdown
+                  value={targetLanguage}
+                  onOptionSelect={(_, data) => setTargetLanguage(data.optionValue as string)}
+                >
+                  <Option value="es-MX">Spanish (Mexico)</Option>
+                  <Option value="es-ES">Spanish (Spain)</Option>
+                  <Option value="fr-FR">French (France)</Option>
+                  <Option value="fr-CA">French (Canada)</Option>
+                  <Option value="de-DE">German (Germany)</Option>
+                  <Option value="it-IT">Italian (Italy)</Option>
+                  <Option value="pt-BR">Portuguese (Brazil)</Option>
+                  <Option value="pt-PT">Portuguese (Portugal)</Option>
+                  <Option value="zh-CN">Chinese (Simplified)</Option>
+                  <Option value="zh-TW">Chinese (Traditional)</Option>
+                  <Option value="ja-JP">Japanese (Japan)</Option>
+                  <Option value="ko-KR">Korean (Korea)</Option>
+                </Dropdown>
+              </Field>
+              <Text className={styles.fieldHint}>
+                Select the specific culture and region for content adaptation
+              </Text>
+            </div>
 
-            <Field label="Content to Adapt" required>
-              <Textarea
-                value={sourceText}
-                onChange={(_, data) => setSourceText(data.value)}
-                placeholder="Enter content to culturally adapt..."
-                rows={8}
-              />
-            </Field>
+            <div className={styles.fieldGroup}>
+              <Field label="Content to Adapt" required>
+                <Textarea
+                  value={sourceText}
+                  onChange={(_, data) => setSourceText(data.value)}
+                  placeholder="Enter content to culturally adapt..."
+                  rows={8}
+                />
+              </Field>
+              <Text className={styles.fieldHint}>
+                Enter your content for cultural analysis. The tool will identify areas that may
+                need adaptation for your target audience.
+              </Text>
+            </div>
 
             <div className={styles.actions}>
               <Button
@@ -650,7 +741,7 @@ export const LocalizationPage: React.FC = () => {
 
           {translatedText && (
             <div className={styles.resultsSection}>
-              <Title2>Adapted Content</Title2>
+              <Title2 className={styles.sectionTitle}>Adapted Content</Title2>
               <div className={styles.resultText}>{translatedText}</div>
             </div>
           )}

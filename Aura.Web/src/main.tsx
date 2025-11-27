@@ -73,6 +73,53 @@ console.info('[Main] Location:', window.location.href);
 console.info('[Main] Protocol:', window.location.protocol);
 console.info('[Main] User Agent:', navigator.userAgent);
 
+// ===== DEFAULT ZOOM INITIALIZATION =====
+// Set default zoom level to 90% for better readability on first load
+// Users can change this using browser zoom (Ctrl+/Ctrl-) and it will be saved
+const initializeDefaultZoom = (): void => {
+  const ZOOM_KEY = 'aura-zoom-level';
+  const DEFAULT_ZOOM = 0.9; // 90% zoom for better content density
+  
+  // Check if user has a saved zoom preference
+  const savedZoom = localStorage.getItem(ZOOM_KEY);
+  
+  // Use type assertion for the non-standard zoom CSS property
+  const htmlStyle = document.documentElement.style as CSSStyleDeclaration & { zoom: string };
+  
+  if (savedZoom === null) {
+    // First load - apply default 90% zoom
+    htmlStyle.zoom = String(DEFAULT_ZOOM);
+    localStorage.setItem(ZOOM_KEY, String(DEFAULT_ZOOM));
+    console.info(`[Main] Applied default zoom level: ${DEFAULT_ZOOM * 100}%`);
+  } else {
+    // User has a saved preference - apply it
+    const zoomLevel = parseFloat(savedZoom);
+    if (!isNaN(zoomLevel) && zoomLevel > 0 && zoomLevel <= 2) {
+      htmlStyle.zoom = String(zoomLevel);
+      console.info(`[Main] Applied saved zoom level: ${zoomLevel * 100}%`);
+    }
+  }
+  
+  // Listen for zoom changes via keyboard (Ctrl+Plus/Minus) and save preference
+  // Note: Browser zoom events are not directly available, but we can detect via
+  // visual viewport changes in some browsers
+  if (window.visualViewport) {
+    let lastScale = window.visualViewport.scale;
+    window.visualViewport.addEventListener('resize', () => {
+      const currentScale = window.visualViewport?.scale ?? 1;
+      if (Math.abs(currentScale - lastScale) > 0.01) {
+        // User changed zoom - update preference
+        // Note: visualViewport.scale reflects browser zoom, not CSS zoom
+        lastScale = currentScale;
+        console.info(`[Main] Detected zoom change: ${currentScale * 100}%`);
+      }
+    });
+  }
+};
+
+// Initialize zoom on script load
+initializeDefaultZoom();
+
 // Check for Electron environment
 console.info('[Main] Checking Electron environment...');
 const desktopDiagnostics =
