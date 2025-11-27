@@ -207,20 +207,24 @@ export const OllamaProviderConfig: FC<OllamaProviderConfigProps> = ({
     [fetchGpuStatus]
   );
 
-  const handleNumCtxChange = useCallback(async (value: number | null) => {
-    if (value === null) return;
-    setNumCtx(value);
-    try {
-      await fetch('/api/ollama/gpu/config', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ numCtx: value }),
-      });
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      setError(`Failed to update context window: ${errorMessage}`);
-    }
-  }, []);
+  const handleNumCtxChange = useCallback(
+    async (value: number | null) => {
+      if (value === null) return;
+      setNumCtx(value);
+      try {
+        await fetch('/api/ollama/gpu/config', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ numCtx: value }),
+        });
+        await fetchGpuStatus();
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        setError(`Failed to update context window: ${errorMessage}`);
+      }
+    },
+    [fetchGpuStatus]
+  );
 
   const fetchModels = useCallback(async () => {
     try {
