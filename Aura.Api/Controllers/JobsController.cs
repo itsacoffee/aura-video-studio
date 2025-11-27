@@ -1110,7 +1110,105 @@ public class JobsController : ControllerBase
 
         try
         {
-            // First, try to subscribe to export job updates via SSE
+            // First, check JobRunner for video generation jobs (primary use case)
+            // Wait for job to appear (it may take a moment after creation)
+            Job? job = null;
+            var waitAttempts = 0;
+            const int maxWaitAttempts = 40; // Wait up to 10 seconds (40 * 250ms)
+
+            while (job == null && waitAttempts < maxWaitAttempts && !cancellationToken.IsCancellationRequested)
+            {
+                job = _jobRunner.GetJob(jobId);
+                if (job == null)
+                {
+                    waitAttempts++;
+                    await Task.Delay(250, cancellationToken).ConfigureAwait(false);
+                }
+            }
+
+            if (job != null)
+            {
+                Log.Information("[{CorrelationId}] Streaming video generation job {JobId} via SSE", correlationId, jobId);
+
+                // Send initial state with normalized status
+                var initialData = JsonSerializer.Serialize(new
+                {
+                    percent = job.Percent,
+                    stage = job.Stage,
+                    status = MapJobStatus(job.Status.ToString()),
+                    message = job.Logs.LastOrDefault() ?? "Starting video generation...",
+                    outputPath = job.OutputPath
+                });
+                await Response.WriteAsync($"event: job-progress\n", cancellationToken).ConfigureAwait(false);
+                await Response.WriteAsync($"data: {initialData}\n\n", cancellationToken).ConfigureAwait(false);
+                await Response.Body.FlushAsync(cancellationToken).ConfigureAwait(false);
+
+                // Poll for updates (JobRunner doesn't have subscription support)
+                var lastPercent = job.Percent;
+                var lastStatus = job.Status;
+                var lastStage = job.Stage;
+                var pollIntervalMs = 500; // Poll every 500ms for responsiveness
+                var heartbeatCounter = 0;
+
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    await Task.Delay(pollIntervalMs, cancellationToken).ConfigureAwait(false);
+                    heartbeatCounter++;
+
+                    job = _jobRunner.GetJob(jobId);
+                    if (job == null) break;
+
+                    // Send updates when something changed OR every 10 polls (5 seconds) as heartbeat
+                    var shouldSendUpdate = job.Percent != lastPercent || 
+                                           job.Status != lastStatus || 
+                                           job.Stage != lastStage ||
+                                           heartbeatCounter >= 10;
+
+                    if (shouldSendUpdate)
+                    {
+                        var eventData = JsonSerializer.Serialize(new
+                        {
+                            percent = job.Percent,
+                            stage = job.Stage,
+                            status = MapJobStatus(job.Status.ToString()),
+                            message = job.Logs.LastOrDefault() ?? "Processing...",
+                            outputPath = job.OutputPath
+                        });
+
+                        await Response.WriteAsync($"event: job-progress\n", cancellationToken).ConfigureAwait(false);
+                        await Response.WriteAsync($"data: {eventData}\n\n", cancellationToken).ConfigureAwait(false);
+                        await Response.Body.FlushAsync(cancellationToken).ConfigureAwait(false);
+
+                        lastPercent = job.Percent;
+                        lastStatus = job.Status;
+                        lastStage = job.Stage;
+                        heartbeatCounter = 0;
+                    }
+
+                    // Check for terminal state
+                    if (job.Status == JobStatus.Done || job.Status == JobStatus.Succeeded ||
+                        job.Status == JobStatus.Failed || job.Status == JobStatus.Canceled)
+                    {
+                        var finalData = JsonSerializer.Serialize(new
+                        {
+                            percent = job.Percent,
+                            stage = job.Stage,
+                            status = MapJobStatus(job.Status.ToString()),
+                            message = job.Logs.LastOrDefault() ?? "",
+                            outputPath = job.OutputPath ?? job.Artifacts.FirstOrDefault(a => a.Type == "video" || a.Type == "video/mp4")?.Path
+                        });
+
+                        await Response.WriteAsync($"event: job-completed\n", cancellationToken).ConfigureAwait(false);
+                        await Response.WriteAsync($"data: {finalData}\n\n", cancellationToken).ConfigureAwait(false);
+                        await Response.Body.FlushAsync(cancellationToken).ConfigureAwait(false);
+                        break;
+                    }
+                }
+
+                return;
+            }
+
+            // Fall back to export job service for export-specific jobs
             if (_exportJobService != null)
             {
                 var exportJob = await _exportJobService.GetJobAsync(jobId).ConfigureAwait(false);
@@ -1148,104 +1246,10 @@ public class JobsController : ControllerBase
                 }
             }
 
-            // Fall back to JobRunner for video generation jobs
-            // Wait for job to appear (it may take a moment after creation)
-            Job? job = null;
-            var waitAttempts = 0;
-            const int maxWaitAttempts = 40; // Wait up to 10 seconds (40 * 250ms)
-
-            while (job == null && waitAttempts < maxWaitAttempts && !cancellationToken.IsCancellationRequested)
-            {
-                job = _jobRunner.GetJob(jobId);
-                if (job == null)
-                {
-                    waitAttempts++;
-                    await Task.Delay(250, cancellationToken).ConfigureAwait(false);
-                }
-            }
-
-            if (job == null)
-            {
-                await Response.WriteAsync("event: error\n", cancellationToken).ConfigureAwait(false);
-                await Response.WriteAsync($"data: {{\"error\":\"Job not found after waiting\",\"jobId\":\"{jobId}\"}}\n\n", cancellationToken).ConfigureAwait(false);
-                await Response.Body.FlushAsync(cancellationToken).ConfigureAwait(false);
-                return;
-            }
-
-            // Send initial state with normalized status
-            var initialData = JsonSerializer.Serialize(new
-            {
-                percent = job.Percent,
-                stage = job.Stage,
-                status = MapJobStatus(job.Status.ToString()),
-                message = job.Logs.LastOrDefault() ?? "Starting video generation...",
-                outputPath = job.OutputPath
-            });
-            await Response.WriteAsync($"event: job-progress\n", cancellationToken).ConfigureAwait(false);
-            await Response.WriteAsync($"data: {initialData}\n\n", cancellationToken).ConfigureAwait(false);
+            // No job found in either service
+            await Response.WriteAsync("event: error\n", cancellationToken).ConfigureAwait(false);
+            await Response.WriteAsync($"data: {{\"error\":\"Job not found after waiting\",\"jobId\":\"{jobId}\"}}\n\n", cancellationToken).ConfigureAwait(false);
             await Response.Body.FlushAsync(cancellationToken).ConfigureAwait(false);
-
-            // Poll for updates (JobRunner doesn't have subscription support)
-            var lastPercent = job.Percent;
-            var lastStatus = job.Status;
-            var lastStage = job.Stage;
-            var pollIntervalMs = 500; // Poll every 500ms for responsiveness
-            var heartbeatCounter = 0;
-
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                await Task.Delay(pollIntervalMs, cancellationToken).ConfigureAwait(false);
-                heartbeatCounter++;
-
-                job = _jobRunner.GetJob(jobId);
-                if (job == null) break;
-
-                // Send updates when something changed OR every 10 polls (5 seconds) as heartbeat
-                var shouldSendUpdate = job.Percent != lastPercent || 
-                                       job.Status != lastStatus || 
-                                       job.Stage != lastStage ||
-                                       heartbeatCounter >= 10;
-
-                if (shouldSendUpdate)
-                {
-                    var eventData = JsonSerializer.Serialize(new
-                    {
-                        percent = job.Percent,
-                        stage = job.Stage,
-                        status = MapJobStatus(job.Status.ToString()),
-                        message = job.Logs.LastOrDefault() ?? "Processing...",
-                        outputPath = job.OutputPath
-                    });
-
-                    await Response.WriteAsync($"event: job-progress\n", cancellationToken).ConfigureAwait(false);
-                    await Response.WriteAsync($"data: {eventData}\n\n", cancellationToken).ConfigureAwait(false);
-                    await Response.Body.FlushAsync(cancellationToken).ConfigureAwait(false);
-
-                    lastPercent = job.Percent;
-                    lastStatus = job.Status;
-                    lastStage = job.Stage;
-                    heartbeatCounter = 0;
-                }
-
-                // Check for terminal state
-                if (job.Status == JobStatus.Done || job.Status == JobStatus.Succeeded ||
-                    job.Status == JobStatus.Failed || job.Status == JobStatus.Canceled)
-                {
-                    var finalData = JsonSerializer.Serialize(new
-                    {
-                        percent = job.Percent,
-                        stage = job.Stage,
-                        status = MapJobStatus(job.Status.ToString()),
-                        message = job.Logs.LastOrDefault() ?? "",
-                        outputPath = job.OutputPath ?? job.Artifacts.FirstOrDefault(a => a.Type == "video" || a.Type == "video/mp4")?.Path
-                    });
-
-                    await Response.WriteAsync($"event: job-completed\n", cancellationToken).ConfigureAwait(false);
-                    await Response.WriteAsync($"data: {finalData}\n\n", cancellationToken).ConfigureAwait(false);
-                    await Response.Body.FlushAsync(cancellationToken).ConfigureAwait(false);
-                    break;
-                }
-            }
         }
         catch (OperationCanceledException)
         {
