@@ -1022,6 +1022,160 @@ public class JobsController : ControllerBase
     }
 
     /// <summary>
+    /// Stream Server-Sent Events for real-time job progress updates.
+    /// This endpoint provides instant progress updates for export jobs.
+    /// </summary>
+    [HttpGet("{jobId}/progress/stream")]
+    public async Task GetJobProgressStream(string jobId, CancellationToken ct = default)
+    {
+        // Use RequestAborted to detect client disconnections properly
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, HttpContext.RequestAborted);
+        var cancellationToken = linkedCts.Token;
+        var correlationId = HttpContext.TraceIdentifier;
+
+        Log.Information("[{CorrelationId}] SSE progress stream requested for job {JobId}", correlationId, jobId);
+
+        // Set headers for SSE
+        Response.Headers.Append("Content-Type", "text/event-stream");
+        Response.Headers.Append("Cache-Control", "no-cache");
+        Response.Headers.Append("Connection", "keep-alive");
+        Response.Headers.Append("X-Accel-Buffering", "no"); // Disable nginx buffering
+
+        try
+        {
+            // First, try to subscribe to export job updates via SSE
+            if (_exportJobService != null)
+            {
+                var exportJob = await _exportJobService.GetJobAsync(jobId).ConfigureAwait(false);
+                if (exportJob != null)
+                {
+                    Log.Information("[{CorrelationId}] Streaming export job {JobId} via SSE", correlationId, jobId);
+
+                    await foreach (var update in _exportJobService.SubscribeToJobUpdatesAsync(jobId, cancellationToken).ConfigureAwait(false))
+                    {
+                        var eventData = JsonSerializer.Serialize(new
+                        {
+                            percent = update.Progress,
+                            stage = update.Stage,
+                            status = update.Status,
+                            message = update.Message,
+                            outputPath = update.OutputPath,
+                            errorMessage = update.ErrorMessage
+                        });
+
+                        await Response.WriteAsync($"event: job-progress\n", cancellationToken).ConfigureAwait(false);
+                        await Response.WriteAsync($"data: {eventData}\n\n", cancellationToken).ConfigureAwait(false);
+                        await Response.Body.FlushAsync(cancellationToken).ConfigureAwait(false);
+
+                        // Send completion event when job reaches terminal state
+                        if (update.Status is "completed" or "failed" or "cancelled")
+                        {
+                            await Response.WriteAsync($"event: job-completed\n", cancellationToken).ConfigureAwait(false);
+                            await Response.WriteAsync($"data: {eventData}\n\n", cancellationToken).ConfigureAwait(false);
+                            await Response.Body.FlushAsync(cancellationToken).ConfigureAwait(false);
+                            break;
+                        }
+                    }
+
+                    return;
+                }
+            }
+
+            // Fall back to JobRunner for video generation jobs
+            var job = _jobRunner.GetJob(jobId);
+            if (job == null)
+            {
+                await Response.WriteAsync("event: error\n", cancellationToken).ConfigureAwait(false);
+                await Response.WriteAsync($"data: {{\"error\":\"Job not found\",\"jobId\":\"{jobId}\"}}\n\n", cancellationToken).ConfigureAwait(false);
+                await Response.Body.FlushAsync(cancellationToken).ConfigureAwait(false);
+                return;
+            }
+
+            // Send initial state
+            var initialData = JsonSerializer.Serialize(new
+            {
+                percent = job.Percent,
+                stage = job.Stage,
+                status = job.Status.ToString().ToLowerInvariant(),
+                message = job.Logs.LastOrDefault() ?? ""
+            });
+            await Response.WriteAsync($"event: job-progress\n", cancellationToken).ConfigureAwait(false);
+            await Response.WriteAsync($"data: {initialData}\n\n", cancellationToken).ConfigureAwait(false);
+            await Response.Body.FlushAsync(cancellationToken).ConfigureAwait(false);
+
+            // Poll for updates (JobRunner doesn't have subscription support)
+            var lastPercent = job.Percent;
+            var lastStatus = job.Status;
+            var pollIntervalMs = 250; // Poll every 250ms for responsiveness
+
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                await Task.Delay(pollIntervalMs, cancellationToken).ConfigureAwait(false);
+
+                job = _jobRunner.GetJob(jobId);
+                if (job == null) break;
+
+                // Only send updates when something changed
+                if (job.Percent != lastPercent || job.Status != lastStatus)
+                {
+                    var eventData = JsonSerializer.Serialize(new
+                    {
+                        percent = job.Percent,
+                        stage = job.Stage,
+                        status = job.Status.ToString().ToLowerInvariant(),
+                        message = job.Logs.LastOrDefault() ?? ""
+                    });
+
+                    await Response.WriteAsync($"event: job-progress\n", cancellationToken).ConfigureAwait(false);
+                    await Response.WriteAsync($"data: {eventData}\n\n", cancellationToken).ConfigureAwait(false);
+                    await Response.Body.FlushAsync(cancellationToken).ConfigureAwait(false);
+
+                    lastPercent = job.Percent;
+                    lastStatus = job.Status;
+                }
+
+                // Check for terminal state
+                if (job.Status == JobStatus.Done || job.Status == JobStatus.Succeeded ||
+                    job.Status == JobStatus.Failed || job.Status == JobStatus.Canceled)
+                {
+                    var finalData = JsonSerializer.Serialize(new
+                    {
+                        percent = job.Percent,
+                        stage = job.Stage,
+                        status = job.Status.ToString().ToLowerInvariant(),
+                        message = job.Logs.LastOrDefault() ?? "",
+                        outputPath = job.Artifacts.FirstOrDefault(a => a.Type == "video" || a.Type == "video/mp4")?.Path
+                    });
+
+                    await Response.WriteAsync($"event: job-completed\n", cancellationToken).ConfigureAwait(false);
+                    await Response.WriteAsync($"data: {finalData}\n\n", cancellationToken).ConfigureAwait(false);
+                    await Response.Body.FlushAsync(cancellationToken).ConfigureAwait(false);
+                    break;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Client disconnected, this is normal
+            Log.Debug("[{CorrelationId}] SSE progress stream canceled for job {JobId}", correlationId, jobId);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[{CorrelationId}] Error streaming progress for job {JobId}", correlationId, jobId);
+            try
+            {
+                await Response.WriteAsync($"event: error\n", CancellationToken.None).ConfigureAwait(false);
+                await Response.WriteAsync($"data: {{\"error\":\"{ex.Message.Replace("\"", "\\\"")}\"}}\n\n", CancellationToken.None).ConfigureAwait(false);
+                await Response.Body.FlushAsync(CancellationToken.None).ConfigureAwait(false);
+            }
+            catch
+            {
+                // Ignore errors when trying to send error message
+            }
+        }
+    }
+
+    /// <summary>
     /// Parse aspect ratio string to enum
     /// </summary>
     private static Core.Models.Aspect ParseAspect(string aspect)

@@ -27,7 +27,7 @@ import {
   Open24Regular,
 } from '@fluentui/react-icons';
 import type { FC } from 'react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { apiUrl } from '../../../config/api';
 import { startFinalRendering } from '../../../services/wizardService';
 import { openFile, openFolder } from '../../../utils/fileSystemUtils';
@@ -168,6 +168,7 @@ interface JobStatusData {
   percent?: number;
   stage?: string;
   progressMessage?: string;
+  message?: string; // Used in SSE progress events
   status?: string;
   errorMessage?: string;
   error?: string;
@@ -220,6 +221,9 @@ export const FinalExport: FC<FinalExportProps> = ({
   const [resolvedPaths, setResolvedPaths] = useState<Record<string, string>>({});
   const [saveLocation, setSaveLocation] = useState<string>('');
   const [isLoadingSaveLocation, setIsLoadingSaveLocation] = useState(true);
+
+  // Ref to track EventSource for SSE connection cleanup
+  const eventSourceRef = useRef<EventSource | null>(null);
 
   // Load default save location from backend on mount
   useEffect(() => {
@@ -277,6 +281,17 @@ export const FinalExport: FC<FinalExportProps> = ({
   useEffect(() => {
     onValidationChange({ isValid: true, errors: [] });
   }, [onValidationChange]);
+
+  // Cleanup SSE connection on unmount
+  useEffect(() => {
+    return () => {
+      if (eventSourceRef.current) {
+        console.info('[FinalExport] Cleaning up SSE connection on unmount');
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+    };
+  }, []);
 
   const estimatedFileSize = useMemo(() => {
     const duration = wizardData.brief.duration;
@@ -401,154 +416,177 @@ export const FinalExport: FC<FinalExportProps> = ({
             }
           );
 
-          // Provide initial feedback before polling starts
-          console.info('[FinalExport] Job submitted, waiting for backend to start processing...');
+          // Provide initial feedback
+          console.info('[FinalExport] Job submitted, connecting to SSE for real-time updates...');
           console.info('[FinalExport] Job ID received:', jobId);
-          setExportStage('Job submitted, waiting for backend to start processing...');
+          setExportStage('Connecting to job progress stream...');
           setExportProgress(1); // Show some progress so user knows something is happening
 
-          // Poll job status with improved error handling
-          let jobCompleted = false;
-          let jobData: unknown = null;
-          const maxPollAttempts = 600; // 10 minutes max (600 * 1 second)
-          let pollAttempts = 0;
-          let total404Errors = 0; // Track total 404 errors (doesn't reset on success)
-          let consecutiveErrors = 0; // Track consecutive errors of any kind
-          const maxConsecutiveErrors = 5;
+          // Use SSE for real-time progress updates with polling fallback
+          let jobData: JobStatusData | null = null;
 
-          while (!jobCompleted && pollAttempts < maxPollAttempts) {
-            await new Promise((resolve) => setTimeout(resolve, 1000)); // Poll every 1 second
-            pollAttempts++;
+          const ssePromise = new Promise<JobStatusData>((resolve, reject) => {
+            const sseUrl = apiUrl(`/api/jobs/${jobId}/progress/stream`);
+            console.info('[FinalExport] Connecting to SSE:', sseUrl);
 
-            try {
-              const statusResponse = await fetch(apiUrl(`/api/jobs/${jobId}`), {
-                headers: {
-                  Accept: 'application/json',
-                },
-              });
+            const eventSource = new EventSource(sseUrl);
+            eventSourceRef.current = eventSource;
 
-              if (!statusResponse.ok) {
-                if (statusResponse.status === 404) {
-                  total404Errors++;
-                  consecutiveErrors++;
+            // Track current format index for overall progress calculation
+            const formatIndex = i;
+            const totalFormats = formatsToExport.length;
 
-                  // Provide user feedback at different stages
-                  if (pollAttempts === 5) {
-                    setExportStage('Starting video generation...');
-                  } else if (pollAttempts === 10) {
+            // Connection timeout (10 minutes)
+            const timeoutId = setTimeout(() => {
+              if (eventSource.readyState !== EventSource.CLOSED) {
+                console.warn('[FinalExport] SSE connection timed out after 10 minutes');
+                eventSource.close();
+                eventSourceRef.current = null;
+                reject(new Error('Video generation timed out after 10 minutes'));
+              }
+            }, 600000);
+
+            eventSource.addEventListener('job-progress', (event) => {
+              try {
+                const data = JSON.parse(event.data) as JobStatusData;
+                const jobProgress = data.percent || 0;
+                const overallProgress = (formatIndex * 100 + jobProgress) / totalFormats;
+
+                setExportProgress(overallProgress);
+
+                const stageMessage = data.stage || 'Processing...';
+                const detailMessage = data.message || '';
+                setExportStage(
+                  detailMessage
+                    ? `${stageMessage}: ${detailMessage}`
+                    : `${stageMessage} (${Math.round(jobProgress)}%)`
+                );
+
+                console.info('[SSE] Progress update:', jobProgress, '%', data.stage);
+              } catch (err) {
+                console.warn('[SSE] Failed to parse progress event:', err);
+              }
+            });
+
+            eventSource.addEventListener('job-completed', (event) => {
+              clearTimeout(timeoutId);
+              try {
+                const data = JSON.parse(event.data) as JobStatusData;
+                console.info('[SSE] Job completed:', data);
+                eventSource.close();
+                eventSourceRef.current = null;
+
+                // Check for failure status
+                const status = data.status?.toLowerCase() || '';
+                if (status === 'failed') {
+                  const errorMsg = data.errorMessage || 'Video generation failed';
+                  reject(new Error(errorMsg));
+                } else if (status === 'cancelled' || status === 'canceled') {
+                  reject(new Error('Video generation was cancelled'));
+                } else {
+                  resolve(data);
+                }
+              } catch (err) {
+                eventSource.close();
+                eventSourceRef.current = null;
+                reject(err instanceof Error ? err : new Error(String(err)));
+              }
+            });
+
+            eventSource.addEventListener('error', (event) => {
+              // Check if this is just the connection closing normally
+              if (eventSource.readyState === EventSource.CLOSED) {
+                console.info('[SSE] Connection closed normally');
+                return;
+              }
+
+              console.error('[SSE] Connection error, falling back to polling:', event);
+              clearTimeout(timeoutId);
+              eventSource.close();
+              eventSourceRef.current = null;
+
+              // Fall back to polling if SSE fails
+              fallbackToPolling(jobId, formatIndex, totalFormats).then(resolve).catch(reject);
+            });
+
+            eventSource.onopen = () => {
+              console.info('[SSE] Connection established for job:', jobId);
+              setExportStage('Connected - waiting for progress updates...');
+            };
+          });
+
+          // Fallback polling function for when SSE fails
+          const fallbackToPolling = async (
+            pollJobId: string,
+            formatIdx: number,
+            totalFmts: number
+          ): Promise<JobStatusData> => {
+            console.info('[FinalExport] Falling back to polling for job:', pollJobId);
+            setExportStage('Polling for progress updates...');
+
+            let jobCompleted = false;
+            let lastJobData: JobStatusData | null = null;
+            const maxPollAttempts = 600; // 10 minutes max (600 * 1 second)
+            let pollAttempts = 0;
+            let consecutiveErrors = 0;
+            const maxConsecutiveErrors = 5;
+
+            while (!jobCompleted && pollAttempts < maxPollAttempts) {
+              await new Promise((res) => setTimeout(res, 1000));
+              pollAttempts++;
+
+              try {
+                const statusResponse = await fetch(apiUrl(`/api/jobs/${pollJobId}`), {
+                  headers: { Accept: 'application/json' },
+                });
+
+                if (!statusResponse.ok) {
+                  if (statusResponse.status === 404 && pollAttempts <= 15) {
                     setExportStage('Initializing rendering pipeline...');
-                  } else if (pollAttempts > 15 && total404Errors > 10) {
-                    // If we've polled for more than 15 seconds and had more than 10 total 404s,
-                    // the job likely doesn't exist
-                    throw new Error(
-                      'Video generation job not found. The backend may not have started the job correctly. ' +
-                        'Please check backend logs and ensure the API is running.'
-                    );
+                    continue;
                   }
-
-                  // Log after a few attempts for debugging
-                  if (pollAttempts > 5) {
-                    console.warn(
-                      `[FinalExport] Job ${jobId} not found after ${pollAttempts} attempts (total 404s: ${total404Errors})`
-                    );
-                  }
-                  continue;
+                  throw new Error(`Job status check failed: ${statusResponse.status}`);
                 }
 
-                const errorText = await statusResponse.text().catch(() => 'Unknown error');
-                throw new Error(
-                  `Failed to check job status: ${statusResponse.status} - ${errorText}`
-                );
-              }
+                consecutiveErrors = 0;
+                const typedJobData = (await statusResponse.json()) as JobStatusData;
+                lastJobData = typedJobData;
 
-              consecutiveErrors = 0; // Reset consecutive error counter on success (but not total404Errors)
-              jobData = await statusResponse.json();
+                const jobProgress = typedJobData.percent || 0;
+                const overallProgress = (formatIdx * 100 + jobProgress) / totalFmts;
+                setExportProgress(overallProgress);
 
-              // Use the JobStatusData interface
-              const typedJobData = jobData as JobStatusData;
+                const stageMessage = typedJobData.stage || 'Processing...';
+                setExportStage(`${stageMessage} (${Math.round(jobProgress)}%)`);
 
-              // Update progress based on job percent
-              const jobProgress = typedJobData.percent || 0;
-              const overallProgress = (i * 100 + jobProgress) / formatsToExport.length;
-              setExportProgress(overallProgress);
-
-              // Show detailed stage information
-              const stageMessage = typedJobData.stage || 'Processing...';
-              const detailMessage = typedJobData.progressMessage || '';
-              setExportStage(
-                detailMessage
-                  ? `${stageMessage}: ${detailMessage}`
-                  : `${stageMessage} (${Math.round(jobProgress)}%)`
-              );
-
-              console.info(
-                '[FinalExport] Polling attempt:',
-                pollAttempts,
-                'Status:',
-                typedJobData.status
-              );
-
-              // Check completion status
-              const jobStatus = (typedJobData.status?.toLowerCase() || '').trim();
-              if (jobStatus === 'done' || jobStatus === 'succeeded' || jobStatus === 'completed') {
-                jobCompleted = true;
-                console.info('[FinalExport] Job completed:', typedJobData);
-              } else if (jobStatus === 'failed') {
-                const errorMsg =
-                  typedJobData.errorMessage ||
-                  typedJobData.error ||
-                  typedJobData.failureDetails?.message ||
-                  'Video generation failed';
-                const errorDetails = typedJobData.failureDetails?.suggestedActions
-                  ? `\n\nSuggested actions:\n${typedJobData.failureDetails.suggestedActions.join('\n')}`
-                  : '';
-                throw new Error(`${errorMsg}${errorDetails}`);
-              } else if (jobStatus === 'canceled' || jobStatus === 'cancelled') {
-                throw new Error('Video generation was cancelled');
-              }
-              // Continue polling for 'queued' or 'running' status
-            } catch (error) {
-              // Re-throw "not found" errors after threshold
-              if (error instanceof Error && error.message.includes('not found')) {
-                throw error;
-              }
-
-              // If it's a network error, continue polling (with retry limit)
-              if (
-                error instanceof TypeError &&
-                (error.message.includes('fetch') || error.message.includes('network'))
-              ) {
+                const jobStatus = (typedJobData.status?.toLowerCase() || '').trim();
+                if (
+                  jobStatus === 'done' ||
+                  jobStatus === 'succeeded' ||
+                  jobStatus === 'completed'
+                ) {
+                  jobCompleted = true;
+                } else if (jobStatus === 'failed') {
+                  throw new Error(typedJobData.errorMessage || 'Video generation failed');
+                } else if (jobStatus === 'canceled' || jobStatus === 'cancelled') {
+                  throw new Error('Video generation was cancelled');
+                }
+              } catch (error) {
                 consecutiveErrors++;
-                console.warn(
-                  `[FinalExport] Network error while polling job status (attempt ${consecutiveErrors}/${maxConsecutiveErrors}), retrying...`
-                );
                 if (consecutiveErrors >= maxConsecutiveErrors) {
-                  throw new Error(
-                    'Network connection lost. Please check your internet connection and try again.'
-                  );
+                  throw error;
                 }
-                continue;
-              }
-
-              consecutiveErrors++;
-              console.warn(`[FinalExport] Poll attempt ${pollAttempts} failed:`, error);
-
-              if (consecutiveErrors >= maxConsecutiveErrors) {
-                throw new Error(
-                  `Failed to check job status after ${maxConsecutiveErrors} attempts. ` +
-                    `Last error: ${error instanceof Error ? error.message : String(error)}`
-                );
               }
             }
-          }
 
-          // Timeout handling
-          if (!jobCompleted) {
-            throw new Error(
-              `Video generation timed out after ${Math.round(pollAttempts / 60)} minutes. ` +
-                `The rendering process may still be running on the server.`
-            );
-          }
+            if (!jobCompleted || !lastJobData) {
+              throw new Error('Video generation timed out');
+            }
+
+            return lastJobData;
+          };
+
+          jobData = await ssePromise;
 
           // Get typed job data for output extraction (reuse JobStatusData interface)
           const finalJobData = jobData as JobStatusData;
@@ -661,6 +699,13 @@ export const FinalExport: FC<FinalExportProps> = ({
   }, [batchExport, selectedFormats, data, wizardData, estimatedFileSize]);
 
   const cancelExport = useCallback(() => {
+    // Close SSE connection if active
+    if (eventSourceRef.current) {
+      console.info('[FinalExport] Closing SSE connection on cancel');
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+
     setExportStatus('idle');
     setExportProgress(0);
     setExportStage('');
