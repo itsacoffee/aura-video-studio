@@ -331,6 +331,7 @@ public class VideoOrchestrator
         {
             // Pre-generation validation
             var validationMsg = "Validating system readiness...";
+            _logger.LogInformation("[Orchestrator] {Message}", validationMsg);
             progress?.Report(validationMsg);
             detailedProgress?.Report(ProgressBuilder.CreateBriefProgress(0, validationMsg, correlationId));
 
@@ -343,21 +344,27 @@ public class VideoOrchestrator
             }
             _logger.LogInformation("Pre-generation validation passed");
 
-            detailedProgress?.Report(ProgressBuilder.CreateBriefProgress(50, "System validation passed", correlationId));
+            var validationPassedMsg = "System validation passed";
+            _logger.LogInformation("[Orchestrator] {Message}", validationPassedMsg);
+            detailedProgress?.Report(ProgressBuilder.CreateBriefProgress(50, validationPassedMsg, correlationId));
 
             var pipelineMsg = "Starting smart video generation pipeline...";
+            _logger.LogInformation("[Orchestrator] {Message}", pipelineMsg);
             progress?.Report(pipelineMsg);
             detailedProgress?.Report(ProgressBuilder.CreateBriefProgress(100, pipelineMsg, correlationId));
 
             _logger.LogInformation("Using smart orchestration for topic: {Topic}, IsQuickDemo: {IsQuickDemo}", brief.Topic, isQuickDemo);
 
             // Create task executor that maps generation tasks to providers
+            _logger.LogInformation("[Orchestrator] Creating task executor for generation tasks");
             var executorContext = CreateTaskExecutor(brief, planSpec, voiceSpec, renderSpec, ct, isQuickDemo);
             var taskExecutor = executorContext.Executor;
 
             // Map progress events from orchestration to both string and detailed progress
             var orchestrationProgress = new Progress<OrchestrationProgress>(p =>
             {
+                _logger.LogDebug("[Orchestrator] Progress: {Stage} - {Completed}/{Total} tasks ({Percent:F1}%)",
+                    p.CurrentStage, p.CompletedTasks, p.TotalTasks, p.ProgressPercentage);
                 progress?.Report($"{p.CurrentStage}: {p.ProgressPercentage:F1}%");
 
                 // Map to detailed progress with stage-specific information
