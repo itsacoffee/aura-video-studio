@@ -241,6 +241,34 @@
   animation: slide-left var(--duration-normal) var(--ease-decelerate);
 }
 
+/* ==================== TOAST ANIMATIONS ==================== */
+@keyframes toastSlideIn {
+  from {
+    transform: translateX(100%) translateY(-8px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0) translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes toastSlideOut {
+  to {
+    transform: translateX(110%) translateY(-8px);
+    opacity: 0;
+  }
+}
+
+.toast-slide-in {
+  animation: toastSlideIn 350ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.toast-slide-out {
+  animation: toastSlideOut 250ms cubic-bezier(0.4, 0, 1, 1);
+}
+
 @keyframes scale-in {
   from {
     opacity: 0;

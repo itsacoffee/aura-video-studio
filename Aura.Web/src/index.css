@@ -30,6 +30,23 @@ html {
   --color-surface: #f8f9fa;
   --card-bg: #fff;
   --color-border: #e5e7eb;
+
+  /* Toast notification colors - Apple-inspired palette */
+  --toast-success-bg-rgb: 52, 199, 89;
+  --toast-success-border-rgb: 52, 199, 89;
+  --toast-success-accent: #34c759;
+  --toast-error-bg-rgb: 255, 69, 58;
+  --toast-error-border-rgb: 255, 69, 58;
+  --toast-error-accent: #ff453a;
+  --toast-info-bg-rgb: 10, 132, 255;
+  --toast-info-border-rgb: 10, 132, 255;
+  --toast-info-accent: #0a84ff;
+  --toast-warning-bg-rgb: 255, 159, 10;
+  --toast-warning-border-rgb: 255, 159, 10;
+  --toast-warning-accent: #ff9f0a;
+  --toast-text-primary: rgb(0 0 0 / 90%);
+  --toast-text-secondary: rgb(0 0 0 / 75%);
+  --toast-text-tertiary: rgb(0 0 0 / 60%);
 }
 
 .dark {
@@ -44,6 +61,11 @@ html {
   --panel-header-bg: #252525;
   --panel-border: #2d2d2d;
   --panel-hover: #2a2a2a;
+
+  /* Toast notification colors - Dark mode */
+  --toast-text-primary: rgb(255 255 255 / 92%);
+  --toast-text-secondary: rgb(255 255 255 / 80%);
+  --toast-text-tertiary: rgb(255 255 255 / 65%);
 }
 
 body {
