@@ -165,25 +165,42 @@ interface ExportResult {
 
 // Job data structure returned from the backend API
 interface JobStatusData {
+  /** Progress percentage (0-100) */
   percent?: number;
+  /** Current execution stage (e.g., "Script", "Voice", "Rendering") */
   stage?: string;
   /** Detailed progress message from polling endpoint */
   progressMessage?: string;
   /** Short progress message from SSE progress events (similar purpose to progressMessage) */
   message?: string;
+  /** Normalized job status: queued, running, completed, failed, cancelled */
   status?: string;
+  /** Error message if job failed */
   errorMessage?: string;
+  /** Legacy error field (for compatibility) */
   error?: string;
+  /** Detailed failure information */
   failureDetails?: {
     message?: string;
     suggestedActions?: string[];
   };
+  /** Path to the output file for completed jobs */
   outputPath?: string;
+  /** Artifacts produced by the job (video, subtitles, etc.) */
   artifacts?: Array<{
     path?: string;
     filePath?: string;
     type?: string;
+    sizeBytes?: number;
   }>;
+  /** Correlation ID for request tracing */
+  correlationId?: string;
+  /** When the job was created */
+  createdAt?: string;
+  /** When the job started running */
+  startedAt?: string;
+  /** When the job completed */
+  completedAt?: string;
 }
 
 /**
@@ -198,6 +215,34 @@ function formatStageMessage(stage: string, detail?: string | null, percent?: num
     return `${stage} (${Math.round(percent)}%)`;
   }
   return stage;
+}
+
+/**
+ * Returns initialization message based on poll attempt count.
+ * Used during initial 404 handling to show progressive status.
+ */
+function getInitializationMessage(pollAttempts: number): string {
+  if (pollAttempts <= 5) return 'Initializing job...';
+  if (pollAttempts <= 10) return 'Starting pipeline...';
+  return 'Initializing rendering pipeline...';
+}
+
+/**
+ * Checks job status and throws if job failed or was cancelled.
+ * Returns true if job completed successfully.
+ */
+function checkJobCompletion(jobData: JobStatusData): boolean {
+  const status = (jobData.status || '').toLowerCase().trim();
+  if (status === 'completed') {
+    return true;
+  }
+  if (status === 'failed') {
+    throw new Error(jobData.errorMessage || 'Video generation failed');
+  }
+  if (status === 'cancelled') {
+    throw new Error('Video generation was cancelled');
+  }
+  return false;
 }
 
 const QUALITY_OPTIONS = [
@@ -504,7 +549,9 @@ export const FinalExport: FC<FinalExportProps> = ({
               }
             });
 
-            eventSource.addEventListener('error', (event) => {
+            // Handle backend error event (when job not found initially)
+            eventSource.addEventListener('error', (event: Event) => {
+              // This is the EventSource built-in error (connection issues)
               // Check if this is just the connection closing normally
               if (eventSource.readyState === EventSource.CLOSED) {
                 console.info('[SSE] Connection closed normally');
@@ -531,6 +578,7 @@ export const FinalExport: FC<FinalExportProps> = ({
             pollJobId: string,
             formatIdx: number,
             totalFmts: number
+            // eslint-disable-next-line sonarjs/cognitive-complexity
           ): Promise<JobStatusData> => {
             console.info('[FinalExport] Falling back to polling for job:', pollJobId);
             setExportStage('Polling for progress updates...');
@@ -540,6 +588,7 @@ export const FinalExport: FC<FinalExportProps> = ({
             const maxPollAttempts = 600; // 10 minutes max (600 * 1 second)
             let pollAttempts = 0;
             let consecutiveErrors = 0;
+            let total404Errors = 0;
             const maxConsecutiveErrors = 5;
 
             while (!jobCompleted && pollAttempts < maxPollAttempts) {
@@ -552,35 +601,49 @@ export const FinalExport: FC<FinalExportProps> = ({
                 });
 
                 if (!statusResponse.ok) {
-                  if (statusResponse.status === 404 && pollAttempts <= 15) {
-                    setExportStage('Initializing rendering pipeline...');
+                  consecutiveErrors++;
+
+                  // Handle 404 specifically - job may not be created yet
+                  if (statusResponse.status === 404) {
+                    total404Errors++;
+                    // Only fail after sustained 404s and enough time has passed
+                    if (pollAttempts > 15 && total404Errors > 10) {
+                      throw new Error(
+                        'Video generation job not found. The job may not have been created correctly.'
+                      );
+                    }
+                    setExportStage(getInitializationMessage(pollAttempts));
                     continue;
                   }
-                  throw new Error(`Job status check failed: ${statusResponse.status}`);
+
+                  // Other HTTP errors
+                  if (consecutiveErrors >= maxConsecutiveErrors) {
+                    throw new Error(`Failed to fetch job status: ${statusResponse.statusText}`);
+                  }
+                  continue;
                 }
 
+                // Success - reset consecutive error counter
                 consecutiveErrors = 0;
+
                 const typedJobData = (await statusResponse.json()) as JobStatusData;
                 lastJobData = typedJobData;
 
-                const jobProgress = typedJobData.percent || 0;
-                const overallProgress = (formatIdx * 100 + jobProgress) / totalFmts;
-                setExportProgress(overallProgress);
+                // Extract progress with proper fallbacks and update UI
+                const jobProgress = Math.max(0, Math.min(100, typedJobData.percent ?? 0));
+                setExportProgress((formatIdx * 100 + jobProgress) / totalFmts);
                 setExportStage(
-                  formatStageMessage(typedJobData.stage || 'Processing...', null, jobProgress)
+                  formatStageMessage(
+                    typedJobData.stage || 'Processing',
+                    typedJobData.progressMessage,
+                    jobProgress
+                  )
                 );
 
-                const jobStatus = (typedJobData.status?.toLowerCase() || '').trim();
-                if (
-                  jobStatus === 'done' ||
-                  jobStatus === 'succeeded' ||
-                  jobStatus === 'completed'
-                ) {
+                // Check completion status using helper
+                if (checkJobCompletion(typedJobData)) {
                   jobCompleted = true;
-                } else if (jobStatus === 'failed') {
-                  throw new Error(typedJobData.errorMessage || 'Video generation failed');
-                } else if (jobStatus === 'canceled' || jobStatus === 'cancelled') {
-                  throw new Error('Video generation was cancelled');
+                  console.info('[FinalExport] Job completed successfully');
                 }
               } catch (error) {
                 consecutiveErrors++;
