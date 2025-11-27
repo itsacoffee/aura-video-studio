@@ -163,11 +163,16 @@ public record Job
             (JobStatus.Queued, JobStatus.Running) => true,
             (JobStatus.Queued, JobStatus.Canceled) => true,
             
-            // Running can transition to Done, Failed, or Canceled
+            // Running can transition to Done, Failed, Canceled, or Paused
             (JobStatus.Running, JobStatus.Done) => true,
             (JobStatus.Running, JobStatus.Succeeded) => true,
             (JobStatus.Running, JobStatus.Failed) => true,
             (JobStatus.Running, JobStatus.Canceled) => true,
+            (JobStatus.Running, JobStatus.Paused) => true,
+            
+            // Paused can transition back to Running or to Canceled
+            (JobStatus.Paused, JobStatus.Running) => true,
+            (JobStatus.Paused, JobStatus.Canceled) => true,
             
             // Terminal states cannot transition
             (JobStatus.Done, _) => false,
@@ -200,6 +205,7 @@ public enum JobStatus
 {
     Queued,
     Running,
+    Paused,
     Done,
     Failed,
     Skipped,
