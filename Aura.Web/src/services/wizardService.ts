@@ -11,26 +11,35 @@ import { loggingService as logger } from './loggingService';
 
 /**
  * Brief data from Step 1
+ * Supports both legacy field names (audience, goal) and wizard field names (targetAudience, keyMessage)
  */
 export interface WizardBriefData {
   topic: string;
-  audience: string;
-  goal: string;
-  tone: string;
-  language: string;
+  audience?: string;
+  goal?: string;
+  tone?: string;
+  language?: string;
   duration: number;
-  videoType: string;
+  videoType?: string;
+  // Wizard-specific field names (used by FinalExport.tsx)
+  targetAudience?: string;
+  keyMessage?: string;
 }
 
 /**
  * Style data from Step 2
+ * Supports both voiceName and selectedVoice for flexibility
  */
 export interface WizardStyleData {
-  voiceProvider: string;
-  voiceName: string;
-  visualStyle: string;
+  voiceProvider?: string;
+  voiceName?: string;
+  visualStyle?: string;
   musicGenre?: string;
-  musicEnabled: boolean;
+  musicEnabled?: boolean;
+  // Alternative field names used by some wizard components
+  selectedVoice?: string;
+  tone?: string;
+  genre?: string;
 }
 
 /**
@@ -311,7 +320,7 @@ export async function startFinalRendering(
       const hours = Math.floor(seconds / 3600);
       const minutes = Math.floor((seconds % 3600) / 60);
       const secs = seconds % 60;
-      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
     };
 
     // Map resolution string to Resolution object (width, height)
@@ -326,41 +335,57 @@ export async function startFinalRendering(
       return resolutionMap[resolution] || resolutionMap['1080p'];
     };
 
-    // Map bitrate to quality level (0-100)
-    // exportConfig.quality is the bitrate in kbps from qualityBitrateMap
-    const getQualityLevel = (bitrate: number): number => {
-      // Map common bitrate values to quality levels
-      if (bitrate <= 1500) return 50; // low
-      if (bitrate <= 2500) return 65; // medium
-      if (bitrate <= 5000) return 80; // high
-      if (bitrate <= 15000) return 95; // ultra
+    // Map quality string or bitrate to quality level (0-100)
+    const getQualityLevel = (quality: number | string): number => {
+      // If quality is a string, map named quality to level
+      if (typeof quality === 'string') {
+        const qualityMap: Record<string, number> = {
+          low: 50,
+          medium: 75,
+          high: 85,
+          ultra: 95,
+        };
+        return qualityMap[quality.toLowerCase()] || 75;
+      }
+      // If quality is a bitrate, map to level
+      if (quality <= 1500) return 50; // low
+      if (quality <= 2500) return 65; // medium
+      if (quality <= 5000) return 80; // high
+      if (quality <= 15000) return 95; // ultra
       return 75; // default
     };
 
     const resolution = parseResolution(exportConfig.resolution);
-    const qualityLevel = getQualityLevel(typeof exportConfig.quality === 'number' ? exportConfig.quality : 5000);
+    const qualityLevel = getQualityLevel(exportConfig.quality ?? 5000);
 
-    // Map wizard data to job creation format
+    // Map wizard data to job creation format matching backend DTOs
+    // Use targetAudience/keyMessage if available, fall back to audience/goal
+    const audience = briefData.targetAudience || briefData.audience || 'general audience';
+    const goal = briefData.keyMessage || briefData.goal || 'inform';
+    const tone = styleData.tone || briefData.tone || 'professional';
+    const voiceName = styleData.selectedVoice || styleData.voiceName || 'en-US-Neural';
+    const style = styleData.genre || styleData.visualStyle || 'informative';
+
     const jobRequest = {
       brief: {
         topic: briefData.topic,
-        audience: briefData.audience,
-        goal: briefData.goal,
-        tone: briefData.tone,
-        language: briefData.language,
-        aspect: '16:9', // Default aspect ratio
+        audience: audience,
+        goal: goal,
+        tone: tone,
+        language: briefData.language || 'English',
+        aspect: 'Widescreen16x9', // Use canonical enum value
       },
       planSpec: {
-        targetDuration: formatTimeSpan(briefData.duration), // TimeSpan format: HH:mm:ss
+        targetDuration: formatTimeSpan(briefData.duration || 120), // TimeSpan format: HH:mm:ss
         pacing: 'Conversational', // Valid pacing values: Chill, Conversational, Fast
-        density: 'Balanced',
-        style: styleData.visualStyle,
+        density: 'Balanced', // Valid density values: Sparse, Balanced, Dense
+        style: style,
       },
       voiceSpec: {
-        voiceName: styleData.voiceName,
+        voiceName: voiceName,
         rate: 1.0,
-        pitch: 0.0,
-        pause: 'Natural',
+        pitch: 1.0, // Normalized pitch
+        pause: 'Natural', // Valid pause values: Natural, Short, Long, Dramatic
       },
       renderSpec: {
         res: {
@@ -368,7 +393,7 @@ export async function startFinalRendering(
           height: resolution.height,
         },
         container: exportConfig.outputFormat || 'mp4',
-        videoBitrateK: exportConfig.quality || 5000,
+        videoBitrateK: typeof exportConfig.quality === 'number' ? exportConfig.quality : 5000,
         audioBitrateK: 192,
         fps: exportConfig.fps || 30,
         codec: (exportConfig.codec || 'H264').toUpperCase(),
@@ -376,6 +401,10 @@ export async function startFinalRendering(
         enableSceneCut: true,
       },
     };
+
+    logger.debug('Job request payload', 'wizardService', 'startFinalRendering', {
+      payload: jobRequest,
+    });
 
     // Use extended timeout for job creation (5 minutes)
     const response = await postWithTimeout<{
@@ -389,8 +418,9 @@ export async function startFinalRendering(
       config
     );
 
-    logger.info('Final rendering started', 'wizardService', 'startFinalRendering', {
+    logger.info('Final rendering job created', 'wizardService', 'startFinalRendering', {
       jobId: response.jobId,
+      correlationId: response.correlationId,
     });
 
     return { jobId: response.jobId, correlationId: response.correlationId };
