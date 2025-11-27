@@ -266,7 +266,14 @@ export const TranslationResult: React.FC<TranslationResultProps> = ({ result }) 
                 {result.metrics.grade}
               </Badge>
               {result.metrics.qualityIssues.length > 0 && (
-                <Tooltip content={result.metrics.qualityIssues.join(', ')} relationship="label">
+                <Tooltip
+                  content={
+                    result.metrics.qualityIssues.length === 1
+                      ? result.metrics.qualityIssues[0]
+                      : `• ${result.metrics.qualityIssues.slice(0, 3).join('\n• ')}${result.metrics.qualityIssues.length > 3 ? '\n• ...' : ''}`
+                  }
+                  relationship="label"
+                >
                   <Info16Regular />
                 </Tooltip>
               )}

@@ -819,9 +819,10 @@ public class LocalizationController : ControllerBase
             var capabilities = _llmProvider.GetCapabilities();
             providerName = capabilities.ProviderName;
         }
-        catch
+        catch (Exception ex)
         {
-            // Provider not available
+            _logger.LogDebug(ex, "Could not retrieve provider capabilities for analytics, CorrelationId: {CorrelationId}",
+                HttpContext.TraceIdentifier);
         }
 
         // Return analytics structure showing what would be tracked in production

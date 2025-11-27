@@ -8,25 +8,25 @@ Based on testing with the Aura Video Studio localization feature:
 
 ### Tier 1: Excellent (Recommended)
 
-| Model | Description |
-|-------|-------------|
-| **llama3.1 (8B)** | Best overall balance of quality and speed. Produces clean output with minimal artifacts. |
-| **mistral (7B)** | Very clean output, minimal artifacts. Excellent for European languages. |
-| **gemma2 (9B)** | High accuracy, good with cultural nuances. Great for nuanced translations. |
+| Model | Ollama Tag | Description |
+|-------|-----------|-------------|
+| **llama3.1** | `llama3.1:8b` | Best overall balance of quality and speed. Produces clean output with minimal artifacts. |
+| **mistral** | `mistral:7b` | Very clean output, minimal artifacts. Excellent for European languages. |
+| **gemma2** | `gemma2:9b` | High accuracy, good with cultural nuances. Great for nuanced translations. |
 
 ### Tier 2: Good
 
-| Model | Description |
-|-------|-------------|
-| **llama3.2 (3B)** | Fast, acceptable quality for simple translations. Good for quick iterations. |
-| **phi3 (3.8B)** | Compact, decent for technical content. Lower memory requirements. |
+| Model | Ollama Tag | Description |
+|-------|-----------|-------------|
+| **llama3.2** | `llama3.2:3b` | Fast, acceptable quality for simple translations. Good for quick iterations. |
+| **phi3** | `phi3:3.8b` | Compact, decent for technical content. Lower memory requirements. |
 
 ### Tier 3: Fair (Use with Caution)
 
-| Model | Description |
-|-------|-------------|
-| **llama2** | Older model, tends to generate verbose output with JSON artifacts. |
-| **codellama** | Optimized for code, not ideal for natural language translation. |
+| Model | Ollama Tag | Description |
+|-------|-----------|-------------|
+| **llama2** | `llama2:7b` | Older model, tends to generate verbose output with JSON artifacts. |
+| **codellama** | `codellama:7b` | Optimized for code, not ideal for natural language translation. |
 
 ## Installation
 
@@ -67,12 +67,12 @@ When configuring Ollama models for translation in Aura, consider these parameter
 
 ## Troubleshooting by Model
 
-### llama2 generates structured JSON output
+### llama2 (7B) generates structured JSON output
 
 **Problem**: The model returns JSON objects like `{"title": "...", "translation": "..."}` instead of plain translated text.
 
 **Solution**: 
-- Upgrade to llama3.1 or mistral for cleaner output
+- Upgrade to llama3.1:8b or mistral:7b for cleaner output
 - The automatic cleanup in Aura handles this, but Tier 1 models rarely produce such artifacts
 
 ### Model returns "Translation:" prefix

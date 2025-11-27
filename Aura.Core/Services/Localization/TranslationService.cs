@@ -810,8 +810,9 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
             var capabilities = _llmProvider.GetCapabilities();
             metrics.ProviderUsed = capabilities.ProviderName;
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogDebug(ex, "Could not retrieve provider capabilities for metrics");
             metrics.ProviderUsed = "Unknown";
         }
 
