@@ -25,6 +25,7 @@ import {
   ChevronDown24Regular,
 } from '@fluentui/react-icons';
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { useContextMenu, useContextMenuAction } from '../../hooks/useContextMenu';
 import {
   snapToFrame,
   formatTimecode,
@@ -38,6 +39,8 @@ import {
   SnapPoint,
 } from '../../services/timelineEngine';
 import { AppliedEffect } from '../../types/effects';
+import type { TimelineEmptyMenuData } from '../../types/electron-context-menu';
+import { clipboardManager } from '../../utils/clipboardManager';
 import { PlayheadIndicator } from '../Timeline/PlayheadIndicator';
 import { SnapGuides } from '../Timeline/SnapGuides';
 import { TimelineClip, TimelineClipData } from '../Timeline/TimelineClip';
@@ -211,6 +214,75 @@ export function TimelinePanel({
     key: null,
     speedMultiplier: 1,
   });
+
+  // Context menu for empty timeline space
+  const showTimelineMenu = useContextMenu<TimelineEmptyMenuData>('timeline-empty');
+
+  const calculateTimeFromPosition = useCallback(
+    (clientX: number): number => {
+      if (!timelineRef.current) return 0;
+      const rect = timelineRef.current.getBoundingClientRect();
+      const x = clientX - rect.left - 140; // Account for track label width
+      return Math.max(0, x / zoom);
+    },
+    [zoom]
+  );
+
+  const handleTimelineContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      // Only show menu if clicked on empty space (not on a clip)
+      if ((e.target as HTMLElement).closest('[data-clip-id]')) {
+        return;
+      }
+
+      const menuData: TimelineEmptyMenuData = {
+        timePosition: calculateTimeFromPosition(e.clientX),
+        hasClipboardData: clipboardManager.hasData(),
+      };
+      showTimelineMenu(e, menuData);
+    },
+    [calculateTimeFromPosition, showTimelineMenu]
+  );
+
+  // Context menu action handlers for empty timeline
+  useContextMenuAction(
+    'timeline-empty',
+    'onPaste',
+    useCallback(
+      (data: TimelineEmptyMenuData) => {
+        console.info('Paste at time:', data.timePosition);
+        const clipData = clipboardManager.paste();
+        if (clipData && typeof clipData === 'object' && 'trackId' in clipData) {
+          const pastedClip = clipData as TimelineClipLocal;
+          const newClip: TimelineClipLocal = {
+            ...pastedClip,
+            id: `clip-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+            startTime: data.timePosition,
+          };
+          onClipAdd?.(pastedClip.trackId, newClip);
+        }
+      },
+      [onClipAdd]
+    )
+  );
+
+  useContextMenuAction(
+    'timeline-empty',
+    'onAddMarker',
+    useCallback((data: TimelineEmptyMenuData) => {
+      console.info('Add marker at time:', data.timePosition);
+      // Marker functionality would be added here
+    }, [])
+  );
+
+  useContextMenuAction(
+    'timeline-empty',
+    'onSelectAll',
+    useCallback(() => {
+      console.info('Select all clips');
+      // Select all clips functionality would be added here
+    }, [])
+  );
 
   // Calculate timeline width based on clips
   const maxTime = Math.max(
@@ -618,7 +690,12 @@ export function TimelinePanel({
           onTimeClick={handleTimelineClick}
         />
 
-        <div className={styles.tracksContainer} role="region" aria-label="Timeline tracks">
+        <div
+          className={styles.tracksContainer}
+          role="region"
+          aria-label="Timeline tracks"
+          onContextMenu={handleTimelineContextMenu}
+        >
           {tracks.map((track) => (
             /* Timeline track - intentionally clickable for seeking playhead */
             /* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */
@@ -629,10 +706,10 @@ export function TimelinePanel({
               onDragLeave={handleTrackDragLeave}
               onDrop={(e) => handleTrackDrop(e, track.id)}
               onClick={(e) => {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const x = e.clientX - rect.left - 140; // Updated to match new track label width
-      const time = Math.max(0, x / pixelsPerSecond);
-      handleTimelineClick(time);
+                const rect = e.currentTarget.getBoundingClientRect();
+                const x = e.clientX - rect.left - 140; // Updated to match new track label width
+                const time = Math.max(0, x / pixelsPerSecond);
+                handleTimelineClick(time);
               }}
             >
               <div className={styles.trackLabel}>
