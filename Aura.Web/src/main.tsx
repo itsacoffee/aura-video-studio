@@ -73,6 +73,37 @@ console.info('[Main] Location:', window.location.href);
 console.info('[Main] Protocol:', window.location.protocol);
 console.info('[Main] User Agent:', navigator.userAgent);
 
+// ===== DEFAULT ZOOM INITIALIZATION =====
+// Set default zoom level to 90% for better readability on first load
+// Uses CSS zoom property which is supported in all modern browsers (Chrome, Edge, Safari, Firefox 126+)
+const initializeDefaultZoom = (): void => {
+  const ZOOM_KEY = 'aura-zoom-level';
+  const DEFAULT_ZOOM = 0.9; // 90% zoom for better content density
+  
+  // Check if user has a saved zoom preference
+  const savedZoom = localStorage.getItem(ZOOM_KEY);
+  
+  // Use type assertion for the non-standard (but widely supported) zoom CSS property
+  const htmlStyle = document.documentElement.style as CSSStyleDeclaration & { zoom: string };
+  
+  if (savedZoom === null) {
+    // First load - apply default 90% zoom
+    htmlStyle.zoom = String(DEFAULT_ZOOM);
+    localStorage.setItem(ZOOM_KEY, String(DEFAULT_ZOOM));
+    console.info(`[Main] Applied default zoom level: ${DEFAULT_ZOOM * 100}%`);
+  } else {
+    // User has a saved preference - apply it
+    const zoomLevel = parseFloat(savedZoom);
+    if (!isNaN(zoomLevel) && zoomLevel > 0 && zoomLevel <= 2) {
+      htmlStyle.zoom = String(zoomLevel);
+      console.info(`[Main] Applied saved zoom level: ${zoomLevel * 100}%`);
+    }
+  }
+};
+
+// Initialize zoom on script load
+initializeDefaultZoom();
+
 // Check for Electron environment
 console.info('[Main] Checking Electron environment...');
 const desktopDiagnostics =

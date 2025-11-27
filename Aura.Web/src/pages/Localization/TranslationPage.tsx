@@ -55,33 +55,60 @@ import { TranslationResult } from './components/TranslationResult';
 const useStyles = makeStyles({
   container: {
     padding: tokens.spacingVerticalXXL,
-    maxWidth: '1600px',
+    paddingLeft: tokens.spacingHorizontalXXL,
+    paddingRight: tokens.spacingHorizontalXXL,
+    maxWidth: '1400px',
     margin: '0 auto',
   },
   header: {
-    marginBottom: tokens.spacingVerticalXL,
+    marginBottom: tokens.spacingVerticalXXL,
     display: 'flex',
-    alignItems: 'center',
-    gap: tokens.spacingHorizontalM,
+    alignItems: 'flex-start',
+    gap: tokens.spacingHorizontalL,
   },
   headerIcon: {
     fontSize: '32px',
     color: tokens.colorBrandForeground1,
+    flexShrink: 0,
+    marginTop: tokens.spacingVerticalXS,
+  },
+  headerContent: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalS,
   },
   subtitle: {
-    color: tokens.colorNeutralForeground3,
-    marginTop: tokens.spacingVerticalS,
+    color: tokens.colorNeutralForeground2,
+    lineHeight: '1.5',
+    maxWidth: '700px',
   },
   tabs: {
-    marginBottom: tokens.spacingVerticalL,
+    marginBottom: tokens.spacingVerticalXL,
   },
   toolCard: {
-    padding: tokens.spacingVerticalXL,
+    padding: tokens.spacingVerticalXXL,
+    paddingLeft: tokens.spacingHorizontalXXL,
+    paddingRight: tokens.spacingHorizontalXXL,
+  },
+  sectionTitle: {
+    marginBottom: tokens.spacingVerticalS,
+  },
+  sectionDescription: {
+    color: tokens.colorNeutralForeground2,
+    lineHeight: '1.5',
+    marginBottom: tokens.spacingVerticalL,
+    maxWidth: '700px',
   },
   form: {
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalL,
+    gap: tokens.spacingVerticalXL,
+  },
+  fieldHint: {
+    color: tokens.colorNeutralForeground3,
+    fontSize: tokens.fontSizeBase200,
+    lineHeight: '1.5',
+    marginTop: tokens.spacingVerticalXS,
   },
   languageRow: {
     display: 'grid',
@@ -497,10 +524,11 @@ export const TranslationPage: React.FC = () => {
     <div className={styles.container}>
       <div className={styles.header}>
         <LocalLanguage24Regular className={styles.headerIcon} />
-        <div>
+        <div className={styles.headerContent}>
           <Title1>Translation & Localization</Title1>
           <Text className={styles.subtitle}>
-            AI-powered translation with cultural adaptation - supports any language, dialect, regional variant, or even fictional languages
+            AI-powered translation with cultural adaptation. Supports any language, dialect,
+            regional variant, or even fictional languages for your video content.
           </Text>
         </div>
       </div>
@@ -548,8 +576,10 @@ export const TranslationPage: React.FC = () => {
       {activeTab === 'translate' && (
         <>
           <Card className={styles.toolCard}>
-            <Title2>Translate Content</Title2>
-            <Text>Translate text with cultural adaptation and quality assurance</Text>
+            <Title2 className={styles.sectionTitle}>Translate Content</Title2>
+            <Text className={styles.sectionDescription}>
+              Translate text with cultural adaptation and quality assurance
+            </Text>
 
             <div className={styles.form}>
               <div className={styles.languageRow}>
