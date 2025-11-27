@@ -609,6 +609,34 @@ export interface TranslationResultDto {
   timingAdjustment: TimingAdjustmentDto;
   visualRecommendations: VisualLocalizationRecommendationDto[];
   translationTimeSeconds: number;
+  metrics?: TranslationMetricsDto;
+}
+
+/**
+ * Translation quality metrics for monitoring performance
+ */
+export interface TranslationMetricsDto {
+  lengthRatio: number;
+  hasStructuredArtifacts: boolean;
+  hasUnwantedPrefixes: boolean;
+  characterCount: number;
+  wordCount: number;
+  translationTimeSeconds: number;
+  providerUsed: string;
+  modelIdentifier: string;
+  qualityIssues: string[];
+  grade: string;
+}
+
+/**
+ * Translation analytics for admin dashboard
+ */
+export interface TranslationAnalyticsDto {
+  totalTranslations: number;
+  averageQualityGrade: string;
+  commonIssues: Record<string, number>;
+  providerBreakdown: Record<string, number>;
+  recommendedActions: string[];
 }
 
 /**

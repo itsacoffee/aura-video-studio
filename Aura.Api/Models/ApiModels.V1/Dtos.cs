@@ -1003,7 +1003,33 @@ public record TranslationResultDto(
     List<CulturalAdaptationDto> CulturalAdaptations,
     TimingAdjustmentDto TimingAdjustment,
     List<VisualLocalizationRecommendationDto> VisualRecommendations,
-    double TranslationTimeSeconds);
+    double TranslationTimeSeconds,
+    TranslationMetricsDto? Metrics = null);
+
+/// <summary>
+/// Translation quality metrics for monitoring performance
+/// </summary>
+public record TranslationMetricsDto(
+    double LengthRatio,
+    bool HasStructuredArtifacts,
+    bool HasUnwantedPrefixes,
+    int CharacterCount,
+    int WordCount,
+    double TranslationTimeSeconds,
+    string ProviderUsed,
+    string ModelIdentifier,
+    List<string> QualityIssues,
+    string Grade);
+
+/// <summary>
+/// Translation analytics for admin dashboard
+/// </summary>
+public record TranslationAnalyticsDto(
+    int TotalTranslations,
+    string AverageQualityGrade,
+    Dictionary<string, int> CommonIssues,
+    Dictionary<string, int> ProviderBreakdown,
+    List<string> RecommendedActions);
 
 /// <summary>
 /// Translated script line

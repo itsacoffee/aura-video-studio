@@ -170,6 +170,22 @@ public class TranslationService
 
             stopwatch.Stop();
             result.TranslationTimeSeconds = stopwatch.Elapsed.TotalSeconds;
+
+            // Phase 6: Calculate translation metrics for monitoring
+            _logger.LogInformation("Phase 6: Calculating translation metrics");
+            result.Metrics = CalculateMetrics(
+                result.SourceText,
+                result.TranslatedText,
+                result.TranslationTimeSeconds);
+
+            // Log quality issues if any detected
+            if (result.Metrics.QualityIssues.Count > 0)
+            {
+                _logger.LogWarning(
+                    "Translation quality issues detected ({Grade}): {Issues}",
+                    result.Metrics.Grade,
+                    string.Join("; ", result.Metrics.QualityIssues));
+            }
             
             _logger.LogInformation("Translation completed in {Time:F2}s with quality score {Quality:F1}", 
                 result.TranslationTimeSeconds, result.Quality.OverallScore);
@@ -768,6 +784,88 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
                text.Contains("\"tutorial\"", StringComparison.OrdinalIgnoreCase) ||
                text.Contains("\"steps\"", StringComparison.OrdinalIgnoreCase) ||
                text.Contains("\"metadata\"", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Calculates translation quality metrics based on source and translated text.
+    /// Detects common LLM output issues like structured artifacts, unwanted prefixes,
+    /// and unusual length ratios.
+    /// </summary>
+    private TranslationMetrics CalculateMetrics(
+        string sourceText,
+        string translatedText,
+        double translationTimeSeconds)
+    {
+        var metrics = new TranslationMetrics
+        {
+            CharacterCount = translatedText.Length,
+            WordCount = translatedText.Split(new[] { ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries).Length,
+            LengthRatio = (double)translatedText.Length / Math.Max(1, sourceText.Length),
+            TranslationTimeSeconds = translationTimeSeconds
+        };
+
+        // Try to get provider name
+        try
+        {
+            var capabilities = _llmProvider.GetCapabilities();
+            metrics.ProviderUsed = capabilities.ProviderName;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Could not retrieve provider capabilities for metrics");
+            metrics.ProviderUsed = "Unknown";
+        }
+
+        // Detect quality issues
+        var issues = new List<string>();
+
+        // Check for structured artifacts (JSON-like patterns in translated text)
+        if (ContainsStructuredArtifactKeys(translatedText))
+        {
+            metrics.HasStructuredArtifacts = true;
+            issues.Add("Response contained structured JSON artifacts");
+        }
+
+        // Check for common unwanted prefixes
+        var unwantedPrefixes = new[] { "Translation:", "Translated text:", "Here is the translation:", "Output:", "Result:" };
+        if (unwantedPrefixes.Any(prefix => translatedText.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
+        {
+            metrics.HasUnwantedPrefixes = true;
+            issues.Add("Response contained unwanted prefixes");
+        }
+
+        // Check for unusual length ratios
+        if (metrics.LengthRatio > 3.0)
+        {
+            issues.Add($"Translation unusually long ({metrics.LengthRatio:F1}x source length)");
+        }
+
+        if (metrics.LengthRatio < 0.3 && sourceText.Length > 10)
+        {
+            issues.Add($"Translation unusually short ({metrics.LengthRatio:F1}x source length)");
+        }
+
+        metrics.QualityIssues = issues;
+
+        // Calculate grade based on issues
+        if (issues.Count == 0 && metrics.LengthRatio > 0.5 && metrics.LengthRatio < 2.5)
+        {
+            metrics.Grade = TranslationQualityGrade.Excellent;
+        }
+        else if (issues.Count <= 1)
+        {
+            metrics.Grade = TranslationQualityGrade.Good;
+        }
+        else if (issues.Count <= 2)
+        {
+            metrics.Grade = TranslationQualityGrade.Fair;
+        }
+        else
+        {
+            metrics.Grade = TranslationQualityGrade.Poor;
+        }
+
+        return metrics;
     }
 
     private CulturalContext BuildDefaultCulturalContext(LanguageInfo targetLanguage)

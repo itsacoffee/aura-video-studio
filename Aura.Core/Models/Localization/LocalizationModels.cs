@@ -129,6 +129,11 @@ public class TranslationResult
     public Dictionary<string, string> TerminologyUsed { get; set; } = new();
     public DateTime TranslatedAt { get; set; } = DateTime.UtcNow;
     public double TranslationTimeSeconds { get; set; }
+
+    /// <summary>
+    /// Translation quality metrics for monitoring performance and output quality
+    /// </summary>
+    public TranslationMetrics? Metrics { get; set; }
 }
 
 /// <summary>
