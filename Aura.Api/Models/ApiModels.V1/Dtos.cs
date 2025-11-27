@@ -1584,6 +1584,33 @@ public record OllamaStatusDto
     public string? ErrorMessage { get; init; }
 }
 
+/// <summary>
+/// Ollama GPU status and configuration response
+/// </summary>
+public record OllamaGpuStatusResponse(
+    bool GpuEnabled,
+    int NumGpu,
+    int NumCtx,
+    bool AutoDetect,
+    bool HasGpu,
+    string? GpuName,
+    int VramMB,
+    string VramFormatted,
+    int RecommendedNumGpu,
+    int RecommendedNumCtx,
+    string DetectionMethod
+);
+
+/// <summary>
+/// Request to update Ollama GPU configuration
+/// </summary>
+public record OllamaGpuConfigRequest(
+    bool? GpuEnabled,
+    int? NumGpu,
+    int? NumCtx,
+    bool? AutoDetect
+);
+
 // ============================================================================
 // COST TRACKING DTOs
 // ============================================================================

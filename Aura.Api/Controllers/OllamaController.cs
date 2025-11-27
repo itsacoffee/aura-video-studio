@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Aura.Api.Models.ApiModels.V1;
 using Aura.Core.Configuration;
+using Aura.Core.Hardware;
 using Aura.Core.Services;
 using Aura.Core.Services.Providers;
 using Microsoft.AspNetCore.Mvc;
@@ -19,17 +20,20 @@ public class OllamaController : ControllerBase
     private readonly ProviderSettings _settings;
     private readonly HttpClient _httpClient;
     private readonly OllamaDetectionService? _detectionService;
+    private readonly IGpuDetectionService? _gpuDetectionService;
 
     public OllamaController(
         OllamaService ollamaService,
         ProviderSettings settings,
         IHttpClientFactory httpClientFactory,
-        OllamaDetectionService? detectionService = null)
+        OllamaDetectionService? detectionService = null,
+        IGpuDetectionService? gpuDetectionService = null)
     {
         _ollamaService = ollamaService;
         _settings = settings;
         _httpClient = httpClientFactory.CreateClient();
         _detectionService = detectionService;
+        _gpuDetectionService = gpuDetectionService;
     }
 
     /// <summary>
@@ -446,5 +450,158 @@ public class OllamaController : ControllerBase
         }
 
         return $"{len:0.##} {sizes[order]}";
+    }
+
+    /// <summary>
+    /// Get GPU status and configuration for Ollama
+    /// </summary>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>GPU configuration status</returns>
+    [HttpGet("gpu/status")]
+    public async Task<ActionResult<OllamaGpuStatusResponse>> GetGpuStatus(CancellationToken ct = default)
+    {
+        try
+        {
+            var gpuEnabled = _settings.GetOllamaGpuEnabled();
+            var numGpu = _settings.GetOllamaNumGpu();
+            var numCtx = _settings.GetOllamaNumCtx();
+            var autoDetect = _settings.GetOllamaGpuAutoDetect();
+
+            GpuDetectionResult? detectionResult = null;
+            if (_gpuDetectionService != null)
+            {
+                detectionResult = await _gpuDetectionService.DetectGpuAsync(ct).ConfigureAwait(false);
+            }
+
+            var response = new OllamaGpuStatusResponse(
+                GpuEnabled: gpuEnabled,
+                NumGpu: numGpu,
+                NumCtx: numCtx,
+                AutoDetect: autoDetect,
+                HasGpu: detectionResult?.HasGpu ?? false,
+                GpuName: detectionResult?.GpuName,
+                VramMB: detectionResult?.VramMB ?? 0,
+                VramFormatted: detectionResult?.VramFormatted ?? "N/A",
+                RecommendedNumGpu: detectionResult?.RecommendedNumGpu ?? 0,
+                RecommendedNumCtx: detectionResult?.RecommendedNumCtx ?? 2048,
+                DetectionMethod: detectionResult?.DetectionMethod ?? "NotAvailable"
+            );
+
+            Log.Information("GPU status check: Enabled={GpuEnabled}, NumGpu={NumGpu}, HasGpu={HasGpu}, GPU={GpuName}, CorrelationId={CorrelationId}",
+                gpuEnabled, numGpu, detectionResult?.HasGpu, detectionResult?.GpuName, HttpContext.TraceIdentifier);
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error checking GPU status, CorrelationId={CorrelationId}", HttpContext.TraceIdentifier);
+            return Problem(
+                title: "Error checking GPU status",
+                detail: ex.Message,
+                statusCode: 500,
+                instance: HttpContext.TraceIdentifier
+            );
+        }
+    }
+
+    /// <summary>
+    /// Update GPU configuration for Ollama
+    /// </summary>
+    /// <param name="request">GPU configuration request</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>Updated GPU configuration</returns>
+    [HttpPut("gpu/config")]
+    public async Task<ActionResult<OllamaGpuStatusResponse>> UpdateGpuConfig(
+        [FromBody] OllamaGpuConfigRequest request,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            Log.Information("Updating GPU config: Enabled={Enabled}, NumGpu={NumGpu}, NumCtx={NumCtx}, AutoDetect={AutoDetect}, CorrelationId={CorrelationId}",
+                request.GpuEnabled, request.NumGpu, request.NumCtx, request.AutoDetect, HttpContext.TraceIdentifier);
+
+            _settings.SetOllamaGpuConfig(
+                enabled: request.GpuEnabled,
+                numGpu: request.NumGpu,
+                numCtx: request.NumCtx,
+                autoDetect: request.AutoDetect
+            );
+
+            // Return updated status
+            return await GetGpuStatus(ct).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error updating GPU config, CorrelationId={CorrelationId}", HttpContext.TraceIdentifier);
+            return Problem(
+                title: "Error updating GPU configuration",
+                detail: ex.Message,
+                statusCode: 500,
+                instance: HttpContext.TraceIdentifier
+            );
+        }
+    }
+
+    /// <summary>
+    /// Auto-detect and apply optimal GPU settings
+    /// </summary>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>Detected and applied GPU configuration</returns>
+    [HttpPost("gpu/auto-detect")]
+    public async Task<ActionResult<OllamaGpuStatusResponse>> AutoDetectGpu(CancellationToken ct = default)
+    {
+        try
+        {
+            if (_gpuDetectionService == null)
+            {
+                return Problem(
+                    title: "GPU detection service not available",
+                    detail: "The GPU detection service is not configured",
+                    statusCode: 503,
+                    instance: HttpContext.TraceIdentifier
+                );
+            }
+
+            // Force re-detection
+            var detectionResult = await _gpuDetectionService.ForceDetectGpuAsync(ct).ConfigureAwait(false);
+
+            Log.Information("GPU auto-detection result: HasGpu={HasGpu}, GPU={GpuName}, VRAM={VramMB}MB, RecommendedNumGpu={NumGpu}, CorrelationId={CorrelationId}",
+                detectionResult.HasGpu, detectionResult.GpuName, detectionResult.VramMB,
+                detectionResult.RecommendedNumGpu, HttpContext.TraceIdentifier);
+
+            // Apply detected settings
+            _settings.SetOllamaGpuConfig(
+                enabled: detectionResult.HasGpu,
+                numGpu: detectionResult.RecommendedNumGpu,
+                numCtx: detectionResult.RecommendedNumCtx,
+                autoDetect: true
+            );
+
+            var response = new OllamaGpuStatusResponse(
+                GpuEnabled: detectionResult.HasGpu,
+                NumGpu: detectionResult.RecommendedNumGpu,
+                NumCtx: detectionResult.RecommendedNumCtx,
+                AutoDetect: true,
+                HasGpu: detectionResult.HasGpu,
+                GpuName: detectionResult.GpuName,
+                VramMB: detectionResult.VramMB,
+                VramFormatted: detectionResult.VramFormatted,
+                RecommendedNumGpu: detectionResult.RecommendedNumGpu,
+                RecommendedNumCtx: detectionResult.RecommendedNumCtx,
+                DetectionMethod: detectionResult.DetectionMethod
+            );
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error auto-detecting GPU, CorrelationId={CorrelationId}", HttpContext.TraceIdentifier);
+            return Problem(
+                title: "Error auto-detecting GPU",
+                detail: ex.Message,
+                statusCode: 500,
+                instance: HttpContext.TraceIdentifier
+            );
+        }
     }
 }
