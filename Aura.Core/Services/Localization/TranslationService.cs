@@ -1061,10 +1061,11 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
         CancellationToken ct)
     {
         // Use reflection to access Ollama provider's internal HttpClient and configuration
+        // This matches the approach used by script generation (working reference)
         var providerType = _llmProvider.GetType();
         System.Net.Http.HttpClient? httpClient = null;
         string baseUrl = "http://127.0.0.1:11434";
-        string defaultModel = "llama3.1:8b-q4_k_m";
+        string? defaultModel = null; // No hardcoded fallback - must get from provider configuration
         TimeSpan timeout = TimeSpan.FromSeconds(900);
         int maxRetries = 3;
         ILlmProvider? ollamaProvider = null;
@@ -1083,7 +1084,7 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
             {
                 httpClient = (System.Net.Http.HttpClient?)httpClientField.GetValue(_llmProvider);
                 baseUrl = (string?)baseUrlField.GetValue(_llmProvider) ?? baseUrl;
-                defaultModel = (string?)modelField.GetValue(_llmProvider) ?? defaultModel;
+                defaultModel = (string?)modelField.GetValue(_llmProvider); // Get from provider, no fallback
                 timeout = timeoutField?.GetValue(_llmProvider) as TimeSpan? ?? timeout;
                 maxRetries = (int)(maxRetriesField?.GetValue(_llmProvider) ?? maxRetries);
             }
@@ -1124,7 +1125,7 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
                     {
                         httpClient = (System.Net.Http.HttpClient?)httpClientField.GetValue(ollamaProvider);
                         baseUrl = (string?)baseUrlField.GetValue(ollamaProvider) ?? baseUrl;
-                        defaultModel = (string?)modelField.GetValue(ollamaProvider) ?? defaultModel;
+                        defaultModel = (string?)modelField.GetValue(ollamaProvider) ?? defaultModel; // Get from provider
                         timeout = timeoutField?.GetValue(ollamaProvider) as TimeSpan? ?? timeout;
                         maxRetries = (int)(maxRetriesField?.GetValue(ollamaProvider) ?? maxRetries);
                     }
@@ -1179,9 +1180,20 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
             createdHttpClient = true;
         }
 
+        // Validate we have a model from provider configuration (like script generation)
+        if (string.IsNullOrWhiteSpace(defaultModel))
+        {
+            throw new InvalidOperationException(
+                "Cannot determine Ollama model for translation. " +
+                "Please ensure Ollama provider is properly configured with a model in Settings. " +
+                "The model should be configured in Provider Settings (Ollama Model field).");
+        }
+
+        var modelToUse = defaultModel; // Use model from provider configuration (no hardcoded fallback)
+
         _logger.LogInformation(
             "Calling Ollama API directly for translation {SourceLang} -> {TargetLang} (Model: {Model})",
-            sourceLanguage, targetLanguage, defaultModel);
+            sourceLanguage, targetLanguage, modelToUse);
 
         // Build combined prompt (like script generation does) - combine system and user prompts
         // Script generation uses a single prompt, not messages array
@@ -1199,7 +1211,7 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
 
         var requestBody = new
         {
-            model = defaultModel,
+            model = modelToUse,
             prompt = combinedPrompt,
             stream = false,
             options = options
@@ -1243,7 +1255,7 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
                     if (errorContent.Contains("model") && errorContent.Contains("not found"))
                     {
                         throw new InvalidOperationException(
-                            $"Model '{defaultModel}' not found. Please pull the model first using: ollama pull {defaultModel}");
+                            $"Model '{modelToUse}' not found. Please pull the model first using: ollama pull {modelToUse}");
                     }
                     response.EnsureSuccessStatusCode();
                 }

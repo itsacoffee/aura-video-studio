@@ -3706,11 +3706,11 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
         CancellationToken ct)
     {
         // Use reflection to access Ollama provider's internal HttpClient and configuration
-        // This allows us to call Ollama API directly with proper parameters
+        // This allows us to call Ollama API directly with proper parameters (like script generation)
         var providerType = _llmProvider.GetType();
         System.Net.Http.HttpClient? httpClient = null;
         string baseUrl = "http://127.0.0.1:11434";
-        string defaultModel = "llama3.1:8b-q4_k_m";
+        string? defaultModel = null; // No hardcoded fallback - must get from provider configuration
         // Use a reasonable timeout - 3 minutes max for ideation to prevent indefinite hangs
         // If Ollama is unresponsive, we want to fail fast and fall back to CompositeLlmProvider
         TimeSpan timeout = TimeSpan.FromMinutes(3);
@@ -3733,7 +3733,7 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
             {
                 httpClient = (System.Net.Http.HttpClient?)httpClientField.GetValue(_llmProvider);
                 baseUrl = (string?)baseUrlField.GetValue(_llmProvider) ?? baseUrl;
-                defaultModel = (string?)modelField.GetValue(_llmProvider) ?? defaultModel;
+                defaultModel = (string?)modelField.GetValue(_llmProvider); // Get from provider, no fallback
                 timeout = timeoutField?.GetValue(_llmProvider) as TimeSpan? ?? timeout;
                 maxRetries = (int)(maxRetriesField?.GetValue(_llmProvider) ?? maxRetries);
             }
@@ -3777,7 +3777,7 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                     {
                         httpClient = (System.Net.Http.HttpClient?)httpClientField.GetValue(ollamaProvider);
                         baseUrl = (string?)baseUrlField.GetValue(ollamaProvider) ?? baseUrl;
-                        defaultModel = (string?)modelField.GetValue(ollamaProvider) ?? defaultModel;
+                        defaultModel = (string?)modelField.GetValue(ollamaProvider) ?? defaultModel; // Get from provider (may be null if not set)
                         timeout = timeoutField?.GetValue(ollamaProvider) as TimeSpan? ?? timeout;
                         maxRetries = (int)(maxRetriesField?.GetValue(ollamaProvider) ?? maxRetries);
                     }
@@ -3837,11 +3837,21 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
             timeout = httpTimeout;
         }
 
-        // Get LLM parameters with defaults
+        // Get LLM parameters with defaults (like script generation does)
         var llmParams = request.LlmParameters;
+        
+        // Validate we have a model - either from override or provider configuration
+        if (string.IsNullOrWhiteSpace(defaultModel) && string.IsNullOrWhiteSpace(llmParams?.ModelOverride))
+        {
+            throw new InvalidOperationException(
+                "Cannot determine Ollama model for ideation. " +
+                "Please ensure Ollama provider is properly configured with a model in Settings. " +
+                "The model should be configured in Provider Settings (Ollama Model field).");
+        }
+        
         var modelToUse = !string.IsNullOrWhiteSpace(llmParams?.ModelOverride)
             ? llmParams.ModelOverride
-            : defaultModel;
+            : defaultModel!; // Safe because we validated above
         var temperature = parameters?.Temperature ?? llmParams?.Temperature ?? 0.7;
         var maxTokens = parameters?.MaxTokens ?? llmParams?.MaxTokens ?? 2048;
         var topP = parameters?.TopP ?? llmParams?.TopP ?? 0.9;

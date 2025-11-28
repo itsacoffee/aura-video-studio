@@ -36,20 +36,30 @@ class WindowManager {
    * Create splash screen window
    */
   createSplashWindow() {
+    // Get primary display dimensions for fullscreen splash (use bounds to include taskbar area)
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const { width, height } = primaryDisplay.bounds;
+
     this.splashWindow = new BrowserWindow({
-      width: 600,
-      height: 400,
-      transparent: true,
+      width: width,
+      height: height,
+      x: 0,
+      y: 0,
+      transparent: false, // Set to false for better performance with complex animations
       frame: false,
       alwaysOnTop: true,
-      center: true,
+      center: false, // Position manually for fullscreen
       resizable: false,
       skipTaskbar: true,
+      fullscreen: false, // Use windowed fullscreen for better control
       webPreferences: {
         nodeIntegration: true,
         contextIsolation: false,
       },
     });
+
+    // Ensure window covers entire screen for immersive fullscreen loading experience
+    this.splashWindow.setBounds({ x: 0, y: 0, width, height });
 
     // Try the new splash.html first in electron directory
     const newSplashPath = path.join(__dirname, "splash.html");
@@ -268,7 +278,8 @@ class WindowManager {
       // Prevent default context menu and show our custom menu
       event.preventDefault();
 
-      const hasSelection = params.selectionText && params.selectionText.length > 0;
+      const hasSelection =
+        params.selectionText && params.selectionText.length > 0;
       const hasText = params.editFlags.canSelectAll; // If we can select all, there's text
 
       const template = [
