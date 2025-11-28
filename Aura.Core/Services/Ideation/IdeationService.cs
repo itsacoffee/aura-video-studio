@@ -272,6 +272,7 @@ You MUST analyze the topic deeply and provide concepts that are genuinely useful
             const int maxRetries = 3;
             string? jsonResponse = null;
             Exception? lastException = null;
+            bool lastAttemptHadGenericContent = false;
 
             // Create LLM parameters with JSON format for ideation (requires structured output)
             // This ensures Ollama and other providers return valid JSON
@@ -288,6 +289,48 @@ You MUST analyze the topic deeply and provide concepts that are genuinely useful
                         _logger.LogInformation("Retrying ideation (attempt {Attempt}/{Max}) for topic: {Topic}",
                             attempt + 1, maxRetries + 1, request.Topic);
                         await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt)), ct); // Exponential backoff
+                    }
+
+                    // Strengthen prompt on retries if previous attempt had generic content
+                    var currentSystemPrompt = systemPrompt;
+                    var currentUserPrompt = userPrompt;
+                    if (attempt > 0 && lastAttemptHadGenericContent)
+                    {
+                        _logger.LogInformation("Strengthening prompt for retry attempt {Attempt} due to generic content detection",
+                            attempt + 1);
+                        
+                        // Add more explicit instructions to system prompt
+                        currentSystemPrompt = systemPrompt + @"
+
+CRITICAL REMINDER FOR THIS RETRY: The previous attempt generated generic placeholder content. 
+You MUST generate SPECIFIC, DETAILED concepts that are directly related to the topic. 
+DO NOT use any generic phrases or placeholders. Every field must contain topic-specific information.";
+
+                        // Add explicit examples and warnings to user prompt
+                        var topicName = request.Topic;
+                        currentUserPrompt = userPrompt + $@"
+
+=== CRITICAL: PREVIOUS ATTEMPT FAILED ===
+The previous attempt generated generic placeholder content. This retry MUST succeed.
+
+REQUIREMENTS FOR THIS RETRY:
+1. Every description must be AT LEAST 100 characters and SPECIFIC to '{topicName}'
+2. Every talking point must mention '{topicName}' explicitly or reference specific aspects of it
+3. Every pro and con must be SPECIFIC to this topic, not generic statements
+4. The hook must be compelling and SPECIFIC to '{topicName}'
+5. DO NOT use phrases like 'This approach', 'Introduction to', 'Key aspects' without specific details
+
+EXAMPLE OF WHAT TO AVOID:
+❌ Description: 'This approach provides unique value through its specific perspective'
+❌ Talking Point: 'Introduction to the topic'
+❌ Pro: 'Engaging and accessible format'
+
+EXAMPLE OF WHAT TO DO:
+✅ Description: 'A detailed tutorial on {topicName} that covers [specific aspect 1], [specific aspect 2], and [specific aspect 3], with step-by-step demonstrations'
+✅ Talking Point: 'Step 1: [Specific action related to {topicName}] - [Why this matters]'
+✅ Pro: 'Visual demonstrations make [specific technique for {topicName}] easy to understand for beginners'
+
+Generate SPECIFIC content NOW. Do not use placeholders.";
                     }
 
                     // Verify provider type and log detailed information
@@ -327,8 +370,8 @@ You MUST analyze the topic deeply and provide concepts that are genuinely useful
 
                     var callStartTime = DateTime.UtcNow;
                     jsonResponse = await _llmProvider.GenerateChatCompletionAsync(
-                        systemPrompt,
-                        userPrompt,
+                        currentSystemPrompt,
+                        currentUserPrompt,
                         ideationParams,
                         ct);
                     var callDuration = DateTime.UtcNow - callStartTime;
@@ -361,34 +404,110 @@ You MUST analyze the topic deeply and provide concepts that are genuinely useful
                         conceptsArray.GetArrayLength() > 0)
                     {
                         // Quick quality check - reject if concepts have obvious placeholder descriptions
-                        // Only check for actual placeholder phrases, not just short content
+                        // Use the same comprehensive validation logic as final validation to catch all generic patterns
                         var containsGenericContent = false;
+                        var genericContentDetails = new List<string>();
+                        var topicName = request.Topic;
+                        
                         foreach (var concept in conceptsArray.EnumerateArray())
                         {
+                            // Check description field
                             if (concept.TryGetProperty("description", out var desc))
                             {
                                 var descText = desc.GetString() ?? "";
-                                // Only flag as generic if it contains actual placeholder phrases
-                                if (descText.Contains("This approach provides unique value through its specific perspective") ||
-                                    (descText.Contains("Introduction to how to") && descText.Length < 80))
+                                
+                                // Check all the same patterns as final validation
+                                if (descText.Contains("This approach provides unique value through its specific perspective"))
                                 {
                                     containsGenericContent = true;
-                                    break;
+                                    genericContentDetails.Add($"Description contains placeholder: '{descText.Substring(0, Math.Min(50, descText.Length))}...'");
                                 }
+                                else if (descText.Contains("Introduction to how to") && descText.Length < 80)
+                                {
+                                    containsGenericContent = true;
+                                    genericContentDetails.Add($"Description too generic/short: '{descText}'");
+                                }
+                                else if (descText.Contains("Key aspects of") && !descText.Contains(topicName) && descText.Length < 60)
+                                {
+                                    containsGenericContent = true;
+                                    genericContentDetails.Add($"Description contains 'Key aspects of' without topic: '{descText.Substring(0, Math.Min(50, descText.Length))}...'");
+                                }
+                                else if (descText.Length < 30 && (
+                                    descText.Contains("This approach") ||
+                                    descText.Contains("Introduction to") ||
+                                    descText.Contains("Key aspects")))
+                                {
+                                    containsGenericContent = true;
+                                    genericContentDetails.Add($"Description too short with placeholder phrase: '{descText}'");
+                                }
+                            }
+                            
+                            // Check talkingPoints array if it exists
+                            if (concept.TryGetProperty("talkingPoints", out var talkingPoints) && 
+                                talkingPoints.ValueKind == JsonValueKind.Array)
+                            {
+                                foreach (var tp in talkingPoints.EnumerateArray())
+                                {
+                                    var tpText = tp.GetString() ?? "";
+                                    if (tpText.Contains("Introduction to") && !tpText.Contains(topicName))
+                                    {
+                                        containsGenericContent = true;
+                                        genericContentDetails.Add($"Talking point contains generic 'Introduction to': '{tpText.Substring(0, Math.Min(50, tpText.Length))}...'");
+                                        break; // Found one, no need to check more
+                                    }
+                                }
+                            }
+                            
+                            // Check pros array if it exists
+                            if (concept.TryGetProperty("pros", out var pros) && 
+                                pros.ValueKind == JsonValueKind.Array)
+                            {
+                                foreach (var pro in pros.EnumerateArray())
+                                {
+                                    var proText = pro.GetString() ?? "";
+                                    if (proText == "Engaging and accessible format")
+                                    {
+                                        containsGenericContent = true;
+                                        genericContentDetails.Add($"Pro contains generic placeholder: '{proText}'");
+                                        break; // Found one, no need to check more
+                                    }
+                                }
+                            }
+                            
+                            // If we found generic content in this concept, no need to check others
+                            if (containsGenericContent)
+                            {
+                                break;
                             }
                         }
 
-                        if (containsGenericContent && attempt < maxRetries)
+                        if (containsGenericContent)
                         {
-                            _logger.LogWarning("LLM returned generic/placeholder content (Attempt {Attempt}), retrying with stronger prompt",
-                                attempt + 1);
-                            throw new InvalidOperationException("Response contains generic placeholder content - retrying");
+                            lastAttemptHadGenericContent = true;
+                            if (attempt < maxRetries)
+                            {
+                                _logger.LogWarning(
+                                    "LLM returned generic/placeholder content (Attempt {Attempt}/{Max}). Details: {Details}. Retrying with stronger prompt",
+                                    attempt + 1, maxRetries + 1, string.Join("; ", genericContentDetails));
+                                throw new InvalidOperationException("Response contains generic placeholder content - retrying");
+                            }
+                            else
+                            {
+                                // Last attempt - log detailed information
+                                _logger.LogError(
+                                    "LLM returned generic/placeholder content on final attempt. Response length: {Length}, Details: {Details}",
+                                    jsonResponse.Length, string.Join("; ", genericContentDetails));
+                                // Will be caught by outer validation
+                            }
                         }
-
-                        _logger.LogInformation("Successfully generated {Count} concepts for topic: {Topic} (Attempt {Attempt})",
-                            conceptsArray.GetArrayLength(), request.Topic, attempt + 1);
-                        jsonResponse = cleanedResponse; // Use cleaned response
-                        break; // Valid response
+                        else
+                        {
+                            lastAttemptHadGenericContent = false;
+                            _logger.LogInformation("Successfully generated {Count} concepts for topic: {Topic} (Attempt {Attempt})",
+                                conceptsArray.GetArrayLength(), request.Topic, attempt + 1);
+                            jsonResponse = cleanedResponse; // Use cleaned response
+                            break; // Valid response
+                        }
                     }
                     else
                     {
@@ -452,14 +571,41 @@ You MUST analyze the topic deeply and provide concepts that are genuinely useful
 
             if (hasGenericContent)
             {
+                // Log detailed diagnostic information
+                var providerType = _llmProvider.GetType().Name;
+                var genericConcepts = concepts.Where(c =>
+                    c.Description.Contains("This approach provides unique value through its specific perspective") ||
+                    (c.Description.Contains("Introduction to how to") && c.Description.Length < 80) ||
+                    (c.Description.Contains("Key aspects of") && !c.Description.Contains(request.Topic) && c.Description.Length < 60) ||
+                    c.TalkingPoints?.Any(tp => tp.Contains("Introduction to") && !tp.Contains(request.Topic)) == true ||
+                    c.Pros.Any(p => p == "Engaging and accessible format") ||
+                    (c.Description.Length < 30 && (
+                        c.Description.Contains("This approach") ||
+                        c.Description.Contains("Introduction to") ||
+                        c.Description.Contains("Key aspects")))).ToList();
+
                 _logger.LogError(
-                    "Parsed concepts contain generic/placeholder content. This indicates the LLM did not generate proper concepts. " +
-                    "Response length: {Length}, Response preview: {Preview}. " +
-                    "This is a critical quality issue - the LLM may not be properly configured or the prompt needs adjustment.",
+                    "Parsed concepts contain generic/placeholder content after all retries. " +
+                    "Provider: {Provider}, Response length: {Length}, Generic concepts: {GenericCount}/{TotalCount}. " +
+                    "Response preview: {Preview}. " +
+                    "This indicates the LLM may not be properly configured, the model is too small/weak, or needs different prompting.",
+                    providerType,
                     response.Length,
+                    genericConcepts.Count,
+                    concepts.Count,
                     response.Substring(0, Math.Min(500, response.Length)));
 
-                // Throw error to force retry or alert user
+                // Log specific examples of generic content for debugging
+                foreach (var concept in genericConcepts.Take(3))
+                {
+                    _logger.LogWarning(
+                        "Generic concept detected - Title: '{Title}', Description: '{Description}' (Length: {Length})",
+                        concept.Title,
+                        concept.Description.Substring(0, Math.Min(100, concept.Description.Length)),
+                        concept.Description.Length);
+                }
+
+                // Throw error with more helpful message
                 throw new InvalidOperationException(
                     "The LLM generated generic placeholder content instead of specific concepts. " +
                     "This usually means: (1) The LLM provider is not properly configured, (2) The model is not responding correctly, " +

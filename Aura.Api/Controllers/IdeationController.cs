@@ -153,12 +153,14 @@ public class IdeationController : ControllerBase
             else if (errorMessage.Contains("generic placeholder content", StringComparison.OrdinalIgnoreCase))
             {
                 // This error can occur with Ollama if the model is too small or not properly configured
-                errorMessage = "The LLM generated generic placeholder content instead of specific concepts. " +
+                errorMessage = "Failed to generate concepts. " +
+                              "The LLM generated generic placeholder content instead of specific concepts. " +
                               "This usually means: (1) The LLM provider is not properly configured, " +
                               "(2) The model is not responding correctly, or (3) The prompt needs adjustment.";
                 suggestions.Add("If using Ollama: Ensure the model is fully loaded (check 'ollama list')");
                 suggestions.Add("If using Ollama: Try a larger model (e.g., llama3.1:8b or larger)");
                 suggestions.Add("If using Ollama: Check that Ollama is using GPU acceleration if available");
+                suggestions.Add("If using Ollama: Verify the model is responding correctly (test with 'ollama run <model-name>')");
                 suggestions.Add("Verify your LLM provider is configured correctly in Settings");
                 suggestions.Add("Try using a different LLM model");
                 suggestions.Add("Simplify your topic description - make it more specific");

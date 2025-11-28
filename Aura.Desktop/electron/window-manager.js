@@ -246,6 +246,83 @@ class WindowManager {
       console.warn("[WindowManager] Navigation blocked:", url);
     });
 
+    // Handle context menu for text inputs (input, textarea, contentEditable)
+    // This provides native Windows-style context menus with Cut/Copy/Paste/Select All
+    // Following Microsoft/Adobe best practices for text editing context menus
+    this.mainWindow.webContents.on("context-menu", (event, params) => {
+      const { Menu } = require("electron");
+      const { editFlags } = params;
+
+      // Detect if this is a text input field
+      // Check multiple conditions to catch all text input types
+      const isTextInput =
+        params.isEditable || // contentEditable elements
+        params.inputFieldType !== "none" || // input/textarea elements
+        (params.selectionText && params.selectionText.length > 0); // has selected text
+
+      if (!isTextInput) {
+        // Let Electron show default context menu for non-text elements
+        return;
+      }
+
+      // Prevent default context menu and show our custom menu
+      event.preventDefault();
+
+      const hasSelection = params.selectionText && params.selectionText.length > 0;
+      const hasText = params.editFlags.canSelectAll; // If we can select all, there's text
+
+      const template = [
+        {
+          label: "Undo",
+          role: "undo",
+          enabled: editFlags.canUndo,
+          accelerator: "CmdOrCtrl+Z",
+        },
+        {
+          label: "Redo",
+          role: "redo",
+          enabled: editFlags.canRedo,
+          accelerator:
+            process.platform === "darwin" ? "Cmd+Shift+Z" : "CmdOrCtrl+Y",
+        },
+        { type: "separator" },
+        {
+          label: "Cut",
+          role: "cut",
+          enabled: editFlags.canCut && hasSelection,
+          accelerator: "CmdOrCtrl+X",
+        },
+        {
+          label: "Copy",
+          role: "copy",
+          enabled: editFlags.canCopy && hasSelection,
+          accelerator: "CmdOrCtrl+C",
+        },
+        {
+          label: "Paste",
+          role: "paste",
+          enabled: editFlags.canPaste,
+          accelerator: "CmdOrCtrl+V",
+        },
+        {
+          label: "Delete",
+          role: "delete",
+          enabled: editFlags.canDelete && hasSelection,
+          accelerator: "Delete",
+        },
+        { type: "separator" },
+        {
+          label: "Select All",
+          role: "selectAll",
+          enabled: editFlags.canSelectAll && hasText,
+          accelerator: "CmdOrCtrl+A",
+        },
+      ];
+
+      const menu = Menu.buildFromTemplate(template);
+      menu.popup({ window: this.mainWindow });
+    });
+
     // Prevent new window creation
     this.mainWindow.webContents.setWindowOpenHandler(({ url }) => {
       // Open in external browser
@@ -409,61 +486,81 @@ class WindowManager {
     const handleVisibilityChange = (eventType) => {
       // Track window state to avoid unnecessary operations
       const currentState = `${eventType}-${this.mainWindow.isVisible()}-${this.mainWindow.isMinimized()}`;
-      
+
       // Skip if state hasn't changed
       if (currentState === lastVisibilityState) {
         return;
       }
-      
+
       lastVisibilityState = currentState;
       console.log(`[WindowManager] Window visibility changed: ${eventType}`);
-      
+
       // Clear any pending debounce
       if (visibilityDebounceTimer) {
         clearTimeout(visibilityDebounceTimer);
       }
-      
+
       // Debounce to avoid rapid-fire repaints (300ms)
       visibilityDebounceTimer = setTimeout(() => {
         if (this.mainWindow && !this.mainWindow.isDestroyed()) {
           const currentURL = this.mainWindow.webContents.getURL();
-          
+
           // Only invalidate if page is loaded and not blank
-          if (currentURL && currentURL !== "about:blank" && this.loadingState.didFinishLoad) {
+          if (
+            currentURL &&
+            currentURL !== "about:blank" &&
+            this.loadingState.didFinishLoad
+          ) {
             // CRITICAL: Don't invalidate during setup wizard - it can cause black screens
             // Check if wizard is active by querying the renderer
-            this.mainWindow.webContents.executeJavaScript(`
+            this.mainWindow.webContents
+              .executeJavaScript(
+                `
               (function() {
                 const bodyText = document.body.textContent || '';
-                const isWizardActive = 
+                const isWizardActive =
                   document.body.getAttribute('data-wizard-active') === 'true' ||
                   document.querySelector('[data-wizard-active]') !== null ||
                   bodyText.includes('Welcome to Aura Video Studio');
                 return isWizardActive;
               })();
-            `).then((isWizardActive) => {
-              // Check if window still exists before accessing (async callback safety)
-              if (!this.mainWindow || this.mainWindow.isDestroyed()) {
-                console.log("[WindowManager] Window destroyed, skipping invalidation");
-                return;
-              }
-              if (!isWizardActive) {
-                // Use Electron's proper API for rendering refresh
+            `
+              )
+              .then((isWizardActive) => {
+                // Check if window still exists before accessing (async callback safety)
+                if (!this.mainWindow || this.mainWindow.isDestroyed()) {
+                  console.log(
+                    "[WindowManager] Window destroyed, skipping invalidation"
+                  );
+                  return;
+                }
+                if (!isWizardActive) {
+                  // Use Electron's proper API for rendering refresh
+                  this.mainWindow.webContents.invalidate();
+                  console.log(
+                    "[WindowManager] WebContents invalidated for repaint"
+                  );
+                } else {
+                  console.log(
+                    "[WindowManager] Skipping invalidation - setup wizard is active"
+                  );
+                }
+              })
+              .catch((error) => {
+                // Check if window still exists before accessing (async callback safety)
+                if (!this.mainWindow || this.mainWindow.isDestroyed()) {
+                  console.log(
+                    "[WindowManager] Window destroyed, skipping invalidation"
+                  );
+                  return;
+                }
+                // If check fails, still invalidate (safer to repaint than leave black)
+                console.warn(
+                  "[WindowManager] Failed to check wizard status, invalidating anyway:",
+                  error
+                );
                 this.mainWindow.webContents.invalidate();
-                console.log("[WindowManager] WebContents invalidated for repaint");
-              } else {
-                console.log("[WindowManager] Skipping invalidation - setup wizard is active");
-              }
-            }).catch((error) => {
-              // Check if window still exists before accessing (async callback safety)
-              if (!this.mainWindow || this.mainWindow.isDestroyed()) {
-                console.log("[WindowManager] Window destroyed, skipping invalidation");
-                return;
-              }
-              // If check fails, still invalidate (safer to repaint than leave black)
-              console.warn("[WindowManager] Failed to check wizard status, invalidating anyway:", error);
-              this.mainWindow.webContents.invalidate();
-            });
+              });
           }
         }
         visibilityDebounceTimer = null;
@@ -472,7 +569,9 @@ class WindowManager {
 
     // Single set of coordinated event handlers
     this.mainWindow.on("focus", () => handleVisibilityChange("focus"));
-    this.mainWindow.on("blur", () => console.log("[WindowManager] Window lost focus"));
+    this.mainWindow.on("blur", () =>
+      console.log("[WindowManager] Window lost focus")
+    );
     this.mainWindow.on("restore", () => {
       console.log("[WindowManager] Window restored from minimized state");
       if (this.mainWindow && !this.mainWindow.isDestroyed()) {

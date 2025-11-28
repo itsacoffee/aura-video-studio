@@ -436,6 +436,25 @@ public class TranslationService
                     "Using CompositeLlmProvider - it will select the best available provider (Ollama if available)");
             }
 
+            // Validate prompts before sending
+            if (string.IsNullOrWhiteSpace(systemPrompt))
+            {
+                _logger.LogError("System prompt is empty for translation {SourceLang} -> {TargetLang}",
+                    sourceLanguage, targetLanguage);
+                throw new InvalidOperationException("System prompt is empty - cannot perform translation");
+            }
+
+            if (string.IsNullOrWhiteSpace(userPrompt))
+            {
+                _logger.LogError("User prompt (text to translate) is empty for translation {SourceLang} -> {TargetLang}",
+                    sourceLanguage, targetLanguage);
+                throw new InvalidOperationException("Text to translate is empty");
+            }
+
+            _logger.LogDebug(
+                "Translation request: Source={SourceLang}, Target={TargetLang}, TextLength={Length}, SystemPromptLength={SysLength}, UserPromptLength={UserLength}",
+                sourceLanguage, targetLanguage, text.Length, systemPrompt.Length, userPrompt.Length);
+
             var translationStartTime = DateTime.UtcNow;
             string? response = null;
             try
@@ -443,13 +462,30 @@ public class TranslationService
                 response = await _llmProvider.GenerateChatCompletionAsync(
                     systemPrompt,
                     userPrompt,
-                    null, // Use default LLM parameters
+                    null, // Use default LLM parameters - do NOT use format="json" for translation
                     cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 _logger.LogWarning("Translation was cancelled by user");
                 throw;
+            }
+            catch (InvalidOperationException ioe) when (ioe.Message.Contains("empty response") || ioe.Message.Contains("empty content"))
+            {
+                // Ollama returned empty response - provide detailed diagnostics
+                _logger.LogError(ioe,
+                    "Ollama returned empty response for translation {SourceLang} -> {TargetLang}. " +
+                    "This usually means: (1) The model is not responding correctly, " +
+                    "(2) The prompt was too restrictive, or (3) The model needs to be reloaded. " +
+                    "Source text length: {SourceLength}, Provider: {Provider}",
+                    sourceLanguage, targetLanguage, text.Length, providerTypeName);
+
+                throw new InvalidOperationException(
+                    $"Translation failed: Ollama returned an empty response. " +
+                    $"This may indicate the model is not working correctly. " +
+                    $"Try: (1) Test the model directly with 'ollama run <model>', " +
+                    $"(2) Reload the model with 'ollama run <model>', " +
+                    $"(3) Try a different model, or (4) Check Ollama logs for errors.", ioe);
             }
             catch (Exception ex)
             {

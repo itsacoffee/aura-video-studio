@@ -308,15 +308,20 @@ function ToastWithProgress({
   const [progress, setProgress] = useState(100);
   const [isPaused, setIsPaused] = useState(false);
   const isPausedRef = useRef(false);
+  const onDismissRef = useRef(onDismiss);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number>(0);
   const pausedTimeRef = useRef<number>(0);
   const totalPausedTimeRef = useRef<number>(0);
 
-  // Keep ref in sync with state
+  // Keep refs in sync with props/state
   useEffect(() => {
     isPausedRef.current = isPaused;
   }, [isPaused]);
+
+  useEffect(() => {
+    onDismissRef.current = onDismiss;
+  }, [onDismiss]);
 
   useEffect(() => {
     if (timeout <= 0) {
@@ -339,12 +344,12 @@ function ToastWithProgress({
           const remaining = Math.max(0, timeout - elapsed);
           const newProgress = (remaining / timeout) * 100;
 
-          if (newProgress <= 0) {
+          if (remaining <= 0) {
             if (timerRef.current) {
               clearInterval(timerRef.current);
               timerRef.current = null;
             }
-            onDismiss?.();
+            onDismissRef.current?.();
           } else {
             setProgress(newProgress);
           }
@@ -365,7 +370,7 @@ function ToastWithProgress({
         timerRef.current = null;
       }
     };
-  }, [timeout, onDismiss]);
+  }, [timeout]);
 
   // Handle pause/resume - update total paused time when resuming
   useEffect(() => {
@@ -380,13 +385,13 @@ function ToastWithProgress({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onDismiss?.();
+        onDismissRef.current?.();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onDismiss]);
+  }, []);
 
   const handleMouseEnter = () => {
     setIsPaused(true);
@@ -508,7 +513,7 @@ export function useNotifications() {
             </div>
           </Toast>
         </ToastWithProgress>,
-        { intent: 'success', toastId }
+        { intent: 'success', toastId, timeout: -1 }
       );
 
       return toastId;
@@ -611,7 +616,7 @@ export function useNotifications() {
             </div>
           </Toast>
         </ToastWithProgress>,
-        { intent: 'error', toastId }
+        { intent: 'error', toastId, timeout: -1 }
       );
 
       return toastId;

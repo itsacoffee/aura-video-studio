@@ -518,12 +518,12 @@ public class OllamaLlmProvider : ILlmProvider
         // Build messages array for /api/chat endpoint
         // Ollama's /api/chat endpoint supports system and user roles separately
         var messages = new List<object>();
-        
+
         if (!string.IsNullOrWhiteSpace(systemPrompt))
         {
             messages.Add(new { role = "system", content = systemPrompt });
         }
-        
+
         messages.Add(new { role = "user", content = userPrompt });
 
         for (int attempt = 0; attempt <= _maxRetries; attempt++)
@@ -589,7 +589,7 @@ public class OllamaLlmProvider : ILlmProvider
                 {
                     var errorContent = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
                     var errorMessage = $"Ollama API returned status {response.StatusCode} ({(int)response.StatusCode})";
-                    
+
                     if (!string.IsNullOrWhiteSpace(errorContent))
                     {
                         try
@@ -632,22 +632,61 @@ public class OllamaLlmProvider : ILlmProvider
                 // /api/chat returns response in message.content field
                 if (responseDoc.RootElement.TryGetProperty("message", out var messageElement))
                 {
-                    if (messageElement.TryGetProperty("content", out var contentProp))
+                    // Check if message is an object with content field
+                    if (messageElement.ValueKind == JsonValueKind.Object)
                     {
-                        var result = contentProp.GetString() ?? string.Empty;
-
-                        if (string.IsNullOrWhiteSpace(result))
+                        if (messageElement.TryGetProperty("content", out var contentProp))
                         {
-                            throw new InvalidOperationException("Ollama returned an empty response");
-                        }
+                            var result = contentProp.GetString() ?? string.Empty;
 
-                        _logger.LogInformation("Chat completion generated successfully ({Length} characters)", result.Length);
-                        return result;
+                            if (string.IsNullOrWhiteSpace(result))
+                            {
+                                // Log the full message structure for debugging
+                                var messageFields = string.Join(", ", messageElement.EnumerateObject().Select(p => p.Name));
+                                _logger.LogError(
+                                    "Ollama returned empty content in message. " +
+                                    "Message fields: {Fields}. Full response preview: {Response}",
+                                    messageFields,
+                                    responseJson.Substring(0, Math.Min(500, responseJson.Length)));
+
+                                // Check if there's an error or reason for empty content
+                                if (messageElement.TryGetProperty("role", out var roleProp))
+                                {
+                                    var role = roleProp.GetString();
+                                    _logger.LogDebug("Message role: {Role}", role);
+                                }
+
+                                throw new InvalidOperationException(
+                                    "Ollama returned an empty response. " +
+                                    "This may indicate: (1) The model is not responding correctly, " +
+                                    "(2) The prompt was too restrictive, or (3) The model needs to be reloaded. " +
+                                    "Try: 'ollama run <model>' to test the model directly.");
+                            }
+
+                            _logger.LogInformation("Chat completion generated successfully ({Length} characters)", result.Length);
+                            return result;
+                        }
+                        else
+                        {
+                            // Log available fields in message object
+                            var messageFields = string.Join(", ", messageElement.EnumerateObject().Select(p => p.Name));
+                            _logger.LogError(
+                                "Ollama response message did not contain 'content' field. " +
+                                "Available message fields: {Fields}. Full response: {Response}",
+                                messageFields,
+                                responseJson.Substring(0, Math.Min(500, responseJson.Length)));
+                            throw new InvalidOperationException(
+                                $"Invalid response structure from Ollama API: message.content missing. " +
+                                $"Available message fields: {messageFields}");
+                        }
                     }
                     else
                     {
-                        _logger.LogError("Ollama response message did not contain 'content' field");
-                        throw new InvalidOperationException("Invalid response structure from Ollama API: message.content missing");
+                        _logger.LogError(
+                            "Ollama response 'message' field is not an object. Type: {Type}, Value: {Value}",
+                            messageElement.ValueKind,
+                            messageElement.ToString().Substring(0, Math.Min(200, messageElement.ToString().Length)));
+                        throw new InvalidOperationException("Invalid response structure from Ollama API: message field is not an object");
                     }
                 }
                 // Fallback: check for 'response' field (for backward compatibility with /api/generate format)
@@ -664,9 +703,23 @@ public class OllamaLlmProvider : ILlmProvider
                     return result;
                 }
 
-                _logger.LogError("Ollama response did not contain 'message' or 'response' field. Response: {Response}",
+                // Log the full response structure for debugging
+                var availableFields = string.Join(", ", responseDoc.RootElement.EnumerateObject().Select(p => p.Name));
+                _logger.LogError(
+                    "Ollama response did not contain 'message' or 'response' field. " +
+                    "Available fields: {Fields}. Response preview: {Response}",
+                    availableFields,
                     responseJson.Substring(0, Math.Min(500, responseJson.Length)));
-                throw new InvalidOperationException("Invalid response structure from Ollama API: missing message or response field");
+
+                // Check if response has 'done' field but no content (streaming completion)
+                if (responseDoc.RootElement.TryGetProperty("done", out var doneProp) &&
+                    doneProp.GetBoolean() == true)
+                {
+                    _logger.LogWarning("Ollama response marked as 'done' but no content found. This may indicate an empty completion.");
+                    throw new InvalidOperationException("Ollama returned a completed response with no content. The model may have generated an empty output.");
+                }
+
+                throw new InvalidOperationException($"Invalid response structure from Ollama API: missing message or response field. Available fields: {availableFields}");
             }
             catch (TaskCanceledException ex) when (attempt < _maxRetries)
             {
@@ -1848,7 +1901,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
     {
         // Use TTS-aware scene parsing with word-count based duration calculation
         var scenes = new List<ScriptScene>();
-        
+
         if (string.IsNullOrWhiteSpace(scriptText))
         {
             return CreateFallbackScene(scriptText, spec);
@@ -1856,7 +1909,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
 
         // Try to parse structured scenes with markdown headers (## Section)
         var parsedScenes = ParseMarkdownScenes(scriptText);
-        
+
         // If no structured scenes found, intelligently segment the text
         if (parsedScenes.Count == 0)
         {
@@ -1878,7 +1931,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
 
             var wordCount = CountWords(narration);
             var duration = CalculateTtsDuration(wordCount);
-            
+
             var visualPrompt = GenerateVisualPrompt(narration);
             var transition = sceneNumber == parsedScenes.Count ? TransitionType.Fade : TransitionType.Cut;
 
@@ -1911,7 +1964,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
     {
         var scenes = new List<(string narration, string heading)>();
         var lines = scriptText.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
-        
+
         string? currentHeading = null;
         var currentContent = new List<string>();
 
@@ -1928,7 +1981,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
                         scenes.Add((narration, currentHeading));
                     }
                 }
-                
+
                 currentHeading = headerMatch.Groups[1].Value.Trim();
                 currentContent.Clear();
             }
@@ -1960,7 +2013,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
     private List<(string narration, string heading)> SegmentTextIntoScenes(string scriptText, PlanSpec spec)
     {
         var scenes = new List<(string narration, string heading)>();
-        
+
         var paragraphs = ParagraphSplitRegex.Split(scriptText)
             .Select(p => p.Trim())
             .Where(p => !string.IsNullOrWhiteSpace(p) && !IsMetadataLine(p))
@@ -1982,7 +2035,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
         foreach (var paragraph in paragraphs)
         {
             var paragraphWords = CountWords(paragraph);
-            
+
             if (currentSceneWords + paragraphWords > targetWordsPerScene * 1.5 && currentSceneContent.Count > 0)
             {
                 var content = string.Join(" ", currentSceneContent);
@@ -2026,7 +2079,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
 
         var durationSeconds = (wordCount / (double)wordsPerMinute) * 60;
         durationSeconds = Math.Clamp(durationSeconds, minSeconds, maxSeconds);
-        
+
         return TimeSpan.FromSeconds(durationSeconds);
     }
 
@@ -2039,7 +2092,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
             return true;
 
         var trimmed = line.Trim().ToLowerInvariant();
-        
+
         return trimmed.StartsWith("[visual:") ||
                trimmed.StartsWith("[pause") ||
                trimmed.StartsWith("[music") ||
@@ -2062,7 +2115,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
         cleaned = PauseMarkerRegex.Replace(cleaned, "");
         cleaned = MediaMarkerRegex.Replace(cleaned, "");
         cleaned = MultiSpaceRegex.Replace(cleaned, " ");
-        
+
         return cleaned.Trim();
     }
 
