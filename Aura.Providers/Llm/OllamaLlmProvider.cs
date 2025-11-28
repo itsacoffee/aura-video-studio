@@ -588,42 +588,143 @@ public class OllamaLlmProvider : ILlmProvider
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
-                    var errorMessage = $"Ollama API returned status {response.StatusCode} ({(int)response.StatusCode})";
-
-                    if (!string.IsNullOrWhiteSpace(errorContent))
+                    
+                    // Check for model not found error and try to use first available model
+                    if (errorContent.Contains("model") && (errorContent.Contains("not found") || errorContent.Contains("does not exist")))
                     {
+                        _logger.LogWarning("Model '{Model}' not found, querying Ollama for available models", modelToUse);
+                        
                         try
                         {
-                            var errorDoc = JsonDocument.Parse(errorContent);
-                            if (errorDoc.RootElement.TryGetProperty("error", out var errorProp))
+                            using var tagsCts = new CancellationTokenSource();
+                            tagsCts.CancelAfter(TimeSpan.FromSeconds(10));
+                            var tagsResponse = await _httpClient.GetAsync($"{_baseUrl}/api/tags", tagsCts.Token).ConfigureAwait(false);
+                            
+                            if (tagsResponse.IsSuccessStatusCode)
                             {
-                                errorMessage = $"Ollama API error: {errorProp.GetString()}";
+                                var tagsContent = await tagsResponse.Content.ReadAsStringAsync(tagsCts.Token).ConfigureAwait(false);
+                                var tagsDoc = JsonDocument.Parse(tagsContent);
+                                
+                                if (tagsDoc.RootElement.TryGetProperty("models", out var modelsArray) &&
+                                    modelsArray.ValueKind == JsonValueKind.Array)
+                                {
+                                    var availableModels = new List<string>();
+                                    foreach (var modelElement in modelsArray.EnumerateArray())
+                                    {
+                                        if (modelElement.TryGetProperty("name", out var nameProp))
+                                        {
+                                            var name = nameProp.GetString();
+                                            if (!string.IsNullOrEmpty(name))
+                                            {
+                                                availableModels.Add(name);
+                                            }
+                                        }
+                                    }
+                                    
+                                    if (availableModels.Count > 0)
+                                    {
+                                        // Use the first available model
+                                        var fallbackModel = availableModels[0];
+                                        _logger.LogInformation("Model '{RequestedModel}' not found, using first available model: '{FallbackModel}'. Available models: {AllModels}",
+                                            modelToUse, fallbackModel, string.Join(", ", availableModels));
+                                        modelToUse = fallbackModel;
+                                        
+                                        // Rebuild request with the available model
+                                        var fallbackRequestBodyDict = new Dictionary<string, object>
+                                        {
+                                            { "model", modelToUse },
+                                            { "messages", messages },
+                                            { "stream", false },
+                                            { "options", options }
+                                        };
+                                        
+                                        if (!string.IsNullOrEmpty(responseFormat) && 
+                                            string.Equals(responseFormat, "json", StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            fallbackRequestBodyDict["format"] = "json";
+                                        }
+                                        
+                                        var fallbackJson = JsonSerializer.Serialize(fallbackRequestBodyDict);
+                                        var fallbackContent = new StringContent(fallbackJson, Encoding.UTF8, "application/json");
+                                        
+                                        // Retry with the available model
+                                        response = await _httpClient.PostAsync($"{_baseUrl}/api/chat", fallbackContent, cts.Token).ConfigureAwait(false);
+                                        response.EnsureSuccessStatusCode();
+                                    }
+                                    else
+                                    {
+                                        throw new InvalidOperationException(
+                                            $"Ollama API error: model '{modelToUse}' not found and no models are available. " +
+                                            $"Please install a model using: ollama pull <model-name>. " +
+                                            $"Example: ollama pull llama3.1 or ollama pull qwen2.5");
+                                    }
+                                }
+                                else
+                                {
+                                    throw new InvalidOperationException(
+                                        $"Ollama API error: model '{modelToUse}' not found. " +
+                                        $"Please pull the model first using: ollama pull {modelToUse}");
+                                }
                             }
                             else
+                            {
+                                throw new InvalidOperationException(
+                                    $"Ollama API error: model '{modelToUse}' not found. " +
+                                    $"Please pull the model first using: ollama pull {modelToUse}");
+                            }
+                        }
+                        catch (InvalidOperationException)
+                        {
+                            throw; // Re-throw our own exceptions
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error querying Ollama for available models");
+                            throw new InvalidOperationException(
+                                $"Ollama API error: model '{modelToUse}' not found. " +
+                                $"Please pull the model first using: ollama pull {modelToUse}");
+                        }
+                    }
+                    else
+                    {
+                        // Handle other error cases
+                        var errorMessage = $"Ollama API returned status {response.StatusCode} ({(int)response.StatusCode})";
+
+                        if (!string.IsNullOrWhiteSpace(errorContent))
+                        {
+                            try
+                            {
+                                var errorDoc = JsonDocument.Parse(errorContent);
+                                if (errorDoc.RootElement.TryGetProperty("error", out var errorProp))
+                                {
+                                    errorMessage = $"Ollama API error: {errorProp.GetString()}";
+                                }
+                                else
+                                {
+                                    errorMessage += $": {errorContent.Substring(0, Math.Min(500, errorContent.Length))}";
+                                }
+                            }
+                            catch
                             {
                                 errorMessage += $": {errorContent.Substring(0, Math.Min(500, errorContent.Length))}";
                             }
                         }
-                        catch
+
+                        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
                         {
-                            errorMessage += $": {errorContent.Substring(0, Math.Min(500, errorContent.Length))}";
+                            errorMessage += $". Please ensure Ollama is running at {_baseUrl}. " +
+                                           "Start Ollama with: ollama serve";
                         }
-                    }
+                        else if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+                        {
+                            errorMessage += ". This may indicate the model is not installed. " +
+                                           $"Check available models with: ollama list. " +
+                                           $"Requested model: {modelToUse}";
+                        }
 
-                    if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-                    {
-                        errorMessage += $". Please ensure Ollama is running at {_baseUrl}. " +
-                                       "Start Ollama with: ollama serve";
+                        _logger.LogError("Ollama API error: {ErrorMessage}", errorMessage);
+                        throw new HttpRequestException(errorMessage);
                     }
-                    else if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
-                    {
-                        errorMessage += ". This may indicate the model is not installed. " +
-                                       $"Check available models with: ollama list. " +
-                                       $"Requested model: {modelToUse}";
-                    }
-
-                    _logger.LogError("Ollama API error: {ErrorMessage}", errorMessage);
-                    throw new HttpRequestException(errorMessage);
                 }
 
                 var responseJson = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
