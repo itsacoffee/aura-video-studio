@@ -437,19 +437,56 @@ public class TranslationService
             }
 
             var translationStartTime = DateTime.UtcNow;
-            var response = await _llmProvider.GenerateChatCompletionAsync(
-                systemPrompt,
-                userPrompt,
-                null, // Use default LLM parameters
-                cancellationToken).ConfigureAwait(false);
+            string? response = null;
+            try
+            {
+                response = await _llmProvider.GenerateChatCompletionAsync(
+                    systemPrompt,
+                    userPrompt,
+                    null, // Use default LLM parameters
+                    cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogWarning("Translation was cancelled by user");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "LLM call failed for translation {SourceLang} -> {TargetLang}: {Error}",
+                    sourceLanguage, targetLanguage, ex.Message);
+                throw;
+            }
+
             var translationDuration = DateTime.UtcNow - translationStartTime;
+
+            if (string.IsNullOrWhiteSpace(response))
+            {
+                _logger.LogError(
+                    "LLM returned empty response for translation {SourceLang} -> {TargetLang}. " +
+                    "Provider: {Provider}, Duration: {Duration}ms. " +
+                    "If using Ollama, ensure it's running and the model is loaded.",
+                    sourceLanguage, targetLanguage, providerTypeName, translationDuration.TotalMilliseconds);
+                throw new InvalidOperationException(
+                    $"LLM returned empty response. If using Ollama, ensure it's running and the model is available.");
+            }
 
             _logger.LogInformation(
                 "Translation LLM call completed: Provider={Provider}, Duration={Duration}ms, ResponseLength={Length} chars. " +
                 "If Ollama is running, you should see CPU/GPU utilization in system monitor.",
-                providerTypeName, translationDuration.TotalMilliseconds, response?.Length ?? 0);
+                providerTypeName, translationDuration.TotalMilliseconds, response.Length);
 
             var translation = ExtractTranslation(response);
+
+            if (string.IsNullOrWhiteSpace(translation))
+            {
+                _logger.LogError(
+                    "Extracted translation is empty after processing LLM response. " +
+                    "Response length: {Length}, Response preview: {Preview}",
+                    response.Length, response.Substring(0, Math.Min(200, response.Length)));
+                throw new InvalidOperationException(
+                    "Translation extraction failed - LLM response could not be processed. Please try again.");
+            }
 
             // Validate translation quality - check for structured metadata artifacts
             // Use the helper method to ensure we're checking for JSON property patterns

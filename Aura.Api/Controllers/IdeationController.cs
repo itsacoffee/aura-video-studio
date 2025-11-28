@@ -118,15 +118,15 @@ public class IdeationController : ControllerBase
         }
         catch (InvalidOperationException invOpEx)
         {
-            _logger.LogError(invOpEx, "[{CorrelationId}] Ideation operation failed: {Message}", 
+            _logger.LogError(invOpEx, "[{CorrelationId}] Ideation operation failed: {Message}",
                 correlationId, invOpEx.Message);
-            
+
             // Provide detailed error message to help user diagnose
             var errorMessage = invOpEx.Message;
             var suggestions = new List<string>();
-            
+
             // Add Ollama-specific error handling
-            if (errorMessage.Contains("Ollama", StringComparison.OrdinalIgnoreCase) || 
+            if (errorMessage.Contains("Ollama", StringComparison.OrdinalIgnoreCase) ||
                 errorMessage.Contains("Cannot connect", StringComparison.OrdinalIgnoreCase))
             {
                 if (errorMessage.Contains("Cannot connect", StringComparison.OrdinalIgnoreCase))
@@ -135,7 +135,7 @@ public class IdeationController : ControllerBase
                     suggestions.Add("Verify Ollama is installed: Visit https://ollama.com to download");
                     suggestions.Add("Check Ollama base URL in Settings (default: http://localhost:11434)");
                 }
-                else if (errorMessage.Contains("model", StringComparison.OrdinalIgnoreCase) && 
+                else if (errorMessage.Contains("model", StringComparison.OrdinalIgnoreCase) &&
                          errorMessage.Contains("not installed", StringComparison.OrdinalIgnoreCase))
                 {
                     suggestions.Add("Install the requested model: Run 'ollama pull <model-name>' in terminal");
@@ -150,6 +150,19 @@ public class IdeationController : ControllerBase
                 }
             }
             // Add helpful context based on error type
+            else if (errorMessage.Contains("generic placeholder content", StringComparison.OrdinalIgnoreCase))
+            {
+                // This error can occur with Ollama if the model is too small or not properly configured
+                errorMessage = "The LLM generated generic placeholder content instead of specific concepts. " +
+                              "This usually means: (1) The LLM provider is not properly configured, " +
+                              "(2) The model is not responding correctly, or (3) The prompt needs adjustment.";
+                suggestions.Add("If using Ollama: Ensure the model is fully loaded (check 'ollama list')");
+                suggestions.Add("If using Ollama: Try a larger model (e.g., llama3.1:8b or larger)");
+                suggestions.Add("If using Ollama: Check that Ollama is using GPU acceleration if available");
+                suggestions.Add("Verify your LLM provider is configured correctly in Settings");
+                suggestions.Add("Try using a different LLM model");
+                suggestions.Add("Simplify your topic description - make it more specific");
+            }
             else if (errorMessage.Contains("JSON", StringComparison.OrdinalIgnoreCase))
             {
                 errorMessage += " The LLM provider may not be configured to return JSON format. " +
@@ -171,14 +184,14 @@ public class IdeationController : ControllerBase
                 suggestions.Add("Check that your API key has sufficient quota");
                 suggestions.Add("Try using a different LLM model");
             }
-            
+
             // Always add these general suggestions
             if (!suggestions.Contains("Simplify your topic description"))
             {
                 suggestions.Add("Simplify your topic description");
             }
-            
-            return StatusCode(500, new { 
+
+            return StatusCode(500, new {
                 error = errorMessage,
                 correlationId,
                 suggestions = suggestions.ToArray()
@@ -187,7 +200,7 @@ public class IdeationController : ControllerBase
         catch (TimeoutException timeoutEx)
         {
             _logger.LogError(timeoutEx, "[{CorrelationId}] Timeout during brainstorming for topic: {Topic}", correlationId, request?.Topic ?? "unknown");
-            return StatusCode(504, new { 
+            return StatusCode(504, new {
                 error = timeoutEx.Message,
                 correlationId,
                 suggestions = new[] {
@@ -200,10 +213,10 @@ public class IdeationController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "[{CorrelationId}] Unexpected error in ideation", correlationId);
-            
+
             var errorMessage = $"An unexpected error occurred: {ex.Message}";
             var suggestions = new List<string>();
-            
+
             // Check for Ollama-specific errors
             if (ex.Message.Contains("Ollama", StringComparison.OrdinalIgnoreCase) ||
                 ex is HttpRequestException httpEx && httpEx.Message.Contains("localhost:11434", StringComparison.OrdinalIgnoreCase))
@@ -219,10 +232,10 @@ public class IdeationController : ControllerBase
                 suggestions.Add("Check that your API key has sufficient quota");
                 suggestions.Add("Try using a different LLM model");
             }
-            
+
             suggestions.Add("Simplify your topic description");
-            
-            return StatusCode(500, new { 
+
+            return StatusCode(500, new {
                 error = errorMessage,
                 correlationId,
                 type = ex.GetType().Name,

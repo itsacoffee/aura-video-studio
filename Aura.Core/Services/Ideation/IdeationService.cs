@@ -360,15 +360,17 @@ You MUST analyze the topic deeply and provide concepts that are genuinely useful
                         conceptsArray.ValueKind == JsonValueKind.Array &&
                         conceptsArray.GetArrayLength() > 0)
                     {
-                        // Quick quality check - reject if all concepts have generic descriptions
+                        // Quick quality check - reject if concepts have obvious placeholder descriptions
+                        // Only check for actual placeholder phrases, not just short content
                         var containsGenericContent = false;
                         foreach (var concept in conceptsArray.EnumerateArray())
                         {
                             if (concept.TryGetProperty("description", out var desc))
                             {
                                 var descText = desc.GetString() ?? "";
+                                // Only flag as generic if it contains actual placeholder phrases
                                 if (descText.Contains("This approach provides unique value through its specific perspective") ||
-                                    descText.Contains("Introduction to how to") && descText.Length < 100)
+                                    (descText.Contains("Introduction to how to") && descText.Length < 80))
                                 {
                                     containsGenericContent = true;
                                     break;
@@ -434,15 +436,19 @@ You MUST analyze the topic deeply and provide concepts that are genuinely useful
             }
 
             // Validate concepts are not generic placeholders
+            // Focus on actual placeholder phrases rather than strict length requirements
+            // Local LLMs like Ollama may produce shorter but valid content
             var hasGenericContent = concepts.Any(c =>
                 c.Description.Contains("This approach provides unique value through its specific perspective") ||
-                c.Description.Contains("Introduction to how to") && c.Description.Length < 100 ||
-                c.Description.Contains("Key aspects of") && !c.Description.Contains(request.Topic) ||
+                (c.Description.Contains("Introduction to how to") && c.Description.Length < 80) ||
+                (c.Description.Contains("Key aspects of") && !c.Description.Contains(request.Topic) && c.Description.Length < 60) ||
                 c.TalkingPoints?.Any(tp => tp.Contains("Introduction to") && !tp.Contains(request.Topic)) == true ||
                 c.Pros.Any(p => p == "Engaging and accessible format") ||
-                (c.Description.Length < 50) || // Too short to be meaningful
-                (c.UniqueValue != null && c.UniqueValue.Length < 30) || // Too generic
-                (c.KeyInsights != null && c.KeyInsights.Any(ki => ki.Length < 20))); // Too generic
+                // Only flag as generic if description is extremely short AND contains placeholder phrases
+                (c.Description.Length < 30 && (
+                    c.Description.Contains("This approach") ||
+                    c.Description.Contains("Introduction to") ||
+                    c.Description.Contains("Key aspects"))));
 
             if (hasGenericContent)
             {
@@ -1744,9 +1750,10 @@ You MUST analyze the topic deeply and provide concepts that are genuinely useful
                     }
 
                     // Quality validation: skip concepts with too-short descriptions
-                    if (description.Length < 50)
+                    // Reduced threshold for local LLMs like Ollama which may produce shorter but valid content
+                    if (description.Length < 30)
                     {
-                        _logger.LogWarning("Skipping concept with short description: {Title} (length: {Length})", title, description.Length);
+                        _logger.LogWarning("Skipping concept with very short description: {Title} (length: {Length})", title, description.Length);
                         continue;
                     }
 

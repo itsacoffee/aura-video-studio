@@ -1,23 +1,23 @@
 import {
-  makeStyles,
-  tokens,
-  shorthands,
   Button,
   Toast,
   ToastBody,
   ToastFooter,
   Toaster,
+  makeStyles,
+  shorthands,
+  tokens,
   useToastController,
 } from '@fluentui/react-components';
 import {
   CheckmarkCircle20Regular,
+  Dismiss20Regular,
+  DocumentBulletList20Regular,
   ErrorCircle20Regular,
   Folder20Regular,
   Open20Regular,
-  Dismiss20Regular,
-  DocumentBulletList20Regular,
 } from '@fluentui/react-icons';
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 const useStyles = makeStyles({
   // Modern toast styling - compact and clean like macOS/Windows 11 notifications
@@ -307,31 +307,51 @@ function ToastWithProgress({
   const styles = useStyles();
   const [progress, setProgress] = useState(100);
   const [isPaused, setIsPaused] = useState(false);
+  const isPausedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number>(0);
-  const remainingTimeRef = useRef<number>(timeout);
+  const pausedTimeRef = useRef<number>(0);
+  const totalPausedTimeRef = useRef<number>(0);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    isPausedRef.current = isPaused;
+  }, [isPaused]);
 
   useEffect(() => {
     if (timeout <= 0) {
       return;
     }
 
-    const startTimer = () => {
-      startTimeRef.current = Date.now();
-      const interval = 100;
-      const step = (interval / remainingTimeRef.current) * 100;
-      let currentProgress = progress;
+    // Reset progress and start fresh
+    setProgress(100);
+    startTimeRef.current = Date.now();
+    totalPausedTimeRef.current = 0;
+    pausedTimeRef.current = 0;
 
+    const interval = 100;
+
+    const startTimer = () => {
       timerRef.current = setInterval(() => {
-        if (!isPaused) {
-          currentProgress -= step;
-          if (currentProgress <= 0) {
+        if (!isPausedRef.current) {
+          const now = Date.now();
+          const elapsed = now - startTimeRef.current - totalPausedTimeRef.current;
+          const remaining = Math.max(0, timeout - elapsed);
+          const newProgress = (remaining / timeout) * 100;
+
+          if (newProgress <= 0) {
             if (timerRef.current) {
               clearInterval(timerRef.current);
+              timerRef.current = null;
             }
             onDismiss?.();
           } else {
-            setProgress(currentProgress);
+            setProgress(newProgress);
+          }
+        } else {
+          // Track when pause started
+          if (pausedTimeRef.current === 0) {
+            pausedTimeRef.current = Date.now();
           }
         }
       }, interval);
@@ -342,11 +362,19 @@ function ToastWithProgress({
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
-        const elapsed = Date.now() - startTimeRef.current;
-        remainingTimeRef.current = Math.max(0, remainingTimeRef.current - elapsed);
+        timerRef.current = null;
       }
     };
-  }, [timeout, onDismiss, isPaused, progress]);
+  }, [timeout, onDismiss]);
+
+  // Handle pause/resume - update total paused time when resuming
+  useEffect(() => {
+    if (!isPaused && pausedTimeRef.current > 0) {
+      const pausedDuration = Date.now() - pausedTimeRef.current;
+      totalPausedTimeRef.current += pausedDuration;
+      pausedTimeRef.current = 0;
+    }
+  }, [isPaused]);
 
   // ESC key handler
   useEffect(() => {
