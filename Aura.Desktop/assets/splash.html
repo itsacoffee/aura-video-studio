@@ -17,8 +17,8 @@
         sans-serif;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
-      /* Deep cosmic gradient - inspired by web version but adapted for desktop */
-      background: linear-gradient(135deg, #0a0f1a 0%, #1a1f2e 30%, #1a1626 60%, #0f0f1a 85%, #050510 100%);
+      /* Deep gradient: dark navy → deep violet, with orange/blue bloom around icon */
+      background: linear-gradient(180deg, #0a0f1a 0%, #1a1f2e 25%, #1a1626 50%, #0f0f1a 75%, #050510 100%);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -28,310 +28,122 @@
       position: relative;
     }
     
-    /* Animated cosmic background with multiple layers */
+    /* Orange/blue bloom gradient overlay */
     body::before {
       content: '';
       position: absolute;
       inset: 0;
-      background: 
-        radial-gradient(ellipse at 20% 30%, rgba(99, 102, 241, 0.2) 0%, transparent 50%),
-        radial-gradient(ellipse at 80% 70%, rgba(255, 107, 53, 0.18) 0%, transparent 50%),
-        radial-gradient(ellipse at 50% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
+      background: radial-gradient(
+        ellipse at 50% 42%,
+        rgba(255, 107, 53, 0.15) 0%,
+        rgba(59, 130, 246, 0.12) 20%,
+        rgba(255, 107, 53, 0.08) 35%,
+        rgba(59, 130, 246, 0.06) 50%,
+        transparent 100%
+      );
       pointer-events: none;
       z-index: 1;
-      animation: cosmicShift 12s ease-in-out infinite;
-    }
-
-    @keyframes cosmicShift {
-      0%, 100% {
-        opacity: 1;
-        transform: scale(1) rotate(0deg);
-      }
-      33% {
-        opacity: 0.8;
-        transform: scale(1.1) rotate(2deg);
-      }
-      66% {
-        opacity: 0.9;
-        transform: scale(0.95) rotate(-1deg);
-      }
-    }
-
-    /* Vignette for depth */
-    body::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(ellipse at center, transparent 0%, rgba(5, 5, 10, 0.7) 100%);
-      pointer-events: none;
-      z-index: 1;
-    }
-
-    /* Particle canvas for enhanced starfield */
-    #particles {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 0;
-      pointer-events: none;
     }
 
     .splash-container {
       text-align: center;
-      padding: 60px 40px;
-      max-width: 800px;
+      padding: 40px;
+      max-width: 500px;
       position: relative;
       z-index: 2;
-      animation: containerFadeIn 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
-    @keyframes containerFadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(30px) scale(0.95);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-      }
-    }
-
-    .logo-container {
-      margin-bottom: 48px;
-      overflow: visible;
-    }
-
-    /* Desktop-optimized icon - larger and more prominent */
-    .logo-icon {
-      display: inline-block;
-      margin-bottom: 32px;
-      animation: iconFloat 5s ease-in-out infinite;
-      filter: drop-shadow(0 0 40px rgba(99, 102, 241, 0.5)) 
-              drop-shadow(0 0 30px rgba(255, 107, 53, 0.4))
-              drop-shadow(0 30px 80px rgba(0, 0, 0, 0.6));
-    }
-
-    @keyframes iconFloat {
-      0%, 100% {
-        transform: translateY(0) scale(1) rotate(0deg);
-      }
-      50% {
-        transform: translateY(-20px) scale(1.08) rotate(1deg);
-      }
-    }
-
-    /* Modern geometric icon design - inspired by clapperboard but distinct */
-    .app-icon {
-      width: 160px;
-      height: 160px;
-      position: relative;
-    }
-
-    .icon-base {
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(135deg, #2D3748 0%, #4A5568 100%);
-      border-radius: 24px;
-      position: relative;
-      overflow: hidden;
-      box-shadow: 
-        inset 0 2px 10px rgba(0, 0, 0, 0.3),
-        0 0 0 2px rgba(99, 102, 241, 0.3);
-    }
-
-    .icon-glow-left {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 50%;
-      height: 100%;
-      background: linear-gradient(90deg, rgba(59, 130, 246, 0.4) 0%, transparent 100%);
-      border-radius: 24px 0 0 24px;
-      animation: glowPulse 3s ease-in-out infinite;
-    }
-
-    .icon-glow-right {
-      position: absolute;
-      right: 0;
-      top: 0;
-      width: 50%;
-      height: 100%;
-      background: linear-gradient(270deg, rgba(255, 107, 53, 0.4) 0%, transparent 100%);
-      border-radius: 0 24px 24px 0;
-      animation: glowPulse 3s ease-in-out infinite 0.5s;
-    }
-
-    @keyframes glowPulse {
-      0%, 100% {
-        opacity: 0.4;
-      }
-      50% {
-        opacity: 0.7;
-      }
-    }
-
-    .icon-pattern {
-      position: absolute;
-      inset: 20px;
-      background-image: 
-        repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255, 255, 255, 0.05) 10px, rgba(255, 255, 255, 0.05) 20px);
-      border-radius: 12px;
+    .logo {
+      margin-bottom: 30px;
+      animation: fadeInDown 0.8s ease-out;
     }
 
     .logo-text {
-      font-size: 96px;
-      font-weight: 800;
-      color: #fff;
-      margin: 0;
-      padding: 12px 24px;
-      letter-spacing: 4px;
-      text-shadow:
-        0 0 30px rgba(255, 255, 255, 0.4),
-        0 0 40px rgba(99, 102, 241, 0.3),
-        0 0 50px rgba(255, 107, 53, 0.2),
-        0 4px 8px rgba(0, 0, 0, 0.4);
-      position: relative;
-      display: inline-block;
-      overflow: visible;
-      line-height: 1.1;
-      animation: titlePulse 4s ease-in-out infinite;
-    }
-
-    @keyframes titlePulse {
-      0%, 100% {
-        text-shadow:
-          0 0 30px rgba(255, 255, 255, 0.4),
-          0 0 40px rgba(99, 102, 241, 0.3),
-          0 0 50px rgba(255, 107, 53, 0.2),
-          0 4px 8px rgba(0, 0, 0, 0.4);
-      }
-      50% {
-        text-shadow:
-          0 0 40px rgba(255, 255, 255, 0.5),
-          0 0 60px rgba(99, 102, 241, 0.4),
-          0 0 80px rgba(255, 107, 53, 0.3),
-          0 4px 8px rgba(0, 0, 0, 0.4);
-      }
+      font-size: 48px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #ff6b35 0%, #6366f1 50%, #3b82f6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 10px;
+      text-shadow: 0 0 30px rgba(255, 107, 53, 0.3), 0 0 20px rgba(59, 130, 246, 0.3);
     }
 
     .tagline {
-      font-size: 16px;
-      color: rgba(255, 255, 255, 0.8);
-      margin: 24px 0 0;
-      font-weight: 500;
-      letter-spacing: 4px;
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.75);
+      margin-bottom: 40px;
+      animation: fadeIn 1s ease-out 0.3s both;
+      letter-spacing: 3px;
       text-transform: uppercase;
-      opacity: 0.9;
-      animation: taglineFade 1.8s ease-out 0.6s both;
-    }
-
-    @keyframes taglineFade {
-      from {
-        opacity: 0;
-        transform: translateY(15px);
-      }
-      to {
-        opacity: 0.9;
-        transform: translateY(0);
-      }
-    }
-
-    .status-message {
-      font-size: 16px;
-      color: rgba(255, 255, 255, 0.95);
-      margin: 0 0 24px;
-      min-height: 24px;
-      animation: statusFade 0.5s ease-in-out;
       font-weight: 400;
-      letter-spacing: 1px;
     }
 
-    @keyframes statusFade {
-      from {
-        opacity: 0;
-        transform: translateY(-10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .progress-container {
-      max-width: 600px;
-      margin: 0 auto;
-      padding: 0 24px;
-    }
-
-    .progress-bar {
+    .loading {
       position: relative;
-      width: 100%;
-      height: 6px;
-      background: rgba(255, 255, 255, 0.15);
-      border-radius: 3px;
-      margin: 0 auto;
+      width: 200px;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
+      margin: 0 auto 20px;
       overflow: hidden;
-      animation: progressFadeIn 1s ease-out 0.8s both;
-      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+      animation: fadeIn 1s ease-out 0.5s both;
     }
 
-    @keyframes progressFadeIn {
-      from {
-        opacity: 0;
-        transform: scaleX(0.8);
-      }
-      to {
-        opacity: 1;
-        transform: scaleX(1);
-      }
-    }
-
-    .progress-fill {
+    .loading-bar {
       position: absolute;
       top: 0;
       left: 0;
       height: 100%;
-      /* Beautiful gradient - inspired by web version */
-      background: linear-gradient(90deg, #ff6b35 0%, #6366f1 40%, #3b82f6 70%, #818cf8 100%);
-      border-radius: 3px;
-      width: 0%;
-      transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow:
-        0 0 15px rgba(255, 107, 53, 0.5),
-        0 0 30px rgba(99, 102, 241, 0.4),
-        0 0 45px rgba(59, 130, 246, 0.3);
-      position: relative;
+      /* Refined progress bar with orange/blue gradient */
+      background: linear-gradient(90deg, #ff6b35 0%, #6366f1 50%, #3b82f6 100%);
+      border-radius: 2px;
+      animation: loading 2s ease-in-out infinite;
+      box-shadow: 0 0 10px rgba(255, 107, 53, 0.4), 0 0 20px rgba(59, 130, 246, 0.3);
     }
 
-    .progress-fill::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-      animation: shimmer 2.5s linear infinite;
+    .status {
+      font-size: 14px;
+      color: #808080;
+      animation: fadeIn 1s ease-out 0.7s both;
     }
 
-    @keyframes shimmer {
-      to {
-        left: 100%;
-      }
+    .dots {
+      display: inline-block;
+      width: 20px;
+    }
+
+    .dots span {
+      animation: blink 1.4s infinite;
+    }
+
+    .dots span:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    .dots span:nth-child(3) {
+      animation-delay: 0.4s;
     }
 
     .version {
       position: absolute;
-      bottom: 32px;
+      bottom: 20px;
       left: 50%;
       transform: translateX(-50%);
-      font-size: 13px;
-      color: rgba(255, 255, 255, 0.5);
-      animation: fadeIn 1.2s ease-out 1.2s both;
-      z-index: 2;
-      letter-spacing: 1px;
+      font-size: 12px;
+      color: #606060;
+      animation: fadeIn 1s ease-out 1s both;
+    }
+
+    @keyframes fadeInDown {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     @keyframes fadeIn {
@@ -343,201 +155,150 @@
       }
     }
 
-    /* Responsive adjustments */
-    @media (max-width: 768px) {
-      .logo-text {
-        font-size: 64px;
-        letter-spacing: 2px;
-        padding: 8px 16px;
+    @keyframes loading {
+      0% {
+        width: 0%;
+        left: 0;
       }
-
-      .tagline {
-        font-size: 14px;
-        letter-spacing: 3px;
+      50% {
+        width: 100%;
+        left: 0;
       }
-
-      .app-icon {
-        width: 120px;
-        height: 120px;
-      }
-
-      .progress-container {
-        max-width: 400px;
+      100% {
+        width: 0%;
+        left: 100%;
       }
     }
 
-    /* Accessibility: Reduced motion */
-    @media (prefers-reduced-motion: reduce) {
-      *,
-      *::before,
-      *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
+    @keyframes blink {
+      0%, 20%, 50%, 80%, 100% {
+        opacity: 1;
       }
+      40%, 60% {
+        opacity: 0.3;
+      }
+    }
 
-      #particles {
-        display: none;
+    /* Particle background effect */
+    .particles {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      top: 0;
+      left: 0;
+      z-index: -1;
+    }
+
+    .particle {
+      position: absolute;
+      border-radius: 50%;
+      animation: float 6s ease-in-out infinite;
+      box-shadow: 0 0 10px currentColor;
+    }
+    
+    .particle:nth-child(odd) {
+      background: rgba(255, 107, 53, 0.4);
+      color: rgba(255, 107, 53, 0.6);
+    }
+    
+    .particle:nth-child(even) {
+      background: rgba(59, 130, 246, 0.4);
+      color: rgba(59, 130, 246, 0.6);
+    }
+
+    .particle:nth-child(1) {
+      width: 4px;
+      height: 4px;
+      top: 20%;
+      left: 10%;
+      animation-delay: 0s;
+    }
+
+    .particle:nth-child(2) {
+      width: 6px;
+      height: 6px;
+      top: 60%;
+      left: 80%;
+      animation-delay: 1s;
+    }
+
+    .particle:nth-child(3) {
+      width: 3px;
+      height: 3px;
+      top: 40%;
+      left: 30%;
+      animation-delay: 2s;
+    }
+
+    .particle:nth-child(4) {
+      width: 5px;
+      height: 5px;
+      top: 80%;
+      left: 60%;
+      animation-delay: 3s;
+    }
+
+    .particle:nth-child(5) {
+      width: 4px;
+      height: 4px;
+      top: 10%;
+      left: 70%;
+      animation-delay: 4s;
+    }
+
+    @keyframes float {
+      0%, 100% {
+        transform: translateY(0) translateX(0);
+        opacity: 0;
+      }
+      50% {
+        transform: translateY(-30px) translateX(20px);
+        opacity: 1;
       }
     }
   </style>
 </head>
 <body>
-  <!-- Enhanced cosmic starfield particle canvas -->
-  <canvas id="particles"></canvas>
+  <div class="particles">
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+  </div>
 
   <div class="splash-container">
-    <div class="logo-container">
-      <!-- Modern geometric icon - inspired by clapperboard but distinct for desktop -->
-      <div class="logo-icon">
-        <div class="app-icon">
-          <div class="icon-base">
-            <div class="icon-glow-left"></div>
-            <div class="icon-glow-right"></div>
-            <div class="icon-pattern"></div>
-          </div>
-        </div>
+      <div class="logo">
+        <div class="logo-text">Aura</div>
+        <div class="tagline">AI Video Generation Suite</div>
       </div>
 
-      <h1 class="logo-text">Aura</h1>
-      <p class="tagline">AI Video Generation Suite</p>
+    <div class="loading">
+      <div class="loading-bar"></div>
     </div>
 
-    <div class="status-message" id="status">Starting backend server...</div>
-
-    <div class="progress-container">
-      <div class="progress-bar">
-        <div class="progress-fill" id="progress"></div>
-      </div>
+    <div class="status">
+      <span id="status-text">Starting up</span><span class="dots"><span>.</span><span>.</span><span>.</span></span>
     </div>
   </div>
 
-  <div class="version" id="version">v1.0.0</div>
+  <div class="version">v1.0.0</div>
 
   <script>
-    // Enhanced cosmic starfield particle system - more particles for desktop
-    const PARTICLE_COUNT = 400;
-    const RESIZE_DEBOUNCE_MS = 100;
-
-    class Particle {
-      constructor(canvas) {
-        this.canvas = canvas;
-        this.reset();
-      }
-
-      reset() {
-        this.x = Math.random() * window.innerWidth;
-        this.y = Math.random() * window.innerHeight;
-        this.size = Math.random() * 3 + 0.5;
-        this.speedY = (Math.random() - 0.5) * 0.4;
-        this.speedX = (Math.random() - 0.5) * 0.4;
-        this.opacity = Math.random() * 0.7 + 0.2;
-        
-        // Cosmic colors - inspired by web version
-        const colors = ['#6366F1', '#818CF8', '#3B82F6', '#60A5FA', '#A855F7', '#C084FC', '#FF6B35', '#FF8960', '#F59E0B'];
-        this.color = colors[Math.floor(Math.random() * colors.length)] || colors[0];
-      }
-
-      update() {
-        this.y += this.speedY;
-        this.x += this.speedX;
-
-        // Wrap around edges for continuous starfield
-        if (this.y < -10) {
-          this.y = this.canvas.height + 10;
-        } else if (this.y > this.canvas.height + 10) {
-          this.y = -10;
-        }
-        if (this.x < -10) {
-          this.x = this.canvas.width + 10;
-        } else if (this.x > this.canvas.width + 10) {
-          this.x = -10;
-        }
-      }
-
-      draw(ctx) {
-        ctx.save();
-        ctx.globalAlpha = this.opacity;
-        ctx.fillStyle = this.color;
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = this.color;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
-    }
-
-    // Initialize canvas with high DPI support
-    const canvas = document.getElementById('particles');
-    const ctx = canvas.getContext('2d');
-    const dpr = window.devicePixelRatio || 1;
-
-    function resizeCanvas() {
-      canvas.width = window.innerWidth * dpr;
-      canvas.height = window.innerHeight * dpr;
-      canvas.style.width = window.innerWidth + 'px';
-      canvas.style.height = window.innerHeight + 'px';
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    }
-
-    resizeCanvas();
-
-    // Create enhanced particle system
-    const particles = [];
-    for (let i = 0; i < PARTICLE_COUNT; i++) {
-      particles.push(new Particle(canvas));
-    }
-
-    // Animation loop
-    function animate() {
-      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
-
-      particles.forEach(particle => {
-        particle.update();
-        particle.draw(ctx);
-      });
-
-      requestAnimationFrame(animate);
-    }
-
-    animate();
-
-    // Handle window resize
-    let resizeTimeout;
-    window.addEventListener('resize', () => {
-      clearTimeout(resizeTimeout);
-      resizeTimeout = setTimeout(() => {
-        resizeCanvas();
-        particles.forEach(particle => {
-          particle.canvas = canvas;
-        });
-      }, RESIZE_DEBOUNCE_MS);
-    });
-
-    // Listen for progress updates from Electron main process
-    const { ipcRenderer } = require('electron');
-
-    ipcRenderer.on('status-update', (event, data) => {
-      const statusEl = document.getElementById('status');
-      const progressEl = document.getElementById('progress');
-
-      if (data.message) {
-        statusEl.textContent = data.message;
-      }
-
-      if (typeof data.progress === 'number') {
-        progressEl.style.width = data.progress + '%';
-      }
-    });
-
-    // Try to get version from package.json if available
-    try {
-      const { app } = require('electron');
-      // Version would be set by main process if needed
-    } catch (e) {
-      // Not available in renderer, that's fine
-    }
+    const statusTexts = [
+      'Initializing',
+      'Starting backend',
+      'Loading assets',
+      'Almost ready'
+    ];
+    
+    let currentIndex = 0;
+    
+    setInterval(() => {
+      currentIndex = (currentIndex + 1) % statusTexts.length;
+      document.getElementById('status-text').textContent = statusTexts[currentIndex];
+    }, 2000);
   </script>
 </body>
 </html>
