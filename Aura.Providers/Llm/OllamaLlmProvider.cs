@@ -589,15 +589,47 @@ public class OllamaLlmProvider : ILlmProvider
                 {
                     var errorContent = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
                     
-                    // Check for model not found error and try to use first available model
-                    if (errorContent.Contains("model") && (errorContent.Contains("not found") || errorContent.Contains("does not exist")))
+                    // Try to detect model not found error from Ollama's response
+                    // Ollama returns errors in JSON format with an "error" field
+                    var isModelNotFoundError = false;
+                    string? parsedErrorMessage = null;
+                    
+                    if (!string.IsNullOrWhiteSpace(errorContent))
                     {
-                        _logger.LogWarning("Model '{Model}' not found, querying Ollama for available models", modelToUse);
+                        try
+                        {
+                            var errorDoc = JsonDocument.Parse(errorContent);
+                            if (errorDoc.RootElement.TryGetProperty("error", out var errorProp))
+                            {
+                                parsedErrorMessage = errorProp.GetString() ?? string.Empty;
+                                // Check for model not found patterns in Ollama's error message
+                                isModelNotFoundError = parsedErrorMessage.Contains("not found", StringComparison.OrdinalIgnoreCase) ||
+                                                       parsedErrorMessage.Contains("does not exist", StringComparison.OrdinalIgnoreCase) ||
+                                                       parsedErrorMessage.Contains("no such model", StringComparison.OrdinalIgnoreCase);
+                            }
+                        }
+                        catch (JsonException)
+                        {
+                            // Fallback to string-based detection if JSON parsing fails
+                            isModelNotFoundError = errorContent.Contains("model", StringComparison.OrdinalIgnoreCase) &&
+                                                   (errorContent.Contains("not found", StringComparison.OrdinalIgnoreCase) || 
+                                                    errorContent.Contains("does not exist", StringComparison.OrdinalIgnoreCase));
+                        }
+                    }
+                    
+                    // Check for model not found error and try to use first available model
+                    if (isModelNotFoundError)
+                    {
+                        _logger.LogWarning("Model '{Model}' not found, querying Ollama for available models. Error: {Error}", 
+                            modelToUse, parsedErrorMessage ?? errorContent);
+                        
+                        // Use a shorter timeout for model list query - this should be fast
+                        var tagsTimeoutSeconds = Math.Min(15, Math.Max(5, (int)(_timeout.TotalSeconds / 60)));
                         
                         try
                         {
                             using var tagsCts = new CancellationTokenSource();
-                            tagsCts.CancelAfter(TimeSpan.FromSeconds(10));
+                            tagsCts.CancelAfter(TimeSpan.FromSeconds(tagsTimeoutSeconds));
                             var tagsResponse = await _httpClient.GetAsync($"{_baseUrl}/api/tags", tagsCts.Token).ConfigureAwait(false);
                             
                             if (tagsResponse.IsSuccessStatusCode)
@@ -647,9 +679,17 @@ public class OllamaLlmProvider : ILlmProvider
                                         var fallbackJson = JsonSerializer.Serialize(fallbackRequestBodyDict);
                                         var fallbackContent = new StringContent(fallbackJson, Encoding.UTF8, "application/json");
                                         
-                                        // Retry with the available model
+                                        // Retry with the available model - if this fails, allow normal error handling flow
                                         response = await _httpClient.PostAsync($"{_baseUrl}/api/chat", fallbackContent, cts.Token).ConfigureAwait(false);
-                                        response.EnsureSuccessStatusCode();
+                                        
+                                        // If fallback request also fails, proceed to normal error handling
+                                        if (!response.IsSuccessStatusCode)
+                                        {
+                                            var fallbackErrorContent = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
+                                            _logger.LogError("Fallback model '{Model}' also failed. Error: {Error}", 
+                                                modelToUse, fallbackErrorContent.Substring(0, Math.Min(500, fallbackErrorContent.Length)));
+                                            // Don't throw here - let normal error handling below handle it
+                                        }
                                     }
                                     else
                                     {
@@ -673,9 +713,10 @@ public class OllamaLlmProvider : ILlmProvider
                                     $"Please pull the model first using: ollama pull {modelToUse}");
                             }
                         }
-                        catch (InvalidOperationException)
+                        catch (InvalidOperationException ex) when (ex.Message.Contains("Ollama API error") || ex.Message.Contains("not found"))
                         {
-                            throw; // Re-throw our own exceptions
+                            // Re-throw only our specific model not found exceptions
+                            throw;
                         }
                         catch (Exception ex)
                         {
@@ -685,9 +726,10 @@ public class OllamaLlmProvider : ILlmProvider
                                 $"Please pull the model first using: ollama pull {modelToUse}");
                         }
                     }
-                    else
+                    
+                    // Handle other error cases (or fallback model failure)
+                    if (!response.IsSuccessStatusCode)
                     {
-                        // Handle other error cases
                         var errorMessage = $"Ollama API returned status {response.StatusCode} ({(int)response.StatusCode})";
 
                         if (!string.IsNullOrWhiteSpace(errorContent))
