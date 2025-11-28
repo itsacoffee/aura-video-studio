@@ -50,6 +50,7 @@
   --editor-accent: #0ea5e9;
   --editor-accent-hover: #38bdf8;
   --editor-accent-active: #0284c7;
+  --editor-accent-alpha-10: rgb(14 165 233 / 10%);
   --editor-focus-ring: #0ea5e980;
 
   /* Status colors */

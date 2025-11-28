@@ -145,7 +145,7 @@ const useStyles = makeStyles({
     boxShadow: '0 0 8px var(--editor-focus-ring)',
   },
   dividerDragging: {
-    backgroundColor: 'rgba(14, 165, 233, 0.1)',
+    backgroundColor: 'var(--editor-accent-alpha-10)',
   },
   // Horizontal resizer (for vertical panel separation) - row-resize cursor
   dividerHorizontal: {
@@ -174,7 +174,7 @@ const useStyles = makeStyles({
     boxShadow: '0 0 8px var(--editor-focus-ring)',
   },
   dividerHorizontalDragging: {
-    backgroundColor: 'rgba(14, 165, 233, 0.1)',
+    backgroundColor: 'var(--editor-accent-alpha-10)',
   },
 });
 
