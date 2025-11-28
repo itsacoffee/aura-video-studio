@@ -24,6 +24,8 @@ export interface EditorLayoutPanelConfig {
 
 // Constants
 const COLLAPSED_PANEL_WIDTH = 48;
+const DIVIDER_WIDTH = 6; // Increased hit area for better usability
+const DIVIDER_HEIGHT = 6;
 
 const useStyles = makeStyles({
   // Shell container - top-level editor structure
@@ -57,6 +59,7 @@ const useStyles = makeStyles({
   leftSidebar: {
     display: 'flex',
     overflow: 'hidden',
+    flexShrink: 0,
   },
   // Center region (preview + timeline stack)
   centerRegion: {
@@ -115,81 +118,63 @@ const useStyles = makeStyles({
     width: `${COLLAPSED_PANEL_WIDTH}px !important`,
     minWidth: `${COLLAPSED_PANEL_WIDTH}px !important`,
   },
-  // Vertical resizer (for horizontal panel separation)
+  // Vertical resizer (for horizontal panel separation) - col-resize cursor
   dividerVertical: {
-    width: '4px',
-    cursor: 'ew-resize',
+    width: `${DIVIDER_WIDTH}px`,
+    cursor: 'col-resize',
     backgroundColor: 'transparent',
     position: 'relative',
-    transition: 'background-color var(--editor-transition-fast)',
-    '&::after': {
-      content: '""',
-      position: 'absolute',
-      top: 0,
-      left: '50%',
-      transform: 'translateX(-50%)',
-      width: '2px',
-      height: '100%',
-      backgroundColor: 'var(--editor-panel-border)',
-      transition: 'all var(--editor-transition-fast)',
-    },
-    '&:hover::after': {
-      backgroundColor: 'var(--editor-accent)',
-      boxShadow: '0 0 4px var(--editor-focus-ring)',
-      width: '3px',
-    },
-    '&:active::after': {
-      backgroundColor: 'var(--editor-accent)',
-    },
-    '&:focus': {
-      outline: `2px solid var(--editor-accent)`,
-      outlineOffset: '2px',
-    },
+    flexShrink: 0,
+    zIndex: 10,
+  },
+  // Visual indicator inside divider
+  dividerVerticalLine: {
+    position: 'absolute',
+    top: 0,
+    left: '50%',
+    transform: 'translateX(-50%)',
+    width: '2px',
+    height: '100%',
+    backgroundColor: 'var(--editor-panel-border)',
+    transition: 'all 100ms ease-out',
+    pointerEvents: 'none',
+  },
+  dividerVerticalLineHover: {
+    backgroundColor: 'var(--editor-accent)',
+    width: '4px',
+    boxShadow: '0 0 8px var(--editor-focus-ring)',
   },
   dividerDragging: {
-    '&::after': {
-      backgroundColor: 'var(--editor-accent)',
-      boxShadow: '0 0 6px var(--editor-focus-ring)',
-      width: '3px',
-    },
+    backgroundColor: 'var(--editor-accent-alpha-10)',
   },
-  // Horizontal resizer (for vertical panel separation)
+  // Horizontal resizer (for vertical panel separation) - row-resize cursor
   dividerHorizontal: {
-    height: '4px',
-    cursor: 'ns-resize',
+    height: `${DIVIDER_HEIGHT}px`,
+    cursor: 'row-resize',
     backgroundColor: 'transparent',
     position: 'relative',
-    transition: 'background-color var(--editor-transition-fast)',
-    '&::after': {
-      content: '""',
-      position: 'absolute',
-      left: 0,
-      top: '50%',
-      transform: 'translateY(-50%)',
-      width: '100%',
-      height: '2px',
-      backgroundColor: 'var(--editor-panel-border)',
-      transition: 'all var(--editor-transition-fast)',
-    },
-    '&:hover::after': {
-      backgroundColor: 'var(--editor-accent)',
-      boxShadow: '0 0 4px var(--editor-focus-ring)',
-      height: '3px',
-    },
-    '&:active::after': {
-      backgroundColor: 'var(--editor-accent)',
-    },
-    '&:focus': {
-      outline: `2px solid var(--editor-accent)`,
-      outlineOffset: '2px',
-    },
+    flexShrink: 0,
+    zIndex: 10,
+  },
+  // Visual indicator inside horizontal divider
+  dividerHorizontalLine: {
+    position: 'absolute',
+    left: 0,
+    top: '50%',
+    transform: 'translateY(-50%)',
+    width: '100%',
+    height: '2px',
+    backgroundColor: 'var(--editor-panel-border)',
+    transition: 'all 100ms ease-out',
+    pointerEvents: 'none',
+  },
+  dividerHorizontalLineHover: {
+    backgroundColor: 'var(--editor-accent)',
+    height: '4px',
+    boxShadow: '0 0 8px var(--editor-focus-ring)',
   },
   dividerHorizontalDragging: {
-    '&::after': {
-      backgroundColor: 'var(--editor-accent)',
-      boxShadow: '0 0 6px var(--editor-focus-ring)',
-      height: '3px',
-    },
+    backgroundColor: 'var(--editor-accent-alpha-10)',
   },
 });
 
@@ -286,6 +271,9 @@ export function EditorLayout({
   // Track dragging state for visual feedback
   const [isDraggingHorizontal, setIsDraggingHorizontal] = useState(false);
   const [isDraggingVertical, setIsDraggingVertical] = useState(false);
+
+  // Track hover state for dividers
+  const [hoveredDivider, setHoveredDivider] = useState<string | null>(null);
 
   // Get current panel sizes for saving workspace
   const getCurrentPanelSizes = useCallback(() => {
@@ -484,38 +472,62 @@ export function EditorLayout({
     minSize: number,
     maxSize: number,
     direction: 'left' | 'right'
-  ) => (
-    // Interactive resizer - intentionally uses mouse and keyboard events
-    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
-    <div
-      className={`${styles.dividerVertical} ${isDraggingHorizontal ? styles.dividerDragging : ''}`}
-      onMouseDown={handleVerticalDividerResize(panelId, minSize, maxSize, direction)}
-      role="separator"
-      aria-orientation="vertical"
-      aria-label={`Resize ${panelId} panel`}
-      // Separator role is interactive and requires tabIndex for keyboard accessibility
-      // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
-      tabIndex={0}
-      onKeyDown={handleVerticalDividerKeyboard(panelId, minSize, maxSize, direction)}
-    />
-  );
+  ) => {
+    const dividerId = `vertical-${panelId}`;
+    const isHovered = hoveredDivider === dividerId;
+    const isActive = isDraggingHorizontal;
+
+    return (
+      // Interactive resizer - intentionally uses mouse and keyboard events
+      // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
+      <div
+        className={`${styles.dividerVertical} ${isActive ? styles.dividerDragging : ''}`}
+        onMouseDown={handleVerticalDividerResize(panelId, minSize, maxSize, direction)}
+        onMouseEnter={() => setHoveredDivider(dividerId)}
+        onMouseLeave={() => setHoveredDivider(null)}
+        role="separator"
+        aria-orientation="vertical"
+        aria-label={`Resize ${panelId} panel`}
+        // Separator role is interactive and requires tabIndex for keyboard accessibility
+        // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+        tabIndex={0}
+        onKeyDown={handleVerticalDividerKeyboard(panelId, minSize, maxSize, direction)}
+      >
+        <div
+          className={`${styles.dividerVerticalLine} ${isHovered || isActive ? styles.dividerVerticalLineHover : ''}`}
+        />
+      </div>
+    );
+  };
 
   // Render horizontal divider (for vertical panel separation)
-  const renderHorizontalDivider = (topPanelId: string) => (
-    // Interactive resizer - intentionally uses mouse and keyboard events
-    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
-    <div
-      className={`${styles.dividerHorizontal} ${isDraggingVertical ? styles.dividerHorizontalDragging : ''}`}
-      onMouseDown={handleHorizontalDividerResize(topPanelId)}
-      role="separator"
-      aria-orientation="horizontal"
-      aria-label={`Resize ${topPanelId} panel`}
-      // Separator role is interactive and requires tabIndex for keyboard accessibility
-      // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
-      tabIndex={0}
-      onKeyDown={handleHorizontalDividerKeyboard(topPanelId)}
-    />
-  );
+  const renderHorizontalDivider = (topPanelId: string) => {
+    const dividerId = `horizontal-${topPanelId}`;
+    const isHovered = hoveredDivider === dividerId;
+    const isActive = isDraggingVertical;
+
+    return (
+      // Interactive resizer - intentionally uses mouse and keyboard events
+      // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
+      <div
+        className={`${styles.dividerHorizontal} ${isActive ? styles.dividerHorizontalDragging : ''}`}
+        onMouseDown={handleHorizontalDividerResize(topPanelId)}
+        onMouseEnter={() => setHoveredDivider(dividerId)}
+        onMouseLeave={() => setHoveredDivider(null)}
+        role="separator"
+        aria-orientation="horizontal"
+        aria-label={`Resize ${topPanelId} panel`}
+        // Separator role is interactive and requires tabIndex for keyboard accessibility
+        // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+        tabIndex={0}
+        onKeyDown={handleHorizontalDividerKeyboard(topPanelId)}
+      >
+        <div
+          className={`${styles.dividerHorizontalLine} ${isHovered || isActive ? styles.dividerHorizontalLineHover : ''}`}
+        />
+      </div>
+    );
+  };
 
   // Determine if panel is in left sidebar (media, effects)
   const isLeftSidebarPanel = (panel: EditorLayoutPanelConfig) => {
@@ -585,12 +597,26 @@ export function EditorLayout({
               );
             })}
             {/* Divider between left sidebar and center */}
-            {leftSidebarPanels.length > 0 && (
-              <div
-                className={`${styles.dividerVertical} ${isDraggingHorizontal ? styles.dividerDragging : ''}`}
-                style={{ cursor: 'ew-resize' }}
-              />
-            )}
+            {leftSidebarPanels.length > 0 &&
+              (() => {
+                const dividerId = 'left-center-divider';
+                const isHovered = hoveredDivider === dividerId;
+                const isActive = isDraggingHorizontal;
+                return (
+                  <div
+                    className={`${styles.dividerVertical} ${isActive ? styles.dividerDragging : ''}`}
+                    onMouseEnter={() => setHoveredDivider(dividerId)}
+                    onMouseLeave={() => setHoveredDivider(null)}
+                    role="separator"
+                    aria-orientation="vertical"
+                    aria-label="Resize left sidebar"
+                  >
+                    <div
+                      className={`${styles.dividerVerticalLine} ${isHovered || isActive ? styles.dividerVerticalLineHover : ''}`}
+                    />
+                  </div>
+                );
+              })()}
           </div>
         )}
 
@@ -637,10 +663,25 @@ export function EditorLayout({
         {rightSidebarPanels.length > 0 && (
           <div className={styles.rightSidebar}>
             {/* Divider between center and right sidebar */}
-            <div
-              className={`${styles.dividerVertical} ${isDraggingHorizontal ? styles.dividerDragging : ''}`}
-              style={{ cursor: 'ew-resize' }}
-            />
+            {(() => {
+              const dividerId = 'center-right-divider';
+              const isHovered = hoveredDivider === dividerId;
+              const isActive = isDraggingHorizontal;
+              return (
+                <div
+                  className={`${styles.dividerVertical} ${isActive ? styles.dividerDragging : ''}`}
+                  onMouseEnter={() => setHoveredDivider(dividerId)}
+                  onMouseLeave={() => setHoveredDivider(null)}
+                  role="separator"
+                  aria-orientation="vertical"
+                  aria-label="Resize right sidebar"
+                >
+                  <div
+                    className={`${styles.dividerVerticalLine} ${isHovered || isActive ? styles.dividerVerticalLineHover : ''}`}
+                  />
+                </div>
+              );
+            })()}
             {rightSidebarPanels.map((panel, index) => {
               const isCollapsed =
                 collapsedPanels[panel.id as keyof typeof collapsedPanels] ?? false;

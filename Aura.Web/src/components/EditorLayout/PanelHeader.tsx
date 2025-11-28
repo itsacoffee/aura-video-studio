@@ -1,4 +1,4 @@
-import { makeStyles, Button } from '@fluentui/react-components';
+import { makeStyles, Button, mergeClasses } from '@fluentui/react-components';
 import {
   ChevronDown20Regular,
   ChevronUp20Regular,
@@ -14,12 +14,9 @@ const useStyles = makeStyles({
     justifyContent: 'space-between',
     padding: 'var(--editor-space-sm) var(--editor-space-md)',
     backgroundColor: 'var(--editor-panel-header-bg)',
-    borderBottom: `1px solid var(--editor-panel-border)`,
+    borderBottom: '1px solid var(--editor-panel-border)',
     minHeight: '36px',
-    transition: 'background-color var(--editor-transition-fast)',
-    '&:hover': {
-      backgroundColor: 'var(--editor-panel-hover)',
-    },
+    transition: 'background-color 100ms ease-out',
   },
   title: {
     fontSize: 'var(--editor-font-size-base)',
@@ -38,11 +35,7 @@ const useStyles = makeStyles({
     minWidth: '28px',
     padding: 'var(--editor-space-xs)',
     color: 'var(--editor-text-secondary)',
-    transition: 'all var(--editor-transition-fast)',
-    '&:hover': {
-      color: 'var(--editor-text-primary)',
-      backgroundColor: 'var(--editor-panel-active)',
-    },
+    transition: 'all 100ms ease-out',
   },
 });
 
@@ -69,8 +62,8 @@ export function PanelHeader({
   };
 
   return (
-    <div className={`${styles.header} aura-editor-panel__header`}>
-      <span className={`${styles.title} aura-editor-panel__header-title`} title={title}>
+    <div className={mergeClasses(styles.header, 'aura-editor-panel__header')}>
+      <span className={mergeClasses(styles.title, 'aura-editor-panel__header-title')} title={title}>
         {title}
       </span>
       <Button

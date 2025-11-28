@@ -52,11 +52,7 @@ const useStyles = makeStyles({
     minHeight: 'var(--target-size-min)',
     padding: 'var(--space-sm)',
     color: 'var(--color-text-secondary)',
-    transition: 'all var(--transition-fast)',
-    '&:hover': {
-      backgroundColor: 'var(--color-bg-hover)',
-      color: 'var(--color-text-primary)',
-    },
+    transition: 'all 100ms ease-out',
   },
 });
 
