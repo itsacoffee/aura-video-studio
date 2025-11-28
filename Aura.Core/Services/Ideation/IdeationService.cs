@@ -361,7 +361,7 @@ You MUST analyze the topic deeply and provide concepts that are genuinely useful
                         conceptsArray.GetArrayLength() > 0)
                     {
                         // Quick quality check - reject if all concepts have generic descriptions
-                        var hasGenericContent = false;
+                        var containsGenericContent = false;
                         foreach (var concept in conceptsArray.EnumerateArray())
                         {
                             if (concept.TryGetProperty("description", out var desc))
@@ -370,13 +370,13 @@ You MUST analyze the topic deeply and provide concepts that are genuinely useful
                                 if (descText.Contains("This approach provides unique value through its specific perspective") ||
                                     descText.Contains("Introduction to how to") && descText.Length < 100)
                                 {
-                                    hasGenericContent = true;
+                                    containsGenericContent = true;
                                     break;
                                 }
                             }
                         }
 
-                        if (hasGenericContent && attempt < maxRetries)
+                        if (containsGenericContent && attempt < maxRetries)
                         {
                             _logger.LogWarning("LLM returned generic/placeholder content (Attempt {Attempt}), retrying with stronger prompt",
                                 attempt + 1);
