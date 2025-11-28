@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -1140,16 +1141,16 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
         {
             try
             {
-                var availabilityMethod = ollamaProvider.GetType().GetMethod("IsServiceAvailableAsync", 
+                var availabilityMethod = ollamaProvider.GetType().GetMethod("IsServiceAvailableAsync",
                     new[] { typeof(CancellationToken), typeof(bool) });
                 if (availabilityMethod != null)
                 {
                     using var availabilityCts = new System.Threading.CancellationTokenSource();
                     availabilityCts.CancelAfter(TimeSpan.FromSeconds(5));
-                    var availabilityTask = (Task<bool>)availabilityMethod.Invoke(ollamaProvider, 
+                    var availabilityTask = (Task<bool>)availabilityMethod.Invoke(ollamaProvider,
                         new object[] { availabilityCts.Token, false })!;
                     var isAvailable = await availabilityTask.ConfigureAwait(false);
-                    
+
                     if (!isAvailable)
                     {
                         _logger.LogError("Ollama is not available for translation. Please ensure Ollama is running: 'ollama serve'");
@@ -1205,8 +1206,8 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
         };
         // Note: NOT adding format="json" for translation - we want plain text output
 
-        var json = System.Text.Json.JsonSerializer.Serialize(requestBodyDict);
-        var content = new System.Net.Http.StringContent(json, System.Text.Encoding.UTF8, "application/json");
+        var json = System.Text.Json.JsonSerializer.Serialize(requestBody);
+        var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
 
         Exception? lastException = null;
         for (int attempt = 0; attempt <= maxRetries; attempt++)
@@ -1234,7 +1235,7 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
 
                 // Use /api/generate endpoint (like script generation) - this is the correct endpoint for Ollama
                 var response = await httpClient.PostAsync($"{baseUrl}/api/generate", content, cts.Token).ConfigureAwait(false);
-                
+
                 // Check for model not found error
                 if (!response.IsSuccessStatusCode)
                 {
@@ -1265,7 +1266,7 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
                 }
                 catch (System.Text.Json.JsonException ex)
                 {
-                    _logger.LogError(ex, "Failed to parse Ollama JSON response: {Response}", 
+                    _logger.LogError(ex, "Failed to parse Ollama JSON response: {Response}",
                         responseJson.Substring(0, Math.Min(500, responseJson.Length)));
                     throw new InvalidOperationException("Ollama returned invalid JSON response", ex);
                 }
