@@ -18,8 +18,8 @@
         sans-serif;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
-      /* Deep cosmic gradient: dark indigo → deep violet → black */
-      background: linear-gradient(180deg, #0a0f1a 0%, #1a1f2e 25%, #1a1626 50%, #0f0f1a 75%, #050510 100%);
+      /* Deep cosmic gradient - inspired by web version but adapted for desktop */
+      background: linear-gradient(135deg, #0a0f1a 0%, #1a1f2e 30%, #1a1626 60%, #0f0f1a 85%, #050510 100%);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -28,47 +28,47 @@
       color: #ffffff;
       position: relative;
     }
-    
-    /* Orange/blue bloom gradient overlay around logo */
+
+    /* Animated cosmic background with multiple layers */
     body::before {
       content: '';
       position: absolute;
       inset: 0;
-      background: radial-gradient(
-        ellipse at 50% 42%,
-        rgba(255, 107, 53, 0.15) 0%,
-        rgba(59, 130, 246, 0.12) 20%,
-        rgba(255, 107, 53, 0.08) 35%,
-        rgba(59, 130, 246, 0.06) 50%,
-        transparent 100%
-      );
+      background:
+        radial-gradient(ellipse at 20% 30%, rgba(99, 102, 241, 0.2) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 70%, rgba(255, 107, 53, 0.18) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
       pointer-events: none;
       z-index: 1;
-      animation: backgroundPulse 8s ease-in-out infinite;
+      animation: cosmicShift 12s ease-in-out infinite;
     }
 
-    @keyframes backgroundPulse {
+    @keyframes cosmicShift {
       0%, 100% {
         opacity: 1;
-        transform: scale(1);
+        transform: scale(1) rotate(0deg);
       }
-      50% {
-        opacity: 0.7;
-        transform: scale(1.1);
+      33% {
+        opacity: 0.8;
+        transform: scale(1.1) rotate(2deg);
+      }
+      66% {
+        opacity: 0.9;
+        transform: scale(0.95) rotate(-1deg);
       }
     }
 
-    /* Vignette effect for depth */
+    /* Vignette for depth */
     body::after {
       content: '';
       position: absolute;
       inset: 0;
-      background: radial-gradient(ellipse at center, transparent 0%, rgba(10, 10, 15, 0.6) 100%);
+      background: radial-gradient(ellipse at center, transparent 0%, rgba(5, 5, 10, 0.7) 100%);
       pointer-events: none;
       z-index: 1;
     }
 
-    /* Particle canvas for cosmic starfield */
+    /* Particle canvas for enhanced starfield */
     #particles {
       position: absolute;
       top: 0;
@@ -81,17 +81,17 @@
 
     .splash-container {
       text-align: center;
-      padding: 40px;
-      max-width: 600px;
+      padding: 60px 40px;
+      max-width: 800px;
       position: relative;
       z-index: 2;
-      animation: contentSlideUp 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+      animation: containerFadeIn 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
-    @keyframes contentSlideUp {
+    @keyframes containerFadeIn {
       from {
         opacity: 0;
-        transform: translateY(40px) scale(0.95);
+        transform: translateY(30px) scale(0.95);
       }
       to {
         opacity: 1;
@@ -100,133 +100,138 @@
     }
 
     .logo-container {
-      margin-bottom: 32px;
+      margin-bottom: 48px;
       overflow: visible;
     }
 
+    /* Desktop-optimized icon - larger and more prominent */
     .logo-icon {
       display: inline-block;
-      margin-bottom: 24px;
-      animation: logoFloat 4s ease-in-out infinite;
-      filter: drop-shadow(0 0 30px rgba(99, 102, 241, 0.4)) 
-              drop-shadow(0 0 20px rgba(255, 107, 53, 0.3))
-              drop-shadow(0 20px 60px rgba(0, 0, 0, 0.5));
+      margin-bottom: 32px;
+      animation: iconFloat 5s ease-in-out infinite;
+      filter: drop-shadow(0 0 40px rgba(99, 102, 241, 0.5))
+              drop-shadow(0 0 30px rgba(255, 107, 53, 0.4))
+              drop-shadow(0 30px 80px rgba(0, 0, 0, 0.6));
     }
 
-    @keyframes logoFloat {
+    @keyframes iconFloat {
       0%, 100% {
-        transform: translateY(0) scale(1);
+        transform: translateY(0) scale(1) rotate(0deg);
       }
       50% {
-        transform: translateY(-15px) scale(1.05);
+        transform: translateY(-20px) scale(1.08) rotate(1deg);
       }
     }
 
-    /* Film Clapperboard SVG Styles */
-    .clapperboard {
-      width: 120px;
-      height: 120px;
+    /* Modern geometric icon design - inspired by clapperboard but distinct */
+    .app-icon {
+      width: 160px;
+      height: 160px;
+      position: relative;
     }
 
-    .flames-blue {
-      animation: flameFlickerBlue 2s ease-in-out infinite;
-      transform-origin: center top;
+    .icon-base {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #2D3748 0%, #4A5568 100%);
+      border-radius: 24px;
+      position: relative;
+      overflow: hidden;
+      box-shadow:
+        inset 0 2px 10px rgba(0, 0, 0, 0.3),
+        0 0 0 2px rgba(99, 102, 241, 0.3);
     }
 
-    .flames-orange {
-      animation: flameFlickerOrange 1.5s ease-in-out infinite;
-      transform-origin: center top;
-      animation-delay: 0.3s;
+    .icon-glow-left {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 50%;
+      height: 100%;
+      background: linear-gradient(90deg, rgba(59, 130, 246, 0.4) 0%, transparent 100%);
+      border-radius: 24px 0 0 24px;
+      animation: glowPulse 3s ease-in-out infinite;
     }
 
-    @keyframes flameFlickerBlue {
+    .icon-glow-right {
+      position: absolute;
+      right: 0;
+      top: 0;
+      width: 50%;
+      height: 100%;
+      background: linear-gradient(270deg, rgba(255, 107, 53, 0.4) 0%, transparent 100%);
+      border-radius: 0 24px 24px 0;
+      animation: glowPulse 3s ease-in-out infinite 0.5s;
+    }
+
+    @keyframes glowPulse {
       0%, 100% {
-        opacity: 0.8;
-        transform: translateY(0) scaleY(1);
-      }
-      25% {
-        opacity: 0.9;
-        transform: translateY(-2px) scaleY(1.1);
+        opacity: 0.4;
       }
       50% {
         opacity: 0.7;
-        transform: translateY(0) scaleY(0.95);
-      }
-      75% {
-        opacity: 0.85;
-        transform: translateY(-1px) scaleY(1.05);
       }
     }
 
-    @keyframes flameFlickerOrange {
-      0%, 100% {
-        opacity: 0.7;
-        transform: translateY(0) scaleY(1);
-      }
-      25% {
-        opacity: 0.85;
-        transform: translateY(-1px) scaleY(1.08);
-      }
-      50% {
-        opacity: 0.6;
-        transform: translateY(0) scaleY(0.92);
-      }
-      75% {
-        opacity: 0.75;
-        transform: translateY(-1.5px) scaleY(1.03);
-      }
+    .icon-pattern {
+      position: absolute;
+      inset: 20px;
+      background-image:
+        repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255, 255, 255, 0.05) 10px, rgba(255, 255, 255, 0.05) 20px);
+      border-radius: 12px;
     }
 
     .logo-text {
-      font-size: 72px;
-      font-weight: 700;
+      font-size: 96px;
+      font-weight: 800;
       color: #fff;
       margin: 0;
-      padding: 8px 16px;
-      letter-spacing: 2px;
+      padding: 12px 24px;
+      letter-spacing: 4px;
       text-shadow:
-        0 0 20px rgba(255, 255, 255, 0.3),
-        0 2px 4px rgba(0, 0, 0, 0.3),
-        0 4px 8px rgba(0, 0, 0, 0.2);
+        0 0 30px rgba(255, 255, 255, 0.4),
+        0 0 40px rgba(99, 102, 241, 0.3),
+        0 0 50px rgba(255, 107, 53, 0.2),
+        0 4px 8px rgba(0, 0, 0, 0.4);
       position: relative;
       display: inline-block;
       overflow: visible;
       line-height: 1.1;
-      animation: titleGlow 3s ease-in-out infinite;
+      animation: titlePulse 4s ease-in-out infinite;
     }
 
-    @keyframes titleGlow {
+    @keyframes titlePulse {
       0%, 100% {
         text-shadow:
-          0 0 20px rgba(255, 255, 255, 0.3),
-          0 2px 4px rgba(0, 0, 0, 0.3),
-          0 4px 8px rgba(0, 0, 0, 0.2);
+          0 0 30px rgba(255, 255, 255, 0.4),
+          0 0 40px rgba(99, 102, 241, 0.3),
+          0 0 50px rgba(255, 107, 53, 0.2),
+          0 4px 8px rgba(0, 0, 0, 0.4);
       }
       50% {
         text-shadow:
-          0 0 30px rgba(255, 255, 255, 0.4),
-          0 0 20px rgba(255, 107, 53, 0.3),
-          0 0 15px rgba(59, 130, 246, 0.3),
-          0 2px 4px rgba(0, 0, 0, 0.3),
-          0 4px 8px rgba(0, 0, 0, 0.2);
+          0 0 40px rgba(255, 255, 255, 0.5),
+          0 0 60px rgba(99, 102, 241, 0.4),
+          0 0 80px rgba(255, 107, 53, 0.3),
+          0 4px 8px rgba(0, 0, 0, 0.4);
       }
     }
 
     .tagline {
-      font-size: 14px;
-      color: rgba(255, 255, 255, 0.75);
-      margin: 16px 0 0;
-      font-weight: 400;
-      letter-spacing: 3px;
+      font-size: 16px;
+      color: rgba(255, 255, 255, 0.8);
+      margin: 24px 0 0;
+      font-weight: 500;
+      letter-spacing: 4px;
       text-transform: uppercase;
       opacity: 0.9;
-      animation: subtitleFade 1.5s ease-out 0.5s both;
+      animation: taglineFade 1.8s ease-out 0.6s both;
     }
 
-    @keyframes subtitleFade {
+    @keyframes taglineFade {
       from {
         opacity: 0;
-        transform: translateY(10px);
+        transform: translateY(15px);
       }
       to {
         opacity: 0.9;
@@ -235,19 +240,19 @@
     }
 
     .status-message {
-      font-size: 14px;
-      color: rgba(255, 255, 255, 0.9);
-      margin: 0 0 16px;
-      min-height: 20px;
-      animation: statusFade 0.4s ease-in-out;
+      font-size: 16px;
+      color: rgba(255, 255, 255, 0.95);
+      margin: 0 0 24px;
+      min-height: 24px;
+      animation: statusFade 0.5s ease-in-out;
       font-weight: 400;
-      letter-spacing: 0.5px;
+      letter-spacing: 1px;
     }
 
     @keyframes statusFade {
       from {
         opacity: 0;
-        transform: translateY(-8px);
+        transform: translateY(-10px);
       }
       to {
         opacity: 1;
@@ -255,16 +260,79 @@
       }
     }
 
+    .progress-container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
     .progress-bar {
       position: relative;
-      width: 450px;
-      max-width: 90%;
-      height: 4px;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 2px;
-      margin: 0 auto 20px;
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 3px;
+      margin: 0 auto;
       overflow: hidden;
-      animation: fadeIn 1s ease-out 0.5s both;
+      animation: progressFadeIn 1s ease-out 0.8s both;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    @keyframes progressFadeIn {
+      from {
+        opacity: 0;
+        transform: scaleX(0.8);
+      }
+      to {
+        opacity: 1;
+        transform: scaleX(1);
+      }
+    }
+
+    .progress-fill {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      /* Beautiful gradient - inspired by web version */
+      background: linear-gradient(90deg, #ff6b35 0%, #6366f1 40%, #3b82f6 70%, #818cf8 100%);
+      border-radius: 3px;
+      width: 0%;
+      transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow:
+        0 0 15px rgba(255, 107, 53, 0.5),
+        0 0 30px rgba(99, 102, 241, 0.4),
+        0 0 45px rgba(59, 130, 246, 0.3);
+      position: relative;
+    }
+
+    .progress-fill::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+      animation: shimmer 2.5s linear infinite;
+    }
+
+    @keyframes shimmer {
+      to {
+        left: 100%;
+      }
+    }
+
+    .version {
+      position: absolute;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.5);
+      animation: fadeIn 1.2s ease-out 1.2s both;
+      z-index: 2;
+      letter-spacing: 1px;
     }
 
     @keyframes fadeIn {
@@ -276,70 +344,26 @@
       }
     }
 
-    .progress-fill {
-      position: absolute;
-      top: 0;
-      left: 0;
-      height: 100%;
-      /* Beautiful blue/purple gradient progress bar */
-      background: linear-gradient(90deg, #ff6b35 0%, #6366f1 50%, #3b82f6 100%);
-      border-radius: 2px;
-      width: 0%;
-      transition: width 0.3s ease;
-      box-shadow:
-        0 0 10px rgba(255, 107, 53, 0.4),
-        0 0 20px rgba(59, 130, 246, 0.3);
-      position: relative;
-    }
-
-    .progress-fill::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-      animation: shimmer 2s linear infinite;
-    }
-
-    @keyframes shimmer {
-      to {
-        left: 100%;
-      }
-    }
-
-    .version {
-      position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 12px;
-      color: rgba(255, 255, 255, 0.4);
-      animation: fadeIn 1s ease-out 1s both;
-      z-index: 2;
-    }
-
     /* Responsive adjustments */
     @media (max-width: 768px) {
       .logo-text {
-        font-size: 48px;
-        letter-spacing: -1px;
-        padding: 6px 12px;
+        font-size: 64px;
+        letter-spacing: 2px;
+        padding: 8px 16px;
       }
 
       .tagline {
-        font-size: 12px;
-        letter-spacing: 2px;
+        font-size: 14px;
+        letter-spacing: 3px;
       }
 
-      .logo-icon {
-        width: 90px;
-        height: 90px;
+      .app-icon {
+        width: 120px;
+        height: 120px;
       }
 
-      .progress-bar {
-        width: 300px;
+      .progress-container {
+        max-width: 400px;
       }
     }
 
@@ -360,120 +384,20 @@
   </style>
 </head>
 <body>
-  <!-- Cosmic starfield particle canvas -->
+  <!-- Enhanced cosmic starfield particle canvas -->
   <canvas id="particles"></canvas>
 
   <div class="splash-container">
     <div class="logo-container">
-      <!-- Film Clapperboard Logo with Animated Flames -->
+      <!-- Modern geometric icon - inspired by clapperboard but distinct for desktop -->
       <div class="logo-icon">
-        <svg class="clapperboard" width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <linearGradient id="flameGradientBlue" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stop-color="#3B82F6" stop-opacity="0.9" />
-              <stop offset="50%" stop-color="#6366F1" stop-opacity="0.6" />
-              <stop offset="100%" stop-color="#818CF8" stop-opacity="0.3" />
-            </linearGradient>
-            <linearGradient id="flameGradientOrange" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stop-color="#FF6B35" stop-opacity="0.9" />
-              <stop offset="50%" stop-color="#FF8960" stop-opacity="0.6" />
-              <stop offset="100%" stop-color="#FFA07A" stop-opacity="0.3" />
-            </linearGradient>
-            <filter id="glow">
-              <feGaussianBlur stdDeviation="4" result="coloredBlur" />
-              <feMerge>
-                <feMergeNode in="coloredBlur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-          </defs>
-
-          <!-- Blue flames from top left -->
-          <g class="flames-blue">
-            <path
-              d="M 30 20 Q 25 10, 20 15 Q 25 5, 30 10 Q 35 5, 40 15 Q 35 10, 30 20 Z"
-              fill="url(#flameGradientBlue)"
-              filter="url(#glow)"
-              opacity="0.8"
-            />
-            <path
-              d="M 60 20 Q 55 10, 50 15 Q 55 5, 60 10 Q 65 5, 70 15 Q 65 10, 60 20 Z"
-              fill="url(#flameGradientBlue)"
-              filter="url(#glow)"
-              opacity="0.9"
-            />
-            <path
-              d="M 90 20 Q 85 10, 80 15 Q 85 5, 90 10 Q 95 5, 100 15 Q 95 10, 90 20 Z"
-              fill="url(#flameGradientBlue)"
-              filter="url(#glow)"
-              opacity="0.8"
-            />
-          </g>
-
-          <!-- Orange flames from top right -->
-          <g class="flames-orange">
-            <path
-              d="M 35 22 Q 30 12, 25 17 Q 30 7, 35 12 Q 40 7, 45 17 Q 40 12, 35 22 Z"
-              fill="url(#flameGradientOrange)"
-              filter="url(#glow)"
-              opacity="0.7"
-            />
-            <path
-              d="M 65 22 Q 60 12, 55 17 Q 60 7, 65 12 Q 70 7, 75 17 Q 70 12, 65 22 Z"
-              fill="url(#flameGradientOrange)"
-              filter="url(#glow)"
-              opacity="0.8"
-            />
-            <path
-              d="M 95 22 Q 90 12, 85 17 Q 90 7, 95 12 Q 100 7, 105 17 Q 100 12, 95 22 Z"
-              fill="url(#flameGradientOrange)"
-              filter="url(#glow)"
-              opacity="0.7"
-            />
-          </g>
-
-          <!-- Film Clapperboard -->
-          <g class="clapperboard">
-            <!-- Main board -->
-            <rect
-              x="20"
-              y="30"
-              width="80"
-              height="70"
-              rx="4"
-              fill="#4A5568"
-              stroke="#2D3748"
-              stroke-width="2"
-            />
-            <!-- Top bar -->
-            <rect
-              x="20"
-              y="30"
-              width="80"
-              height="20"
-              rx="4"
-              fill="#2D3748"
-            />
-            <!-- White stripes -->
-            <rect x="25" y="35" width="70" height="3" fill="#E2E8F0" />
-            <rect x="25" y="42" width="70" height="3" fill="#E2E8F0" />
-            <!-- Hinge circles -->
-            <circle cx="30" cy="40" r="3" fill="#1A202C" />
-            <circle cx="90" cy="40" r="3" fill="#1A202C" />
-            <!-- Slate text area -->
-            <rect
-              x="30"
-              y="55"
-              width="60"
-              height="40"
-              rx="2"
-              fill="#1A202C"
-            />
-            <!-- Slate lines -->
-            <line x1="35" y1="70" x2="85" y2="70" stroke="#4A5568" stroke-width="1" />
-            <line x1="35" y1="80" x2="85" y2="80" stroke="#4A5568" stroke-width="1" />
-          </g>
-        </svg>
+        <div class="app-icon">
+          <div class="icon-base">
+            <div class="icon-glow-left"></div>
+            <div class="icon-glow-right"></div>
+            <div class="icon-pattern"></div>
+          </div>
+        </div>
       </div>
 
       <h1 class="logo-text">Aura</h1>
@@ -482,16 +406,18 @@
 
     <div class="status-message" id="status">Starting backend server...</div>
 
-    <div class="progress-bar">
-      <div class="progress-fill" id="progress"></div>
+    <div class="progress-container">
+      <div class="progress-bar">
+        <div class="progress-fill" id="progress"></div>
+      </div>
     </div>
   </div>
 
   <div class="version" id="version">v1.0.0</div>
 
   <script>
-    // High-quality cosmic starfield particle system
-    const PARTICLE_COUNT = 300;
+    // Enhanced cosmic starfield particle system - more particles for desktop
+    const PARTICLE_COUNT = 400;
     const RESIZE_DEBOUNCE_MS = 100;
 
     class Particle {
@@ -503,13 +429,13 @@
       reset() {
         this.x = Math.random() * window.innerWidth;
         this.y = Math.random() * window.innerHeight;
-        this.size = Math.random() * 2.5 + 0.5;
-        this.speedY = (Math.random() - 0.5) * 0.3;
-        this.speedX = (Math.random() - 0.5) * 0.3;
-        this.opacity = Math.random() * 0.6 + 0.2;
-        
-        // Cosmic colors: blues, purples, and oranges
-        const colors = ['#6366F1', '#818CF8', '#3B82F6', '#60A5FA', '#A855F7', '#C084FC', '#FF6B35', '#FF8960'];
+        this.size = Math.random() * 3 + 0.5;
+        this.speedY = (Math.random() - 0.5) * 0.4;
+        this.speedX = (Math.random() - 0.5) * 0.4;
+        this.opacity = Math.random() * 0.7 + 0.2;
+
+        // Cosmic colors - inspired by web version
+        const colors = ['#6366F1', '#818CF8', '#3B82F6', '#60A5FA', '#A855F7', '#C084FC', '#FF6B35', '#FF8960', '#F59E0B'];
         this.color = colors[Math.floor(Math.random() * colors.length)] || colors[0];
       }
 
@@ -534,7 +460,7 @@
         ctx.save();
         ctx.globalAlpha = this.opacity;
         ctx.fillStyle = this.color;
-        ctx.shadowBlur = 8;
+        ctx.shadowBlur = 10;
         ctx.shadowColor = this.color;
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
@@ -558,7 +484,7 @@
 
     resizeCanvas();
 
-    // Create particle system
+    // Create enhanced particle system
     const particles = [];
     for (let i = 0; i < PARTICLE_COUNT; i++) {
       particles.push(new Particle(canvas));

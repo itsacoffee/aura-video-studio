@@ -1248,16 +1248,93 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
                 // Use /api/generate endpoint (like script generation) - this is the correct endpoint for Ollama
                 var response = await httpClient.PostAsync($"{baseUrl}/api/generate", content, cts.Token).ConfigureAwait(false);
 
-                // Check for model not found error
+                // Check for model not found error - if model doesn't exist, query for available models and use first one
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
                     if (errorContent.Contains("model") && errorContent.Contains("not found"))
                     {
-                        throw new InvalidOperationException(
-                            $"Model '{modelToUse}' not found. Please pull the model first using: ollama pull {modelToUse}");
+                        _logger.LogWarning("Model '{Model}' not found, querying Ollama for available models", modelToUse);
+                        
+                        // Query Ollama for available models (like script generation does)
+                        try
+                        {
+                            using var tagsCts = new System.Threading.CancellationTokenSource();
+                            tagsCts.CancelAfter(TimeSpan.FromSeconds(10));
+                            var tagsResponse = await httpClient.GetAsync($"{baseUrl}/api/tags", tagsCts.Token).ConfigureAwait(false);
+                            
+                            if (tagsResponse.IsSuccessStatusCode)
+                            {
+                                var tagsContent = await tagsResponse.Content.ReadAsStringAsync(tagsCts.Token).ConfigureAwait(false);
+                                var tagsDoc = System.Text.Json.JsonDocument.Parse(tagsContent);
+                                
+                                if (tagsDoc.RootElement.TryGetProperty("models", out var modelsArray) &&
+                                    modelsArray.ValueKind == System.Text.Json.JsonValueKind.Array)
+                                {
+                                    var availableModels = new List<string>();
+                                    foreach (var modelElement in modelsArray.EnumerateArray())
+                                    {
+                                        if (modelElement.TryGetProperty("name", out var nameProp))
+                                        {
+                                            var name = nameProp.GetString();
+                                            if (!string.IsNullOrEmpty(name))
+                                            {
+                                                availableModels.Add(name);
+                                            }
+                                        }
+                                    }
+                                    
+                                    if (availableModels.Count > 0)
+                                    {
+                                        // Use the first available model (like script generation would)
+                                        var fallbackModel = availableModels[0];
+                                        _logger.LogInformation("Model '{RequestedModel}' not found, using first available model: '{FallbackModel}'. Available models: {AllModels}",
+                                            modelToUse, fallbackModel, string.Join(", ", availableModels));
+                                        modelToUse = fallbackModel;
+                                        
+                                        // Retry with the available model
+                                        requestBody = new
+                                        {
+                                            model = modelToUse,
+                                            prompt = combinedPrompt,
+                                            stream = false,
+                                            options = options
+                                        };
+                                        json = System.Text.Json.JsonSerializer.Serialize(requestBody);
+                                        content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+                                        response = await httpClient.PostAsync($"{baseUrl}/api/generate", content, cts.Token).ConfigureAwait(false);
+                                        response.EnsureSuccessStatusCode();
+                                    }
+                                    else
+                                    {
+                                        throw new InvalidOperationException(
+                                            $"Model '{modelToUse}' not found and no models are available in Ollama. " +
+                                            $"Please install a model using: ollama pull <model-name>");
+                                    }
+                                }
+                                else
+                                {
+                                    throw new InvalidOperationException(
+                                        $"Model '{modelToUse}' not found. Please pull the model first using: ollama pull {modelToUse}");
+                                }
+                            }
+                            else
+                            {
+                                throw new InvalidOperationException(
+                                    $"Model '{modelToUse}' not found. Please pull the model first using: ollama pull {modelToUse}");
+                            }
+                        }
+                        catch (Exception ex) when (!(ex is InvalidOperationException))
+                        {
+                            _logger.LogError(ex, "Error querying Ollama for available models");
+                            throw new InvalidOperationException(
+                                $"Model '{modelToUse}' not found. Please pull the model first using: ollama pull {modelToUse}");
+                        }
                     }
-                    response.EnsureSuccessStatusCode();
+                    else
+                    {
+                        response.EnsureSuccessStatusCode();
+                    }
                 }
 
                 // CRITICAL: Use cts.Token instead of ct for ReadAsStringAsync (like script generation)
