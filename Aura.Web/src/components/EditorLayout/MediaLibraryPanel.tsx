@@ -45,7 +45,8 @@ const useStyles = makeStyles({
   },
   leftPane: {
     flex: 1,
-    minWidth: '200px',
+    minWidth: '240px', // Increased from 200px to prevent file browser clipping
+    maxWidth: '50%', // Prevent left pane from taking too much space
     borderRight: `1px solid ${tokens.colorNeutralStroke1}`,
     display: 'flex',
     flexDirection: 'column',
@@ -53,7 +54,7 @@ const useStyles = makeStyles({
   },
   rightPane: {
     flex: 1,
-    minWidth: '200px',
+    minWidth: '240px', // Increased from 200px to prevent project bin clipping
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',

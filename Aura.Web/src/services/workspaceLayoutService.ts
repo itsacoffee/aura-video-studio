@@ -33,17 +33,17 @@ export const PRESET_LAYOUTS: Record<string, WorkspaceLayout> = {
   editing: {
     id: 'editing',
     name: 'Editing',
-    description: 'Focus on timeline with large preview (60/30/10 proportions)',
+    description: 'Professional editing workspace with media library (Adobe-style layout)',
     panelSizes: {
-      propertiesWidth: 320,
-      mediaLibraryWidth: 280,
-      effectsLibraryWidth: 280,
-      historyWidth: 320,
+      propertiesWidth: 340,
+      mediaLibraryWidth: 320, // Increased for better file browser visibility
+      effectsLibraryWidth: 300,
+      historyWidth: 340,
       previewHeight: 60, // 60% for preview
     },
     visiblePanels: {
       properties: false,
-      mediaLibrary: false,
+      mediaLibrary: true, // Show media library by default for professional workflow
       effects: false,
       history: false,
     },

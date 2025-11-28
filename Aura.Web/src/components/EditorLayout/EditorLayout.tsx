@@ -100,10 +100,10 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     transition: 'width var(--editor-transition-base)',
   },
-  // Left sidebar panel - Increased min width for better readability
+  // Left sidebar panel - Increased min width for better readability and prevent clipping
   leftSidebarPanel: {
-    minWidth: '280px',
-    maxWidth: '400px',
+    minWidth: '300px', // Increased from 280px to prevent text/file name clipping
+    maxWidth: '450px', // Increased from 400px for better flexibility
     borderRight: `1px solid var(--editor-panel-border-subtle)`,
     backgroundColor: 'var(--editor-panel-bg)',
     overflow: 'hidden',
@@ -274,12 +274,12 @@ export function EditorLayout({
   // State for panel sizes - keyed by panel ID
   const [panelSizes, setPanelSizes] = useState<Record<string, number>>(() => {
     const sizes: Record<string, number> = {};
-      panels.forEach((panel) => {
-        const layoutSize =
-          currentLayout?.panelSizes[`${panel.id}Width` as keyof typeof currentLayout.panelSizes];
-        const defaultSize = panel.defaultSize ?? (panel.region === 'right' ? 340 : 60);
-        sizes[panel.id] = loadPanelSize(panel.id, (layoutSize as number) ?? defaultSize);
-      });
+    panels.forEach((panel) => {
+      const layoutSize =
+        currentLayout?.panelSizes[`${panel.id}Width` as keyof typeof currentLayout.panelSizes];
+      const defaultSize = panel.defaultSize ?? (panel.region === 'right' ? 340 : 60);
+      sizes[panel.id] = loadPanelSize(panel.id, (layoutSize as number) ?? defaultSize);
+    });
     return sizes;
   });
 
@@ -565,9 +565,9 @@ export function EditorLayout({
             {leftSidebarPanels.map((panel, index) => {
               const isCollapsed =
                 collapsedPanels[panel.id as keyof typeof collapsedPanels] ?? false;
-              const minSize = panel.minSize ?? 240;
-              const maxSize = panel.maxSize ?? 350;
-              const panelWidth = panelSizes[panel.id] ?? panel.defaultSize ?? 280;
+              const minSize = panel.minSize ?? 300; // Increased default min size
+              const maxSize = panel.maxSize ?? 450; // Increased default max size
+              const panelWidth = panelSizes[panel.id] ?? panel.defaultSize ?? 320; // Increased default width
 
               return (
                 <React.Fragment key={panel.id}>

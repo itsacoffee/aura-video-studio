@@ -53,10 +53,11 @@ const loadCollapsedPanels = () => {
   } catch {
     // Ignore errors
   }
-  // Default to all panels collapsed (professional video editor style)
+  // Default to editing layout visibility (mediaLibrary visible, others collapsed)
+  // This matches the default 'editing' workspace layout
   return {
     properties: true,
-    mediaLibrary: true,
+    mediaLibrary: false, // Media library visible by default for professional workflow
     effects: true,
     history: true,
   };
@@ -76,10 +77,10 @@ export const useWorkspaceLayoutStore = create<WorkspaceLayoutState>((set, get) =
   isFullscreen: false,
   collapsedPanels: loadCollapsedPanels(),
   visiblePanels: {
-    properties: true,
-    mediaLibrary: true,
-    effects: true,
-    history: true,
+    properties: false,
+    mediaLibrary: true, // Media library visible by default for professional workflow
+    effects: false,
+    history: false,
   },
 
   setCurrentLayout: (layoutId: string) => {
@@ -268,10 +269,10 @@ export const useWorkspaceLayoutStore = create<WorkspaceLayoutState>((set, get) =
       }
     });
 
-    // Reset collapsed panels to default (all collapsed - professional video editor style)
+    // Reset collapsed panels to default (matches editing layout - mediaLibrary visible)
     const defaultCollapsed = {
       properties: true,
-      mediaLibrary: true,
+      mediaLibrary: false, // Media library visible by default
       effects: true,
       history: true,
     };

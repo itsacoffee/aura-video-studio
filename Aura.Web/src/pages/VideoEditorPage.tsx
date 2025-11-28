@@ -882,10 +882,10 @@ export function VideoEditorPage() {
         id: 'mediaLibrary',
         title: 'Media Library',
         region: 'right', // Treated as left sidebar in layout logic
-        defaultSize: 300,
-        minSize: 280,
-        maxSize: 400,
-        visibleByDefault: false,
+        defaultSize: 320, // Increased default size for better file browser visibility
+        minSize: 300, // Increased minimum to prevent clipping
+        maxSize: 450, // Increased maximum for flexibility
+        visibleByDefault: true, // Show by default for professional workflow
       },
       {
         id: 'effects',

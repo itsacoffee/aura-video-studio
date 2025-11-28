@@ -298,12 +298,12 @@ You MUST analyze the topic deeply and provide concepts that are genuinely useful
                     {
                         _logger.LogInformation("Strengthening prompt for retry attempt {Attempt} due to generic content detection",
                             attempt + 1);
-                        
+
                         // Add more explicit instructions to system prompt
                         currentSystemPrompt = systemPrompt + @"
 
-CRITICAL REMINDER FOR THIS RETRY: The previous attempt generated generic placeholder content. 
-You MUST generate SPECIFIC, DETAILED concepts that are directly related to the topic. 
+CRITICAL REMINDER FOR THIS RETRY: The previous attempt generated generic placeholder content.
+You MUST generate SPECIFIC, DETAILED concepts that are directly related to the topic.
 DO NOT use any generic phrases or placeholders. Every field must contain topic-specific information.";
 
                         // Add explicit examples and warnings to user prompt
@@ -369,11 +369,30 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                     }
 
                     var callStartTime = DateTime.UtcNow;
-                    jsonResponse = await _llmProvider.GenerateChatCompletionAsync(
-                        currentSystemPrompt,
-                        currentUserPrompt,
-                        ideationParams,
-                        ct);
+
+                    // Try direct Ollama call first (similar to script generation) for better reliability
+                    // This bypasses CompositeLlmProvider fallback logic and ensures we use Ollama when available
+                    try
+                    {
+                        jsonResponse = await GenerateWithOllamaDirectAsync(
+                            currentSystemPrompt,
+                            currentUserPrompt,
+                            ideationParams,
+                            request,
+                            ct).ConfigureAwait(false);
+                        _logger.LogInformation("Successfully used direct Ollama API call for ideation");
+                    }
+                    catch (InvalidOperationException ex) when (ex.Message.Contains("Ollama") || ex.Message.Contains("not available") || ex.Message.Contains("cannot be used"))
+                    {
+                        // Ollama not available or direct call failed - fall back to CompositeLlmProvider
+                        _logger.LogInformation("Direct Ollama call not available, falling back to CompositeLlmProvider: {Error}", ex.Message);
+                        jsonResponse = await _llmProvider.GenerateChatCompletionAsync(
+                            currentSystemPrompt,
+                            currentUserPrompt,
+                            ideationParams,
+                            ct).ConfigureAwait(false);
+                    }
+
                     var callDuration = DateTime.UtcNow - callStartTime;
 
                     // Log provider utilization verification
@@ -408,14 +427,14 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                         var containsGenericContent = false;
                         var genericContentDetails = new List<string>();
                         var topicName = request.Topic;
-                        
+
                         foreach (var concept in conceptsArray.EnumerateArray())
                         {
                             // Check description field
                             if (concept.TryGetProperty("description", out var desc))
                             {
                                 var descText = desc.GetString() ?? "";
-                                
+
                                 // Check all the same patterns as final validation
                                 if (descText.Contains("This approach provides unique value through its specific perspective"))
                                 {
@@ -441,9 +460,9 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                                     genericContentDetails.Add($"Description too short with placeholder phrase: '{descText}'");
                                 }
                             }
-                            
+
                             // Check talkingPoints array if it exists
-                            if (concept.TryGetProperty("talkingPoints", out var talkingPoints) && 
+                            if (concept.TryGetProperty("talkingPoints", out var talkingPoints) &&
                                 talkingPoints.ValueKind == JsonValueKind.Array)
                             {
                                 foreach (var tp in talkingPoints.EnumerateArray())
@@ -457,9 +476,9 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                                     }
                                 }
                             }
-                            
+
                             // Check pros array if it exists
-                            if (concept.TryGetProperty("pros", out var pros) && 
+                            if (concept.TryGetProperty("pros", out var pros) &&
                                 pros.ValueKind == JsonValueKind.Array)
                             {
                                 foreach (var pro in pros.EnumerateArray())
@@ -473,7 +492,7 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                                     }
                                 }
                             }
-                            
+
                             // If we found generic content in this concept, no need to check others
                             if (containsGenericContent)
                             {
@@ -3657,20 +3676,9 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
         var providerTypeName = providerType.Name;
         var llmParams = request.LlmParameters;
 
-        // Check if this is OllamaLlmProvider directly or if it's CompositeLlmProvider that might contain Ollama
-        if (providerTypeName == "OllamaLlmProvider" || providerTypeName == "CompositeLlmProvider")
-        {
-            // Try to use direct Ollama API call - this will handle both direct OllamaLlmProvider and CompositeLlmProvider
-            try
-            {
-                return await GenerateWithOllamaDirectAsync(prompt, request, ct).ConfigureAwait(false);
-            }
-            catch (InvalidOperationException ex) when (ex.Message.Contains("Ollama") || ex.Message.Contains("can only be used"))
-            {
-                // If direct call fails (e.g., not Ollama provider), fall through to CompleteAsync
-                _logger.LogDebug("Direct Ollama call not available: {Error}. Falling back to CompleteAsync", ex.Message);
-            }
-        }
+        // Note: GenerateWithDraftScriptAsync is for script generation, not ideation
+        // It uses a single combined prompt, so we can't use GenerateWithOllamaDirectAsync
+        // which expects separate systemPrompt and userPrompt. Use CompleteAsync instead.
 
         // For other providers, we need to use CompleteAsync as DraftScriptAsync builds its own prompts
         // This means LLM parameters may not be fully applied for non-Ollama providers
@@ -3686,11 +3694,14 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
     }
 
     /// <summary>
-    /// Generate using Ollama API directly with full parameter support
-    /// This bypasses the CompleteAsync limitation and applies all LLM parameters correctly
+    /// Generate using Ollama API directly with /api/chat endpoint (similar to script generation approach)
+    /// This bypasses CompositeLlmProvider fallback logic and ensures we use Ollama when available
+    /// Uses /api/chat with format=json for ideation (requires structured JSON output)
     /// </summary>
     private async Task<string> GenerateWithOllamaDirectAsync(
-        string prompt,
+        string systemPrompt,
+        string userPrompt,
+        LlmParameters parameters,
         BrainstormRequest request,
         CancellationToken ct)
     {
@@ -3700,8 +3711,13 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
         System.Net.Http.HttpClient? httpClient = null;
         string baseUrl = "http://127.0.0.1:11434";
         string defaultModel = "llama3.1:8b-q4_k_m";
-        TimeSpan timeout = TimeSpan.FromSeconds(900);
+        // Use a reasonable timeout - 3 minutes max for ideation to prevent indefinite hangs
+        // If Ollama is unresponsive, we want to fail fast and fall back to CompositeLlmProvider
+        TimeSpan timeout = TimeSpan.FromMinutes(3);
         int maxRetries = 3;
+
+        // Check availability first (like script generation does)
+        ILlmProvider? ollamaProvider = null;
 
         // Try to get Ollama provider - handle both direct OllamaLlmProvider and CompositeLlmProvider
         if (providerType.Name == "OllamaLlmProvider")
@@ -3748,7 +3764,7 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                     }
                 }
 
-                if (providers != null && providers.TryGetValue("Ollama", out var ollamaProvider) && ollamaProvider != null)
+                if (providers != null && providers.TryGetValue("Ollama", out ollamaProvider) && ollamaProvider != null)
                 {
                     var ollamaProviderType = ollamaProvider.GetType();
                     var httpClientField = ollamaProviderType.GetField("_httpClient", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
@@ -3773,16 +3789,52 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
             }
         }
 
+        // Check availability first (like script generation does)
+        if (ollamaProvider != null)
+        {
+            try
+            {
+                var availabilityMethod = ollamaProvider.GetType().GetMethod("IsServiceAvailableAsync",
+                    new[] { typeof(CancellationToken), typeof(bool) });
+                if (availabilityMethod != null)
+                {
+                    using var availabilityCts = new System.Threading.CancellationTokenSource();
+                    availabilityCts.CancelAfter(TimeSpan.FromSeconds(5));
+                    var availabilityTask = (Task<bool>)availabilityMethod.Invoke(ollamaProvider,
+                        new object[] { availabilityCts.Token, false })!;
+                    var isAvailable = await availabilityTask.ConfigureAwait(false);
+
+                    if (!isAvailable)
+                    {
+                        _logger.LogError("Ollama is not available for ideation. Please ensure Ollama is running: 'ollama serve'");
+                        throw new InvalidOperationException(
+                            "Ollama is required for ideation but is not available. " +
+                            "Please ensure Ollama is running: 'ollama serve' and verify models are installed: 'ollama list'");
+                    }
+                    _logger.LogInformation("Ollama availability check passed for ideation");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not check Ollama availability, proceeding with request attempt");
+            }
+        }
+
         // Track if we created the HttpClient so we can dispose it properly
         bool createdHttpClient = false;
         if (httpClient == null)
         {
             _logger.LogInformation("Creating new HttpClient for direct Ollama API call (baseUrl: {BaseUrl})", baseUrl);
+            // Use a reasonable timeout - 5 minutes max for ideation (ideation can take time but shouldn't hang forever)
+            // This prevents indefinite hangs if Ollama is unresponsive
+            var httpTimeout = TimeSpan.FromMinutes(5);
             httpClient = new System.Net.Http.HttpClient
             {
-                Timeout = timeout.Add(TimeSpan.FromMinutes(5)) // Add buffer for timeout
+                Timeout = httpTimeout
             };
             createdHttpClient = true;
+            // Update the timeout to match HTTP client timeout to avoid confusion
+            timeout = httpTimeout;
         }
 
         // Get LLM parameters with defaults
@@ -3790,16 +3842,22 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
         var modelToUse = !string.IsNullOrWhiteSpace(llmParams?.ModelOverride)
             ? llmParams.ModelOverride
             : defaultModel;
-        var temperature = llmParams?.Temperature ?? 0.7;
-        var maxTokens = llmParams?.MaxTokens ?? 2048;
-        var topP = llmParams?.TopP ?? 0.9;
-        var topK = llmParams?.TopK;
+        var temperature = parameters?.Temperature ?? llmParams?.Temperature ?? 0.7;
+        var maxTokens = parameters?.MaxTokens ?? llmParams?.MaxTokens ?? 2048;
+        var topP = parameters?.TopP ?? llmParams?.TopP ?? 0.9;
+        var topK = parameters?.TopK ?? llmParams?.TopK;
 
         _logger.LogInformation(
-            "Calling Ollama API directly (Model: {Model}, Temperature: {Temperature}, MaxTokens: {MaxTokens})",
+            "Calling Ollama API directly for ideation (Model: {Model}, Temperature: {Temperature}, MaxTokens: {MaxTokens})",
             modelToUse, temperature, maxTokens);
 
-        // Build Ollama API request with parameters
+        // Build combined prompt (like script generation does) - combine system and user prompts
+        // Script generation uses a single prompt, not messages array
+        var combinedPrompt = string.IsNullOrWhiteSpace(systemPrompt)
+            ? userPrompt
+            : $"{systemPrompt}\n\n{userPrompt}";
+
+        // Build Ollama API request with parameters (using /api/generate endpoint like script generation)
         var options = new Dictionary<string, object>
         {
             { "temperature", temperature },
@@ -3812,11 +3870,14 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
             options["top_k"] = topK.Value;
         }
 
+        // Use /api/generate endpoint with format=json for ideation (requires structured JSON output)
+        // This matches the working script generation implementation
         var requestBody = new
         {
             model = modelToUse,
-            prompt = prompt,
+            prompt = combinedPrompt,
             stream = false,
+            format = "json", // Ideation requires JSON format
             options = options
         };
 
@@ -3882,12 +3943,26 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                     }
                 }, heartbeatCts.Token);
 
+                // Use /api/generate endpoint (like script generation) - this is the correct endpoint for Ollama
                 var response = await httpClient.PostAsync($"{baseUrl}/api/generate", content, cts.Token).ConfigureAwait(false);
-                response.EnsureSuccessStatusCode();
+
+                // Check for model not found error
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
+                    if (errorContent.Contains("model") && errorContent.Contains("not found"))
+                    {
+                        throw new InvalidOperationException(
+                            $"Model '{modelToUse}' not found. Please pull the model first using: ollama pull {modelToUse}");
+                    }
+                    response.EnsureSuccessStatusCode();
+                }
 
                 // Cancel heartbeat since we got a response
                 heartbeatCts.Cancel();
 
+                // CRITICAL: Use cts.Token instead of ct for ReadAsStringAsync (like script generation)
+                // This prevents upstream components from cancelling our long-running operation
                 var responseJson = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
 
                 if (string.IsNullOrWhiteSpace(responseJson))
@@ -3898,54 +3973,86 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
 
                 _logger.LogDebug("Ollama API returned JSON response of length {Length} characters", responseJson.Length);
 
-                var responseDoc = System.Text.Json.JsonDocument.Parse(responseJson);
-
-                // Check for error field first
-                if (responseDoc.RootElement.TryGetProperty("error", out var errorProp))
+                // Parse and validate response structure (like script generation)
+                System.Text.Json.JsonDocument? responseDoc = null;
+                try
                 {
-                    var errorMessage = errorProp.GetString() ?? "Unknown error";
-                    _logger.LogError("Ollama API returned error: {Error}", errorMessage);
+                    responseDoc = System.Text.Json.JsonDocument.Parse(responseJson);
+                }
+                catch (System.Text.Json.JsonException ex)
+                {
+                    _logger.LogError(ex, "Failed to parse Ollama JSON response: {Response}",
+                        responseJson.Substring(0, Math.Min(500, responseJson.Length)));
+                    throw new InvalidOperationException("Ollama returned invalid JSON response", ex);
+                }
+
+                // Check for errors in response (like script generation)
+                if (responseDoc.RootElement.TryGetProperty("error", out var errorElement))
+                {
+                    var errorMessage = errorElement.GetString() ?? "Unknown error";
+                    _logger.LogError("Ollama API error: {Error}", errorMessage);
                     throw new InvalidOperationException($"Ollama API error: {errorMessage}");
                 }
 
-                if (responseDoc.RootElement.TryGetProperty("response", out var responseProp))
+                // /api/generate returns response in 'response' field (like script generation)
+                if (responseDoc.RootElement.TryGetProperty("response", out var responseText))
                 {
-                    var result = responseProp.GetString() ?? string.Empty;
+                    var result = responseText.GetString() ?? string.Empty;
 
                     if (string.IsNullOrWhiteSpace(result))
                     {
-                        _logger.LogWarning("Ollama returned empty 'response' field in JSON. Full JSON: {Json}",
-                            responseJson.Substring(0, Math.Min(500, responseJson.Length)));
-                        throw new InvalidOperationException("Ollama returned an empty response field");
+                        _logger.LogError("Ollama returned an empty response. Response JSON: {Response}",
+                            responseJson.Substring(0, Math.Min(1000, responseJson.Length)));
+                        throw new InvalidOperationException("Ollama returned an empty response");
                     }
 
-                    _logger.LogDebug("Ollama ideation succeeded with {Length} characters", result.Length);
+                    _logger.LogInformation("Ollama ideation succeeded with {Length} characters", result.Length);
                     return result;
                 }
 
                 // Log available fields for debugging
                 var availableFields = string.Join(", ", responseDoc.RootElement.EnumerateObject().Select(p => p.Name));
                 _logger.LogError(
-                    "Ollama response did not contain 'response' field. Available fields: {Fields}. " +
-                    "Response JSON preview: {Preview}",
+                    "Ollama response did not contain expected 'response' field. Available fields: {Fields}. Response: {Response}",
                     availableFields,
                     responseJson.Substring(0, Math.Min(500, responseJson.Length)));
-                throw new InvalidOperationException($"Invalid response structure from Ollama API. Available fields: {availableFields}");
+                throw new InvalidOperationException($"Invalid response structure from Ollama. Expected 'response' field but got: {responseJson.Substring(0, Math.Min(200, responseJson.Length))}");
             }
-            catch (TaskCanceledException ex) when (attempt < maxRetries)
+            catch (TaskCanceledException ex)
             {
                 lastException = ex;
-                _logger.LogWarning(ex, "Ollama ideation timed out (attempt {Attempt}/{MaxRetries})", attempt + 1, maxRetries + 1);
+                if (attempt < maxRetries)
+                {
+                    _logger.LogWarning(ex, "Ollama ideation timed out (attempt {Attempt}/{MaxRetries})", attempt + 1, maxRetries + 1);
+                }
+                else
+                {
+                    _logger.LogError(ex, "Ollama ideation timed out on final attempt ({Attempt}/{MaxRetries})", attempt + 1, maxRetries + 1);
+                }
             }
-            catch (System.Net.Http.HttpRequestException ex) when (attempt < maxRetries)
+            catch (System.Net.Http.HttpRequestException ex)
             {
                 lastException = ex;
-                _logger.LogWarning(ex, "Ollama ideation connection failed (attempt {Attempt}/{MaxRetries})", attempt + 1, maxRetries + 1);
+                if (attempt < maxRetries)
+                {
+                    _logger.LogWarning(ex, "Ollama ideation connection failed (attempt {Attempt}/{MaxRetries})", attempt + 1, maxRetries + 1);
+                }
+                else
+                {
+                    _logger.LogError(ex, "Ollama ideation connection failed on final attempt ({Attempt}/{MaxRetries})", attempt + 1, maxRetries + 1);
+                }
             }
-            catch (Exception ex) when (attempt < maxRetries)
+            catch (Exception ex)
             {
                 lastException = ex;
-                _logger.LogWarning(ex, "Error calling Ollama for ideation (attempt {Attempt}/{MaxRetries})", attempt + 1, maxRetries + 1);
+                if (attempt < maxRetries)
+                {
+                    _logger.LogWarning(ex, "Error calling Ollama for ideation (attempt {Attempt}/{MaxRetries})", attempt + 1, maxRetries + 1);
+                }
+                else
+                {
+                    _logger.LogError(ex, "Error calling Ollama for ideation on final attempt ({Attempt}/{MaxRetries})", attempt + 1, maxRetries + 1);
+                }
             }
         }
 

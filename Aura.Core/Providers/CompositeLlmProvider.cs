@@ -84,10 +84,52 @@ public class CompositeLlmProvider : ILlmProvider
                                   systemPrompt.Contains("video concept", StringComparison.OrdinalIgnoreCase) ||
                                   systemPrompt.Contains("concept variations", StringComparison.OrdinalIgnoreCase);
 
-        var operationName = isIdeationOperation ? "ideation chat completion" : "chat completion";
+        // Detect if this is a translation operation by checking the system prompt
+        // Translation prompts typically contain "translator", "translate", "translation", or language codes
+        var isTranslationOperation = systemPrompt.Contains("translator", StringComparison.OrdinalIgnoreCase) ||
+                                     systemPrompt.Contains("translate", StringComparison.OrdinalIgnoreCase) ||
+                                     systemPrompt.Contains("translation", StringComparison.OrdinalIgnoreCase) ||
+                                     systemPrompt.Contains("source language", StringComparison.OrdinalIgnoreCase) ||
+                                     systemPrompt.Contains("target language", StringComparison.OrdinalIgnoreCase);
+
+        var operationName = isIdeationOperation ? "ideation chat completion" :
+                           isTranslationOperation ? "translation chat completion" :
+                           "chat completion";
+
+        // For ideation and translation operations, use a custom retry function that fails fast if RuleBased is selected
+        Func<ILlmProvider, Task<string>> operation = async provider =>
+        {
+            var providerType = provider.GetType().Name;
+
+            // CRITICAL: Fail fast if RuleBased is selected for ideation - it will only produce generic content
+            if (isIdeationOperation && providerType.Contains("RuleBased", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogError(
+                    "CRITICAL: Ideation operation cannot use RuleBased provider - it will only generate generic placeholder content. " +
+                    "Ollama must be available and running for ideation to work. " +
+                    "Please ensure Ollama is running: 'ollama serve' and check 'ollama list' to verify models are installed.");
+                throw new InvalidOperationException(
+                    "Ideation requires a real LLM provider (Ollama). RuleBased provider cannot generate meaningful concepts. " +
+                    "Please ensure Ollama is running and configured. Start Ollama with: 'ollama serve'");
+            }
+
+            // CRITICAL: Fail fast if RuleBased is selected for translation - it will only produce poor quality translations
+            if (isTranslationOperation && providerType.Contains("RuleBased", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogError(
+                    "CRITICAL: Translation operation cannot use RuleBased provider - it will only produce poor quality translations. " +
+                    "Ollama must be available and running for translation to work. " +
+                    "Please ensure Ollama is running: 'ollama serve' and check 'ollama list' to verify models are installed.");
+                throw new InvalidOperationException(
+                    "Translation requires a real LLM provider (Ollama). RuleBased provider cannot produce quality translations. " +
+                    "Please ensure Ollama is running and configured. Start Ollama with: 'ollama serve'");
+            }
+
+            return await provider.GenerateChatCompletionAsync(systemPrompt, userPrompt, parameters, ct).ConfigureAwait(false);
+        };
 
         return ExecuteWithFallbackAsync(
-            provider => provider.GenerateChatCompletionAsync(systemPrompt, userPrompt, parameters, ct),
+            operation,
             operationName,
             ct,
             DefaultPreferredTier,
@@ -407,15 +449,16 @@ public class CompositeLlmProvider : ILlmProvider
 
                 var preferredChain = new List<string>();
 
-                // For ideation operations, prioritize Ollama even if user has a preferred provider
-                // This ensures ideation works reliably with local processing
-                if (operationName.Contains("ideation", StringComparison.OrdinalIgnoreCase) &&
+                // For ideation and translation operations, prioritize Ollama even if user has a preferred provider
+                // This ensures ideation and translation work reliably with local processing
+                if ((operationName.Contains("ideation", StringComparison.OrdinalIgnoreCase) ||
+                     operationName.Contains("translation", StringComparison.OrdinalIgnoreCase)) &&
                     providers.ContainsKey("Ollama") &&
                     normalizedPreferred != "Ollama")
                 {
                     _logger.LogInformation(
-                        "Ideation operation detected - prioritizing Ollama even though preferred provider is {Preferred}",
-                        normalizedPreferred);
+                        "{Operation} operation detected - prioritizing Ollama even though preferred provider is {Preferred}",
+                        operationName, normalizedPreferred);
                     preferredChain.Add("Ollama");
                 }
 
@@ -498,19 +541,19 @@ public class CompositeLlmProvider : ILlmProvider
         }
         else
         {
-            // Prioritize Ollama for ideation operations regardless of tier
-            // This ensures local processing for ideation which is typically faster and more reliable
-            if (operationName.Contains("ideation", StringComparison.OrdinalIgnoreCase) &&
+            // Prioritize Ollama for ideation and translation operations regardless of tier
+            // This ensures local processing for ideation and translation which is typically faster and more reliable
+            if ((operationName.Contains("ideation", StringComparison.OrdinalIgnoreCase) ||
+                 operationName.Contains("translation", StringComparison.OrdinalIgnoreCase)) &&
                 providers.ContainsKey("Ollama"))
             {
-                _logger.LogInformation("Ideation operation detected - prioritizing Ollama for {Operation}", operationName);
+                _logger.LogInformation("{Operation} operation detected - prioritizing Ollama", operationName);
                 AddIfAvailable("Ollama");
             }
-            // For ProIfAvailable tier, prioritize Ollama for completion/translation/localization operations
+            // For ProIfAvailable tier, prioritize Ollama for completion/localization operations
             // This avoids trying misconfigured cloud providers first for localization tasks
             else if (preferredTier == "ProIfAvailable" &&
                 (operationName.Contains("completion", StringComparison.OrdinalIgnoreCase) ||
-                 operationName.Contains("translation", StringComparison.OrdinalIgnoreCase) ||
                  operationName.Contains("localization", StringComparison.OrdinalIgnoreCase) ||
                  operationName.Contains("chat", StringComparison.OrdinalIgnoreCase)) &&
                 providers.ContainsKey("Ollama"))
@@ -554,14 +597,15 @@ public class CompositeLlmProvider : ILlmProvider
             providers.Count,
             string.Join(", ", providers.Keys));
 
-        // Log if Ollama is available but not in chain for ideation operations
-        if (operationName.Contains("ideation", StringComparison.OrdinalIgnoreCase) &&
+        // Log if Ollama is available but not in chain for ideation or translation operations
+        if ((operationName.Contains("ideation", StringComparison.OrdinalIgnoreCase) ||
+             operationName.Contains("translation", StringComparison.OrdinalIgnoreCase)) &&
             providers.ContainsKey("Ollama") &&
             !chain.Contains("Ollama"))
         {
             _logger.LogWarning(
-                "Ollama is available but NOT in provider chain for ideation operation. Chain: {Chain}. This may cause ideation to fail.",
-                string.Join(" → ", chain));
+                "Ollama is available but NOT in provider chain for {Operation} operation. Chain: {Chain}. This may cause the operation to fail.",
+                operationName, string.Join(" → ", chain));
         }
 
         return chain;
@@ -640,6 +684,7 @@ public class CompositeLlmProvider : ILlmProvider
                     ct.ThrowIfCancellationRequested();
 
                     // For Ollama, check availability before attempting and skip if unavailable
+                    // For ideation operations, be more lenient with availability checks since Ollama is critical
                     if (providerName == "Ollama")
                     {
                         try
@@ -648,13 +693,36 @@ public class CompositeLlmProvider : ILlmProvider
                             var availabilityMethod = ollamaType.GetMethod("IsServiceAvailableAsync", new[] { typeof(CancellationToken), typeof(bool) });
                             if (availabilityMethod != null)
                             {
+                                // Use longer timeout for ideation and translation operations (Ollama is critical)
+                                var isIdeation = operationName.Contains("ideation", StringComparison.OrdinalIgnoreCase);
+                                var isTranslation = operationName.Contains("translation", StringComparison.OrdinalIgnoreCase);
+                                var availabilityTimeout = (isIdeation || isTranslation) ? TimeSpan.FromSeconds(5) : TimeSpan.FromSeconds(2);
+
                                 using var availabilityCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                                availabilityCts.CancelAfter(TimeSpan.FromSeconds(2)); // Short timeout for availability check
+                                availabilityCts.CancelAfter(availabilityTimeout);
                                 var availabilityTask = (Task<bool>)availabilityMethod.Invoke(provider, new object[] { availabilityCts.Token, false })!;
                                 var isAvailable = await availabilityTask.ConfigureAwait(false);
 
                                 if (!isAvailable)
                                 {
+                                    if (isIdeation)
+                                    {
+                                        _logger.LogError(
+                                            "Ollama is unavailable for ideation operation. Ideation requires Ollama to generate meaningful concepts. " +
+                                            "Please ensure Ollama is running: 'ollama serve' and check 'ollama list' to verify models are installed.");
+                                        throw new InvalidOperationException(
+                                            "Ollama is required for ideation but is not available. " +
+                                            "Please ensure Ollama is running: 'ollama serve' and verify models are installed: 'ollama list'");
+                                    }
+                                    if (isTranslation)
+                                    {
+                                        _logger.LogError(
+                                            "Ollama is unavailable for translation operation. Translation requires Ollama to produce quality translations. " +
+                                            "Please ensure Ollama is running: 'ollama serve' and check 'ollama list' to verify models are installed.");
+                                        throw new InvalidOperationException(
+                                            "Ollama is required for translation but is not available. " +
+                                            "Please ensure Ollama is running: 'ollama serve' and verify models are installed: 'ollama list'");
+                                    }
                                     _logger.LogWarning("Ollama is unavailable for {Operation}, skipping to next provider in fallback chain", operationName);
                                     continue; // Skip to next provider in chain
                                 }
@@ -662,13 +730,55 @@ public class CompositeLlmProvider : ILlmProvider
                                 _logger.LogInformation("Ollama availability check: Available for {Operation}", operationName);
                             }
                         }
+                        catch (InvalidOperationException) when (operationName.Contains("ideation", StringComparison.OrdinalIgnoreCase) ||
+                                                                 operationName.Contains("translation", StringComparison.OrdinalIgnoreCase))
+                        {
+                            // Re-throw ideation and translation-specific errors
+                            throw;
+                        }
                         catch (OperationCanceledException)
                         {
+                            if (operationName.Contains("ideation", StringComparison.OrdinalIgnoreCase))
+                            {
+                                _logger.LogError(
+                                    "Ollama availability check timed out for ideation. Ideation requires Ollama to work. " +
+                                    "Please ensure Ollama is running and responsive: 'ollama serve'");
+                                throw new InvalidOperationException(
+                                    "Ollama availability check timed out. Ideation requires Ollama to be running and responsive. " +
+                                    "Please ensure Ollama is running: 'ollama serve'");
+                            }
+                            if (operationName.Contains("translation", StringComparison.OrdinalIgnoreCase))
+                            {
+                                _logger.LogError(
+                                    "Ollama availability check timed out for translation. Translation requires Ollama to work. " +
+                                    "Please ensure Ollama is running and responsive: 'ollama serve'");
+                                throw new InvalidOperationException(
+                                    "Ollama availability check timed out. Translation requires Ollama to be running and responsive. " +
+                                    "Please ensure Ollama is running: 'ollama serve'");
+                            }
                             _logger.LogWarning("Ollama availability check timed out for {Operation}, skipping to next provider", operationName);
                             continue; // Skip to next provider in chain
                         }
                         catch (Exception availEx)
                         {
+                            if (operationName.Contains("ideation", StringComparison.OrdinalIgnoreCase))
+                            {
+                                _logger.LogError(availEx,
+                                    "Could not check Ollama availability for ideation. Ideation requires Ollama to work. " +
+                                    "Please ensure Ollama is running: 'ollama serve'");
+                                throw new InvalidOperationException(
+                                    "Could not verify Ollama availability. Ideation requires Ollama to be running. " +
+                                    "Please ensure Ollama is running: 'ollama serve'", availEx);
+                            }
+                            if (operationName.Contains("translation", StringComparison.OrdinalIgnoreCase))
+                            {
+                                _logger.LogError(availEx,
+                                    "Could not check Ollama availability for translation. Translation requires Ollama to work. " +
+                                    "Please ensure Ollama is running: 'ollama serve'");
+                                throw new InvalidOperationException(
+                                    "Could not verify Ollama availability. Translation requires Ollama to be running. " +
+                                    "Please ensure Ollama is running: 'ollama serve'", availEx);
+                            }
                             _logger.LogWarning(availEx, "Could not check Ollama availability before {Operation}, skipping to next provider", operationName);
                             continue; // Skip to next provider in chain
                         }

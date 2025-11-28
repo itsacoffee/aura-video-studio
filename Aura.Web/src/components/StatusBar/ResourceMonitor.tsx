@@ -5,7 +5,8 @@ import {
   HardDrive24Regular,
   Warning24Filled,
 } from '@fluentui/react-icons';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { get } from '../../services/api/apiClient';
 
 const useStyles = makeStyles({
   container: {
@@ -66,6 +67,53 @@ interface ResourceMetrics {
   diskIO: number; // MB/s
 }
 
+// Backend API response types matching SystemResourceMetrics from Aura.Core.Models
+interface SystemResourceMetrics {
+  timestamp: string;
+  cpu: {
+    overallUsagePercent: number;
+    perCoreUsagePercent: number[];
+    logicalCores: number;
+    physicalCores: number;
+    processUsagePercent: number;
+  };
+  memory: {
+    totalBytes: number;
+    availableBytes: number;
+    usedBytes: number;
+    usagePercent: number;
+    processUsageBytes: number;
+    processPrivateBytes: number;
+    processWorkingSetBytes: number;
+  };
+  gpu?: {
+    name: string;
+    vendor: string;
+    usagePercent: number;
+    totalMemoryBytes: number;
+    usedMemoryBytes: number;
+    availableMemoryBytes: number;
+    memoryUsagePercent: number;
+    temperatureCelsius: number;
+  };
+  disks: Array<{
+    driveName: string;
+    driveLabel: string;
+    totalBytes: number;
+    availableBytes: number;
+    usedBytes: number;
+    usagePercent: number;
+    readBytesPerSecond: number;
+    writeBytesPerSecond: number;
+  }>;
+  network: {
+    bytesSentPerSecond: number;
+    bytesReceivedPerSecond: number;
+    totalBytesSent: number;
+    totalBytesReceived: number;
+  };
+}
+
 interface ResourceMonitorProps {
   compact?: boolean;
 }
@@ -78,39 +126,61 @@ export function ResourceMonitor({ compact = false }: ResourceMonitorProps) {
     gpu: 0,
     diskIO: 0,
   });
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Simulate resource monitoring
-  // In production, this would use performance.memory, navigator.deviceMemory, etc.
+  // Fetch real system metrics from backend API
   useEffect(() => {
-    const updateMetrics = () => {
-      // Use performance.memory if available
-      let memoryUsage = 0;
-      if ('memory' in performance) {
-        const mem = (
-          performance as Performance & {
-            memory: { usedJSHeapSize: number; jsHeapSizeLimit: number };
-          }
-        ).memory;
-        memoryUsage = (mem.usedJSHeapSize / mem.jsHeapSizeLimit) * 100;
+    const fetchMetrics = async () => {
+      try {
+        // Cancel any pending request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+
+        // Create new abort controller for this request
+        abortControllerRef.current = new AbortController();
+
+        const systemMetrics = await get<SystemResourceMetrics>('/api/metrics/system', {
+          signal: abortControllerRef.current.signal,
+          _skipCircuitBreaker: true, // Don't trip circuit breaker for metrics polling
+        });
+
+        // Calculate disk I/O from the first disk (or sum of all if needed)
+        const diskIO =
+          systemMetrics.disks.length > 0
+            ? (systemMetrics.disks[0].readBytesPerSecond +
+                systemMetrics.disks[0].writeBytesPerSecond) /
+              (1024 * 1024) // Convert to MB/s
+            : 0;
+
+        setMetrics({
+          cpu: Math.max(0, Math.min(100, systemMetrics.cpu.overallUsagePercent)),
+          memory: Math.max(0, Math.min(100, systemMetrics.memory.usagePercent)),
+          gpu: systemMetrics.gpu ? Math.max(0, Math.min(100, systemMetrics.gpu.usagePercent)) : 0,
+          diskIO: Math.max(0, diskIO),
+        });
+      } catch (error) {
+        // Silently handle errors - don't update metrics if request fails
+        // This prevents UI flicker when backend is temporarily unavailable
+        if (error instanceof Error && error.name !== 'AbortError') {
+          console.warn('[ResourceMonitor] Failed to fetch metrics:', error.message);
+        }
       }
-
-      // Simulate CPU and GPU (would need native integration for real metrics)
-      const cpuUsage = Math.random() * 30 + 20; // Simulated 20-50%
-      const gpuUsage = Math.random() * 40 + 10; // Simulated 10-50%
-      const diskIO = Math.random() * 50 + 10; // Simulated 10-60 MB/s
-
-      setMetrics({
-        cpu: cpuUsage,
-        memory: memoryUsage || Math.random() * 40 + 20, // Fallback to simulated
-        gpu: gpuUsage,
-        diskIO: diskIO,
-      });
     };
 
-    updateMetrics();
-    const interval = setInterval(updateMetrics, 2000);
+    // Fetch immediately on mount
+    fetchMetrics();
 
-    return () => clearInterval(interval);
+    // Poll every 2 seconds
+    const interval = setInterval(fetchMetrics, 2000);
+
+    return () => {
+      clearInterval(interval);
+      // Cancel any pending request on unmount
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, []);
 
   const getUsageColor = (value: number): 'success' | 'warning' | 'error' => {
