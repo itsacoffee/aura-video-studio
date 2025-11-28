@@ -623,8 +623,8 @@ public class OllamaLlmProvider : ILlmProvider
                         _logger.LogWarning("Model '{Model}' not found, querying Ollama for available models. Error: {Error}", 
                             modelToUse, parsedErrorMessage ?? errorContent);
                         
-                        // Use a shorter timeout for model list query - this should be fast
-                        var tagsTimeoutSeconds = Math.Min(15, Math.Max(5, (int)(_timeout.TotalSeconds / 60)));
+                        // Use a fixed 10-second timeout for model list query - this should be a fast operation
+                        const int tagsTimeoutSeconds = 10;
                         
                         try
                         {
@@ -686,8 +686,10 @@ public class OllamaLlmProvider : ILlmProvider
                                         if (!response.IsSuccessStatusCode)
                                         {
                                             var fallbackErrorContent = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
-                                            _logger.LogError("Fallback model '{Model}' also failed. Error: {Error}", 
-                                                modelToUse, fallbackErrorContent.Substring(0, Math.Min(500, fallbackErrorContent.Length)));
+                                            var errorPreview = string.IsNullOrEmpty(fallbackErrorContent) 
+                                                ? "(empty response)" 
+                                                : fallbackErrorContent.Substring(0, Math.Min(500, fallbackErrorContent.Length));
+                                            _logger.LogError("Fallback model '{Model}' also failed. Error: {Error}", modelToUse, errorPreview);
                                             // Don't throw here - let normal error handling below handle it
                                         }
                                     }
@@ -713,9 +715,9 @@ public class OllamaLlmProvider : ILlmProvider
                                     $"Please pull the model first using: ollama pull {modelToUse}");
                             }
                         }
-                        catch (InvalidOperationException ex) when (ex.Message.Contains("Ollama API error") || ex.Message.Contains("not found"))
+                        catch (InvalidOperationException)
                         {
-                            // Re-throw only our specific model not found exceptions
+                            // Re-throw all InvalidOperationExceptions - they contain our specific error messages
                             throw;
                         }
                         catch (Exception ex)
