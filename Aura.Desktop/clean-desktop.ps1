@@ -200,8 +200,10 @@ foreach ($path in $electronPaths) {
     Remove-ItemSafely -Path $path -Description (Split-Path $path -Leaf)
 }
 
-# Clean package-lock files to ensure fresh dependency resolution
-Write-Host "`nStep 6: Cleaning package locks..." -ForegroundColor Cyan
+# Preserve package-lock files for consistent builds
+# Note: Removing lock files causes inconsistent dependency resolution and build failures.
+# Lock files ensure the exact same dependency versions are installed every time.
+Write-Host "`nStep 6: Preserving package locks (for build consistency)..." -ForegroundColor Cyan
 $lockFiles = @(
     "$projectRoot\package-lock.json",
     "$projectRoot\Aura.Web\package-lock.json",
@@ -209,7 +211,7 @@ $lockFiles = @(
 
     # OpenCut lockfiles (npm / Bun)
     # Note: bun.lockb is the old binary format, bun.lock is the new text format
-    # Both are included for compatibility with different bun versions
+    # Both are preserved for compatibility with different bun versions
     "$projectRoot\OpenCut\package-lock.json",
     "$projectRoot\OpenCut\apps\web\package-lock.json",
     "$projectRoot\OpenCut\bun.lockb",
@@ -220,10 +222,11 @@ $lockFiles = @(
 
 foreach ($file in $lockFiles) {
     if (Test-Path $file) {
-        Remove-Item -Path $file -Force
-        Write-Host "  ✓ Removed $(Split-Path $file -Leaf)" -ForegroundColor Green
+        Write-Host "  ✓ Preserving $(Split-Path $file -Leaf) (ensures consistent builds)" -ForegroundColor Green
     }
 }
+Write-Host "  ℹ Lock files are preserved to ensure reproducible builds." -ForegroundColor Gray
+Write-Host "  ℹ Use 'npm cache clean --force' followed by 'npm install' to refresh dependencies if needed." -ForegroundColor Gray
 
 # Clean electron-store data (JSON config files)
 Write-Host "`nStep 7: Cleaning electron-store configuration..." -ForegroundColor Cyan
