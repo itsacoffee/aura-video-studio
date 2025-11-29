@@ -58,11 +58,12 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     gap: 'var(--editor-space-xl)',
-    padding: 'var(--editor-space-md) var(--editor-space-xl)',
+    // More compact vertical chrome, similar to Adobe / Final Cut
+    padding: 'var(--editor-space-sm) var(--editor-space-lg)',
     borderBottom: `1px solid var(--editor-panel-border)`,
     backgroundColor: 'var(--editor-panel-header-bg)',
     flexWrap: 'wrap',
-    minHeight: '56px',
+    minHeight: '40px',
     rowGap: 'var(--editor-space-md)',
   },
   toolbarGroup: {

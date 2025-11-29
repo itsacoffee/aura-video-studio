@@ -689,12 +689,12 @@ export const TranslationPage: React.FC = () => {
                     <Text className={styles.transcreationLabel}>Advanced Transcreation</Text>
                     <span className={styles.transcreationBadge}>
                       <Sparkle24Regular style={{ fontSize: '12px' }} />
-                      Creative
+              Creative Rewrite
                     </span>
                   </div>
                   <Text className={styles.transcreationHint}>
-                    Specify the target style, era, format, or audience for creative adaptation. 
-                    Perfect for transforming content to match specific time periods, formats, or tones—even within the same language.
+            Specify the target style, era, format, or audience for an aggressive creative rewrite. 
+            In Transcreation mode the AI will significantly rewrite your script so it feels truly native to that time period or style—even when translating from English to English—while preserving the core message and offer.
                   </Text>
                   <Field 
                     label="Transcreation Instructions"

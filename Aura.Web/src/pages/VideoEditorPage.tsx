@@ -866,8 +866,9 @@ export function VideoEditorPage() {
         id: 'preview',
         title: 'Preview',
         region: 'top',
-        defaultSize: 60, // 60% of vertical space
-        minSize: 40,
+        // Bias toward a larger preview area for wide desktops (Adobe / CapCut style)
+        defaultSize: 70, // 70% of available vertical space
+        minSize: 55,
         maxSize: 80,
         visibleByDefault: true,
       },
@@ -875,7 +876,8 @@ export function VideoEditorPage() {
         id: 'timeline',
         title: 'Timeline',
         region: 'bottom',
-        defaultSize: 40, // 40% of vertical space (100 - preview)
+        // Remaining vertical space is allocated to the timeline
+        defaultSize: 30,
         visibleByDefault: true,
       },
       {
@@ -988,6 +990,8 @@ export function VideoEditorPage() {
       <div className="aura-video-editor-root">
         <EditorLayout
           panels={panelConfig}
+          // Use the compact, editor-focused top menu for a more professional NLE feel
+          useTopMenuBar
           renderPanel={renderPanel}
           onImportMedia={handleImportMedia}
           onExportVideo={handleExportVideo}

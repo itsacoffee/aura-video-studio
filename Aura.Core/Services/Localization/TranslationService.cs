@@ -627,10 +627,11 @@ LOCALIZATION MODE:
             systemBuilder.AppendLine(@"
 
 TRANSCREATION MODE:
-1. MESSAGE PRESERVATION: Preserve the core message and emotional impact above literal accuracy
-2. CREATIVE FREEDOM: Adapt freely to maximize resonance with target culture or specified style
-3. EMOTIONAL IMPACT: Ensure the translation evokes the same emotional response
-4. CULTURAL APPEAL: Make the content feel native, not translated");
+1. MESSAGE PRESERVATION: Preserve the core factual message, offer, and call-to-action above literal wording
+2. CREATIVE FREEDOM: Aggressively rewrite wording, phrasing, and structure to maximize resonance with the target culture or specified style
+3. EMOTIONAL IMPACT: Ensure the result strongly evokes the same emotional response as the original, even if sentences are completely rephrased
+4. CULTURAL APPEAL: Make the content feel native, not translated, as if it were originally written in the target style, era, and culture
+5. SUBSTANTIAL TRANSFORMATION: The output should read like a fresh, authentic piece in the target style or era, not a light edit of the original text");
 
             if (!string.IsNullOrWhiteSpace(options.TranscreationContext))
             {
@@ -639,7 +640,12 @@ TRANSCREATION MODE:
 TRANSCREATION CONTEXT - Apply these specific instructions:
 {options.TranscreationContext}
 
-Transform the content to match the specified style, format, or era. Even if source and target languages are the same, apply the style transformation described above.");
+Transform the content to match the specified style, format, or era as faithfully as possible.
+CRITICAL:
+- Even if the sourceLanguage and targetLanguage are the same (e.g., English → English), you MUST perform a strong stylistic transformation.
+- It should be immediately obvious to a human reader that the text has been rewritten to match the requested style or era.
+- Do NOT preserve original sentence wording or structure when a more authentic phrasing is available in the requested style.
+- Always keep the underlying facts, promises, product names, and calls-to-action accurate.");
             }
         }
         else // Literal mode
@@ -1255,19 +1261,19 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
                     if (errorContent.Contains("model") && errorContent.Contains("not found"))
                     {
                         _logger.LogWarning("Model '{Model}' not found, querying Ollama for available models", modelToUse);
-                        
+
                         // Query Ollama for available models (like script generation does)
                         try
                         {
                             using var tagsCts = new System.Threading.CancellationTokenSource();
                             tagsCts.CancelAfter(TimeSpan.FromSeconds(10));
                             var tagsResponse = await httpClient.GetAsync($"{baseUrl}/api/tags", tagsCts.Token).ConfigureAwait(false);
-                            
+
                             if (tagsResponse.IsSuccessStatusCode)
                             {
                                 var tagsContent = await tagsResponse.Content.ReadAsStringAsync(tagsCts.Token).ConfigureAwait(false);
                                 var tagsDoc = System.Text.Json.JsonDocument.Parse(tagsContent);
-                                
+
                                 if (tagsDoc.RootElement.TryGetProperty("models", out var modelsArray) &&
                                     modelsArray.ValueKind == System.Text.Json.JsonValueKind.Array)
                                 {
@@ -1283,7 +1289,7 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
                                             }
                                         }
                                     }
-                                    
+
                                     if (availableModels.Count > 0)
                                     {
                                         // Use the first available model (like script generation would)
@@ -1291,7 +1297,7 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
                                         _logger.LogInformation("Model '{RequestedModel}' not found, using first available model: '{FallbackModel}'. Available models: {AllModels}",
                                             modelToUse, fallbackModel, string.Join(", ", availableModels));
                                         modelToUse = fallbackModel;
-                                        
+
                                         // Retry with the available model
                                         requestBody = new
                                         {

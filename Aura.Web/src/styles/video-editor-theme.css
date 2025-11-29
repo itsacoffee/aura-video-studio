@@ -233,11 +233,12 @@
 /* Panel body - consistent internal padding for all panels - Improved spacing */
 .aura-editor-panel__body {
   flex: 1;
-  padding: var(--editor-space-xl);
+  /* Tighter, production-grade density by default */
+  padding: var(--editor-space-md) var(--editor-space-lg);
   overflow: auto;
 
   /* Ensure scrollbar doesn't touch panel edge */
-  padding-right: var(--editor-space-2xl);
+  padding-right: var(--editor-space-xl);
 
   /* Better text rendering */
   font-size: var(--editor-font-size-base);
@@ -248,8 +249,9 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Special case for timeline - no padding needed as it has internal structure */
-.aura-editor-panel--timeline .aura-editor-panel__body {
+/* Special case for timeline & preview - panels manage their own internal chrome */
+.aura-editor-panel--timeline .aura-editor-panel__body,
+.aura-editor-panel--preview .aura-editor-panel__body {
   padding: 0;
 }
 
@@ -258,8 +260,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 48px;
-  padding: var(--editor-space-md) var(--editor-space-lg);
+  /* Slightly more compact header for better information density */
+  min-height: 40px;
+  padding: var(--editor-space-sm) var(--editor-space-md);
   background-color: var(--editor-panel-header-bg);
   border-bottom: 1px solid var(--editor-panel-border-subtle);
   font-size: var(--editor-font-size-base);
