@@ -1172,6 +1172,17 @@ builder.Services.AddSingleton<IStockProvider>(sp =>
     return new Aura.Providers.Images.LocalStockProvider(localLogger, localPath);
 });
 
+// Register Pexels intelligent scene matching services
+builder.Services.Configure<Aura.Core.Configuration.PexelsMatchingConfig>(
+    builder.Configuration.GetSection("Providers:Images:Pexels:Matching"));
+builder.Services.AddSingleton(sp =>
+{
+    var config = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<Aura.Core.Configuration.PexelsMatchingConfig>>();
+    return config.Value ?? Aura.Core.Configuration.PexelsMatchingConfig.Default;
+});
+builder.Services.AddSingleton<Aura.Core.Services.Visual.VisualKeywordExtractor>();
+builder.Services.AddSingleton<Aura.Core.Services.Visual.PexelsSceneMatchingService>();
+
 // Register validators
 builder.Services.AddSingleton<Aura.Core.Validation.PreGenerationValidator>();
 builder.Services.AddSingleton<Aura.Core.Validation.ScriptValidator>();
@@ -1994,6 +2005,10 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
 });
 
 var app = builder.Build();
+
+// Initialize ServiceLocator for legacy code paths that need DI access
+Aura.Core.Services.ServiceLocator.Initialize(app.Services);
+Log.Information("ServiceLocator initialized for legacy service access");
 
 // ===================================================================
 // EARLY STARTUP VALIDATION - Must pass before application starts
