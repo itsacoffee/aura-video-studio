@@ -112,8 +112,18 @@ public record ClarifyingQuestion(
 );
 
 /// <summary>
-/// Request to brainstorm concept variations
+/// Request for brainstorming concepts
 /// </summary>
+/// <param name="Topic">Topic for brainstorming</param>
+/// <param name="Audience">Target audience</param>
+/// <param name="Tone">Desired tone</param>
+/// <param name="TargetDuration">Target duration in seconds</param>
+/// <param name="Platform">Target platform</param>
+/// <param name="ConceptCount">Number of concepts to generate</param>
+/// <param name="RagConfiguration">RAG configuration</param>
+/// <param name="LlmParameters">LLM parameters</param>
+/// <param name="LlmProvider">Override for LLM provider (e.g., "OpenAI", "Ollama", "Anthropic")</param>
+/// <param name="LlmModel">Override for LLM model (e.g., "gpt-4o", "llama3.1:8b")</param>
 public record BrainstormRequest(
     string Topic,
     string? Audience = null,
@@ -122,7 +132,9 @@ public record BrainstormRequest(
     string? Platform = null,
     int? ConceptCount = null,
     RagConfiguration? RagConfiguration = null,
-    LlmParameters? LlmParameters = null
+    LlmParameters? LlmParameters = null,
+    string? LlmProvider = null,
+    string? LlmModel = null
 );
 
 /// <summary>

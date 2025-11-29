@@ -28,6 +28,7 @@ import {
   Info24Regular,
 } from '@fluentui/react-icons';
 import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { LlmModelSelector, type LlmSelection } from '../../components/ModelSelection';
 import { getOperationTimeout } from '../../config/timeouts';
 import {
   parseLocalizationError,
@@ -161,9 +162,15 @@ const useStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground3,
     borderRadius: tokens.borderRadiusSmall,
   },
+  modelSelectorSection: {
+    marginBottom: tokens.spacingVerticalXL,
+  },
 });
 
 type TabValue = 'translate' | 'subtitles' | 'adapt';
+
+// Local storage key for persisting LLM selection
+const LLM_SELECTION_KEY = 'localization-llm-selection';
 
 export const LocalizationPage: React.FC = () => {
   const styles = useStyles();
@@ -178,6 +185,29 @@ export const LocalizationPage: React.FC = () => {
   const [subtitles, setSubtitles] = useState('');
   const [loadingMessage, setLoadingMessage] = useState('');
   const [lastOperation, setLastOperation] = useState<'translate' | 'analyze' | null>(null);
+
+  // LLM selection state with localStorage persistence
+  const [llmSelection, setLlmSelection] = useState<LlmSelection>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem(LLM_SELECTION_KEY);
+        if (saved) {
+          return JSON.parse(saved) as LlmSelection;
+        }
+      } catch {
+        // Ignore parse errors
+      }
+    }
+    return { provider: '', modelId: '' };
+  });
+
+  const handleLlmChange = useCallback((selection: LlmSelection) => {
+    setLlmSelection(selection);
+    // Persist to localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(LLM_SELECTION_KEY, JSON.stringify(selection));
+    }
+  }, []);
 
   // AbortController ref for cancelling in-flight requests
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -509,6 +539,16 @@ export const LocalizationPage: React.FC = () => {
             and target languages below, then enter the text you want to translate.
           </Text>
 
+          <div className={styles.modelSelectorSection}>
+            <LlmModelSelector
+              value={llmSelection}
+              onChange={handleLlmChange}
+              label="AI Model for Translation"
+              disabled={loading}
+              _featureContext="localization-translate"
+            />
+          </div>
+
           <div className={styles.form}>
             <div className={styles.fieldGroup}>
               <Field label="Source Language">
@@ -527,9 +567,7 @@ export const LocalizationPage: React.FC = () => {
                   <Option value="ko">Korean</Option>
                 </Dropdown>
               </Field>
-              <Text className={styles.fieldHint}>
-                The language of your original content
-              </Text>
+              <Text className={styles.fieldHint}>The language of your original content</Text>
             </div>
 
             <div className={styles.fieldGroup}>
@@ -549,9 +587,7 @@ export const LocalizationPage: React.FC = () => {
                   <Option value="en">English</Option>
                 </Dropdown>
               </Field>
-              <Text className={styles.fieldHint}>
-                The language to translate your content into
-              </Text>
+              <Text className={styles.fieldHint}>The language to translate your content into</Text>
             </div>
 
             <div className={styles.fieldGroup}>
@@ -639,9 +675,7 @@ export const LocalizationPage: React.FC = () => {
                   <Option value="ko">Korean</Option>
                 </Dropdown>
               </Field>
-              <Text className={styles.fieldHint}>
-                The language for your generated subtitles
-              </Text>
+              <Text className={styles.fieldHint}>The language for your generated subtitles</Text>
             </div>
 
             <div className={styles.actions}>
@@ -673,6 +707,16 @@ export const LocalizationPage: React.FC = () => {
             text and provides recommendations for making it culturally appropriate for your target
             audience.
           </Text>
+
+          <div className={styles.modelSelectorSection}>
+            <LlmModelSelector
+              value={llmSelection}
+              onChange={handleLlmChange}
+              label="AI Model for Cultural Analysis"
+              disabled={loading}
+              _featureContext="localization-cultural-adaptation"
+            />
+          </div>
 
           <div className={styles.form}>
             <div className={styles.fieldGroup}>
@@ -710,8 +754,8 @@ export const LocalizationPage: React.FC = () => {
                 />
               </Field>
               <Text className={styles.fieldHint}>
-                Enter your content for cultural analysis. The tool will identify areas that may
-                need adaptation for your target audience.
+                Enter your content for cultural analysis. The tool will identify areas that may need
+                adaptation for your target audience.
               </Text>
             </div>
 
