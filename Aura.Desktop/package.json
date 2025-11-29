@@ -50,7 +50,7 @@
     "build": "electron-builder build --win",
     "build:win": "npm run build:all && electron-builder build --win",
     "build:dir": "npm run build:all && electron-builder --dir",
-    "postinstall": "npx electron-builder install-app-deps",
+    "postinstall": "npx electron-builder install-app-deps || echo 'Warning: electron-builder install-app-deps skipped - native dependencies will be installed during build'",
     "pack": "npm run build:all && electron-builder --dir",
     "dist": "npm run build:all && electron-builder --win",
     "test": "node test/test-backend-path-detection.js && node test/test-electron-backend-integration.js && node test/test-startup-logger.js && node test/test-startup-diagnostics.js && node test/test-initialization-tracker.js && node test/test-early-crash-logger.js && node test/test-integration-corrupted-config.js && node test/test-preload-menu-events.js && node test/test-menu-ipc-integration.js && node test/test-menu-command-map.js && node test/test-menu-command-handler.js && node test/test-safe-mode.js && node test/test-window-loading-diagnostics.js && node test/test-shutdown-orchestrator.js && node test/test-process-manager.js && node test/test-legacy-electron-guard.js && node test/test-legacy-preload-redirect.js && node test/test-package-entry-points.js && node test/test-process-lifecycle.js && node test/test-build-backend-script.js && node test/test-backend-logger-initialization.js && node test/test-window-close-behavior.js && node test/test-context-menu-system.js",
@@ -264,7 +264,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
-    "electron": "^32.2.5",
+    "electron": "32.2.5",
     "electron-builder": "^25.1.8",
     "typescript": "^5.9.3"
   },
