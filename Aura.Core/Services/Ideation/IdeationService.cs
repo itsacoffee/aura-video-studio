@@ -3840,18 +3840,34 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
         // Get LLM parameters with defaults (like script generation does)
         var llmParams = request.LlmParameters;
         
-        // Validate we have a model - either from override or provider configuration
-        if (string.IsNullOrWhiteSpace(defaultModel) && string.IsNullOrWhiteSpace(llmParams?.ModelOverride))
+        // Apply user's explicit model override from the request (e.g., from the LLM selector in the UI)
+        // Priority: request.LlmModel > llmParams.ModelOverride > defaultModel (from provider config)
+        string? requestModelOverride = null;
+        if (!string.IsNullOrWhiteSpace(request.LlmModel))
+        {
+            requestModelOverride = request.LlmModel;
+            _logger.LogInformation("Using explicit model override from request: {Model} (Provider: {Provider})",
+                request.LlmModel, request.LlmProvider ?? "not specified");
+        }
+        
+        // Validate we have a model - either from request override, llmParams, or provider configuration
+        if (string.IsNullOrWhiteSpace(defaultModel) && 
+            string.IsNullOrWhiteSpace(llmParams?.ModelOverride) &&
+            string.IsNullOrWhiteSpace(requestModelOverride))
         {
             throw new InvalidOperationException(
                 "Cannot determine Ollama model for ideation. " +
-                "Please ensure Ollama provider is properly configured with a model in Settings. " +
+                "Please ensure Ollama provider is properly configured with a model in Settings, " +
+                "or select a model from the AI Model dropdown. " +
                 "The model should be configured in Provider Settings (Ollama Model field).");
         }
         
-        var modelToUse = !string.IsNullOrWhiteSpace(llmParams?.ModelOverride)
-            ? llmParams.ModelOverride
-            : defaultModel!; // Safe because we validated above
+        // Use model in priority order: request.LlmModel > llmParams.ModelOverride > defaultModel
+        var modelToUse = !string.IsNullOrWhiteSpace(requestModelOverride)
+            ? requestModelOverride
+            : !string.IsNullOrWhiteSpace(llmParams?.ModelOverride)
+                ? llmParams.ModelOverride
+                : defaultModel!; // Safe because we validated above
         var temperature = parameters?.Temperature ?? llmParams?.Temperature ?? 0.7;
         var maxTokens = parameters?.MaxTokens ?? llmParams?.MaxTokens ?? 2048;
         var topP = parameters?.TopP ?? llmParams?.TopP ?? 0.9;

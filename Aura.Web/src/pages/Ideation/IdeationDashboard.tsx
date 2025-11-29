@@ -210,7 +210,14 @@ export const IdeationDashboard: React.FC = () => {
       try {
         const request: BrainstormRequest = {
           topic,
-          ...normalizedOptions,
+          audience: normalizedOptions.audience,
+          tone: normalizedOptions.tone,
+          targetDuration: normalizedOptions.targetDuration,
+          platform: normalizedOptions.platform,
+          conceptCount: normalizedOptions.conceptCount,
+          // Pass LLM provider and model overrides if specified
+          llmProvider: normalizedOptions.llmProvider,
+          llmModel: normalizedOptions.llmModel,
         };
 
         const response = await ideationService.brainstorm(request);

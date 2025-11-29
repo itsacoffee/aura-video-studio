@@ -97,6 +97,10 @@ export interface BrainstormRequest {
   platform?: string;
   conceptCount?: number;
   ragConfiguration?: RagConfigurationDto;
+  /** Override for LLM provider (e.g., 'OpenAI', 'Ollama') */
+  llmProvider?: string;
+  /** Override for LLM model (e.g., 'gpt-4o', 'llama3.1:8b') */
+  llmModel?: string;
   llmParameters?: {
     temperature?: number;
     topP?: number;
