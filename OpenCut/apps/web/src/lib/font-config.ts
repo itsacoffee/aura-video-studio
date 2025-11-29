@@ -1,19 +1,50 @@
-import {
-  Inter,
-  Roboto,
-  Open_Sans,
-  Playfair_Display,
-  Comic_Neue,
-} from "next/font/google";
+// System fonts fallback configuration for offline builds
+// This configuration does not require network access to Google Fonts
 
-// Configure all fonts
-const inter = Inter({ subsets: ["latin"] });
-const roboto = Roboto({ subsets: ["latin"], weight: ["400", "700"] });
-const openSans = Open_Sans({ subsets: ["latin"] });
-const playfairDisplay = Playfair_Display({ subsets: ["latin"] });
-const comicNeue = Comic_Neue({ subsets: ["latin"], weight: ["400", "700"] });
+// Create fallback font objects that mimic the Google Fonts API structure
+const createFallbackFont = (fallbacks: string[]) => ({
+  className: "",
+  style: {
+    fontFamily: fallbacks.join(", "),
+  },
+});
+
+// Fallback fonts for offline builds - use system font stacks
+const inter = createFallbackFont([
+  "Inter",
+  "system-ui",
+  "-apple-system",
+  "BlinkMacSystemFont",
+  "Segoe UI",
+  "sans-serif",
+]);
+const roboto = createFallbackFont([
+  "Roboto",
+  "system-ui",
+  "Arial",
+  "sans-serif",
+]);
+const openSans = createFallbackFont([
+  "Open Sans",
+  "system-ui",
+  "Arial",
+  "sans-serif",
+]);
+const playfairDisplay = createFallbackFont([
+  "Playfair Display",
+  "Georgia",
+  "Times New Roman",
+  "serif",
+]);
+const comicNeue = createFallbackFont([
+  "Comic Neue",
+  "Comic Sans MS",
+  "cursive",
+  "sans-serif",
+]);
 
 // Export font class mapping for use in components
+// These are empty strings since system fonts are applied via inline styles rather than CSS classes
 export const FONT_CLASS_MAP = {
   Inter: inter.className,
   Roboto: roboto.className,
@@ -35,5 +66,11 @@ export const fonts = {
   comicNeue,
 };
 
-// Default font for the body
-export const defaultFont = inter;
+// Default font for the body - use system fonts for reliability
+export const defaultFont = {
+  className: "",
+  style: {
+    fontFamily:
+      'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+  },
+};

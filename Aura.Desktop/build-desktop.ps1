@@ -330,7 +330,25 @@ NEXT_TELEMETRY_DISABLED=1
             }
 
             # ----------------------------------------
-            # Step 1b.4: Install dependencies with retry logic
+            # Step 1b.4: Convert workspace:* deps for npm fallback
+            # ----------------------------------------
+            if ($useNpmFallback) {
+                $convertScript = "$ScriptDir\scripts\convert-workspace-deps.js"
+                if (Test-Path $convertScript) {
+                    Write-Info "Converting workspace:* dependencies for npm compatibility..."
+                    node $convertScript 2>&1 | Out-Host
+                    if ($LASTEXITCODE -eq 0) {
+                        Write-Success "  ✓ Workspace dependencies converted"
+                    } else {
+                        Show-Warning "Failed to convert workspace dependencies"
+                    }
+                } else {
+                    Show-Warning "Workspace conversion script not found at $convertScript"
+                }
+            }
+            
+            # ----------------------------------------
+            # Step 1b.5: Install dependencies with retry logic
             # ----------------------------------------
             $maxRetries = 3
             $retryCount = 0
@@ -341,7 +359,7 @@ NEXT_TELEMETRY_DISABLED=1
                 Write-Info "Installing OpenCut dependencies (attempt $retryCount of $maxRetries)..."
                 
                 if ($useNpmFallback) {
-                    # npm install (convert workspace:* to * for npm compatibility)
+                    # npm install with converted workspace:* references
                     npm install --legacy-peer-deps 2>&1 | Out-Host
                 } else {
                     # bun install
@@ -372,7 +390,7 @@ NEXT_TELEMETRY_DISABLED=1
             }
 
             # ----------------------------------------
-            # Step 1b.5: Build OpenCut
+            # Step 1b.6: Build OpenCut
             # ----------------------------------------
             if ($installSuccess) {
                 Write-Info "Running OpenCut production build..."
@@ -382,7 +400,21 @@ NEXT_TELEMETRY_DISABLED=1
                 $env:NEXT_TELEMETRY_DISABLED = "1"
                 
                 if ($useNpmFallback) {
-                    npm run build 2>&1 | Out-Host
+                    # For npm fallback, build directly from apps/web with proper NODE_PATH
+                    # This is needed because npm workspaces handle module resolution differently than bun
+                    Set-Location $openCutAppDir
+                    
+                    # Set NODE_PATH to include both local and root node_modules
+                    $env:NODE_PATH = "$openCutAppDir\node_modules;$openCutRootDir\node_modules"
+                    
+                    Write-Info "Building with NODE_PATH: $env:NODE_PATH"
+                    npx next build 2>&1 | Out-Host
+                    
+                    # Clear NODE_PATH after build
+                    $env:NODE_PATH = $null
+                    
+                    # Return to OpenCut root
+                    Set-Location $openCutRootDir
                 } else {
                     bun run build 2>&1 | Out-Host
                 }
@@ -407,14 +439,22 @@ NEXT_TELEMETRY_DISABLED=1
                     }
                 } else {
                     # ----------------------------------------
-                    # Step 1b.6: Verify build output
+                    # Step 1b.7: Verify build output
                     # ----------------------------------------
                     $openCutNextDir = "$openCutAppDir\.next"
                     $openCutStandaloneDir = "$openCutNextDir\standalone"
                     $openCutStaticDir = "$openCutNextDir\static"
                     
                     if (Test-Path $openCutNextDir) {
-                        $standaloneServerJs = "$openCutStandaloneDir\server.js"
+                        # In monorepo setup with npm workspaces, server.js is at standalone/apps/web/server.js
+                        # In single-package setup with bun, server.js is at standalone/server.js
+                        $standaloneServerJsMonorepo = "$openCutStandaloneDir\apps\web\server.js"
+                        $standaloneServerJsSingle = "$openCutStandaloneDir\server.js"
+                        $standaloneServerJs = if (Test-Path $standaloneServerJsMonorepo) { 
+                            $standaloneServerJsMonorepo 
+                        } else { 
+                            $standaloneServerJsSingle 
+                        }
                         $buildManifest = "$openCutNextDir\build-manifest.json"
                         
                         $verificationPassed = $true
@@ -427,7 +467,7 @@ NEXT_TELEMETRY_DISABLED=1
                             $verificationMessages += "  ✗ .next/standalone directory not found"
                         }
                         
-                        if (Test-Path $standaloneServerJs) {
+                        if ((Test-Path $standaloneServerJsMonorepo) -or (Test-Path $standaloneServerJsSingle)) {
                             $verificationMessages += "  ✓ standalone/server.js exists"
                         } else {
                             $verificationPassed = $false
@@ -449,8 +489,10 @@ NEXT_TELEMETRY_DISABLED=1
                         
                         # Check standalone has required files
                         if ($verificationPassed) {
-                            $standaloneNodeModules = "$openCutStandaloneDir\node_modules"
-                            if (Test-Path $standaloneNodeModules) {
+                            # In monorepo, node_modules is at standalone/node_modules
+                            $standaloneNodeModulesRoot = "$openCutStandaloneDir\node_modules"
+                            $standaloneNodeModulesApp = "$openCutStandaloneDir\apps\web\node_modules"
+                            if ((Test-Path $standaloneNodeModulesRoot) -or (Test-Path $standaloneNodeModulesApp)) {
                                 $verificationMessages += "  ✓ standalone/node_modules exists"
                             } else {
                                 $verificationMessages += "  ⚠ standalone/node_modules not found (may be embedded)"
