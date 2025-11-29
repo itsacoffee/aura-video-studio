@@ -148,13 +148,14 @@ if (-not $SkipFrontend) {
     Set-Location "$ProjectRoot\Aura.Web"
 
     # Always check and install dependencies to ensure they're up to date
+    # We check for the vite CLI in node_modules/.bin which npm uses to run commands
+    $needsInstall = $false
     if (-not (Test-Path "node_modules")) {
-        Write-Info "Installing frontend dependencies..."
-        npm install
-        if ($LASTEXITCODE -ne 0) {
-            Show-ErrorMessage "Frontend npm install failed with exit code $LASTEXITCODE"
-            exit 1
-        }
+        Write-Info "Installing frontend dependencies (node_modules not found)..."
+        $needsInstall = $true
+    } elseif (-not (Test-Path "node_modules\.bin\vite.cmd")) {
+        Write-Info "Frontend dependencies incomplete (vite CLI not found), reinstalling..."
+        $needsInstall = $true
     } else {
         # Verify critical dependencies exist
         $criticalPackages = @("vite", "react", "typescript")
@@ -169,13 +170,17 @@ if (-not $SkipFrontend) {
         if ($missingPackages.Count -gt 0) {
             Write-Info "Critical dependencies missing, reinstalling..."
             Write-Info "Missing: $($missingPackages -join ', ')"
-            npm install
-            if ($LASTEXITCODE -ne 0) {
-                Show-ErrorMessage "Frontend npm install failed with exit code $LASTEXITCODE"
-                exit 1
-            }
+            $needsInstall = $true
         } else {
             Write-Info "Frontend dependencies verified"
+        }
+    }
+
+    if ($needsInstall) {
+        npm install
+        if ($LASTEXITCODE -ne 0) {
+            Show-ErrorMessage "Frontend npm install failed with exit code $LASTEXITCODE"
+            exit 1
         }
     }
 

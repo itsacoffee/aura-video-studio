@@ -34,12 +34,27 @@ Write-Host "Step 1: Building Frontend" -ForegroundColor Cyan
 Write-Host "======================================" -ForegroundColor Cyan
 Push-Location Aura.Web
 
-# Check if node_modules exists
+# Check if node_modules exists and vite is properly installed
+# We check for the vite CLI in node_modules/.bin which npm uses to run commands
+$needsInstall = $false
 if (-not (Test-Path "node_modules")) {
     Write-Host "Installing npm dependencies..." -ForegroundColor Yellow
-    npm install
+    $needsInstall = $true
+} elseif (-not (Test-Path "node_modules\.bin\vite.cmd")) {
+    Write-Host "npm dependencies incomplete (vite not found), reinstalling..." -ForegroundColor Yellow
+    $needsInstall = $true
 } else {
     Write-Host "✓ npm dependencies already installed" -ForegroundColor Green
+}
+
+if ($needsInstall) {
+    npm install
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "❌ npm install failed" -ForegroundColor Red
+        Pop-Location
+        exit 1
+    }
+    Write-Host "✓ npm dependencies installed" -ForegroundColor Green
 }
 
 Write-Host "Building frontend (this may take a moment)..." -ForegroundColor Yellow
