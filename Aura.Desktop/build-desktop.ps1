@@ -206,13 +206,29 @@ if (-not $SkipFrontend) {
         
         # Verify vite CLI is available (vite is a devDependency required for building)
         if (-not (Test-Path "node_modules\.bin\vite.cmd") -and -not (Test-Path "node_modules\.bin\vite")) {
-            Show-ErrorMessage "Frontend npm install failed - vite CLI not found in node_modules/.bin"
-            Show-ErrorMessage "This usually means devDependencies were not installed."
-            Show-ErrorMessage "If NODE_ENV=production is set in your environment, try:"
-            Show-ErrorMessage "  1. Run: set NODE_ENV= (to clear the environment variable)"
-            Show-ErrorMessage "  2. Run: npm cache clean --force"
-            Show-ErrorMessage "  3. Delete node_modules folder and retry"
-            exit 1
+            Show-Warning "Frontend npm install failed - vite CLI not found in node_modules/.bin"
+            Write-Info "Retrying with clean cache..."
+            
+            # Retry with clean npm cache
+            npm cache clean --force
+            Remove-Item -Path "node_modules" -Recurse -Force -ErrorAction SilentlyContinue
+            npm install --include=dev
+            
+            if ($LASTEXITCODE -ne 0) {
+                Show-ErrorMessage "Frontend npm install failed after retry with exit code $LASTEXITCODE"
+                exit 1
+            }
+            
+            # Verify vite CLI again after retry
+            if (-not (Test-Path "node_modules\.bin\vite.cmd") -and -not (Test-Path "node_modules\.bin\vite")) {
+                Show-ErrorMessage "Frontend npm install failed - vite CLI not found after retry"
+                Show-ErrorMessage "This usually means devDependencies were not installed."
+                Show-ErrorMessage "If NODE_ENV=production is set in your environment, try:"
+                Show-ErrorMessage "  1. Run: set NODE_ENV= (to clear the environment variable)"
+                Show-ErrorMessage "  2. Run: npm cache clean --force"
+                Show-ErrorMessage "  3. Delete node_modules folder and retry"
+                exit 1
+            }
         }
         Write-Success "  ✓ Vite CLI verified"
     }
