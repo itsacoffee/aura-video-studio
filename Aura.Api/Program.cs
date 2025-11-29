@@ -1597,7 +1597,14 @@ builder.Services.AddSingleton<Aura.Core.Services.Assets.StockImageService>(sp =>
 });
 
 builder.Services.AddSingleton<Aura.Core.Services.Visual.AestheticScoringService>();
-builder.Services.AddSingleton<Aura.Core.Services.Visual.ImageSelectionService>();
+builder.Services.AddSingleton<Aura.Core.Services.Visual.ImageSelectionService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Visual.ImageSelectionService>>();
+    var stockService = sp.GetRequiredService<Aura.Core.Services.Assets.StockImageService>();
+    var scoringService = sp.GetRequiredService<Aura.Core.Services.Visual.AestheticScoringService>();
+    var keywordExtractor = sp.GetService<Aura.Core.Services.Visual.VisualKeywordExtractor>();
+    return new Aura.Core.Services.Visual.ImageSelectionService(logger, stockService, scoringService, keywordExtractor);
+});
 builder.Services.AddSingleton<Aura.Core.Services.Visual.CandidateCacheService>();
 builder.Services.AddSingleton<Aura.Core.Services.Visual.VisualSelectionService>();
 
