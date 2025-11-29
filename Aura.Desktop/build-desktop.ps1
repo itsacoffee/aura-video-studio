@@ -207,30 +207,47 @@ if (-not $SkipFrontend) {
         if (-not $bunAvailable) {
             Write-Info "Bun is not installed. Attempting to install Bun automatically..."
             
-            # Install Bun using the official PowerShell installer
+            # Install Bun using the official PowerShell installer from bun.sh
+            # This is the recommended installation method from https://bun.sh/docs/installation
+            # The installer is hosted by oven-sh (Bun's official maintainer) and served over HTTPS
             try {
                 $env:BUN_INSTALL = "$env:USERPROFILE\.bun"
                 Write-Info "Installing Bun to $env:BUN_INSTALL..."
                 
-                # Use irm (Invoke-RestMethod) to download and execute the install script
-                Invoke-RestMethod -Uri "https://bun.sh/install.ps1" -OutFile "$env:TEMP\install-bun.ps1"
-                & powershell -ExecutionPolicy Bypass -File "$env:TEMP\install-bun.ps1"
+                # Download the official Bun installer from bun.sh
+                $installerPath = "$env:TEMP\install-bun.ps1"
+                Invoke-RestMethod -Uri "https://bun.sh/install.ps1" -OutFile $installerPath
+                
+                # Execute the installer (requires Bypass policy as the installer is downloaded)
+                & powershell -ExecutionPolicy Bypass -File $installerPath
                 
                 # Add Bun to PATH for the current session
                 $bunPath = "$env:BUN_INSTALL\bin"
                 if (Test-Path $bunPath) {
                     $env:PATH = "$bunPath;$env:PATH"
-                    Write-Success "Bun installed successfully"
+                    
+                    # Verify Bun is actually executable
                     $bunAvailable = Get-Command bun -ErrorAction SilentlyContinue
+                    if ($bunAvailable) {
+                        $bunVersion = & bun --version 2>$null
+                        Write-Success "Bun installed successfully (version: $bunVersion)"
+                    } else {
+                        Show-Warning "Bun directory exists but bun command not found. Installation may have failed."
+                        $bunAvailable = $false
+                    }
+                } else {
+                    Show-Warning "Bun installation directory not found. Installation may have failed."
+                    $bunAvailable = $false
                 }
                 
                 # Clean up temp file
-                Remove-Item "$env:TEMP\install-bun.ps1" -ErrorAction SilentlyContinue
+                Remove-Item $installerPath -ErrorAction SilentlyContinue
             }
             catch {
                 Show-Warning "Failed to install Bun automatically: $($_.Exception.Message)"
                 Show-Warning "Please install Bun manually from https://bun.sh/"
                 Show-Warning "Skipping OpenCut build."
+                $bunAvailable = $false
             }
         }
         
