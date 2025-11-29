@@ -9,6 +9,14 @@ namespace Aura.Core.Services;
 /// 
 /// IMPORTANT: This should only be used in legacy code paths that cannot be easily
 /// refactored. New code should use constructor injection instead.
+/// 
+/// MIGRATION PLAN:
+/// 1. Phase 1 (Current): ServiceLocator provides access to new services from existing code
+/// 2. Phase 2: Refactor VideoOrchestrator to accept new services via constructor injection
+/// 3. Phase 3: Remove ServiceLocator usage from VideoOrchestrator
+/// 4. Phase 4: Deprecate and remove ServiceLocator if no other usage exists
+/// 
+/// Target for removal: When VideoOrchestrator is refactored to use full DI.
 /// </summary>
 public static class ServiceLocator
 {

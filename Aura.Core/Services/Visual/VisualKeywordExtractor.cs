@@ -7,9 +7,15 @@ namespace Aura.Core.Services.Visual;
 /// Service to extract visual keywords from scene text for intelligent image matching.
 /// Filters stop words and prioritizes visual/style terms.
 /// </summary>
-public class VisualKeywordExtractor
+public partial class VisualKeywordExtractor
 {
     private readonly ILogger<VisualKeywordExtractor> _logger;
+
+    /// <summary>
+    /// Compiled regex for word extraction (matches word characters, allowing hyphens within words).
+    /// </summary>
+    [GeneratedRegex(@"\b[a-zA-Z][a-zA-Z'-]*[a-zA-Z]\b|\b[a-zA-Z]{2,}\b", RegexOptions.Compiled)]
+    private static partial Regex WordExtractRegex();
 
     /// <summary>
     /// Common English stop words to filter out from keyword extraction.
@@ -204,8 +210,8 @@ public class VisualKeywordExtractor
     /// </summary>
     private static IReadOnlyList<string> ExtractWords(string text)
     {
-        // Match word characters, allowing hyphens within words
-        var matches = Regex.Matches(text, @"\b[a-zA-Z][a-zA-Z'-]*[a-zA-Z]\b|\b[a-zA-Z]{2,}\b");
+        // Use compiled regex for word extraction
+        var matches = WordExtractRegex().Matches(text);
         return matches.Select(m => m.Value.ToLowerInvariant()).ToList();
     }
 

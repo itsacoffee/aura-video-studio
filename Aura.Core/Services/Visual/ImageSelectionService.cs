@@ -21,6 +21,11 @@ public class ImageSelectionService
     private readonly AestheticScoringService _scoringService;
     private readonly VisualKeywordExtractor? _keywordExtractor;
 
+    /// <summary>
+    /// Style keywords to exclude from search queries (generic quality descriptors).
+    /// </summary>
+    private static readonly string[] ExcludedStyleKeywords = { "quality", "professional" };
+
     public ImageSelectionService(
         ILogger<ImageSelectionService> logger,
         StockImageService stockImageService,
@@ -173,7 +178,7 @@ public class ImageSelectionService
             if (keywords.Count > 0)
             {
                 var style = prompt.StyleKeywords?.FirstOrDefault(k =>
-                    !k.Contains("quality") && !k.Contains("professional"));
+                    !ExcludedStyleKeywords.Any(ex => k.Contains(ex, StringComparison.OrdinalIgnoreCase)));
 
                 var query = _keywordExtractor.BuildSearchQuery(keywords, prompt.Subject, style);
                 _logger.LogDebug("Built intelligent search query: {Query}", query);
@@ -197,7 +202,7 @@ public class ImageSelectionService
         if (prompt.StyleKeywords != null && prompt.StyleKeywords.Count > 0)
         {
             var styleKeyword = prompt.StyleKeywords.FirstOrDefault(k =>
-                !k.Contains("quality") && !k.Contains("professional"));
+                !ExcludedStyleKeywords.Any(ex => k.Contains(ex, StringComparison.OrdinalIgnoreCase)));
             if (styleKeyword != null)
             {
                 queryParts.Add(styleKeyword);

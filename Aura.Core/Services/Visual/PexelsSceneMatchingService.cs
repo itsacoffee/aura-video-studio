@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Aura.Core.Configuration;
 using Aura.Core.Models;
 using Aura.Core.Models.StockMedia;
@@ -15,6 +16,14 @@ public class PexelsSceneMatchingService
     private readonly ILogger<PexelsSceneMatchingService> _logger;
     private readonly VisualKeywordExtractor _keywordExtractor;
     private readonly PexelsMatchingConfig _config;
+
+    /// <summary>
+    /// Common stop words to filter from significant word extraction.
+    /// </summary>
+    private static readonly HashSet<string> StopWords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with", "by"
+    };
 
     public PexelsSceneMatchingService(
         ILogger<PexelsSceneMatchingService> logger,
@@ -292,14 +301,16 @@ public class PexelsSceneMatchingService
 
     /// <summary>
     /// Checks if result text contains a keyword (case-insensitive, word boundary aware).
+    /// Uses word boundary regex to avoid partial matches (e.g., 'art' matching 'heart').
     /// </summary>
     private static bool ContainsKeyword(string text, string keyword)
     {
         if (string.IsNullOrEmpty(text) || string.IsNullOrEmpty(keyword))
             return false;
 
-        var lowerKeyword = keyword.ToLowerInvariant();
-        return text.Contains(lowerKeyword, StringComparison.OrdinalIgnoreCase);
+        // Use word boundary matching to avoid partial matches
+        var pattern = $@"\b{Regex.Escape(keyword)}\b";
+        return Regex.IsMatch(text, pattern, RegexOptions.IgnoreCase);
     }
 
     /// <summary>
@@ -307,14 +318,9 @@ public class PexelsSceneMatchingService
     /// </summary>
     private static IReadOnlyList<string> ExtractSignificantWords(string text)
     {
-        var stopWords = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with", "by"
-        };
-
         return text
             .Split(new[] { ' ', '\t', '\n', '\r', '-', '_', '.', ',', '!', '?' }, StringSplitOptions.RemoveEmptyEntries)
-            .Where(w => w.Length >= 3 && !stopWords.Contains(w))
+            .Where(w => w.Length >= 3 && !StopWords.Contains(w))
             .Select(w => w.ToLowerInvariant())
             .Distinct()
             .ToList();
