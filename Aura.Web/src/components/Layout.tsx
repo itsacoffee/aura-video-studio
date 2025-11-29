@@ -3,7 +3,7 @@ import React, { ReactNode, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useTheme } from '../App';
 import { useSwipeGesture } from '../hooks/useSwipeGesture';
-import { pageLayout, spacing, gaps } from '../themes/layout';
+import { gaps, pageLayout, spacing } from '../themes/layout';
 import { SkipLinks } from './Accessibility/SkipLinks';
 import { Breadcrumbs } from './Breadcrumbs';
 import { NotificationCenter } from './dashboard/NotificationCenter';

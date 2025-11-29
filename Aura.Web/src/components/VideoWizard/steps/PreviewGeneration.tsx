@@ -1,59 +1,59 @@
 import {
-  makeStyles,
-  tokens,
-  Title2,
-  Title3,
-  Text,
+  Badge,
   Button,
   Card,
-  Spinner,
-  ProgressBar,
-  Badge,
-  Tooltip,
-  Dropdown,
-  Option,
-  Field,
-  Slider,
   Dialog,
-  DialogSurface,
-  DialogTitle,
+  DialogActions,
   DialogBody,
   DialogContent,
-  DialogActions,
+  DialogSurface,
+  DialogTitle,
+  Dropdown,
+  Field,
   Menu,
   MenuItem,
   MenuList,
   MenuPopover,
   MenuTrigger,
+  Option,
+  ProgressBar,
+  Slider,
+  Spinner,
+  Text,
+  Title2,
+  Title3,
+  Tooltip,
+  makeStyles,
+  tokens,
 } from '@fluentui/react-components';
 import {
-  Play24Regular,
   ArrowClockwise24Regular,
-  Warning24Regular,
-  Image24Regular,
-  Speaker224Regular,
-  Settings24Regular,
+  ArrowUpload24Regular,
   CheckmarkCircle24Regular,
   ErrorCircle24Regular,
-  ArrowUpload24Regular,
-  MoreHorizontal24Regular,
+  Image24Regular,
   ImageEdit24Regular,
+  MoreHorizontal24Regular,
+  Play24Regular,
   Search24Regular,
+  Settings24Regular,
+  Speaker224Regular,
+  Warning24Regular,
 } from '@fluentui/react-icons';
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { FC } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   PreviewData,
-  ScriptData,
-  StyleData,
-  StepValidation,
-  ScriptScene,
   PreviewThumbnail,
+  ScriptData,
+  ScriptScene,
+  StepValidation,
+  StyleData,
 } from '../types';
-import { getVisualsClient, VisualsClient } from '@/api/visualsClient';
-import type { VisualProvider, BatchGenerateProgress } from '@/api/visualsClient';
-import { ttsService, type TtsProvider, type TtsVoice } from '@/services/ttsService';
+import type { BatchGenerateProgress, VisualProvider } from '@/api/visualsClient';
+import { VisualsClient, getVisualsClient } from '@/api/visualsClient';
 import apiClient from '@/services/api/apiClient';
+import { ttsService, type TtsProvider, type TtsVoice } from '@/services/ttsService';
 
 const useStyles = makeStyles({
   container: {
@@ -291,15 +291,19 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
   const [audioError, setAudioError] = useState<string | null>(null);
   const [audioErrorSceneId, setAudioErrorSceneId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  
+
   // TTS provider state
   const [ttsProviders, setTtsProviders] = useState<TtsProvider[]>([]);
-  const [selectedTtsProvider, setSelectedTtsProvider] = useState<string>(styleData.voiceProvider || '');
+  const [selectedTtsProvider, setSelectedTtsProvider] = useState<string>(
+    styleData.voiceProvider || ''
+  );
   const [ttsVoices, setTtsVoices] = useState<TtsVoice[]>([]);
   const [selectedTtsVoice, setSelectedTtsVoice] = useState<string>(styleData.voiceName || '');
   const [isLoadingTtsProviders, setIsLoadingTtsProviders] = useState(true);
   const [isLoadingTtsVoices, setIsLoadingTtsVoices] = useState(false);
-  const [ttsProviderStatus, setTtsProviderStatus] = useState<Record<string, { isAvailable: boolean; error?: string }>>({});
+  const [ttsProviderStatus, setTtsProviderStatus] = useState<
+    Record<string, { isAvailable: boolean; error?: string }>
+  >({});
 
   // Use ref to track if providers have been selected to avoid stale closure issues
   const hasSelectedProviderRef = useRef(false);
@@ -325,9 +329,9 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
     if (hasValidScriptData && data.thumbnails.length > 0) {
       const scriptSceneIds = new Set(scriptData.scenes.map((s) => s.id));
       const previewSceneIds = new Set(data.thumbnails.map((t) => t.sceneId));
-      
+
       // Check if scenes have changed (different IDs or count mismatch)
-      const scenesChanged = 
+      const scenesChanged =
         scriptData.scenes.length !== data.thumbnails.length ||
         !scriptData.scenes.every((scene) => previewSceneIds.has(scene.id)) ||
         !data.thumbnails.every((thumb) => scriptSceneIds.has(thumb.sceneId));
@@ -393,7 +397,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
       const errorMessage = error instanceof Error ? error.message : 'Failed to load providers';
       console.error('Failed to load providers:', error);
       setProviderLoadError(errorMessage);
-      
+
       // Even if loading fails, set Placeholder as fallback
       if (!hasSelectedProviderRef.current) {
         setSelectedProvider('Placeholder');
@@ -442,7 +446,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
     try {
       const providers = await ttsService.getAvailableProviders();
       setTtsProviders(providers);
-      
+
       // Check status of all providers FIRST
       const statusMap: Record<string, { isAvailable: boolean; error?: string }> = {};
       try {
@@ -450,17 +454,19 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
           success: boolean;
           providers: Array<{ name: string; isAvailable: boolean; error?: string }>;
         }>('/api/tts/status');
-        
+
         if (statusResponse.data.success) {
-          statusResponse.data.providers.forEach((p: { name: string; isAvailable: boolean; error?: string }) => {
-            statusMap[p.name] = { isAvailable: p.isAvailable, error: p.error };
-          });
+          statusResponse.data.providers.forEach(
+            (p: { name: string; isAvailable: boolean; error?: string }) => {
+              statusMap[p.name] = { isAvailable: p.isAvailable, error: p.error };
+            }
+          );
           setTtsProviderStatus(statusMap);
         }
       } catch (statusError) {
         console.warn('Failed to check TTS provider status:', statusError);
       }
-      
+
       // Initialize selected provider if not set, choosing from AVAILABLE providers only
       // Note: We use styleData.voiceProvider captured at effect call time
       if (!selectedTtsProvider && providers.length > 0) {
@@ -468,21 +474,21 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
         const styleProvider = styleData.voiceProvider;
         const styleProviderStatus = styleProvider ? statusMap[styleProvider] : null;
         const isStyleProviderAvailable = styleProviderStatus?.isAvailable !== false;
-        
+
         // If styleData provider is available, use it
         if (styleProvider && isStyleProviderAvailable) {
           setSelectedTtsProvider(styleProvider);
         } else {
           // Otherwise, find the first available provider (prefer Null as fallback since it always works)
-          const availableProvider = providers.find(p => {
+          const availableProvider = providers.find((p) => {
             const status = statusMap[p.name];
             return status?.isAvailable !== false;
           });
-          
+
           // Fallback to Null provider if nothing else is available
-          const nullProvider = providers.find(p => p.name === 'Null');
+          const nullProvider = providers.find((p) => p.name === 'Null');
           const initialProvider = availableProvider || nullProvider || providers[0];
-          
+
           if (initialProvider) {
             setSelectedTtsProvider(initialProvider.name);
             console.info(`[PreviewGeneration] Auto-selected TTS provider: ${initialProvider.name}`);
@@ -497,35 +503,38 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
   }, [selectedTtsProvider, styleData.voiceProvider]);
 
   // Load voices for selected TTS provider
-  const loadTtsVoices = useCallback(async (provider: string) => {
-    if (!provider) {
-      setTtsVoices([]);
-      setSelectedTtsVoice('');
-      return;
-    }
-    
-    setIsLoadingTtsVoices(true);
-    try {
-      const voices = await ttsService.getVoicesForProvider(provider);
-      setTtsVoices(voices);
-      
-      // Set first voice if none selected or current voice not available
-      if (voices.length > 0) {
-        const currentVoiceExists = voices.some(v => v.name === selectedTtsVoice);
-        if (!selectedTtsVoice || !currentVoiceExists) {
-          setSelectedTtsVoice(voices[0].name);
-        }
-      } else {
+  const loadTtsVoices = useCallback(
+    async (provider: string) => {
+      if (!provider) {
+        setTtsVoices([]);
         setSelectedTtsVoice('');
+        return;
       }
-    } catch (error) {
-      console.error(`Failed to load voices for provider ${provider}:`, error);
-      setTtsVoices([]);
-      setSelectedTtsVoice('');
-    } finally {
-      setIsLoadingTtsVoices(false);
-    }
-  }, [selectedTtsVoice]);
+
+      setIsLoadingTtsVoices(true);
+      try {
+        const voices = await ttsService.getVoicesForProvider(provider);
+        setTtsVoices(voices);
+
+        // Set first voice if none selected or current voice not available
+        if (voices.length > 0) {
+          const currentVoiceExists = voices.some((v) => v.name === selectedTtsVoice);
+          if (!selectedTtsVoice || !currentVoiceExists) {
+            setSelectedTtsVoice(voices[0].name);
+          }
+        } else {
+          setSelectedTtsVoice('');
+        }
+      } catch (error) {
+        console.error(`Failed to load voices for provider ${provider}:`, error);
+        setTtsVoices([]);
+        setSelectedTtsVoice('');
+      } finally {
+        setIsLoadingTtsVoices(false);
+      }
+    },
+    [selectedTtsVoice]
+  );
 
   // Load voices when provider changes
   useEffect(() => {
@@ -535,7 +544,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
       setAudioError(null);
     }
   }, [selectedTtsProvider, loadTtsVoices]);
-  
+
   // Clear audio error when voice changes
   useEffect(() => {
     if (selectedTtsVoice) {
@@ -816,9 +825,10 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
   }, []);
 
   const playScenePreview = useCallback(
+    // eslint-disable-next-line sonarjs/cognitive-complexity
     async (sceneId: string) => {
-      console.log('[PreviewGeneration] playScenePreview called for scene:', sceneId);
-      
+      console.info('[PreviewGeneration] playScenePreview called for scene:', sceneId);
+
       try {
         // Prevent multiple simultaneous plays
         if (playingSceneId === sceneId) {
@@ -848,10 +858,10 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
         // Clear previous errors for this scene
         setAudioError(null);
         setAudioErrorSceneId(null);
-        
+
         // Set playing state immediately for visual feedback
         setPlayingSceneId(sceneId);
-        console.log('[PreviewGeneration] Starting audio preview for scene:', sceneId);
+        console.info('[PreviewGeneration] Starting audio preview for scene:', sceneId);
 
         // Find the scene
         const scene = scriptData.scenes.find((s) => s.id === sceneId);
@@ -861,12 +871,14 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
 
         // Use the selected TTS provider, fallback to styleData if not set
         const apiProvider = selectedTtsProvider || styleData.voiceProvider;
-        
+
         if (!apiProvider) {
           setLoadingAudioSceneId(null);
-          throw new Error('No TTS provider selected. Please select a TTS provider in the settings.');
+          throw new Error(
+            'No TTS provider selected. Please select a TTS provider in the settings.'
+          );
         }
-        
+
         // Verify provider is available (only check if we have status info)
         const providerStatus = ttsProviderStatus[apiProvider];
         if (providerStatus && providerStatus.isAvailable === false) {
@@ -875,7 +887,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
             `TTS provider "${apiProvider}" is not available. ${providerStatus.error || 'Please select a different provider.'}`
           );
         }
-        
+
         // Get voice name - prefer selected voice, then styleData, then first available voice
         let voiceName = selectedTtsVoice || styleData.voiceName;
         if (!voiceName && ttsVoices.length > 0) {
@@ -884,7 +896,9 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
         }
         if (!voiceName) {
           setLoadingAudioSceneId(null);
-          throw new Error(`No voice selected for provider "${apiProvider}". Please select a voice in the TTS settings.`);
+          throw new Error(
+            `No voice selected for provider "${apiProvider}". Please select a voice in the TTS settings.`
+          );
         }
 
         // Fetch audio as blob in SINGLE request with returnFile parameter
@@ -910,46 +924,54 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
           // Check if response is an error status
           if (response.status >= 400) {
             // Check content type - backend may return JSON errors even when returnFile is requested
-            const contentType = response.headers['content-type'] || response.headers['Content-Type'] || '';
-            const isJsonError = contentType.includes('application/json') || 
-                               (response.data instanceof Blob && response.data.type === 'application/json');
-            
+            const contentType =
+              response.headers['content-type'] || response.headers['Content-Type'] || '';
+            const isJsonError =
+              contentType.includes('application/json') ||
+              (response.data instanceof Blob && response.data.type === 'application/json');
+
             if (isJsonError) {
               // Backend returned JSON error (even though we requested blob)
               try {
-                const blobCopy = response.data instanceof Blob 
-                  ? response.data.slice() 
-                  : new Blob([response.data]);
+                const blobCopy =
+                  response.data instanceof Blob ? response.data.slice() : new Blob([response.data]);
                 const text = await blobCopy.text();
                 const errorData = JSON.parse(text);
                 throw new Error(
-                  errorData.error || errorData.details || 
-                  `Server returned ${response.status} ${response.statusText || ''}`
+                  errorData.error ||
+                    errorData.details ||
+                    `Server returned ${response.status} ${response.statusText || ''}`
                 );
-              } catch (parseError) {
+              } catch {
                 // If parsing fails, report the status code
-                throw new Error(`Failed to fetch audio file: Server returned ${response.status} ${response.statusText || ''}`);
+                throw new Error(
+                  `Failed to fetch audio file: Server returned ${response.status} ${response.statusText || ''}`
+                );
               }
             } else {
               // Unexpected error format
-              throw new Error(`Failed to fetch audio file: Server returned ${response.status} ${response.statusText || ''}`);
+              throw new Error(
+                `Failed to fetch audio file: Server returned ${response.status} ${response.statusText || ''}`
+              );
             }
           }
 
           // Verify we got a blob, not JSON error
           // Check if response is actually JSON (error response that wasn't caught above)
-          const contentType = response.headers['content-type'] || response.headers['Content-Type'] || '';
-          if (contentType.includes('application/json') || 
-              (response.data instanceof Blob && response.data.type === 'application/json')) {
+          const contentType =
+            response.headers['content-type'] || response.headers['Content-Type'] || '';
+          if (
+            contentType.includes('application/json') ||
+            (response.data instanceof Blob && response.data.type === 'application/json')
+          ) {
             // Backend returned error as JSON
             try {
-              const blobCopy = response.data instanceof Blob 
-                ? response.data.slice() 
-                : new Blob([response.data]);
+              const blobCopy =
+                response.data instanceof Blob ? response.data.slice() : new Blob([response.data]);
               const errorText = await blobCopy.text();
               const errorJson = JSON.parse(errorText);
               throw new Error(errorJson.error || errorJson.details || 'TTS generation failed');
-            } catch (parseError) {
+            } catch {
               // If parsing fails, it might still be an error
               throw new Error('TTS generation failed. Please check the console for details.');
             }
@@ -966,10 +988,9 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
           let mimeType = audioBlob.type;
           if (!mimeType || mimeType === 'application/octet-stream') {
             // Fallback to extension-based detection from response headers
-            const contentType = response.headers['content-type'] || 
-                              response.headers['Content-Type'] ||
-                              'audio/wav'; // Default
-            
+            const contentType =
+              response.headers['content-type'] || response.headers['Content-Type'] || 'audio/wav'; // Default
+
             // Use header if available, otherwise infer from common patterns
             if (contentType && contentType !== 'application/octet-stream') {
               mimeType = contentType;
@@ -986,15 +1007,16 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
 
           audioUrl = URL.createObjectURL(audioBlob);
 
-          console.info(`Audio fetched successfully. Type: ${mimeType}, Size: ${audioBlob.size} bytes`);
-
+          console.info(
+            `Audio fetched successfully. Type: ${mimeType}, Size: ${audioBlob.size} bytes`
+          );
         } catch (fetchError: unknown) {
           setLoadingAudioSceneId(null);
           const error = fetchError instanceof Error ? fetchError : new Error(String(fetchError));
           console.error('[PreviewGeneration] Failed to fetch audio:', error);
           throw new Error(
             `Failed to retrieve audio: ${error.message}. ` +
-            `Provider: ${apiProvider}, Voice: ${voiceName}`
+              `Provider: ${apiProvider}, Voice: ${voiceName}`
           );
         }
 
@@ -1021,7 +1043,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
 
         // Setup event handlers
         const handleEnded = () => {
-          console.log('[PreviewGeneration] Audio playback ended');
+          console.info('[PreviewGeneration] Audio playback ended');
           setPlayingSceneId(null);
           setLoadingAudioSceneId(null);
           setAudioError(null);
@@ -1037,7 +1059,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
         const handleError = (e: Event) => {
           const error = audio.error;
           let errorMessage = `Failed to play audio for "${apiProvider}" voice "${voiceName}"`;
-          
+
           if (error) {
             switch (error.code) {
               case error.MEDIA_ERR_ABORTED:
@@ -1047,12 +1069,13 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
                 errorMessage += ': Network error while loading audio';
                 break;
               case error.MEDIA_ERR_DECODE:
-                errorMessage += ': Audio could not be decoded. File may be corrupted or incompatible.';
+                errorMessage +=
+                  ': Audio could not be decoded. File may be corrupted or incompatible.';
                 console.error('Decode error details:', {
                   mimeType: audioBlob.type,
                   size: audioBlob.size,
                   provider: apiProvider,
-                  voice: voiceName
+                  voice: voiceName,
                 });
                 break;
               case error.MEDIA_ERR_SRC_NOT_SUPPORTED:
@@ -1062,12 +1085,12 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
                 errorMessage += `: Unknown error (code ${error.code})`;
             }
           }
-          
+
           console.error('Audio playback error:', errorMessage, e);
           setAudioError(errorMessage);
           setPlayingSceneId(null);
           setLoadingAudioSceneId(null);
-          
+
           if (audioUrl.startsWith('blob:')) {
             URL.revokeObjectURL(audioUrl);
           }
@@ -1077,22 +1100,25 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
         };
 
         const handleCanPlayThrough = () => {
-          console.log('[PreviewGeneration] Audio ready to play');
+          console.info('[PreviewGeneration] Audio ready to play');
           // Clear loading state and set playing state
           setLoadingAudioSceneId(null);
           // Clear any previous errors since we successfully loaded
           setAudioError(null);
           setAudioErrorSceneId(null);
-          
+
           // Attempt autoplay
-          audio.play()
+          audio
+            .play()
             .then(() => {
-              console.log('[PreviewGeneration] Audio playback started successfully');
+              console.info('[PreviewGeneration] Audio playback started successfully');
               setPlayingSceneId(sceneId);
             })
             .catch((playError) => {
               console.error('[PreviewGeneration] Autoplay failed:', playError);
-              setAudioError(`Failed to start playback: ${playError.message}. Try clicking Preview again.`);
+              setAudioError(
+                `Failed to start playback: ${playError.message}. Try clicking Preview again.`
+              );
               setAudioErrorSceneId(sceneId);
               setPlayingSceneId(null);
               setLoadingAudioSceneId(null);
@@ -1110,35 +1136,42 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
         let errorMessage = 'Failed to play audio preview';
         const provider = selectedTtsProvider || styleData.voiceProvider;
         const voice = selectedTtsVoice || styleData.voiceName || 'default';
-        
+
         if (error instanceof Error) {
           errorMessage = error.message;
-          
+
           // Provide more helpful error messages
           if (errorMessage.includes('not found') || errorMessage.includes('not available')) {
             errorMessage = `TTS provider "${provider}" is not available. Please select a different provider in the TTS settings.`;
           } else if (errorMessage.includes('No TTS provider')) {
-            errorMessage = 'No TTS provider selected. Please select a TTS provider in the settings above.';
-          } else if (errorMessage.includes('Failed to generate') || errorMessage.includes('TTS generation failed')) {
+            errorMessage =
+              'No TTS provider selected. Please select a TTS provider in the settings above.';
+          } else if (
+            errorMessage.includes('Failed to generate') ||
+            errorMessage.includes('TTS generation failed')
+          ) {
             errorMessage = `Failed to generate audio with ${provider}: ${errorMessage}`;
           } else if (errorMessage.includes('empty audio file')) {
             errorMessage = `TTS provider "${provider}" returned empty audio file. Please try a different provider or voice.`;
           } else if (errorMessage.includes('Server returned')) {
             errorMessage = `Server error: ${errorMessage}. Please check your TTS provider configuration.`;
-          } else if (!errorMessage.includes('Failed to play audio') && !errorMessage.includes('Failed to retrieve audio')) {
+          } else if (
+            !errorMessage.includes('Failed to play audio') &&
+            !errorMessage.includes('Failed to retrieve audio')
+          ) {
             // Only add prefix if not already a user-friendly message
             errorMessage = `Audio preview error (${provider}/${voice}): ${errorMessage}`;
           }
         }
-        
+
         console.error('[PreviewGeneration] Error in playScenePreview:', errorMessage);
-        
+
         // Set error with scene ID so it can be displayed
         setAudioError(errorMessage);
         setAudioErrorSceneId(sceneId);
         setPlayingSceneId(null);
         setLoadingAudioSceneId(null);
-        
+
         if (audioRef.current) {
           if (audioRef.current.src.startsWith('blob:')) {
             URL.revokeObjectURL(audioRef.current.src);
@@ -1147,7 +1180,16 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
         }
       }
     },
-    [scriptData.scenes, selectedTtsProvider, selectedTtsVoice, styleData.voiceProvider, styleData.voiceName, playingSceneId, ttsProviderStatus, ttsVoices]
+    [
+      scriptData.scenes,
+      selectedTtsProvider,
+      selectedTtsVoice,
+      styleData.voiceProvider,
+      styleData.voiceName,
+      playingSceneId,
+      ttsProviderStatus,
+      ttsVoices,
+    ]
   );
 
   const renderProviderSettings = () => (
@@ -1287,20 +1329,42 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
             </Field>
           </div>
 
-          <div style={{ marginTop: tokens.spacingVerticalXL, paddingTop: tokens.spacingVerticalL, borderTop: `1px solid ${tokens.colorNeutralStroke2}` }}>
-            <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>Text-to-Speech Settings</Title3>
-            <Text size={300} style={{ marginBottom: tokens.spacingVerticalM, color: tokens.colorNeutralForeground3 }}>
+          <div
+            style={{
+              marginTop: tokens.spacingVerticalXL,
+              paddingTop: tokens.spacingVerticalL,
+              borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
+            }}
+          >
+            <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>
+              Text-to-Speech Settings
+            </Title3>
+            <Text
+              size={300}
+              style={{
+                marginBottom: tokens.spacingVerticalM,
+                color: tokens.colorNeutralForeground3,
+              }}
+            >
               Select a TTS provider and voice for audio previews
             </Text>
-            
+
             <div className={styles.settingsRow}>
-              <Field 
-                label="TTS Provider" 
+              <Field
+                label="TTS Provider"
                 className={styles.settingItem}
-                validationState={selectedTtsProvider && ttsProviderStatus[selectedTtsProvider]?.isAvailable === false ? 'error' : undefined}
-                validationMessage={selectedTtsProvider && ttsProviderStatus[selectedTtsProvider]?.isAvailable === false 
-                  ? ttsProviderStatus[selectedTtsProvider].error || 'Provider is not available'
-                  : undefined}
+                validationState={
+                  selectedTtsProvider &&
+                  ttsProviderStatus[selectedTtsProvider]?.isAvailable === false
+                    ? 'error'
+                    : undefined
+                }
+                validationMessage={
+                  selectedTtsProvider &&
+                  ttsProviderStatus[selectedTtsProvider]?.isAvailable === false
+                    ? ttsProviderStatus[selectedTtsProvider].error || 'Provider is not available'
+                    : undefined
+                }
               >
                 {isLoadingTtsProviders ? (
                   <Spinner size="small" />
@@ -1320,20 +1384,42 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
                       const status = ttsProviderStatus[provider.name];
                       const isAvailable = status?.isAvailable !== false;
                       return (
-                        <Option 
-                          key={provider.name} 
+                        <Option
+                          key={provider.name}
                           value={provider.name}
                           text={provider.name}
                           disabled={!isAvailable}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: tokens.spacingHorizontalS,
+                            }}
+                          >
                             {isAvailable ? (
-                              <CheckmarkCircle24Regular style={{ fontSize: '14px', color: tokens.colorPaletteGreenForeground1 }} />
+                              <CheckmarkCircle24Regular
+                                style={{
+                                  fontSize: '14px',
+                                  color: tokens.colorPaletteGreenForeground1,
+                                }}
+                              />
                             ) : (
-                              <ErrorCircle24Regular style={{ fontSize: '14px', color: tokens.colorPaletteRedForeground1 }} />
+                              <ErrorCircle24Regular
+                                style={{
+                                  fontSize: '14px',
+                                  color: tokens.colorPaletteRedForeground1,
+                                }}
+                              />
                             )}
                             <span>{provider.name}</span>
-                            <span style={{ marginLeft: 'auto', fontSize: '12px', color: tokens.colorNeutralForeground3 }}>
+                            <span
+                              style={{
+                                marginLeft: 'auto',
+                                fontSize: '12px',
+                                color: tokens.colorNeutralForeground3,
+                              }}
+                            >
                               {provider.tier}
                             </span>
                           </div>
@@ -1344,11 +1430,13 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
                 )}
               </Field>
 
-              <Field 
-                label="Voice" 
+              <Field
+                label="Voice"
                 className={styles.settingItem}
                 validationState={selectedTtsProvider && !selectedTtsVoice ? 'warning' : undefined}
-                validationMessage={selectedTtsProvider && !selectedTtsVoice ? 'Please select a voice' : undefined}
+                validationMessage={
+                  selectedTtsProvider && !selectedTtsVoice ? 'Please select a voice' : undefined
+                }
               >
                 {isLoadingTtsVoices ? (
                   <Spinner size="small" />
@@ -1361,7 +1449,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
                         setSelectedTtsVoice(data.optionValue as string);
                       }
                     }}
-                    placeholder={selectedTtsProvider ? "Select voice" : "Select provider first"}
+                    placeholder={selectedTtsProvider ? 'Select voice' : 'Select provider first'}
                     disabled={!selectedTtsProvider || ttsVoices.length === 0}
                   >
                     {ttsVoices.map((voice) => (
@@ -1377,29 +1465,35 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
             </div>
 
             {selectedTtsProvider && ttsProviderStatus[selectedTtsProvider] && (
-              <div style={{ 
-                marginTop: tokens.spacingVerticalM, 
-                padding: tokens.spacingVerticalM, 
-                backgroundColor: ttsProviderStatus[selectedTtsProvider].isAvailable 
-                  ? tokens.colorPaletteGreenBackground2 
-                  : tokens.colorPaletteRedBackground2,
-                borderRadius: tokens.borderRadiusMedium,
-                display: 'flex',
-                alignItems: 'center',
-                gap: tokens.spacingHorizontalS
-              }}>
+              <div
+                style={{
+                  marginTop: tokens.spacingVerticalM,
+                  padding: tokens.spacingVerticalM,
+                  backgroundColor: ttsProviderStatus[selectedTtsProvider].isAvailable
+                    ? tokens.colorPaletteGreenBackground2
+                    : tokens.colorPaletteRedBackground2,
+                  borderRadius: tokens.borderRadiusMedium,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: tokens.spacingHorizontalS,
+                }}
+              >
                 {ttsProviderStatus[selectedTtsProvider].isAvailable ? (
                   <>
-                    <CheckmarkCircle24Regular style={{ color: tokens.colorPaletteGreenForeground1 }} />
+                    <CheckmarkCircle24Regular
+                      style={{ color: tokens.colorPaletteGreenForeground1 }}
+                    />
                     <Text size={200} style={{ color: tokens.colorPaletteGreenForeground1 }}>
-                      TTS provider "{selectedTtsProvider}" is available and ready
+                      TTS provider &quot;{selectedTtsProvider}&quot; is available and ready
                     </Text>
                   </>
                 ) : (
                   <>
                     <ErrorCircle24Regular style={{ color: tokens.colorPaletteRedForeground1 }} />
                     <Text size={200} style={{ color: tokens.colorPaletteRedForeground1 }}>
-                      TTS provider "{selectedTtsProvider}" is not available. {ttsProviderStatus[selectedTtsProvider].error || 'Please select a different provider.'}
+                      TTS provider &quot;{selectedTtsProvider}&quot; is not available.{' '}
+                      {ttsProviderStatus[selectedTtsProvider].error ||
+                        'Please select a different provider.'}
                     </Text>
                   </>
                 )}
@@ -1430,7 +1524,9 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
           </div>
           <div className={styles.statItem}>
             <Speaker224Regular style={{ fontSize: '32px', color: tokens.colorBrandForeground1 }} />
-            <Text weight="semibold">{selectedTtsProvider || styleData.voiceProvider || 'Not selected'}</Text>
+            <Text weight="semibold">
+              {selectedTtsProvider || styleData.voiceProvider || 'Not selected'}
+            </Text>
             <Text size={200}>TTS Provider</Text>
             {selectedTtsVoice && (
               <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
@@ -1463,7 +1559,10 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
         )}
 
         {selectedProvider === 'Placeholder' && (
-          <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginTop: tokens.spacingVerticalS }}>
+          <Text
+            size={200}
+            style={{ color: tokens.colorNeutralForeground3, marginTop: tokens.spacingVerticalS }}
+          >
             Using Placeholder provider - will generate solid color images for preview
           </Text>
         )}
@@ -1506,6 +1605,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
       </div>
 
       <div className={styles.previewGrid}>
+        {/* eslint-disable-next-line sonarjs/cognitive-complexity */}
         {scriptData.scenes.map((scene: ScriptScene, index: number) => {
           const thumbnail = data.thumbnails.find((t) => t.sceneId === scene.id);
           const audioSample = data.audioSamples.find((a) => a.sceneId === scene.id);
@@ -1549,9 +1649,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
                       alt={thumbnail.caption}
                       className={styles.sceneImage}
                     />
-                    <div
-                      className={`image-overlay ${styles.imageOverlay}`}
-                    >
+                    <div className={`image-overlay ${styles.imageOverlay}`}>
                       <ImageEdit24Regular style={{ fontSize: '48px', color: 'white' }} />
                     </div>
                   </>
@@ -1594,81 +1692,102 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
                   </Text>
                 )}
 
-                {audioSample && (() => {
-                  const currentProvider = selectedTtsProvider || styleData.voiceProvider;
-                  const providerStatus = currentProvider ? ttsProviderStatus[currentProvider] : null;
-                  const isTtsAvailable = !currentProvider || (providerStatus?.isAvailable !== false);
-                  // Check both status and audioUrl for backward compatibility with existing audio samples
-                  const isPending = audioSample.status === 'pending' || audioSample.status === undefined;
-                  const hasAudio = audioSample.audioUrl !== null && audioSample.status !== 'pending';
-                  const isPlayingThisScene = playingSceneId === scene.id;
-                  
-                  return (
-                    <div className={styles.audioPreview}>
-                      {!isTtsAvailable ? (
-                        <>
-                          <ErrorCircle24Regular 
-                            style={{ 
-                              marginRight: tokens.spacingHorizontalS, 
-                              color: tokens.colorPaletteRedForeground1 
-                            }} 
-                          />
-                          <Text size={200} style={{ color: tokens.colorPaletteRedForeground1 }}>
-                            TTS not available
-                          </Text>
-                        </>
-                      ) : hasAudio ? (
-                        <>
-                          <CheckmarkCircle24Regular 
-                            style={{ 
-                              marginRight: tokens.spacingHorizontalS, 
-                              color: tokens.colorPaletteGreenForeground1 
-                            }} 
-                          />
-                          <Text size={200}>Audio ready</Text>
-                          {currentProvider && (
-                            <Text size={200} style={{ marginLeft: tokens.spacingHorizontalS, color: tokens.colorNeutralForeground3 }}>
-                              ({currentProvider})
+                {audioSample &&
+                  (() => {
+                    const currentProvider = selectedTtsProvider || styleData.voiceProvider;
+                    const providerStatus = currentProvider
+                      ? ttsProviderStatus[currentProvider]
+                      : null;
+                    const isTtsAvailable =
+                      !currentProvider || providerStatus?.isAvailable !== false;
+                    // Check both status and audioUrl for backward compatibility with existing audio samples
+                    const hasAudio =
+                      audioSample.audioUrl !== null && audioSample.status !== 'pending';
+
+                    return (
+                      <div className={styles.audioPreview}>
+                        {!isTtsAvailable ? (
+                          <>
+                            <ErrorCircle24Regular
+                              style={{
+                                marginRight: tokens.spacingHorizontalS,
+                                color: tokens.colorPaletteRedForeground1,
+                              }}
+                            />
+                            <Text size={200} style={{ color: tokens.colorPaletteRedForeground1 }}>
+                              TTS not available
                             </Text>
-                          )}
-                          {currentProvider === 'Null' && (
-                            <Text size={200} style={{ 
-                              marginLeft: tokens.spacingHorizontalS, 
-                              color: tokens.colorPaletteDarkOrangeForeground1,
-                              fontWeight: 'semibold'
-                            }}>
-                              ⚠️ Generates silence - configure a real TTS provider
-                            </Text>
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          <Speaker224Regular 
-                            style={{ 
-                              marginRight: tokens.spacingHorizontalS, 
-                              color: tokens.colorNeutralForeground2 
-                            }} 
-                          />
-                          <Text size={200}>Audio will be generated on preview</Text>
-                          {currentProvider && (
-                            <Text size={200} style={{ marginLeft: tokens.spacingHorizontalS, color: tokens.colorNeutralForeground3 }}>
-                              ({currentProvider})
-                            </Text>
-                          )}
-                          {currentProvider === 'Null' && (
-                            <Text size={200} style={{ 
-                              marginLeft: tokens.spacingHorizontalS, 
-                              color: tokens.colorPaletteDarkOrangeForeground1,
-                              fontWeight: 'semibold'
-                            }}>
-                              ⚠️ Generates silence - configure a real TTS provider
-                            </Text>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  );
-                })()}
+                          </>
+                        ) : hasAudio ? (
+                          <>
+                            <CheckmarkCircle24Regular
+                              style={{
+                                marginRight: tokens.spacingHorizontalS,
+                                color: tokens.colorPaletteGreenForeground1,
+                              }}
+                            />
+                            <Text size={200}>Audio ready</Text>
+                            {currentProvider && (
+                              <Text
+                                size={200}
+                                style={{
+                                  marginLeft: tokens.spacingHorizontalS,
+                                  color: tokens.colorNeutralForeground3,
+                                }}
+                              >
+                                ({currentProvider})
+                              </Text>
+                            )}
+                            {currentProvider === 'Null' && (
+                              <Text
+                                size={200}
+                                style={{
+                                  marginLeft: tokens.spacingHorizontalS,
+                                  color: tokens.colorPaletteDarkOrangeForeground1,
+                                  fontWeight: 'semibold',
+                                }}
+                              >
+                                ⚠️ Generates silence - configure a real TTS provider
+                              </Text>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <Speaker224Regular
+                              style={{
+                                marginRight: tokens.spacingHorizontalS,
+                                color: tokens.colorNeutralForeground2,
+                              }}
+                            />
+                            <Text size={200}>Audio will be generated on preview</Text>
+                            {currentProvider && (
+                              <Text
+                                size={200}
+                                style={{
+                                  marginLeft: tokens.spacingHorizontalS,
+                                  color: tokens.colorNeutralForeground3,
+                                }}
+                              >
+                                ({currentProvider})
+                              </Text>
+                            )}
+                            {currentProvider === 'Null' && (
+                              <Text
+                                size={200}
+                                style={{
+                                  marginLeft: tokens.spacingHorizontalS,
+                                  color: tokens.colorPaletteDarkOrangeForeground1,
+                                  fontWeight: 'semibold',
+                                }}
+                              >
+                                ⚠️ Generates silence - configure a real TTS provider
+                              </Text>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                 <div className={styles.sceneActions}>
                   <Tooltip
@@ -1678,7 +1797,8 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
                         ? 'Generate preview thumbnail first'
                         : !selectedTtsProvider && !styleData.voiceProvider
                           ? 'Select a TTS provider in settings'
-                          : selectedTtsProvider && ttsProviderStatus[selectedTtsProvider]?.isAvailable === false
+                          : selectedTtsProvider &&
+                              ttsProviderStatus[selectedTtsProvider]?.isAvailable === false
                             ? `TTS provider "${selectedTtsProvider}" is not available`
                             : playingSceneId === scene.id
                               ? 'Audio is playing'
@@ -1689,47 +1809,65 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
                   >
                     <Button
                       appearance="secondary"
-                      icon={loadingAudioSceneId === scene.id ? <Spinner size="tiny" /> : <Play24Regular />}
+                      icon={
+                        loadingAudioSceneId === scene.id ? (
+                          <Spinner size="tiny" />
+                        ) : (
+                          <Play24Regular />
+                        )
+                      }
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        console.log('[PreviewGeneration] Preview button clicked for scene:', scene.id);
+                        console.info(
+                          '[PreviewGeneration] Preview button clicked for scene:',
+                          scene.id
+                        );
                         void playScenePreview(scene.id);
                       }}
                       disabled={
-                        !thumbnail || 
+                        !thumbnail ||
                         playingSceneId === scene.id ||
                         loadingAudioSceneId === scene.id ||
                         (!selectedTtsProvider && !styleData.voiceProvider) ||
-                        (selectedTtsProvider && ttsProviderStatus[selectedTtsProvider]?.isAvailable === false)
+                        (selectedTtsProvider &&
+                          ttsProviderStatus[selectedTtsProvider]?.isAvailable === false)
                       }
                     >
-                      {loadingAudioSceneId === scene.id 
-                        ? 'Loading...' 
-                        : playingSceneId === scene.id 
-                          ? 'Playing...' 
+                      {loadingAudioSceneId === scene.id
+                        ? 'Loading...'
+                        : playingSceneId === scene.id
+                          ? 'Playing...'
                           : 'Preview'}
                     </Button>
                   </Tooltip>
                   {audioError && audioErrorSceneId === scene.id && (
-                    <div style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: tokens.spacingVerticalXXS,
-                      padding: tokens.spacingVerticalS,
-                      backgroundColor: tokens.colorPaletteRedBackground1,
-                      borderRadius: tokens.borderRadiusSmall,
-                      marginTop: tokens.spacingVerticalS,
-                      maxWidth: '100%'
-                    }}>
-                      <div style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: tokens.spacingHorizontalXS,
-                        color: tokens.colorPaletteRedForeground1 
-                      }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: tokens.spacingVerticalXXS,
+                        padding: tokens.spacingVerticalS,
+                        backgroundColor: tokens.colorPaletteRedBackground1,
+                        borderRadius: tokens.borderRadiusSmall,
+                        marginTop: tokens.spacingVerticalS,
+                        maxWidth: '100%',
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: tokens.spacingHorizontalXS,
+                          color: tokens.colorPaletteRedForeground1,
+                        }}
+                      >
                         <ErrorCircle24Regular style={{ fontSize: '16px' }} />
-                        <Text size={300} weight="semibold" style={{ color: tokens.colorPaletteRedForeground1 }}>
+                        <Text
+                          size={300}
+                          weight="semibold"
+                          style={{ color: tokens.colorPaletteRedForeground1 }}
+                        >
                           Audio Preview Failed
                         </Text>
                       </div>
@@ -1737,7 +1875,8 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
                         {audioError}
                       </Text>
                       <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
-                        Provider: {selectedTtsProvider || 'None'} | Voice: {selectedTtsVoice || 'default'}
+                        Provider: {selectedTtsProvider || 'None'} | Voice:{' '}
+                        {selectedTtsVoice || 'default'}
                       </Text>
                     </div>
                   )}
