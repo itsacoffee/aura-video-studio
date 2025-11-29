@@ -22,13 +22,13 @@
  */
 
 /* ==========================================================================
-   ROOT FONT-SIZE REDUCTION
-   Reduces base font-size from browser default 16px to 15px (93.75%).
-   Use --aura-base-font-size CSS custom property to override if needed.
-   To revert: comment out this entire rule block.
+   ROOT FONT-SIZE BASELINE
+   Use the browser/OS default base font-size (typically 16px) so the app
+   respects system scaling and accessibility settings. You can still override
+   this via --aura-base-font-size if needed.
    ========================================================================== */
 html {
-  font-size: var(--aura-base-font-size, 93.75%);
+  font-size: var(--aura-base-font-size, 100%);
 }
 
 /* ==========================================================================

@@ -471,21 +471,25 @@ button {
   scroll-behavior: auto !important;
 }
 
-/* Font size adjustments */
+/* Font size adjustments - aligned with typical desktop accessibility presets */
 [data-font-size='small'] {
-  font-size: 12px;
-}
-
-[data-font-size='medium'] {
+  /* Slightly smaller than default for users who prefer dense UI */
   font-size: 14px;
 }
 
-[data-font-size='large'] {
+[data-font-size='medium'] {
+  /* Default desktop size (matches typical browser default ~16px) */
   font-size: 16px;
 }
 
-[data-font-size='x-large'] {
+[data-font-size='large'] {
+  /* Comfortable reading size on high-DPI / 4K displays */
   font-size: 18px;
+}
+
+[data-font-size='x-large'] {
+  /* Accessibility-focused larger text option */
+  font-size: 20px;
 }
 
 /* Screen reader only class */

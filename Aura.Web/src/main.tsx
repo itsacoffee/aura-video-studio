@@ -74,30 +74,35 @@ console.info('[Main] Protocol:', window.location.protocol);
 console.info('[Main] User Agent:', navigator.userAgent);
 
 // ===== DEFAULT ZOOM INITIALIZATION =====
-// Set default zoom level to 90% for better readability on first load
-// Uses CSS zoom property which is supported in all modern browsers (Chrome, Edge, Safari, Firefox 126+)
+// Respect system/browser scaling and avoid hard‑shrinking the UI.
+// We still support a persisted user preference, but the baseline is now 100%.
 const initializeDefaultZoom = (): void => {
   const ZOOM_KEY = 'aura-zoom-level';
-  const DEFAULT_ZOOM = 0.9; // 90% zoom for better content density
-  
-  // Check if user has a saved zoom preference
+  const LEGACY_DEFAULT_ZOOM = 0.9; // Old hard-coded default we want to migrate away from
+
   const savedZoom = localStorage.getItem(ZOOM_KEY);
-  
+
   // Use type assertion for the non-standard (but widely supported) zoom CSS property
   const htmlStyle = document.documentElement.style as CSSStyleDeclaration & { zoom: string };
-  
-  if (savedZoom === null) {
-    // First load - apply default 90% zoom
-    htmlStyle.zoom = String(DEFAULT_ZOOM);
-    localStorage.setItem(ZOOM_KEY, String(DEFAULT_ZOOM));
-    console.info(`[Main] Applied default zoom level: ${DEFAULT_ZOOM * 100}%`);
+
+  // If no preference or legacy 90% default, reset to 100%
+  if (savedZoom === null || savedZoom === String(LEGACY_DEFAULT_ZOOM)) {
+    htmlStyle.zoom = '1';
+    localStorage.setItem(ZOOM_KEY, '1');
+    console.info('[Main] Applied default zoom level: 100%');
+    return;
+  }
+
+  // Apply a valid saved preference
+  const zoomLevel = parseFloat(savedZoom);
+  if (!isNaN(zoomLevel) && zoomLevel > 0 && zoomLevel <= 2) {
+    htmlStyle.zoom = String(zoomLevel);
+    console.info(`[Main] Applied saved zoom level: ${zoomLevel * 100}%`);
   } else {
-    // User has a saved preference - apply it
-    const zoomLevel = parseFloat(savedZoom);
-    if (!isNaN(zoomLevel) && zoomLevel > 0 && zoomLevel <= 2) {
-      htmlStyle.zoom = String(zoomLevel);
-      console.info(`[Main] Applied saved zoom level: ${zoomLevel * 100}%`);
-    }
+    // Fallback to 100% if stored value is invalid
+    htmlStyle.zoom = '1';
+    localStorage.setItem(ZOOM_KEY, '1');
+    console.warn('[Main] Invalid saved zoom level detected, reset to 100%');
   }
 };
 

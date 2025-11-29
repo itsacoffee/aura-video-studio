@@ -200,7 +200,7 @@ export function Sidebar({
   );
 
   const editingItems = navItems.filter((item) =>
-    ['editor', 'projects', 'assets', 'pacing', 'render'].includes(item.key)
+    ['editor', 'opencut', 'projects', 'assets', 'pacing', 'render'].includes(item.key)
   );
 
   const optimizationItems = navItems.filter((item) =>
