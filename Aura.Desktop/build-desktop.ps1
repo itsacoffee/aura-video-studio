@@ -199,6 +199,8 @@ if (-not $SkipFrontend) {
     # ========================================
     $openCutRootDir = "$ProjectRoot\OpenCut"
     $openCutAppDir = "$openCutRootDir\apps\web"
+    $openCutBuildSuccess = $false
+    
     if (Test-Path $openCutAppDir) {
         Write-Info "Preparing OpenCut web editor..."
 
@@ -255,27 +257,89 @@ if (-not $SkipFrontend) {
             # Install dependencies from monorepo root (required for workspace: protocol)
             Set-Location $openCutRootDir
 
-            if (-not (Test-Path "node_modules")) {
-                Write-Info "Installing OpenCut dependencies with bun..."
-                bun install
-                if ($LASTEXITCODE -ne 0) {
-                    Show-Warning "OpenCut bun install failed with exit code $LASTEXITCODE. OpenCut may not be available."
-                }
-            }
-
-            if (Test-Path "node_modules") {
+            Write-Info "Installing OpenCut dependencies with bun..."
+            bun install
+            if ($LASTEXITCODE -ne 0) {
+                Show-Warning "OpenCut bun install failed with exit code $LASTEXITCODE. OpenCut may not be available."
+            } else {
                 Write-Info "Running OpenCut production build..."
                 bun run build
                 if ($LASTEXITCODE -ne 0) {
                     Show-Warning "OpenCut build failed with exit code $LASTEXITCODE. OpenCut may not be available."
                 } else {
-                    Write-Success "OpenCut build complete"
+                    # Verify OpenCut build output (Next.js standalone output)
+                    $openCutNextDir = "$openCutAppDir\.next"
+                    $openCutStandaloneDir = "$openCutNextDir\standalone"
+                    $openCutStaticDir = "$openCutNextDir\static"
+                    
+                    if (Test-Path $openCutNextDir) {
+                        # Check for essential standalone build files
+                        $standaloneServerJs = "$openCutStandaloneDir\server.js"
+                        $buildManifest = "$openCutNextDir\build-manifest.json"
+                        
+                        $verificationPassed = $true
+                        $verificationMessages = @()
+                        
+                        if (Test-Path $openCutStandaloneDir) {
+                            $verificationMessages += "  ✓ .next/standalone directory exists"
+                        } else {
+                            $verificationPassed = $false
+                            $verificationMessages += "  ✗ .next/standalone directory not found"
+                        }
+                        
+                        if (Test-Path $standaloneServerJs) {
+                            $verificationMessages += "  ✓ standalone/server.js exists"
+                        } else {
+                            $verificationPassed = $false
+                            $verificationMessages += "  ✗ standalone/server.js not found"
+                        }
+                        
+                        if (Test-Path $openCutStaticDir) {
+                            $verificationMessages += "  ✓ .next/static directory exists"
+                        } else {
+                            $verificationPassed = $false
+                            $verificationMessages += "  ✗ .next/static directory not found"
+                        }
+                        
+                        if (Test-Path $buildManifest) {
+                            $verificationMessages += "  ✓ build-manifest.json exists"
+                        } else {
+                            # build-manifest.json is optional for standalone
+                            $verificationMessages += "  ⚠ build-manifest.json not found (optional)"
+                        }
+                        
+                        if ($verificationPassed) {
+                            Write-Success "OpenCut build verification passed"
+                            $verificationMessages | ForEach-Object { Write-Success $_ }
+                            $openCutBuildSuccess = $true
+                        } else {
+                            Show-Warning "OpenCut build verification failed"
+                            $verificationMessages | ForEach-Object { 
+                                if ($_ -match "^  ✗") { Show-Warning $_ }
+                                else { Write-Success $_ }
+                            }
+                            Show-Warning "OpenCut integration may not work properly."
+                        }
+                    } else {
+                        Show-Warning "OpenCut build verification failed: .next directory not found"
+                        Show-Warning "OpenCut integration may not work properly."
+                    }
                 }
             }
         }
 
         # Return to script directory
         Set-Location $ScriptDir
+        
+        if ($openCutBuildSuccess) {
+            Write-Success "OpenCut build complete and verified"
+        } else {
+            Show-Warning "========================================"
+            Show-Warning "OpenCut build FAILED or SKIPPED"
+            Show-Warning "The application will build without OpenCut integration."
+            Show-Warning "OpenCut editor features will not be available."
+            Show-Warning "========================================"
+        }
     } else {
         Show-Warning "OpenCut source directory not found at $openCutAppDir. Skipping OpenCut bundle."
         Set-Location $ScriptDir

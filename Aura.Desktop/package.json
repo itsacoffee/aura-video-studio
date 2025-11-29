@@ -128,8 +128,25 @@
         ]
       },
       {
-        "from": "../OpenCut/apps/web",
+        "from": "../OpenCut/apps/web/.next/standalone",
         "to": "opencut",
+        "filter": [
+          "**/*",
+          "!**/node_modules/**/@ffmpeg/core/**",
+          "!**/node_modules/**/@ffmpeg/ffmpeg/**",
+          "!**/node_modules/**/bun-types/**"
+        ]
+      },
+      {
+        "from": "../OpenCut/apps/web/.next/static",
+        "to": "opencut/.next/static",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "../OpenCut/apps/web/public",
+        "to": "opencut/public",
         "filter": [
           "**/*"
         ]

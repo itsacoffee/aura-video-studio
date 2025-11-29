@@ -6,11 +6,12 @@
  *
  * For development, it runs the Next.js dev server from the repo.
  * For packaged builds (Aura Video Studio-1.0.0-x64.exe), it runs the
- * production server from the bundled copy under resources/opencut.
+ * standalone Next.js server from the bundled copy under resources/opencut.
  */
 
 const { spawn } = require("child_process");
 const path = require("path");
+const fs = require("fs");
 const { app } = require("electron");
 
 class OpenCutManager {
@@ -45,10 +46,18 @@ class OpenCutManager {
 
     try {
       const openCutAppDir = this.isPackaged
-        ? // Packaged app: OpenCut is bundled under resources/opencut
+        ? // Packaged app: OpenCut standalone build is bundled under resources/opencut
           path.join(process.resourcesPath, "opencut")
         : // Dev: run from the repo layout
           path.resolve(__dirname, "..", "..", "OpenCut", "apps", "web");
+
+      // Verify OpenCut directory exists
+      if (!fs.existsSync(openCutAppDir)) {
+        this.logger.warn?.("OpenCutManager", "OpenCut directory not found, skipping server start", {
+          dir: openCutAppDir,
+        });
+        return;
+      }
 
       const mode = this.isPackaged ? "production" : "development";
 
@@ -58,19 +67,37 @@ class OpenCutManager {
         mode,
       });
 
-      // OpenCut uses bun as its package manager; callers can override via OPENCUT_COMMAND if needed.
-      const command = process.env.OPENCUT_COMMAND || "bun";
-      const args = process.env.OPENCUT_COMMAND_ARGS
-        ? process.env.OPENCUT_COMMAND_ARGS.split(" ")
-        : this.isPackaged
-          ? ["run", "start"]
+      let command;
+      let args;
+
+      if (this.isPackaged) {
+        // Packaged mode: run the standalone Next.js server directly with Node
+        // The standalone build creates a server.js that can be run with Node
+        const standaloneServerPath = path.join(openCutAppDir, "server.js");
+        
+        if (!fs.existsSync(standaloneServerPath)) {
+          this.logger.warn?.("OpenCutManager", "OpenCut standalone server.js not found, skipping", {
+            expectedPath: standaloneServerPath,
+          });
+          return;
+        }
+        
+        command = process.execPath; // Use the bundled Node (from Electron)
+        args = [standaloneServerPath];
+      } else {
+        // Dev mode: use bun to run the Next.js dev server
+        command = process.env.OPENCUT_COMMAND || "bun";
+        args = process.env.OPENCUT_COMMAND_ARGS
+          ? process.env.OPENCUT_COMMAND_ARGS.split(" ")
           : ["run", "dev"];
+      }
 
       const child = spawn(command, args, {
         cwd: openCutAppDir,
         env: {
           ...process.env,
           PORT: String(this.port),
+          NODE_ENV: this.isPackaged ? "production" : "development",
         },
         stdio: "pipe",
       });
@@ -119,5 +146,3 @@ class OpenCutManager {
 }
 
 module.exports = OpenCutManager;
-
-
