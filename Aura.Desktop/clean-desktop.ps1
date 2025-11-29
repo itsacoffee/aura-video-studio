@@ -211,7 +211,9 @@ $lockFiles = @(
     "$projectRoot\OpenCut\package-lock.json",
     "$projectRoot\OpenCut\apps\web\package-lock.json",
     "$projectRoot\OpenCut\bun.lockb",
-    "$projectRoot\OpenCut\apps\web\bun.lockb"
+    "$projectRoot\OpenCut\bun.lock",
+    "$projectRoot\OpenCut\apps\web\bun.lockb",
+    "$projectRoot\OpenCut\apps\web\bun.lock"
 )
 
 foreach ($file in $lockFiles) {

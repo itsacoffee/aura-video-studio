@@ -58,8 +58,8 @@ class OpenCutManager {
         mode,
       });
 
-      // Use npm as the default runner; callers can override via OPENCUT_COMMAND if needed.
-      const command = process.env.OPENCUT_COMMAND || "npm";
+      // OpenCut uses bun as its package manager; callers can override via OPENCUT_COMMAND if needed.
+      const command = process.env.OPENCUT_COMMAND || "bun";
       const args = process.env.OPENCUT_COMMAND_ARGS
         ? process.env.OPENCUT_COMMAND_ARGS.split(" ")
         : this.isPackaged
