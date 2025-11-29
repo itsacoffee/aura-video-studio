@@ -1,4 +1,4 @@
-import { makeStyles, tokens, Text, Button, Input } from '@fluentui/react-components';
+import { makeStyles, tokens, Text, Button, Input, shorthands } from '@fluentui/react-components';
 import { LightbulbRegular, LightbulbFilamentRegular } from '@fluentui/react-icons';
 import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -13,83 +13,91 @@ import {
 
 const useStyles = makeStyles({
   container: {
-    padding: tokens.spacingVerticalL,
-    maxWidth: '1600px',
-    margin: '0 auto',
+    ...shorthands.padding(tokens.spacingVerticalXXL, tokens.spacingHorizontalXXXL),
+    maxWidth: '1800px',
+    marginLeft: 'auto',
+    marginRight: 'auto',
+    minHeight: '100vh',
   },
   header: {
-    marginBottom: tokens.spacingVerticalL,
+    marginBottom: tokens.spacingVerticalXL,
   },
   title: {
     display: 'flex',
     alignItems: 'center',
-    gap: tokens.spacingHorizontalM,
-    marginBottom: tokens.spacingVerticalS,
+    gap: tokens.spacingHorizontalL,
+    marginBottom: tokens.spacingVerticalM,
   },
   icon: {
-    fontSize: '28px',
+    fontSize: '32px',
     color: tokens.colorBrandForeground1,
   },
   subtitle: {
     color: tokens.colorNeutralForeground3,
-    maxWidth: '800px',
-    fontSize: tokens.fontSizeBase200,
+    maxWidth: '900px',
+    fontSize: tokens.fontSizeBase300,
+    lineHeight: '1.6',
+    letterSpacing: '0.01em',
   },
   content: {
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalL,
+    gap: tokens.spacingVerticalXL,
   },
   conceptsSection: {
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalS,
+    gap: tokens.spacingVerticalM,
   },
   conceptsHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: tokens.spacingHorizontalM,
+    gap: tokens.spacingHorizontalL,
+    ...shorthands.padding(tokens.spacingVerticalM, tokens.spacingHorizontalM),
+    backgroundColor: tokens.colorNeutralBackground2,
+    ...shorthands.borderRadius(tokens.borderRadiusMedium),
   },
   conceptsGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(2, 1fr)',
-    gap: tokens.spacingHorizontalM,
-    '@media (max-width: 1000px)': {
-      gridTemplateColumns: '1fr',
-    },
+    gap: tokens.spacingHorizontalL,
   },
   emptyState: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: tokens.spacingVerticalXXL,
-    gap: tokens.spacingVerticalM,
+    ...shorthands.padding(tokens.spacingVerticalXXXL, tokens.spacingHorizontalXXL),
+    gap: tokens.spacingVerticalL,
     color: tokens.colorNeutralForeground3,
+    backgroundColor: tokens.colorNeutralBackground2,
+    ...shorthands.borderRadius(tokens.borderRadiusLarge),
+    ...shorthands.border('1px', 'dashed', tokens.colorNeutralStroke2),
   },
   emptyIcon: {
-    fontSize: '48px',
+    fontSize: '56px',
+    opacity: 0.6,
   },
   headerActions: {
     display: 'flex',
     alignItems: 'center',
-    gap: tokens.spacingHorizontalL,
+    gap: tokens.spacingHorizontalXL,
     flexWrap: 'wrap',
     justifyContent: 'flex-end',
   },
   hotkeyEditor: {
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalXXS,
-    minWidth: '200px',
+    gap: tokens.spacingVerticalXS,
+    minWidth: '220px',
   },
   hotkeyInputRow: {
     display: 'flex',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: tokens.spacingHorizontalS,
+    gap: tokens.spacingHorizontalM,
     flexWrap: 'wrap',
   },
   hotkeyHint: {
@@ -101,17 +109,18 @@ const useStyles = makeStyles({
     fontSize: tokens.fontSizeBase100,
   },
   hotkeyReset: {
-    padding: 0,
+    ...shorthands.padding(tokens.spacingHorizontalNone),
     height: 'auto',
     fontSize: tokens.fontSizeBase200,
   },
   conceptCount: {
-    fontSize: tokens.fontSizeBase400,
+    fontSize: tokens.fontSizeBase500,
     fontWeight: tokens.fontWeightSemibold,
   },
   topicLabel: {
     fontSize: tokens.fontSizeBase300,
     color: tokens.colorNeutralForeground2,
+    marginLeft: tokens.spacingHorizontalS,
   },
 });
 

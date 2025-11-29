@@ -8,6 +8,7 @@ import {
   Spinner,
   Field,
   Slider,
+  shorthands,
 } from '@fluentui/react-components';
 import { SparkleRegular, SendRegular } from '@fluentui/react-icons';
 import React, { useState } from 'react';
@@ -16,50 +17,102 @@ const useStyles = makeStyles({
   container: {
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalM,
-    padding: tokens.spacingVerticalL,
+    gap: tokens.spacingVerticalXL,
+    ...shorthands.padding(tokens.spacingVerticalXXL, tokens.spacingHorizontalXXL),
     backgroundColor: tokens.colorNeutralBackground1,
-    borderRadius: tokens.borderRadiusMedium,
+    ...shorthands.borderRadius(tokens.borderRadiusLarge),
+    boxShadow: tokens.shadow4,
+    ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke2),
+    maxWidth: '100%',
   },
   header: {
     display: 'flex',
     alignItems: 'center',
-    gap: tokens.spacingHorizontalS,
+    gap: tokens.spacingHorizontalM,
+    marginBottom: tokens.spacingVerticalS,
   },
   icon: {
-    fontSize: '24px',
+    fontSize: '28px',
     color: tokens.colorBrandForeground1,
   },
   inputSection: {
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalS,
+    gap: tokens.spacingVerticalM,
+  },
+  sectionTitle: {
+    marginBottom: tokens.spacingVerticalXS,
+    fontWeight: tokens.fontWeightSemibold,
+    letterSpacing: '-0.01em',
   },
   textArea: {
-    minHeight: '100px',
+    minHeight: '120px',
+  },
+  optionalSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalL,
+    paddingTop: tokens.spacingVerticalM,
+    borderTopWidth: '1px',
+    borderTopStyle: 'solid',
+    borderTopColor: tokens.colorNeutralStroke2,
+  },
+  optionalSectionTitle: {
+    fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground1,
+    marginBottom: tokens.spacingVerticalXXS,
+  },
+  optionalSectionDescription: {
+    color: tokens.colorNeutralForeground3,
+    marginBottom: tokens.spacingVerticalS,
   },
   optionsGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    gap: tokens.spacingVerticalM,
+    gridTemplateColumns: 'repeat(2, 1fr)',
+    ...shorthands.gap(tokens.spacingHorizontalXL, tokens.spacingVerticalL),
+  },
+  formField: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalS,
+  },
+  fieldLabel: {
+    fontSize: tokens.fontSizeBase300,
+    fontWeight: tokens.fontWeightMedium,
+    color: tokens.colorNeutralForeground2,
+    marginBottom: tokens.spacingVerticalXXS,
+  },
+  fieldInput: {
+    width: '100%',
   },
   actions: {
     display: 'flex',
     justifyContent: 'flex-end',
-    gap: tokens.spacingHorizontalS,
+    gap: tokens.spacingHorizontalM,
+    paddingTop: tokens.spacingVerticalL,
+    borderTopWidth: '1px',
+    borderTopStyle: 'solid',
+    borderTopColor: tokens.colorNeutralStroke2,
+    marginTop: tokens.spacingVerticalS,
   },
   loadingContainer: {
     display: 'flex',
     alignItems: 'center',
-    gap: tokens.spacingHorizontalS,
-    padding: tokens.spacingVerticalM,
+    gap: tokens.spacingHorizontalM,
+    ...shorthands.padding(tokens.spacingVerticalL),
+    justifyContent: 'center',
   },
   sliderField: {
-    marginTop: tokens.spacingVerticalS,
+    marginTop: tokens.spacingVerticalM,
+    paddingTop: tokens.spacingVerticalM,
+    borderTopWidth: '1px',
+    borderTopStyle: 'solid',
+    borderTopColor: tokens.colorNeutralStroke2,
   },
   sliderValue: {
-    marginTop: tokens.spacingVerticalXS,
+    marginTop: tokens.spacingVerticalS,
     color: tokens.colorNeutralForeground3,
+    fontSize: tokens.fontSizeBase200,
   },
 });
 
@@ -117,13 +170,15 @@ export const BrainstormInput: React.FC<BrainstormInputProps> = ({
     <div className={styles.container}>
       <div className={styles.header}>
         <SparkleRegular className={styles.icon} />
-        <Text size={500} weight="semibold">
+        <Text size={600} weight="semibold">
           Brainstorm Video Concepts
         </Text>
       </div>
 
       <div className={styles.inputSection}>
-        <Text weight="semibold">What&apos;s your video topic?</Text>
+        <Text className={styles.sectionTitle} size={400}>
+          What&apos;s your video topic?
+        </Text>
         <Textarea
           className={styles.textArea}
           placeholder="Enter your video topic or idea (e.g., 'How to start a successful podcast')"
@@ -131,59 +186,67 @@ export const BrainstormInput: React.FC<BrainstormInputProps> = ({
           onChange={(e) => setTopic(e.target.value)}
           onKeyDown={handleKeyPress}
           disabled={loading}
+          resize="vertical"
         />
       </div>
 
-      <Text weight="semibold">Optional Details (Helps refine concepts):</Text>
+      <div className={styles.optionalSection}>
+        <Text className={styles.optionalSectionTitle} size={400}>
+          Optional Details
+        </Text>
+        <Text className={styles.optionalSectionDescription} size={200}>
+          Providing more context helps generate better concepts
+        </Text>
 
-      <div className={styles.optionsGrid}>
-        <div>
-          <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
-            Target Audience
-          </Text>
-          <Input
-            placeholder="e.g., Beginners, Professionals"
-            value={audience}
-            onChange={(e) => setAudience(e.target.value)}
-            disabled={loading}
-          />
-        </div>
+        <div className={styles.optionsGrid}>
+          <div className={styles.formField}>
+            <Text className={styles.fieldLabel}>Target Audience</Text>
+            <Input
+              className={styles.fieldInput}
+              placeholder="e.g., Beginners, Professionals"
+              value={audience}
+              onChange={(e) => setAudience(e.target.value)}
+              disabled={loading}
+              size="large"
+            />
+          </div>
 
-        <div>
-          <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
-            Tone
-          </Text>
-          <Input
-            placeholder="e.g., Casual, Professional, Humorous"
-            value={tone}
-            onChange={(e) => setTone(e.target.value)}
-            disabled={loading}
-          />
-        </div>
+          <div className={styles.formField}>
+            <Text className={styles.fieldLabel}>Tone</Text>
+            <Input
+              className={styles.fieldInput}
+              placeholder="e.g., Casual, Professional, Humorous"
+              value={tone}
+              onChange={(e) => setTone(e.target.value)}
+              disabled={loading}
+              size="large"
+            />
+          </div>
 
-        <div>
-          <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
-            Duration (seconds)
-          </Text>
-          <Input
-            type="number"
-            placeholder="e.g., 60, 300"
-            value={targetDuration}
-            onChange={(e) => setTargetDuration(e.target.value)}
-            disabled={loading}
-          />
-        </div>
+          <div className={styles.formField}>
+            <Text className={styles.fieldLabel}>Duration (seconds)</Text>
+            <Input
+              className={styles.fieldInput}
+              type="number"
+              placeholder="e.g., 60, 300"
+              value={targetDuration}
+              onChange={(e) => setTargetDuration(e.target.value)}
+              disabled={loading}
+              size="large"
+            />
+          </div>
 
-        <div>
-          <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
-            Platform
-          </Text>
-          <Input
-            placeholder="e.g., YouTube, TikTok, Instagram"
-            value={platform}
-            onChange={(e) => setPlatform(e.target.value)}
-            disabled={loading}
-          />
+          <div className={styles.formField}>
+            <Text className={styles.fieldLabel}>Platform</Text>
+            <Input
+              className={styles.fieldInput}
+              placeholder="e.g., YouTube, TikTok, Instagram"
+              value={platform}
+              onChange={(e) => setPlatform(e.target.value)}
+              disabled={loading}
+              size="large"
+            />
+          </div>
         </div>
       </div>
 
@@ -207,8 +270,8 @@ export const BrainstormInput: React.FC<BrainstormInputProps> = ({
 
       {loading ? (
         <div className={styles.loadingContainer}>
-          <Spinner size="tiny" />
-          <Text>Generating creative concepts...</Text>
+          <Spinner size="small" />
+          <Text size={300}>Generating creative concepts...</Text>
         </div>
       ) : (
         <div className={styles.actions}>
@@ -217,6 +280,7 @@ export const BrainstormInput: React.FC<BrainstormInputProps> = ({
             icon={<SendRegular />}
             onClick={handleBrainstorm}
             disabled={!topic.trim()}
+            size="large"
           >
             Generate Concepts
           </Button>
