@@ -208,10 +208,14 @@ $lockFiles = @(
     "$projectRoot\Aura.Desktop\package-lock.json",
 
     # OpenCut lockfiles (npm / Bun)
+    # Note: bun.lockb is the old binary format, bun.lock is the new text format
+    # Both are included for compatibility with different bun versions
     "$projectRoot\OpenCut\package-lock.json",
     "$projectRoot\OpenCut\apps\web\package-lock.json",
     "$projectRoot\OpenCut\bun.lockb",
-    "$projectRoot\OpenCut\apps\web\bun.lockb"
+    "$projectRoot\OpenCut\bun.lock",
+    "$projectRoot\OpenCut\apps\web\bun.lockb",
+    "$projectRoot\OpenCut\apps\web\bun.lock"
 )
 
 foreach ($file in $lockFiles) {

@@ -197,26 +197,37 @@ if (-not $SkipFrontend) {
     # ========================================
     # Step 1b: Prepare OpenCut (CapCut-style editor) bundle
     # ========================================
-    $openCutAppDir = "$ProjectRoot\OpenCut\apps\web"
+    $openCutRootDir = "$ProjectRoot\OpenCut"
+    $openCutAppDir = "$openCutRootDir\apps\web"
     if (Test-Path $openCutAppDir) {
         Write-Info "Preparing OpenCut web editor..."
-        Set-Location $openCutAppDir
 
-        if (-not (Test-Path "node_modules")) {
-            Write-Info "Installing OpenCut dependencies..."
-            npm install
-            if ($LASTEXITCODE -ne 0) {
-                Show-Warning "OpenCut npm install failed with exit code $LASTEXITCODE. OpenCut may not be available."
+        # OpenCut is a bun-based monorepo - check if bun is available
+        $bunAvailable = Get-Command bun -ErrorAction SilentlyContinue
+        if (-not $bunAvailable) {
+            Show-Warning "Bun is not installed. OpenCut requires Bun package manager."
+            Show-Warning "Install Bun from https://bun.sh/ to enable OpenCut builds."
+            Show-Warning "Skipping OpenCut build."
+        } else {
+            # Install dependencies from monorepo root (required for workspace: protocol)
+            Set-Location $openCutRootDir
+
+            if (-not (Test-Path "node_modules")) {
+                Write-Info "Installing OpenCut dependencies with bun..."
+                bun install
+                if ($LASTEXITCODE -ne 0) {
+                    Show-Warning "OpenCut bun install failed with exit code $LASTEXITCODE. OpenCut may not be available."
+                }
             }
-        }
 
-        if (Test-Path "node_modules") {
-            Write-Info "Running OpenCut production build..."
-            npm run build
-            if ($LASTEXITCODE -ne 0) {
-                Show-Warning "OpenCut build failed with exit code $LASTEXITCODE. OpenCut may not be available."
-            } else {
-                Write-Success "OpenCut build complete"
+            if (Test-Path "node_modules") {
+                Write-Info "Running OpenCut production build..."
+                bun run build
+                if ($LASTEXITCODE -ne 0) {
+                    Show-Warning "OpenCut build failed with exit code $LASTEXITCODE. OpenCut may not be available."
+                } else {
+                    Write-Success "OpenCut build complete"
+                }
             }
         }
 
