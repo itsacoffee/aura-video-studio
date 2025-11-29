@@ -153,25 +153,28 @@ if (-not $SkipFrontend) {
     if (-not (Test-Path "node_modules")) {
         Write-Info "Installing frontend dependencies (node_modules not found)..."
         $needsInstall = $true
-    } elseif (-not (Test-Path "node_modules\.bin\vite.cmd")) {
+    }
+    elseif (-not (Test-Path "node_modules\.bin\vite.cmd")) {
         Write-Info "Frontend dependencies incomplete (vite CLI not found), reinstalling..."
         $needsInstall = $true
-    } else {
+    }
+    else {
         # Verify critical dependencies exist
         $criticalPackages = @("vite", "react", "typescript")
         $missingPackages = @()
-        
+
         foreach ($package in $criticalPackages) {
             if (-not (Test-Path "node_modules\$package")) {
                 $missingPackages += $package
             }
         }
-        
+
         if ($missingPackages.Count -gt 0) {
             Write-Info "Critical dependencies missing, reinstalling..."
             Write-Info "Missing: $($missingPackages -join ', ')"
             $needsInstall = $true
-        } else {
+        }
+        else {
             Write-Info "Frontend dependencies verified"
         }
     }
@@ -182,7 +185,7 @@ if (-not $SkipFrontend) {
             Show-Warning "NODE_ENV is set to 'production'. This can cause devDependencies to be skipped."
             Show-Warning "Using --include=dev to ensure all dependencies are installed."
         }
-        
+
         # Use --include=dev to ensure devDependencies are always installed
         # This is required because vite is a devDependency needed for building
         npm install --include=dev
@@ -190,35 +193,35 @@ if (-not $SkipFrontend) {
             Show-ErrorMessage "Frontend npm install failed with exit code $LASTEXITCODE"
             exit 1
         }
-        
+
         # Verify package installation was successful
         # Threshold: 100 is a conservative minimum to catch obviously broken installs
         # (actual count is typically 600+ but threshold is low to avoid false positives)
         $packageCount = (Get-ChildItem "node_modules" -Directory -ErrorAction SilentlyContinue | Measure-Object).Count
         Write-Info "Frontend: Installed $packageCount packages"
-        
+
         if ($packageCount -lt 100) {
             Show-ErrorMessage "Frontend npm install appears incomplete - only $packageCount packages installed (expected 600+)"
             Show-ErrorMessage "This may indicate a network issue or corrupted npm cache."
             Show-ErrorMessage "Try running: npm cache clean --force && npm install --include=dev"
             exit 1
         }
-        
+
         # Verify vite CLI is available (vite is a devDependency required for building)
         if (-not (Test-Path "node_modules\.bin\vite.cmd") -and -not (Test-Path "node_modules\.bin\vite")) {
             Show-Warning "Frontend npm install failed - vite CLI not found in node_modules/.bin"
             Write-Info "Retrying with clean cache..."
-            
+
             # Retry with clean npm cache
             npm cache clean --force
             Remove-Item -Path "node_modules" -Recurse -Force -ErrorAction SilentlyContinue
             npm install --include=dev
-            
+
             if ($LASTEXITCODE -ne 0) {
                 Show-ErrorMessage "Frontend npm install failed after retry with exit code $LASTEXITCODE"
                 exit 1
             }
-            
+
             # Verify vite CLI again after retry
             if (-not (Test-Path "node_modules\.bin\vite.cmd") -and -not (Test-Path "node_modules\.bin\vite")) {
                 Show-ErrorMessage "Frontend npm install failed - vite CLI not found after retry"
@@ -254,7 +257,7 @@ if (-not $SkipFrontend) {
     $openCutRootDir = "$ProjectRoot\OpenCut"
     $openCutAppDir = "$openCutRootDir\apps\web"
     $openCutBuildSuccess = $false
-    
+
     if (Test-Path $openCutAppDir) {
         Write-Info "Preparing OpenCut web editor..."
 
@@ -263,13 +266,14 @@ if (-not $SkipFrontend) {
         # ----------------------------------------
         $envExamplePath = "$openCutAppDir\.env.example"
         $envLocalPath = "$openCutAppDir\.env.local"
-        
+
         if (-not (Test-Path $envLocalPath)) {
             if (Test-Path $envExamplePath) {
                 Write-Info "Creating .env.local from .env.example..."
                 Copy-Item $envExamplePath $envLocalPath
                 Write-Success "  ✓ .env.local created"
-            } else {
+            }
+            else {
                 Write-Info "Creating minimal .env.local..."
                 # Create minimal env file to prevent build errors
                 @"
@@ -279,7 +283,8 @@ NEXT_TELEMETRY_DISABLED=1
 "@ | Set-Content $envLocalPath -Encoding UTF8
                 Write-Success "  ✓ Minimal .env.local created"
             }
-        } else {
+        }
+        else {
             Write-Info "  ✓ .env.local already exists"
         }
 
@@ -289,41 +294,43 @@ NEXT_TELEMETRY_DISABLED=1
         $bunAvailable = Get-Command bun -ErrorAction SilentlyContinue
         $npmAvailable = Get-Command npm -ErrorAction SilentlyContinue
         $useNpmFallback = $false
-        
+
         if (-not $bunAvailable) {
             Write-Info "Bun is not installed. Attempting to install Bun automatically..."
-            
+
             # Install Bun using the official PowerShell installer from bun.sh
             try {
                 $env:BUN_INSTALL = "$env:USERPROFILE\.bun"
                 Write-Info "Installing Bun to $env:BUN_INSTALL..."
-                
+
                 # Download the official Bun installer from bun.sh
                 $installerPath = "$env:TEMP\install-bun.ps1"
                 Invoke-RestMethod -Uri "https://bun.sh/install.ps1" -OutFile $installerPath -TimeoutSec 60
-                
+
                 # Execute the installer
                 & powershell -ExecutionPolicy Bypass -File $installerPath
-                
+
                 # Add Bun to PATH for the current session
                 $bunPath = "$env:BUN_INSTALL\bin"
                 if (Test-Path $bunPath) {
                     $env:PATH = "$bunPath;$env:PATH"
-                    
+
                     # Verify Bun is actually executable
                     $bunAvailable = Get-Command bun -ErrorAction SilentlyContinue
                     if ($bunAvailable) {
                         $bunVersion = & bun --version 2>$null
                         Write-Success "Bun installed successfully (version: $bunVersion)"
-                    } else {
+                    }
+                    else {
                         Show-Warning "Bun directory exists but bun command not found."
                         $bunAvailable = $false
                     }
-                } else {
+                }
+                else {
                     Show-Warning "Bun installation directory not found."
                     $bunAvailable = $false
                 }
-                
+
                 # Clean up temp file
                 Remove-Item $installerPath -ErrorAction SilentlyContinue
             }
@@ -332,40 +339,41 @@ NEXT_TELEMETRY_DISABLED=1
                 $bunAvailable = $false
             }
         }
-        
+
         # If bun is still not available, try npm fallback
         if (-not $bunAvailable) {
             if ($npmAvailable) {
                 Show-Warning "Bun not available, falling back to npm..."
                 $useNpmFallback = $true
-            } else {
+            }
+            else {
                 Show-Warning "Neither Bun nor npm is available. Skipping OpenCut build."
                 Show-Warning "Please install Bun from https://bun.sh/ or Node.js from https://nodejs.org/"
             }
         }
-        
+
         # ----------------------------------------
         # Step 1b.3: Clean existing node_modules if corrupted
         # ----------------------------------------
         if ($bunAvailable -or $useNpmFallback) {
             Set-Location $openCutRootDir
-            
+
             # Check for potentially corrupted node_modules
             $nodeModulesPath = "$openCutRootDir\node_modules"
             $lockFilePath = if ($useNpmFallback) { "$openCutRootDir\package-lock.json" } else { "$openCutRootDir\bun.lockb" }
-            
+
             $shouldCleanInstall = $false
             if (Test-Path $nodeModulesPath) {
                 # Check for corruption indicators
                 $markerFile = "$nodeModulesPath\.package-lock.json"
                 $bunLockExists = Test-Path "$openCutRootDir\bun.lockb"
-                
+
                 # If switching between package managers or install was interrupted
                 if ($useNpmFallback -and $bunLockExists -and -not (Test-Path "$openCutRootDir\package-lock.json")) {
                     Write-Info "Switching from bun to npm, cleaning node_modules..."
                     $shouldCleanInstall = $true
                 }
-                
+
                 # Check if node_modules seems incomplete
                 $criticalDirs = @("next", "react", "react-dom")
                 foreach ($dir in $criticalDirs) {
@@ -376,7 +384,7 @@ NEXT_TELEMETRY_DISABLED=1
                     }
                 }
             }
-            
+
             if ($shouldCleanInstall) {
                 Write-Info "Removing existing node_modules for clean install..."
                 Remove-Item -Path $nodeModulesPath -Recurse -Force -ErrorAction SilentlyContinue
@@ -393,51 +401,56 @@ NEXT_TELEMETRY_DISABLED=1
                     node $convertScript 2>&1 | Out-Host
                     if ($LASTEXITCODE -eq 0) {
                         Write-Success "  ✓ Workspace dependencies converted"
-                    } else {
+                    }
+                    else {
                         Show-Warning "Failed to convert workspace dependencies"
                     }
-                } else {
+                }
+                else {
                     Show-Warning "Workspace conversion script not found at $convertScript"
                 }
             }
-            
+
             # ----------------------------------------
             # Step 1b.5: Install dependencies with retry logic
             # ----------------------------------------
             $maxRetries = 3
             $retryCount = 0
             $installSuccess = $false
-            
+
             while (-not $installSuccess -and $retryCount -lt $maxRetries) {
                 $retryCount++
                 Write-Info "Installing OpenCut dependencies (attempt $retryCount of $maxRetries)..."
-                
+
                 if ($useNpmFallback) {
                     # npm install with converted workspace:* references
                     npm install --legacy-peer-deps 2>&1 | Out-Host
-                } else {
+                }
+                else {
                     # bun install
                     bun install 2>&1 | Out-Host
                 }
-                
+
                 if ($LASTEXITCODE -eq 0) {
                     $installSuccess = $true
                     Write-Success "  ✓ Dependencies installed successfully"
-                } else {
+                }
+                else {
                     if ($retryCount -lt $maxRetries) {
                         Show-Warning "Install attempt $retryCount failed, retrying in 5 seconds..."
                         Start-Sleep -Seconds 5
-                        
+
                         # Clean node_modules before retry
                         if (Test-Path $nodeModulesPath) {
                             Remove-Item -Path $nodeModulesPath -Recurse -Force -ErrorAction SilentlyContinue
                         }
-                    } else {
+                    }
+                    else {
                         Show-Warning "All install attempts failed."
                     }
                 }
             }
-            
+
             if (-not $installSuccess) {
                 Show-Warning "OpenCut dependency installation failed after $maxRetries attempts."
                 Show-Warning "OpenCut may not be available."
@@ -448,42 +461,66 @@ NEXT_TELEMETRY_DISABLED=1
             # ----------------------------------------
             if ($installSuccess) {
                 Write-Info "Running OpenCut production build..."
-                
+
+                # Save original environment variables to restore after build
+                $originalNodeEnv = $env:NODE_ENV
+                $originalNextTelemetry = $env:NEXT_TELEMETRY_DISABLED
+
                 # Set environment variables for build
                 $env:NODE_ENV = "production"
                 $env:NEXT_TELEMETRY_DISABLED = "1"
-                
-                if ($useNpmFallback) {
-                    # For npm fallback, build directly from apps/web with proper NODE_PATH
-                    # This is needed because npm workspaces handle module resolution differently than bun
-                    Set-Location $openCutAppDir
-                    
-                    # Set NODE_PATH to include both local and root node_modules
-                    $env:NODE_PATH = "$openCutAppDir\node_modules;$openCutRootDir\node_modules"
-                    
-                    Write-Info "Building with NODE_PATH: $env:NODE_PATH"
-                    npx next build 2>&1 | Out-Host
-                    
-                    # Clear NODE_PATH after build
-                    $env:NODE_PATH = $null
-                    
-                    # Return to OpenCut root
-                    Set-Location $openCutRootDir
-                } else {
-                    bun run build 2>&1 | Out-Host
+
+                try {
+                    if ($useNpmFallback) {
+                        # For npm fallback, build directly from apps/web with proper NODE_PATH
+                        # This is needed because npm workspaces handle module resolution differently than bun
+                        Set-Location $openCutAppDir
+
+                        # Set NODE_PATH to include both local and root node_modules
+                        $originalNodePath = $env:NODE_PATH
+                        $env:NODE_PATH = "$openCutAppDir\node_modules;$openCutRootDir\node_modules"
+
+                        Write-Info "Building with NODE_PATH: $env:NODE_PATH"
+                        npx next build 2>&1 | Out-Host
+
+                        # Restore NODE_PATH after build
+                        $env:NODE_PATH = $originalNodePath
+
+                        # Return to OpenCut root
+                        Set-Location $openCutRootDir
+                    }
+                    else {
+                        bun run build 2>&1 | Out-Host
+                    }
                 }
-                
+                finally {
+                    # Always restore original environment variables to prevent pollution
+                    if ($null -eq $originalNodeEnv) {
+                        Remove-Item env:NODE_ENV -ErrorAction SilentlyContinue
+                    }
+                    else {
+                        $env:NODE_ENV = $originalNodeEnv
+                    }
+
+                    if ($null -eq $originalNextTelemetry) {
+                        Remove-Item env:NEXT_TELEMETRY_DISABLED -ErrorAction SilentlyContinue
+                    }
+                    else {
+                        $env:NEXT_TELEMETRY_DISABLED = $originalNextTelemetry
+                    }
+                }
+
                 if ($LASTEXITCODE -ne 0) {
                     Show-Warning "OpenCut build failed with exit code $LASTEXITCODE."
-                    
+
                     # Check for common build errors and provide guidance
                     Write-Info "Checking for common issues..."
-                    
+
                     $tsconfigPath = "$openCutAppDir\tsconfig.json"
                     if (-not (Test-Path $tsconfigPath)) {
                         Show-Warning "  ✗ tsconfig.json not found in $openCutAppDir"
                     }
-                    
+
                     $nextConfigPath = "$openCutAppDir\next.config.ts"
                     if (-not (Test-Path $nextConfigPath)) {
                         $nextConfigPath = "$openCutAppDir\next.config.js"
@@ -491,56 +528,62 @@ NEXT_TELEMETRY_DISABLED=1
                             Show-Warning "  ✗ next.config.ts/js not found in $openCutAppDir"
                         }
                     }
-                } else {
+                }
+                else {
                     # ----------------------------------------
                     # Step 1b.7: Verify build output
                     # ----------------------------------------
                     $openCutNextDir = "$openCutAppDir\.next"
                     $openCutStandaloneDir = "$openCutNextDir\standalone"
                     $openCutStaticDir = "$openCutNextDir\static"
-                    
+
                     if (Test-Path $openCutNextDir) {
                         # In monorepo setup with npm workspaces, server.js is at standalone/apps/web/server.js
                         # In single-package setup with bun, server.js is at standalone/server.js
                         $standaloneServerJsMonorepo = "$openCutStandaloneDir\apps\web\server.js"
                         $standaloneServerJsSingle = "$openCutStandaloneDir\server.js"
-                        $standaloneServerJs = if (Test-Path $standaloneServerJsMonorepo) { 
-                            $standaloneServerJsMonorepo 
-                        } else { 
-                            $standaloneServerJsSingle 
+                        $standaloneServerJs = if (Test-Path $standaloneServerJsMonorepo) {
+                            $standaloneServerJsMonorepo
+                        }
+                        else {
+                            $standaloneServerJsSingle
                         }
                         $buildManifest = "$openCutNextDir\build-manifest.json"
-                        
+
                         $verificationPassed = $true
                         $verificationMessages = @()
-                        
+
                         if (Test-Path $openCutStandaloneDir) {
                             $verificationMessages += "  ✓ .next/standalone directory exists"
-                        } else {
+                        }
+                        else {
                             $verificationPassed = $false
                             $verificationMessages += "  ✗ .next/standalone directory not found"
                         }
-                        
+
                         if ((Test-Path $standaloneServerJsMonorepo) -or (Test-Path $standaloneServerJsSingle)) {
                             $verificationMessages += "  ✓ standalone/server.js exists"
-                        } else {
+                        }
+                        else {
                             $verificationPassed = $false
                             $verificationMessages += "  ✗ standalone/server.js not found"
                         }
-                        
+
                         if (Test-Path $openCutStaticDir) {
                             $verificationMessages += "  ✓ .next/static directory exists"
-                        } else {
+                        }
+                        else {
                             $verificationPassed = $false
                             $verificationMessages += "  ✗ .next/static directory not found"
                         }
-                        
+
                         if (Test-Path $buildManifest) {
                             $verificationMessages += "  ✓ build-manifest.json exists"
-                        } else {
+                        }
+                        else {
                             $verificationMessages += "  ⚠ build-manifest.json not found (optional)"
                         }
-                        
+
                         # Check standalone has required files
                         if ($verificationPassed) {
                             # In monorepo, node_modules is at standalone/node_modules
@@ -548,24 +591,27 @@ NEXT_TELEMETRY_DISABLED=1
                             $standaloneNodeModulesApp = "$openCutStandaloneDir\apps\web\node_modules"
                             if ((Test-Path $standaloneNodeModulesRoot) -or (Test-Path $standaloneNodeModulesApp)) {
                                 $verificationMessages += "  ✓ standalone/node_modules exists"
-                            } else {
+                            }
+                            else {
                                 $verificationMessages += "  ⚠ standalone/node_modules not found (may be embedded)"
                             }
                         }
-                        
+
                         if ($verificationPassed) {
                             Write-Success "OpenCut build verification passed"
                             $verificationMessages | ForEach-Object { Write-Success $_ }
                             $openCutBuildSuccess = $true
-                        } else {
+                        }
+                        else {
                             Show-Warning "OpenCut build verification failed"
-                            $verificationMessages | ForEach-Object { 
+                            $verificationMessages | ForEach-Object {
                                 if ($_ -match "^  ✗") { Show-Warning $_ }
                                 else { Write-Success $_ }
                             }
                             Show-Warning "OpenCut integration may not work properly."
                         }
-                    } else {
+                    }
+                    else {
                         Show-Warning "OpenCut build verification failed: .next directory not found"
                         Show-Warning "OpenCut integration may not work properly."
                     }
@@ -575,17 +621,19 @@ NEXT_TELEMETRY_DISABLED=1
 
         # Return to script directory
         Set-Location $ScriptDir
-        
+
         if ($openCutBuildSuccess) {
             Write-Success "OpenCut build complete and verified"
-        } else {
+        }
+        else {
             Show-Warning "========================================"
             Show-Warning "OpenCut build FAILED or SKIPPED"
             Show-Warning "The application will build without OpenCut integration."
             Show-Warning "OpenCut editor features will not be available."
             Show-Warning "========================================"
         }
-    } else {
+    }
+    else {
         Show-Warning "OpenCut source directory not found at $openCutAppDir. Skipping OpenCut bundle."
         Set-Location $ScriptDir
     }
@@ -650,7 +698,7 @@ else {
 if (-not $SkipBackend) {
     Write-Info "Applying database migrations..."
     Set-Location $ProjectRoot
-    
+
     # Restore local dotnet tools (including dotnet-ef from manifest)
     Write-Info "Restoring local dotnet tools from manifest..."
     $restoreOutput = dotnet tool restore 2>&1
@@ -664,12 +712,12 @@ if (-not $SkipBackend) {
         Write-Host "  Restore error: $restoreOutput" -ForegroundColor Gray
         $efInstalled = $false
     }
-    
+
     # Only attempt migrations if dotnet-ef is available
     if ($efInstalled) {
         # Navigate to API project for migrations
         Set-Location "$ProjectRoot\Aura.Api"
-        
+
         # Apply migrations (this will create database if missing)
         Write-Info "Checking for pending migrations..."
         try {
@@ -680,11 +728,13 @@ if (-not $SkipBackend) {
                 if ($VerbosePreference -eq 'Continue') {
                     Write-Host "  Migration output: $migrationOutput" -ForegroundColor Gray
                 }
-            } else {
+            }
+            else {
                 Show-Warning "  Could not apply migrations during build (will be applied on first app start)"
                 Write-Host "  Migration output: $migrationOutput" -ForegroundColor Gray
             }
-        } catch {
+        }
+        catch {
             Show-Warning "  Could not apply migrations during build (will be applied on first app start)"
             Write-Host "  Error: $($_.Exception.Message)" -ForegroundColor Gray
         }
@@ -692,7 +742,7 @@ if (-not $SkipBackend) {
     else {
         Write-Info "Skipping build-time migration check (migrations will run automatically on first app start)"
     }
-    
+
     # Return to script directory
     Set-Location $ScriptDir
     Write-Host ""
@@ -725,42 +775,60 @@ else {
     # Verify critical dependencies exist
     $criticalPackages = @("electron", "electron-builder", "electron-store")
     $missingPackages = @()
-    
+
     foreach ($package in $criticalPackages) {
         if (-not (Test-Path "node_modules\$package")) {
             $missingPackages += $package
         }
     }
-    
+
     if ($missingPackages.Count -gt 0) {
         Write-Info "Critical Electron dependencies missing, reinstalling..."
         Write-Info "Missing: $($missingPackages -join ', ')"
         $electronNeedsInstall = $true
-    } else {
+    }
+    else {
         Write-Info "Electron dependencies verified"
     }
 }
 
 if ($electronNeedsInstall) {
-    npm install
+    # Check if NODE_ENV is set to production (which would skip devDependencies)
+    $nodeEnv = $env:NODE_ENV
+    if ($nodeEnv -eq "production") {
+        Show-Warning "NODE_ENV is set to 'production'. This can cause devDependencies to be skipped."
+        Show-Warning "Using --include=dev to ensure all dependencies are installed."
+    }
+
+    # Install with --include=dev to ensure electron (a devDependency) is installed
+    npm install --include=dev
     if ($LASTEXITCODE -ne 0) {
         Show-ErrorMessage "npm install failed with exit code $LASTEXITCODE"
         exit 1
     }
-    
+
     # Verify package installation was successful
     # Threshold: 50 is a conservative minimum to catch obviously broken installs
     # (actual count is typically 300+ but threshold is low to avoid false positives)
     $packageCount = (Get-ChildItem "node_modules" -Directory -ErrorAction SilentlyContinue | Measure-Object).Count
     Write-Info "Electron: Installed $packageCount packages"
-    
+
     if ($packageCount -lt 50) {
         Show-ErrorMessage "Electron npm install appears incomplete - only $packageCount packages installed (expected 300+)"
         Show-ErrorMessage "This may indicate a network issue or corrupted npm cache."
-        Show-ErrorMessage "Try running: npm cache clean --force && npm install"
+        Show-ErrorMessage "Try running: npm cache clean --force && npm install --include=dev"
         exit 1
     }
-    
+
+    # Verify electron is installed (it's a devDependency and required for electron-builder)
+    if (-not (Test-Path "node_modules\electron")) {
+        Show-ErrorMessage "Electron npm install failed - electron package not found"
+        Show-ErrorMessage "Electron is a devDependency and is required for electron-builder."
+        Show-ErrorMessage "If NODE_ENV=production is set, try: npm install --include=dev"
+        exit 1
+    }
+    Write-Success "  ✓ Electron package verified"
+
     # Verify critical CLIs are available
     $electronBuilderCmd = "node_modules\.bin\electron-builder.cmd"
     if (-not (Test-Path $electronBuilderCmd) -and -not (Test-Path "node_modules\.bin\electron-builder")) {
@@ -769,6 +837,44 @@ if ($electronNeedsInstall) {
         exit 1
     }
     Write-Success "  ✓ Electron-builder CLI verified"
+}
+
+# Always ensure electron is installed before running install-app-deps
+# This must run even when node_modules already exists to rebuild native deps after dependency changes
+if (Test-Path "node_modules\electron") {
+    # Verify electron-builder CLI is available
+    $electronBuilderCmd = "node_modules\.bin\electron-builder.cmd"
+    $electronBuilderExists = (Test-Path $electronBuilderCmd) -or (Test-Path "node_modules\.bin\electron-builder")
+
+    if ($electronBuilderExists) {
+        # Run electron-builder install-app-deps to install/rebuild native dependencies
+        # This is critical for Electron compatibility and must run after any dependency changes
+        Write-Info "Installing/rebuilding Electron native dependencies..."
+        try {
+            # Use npx to run electron-builder install-app-deps
+            # This installs/rebuilds native dependencies required by Electron
+            npx --yes electron-builder install-app-deps 2>&1 | Out-Host
+            if ($LASTEXITCODE -eq 0) {
+                Write-Success "  ✓ Electron native dependencies installed/rebuilt"
+            }
+            else {
+                Show-Warning "electron-builder install-app-deps returned exit code $LASTEXITCODE"
+                Show-Warning "This may be non-fatal - continuing build..."
+            }
+        }
+        catch {
+            Show-Warning "Failed to run electron-builder install-app-deps: $($_.Exception.Message)"
+            Show-Warning "This may be non-fatal - continuing build..."
+        }
+    }
+    else {
+        Show-Warning "electron-builder CLI not found - skipping native dependency rebuild"
+        Show-Warning "Run 'npm install --include=dev' to install electron-builder"
+    }
+}
+else {
+    Show-Warning "Electron not found in node_modules - skipping native dependency rebuild"
+    Show-Warning "Run 'npm install --include=dev' to install Electron"
 }
 
 Write-Success "Electron dependencies ready"
