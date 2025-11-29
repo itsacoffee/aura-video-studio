@@ -177,7 +177,15 @@ if (-not $SkipFrontend) {
     }
 
     if ($needsInstall) {
-        npm install
+        # Check if NODE_ENV=production is set (would skip devDependencies)
+        if ($env:NODE_ENV -eq "production") {
+            Show-Warning "NODE_ENV is set to 'production'. This can cause devDependencies to be skipped."
+            Show-Warning "Using --include=dev to ensure all dependencies are installed."
+        }
+        
+        # Use --include=dev to ensure devDependencies are always installed
+        # This is required because vite is a devDependency needed for building
+        npm install --include=dev
         if ($LASTEXITCODE -ne 0) {
             Show-ErrorMessage "Frontend npm install failed with exit code $LASTEXITCODE"
             exit 1
@@ -192,14 +200,18 @@ if (-not $SkipFrontend) {
         if ($packageCount -lt 100) {
             Show-ErrorMessage "Frontend npm install appears incomplete - only $packageCount packages installed (expected 600+)"
             Show-ErrorMessage "This may indicate a network issue or corrupted npm cache."
-            Show-ErrorMessage "Try running: npm cache clean --force && npm install"
+            Show-ErrorMessage "Try running: npm cache clean --force && npm install --include=dev"
             exit 1
         }
         
-        # Verify vite CLI is available
+        # Verify vite CLI is available (vite is a devDependency required for building)
         if (-not (Test-Path "node_modules\.bin\vite.cmd") -and -not (Test-Path "node_modules\.bin\vite")) {
             Show-ErrorMessage "Frontend npm install failed - vite CLI not found in node_modules/.bin"
-            Show-ErrorMessage "This may indicate a corrupted installation."
+            Show-ErrorMessage "This usually means devDependencies were not installed."
+            Show-ErrorMessage "If NODE_ENV=production is set in your environment, try:"
+            Show-ErrorMessage "  1. Run: set NODE_ENV= (to clear the environment variable)"
+            Show-ErrorMessage "  2. Run: npm cache clean --force"
+            Show-ErrorMessage "  3. Delete node_modules folder and retry"
             exit 1
         }
         Write-Success "  ✓ Vite CLI verified"

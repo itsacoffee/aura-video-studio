@@ -132,7 +132,15 @@ if [ "$SKIP_FRONTEND" = false ]; then
   fi
 
   if [ "$needs_install" = true ]; then
-    npm install || {
+    # Check if NODE_ENV=production is set (would skip devDependencies)
+    if [ "$NODE_ENV" = "production" ]; then
+      print_warning "NODE_ENV is set to 'production'. This can cause devDependencies to be skipped."
+      print_warning "Using --include=dev to ensure all dependencies are installed."
+    fi
+    
+    # Use --include=dev to ensure devDependencies are always installed
+    # This is required because vite is a devDependency needed for building
+    npm install --include=dev || {
       print_error "Failed to install frontend dependencies"
       exit 1
     }
@@ -146,14 +154,18 @@ if [ "$SKIP_FRONTEND" = false ]; then
     if [ "$package_count" -lt 100 ]; then
       print_error "Frontend npm install appears incomplete - only $package_count packages installed (expected 600+)"
       print_error "This may indicate a network issue or corrupted npm cache."
-      print_error "Try running: npm cache clean --force && npm install"
+      print_error "Try running: npm cache clean --force && npm install --include=dev"
       exit 1
     fi
     
-    # Verify vite CLI is available
+    # Verify vite CLI is available (vite is a devDependency required for building)
     if [ ! -f "node_modules/.bin/vite" ]; then
       print_error "Frontend npm install failed - vite CLI not found in node_modules/.bin"
-      print_error "This may indicate a corrupted installation."
+      print_error "This usually means devDependencies were not installed."
+      print_error "If NODE_ENV=production is set in your environment, try:"
+      print_error "  1. Run: unset NODE_ENV (to clear the environment variable)"
+      print_error "  2. Run: npm cache clean --force"
+      print_error "  3. Delete node_modules folder and retry"
       exit 1
     fi
     print_success "  ✓ Vite CLI verified"

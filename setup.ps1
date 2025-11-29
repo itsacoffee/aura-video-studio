@@ -48,7 +48,14 @@ if (-not (Test-Path "node_modules")) {
 }
 
 if ($needsInstall) {
-    npm install
+    # Check if NODE_ENV=production is set (would skip devDependencies)
+    if ($env:NODE_ENV -eq "production") {
+        Write-Host "⚠ Warning: NODE_ENV is set to 'production'. Using --include=dev to ensure all dependencies are installed." -ForegroundColor Yellow
+    }
+    
+    # Use --include=dev to ensure devDependencies are always installed
+    # This is required because vite is a devDependency needed for building
+    npm install --include=dev
     if ($LASTEXITCODE -ne 0) {
         Write-Host "❌ npm install failed" -ForegroundColor Red
         Pop-Location
