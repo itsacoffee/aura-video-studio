@@ -32,3 +32,11 @@ apps/transcription/__pycache__
 apps/transcription/env
 
 apps/bg-remover/env
+# Backup files from npm workspace conversion
+*.bak
+
+# npm lock file (we use bun.lock)
+package-lock.json
+
+# Local environment (created during build)
+apps/web/.env.local

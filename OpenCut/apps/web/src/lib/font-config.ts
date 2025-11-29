@@ -44,7 +44,7 @@ const comicNeue = createFallbackFont([
 ]);
 
 // Export font class mapping for use in components
-// These are empty strings since we use inline system fonts
+// These are empty strings since system fonts are applied via inline styles rather than CSS classes
 export const FONT_CLASS_MAP = {
   Inter: inter.className,
   Roboto: roboto.className,

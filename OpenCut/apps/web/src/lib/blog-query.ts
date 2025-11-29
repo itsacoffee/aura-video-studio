@@ -59,11 +59,7 @@ export async function getTags(): Promise<MarbleTagList> {
 }
 
 export async function getSinglePost(slug: string): Promise<MarblePost | null> {
-  try {
-    return await fetchFromMarble<MarblePost>(`posts/${slug}`);
-  } catch {
-    return null;
-  }
+  return fetchFromMarble<MarblePost | null>(`posts/${slug}`, null);
 }
 
 export async function getCategories(): Promise<MarbleCategoryList> {

@@ -29,6 +29,30 @@ const PACKAGE_FILES = [
 ];
 
 /**
+ * Gets a dependency version from a package.json file.
+ * @param {string} rootDir - Path to the OpenCut root directory
+ * @param {string} packagePath - Relative path to package.json
+ * @param {string} depName - Name of the dependency
+ * @returns {string|null} - Version string or null if not found
+ */
+function getDependencyVersion(rootDir, packagePath, depName) {
+  const fullPath = path.join(rootDir, packagePath);
+  if (!fs.existsSync(fullPath)) return null;
+
+  try {
+    const pkg = JSON.parse(fs.readFileSync(fullPath, "utf8"));
+    return (
+      pkg.dependencies?.[depName] ||
+      pkg.devDependencies?.[depName] ||
+      pkg.peerDependencies?.[depName] ||
+      null
+    );
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Converts workspace:* dependencies to * for npm workspace compatibility.
  * @param {string} filePath - Path to the package.json file
  * @param {string} rootDir - Path to the OpenCut root directory
@@ -67,13 +91,25 @@ function convertWorkspaceDeps(filePath, rootDir) {
       pkg.dependencies = {};
     }
     if (!pkg.dependencies["react"]) {
-      pkg.dependencies["react"] = "^18.2.0";
-      console.log(`  ${filePath}: Added react dependency for next.js`);
+      // Read version from apps/web/package.json for consistency
+      const reactVersion =
+        getDependencyVersion(rootDir, "apps/web/package.json", "react") ||
+        "^18.2.0";
+      pkg.dependencies["react"] = reactVersion;
+      console.log(
+        `  ${filePath}: Added react dependency (${reactVersion}) for next.js`
+      );
       modified = true;
     }
     if (!pkg.dependencies["react-dom"]) {
-      pkg.dependencies["react-dom"] = "^18.2.0";
-      console.log(`  ${filePath}: Added react-dom dependency for next.js`);
+      // Read version from apps/web/package.json for consistency
+      const reactDomVersion =
+        getDependencyVersion(rootDir, "apps/web/package.json", "react-dom") ||
+        "^18.2.0";
+      pkg.dependencies["react-dom"] = reactDomVersion;
+      console.log(
+        `  ${filePath}: Added react-dom dependency (${reactDomVersion}) for next.js`
+      );
       modified = true;
     }
   }
@@ -86,8 +122,15 @@ function convertWorkspaceDeps(filePath, rootDir) {
       pkg.dependencies = {};
     }
     if (!pkg.dependencies["drizzle-orm"]) {
-      pkg.dependencies["drizzle-orm"] = "^0.44.2";
-      console.log(`  ${filePath}: Added drizzle-orm dependency for better-auth`);
+      // Read version from packages/db/package.json for consistency
+      const drizzleVersion =
+        getDependencyVersion(rootDir, "packages/db/package.json", "drizzle-orm") ||
+        getDependencyVersion(rootDir, "apps/web/package.json", "drizzle-orm") ||
+        "^0.44.2";
+      pkg.dependencies["drizzle-orm"] = drizzleVersion;
+      console.log(
+        `  ${filePath}: Added drizzle-orm dependency (${drizzleVersion}) for better-auth`
+      );
       modified = true;
     }
   }
