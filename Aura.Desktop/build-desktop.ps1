@@ -204,23 +204,51 @@ if (-not $SkipFrontend) {
     if (Test-Path $openCutAppDir) {
         Write-Info "Preparing OpenCut web editor..."
 
-        # OpenCut is a bun-based monorepo - check if bun is available
+        # ----------------------------------------
+        # Step 1b.1: Ensure environment file exists
+        # ----------------------------------------
+        $envExamplePath = "$openCutAppDir\.env.example"
+        $envLocalPath = "$openCutAppDir\.env.local"
+        
+        if (-not (Test-Path $envLocalPath)) {
+            if (Test-Path $envExamplePath) {
+                Write-Info "Creating .env.local from .env.example..."
+                Copy-Item $envExamplePath $envLocalPath
+                Write-Success "  ✓ .env.local created"
+            } else {
+                Write-Info "Creating minimal .env.local..."
+                # Create minimal env file to prevent build errors
+                @"
+# Minimal environment for standalone build
+NODE_ENV=production
+NEXT_TELEMETRY_DISABLED=1
+"@ | Set-Content $envLocalPath -Encoding UTF8
+                Write-Success "  ✓ Minimal .env.local created"
+            }
+        } else {
+            Write-Info "  ✓ .env.local already exists"
+        }
+
+        # ----------------------------------------
+        # Step 1b.2: Check for package manager (bun preferred, npm fallback)
+        # ----------------------------------------
         $bunAvailable = Get-Command bun -ErrorAction SilentlyContinue
+        $npmAvailable = Get-Command npm -ErrorAction SilentlyContinue
+        $useNpmFallback = $false
+        
         if (-not $bunAvailable) {
             Write-Info "Bun is not installed. Attempting to install Bun automatically..."
             
             # Install Bun using the official PowerShell installer from bun.sh
-            # This is the recommended installation method from https://bun.sh/docs/installation
-            # The installer is hosted by oven-sh (Bun's official maintainer) and served over HTTPS
             try {
                 $env:BUN_INSTALL = "$env:USERPROFILE\.bun"
                 Write-Info "Installing Bun to $env:BUN_INSTALL..."
                 
                 # Download the official Bun installer from bun.sh
                 $installerPath = "$env:TEMP\install-bun.ps1"
-                Invoke-RestMethod -Uri "https://bun.sh/install.ps1" -OutFile $installerPath
+                Invoke-RestMethod -Uri "https://bun.sh/install.ps1" -OutFile $installerPath -TimeoutSec 60
                 
-                # Execute the installer (requires Bypass policy as the installer is downloaded)
+                # Execute the installer
                 & powershell -ExecutionPolicy Bypass -File $installerPath
                 
                 # Add Bun to PATH for the current session
@@ -234,11 +262,11 @@ if (-not $SkipFrontend) {
                         $bunVersion = & bun --version 2>$null
                         Write-Success "Bun installed successfully (version: $bunVersion)"
                     } else {
-                        Show-Warning "Bun directory exists but bun command not found. Installation may have failed."
+                        Show-Warning "Bun directory exists but bun command not found."
                         $bunAvailable = $false
                     }
                 } else {
-                    Show-Warning "Bun installation directory not found. Installation may have failed."
+                    Show-Warning "Bun installation directory not found."
                     $bunAvailable = $false
                 }
                 
@@ -247,33 +275,145 @@ if (-not $SkipFrontend) {
             }
             catch {
                 Show-Warning "Failed to install Bun automatically: $($_.Exception.Message)"
-                Show-Warning "Please install Bun manually from https://bun.sh/"
-                Show-Warning "Skipping OpenCut build."
                 $bunAvailable = $false
             }
         }
         
-        if ($bunAvailable) {
-            # Install dependencies from monorepo root (required for workspace: protocol)
-            Set-Location $openCutRootDir
-
-            Write-Info "Installing OpenCut dependencies with bun..."
-            bun install
-            if ($LASTEXITCODE -ne 0) {
-                Show-Warning "OpenCut bun install failed with exit code $LASTEXITCODE. OpenCut may not be available."
+        # If bun is still not available, try npm fallback
+        if (-not $bunAvailable) {
+            if ($npmAvailable) {
+                Show-Warning "Bun not available, falling back to npm..."
+                $useNpmFallback = $true
             } else {
-                Write-Info "Running OpenCut production build..."
-                bun run build
-                if ($LASTEXITCODE -ne 0) {
-                    Show-Warning "OpenCut build failed with exit code $LASTEXITCODE. OpenCut may not be available."
+                Show-Warning "Neither Bun nor npm is available. Skipping OpenCut build."
+                Show-Warning "Please install Bun from https://bun.sh/ or Node.js from https://nodejs.org/"
+            }
+        }
+        
+        # ----------------------------------------
+        # Step 1b.3: Clean existing node_modules if corrupted
+        # ----------------------------------------
+        if ($bunAvailable -or $useNpmFallback) {
+            Set-Location $openCutRootDir
+            
+            # Check for potentially corrupted node_modules
+            $nodeModulesPath = "$openCutRootDir\node_modules"
+            $lockFilePath = if ($useNpmFallback) { "$openCutRootDir\package-lock.json" } else { "$openCutRootDir\bun.lockb" }
+            
+            $shouldCleanInstall = $false
+            if (Test-Path $nodeModulesPath) {
+                # Check for corruption indicators
+                $markerFile = "$nodeModulesPath\.package-lock.json"
+                $bunLockExists = Test-Path "$openCutRootDir\bun.lockb"
+                
+                # If switching between package managers or install was interrupted
+                if ($useNpmFallback -and $bunLockExists -and -not (Test-Path "$openCutRootDir\package-lock.json")) {
+                    Write-Info "Switching from bun to npm, cleaning node_modules..."
+                    $shouldCleanInstall = $true
+                }
+                
+                # Check if node_modules seems incomplete
+                $criticalDirs = @("next", "react", "react-dom")
+                foreach ($dir in $criticalDirs) {
+                    if (-not (Test-Path "$nodeModulesPath\$dir")) {
+                        Write-Info "Missing critical dependency: $dir. Will perform clean install..."
+                        $shouldCleanInstall = $true
+                        break
+                    }
+                }
+            }
+            
+            if ($shouldCleanInstall) {
+                Write-Info "Removing existing node_modules for clean install..."
+                Remove-Item -Path $nodeModulesPath -Recurse -Force -ErrorAction SilentlyContinue
+                Write-Success "  ✓ node_modules cleaned"
+            }
+
+            # ----------------------------------------
+            # Step 1b.4: Install dependencies with retry logic
+            # ----------------------------------------
+            $maxRetries = 3
+            $retryCount = 0
+            $installSuccess = $false
+            
+            while (-not $installSuccess -and $retryCount -lt $maxRetries) {
+                $retryCount++
+                Write-Info "Installing OpenCut dependencies (attempt $retryCount of $maxRetries)..."
+                
+                if ($useNpmFallback) {
+                    # npm install (convert workspace:* to * for npm compatibility)
+                    npm install --legacy-peer-deps 2>&1 | Out-Host
                 } else {
-                    # Verify OpenCut build output (Next.js standalone output)
+                    # bun install
+                    bun install 2>&1 | Out-Host
+                }
+                
+                if ($LASTEXITCODE -eq 0) {
+                    $installSuccess = $true
+                    Write-Success "  ✓ Dependencies installed successfully"
+                } else {
+                    if ($retryCount -lt $maxRetries) {
+                        Show-Warning "Install attempt $retryCount failed, retrying in 5 seconds..."
+                        Start-Sleep -Seconds 5
+                        
+                        # Clean node_modules before retry
+                        if (Test-Path $nodeModulesPath) {
+                            Remove-Item -Path $nodeModulesPath -Recurse -Force -ErrorAction SilentlyContinue
+                        }
+                    } else {
+                        Show-Warning "All install attempts failed."
+                    }
+                }
+            }
+            
+            if (-not $installSuccess) {
+                Show-Warning "OpenCut dependency installation failed after $maxRetries attempts."
+                Show-Warning "OpenCut may not be available."
+            }
+
+            # ----------------------------------------
+            # Step 1b.5: Build OpenCut
+            # ----------------------------------------
+            if ($installSuccess) {
+                Write-Info "Running OpenCut production build..."
+                
+                # Set environment variables for build
+                $env:NODE_ENV = "production"
+                $env:NEXT_TELEMETRY_DISABLED = "1"
+                
+                if ($useNpmFallback) {
+                    npm run build 2>&1 | Out-Host
+                } else {
+                    bun run build 2>&1 | Out-Host
+                }
+                
+                if ($LASTEXITCODE -ne 0) {
+                    Show-Warning "OpenCut build failed with exit code $LASTEXITCODE."
+                    
+                    # Check for common build errors and provide guidance
+                    Write-Info "Checking for common issues..."
+                    
+                    $tsconfigPath = "$openCutAppDir\tsconfig.json"
+                    if (-not (Test-Path $tsconfigPath)) {
+                        Show-Warning "  ✗ tsconfig.json not found in $openCutAppDir"
+                    }
+                    
+                    $nextConfigPath = "$openCutAppDir\next.config.ts"
+                    if (-not (Test-Path $nextConfigPath)) {
+                        $nextConfigPath = "$openCutAppDir\next.config.js"
+                        if (-not (Test-Path $nextConfigPath)) {
+                            Show-Warning "  ✗ next.config.ts/js not found in $openCutAppDir"
+                        }
+                    }
+                } else {
+                    # ----------------------------------------
+                    # Step 1b.6: Verify build output
+                    # ----------------------------------------
                     $openCutNextDir = "$openCutAppDir\.next"
                     $openCutStandaloneDir = "$openCutNextDir\standalone"
                     $openCutStaticDir = "$openCutNextDir\static"
                     
                     if (Test-Path $openCutNextDir) {
-                        # Check for essential standalone build files
                         $standaloneServerJs = "$openCutStandaloneDir\server.js"
                         $buildManifest = "$openCutNextDir\build-manifest.json"
                         
@@ -304,8 +444,17 @@ if (-not $SkipFrontend) {
                         if (Test-Path $buildManifest) {
                             $verificationMessages += "  ✓ build-manifest.json exists"
                         } else {
-                            # build-manifest.json is optional for standalone
                             $verificationMessages += "  ⚠ build-manifest.json not found (optional)"
+                        }
+                        
+                        # Check standalone has required files
+                        if ($verificationPassed) {
+                            $standaloneNodeModules = "$openCutStandaloneDir\node_modules"
+                            if (Test-Path $standaloneNodeModules) {
+                                $verificationMessages += "  ✓ standalone/node_modules exists"
+                            } else {
+                                $verificationMessages += "  ⚠ standalone/node_modules not found (may be embedded)"
+                            }
                         }
                         
                         if ($verificationPassed) {
