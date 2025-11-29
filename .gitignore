@@ -36,6 +36,9 @@ bld/
 **/[Pp]ackages/*
 # except build/, which is used as an MSBuild target.
 !**/[Pp]ackages/build/
+# except OpenCut workspace packages (JavaScript/TypeScript monorepo convention)
+!OpenCut/packages/
+!OpenCut/packages/**
 
 # Visual Studio cache files
 *.cache
