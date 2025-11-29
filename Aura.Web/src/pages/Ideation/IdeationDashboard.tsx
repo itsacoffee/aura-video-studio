@@ -109,7 +109,7 @@ const useStyles = makeStyles({
     fontSize: tokens.fontSizeBase100,
   },
   hotkeyReset: {
-    ...shorthands.padding('0px'),
+    ...shorthands.padding(tokens.spacingHorizontalNone),
     height: 'auto',
     fontSize: tokens.fontSizeBase200,
   },

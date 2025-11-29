@@ -60,7 +60,11 @@ const useStyles = makeStyles({
   optionalSectionTitle: {
     fontWeight: tokens.fontWeightSemibold,
     color: tokens.colorNeutralForeground1,
-    marginBottom: tokens.spacingVerticalXS,
+    marginBottom: tokens.spacingVerticalXXS,
+  },
+  optionalSectionDescription: {
+    color: tokens.colorNeutralForeground3,
+    marginBottom: tokens.spacingVerticalS,
   },
   optionsGrid: {
     display: 'grid',
@@ -190,7 +194,7 @@ export const BrainstormInput: React.FC<BrainstormInputProps> = ({
         <Text className={styles.optionalSectionTitle} size={400}>
           Optional Details
         </Text>
-        <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginTop: '-8px' }}>
+        <Text className={styles.optionalSectionDescription} size={200}>
           Providing more context helps generate better concepts
         </Text>
 
