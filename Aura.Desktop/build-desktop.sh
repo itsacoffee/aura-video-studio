@@ -138,11 +138,13 @@ if [ "$SKIP_FRONTEND" = false ]; then
     }
     
     # Verify package installation was successful
+    # Threshold: 100 is a conservative minimum to catch obviously broken installs
+    # (actual count is typically 600+ but threshold is low to avoid false positives)
     package_count=$(find node_modules -maxdepth 1 -type d | wc -l)
     print_info "Frontend: Installed $package_count packages"
     
     if [ "$package_count" -lt 100 ]; then
-      print_error "Frontend npm install appears incomplete - only $package_count packages installed (expected 800+)"
+      print_error "Frontend npm install appears incomplete - only $package_count packages installed (expected 600+)"
       print_error "This may indicate a network issue or corrupted npm cache."
       print_error "Try running: npm cache clean --force && npm install"
       exit 1
@@ -289,11 +291,13 @@ if [ "$electron_needs_install" = true ]; then
   }
   
   # Verify package installation was successful
+  # Threshold: 50 is a conservative minimum to catch obviously broken installs
+  # (actual count is typically 300+ but threshold is low to avoid false positives)
   package_count=$(find node_modules -maxdepth 1 -type d | wc -l)
   print_info "Electron: Installed $package_count packages"
   
   if [ "$package_count" -lt 50 ]; then
-    print_error "Electron npm install appears incomplete - only $package_count packages installed (expected 400+)"
+    print_error "Electron npm install appears incomplete - only $package_count packages installed (expected 300+)"
     print_error "This may indicate a network issue or corrupted npm cache."
     print_error "Try running: npm cache clean --force && npm install"
     exit 1

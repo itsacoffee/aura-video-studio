@@ -184,11 +184,13 @@ if (-not $SkipFrontend) {
         }
         
         # Verify package installation was successful
+        # Threshold: 100 is a conservative minimum to catch obviously broken installs
+        # (actual count is typically 600+ but threshold is low to avoid false positives)
         $packageCount = (Get-ChildItem "node_modules" -Directory -ErrorAction SilentlyContinue | Measure-Object).Count
         Write-Info "Frontend: Installed $packageCount packages"
         
         if ($packageCount -lt 100) {
-            Show-ErrorMessage "Frontend npm install appears incomplete - only $packageCount packages installed (expected 800+)"
+            Show-ErrorMessage "Frontend npm install appears incomplete - only $packageCount packages installed (expected 600+)"
             Show-ErrorMessage "This may indicate a network issue or corrupted npm cache."
             Show-ErrorMessage "Try running: npm cache clean --force && npm install"
             exit 1
@@ -719,11 +721,13 @@ if ($electronNeedsInstall) {
     }
     
     # Verify package installation was successful
+    # Threshold: 50 is a conservative minimum to catch obviously broken installs
+    # (actual count is typically 300+ but threshold is low to avoid false positives)
     $packageCount = (Get-ChildItem "node_modules" -Directory -ErrorAction SilentlyContinue | Measure-Object).Count
     Write-Info "Electron: Installed $packageCount packages"
     
     if ($packageCount -lt 50) {
-        Show-ErrorMessage "Electron npm install appears incomplete - only $packageCount packages installed (expected 400+)"
+        Show-ErrorMessage "Electron npm install appears incomplete - only $packageCount packages installed (expected 300+)"
         Show-ErrorMessage "This may indicate a network issue or corrupted npm cache."
         Show-ErrorMessage "Try running: npm cache clean --force && npm install"
         exit 1
