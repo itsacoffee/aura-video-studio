@@ -624,6 +624,72 @@ Aura Video Studio integrates with leading stock media platforms to provide high-
 
 **Licensing**: Pexels License - Free for commercial use, attribution appreciated but not required
 
+##### Intelligent Scene Matching
+
+When using Pexels, Aura Video Studio can leverage intelligent scene matching to find more contextually relevant images:
+
+**Configuration**:
+```json
+{
+  "Providers": {
+    "Images": {
+      "Pexels": {
+        "ApiKey": "...",
+        "Matching": {
+          "EnableSemanticMatching": true,
+          "MinimumRelevanceScore": 60.0,
+          "MaxCandidatesPerScene": 8,
+          "UseOrientationFiltering": true,
+          "FallbackToBasicSearch": true,
+          "MaxKeywordsInQuery": 5
+        }
+      }
+    }
+  }
+}
+```
+
+**Configuration Options**:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `EnableSemanticMatching` | `true` | Enable keyword extraction and intelligent query building |
+| `MinimumRelevanceScore` | `60.0` | Minimum score (0-100) for image inclusion |
+| `MaxCandidatesPerScene` | `8` | Number of candidates to fetch per scene |
+| `UseOrientationFiltering` | `true` | Apply Pexels orientation filter (16:9 → landscape, 9:16 → portrait) |
+| `FallbackToBasicSearch` | `true` | Fall back to basic search if semantic search returns no results |
+| `MaxKeywordsInQuery` | `5` | Maximum keywords to include in search query |
+
+**How It Works**:
+
+1. **Keyword Extraction**: Analyzes scene heading and narration to extract relevant visual keywords
+2. **Stop Word Filtering**: Removes common words (the, a, and, etc.) that don't improve search quality
+3. **Visual Term Boosting**: Prioritizes visually-descriptive terms like "landscape", "modern", "technology"
+4. **Query Building**: Combines keywords with style and context for optimized Pexels queries
+5. **Orientation Filtering**: Maps video aspect ratio to Pexels orientation (16:9 → landscape, 9:16 → portrait)
+6. **Relevance Scoring**: Scores each candidate image for keyword matches and context alignment
+7. **Threshold Filtering**: Returns only images that meet the minimum relevance score
+
+**Example**:
+```
+Scene: "Exploring the future of artificial intelligence in healthcare"
+
+Without intelligent matching:
+- Search: "artificial intelligence"
+- Returns: Generic tech images
+
+With intelligent matching:
+- Extracted keywords: healthcare, technology, artificial, intelligence, future
+- Built query: "healthcare technology artificial intelligence professional"
+- Orientation: landscape (for 16:9 video)
+- Returns: Contextually relevant healthcare + technology images
+- Scoring: Images with medical/tech elements rank higher
+```
+
+**Performance**: Adds ~10-20ms overhead per scene for keyword extraction and scoring.
+
+**Backward Compatibility**: Existing configurations without the `Matching` section continue to work with default values.
+
 #### Unsplash (Images Only)
 
 **Location**: `Aura.Providers/Images/EnhancedUnsplashProvider.cs`

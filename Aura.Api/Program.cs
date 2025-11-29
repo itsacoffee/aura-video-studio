@@ -1172,6 +1172,17 @@ builder.Services.AddSingleton<IStockProvider>(sp =>
     return new Aura.Providers.Images.LocalStockProvider(localLogger, localPath);
 });
 
+// Register Pexels intelligent scene matching services
+builder.Services.Configure<Aura.Core.Configuration.PexelsMatchingConfig>(
+    builder.Configuration.GetSection("Providers:Images:Pexels:Matching"));
+builder.Services.AddSingleton(sp =>
+{
+    var config = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<Aura.Core.Configuration.PexelsMatchingConfig>>();
+    return config.Value ?? Aura.Core.Configuration.PexelsMatchingConfig.Default;
+});
+builder.Services.AddSingleton<Aura.Core.Services.Visual.VisualKeywordExtractor>();
+builder.Services.AddSingleton<Aura.Core.Services.Visual.PexelsSceneMatchingService>();
+
 // Register validators
 builder.Services.AddSingleton<Aura.Core.Validation.PreGenerationValidator>();
 builder.Services.AddSingleton<Aura.Core.Validation.ScriptValidator>();
@@ -1586,7 +1597,14 @@ builder.Services.AddSingleton<Aura.Core.Services.Assets.StockImageService>(sp =>
 });
 
 builder.Services.AddSingleton<Aura.Core.Services.Visual.AestheticScoringService>();
-builder.Services.AddSingleton<Aura.Core.Services.Visual.ImageSelectionService>();
+builder.Services.AddSingleton<Aura.Core.Services.Visual.ImageSelectionService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Visual.ImageSelectionService>>();
+    var stockService = sp.GetRequiredService<Aura.Core.Services.Assets.StockImageService>();
+    var scoringService = sp.GetRequiredService<Aura.Core.Services.Visual.AestheticScoringService>();
+    var keywordExtractor = sp.GetService<Aura.Core.Services.Visual.VisualKeywordExtractor>();
+    return new Aura.Core.Services.Visual.ImageSelectionService(logger, stockService, scoringService, keywordExtractor);
+});
 builder.Services.AddSingleton<Aura.Core.Services.Visual.CandidateCacheService>();
 builder.Services.AddSingleton<Aura.Core.Services.Visual.VisualSelectionService>();
 
@@ -1994,6 +2012,10 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
 });
 
 var app = builder.Build();
+
+// Initialize ServiceLocator for legacy code paths that need DI access
+Aura.Core.Services.ServiceLocator.Initialize(app.Services);
+Log.Information("ServiceLocator initialized for legacy service access");
 
 // ===================================================================
 // EARLY STARTUP VALIDATION - Must pass before application starts

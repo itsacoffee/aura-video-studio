@@ -19,15 +19,31 @@ public class ImageSelectionService
     private readonly ILogger<ImageSelectionService> _logger;
     private readonly StockImageService _stockImageService;
     private readonly AestheticScoringService _scoringService;
+    private readonly VisualKeywordExtractor? _keywordExtractor;
+
+    /// <summary>
+    /// Style keywords to exclude from search queries (generic quality descriptors).
+    /// </summary>
+    private static readonly string[] ExcludedStyleKeywords = { "quality", "professional" };
 
     public ImageSelectionService(
         ILogger<ImageSelectionService> logger,
         StockImageService stockImageService,
         AestheticScoringService scoringService)
+        : this(logger, stockImageService, scoringService, null)
+    {
+    }
+
+    public ImageSelectionService(
+        ILogger<ImageSelectionService> logger,
+        StockImageService stockImageService,
+        AestheticScoringService scoringService,
+        VisualKeywordExtractor? keywordExtractor)
     {
         _logger = logger;
         _stockImageService = stockImageService;
         _scoringService = scoringService;
+        _keywordExtractor = keywordExtractor;
     }
 
     /// <summary>
@@ -151,6 +167,26 @@ public class ImageSelectionService
     /// </summary>
     private string BuildSearchQuery(VisualPrompt prompt)
     {
+        // Use intelligent keyword extraction if available
+        if (_keywordExtractor != null)
+        {
+            var keywords = _keywordExtractor.ExtractKeywords(
+                prompt.Subject,
+                prompt.DetailedDescription,
+                maxKeywords: 5);
+
+            if (keywords.Count > 0)
+            {
+                var style = prompt.StyleKeywords?.FirstOrDefault(k =>
+                    !ExcludedStyleKeywords.Any(ex => k.Contains(ex, StringComparison.OrdinalIgnoreCase)));
+
+                var query = _keywordExtractor.BuildSearchQuery(keywords, prompt.Subject, style);
+                _logger.LogDebug("Built intelligent search query: {Query}", query);
+                return query;
+            }
+        }
+
+        // Fallback to basic query building
         var queryParts = new List<string>();
 
         if (!string.IsNullOrEmpty(prompt.Subject))
@@ -166,7 +202,7 @@ public class ImageSelectionService
         if (prompt.StyleKeywords != null && prompt.StyleKeywords.Count > 0)
         {
             var styleKeyword = prompt.StyleKeywords.FirstOrDefault(k =>
-                !k.Contains("quality") && !k.Contains("professional"));
+                !ExcludedStyleKeywords.Any(ex => k.Contains(ex, StringComparison.OrdinalIgnoreCase)));
             if (styleKeyword != null)
             {
                 queryParts.Add(styleKeyword);
@@ -178,15 +214,15 @@ public class ImageSelectionService
             queryParts.Add(prompt.Lighting.TimeOfDay);
         }
 
-        var query = string.Join(" ", queryParts);
-        if (string.IsNullOrEmpty(query))
+        var finalQuery = string.Join(" ", queryParts);
+        if (string.IsNullOrEmpty(finalQuery))
         {
             var words = prompt.DetailedDescription.Split(' ');
-            query = string.Join(" ", words.Take(Math.Min(5, words.Length)));
+            finalQuery = string.Join(" ", words.Take(Math.Min(5, words.Length)));
         }
 
-        _logger.LogDebug("Built search query: {Query}", query);
-        return query;
+        _logger.LogDebug("Built search query: {Query}", finalQuery);
+        return finalQuery;
     }
 
     /// <summary>
