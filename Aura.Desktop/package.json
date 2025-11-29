@@ -134,7 +134,10 @@
           "**/*",
           "!**/node_modules/**/@ffmpeg/core/**",
           "!**/node_modules/**/@ffmpeg/ffmpeg/**",
-          "!**/node_modules/**/bun-types/**"
+          "!**/node_modules/**/bun-types/**",
+          "!**/node_modules/**/.bun/**",
+          "!**/node_modules/**/next/**",
+          "!**/node_modules/**/react/**"
         ]
       },
       {
@@ -144,7 +147,10 @@
           "**/*",
           "!**/@ffmpeg/core/**",
           "!**/@ffmpeg/ffmpeg/**",
-          "!**/bun-types/**"
+          "!**/bun-types/**",
+          "!**/.bun/**",
+          "!**/next/**",
+          "!**/react/**"
         ]
       },
       {
