@@ -624,6 +624,62 @@ NEXT_TELEMETRY_DISABLED=1
 
         if ($openCutBuildSuccess) {
             Write-Success "OpenCut build complete and verified"
+            
+            # ----------------------------------------
+            # Step 1b.8: Remove Bun symlinks that 7zip can't handle
+            # ----------------------------------------
+            Write-Info "Removing Bun symlinks from OpenCut standalone build..."
+            
+            $openCutNextDir = "$openCutAppDir\.next"
+            $openCutStandaloneDir = "$openCutNextDir\standalone"
+            $standaloneNodeModulesRoot = "$openCutStandaloneDir\node_modules"
+            $standaloneNodeModulesApp = "$openCutStandaloneDir\apps\web\node_modules"
+            
+            # Remove symlinks from root node_modules
+            if (Test-Path $standaloneNodeModulesRoot) {
+                $symlinksToRemove = @("next", "react", ".bun")
+                foreach ($symlink in $symlinksToRemove) {
+                    $symlinkPath = Join-Path $standaloneNodeModulesRoot $symlink
+                    if (Test-Path $symlinkPath) {
+                        try {
+                            $item = Get-Item $symlinkPath -Force
+                            if ($item.LinkType -eq "SymbolicLink" -or $item.Attributes -match "ReparsePoint") {
+                                Remove-Item $symlinkPath -Force -Recurse -ErrorAction SilentlyContinue
+                                Write-Info "  ✓ Removed symlink: $symlink"
+                            }
+                        }
+                        catch {
+                            # Try to remove even if not detected as symlink (Bun creates special symlinks)
+                            Remove-Item $symlinkPath -Force -Recurse -ErrorAction SilentlyContinue
+                            Write-Info "  ✓ Removed: $symlink"
+                        }
+                    }
+                }
+            }
+            
+            # Remove symlinks from app node_modules
+            if (Test-Path $standaloneNodeModulesApp) {
+                $symlinksToRemove = @("next", "react", ".bun")
+                foreach ($symlink in $symlinksToRemove) {
+                    $symlinkPath = Join-Path $standaloneNodeModulesApp $symlink
+                    if (Test-Path $symlinkPath) {
+                        try {
+                            $item = Get-Item $symlinkPath -Force
+                            if ($item.LinkType -eq "SymbolicLink" -or $item.Attributes -match "ReparsePoint") {
+                                Remove-Item $symlinkPath -Force -Recurse -ErrorAction SilentlyContinue
+                                Write-Info "  ✓ Removed symlink: $symlink"
+                            }
+                        }
+                        catch {
+                            # Try to remove even if not detected as symlink (Bun creates special symlinks)
+                            Remove-Item $symlinkPath -Force -Recurse -ErrorAction SilentlyContinue
+                            Write-Info "  ✓ Removed: $symlink"
+                        }
+                    }
+                }
+            }
+            
+            Write-Success "  ✓ Symlink cleanup complete"
         }
         else {
             Show-Warning "========================================"
