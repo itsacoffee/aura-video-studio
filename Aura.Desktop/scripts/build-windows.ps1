@@ -205,7 +205,14 @@ if (-not $SkipFrontend) {
     }
 
     if ($needsInstall) {
-        npm ci
+        # Check if NODE_ENV=production is set (could affect devDependencies)
+        if ($env:NODE_ENV -eq "production") {
+            Show-Warning "NODE_ENV is set to 'production'. Using --include=dev to ensure all dependencies are installed."
+        }
+        
+        # Use --include=dev to ensure devDependencies are always installed
+        # This is required because vite is a devDependency needed for building
+        npm ci --include=dev
 
         if ($LASTEXITCODE -ne 0) {
             Write-ErrorMessage "Frontend dependency installation failed"

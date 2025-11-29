@@ -50,7 +50,14 @@ else
 fi
 
 if [ "$needs_install" = true ]; then
-  npm install
+  # Check if NODE_ENV=production is set (would skip devDependencies)
+  if [ "$NODE_ENV" = "production" ]; then
+    echo "⚠ Warning: NODE_ENV is set to 'production'. Using --include=dev to ensure all dependencies are installed."
+  fi
+  
+  # Use --include=dev to ensure devDependencies are always installed
+  # This is required because vite is a devDependency needed for building
+  npm install --include=dev
   if [ $? -ne 0 ]; then
     echo "❌ npm install failed"
     exit 1
