@@ -205,10 +205,36 @@ if (-not $SkipFrontend) {
         # OpenCut is a bun-based monorepo - check if bun is available
         $bunAvailable = Get-Command bun -ErrorAction SilentlyContinue
         if (-not $bunAvailable) {
-            Show-Warning "Bun is not installed. OpenCut requires Bun package manager."
-            Show-Warning "Install Bun from https://bun.sh/ to enable OpenCut builds."
-            Show-Warning "Skipping OpenCut build."
-        } else {
+            Write-Info "Bun is not installed. Attempting to install Bun automatically..."
+            
+            # Install Bun using the official PowerShell installer
+            try {
+                $env:BUN_INSTALL = "$env:USERPROFILE\.bun"
+                Write-Info "Installing Bun to $env:BUN_INSTALL..."
+                
+                # Use irm (Invoke-RestMethod) to download and execute the install script
+                Invoke-RestMethod -Uri "https://bun.sh/install.ps1" -OutFile "$env:TEMP\install-bun.ps1"
+                & powershell -ExecutionPolicy Bypass -File "$env:TEMP\install-bun.ps1"
+                
+                # Add Bun to PATH for the current session
+                $bunPath = "$env:BUN_INSTALL\bin"
+                if (Test-Path $bunPath) {
+                    $env:PATH = "$bunPath;$env:PATH"
+                    Write-Success "Bun installed successfully"
+                    $bunAvailable = Get-Command bun -ErrorAction SilentlyContinue
+                }
+                
+                # Clean up temp file
+                Remove-Item "$env:TEMP\install-bun.ps1" -ErrorAction SilentlyContinue
+            }
+            catch {
+                Show-Warning "Failed to install Bun automatically: $($_.Exception.Message)"
+                Show-Warning "Please install Bun manually from https://bun.sh/"
+                Show-Warning "Skipping OpenCut build."
+            }
+        }
+        
+        if ($bunAvailable) {
             # Install dependencies from monorepo root (required for workspace: protocol)
             Set-Location $openCutRootDir
 
