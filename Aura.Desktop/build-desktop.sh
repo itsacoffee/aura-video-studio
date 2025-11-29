@@ -136,6 +136,25 @@ if [ "$SKIP_FRONTEND" = false ]; then
       print_error "Failed to install frontend dependencies"
       exit 1
     }
+    
+    # Verify package installation was successful
+    package_count=$(find node_modules -maxdepth 1 -type d | wc -l)
+    print_info "Frontend: Installed $package_count packages"
+    
+    if [ "$package_count" -lt 100 ]; then
+      print_error "Frontend npm install appears incomplete - only $package_count packages installed (expected 800+)"
+      print_error "This may indicate a network issue or corrupted npm cache."
+      print_error "Try running: npm cache clean --force && npm install"
+      exit 1
+    fi
+    
+    # Verify vite CLI is available
+    if [ ! -f "node_modules/.bin/vite" ]; then
+      print_error "Frontend npm install failed - vite CLI not found in node_modules/.bin"
+      print_error "This may indicate a corrupted installation."
+      exit 1
+    fi
+    print_success "  ✓ Vite CLI verified"
   fi
 
   print_info "Running frontend build..."
@@ -241,12 +260,10 @@ fi
 print_info "Installing Electron dependencies..."
 cd "$SCRIPT_DIR"
 
+electron_needs_install=false
 if [ ! -d "node_modules" ]; then
   print_info "Installing Electron dependencies (node_modules not found)..."
-  npm install || {
-    print_error "Failed to install Electron dependencies"
-    exit 1
-  }
+  electron_needs_install=true
 else
   # Verify critical dependencies exist
   MISSING_PACKAGES=()
@@ -259,13 +276,36 @@ else
   if [ ${#MISSING_PACKAGES[@]} -gt 0 ]; then
     print_info "Critical Electron dependencies missing, reinstalling..."
     print_info "Missing: ${MISSING_PACKAGES[*]}"
-    npm install || {
-      print_error "Failed to install Electron dependencies"
-      exit 1
-    }
+    electron_needs_install=true
   else
     print_info "Electron dependencies verified"
   fi
+fi
+
+if [ "$electron_needs_install" = true ]; then
+  npm install || {
+    print_error "Failed to install Electron dependencies"
+    exit 1
+  }
+  
+  # Verify package installation was successful
+  package_count=$(find node_modules -maxdepth 1 -type d | wc -l)
+  print_info "Electron: Installed $package_count packages"
+  
+  if [ "$package_count" -lt 50 ]; then
+    print_error "Electron npm install appears incomplete - only $package_count packages installed (expected 400+)"
+    print_error "This may indicate a network issue or corrupted npm cache."
+    print_error "Try running: npm cache clean --force && npm install"
+    exit 1
+  fi
+  
+  # Verify critical CLIs are available
+  if [ ! -f "node_modules/.bin/electron-builder" ]; then
+    print_error "Electron npm install failed - electron-builder CLI not found in node_modules/.bin"
+    print_error "This may indicate a corrupted installation."
+    exit 1
+  fi
+  print_success "  ✓ Electron-builder CLI verified"
 fi
 
 print_success "Electron dependencies ready"

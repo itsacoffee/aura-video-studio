@@ -182,6 +182,25 @@ if (-not $SkipFrontend) {
             Show-ErrorMessage "Frontend npm install failed with exit code $LASTEXITCODE"
             exit 1
         }
+        
+        # Verify package installation was successful
+        $packageCount = (Get-ChildItem "node_modules" -Directory -ErrorAction SilentlyContinue | Measure-Object).Count
+        Write-Info "Frontend: Installed $packageCount packages"
+        
+        if ($packageCount -lt 100) {
+            Show-ErrorMessage "Frontend npm install appears incomplete - only $packageCount packages installed (expected 800+)"
+            Show-ErrorMessage "This may indicate a network issue or corrupted npm cache."
+            Show-ErrorMessage "Try running: npm cache clean --force && npm install"
+            exit 1
+        }
+        
+        # Verify vite CLI is available
+        if (-not (Test-Path "node_modules\.bin\vite.cmd") -and -not (Test-Path "node_modules\.bin\vite")) {
+            Show-ErrorMessage "Frontend npm install failed - vite CLI not found in node_modules/.bin"
+            Show-ErrorMessage "This may indicate a corrupted installation."
+            exit 1
+        }
+        Write-Success "  ✓ Vite CLI verified"
     }
 
     Write-Info "Running frontend build..."
@@ -667,13 +686,10 @@ Write-Host ""
 Write-Info "Installing Electron dependencies..."
 Set-Location $ScriptDir
 
+$electronNeedsInstall = $false
 if (-not (Test-Path "node_modules")) {
     Write-Info "Installing Electron dependencies (node_modules not found)..."
-    npm install
-    if ($LASTEXITCODE -ne 0) {
-        Show-ErrorMessage "npm install failed with exit code $LASTEXITCODE"
-        exit 1
-    }
+    $electronNeedsInstall = $true
 }
 else {
     # Verify critical dependencies exist
@@ -689,14 +705,38 @@ else {
     if ($missingPackages.Count -gt 0) {
         Write-Info "Critical Electron dependencies missing, reinstalling..."
         Write-Info "Missing: $($missingPackages -join ', ')"
-        npm install
-        if ($LASTEXITCODE -ne 0) {
-            Show-ErrorMessage "npm install failed with exit code $LASTEXITCODE"
-            exit 1
-        }
+        $electronNeedsInstall = $true
     } else {
         Write-Info "Electron dependencies verified"
     }
+}
+
+if ($electronNeedsInstall) {
+    npm install
+    if ($LASTEXITCODE -ne 0) {
+        Show-ErrorMessage "npm install failed with exit code $LASTEXITCODE"
+        exit 1
+    }
+    
+    # Verify package installation was successful
+    $packageCount = (Get-ChildItem "node_modules" -Directory -ErrorAction SilentlyContinue | Measure-Object).Count
+    Write-Info "Electron: Installed $packageCount packages"
+    
+    if ($packageCount -lt 50) {
+        Show-ErrorMessage "Electron npm install appears incomplete - only $packageCount packages installed (expected 400+)"
+        Show-ErrorMessage "This may indicate a network issue or corrupted npm cache."
+        Show-ErrorMessage "Try running: npm cache clean --force && npm install"
+        exit 1
+    }
+    
+    # Verify critical CLIs are available
+    $electronBuilderCmd = "node_modules\.bin\electron-builder.cmd"
+    if (-not (Test-Path $electronBuilderCmd) -and -not (Test-Path "node_modules\.bin\electron-builder")) {
+        Show-ErrorMessage "Electron npm install failed - electron-builder CLI not found in node_modules/.bin"
+        Show-ErrorMessage "This may indicate a corrupted installation."
+        exit 1
+    }
+    Write-Success "  ✓ Electron-builder CLI verified"
 }
 
 Write-Success "Electron dependencies ready"
