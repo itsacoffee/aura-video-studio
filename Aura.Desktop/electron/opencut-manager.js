@@ -71,13 +71,42 @@ class OpenCutManager {
   }
 
   /**
-   * Check if OpenCut server is responding
-   * @returns {Promise<boolean>}
+   * Check if something is already listening on the OpenCut port
+   * @returns {Promise<boolean>} true if the port is in use (something is responding)
+   */
+  async _isPortInUse() {
+    return new Promise((resolve) => {
+      const req = http.get(`http://127.0.0.1:${this.port}/`, (res) => {
+        // Any HTTP response means something is listening on the port
+        resolve(true);
+      });
+      req.on("error", (err) => {
+        // ECONNREFUSED: nothing is listening on this port (port is free)
+        // ENOTFOUND: host not found (port is free)
+        // Other errors might mean port is in use but unresponsive
+        if (err.code === "ECONNREFUSED" || err.code === "ENOTFOUND") {
+          resolve(false); // Port is free
+        } else {
+          // For other errors (like ETIMEDOUT), assume port might be in use
+          resolve(true);
+        }
+      });
+      req.setTimeout(2000, () => {
+        req.destroy();
+        resolve(false); // Timeout with no error means nothing responding - port is free
+      });
+    });
+  }
+
+  /**
+   * Check if OpenCut server is healthy (responding with success)
+   * @returns {Promise<boolean>} true if server responds with 2xx or 3xx
    */
   async _healthCheck() {
     return new Promise((resolve) => {
       const req = http.get(`http://127.0.0.1:${this.port}/`, (res) => {
-        resolve(res.statusCode >= 200 && res.statusCode < 500);
+        // Only 2xx and 3xx are considered healthy
+        resolve(res.statusCode >= 200 && res.statusCode < 400);
       });
       req.on("error", () => resolve(false));
       req.setTimeout(2000, () => {
@@ -173,7 +202,7 @@ class OpenCutManager {
       }
 
       // Ensure the port is not already in use
-      const portInUse = await this._healthCheck();
+      const portInUse = await this._isPortInUse();
       if (portInUse) {
         this.logger.info?.("OpenCutManager", `Port ${this.port} already in use. OpenCut may already be running.`);
         this.isStarting = false;
