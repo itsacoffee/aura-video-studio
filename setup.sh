@@ -36,12 +36,26 @@ echo "Step 1: Building Frontend"
 echo "======================================"
 cd Aura.Web
 
-# Check if node_modules exists
+# Check if node_modules exists and vite is properly installed
+# We check for the vite CLI in node_modules/.bin which npm uses to run commands
+needs_install=false
 if [ ! -d "node_modules" ]; then
   echo "Installing npm dependencies..."
-  npm install
+  needs_install=true
+elif [ ! -f "node_modules/.bin/vite" ]; then
+  echo "npm dependencies incomplete (vite not found), reinstalling..."
+  needs_install=true
 else
   echo "✓ npm dependencies already installed"
+fi
+
+if [ "$needs_install" = true ]; then
+  npm install
+  if [ $? -ne 0 ]; then
+    echo "❌ npm install failed"
+    exit 1
+  fi
+  echo "✓ npm dependencies installed"
 fi
 
 echo "Building frontend (this may take a moment)..."

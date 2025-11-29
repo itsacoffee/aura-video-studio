@@ -105,12 +105,14 @@ if [ "$SKIP_FRONTEND" = false ]; then
   cd "$PROJECT_ROOT/Aura.Web"
 
   # Always check and install dependencies to ensure they're up to date
+  # We check for the vite CLI in node_modules/.bin which npm uses to run commands
+  needs_install=false
   if [ ! -d "node_modules" ]; then
-    print_info "Installing frontend dependencies..."
-    npm install || {
-      print_error "Failed to install frontend dependencies"
-      exit 1
-    }
+    print_info "Installing frontend dependencies (node_modules not found)..."
+    needs_install=true
+  elif [ ! -f "node_modules/.bin/vite" ]; then
+    print_info "Frontend dependencies incomplete (vite CLI not found), reinstalling..."
+    needs_install=true
   else
     # Verify critical dependencies exist
     MISSING_PACKAGES=()
@@ -123,13 +125,17 @@ if [ "$SKIP_FRONTEND" = false ]; then
     if [ ${#MISSING_PACKAGES[@]} -gt 0 ]; then
       print_info "Critical dependencies missing, reinstalling..."
       print_info "Missing: ${MISSING_PACKAGES[*]}"
-      npm install || {
-        print_error "Failed to install frontend dependencies"
-        exit 1
-      }
+      needs_install=true
     else
       print_info "Frontend dependencies verified"
     fi
+  fi
+
+  if [ "$needs_install" = true ]; then
+    npm install || {
+      print_error "Failed to install frontend dependencies"
+      exit 1
+    }
   fi
 
   print_info "Running frontend build..."

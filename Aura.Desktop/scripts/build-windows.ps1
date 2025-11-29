@@ -194,8 +194,17 @@ if (-not $SkipFrontend) {
     Set-Location $webDir
 
     # Install dependencies
+    # We check for the vite CLI in node_modules/.bin which npm uses to run commands
+    $needsInstall = $false
     if (-not (Test-Path "node_modules") -or $Clean) {
         Write-Info "Installing frontend dependencies..."
+        $needsInstall = $true
+    } elseif (-not (Test-Path "node_modules\.bin\vite.cmd")) {
+        Write-Info "Frontend dependencies incomplete (vite CLI not found), reinstalling..."
+        $needsInstall = $true
+    }
+
+    if ($needsInstall) {
         npm ci
 
         if ($LASTEXITCODE -ne 0) {
