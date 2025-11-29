@@ -112,9 +112,6 @@ public record ClarifyingQuestion(
 );
 
 /// <summary>
-/// Request to brainstorm concept variations
-/// </summary>
-/// <summary>
 /// Request for brainstorming concepts
 /// </summary>
 /// <param name="Topic">Topic for brainstorming</param>
