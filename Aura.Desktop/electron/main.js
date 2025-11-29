@@ -35,6 +35,7 @@ const MenuBuilder = require("./menu-builder");
 const WindowsSetupWizard = require("./windows-setup-wizard");
 const ShutdownOrchestrator = require("./shutdown-orchestrator");
 const ProcessManager = require("./process-manager");
+const OpenCutManager = require("./opencut-manager");
 
 // ========================================
 // Global State
@@ -52,6 +53,7 @@ let protocolHandler = null;
 let windowsSetupWizard = null;
 let shutdownOrchestrator = null;
 let processManager = null;
+let openCutManager = null;
 let backendContract = null;
 let runtimeBridgeState = null;
 let contractResolutionError = null;
@@ -913,6 +915,14 @@ async function startApplication() {
     // Step 3.5: Initialize ProcessManager for centralized process tracking
     processManager = new ProcessManager(startupLogger);
     console.log("✓ Process manager initialized");
+
+    // Step 3.6: Initialize OpenCut manager to keep the CapCut-style editor server running
+    openCutManager = new OpenCutManager({
+      processManager,
+      logger: startupLogger,
+    });
+    openCutManager.start();
+    console.log("✓ OpenCut manager initialized");
 
     // Step 4: Setup error handling
     setupErrorHandling();

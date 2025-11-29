@@ -126,6 +126,13 @@
         "filter": [
           "**/*"
         ]
+      },
+      {
+        "from": "../OpenCut/apps/web",
+        "to": "opencut",
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "mac": null,

@@ -13,6 +13,7 @@ export const env = {
   appVersion: import.meta.env.VITE_APP_VERSION || '1.0.0',
   appName: import.meta.env.VITE_APP_NAME || 'Aura Video Studio',
   environment: import.meta.env.VITE_ENV || 'development',
+  openCutUrl: import.meta.env.VITE_OPENCUT_URL || '',
   enableAnalytics: import.meta.env.VITE_ENABLE_ANALYTICS === 'true',
   enableDebug: import.meta.env.VITE_ENABLE_DEBUG === 'true',
   enableDevTools: import.meta.env.VITE_ENABLE_DEV_TOOLS === 'true',

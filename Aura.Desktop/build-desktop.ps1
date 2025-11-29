@@ -193,6 +193,39 @@ if (-not $SkipFrontend) {
 
     Write-Success "Frontend build complete"
     Write-Host ""
+
+    # ========================================
+    # Step 1b: Prepare OpenCut (CapCut-style editor) bundle
+    # ========================================
+    $openCutAppDir = "$ProjectRoot\OpenCut\apps\web"
+    if (Test-Path $openCutAppDir) {
+        Write-Info "Preparing OpenCut web editor..."
+        Set-Location $openCutAppDir
+
+        if (-not (Test-Path "node_modules")) {
+            Write-Info "Installing OpenCut dependencies..."
+            npm install
+            if ($LASTEXITCODE -ne 0) {
+                Show-Warning "OpenCut npm install failed with exit code $LASTEXITCODE. OpenCut may not be available."
+            }
+        }
+
+        if (Test-Path "node_modules") {
+            Write-Info "Running OpenCut production build..."
+            npm run build
+            if ($LASTEXITCODE -ne 0) {
+                Show-Warning "OpenCut build failed with exit code $LASTEXITCODE. OpenCut may not be available."
+            } else {
+                Write-Success "OpenCut build complete"
+            }
+        }
+
+        # Return to script directory
+        Set-Location $ScriptDir
+    } else {
+        Show-Warning "OpenCut source directory not found at $openCutAppDir. Skipping OpenCut bundle."
+        Set-Location $ScriptDir
+    }
 }
 else {
     Show-Warning "Skipping frontend build"

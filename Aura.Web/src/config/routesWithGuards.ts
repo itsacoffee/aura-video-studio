@@ -117,6 +117,14 @@ export const ROUTE_METADATA_ENHANCED: RouteMetadata[] = [
     guards: [firstRunGuard, ffmpegGuard],
   },
   {
+    path: '/opencut',
+    title: 'OpenCut',
+    description: 'Use the OpenCut CapCut-style editor experience',
+    requiresFirstRun: true,
+    requiresFFmpeg: true,
+    guards: [firstRunGuard, ffmpegGuard],
+  },
+  {
     path: '/editor/:jobId',
     title: 'Timeline Editor',
     description: 'Edit specific video timeline',

@@ -153,7 +153,15 @@ $frontendPaths = @(
     "$projectRoot\Aura.Web\dist",
     "$projectRoot\Aura.Web\.vite",
     "$projectRoot\Aura.Web\coverage",
-    "$projectRoot\Aura.Web\.nyc_output"
+    "$projectRoot\Aura.Web\.nyc_output",
+
+    # OpenCut (CapCut-style editor) workspace artifacts
+    "$projectRoot\OpenCut\node_modules",
+    "$projectRoot\OpenCut\.turbo",
+    "$projectRoot\OpenCut\apps\web\node_modules",
+    "$projectRoot\OpenCut\apps\web\.next",
+    "$projectRoot\OpenCut\apps\web\.turbo",
+    "$projectRoot\OpenCut\apps\web\.vercel"
 )
 
 foreach ($path in $frontendPaths) {
@@ -197,7 +205,13 @@ Write-Host "`nStep 6: Cleaning package locks..." -ForegroundColor Cyan
 $lockFiles = @(
     "$projectRoot\package-lock.json",
     "$projectRoot\Aura.Web\package-lock.json",
-    "$projectRoot\Aura.Desktop\package-lock.json"
+    "$projectRoot\Aura.Desktop\package-lock.json",
+
+    # OpenCut lockfiles (npm / Bun)
+    "$projectRoot\OpenCut\package-lock.json",
+    "$projectRoot\OpenCut\apps\web\package-lock.json",
+    "$projectRoot\OpenCut\bun.lockb",
+    "$projectRoot\OpenCut\apps\web\bun.lockb"
 )
 
 foreach ($file in $lockFiles) {

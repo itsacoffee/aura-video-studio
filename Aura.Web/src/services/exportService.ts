@@ -176,10 +176,13 @@ export async function pollExportStatus(
         const job = await getExportStatus(jobId);
         onProgress(job);
 
-        if (job.status === 'Completed') {
+        // Normalize status to handle different casing/enum mappings from the backend
+        const normalizedStatus = (job.status || '').toLowerCase();
+
+        if (normalizedStatus === 'completed') {
           resolve(job);
-        } else if (job.status === 'Failed' || job.status === 'Cancelled') {
-          reject(new Error(job.errorMessage || `Export ${job.status.toLowerCase()}`));
+        } else if (normalizedStatus === 'failed' || normalizedStatus === 'cancelled') {
+          reject(new Error(job.errorMessage || `Export ${normalizedStatus}`));
         } else {
           // Continue polling
           setTimeout(poll, interval);
