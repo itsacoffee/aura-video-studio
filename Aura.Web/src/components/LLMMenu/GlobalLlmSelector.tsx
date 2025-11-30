@@ -94,6 +94,34 @@ const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
   RuleBased: 'Rule-Based (Offline)',
 };
 
+// Fallback model for RuleBased provider - always available offline
+const RULE_BASED_FALLBACK_MODEL: LlmModelInfo = {
+  modelId: 'rule-based-script-generator',
+  provider: 'RuleBased',
+  maxTokens: 4096,
+  contextWindow: 4096,
+  aliases: [],
+  isDeprecated: false,
+};
+
+// Fallback models when API is unavailable or returns empty
+const FALLBACK_MODELS: Record<string, LlmModelInfo[]> = {
+  RuleBased: [RULE_BASED_FALLBACK_MODEL],
+  Ollama: [], // Empty - user needs to configure and refresh
+};
+
+// Fallback provider info when API is unavailable
+const FALLBACK_PROVIDER_INFO: ProviderInfo = {
+  id: 'RuleBased',
+  name: 'Rule-Based (Offline)',
+  requiresApiKey: false,
+  modelCount: 1,
+  isAvailable: true,
+};
+
+// All known provider IDs
+const ALL_PROVIDER_IDS = ['OpenAI', 'Anthropic', 'Gemini', 'Ollama', 'Azure', 'RuleBased'];
+
 /** Get display name for a provider */
 function getProviderDisplayName(providerId: string): string {
   return PROVIDER_DISPLAY_NAMES[providerId] || providerId;
@@ -141,69 +169,22 @@ export function GlobalLlmSelector() {
       // If API returned empty providers but we got a response, the backend is up but has no configured models
       if (Object.keys(providersData).length === 0) {
         console.info('[GlobalLlmSelector] No providers from API, using fallback list');
-        // Provide minimal fallback list for offline providers that work without configuration
-        const fallbackProviders: Record<string, LlmModelInfo[]> = {
-          RuleBased: [
-            {
-              modelId: 'rule-based-script-generator',
-              provider: 'RuleBased',
-              maxTokens: 4096,
-              contextWindow: 4096,
-              aliases: [],
-              isDeprecated: false,
-            },
-          ],
-          Ollama: [], // Empty - user needs to configure and refresh
-        };
-        setAvailableModels(fallbackProviders);
+        // Use fallback models for offline providers
+        setAvailableModels(FALLBACK_MODELS);
 
-        // Build provider list from fallback
-        const fallbackProviderList: ProviderInfo[] = [
-          {
-            id: 'RuleBased',
-            name: 'Rule-Based (Offline)',
-            requiresApiKey: false,
-            modelCount: 1,
-            isAvailable: true,
-          },
-          {
-            id: 'Ollama',
-            name: 'Ollama',
-            requiresApiKey: false,
-            modelCount: 0,
-            isAvailable: false,
-          },
-          {
-            id: 'OpenAI',
-            name: 'OpenAI',
-            requiresApiKey: true,
-            modelCount: 0,
-            isAvailable: false,
-          },
-          {
-            id: 'Anthropic',
-            name: 'Anthropic',
-            requiresApiKey: true,
-            modelCount: 0,
-            isAvailable: false,
-          },
-          {
-            id: 'Gemini',
-            name: 'Gemini',
-            requiresApiKey: true,
-            modelCount: 0,
-            isAvailable: false,
-          },
-          {
-            id: 'Azure',
-            name: 'Azure',
-            requiresApiKey: true,
-            modelCount: 0,
-            isAvailable: false,
-          },
-        ];
+        // Build provider list from all known providers with fallback availability
+        const fallbackProviderList: ProviderInfo[] = ALL_PROVIDER_IDS.map((providerId) => {
+          const fallbackModels = FALLBACK_MODELS[providerId] || [];
+          return {
+            id: providerId,
+            name: getProviderDisplayName(providerId),
+            requiresApiKey: providerRequiresApiKey(providerId),
+            modelCount: fallbackModels.length,
+            isAvailable: fallbackModels.length > 0,
+          };
+        });
         setProviders(fallbackProviderList);
-        return fallbackProviders;
+        return FALLBACK_MODELS;
       }
 
       setAvailableModels(providersData);
@@ -221,8 +202,7 @@ export function GlobalLlmSelector() {
       });
 
       // Add common providers that might not have models yet
-      const commonProviders = ['OpenAI', 'Anthropic', 'Gemini', 'Ollama', 'Azure', 'RuleBased'];
-      for (const provider of commonProviders) {
+      for (const provider of ALL_PROVIDER_IDS) {
         if (!providerList.some((p) => p.id === provider)) {
           providerList.push({
             id: provider,
@@ -255,27 +235,8 @@ export function GlobalLlmSelector() {
       console.error('[GlobalLlmSelector] Error fetching models:', err);
 
       // Provide minimal fallback even on network error
-      setProviders([
-        {
-          id: 'RuleBased',
-          name: 'Rule-Based (Offline)',
-          requiresApiKey: false,
-          modelCount: 1,
-          isAvailable: true,
-        },
-      ]);
-      setAvailableModels({
-        RuleBased: [
-          {
-            modelId: 'rule-based-script-generator',
-            provider: 'RuleBased',
-            maxTokens: 4096,
-            contextWindow: 4096,
-            aliases: [],
-            isDeprecated: false,
-          },
-        ],
-      });
+      setProviders([FALLBACK_PROVIDER_INFO]);
+      setAvailableModels(FALLBACK_MODELS);
 
       return null;
     } finally {

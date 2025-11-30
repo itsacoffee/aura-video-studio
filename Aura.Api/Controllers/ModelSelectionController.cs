@@ -33,15 +33,6 @@ public class ModelSelectionController : ControllerBase
     /// <summary>
     /// Get all available models with capabilities
     /// </summary>
-    /// <summary>
-    /// Providers that work without API keys (local/offline providers)
-    /// </summary>
-    private static readonly HashSet<string> LocalProviders = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "Ollama",
-        "RuleBased"
-    };
-
     [HttpGet("available")]
     public IActionResult GetAvailableModels([FromQuery] string? provider = null)
     {
