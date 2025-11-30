@@ -123,8 +123,8 @@ export function GlobalLlmSelector() {
         const models = providersData[providerId] || [];
         return {
           id: providerId,
-          name: providerId,
-          requiresApiKey: providerId !== 'Ollama',
+          name: providerId === 'RuleBased' ? 'Rule-Based (Offline)' : providerId,
+          requiresApiKey: providerId !== 'Ollama' && providerId !== 'RuleBased',
           modelCount: models.length,
           isAvailable: models.length > 0,
         };
