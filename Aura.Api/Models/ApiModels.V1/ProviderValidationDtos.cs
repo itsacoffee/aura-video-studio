@@ -264,3 +264,54 @@ public record UpdateProviderConfigRequest(
     double? Temperature = null,
     bool? IsEnabled = null,
     bool? HasFallback = null);
+
+/// <summary>
+/// Image provider information with availability status
+/// </summary>
+public record ImageProviderDto(
+    string Id,
+    string Name,
+    string Type,
+    bool Available,
+    bool HasApiKey,
+    string? Status,
+    int? QuotaRemaining,
+    int? QuotaLimit,
+    DateTime? QuotaResetTime,
+    List<string> Capabilities,
+    string? Description);
+
+/// <summary>
+/// Response for listing all image providers
+/// </summary>
+public record ImageProvidersResponse(
+    List<ImageProviderDto> Providers,
+    string? DefaultProvider);
+
+/// <summary>
+/// Request for image provider preview search
+/// </summary>
+public record ImageProviderPreviewRequest(
+    string ProviderId,
+    string Query,
+    int Count = 5);
+
+/// <summary>
+/// Image preview result
+/// </summary>
+public record ImagePreviewResult(
+    string Id,
+    string ThumbnailUrl,
+    string PreviewUrl,
+    int Width,
+    int Height,
+    string? Attribution);
+
+/// <summary>
+/// Response for image provider preview search
+/// </summary>
+public record ImageProviderPreviewResponse(
+    List<ImagePreviewResult> Images,
+    string Provider,
+    int TotalResults,
+    string? ErrorMessage);

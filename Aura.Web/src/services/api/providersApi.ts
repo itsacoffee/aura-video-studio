@@ -284,3 +284,92 @@ export async function savePartialConfiguration(
     config
   );
 }
+
+/**
+ * Image provider information with availability status
+ */
+export interface ImageProvider {
+  id: string;
+  name: string;
+  type: string;
+  available: boolean;
+  hasApiKey: boolean;
+  status: string | null;
+  quotaRemaining: number | null;
+  quotaLimit: number | null;
+  quotaResetTime: string | null;
+  capabilities: string[];
+  description: string | null;
+}
+
+/**
+ * Response for listing all image providers
+ */
+export interface ImageProvidersResponse {
+  providers: ImageProvider[];
+  defaultProvider: string | null;
+}
+
+/**
+ * Request for image provider preview search
+ */
+export interface ImageProviderPreviewRequest {
+  providerId: string;
+  query: string;
+  count?: number;
+}
+
+/**
+ * Image preview result
+ */
+export interface ImagePreviewResult {
+  id: string;
+  thumbnailUrl: string;
+  previewUrl: string;
+  width: number;
+  height: number;
+  attribution: string | null;
+}
+
+/**
+ * Response for image provider preview search
+ */
+export interface ImageProviderPreviewResponse {
+  images: ImagePreviewResult[];
+  provider: string;
+  totalResults: number;
+  errorMessage: string | null;
+}
+
+/**
+ * Get all available image providers with their configuration and availability status
+ */
+export async function getImageProviders(
+  config?: ExtendedAxiosRequestConfig
+): Promise<ImageProvidersResponse> {
+  return get<ImageProvidersResponse>('/api/providers/images', config);
+}
+
+/**
+ * Preview image search with a specific provider
+ */
+export async function previewImageSearch(
+  request: ImageProviderPreviewRequest,
+  config?: ExtendedAxiosRequestConfig
+): Promise<ImageProviderPreviewResponse> {
+  return post<ImageProviderPreviewResponse>('/api/providers/images/preview', request, config);
+}
+
+/**
+ * Validate a specific image provider's API key
+ */
+export async function validateImageProvider(
+  providerId: string,
+  config?: ExtendedAxiosRequestConfig
+): Promise<{ success: boolean; provider: string; message: string; hasApiKey: boolean }> {
+  return post<{ success: boolean; provider: string; message: string; hasApiKey: boolean }>(
+    `/api/providers/images/${providerId}/validate`,
+    {},
+    config
+  );
+}

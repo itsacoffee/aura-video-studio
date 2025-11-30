@@ -30,9 +30,10 @@ import { z } from 'zod';
 import { ValidatedInput } from '../components/forms/ValidatedInput';
 import { useNotifications } from '../components/Notifications/Toasts';
 import { PreflightPanel } from '../components/PreflightPanel';
+import { ImageProviderSelector } from '../components/Providers/ImageProviderSelector';
 import { apiUrl } from '../config/api';
-import { useFormValidation } from '../hooks/useFormValidation';
 import { useDisableWhenOffline } from '../hooks/useDisableWhenOffline';
+import { useFormValidation } from '../hooks/useFormValidation';
 import { keyboardShortcutManager } from '../services/keyboardShortcutManager';
 import { useActivity } from '../state/activityContext';
 import type { PreflightReport } from '../state/providers';
@@ -155,6 +156,9 @@ export function CreatePage() {
   const [preflightReport, setPreflightReport] = useState<PreflightReport | null>(null);
   const [isRunningPreflight, setIsRunningPreflight] = useState(false);
   const [overridePreflightGate, setOverridePreflightGate] = useState(false);
+
+  // Image provider state
+  const [selectedImageProvider, setSelectedImageProvider] = useState<string | null>(null);
 
   const handleGetRecommendations = async () => {
     setLoadingRecommendations(true);
@@ -605,6 +609,18 @@ export function CreatePage() {
               </div>
             </Card>
 
+            {/* Image Provider Selection */}
+            <Card className={styles.section}>
+              <Title2 className={styles.sectionTitle}>Visual Content</Title2>
+              <Text size={200} className={styles.sectionDescription}>
+                Choose where to source images for your video
+              </Text>
+              <ImageProviderSelector
+                selectedProvider={selectedImageProvider}
+                onProviderSelect={setSelectedImageProvider}
+              />
+            </Card>
+
             {showRecommendations && recommendations && (
               <Card
                 className={styles.section}
@@ -768,6 +784,10 @@ export function CreatePage() {
                 <div>
                   <Text weight="semibold">Aspect:</Text> <Text>{brief.aspect}</Text>
                 </div>
+                <div>
+                  <Text weight="semibold">Image Provider:</Text>{' '}
+                  <Text>{selectedImageProvider || 'Default'}</Text>
+                </div>
               </div>
             </Card>
 
@@ -858,7 +878,9 @@ export function CreatePage() {
                   (!preflightReport.ok && !overridePreflightGate) ||
                   isOfflineDisabled
                 }
-                aria-label={isOfflineDisabled ? 'Generate Video (Backend offline)' : 'Generate Video'}
+                aria-label={
+                  isOfflineDisabled ? 'Generate Video (Backend offline)' : 'Generate Video'
+                }
               >
                 {generating ? 'Generating...' : 'Generate Video'}
               </Button>
