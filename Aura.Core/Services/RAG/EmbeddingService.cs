@@ -266,7 +266,7 @@ public class EmbeddingService
             }
             catch (HttpRequestException ex) when (attempt < _maxRetries)
             {
-                var backoffDelay = TimeSpan.FromSeconds(Math.Pow(2, attempt));
+                var backoffDelay = TimeSpan.FromSeconds(Math.Pow(2, attempt + 1));
                 _logger.LogWarning(ex, "Ollama request failed (attempt {Attempt}/{MaxRetries}). Retrying in {Seconds}s", 
                     attempt + 1, _maxRetries, backoffDelay.TotalSeconds);
                 await Task.Delay(backoffDelay, ct).ConfigureAwait(false);

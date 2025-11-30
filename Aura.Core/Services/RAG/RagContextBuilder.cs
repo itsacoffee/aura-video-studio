@@ -274,7 +274,11 @@ public class RagContextBuilder
 
     private static string GetChunkKey(DocumentChunk chunk)
     {
-        return $"{chunk.Metadata.Source}_{chunk.Metadata.Section}_{chunk.Metadata.PageNumber}_{chunk.Content.GetHashCode()}";
+        // Use first 100 chars of content for a deterministic key to avoid hash collisions
+        var contentPreview = chunk.Content.Length > 100 
+            ? chunk.Content.Substring(0, 100) 
+            : chunk.Content;
+        return $"{chunk.Metadata.Source}_{chunk.Metadata.Section}_{chunk.Metadata.PageNumber}_{contentPreview}";
     }
 
     private string FormatContext(List<ContextChunk> chunks, bool includeCitations)

@@ -115,6 +115,8 @@ public class LlmController : ControllerBase
             return Ok(new LlmTestResponse(
                 Success: true,
                 ProviderName: capabilities.ProviderName,
+                // Note: ModelName uses ProviderName as the ProviderCapabilities interface doesn't expose model info.
+                // This would require extending the ILlmProvider interface to include model metadata.
                 ModelName: capabilities.ProviderName,
                 ResponseTimeMs: responseTimeMs,
                 GeneratedText: response,
@@ -191,6 +193,7 @@ public class LlmController : ControllerBase
             return Ok(new LlmHealthResponse(
                 IsAvailable: true,
                 ProviderName: capabilities.ProviderName,
+                // Note: DefaultModel uses ProviderName as the ProviderCapabilities interface doesn't expose model info.
                 DefaultModel: capabilities.ProviderName,
                 IsLocalModel: capabilities.IsLocalModel,
                 SupportsStreaming: capabilities.SupportsStreaming,
@@ -236,7 +239,8 @@ public class LlmController : ControllerBase
         {
             var capabilities = _llmProvider.GetCapabilities();
 
-            // Create a list with the provider name as the model
+            // Note: Using provider name as model name since ProviderCapabilities doesn't expose model info.
+            // This would require extending the ILlmProvider interface to include model discovery.
             var models = new List<string> { capabilities.ProviderName };
 
             return Ok(new LlmModelsResponse(
