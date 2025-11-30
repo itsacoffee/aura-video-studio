@@ -78,38 +78,6 @@ const useStyles = makeStyles({
     alignItems: 'center',
     padding: tokens.spacingVerticalXXL,
   },
-  stylePresetGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-    gap: tokens.spacingHorizontalM,
-    marginTop: tokens.spacingVerticalM,
-  },
-  stylePresetCard: {
-    padding: tokens.spacingVerticalL,
-    cursor: 'pointer',
-    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-    border: `2px solid ${tokens.colorNeutralStroke2}`,
-    textAlign: 'center',
-    position: 'relative',
-    ':hover': {
-      transform: 'translateY(-4px)',
-      boxShadow: tokens.shadow16,
-      border: `2px solid ${tokens.colorBrandStroke1}`,
-    },
-  },
-  stylePresetSelected: {
-    border: `2px solid ${tokens.colorBrandStroke1}`,
-    backgroundColor: tokens.colorBrandBackground2,
-  },
-  stylePresetIcon: {
-    fontSize: '48px',
-    marginBottom: tokens.spacingVerticalS,
-  },
-  stylePresetBadge: {
-    position: 'absolute',
-    top: tokens.spacingVerticalS,
-    right: tokens.spacingVerticalS,
-  },
   '@keyframes fadeInUp': {
     '0%': {
       opacity: 0,
@@ -129,52 +97,6 @@ interface StyleSelectionProps {
   onChange: (data: StyleData) => void;
   onValidationChange: (validation: StepValidation) => void;
 }
-
-interface StylePreset {
-  name: string;
-  visualStyle: 'modern' | 'minimal' | 'cinematic' | 'playful' | 'professional';
-  musicGenre: 'ambient' | 'upbeat' | 'dramatic' | 'none';
-  description: string;
-  icon: string;
-}
-
-const STYLE_PRESETS: StylePreset[] = [
-  {
-    name: 'Modern',
-    visualStyle: 'modern',
-    musicGenre: 'upbeat',
-    description: 'Clean, contemporary look with energetic music',
-    icon: '🎨',
-  },
-  {
-    name: 'Professional',
-    visualStyle: 'professional',
-    musicGenre: 'ambient',
-    description: 'Corporate style with subtle background music',
-    icon: '💼',
-  },
-  {
-    name: 'Cinematic',
-    visualStyle: 'cinematic',
-    musicGenre: 'dramatic',
-    description: 'Movie-like visuals with dramatic scoring',
-    icon: '🎬',
-  },
-  {
-    name: 'Minimal',
-    visualStyle: 'minimal',
-    musicGenre: 'ambient',
-    description: 'Simple, focused design with calm ambiance',
-    icon: '✨',
-  },
-  {
-    name: 'Playful',
-    visualStyle: 'playful',
-    musicGenre: 'upbeat',
-    description: 'Fun, colorful style with lively music',
-    icon: '🎉',
-  },
-];
 
 export const StyleSelection: FC<StyleSelectionProps> = ({
   data,
@@ -267,7 +189,7 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
         },
       ];
       setProviders(fallbackProviders);
-      
+
       // Auto-select Placeholder if no provider is selected (guaranteed fallback)
       if (!data.imageProvider) {
         onChange({
@@ -311,16 +233,25 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
       return;
     }
 
-    const needsDefaults = !data.voiceProvider || !data.visualStyle || !data.imageProvider;
+    const needsDefaults =
+      !data.voiceProvider ||
+      !data.visualStyle ||
+      !data.imageProvider ||
+      !data.imageStyle ||
+      !data.musicGenre;
     if (needsDefaults) {
       defaultsSetRef.current = true;
       // Use 'Null' as default voice provider since it's always available (generates silence)
       // User can select a better provider in the TTS settings if available
+      // Default visualStyle to 'modern', imageStyle to 'realistic', musicGenre to 'none'
       onChange({
         ...data,
         voiceProvider: data.voiceProvider || 'Null',
         visualStyle: data.visualStyle || 'modern',
+        imageStyle: data.imageStyle || 'realistic',
         imageProvider: data.imageProvider || 'Placeholder',
+        musicGenre: data.musicGenre || 'none',
+        musicEnabled: data.musicGenre ? data.musicGenre !== 'none' : false,
       });
     } else {
       defaultsSetRef.current = true;
@@ -335,7 +266,8 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
     const hasImageProvider = !!data.imageProvider;
 
     // If providers haven't loaded yet but we have a provider selected, still allow validation
-    const isValid = hasVoiceProvider && hasVisualStyle && (hasImageProvider || providers.length === 0);
+    const isValid =
+      hasVoiceProvider && hasVisualStyle && (hasImageProvider || providers.length === 0);
 
     const errors: string[] = [];
     if (!hasVoiceProvider) errors.push('Voice provider');
@@ -368,26 +300,6 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
     [data, onChange]
   );
 
-  const handlePresetSelect = useCallback(
-    (preset: StylePreset) => {
-      onChange({
-        ...data,
-        visualStyle: preset.visualStyle,
-        musicGenre: preset.musicGenre,
-        musicEnabled: preset.musicGenre !== 'none',
-        // CRITICAL FIX: Ensure voiceProvider is set when using presets
-        // Use 'Null' as fallback which is always available (generates silence)
-        voiceProvider: data.voiceProvider || 'Null',
-        // CRITICAL FIX: Ensure imageProvider is set when using presets
-        // If not already set and providers are available, auto-select first available
-        imageProvider: data.imageProvider || (providers.length > 0
-          ? providers.find(p => p.isAvailable)?.name || 'Placeholder'
-          : 'Placeholder'),
-      });
-    },
-    [data, onChange, providers]
-  );
-
   if (loading) {
     return (
       <div className={styles.container}>
@@ -404,48 +316,6 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
       <div className={styles.section}>
         <Title2>Style Selection</Title2>
         <Text>Configure voice, visual style, and music preferences for your video.</Text>
-      </div>
-
-      <div className={styles.section}>
-        <Title3>Quick Style Presets</Title3>
-        <Text
-          size={300}
-          style={{ marginBottom: tokens.spacingVerticalM, color: tokens.colorNeutralForeground3 }}
-        >
-          Choose a preset style to quickly configure your video&apos;s look and feel
-        </Text>
-        <div className={styles.stylePresetGrid}>
-          {STYLE_PRESETS.map((preset) => (
-            <Card
-              key={preset.name}
-              className={`${styles.stylePresetCard} ${
-                data.visualStyle === preset.visualStyle && data.musicGenre === preset.musicGenre
-                  ? styles.stylePresetSelected
-                  : ''
-              }`}
-              onClick={() => handlePresetSelect(preset)}
-            >
-              {data.visualStyle === preset.visualStyle && data.musicGenre === preset.musicGenre && (
-                <Badge appearance="filled" color="success" className={styles.stylePresetBadge}>
-                  Active
-                </Badge>
-              )}
-              <div className={styles.stylePresetIcon}>{preset.icon}</div>
-              <Text weight="semibold" size={300}>
-                {preset.name}
-              </Text>
-              <Text
-                size={200}
-                style={{
-                  marginTop: tokens.spacingVerticalXS,
-                  color: tokens.colorNeutralForeground3,
-                }}
-              >
-                {preset.description}
-              </Text>
-            </Card>
-          ))}
-        </div>
       </div>
 
       <div className={styles.section}>
@@ -508,98 +378,104 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
         )}
 
         <div className={styles.grid}>
-          {providers.length > 0 ? (
-            providers.map((provider) => (
-              <Card
-                key={provider.name}
-                className={`${styles.providerCard} ${
-                  data.imageProvider === provider.name ? styles.selectedCard : ''
-                }`}
-                onClick={() => provider.isAvailable && handleProviderSelect(provider.name)}
-                style={{
-                  opacity: provider.isAvailable ? 1 : 0.5,
-                  cursor: provider.isAvailable ? 'pointer' : 'not-allowed',
-                }}
-              >
-                <div className={styles.providerHeader}>
-                  <Title3>{provider.name}</Title3>
-                  {data.imageProvider === provider.name && (
-                    <Badge appearance="filled" color="success">
-                      Selected
-                    </Badge>
-                  )}
-                </div>
+          {providers.length > 0
+            ? providers.map((provider) => (
+                <Card
+                  key={provider.name}
+                  className={`${styles.providerCard} ${
+                    data.imageProvider === provider.name ? styles.selectedCard : ''
+                  }`}
+                  onClick={() => provider.isAvailable && handleProviderSelect(provider.name)}
+                  style={{
+                    opacity: provider.isAvailable ? 1 : 0.5,
+                    cursor: provider.isAvailable ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  <div className={styles.providerHeader}>
+                    <Title3>{provider.name}</Title3>
+                    {data.imageProvider === provider.name && (
+                      <Badge appearance="filled" color="success">
+                        Selected
+                      </Badge>
+                    )}
+                  </div>
 
-                <div className={styles.providerDetails}>
-                  <div
-                    style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS }}
-                  >
-                    {provider.isAvailable ? (
+                  <div className={styles.providerDetails}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: tokens.spacingHorizontalXS,
+                      }}
+                    >
+                      {provider.isAvailable ? (
+                        <CheckmarkCircle24Regular
+                          style={{ color: tokens.colorPaletteGreenForeground1, fontSize: '16px' }}
+                        />
+                      ) : (
+                        <ErrorCircle24Regular
+                          style={{ color: tokens.colorPaletteRedForeground1, fontSize: '16px' }}
+                        />
+                      )}
+                      <Text size={200}>{provider.isAvailable ? 'Available' : 'Not Available'}</Text>
+                    </div>
+
+                    {provider.capabilities && (
+                      <>
+                        <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                          {provider.capabilities.tier} •{' '}
+                          {provider.capabilities.isFree
+                            ? 'Free'
+                            : `$${provider.capabilities.costPerImage}/image`}
+                        </Text>
+                        <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                          Max: {provider.capabilities.maxWidth}x{provider.capabilities.maxHeight}
+                        </Text>
+                        {provider.capabilities.supportedStyles.length > 0 && (
+                          <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                            {provider.capabilities.supportedStyles.length} styles supported
+                          </Text>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </Card>
+              ))
+            : !loading && (
+                <Card
+                  className={`${styles.providerCard} ${
+                    data.imageProvider === 'Placeholder' ? styles.selectedCard : ''
+                  }`}
+                  onClick={() => handleProviderSelect('Placeholder')}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div className={styles.providerHeader}>
+                    <Title3>Placeholder</Title3>
+                    {data.imageProvider === 'Placeholder' && (
+                      <Badge appearance="filled" color="success">
+                        Selected
+                      </Badge>
+                    )}
+                  </div>
+                  <div className={styles.providerDetails}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: tokens.spacingHorizontalXS,
+                      }}
+                    >
                       <CheckmarkCircle24Regular
                         style={{ color: tokens.colorPaletteGreenForeground1, fontSize: '16px' }}
                       />
-                    ) : (
-                      <ErrorCircle24Regular
-                        style={{ color: tokens.colorPaletteRedForeground1, fontSize: '16px' }}
-                      />
-                    )}
-                    <Text size={200}>{provider.isAvailable ? 'Available' : 'Not Available'}</Text>
+                      <Text size={200}>Always Available</Text>
+                    </div>
+                    <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                      Free • Solid color backgrounds with text - guaranteed fallback
+                    </Text>
                   </div>
-
-                  {provider.capabilities && (
-                    <>
-                      <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                        {provider.capabilities.tier} •{' '}
-                        {provider.capabilities.isFree
-                          ? 'Free'
-                          : `$${provider.capabilities.costPerImage}/image`}
-                      </Text>
-                      <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                        Max: {provider.capabilities.maxWidth}x{provider.capabilities.maxHeight}
-                      </Text>
-                      {provider.capabilities.supportedStyles.length > 0 && (
-                        <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                          {provider.capabilities.supportedStyles.length} styles supported
-                        </Text>
-                      )}
-                    </>
-                  )}
-                </div>
-              </Card>
-            ))
-          ) : (
-            !loading && (
-              <Card
-                className={`${styles.providerCard} ${
-                  data.imageProvider === 'Placeholder' ? styles.selectedCard : ''
-                }`}
-                onClick={() => handleProviderSelect('Placeholder')}
-                style={{ cursor: 'pointer' }}
-              >
-                <div className={styles.providerHeader}>
-                  <Title3>Placeholder</Title3>
-                  {data.imageProvider === 'Placeholder' && (
-                    <Badge appearance="filled" color="success">
-                      Selected
-                    </Badge>
-                  )}
-                </div>
-                <div className={styles.providerDetails}>
-                  <div
-                    style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS }}
-                  >
-                    <CheckmarkCircle24Regular
-                      style={{ color: tokens.colorPaletteGreenForeground1, fontSize: '16px' }}
-                    />
-                    <Text size={200}>Always Available</Text>
-                  </div>
-                  <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                    Free • Solid color backgrounds with text - guaranteed fallback
-                  </Text>
-                </div>
-              </Card>
-            )
-          )}
+                </Card>
+              )}
         </div>
       </div>
 
@@ -648,7 +524,9 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
 
         {advancedMode && (
           <Card style={{ padding: tokens.spacingVerticalL, marginTop: tokens.spacingVerticalL }}>
-            <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>Advanced Visual Settings</Title3>
+            <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>
+              Advanced Visual Settings
+            </Title3>
             <div className={styles.formRow}>
               <Field label="Aspect Ratio" className={styles.formField}>
                 <Dropdown
@@ -690,23 +568,37 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
       <div className={styles.section}>
         <Title3>Music Settings</Title3>
         <div className={styles.formRow}>
-          <Field label="Music Genre" className={styles.formField}>
+          <Field label="Background Music" className={styles.formField}>
             <Dropdown
-              value={data.musicGenre}
-              selectedOptions={[data.musicGenre]}
+              value={data.musicGenre || 'none'}
+              selectedOptions={[data.musicGenre || 'none']}
               onOptionSelect={(_, option) => {
                 if (option.optionValue) {
-                  handleStyleChange('musicGenre', option.optionValue as string);
+                  const genre = option.optionValue as string;
+                  handleStyleChange('musicGenre', genre);
+                  handleStyleChange('musicEnabled', genre !== 'none');
                 }
               }}
             >
-              <Option value="ambient">Ambient</Option>
-              <Option value="upbeat">Upbeat</Option>
-              <Option value="dramatic">Dramatic</Option>
-              <Option value="none">None</Option>
+              <Option value="none">None (No Background Music)</Option>
+              <Option value="ambient" disabled>
+                Ambient (Coming Soon)
+              </Option>
+              <Option value="upbeat" disabled>
+                Upbeat (Coming Soon)
+              </Option>
+              <Option value="dramatic" disabled>
+                Dramatic (Coming Soon)
+              </Option>
             </Dropdown>
           </Field>
         </div>
+        <Text
+          size={200}
+          style={{ color: tokens.colorNeutralForeground3, marginTop: tokens.spacingVerticalS }}
+        >
+          Background music support is coming in a future update.
+        </Text>
       </div>
     </div>
   );

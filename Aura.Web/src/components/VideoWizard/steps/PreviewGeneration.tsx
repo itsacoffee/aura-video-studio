@@ -375,7 +375,29 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
 
       // Only set provider if one hasn't been selected yet
       if (!hasSelectedProviderRef.current) {
-        // Prefer non-placeholder providers, but always fall back to Placeholder if needed
+        // Priority 1: Use styleData.imageProvider if set (from Step 2) and available
+        if (styleData.imageProvider && styleData.imageProvider !== 'Placeholder') {
+          const providerFromStyle = response.providers.find(
+            (p) => p.name.toLowerCase() === styleData.imageProvider?.toLowerCase() && p.isAvailable
+          );
+
+          if (providerFromStyle) {
+            setSelectedProvider(providerFromStyle.name);
+            hasSelectedProviderRef.current = true;
+            console.info(
+              '[PreviewGeneration] Using image provider from style data:',
+              providerFromStyle.name
+            );
+            return;
+          } else {
+            console.info(
+              '[PreviewGeneration] Style data provider not available:',
+              styleData.imageProvider
+            );
+          }
+        }
+
+        // Priority 2: Find first available non-placeholder provider
         const availableProvider = response.providers.find(
           (p) => p.isAvailable && p.name !== 'Placeholder'
         );
@@ -386,6 +408,10 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
         if (availableProvider) {
           setSelectedProvider(availableProvider.name);
           hasSelectedProviderRef.current = true;
+          console.info(
+            '[PreviewGeneration] Using first available provider:',
+            availableProvider.name
+          );
         } else if (placeholderProvider) {
           // Placeholder is always available as guaranteed fallback
           setSelectedProvider('Placeholder');
@@ -427,7 +453,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
     } finally {
       setIsLoadingProviders(false);
     }
-  }, [visualsClient]);
+  }, [visualsClient, styleData.imageProvider]);
 
   // Load styles callback
   const loadStyles = useCallback(async () => {
