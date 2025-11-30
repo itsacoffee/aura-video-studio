@@ -1990,30 +1990,35 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
     >
       <div
         className={styles.header}
-        style={{ textAlign: 'center', paddingTop: tokens.spacingVerticalL }}
+        style={{ textAlign: 'center', paddingTop: tokens.spacingVerticalM }}
       >
-        {/* Logo component */}
+        {/* Logo - shown on all steps for branding */}
         <div
           style={{
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
-            marginBottom: tokens.spacingVerticalM,
+            marginBottom: tokens.spacingVerticalS,
           }}
         >
-          <Logo size={64} />
+          <Logo size={state.step === 0 ? 80 : 48} />
         </div>
 
-        <Title2>Welcome to Aura Video Studio - Let&apos;s get you set up!</Title2>
-        <Text
-          style={{
-            display: 'block',
-            marginTop: tokens.spacingVerticalXS,
-            marginBottom: tokens.spacingVerticalM,
-          }}
-        >
-          Step {state.step + 1} of {totalSteps} - Required Setup
-        </Text>
+        {/* Title - shown after welcome step (step label as title) */}
+        {state.step > 0 && (
+          <Title2 style={{ marginBottom: tokens.spacingVerticalS }}>
+            {stepLabels[state.step]}
+          </Title2>
+        )}
+
+        {/* Welcome step title */}
+        {state.step === 0 && (
+          <Title2 style={{ marginBottom: tokens.spacingVerticalS }}>
+            Welcome to Aura Video Studio
+          </Title2>
+        )}
+
+        {/* Progress bar - includes step indicator (Step X of Y) */}
         <WizardProgress
           currentStep={state.step}
           totalSteps={totalSteps}
