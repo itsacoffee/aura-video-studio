@@ -1,114 +1,91 @@
-import { Button, Card, makeStyles, Text, Title1, Title3, tokens } from '@fluentui/react-components';
+import { Button, Card, makeStyles, Text, Title3, tokens } from '@fluentui/react-components';
 import {
-  Clock24Regular,
-  FolderOpen24Regular,
-  Play24Regular,
+  ArrowRight24Regular,
+  Checkmark20Regular,
+  Settings24Regular,
   Sparkle24Regular,
   VideoClip24Regular,
 } from '@fluentui/react-icons';
-import { Logo } from '../Logo';
 
 const useStyles = makeStyles({
   container: {
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalXXL,
+    gap: tokens.spacingVerticalL,
     alignItems: 'center',
     textAlign: 'center',
-    padding: tokens.spacingVerticalXXL,
-  },
-  heroContainer: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: tokens.spacingVerticalXXL,
-    marginTop: tokens.spacingVerticalL,
-    position: 'relative',
-  },
-  heroGraphic: {
-    width: '150px',
-    height: '150px',
-    animation: 'heroAnimation 2s ease-in-out infinite',
-    filter: `drop-shadow(0 0 40px ${tokens.colorBrandBackground2})`,
-  },
-  '@keyframes heroAnimation': {
-    '0%, 100%': { transform: 'scale(1) rotate(0deg)' },
-    '50%': { transform: 'scale(1.05) rotate(2deg)' },
-  },
-  brandContainer: {
-    marginBottom: tokens.spacingVerticalXL,
-  },
-  title: {
-    marginBottom: tokens.spacingVerticalM,
-    fontSize: '42px',
-    fontWeight: tokens.fontWeightBold,
+    padding: tokens.spacingVerticalL,
+    maxWidth: '700px',
+    margin: '0 auto',
   },
   subtitle: {
-    maxWidth: '700px',
-    marginBottom: tokens.spacingVerticalL,
-    fontSize: '18px',
-    lineHeight: '1.6',
+    maxWidth: '500px',
+    fontSize: '16px',
+    lineHeight: '1.5',
     color: tokens.colorNeutralForeground2,
   },
-  valuePropsContainer: {
+  configCardsContainer: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-    gap: tokens.spacingHorizontalL,
+    gridTemplateColumns: 'repeat(3, 1fr)',
+    gap: tokens.spacingHorizontalM,
     width: '100%',
-    marginTop: tokens.spacingVerticalXL,
+    marginTop: tokens.spacingVerticalM,
   },
-  valueCard: {
-    padding: tokens.spacingVerticalXL,
+  configCard: {
+    padding: tokens.spacingVerticalM,
     textAlign: 'center',
-    transition: 'all 0.3s ease-in-out',
-    background: `linear-gradient(135deg, ${tokens.colorNeutralBackground1} 0%, ${tokens.colorNeutralBackground2} 100%)`,
-    ':hover': {
-      transform: 'translateY(-8px)',
-      boxShadow: tokens.shadow28,
-    },
+    background: tokens.colorNeutralBackground2,
+    borderRadius: tokens.borderRadiusMedium,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: tokens.spacingVerticalXS,
   },
-  icon: {
-    fontSize: '56px',
-    marginBottom: tokens.spacingVerticalM,
-    display: 'block',
+  configIcon: {
+    fontSize: '32px',
     color: tokens.colorBrandBackground,
   },
-  cardTitle: {
-    marginBottom: tokens.spacingVerticalS,
+  configLabel: {
+    fontSize: '13px',
     fontWeight: tokens.fontWeightSemibold,
-  },
-  cardDescription: {
-    color: tokens.colorNeutralForeground3,
-    lineHeight: '1.5',
   },
   ctaContainer: {
     display: 'flex',
-    gap: tokens.spacingHorizontalL,
-    marginTop: tokens.spacingVerticalXXL,
-    justifyContent: 'center',
-    flexWrap: 'wrap',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: tokens.spacingVerticalM,
+    marginTop: tokens.spacingVerticalL,
+    width: '100%',
   },
   primaryButton: {
     fontSize: '16px',
-    padding: '12px 32px',
+    padding: '14px 48px',
     height: 'auto',
+    minWidth: '220px',
   },
-  secondaryButton: {
+  featureList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalXS,
+    alignItems: 'flex-start',
+    textAlign: 'left',
+    marginTop: tokens.spacingVerticalS,
+  },
+  featureItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalS,
+    color: tokens.colorNeutralForeground3,
+    fontSize: '13px',
+  },
+  featureIcon: {
+    color: tokens.colorPaletteGreenForeground1,
     fontSize: '16px',
-    padding: '12px 32px',
-    height: 'auto',
   },
-  timeEstimate: {
-    padding: tokens.spacingVerticalL,
-    backgroundColor: tokens.colorNeutralBackground3,
-    borderRadius: tokens.borderRadiusMedium,
-    marginTop: tokens.spacingVerticalXL,
-    maxWidth: '500px',
-  },
-  estimateIcon: {
-    fontSize: '24px',
-    marginRight: tokens.spacingHorizontalS,
-    verticalAlign: 'middle',
+  timeNote: {
+    color: tokens.colorNeutralForeground3,
+    fontSize: '13px',
+    marginTop: tokens.spacingVerticalS,
   },
 });
 
@@ -117,92 +94,65 @@ export interface WelcomeScreenProps {
   onImportProject?: () => void;
 }
 
-export function WelcomeScreen({ onGetStarted, onImportProject }: WelcomeScreenProps) {
+export function WelcomeScreen({
+  onGetStarted,
+  onImportProject: _onImportProject,
+}: WelcomeScreenProps) {
   const styles = useStyles();
 
-  const valuePropositions = [
-    {
-      icon: <VideoClip24Regular className={styles.icon} />,
-      title: 'Essential Setup Required',
-      description:
-        'Configure FFmpeg, AI providers, and your workspace to unlock the full power of video generation',
-    },
-    {
-      icon: <Sparkle24Regular className={styles.icon} />,
-      title: 'AI-Powered Automation',
-      description:
-        'Set up script generation, voice synthesis, and custom image creation with your preferred providers',
-    },
-    {
-      icon: <Clock24Regular className={styles.icon} />,
-      title: 'Quick Configuration',
-      description:
-        'Complete the Setup Wizard in just 3-5 minutes to start creating professional videos',
-    },
+  const configSteps = [
+    { icon: <VideoClip24Regular className={styles.configIcon} />, label: 'FFmpeg' },
+    { icon: <Sparkle24Regular className={styles.configIcon} />, label: 'AI Providers' },
+    { icon: <Settings24Regular className={styles.configIcon} />, label: 'Workspace' },
+  ];
+
+  const features = [
+    'AI-powered script generation',
+    'Text-to-speech synthesis',
+    'Automatic video rendering',
   ];
 
   return (
     <div className={styles.container}>
-      {/* Hero Section */}
-      <div className={styles.heroContainer}>
-        <Logo size={150} className={styles.heroGraphic} />
-      </div>
+      {/* Concise subtitle */}
+      <Text className={styles.subtitle}>
+        Complete a quick setup to configure your video generation environment.
+      </Text>
 
-      {/* Brand & Value Prop */}
-      <div className={styles.brandContainer}>
-        <Title1 className={styles.title}>Welcome to Aura Video Studio!</Title1>
-        <Text className={styles.subtitle} size={500} block>
-          Complete your setup to start generating videos. Run the Setup Wizard now to configure AI
-          providers, FFmpeg, and your workspace. You can update these settings later in Settings.
-        </Text>
-      </div>
-
-      {/* Value Propositions Grid */}
-      <div className={styles.valuePropsContainer}>
-        {valuePropositions.map((prop, index) => (
-          <Card key={index} className={styles.valueCard}>
-            {prop.icon}
-            <Title3 className={styles.cardTitle}>{prop.title}</Title3>
-            <Text className={styles.cardDescription} size={300}>
-              {prop.description}
-            </Text>
+      {/* Configuration cards showing what will be set up */}
+      <div className={styles.configCardsContainer}>
+        {configSteps.map((step, index) => (
+          <Card key={index} className={styles.configCard}>
+            {step.icon}
+            <Title3 className={styles.configLabel}>{step.label}</Title3>
           </Card>
         ))}
       </div>
 
-      {/* Call to Action */}
+      {/* Primary CTA */}
       <div className={styles.ctaContainer}>
         <Button
           appearance="primary"
           size="large"
           className={styles.primaryButton}
-          icon={<Play24Regular />}
+          icon={<ArrowRight24Regular />}
+          iconPosition="after"
           onClick={onGetStarted}
         >
-          Start Setup Wizard
+          Get Started
         </Button>
-        {onImportProject && (
-          <Button
-            appearance="secondary"
-            size="large"
-            className={styles.secondaryButton}
-            icon={<FolderOpen24Regular />}
-            onClick={onImportProject}
-          >
-            Import Existing Project
-          </Button>
-        )}
-      </div>
 
-      {/* Time Estimate */}
-      <div className={styles.timeEstimate}>
-        <Text weight="semibold" size={400}>
-          <Clock24Regular className={styles.estimateIcon} />
-          Quick Setup: 3-5 minutes
-        </Text>
-        <Text size={300} style={{ display: 'block', marginTop: tokens.spacingVerticalXS }}>
-          You can pause and resume at any time. Your progress is automatically saved.
-        </Text>
+        {/* Feature highlights */}
+        <div className={styles.featureList}>
+          {features.map((feature, index) => (
+            <div key={index} className={styles.featureItem}>
+              <Checkmark20Regular className={styles.featureIcon} />
+              <span>{feature}</span>
+            </div>
+          ))}
+        </div>
+
+        <Text className={styles.timeNote}>Setup takes about 3-5 minutes</Text>
       </div>
     </div>
   );

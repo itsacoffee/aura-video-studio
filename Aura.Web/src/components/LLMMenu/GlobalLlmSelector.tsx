@@ -170,46 +170,64 @@ export function GlobalLlmSelector() {
       if (Object.keys(providersData).length === 0) {
         console.info('[GlobalLlmSelector] No providers from API, using fallback list');
         // Use fallback models for offline providers
-        setAvailableModels(FALLBACK_MODELS);
+        const fallbackModelsWithRuleBased = {
+          ...FALLBACK_MODELS,
+          RuleBased: [RULE_BASED_FALLBACK_MODEL], // Always include RuleBased
+        };
+        setAvailableModels(fallbackModelsWithRuleBased);
 
         // Build provider list from all known providers with fallback availability
         const fallbackProviderList: ProviderInfo[] = ALL_PROVIDER_IDS.map((providerId) => {
-          const fallbackModels = FALLBACK_MODELS[providerId] || [];
+          const isLocalProvider = LOCAL_PROVIDERS.has(providerId);
+          const fallbackModels = fallbackModelsWithRuleBased[providerId] || [];
           return {
             id: providerId,
             name: getProviderDisplayName(providerId),
             requiresApiKey: providerRequiresApiKey(providerId),
             modelCount: fallbackModels.length,
-            isAvailable: fallbackModels.length > 0,
+            // Local providers are always available, others need models
+            isAvailable: isLocalProvider || fallbackModels.length > 0,
           };
         });
         setProviders(fallbackProviderList);
-        return FALLBACK_MODELS;
+        return fallbackModelsWithRuleBased;
       }
 
-      setAvailableModels(providersData);
+      // Ensure RuleBased is always in the available models with fallback
+      const modelsWithRuleBased = {
+        ...providersData,
+        RuleBased:
+          providersData['RuleBased']?.length > 0
+            ? providersData['RuleBased']
+            : [RULE_BASED_FALLBACK_MODEL],
+      };
+      setAvailableModels(modelsWithRuleBased);
 
       // Build provider list dynamically from API response
-      const providerList: ProviderInfo[] = Object.keys(providersData).map((providerId) => {
-        const models = providersData[providerId] || [];
+      const providerList: ProviderInfo[] = Object.keys(modelsWithRuleBased).map((providerId) => {
+        const models = modelsWithRuleBased[providerId] || [];
+        const isLocalProvider = LOCAL_PROVIDERS.has(providerId);
         return {
           id: providerId,
           name: getProviderDisplayName(providerId),
           requiresApiKey: providerRequiresApiKey(providerId),
           modelCount: models.length,
-          isAvailable: models.length > 0,
+          // Local providers are available even with 0 models from API (they work offline)
+          isAvailable: isLocalProvider || models.length > 0,
         };
       });
 
       // Add common providers that might not have models yet
       for (const provider of ALL_PROVIDER_IDS) {
         if (!providerList.some((p) => p.id === provider)) {
+          const isLocalProvider = LOCAL_PROVIDERS.has(provider);
           providerList.push({
             id: provider,
             name: getProviderDisplayName(provider),
             requiresApiKey: providerRequiresApiKey(provider),
             modelCount: 0,
-            isAvailable: false,
+            // Local providers are always available
+            isAvailable: isLocalProvider,
           });
         }
       }
@@ -228,14 +246,25 @@ export function GlobalLlmSelector() {
 
       setProviders(providerList);
 
-      return providersData;
+      return modelsWithRuleBased;
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load models';
       setError(errorMessage);
       console.error('[GlobalLlmSelector] Error fetching models:', err);
 
-      // Provide minimal fallback even on network error
-      setProviders([FALLBACK_PROVIDER_INFO]);
+      // Provide minimal fallback even on network error - RuleBased is always available
+      const fallbackProviders: ProviderInfo[] = ALL_PROVIDER_IDS.map((providerId) => {
+        const isLocalProvider = LOCAL_PROVIDERS.has(providerId);
+        const fallbackModels = FALLBACK_MODELS[providerId] || [];
+        return {
+          id: providerId,
+          name: getProviderDisplayName(providerId),
+          requiresApiKey: providerRequiresApiKey(providerId),
+          modelCount: fallbackModels.length,
+          isAvailable: isLocalProvider || fallbackModels.length > 0,
+        };
+      });
+      setProviders(fallbackProviders);
       setAvailableModels(FALLBACK_MODELS);
 
       return null;
