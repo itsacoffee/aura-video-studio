@@ -156,6 +156,7 @@ const VALID_CHANNELS = {
     "opencut:stop",
     "opencut:waitForReady",
     "opencut:health",
+    "opencut:getDiagnostics",
   ],
 };
 
@@ -565,6 +566,7 @@ function createAuraBridge() {
     stop: () => safeInvoke("opencut:stop"),
     waitForReady: (maxWaitMs) => safeInvoke("opencut:waitForReady", maxWaitMs),
     health: () => safeInvoke("opencut:health"),
+    getDiagnostics: () => safeInvoke("opencut:getDiagnostics"),
   };
 
   const updatesApi = {

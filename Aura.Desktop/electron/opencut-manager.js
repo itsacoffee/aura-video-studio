@@ -142,11 +142,58 @@ class OpenCutManager {
     this.isStarting = true;
 
     try {
-      const openCutAppDir = this.isPackaged
-        ? // Packaged app: OpenCut standalone build is bundled under resources/opencut
-          path.join(process.resourcesPath, "opencut")
-        : // Dev: run from the repo layout
-          path.resolve(__dirname, "..", "..", "OpenCut", "apps", "web");
+      let openCutAppDir;
+      let serverJsPath;
+
+      if (this.isPackaged) {
+        // Packaged app: OpenCut standalone build is bundled under resources/opencut
+        openCutAppDir = path.join(process.resourcesPath, "opencut");
+        serverJsPath = path.join(openCutAppDir, "server.js");
+
+        // Log what we're looking for
+        this.logger.info?.("OpenCutManager", "Looking for OpenCut server", {
+          resourcesPath: process.resourcesPath,
+          openCutAppDir,
+          serverJsPath,
+          exists: fs.existsSync(serverJsPath),
+        });
+
+        if (!fs.existsSync(serverJsPath)) {
+          // Try alternate locations in case of different build structures
+          const altPaths = [
+            path.join(openCutAppDir, "apps", "web", "server.js"),
+            path.join(process.resourcesPath, "app.asar.unpacked", "opencut", "server.js"),
+          ];
+
+          for (const altPath of altPaths) {
+            this.logger.info?.("OpenCutManager", "Checking alternate path", {
+              path: altPath,
+              exists: fs.existsSync(altPath),
+            });
+            if (fs.existsSync(altPath)) {
+              serverJsPath = altPath;
+              openCutAppDir = path.dirname(altPath);
+              this.logger.info?.("OpenCutManager", "Found server at alternate path", { serverJsPath });
+              break;
+            }
+          }
+        }
+
+        if (!fs.existsSync(serverJsPath)) {
+          this.logger.error?.("OpenCutManager", "OpenCut server.js not found in any location", {
+            checked: [
+              path.join(process.resourcesPath, "opencut", "server.js"),
+              path.join(process.resourcesPath, "opencut", "apps", "web", "server.js"),
+              path.join(process.resourcesPath, "app.asar.unpacked", "opencut", "server.js"),
+            ],
+          });
+          this.isStarting = false;
+          return;
+        }
+      } else {
+        // Dev: run from the repo layout
+        openCutAppDir = path.resolve(__dirname, "..", "..", "OpenCut", "apps", "web");
+      }
 
       // Verify OpenCut directory exists
       if (!fs.existsSync(openCutAppDir)) {
@@ -174,7 +221,7 @@ class OpenCutManager {
       if (this.isPackaged) {
         // Packaged mode: run the standalone Next.js server
         // The standalone build creates a server.js that can be run with Node
-        const standaloneServerPath = path.join(openCutAppDir, "server.js");
+        const standaloneServerPath = serverJsPath;
         
         if (!fs.existsSync(standaloneServerPath)) {
           this.logger.warn?.("OpenCutManager", "OpenCut standalone server.js not found, skipping", {
@@ -384,6 +431,48 @@ class OpenCutManager {
    */
   resetAttempts() {
     this.startAttempts = 0;
+  }
+
+  /**
+   * Get diagnostics information for troubleshooting OpenCut issues
+   * @returns {object} Diagnostics information
+   */
+  async getDiagnostics() {
+    const openCutAppDir = this.isPackaged
+      ? path.join(process.resourcesPath, "opencut")
+      : path.resolve(__dirname, "..", "..", "OpenCut", "apps", "web");
+
+    const expectedServerPath = path.join(openCutAppDir, "server.js");
+
+    // Check alternate paths
+    const checkedPaths = [
+      { path: expectedServerPath, exists: fs.existsSync(expectedServerPath) },
+      { path: path.join(openCutAppDir, "apps", "web", "server.js"), exists: fs.existsSync(path.join(openCutAppDir, "apps", "web", "server.js")) },
+    ];
+
+    if (this.isPackaged) {
+      const unpackedPath = path.join(process.resourcesPath, "app.asar.unpacked", "opencut", "server.js");
+      checkedPaths.push({ path: unpackedPath, exists: fs.existsSync(unpackedPath) });
+    }
+
+    // Check if port is in use
+    const portInUse = await this._isPortInUse();
+
+    return {
+      serverPath: expectedServerPath,
+      serverExists: fs.existsSync(expectedServerPath),
+      openCutDirExists: fs.existsSync(openCutAppDir),
+      portInUse,
+      port: this.port,
+      processRunning: this.child !== null,
+      isStarting: this.isStarting,
+      isPackaged: this.isPackaged,
+      resourcesPath: this.isPackaged ? process.resourcesPath : null,
+      checkedPaths,
+      enabled: this.enabled,
+      startAttempts: this.startAttempts,
+      maxStartAttempts: this.maxStartAttempts,
+    };
   }
 }
 
