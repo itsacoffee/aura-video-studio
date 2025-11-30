@@ -256,11 +256,18 @@ export interface EnhanceTopicResponse {
 
 const API_BASE = '/api/ideation';
 
+// Extended timeout for LLM operations (15 minutes in milliseconds)
+const LLM_TIMEOUT_MS = 15 * 60 * 1000;
+
 export const ideationService = {
   /**
    * Generate creative concept variations from a topic
    */
   async brainstorm(request: BrainstormRequest): Promise<BrainstormResponse> {
+    // Use AbortController with extended timeout for LLM operations
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
+
     try {
       const response = await fetch(apiUrl(`${API_BASE}/brainstorm`), {
         method: 'POST',
@@ -268,7 +275,10 @@ export const ideationService = {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(request),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         // Try to get error details from response
@@ -303,6 +313,16 @@ export const ideationService = {
 
       return await response.json();
     } catch (error) {
+      clearTimeout(timeoutId);
+
+      // Handle AbortError (timeout)
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error(
+          'Request timed out. The AI is taking longer than expected. ' +
+            'If using Ollama with a large model, this may be normal. Please try again.'
+        );
+      }
+
       // Re-throw if it's already an Error with a message
       if (error instanceof Error) {
         throw error;

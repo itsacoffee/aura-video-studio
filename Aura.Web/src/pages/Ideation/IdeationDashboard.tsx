@@ -1,6 +1,15 @@
-import { makeStyles, tokens, Text, Button, Input, shorthands } from '@fluentui/react-components';
+import {
+  makeStyles,
+  tokens,
+  Text,
+  Button,
+  Input,
+  shorthands,
+  Card,
+  Spinner,
+} from '@fluentui/react-components';
 import { LightbulbRegular, LightbulbFilamentRegular } from '@fluentui/react-icons';
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BrainstormInput, BrainstormOptions } from '../../components/ideation/BrainstormInput';
 import { ConceptCard } from '../../components/ideation/ConceptCard';
@@ -122,6 +131,27 @@ const useStyles = makeStyles({
     color: tokens.colorNeutralForeground2,
     marginLeft: tokens.spacingHorizontalS,
   },
+  loadingCard: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shorthands.padding(tokens.spacingVerticalXXL, tokens.spacingHorizontalXXL),
+    gap: tokens.spacingVerticalM,
+    backgroundColor: tokens.colorNeutralBackground2,
+    ...shorthands.borderRadius(tokens.borderRadiusLarge),
+    minHeight: '200px',
+  },
+  loadingTip: {
+    color: tokens.colorNeutralForeground3,
+    fontSize: tokens.fontSizeBase200,
+    textAlign: 'center' as const,
+    maxWidth: '400px',
+    marginTop: tokens.spacingVerticalM,
+    ...shorthands.padding(tokens.spacingVerticalS, tokens.spacingHorizontalM),
+    backgroundColor: tokens.colorNeutralBackground3,
+    ...shorthands.borderRadius(tokens.borderRadiusSmall),
+  },
 });
 
 interface HotkeyConfig {
@@ -157,6 +187,28 @@ export const IdeationDashboard: React.FC = () => {
   const [ideaCount, setIdeaCount] = useState<number>(6);
   const [refreshHotkey, setRefreshHotkey] = useState<HotkeyConfig>(DEFAULT_HOTKEY);
   const [isCapturingHotkey, setIsCapturingHotkey] = useState(false);
+
+  // Elapsed time tracking for loading state
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Timer effect for tracking elapsed time during loading
+  useEffect(() => {
+    if (loading) {
+      setElapsedSeconds(0);
+      timerRef.current = setInterval(() => {
+        setElapsedSeconds((prev) => prev + 1);
+      }, 1000);
+    } else {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [loading]);
 
   const formatHotkeyLabel = useCallback((config: HotkeyConfig) => {
     const segments: string[] = [];
@@ -470,11 +522,34 @@ export const IdeationDashboard: React.FC = () => {
         )}
 
         {loading && (
-          <div className={styles.conceptsGrid}>
-            {Array.from({ length: 6 }).map((_, i) => (
-              <SkeletonCard key={`skeleton-${i}`} hasImage={false} />
-            ))}
-          </div>
+          <>
+            <Card className={styles.loadingCard}>
+              <Spinner size="large" />
+              <Text size={400} weight="semibold">
+                Generating concepts with AI...
+              </Text>
+              <Text size={300}>
+                {elapsedSeconds < 30
+                  ? 'Analyzing your topic...'
+                  : elapsedSeconds < 60
+                    ? 'Generating creative variations...'
+                    : elapsedSeconds < 120
+                      ? 'This is taking a while - complex topics need more time...'
+                      : `Still working... (${Math.floor(elapsedSeconds / 60)}m ${elapsedSeconds % 60}s)`}
+              </Text>
+              {elapsedSeconds > 60 && (
+                <Text className={styles.loadingTip}>
+                  💡 Tip: Local AI models like Ollama may take several minutes for detailed
+                  concepts. The GPU indicator shows the model is actively working.
+                </Text>
+              )}
+            </Card>
+            <div className={styles.conceptsGrid}>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <SkeletonCard key={`skeleton-${i}`} hasImage={false} />
+              ))}
+            </div>
+          </>
         )}
       </div>
     </div>
