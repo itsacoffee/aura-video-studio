@@ -169,11 +169,11 @@ export const setupApi = {
     const config: ExtendedAxiosRequestConfig = {
       _skipCircuitBreaker: true,
     };
-    const response = await apiClient.post<{ success: boolean; errors?: string[]; correlationId?: string }>(
-      '/api/setup/complete',
-      request,
-      config
-    );
+    const response = await apiClient.post<{
+      success: boolean;
+      errors?: string[];
+      correlationId?: string;
+    }>('/api/setup/complete', request, config);
     return response.data;
   },
 
@@ -296,4 +296,156 @@ export const setupApi = {
       return { ok: false, details: errorMessage };
     }
   },
+
+  /**
+   * Get portable mode status
+   * Returns information about whether the app is running in portable mode
+   */
+  async getPortableStatus(): Promise<PortableStatusResponse> {
+    const config: ExtendedAxiosRequestConfig = { _skipCircuitBreaker: true };
+    try {
+      const response = await apiClient.get<PortableStatusResponse>(
+        '/api/system/portable-status',
+        config
+      );
+      return response.data;
+    } catch (error: unknown) {
+      console.warn('[setupApi] Failed to get portable status:', error);
+      return {
+        isPortableMode: false,
+        portableRoot: null,
+        toolsDirectory: null,
+        dataDirectory: null,
+        cacheDirectory: null,
+        logsDirectory: null,
+        configExists: false,
+        needsFirstRunSetup: true,
+        correlationId: null,
+      };
+    }
+  },
+
+  /**
+   * Get dependencies summary for quick status check
+   */
+  async getDependenciesSummary(): Promise<DependenciesSummaryResponse> {
+    const config: ExtendedAxiosRequestConfig = { _skipCircuitBreaker: true };
+    try {
+      const response = await apiClient.get<DependenciesSummaryResponse>(
+        '/api/system/dependencies/summary',
+        config
+      );
+      return response.data;
+    } catch (error: unknown) {
+      console.warn('[setupApi] Failed to get dependencies summary:', error);
+      return {
+        ffmpegInstalled: false,
+        ffmpegPath: null,
+        piperInstalled: false,
+        piperPath: null,
+        ollamaInstalled: false,
+        ollamaPath: null,
+        stableDiffusionInstalled: false,
+        stableDiffusionPath: null,
+        allRequiredInstalled: false,
+        correlationId: null,
+      };
+    }
+  },
+
+  /**
+   * Initialize portable directories
+   */
+  async initializePortableDirectories(): Promise<InitializePortableResponse> {
+    const config: ExtendedAxiosRequestConfig = { _skipCircuitBreaker: true };
+    const response = await apiClient.post<InitializePortableResponse>(
+      '/api/system/portable/initialize',
+      {},
+      config
+    );
+    return response.data;
+  },
+
+  /**
+   * Install all recommended dependencies (Quick Setup)
+   */
+  async installAllDependencies(): Promise<InstallAllResponse> {
+    const config: ExtendedAxiosRequestConfig = {
+      _skipCircuitBreaker: true,
+      timeout: 600000, // 10 minutes timeout for downloads
+    };
+    const response = await apiClient.post<InstallAllResponse>(
+      '/api/dependencies/install-all',
+      {},
+      config
+    );
+    return response.data;
+  },
 };
+
+/**
+ * Portable mode status response
+ */
+export interface PortableStatusResponse {
+  isPortableMode: boolean;
+  portableRoot: string | null;
+  toolsDirectory: string | null;
+  dataDirectory: string | null;
+  cacheDirectory: string | null;
+  logsDirectory: string | null;
+  configExists: boolean;
+  needsFirstRunSetup: boolean;
+  correlationId: string | null;
+}
+
+/**
+ * Dependencies summary response
+ */
+export interface DependenciesSummaryResponse {
+  ffmpegInstalled: boolean;
+  ffmpegPath: string | null;
+  piperInstalled: boolean;
+  piperPath: string | null;
+  ollamaInstalled: boolean;
+  ollamaPath: string | null;
+  stableDiffusionInstalled: boolean;
+  stableDiffusionPath: string | null;
+  allRequiredInstalled: boolean;
+  correlationId: string | null;
+}
+
+/**
+ * Initialize portable directories response
+ */
+export interface InitializePortableResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+  isPortableMode?: boolean;
+  portableRoot?: string;
+  toolsDirectory?: string;
+  dataDirectory?: string;
+  correlationId?: string;
+}
+
+/**
+ * Install all dependencies response
+ */
+export interface InstallAllResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+  results?: Array<{
+    component: string;
+    success: boolean;
+    error: string | null;
+  }>;
+  summary?: {
+    ffmpegInstalled: boolean;
+    ffmpegPath: string | null;
+    piperInstalled: boolean;
+    piperPath: string | null;
+    allRequiredInstalled: boolean;
+  } | null;
+  correlationId?: string;
+}
