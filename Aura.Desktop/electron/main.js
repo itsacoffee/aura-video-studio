@@ -1217,7 +1217,8 @@ async function startApplication() {
       initializationTracker,
       startupLogger,
       earlyCrashLogger,
-      backendContract
+      backendContract,
+      openCutManager
     );
 
     if (!ipcResult.success && ipcResult.criticalFailure) {

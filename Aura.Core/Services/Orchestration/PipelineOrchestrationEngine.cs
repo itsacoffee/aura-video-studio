@@ -12,6 +12,7 @@ using Aura.Core.Services.Narrative;
 using Aura.Core.Services.PacingServices;
 using Aura.Core.Services.Quality;
 using Aura.Core.Services.Visual;
+using Aura.Core.Utilities;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.Services.Orchestration;
@@ -747,21 +748,29 @@ public class PipelineOrchestrationEngine
                 if (currentHeading != null && currentScriptLines.Count > 0)
                 {
                     var sceneScript = string.Join("\n", currentScriptLines);
-                    scenes.Add(new Scene(sceneIndex++, currentHeading, sceneScript, TimeSpan.Zero, TimeSpan.Zero));
+                    var cleanedScript = LlmScriptCleanup.CleanNarration(sceneScript);
+                    scenes.Add(new Scene(sceneIndex++, currentHeading, cleanedScript, TimeSpan.Zero, TimeSpan.Zero));
                     currentScriptLines.Clear();
                 }
                 currentHeading = line.Substring(3).Trim();
             }
             else if (!line.StartsWith("#", StringComparison.Ordinal) && !string.IsNullOrWhiteSpace(line))
             {
-                currentScriptLines.Add(line);
+                // Skip metadata lines - only add actual narrative content
+                var trimmedLine = line.Trim();
+                if (!LlmScriptCleanup.IsMetadataLine(trimmedLine) && 
+                    !LlmScriptCleanup.IsLlmMetaCommentary(trimmedLine))
+                {
+                    currentScriptLines.Add(line);
+                }
             }
         }
 
         if (currentHeading != null && currentScriptLines.Count > 0)
         {
             var sceneScript = string.Join("\n", currentScriptLines);
-            scenes.Add(new Scene(sceneIndex++, currentHeading, sceneScript, TimeSpan.Zero, TimeSpan.Zero));
+            var cleanedScript = LlmScriptCleanup.CleanNarration(sceneScript);
+            scenes.Add(new Scene(sceneIndex++, currentHeading, cleanedScript, TimeSpan.Zero, TimeSpan.Zero));
         }
 
         int totalWords = scenes.Sum(s => CountWords(s.Script));

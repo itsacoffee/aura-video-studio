@@ -1083,19 +1083,16 @@ public partial class JobRunner
             percent = 50;
             formattedMessage = "Generating visual assets";
         }
-        else if (message.Contains("Completed: Image", StringComparison.OrdinalIgnoreCase))
+        else if (message.Contains("Completed: Image", StringComparison.OrdinalIgnoreCase) ||
+                 message.Contains("Visual generation complete", StringComparison.OrdinalIgnoreCase))
         {
-            stage = "Visuals";
-            percent = 65;
-            formattedMessage = "Visual assets complete";
+            // Image generation complete should be at 80% (end of Images stage: 55% + 25% = 80%)
+            // Immediately transition to Rendering stage
+            stage = "Rendering";
+            percent = 80;
+            formattedMessage = "Visual assets complete, starting video rendering";
         }
-        else if (message.Contains("Stage 4/5", StringComparison.OrdinalIgnoreCase) ||
-                 message.Contains("Building timeline", StringComparison.OrdinalIgnoreCase))
-        {
-            stage = "Visuals";
-            percent = 55;
-            formattedMessage = "Preparing visual timeline";
-        }
+        // Removed - Stage 4/5 is now handled above as transition to Rendering
         else if (message.Contains("visual", StringComparison.OrdinalIgnoreCase) ||
                  message.Contains("image", StringComparison.OrdinalIgnoreCase) ||
                  message.Contains("asset", StringComparison.OrdinalIgnoreCase))
@@ -1105,11 +1102,14 @@ public partial class JobRunner
             formattedMessage = "Generating visual assets";
         }
         else if (message.Contains("Video composition", StringComparison.OrdinalIgnoreCase) ||
-                 message.Contains("Executing: Video composition", StringComparison.OrdinalIgnoreCase))
+                 message.Contains("Executing: Video composition", StringComparison.OrdinalIgnoreCase) ||
+                 message.Contains("Building timeline", StringComparison.OrdinalIgnoreCase) ||
+                 message.Contains("Stage 4/5", StringComparison.OrdinalIgnoreCase))
         {
+            // Transition from Images to Rendering - this happens after image generation
             stage = "Rendering";
-            percent = 70;
-            formattedMessage = "Starting video composition";
+            percent = 80;
+            formattedMessage = "Preparing video composition";
         }
         else if (message.Contains("Completed: Video composition", StringComparison.OrdinalIgnoreCase))
         {
@@ -1118,12 +1118,13 @@ public partial class JobRunner
             formattedMessage = "Video composition complete";
         }
         else if (message.Contains("Stage 5/5", StringComparison.OrdinalIgnoreCase) ||
-                 message.Contains("render", StringComparison.OrdinalIgnoreCase) ||
-                 message.Contains("composing video", StringComparison.OrdinalIgnoreCase))
+                 (message.Contains("render", StringComparison.OrdinalIgnoreCase) && 
+                  !message.Contains("Rendering:") && 
+                  !message.Contains("composing")))
         {
             stage = "Rendering";
             percent = 80;
-            formattedMessage = "Rendering final video";
+            formattedMessage = "Starting video rendering";
         }
         else if (message.Contains("Rendering:", StringComparison.OrdinalIgnoreCase))
         {

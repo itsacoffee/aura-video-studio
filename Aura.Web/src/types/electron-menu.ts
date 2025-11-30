@@ -322,6 +322,45 @@ export interface AuraAPI {
     readFile(filePath: string): Promise<unknown>;
     openDirectory(): Promise<unknown>;
   };
+  opencut?: {
+    status(): Promise<{
+      isRunning: boolean;
+      isStarting: boolean;
+      isAvailable: boolean;
+      url: string | null;
+      port: number | null;
+      error?: string;
+    }>;
+    getUrl(): Promise<string | null>;
+    isAvailable(): Promise<boolean>;
+    start(): Promise<{
+      success: boolean;
+      alreadyRunning?: boolean;
+      url?: string;
+      port?: number;
+      error?: string;
+      status?: {
+        isRunning: boolean;
+        isStarting: boolean;
+        url: string | null;
+      };
+    }>;
+    stop(): Promise<{ success: boolean; error?: string }>;
+    waitForReady(maxWaitMs?: number): Promise<{
+      success: boolean;
+      status?: {
+        isRunning: boolean;
+        isStarting: boolean;
+        url: string | null;
+      };
+      error?: string;
+    }>;
+    health(): Promise<{
+      healthy: boolean;
+      statusCode?: number | null;
+      error?: string;
+    }>;
+  };
   safeMode?: {
     onStatus(callback: (status: SafeModeStatus) => void): () => void;
   };

@@ -162,11 +162,13 @@ async function checkOpenCutHealth(url: string): Promise<boolean> {
   try {
     const healthUrl = new URL('/api/health', url).toString();
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    const timeoutId = setTimeout(() => controller.abort(), 3000); // Increased timeout
 
     const response = await fetch(healthUrl, {
       method: 'GET',
       signal: controller.signal,
+      // Don't use credentials for health check
+      credentials: 'omit',
     });
 
     clearTimeout(timeoutId);
@@ -181,43 +183,89 @@ async function checkOpenCutHealth(url: string): Promise<boolean> {
   // Fallback: Try direct connection (may fail due to CORS, but that's okay - we'll let iframe handle it)
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    const timeoutId = setTimeout(() => controller.abort(), 3000); // Increased timeout
 
     // Use HEAD request to minimize data transfer
     await fetch(url, {
       method: 'HEAD',
       signal: controller.signal,
       mode: 'no-cors', // Use no-cors to avoid CORS issues
+      credentials: 'omit',
     });
 
     clearTimeout(timeoutId);
     // With no-cors, we can't check status, but if we get here without error, server is likely up
     return true;
   } catch (error) {
-    // If both checks fail, server is likely down
-    console.info('[OpenCut] Direct connection check failed:', error);
+    // If both checks fail, server is likely down or not started yet
+    // This is non-critical - the iframe will still attempt to load
+    console.info(
+      '[OpenCut] Direct connection check failed (non-critical, iframe will still attempt to load):',
+      error
+    );
     return false;
   }
 }
 
-type ConnectionState = 'checking' | 'loading' | 'connected' | 'error';
+type ConnectionState =
+  | 'checking'
+  | 'starting'
+  | 'loading'
+  | 'loading-timeout'
+  | 'connected'
+  | 'error';
+type StartupStatus = {
+  message: string;
+  isStarting: boolean;
+  isRunning: boolean;
+};
+
+// Check if we're in Electron and have OpenCut IPC available
+function isElectronWithOpenCut(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    (window.aura?.opencut || window.electron?.opencut) !== undefined
+  );
+}
+
+// Get OpenCut IPC API
+function getOpenCutApi() {
+  if (typeof window === 'undefined') return null;
+  return window.aura?.opencut || window.electron?.opencut || null;
+}
 
 export function OpenCutPage() {
   const styles = useStyles();
   const effectiveUrl = getEffectiveOpenCutUrl();
   const [connectionState, setConnectionState] = useState<ConnectionState>('checking');
   const [retryCount, setRetryCount] = useState(0);
+  const [startupStatus, setStartupStatus] = useState<StartupStatus>({
+    message: 'Checking OpenCut server...',
+    isStarting: false,
+    isRunning: false,
+  });
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const loadTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const statusCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleIframeLoad = useCallback(() => {
-    // Iframe loaded successfully
+    // Iframe loaded successfully (even if it's an error page, the iframe itself loaded)
     console.info('[OpenCut] Iframe loaded successfully');
     if (loadTimeoutRef.current) {
       clearTimeout(loadTimeoutRef.current);
       loadTimeoutRef.current = null;
     }
     setConnectionState('connected');
+  }, []);
+
+  const handleIframeError = useCallback(() => {
+    // Iframe failed to load
+    console.warn('[OpenCut] Iframe failed to load');
+    if (loadTimeoutRef.current) {
+      clearTimeout(loadTimeoutRef.current);
+      loadTimeoutRef.current = null;
+    }
+    setConnectionState('error');
   }, []);
 
   const startLoading = useCallback((url: string) => {
@@ -231,30 +279,279 @@ export function OpenCutPage() {
     setConnectionState('loading');
     iframeRef.current.src = url;
 
-    // Set a timeout to detect if iframe fails to load
+    // Set a longer timeout to detect if iframe fails to load
+    // OpenCut server may take time to start, especially on first load
     loadTimeoutRef.current = setTimeout(() => {
       setConnectionState((current) => {
-        // Only set to error if we're still loading (iframe didn't fire onLoad)
+        // Only hide overlay if we're still loading (iframe didn't fire onLoad)
+        // The iframe will remain visible and may still load, so we hide the overlay
         if (current === 'loading' || current === 'checking') {
-          console.warn('[OpenCut] Iframe load timeout after 10 seconds');
-          return 'error';
+          console.warn(
+            '[OpenCut] Iframe load timeout after 30 seconds, hiding overlay but keeping iframe visible'
+          );
+          // Hide the loading overlay so user can see if iframe is loading
+          // The iframe will remain visible and may still load
+          return 'loading-timeout'; // Hide overlay, but iframe remains visible
         }
         return current;
       });
       loadTimeoutRef.current = null;
-    }, 10000); // 10 second timeout
+    }, 30000); // 30 second timeout - OpenCut server may need time to start
   }, []);
 
-  const checkHealthAndLoad = useCallback(
-    async (url: string, isRetry = false) => {
-      if (!isRetry) {
-        setConnectionState('checking');
+  // Check status using IPC (Electron) or direct health check (web)
+  const checkOpenCutStatus = useCallback(async (): Promise<{
+    isRunning: boolean;
+    isStarting: boolean;
+    url: string | null;
+  }> => {
+    const opencutApi = getOpenCutApi();
+
+    if (opencutApi) {
+      // Use IPC bridge when in Electron
+      try {
+        const status = await opencutApi.status();
+        return {
+          isRunning: status.isRunning || false,
+          isStarting: status.isStarting || false,
+          url: status.url || null,
+        };
+      } catch (error) {
+        console.warn('[OpenCut] IPC status check failed:', error);
+        return { isRunning: false, isStarting: false, url: null };
+      }
+    } else {
+      // Fallback to direct health check in web mode
+      if (!effectiveUrl) {
+        return { isRunning: false, isStarting: false, url: null };
+      }
+      const isHealthy = await checkOpenCutHealth(effectiveUrl);
+      return {
+        isRunning: isHealthy,
+        isStarting: false,
+        url: isHealthy ? effectiveUrl : null,
+      };
+    }
+  }, [effectiveUrl]);
+
+  // Wait for server to be ready using IPC or polling
+  const waitForServerReady = useCallback(
+    async (maxWaitMs = 30000): Promise<{ success: boolean; url: string | null }> => {
+      const opencutApi = getOpenCutApi();
+
+      if (opencutApi) {
+        // Use IPC waitForReady when in Electron
+        try {
+          const result = await opencutApi.waitForReady(maxWaitMs);
+          return {
+            success: result.success || false,
+            url: result.status?.url || null,
+          };
+        } catch (error) {
+          console.warn('[OpenCut] IPC waitForReady failed:', error);
+          return { success: false, url: null };
+        }
+      } else {
+        // Fallback to polling in web mode
+        const startTime = Date.now();
+        while (Date.now() - startTime < maxWaitMs) {
+          const status = await checkOpenCutStatus();
+          if (status.isRunning && status.url) {
+            return { success: true, url: status.url };
+          }
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+        return { success: false, url: null };
+      }
+    },
+    [checkOpenCutStatus]
+  );
+
+  // Handle server that is already running
+  const handleServerAlreadyRunning = useCallback(
+    (statusUrl: string) => {
+      console.info('[OpenCut] Server is already running, loading iframe...');
+      setStartupStatus({
+        message: 'Server ready, loading editor...',
+        isStarting: false,
+        isRunning: true,
+      });
+      setConnectionState('loading');
+      startLoading(statusUrl);
+    },
+    [startLoading]
+  );
+
+  // Handle status update during polling
+  const handleStatusUpdate = useCallback(
+    (
+      statusInterval: NodeJS.Timeout,
+      currentStatus: { isStarting: boolean; isRunning: boolean; url: string | null }
+    ) => {
+      if (currentStatus.isStarting) {
+        setStartupStatus({
+          message: 'Starting OpenCut server...',
+          isStarting: true,
+          isRunning: false,
+        });
+        return;
       }
 
-      // Start loading iframe immediately (health check may fail due to CORS but iframe might still work)
+      if (currentStatus.isRunning) {
+        clearInterval(statusInterval);
+        setStartupStatus({
+          message: 'Server ready, loading editor...',
+          isStarting: false,
+          isRunning: true,
+        });
+        setConnectionState('loading');
+        if (currentStatus.url) {
+          startLoading(currentStatus.url);
+        }
+      }
+    },
+    [startLoading]
+  );
+
+  // Handle server ready result
+  const handleServerReadyResult = useCallback(
+    (result: { success: boolean; url: string | null }, url: string) => {
+      if (result.success && result.url) {
+        console.info('[OpenCut] Server is ready, loading iframe...');
+        setConnectionState('loading');
+        setStartupStatus({ message: 'Loading editor...', isStarting: false, isRunning: true });
+        startLoading(result.url);
+        return;
+      }
+
+      console.warn('[OpenCut] Server did not become ready within timeout');
+      setConnectionState('error');
+      setStartupStatus({
+        message: 'Server failed to start',
+        isStarting: false,
+        isRunning: false,
+      });
+      // Still try to load - server might have started but check failed
+      startLoading(url);
+    },
+    [startLoading]
+  );
+
+  // Handle server that is currently starting
+  const handleServerStarting = useCallback(
+    async (url: string) => {
+      console.info('[OpenCut] Server is starting, waiting for it to be ready...');
+      setConnectionState('starting');
+      setStartupStatus({
+        message: 'Starting OpenCut server...',
+        isStarting: true,
+        isRunning: false,
+      });
+
+      // Start polling for status updates
+      const statusInterval = setInterval(async () => {
+        const currentStatus = await checkOpenCutStatus();
+        handleStatusUpdate(statusInterval, currentStatus);
+      }, 1000);
+
+      statusCheckIntervalRef.current = statusInterval;
+
+      // Wait for server to be ready
+      const result = await waitForServerReady(30000);
+
+      if (statusCheckIntervalRef.current) {
+        clearInterval(statusCheckIntervalRef.current);
+        statusCheckIntervalRef.current = null;
+      }
+
+      handleServerReadyResult(result, url);
+    },
+    [checkOpenCutStatus, handleStatusUpdate, waitForServerReady, handleServerReadyResult]
+  );
+
+  // Handle server that is not running - attempt to start it
+  const handleServerNotRunning = useCallback(
+    async (url: string, opencutApi: NonNullable<ReturnType<typeof getOpenCutApi>>) => {
+      console.info('[OpenCut] Server is not running, attempting to start...');
+      setConnectionState('starting');
+      setStartupStatus({
+        message: 'Starting OpenCut server...',
+        isStarting: true,
+        isRunning: false,
+      });
+
+      try {
+        const startResult = await opencutApi.start();
+        if (startResult.success && startResult.url) {
+          console.info('[OpenCut] Server started successfully, loading iframe...');
+          setConnectionState('loading');
+          setStartupStatus({ message: 'Loading editor...', isStarting: false, isRunning: true });
+          startLoading(startResult.url);
+        } else {
+          console.warn('[OpenCut] Failed to start server:', startResult.error);
+          setConnectionState('error');
+          setStartupStatus({
+            message: startResult.error || 'Failed to start server',
+            isStarting: false,
+            isRunning: false,
+          });
+          // Still try to load - might be running already
+          startLoading(url);
+        }
+      } catch (error) {
+        console.error('[OpenCut] Error starting server:', error);
+        setConnectionState('error');
+        setStartupStatus({
+          message: 'Error starting server',
+          isStarting: false,
+          isRunning: false,
+        });
+        // Still try to load
+        startLoading(url);
+      }
+    },
+    [startLoading]
+  );
+
+  // Handle Electron mode - check status and manage server lifecycle
+  const handleElectronMode = useCallback(
+    async (url: string, opencutApi: NonNullable<ReturnType<typeof getOpenCutApi>>) => {
+      try {
+        const status = await checkOpenCutStatus();
+
+        if (status.isRunning && status.url) {
+          handleServerAlreadyRunning(status.url);
+          return;
+        }
+
+        if (status.isStarting) {
+          await handleServerStarting(url);
+        } else {
+          await handleServerNotRunning(url, opencutApi);
+        }
+      } catch (error) {
+        console.error('[OpenCut] Error checking server status:', error);
+        // Fall through to normal loading
+        setConnectionState('loading');
+        startLoading(url);
+      }
+    },
+    [
+      checkOpenCutStatus,
+      handleServerAlreadyRunning,
+      handleServerStarting,
+      handleServerNotRunning,
+      startLoading,
+    ]
+  );
+
+  // Handle web mode - start loading immediately and check health in parallel
+  const handleWebMode = useCallback(
+    (url: string) => {
+      setConnectionState('loading');
       startLoading(url);
 
-      // Also do a health check in parallel (non-blocking, for informational purposes)
+      // Do a health check in parallel (non-blocking)
       checkOpenCutHealth(url)
         .then((isHealthy) => {
           if (!isHealthy) {
@@ -264,10 +561,36 @@ export function OpenCutPage() {
           }
         })
         .catch((error) => {
-          console.info('[OpenCut] Health check error (non-critical):', error);
+          console.info(
+            '[OpenCut] Health check error (non-critical, iframe will still attempt to load):',
+            error
+          );
         });
     },
     [startLoading]
+  );
+
+  const checkHealthAndLoad = useCallback(
+    async (url: string, isRetry = false) => {
+      if (!isRetry) {
+        setConnectionState('checking');
+        setStartupStatus({
+          message: 'Checking OpenCut server...',
+          isStarting: false,
+          isRunning: false,
+        });
+      }
+
+      const opencutApi = getOpenCutApi();
+      const isElectron = isElectronWithOpenCut();
+
+      if (isElectron && opencutApi) {
+        await handleElectronMode(url, opencutApi);
+      } else {
+        handleWebMode(url);
+      }
+    },
+    [handleElectronMode, handleWebMode]
   );
 
   const handleRetry = useCallback(() => {
@@ -297,6 +620,10 @@ export function OpenCutPage() {
       if (loadTimeoutRef.current) {
         clearTimeout(loadTimeoutRef.current);
         loadTimeoutRef.current = null;
+      }
+      if (statusCheckIntervalRef.current) {
+        clearInterval(statusCheckIntervalRef.current);
+        statusCheckIntervalRef.current = null;
       }
     };
   }, [effectiveUrl, checkHealthAndLoad]);
@@ -359,26 +686,79 @@ export function OpenCutPage() {
         </div>
       </div>
       <div className={styles.iframeContainer}>
-        {connectionState === 'checking' && (
-          <div className={styles.loadingContainer}>
-            <Spinner size="large" label="Checking OpenCut server..." />
+        {/* Loading overlays - shown while checking, starting, or loading (but not after timeout) */}
+        {(connectionState === 'checking' ||
+          connectionState === 'starting' ||
+          connectionState === 'loading') && (
+          <div
+            className={styles.loadingContainer}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 10,
+              backgroundColor: tokens.colorNeutralBackground1,
+            }}
+          >
+            <Spinner
+              size="large"
+              label={
+                startupStatus.message ||
+                (connectionState === 'checking'
+                  ? 'Checking OpenCut server...'
+                  : connectionState === 'starting'
+                    ? 'Starting OpenCut server...'
+                    : 'Loading OpenCut editor...')
+              }
+            />
             <Text size={300} color="foreground2">
-              Verifying connection to OpenCut server...
+              {startupStatus.message ||
+                (connectionState === 'checking'
+                  ? 'Verifying connection to OpenCut server...'
+                  : connectionState === 'starting'
+                    ? 'Please wait while the server starts. This may take a moment on first launch...'
+                    : 'Starting the video editor...')}
             </Text>
           </div>
         )}
 
-        {connectionState === 'loading' && (
-          <div className={styles.loadingContainer}>
-            <Spinner size="large" label="Loading OpenCut editor..." />
-            <Text size={300} color="foreground2">
-              Starting the video editor...
+        {/* Minimal loading indicator after timeout - doesn't block iframe */}
+        {connectionState === 'loading-timeout' && (
+          <div
+            style={{
+              position: 'absolute',
+              top: tokens.spacingVerticalM,
+              left: tokens.spacingHorizontalM,
+              zIndex: 5,
+              padding: tokens.spacingHorizontalM,
+              backgroundColor: tokens.colorNeutralBackground3,
+              borderRadius: tokens.borderRadiusMedium,
+              boxShadow: tokens.shadow4,
+            }}
+          >
+            <Text size={200} color="foreground2">
+              Still loading... The editor will appear when ready.
             </Text>
           </div>
         )}
 
+        {/* Error overlay - shown only when connection definitively failed */}
         {connectionState === 'error' && (
-          <div className={styles.setupContainer}>
+          <div
+            className={styles.setupContainer}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 10,
+              backgroundColor: tokens.colorNeutralBackground1,
+              overflow: 'auto',
+            }}
+          >
             <Card className={styles.setupCard}>
               <div style={{ textAlign: 'center', marginBottom: tokens.spacingVerticalL }}>
                 <Play24Regular
@@ -497,11 +877,13 @@ export function OpenCutPage() {
           </div>
         )}
 
+        {/* Always show iframe - only hide error message overlay when connected */}
         <iframe
           ref={iframeRef}
           title="OpenCut Editor"
-          className={connectionState === 'error' ? styles.iframeHidden : styles.iframe}
+          className={styles.iframe}
           onLoad={handleIframeLoad}
+          onError={handleIframeError}
           allow="camera; microphone; fullscreen; autoplay; encrypted-media; picture-in-picture"
           sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-downloads"
         />

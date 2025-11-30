@@ -14,6 +14,7 @@ using Aura.Core.Providers;
 using Aura.Core.Services;
 using Aura.Core.Services.Generation;
 using Aura.Core.Services.Providers;
+using Aura.Core.Utilities;
 using Aura.Providers.Llm;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
@@ -1332,27 +1333,11 @@ public class ScriptsController : ControllerBase
 
     /// <summary>
     /// Clean up narration text by removing markdown artifacts and normalizing whitespace
+    /// Uses comprehensive LlmScriptCleanup utility for all LLM providers
     /// </summary>
     private static string CleanupNarrationText(string text)
     {
-        if (string.IsNullOrWhiteSpace(text))
-            return string.Empty;
-
-        // Remove [VISUAL: ...] markers but keep the description for context
-        var visualPattern = new System.Text.RegularExpressions.Regex(
-            @"\[VISUAL:\s*([^\]]+)\]", 
-            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        text = visualPattern.Replace(text, "");
-
-        // Remove markdown formatting (bold, italic)
-        text = text.Replace("**", "").Replace("__", "");
-        text = System.Text.RegularExpressions.Regex.Replace(text, @"(?<!\*)\*(?!\*)", "");
-        text = System.Text.RegularExpressions.Regex.Replace(text, @"(?<!_)_(?!_)", "");
-
-        // Normalize whitespace
-        text = System.Text.RegularExpressions.Regex.Replace(text, @"\s+", " ");
-        
-        return text.Trim();
+        return LlmScriptCleanup.CleanNarration(text);
     }
 
     /// <summary>

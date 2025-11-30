@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Aura.Core.Interfaces;
 using Aura.Core.Models;
 using Aura.Core.Models.Generation;
+using Aura.Core.Utilities;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Providers.Llm;
@@ -269,7 +270,9 @@ public abstract class BaseLlmScriptProvider : IScriptLlmProvider
             {
                 // Skip metadata lines and visual markers
                 var trimmedLine = line.Trim();
-                if (!IsMetadataLine(trimmedLine) && !string.IsNullOrWhiteSpace(trimmedLine))
+                if (!IsMetadataLine(trimmedLine) && 
+                    !LlmScriptCleanup.IsLlmMetaCommentary(trimmedLine) && 
+                    !string.IsNullOrWhiteSpace(trimmedLine))
                 {
                     currentContent.Add(trimmedLine);
                 }
@@ -299,7 +302,9 @@ public abstract class BaseLlmScriptProvider : IScriptLlmProvider
         // Split by paragraphs (double newlines)
         var paragraphs = ParagraphSplitRegex.Split(scriptText)
             .Select(p => p.Trim())
-            .Where(p => !string.IsNullOrWhiteSpace(p) && !IsMetadataLine(p))
+            .Where(p => !string.IsNullOrWhiteSpace(p) && 
+                       !IsMetadataLine(p) && 
+                       !LlmScriptCleanup.IsLlmMetaCommentary(p))
             .ToList();
 
         if (paragraphs.Count == 0)
@@ -376,40 +381,20 @@ public abstract class BaseLlmScriptProvider : IScriptLlmProvider
 
     /// <summary>
     /// Check if a line is metadata/formatting that should be excluded from narration
+    /// Uses comprehensive cleanup utility for all LLM providers
     /// </summary>
     private bool IsMetadataLine(string line)
     {
-        if (string.IsNullOrWhiteSpace(line))
-            return true;
-
-        var trimmed = line.Trim().ToLowerInvariant();
-        
-        // Check for common metadata patterns using static compiled regex
-        return trimmed.StartsWith("[visual:") ||
-               trimmed.StartsWith("[pause") ||
-               trimmed.StartsWith("[music") ||
-               trimmed.StartsWith("[sfx") ||
-               (trimmed.StartsWith("scene ") && SceneMetadataRegex.IsMatch(trimmed)) ||
-               trimmed.StartsWith("duration:") ||
-               trimmed.StartsWith("narration:") ||
-               trimmed.StartsWith("visual:");
+        return LlmScriptCleanup.IsMetadataLine(line);
     }
 
     /// <summary>
     /// Clean narration text by removing metadata and formatting artifacts
+    /// Uses comprehensive cleanup utility for all LLM providers
     /// </summary>
     private string CleanNarration(string narration)
     {
-        if (string.IsNullOrWhiteSpace(narration))
-            return string.Empty;
-
-        // Remove visual markers, pause markers, media markers, and clean up spaces
-        var cleaned = VisualMarkerRegex.Replace(narration, "");
-        cleaned = PauseMarkerRegex.Replace(cleaned, "");
-        cleaned = MediaMarkerRegex.Replace(cleaned, "");
-        cleaned = MultiSpaceRegex.Replace(cleaned, " ");
-        
-        return cleaned.Trim();
+        return LlmScriptCleanup.CleanNarration(narration);
     }
 
     /// <summary>

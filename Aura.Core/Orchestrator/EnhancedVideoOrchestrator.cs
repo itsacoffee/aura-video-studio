@@ -10,6 +10,7 @@ using Aura.Core.Models;
 using Aura.Core.Providers;
 using Aura.Core.Services;
 using Aura.Core.Services.Providers;
+using Aura.Core.Utilities;
 using Aura.Core.Validation;
 using Microsoft.Extensions.Logging;
 
@@ -645,21 +646,29 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
                 if (currentHeading != null && currentScriptLines.Count > 0)
                 {
                     var sceneScript = string.Join("\n", currentScriptLines);
-                    scenes.Add(new Scene(sceneIndex++, currentHeading, sceneScript, TimeSpan.Zero, TimeSpan.Zero));
+                    var cleanedScript = LlmScriptCleanup.CleanNarration(sceneScript);
+                    scenes.Add(new Scene(sceneIndex++, currentHeading, cleanedScript, TimeSpan.Zero, TimeSpan.Zero));
                     currentScriptLines.Clear();
                 }
                 currentHeading = line.Substring(3).Trim();
             }
             else if (!line.StartsWith("#") && !string.IsNullOrWhiteSpace(line))
             {
-                currentScriptLines.Add(line);
+                // Skip metadata lines - only add actual narrative content
+                var trimmedLine = line.Trim();
+                if (!LlmScriptCleanup.IsMetadataLine(trimmedLine) && 
+                    !LlmScriptCleanup.IsLlmMetaCommentary(trimmedLine))
+                {
+                    currentScriptLines.Add(line);
+                }
             }
         }
 
         if (currentHeading != null && currentScriptLines.Count > 0)
         {
             var sceneScript = string.Join("\n", currentScriptLines);
-            scenes.Add(new Scene(sceneIndex++, currentHeading, sceneScript, TimeSpan.Zero, TimeSpan.Zero));
+            var cleanedScript = LlmScriptCleanup.CleanNarration(sceneScript);
+            scenes.Add(new Scene(sceneIndex++, currentHeading, cleanedScript, TimeSpan.Zero, TimeSpan.Zero));
         }
 
         // Calculate timings
@@ -688,7 +697,7 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
     {
         return scenes.Select(scene => new ScriptLine(
             SceneIndex: scene.Index,
-            Text: scene.Script,
+            Text: LlmScriptCleanup.CleanNarration(scene.Script),
             Start: scene.Start,
             Duration: scene.Duration
         )).ToList();

@@ -15,6 +15,7 @@ using Aura.Core.Services.Generation;
 using Aura.Core.Services.Orchestration;
 using Aura.Core.Services.PacingServices;
 using Aura.Core.Models.Timeline;
+using Aura.Core.Utilities;
 using Aura.Core.Validation;
 using Microsoft.Extensions.Logging;
 using LibraryAssetType = Aura.Core.Models.Assets.AssetType;
@@ -1097,25 +1098,32 @@ public class VideoOrchestrator
                 // Found a new scene heading
                 if (currentHeading != null && currentScriptLines.Count > 0)
                 {
-                    // Save the previous scene
+                    // Save the previous scene with cleaned narration
                     var sceneScript = string.Join("\n", currentScriptLines);
-                    scenes.Add(new Scene(sceneIndex++, currentHeading, sceneScript, TimeSpan.Zero, TimeSpan.Zero));
+                    var cleanedScript = LlmScriptCleanup.CleanNarration(sceneScript);
+                    scenes.Add(new Scene(sceneIndex++, currentHeading, cleanedScript, TimeSpan.Zero, TimeSpan.Zero));
                     currentScriptLines.Clear();
                 }
                 currentHeading = line.Substring(3).Trim();
             }
             else if (!line.StartsWith("#") && !string.IsNullOrWhiteSpace(line))
             {
-                // Regular content line
-                currentScriptLines.Add(line);
+                // Skip metadata lines - only add actual narrative content
+                var trimmedLine = line.Trim();
+                if (!LlmScriptCleanup.IsMetadataLine(trimmedLine) && 
+                    !LlmScriptCleanup.IsLlmMetaCommentary(trimmedLine))
+                {
+                    currentScriptLines.Add(line);
+                }
             }
         }
 
-        // Add the last scene
+        // Add the last scene with cleaned narration
         if (currentHeading != null && currentScriptLines.Count > 0)
         {
             var sceneScript = string.Join("\n", currentScriptLines);
-            scenes.Add(new Scene(sceneIndex++, currentHeading, sceneScript, TimeSpan.Zero, TimeSpan.Zero));
+            var cleanedScript = LlmScriptCleanup.CleanNarration(sceneScript);
+            scenes.Add(new Scene(sceneIndex++, currentHeading, cleanedScript, TimeSpan.Zero, TimeSpan.Zero));
         }
 
         // Calculate timings based on word count distribution
@@ -1142,6 +1150,7 @@ public class VideoOrchestrator
 
     /// <summary>
     /// Converts scenes into script lines for TTS synthesis.
+    /// Applies final cleanup to ensure no metadata leaks through to TTS.
     /// </summary>
     private List<ScriptLine> ConvertScenesToScriptLines(List<Scene> scenes)
     {
@@ -1149,9 +1158,12 @@ public class VideoOrchestrator
 
         foreach (var scene in scenes)
         {
+            // Apply final cleanup to ensure no metadata remains
+            var cleanedScript = LlmScriptCleanup.CleanNarration(scene.Script);
+            
             scriptLines.Add(new ScriptLine(
                 SceneIndex: scene.Index,
-                Text: scene.Script,
+                Text: cleanedScript,
                 Start: scene.Start,
                 Duration: scene.Duration
             ));

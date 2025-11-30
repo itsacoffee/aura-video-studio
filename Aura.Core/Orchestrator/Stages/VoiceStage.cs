@@ -8,6 +8,7 @@ using Aura.Core.Models.Audio;
 using Aura.Core.Providers;
 using Aura.Core.Services;
 using Aura.Core.Services.Orchestration;
+using Aura.Core.Utilities;
 using Aura.Core.Validation;
 using Microsoft.Extensions.Logging;
 
@@ -194,22 +195,30 @@ public class VoiceStage : PipelineStage
                 if (currentHeading != null && currentScriptLines.Count > 0)
                 {
                     var sceneScript = string.Join("\n", currentScriptLines);
-                    scenes.Add(new Scene(sceneIndex++, currentHeading, sceneScript, TimeSpan.Zero, TimeSpan.Zero));
+                    var cleanedScript = LlmScriptCleanup.CleanNarration(sceneScript);
+                    scenes.Add(new Scene(sceneIndex++, currentHeading, cleanedScript, TimeSpan.Zero, TimeSpan.Zero));
                     currentScriptLines.Clear();
                 }
                 currentHeading = line.Substring(3).Trim();
             }
             else if (!line.StartsWith("#") && !string.IsNullOrWhiteSpace(line))
             {
-                currentScriptLines.Add(line);
+                // Skip metadata lines - only add actual narrative content
+                var trimmedLine = line.Trim();
+                if (!LlmScriptCleanup.IsMetadataLine(trimmedLine) && 
+                    !LlmScriptCleanup.IsLlmMetaCommentary(trimmedLine))
+                {
+                    currentScriptLines.Add(line);
+                }
             }
         }
 
-        // Add the last scene
+        // Add the last scene with cleaned narration
         if (currentHeading != null && currentScriptLines.Count > 0)
         {
             var sceneScript = string.Join("\n", currentScriptLines);
-            scenes.Add(new Scene(sceneIndex++, currentHeading, sceneScript, TimeSpan.Zero, TimeSpan.Zero));
+            var cleanedScript = LlmScriptCleanup.CleanNarration(sceneScript);
+            scenes.Add(new Scene(sceneIndex++, currentHeading, cleanedScript, TimeSpan.Zero, TimeSpan.Zero));
         }
 
         // Calculate timings based on word count distribution
@@ -236,12 +245,13 @@ public class VoiceStage : PipelineStage
 
     /// <summary>
     /// Converts scenes into script lines for TTS synthesis
+    /// Applies final cleanup to ensure no metadata leaks through to TTS
     /// </summary>
     private List<ScriptLine> ConvertScenesToScriptLines(List<Scene> scenes)
     {
         return scenes.Select(scene => new ScriptLine(
             SceneIndex: scene.Index,
-            Text: scene.Script,
+            Text: LlmScriptCleanup.CleanNarration(scene.Script),
             Start: scene.Start,
             Duration: scene.Duration
         )).ToList();

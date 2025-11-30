@@ -146,6 +146,17 @@ const VALID_CHANNELS = {
     "context-menu:reveal-in-os",
     "context-menu:open-path",
   ],
+
+  // OpenCut channels
+  OPENCUT: [
+    "opencut:status",
+    "opencut:getUrl",
+    "opencut:isAvailable",
+    "opencut:start",
+    "opencut:stop",
+    "opencut:waitForReady",
+    "opencut:health",
+  ],
 };
 
 // Event channels that renderer can listen to (includes menu events from menu-event-types.js)
@@ -546,6 +557,16 @@ function createAuraBridge() {
     openDirectory: () => safeInvoke("startup-logs:open-directory"),
   };
 
+  const opencutApi = {
+    status: () => safeInvoke("opencut:status"),
+    getUrl: () => safeInvoke("opencut:getUrl"),
+    isAvailable: () => safeInvoke("opencut:isAvailable"),
+    start: () => safeInvoke("opencut:start"),
+    stop: () => safeInvoke("opencut:stop"),
+    waitForReady: (maxWaitMs) => safeInvoke("opencut:waitForReady", maxWaitMs),
+    health: () => safeInvoke("opencut:health"),
+  };
+
   const updatesApi = {
     check: () => safeInvoke("updates:check"),
   };
@@ -656,6 +677,7 @@ function createAuraBridge() {
     contextMenu: contextMenuApi,
     menu: createValidatedMenuAPI(ipcRenderer),
     startupLogs: startupLogsApi,
+    opencut: opencutApi,
     safeMode: {
       onStatus: (callback) => safeOn("app:safeMode", callback),
     },

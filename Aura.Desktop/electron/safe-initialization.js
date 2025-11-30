@@ -372,7 +372,8 @@ function initializeIpcHandlers(
   tracker,
   logger,
   crashLogger,
-  networkContract = null
+  networkContract = null,
+  openCutManager = null
 ) {
   const step = InitializationStep.IPC_HANDLERS;
   tracker.startStep(step);
@@ -387,6 +388,7 @@ function initializeIpcHandlers(
     diagnostics: null,
     contextMenu: null,
     file: null,
+    opencut: null,
   };
 
   const failedHandlers = [];
@@ -534,6 +536,26 @@ function initializeIpcHandlers(
       failedHandlers.push({ name: "file", error: error.message });
       if (logger)
         logger.warn("IPC", "File handler failed to initialize", {
+          error: error.message,
+        });
+    }
+
+    // OpenCut handler
+    try {
+      if (openCutManager) {
+        const OpenCutHandler = require("./ipc-handlers/opencut-handler");
+        handlers.opencut = new OpenCutHandler(openCutManager);
+        handlers.opencut.register();
+        succeededHandlers.push("opencut");
+      } else {
+        if (logger) {
+          logger.info("IPC", "OpenCut handler skipped (OpenCutManager not available)");
+        }
+      }
+    } catch (error) {
+      failedHandlers.push({ name: "opencut", error: error.message });
+      if (logger)
+        logger.warn("IPC", "OpenCut handler failed to initialize", {
           error: error.message,
         });
     }
