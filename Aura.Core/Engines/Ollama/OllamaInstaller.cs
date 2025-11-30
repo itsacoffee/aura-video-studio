@@ -239,10 +239,11 @@ public class OllamaInstaller
             }
             finally
             {
-                // Clean up temp file
+                // Clean up temp file - failures here don't affect installation success
                 if (File.Exists(tempZipPath))
                 {
-                    try { File.Delete(tempZipPath); } catch { /* Ignore cleanup errors */ }
+                    try { File.Delete(tempZipPath); }
+                    catch (Exception ex) { _logger.LogDebug(ex, "Failed to delete temp file: {Path}", tempZipPath); }
                 }
             }
         }
@@ -250,10 +251,11 @@ public class OllamaInstaller
         {
             _logger.LogInformation("Installation cancelled by user");
 
-            // Clean up partial installation
+            // Clean up partial installation - best effort, don't fail if cleanup fails
             if (Directory.Exists(installPath))
             {
-                try { Directory.Delete(installPath, true); } catch { /* Ignore cleanup errors */ }
+                try { Directory.Delete(installPath, true); }
+                catch (Exception ex) { _logger.LogDebug(ex, "Failed to clean up partial installation: {Path}", installPath); }
             }
 
             return new OllamaInstallResult(
@@ -428,8 +430,9 @@ public class OllamaInstaller
                     }
                 }
 
-                // Remove the now-empty subdirectory
-                try { Directory.Delete(subdir, true); } catch { /* Ignore */ }
+                // Remove the now-empty subdirectory - non-critical cleanup
+                try { Directory.Delete(subdir, true); }
+                catch (Exception ex) { _logger.LogDebug(ex, "Failed to remove flattened directory: {Path}", subdir); }
 
                 break;
             }

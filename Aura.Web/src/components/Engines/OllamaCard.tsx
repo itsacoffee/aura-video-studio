@@ -148,6 +148,16 @@ const useStyles = makeStyles({
   },
 });
 
+// Constants for installation progress simulation
+const INSTALL_PROGRESS_INITIAL = 10;
+const INSTALL_PROGRESS_INCREMENT = 10;
+const INSTALL_PROGRESS_MAX_SIMULATED = 90;
+const INSTALL_PROGRESS_INTERVAL_MS = 1000;
+const INSTALL_PROGRESS_COMPLETE = 100;
+
+// Delay before refreshing status after server start
+const SERVER_STARTUP_DELAY_MS = 2000;
+
 interface InstalledModel {
   name: string;
   size?: string;
@@ -253,19 +263,21 @@ export function OllamaCard() {
   // Handle Ollama installation
   const handleInstall = async () => {
     setIsInstalling(true);
-    setInstallProgress(10);
+    setInstallProgress(INSTALL_PROGRESS_INITIAL);
     setError(null);
 
     try {
       // Simulate progress while installing
       const progressInterval = setInterval(() => {
-        setInstallProgress((prev) => Math.min(prev + 10, 90));
-      }, 1000);
+        setInstallProgress((prev) =>
+          Math.min(prev + INSTALL_PROGRESS_INCREMENT, INSTALL_PROGRESS_MAX_SIMULATED)
+        );
+      }, INSTALL_PROGRESS_INTERVAL_MS);
 
       const result = await ollamaClient.install();
 
       clearInterval(progressInterval);
-      setInstallProgress(100);
+      setInstallProgress(INSTALL_PROGRESS_COMPLETE);
 
       if (result.success) {
         setIsInstalled(true);
@@ -291,11 +303,11 @@ export function OllamaCard() {
       const result = await ollamaClient.start();
       if (result.success) {
         setIsRunning(true);
-        // Wait a moment for server to be ready, then refresh
+        // Wait for server to be ready before refreshing status
         setTimeout(() => {
           refreshStatus();
           detect();
-        }, 2000);
+        }, SERVER_STARTUP_DELAY_MS);
       } else {
         setError(result.message || 'Failed to start Ollama');
       }
