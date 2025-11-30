@@ -33,6 +33,92 @@ class WindowManager {
   }
 
   /**
+   * Calculate optimal window size based on display characteristics
+   * Follows Apple's design philosophy of utilizing screen real estate intelligently
+   * @param {number} screenWidth - Available screen width
+   * @param {number} screenHeight - Available screen height
+   * @param {number} dpiScale - Device pixel ratio / scale factor
+   * @returns {{ width: number, height: number, minWidth: number, minHeight: number }}
+   */
+  calculateOptimalWindowSize(screenWidth, screenHeight, dpiScale) {
+    // Effective resolution considers DPI scaling
+    const effectiveWidth = Math.round(screenWidth / dpiScale);
+    const effectiveHeight = Math.round(screenHeight / dpiScale);
+
+    // Target 85% of screen for immersive experience, capped for very large screens
+    let targetWidth = Math.round(screenWidth * 0.85);
+    let targetHeight = Math.round(screenHeight * 0.85);
+
+    // Cap maximum window size to prevent oversized windows on multi-monitor setups
+    const maxWidth = 2560;
+    const maxHeight = 1600;
+    targetWidth = Math.min(targetWidth, maxWidth);
+    targetHeight = Math.min(targetHeight, maxHeight);
+
+    // Ensure minimum usable size (considering DPI)
+    // These minimums ensure the app is usable even on constrained displays
+    const baseMinWidth = 1280;
+    const baseMinHeight = 720;
+
+    // Scale minimums based on DPI to ensure UI elements remain usable
+    const effectiveMinWidth = Math.round(baseMinWidth);
+    const effectiveMinHeight = Math.round(baseMinHeight);
+
+    // Final calculations
+    const width = Math.max(targetWidth, effectiveMinWidth);
+    const height = Math.max(targetHeight, effectiveMinHeight);
+
+    console.log("[WindowManager] Optimal window size calculation:", {
+      screenWidth,
+      screenHeight,
+      dpiScale,
+      effectiveWidth,
+      effectiveHeight,
+      targetWidth,
+      targetHeight,
+      finalWidth: width,
+      finalHeight: height,
+      minWidth: effectiveMinWidth,
+      minHeight: effectiveMinHeight,
+    });
+
+    return {
+      width,
+      height,
+      minWidth: effectiveMinWidth,
+      minHeight: effectiveMinHeight,
+    };
+  }
+
+  /**
+   * Get display information for the renderer process
+   * @returns {Object} Display information object
+   */
+  getDisplayInfo() {
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const { width: screenWidth, height: screenHeight } = primaryDisplay.size;
+    const {
+      width: workAreaWidth,
+      height: workAreaHeight,
+    } = primaryDisplay.workAreaSize;
+    const dpiScale = primaryDisplay.scaleFactor;
+
+    return {
+      screenWidth,
+      screenHeight,
+      workAreaWidth,
+      workAreaHeight,
+      scaleFactor: dpiScale,
+      bounds: primaryDisplay.bounds,
+      isRetina: dpiScale >= 2,
+      isHiDPI: dpiScale >= 1.5,
+      // Effective resolution (what CSS sees)
+      effectiveWidth: Math.round(screenWidth / dpiScale),
+      effectiveHeight: Math.round(screenHeight / dpiScale),
+    };
+  }
+
+  /**
    * Create splash screen window
    */
   createSplashWindow() {
@@ -144,7 +230,16 @@ class WindowManager {
     // Restore window state
     const savedState = this.windowStateStore.get("mainWindow");
     const primaryDisplay = screen.getPrimaryDisplay();
-    const { height: screenHeight } = primaryDisplay.workAreaSize;
+    const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
+    const dpiScale = primaryDisplay.scaleFactor;
+
+    // Calculate optimal window size for first launch or invalid saved state
+    const optimalSize = this.calculateOptimalWindowSize(screenWidth, screenHeight, dpiScale);
+
+    // Use saved state if valid, otherwise use optimal calculated size
+    const hasValidSavedSize = savedState.width > 0 && savedState.height > 0;
+    const windowWidth = hasValidSavedSize ? savedState.width : optimalSize.width;
+    const windowHeight = hasValidSavedSize ? savedState.height : optimalSize.height;
 
     // Validate saved position is still within screen bounds
     let x = savedState.x;
@@ -174,12 +269,12 @@ class WindowManager {
       loadTimeout: null,
     };
 
-    // Create window with saved or default state
+    // Create window with saved or optimal size
     this.mainWindow = new BrowserWindow({
-      width: savedState.width,
-      height: savedState.height,
-      minWidth: 1280,
-      minHeight: 720,
+      width: windowWidth,
+      height: windowHeight,
+      minWidth: optimalSize.minWidth,
+      minHeight: optimalSize.minHeight,
       x: x,
       y: y,
       show: false, // Don't show until ready-to-show event
@@ -373,8 +468,15 @@ class WindowManager {
         this.loadingState.loadTimeout = null;
       }
 
-      // Inject environment variables after successful load
-      // Environment variables are now provided via the preload bridge
+      // Send display info to renderer for adaptive layout system
+      const displayInfo = this.getDisplayInfo();
+      this.mainWindow.webContents.send("display-info", displayInfo);
+      console.log("[WindowManager] ✓ Display info sent to renderer:", {
+        effectiveWidth: displayInfo.effectiveWidth,
+        effectiveHeight: displayInfo.effectiveHeight,
+        scaleFactor: displayInfo.scaleFactor,
+        isHiDPI: displayInfo.isHiDPI,
+      });
     });
 
     this.mainWindow.webContents.on(

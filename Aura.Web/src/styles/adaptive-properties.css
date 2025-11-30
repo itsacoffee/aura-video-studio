@@ -1,0 +1,337 @@
+/**
+ * Adaptive CSS Properties
+ *
+ * Apple-level adaptive layout system using CSS custom properties.
+ * These properties scale automatically based on viewport size and
+ * are updated by the AdaptiveLayoutContext.
+ */
+
+/* ==================== ALL ROOT CUSTOM PROPERTIES ==================== */
+:root {
+  /* Base unit scales with the smaller viewport dimension */
+  --adaptive-unit: calc(min(1vw, 1vh) * 0.8);
+
+  /* Default values - overridden by JavaScript */
+  --adaptive-base-spacing: 5px;
+  --adaptive-base-font-size: 14px;
+  --adaptive-content-columns: 2;
+  --adaptive-viewport-width: 1920px;
+  --adaptive-viewport-height: 1080px;
+  --adaptive-dpr: 1;
+
+  /* Spacing scale - proportional to viewport with bounds */
+  --space-xs: clamp(2px, calc(var(--adaptive-base-spacing) * 0.5), 4px);
+  --space-sm: clamp(4px, var(--adaptive-base-spacing), 8px);
+  --space-md: clamp(8px, calc(var(--adaptive-base-spacing) * 2), 16px);
+  --space-lg: clamp(12px, calc(var(--adaptive-base-spacing) * 3), 24px);
+  --space-xl: clamp(16px, calc(var(--adaptive-base-spacing) * 4), 32px);
+  --space-2xl: clamp(24px, calc(var(--adaptive-base-spacing) * 6), 48px);
+
+  /* Content density multiplier - updated by JavaScript */
+  --content-density-multiplier: 1;
+  --density-font-adjustment: 0px;
+
+  /* Density-aware spacing */
+  --density-space-xs: calc(var(--space-xs) * var(--content-density-multiplier));
+  --density-space-sm: calc(var(--space-sm) * var(--content-density-multiplier));
+  --density-space-md: calc(var(--space-md) * var(--content-density-multiplier));
+  --density-space-lg: calc(var(--space-lg) * var(--content-density-multiplier));
+  --density-space-xl: calc(var(--space-xl) * var(--content-density-multiplier));
+
+  /* Sidebar width - percentage-based with constraints */
+  --sidebar-width: clamp(180px, 15vw, 280px);
+  --sidebar-collapsed-width: 48px;
+
+  /* Inspector width - scales with viewport */
+  --inspector-width: clamp(240px, 20vw, 400px);
+
+  /* Content max-width - prevents overly wide content */
+  --content-max-width: min(1600px, calc(100vw - var(--sidebar-width) - 48px));
+
+  /* Layout-specific values - updated by JavaScript */
+  --layout-sidebar-width: 200px;
+  --layout-sidebar-collapsed-width: 48px;
+  --layout-content-max-width: 1400px;
+  --layout-content-padding: 16px;
+  --layout-content-gutter: 16px;
+  --layout-inspector-width: 280px;
+  --layout-inspector-visible: 0;
+
+  /* Fluid typography with bounds */
+  --font-size-base: clamp(13px, calc(12px + 0.3vw), 16px);
+  --font-size-sm: clamp(11px, calc(10px + 0.2vw), 14px);
+  --font-size-lg: clamp(16px, calc(14px + 0.4vw), 20px);
+  --font-size-xl: clamp(20px, calc(18px + 0.5vw), 28px);
+  --font-size-2xl: clamp(28px, calc(24px + 0.8vw), 40px);
+  --font-size-3xl: clamp(36px, calc(32px + 1vw), 56px);
+
+  /* Layout-specific typography - updated by JavaScript */
+  --layout-font-base: 14px;
+  --layout-font-scale: 1.2;
+  --layout-line-height: 1.5;
+  --layout-font-sm: 12px;
+  --layout-font-lg: 17px;
+  --layout-font-xl: 20px;
+  --layout-font-2xl: 24px;
+
+  /* Grid configuration */
+  --grid-columns: var(--adaptive-content-columns, 2);
+  --grid-gap: clamp(12px, 2vw, 24px);
+  --card-min-width: clamp(280px, 25vw, 400px);
+
+  /* Layout-specific grid - updated by JavaScript */
+  --layout-grid-columns: 2;
+  --layout-grid-gap: 16px;
+  --layout-grid-item-min-width: 300px;
+
+  /* WCAG 2.1 AA minimum touch target size */
+  --touch-target-min: 44px;
+
+  /* Control heights - scale with viewport */
+  --control-height: clamp(32px, calc(28px + 0.4vw), 40px);
+  --control-height-sm: clamp(24px, calc(22px + 0.3vw), 32px);
+  --control-height-lg: clamp(40px, calc(36px + 0.5vw), 48px);
+
+  /* Button padding - responsive */
+  --button-padding-x: clamp(12px, 2vw, 24px);
+  --button-padding-y: clamp(8px, 1vw, 16px);
+
+  /* Safe area insets - for notched devices and desktop title bars */
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-right: env(safe-area-inset-right, 0px);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-inset-left: env(safe-area-inset-left, 0px);
+
+  /* Minimum padding that respects safe areas */
+  --safe-padding-top: max(var(--space-md), var(--safe-area-inset-top));
+  --safe-padding-right: max(var(--space-md), var(--safe-area-inset-right));
+  --safe-padding-bottom: max(var(--space-md), var(--safe-area-inset-bottom));
+  --safe-padding-left: max(var(--space-md), var(--safe-area-inset-left));
+
+  /* Animation defaults */
+  --transition-duration: 200ms;
+  --animation-duration: 300ms;
+}
+
+/* ==================== SIZE CLASS RESPONSIVE RULES ==================== */
+
+/* Compact displays (< 1024px or high DPI small screens) */
+@media (width < 1024px), (width < 1401px) and (resolution >= 2dppx) {
+  :root {
+    --sidebar-width: 48px; /* Collapsed by default */
+    --inspector-width: 100%;
+    --grid-columns: 1;
+    --content-max-width: 100%;
+  }
+}
+
+/* Regular displays (1024px - 1919px) */
+@media (1024px <= width < 1920px) {
+  :root {
+    --grid-columns: 2;
+    --sidebar-width: clamp(180px, 15vw, 240px);
+  }
+}
+
+/* Expanded displays (1920px+) */
+@media (width >= 1920px) {
+  :root {
+    --grid-columns: 3;
+    --sidebar-width: clamp(200px, 14vw, 280px);
+    --content-max-width: min(
+      1600px,
+      calc(100vw - var(--sidebar-width) - var(--inspector-width) - 64px)
+    );
+  }
+}
+
+/* Ultra-wide displays (2560px+) */
+@media (width >= 2560px) {
+  :root {
+    --grid-columns: 4;
+    --content-max-width: 2000px;
+    --sidebar-width: clamp(220px, 12vw, 300px);
+    --inspector-width: clamp(280px, 18vw, 400px);
+  }
+}
+
+/* Ultrawide aspect ratio adjustment (21:9+) */
+@media (aspect-ratio >= 21/9) {
+  :root {
+    --content-max-width: min(1800px, 70vw);
+    --sidebar-width: clamp(200px, 12vw, 300px);
+  }
+}
+
+/* Portrait orientation */
+@media (orientation: portrait) {
+  :root {
+    --sidebar-width: 100%;
+    --inspector-width: 100%;
+    --grid-columns: 1;
+  }
+}
+
+/* ==================== DENSITY-BASED ADJUSTMENTS ==================== */
+
+/* Compact density */
+[data-content-density='compact'] {
+  --space-sm: 4px;
+  --space-md: 8px;
+  --space-lg: 12px;
+  --control-height: 28px;
+  --control-height-sm: 22px;
+  --button-padding-x: 8px;
+  --button-padding-y: 4px;
+}
+
+/* Comfortable density (default) */
+[data-content-density='comfortable'] {
+  --space-sm: 6px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --control-height: 32px;
+  --control-height-sm: 26px;
+  --button-padding-x: 12px;
+  --button-padding-y: 6px;
+}
+
+/* Spacious density */
+[data-content-density='spacious'] {
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --control-height: 40px;
+  --control-height-sm: 32px;
+  --button-padding-x: 16px;
+  --button-padding-y: 10px;
+}
+
+/* ==================== SIZE CLASS DATA ATTRIBUTES ==================== */
+
+/* Compact size class */
+[data-size-class='compact'] {
+  --sidebar-width: var(--sidebar-collapsed-width);
+  --grid-columns: 1;
+}
+
+/* Regular size class */
+[data-size-class='regular'] {
+  --grid-columns: 2;
+}
+
+/* Expanded size class */
+[data-size-class='expanded'] {
+  --grid-columns: 3;
+}
+
+/* ==================== PANEL LAYOUT DATA ATTRIBUTES ==================== */
+
+/* Stacked layout (mobile) */
+[data-panel-layout='stacked'] {
+  --layout-inspector-visible: 0;
+}
+
+/* Side-by-side layout */
+[data-panel-layout='side-by-side'] {
+  --layout-inspector-visible: 0;
+}
+
+/* Three-panel layout */
+[data-panel-layout='three-panel'] {
+  --layout-inspector-visible: 1;
+}
+
+/* ==================== ANIMATION PREFERENCES ==================== */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition-duration: 0.01ms;
+    --animation-duration: 0.01ms;
+  }
+}
+
+/* ==================== HIGH CONTRAST MODE ==================== */
+@media (prefers-contrast: more) {
+  :root {
+    --font-size-base: clamp(14px, calc(13px + 0.3vw), 18px);
+    --control-height: clamp(36px, calc(32px + 0.4vw), 44px);
+  }
+}
+
+/* ==================== UTILITY CLASSES ==================== */
+
+/* Adaptive container */
+.adaptive-container {
+  width: 100%;
+  max-width: var(--layout-content-max-width, var(--content-max-width));
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--layout-content-padding, var(--space-md));
+  padding-right: var(--layout-content-padding, var(--space-md));
+}
+
+/* Adaptive grid */
+.adaptive-grid {
+  display: grid;
+  grid-template-columns: repeat(
+    var(--layout-grid-columns, var(--grid-columns)),
+    minmax(var(--layout-grid-item-min-width, var(--card-min-width)), 1fr)
+  );
+  gap: var(--layout-grid-gap, var(--grid-gap));
+}
+
+/* Auto-fit grid (automatically determines columns) */
+.adaptive-grid-auto {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(var(--layout-grid-item-min-width, var(--card-min-width)), 1fr)
+  );
+  gap: var(--layout-grid-gap, var(--grid-gap));
+}
+
+/* Fluid typography */
+.fluid-text-sm {
+  font-size: var(--layout-font-sm, var(--font-size-sm));
+}
+
+.fluid-text-base {
+  font-size: var(--layout-font-base, var(--font-size-base));
+}
+
+.fluid-text-lg {
+  font-size: var(--layout-font-lg, var(--font-size-lg));
+}
+
+.fluid-text-xl {
+  font-size: var(--layout-font-xl, var(--font-size-xl));
+}
+
+.fluid-text-2xl {
+  font-size: var(--layout-font-2xl, var(--font-size-2xl));
+}
+
+/* Density-aware spacing */
+.density-space-sm {
+  margin: var(--density-space-sm);
+}
+
+.density-space-md {
+  margin: var(--density-space-md);
+}
+
+.density-space-lg {
+  margin: var(--density-space-lg);
+}
+
+.density-padding-sm {
+  padding: var(--density-space-sm);
+}
+
+.density-padding-md {
+  padding: var(--density-space-md);
+}
+
+.density-padding-lg {
+  padding: var(--density-space-lg);
+}

@@ -168,6 +168,7 @@ const VALID_EVENT_CHANNELS = [
   "backend:providerUpdate",
   "protocol:navigate",
   "app:safeMode",
+  "display-info", // Display info updates for adaptive layout
   ...MENU_EVENT_CHANNELS,
 ];
 
@@ -635,6 +636,13 @@ function createAuraBridge() {
       };
     },
     getPaths: () => safeInvoke("app:getPaths"),
+    /**
+     * Listen for display info updates from the main process
+     * Used by the adaptive layout system for responsive UI
+     * @param {function} callback - Function called with display info
+     * @returns {function} Unsubscribe function
+     */
+    onDisplayInfo: (callback) => safeOn("display-info", callback),
   };
 
   const aura = {
