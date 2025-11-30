@@ -155,6 +155,58 @@ public static class ModelRegistry
             MaxTokens = 4096,
             ContextWindow = 16384,
             Aliases = new[] { "gpt-3.5-turbo" }
+        },
+        
+        // Ollama - common local models (actual models will be fetched from Ollama API when available)
+        new ModelInfo 
+        { 
+            Provider = "Ollama", 
+            ModelId = "llama3.1:latest",
+            MaxTokens = 128000,
+            ContextWindow = 128000,
+            Aliases = new[] { "llama3.1", "llama-3.1" }
+        },
+        new ModelInfo 
+        { 
+            Provider = "Ollama", 
+            ModelId = "llama3:latest",
+            MaxTokens = 8192,
+            ContextWindow = 8192,
+            Aliases = new[] { "llama3", "llama-3" }
+        },
+        new ModelInfo 
+        { 
+            Provider = "Ollama", 
+            ModelId = "mistral:latest",
+            MaxTokens = 8192,
+            ContextWindow = 8192,
+            Aliases = new[] { "mistral" }
+        },
+        new ModelInfo 
+        { 
+            Provider = "Ollama", 
+            ModelId = "codellama:latest",
+            MaxTokens = 16384,
+            ContextWindow = 16384,
+            Aliases = new[] { "codellama" }
+        },
+        new ModelInfo 
+        { 
+            Provider = "Ollama", 
+            ModelId = "phi3:latest",
+            MaxTokens = 4096,
+            ContextWindow = 4096,
+            Aliases = new[] { "phi3", "phi-3" }
+        },
+        
+        // Rule-Based - fallback provider that works offline without any configuration
+        new ModelInfo 
+        { 
+            Provider = "RuleBased", 
+            ModelId = "rule-based-script-generator",
+            MaxTokens = 4096,
+            ContextWindow = 4096,
+            Aliases = new[] { "rule-based", "offline", "fallback" }
         }
     };
     
@@ -241,7 +293,8 @@ public static class ModelRegistry
             "Anthropic" => "claude-3-5-sonnet-20241022",
             "Gemini" => "gemini-1.5-pro",
             "Azure" => "gpt-4o",
-            "Ollama" => "llama3.1",
+            "Ollama" => "llama3.1:latest",
+            "RuleBased" => "rule-based-script-generator",
             _ => "unknown"
         };
     }

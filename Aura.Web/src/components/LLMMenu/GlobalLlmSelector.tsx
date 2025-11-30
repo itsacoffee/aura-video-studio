@@ -86,6 +86,24 @@ interface ProviderInfo {
   isAvailable?: boolean;
 }
 
+// Providers that don't require an API key to function
+const LOCAL_PROVIDERS = new Set(['Ollama', 'RuleBased']);
+
+// Human-readable display names for providers
+const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
+  RuleBased: 'Rule-Based (Offline)',
+};
+
+/** Get display name for a provider */
+function getProviderDisplayName(providerId: string): string {
+  return PROVIDER_DISPLAY_NAMES[providerId] || providerId;
+}
+
+/** Check if a provider requires an API key */
+function providerRequiresApiKey(providerId: string): boolean {
+  return !LOCAL_PROVIDERS.has(providerId);
+}
+
 export function GlobalLlmSelector() {
   const styles = useStyles();
   const { selection, setSelection } = useGlobalLlmStore();
@@ -123,21 +141,21 @@ export function GlobalLlmSelector() {
         const models = providersData[providerId] || [];
         return {
           id: providerId,
-          name: providerId,
-          requiresApiKey: providerId !== 'Ollama',
+          name: getProviderDisplayName(providerId),
+          requiresApiKey: providerRequiresApiKey(providerId),
           modelCount: models.length,
           isAvailable: models.length > 0,
         };
       });
 
       // Add common providers that might not have models yet
-      const commonProviders = ['OpenAI', 'Anthropic', 'Gemini', 'Ollama', 'Azure'];
+      const commonProviders = ['OpenAI', 'Anthropic', 'Gemini', 'Ollama', 'Azure', 'RuleBased'];
       for (const provider of commonProviders) {
         if (!providerList.some((p) => p.id === provider)) {
           providerList.push({
             id: provider,
-            name: provider,
-            requiresApiKey: provider !== 'Ollama',
+            name: getProviderDisplayName(provider),
+            requiresApiKey: providerRequiresApiKey(provider),
             modelCount: 0,
             isAvailable: false,
           });

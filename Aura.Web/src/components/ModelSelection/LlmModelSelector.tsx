@@ -127,6 +127,7 @@ const LLM_PROVIDERS = [
   { id: 'Gemini', name: 'Google Gemini', requiresApiKey: true },
   { id: 'Ollama', name: 'Ollama (Local)', requiresApiKey: false },
   { id: 'Azure', name: 'Azure OpenAI', requiresApiKey: true },
+  { id: 'RuleBased', name: 'Rule-Based (Offline)', requiresApiKey: false },
 ];
 
 export const LlmModelSelector: React.FC<LlmModelSelectorProps> = ({
@@ -259,6 +260,8 @@ export const LlmModelSelector: React.FC<LlmModelSelectorProps> = ({
         return 'Ollama runs open-source models locally on your machine. No API key required, but Ollama must be running.';
       case 'Azure':
         return 'Azure OpenAI provides enterprise-grade access to OpenAI models. Requires Azure subscription and deployment.';
+      case 'RuleBased':
+        return 'Rule-Based provider generates scripts using predefined templates. Works completely offline without any API keys or external services.';
       default:
         return 'Select an AI provider to use for this feature.';
     }

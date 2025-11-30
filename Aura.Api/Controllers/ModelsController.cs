@@ -320,7 +320,7 @@ public class ModelsController : ControllerBase
                 _logger.LogWarning("ModelCatalog not configured, returning static registry only");
                 
                 var staticModels = string.IsNullOrWhiteSpace(provider)
-                    ? new[] { "OpenAI", "Anthropic", "Gemini", "Azure", "Ollama" }
+                    ? new[] { "OpenAI", "Anthropic", "Gemini", "Azure", "Ollama", "RuleBased" }
                         .SelectMany(p => ModelRegistry.GetModelsForProvider(p))
                         .ToList()
                     : ModelRegistry.GetModelsForProvider(provider).ToList();
@@ -346,7 +346,7 @@ public class ModelsController : ControllerBase
             }
 
             var models = string.IsNullOrWhiteSpace(provider)
-                ? new[] { "OpenAI", "Anthropic", "Gemini", "Azure", "Ollama" }
+                ? new[] { "OpenAI", "Anthropic", "Gemini", "Azure", "Ollama", "RuleBased" }
                     .SelectMany(p => _modelCatalog.GetAllModels(p))
                     .ToList()
                 : _modelCatalog.GetAllModels(provider);
