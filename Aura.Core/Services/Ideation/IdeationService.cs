@@ -3850,24 +3850,113 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                 request.LlmModel, request.LlmProvider ?? "not specified");
         }
         
-        // Validate we have a model - either from request override, llmParams, or provider configuration
-        if (string.IsNullOrWhiteSpace(defaultModel) && 
-            string.IsNullOrWhiteSpace(llmParams?.ModelOverride) &&
-            string.IsNullOrWhiteSpace(requestModelOverride))
-        {
-            throw new InvalidOperationException(
-                "Cannot determine Ollama model for ideation. " +
-                "Please ensure Ollama provider is properly configured with a model in Settings, " +
-                "or select a model from the AI Model dropdown. " +
-                "The model should be configured in Provider Settings (Ollama Model field).");
-        }
-        
         // Use model in priority order: request.LlmModel > llmParams.ModelOverride > defaultModel
         var modelToUse = !string.IsNullOrWhiteSpace(requestModelOverride)
             ? requestModelOverride
             : !string.IsNullOrWhiteSpace(llmParams?.ModelOverride)
                 ? llmParams.ModelOverride
-                : defaultModel!; // Safe because we validated above
+                : defaultModel;
+        
+        // If no model is configured, query Ollama for available models and select the best one
+        if (string.IsNullOrWhiteSpace(modelToUse))
+        {
+            _logger.LogWarning("No Ollama model configured, querying Ollama for available models");
+            
+            try
+            {
+                // Use linked token source to respect both timeout and original cancellation
+                using var tagsCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                tagsCts.CancelAfter(TimeSpan.FromSeconds(10));
+                var tagsResponse = await httpClient.GetAsync($"{baseUrl}/api/tags", tagsCts.Token).ConfigureAwait(false);
+                
+                if (tagsResponse.IsSuccessStatusCode)
+                {
+                    var tagsContent = await tagsResponse.Content.ReadAsStringAsync(tagsCts.Token).ConfigureAwait(false);
+                    var tagsDoc = System.Text.Json.JsonDocument.Parse(tagsContent);
+                    
+                    if (tagsDoc.RootElement.TryGetProperty("models", out var modelsArray) &&
+                        modelsArray.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    {
+                        var availableModels = new List<string>();
+                        foreach (var modelElement in modelsArray.EnumerateArray())
+                        {
+                            if (modelElement.TryGetProperty("name", out var nameProp))
+                            {
+                                var name = nameProp.GetString();
+                                if (!string.IsNullOrEmpty(name))
+                                {
+                                    availableModels.Add(name);
+                                }
+                            }
+                        }
+                        
+                        if (availableModels.Count > 0)
+                        {
+                            // Select best model by preference: prefer larger/better models for ideation
+                            // Priority: llama3.1 > qwen2.5 > mistral > gemma > phi > other models
+                            var preferredPrefixes = new[] { "llama3", "qwen2", "mistral", "gemma", "phi" };
+                            modelToUse = availableModels
+                                .OrderBy(m => {
+                                    var lowerName = m.ToLowerInvariant();
+                                    for (int i = 0; i < preferredPrefixes.Length; i++)
+                                    {
+                                        if (lowerName.StartsWith(preferredPrefixes[i], StringComparison.OrdinalIgnoreCase))
+                                            return i;
+                                    }
+                                    return preferredPrefixes.Length; // Other models last
+                                })
+                                .First();
+                            
+                            _logger.LogInformation(
+                                "No model configured, auto-selected model: '{Model}' (based on capability preference). " +
+                                "Available models: {AllModels}. " +
+                                "Configure a specific model in Settings for consistent results.",
+                                modelToUse, string.Join(", ", availableModels));
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException(
+                                "Cannot determine Ollama model for ideation. " +
+                                "No models are installed in Ollama. " +
+                                "Please install a model using: ollama pull llama3.1 (or another model)");
+                        }
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException(
+                            "Cannot determine Ollama model for ideation. " +
+                            "Failed to parse Ollama models list. " +
+                            "Please ensure Ollama is properly installed and running.");
+                    }
+                }
+                else
+                {
+                    throw new InvalidOperationException(
+                        $"Cannot determine Ollama model for ideation. " +
+                        $"Failed to query Ollama for available models (HTTP {tagsResponse.StatusCode}). " +
+                        $"Please ensure Ollama is running: 'ollama serve'");
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                // Re-throw our own exceptions with clear messages
+                throw;
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                // User cancelled the operation
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to query Ollama for available models");
+                throw new InvalidOperationException(
+                    "Cannot determine Ollama model for ideation. " +
+                    "Please ensure Ollama provider is properly configured with a model in Settings, " +
+                    "or select a model from the AI Model dropdown. " +
+                    $"Error querying Ollama: {ex.Message}", ex);
+            }
+        }
         var temperature = parameters?.Temperature ?? llmParams?.Temperature ?? 0.7;
         var maxTokens = parameters?.MaxTokens ?? llmParams?.MaxTokens ?? 2048;
         var topP = parameters?.TopP ?? llmParams?.TopP ?? 0.9;

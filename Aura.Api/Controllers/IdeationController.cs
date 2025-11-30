@@ -127,7 +127,8 @@ public class IdeationController : ControllerBase
 
             // Add Ollama-specific error handling
             if (errorMessage.Contains("Ollama", StringComparison.OrdinalIgnoreCase) ||
-                errorMessage.Contains("Cannot connect", StringComparison.OrdinalIgnoreCase))
+                errorMessage.Contains("Cannot connect", StringComparison.OrdinalIgnoreCase) ||
+                errorMessage.Contains("Cannot determine", StringComparison.OrdinalIgnoreCase))
             {
                 if (errorMessage.Contains("Cannot connect", StringComparison.OrdinalIgnoreCase))
                 {
@@ -135,12 +136,25 @@ public class IdeationController : ControllerBase
                     suggestions.Add("Verify Ollama is installed: Visit https://ollama.com to download");
                     suggestions.Add("Check Ollama base URL in Settings (default: http://localhost:11434)");
                 }
+                else if (errorMessage.Contains("No models are installed", StringComparison.OrdinalIgnoreCase))
+                {
+                    suggestions.Add("Install a model: Run 'ollama pull llama3.1' or 'ollama pull qwen2.5' in terminal");
+                    suggestions.Add("List installed models: Run 'ollama list' to verify models are available");
+                    suggestions.Add("Popular models: llama3.1, qwen2.5, mistral, gemma2");
+                }
                 else if (errorMessage.Contains("model", StringComparison.OrdinalIgnoreCase) &&
-                         errorMessage.Contains("not installed", StringComparison.OrdinalIgnoreCase))
+                         (errorMessage.Contains("not found", StringComparison.OrdinalIgnoreCase) ||
+                          errorMessage.Contains("not installed", StringComparison.OrdinalIgnoreCase)))
                 {
                     suggestions.Add("Install the requested model: Run 'ollama pull <model-name>' in terminal");
                     suggestions.Add("List available models: Run 'ollama list' to see installed models");
                     suggestions.Add("Check model name in Settings matches an installed model");
+                }
+                else if (errorMessage.Contains("Cannot determine", StringComparison.OrdinalIgnoreCase))
+                {
+                    suggestions.Add("Install a model in Ollama: Run 'ollama pull llama3.1' in terminal");
+                    suggestions.Add("Or configure a model in Settings > Providers > Ollama");
+                    suggestions.Add("Or select a model from the AI Model dropdown in the Ideation page");
                 }
                 else
                 {

@@ -5,7 +5,6 @@ import {
   makeStyles,
   tokens,
   Text,
-  Spinner,
   Field,
   Slider,
   shorthands,
@@ -95,13 +94,6 @@ const useStyles = makeStyles({
     borderTopStyle: 'solid',
     borderTopColor: tokens.colorNeutralStroke2,
     marginTop: tokens.spacingVerticalS,
-  },
-  loadingContainer: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: tokens.spacingHorizontalM,
-    ...shorthands.padding(tokens.spacingVerticalL),
-    justifyContent: 'center',
   },
   sliderField: {
     marginTop: tokens.spacingVerticalM,
@@ -277,24 +269,17 @@ export const BrainstormInput: React.FC<BrainstormInputProps> = ({
         </Text>
       </Field>
 
-      {loading ? (
-        <div className={styles.loadingContainer}>
-          <Spinner size="small" />
-          <Text size={300}>Generating creative concepts...</Text>
-        </div>
-      ) : (
-        <div className={styles.actions}>
-          <Button
-            appearance="primary"
-            icon={<SendRegular />}
-            onClick={handleBrainstorm}
-            disabled={!topic.trim()}
-            size="large"
-          >
-            Generate Concepts
-          </Button>
-        </div>
-      )}
+      <div className={styles.actions}>
+        <Button
+          appearance="primary"
+          icon={<SendRegular />}
+          onClick={handleBrainstorm}
+          disabled={loading || !topic.trim()}
+          size="large"
+        >
+          Generate Concepts
+        </Button>
+      </div>
     </div>
   );
 };
