@@ -1333,7 +1333,264 @@ public class EnginesController : ControllerBase
             return StatusCode(500, new { error = ex.Message });
         }
     }
+
+    #region Stable Diffusion Specific Endpoints
+
+    /// <summary>
+    /// Check GPU requirements for Stable Diffusion
+    /// </summary>
+    [HttpGet("stable-diffusion/gpu-check")]
+    public async Task<IActionResult> CheckStableDiffusionGpu(CancellationToken ct)
+    {
+        try
+        {
+            // Detect GPU for Stable Diffusion requirements
+            var hardwareDetector = new Aura.Core.Hardware.HardwareDetector(
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<Aura.Core.Hardware.HardwareDetector>.Instance);
+            var systemProfile = await hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
+            var gpuInfo = systemProfile.Gpu;
+            
+            bool isNvidia = gpuInfo?.Vendor?.ToUpperInvariant() == "NVIDIA";
+            int vramGB = gpuInfo?.VramGB ?? 0;
+            bool meetsRequirements = isNvidia && vramGB >= 6;
+            
+            string message;
+            string? recommendation = null;
+            
+            if (!isNvidia)
+            {
+                message = "Stable Diffusion requires an NVIDIA GPU with CUDA support.";
+                recommendation = "Consider using cloud-based image generation providers like DALL-E or Stability AI, or use stock images instead.";
+            }
+            else if (vramGB < 6)
+            {
+                message = $"Your GPU has {vramGB}GB VRAM, but Stable Diffusion requires at least 6GB.";
+                recommendation = $"Your {gpuInfo?.Model ?? "GPU"} may not be able to run SD 1.5. Consider using cloud providers or stock images.";
+            }
+            else if (vramGB < 8)
+            {
+                message = $"Your {gpuInfo?.Model ?? "GPU"} with {vramGB}GB VRAM meets minimum requirements. 8GB+ recommended for best performance.";
+            }
+            else
+            {
+                message = $"Your {gpuInfo?.Model ?? "GPU"} with {vramGB}GB VRAM meets all requirements for Stable Diffusion.";
+                if (vramGB >= 12)
+                {
+                    recommendation = "Your GPU can also run SDXL models for higher quality images.";
+                }
+            }
+            
+            return Ok(new
+            {
+                meetsRequirements,
+                isNvidiaGpu = isNvidia,
+                vramGB,
+                gpuModel = gpuInfo?.Model,
+                gpuVendor = gpuInfo?.Vendor,
+                message,
+                recommendation
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to check GPU requirements for Stable Diffusion");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Get Stable Diffusion installation and server status
+    /// </summary>
+    [HttpGet("stable-diffusion/status")]
+    public async Task<IActionResult> GetStableDiffusionStatus(CancellationToken ct)
+    {
+        try
+        {
+            var engineConfig = _registry.GetEngine("stable-diffusion-webui");
+            bool isInstalled = _installer.IsInstalled("stable-diffusion-webui");
+            var processStatus = _processManager.GetStatus("stable-diffusion-webui");
+            bool isRunning = processStatus.IsRunning;
+            bool isHealthy = false;
+            string[]? models = null;
+            
+            // Check health and get models if running
+            if (isRunning && engineConfig?.Port.HasValue == true)
+            {
+                try
+                {
+                    using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                    cts.CancelAfter(TimeSpan.FromSeconds(10));
+                    
+                    using var httpClient = _httpClientFactory.CreateClient();
+                    var healthResponse = await httpClient.GetAsync(
+                        $"http://127.0.0.1:{engineConfig.Port}/sdapi/v1/sd-models", 
+                        cts.Token).ConfigureAwait(false);
+                    
+                    isHealthy = healthResponse.IsSuccessStatusCode;
+                    
+                    if (isHealthy)
+                    {
+                        var modelsJson = await healthResponse.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                        var modelsDoc = System.Text.Json.JsonDocument.Parse(modelsJson);
+                        var modelList = new List<string>();
+                        foreach (var model in modelsDoc.RootElement.EnumerateArray())
+                        {
+                            if (model.TryGetProperty("model_name", out var nameEl))
+                            {
+                                modelList.Add(nameEl.GetString() ?? "");
+                            }
+                            else if (model.TryGetProperty("title", out var titleEl))
+                            {
+                                modelList.Add(titleEl.GetString() ?? "");
+                            }
+                        }
+                        models = modelList.ToArray();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Could not check SD health");
+                }
+            }
+            
+            return Ok(new
+            {
+                engineId = "stable-diffusion-webui",
+                isInstalled,
+                isRunning,
+                isHealthy,
+                port = engineConfig?.Port ?? 7860,
+                processId = processStatus.ProcessId,
+                installPath = engineConfig?.InstallPath ?? _installer.GetInstallPath("stable-diffusion-webui"),
+                models,
+                lastError = processStatus.LastError
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get Stable Diffusion status");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Get available Stable Diffusion models for download
+    /// </summary>
+    [HttpGet("stable-diffusion/models")]
+    public IActionResult GetStableDiffusionModels()
+    {
+        try
+        {
+            var models = new[]
+            {
+                new
+                {
+                    id = "sd-v1-5",
+                    name = "Stable Diffusion 1.5",
+                    description = "The original SD 1.5 model - good balance of quality and speed. Works with 6GB+ VRAM.",
+                    sizeBytes = 4265380864L, // ~4GB
+                    minVramGB = 6,
+                    isDefault = true
+                },
+                new
+                {
+                    id = "sd-v2-1",
+                    name = "Stable Diffusion 2.1",
+                    description = "Improved SD 2.1 model with better quality. Requires 8GB+ VRAM.",
+                    sizeBytes = 5214865152L, // ~5GB
+                    minVramGB = 8,
+                    isDefault = false
+                }
+            };
+            
+            return Ok(new { models });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get SD models list");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Start the Stable Diffusion WebUI server
+    /// </summary>
+    [HttpPost("stable-diffusion/start")]
+    public async Task<IActionResult> StartStableDiffusion([FromBody] SDStartRequest? request, CancellationToken ct)
+    {
+        try
+        {
+            int port = request?.Port ?? 7860;
+            
+            var engineConfig = _registry.GetEngine("stable-diffusion-webui");
+            if (engineConfig == null)
+            {
+                return BadRequest(new { error = "Stable Diffusion WebUI is not installed. Please install it first." });
+            }
+            
+            // Update port if needed
+            if (engineConfig.Port != port)
+            {
+                engineConfig = engineConfig with { Port = port };
+                await _registry.RegisterEngineAsync(engineConfig).ConfigureAwait(false);
+            }
+            
+            bool started = await _registry.StartEngineAsync("stable-diffusion-webui", ct).ConfigureAwait(false);
+            
+            if (started)
+            {
+                var status = _processManager.GetStatus("stable-diffusion-webui");
+                return Ok(new
+                {
+                    success = true,
+                    engineId = "stable-diffusion-webui",
+                    processId = status.ProcessId,
+                    port,
+                    message = "Stable Diffusion WebUI is starting. It may take a few minutes to become fully operational on first run."
+                });
+            }
+            
+            return StatusCode(500, new { error = "Failed to start Stable Diffusion WebUI" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to start Stable Diffusion");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Stop the Stable Diffusion WebUI server
+    /// </summary>
+    [HttpPost("stable-diffusion/stop")]
+    public async Task<IActionResult> StopStableDiffusion()
+    {
+        try
+        {
+            bool stopped = await _registry.StopEngineAsync("stable-diffusion-webui").ConfigureAwait(false);
+            
+            if (stopped)
+            {
+                return Ok(new
+                {
+                    success = true,
+                    message = "Stable Diffusion WebUI stopped successfully"
+                });
+            }
+            
+            return NotFound(new { error = "Stable Diffusion WebUI is not running" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to stop Stable Diffusion");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    #endregion
 }
+
+public record SDStartRequest(int? Port = null);
 
 public record InstallRequest(
     string EngineId, 
