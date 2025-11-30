@@ -1830,11 +1830,15 @@ builder.Services.AddSingleton<Aura.Core.Services.Setup.DependencyDetector>(sp =>
     return new Aura.Core.Services.Setup.DependencyDetector(logger, ffmpegLocator, httpClient);
 });
 
+// Register PortableDetector for portable mode detection and path resolution
+builder.Services.AddSingleton<Aura.Core.Services.Setup.PortableDetector>();
+
 builder.Services.AddSingleton<Aura.Core.Services.Setup.DependencyInstaller>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Setup.DependencyInstaller>>();
     var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
-    return new Aura.Core.Services.Setup.DependencyInstaller(logger, httpClient);
+    var portableDetector = sp.GetService<Aura.Core.Services.Setup.PortableDetector>();
+    return new Aura.Core.Services.Setup.DependencyInstaller(logger, httpClient, portableDetector);
 });
 
 // Register FFmpeg detection service with caching

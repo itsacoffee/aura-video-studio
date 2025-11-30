@@ -33,14 +33,46 @@ public class DependencyInstaller
 {
     private readonly ILogger<DependencyInstaller> _logger;
     private readonly HttpClient _httpClient;
+    private readonly PortableDetector? _portableDetector;
     private const int MaxRetries = 3;
 
     public DependencyInstaller(
         ILogger<DependencyInstaller> logger,
-        HttpClient httpClient)
+        HttpClient httpClient,
+        PortableDetector? portableDetector = null)
     {
         _logger = logger;
         _httpClient = httpClient;
+        _portableDetector = portableDetector;
+    }
+
+    /// <summary>
+    /// Gets the installation directory for a dependency, using portable paths when available.
+    /// </summary>
+    private string GetInstallDirectory(string dependencyName)
+    {
+        if (_portableDetector?.IsPortableMode == true)
+        {
+            return dependencyName.ToLowerInvariant() switch
+            {
+                "ffmpeg" => _portableDetector.FFmpegDirectory,
+                "piper" => _portableDetector.PiperDirectory,
+                "ollama" => _portableDetector.OllamaDirectory,
+                "stable-diffusion" => _portableDetector.StableDiffusionDirectory,
+                _ => Path.Combine(_portableDetector.ToolsDirectory, dependencyName)
+            };
+        }
+
+        // Fall back to LocalApplicationData
+        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        return dependencyName.ToLowerInvariant() switch
+        {
+            "ffmpeg" => Path.Combine(localAppData, "Aura", "ffmpeg"),
+            "piper" => Path.Combine(localAppData, "Aura", "Tools", "piper"),
+            "ollama" => Path.Combine(localAppData, "Aura", "Tools", "ollama"),
+            "stable-diffusion" => Path.Combine(localAppData, "Aura", "Tools", "stable-diffusion-webui"),
+            _ => Path.Combine(localAppData, "Aura", "Tools", dependencyName)
+        };
     }
 
     public async Task<bool> InstallFFmpegAsync(
@@ -51,8 +83,7 @@ public class DependencyInstaller
 
         try
         {
-            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            var installDir = Path.Combine(localAppData, "Aura", "ffmpeg");
+            var installDir = GetInstallDirectory("ffmpeg");
 
             progress?.Report(new InstallProgress(0, "Determining platform...", "", 0, 0));
 
@@ -107,8 +138,11 @@ public class DependencyInstaller
 
             progress?.Report(new InstallProgress(90, "Setting up PATH...", "", 0, 0));
 
-            // Add to PATH (user level)
-            AddToUserPath(Path.Combine(installDir, "bin"));
+            // Only add to PATH if not in portable mode (portable mode uses relative paths)
+            if (_portableDetector?.IsPortableMode != true)
+            {
+                AddToUserPath(Path.Combine(installDir, "bin"));
+            }
 
             progress?.Report(new InstallProgress(100, "FFmpeg installed successfully", "", 0, 0));
 
@@ -122,7 +156,7 @@ public class DependencyInstaller
                 _logger.LogWarning(ex, "Failed to clean up download file");
             }
 
-            _logger.LogInformation("FFmpeg installation completed successfully");
+            _logger.LogInformation("FFmpeg installation completed successfully at {InstallDir}", installDir);
             return true;
         }
         catch (Exception ex)
@@ -141,8 +175,7 @@ public class DependencyInstaller
 
         try
         {
-            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            var installDir = Path.Combine(localAppData, "Aura", "Tools", "piper");
+            var installDir = GetInstallDirectory("piper");
             var voicesDir = Path.Combine(installDir, "voices");
 
             progress?.Report(new InstallProgress(0, "Preparing installation...", "", 0, 0));
@@ -272,8 +305,16 @@ public class DependencyInstaller
 
         try
         {
-            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            var assetsDir = Path.Combine(localAppData, "Aura", "assets");
+            string assetsDir;
+            if (_portableDetector?.IsPortableMode == true)
+            {
+                assetsDir = Path.Combine(_portableDetector.DataDirectory, "assets");
+            }
+            else
+            {
+                var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                assetsDir = Path.Combine(localAppData, "Aura", "assets");
+            }
 
             progress?.Report(new InstallProgress(0, "Downloading stock assets...", "stock-pack.zip", 0, 0));
 

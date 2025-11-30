@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Aura.Api.Models;
 using Aura.Core.Dependencies;
 using Aura.Core.Services;
+using Aura.Core.Services.Setup;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -17,17 +18,23 @@ public class DependenciesController : ControllerBase
     private readonly DependencyRescanService _rescanService;
     private readonly FfmpegInstaller? _ffmpegInstaller;
     private readonly FfmpegLocator? _ffmpegLocator;
+    private readonly DependencyInstaller? _dependencyInstaller;
+    private readonly PortableDetector? _portableDetector;
 
     public DependenciesController(
         ILogger<DependenciesController> logger,
         DependencyRescanService rescanService,
         FfmpegInstaller? ffmpegInstaller = null,
-        FfmpegLocator? ffmpegLocator = null)
+        FfmpegLocator? ffmpegLocator = null,
+        DependencyInstaller? dependencyInstaller = null,
+        PortableDetector? portableDetector = null)
     {
         _logger = logger;
         _rescanService = rescanService;
         _ffmpegInstaller = ffmpegInstaller;
         _ffmpegLocator = ffmpegLocator;
+        _dependencyInstaller = dependencyInstaller;
+        _portableDetector = portableDetector;
     }
 
     /// <summary>
@@ -151,7 +158,7 @@ public class DependenciesController : ControllerBase
             var report = await _rescanService.RescanAllAsync(ct).ConfigureAwait(false);
             var ffmpegDep = report.Dependencies.Find(d => d.Id == "ffmpeg");
             
-            if (ffmpegDep == null || ffmpegDep.Status != DependencyStatus.Installed || string.IsNullOrEmpty(ffmpegDep.Path))
+            if (ffmpegDep == null || ffmpegDep.Status != Aura.Core.Dependencies.DependencyStatus.Installed || string.IsNullOrEmpty(ffmpegDep.Path))
             {
                 return Ok(new
                 {
@@ -235,7 +242,7 @@ public class DependenciesController : ControllerBase
             var report = await _rescanService.RescanAllAsync(ct).ConfigureAwait(false);
             var ffmpegDep = report.Dependencies.Find(d => d.Id == "ffmpeg");
             
-            if (ffmpegDep == null || ffmpegDep.Status != DependencyStatus.Installed)
+            if (ffmpegDep == null || ffmpegDep.Status != Aura.Core.Dependencies.DependencyStatus.Installed)
             {
                 return Ok(new
                 {
@@ -815,6 +822,139 @@ public class DependenciesController : ControllerBase
             {
                 success = false,
                 error = ex.Message
+            });
+        }
+    }
+
+    /// <summary>
+    /// Install all recommended dependencies for portable installation (Quick Setup)
+    /// </summary>
+    /// <remarks>
+    /// Installs FFmpeg and Piper TTS in one operation for portable mode.
+    /// Progress is reported per component. Failures are logged but don't stop other installations.
+    /// </remarks>
+    [HttpPost("install-all")]
+    public async Task<IActionResult> InstallAllRecommended(CancellationToken ct)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+
+        try
+        {
+            _logger.LogInformation("[{CorrelationId}] POST /api/dependencies/install-all - Starting quick setup", correlationId);
+
+            if (_dependencyInstaller == null)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    error = "Dependency installer not available",
+                    correlationId
+                });
+            }
+
+            // Initialize portable directories if in portable mode
+            if (_portableDetector?.IsPortableMode == true)
+            {
+                _portableDetector.EnsureDirectoriesExist();
+                _logger.LogInformation("[{CorrelationId}] Portable directories initialized", correlationId);
+            }
+
+            var results = new System.Collections.Generic.List<object>();
+            var overallSuccess = true;
+
+            // Install FFmpeg
+            try
+            {
+                _logger.LogInformation("[{CorrelationId}] Installing FFmpeg...", correlationId);
+                var ffmpegSuccess = await _dependencyInstaller.InstallFFmpegAsync(null, ct).ConfigureAwait(false);
+                results.Add(new
+                {
+                    component = "ffmpeg",
+                    success = ffmpegSuccess,
+                    error = ffmpegSuccess ? null : "Installation failed"
+                });
+                if (!ffmpegSuccess)
+                {
+                    overallSuccess = false;
+                    _logger.LogWarning("[{CorrelationId}] FFmpeg installation failed", correlationId);
+                }
+                else
+                {
+                    _logger.LogInformation("[{CorrelationId}] FFmpeg installed successfully", correlationId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[{CorrelationId}] FFmpeg installation error", correlationId);
+                results.Add(new
+                {
+                    component = "ffmpeg",
+                    success = false,
+                    error = ex.Message
+                });
+                overallSuccess = false;
+            }
+
+            // Install Piper TTS
+            try
+            {
+                _logger.LogInformation("[{CorrelationId}] Installing Piper TTS...", correlationId);
+                var piperSuccess = await _dependencyInstaller.InstallPiperTtsAsync(null, ct).ConfigureAwait(false);
+                results.Add(new
+                {
+                    component = "piper",
+                    success = piperSuccess,
+                    error = piperSuccess ? null : "Installation failed"
+                });
+                if (!piperSuccess)
+                {
+                    _logger.LogWarning("[{CorrelationId}] Piper TTS installation failed", correlationId);
+                }
+                else
+                {
+                    _logger.LogInformation("[{CorrelationId}] Piper TTS installed successfully", correlationId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[{CorrelationId}] Piper TTS installation error", correlationId);
+                results.Add(new
+                {
+                    component = "piper",
+                    success = false,
+                    error = ex.Message
+                });
+            }
+
+            // Get updated dependency summary
+            var summary = _portableDetector?.GetDependencySummary();
+
+            return Ok(new
+            {
+                success = overallSuccess,
+                message = overallSuccess
+                    ? "All recommended dependencies installed successfully"
+                    : "Some dependencies failed to install (see results)",
+                results,
+                summary = summary != null ? new
+                {
+                    ffmpegInstalled = summary.FFmpegInstalled,
+                    ffmpegPath = summary.FFmpegPath,
+                    piperInstalled = summary.PiperInstalled,
+                    piperPath = summary.PiperPath,
+                    allRequiredInstalled = summary.AllRequiredInstalled
+                } : null,
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Failed to install all dependencies", correlationId);
+            return StatusCode(500, new
+            {
+                success = false,
+                error = ex.Message,
+                correlationId
             });
         }
     }
