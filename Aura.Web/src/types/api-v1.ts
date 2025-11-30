@@ -2066,3 +2066,60 @@ export interface CategorySummary {
   offline: number;
   notConfigured: number;
 }
+
+// ============================================================================
+// LLM TEST DTOs - for LLM connectivity testing and health checks
+// ============================================================================
+
+/**
+ * Request for testing LLM connectivity
+ */
+export interface LlmTestRequest {
+  prompt?: string;
+  timeoutSeconds?: number;
+}
+
+/**
+ * Response from LLM connectivity test
+ */
+export interface LlmTestResponse {
+  success: boolean;
+  providerName: string;
+  modelName: string;
+  responseTimeMs: number;
+  generatedText: string;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  isLocalModel: boolean;
+  supportsStreaming: boolean;
+  message: string;
+  correlationId: string;
+}
+
+/**
+ * LLM health status response
+ */
+export interface LlmHealthResponse {
+  isAvailable: boolean;
+  providerName: string;
+  defaultModel: string | null;
+  isLocalModel: boolean;
+  supportsStreaming: boolean;
+  supportsTranslation: boolean;
+  maxContextLength: number | null;
+  knownLimitations: string[] | null;
+  errorMessage: string | null;
+  correlationId: string;
+}
+
+/**
+ * Response with available LLM models
+ */
+export interface LlmModelsResponse {
+  providerName: string;
+  models: string[];
+  defaultModel: string | null;
+  isLocalProvider: boolean;
+  correlationId: string;
+}
