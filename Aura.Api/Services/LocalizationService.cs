@@ -274,9 +274,17 @@ public class LocalizationService : ILocalizationService
         if (ex is TimeoutException)
             return true;
 
-        if (ex is HttpRequestException httpEx)
+        if (ex is HttpRequestException)
         {
             // Network-related errors are typically transient
+            return true;
+        }
+
+        // Check for timeout-related messages in OperationCanceledException
+        // Note: User-initiated cancellations should NOT be retried, but timeout-induced ones may be
+        if (ex is OperationCanceledException oce && 
+            oce.Message.Contains("timeout", StringComparison.OrdinalIgnoreCase))
+        {
             return true;
         }
 
@@ -288,6 +296,13 @@ public class LocalizationService : ILocalizationService
 
         if (ex.Message.Contains("temporarily unavailable", StringComparison.OrdinalIgnoreCase) ||
             ex.Message.Contains("service unavailable", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        // Check for Ollama-specific transient errors
+        if (ex.Message.Contains("model is loading", StringComparison.OrdinalIgnoreCase) ||
+            ex.Message.Contains("busy", StringComparison.OrdinalIgnoreCase))
         {
             return true;
         }

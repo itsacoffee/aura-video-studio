@@ -568,6 +568,25 @@ public class TranslationService
                 "Please start Ollama or configure another AI provider.");
             return $"[Translation requires an AI provider. Please ensure Ollama is running.]";
         }
+        catch (OperationCanceledException ex)
+        {
+            // Handle timeout-induced cancellations vs user-initiated cancellations
+            if (cancellationToken.IsCancellationRequested)
+            {
+                // User explicitly cancelled the operation
+                _logger.LogInformation("Translation was cancelled by user for {SourceLang} -> {TargetLang}",
+                    sourceLanguage, targetLanguage);
+                return $"[Translation cancelled by user.]";
+            }
+            else
+            {
+                // Timeout or other internal cancellation - provide helpful message
+                _logger.LogWarning(ex, "Translation timed out for {SourceLang} -> {TargetLang}. " +
+                    "This may indicate the LLM provider is slow or the text is too long.",
+                    sourceLanguage, targetLanguage);
+                return $"[Translation timed out. Try with shorter text or check if Ollama is responsive.]";
+            }
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Translation failed for {SourceLang} -> {TargetLang}: {Error}",

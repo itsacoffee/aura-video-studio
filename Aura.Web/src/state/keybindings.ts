@@ -59,7 +59,10 @@ export const defaultKeybindings: KeybindingConfig = {
   'ctrl+y': 'redo',
 
   // Zoom controls
+  // Multiple bindings for zoom-in to handle different keyboard layouts and user expectations
+  // Users may press Ctrl+= (equals key), Ctrl+Shift+= (to get +), or numpad plus
   'ctrl+=': 'zoom-in',
+  'ctrl+shift+=': 'zoom-in',
   'ctrl+-': 'zoom-out',
   'ctrl+0': 'zoom-to-fit',
 
