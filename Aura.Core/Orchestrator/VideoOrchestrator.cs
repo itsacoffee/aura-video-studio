@@ -29,6 +29,10 @@ namespace Aura.Core.Orchestrator;
 /// </summary>
 public class VideoOrchestrator
 {
+    // Stall detection constants
+    private const float StallProgressThreshold = 0.1f;
+    private const int StallTimeoutSeconds = 60;
+    
     private readonly ILogger<VideoOrchestrator> _logger;
     private readonly ILlmProvider _llmProvider;
     private readonly ITtsProvider _ttsProvider;
@@ -876,13 +880,13 @@ public class VideoOrchestrator
                 var timeSinceLastProgress = now - lastProgressTime;
                 
                 // Detect potential stalls
-                if (Math.Abs(p.Percentage - lastProgressPercent) < 0.1 && timeSinceLastProgress.TotalSeconds > 60)
+                if (Math.Abs(p.Percentage - lastProgressPercent) < StallProgressThreshold && timeSinceLastProgress.TotalSeconds > StallTimeoutSeconds)
                 {
                     _logger.LogWarning(
                         "[Render Stall Warning] No progress change for {Seconds:F0}s at {Percentage:F1}%",
                         timeSinceLastProgress.TotalSeconds, p.Percentage);
                 }
-                else if (Math.Abs(p.Percentage - lastProgressPercent) >= 0.1)
+                else if (Math.Abs(p.Percentage - lastProgressPercent) >= StallProgressThreshold)
                 {
                     lastProgressTime = now;
                     lastProgressPercent = p.Percentage;
@@ -1092,13 +1096,13 @@ public class VideoOrchestrator
             var timeSinceLastProgress = now - lastProgressTime;
             
             // Detect potential stalls
-            if (Math.Abs(p.Percentage - lastProgressPercent) < 0.1 && timeSinceLastProgress.TotalSeconds > 60)
+            if (Math.Abs(p.Percentage - lastProgressPercent) < StallProgressThreshold && timeSinceLastProgress.TotalSeconds > StallTimeoutSeconds)
             {
                 _logger.LogWarning(
                     "[Render Stall Warning] No progress change for {Seconds:F0}s at {Percentage:F1}%",
                     timeSinceLastProgress.TotalSeconds, p.Percentage);
             }
-            else if (Math.Abs(p.Percentage - lastProgressPercent) >= 0.1)
+            else if (Math.Abs(p.Percentage - lastProgressPercent) >= StallProgressThreshold)
             {
                 lastProgressTime = now;
                 lastProgressPercent = p.Percentage;
@@ -1623,14 +1627,14 @@ public class VideoOrchestrator
                             "[Render Progress] {Percentage:F1}% - Stage: {Stage}, Elapsed: {Elapsed}, Remaining: {Remaining}",
                             p.Percentage, p.CurrentStage, p.Elapsed, p.Remaining);
 
-                        // Detect potential stalls: no progress change for 60+ seconds
-                        if (Math.Abs(p.Percentage - lastProgressPercent) < 0.1 && timeSinceLastProgress.TotalSeconds > 60)
+                        // Detect potential stalls
+                        if (Math.Abs(p.Percentage - lastProgressPercent) < StallProgressThreshold && timeSinceLastProgress.TotalSeconds > StallTimeoutSeconds)
                         {
                             _logger.LogWarning(
                                 "[Render Stall Warning] No progress change detected for {Seconds:F0} seconds at {Percentage:F1}%",
                                 timeSinceLastProgress.TotalSeconds, p.Percentage);
                         }
-                        else if (Math.Abs(p.Percentage - lastProgressPercent) >= 0.1)
+                        else if (Math.Abs(p.Percentage - lastProgressPercent) >= StallProgressThreshold)
                         {
                             lastProgressTime = now;
                             lastProgressPercent = p.Percentage;

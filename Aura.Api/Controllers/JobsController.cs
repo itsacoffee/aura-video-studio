@@ -633,7 +633,8 @@ public class JobsController : ControllerBase
             var pingIntervalSeconds = 5; // 5-second heartbeat as per requirements
             var pollIntervalMs = 500; // Poll every 500ms for responsiveness
             var eventIdCounter = 0;
-            var stallWarningThresholdSeconds = 120; // Warn after 2 minutes of no progress
+            // Stall warning threshold in seconds. Can be made configurable via IConfiguration if needed.
+            var stallWarningThresholdSeconds = 120;
             var stallWarningEmitted = false;
 
             while (!cancellationToken.IsCancellationRequested && job.Status != JobStatus.Done && job.Status != JobStatus.Failed && job.Status != JobStatus.Canceled)

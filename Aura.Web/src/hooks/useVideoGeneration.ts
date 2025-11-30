@@ -14,6 +14,9 @@ import type { ProgressEventDto } from '../types/api-v1';
 import { useApiError } from './useApiError';
 import { useSSEConnection } from './useSSEConnection';
 
+/** Default timeout for video generation (10 minutes) */
+const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000;
+
 export interface UseVideoGenerationOptions {
   onComplete?: (status: VideoStatus) => void;
   onError?: (error: Error) => void;
@@ -45,7 +48,7 @@ export interface UseVideoGenerationResult {
 export function useVideoGeneration(
   options: UseVideoGenerationOptions = {}
 ): UseVideoGenerationResult {
-  const { timeoutMs = 10 * 60 * 1000 } = options; // 10 minutes default
+  const { timeoutMs = DEFAULT_TIMEOUT_MS } = options;
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
