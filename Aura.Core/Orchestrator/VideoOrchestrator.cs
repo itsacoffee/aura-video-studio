@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -28,6 +29,10 @@ namespace Aura.Core.Orchestrator;
 /// </summary>
 public class VideoOrchestrator
 {
+    // Stall detection constants
+    private const float StallProgressThreshold = 0.1f;
+    private const int StallTimeoutSeconds = 60;
+    
     private readonly ILogger<VideoOrchestrator> _logger;
     private readonly ILlmProvider _llmProvider;
     private readonly ITtsProvider _ttsProvider;
@@ -848,17 +853,50 @@ public class VideoOrchestrator
 
             // Stage 5: Render video
             progress?.Report("Stage 5/5: Rendering video...");
+            
+            // Explicit logging at stage transition (70% mark) for debugging hangs
+            _logger.LogInformation(
+                "[Stage Transition] Starting video render at 70%% mark. " +
+                "Scenes: {SceneCount}, NarrationPath: {NarrationPath}, JobId: {JobId}",
+                scenes.Count, narrationPath, jobId ?? "N/A");
+            
             var renderBuilder = jobId != null && correlationId != null
                 ? Telemetry.TelemetryBuilder.Start(jobId, correlationId, Telemetry.RunStage.Render)
                 : null;
 
+            // Track render progress with detailed logging
+            var lastProgressTime = DateTime.UtcNow;
+            var lastProgressPercent = 0f;
             var renderProgress = new Progress<RenderProgress>(p =>
             {
                 progress?.Report($"Rendering: {p.Percentage:F1}% - {p.CurrentStage}");
+                
+                // Log at Information level for visibility
+                _logger.LogInformation(
+                    "[Render Progress] {Percentage:F1}% - Stage: {Stage}, Elapsed: {Elapsed}",
+                    p.Percentage, p.CurrentStage, p.Elapsed);
+                
+                var now = DateTime.UtcNow;
+                var timeSinceLastProgress = now - lastProgressTime;
+                
+                // Detect potential stalls
+                if (Math.Abs(p.Percentage - lastProgressPercent) < StallProgressThreshold && timeSinceLastProgress.TotalSeconds > StallTimeoutSeconds)
+                {
+                    _logger.LogWarning(
+                        "[Render Stall Warning] No progress change for {Seconds:F0}s at {Percentage:F1}%",
+                        timeSinceLastProgress.TotalSeconds, p.Percentage);
+                }
+                else if (Math.Abs(p.Percentage - lastProgressPercent) >= StallProgressThreshold)
+                {
+                    lastProgressTime = now;
+                    lastProgressPercent = p.Percentage;
+                }
             });
 
+            _logger.LogInformation("[Render Start] Beginning FFmpeg render operation for job {JobId}", jobId ?? "N/A");
+
             string outputPath = await _videoComposer.RenderAsync(timeline, renderSpec, renderProgress, ct).ConfigureAwait(false);
-            _logger.LogInformation("Video rendered to: {Path}", outputPath);
+            _logger.LogInformation("[Render Complete] Video rendered to: {Path}", outputPath);
 
             // Record render telemetry
             if (renderBuilder != null)
@@ -1036,13 +1074,45 @@ public class VideoOrchestrator
         );
 
         progress?.Report("Stage 5/5: Rendering video...");
+        
+        // Explicit logging at stage transition (70% mark) for debugging hangs
+        _logger.LogInformation(
+            "[Stage Transition] Starting video render at 70%% mark. " +
+            "Scenes: {SceneCount}, NarrationPath: {NarrationPath}",
+            scenes.Count, narrationPath);
+        
+        // Track render progress with detailed logging
+        var lastProgressTime = DateTime.UtcNow;
+        var lastProgressPercent = 0f;
         var renderProgress = new Progress<RenderProgress>(p =>
         {
             progress?.Report($"Rendering: {p.Percentage:F1}% - {p.CurrentStage}");
+            
+            _logger.LogInformation(
+                "[Render Progress] {Percentage:F1}% - Stage: {Stage}",
+                p.Percentage, p.CurrentStage);
+            
+            var now = DateTime.UtcNow;
+            var timeSinceLastProgress = now - lastProgressTime;
+            
+            // Detect potential stalls
+            if (Math.Abs(p.Percentage - lastProgressPercent) < StallProgressThreshold && timeSinceLastProgress.TotalSeconds > StallTimeoutSeconds)
+            {
+                _logger.LogWarning(
+                    "[Render Stall Warning] No progress change for {Seconds:F0}s at {Percentage:F1}%",
+                    timeSinceLastProgress.TotalSeconds, p.Percentage);
+            }
+            else if (Math.Abs(p.Percentage - lastProgressPercent) >= StallProgressThreshold)
+            {
+                lastProgressTime = now;
+                lastProgressPercent = p.Percentage;
+            }
         });
 
+        _logger.LogInformation("[Render Start] Beginning FFmpeg render operation");
+
         string outputPath = await _videoComposer.RenderAsync(timeline, renderSpec, renderProgress, ct).ConfigureAwait(false);
-        _logger.LogInformation("Video rendered to: {Path}", outputPath);
+        _logger.LogInformation("[Render Complete] Video rendered to: {Path}", outputPath);
 
         progress?.Report("Video generation complete!");
         return new VideoGenerationResult(outputPath, timeline, ConvertToEditableTimeline(timeline), narrationPath, timeline.SubtitlesPath, null);
@@ -1521,6 +1591,20 @@ public class VideoOrchestrator
                         throw new InvalidOperationException("Script and audio must be generated before composition");
                     }
 
+                    // Explicit logging at stage transition (70% mark) - helps diagnose hangs
+                    _logger.LogInformation(
+                        "[Stage Transition] Starting video composition at 70%% mark. " +
+                        "Scenes: {SceneCount}, Assets: {AssetCount}, NarrationPath: {NarrationPath}",
+                        parsedScenes.Count,
+                        sceneAssets.Values.Sum(assets => assets.Count),
+                        narrationPath);
+
+                    // Validate all required inputs exist before starting render
+                    if (!File.Exists(narrationPath))
+                    {
+                        throw new InvalidOperationException($"Narration file not found at: {narrationPath}");
+                    }
+
                     var timeline = new Providers.Timeline(
                         Scenes: parsedScenes,
                         SceneAssets: sceneAssets,
@@ -1530,13 +1614,38 @@ public class VideoOrchestrator
                     );
                     state.Timeline = timeline;
 
+                    // Track render progress with explicit logging at Information level
+                    var lastProgressTime = DateTime.UtcNow;
+                    var lastProgressPercent = 0f;
                     var renderProgress = new Progress<RenderProgress>(p =>
                     {
-                        _logger.LogDebug("Rendering: {Percentage:F1}% - {Stage}", p.Percentage, p.CurrentStage);
+                        var now = DateTime.UtcNow;
+                        var timeSinceLastProgress = now - lastProgressTime;
+
+                        // Log at Information level (not Debug) so progress is visible
+                        _logger.LogInformation(
+                            "[Render Progress] {Percentage:F1}% - Stage: {Stage}, Elapsed: {Elapsed}, Remaining: {Remaining}",
+                            p.Percentage, p.CurrentStage, p.Elapsed, p.Remaining);
+
+                        // Detect potential stalls
+                        if (Math.Abs(p.Percentage - lastProgressPercent) < StallProgressThreshold && timeSinceLastProgress.TotalSeconds > StallTimeoutSeconds)
+                        {
+                            _logger.LogWarning(
+                                "[Render Stall Warning] No progress change detected for {Seconds:F0} seconds at {Percentage:F1}%",
+                                timeSinceLastProgress.TotalSeconds, p.Percentage);
+                        }
+                        else if (Math.Abs(p.Percentage - lastProgressPercent) >= StallProgressThreshold)
+                        {
+                            lastProgressTime = now;
+                            lastProgressPercent = p.Percentage;
+                        }
                     });
 
+                    _logger.LogInformation("[Render Start] Beginning FFmpeg render operation");
+
                     var outputPath = await _videoComposer.RenderAsync(timeline, renderSpec, renderProgress, ct).ConfigureAwait(false);
-                    _logger.LogInformation("Video rendered to: {Path}", outputPath);
+
+                    _logger.LogInformation("[Render Complete] Video rendered successfully to: {Path}", outputPath);
                     return outputPath;
 
                 default:
