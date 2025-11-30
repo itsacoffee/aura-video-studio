@@ -36,30 +36,35 @@ class WindowManager {
    * Create splash screen window
    */
   createSplashWindow() {
-    // Get primary display dimensions for fullscreen splash (use bounds to include taskbar area)
+    // Standard splash screen dimensions (centered on screen)
+    const SPLASH_WIDTH = 600;
+    const SPLASH_HEIGHT = 400;
+
+    // Get work area size (excludes taskbar) for proper centering
     const primaryDisplay = screen.getPrimaryDisplay();
-    const { width, height } = primaryDisplay.bounds;
+    const { width: screenWidth, height: screenHeight } =
+      primaryDisplay.workAreaSize;
+
+    // Calculate centered position
+    const x = Math.floor((screenWidth - SPLASH_WIDTH) / 2);
+    const y = Math.floor((screenHeight - SPLASH_HEIGHT) / 2);
 
     this.splashWindow = new BrowserWindow({
-      width: width,
-      height: height,
-      x: 0,
-      y: 0,
-      transparent: false, // Set to false for better performance with complex animations
+      width: SPLASH_WIDTH,
+      height: SPLASH_HEIGHT,
+      x: x,
+      y: y,
+      transparent: true, // Keep for rounded corners
       frame: false,
       alwaysOnTop: true,
-      center: false, // Position manually for fullscreen
+      center: true, // Redundant with manual positioning, but serves as fallback
       resizable: false,
       skipTaskbar: true,
-      fullscreen: false, // Use windowed fullscreen for better control
       webPreferences: {
         nodeIntegration: true,
         contextIsolation: false,
       },
     });
-
-    // Ensure window covers entire screen for immersive fullscreen loading experience
-    this.splashWindow.setBounds({ x: 0, y: 0, width, height });
 
     // Try the new splash.html first in electron directory
     const newSplashPath = path.join(__dirname, "splash.html");

@@ -18,11 +18,14 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      min-height: 100vh;
-      height: 100vh;
+      width: 600px;
+      height: 400px;
+      min-height: 400px;
+      max-height: 400px;
       overflow: hidden;
       position: relative;
       padding: 20px;
+      border-radius: 12px;
     }
 
     body::before {
@@ -69,25 +72,26 @@
     .splash-container {
       text-align: center;
       max-width: 500px;
-      padding: 80px 40px 60px 40px;
+      padding: 30px 30px 20px 30px;
       position: relative;
       z-index: 1;
       display: flex;
       flex-direction: column;
       justify-content: center;
-      min-height: 100%;
+      align-items: center;
+      height: 100%;
       box-sizing: border-box;
     }
 
     .icon-container {
-      margin-bottom: 24px;
-      margin-top: 30px;
+      margin-bottom: 16px;
+      margin-top: 0;
       animation: fadeInScale 0.5s ease-out 0.2s both;
     }
 
     .app-icon {
-      width: 100px;
-      height: 100px;
+      width: 72px;
+      height: 72px;
       filter: drop-shadow(0 8px 32px rgba(99, 102, 241, 0.4))
               drop-shadow(0 4px 16px rgba(255, 107, 53, 0.3));
       animation: iconPulse 2s ease-in-out infinite;
@@ -120,24 +124,24 @@
     }
 
     .logo {
-      font-size: 84px;
+      font-size: 52px;
       font-weight: 800;
-      margin-bottom: 10px;
+      margin-bottom: 6px;
       text-shadow:
         0 2px 4px rgba(0, 0, 0, 0.4),
         0 8px 16px rgba(99, 102, 241, 0.3),
         0 16px 32px rgba(255, 107, 53, 0.2);
       animation: fadeIn 0.5s ease-out 0.7s both;
-      letter-spacing: -2px;
+      letter-spacing: -1px;
     }
 
     .tagline {
-      font-size: 18px;
+      font-size: 12px;
       letter-spacing: 2px;
       text-transform: uppercase;
       opacity: 0.7;
       font-weight: 500;
-      margin-bottom: 40px;
+      margin-bottom: 24px;
       animation: fadeIn 0.5s ease-out 1.0s both;
     }
 
@@ -153,20 +157,20 @@
     }
 
     .status-message {
-      font-size: 14px;
-      margin-bottom: 16px;
-      min-height: 20px;
+      font-size: 13px;
+      margin-bottom: 12px;
+      min-height: 18px;
       opacity: 0.85;
       padding: 0 20px;
     }
 
     .progress-bar {
-      width: 280px;
-      height: 6px;
+      width: 240px;
+      height: 5px;
       background: rgba(255, 255, 255, 0.08);
       border-radius: 3px;
       overflow: hidden;
-      margin: 0 auto 20px;
+      margin: 0 auto 16px;
       animation: fadeIn 0.3s ease-out 1.2s both;
     }
 
@@ -198,8 +202,8 @@
 
     .spinner {
       display: inline-block;
-      width: 48px;
-      height: 48px;
+      width: 36px;
+      height: 36px;
       border: 3px solid transparent;
       border-radius: 50%;
       border-top-color: #FF6B35;
@@ -234,8 +238,12 @@
   </div>
 
   <script>
-    const PARTICLE_COUNT = 150;
+    // Reduced particle count for smaller splash window
+    const PARTICLE_COUNT = 50;
     const RESIZE_DEBOUNCE_MS = 100;
+    // Fixed splash dimensions
+    const SPLASH_WIDTH = 600;
+    const SPLASH_HEIGHT = 400;
 
     class Particle {
       constructor(canvas) {
@@ -244,12 +252,12 @@
       }
 
       reset() {
-        this.x = Math.random() * window.innerWidth;
-        this.y = window.innerHeight + Math.random() * 100;
-        this.size = Math.random() * 3 + 1;
-        this.speedY = Math.random() * 0.5 + 0.2;
-        this.speedX = (Math.random() - 0.5) * 0.3;
-        this.opacity = Math.random() * 0.6 + 0.2;
+        this.x = Math.random() * SPLASH_WIDTH;
+        this.y = SPLASH_HEIGHT + Math.random() * 50;
+        this.size = Math.random() * 2.5 + 0.5;
+        this.speedY = Math.random() * 0.4 + 0.15;
+        this.speedX = (Math.random() - 0.5) * 0.2;
+        this.opacity = Math.random() * 0.5 + 0.2;
 
         const colors = ['#FF6B35', '#6366F1', '#3B82F6'];
         this.color = colors[Math.floor(Math.random() * colors.length)];
@@ -268,7 +276,7 @@
         ctx.save();
         ctx.globalAlpha = this.opacity;
         ctx.fillStyle = this.color;
-        ctx.shadowBlur = 8;
+        ctx.shadowBlur = 6;
         ctx.shadowColor = this.color;
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
@@ -281,20 +289,20 @@
     const ctx = canvas.getContext('2d');
 
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = window.innerWidth * dpr;
-    canvas.height = window.innerHeight * dpr;
-    canvas.style.width = window.innerWidth + 'px';
-    canvas.style.height = window.innerHeight + 'px';
+    canvas.width = SPLASH_WIDTH * dpr;
+    canvas.height = SPLASH_HEIGHT * dpr;
+    canvas.style.width = SPLASH_WIDTH + 'px';
+    canvas.style.height = SPLASH_HEIGHT + 'px';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     const particles = [];
     for (let i = 0; i < PARTICLE_COUNT; i++) {
       particles.push(new Particle(canvas));
-      particles[i].y = Math.random() * window.innerHeight;
+      particles[i].y = Math.random() * SPLASH_HEIGHT;
     }
 
     function animate() {
-      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+      ctx.clearRect(0, 0, SPLASH_WIDTH, SPLASH_HEIGHT);
 
       particles.forEach(particle => {
         particle.update();
@@ -305,19 +313,6 @@
     }
 
     animate();
-
-    let resizeTimeout;
-    window.addEventListener('resize', () => {
-      clearTimeout(resizeTimeout);
-      resizeTimeout = setTimeout(() => {
-        const dpr = window.devicePixelRatio || 1;
-        canvas.width = window.innerWidth * dpr;
-        canvas.height = window.innerHeight * dpr;
-        canvas.style.width = window.innerWidth + 'px';
-        canvas.style.height = window.innerHeight + 'px';
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      }, RESIZE_DEBOUNCE_MS);
-    });
 
     const { ipcRenderer } = require('electron');
 
