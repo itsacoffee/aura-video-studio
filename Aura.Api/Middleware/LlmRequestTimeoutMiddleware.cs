@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Linq;
@@ -17,7 +18,7 @@ public class LlmRequestTimeoutMiddleware
     private readonly ILogger<LlmRequestTimeoutMiddleware> _logger;
 
     /// <summary>
-    /// Endpoints that may involve long-running LLM operations
+    /// Endpoints that may involve long-running LLM operations (lowercase for efficient comparison)
     /// </summary>
     private static readonly string[] LongRunningEndpoints = new[]
     {
@@ -47,7 +48,7 @@ public class LlmRequestTimeoutMiddleware
     {
         var path = context.Request.Path.Value?.ToLowerInvariant() ?? "";
 
-        if (LongRunningEndpoints.Any(e => path.StartsWith(e, StringComparison.OrdinalIgnoreCase)))
+        if (IsLongRunningEndpoint(path))
         {
             // Create a new CancellationTokenSource with extended timeout
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted);
@@ -57,9 +58,8 @@ public class LlmRequestTimeoutMiddleware
             var originalToken = context.RequestAborted;
 
             // Replace the RequestAborted token with our extended one
-            // Note: We need to use HttpContext.Features to properly override the token
-            var originalCancellationFeature = context.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpRequestLifetimeFeature>();
-            context.Features.Set<Microsoft.AspNetCore.Http.Features.IHttpRequestLifetimeFeature>(
+            var originalCancellationFeature = context.Features.Get<IHttpRequestLifetimeFeature>();
+            context.Features.Set<IHttpRequestLifetimeFeature>(
                 new ExtendedTimeoutLifetimeFeature(cts.Token));
 
             _logger.LogDebug("Extended timeout to {Timeout} for LLM endpoint: {Path}",
@@ -106,9 +106,17 @@ public class LlmRequestTimeoutMiddleware
     }
 
     /// <summary>
+    /// Check if the path matches any long-running LLM endpoint (path is already lowercase)
+    /// </summary>
+    private static bool IsLongRunningEndpoint(string path)
+    {
+        return LongRunningEndpoints.Any(e => path.StartsWith(e, StringComparison.Ordinal));
+    }
+
+    /// <summary>
     /// Custom lifetime feature that provides the extended timeout token
     /// </summary>
-    private sealed class ExtendedTimeoutLifetimeFeature : Microsoft.AspNetCore.Http.Features.IHttpRequestLifetimeFeature
+    private sealed class ExtendedTimeoutLifetimeFeature : IHttpRequestLifetimeFeature
     {
         public ExtendedTimeoutLifetimeFeature(CancellationToken token)
         {

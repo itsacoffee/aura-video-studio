@@ -176,6 +176,24 @@ const DEFAULT_HOTKEY: HotkeyConfig = {
 
 const clampIdeaCount = (value: number) => Math.min(9, Math.max(3, value));
 
+/**
+ * Get the appropriate loading status message based on elapsed time
+ */
+const getLoadingStatusMessage = (elapsedSeconds: number): string => {
+  if (elapsedSeconds < 30) {
+    return 'Analyzing your topic...';
+  }
+  if (elapsedSeconds < 60) {
+    return 'Generating creative variations...';
+  }
+  if (elapsedSeconds < 120) {
+    return 'This is taking a while - complex topics need more time...';
+  }
+  const minutes = Math.floor(elapsedSeconds / 60);
+  const seconds = elapsedSeconds % 60;
+  return `Still working... (${minutes}m ${seconds}s)`;
+};
+
 export const IdeationDashboard: React.FC = () => {
   const styles = useStyles();
   const navigate = useNavigate();
@@ -528,15 +546,7 @@ export const IdeationDashboard: React.FC = () => {
               <Text size={400} weight="semibold">
                 Generating concepts with AI...
               </Text>
-              <Text size={300}>
-                {elapsedSeconds < 30
-                  ? 'Analyzing your topic...'
-                  : elapsedSeconds < 60
-                    ? 'Generating creative variations...'
-                    : elapsedSeconds < 120
-                      ? 'This is taking a while - complex topics need more time...'
-                      : `Still working... (${Math.floor(elapsedSeconds / 60)}m ${elapsedSeconds % 60}s)`}
-              </Text>
+              <Text size={300}>{getLoadingStatusMessage(elapsedSeconds)}</Text>
               {elapsedSeconds > 60 && (
                 <Text className={styles.loadingTip}>
                   💡 Tip: Local AI models like Ollama may take several minutes for detailed
