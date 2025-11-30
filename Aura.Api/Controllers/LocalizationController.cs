@@ -52,8 +52,10 @@ public class LocalizationController : ControllerBase
         _loggerFactory = loggerFactory;
         
         // Load timeout configuration with defaults
-        _requestTimeoutSeconds = configuration.GetValue("Localization:RequestTimeoutSeconds", 30);
-        _llmTimeoutSeconds = configuration.GetValue("Localization:LlmTimeoutSeconds", 25);
+        // Translation with local LLMs (Ollama) can take several minutes for longer texts or when models need to load
+        // Default timeout increased to 180 seconds (3 minutes) to accommodate model loading and complex translations
+        _requestTimeoutSeconds = configuration.GetValue("Localization:RequestTimeoutSeconds", 60);
+        _llmTimeoutSeconds = configuration.GetValue("Localization:LlmTimeoutSeconds", 180);
         
         // Initialize the localization service with retry logic
         // Note: This could also be injected via DI by registering ILocalizationService in Program.cs

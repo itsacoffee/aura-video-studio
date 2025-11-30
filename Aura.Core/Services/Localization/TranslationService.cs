@@ -568,6 +568,17 @@ public class TranslationService
                 "Please start Ollama or configure another AI provider.");
             return $"[Translation requires an AI provider. Please ensure Ollama is running.]";
         }
+        catch (OperationCanceledException ex)
+        {
+            // The cancellation could be user-initiated or timeout-induced
+            // We cannot reliably distinguish here since we receive a linked token from the controller
+            // The controller handles the timeout vs user cancellation distinction and returns appropriate HTTP status codes
+            // Here we just provide a helpful message that covers both scenarios
+            _logger.LogWarning(ex, "Translation operation was cancelled for {SourceLang} -> {TargetLang}. " +
+                "This may be user-initiated or due to timeout. Check controller logs for details.",
+                sourceLanguage, targetLanguage);
+            return $"[Translation was cancelled or timed out. If this persists, try with shorter text or check if Ollama is responsive.]";
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Translation failed for {SourceLang} -> {TargetLang}: {Error}",

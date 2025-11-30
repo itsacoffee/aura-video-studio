@@ -694,9 +694,11 @@ public class CompositeLlmProvider : ILlmProvider
                             if (availabilityMethod != null)
                             {
                                 // Use longer timeout for ideation and translation operations (Ollama is critical)
+                                // These operations may require model loading which can take significant time
                                 var isIdeation = operationName.Contains("ideation", StringComparison.OrdinalIgnoreCase);
                                 var isTranslation = operationName.Contains("translation", StringComparison.OrdinalIgnoreCase);
-                                var availabilityTimeout = (isIdeation || isTranslation) ? TimeSpan.FromSeconds(5) : TimeSpan.FromSeconds(2);
+                                // 15 seconds for critical operations (translation/ideation), 5 seconds for others
+                                var availabilityTimeout = (isIdeation || isTranslation) ? TimeSpan.FromSeconds(15) : TimeSpan.FromSeconds(5);
 
                                 using var availabilityCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                                 availabilityCts.CancelAfter(availabilityTimeout);
