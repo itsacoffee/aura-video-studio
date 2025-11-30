@@ -69,7 +69,7 @@ public class PexelsVisualProvider : BaseVisualProvider
 
             // Select the best result (first one, highest relevance from Pexels API)
             var bestResult = results.First();
-            Logger.LogInformation("Selected Pexels image: {Id} by {Photographer}", bestResult.Id, bestResult.Attribution);
+            Logger.LogInformation("Selected Pexels image: {Id} by {CreatorName}", bestResult.Id, bestResult.Licensing.CreatorName ?? "Pexels");
 
             // Download the image at appropriate size
             var downloadUrl = GetBestSizeUrl(bestResult, options);
