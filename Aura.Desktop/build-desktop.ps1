@@ -454,61 +454,138 @@ NEXT_TELEMETRY_DISABLED=1
             if (-not $installSuccess) {
                 Show-Warning "OpenCut dependency installation failed after $maxRetries attempts."
                 Show-Warning "OpenCut may not be available."
+                Show-Warning ""
+                Show-Warning "Troubleshooting steps:"
+                Show-Warning "  1. Check your internet connection"
+                Show-Warning "  2. Try manually: cd OpenCut && bun install (or npm install)"
+                Show-Warning "  3. Clear package manager cache: bun pm cache rm (or npm cache clean --force)"
+                Show-Warning "  4. Check for disk space issues"
+                Show-Warning "  5. Verify OpenCut directory structure is correct"
             }
 
-            # ----------------------------------------
-            # Step 1b.6: Build OpenCut
-            # ----------------------------------------
-            if ($installSuccess) {
-                Write-Info "Running OpenCut production build..."
+        # ----------------------------------------
+        # Step 1b.5.5: Pre-build validation
+        # ----------------------------------------
+        if ($installSuccess) {
+            Write-Info "Validating OpenCut build configuration..."
 
-                # Save original environment variables to restore after build
-                $originalNodeEnv = $env:NODE_ENV
-                $originalNextTelemetry = $env:NEXT_TELEMETRY_DISABLED
-
-                # Set environment variables for build
-                $env:NODE_ENV = "production"
-                $env:NEXT_TELEMETRY_DISABLED = "1"
-
-                try {
-                    if ($useNpmFallback) {
-                        # For npm fallback, build directly from apps/web with proper NODE_PATH
-                        # This is needed because npm workspaces handle module resolution differently than bun
-                        Set-Location $openCutAppDir
-
-                        # Set NODE_PATH to include both local and root node_modules
-                        $originalNodePath = $env:NODE_PATH
-                        $env:NODE_PATH = "$openCutAppDir\node_modules;$openCutRootDir\node_modules"
-
-                        Write-Info "Building with NODE_PATH: $env:NODE_PATH"
-                        npx next build 2>&1 | Out-Host
-
-                        # Restore NODE_PATH after build
-                        $env:NODE_PATH = $originalNodePath
-
-                        # Return to OpenCut root
-                        Set-Location $openCutRootDir
-                    }
-                    else {
-                        bun run build 2>&1 | Out-Host
-                    }
+            # Check Next.js config exists and has standalone output
+            $nextConfigPath = "$openCutAppDir\next.config.ts"
+            if (-not (Test-Path $nextConfigPath)) {
+                $nextConfigPath = "$openCutAppDir\next.config.js"
+                if (-not (Test-Path $nextConfigPath)) {
+                    Show-Warning "next.config.ts/js not found - build may fail"
                 }
-                finally {
-                    # Always restore original environment variables to prevent pollution
-                    if ($null -eq $originalNodeEnv) {
-                        Remove-Item env:NODE_ENV -ErrorAction SilentlyContinue
-                    }
-                    else {
-                        $env:NODE_ENV = $originalNodeEnv
-                    }
+            }
 
-                    if ($null -eq $originalNextTelemetry) {
-                        Remove-Item env:NEXT_TELEMETRY_DISABLED -ErrorAction SilentlyContinue
-                    }
-                    else {
-                        $env:NEXT_TELEMETRY_DISABLED = $originalNextTelemetry
-                    }
+            if (Test-Path $nextConfigPath) {
+                $nextConfigContent = Get-Content $nextConfigPath -Raw
+                if ($nextConfigContent -notmatch 'output.*standalone' -and $nextConfigContent -notmatch "output:\s*['""]standalone['""]") {
+                    Show-Warning "Next.js config may not have 'output: standalone' - standalone build may fail"
+                    Show-Warning "Expected: output: 'standalone' or output: 'standalone' in next.config"
                 }
+                else {
+                    Write-Success "  ✓ Next.js config has standalone output configured"
+                }
+            }
+
+            # Verify critical dependencies are installed
+            $criticalDeps = @("next", "react", "react-dom")
+            $missingDeps = @()
+            foreach ($dep in $criticalDeps) {
+                $depPath = if ($useNpmFallback) {
+                    "$openCutAppDir\node_modules\$dep"
+                } else {
+                    "$openCutRootDir\node_modules\$dep"
+                }
+                if (-not (Test-Path $depPath)) {
+                    $missingDeps += $dep
+                }
+            }
+
+            if ($missingDeps.Count -gt 0) {
+                Show-Warning "Critical dependencies missing: $($missingDeps -join ', ')"
+                Show-Warning "Build may fail. Consider cleaning node_modules and reinstalling."
+            }
+            else {
+                Write-Success "  ✓ Critical dependencies verified"
+            }
+
+            # Check package.json has build script
+            $packageJsonPath = "$openCutAppDir\package.json"
+            if (Test-Path $packageJsonPath) {
+                $packageJson = Get-Content $packageJsonPath -Raw | ConvertFrom-Json
+                if (-not $packageJson.scripts.build) {
+                    Show-Warning "package.json missing 'build' script"
+                }
+                else {
+                    Write-Success "  ✓ Build script found in package.json"
+                }
+            }
+        }
+
+        # ----------------------------------------
+        # Step 1b.6: Build OpenCut
+        # ----------------------------------------
+        if ($installSuccess) {
+            Write-Info "Running OpenCut production build..."
+
+            # Clean previous build to ensure fresh build
+            $openCutNextDir = "$openCutAppDir\.next"
+            if (Test-Path $openCutNextDir) {
+                Write-Info "Cleaning previous OpenCut build..."
+                Remove-Item -Path $openCutNextDir -Recurse -Force -ErrorAction SilentlyContinue
+                Write-Success "  ✓ Previous build cleaned"
+            }
+
+            # Save original environment variables to restore after build
+            $originalNodeEnv = $env:NODE_ENV
+            $originalNextTelemetry = $env:NEXT_TELEMETRY_DISABLED
+
+            # Set environment variables for build
+            $env:NODE_ENV = "production"
+            $env:NEXT_TELEMETRY_DISABLED = "1"
+
+            try {
+                if ($useNpmFallback) {
+                    # For npm fallback, build directly from apps/web with proper NODE_PATH
+                    # This is needed because npm workspaces handle module resolution differently than bun
+                    Set-Location $openCutAppDir
+
+                    # Set NODE_PATH to include both local and root node_modules
+                    $originalNodePath = $env:NODE_PATH
+                    $env:NODE_PATH = "$openCutAppDir\node_modules;$openCutRootDir\node_modules"
+
+                    Write-Info "Building with NODE_PATH: $env:NODE_PATH"
+                    npx next build 2>&1 | Out-Host
+
+                    # Restore NODE_PATH after build
+                    $env:NODE_PATH = $originalNodePath
+
+                    # Return to OpenCut root
+                    Set-Location $openCutRootDir
+                }
+                else {
+                    Set-Location $openCutRootDir
+                    bun run build 2>&1 | Out-Host
+                }
+            }
+            finally {
+                # Always restore original environment variables to prevent pollution
+                if ($null -eq $originalNodeEnv) {
+                    Remove-Item env:NODE_ENV -ErrorAction SilentlyContinue
+                }
+                else {
+                    $env:NODE_ENV = $originalNodeEnv
+                }
+
+                if ($null -eq $originalNextTelemetry) {
+                    Remove-Item env:NEXT_TELEMETRY_DISABLED -ErrorAction SilentlyContinue
+                }
+                else {
+                    $env:NEXT_TELEMETRY_DISABLED = $originalNextTelemetry
+                }
+            }
 
                 if ($LASTEXITCODE -ne 0) {
                     Show-Warning "OpenCut build failed with exit code $LASTEXITCODE."
@@ -520,6 +597,9 @@ NEXT_TELEMETRY_DISABLED=1
                     if (-not (Test-Path $tsconfigPath)) {
                         Show-Warning "  ✗ tsconfig.json not found in $openCutAppDir"
                     }
+                    else {
+                        Write-Info "  ✓ tsconfig.json found"
+                    }
 
                     $nextConfigPath = "$openCutAppDir\next.config.ts"
                     if (-not (Test-Path $nextConfigPath)) {
@@ -527,7 +607,31 @@ NEXT_TELEMETRY_DISABLED=1
                         if (-not (Test-Path $nextConfigPath)) {
                             Show-Warning "  ✗ next.config.ts/js not found in $openCutAppDir"
                         }
+                        else {
+                            Write-Info "  ✓ next.config.js found"
+                        }
                     }
+                    else {
+                        Write-Info "  ✓ next.config.ts found"
+                    }
+
+                    # Check if dependencies are actually installed
+                    $nextPath = if ($useNpmFallback) {
+                        "$openCutAppDir\node_modules\next"
+                    } else {
+                        "$openCutRootDir\node_modules\next"
+                    }
+                    if (-not (Test-Path $nextPath)) {
+                        Show-Warning "  ✗ Next.js not found in node_modules - dependencies may not be installed correctly"
+                    }
+
+                    Show-Warning ""
+                    Show-Warning "Troubleshooting steps:"
+                    Show-Warning "  1. Check the build output above for specific error messages"
+                    Show-Warning "  2. Try building manually: cd OpenCut && bun run build (or npm run build)"
+                    Show-Warning "  3. Ensure all dependencies are installed: bun install (or npm install)"
+                    Show-Warning "  4. Check Next.js config has 'output: standalone'"
+                    Show-Warning "  5. Verify TypeScript compilation: cd OpenCut/apps/web && npx tsc --noEmit"
                 }
                 else {
                     # ----------------------------------------
@@ -563,6 +667,24 @@ NEXT_TELEMETRY_DISABLED=1
 
                         if ((Test-Path $standaloneServerJsMonorepo) -or (Test-Path $standaloneServerJsSingle)) {
                             $verificationMessages += "  ✓ standalone/server.js exists"
+                            
+                            # Verify server.js is not empty and appears valid
+                            $serverJsPath = if (Test-Path $standaloneServerJsMonorepo) { $standaloneServerJsMonorepo } else { $standaloneServerJsSingle }
+                            $serverJsSize = (Get-Item $serverJsPath).Length
+                            if ($serverJsSize -lt 1000) {
+                                $verificationPassed = $false
+                                $verificationMessages += "  ✗ standalone/server.js appears too small ($serverJsSize bytes) - may be corrupted"
+                            }
+                            else {
+                                # Check if file contains expected Next.js server code
+                                $serverJsContent = Get-Content $serverJsPath -TotalCount 10 -Raw
+                                if ($serverJsContent -notmatch "next|server|http") {
+                                    $verificationMessages += "  ⚠ standalone/server.js may not be valid (content check failed)"
+                                }
+                                else {
+                                    $verificationMessages += "  ✓ standalone/server.js appears valid ($([math]::Round($serverJsSize/1KB, 2)) KB)"
+                                }
+                            }
                         }
                         else {
                             $verificationPassed = $false
@@ -590,10 +712,32 @@ NEXT_TELEMETRY_DISABLED=1
                             $standaloneNodeModulesRoot = "$openCutStandaloneDir\node_modules"
                             $standaloneNodeModulesApp = "$openCutStandaloneDir\apps\web\node_modules"
                             if ((Test-Path $standaloneNodeModulesRoot) -or (Test-Path $standaloneNodeModulesApp)) {
-                                $verificationMessages += "  ✓ standalone/node_modules exists"
+                                $nodeModulesPath = if (Test-Path $standaloneNodeModulesRoot) { $standaloneNodeModulesRoot } else { $standaloneNodeModulesApp }
+                                $nodeModulesCount = (Get-ChildItem $nodeModulesPath -Directory -ErrorAction SilentlyContinue | Measure-Object).Count
+                                if ($nodeModulesCount -gt 0) {
+                                    $verificationMessages += "  ✓ standalone/node_modules exists ($nodeModulesCount packages)"
+                                }
+                                else {
+                                    $verificationMessages += "  ⚠ standalone/node_modules exists but appears empty"
+                                }
                             }
                             else {
                                 $verificationMessages += "  ⚠ standalone/node_modules not found (may be embedded)"
+                            }
+
+                            # Check for required static assets
+                            $staticChunks = "$openCutStaticDir\chunks"
+                            if (Test-Path $staticChunks) {
+                                $chunkCount = (Get-ChildItem $staticChunks -File -ErrorAction SilentlyContinue | Measure-Object).Count
+                                if ($chunkCount -gt 0) {
+                                    $verificationMessages += "  ✓ Static chunks found ($chunkCount files)"
+                                }
+                                else {
+                                    $verificationMessages += "  ⚠ Static chunks directory exists but is empty"
+                                }
+                            }
+                            else {
+                                $verificationMessages += "  ⚠ Static chunks directory not found"
                             }
                         }
 

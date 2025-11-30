@@ -245,16 +245,33 @@ function getInitializationMessage(pollAttempts: number): string {
 /**
  * Checks job status and throws if job failed or was cancelled.
  * Returns true if job completed successfully.
+ * Also checks for outputPath as a fallback indicator of completion.
  */
 function checkJobCompletion(jobData: JobStatusData): boolean {
   const status = (jobData.status || '').toLowerCase().trim();
   if (status === 'completed') {
     return true;
   }
+
+  // Check if job has outputPath or artifacts even if status isn't "completed"
+  // This handles cases where the job finished but status wasn't updated
+  const hasOutput =
+    jobData.outputPath ||
+    (jobData.artifacts && Array.isArray(jobData.artifacts) && jobData.artifacts.length > 0);
+
+  // If job is at 100% or has output, consider it completed even if status isn't updated
+  const percent = jobData.percent ?? 0;
+  if ((percent >= 100 || hasOutput) && status === 'running') {
+    console.warn(
+      '[FinalExport] Job appears completed (has output or 100%) but status is still "running"'
+    );
+    return true;
+  }
+
   if (status === 'failed') {
     throw new Error(jobData.errorMessage || 'Video generation failed');
   }
-  if (status === 'cancelled') {
+  if (status === 'cancelled' || status === 'canceled') {
     throw new Error('Video generation was cancelled');
   }
   return false;
@@ -574,6 +591,20 @@ export const FinalExport: FC<FinalExportProps> = ({
                 );
 
                 console.info('[SSE] Progress update:', jobProgress, '%', data.stage);
+
+                // Check if job appears completed even if status isn't "completed"
+                // This handles edge cases where job finished but status wasn't updated
+                const status = (data.status || '').toLowerCase();
+                const hasOutput =
+                  data.outputPath ||
+                  (data.artifacts && Array.isArray(data.artifacts) && data.artifacts.length > 0);
+
+                if ((jobProgress >= 100 || hasOutput) && status === 'running') {
+                  console.warn(
+                    '[SSE] Job appears completed (has output or 100%) but status is still "running", checking completion...'
+                  );
+                  // Don't auto-resolve here, wait for job-completed event or let polling handle it
+                }
               } catch (err) {
                 console.warn('[SSE] Failed to parse progress event:', err);
               }
@@ -596,6 +627,15 @@ export const FinalExport: FC<FinalExportProps> = ({
                 } else if (status === 'cancelled' || status === 'canceled') {
                   reject(new Error('Video generation was cancelled'));
                 } else {
+                  // Even if status isn't "completed", check if we have output
+                  const hasOutput =
+                    data.outputPath ||
+                    (data.artifacts && Array.isArray(data.artifacts) && data.artifacts.length > 0);
+                  if (!hasOutput && status !== 'completed') {
+                    console.warn(
+                      '[SSE] Job completion event received but no output path and status is not completed'
+                    );
+                  }
                   resolve(data);
                 }
               } catch (err) {
@@ -610,7 +650,61 @@ export const FinalExport: FC<FinalExportProps> = ({
               // This is the EventSource built-in error (connection issues)
               // Check if this is just the connection closing normally
               if (eventSource.readyState === EventSource.CLOSED) {
-                console.info('[SSE] Connection closed normally');
+                console.info('[SSE] Connection closed, checking if job completed...');
+
+                // If connection closed, check if job might have completed
+                // by doing a quick status check before falling back to polling
+                fetch(apiUrl(`/api/jobs/${jobId}`), {
+                  headers: { Accept: 'application/json' },
+                })
+                  .then(async (response) => {
+                    if (response.ok) {
+                      const jobData = (await response.json()) as JobStatusData;
+
+                      // Check job completion - this may throw if job failed/cancelled
+                      // We need to catch those errors separately from network errors
+                      try {
+                        if (checkJobCompletion(jobData)) {
+                          console.info('[SSE] Job completed while connection was closing');
+                          clearTimeout(connectionTimeoutId);
+                          clearTimeout(jobTimeoutId);
+                          eventSource.close();
+                          eventSourceRef.current = null;
+                          resolve(jobData);
+                          return;
+                        }
+                      } catch (completionError) {
+                        // Job failed or was cancelled - reject immediately with the actual error
+                        // Don't fall back to polling for job failures
+                        console.error('[SSE] Job failed or cancelled:', completionError);
+                        clearTimeout(connectionTimeoutId);
+                        clearTimeout(jobTimeoutId);
+                        eventSource.close();
+                        eventSourceRef.current = null;
+                        reject(completionError);
+                        return;
+                      }
+                    }
+                    // If not completed and not failed, fall back to polling
+                    console.error(
+                      '[SSE] Connection closed but job not completed, falling back to polling'
+                    );
+                    clearTimeout(connectionTimeoutId);
+                    clearTimeout(jobTimeoutId);
+                    eventSource.close();
+                    eventSourceRef.current = null;
+                    fallbackToPolling(jobId, formatIndex, totalFormats).then(resolve).catch(reject);
+                  })
+                  .catch((networkError) => {
+                    // Only fall back to polling for actual network/connection errors
+                    // Not for job failures (those are handled above)
+                    console.error('[SSE] Network error, falling back to polling:', networkError);
+                    clearTimeout(connectionTimeoutId);
+                    clearTimeout(jobTimeoutId);
+                    eventSource.close();
+                    eventSourceRef.current = null;
+                    fallbackToPolling(jobId, formatIndex, totalFormats).then(resolve).catch(reject);
+                  });
                 return;
               }
 
@@ -647,6 +741,13 @@ export const FinalExport: FC<FinalExportProps> = ({
             let consecutiveErrors = 0;
             let total404Errors = 0;
             const maxConsecutiveErrors = 5;
+
+            // Stuck job detection: track if progress/stage hasn't changed
+            let lastProgress = -1;
+            let lastStage = '';
+            let stuckStartTime: number | null = null;
+            const STUCK_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
+            const STUCK_CHECK_INTERVAL = 30; // Check every 30 polls (30 seconds)
 
             while (!jobCompleted && pollAttempts < maxPollAttempts) {
               await new Promise((res) => setTimeout(res, 1000));
@@ -688,13 +789,57 @@ export const FinalExport: FC<FinalExportProps> = ({
 
                 // Extract progress with proper fallbacks and update UI
                 const jobProgress = Math.max(0, Math.min(100, typedJobData.percent ?? 0));
+                const currentStage = typedJobData.stage || 'Processing';
+
+                // Check for stuck job (same progress/stage for too long)
+                if (pollAttempts % STUCK_CHECK_INTERVAL === 0) {
+                  if (
+                    jobProgress === lastProgress &&
+                    currentStage === lastStage &&
+                    lastProgress >= 0
+                  ) {
+                    if (stuckStartTime === null) {
+                      stuckStartTime = Date.now();
+                    } else {
+                      const stuckDuration = Date.now() - stuckStartTime;
+                      if (stuckDuration >= STUCK_THRESHOLD_MS) {
+                        console.warn(
+                          `[FinalExport] Job appears stuck: ${currentStage} at ${jobProgress}% for ${Math.round(stuckDuration / 1000)}s`
+                        );
+
+                        // Check if job has output even though status isn't completed
+                        const hasOutput =
+                          typedJobData.outputPath ||
+                          (typedJobData.artifacts &&
+                            Array.isArray(typedJobData.artifacts) &&
+                            typedJobData.artifacts.length > 0);
+
+                        if (hasOutput || jobProgress >= 95) {
+                          console.info(
+                            '[FinalExport] Job has output or is near completion, treating as completed despite stuck status'
+                          );
+                          jobCompleted = true;
+                          break;
+                        }
+
+                        // If truly stuck without output, throw error
+                        throw new Error(
+                          `Video generation appears stuck at ${currentStage} stage (${jobProgress}% complete for over 5 minutes). ` +
+                            'The job may have encountered an issue. Please try again or check the logs.'
+                        );
+                      }
+                    }
+                  } else {
+                    stuckStartTime = null; // Reset if progress changed
+                  }
+                }
+
+                lastProgress = jobProgress;
+                lastStage = currentStage;
+
                 setExportProgress((formatIdx * 100 + jobProgress) / totalFmts);
                 setExportStage(
-                  formatStageMessage(
-                    typedJobData.stage || 'Processing',
-                    typedJobData.progressMessage,
-                    jobProgress
-                  )
+                  formatStageMessage(currentStage, typedJobData.progressMessage, jobProgress)
                 );
 
                 // Check completion status using helper
@@ -711,7 +856,7 @@ export const FinalExport: FC<FinalExportProps> = ({
             }
 
             if (!jobCompleted || !lastJobData) {
-              throw new Error('Video generation timed out');
+              throw new Error('Video generation timed out after 10 minutes');
             }
 
             return lastJobData;

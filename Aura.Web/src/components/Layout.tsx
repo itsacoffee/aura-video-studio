@@ -8,6 +8,7 @@ import { SkipLinks } from './Accessibility/SkipLinks';
 import { Breadcrumbs } from './Breadcrumbs';
 import { NotificationCenter } from './dashboard/NotificationCenter';
 import { ErrorBoundary } from './ErrorBoundary';
+import { GlobalLlmSelector } from './LLMMenu/GlobalLlmSelector';
 import { MobileBottomNav } from './MobileBottomNav';
 import { MobileFAB } from './MobileFAB';
 import { ResultsTray } from './ResultsTray';
@@ -178,6 +179,7 @@ export function Layout({ children, showBreadcrumbs = true, statusBadge }: Layout
         <div className={styles.topBar} role="banner" aria-label="Top bar">
           <UndoRedoButtons />
           <div className={styles.topBarActions}>
+            <GlobalLlmSelector />
             <SystemStatusIndicator />
             <NotificationCenter />
             <ResultsTray />

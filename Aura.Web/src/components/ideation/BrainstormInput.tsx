@@ -11,8 +11,8 @@ import {
   shorthands,
 } from '@fluentui/react-components';
 import { SparkleRegular, SendRegular } from '@fluentui/react-icons';
-import React, { useState, useCallback } from 'react';
-import { LlmModelSelector, type LlmSelection } from '../ModelSelection';
+import React, { useState } from 'react';
+import { useGlobalLlmStore } from '../../state/globalLlmStore';
 
 const useStyles = makeStyles({
   container: {
@@ -48,12 +48,6 @@ const useStyles = makeStyles({
   },
   textArea: {
     minHeight: '120px',
-  },
-  modelSelectorSection: {
-    paddingTop: tokens.spacingVerticalM,
-    borderTopWidth: '1px',
-    borderTopStyle: 'solid',
-    borderTopColor: tokens.colorNeutralStroke2,
   },
   optionalSection: {
     display: 'flex',
@@ -142,9 +136,6 @@ export interface BrainstormOptions {
   llmModel?: string;
 }
 
-// Local storage key for persisting LLM selection
-const LLM_SELECTION_KEY = 'brainstorm-llm-selection';
-
 export const BrainstormInput: React.FC<BrainstormInputProps> = ({
   onBrainstorm,
   loading = false,
@@ -152,34 +143,12 @@ export const BrainstormInput: React.FC<BrainstormInputProps> = ({
   onIdeaCountChange,
 }) => {
   const styles = useStyles();
+  const { selection: globalLlmSelection } = useGlobalLlmStore();
   const [topic, setTopic] = useState('');
   const [audience, setAudience] = useState('');
   const [tone, setTone] = useState('');
   const [targetDuration, setTargetDuration] = useState('');
   const [platform, setPlatform] = useState('');
-
-  // Load saved LLM selection from localStorage
-  const [llmSelection, setLlmSelection] = useState<LlmSelection>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem(LLM_SELECTION_KEY);
-        if (saved) {
-          return JSON.parse(saved) as LlmSelection;
-        }
-      } catch {
-        // Ignore parse errors
-      }
-    }
-    return { provider: '', modelId: '' };
-  });
-
-  const handleLlmChange = useCallback((selection: LlmSelection) => {
-    setLlmSelection(selection);
-    // Persist to localStorage
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(LLM_SELECTION_KEY, JSON.stringify(selection));
-    }
-  }, []);
 
   const handleBrainstorm = () => {
     if (!topic.trim()) {
@@ -192,9 +161,9 @@ export const BrainstormInput: React.FC<BrainstormInputProps> = ({
       targetDuration: targetDuration ? parseInt(targetDuration) : undefined,
       platform: platform.trim() || undefined,
       conceptCount: ideaCount,
-      // Include LLM selection if user has made a choice
-      llmProvider: llmSelection.provider || undefined,
-      llmModel: llmSelection.modelId || undefined,
+      // Include global LLM selection if user has made a choice
+      llmProvider: globalLlmSelection?.provider || undefined,
+      llmModel: globalLlmSelection?.modelId || undefined,
     };
 
     onBrainstorm(topic.trim(), options);
@@ -227,16 +196,6 @@ export const BrainstormInput: React.FC<BrainstormInputProps> = ({
           onKeyDown={handleKeyPress}
           disabled={loading}
           resize="vertical"
-        />
-      </div>
-
-      <div className={styles.modelSelectorSection}>
-        <LlmModelSelector
-          value={llmSelection}
-          onChange={handleLlmChange}
-          label="AI Model for Brainstorming"
-          disabled={loading}
-          _featureContext="ideation-brainstorm"
         />
       </div>
 
