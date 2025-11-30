@@ -6,12 +6,10 @@ export async function GET(request: NextRequest) {
     status: 200,
     headers: {
       "Content-Type": "text/plain",
-      // Allow embedding in Aura Video Studio
+      // Allow embedding in Aura Video Studio via CORS
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type",
-      // Allow iframe embedding
-      "X-Frame-Options": "ALLOWALL",
     },
   });
 }

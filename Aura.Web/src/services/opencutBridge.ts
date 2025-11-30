@@ -90,18 +90,23 @@ interface OpenCutMessage {
 type MessageListener = (payload: unknown, requestId?: string) => void;
 
 /**
+ * Cross-platform timeout type for browser compatibility
+ */
+type TimeoutId = ReturnType<typeof setTimeout>;
+
+/**
  * OpenCut Bridge class for managing communication with embedded OpenCut
  */
 class OpenCutBridge {
   private iframe: HTMLIFrameElement | null = null;
-  private targetOrigin: string = '*';
+  private targetOrigin = 'http://127.0.0.1:3100';
   private listeners: Map<OpenCutMessageType, Set<MessageListener>> = new Map();
   private pendingRequests: Map<
     string,
-    { resolve: (value: unknown) => void; reject: (error: Error) => void; timeout: NodeJS.Timeout }
+    { resolve: (value: unknown) => void; reject: (error: Error) => void; timeout: TimeoutId }
   > = new Map();
   private isConnected = false;
-  private connectionTimeout: NodeJS.Timeout | null = null;
+  private connectionTimeout: TimeoutId | null = null;
   private readonly REQUEST_TIMEOUT_MS = 30000;
 
   constructor() {

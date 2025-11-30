@@ -65,11 +65,8 @@ const nextConfig: NextConfig = {
         // Apply to all routes
         source: "/:path*",
         headers: [
-          // Allow embedding in iframe when running in Aura
-          {
-            key: "X-Frame-Options",
-            value: isEmbedded ? "ALLOWALL" : "SAMEORIGIN",
-          },
+          // Use Content-Security-Policy frame-ancestors for iframe embedding control
+          // This is the modern standard, replacing X-Frame-Options
           {
             key: "Content-Security-Policy",
             value: isEmbedded
@@ -79,12 +76,13 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        // API routes get CORS headers
+        // API routes get CORS headers - restricted to localhost for embedded mode security
         source: "/api/:path*",
         headers: [
           {
             key: "Access-Control-Allow-Origin",
-            value: "*",
+            // Allow requests from localhost when embedded, otherwise restrict
+            value: isEmbedded ? "http://127.0.0.1:*" : "*",
           },
           {
             key: "Access-Control-Allow-Methods",
