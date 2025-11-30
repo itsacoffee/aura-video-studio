@@ -2,6 +2,14 @@ import { Card, Text, Badge, Button, makeStyles, tokens } from '@fluentui/react-c
 import { Dismiss24Regular } from '@fluentui/react-icons';
 import { useState, useEffect } from 'react';
 
+/**
+ * Result of checking a path for existence
+ */
+interface PathCheckResult {
+  path: string;
+  exists: boolean;
+}
+
 interface DiagnosticsData {
   serverPath: string | null;
   serverExists: boolean;
@@ -12,7 +20,7 @@ interface DiagnosticsData {
   isStarting: boolean;
   isPackaged: boolean;
   resourcesPath: string | null;
-  checkedPaths: Array<{ path: string; exists: boolean }>;
+  checkedPaths: PathCheckResult[];
   enabled: boolean;
   startAttempts: number;
   maxStartAttempts: number;
@@ -78,18 +86,30 @@ const useStyles = makeStyles({
   },
 });
 
-function getOpenCutApi() {
+/**
+ * Type definition for OpenCut API with diagnostics support
+ */
+interface OpenCutApiWithDiagnostics {
+  getDiagnostics?: () => Promise<DiagnosticsData>;
+}
+
+/**
+ * Get the OpenCut API from either window.aura.opencut or window.electron.opencut
+ * Handles SSR and cases where the expected properties may be undefined
+ */
+function getOpenCutApi(): OpenCutApiWithDiagnostics | null {
+  // SSR check
   if (typeof window === 'undefined') return null;
-  return (
-    (window as { aura?: { opencut?: { getDiagnostics?: () => Promise<DiagnosticsData> } } })?.aura
-      ?.opencut ||
-    (
-      window as {
-        electron?: { opencut?: { getDiagnostics?: () => Promise<DiagnosticsData> } };
-      }
-    )?.electron?.opencut ||
-    null
-  );
+
+  // Try to get from window.aura.opencut first, then window.electron.opencut
+  const auraOpencut = (window as { aura?: { opencut?: OpenCutApiWithDiagnostics } })?.aura?.opencut;
+  if (auraOpencut) return auraOpencut;
+
+  const electronOpencut = (window as { electron?: { opencut?: OpenCutApiWithDiagnostics } })
+    ?.electron?.opencut;
+  if (electronOpencut) return electronOpencut;
+
+  return null;
 }
 
 export function OpenCutDiagnostics({ serverUrl, isElectron, onClose }: OpenCutDiagnosticsProps) {
