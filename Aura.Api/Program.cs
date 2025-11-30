@@ -62,6 +62,14 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
     WebRootPath = Path.Combine(AppContext.BaseDirectory, "wwwroot")
 });
 
+// Configure Kestrel for long-running LLM requests (15 minutes)
+// This prevents Kestrel from killing connections before the LLM completes processing
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(15);
+    serverOptions.Limits.RequestHeadersTimeout = TimeSpan.FromMinutes(15);
+});
+
 // Check for reset flag
 if (args.Contains("--reset") || Environment.GetEnvironmentVariable("AURA_RESET") == "true")
 {
@@ -2598,6 +2606,10 @@ else
 
 // 4. ROUTING (Must come before CORS, Authentication, and Authorization)
 app.UseRouting();
+
+// 4a. LLM Request Timeout Middleware (extends timeout for LLM endpoints)
+// Must be after routing so we can inspect the path, but early enough to set the timeout
+app.UseMiddleware<Aura.Api.Middleware.LlmRequestTimeoutMiddleware>();
 
 // 5. CORS (Must be after UseRouting() and before UseAuthentication())
 // This ensures CORS policies are applied to endpoints correctly

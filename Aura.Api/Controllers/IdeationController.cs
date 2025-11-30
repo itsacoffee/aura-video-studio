@@ -199,6 +199,42 @@ public class IdeationController : ControllerBase
                 suggestions = suggestions.ToArray()
             });
         }
+        catch (OperationCanceledException opCancelEx) when (!ct.IsCancellationRequested)
+        {
+            // Timeout occurred (not user cancellation)
+            _logger.LogWarning(opCancelEx,
+                "[{CorrelationId}] Ideation request timed out for topic: {Topic}",
+                correlationId, request?.Topic ?? "unknown");
+
+            return StatusCode(504, new {
+                error = "The AI model took too long to respond. This can happen with complex topics or slower models.",
+                correlationId,
+                suggestions = new[] {
+                    "Try a simpler or more specific topic",
+                    "If using Ollama, ensure your model is loaded and GPU is available",
+                    "Consider using a faster/smaller model",
+                    "Try generating fewer concepts at once"
+                }
+            });
+        }
+        catch (TaskCanceledException taskCancelEx) when (!ct.IsCancellationRequested)
+        {
+            // HTTP timeout occurred
+            _logger.LogWarning(taskCancelEx,
+                "[{CorrelationId}] HTTP request timed out during ideation for topic: {Topic}",
+                correlationId, request?.Topic ?? "unknown");
+
+            return StatusCode(504, new {
+                error = "Request timed out while waiting for AI response.",
+                correlationId,
+                suggestions = new[] {
+                    "The AI model may still be loading - wait a moment and try again",
+                    "If using Ollama, check that the model is fully loaded (ollama list)",
+                    "Try a smaller model for faster responses",
+                    "Simplify your topic description"
+                }
+            });
+        }
         catch (TimeoutException timeoutEx)
         {
             _logger.LogError(timeoutEx, "[{CorrelationId}] Timeout during brainstorming for topic: {Topic}", correlationId, request?.Topic ?? "unknown");
