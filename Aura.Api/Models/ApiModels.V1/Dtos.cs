@@ -2708,3 +2708,56 @@ public record TranslationProviderHealthDto(
     List<string>? Limitations = null,
     string? ErrorMessage = null);
 
+// ============================================================================
+// LLM TEST DTOs - for LLM connectivity testing and health checks
+// ============================================================================
+
+/// <summary>
+/// Request for testing LLM connectivity
+/// </summary>
+public record LlmTestRequest(
+    string? Prompt = null,
+    int? TimeoutSeconds = 30);
+
+/// <summary>
+/// Response from LLM connectivity test
+/// </summary>
+public record LlmTestResponse(
+    bool Success,
+    string ProviderName,
+    string ModelName,
+    long ResponseTimeMs,
+    string GeneratedText,
+    int InputTokens,
+    int OutputTokens,
+    int TotalTokens,
+    bool IsLocalModel,
+    bool SupportsStreaming,
+    string Message,
+    string CorrelationId);
+
+/// <summary>
+/// LLM health status response
+/// </summary>
+public record LlmHealthResponse(
+    bool IsAvailable,
+    string ProviderName,
+    string? DefaultModel,
+    bool IsLocalModel,
+    bool SupportsStreaming,
+    bool SupportsTranslation,
+    int? MaxContextLength,
+    List<string>? KnownLimitations,
+    string? ErrorMessage,
+    string CorrelationId);
+
+/// <summary>
+/// Response with available LLM models
+/// </summary>
+public record LlmModelsResponse(
+    string ProviderName,
+    List<string> Models,
+    string? DefaultModel,
+    bool IsLocalProvider,
+    string CorrelationId);
+
