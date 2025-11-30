@@ -773,75 +773,89 @@ export function OpenCutPage() {
                   size={500}
                   style={{ display: 'block', marginBottom: tokens.spacingVerticalS }}
                 >
-                  Start OpenCut Server
+                  {isElectronWithOpenCut() ? 'OpenCut Server Not Running' : 'Start OpenCut Server'}
                 </Text>
                 <Text size={300} color="foreground2">
-                  OpenCut is a CapCut-inspired video editor. To use it, you need to start the
-                  OpenCut development server first.
+                  {isElectronWithOpenCut()
+                    ? 'The OpenCut server could not be started automatically. Click the button below to try starting it manually.'
+                    : 'OpenCut is a CapCut-inspired video editor. To use it, you need to start the OpenCut development server first.'}
                 </Text>
+                {startupStatus.message && !startupStatus.isRunning && (
+                  <Text
+                    size={200}
+                    color="foreground3"
+                    style={{ display: 'block', marginTop: tokens.spacingVerticalS }}
+                  >
+                    Status: {startupStatus.message}
+                  </Text>
+                )}
               </div>
 
-              <div className={styles.setupSteps}>
-                <div className={styles.stepItem}>
-                  <div className={styles.stepNumber}>1</div>
-                  <div>
-                    <Text weight="semibold" size={300}>
-                      Open a terminal/command prompt
-                    </Text>
-                    <Text size={200} color="foreground2" style={{ display: 'block' }}>
-                      Navigate to your Aura Video Studio installation folder
-                    </Text>
+              {/* Only show manual setup steps when NOT in Electron mode */}
+              {!isElectronWithOpenCut() && (
+                <div className={styles.setupSteps}>
+                  <div className={styles.stepItem}>
+                    <div className={styles.stepNumber}>1</div>
+                    <div>
+                      <Text weight="semibold" size={300}>
+                        Open a terminal/command prompt
+                      </Text>
+                      <Text size={200} color="foreground2" style={{ display: 'block' }}>
+                        Navigate to your Aura Video Studio installation folder
+                      </Text>
+                    </div>
                   </div>
-                </div>
 
-                <div className={styles.stepItem}>
-                  <div className={styles.stepNumber}>2</div>
-                  <div>
-                    <Text weight="semibold" size={300}>
-                      Navigate to the OpenCut directory
-                    </Text>
-                    <div className={styles.codeBlock}>cd OpenCut/apps/web</div>
+                  <div className={styles.stepItem}>
+                    <div className={styles.stepNumber}>2</div>
+                    <div>
+                      <Text weight="semibold" size={300}>
+                        Navigate to the OpenCut directory
+                      </Text>
+                      <div className={styles.codeBlock}>cd OpenCut/apps/web</div>
+                    </div>
                   </div>
-                </div>
 
-                <div className={styles.stepItem}>
-                  <div className={styles.stepNumber}>3</div>
-                  <div>
-                    <Text weight="semibold" size={300}>
-                      Install dependencies (first time only)
-                    </Text>
-                    <div className={styles.codeBlock}>bun install</div>
-                    <Text size={200} color="foreground2" style={{ display: 'block' }}>
-                      or use: npm install
-                    </Text>
+                  <div className={styles.stepItem}>
+                    <div className={styles.stepNumber}>3</div>
+                    <div>
+                      <Text weight="semibold" size={300}>
+                        Install dependencies (first time only)
+                      </Text>
+                      <div className={styles.codeBlock}>bun install</div>
+                      <Text size={200} color="foreground2" style={{ display: 'block' }}>
+                        or use: npm install
+                      </Text>
+                    </div>
                   </div>
-                </div>
 
-                <div className={styles.stepItem}>
-                  <div className={styles.stepNumber}>4</div>
-                  <div>
-                    <Text weight="semibold" size={300}>
-                      Start the development server
-                    </Text>
-                    <div className={styles.codeBlock}>bun run dev</div>
-                    <Text size={200} color="foreground2" style={{ display: 'block' }}>
-                      or use: npm run dev
-                    </Text>
+                  <div className={styles.stepItem}>
+                    <div className={styles.stepNumber}>4</div>
+                    <div>
+                      <Text weight="semibold" size={300}>
+                        Start the development server
+                      </Text>
+                      <div className={styles.codeBlock}>bun run dev</div>
+                      <Text size={200} color="foreground2" style={{ display: 'block' }}>
+                        or use: npm run dev
+                      </Text>
+                    </div>
                   </div>
-                </div>
 
-                <div className={styles.stepItem}>
-                  <div className={styles.stepNumber}>5</div>
-                  <div>
-                    <Text weight="semibold" size={300}>
-                      Click &quot;Retry Connection&quot; below
-                    </Text>
-                    <Text size={200} color="foreground2" style={{ display: 'block' }}>
-                      Once the server is running on port 3100, OpenCut will load here automatically
-                    </Text>
+                  <div className={styles.stepItem}>
+                    <div className={styles.stepNumber}>5</div>
+                    <div>
+                      <Text weight="semibold" size={300}>
+                        Click &quot;Retry Connection&quot; below
+                      </Text>
+                      <Text size={200} color="foreground2" style={{ display: 'block' }}>
+                        Once the server is running on port 3100, OpenCut will load here
+                        automatically
+                      </Text>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               <div className={styles.infoBox}>
                 <Info24Regular style={{ color: tokens.colorBrandForeground1, flexShrink: 0 }} />
@@ -850,21 +864,34 @@ export function OpenCutPage() {
                     <strong>Server URL:</strong> {effectiveUrl}
                   </Text>
                   <Text size={200} color="foreground2" style={{ display: 'block' }}>
-                    OpenCut will automatically load in this window once the server is running.
+                    {isElectronWithOpenCut()
+                      ? 'The server will start automatically when you click "Start Server" below.'
+                      : 'OpenCut will automatically load in this window once the server is running.'}
                   </Text>
                 </div>
               </div>
             </Card>
 
             <div className={styles.actionButtons}>
-              <Button
-                appearance="primary"
-                size="large"
-                icon={<ArrowClockwise24Regular aria-hidden />}
-                onClick={handleRetry}
-              >
-                Retry Connection {retryCount > 0 && `(${retryCount})`}
-              </Button>
+              {isElectronWithOpenCut() ? (
+                <Button
+                  appearance="primary"
+                  size="large"
+                  icon={<Play24Regular aria-hidden />}
+                  onClick={handleRetry}
+                >
+                  Start Server {retryCount > 0 && `(${retryCount})`}
+                </Button>
+              ) : (
+                <Button
+                  appearance="primary"
+                  size="large"
+                  icon={<ArrowClockwise24Regular aria-hidden />}
+                  onClick={handleRetry}
+                >
+                  Retry Connection {retryCount > 0 && `(${retryCount})`}
+                </Button>
+              )}
               <Button
                 appearance="secondary"
                 size="large"

@@ -7,9 +7,12 @@
  * For development, it runs the Next.js dev server from the repo.
  * For packaged builds (Aura Video Studio-1.0.0-x64.exe), it runs the
  * standalone Next.js server from the bundled copy under resources/opencut.
+ * 
+ * In packaged mode, we use Electron's built-in Node.js fork capability
+ * to run the server script, since process.execPath points to Electron, not Node.
  */
 
-const { spawn, execSync } = require("child_process");
+const { spawn, execSync, fork } = require("child_process");
 const path = require("path");
 const fs = require("fs");
 const http = require("http");
@@ -166,9 +169,10 @@ class OpenCutManager {
       let command;
       let args;
       let cwd = openCutAppDir;
+      let useNodeFork = false;
 
       if (this.isPackaged) {
-        // Packaged mode: run the standalone Next.js server directly with Node
+        // Packaged mode: run the standalone Next.js server
         // The standalone build creates a server.js that can be run with Node
         const standaloneServerPath = path.join(openCutAppDir, "server.js");
         
@@ -180,8 +184,11 @@ class OpenCutManager {
           return;
         }
         
-        command = process.execPath; // Use the bundled Node (from Electron)
-        args = [standaloneServerPath];
+        // In packaged mode, we use fork() to run the server script
+        // This uses Electron's embedded Node.js correctly, unlike process.execPath which points to Electron
+        useNodeFork = true;
+        command = standaloneServerPath;
+        args = [];
       } else {
         // Dev mode: find available package manager
         if (process.env.OPENCUT_COMMAND) {
@@ -209,19 +216,42 @@ class OpenCutManager {
         return;
       }
 
-      const child = spawn(command, args, {
-        cwd,
-        env: {
-          ...process.env,
-          PORT: String(this.port),
-          NODE_ENV: this.isPackaged ? "production" : "development",
-          // Disable Next.js telemetry for privacy
-          NEXT_TELEMETRY_DISABLED: "1",
-        },
-        stdio: "pipe",
-        // On Windows, use shell for npm/npx commands
-        shell: process.platform === "win32" && (command === "npm" || command === "npx"),
-      });
+      let child;
+      const serverEnv = {
+        ...process.env,
+        PORT: String(this.port),
+        HOSTNAME: "127.0.0.1",
+        NODE_ENV: this.isPackaged ? "production" : "development",
+        // Disable Next.js telemetry for privacy
+        NEXT_TELEMETRY_DISABLED: "1",
+        // Mark as embedded in Aura for OpenCut to detect
+        NEXT_PUBLIC_AURA_EMBEDDED: "true",
+      };
+
+      if (useNodeFork) {
+        // Use fork() to run the Next.js standalone server
+        // This leverages Electron's embedded Node.js properly
+        this.logger.info?.("OpenCutManager", "Starting OpenCut server using Node fork", {
+          serverPath: command,
+        });
+        
+        child = fork(command, args, {
+          cwd,
+          env: serverEnv,
+          stdio: ["pipe", "pipe", "pipe", "ipc"],
+          // Ensure detached on Windows for proper cleanup
+          detached: process.platform !== "win32",
+        });
+      } else {
+        // Use spawn for dev mode with package managers
+        child = spawn(command, args, {
+          cwd,
+          env: serverEnv,
+          stdio: "pipe",
+          // On Windows, use shell for npm/npx commands
+          shell: process.platform === "win32" && (command === "npm" || command === "npx" || command === "bun"),
+        });
+      }
 
       this.child = child;
       this.startAttempts++;
