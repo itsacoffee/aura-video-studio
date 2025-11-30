@@ -370,6 +370,15 @@ public class VisualsController : ControllerBase
             _loggerFactory.CreateLogger<LocalStableDiffusionProvider>(),
             httpClient));
 
+        // Pexels - free stock photo provider with smart search
+        if (apiKeys.TryGetValue("pexels", out var pexelsKey) && !string.IsNullOrWhiteSpace(pexelsKey))
+        {
+            providers.Add(new PexelsVisualProvider(
+                _loggerFactory.CreateLogger<PexelsVisualProvider>(),
+                httpClient,
+                pexelsKey));
+        }
+
         if (apiKeys.TryGetValue("unsplash", out var unsplashKey) && !string.IsNullOrWhiteSpace(unsplashKey))
         {
             providers.Add(new UnsplashVisualProvider(
