@@ -22,6 +22,7 @@ import { useEnginesStore } from '../../state/engines';
 import { EngineCard } from './EngineCard';
 import { FFmpegCard } from './FFmpegCard';
 import { OllamaCard } from './OllamaCard';
+import { StableDiffusionCard } from './StableDiffusionCard';
 
 const useStyles = makeStyles({
   container: {
@@ -294,6 +295,9 @@ export function EnginesTab() {
 
       {/* Ollama - Special Card with Auto-Detection */}
       <OllamaCard />
+
+      {/* Stable Diffusion - GPU-gated with managed installation */}
+      <StableDiffusionCard />
 
       {engines.length === 0 && !isLoading ? (
         <div className={styles.emptyState}>
