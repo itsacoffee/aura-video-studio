@@ -131,13 +131,13 @@ export function GlobalLlmSelector() {
       });
 
       // Add common providers that might not have models yet
-      const commonProviders = ['OpenAI', 'Anthropic', 'Gemini', 'Ollama', 'Azure'];
+      const commonProviders = ['OpenAI', 'Anthropic', 'Gemini', 'Ollama', 'Azure', 'RuleBased'];
       for (const provider of commonProviders) {
         if (!providerList.some((p) => p.id === provider)) {
           providerList.push({
             id: provider,
-            name: provider,
-            requiresApiKey: provider !== 'Ollama',
+            name: provider === 'RuleBased' ? 'Rule-Based (Offline)' : provider,
+            requiresApiKey: provider !== 'Ollama' && provider !== 'RuleBased',
             modelCount: 0,
             isAvailable: false,
           });

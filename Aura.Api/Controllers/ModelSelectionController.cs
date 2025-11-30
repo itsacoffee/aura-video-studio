@@ -41,7 +41,7 @@ public class ModelSelectionController : ControllerBase
             _logger.LogInformation("Getting available models for provider: {Provider}", provider ?? "all");
 
             var providers = string.IsNullOrWhiteSpace(provider)
-                ? new[] { "OpenAI", "Anthropic", "Gemini", "Azure", "Ollama" }
+                ? new[] { "OpenAI", "Anthropic", "Gemini", "Azure", "Ollama", "RuleBased" }
                 : new[] { provider };
 
             var modelsByProvider = new Dictionary<string, List<ModelInfoDto>>();
@@ -491,7 +491,7 @@ public class ModelSelectionController : ControllerBase
         try
         {
             var providers = string.IsNullOrWhiteSpace(provider)
-                ? new[] { "OpenAI", "Anthropic", "Gemini", "Azure", "Ollama" }
+                ? new[] { "OpenAI", "Anthropic", "Gemini", "Azure", "Ollama", "RuleBased" }
                 : new[] { provider };
 
             var deprecatedModels = new List<DeprecationStatusDto>();
