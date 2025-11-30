@@ -251,6 +251,28 @@ describe('ResponsiveDataGrid component', () => {
     const strongElements = screen.getAllByText('Alice')[0].closest('strong');
     expect(strongElements).toBeInTheDocument();
   });
+
+  it('should support custom getRowKey function', () => {
+    render(
+      <ResponsiveDataGrid
+        data={testData}
+        columns={columns}
+        getRowKey={(item) => item.id}
+        data-testid="data-grid"
+      />
+    );
+
+    const rows = screen.getAllByRole('row');
+    expect(rows).toHaveLength(3);
+  });
+
+  it('should use id field as key when available', () => {
+    render(<ResponsiveDataGrid data={testData} columns={columns} data-testid="data-grid" />);
+
+    // If data has id field, it should be used without getRowKey
+    const rows = screen.getAllByRole('row');
+    expect(rows).toHaveLength(3);
+  });
 });
 
 describe('AutoGrid component', () => {

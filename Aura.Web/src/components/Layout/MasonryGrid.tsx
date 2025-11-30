@@ -142,7 +142,11 @@ export function MasonryGrid({
           typeof childProps.className === 'string' ? childProps.className : '';
         const existingStyle = (childProps.style as CSSProperties) ?? {};
 
+        // Preserve the child's key if it exists, otherwise fall back to index
+        const key = child.key !== null ? child.key : index;
+
         return cloneElement(child as ReactElement, {
+          key,
           'data-masonry-item': true,
           className: mergeClasses(styles.item, existingClassName),
           style: {

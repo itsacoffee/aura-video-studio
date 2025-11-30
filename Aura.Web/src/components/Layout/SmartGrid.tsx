@@ -138,7 +138,7 @@ const useStyles = makeStyles({
 export function SmartGrid({
   children,
   itemType = 'card',
-  itemAspectRatio: _itemAspectRatio,
+  itemAspectRatio,
   minColumns = 1,
   maxColumns = 6,
   minItemWidth,
@@ -159,6 +159,8 @@ export function SmartGrid({
   const defaults = itemTypeDefaults[itemType];
   const effectiveMinWidth = minItemWidth ?? defaults.minWidth;
   const effectiveMaxWidth = maxItemWidth ?? defaults.maxWidth;
+  // Use custom aspect ratio if provided, otherwise use the default for the item type
+  const effectiveAspectRatio = itemAspectRatio ?? defaults.aspect;
 
   // Calculate optimal column count based on container width
   useEffect(() => {
@@ -182,8 +184,16 @@ export function SmartGrid({
       gridTemplateColumns: `repeat(${fillMode}, minmax(${effectiveMinWidth}px, ${maxWidthValue}))`,
       alignItems,
       justifyItems,
-    };
-  }, [fillMode, effectiveMinWidth, effectiveMaxWidth, alignItems, justifyItems]);
+      '--smart-grid-aspect-ratio': effectiveAspectRatio,
+    } as CSSProperties;
+  }, [
+    fillMode,
+    effectiveMinWidth,
+    effectiveMaxWidth,
+    alignItems,
+    justifyItems,
+    effectiveAspectRatio,
+  ]);
 
   const gapClass =
     gap === 'tight' ? styles.gapTight : gap === 'wide' ? styles.gapWide : styles.gapNormal;

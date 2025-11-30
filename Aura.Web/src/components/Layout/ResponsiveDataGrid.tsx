@@ -39,6 +39,8 @@ export interface ResponsiveDataGridProps<T> {
   cardRenderer?: (item: T, index: number) => ReactNode;
   /** Breakpoint to switch to card view (default: 768) */
   breakpoint?: number;
+  /** Function to get unique key for each row (defaults to index) */
+  getRowKey?: (item: T, index: number) => string | number;
   /** Additional class name */
   className?: string;
   /** Test ID for testing */
@@ -126,6 +128,7 @@ export function ResponsiveDataGrid<T extends Record<string, unknown>>({
   columns,
   cardRenderer,
   breakpoint = 768,
+  getRowKey,
   className,
   'data-testid': testId,
 }: ResponsiveDataGridProps<T>): React.ReactElement {
@@ -133,6 +136,21 @@ export function ResponsiveDataGrid<T extends Record<string, unknown>>({
   const display = useDisplayEnvironment();
 
   const useCardView = display.viewportWidth < breakpoint;
+
+  // Helper to get row key
+  const getKey = (item: T, index: number): string | number => {
+    if (getRowKey) {
+      return getRowKey(item, index);
+    }
+    // Try common ID fields
+    if ('id' in item && (typeof item.id === 'string' || typeof item.id === 'number')) {
+      return item.id;
+    }
+    if ('key' in item && (typeof item.key === 'string' || typeof item.key === 'number')) {
+      return item.key;
+    }
+    return index;
+  };
 
   // Calculate visible columns based on priority and available width
   const visibleColumns = useMemo(() => {
@@ -180,7 +198,7 @@ export function ResponsiveDataGrid<T extends Record<string, unknown>>({
     return (
       <div className={mergeClasses(styles.cardGrid, className)} data-testid={testId}>
         {data.map((item, index) => (
-          <div key={index}>{renderCard(item, index)}</div>
+          <div key={getKey(item, index)}>{renderCard(item, index)}</div>
         ))}
       </div>
     );
@@ -197,7 +215,7 @@ export function ResponsiveDataGrid<T extends Record<string, unknown>>({
       </thead>
       <tbody>
         {data.map((row, rowIndex) => (
-          <tr key={rowIndex}>
+          <tr key={getKey(row, rowIndex)}>
             {visibleColumns.map((col) => {
               const value = row[col.key];
               const renderedValue = col.render ? col.render(value, row) : String(value ?? '');

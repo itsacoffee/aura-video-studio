@@ -215,10 +215,9 @@ export function useGridLayout(options: UseGridLayoutOptions = {}): GridLayoutCon
 
     const element = containerRef.current;
     const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        if (entry.target === element) {
-          setContainerWidth(entry.contentRect.width - containerPadding);
-        }
+      const entry = entries[0];
+      if (entry) {
+        setContainerWidth(entry.contentRect.width - containerPadding);
       }
     });
 
