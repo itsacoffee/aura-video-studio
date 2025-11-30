@@ -12,6 +12,7 @@ namespace Aura.Providers.Visuals;
 
 /// <summary>
 /// Local Stable Diffusion provider for self-hosted SD WebUI or ComfyUI
+/// Enhanced with connection retry logic and better error handling
 /// </summary>
 public class LocalStableDiffusionProvider : BaseVisualProvider
 {
@@ -19,6 +20,12 @@ public class LocalStableDiffusionProvider : BaseVisualProvider
     private readonly string _webUiUrl;
     private readonly bool _isNvidiaGpu;
     private readonly int _vramGB;
+    
+    // Retry configuration
+    private const int MAX_RETRIES = 3;
+    private const int INITIAL_RETRY_DELAY_MS = 1000;
+    private const int CONNECTION_TIMEOUT_SECONDS = 30;
+    private const int GENERATION_TIMEOUT_SECONDS = 180; // Image gen can take a while
 
     public LocalStableDiffusionProvider(
         ILogger<LocalStableDiffusionProvider> logger,
@@ -28,7 +35,7 @@ public class LocalStableDiffusionProvider : BaseVisualProvider
         int vramGB = 8) : base(logger)
     {
         _httpClient = httpClient;
-        _webUiUrl = webUiUrl;
+        _webUiUrl = webUiUrl.TrimEnd('/');
         _isNvidiaGpu = isNvidiaGpu;
         _vramGB = vramGB;
     }
@@ -36,6 +43,11 @@ public class LocalStableDiffusionProvider : BaseVisualProvider
     public override string ProviderName => "LocalSD";
 
     public override bool RequiresApiKey => false;
+
+    /// <summary>
+    /// Get the WebUI URL being used
+    /// </summary>
+    public string WebUiUrl => _webUiUrl;
 
     public override async Task<string?> GenerateImageAsync(
         string prompt,
@@ -51,6 +63,13 @@ public class LocalStableDiffusionProvider : BaseVisualProvider
         if (_vramGB < 6)
         {
             Logger.LogWarning("Local SD requires at least 6GB VRAM, have {VRAM}GB", _vramGB);
+            return null;
+        }
+
+        // First check if server is available
+        if (!await IsServerAvailableWithRetryAsync(ct).ConfigureAwait(false))
+        {
+            Logger.LogWarning("Stable Diffusion WebUI server is not available at {Url}", _webUiUrl);
             return null;
         }
 
@@ -78,22 +97,13 @@ public class LocalStableDiffusionProvider : BaseVisualProvider
                 }
             };
 
-            var request = new HttpRequestMessage(HttpMethod.Post, $"{_webUiUrl}/sdapi/v1/txt2img");
-            request.Content = new StringContent(
-                JsonSerializer.Serialize(requestBody),
-                Encoding.UTF8,
-                "application/json");
-
-            var response = await _httpClient.SendAsync(request, ct).ConfigureAwait(false);
-            var content = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                Logger.LogWarning("Local SD request failed: {Status} - {Content}", response.StatusCode, content);
-                return null;
-            }
-
-            var result = JsonSerializer.Deserialize<SdWebUiResponse>(content);
+            var result = await SendRequestWithRetryAsync<SdWebUiResponse>(
+                HttpMethod.Post,
+                $"{_webUiUrl}/sdapi/v1/txt2img",
+                requestBody,
+                GENERATION_TIMEOUT_SECONDS,
+                ct).ConfigureAwait(false);
+            
             if (result?.Images != null && result.Images.Count > 0)
             {
                 var imageBytes = Convert.FromBase64String(result.Images[0]);
@@ -105,6 +115,11 @@ public class LocalStableDiffusionProvider : BaseVisualProvider
             }
 
             Logger.LogWarning("Local SD returned no images");
+            return null;
+        }
+        catch (OperationCanceledException)
+        {
+            Logger.LogWarning("Image generation was cancelled");
             return null;
         }
         catch (Exception ex)
@@ -144,15 +159,141 @@ public class LocalStableDiffusionProvider : BaseVisualProvider
             return false;
         }
 
-        try
+        return await IsServerAvailableWithRetryAsync(ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Check if server is available with automatic retry
+    /// </summary>
+    private async Task<bool> IsServerAvailableWithRetryAsync(CancellationToken ct)
+    {
+        for (int attempt = 0; attempt < MAX_RETRIES; attempt++)
         {
-            var response = await _httpClient.GetAsync($"{_webUiUrl}/sdapi/v1/sd-models", ct).ConfigureAwait(false);
-            return response.IsSuccessStatusCode;
+            try
+            {
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                cts.CancelAfter(TimeSpan.FromSeconds(CONNECTION_TIMEOUT_SECONDS));
+                
+                var response = await _httpClient.GetAsync(
+                    $"{_webUiUrl}/sdapi/v1/sd-models", 
+                    cts.Token).ConfigureAwait(false);
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    return true;
+                }
+                
+                Logger.LogDebug("Health check returned {Status}, attempt {Attempt}/{Max}", 
+                    response.StatusCode, attempt + 1, MAX_RETRIES);
+            }
+            catch (HttpRequestException ex)
+            {
+                Logger.LogDebug(ex, "Connection to SD WebUI failed, attempt {Attempt}/{Max}", 
+                    attempt + 1, MAX_RETRIES);
+            }
+            catch (TaskCanceledException) when (!ct.IsCancellationRequested)
+            {
+                Logger.LogDebug("Connection to SD WebUI timed out, attempt {Attempt}/{Max}", 
+                    attempt + 1, MAX_RETRIES);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return false;
+            }
+            
+            if (attempt < MAX_RETRIES - 1)
+            {
+                var delay = INITIAL_RETRY_DELAY_MS * (int)Math.Pow(2, attempt);
+                Logger.LogDebug("Waiting {Delay}ms before retry", delay);
+                await Task.Delay(delay, ct).ConfigureAwait(false);
+            }
         }
-        catch
+        
+        return false;
+    }
+
+    /// <summary>
+    /// Send HTTP request with retry logic
+    /// </summary>
+    private async Task<T?> SendRequestWithRetryAsync<T>(
+        HttpMethod method,
+        string url,
+        object? body,
+        int timeoutSeconds,
+        CancellationToken ct) where T : class
+    {
+        Exception? lastException = null;
+        
+        for (int attempt = 0; attempt < MAX_RETRIES; attempt++)
         {
-            return false;
+            try
+            {
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                cts.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
+                
+                var request = new HttpRequestMessage(method, url);
+                
+                if (body != null)
+                {
+                    request.Content = new StringContent(
+                        JsonSerializer.Serialize(body),
+                        Encoding.UTF8,
+                        "application/json");
+                }
+                
+                var response = await _httpClient.SendAsync(request, cts.Token).ConfigureAwait(false);
+                var content = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    Logger.LogWarning("SD WebUI request failed: {Status} - {Content}", 
+                        response.StatusCode, content);
+                    
+                    // Certain errors should not be retried
+                    if (response.StatusCode == System.Net.HttpStatusCode.BadRequest ||
+                        response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                    {
+                        return null;
+                    }
+                    
+                    lastException = new HttpRequestException($"Request failed with status {response.StatusCode}");
+                }
+                else
+                {
+                    return JsonSerializer.Deserialize<T>(content);
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                Logger.LogWarning(ex, "HTTP request to SD WebUI failed, attempt {Attempt}/{Max}", 
+                    attempt + 1, MAX_RETRIES);
+                lastException = ex;
+            }
+            catch (TaskCanceledException) when (!ct.IsCancellationRequested)
+            {
+                Logger.LogWarning("Request to SD WebUI timed out after {Timeout}s, attempt {Attempt}/{Max}", 
+                    timeoutSeconds, attempt + 1, MAX_RETRIES);
+                lastException = new TimeoutException($"Request timed out after {timeoutSeconds}s");
+            }
+            catch (OperationCanceledException)
+            {
+                throw; // Don't retry on cancellation
+            }
+            
+            if (attempt < MAX_RETRIES - 1)
+            {
+                var delay = INITIAL_RETRY_DELAY_MS * (int)Math.Pow(2, attempt);
+                Logger.LogDebug("Waiting {Delay}ms before retry", delay);
+                await Task.Delay(delay, ct).ConfigureAwait(false);
+            }
         }
+        
+        if (lastException != null)
+        {
+            Logger.LogError(lastException, "All retry attempts exhausted for SD WebUI request");
+        }
+        
+        return null;
     }
 
     public override string AdaptPrompt(string prompt, VisualGenerationOptions options)
@@ -181,9 +322,70 @@ public class LocalStableDiffusionProvider : BaseVisualProvider
         return 0m;
     }
 
+    /// <summary>
+    /// Get detailed connection status for diagnostics
+    /// </summary>
+    public async Task<SDConnectionStatus> GetConnectionStatusAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(10));
+            
+            var response = await _httpClient.GetAsync(
+                $"{_webUiUrl}/sdapi/v1/options", 
+                cts.Token).ConfigureAwait(false);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                var options = JsonSerializer.Deserialize<JsonElement>(content);
+                
+                string? currentModel = null;
+                if (options.TryGetProperty("sd_model_checkpoint", out var modelEl))
+                {
+                    currentModel = modelEl.GetString();
+                }
+                
+                return new SDConnectionStatus(
+                    IsConnected: true,
+                    Url: _webUiUrl,
+                    CurrentModel: currentModel,
+                    ErrorMessage: null
+                );
+            }
+            
+            return new SDConnectionStatus(
+                IsConnected: false,
+                Url: _webUiUrl,
+                CurrentModel: null,
+                ErrorMessage: $"Server returned status {response.StatusCode}"
+            );
+        }
+        catch (Exception ex)
+        {
+            return new SDConnectionStatus(
+                IsConnected: false,
+                Url: _webUiUrl,
+                CurrentModel: null,
+                ErrorMessage: ex.Message
+            );
+        }
+    }
+
     private sealed class SdWebUiResponse
     {
         public List<string>? Images { get; set; }
         public string? Info { get; set; }
     }
 }
+
+/// <summary>
+/// Connection status for SD WebUI
+/// </summary>
+public record SDConnectionStatus(
+    bool IsConnected,
+    string Url,
+    string? CurrentModel,
+    string? ErrorMessage
+);
