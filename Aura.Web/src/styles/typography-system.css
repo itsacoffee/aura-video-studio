@@ -1,0 +1,290 @@
+/**
+ * Fluid Typography System
+ *
+ * Apple-inspired modular scale typography with viewport-responsive interpolation.
+ * Based on modular scale (1.2 - Minor Third) with fluid sizing between breakpoints.
+ *
+ * Design philosophy:
+ * 1. Dynamic Type: Sizes scale based on viewport and display density
+ * 2. Modular Scale: Each size is a mathematical ratio of the previous
+ * 3. Optical Sizing: Adjusts weight and spacing at different sizes
+ * 4. Fluid Scaling: Smooth interpolation between breakpoints using clamp()
+ */
+
+:root {
+  /* ============================================
+     FLUID TYPOGRAPHY SYSTEM
+     Based on modular scale (1.2 - Minor Third)
+     with viewport-responsive interpolation
+     ============================================ */
+
+  /* Base size - fluid between 14px and 18px */
+  --type-base: clamp(0.875rem, 0.8rem + 0.25vw, 1.125rem);
+
+  /* Scale ratio - adjusts based on viewport */
+  --type-ratio: 1.2;
+
+  /* Generated scale using CSS calc */
+  --type-xs: calc(var(--type-base) / var(--type-ratio));
+  --type-sm: calc(var(--type-base) / 1.1);
+  --type-md: var(--type-base);
+  --type-lg: calc(var(--type-base) * var(--type-ratio));
+  --type-xl: calc(var(--type-base) * var(--type-ratio) * var(--type-ratio));
+  --type-2xl: calc(var(--type-base) * var(--type-ratio) * var(--type-ratio) * var(--type-ratio));
+  --type-3xl: calc(
+    var(--type-base) * var(--type-ratio) * var(--type-ratio) * var(--type-ratio) * var(--type-ratio)
+  );
+  --type-4xl: calc(
+    var(--type-base) * var(--type-ratio) * var(--type-ratio) * var(--type-ratio) *
+      var(--type-ratio) * var(--type-ratio)
+  );
+
+  /* Line heights - tighter for headings, looser for body */
+  --leading-tight: 1.15;
+  --leading-snug: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+  --leading-loose: 1.75;
+
+  /* Letter spacing - adjusts with size */
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.025em;
+  --tracking-wider: 0.05em;
+
+  /* Font weights */
+  --weight-light: 300;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+}
+
+/* Increase scale ratio on larger viewports */
+@media (width >= 1920px) {
+  :root {
+    --type-ratio: 1.25; /* Major Third */
+  }
+}
+
+@media (width >= 2560px) {
+  :root {
+    --type-ratio: 1.333; /* Perfect Fourth */
+  }
+}
+
+/* Decrease scale on smaller viewports for better fit */
+@media (width <= 768px) {
+  :root {
+    --type-ratio: 1.125; /* Major Second */
+  }
+}
+
+/* ============================================
+   SEMANTIC TYPE STYLES
+   ============================================ */
+
+/* Display - Hero headings */
+.type-display {
+  font-size: var(--type-4xl);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tight);
+}
+
+/* H1 - Page titles */
+.type-h1 {
+  font-size: var(--type-3xl);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tight);
+}
+
+/* H2 - Section headings */
+.type-h2 {
+  font-size: var(--type-2xl);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-tight);
+}
+
+/* H3 - Subsection headings */
+.type-h3 {
+  font-size: var(--type-xl);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-normal);
+}
+
+/* H4 - Card headings */
+.type-h4 {
+  font-size: var(--type-lg);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-normal);
+}
+
+/* Body - Primary content */
+.type-body {
+  font-size: var(--type-md);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-normal);
+  letter-spacing: var(--tracking-normal);
+}
+
+/* Body Small - Secondary content */
+.type-body-sm {
+  font-size: var(--type-sm);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-normal);
+  letter-spacing: var(--tracking-normal);
+}
+
+/* Caption - Metadata, timestamps */
+.type-caption {
+  font-size: var(--type-xs);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-normal);
+  letter-spacing: var(--tracking-wide);
+}
+
+/* Label - Form labels, buttons */
+.type-label {
+  font-size: var(--type-sm);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-wide);
+  text-transform: none;
+}
+
+/* Overline - Category labels */
+.type-overline {
+  font-size: var(--type-xs);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+}
+
+/* Code - Monospace content */
+.type-code {
+  font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+  font-size: calc(var(--type-md) * 0.9);
+  line-height: var(--leading-relaxed);
+  letter-spacing: var(--tracking-normal);
+}
+
+/* ============================================
+   RESPONSIVE ADJUSTMENTS
+   ============================================ */
+
+/* Prose container for long-form content */
+.prose {
+  max-width: 65ch; /* Optimal reading width */
+  font-size: var(--type-md);
+  line-height: var(--leading-relaxed);
+}
+
+.prose h1,
+.prose h2,
+.prose h3 {
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+}
+
+.prose p {
+  margin-bottom: 1em;
+}
+
+/* Truncation utilities */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ============================================
+   COLOR UTILITIES FOR TYPOGRAPHY
+   ============================================ */
+
+.type-color-primary {
+  color: var(--text-primary);
+}
+
+.type-color-secondary {
+  color: var(--text-secondary);
+}
+
+.type-color-tertiary {
+  color: var(--text-tertiary);
+}
+
+.type-color-accent {
+  color: var(--color-primary-500);
+}
+
+.type-color-success {
+  color: var(--color-success);
+}
+
+.type-color-warning {
+  color: var(--color-warning);
+}
+
+.type-color-error {
+  color: var(--color-error);
+}
+
+/* ============================================
+   ALIGNMENT UTILITIES
+   ============================================ */
+
+.type-align-left {
+  text-align: left;
+}
+
+.type-align-center {
+  text-align: center;
+}
+
+.type-align-right {
+  text-align: right;
+}
+
+/* ============================================
+   WEIGHT UTILITIES
+   ============================================ */
+
+.type-weight-light {
+  font-weight: var(--weight-light);
+}
+
+.type-weight-regular {
+  font-weight: var(--weight-regular);
+}
+
+.type-weight-medium {
+  font-weight: var(--weight-medium);
+}
+
+.type-weight-semibold {
+  font-weight: var(--weight-semibold);
+}
+
+.type-weight-bold {
+  font-weight: var(--weight-bold);
+}
