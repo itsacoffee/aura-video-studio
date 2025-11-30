@@ -158,6 +158,11 @@ interface SDModel {
   isDefault: boolean;
 }
 
+// Installation polling constants
+const MAX_INSTALL_ATTEMPTS = 60; // Maximum attempts (5 minutes total)
+const POLL_INTERVAL_MS = 5000; // 5 seconds between status checks
+const POLL_INTERVAL_SECONDS = POLL_INTERVAL_MS / 1000;
+
 /**
  * Stable Diffusion card with GPU check, installation, and server controls
  */
@@ -257,10 +262,9 @@ export function StableDiffusionCard() {
 
       // Poll the status to track installation progress
       let attempts = 0;
-      const maxAttempts = 60; // 5 minutes
 
-      while (attempts < maxAttempts) {
-        await new Promise((resolve) => setTimeout(resolve, 5000));
+      while (attempts < MAX_INSTALL_ATTEMPTS) {
+        await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
         const statusResponse = await fetch(apiUrl('/api/engines/stable-diffusion/status'));
         if (statusResponse.ok) {
           const statusData = await statusResponse.json();
@@ -276,8 +280,10 @@ export function StableDiffusionCard() {
             return;
           }
         }
-        setInstallProgress(Math.min(90, (attempts / maxAttempts) * 90));
-        setInstallMessage(`Installing Stable Diffusion WebUI... (${attempts * 5}s)`);
+        setInstallProgress(Math.min(90, (attempts / MAX_INSTALL_ATTEMPTS) * 90));
+        setInstallMessage(
+          `Installing Stable Diffusion WebUI... (${attempts * POLL_INTERVAL_SECONDS}s)`
+        );
         attempts++;
       }
 

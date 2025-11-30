@@ -34,6 +34,9 @@ public class LocalStableDiffusionProvider : BaseVisualProvider
         bool isNvidiaGpu = true,
         int vramGB = 8) : base(logger)
     {
+        ArgumentNullException.ThrowIfNull(httpClient);
+        ArgumentNullException.ThrowIfNull(webUiUrl);
+        
         _httpClient = httpClient;
         _webUiUrl = webUiUrl.TrimEnd('/');
         _isNvidiaGpu = isNvidiaGpu;
